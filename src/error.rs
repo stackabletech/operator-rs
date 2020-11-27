@@ -6,7 +6,6 @@ pub enum Error {
         source: serde_json::Error,
     },
 
-
     #[error("Failed to serialize YAML: {source}")]
     YamlSerializationError {
         #[from]

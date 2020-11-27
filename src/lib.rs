@@ -146,3 +146,13 @@ pub fn create_config_map<T>(
     };
     Ok(cm)
 }
+
+pub fn initialize_logging() {
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .init();
+}
+
+pub async fn create_client() -> Result<kube::Client, error::Error> {
+    return Ok(kube::Client::try_default().await?);
+}
