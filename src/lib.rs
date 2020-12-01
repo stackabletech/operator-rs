@@ -12,6 +12,7 @@ use crate::error::Error;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::BTreeMap;
+use tracing::log::Level;
 
 /// Context data inserted into the reconciliation handler with each call.
 pub struct ContextData {
@@ -147,10 +148,8 @@ pub fn create_config_map<T>(
     Ok(cm)
 }
 
-pub fn initialize_logging() {
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .init();
+pub fn initialize_logging(level: Level) {
+    tracing_subscriber::fmt().with_max_level(level).init();
 }
 
 pub async fn create_client() -> Result<kube::Client, error::Error> {
