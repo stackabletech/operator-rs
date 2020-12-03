@@ -3,12 +3,13 @@ pub mod crd;
 pub mod error;
 pub mod finalizer;
 
+use crate::client::Client;
 use crate::error::Error;
 pub use crd::CRD;
 use k8s_openapi::api::core::v1::{ConfigMap, Toleration};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use kube::api::{Meta, ObjectMeta, PatchParams, PatchStrategy};
-use kube::{Api, Client};
+use kube::Api;
 use kube_runtime::controller::Context;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -160,6 +161,6 @@ pub fn initialize_logging(level: tracing::Level) {
     tracing_subscriber::fmt().with_max_level(level).init();
 }
 
-pub async fn create_client() -> Result<kube::Client, error::Error> {
-    return Ok(kube::Client::try_default().await?);
+pub async fn create_client() -> Result<client::Client, error::Error> {
+    Ok(client::Client::new(kube::Client::try_default().await?))
 }

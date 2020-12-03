@@ -72,7 +72,7 @@ impl Client {
 
     /// Returns an [kube::Api] object which is either namespaced or not depending on whether
     /// a resource is passed in or not and whether that has a namespace or not.
-    fn get_api<T>(&self, namespace: Option<String>) -> Api<T>
+    pub fn get_api<T>(&self, namespace: Option<String>) -> Api<T>
     where
         T: Meta,
     {
@@ -82,14 +82,14 @@ impl Client {
         }
     }
 
-    fn get_all_api<T>(&self) -> Api<T>
+    pub fn get_all_api<T>(&self) -> Api<T>
     where
         T: k8s_openapi::Resource,
     {
         Api::all(self.client.clone())
     }
 
-    fn get_namespaced_api<T>(&self, namespace: &str) -> Api<T>
+    pub fn get_namespaced_api<T>(&self, namespace: &str) -> Api<T>
     where
         T: k8s_openapi::Resource,
     {
