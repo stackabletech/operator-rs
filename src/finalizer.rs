@@ -1,13 +1,14 @@
 use crate::error::Error;
-use kube::api::{Meta, PatchParams, PatchStrategy};
-use kube::{Api, Client};
-use serde_json::json;
-use serde::de::DeserializeOwned;
 
+use crate::client::Client;
+use kube::api::Meta;
+use serde::de::DeserializeOwned;
+use serde_json::json;
 
 /// Checks whether our own finalizer is in the list of finalizers for the provided object.
 pub fn has_finalizer<T>(resource: &T, finalizer: &str) -> bool
-    where T: Meta
+where
+    T: Meta,
 {
     return match resource.meta().finalizers.as_ref() {
         Some(finalizers) => finalizers.contains(&finalizer.to_string()),
@@ -16,33 +17,16 @@ pub fn has_finalizer<T>(resource: &T, finalizer: &str) -> bool
 }
 
 /// Adds our finalizer to the list of finalizers.
-pub async fn add_finalizer<T>(
-    client: Client,
-    resource: &T,
-    finalizer: &str
-) -> Result<T, Error>
-    where T: k8s_openapi::Resource + Clone + Meta + DeserializeOwned
+pub async fn add_finalizer<T>(client: Client, resource: &T, finalizer: &str) -> Result<T, Error>
+where
+    T: k8s_openapi::Resource + Clone + Meta + DeserializeOwned,
 {
-    let name = &Meta::name(resource);
-    let namespace = &Meta::namespace(resource).expect("Resource is namespaced");
-
-    let api: Api<T> = Api::namespaced(client, namespace);
     let new_metadata = serde_json::to_vec(&json!({
         "metadata": {
             "finalizers": [finalizer.to_string()]
         }
     }))?;
-
-    let patch_params = PatchParams {
-        patch_strategy: PatchStrategy::Merge,
-        field_manager: None, // TODO?
-        ..PatchParams::default()
-    };
-
-    api
-        .patch(name, &patch_params, new_metadata)
-        .await
-        .map_err(Error::from)
+    client.patch(resource, new_metadata).await
 }
 
 /// Removes our finalizer from a resource object.
@@ -51,7 +35,8 @@ pub async fn add_finalizer<T>(
 /// `name` - is the name of the resource we want to patch
 /// `namespace` is the namespace of where the resource to patch lives
 pub async fn remove_finalizer<T>(client: Client, resource: &T, finalizer: &str) -> Result<T, Error>
-    where T: Clone + DeserializeOwned + Meta
+where
+    T: Clone + DeserializeOwned + Meta,
 {
     // It would be preferable to use a strategic merge but that currently (K8S 1.19) doesn't
     // seem to work against custom resources.
@@ -61,10 +46,6 @@ pub async fn remove_finalizer<T>(client: Client, resource: &T, finalizer: &str) 
     //             "$deleteFromPrimitiveList/finalizers": [FINALIZER_NAME.to_string()]
     //         }
     // ```
-    let name = Meta::name(resource);
-    let namespace = Meta::namespace(resource).expect("Custom Resource is namespaced");
-    let api: Api<T> = Api::namespaced(client, &namespace);
-
     return match resource.meta().finalizers.clone() {
         None => Err(Error::MissingObjectKey {
             key: ".metadata.finalizers",
@@ -85,16 +66,7 @@ pub async fn remove_finalizer<T>(client: Client, resource: &T, finalizer: &str) 
                     }
                 }))?;
 
-                let patch_params = PatchParams {
-                    patch_strategy: PatchStrategy::Merge,
-                    field_manager: None, // TODO?
-                    ..PatchParams::default()
-                };
-
-                api
-                    .patch(&name, &patch_params, new_metadata)
-                    .await
-                    .map_err(Error::from)
+                client.patch(resource, new_metadata).await
             } else {
                 Err(Error::MissingObjectKey {
                     key: ".metadata.finalizers",
@@ -107,7 +79,8 @@ pub async fn remove_finalizer<T>(client: Client, resource: &T, finalizer: &str) 
 /// Checks whether the provided object has a deletion timestamp set.
 /// If that is the case the object is in the process of being deleted pending the handling of all finalizers.
 pub fn has_deletion_stamp<T>(obj: &T) -> bool
-    where T: Meta
+where
+    T: Meta,
 {
     return obj.meta().deletion_timestamp.is_some();
 }

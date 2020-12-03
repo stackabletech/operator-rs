@@ -1,18 +1,19 @@
+pub mod client;
 pub mod crd;
 pub mod error;
 pub mod finalizer;
 
-pub use crd::CRD as CRD;
-use kube::{Client, Api};
-use kube_runtime::controller::Context;
-use kube::api::{Meta, ObjectMeta, PatchParams, PatchStrategy};
-use k8s_openapi::api::core::v1::{Toleration, ConfigMap};
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use crate::error::Error;
+pub use crd::CRD;
+use k8s_openapi::api::core::v1::{ConfigMap, Toleration};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
+use kube::api::{Meta, ObjectMeta, PatchParams, PatchStrategy};
+use kube::{Api, Client};
+use kube_runtime::controller::Context;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::BTreeMap;
-use tracing::log::Level;
+pub use tracing::Level;
 
 /// Context data inserted into the reconciliation handler with each call.
 pub struct ContextData {
@@ -48,10 +49,10 @@ pub enum ControllerAction {
     Delete,
 }
 
-
 /// Examines the incoming resource and determines the `ControllerAction` to be taken upon it.
 pub fn decide_controller_action<T>(resource: &T, finalizer: &str) -> Option<ControllerAction>
-    where T: Meta
+where
+    T: Meta,
 {
     let has_finalizer: bool = finalizer::has_finalizer(resource, finalizer);
     let has_deletion_timestamp: bool = finalizer::has_deletion_stamp(resource);
@@ -109,8 +110,14 @@ pub fn object_to_owner_reference<K: Meta>(meta: ObjectMeta) -> Result<OwnerRefer
     })
 }
 
-pub async fn patch_resource<T>(api: &Api<T>, resource_name: &String, resource: &T, field_manager: &str) -> Result<T, Error>
-    where T: Clone + Meta + DeserializeOwned + Serialize,
+pub async fn patch_resource<T>(
+    api: &Api<T>,
+    resource_name: &String,
+    resource: &T,
+    field_manager: &str,
+) -> Result<T, Error>
+where
+    T: Clone + Meta + DeserializeOwned + Serialize,
 {
     api.patch(
         &resource_name,
@@ -121,8 +128,8 @@ pub async fn patch_resource<T>(api: &Api<T>, resource_name: &String, resource: &
         },
         serde_json::to_vec(&resource)?,
     )
-        .await
-        .map_err(Error::from)
+    .await
+    .map_err(Error::from)
 }
 
 /// Creates a ConfigMap
@@ -131,7 +138,8 @@ pub fn create_config_map<T>(
     cm_name: &String,
     data: BTreeMap<String, String>,
 ) -> Result<ConfigMap, Error>
-    where T: Meta
+where
+    T: Meta,
 {
     let cm = ConfigMap {
         data: Some(data),
@@ -148,7 +156,7 @@ pub fn create_config_map<T>(
     Ok(cm)
 }
 
-pub fn initialize_logging(level: Level) {
+pub fn initialize_logging(level: tracing::Level) {
     tracing_subscriber::fmt().with_max_level(level).init();
 }
 
