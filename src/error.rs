@@ -20,5 +20,4 @@ pub enum Error {
 
     #[error("Object is missing key: {key}")]
     MissingObjectKey { key: &'static str },
-
 }
