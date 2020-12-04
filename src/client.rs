@@ -71,7 +71,7 @@ impl Client {
     }
 
     /// Returns an [kube::Api] object which is either namespaced or not depending on whether
-    /// a resource is passed in or not and whether that has a namespace or not.
+    /// or not a namespace string is passed in.
     pub fn get_api<T>(&self, namespace: Option<String>) -> Api<T>
     where
         T: Meta,
