@@ -113,7 +113,7 @@ pub fn object_to_owner_reference<K: Meta>(meta: ObjectMeta) -> Result<OwnerRefer
 
 pub async fn patch_resource<T>(
     api: &Api<T>,
-    resource_name: &String,
+    resource_name: &str,
     resource: &T,
     field_manager: &str,
 ) -> Result<T, Error>
