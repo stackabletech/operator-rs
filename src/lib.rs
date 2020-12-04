@@ -57,7 +57,7 @@ where
 {
     let has_finalizer: bool = finalizer::has_finalizer(resource, finalizer);
     let has_deletion_timestamp: bool = finalizer::has_deletion_stamp(resource);
-    return if has_finalizer && has_deletion_timestamp {
+    if has_finalizer && has_deletion_timestamp {
         Some(ControllerAction::Delete)
     } else if !has_finalizer && !has_deletion_timestamp {
         Some(ControllerAction::Create)
@@ -67,7 +67,7 @@ where
         // The object is being deleted but we've already finished our finalizer
         // So there's nothing left to do for us on this one.
         None
-    };
+    }
 }
 
 /// Creates a vector of tolerations we need to work with the Krustlet
@@ -101,10 +101,10 @@ pub fn object_to_owner_reference<K: Meta>(meta: ObjectMeta) -> Result<OwnerRefer
     Ok(OwnerReference {
         api_version: K::API_VERSION.to_string(),
         kind: K::KIND.to_string(),
-        name: meta.name.ok_or_else(|| Error::MissingObjectKey {
+        name: meta.name.ok_or(Error::MissingObjectKey {
             key: ".metadata.name",
         })?,
-        uid: meta.uid.ok_or_else(|| Error::MissingObjectKey {
+        uid: meta.uid.ok_or(Error::MissingObjectKey {
             key: ".metadata.backtrace",
         })?,
         ..OwnerReference::default()
@@ -136,7 +136,7 @@ where
 /// Creates a ConfigMap
 pub fn create_config_map<T>(
     resource: &T,
-    cm_name: &String,
+    cm_name: &str,
     data: BTreeMap<String, String>,
 ) -> Result<ConfigMap, Error>
 where
@@ -145,7 +145,7 @@ where
     let cm = ConfigMap {
         data: Some(data),
         metadata: ObjectMeta {
-            name: Some(cm_name.clone()),
+            name: Some(String::from(cm_name)),
             owner_references: Some(vec![OwnerReference {
                 controller: Some(true),
                 ..object_to_owner_reference::<T>(resource.meta().clone())?
