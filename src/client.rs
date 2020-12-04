@@ -26,7 +26,7 @@ impl Client {
 
     /// Returns a [kube::client::Client]] that can be freely used.
     /// It does not need to be cloned before first use.
-    pub fn kube_client(&self) -> KubeClient {
+    pub fn as_kube_client(&self) -> KubeClient {
         self.client.clone()
     }
 
