@@ -162,6 +162,9 @@ pub fn initialize_logging(level: tracing::Level) {
     tracing_subscriber::fmt().with_max_level(level).init();
 }
 
-pub async fn create_client() -> Result<client::Client, error::Error> {
-    Ok(client::Client::new(kube::Client::try_default().await?))
+pub async fn create_client(field_manager: Option<String>) -> Result<client::Client, error::Error> {
+    Ok(client::Client::new(
+        kube::Client::try_default().await?,
+        field_manager,
+    ))
 }

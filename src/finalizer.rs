@@ -26,7 +26,7 @@ where
             "finalizers": [finalizer.to_string()]
         }
     }))?;
-    client.patch(resource, new_metadata).await
+    client.merge_patch(resource, new_metadata).await
 }
 
 /// Removes our finalizer from a resource object.
@@ -66,7 +66,7 @@ where
                     }
                 }))?;
 
-                client.patch(resource, new_metadata).await
+                client.merge_patch(resource, new_metadata).await
             } else {
                 Err(Error::MissingObjectKey {
                     key: ".metadata.finalizers",
