@@ -9,6 +9,7 @@ use crate::error::{Error, OperatorResult};
 pub use crd::CRD;
 use k8s_openapi::api::core::v1::{ConfigMap, Toleration};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
+use k8s_openapi::Resource;
 use kube::api::{Meta, ObjectMeta, PatchParams, PatchStrategy};
 use kube::Api;
 use kube_runtime::controller::Context;
@@ -98,7 +99,7 @@ pub fn create_tolerations() -> Vec<Toleration> {
     ]
 }
 
-pub fn object_to_owner_reference<K: Meta>(meta: ObjectMeta) -> OperatorResult<OwnerReference> {
+pub fn object_to_owner_reference<K: Resource>(meta: ObjectMeta) -> OperatorResult<OwnerReference> {
     Ok(OwnerReference {
         api_version: K::API_VERSION.to_string(),
         kind: K::KIND.to_string(),
@@ -147,6 +148,7 @@ where
         data: Some(data),
         metadata: ObjectMeta {
             name: Some(String::from(cm_name)),
+            namespace: Meta::namespace(resource),
             owner_references: Some(vec![OwnerReference {
                 controller: Some(true),
                 ..object_to_owner_reference::<T>(resource.meta().clone())?
