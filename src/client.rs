@@ -1,5 +1,6 @@
 use crate::error::OperatorResult;
-use kube::api::{ListParams, Meta, PatchParams, PatchStrategy, PostParams};
+
+use kube::api::{DeleteParams, ListParams, Meta, PatchParams, PatchStrategy, PostParams};
 use kube::client::Client as KubeClient;
 use kube::Api;
 use serde::de::DeserializeOwned;
@@ -13,6 +14,7 @@ pub struct Client {
     merge_patch_params: PatchParams,
     apply_patch_params: PatchParams,
     post_params: PostParams,
+    delete_params: DeleteParams,
 }
 
 impl Client {
@@ -33,6 +35,7 @@ impl Client {
                 field_manager,
                 ..PatchParams::default()
             },
+            delete_params: DeleteParams::default(),
         }
     }
 
@@ -117,6 +120,22 @@ impl Client {
         Ok(self
             .get_api(Meta::namespace(resource))
             .replace(&Meta::name(resource), &self.post_params, resource)
+            .await?)
+    }
+
+    /// Which of the two results this returns depends on the API.
+    /// Take a look at the Kubernetes API reference.
+    /// Some `delete` endpoints return the object and others return a `Status` object.
+    pub async fn delete<T>(
+        &self,
+        resource: &T,
+    ) -> OperatorResult<either::Either<T, kube::client::Status>>
+    where
+        T: Clone + DeserializeOwned + Meta,
+    {
+        let api: Api<T> = self.get_api(Meta::namespace(resource));
+        Ok(api
+            .delete(&Meta::name(resource), &self.delete_params)
             .await?)
     }
 
