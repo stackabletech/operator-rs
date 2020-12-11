@@ -5,7 +5,7 @@ pub mod finalizer;
 pub mod util;
 
 use crate::client::Client;
-use crate::error::Error;
+use crate::error::{Error, OperatorResult};
 pub use crd::CRD;
 use k8s_openapi::api::core::v1::{ConfigMap, Toleration};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
@@ -98,7 +98,7 @@ pub fn create_tolerations() -> Vec<Toleration> {
     ]
 }
 
-pub fn object_to_owner_reference<K: Meta>(meta: ObjectMeta) -> Result<OwnerReference, Error> {
+pub fn object_to_owner_reference<K: Meta>(meta: ObjectMeta) -> OperatorResult<OwnerReference> {
     Ok(OwnerReference {
         api_version: K::API_VERSION.to_string(),
         kind: K::KIND.to_string(),
@@ -117,7 +117,7 @@ pub async fn patch_resource<T>(
     resource_name: &str,
     resource: &T,
     field_manager: &str,
-) -> Result<T, Error>
+) -> OperatorResult<T>
 where
     T: Clone + Meta + DeserializeOwned + Serialize,
 {
@@ -139,7 +139,7 @@ pub fn create_config_map<T>(
     resource: &T,
     cm_name: &str,
     data: BTreeMap<String, String>,
-) -> Result<ConfigMap, Error>
+) -> OperatorResult<ConfigMap>
 where
     T: Meta,
 {
@@ -162,7 +162,7 @@ pub fn initialize_logging(level: tracing::Level) {
     tracing_subscriber::fmt().with_max_level(level).init();
 }
 
-pub async fn create_client(field_manager: Option<String>) -> Result<client::Client, error::Error> {
+pub async fn create_client(field_manager: Option<String>) -> OperatorResult<client::Client> {
     Ok(client::Client::new(
         kube::Client::try_default().await?,
         field_manager,

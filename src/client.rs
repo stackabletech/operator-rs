@@ -1,6 +1,5 @@
-use crate::error::Error;
-
-use kube::api::{ListParams, Meta, PatchParams, PatchStrategy, PostParams};
+use crate::error::OperatorResult;
+use kube::api::{DeleteParams, ListParams, Meta, PatchParams, PatchStrategy, PostParams};
 use kube::client::Client as KubeClient;
 use kube::Api;
 use serde::de::DeserializeOwned;
@@ -44,45 +43,40 @@ impl Client {
     }
 
     /// Retrieves a single instance of the requested resource type with the given name.
-    pub async fn get<T>(&self, resource_name: &str, namespace: Option<String>) -> Result<T, Error>
+    pub async fn get<T>(&self, resource_name: &str, namespace: Option<String>) -> OperatorResult<T>
     where
         T: Clone + DeserializeOwned + Meta,
     {
-        self.get_api(namespace)
-            .get(resource_name)
-            .await
-            .map_err(Error::from)
+        Ok(self.get_api(namespace).get(resource_name).await?)
     }
 
     /// Retrieves all instances of the requested resource type.
     /// NOTE: This _currently_ does not support label selectors
-    pub async fn list<T>(&self, namespace: Option<String>) -> Result<Vec<T>, Error>
+    pub async fn list<T>(&self, namespace: Option<String>) -> OperatorResult<Vec<T>>
     where
         T: Clone + DeserializeOwned + Meta,
     {
-        let result = self
+        Ok(self
             .get_api(namespace)
             .list(&ListParams::default())
-            .await
-            .map_err(Error::from)?;
-
-        Ok(result.items)
+            .await?
+            .items)
     }
 
     /// Creates a new resource.
-    pub async fn create<T>(&self, resource: &T) -> Result<T, Error>
+    pub async fn create<T>(&self, resource: &T) -> OperatorResult<T>
     where
         T: Clone + DeserializeOwned + Meta + Serialize,
     {
-        self.get_api(Meta::namespace(resource))
+        Ok(self
+            .get_api(Meta::namespace(resource))
             .create(&self.post_params, resource)
-            .await
-            .map_err(Error::from)
+            .await?)
     }
 
     /// Patches a resource using the `MERGE` patch strategy.
     /// This will fail for objects that do not exist yet.
-    pub async fn merge_patch<T>(&self, resource: &T, patch: Vec<u8>) -> Result<T, Error>
+    pub async fn merge_patch<T>(&self, resource: &T, patch: Vec<u8>) -> OperatorResult<T>
     where
         T: Clone + DeserializeOwned + Meta,
     {
@@ -91,7 +85,7 @@ impl Client {
 
     /// Patches a resource using the `APPLY` patch strategy.
     /// This will _create_ or _update_ existing resources.
-    pub async fn apply_patch<T>(&self, resource: &T, patch: Vec<u8>) -> Result<T, Error>
+    pub async fn apply_patch<T>(&self, resource: &T, patch: Vec<u8>) -> OperatorResult<T>
     where
         T: Clone + DeserializeOwned + Meta,
     {
@@ -103,27 +97,27 @@ impl Client {
         resource: &T,
         patch: Vec<u8>,
         patch_params: &PatchParams,
-    ) -> Result<T, Error>
+    ) -> OperatorResult<T>
     where
         T: Clone + DeserializeOwned + Meta,
     {
-        self.get_api(Meta::namespace(resource))
+        Ok(self
+            .get_api(Meta::namespace(resource))
             .patch(&Meta::name(resource), patch_params, patch)
-            .await
-            .map_err(Error::from)
+            .await?)
     }
 
     /// Replaces a resource.
     /// This will _update_ an existing resource.
     /// NOTE: I do not know what the difference is between `update` and `apply_patch` for updates.
-    pub async fn update<T>(&self, resource: &T) -> Result<T, Error>
+    pub async fn update<T>(&self, resource: &T) -> OperatorResult<T>
     where
         T: Clone + DeserializeOwned + Meta + Serialize,
     {
-        self.get_api(Meta::namespace(resource))
+        Ok(self
+            .get_api(Meta::namespace(resource))
             .replace(&Meta::name(resource), &self.post_params, resource)
-            .await
-            .map_err(Error::from)
+            .await?)
     }
 
     /// Returns an [kube::Api] object which is either namespaced or not depending on whether
