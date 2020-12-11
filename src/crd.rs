@@ -83,7 +83,7 @@ where
 /// It will return an error if the CRD already exists.
 /// If it returns successfully it does not mean that the CRD is fully established yet,
 /// just that it has been accepted by the apiserver.
-async fn create<T>(client: Client) -> Result<(), error::Error>
+async fn create<T>(client: Client) -> OperatorResult<()>
 where
     T: CRD,
 {
