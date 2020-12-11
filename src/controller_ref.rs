@@ -12,11 +12,10 @@ where
         .meta()
         .owner_references
         .as_ref()
-        .map_or(None, |owners| {
-            let result = owners
-                .into_iter()
-                .find(|owner| matches!(owner.controller, Some(true)));
-            result
+        .and_then(|owners| {
+            owners
+                .iter()
+                .find(|owner| matches!(owner.controller, Some(true)))
         })
 }
 
