@@ -1,4 +1,5 @@
 pub mod client;
+pub mod controller_ref;
 pub mod crd;
 pub mod error;
 pub mod finalizer;
