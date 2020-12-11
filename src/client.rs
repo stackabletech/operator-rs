@@ -1,5 +1,5 @@
 use crate::error::OperatorResult;
-use kube::api::{DeleteParams, ListParams, Meta, PatchParams, PatchStrategy, PostParams};
+use kube::api::{ListParams, Meta, PatchParams, PatchStrategy, PostParams};
 use kube::client::Client as KubeClient;
 use kube::Api;
 use serde::de::DeserializeOwned;
