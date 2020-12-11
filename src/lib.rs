@@ -2,6 +2,7 @@ pub mod client;
 pub mod crd;
 pub mod error;
 pub mod finalizer;
+pub mod history;
 pub mod util;
 
 use crate::client::Client;
