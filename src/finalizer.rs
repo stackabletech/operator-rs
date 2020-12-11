@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::{Error, OperatorResult};
 
 use crate::client::Client;
 use kube::api::Meta;
@@ -17,7 +17,7 @@ where
 }
 
 /// Adds our finalizer to the list of finalizers.
-pub async fn add_finalizer<T>(client: Client, resource: &T, finalizer: &str) -> Result<T, Error>
+pub async fn add_finalizer<T>(client: Client, resource: &T, finalizer: &str) -> OperatorResult<T>
 where
     T: k8s_openapi::Resource + Clone + Meta + DeserializeOwned,
 {
@@ -34,7 +34,7 @@ where
 /// # Arguments
 /// `name` - is the name of the resource we want to patch
 /// `namespace` is the namespace of where the resource to patch lives
-pub async fn remove_finalizer<T>(client: Client, resource: &T, finalizer: &str) -> Result<T, Error>
+pub async fn remove_finalizer<T>(client: Client, resource: &T, finalizer: &str) -> OperatorResult<T>
 where
     T: Clone + DeserializeOwned + Meta,
 {

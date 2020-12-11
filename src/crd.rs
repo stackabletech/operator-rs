@@ -1,6 +1,7 @@
 use crate::error;
 
 use crate::client::Client;
+use crate::error::OperatorResult;
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
 use kube::error::ErrorResponse;
 use tracing::info;
@@ -44,7 +45,7 @@ pub trait CRD {
 /// exists::<Test>(client).await;
 /// # };
 /// ```
-pub async fn exists<T>(client: Client) -> Result<bool, error::Error>
+pub async fn exists<T>(client: Client) -> OperatorResult<bool>
 where
     T: CRD,
 {
@@ -64,7 +65,7 @@ where
 /// Currently this does not retry internally.
 /// This means that running it again _might_ work in case of transient errors.
 // TODO: Make sure to wait until it's enabled in the apiserver
-pub async fn ensure_crd_created<T>(client: Client) -> Result<(), error::Error>
+pub async fn ensure_crd_created<T>(client: Client) -> OperatorResult<()>
 where
     T: CRD,
 {
@@ -82,7 +83,7 @@ where
 /// It will return an error if the CRD already exists.
 /// If it returns successfully it does not mean that the CRD is fully established yet,
 /// just that it has been accepted by the apiserver.
-async fn create<T>(client: Client) -> Result<(), error::Error>
+async fn create<T>(client: Client) -> OperatorResult<()>
 where
     T: CRD,
 {

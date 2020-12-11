@@ -21,3 +21,5 @@ pub enum Error {
     #[error("Object is missing key: {key}")]
     MissingObjectKey { key: &'static str },
 }
+
+pub type OperatorResult<T> = std::result::Result<T, Error>;
