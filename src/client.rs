@@ -1,6 +1,6 @@
 use crate::error::Error;
 
-use kube::api::{Meta, PatchParams, PostParams};
+use kube::api::{ListParams, Meta, PatchParams, PatchStrategy, PostParams};
 use kube::client::Client as KubeClient;
 use kube::Api;
 use serde::de::DeserializeOwned;
@@ -11,16 +11,29 @@ use serde::Serialize;
 #[derive(Clone)]
 pub struct Client {
     client: KubeClient,
+    merge_patch_params: PatchParams,
+    apply_patch_params: PatchParams,
     post_params: PostParams,
-    patch_params: PatchParams,
 }
 
 impl Client {
-    pub fn new(client: KubeClient) -> Self {
+    pub fn new(client: KubeClient, field_manager: Option<String>) -> Self {
         Client {
             client,
-            post_params: PostParams::default(),
-            patch_params: PatchParams::default(),
+            post_params: PostParams {
+                field_manager: field_manager.clone(),
+                ..PostParams::default()
+            },
+            merge_patch_params: PatchParams {
+                patch_strategy: PatchStrategy::Merge,
+                field_manager: field_manager.clone(),
+                ..PatchParams::default()
+            },
+            apply_patch_params: PatchParams {
+                patch_strategy: PatchStrategy::Apply,
+                field_manager,
+                ..PatchParams::default()
+            },
         }
     }
 
@@ -30,6 +43,7 @@ impl Client {
         self.client.clone()
     }
 
+    /// Retrieves a single instance of the requested resource type with the given name.
     pub async fn get<T>(&self, resource_name: &str, namespace: Option<String>) -> Result<T, Error>
     where
         T: Clone + DeserializeOwned + Meta,
@@ -40,6 +54,22 @@ impl Client {
             .map_err(Error::from)
     }
 
+    /// Retrieves all instances of the requested resource type.
+    /// NOTE: This _currently_ does not support label selectors
+    pub async fn list<T>(&self, namespace: Option<String>) -> Result<Vec<T>, Error>
+    where
+        T: Clone + DeserializeOwned + Meta,
+    {
+        let result = self
+            .get_api(namespace)
+            .list(&ListParams::default())
+            .await
+            .map_err(Error::from)?;
+
+        Ok(result.items)
+    }
+
+    /// Creates a new resource.
     pub async fn create<T>(&self, resource: &T) -> Result<T, Error>
     where
         T: Clone + DeserializeOwned + Meta + Serialize,
@@ -50,16 +80,42 @@ impl Client {
             .map_err(Error::from)
     }
 
-    pub async fn patch<T>(&self, resource: &T, patch: Vec<u8>) -> Result<T, Error>
+    /// Patches a resource using the `MERGE` patch strategy.
+    /// This will fail for objects that do not exist yet.
+    pub async fn merge_patch<T>(&self, resource: &T, patch: Vec<u8>) -> Result<T, Error>
+    where
+        T: Clone + DeserializeOwned + Meta,
+    {
+        self.patch(resource, patch, &self.merge_patch_params).await
+    }
+
+    /// Patches a resource using the `APPLY` patch strategy.
+    /// This will _create_ or _update_ existing resources.
+    pub async fn apply_patch<T>(&self, resource: &T, patch: Vec<u8>) -> Result<T, Error>
+    where
+        T: Clone + DeserializeOwned + Meta,
+    {
+        self.patch(resource, patch, &self.apply_patch_params).await
+    }
+
+    async fn patch<T>(
+        &self,
+        resource: &T,
+        patch: Vec<u8>,
+        patch_params: &PatchParams,
+    ) -> Result<T, Error>
     where
         T: Clone + DeserializeOwned + Meta,
     {
         self.get_api(Meta::namespace(resource))
-            .patch(&Meta::name(resource), &self.patch_params, patch)
+            .patch(&Meta::name(resource), patch_params, patch)
             .await
             .map_err(Error::from)
     }
 
+    /// Replaces a resource.
+    /// This will _update_ an existing resource.
+    /// NOTE: I do not know what the difference is between `update` and `apply_patch` for updates.
     pub async fn update<T>(&self, resource: &T) -> Result<T, Error>
     where
         T: Clone + DeserializeOwned + Meta + Serialize,

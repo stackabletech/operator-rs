@@ -39,7 +39,7 @@ pub trait CRD {
 /// # }
 /// #
 /// # async {
-/// # let client = create_client().await.unwrap();
+/// # let client = create_client(Some("foo".to_string())).await.unwrap();
 /// use stackable_operator::crd::exists;
 /// exists::<Test>(client).await;
 /// # };
