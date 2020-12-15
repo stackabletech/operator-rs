@@ -4,7 +4,7 @@ pub mod crd;
 pub mod error;
 pub mod finalizer;
 pub mod history;
-pub mod util;
+pub mod podutils;
 
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
