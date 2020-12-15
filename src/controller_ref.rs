@@ -32,7 +32,7 @@ mod tests {
         assert_eq!(
             true,
             matches!(controller, None),
-            "Did not expect an OwnerRefernce, got [{:?}]",
+            "Did not expect an OwnerReference, got [{:?}]",
             controller
         );
 

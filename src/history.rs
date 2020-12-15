@@ -34,7 +34,7 @@ where
 }
 
 /// Sorts the provided vector (in-place) by revision, creation timestamp and name (in that priority order)
-pub fn sort_controller_revisions(revisions: &mut Vec<ControllerRevision>) {
+fn sort_controller_revisions(revisions: &mut Vec<ControllerRevision>) {
     revisions.sort_by(|a, b| {
         a.revision.cmp(&b.revision).then(
             a.metadata
@@ -48,8 +48,11 @@ pub fn sort_controller_revisions(revisions: &mut Vec<ControllerRevision>) {
 
 /// Finds the next valid revision number based on the passed in revisions.
 /// If there are no revisions the next one will be 1" otherwise it is 1 greater than the last one.
-/// This assumes that the list has been sorted by `revision`.
-pub fn next_revision(revisions: &[ControllerRevision]) -> i64 {
+/// Note that this method changes the order of elements of the passed in vector so they are
+/// sorted by `revision` (with tie-breakers of `creation_timestamp` and `name`)
+pub fn next_revision(revisions: &mut Vec<ControllerRevision>) -> i64 {
+    sort_controller_revisions(revisions);
+
     match revisions.first() {
         None => 1,
         Some(revision) => revision.revision + 1,
@@ -65,7 +68,6 @@ pub async fn create_controller_revision<T>(
 where
     T: Meta + Hash,
 {
-    //controller_revision_name(Meta::name(parent), ...),
     let mut hasher = DefaultHasher::new();
     parent.hash(&mut hasher);
     let cr = ControllerRevision {
