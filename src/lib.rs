@@ -18,7 +18,6 @@ use kube_runtime::controller::Context;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::BTreeMap;
-pub use tracing::Level;
 use tracing_subscriber::EnvFilter;
 
 /// Context data inserted into the reconciliation handler with each call.
