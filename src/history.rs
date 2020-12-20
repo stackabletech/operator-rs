@@ -3,7 +3,7 @@
 use crate::client::Client;
 use crate::controller_ref::get_controller_of;
 use crate::error::OperatorResult;
-use crate::object_to_owner_reference;
+use crate::{k8s_errors, object_to_owner_reference};
 use k8s_openapi::api::apps::v1::ControllerRevision;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use k8s_openapi::apimachinery::pkg::runtime::RawExtension;
@@ -56,6 +56,12 @@ pub fn next_revision(revisions: &[ControllerRevision]) -> i64 {
     }
 }
 
+/// Creates a new `ControllerRevision` for the passed in object/data.
+///
+/// * `parent` is the object that owns the new `ControllerRevision`, it'll also be in the same namespace and have its name derived from it
+/// * `data` is the actual serialized data to put into the `ControllerRevision` object, this should always be related to the ~parent` object
+/// * `revision` is the revision number to use for this new object, if there are collisions it'll automatically use a collision counter to change the hashS
+// TODO:: K8s stores the `collision_count` in the `Status` field of the object but I don't ee an urgent need at the moment
 pub async fn create_controller_revision<T>(
     client: &Client,
     parent: &T,
@@ -65,15 +71,10 @@ pub async fn create_controller_revision<T>(
 where
     T: Meta + Hash,
 {
-    let mut hasher = DefaultHasher::new();
-    parent.hash(&mut hasher);
-    let cr = ControllerRevision {
+    let mut cr = ControllerRevision {
         data: Some(data),
         metadata: ObjectMeta {
-            name: Some(controller_revision_name(
-                &Meta::name(parent),
-                &format!("{:x}", hasher.finish()),
-            )),
+            name: None,
             namespace: Meta::namespace(parent),
             owner_references: Some(vec![object_to_owner_reference::<T>(parent.meta().clone())?]),
             ..ObjectMeta::default()
@@ -81,7 +82,25 @@ where
         revision,
     };
 
-    client.create(&cr).await // TODO: Retry logic on conflict?
+    let mut collision_count = 0;
+    loop {
+        let mut hasher = DefaultHasher::new();
+        parent.hash(&mut hasher);
+        collision_count.hash(&mut hasher);
+        let hash = hasher.finish();
+
+        let name = controller_revision_name(&Meta::name(parent), &format!("{:x}", hash));
+        cr.metadata.name = Some(name);
+
+        let result = client.create(&cr).await;
+        match k8s_errors::is_already_exists(&result) {
+            true => {
+                collision_count += 1;
+                continue;
+            }
+            false => return result,
+        }
+    }
 }
 
 /// Returns a formatted name for a ControllerRevision
