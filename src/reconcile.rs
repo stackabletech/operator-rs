@@ -1,5 +1,5 @@
 use crate::client::Client;
-use crate::error;
+use crate::error::Error;
 use futures::future::BoxFuture;
 use k8s_openapi::api::core::v1::Pod;
 use kube::api::{ListParams, Meta, ObjectMeta};
@@ -8,10 +8,10 @@ use std::time::Duration;
 use tracing::{error, trace};
 
 /// Functions running as part of the [`run_reconcile_functions`] loop must match this signature
-pub type ReconcileFunction<C, T> =
-    fn(&mut ReconciliationContext<C, T>) -> BoxFuture<'_, ReconcileResult>;
+pub type ReconcileFunction<C, T, E> =
+    fn(&mut ReconciliationContext<C, T>) -> BoxFuture<'_, ReconcileResult<E>>;
 
-type ReconcileResult = std::result::Result<ReconcileFunctionAction, error::Error>;
+pub type ReconcileResult<E> = std::result::Result<ReconcileFunctionAction, E>;
 
 pub enum ReconcileFunctionAction {
     /// Run the next [`ReconcileFunction`]
@@ -25,7 +25,7 @@ pub enum ReconcileFunctionAction {
 }
 
 pub struct ReconciliationContext<C, T> {
-    client: Client,
+    pub client: Client,
     pub resource: T,
     pub context: C,
 }
@@ -56,7 +56,7 @@ where
         self.resource.meta().clone()
     }
 
-    pub async fn list_pods(&self) -> Result<Vec<Pod>, error::Error> {
+    pub async fn list_pods(&self) -> Result<Vec<Pod>, Error> {
         let api = self.client.get_namespaced_api(&self.namespace());
 
         // TODO: We need to use a label selector to only get _our_ pods
@@ -69,15 +69,18 @@ where
 
         api.list(&list_params)
             .await
-            .map_err(error::Error::from)
+            .map_err(Error::from)
             .map(|result| result.items)
     }
 }
 
 pub async fn run_reconcile_functions<C, T, E>(
-    reconcilers: &[ReconcileFunction<C, T>],
+    reconcilers: &[ReconcileFunction<C, T, E>],
     context: &mut ReconciliationContext<C, T>,
-) -> Result<ReconcilerAction, E> {
+) -> Result<ReconcilerAction, E>
+where
+    E: std::fmt::Debug,
+{
     for reconciler in reconcilers {
         match reconciler(context).await {
             Ok(ReconcileFunctionAction::Continue) => {
