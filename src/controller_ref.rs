@@ -29,8 +29,7 @@ mod tests {
     fn test_get_controller_of() {
         let mut pod = Pod::default();
         let controller = get_controller_of(&pod);
-        assert_eq!(
-            true,
+        assert!(
             matches!(controller, None),
             "Did not expect an OwnerReference, got [{:?}]",
             controller
@@ -42,8 +41,7 @@ mod tests {
             ..OwnerReference::default()
         }]);
         let controller = get_controller_of(&pod);
-        assert_eq!(
-            true,
+        assert!(
             matches!(controller, Some(OwnerReference { uid, .. }) if uid == "1234"),
             "Expected a OwnerReference with uid 1234, got [{:?}]",
             controller
@@ -55,8 +53,7 @@ mod tests {
             ..OwnerReference::default()
         }]);
         let controller = get_controller_of(&pod);
-        assert_eq!(
-            true,
+        assert!(
             matches!(controller, None),
             "Did not expect an OwnerReference, got [{:?}]",
             controller
@@ -75,8 +72,7 @@ mod tests {
             },
         ]);
         let controller = get_controller_of(&pod);
-        assert_eq!(
-            true,
+        assert!(
             matches!(controller, Some(OwnerReference { uid, .. }) if uid == "5678"),
             "Expected a OwnerReference with uid 5678, got [{:?}]",
             controller
