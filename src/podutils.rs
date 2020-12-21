@@ -49,20 +49,15 @@ pub fn is_pod_created(pod: Option<&Pod>) -> bool {
 /// Reports whether a pod is running and ready by checking the phase of the pod as well as conditions.
 /// The phase has to be "Running" and the "Ready" condition has to be `true`.
 pub fn is_pod_running_and_ready(pod: &Pod) -> bool {
-    match &pod.status {
-        Some(status) => {
-            if let Some(phase) = &status.phase {
-                if phase != "Running" {
-                    // TODO: Replace with PodPhase comparison, I just don't know how
-                    return false;
-                }
-            }
+    let status = match &pod.status {
+        Some(PodStatus {
+            phase: Some(phase), ..
+        }) if phase != "Running" => return false,
+        Some(status) => status,
+        _ => return false,
+    };
 
-            is_pod_ready_condition_true(status)
-        }
-
-        _ => false,
-    }
+    is_pod_ready_condition_true(status)
 }
 
 fn is_pod_ready_condition_true(status: &PodStatus) -> bool {
