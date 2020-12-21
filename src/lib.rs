@@ -182,8 +182,9 @@ pub async fn create_client(field_manager: Option<String>) -> OperatorResult<clie
     ))
 }
 
-/// This method returns a closure which can be used as an `error_policy`  is being called by the Controller whenever there's an error during reconciliation.
-/// We just log the error and requeue the event after a configurable amount of time
+/// This method returns a closure which can be used as an `error_policy` by the [Controller](kube_runtime::Controller).
+/// The returned method will be called whenever there's an error during reconciliation.
+/// It just logs the error and requeues the event after a configurable amount of time
 ///
 /// # Example
 /// ```ignore
