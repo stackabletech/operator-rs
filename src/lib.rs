@@ -14,11 +14,12 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use k8s_openapi::Resource;
 use kube::api::{Meta, ObjectMeta, PatchParams, PatchStrategy};
 use kube::Api;
-use kube_runtime::controller::Context;
+use kube_runtime::controller::{Context, ReconcilerAction};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::BTreeMap;
-pub use tracing::Level;
+use std::time::Duration;
+use tracing::error;
 
 /// Context data inserted into the reconciliation handler with each call.
 pub struct ContextData {
@@ -171,4 +172,14 @@ pub async fn create_client(field_manager: Option<String>) -> OperatorResult<clie
         kube::Client::try_default().await?,
         field_manager,
     ))
+}
+
+/// This method is being called by the Controller whenever there's an error during reconciliation.
+/// We just log the error and requeue the event.
+/// Currently the reque is fixed at 10 seconds.
+pub fn error_policy<T>(error: &Error, _context: Context<T>) -> ReconcilerAction {
+    error!("Reconciliation error:\n{}", error);
+    ReconcilerAction {
+        requeue_after: Some(Duration::from_secs(10)),
+    }
 }
