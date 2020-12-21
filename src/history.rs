@@ -93,12 +93,11 @@ where
         cr.metadata.name = Some(name);
 
         let result = client.create(&cr).await;
-        match k8s_errors::is_already_exists(&result) {
-            true => {
-                collision_count += 1;
-                continue;
-            }
-            false => return result,
+        if k8s_errors::is_already_exists(&result) {
+            collision_count += 1;
+            continue;
+        } else {
+            return result;
         }
     }
 }

@@ -50,12 +50,12 @@ mod tests {
     #[test]
     fn test_reason_for_error() {
         let result = Ok(123);
-        assert_eq!(true, matches!(reason_for_error(&result), None));
+        assert!(matches!(reason_for_error(&result), None));
 
         let result: Result<(), error::Error> = Err(error::Error::KubeError {
             source: kube::error::Error::RequestSend,
         });
-        assert_eq!(true, matches!(reason_for_error(&result), None));
+        assert!(matches!(reason_for_error(&result), None));
 
         let result: Result<(), error::Error> = Err(error::Error::KubeError {
             source: kube::error::Error::Api(ErrorResponse {
@@ -66,7 +66,11 @@ mod tests {
             }),
         });
         let result_2 = reason_for_error(&result);
-        assert_eq!(true, matches!(result_2, None), "Got: [{:?}]", result_2);
+        assert!(
+            matches!(result_2, None),
+            "Got [{:?}] expected [None]",
+            result_2
+        );
 
         let result: Result<(), error::Error> = Err(error::Error::KubeError {
             source: kube::error::Error::Api(ErrorResponse {
@@ -77,17 +81,16 @@ mod tests {
             }),
         });
         let result_2 = reason_for_error(&result);
-        assert_eq!(
-            true,
+        assert!(
             matches!(result_2, Some(StatusReason::AlreadyExists)),
-            "Got: [{:?}]",
+            "Got [{:?}] expected [Some(StatusReason::AlreadyExists)]",
             result_2
         );
     }
 
     #[test]
     fn test_is_already_exists() {
-        assert_eq!(is_already_exists(&Ok(123)), false);
+        assert!(!is_already_exists(&Ok(123)));
 
         let result: Result<(), error::Error> = Err(error::Error::KubeError {
             source: kube::error::Error::Api(ErrorResponse {
@@ -97,6 +100,6 @@ mod tests {
                 code: 0,
             }),
         });
-        assert_eq!(is_already_exists(&result), true);
+        assert!(is_already_exists(&result));
     }
 }
