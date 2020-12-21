@@ -82,22 +82,22 @@ mod tests {
 
     #[test]
     fn test_is_pod_created() {
-        assert_eq!(false, is_pod_created(None));
+        assert!(!is_pod_created(None));
 
         let mut pod = Pod { ..Pod::default() };
-        assert_eq!(false, is_pod_created(Some(&pod)));
+        assert!(!is_pod_created(Some(&pod)));
 
         pod.status = Some(PodStatus {
             phase: Some("".to_string()),
             ..PodStatus::default()
         });
-        assert_eq!(false, is_pod_created(Some(&pod)));
+        assert!(!is_pod_created(Some(&pod)));
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
             ..PodStatus::default()
         });
-        assert_eq!(true, is_pod_created(Some(&pod)));
+        assert!(is_pod_created(Some(&pod)));
     }
 
     #[test]
@@ -123,18 +123,18 @@ mod tests {
     #[test]
     fn test_pod_ready_and_running() {
         let mut pod = Pod { ..Pod::default() };
-        assert_eq!(false, is_pod_running_and_ready(&pod));
+        assert!(!is_pod_running_and_ready(&pod));
 
         pod.status = Some(PodStatus {
             ..PodStatus::default()
         });
-        assert_eq!(false, is_pod_running_and_ready(&pod));
+        assert!(!is_pod_running_and_ready(&pod));
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
             ..PodStatus::default()
         });
-        assert_eq!(false, is_pod_running_and_ready(&pod));
+        assert!(!is_pod_running_and_ready(&pod));
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
@@ -144,7 +144,7 @@ mod tests {
             }]),
             ..PodStatus::default()
         });
-        assert_eq!(false, is_pod_running_and_ready(&pod));
+        assert!(!is_pod_running_and_ready(&pod));
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
@@ -155,7 +155,7 @@ mod tests {
             }]),
             ..PodStatus::default()
         });
-        assert_eq!(false, is_pod_running_and_ready(&pod));
+        assert!(!is_pod_running_and_ready(&pod));
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
@@ -166,6 +166,6 @@ mod tests {
             }]),
             ..PodStatus::default()
         });
-        assert_eq!(true, is_pod_running_and_ready(&pod));
+        assert!(is_pod_running_and_ready(&pod));
     }
 }
