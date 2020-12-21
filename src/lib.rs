@@ -19,7 +19,7 @@ use kube_runtime::controller::Context;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::BTreeMap;
-pub use tracing::Level;
+use tracing_subscriber::EnvFilter;
 
 /// Context data inserted into the reconciliation handler with each call.
 pub struct ContextData {
@@ -163,8 +163,15 @@ where
     Ok(cm)
 }
 
-pub fn initialize_logging(level: tracing::Level) {
-    tracing_subscriber::fmt().with_max_level(level).init();
+/// Initializes `tracing` logging with options from the environment variable
+/// given in the `env` parameter.
+///
+/// We force users to provide a variable name so it can be different per product.
+/// We encourage it to be the product name plus `_LOG`, e.g. `ZOOKEEPER_OPERATOR_LOG`.
+pub fn initialize_logging(env: &str) {
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_env(env))
+        .init();
 }
 
 pub async fn create_client(field_manager: Option<String>) -> OperatorResult<client::Client> {
