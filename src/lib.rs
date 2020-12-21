@@ -15,10 +15,12 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use k8s_openapi::Resource;
 use kube::api::{Meta, ObjectMeta, PatchParams, PatchStrategy};
 use kube::Api;
-use kube_runtime::controller::Context;
+use kube_runtime::controller::{Context, ReconcilerAction};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::BTreeMap;
+use std::time::Duration;
+use tracing::error;
 use tracing_subscriber::EnvFilter;
 
 /// Context data inserted into the reconciliation handler with each call.
@@ -179,4 +181,29 @@ pub async fn create_client(field_manager: Option<String>) -> OperatorResult<clie
         kube::Client::try_default().await?,
         field_manager,
     ))
+}
+
+/// This method returns a closure which can be used as an `error_policy` by the [Controller](kube_runtime::Controller).
+/// The returned method will be called whenever there's an error during reconciliation.
+/// It just logs the error and requeues the event after a configurable amount of time
+///
+/// # Example
+/// ```ignore
+/// use std::time::Duration;
+/// use stackable_operator::requeueing_error_policy;
+///
+/// let error_policy = requeueing_error_policy(Duration::from_secs(10));
+/// ```
+pub fn requeueing_error_policy<E, T: Sized>(
+    duration: Duration,
+) -> impl FnMut(&E, Context<T>) -> ReconcilerAction
+where
+    E: std::fmt::Display,
+{
+    move |error, _context| {
+        error!("Reconciliation error:\n{}", error);
+        ReconcilerAction {
+            requeue_after: Some(duration),
+        }
+    }
 }
