@@ -6,6 +6,7 @@ pub mod finalizer;
 pub mod history;
 pub mod k8s_errors;
 pub mod podutils;
+pub mod reconcile;
 
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
