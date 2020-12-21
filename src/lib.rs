@@ -174,12 +174,26 @@ pub async fn create_client(field_manager: Option<String>) -> OperatorResult<clie
     ))
 }
 
-/// This method is being called by the Controller whenever there's an error during reconciliation.
-/// We just log the error and requeue the event.
-/// Currently the reque is fixed at 10 seconds.
-pub fn error_policy<T>(error: &Error, _context: Context<T>) -> ReconcilerAction {
-    error!("Reconciliation error:\n{}", error);
-    ReconcilerAction {
-        requeue_after: Some(Duration::from_secs(10)),
+/// This method returns a closure which can be used as an `error_policy`  is being called by the Controller whenever there's an error during reconciliation.
+/// We just log the error and requeue the event after a configurable amount of time
+///
+/// # Example
+/// ```
+/// use std::time::Duration;
+/// use stackable_operator::requeueing_error_policy;
+///
+/// let error_policy = requeueing_error_policy(Duration::from_secs(10));
+/// ```
+pub fn requeueing_error_policy<E, T: Sized>(
+    duration: Duration,
+) -> impl FnMut(&E, Context<T>) -> ReconcilerAction
+where
+    E: std::fmt::Display,
+{
+    move |error, _context| {
+        error!("Reconciliation error:\n{}", error);
+        ReconcilerAction {
+            requeue_after: Some(duration),
+        }
     }
 }
