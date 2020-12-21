@@ -186,7 +186,7 @@ pub async fn create_client(field_manager: Option<String>) -> OperatorResult<clie
 /// We just log the error and requeue the event after a configurable amount of time
 ///
 /// # Example
-/// ```no_run
+/// ```ignore
 /// use std::time::Duration;
 /// use stackable_operator::requeueing_error_policy;
 ///
