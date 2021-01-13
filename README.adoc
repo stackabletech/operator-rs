@@ -1,5 +1,11 @@
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fstackabletech%2Foperator-rs.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fstackabletech%2Foperator-rs?ref=badge_shield)
+
 = operator-rs
 
 This is a simple library that includes all kinds of helper methods, structs and enums that can be used to write a Kubernetes Controller/Operator with the https://github.com/clux/kube-rs[kube-rs] crate.
 
 WARNING: This is very new, undocumented and untested!
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fstackabletech%2Foperator-rs.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fstackabletech%2Foperator-rs?ref=badge_large)
