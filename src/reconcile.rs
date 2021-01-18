@@ -27,15 +27,15 @@ pub enum ReconcileFunctionAction {
 pub struct ReconciliationContext<C, T> {
     pub client: Client,
     pub resource: T,
-    pub context: C,
+    pub context: Option<C>,
 }
 
 impl<C, T> ReconciliationContext<C, T> {
-    pub fn new(client: Client, resource: T, context: C) -> Self {
+    pub fn new(client: Client, resource: T) -> Self {
         ReconciliationContext {
             client,
             resource,
-            context,
+            context: None,
         }
     }
 }
