@@ -1,8 +1,7 @@
 use crate::client::Client;
-use crate::reconcile::{
-    run_reconcile_functions, ReconcileFunction, ReconcileFunctionAction, ReconciliationContext,
-};
+use crate::reconcile::{ReconcileFunctionAction, ReconciliationContext};
 
+use crate::error::OperatorResult;
 use crate::finalizer;
 use futures::StreamExt;
 use kube::api::{ListParams, Meta};
@@ -10,16 +9,41 @@ use kube::Api;
 use kube_runtime::controller::{Context, ReconcilerAction};
 use kube_runtime::Controller as KubeController;
 use serde::de::DeserializeOwned;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Mutex;
 use tokio::time::Duration;
 use tracing::{debug, error, info, trace};
 
 pub trait ControllerStrategy {
+    type Item: Debug;
+    type Error: Debug;
+    type State: ReconciliationState + Debug;
+
+    // TODO: type FutureType: ....? There are no trait bounds to apply here
+
     fn finalizer_name(&self) -> String;
 
-    fn error_policy(&self);
+    fn error_policy(&self) {
+        // TODO: Pass in error
+        // TODO: return ReconcilerAction?
+        error!("Reconciliation error");
+    }
 
-    fn reconcile_resource(&self);
+    fn init_reconcile_state(&self, context: ReconciliationContext<Self::Item>) -> Self::State;
+}
+
+pub trait ReconciliationState {
+    type Error: Debug;
+
+    // The anonymous lifetime refers to the &self. So we could also rewrite this function signature
+    // as `fn reconcile_operations<'a>(&'a self, .... >> + 'a>>>;` but that'd require every implementor
+    // to also write all the lifetimes.
+    // Just using the anonymous one makes it a bit easier.
+    fn reconcile_operations(
+        &self,
+    ) -> Vec<Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Self::Error>> + '_>>>;
 }
 
 /// A Controller is the object that watches all required resources and runs the reconciliation loop.
@@ -41,7 +65,7 @@ where
 
 impl<T> Controller<T>
 where
-    T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
+    T: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
 {
     pub fn new(api: Api<T>) -> Controller<T> {
         let controller = kube_runtime::Controller::new(api, ListParams::default());
@@ -65,11 +89,12 @@ where
 
     pub async fn run<S>(self, client: Client, strategy: S)
     where
-        S: ControllerStrategy + 'static, // TODO Rust experts why is the 'static needed?
+        S: ControllerStrategy<Item = T> + 'static,
+        S::Error: std::fmt::Debug,
     {
         let context = Context::new(ControllerContext {
             client,
-            strategy: Box::new(strategy),
+            strategy: Mutex::new(strategy),
         });
 
         self.kube_controller
@@ -85,42 +110,85 @@ where
 }
 
 /// The context used internally in the Controller which is passed on to the `kube_runtime::Controller`.
-struct ControllerContext {
+struct ControllerContext<S> {
     client: Client,
-    strategy: Box<dyn ControllerStrategy>,
+    strategy: Mutex<S>,
+}
+
+fn create_reconciler_action() -> ReconcilerAction {
+    ReconcilerAction {
+        requeue_after: None,
+    }
 }
 
 /// This method contains the logic of reconciling an object (the desired state) we received with the actual state.
-async fn reconcile<T>(
+async fn reconcile<S, T>(
     resource: T,
-    context: Context<ControllerContext>,
+    context: Context<ControllerContext<S>>,
 ) -> Result<ReconcilerAction, crate::error::Error>
 where
-    T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
+    T: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
+    S: ControllerStrategy<Item = T> + 'static,
+    S::Error: std::fmt::Debug,
 {
-    println!("Reconciling here... handle deletion, add finalizer etc.");
     let context = context.get_ref();
+    let strategy = context.strategy.lock().unwrap();
 
-    handle_deletion(
+    if handle_deletion(
         &resource,
         context.client.clone(),
-        &context.strategy.finalizer_name(),
-    );
+        &strategy.finalizer_name(),
+    )
+    .await?
+        == ReconcileFunctionAction::Done
+    {
+        return Ok(create_reconciler_action());
+    }
 
     add_finalizer(
         &resource,
         context.client.clone(),
-        &context.strategy.finalizer_name(),
-    );
+        &strategy.finalizer_name(),
+    )
+    .await?;
 
-    context.strategy.reconcile_resource();
+    let rc = ReconciliationContext::new(context.client.clone(), resource.clone());
+
+    let state = strategy.init_reconcile_state(rc);
+    let futures = state.reconcile_operations();
+
+    for future in futures {
+        let result = future.await;
+
+        match result {
+            Ok(ReconcileFunctionAction::Continue) => {
+                trace!("Reconciler loop: Continue");
+            }
+            Ok(ReconcileFunctionAction::Done) => {
+                trace!("Reconciler loop: Done");
+                break;
+            }
+            Ok(ReconcileFunctionAction::Requeue(duration)) => {
+                trace!(?duration, "Reconciler loop: Requeue");
+                return Ok(ReconcilerAction {
+                    requeue_after: Some(duration),
+                });
+            }
+            Err(err) => {
+                error!(?err, "Error reconciling");
+                return Ok(ReconcilerAction {
+                    requeue_after: Some(Duration::from_secs(30)),
+                });
+            }
+        }
+    }
 
     Ok(ReconcilerAction {
         requeue_after: None,
     })
 }
 
-fn error_policy<E>(error: &E, _: Context<ControllerContext>) -> ReconcilerAction
+fn error_policy<S, E>(error: &E, _: Context<ControllerContext<S>>) -> ReconcilerAction
 where
     E: std::fmt::Display,
 {
@@ -134,7 +202,7 @@ async fn handle_deletion<T>(
     resource: &T,
     client: Client,
     finalizer_name: &str,
-) -> Result<ReconcileFunctionAction, _>
+) -> OperatorResult<ReconcileFunctionAction>
 where
     T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
 {
@@ -154,16 +222,11 @@ where
     Ok(ReconcileFunctionAction::Done)
 }
 
-async fn add_finalizer<T>(
-    resource: &T,
-    client: Client,
-    finalizer_name: &str,
-) -> Result<ReconcileFunctionAction, _>
+async fn add_finalizer<T>(resource: &T, client: Client, finalizer_name: &str) -> OperatorResult<()>
 where
-    T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
+    T: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
 {
-    let address = format!("[{:?}/{}]", Meta::names
-    ce(resource), Meta::name(resource));
+    let address = format!("[{:?}/{}]", Meta::namespace(resource), Meta::name(resource));
     trace!(resource = ?resource, "Reconciler [add_finalizer] for {}", address);
 
     if finalizer::has_finalizer(resource, finalizer_name) {
@@ -171,14 +234,12 @@ where
             "[add_finalizer] for {}: Finalizer already exists, continuing...",
             address
         );
-        Ok(ReconcileFunctionAction::Continue)
     } else {
         debug!(
             "[add_finalizer] for {}: Finalizer missing, adding now and continuing...",
             address
         );
         finalizer::add_finalizer(client, resource, finalizer_name).await?;
-
-        Ok(ReconcileFunctionAction::Continue)
     }
+    Ok(())
 }
