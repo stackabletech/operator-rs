@@ -2,9 +2,22 @@ use crate::client::Client;
 use crate::error::Error;
 use k8s_openapi::api::core::v1::Pod;
 use kube::api::{ListParams, Meta, ObjectMeta};
+use kube_runtime::controller::ReconcilerAction;
 use std::time::Duration;
 
 pub type ReconcileResult<E> = std::result::Result<ReconcileFunctionAction, E>;
+
+pub fn create_requeuing_reconciler_action(secs: u64) -> ReconcilerAction {
+    ReconcilerAction {
+        requeue_after: Some(Duration::from_secs(secs)),
+    }
+}
+
+pub fn create_non_requeuing_reconciler_action() -> ReconcilerAction {
+    ReconcilerAction {
+        requeue_after: None,
+    }
+}
 
 #[derive(PartialEq)]
 pub enum ReconcileFunctionAction {
