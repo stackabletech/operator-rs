@@ -15,6 +15,7 @@ use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
+use std::time::Duration;
 use tracing::{debug, error, info, trace};
 
 /// Every operator needs to provide an implementation of this trait as it provides the operator specific logic.
@@ -28,7 +29,7 @@ pub trait ControllerStrategy {
         // TODO: Pass in error
         // TODO: return ReconcilerAction?
         error!("Reconciliation error");
-        create_requeuing_reconciler_action(30)
+        create_requeuing_reconciler_action(Duration::from_secs(30))
     }
 
     /// This is being called for each new reconciliation run.
@@ -67,10 +68,12 @@ pub trait ReconciliationState {
 /// A single Controller always has one _main_ resource type it watches for but you can add
 /// additional resource types via the `owns` method but those only trigger a reconciliation run if
 /// they have an `OwnerReference` that matches one of the main resources.
+/// This `OwnerReference` currently needs to be set manually!
 ///
 /// To customize the behavior of the Controller you need to provide a [`ControllerStrategy`].
 ///
-/// * It automatically adds a finalizer to every new object
+/// * It automatically adds a finalizer to every new _main_ object
+///   * If you need one on _owned_ objects you currently need to handle this yourself
 /// * It calls a method on the strategy for every error
 /// * TODO It calls a method on the strategy for every deleted resource so cleanup can happen
 ///   * It automatically removes the finalizer
@@ -102,6 +105,7 @@ where
     ///
     /// Only objects that have an `OwnerReference` for our main resource type will trigger
     /// a reconciliation.
+    /// You need to make sure to add this `OwnerReference` yourself.
     pub fn owns<Child: Clone + Meta + DeserializeOwned + Send + 'static>(
         mut self,
         api: Api<Child>,
@@ -187,7 +191,8 @@ where
             }
             Err(err) => {
                 error!(?err, "Error reconciling");
-                return Ok(create_requeuing_reconciler_action(30)); // TODO: Make configurable
+                return Ok(create_requeuing_reconciler_action(Duration::from_secs(30)));
+                // TODO: Make configurable
             }
         }
     }
@@ -228,7 +233,7 @@ where
         return Ok(ReconcileFunctionAction::Continue);
     }
 
-    info!("Deleting resource {}", address);
+    info!("Removing our finalizer for resource {}", address);
     finalizer::remove_finalizer(client, resource, finalizer_name).await?;
 
     Ok(ReconcileFunctionAction::Done)

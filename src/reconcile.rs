@@ -7,19 +7,21 @@ use std::time::Duration;
 
 pub type ReconcileResult<E> = std::result::Result<ReconcileFunctionAction, E>;
 
-pub fn create_requeuing_reconciler_action(secs: u64) -> ReconcilerAction {
+/// Creates a [`ReconcilerAction`] that will trigger a requeue after a specified [`Duration`].
+pub fn create_requeuing_reconciler_action(duration: Duration) -> ReconcilerAction {
     ReconcilerAction {
-        requeue_after: Some(Duration::from_secs(secs)),
+        requeue_after: Some(duration),
     }
 }
 
+/// Creates a [`ReconcilerAction`] that won't trigger a requeue.
 pub fn create_non_requeuing_reconciler_action() -> ReconcilerAction {
     ReconcilerAction {
         requeue_after: None,
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Eq, PartialEq)]
 pub enum ReconcileFunctionAction {
     /// Run the next function in the reconciler chain
     Continue,
