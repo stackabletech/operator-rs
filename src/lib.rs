@@ -1,4 +1,5 @@
 pub mod client;
+pub mod controller;
 pub mod controller_ref;
 pub mod crd;
 pub mod error;
@@ -6,6 +7,7 @@ pub mod finalizer;
 pub mod history;
 pub mod k8s_errors;
 pub mod podutils;
+pub mod reconcile;
 
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
