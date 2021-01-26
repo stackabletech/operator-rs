@@ -233,7 +233,10 @@ where
         return Ok(ReconcileFunctionAction::Continue);
     }
 
-    info!("Removing finalizer [{}] for resource {}", finalizer_name, address);
+    info!(
+        "Removing finalizer [{}] for resource {}",
+        finalizer_name, address
+    );
     finalizer::remove_finalizer(client, resource, finalizer_name).await?;
 
     Ok(ReconcileFunctionAction::Done)
