@@ -6,6 +6,8 @@ use crate::reconcile::{
 
 use crate::error::OperatorResult;
 use crate::finalizer;
+use crate::podutils;
+
 use futures::StreamExt;
 use kube::api::{ListParams, Meta};
 use kube::Api;
@@ -223,19 +225,22 @@ async fn handle_deletion<T>(
 where
     T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
 {
-    let address = format!("[{:?}/{}]", Meta::namespace(resource), Meta::name(resource));
-    trace!("Reconciler [handle_deletion] for {}", address);
+    trace!(
+        "Reconciler [handle_deletion] for {}",
+        podutils::get_log_name(resource)
+    );
     if !finalizer::has_deletion_stamp(resource) {
         debug!(
             "[handle_deletion] for {}: Not deleted, continuing...",
-            address
+            podutils::get_log_name(resource)
         );
         return Ok(ReconcileFunctionAction::Continue);
     }
 
     info!(
         "Removing finalizer [{}] for resource {}",
-        finalizer_name, address
+        finalizer_name,
+        podutils::get_log_name(resource)
     );
     finalizer::remove_finalizer(client, resource, finalizer_name).await?;
 
@@ -246,18 +251,17 @@ async fn add_finalizer<T>(resource: &T, client: Client, finalizer_name: &str) ->
 where
     T: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
 {
-    let address = format!("[{:?}/{}]", Meta::namespace(resource), Meta::name(resource));
-    trace!(resource = ?resource, "Reconciler [add_finalizer] for {}", address);
+    trace!(resource = ?resource, "Reconciler [add_finalizer] for {}", podutils::get_log_name(resource));
 
     if finalizer::has_finalizer(resource, finalizer_name) {
         debug!(
             "[add_finalizer] for {}: Finalizer already exists, continuing...",
-            address
+            podutils::get_log_name(resource)
         );
     } else {
         debug!(
             "[add_finalizer] for {}: Finalizer missing, adding now and continuing...",
-            address
+            podutils::get_log_name(resource)
         );
         finalizer::add_finalizer(client, resource, finalizer_name).await?;
     }
