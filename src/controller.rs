@@ -56,7 +56,7 @@ pub trait ReconciliationState {
     /// The controller will call them in order until one of them does _not_ return `Continue`.
     fn reconcile_operations(
         &self,
-    ) -> Vec<Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Self::Error>> + '_>>>;
+    ) -> Vec<Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Self::Error>> + Send + '_>>>;
 }
 
 /// A Controller is the object that watches all required resources and runs the reconciliation loop.
@@ -116,7 +116,8 @@ where
     /// It'll start talking to Kubernetes and will call the `Strategy` implementation.
     pub async fn run<S>(self, client: Client, strategy: S)
     where
-        S: ControllerStrategy<Item = T> + 'static,
+        S: ControllerStrategy<Item = T> + Send + Sync + 'static,
+        S::State: Send,
     {
         let context = Context::new(ControllerContext { client, strategy });
 
