@@ -83,7 +83,7 @@ mod tests {
         });
         let result_2 = reason_for_error(&result);
         assert!(
-            matches!(result_2, Some(StatusReason::AlreadyExists())),
+            matches!(result_2, Some(StatusReason::AlreadyExists)),
             "Got [{:?}] expected [Some(StatusReason::AlreadyExists)]",
             result_2
         );
@@ -93,7 +93,7 @@ mod tests {
     fn test_is_already_exists() {
         assert!(!is_already_exists(&Ok(123)));
 
-        let result: Result<(), error::Error> = Err(error::Error::KubeError {
+        let result: Result<(), Error> = Err(Error::KubeError {
             source: kube::error::Error::Api(ErrorResponse {
                 status: "".to_string(),
                 message: "".to_string(),
