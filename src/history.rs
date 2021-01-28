@@ -1,9 +1,10 @@
 // Modeled after K8s: pkg/controller/history/controller_history.go
 
 use crate::client::Client;
-use crate::controller_ref::get_controller_of;
+use crate::controller_ref;
 use crate::error::OperatorResult;
-use crate::{k8s_errors, object_to_owner_reference};
+use crate::{k8s_errors, metadata};
+
 use k8s_openapi::api::apps::v1::ControllerRevision;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use k8s_openapi::apimachinery::pkg::runtime::RawExtension;
@@ -24,7 +25,7 @@ where
     let owner_uid = resource.meta().uid.as_ref().unwrap(); // TODO: Error handling
     let mut owned = vec![];
     for revision in revisions {
-        if !matches!(get_controller_of(&revision), Some(OwnerReference { uid, ..}) if uid == owner_uid)
+        if !matches!(controller_ref::get_controller_of(&revision), Some(OwnerReference { uid, ..}) if uid == owner_uid)
         {
             owned.push(revision);
         }
@@ -76,7 +77,9 @@ where
         metadata: ObjectMeta {
             name: None,
             namespace: Meta::namespace(parent),
-            owner_references: Some(vec![object_to_owner_reference::<T>(parent.meta().clone())?]),
+            owner_references: Some(vec![metadata::object_to_owner_reference::<T>(
+                parent.meta().clone(),
+            )?]),
             ..ObjectMeta::default()
         },
         revision,

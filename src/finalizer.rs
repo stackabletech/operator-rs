@@ -1,6 +1,7 @@
+use crate::client::Client;
 use crate::error::{Error, OperatorResult};
 
-use crate::client::Client;
+use k8s_openapi::Resource;
 use kube::api::Meta;
 use serde::de::DeserializeOwned;
 use serde_json::json;
@@ -19,7 +20,7 @@ where
 /// Adds our finalizer to the list of finalizers.
 pub async fn add_finalizer<T>(client: Client, resource: &T, finalizer: &str) -> OperatorResult<T>
 where
-    T: k8s_openapi::Resource + Clone + Meta + DeserializeOwned,
+    T: Resource + Clone + Meta + DeserializeOwned,
 {
     let new_metadata = serde_json::to_vec(&json!({
         "metadata": {

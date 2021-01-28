@@ -1,7 +1,9 @@
 use crate::error::OperatorResult;
 
+use either::Either;
+use k8s_openapi::Resource;
 use kube::api::{DeleteParams, ListParams, Meta, PatchParams, PatchStrategy, PostParams};
-use kube::client::Client as KubeClient;
+use kube::client::{Client as KubeClient, Status};
 use kube::Api;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -126,10 +128,7 @@ impl Client {
     /// Which of the two results this returns depends on the API.
     /// Take a look at the Kubernetes API reference.
     /// Some `delete` endpoints return the object and others return a `Status` object.
-    pub async fn delete<T>(
-        &self,
-        resource: &T,
-    ) -> OperatorResult<either::Either<T, kube::client::Status>>
+    pub async fn delete<T>(&self, resource: &T) -> OperatorResult<Either<T, Status>>
     where
         T: Clone + DeserializeOwned + Meta,
     {
@@ -153,14 +152,14 @@ impl Client {
 
     pub fn get_all_api<T>(&self) -> Api<T>
     where
-        T: k8s_openapi::Resource,
+        T: Resource,
     {
         Api::all(self.client.clone())
     }
 
     pub fn get_namespaced_api<T>(&self, namespace: &str) -> Api<T>
     where
-        T: k8s_openapi::Resource,
+        T: Resource,
     {
         Api::namespaced(self.client.clone(), namespace)
     }
