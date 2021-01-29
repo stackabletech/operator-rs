@@ -1,5 +1,6 @@
 use core::fmt;
 use k8s_openapi::api::core::v1::{Pod, PodCondition, PodStatus};
+use kube::api::Meta;
 
 /// While the `phase` field of a Pod is a string only the values from this enum are allowed.
 #[derive(Debug, Eq, PartialEq)]
@@ -75,10 +76,44 @@ fn get_pod_condition<'a>(status: &'a PodStatus, condition: &str) -> Option<&'a P
     }
 }
 
+/// Returns a name that is suitable for directly passing to a log macro.
+///
+/// It'll contain the namespace and the name wrapped in square brackets.
+/// Example output: `[foo/bar]`
+///
+/// If the resource has no namespace, it'll print `<no namespace>` instead: `[<no namespace>/bar]`
+pub fn get_log_name<T>(resource: &T) -> String
+where
+    T: Meta,
+{
+    format!(
+        "[{}/{}]",
+        Meta::namespace(resource).unwrap_or("<no namespace>".to_string()),
+        Meta::name(resource)
+    )
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::podutils::{get_pod_condition, is_pod_created, is_pod_running_and_ready};
+    use super::*;
     use k8s_openapi::api::core::v1::{Pod, PodCondition, PodStatus};
+    use kube::api::ObjectMeta;
+
+    #[test]
+    fn test_get_log_name() {
+        let mut pod = Pod {
+            metadata: ObjectMeta {
+                name: Some("bar".to_string()),
+                ..ObjectMeta::default()
+            },
+            ..Pod::default()
+        };
+
+        assert_eq!("[<no namespace>/bar]", get_log_name(&pod));
+
+        pod.metadata.namespace = Some("foo".to_string());
+        assert_eq!("[foo/bar]", get_log_name(&pod));
+    }
 
     #[test]
     fn test_is_pod_created() {
