@@ -1,5 +1,6 @@
 use crate::client::Client;
 use crate::error::Error;
+use crate::podutils;
 
 use k8s_openapi::api::core::v1::Pod;
 use kube::api::{ListParams, Meta, ObjectMeta};
@@ -59,6 +60,13 @@ where
 
     pub fn namespace(&self) -> String {
         Meta::namespace(&self.resource).expect("Resources are namespaced")
+    }
+
+    /// Returns a name that is suitable for directly passing to a log macro.
+    ///
+    /// See [`crate::podutils::get_log_name()`] for details.
+    pub fn log_name(&self) -> String {
+        podutils::get_log_name(&self.resource)
     }
 
     pub fn metadata(&self) -> ObjectMeta {
