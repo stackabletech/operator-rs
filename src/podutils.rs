@@ -1,6 +1,6 @@
-use core::fmt;
 use k8s_openapi::api::core::v1::{Pod, PodCondition, PodStatus};
 use kube::api::Meta;
+use std::fmt::{Debug, Display, Formatter, Result};
 
 /// While the `phase` field of a Pod is a string only the values from this enum are allowed.
 #[derive(Debug, Eq, PartialEq)]
@@ -12,9 +12,9 @@ pub enum PodPhase {
     Unknown,
 }
 
-impl fmt::Display for PodPhase {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
+impl Display for PodPhase {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        Debug::fmt(self, f)
     }
 }
 

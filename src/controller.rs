@@ -1,12 +1,7 @@
 use crate::client::Client;
-use crate::reconcile::{
-    create_non_requeuing_reconciler_action, create_requeuing_reconciler_action,
-    ReconcileFunctionAction, ReconciliationContext,
-};
-
-use crate::error::OperatorResult;
-use crate::finalizer;
-use crate::podutils;
+use crate::error::{Error, OperatorResult};
+use crate::reconcile::{ReconcileFunctionAction, ReconciliationContext};
+use crate::{finalizer, podutils, reconcile};
 
 use futures::StreamExt;
 use kube::api::{ListParams, Meta};
@@ -14,7 +9,7 @@ use kube::Api;
 use kube_runtime::controller::{Context, ReconcilerAction};
 use kube_runtime::Controller as KubeController;
 use serde::de::DeserializeOwned;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
@@ -31,7 +26,7 @@ pub trait ControllerStrategy {
         // TODO: Pass in error
         // TODO: return ReconcilerAction?
         error!("Reconciliation error");
-        create_requeuing_reconciler_action(Duration::from_secs(30))
+        reconcile::create_requeuing_reconciler_action(Duration::from_secs(30))
     }
 
     /// This is being called for each new reconciliation run.
@@ -47,7 +42,7 @@ pub trait ControllerStrategy {
 
 pub trait ReconciliationState {
     /// The associated error which can be returned from the reconciliation operations.
-    type Error: std::fmt::Debug;
+    type Error: Debug;
 
     // The anonymous lifetime refers to the &self. So we could also rewrite this function signature
     // as `fn reconcile_operations<'a>(&'a self, .... >> + 'a>>>;` but that'd require every implementor
@@ -94,7 +89,7 @@ where
     T: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
 {
     pub fn new(api: Api<T>) -> Controller<T> {
-        let controller = kube_runtime::Controller::new(api, ListParams::default());
+        let controller = KubeController::new(api, ListParams::default());
         Controller {
             kube_controller: controller,
         }
@@ -151,7 +146,7 @@ where
 async fn reconcile<S, T>(
     resource: T,
     context: Context<ControllerContext<S>>,
-) -> Result<ReconcilerAction, crate::error::Error>
+) -> Result<ReconcilerAction, Error>
 where
     T: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
     S: ControllerStrategy<Item = T> + 'static,
@@ -164,7 +159,7 @@ where
     if handle_deletion(&resource, client.clone(), &strategy.finalizer_name()).await?
         == ReconcileFunctionAction::Done
     {
-        return Ok(create_non_requeuing_reconciler_action());
+        return Ok(reconcile::create_non_requeuing_reconciler_action());
     }
 
     add_finalizer(&resource, client.clone(), &strategy.finalizer_name()).await?;
@@ -193,7 +188,9 @@ where
             }
             Err(err) => {
                 error!(?err, "Error reconciling");
-                return Ok(create_requeuing_reconciler_action(Duration::from_secs(30)));
+                return Ok(reconcile::create_requeuing_reconciler_action(
+                    Duration::from_secs(30),
+                ));
                 // TODO: Make configurable
             }
         }
@@ -207,7 +204,7 @@ where
 // TODO: Properly type the error so we can pass it along
 fn error_policy<S, E>(error: &E, context: Context<ControllerContext<S>>) -> ReconcilerAction
 where
-    E: std::fmt::Display,
+    E: Display,
     S: ControllerStrategy,
 {
     trace!(

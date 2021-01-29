@@ -1,7 +1,6 @@
-use crate::error;
-
 use crate::client::Client;
-use crate::error::OperatorResult;
+use crate::error::{Error, OperatorResult};
+
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
 use kube::error::ErrorResponse;
 use tracing::info;
@@ -54,7 +53,7 @@ where
         .await
     {
         Ok(_) => Ok(true),
-        Err(error::Error::KubeError {
+        Err(Error::KubeError {
             source: kube::error::Error::Api(ErrorResponse { reason, .. }),
         }) if reason == "NotFound" => Ok(false),
         Err(err) => Err(err),

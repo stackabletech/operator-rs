@@ -21,7 +21,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::controller_ref::get_controller_of;
+    use super::*;
     use k8s_openapi::api::core::v1::Pod;
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 

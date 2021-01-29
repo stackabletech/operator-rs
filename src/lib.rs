@@ -6,21 +6,23 @@ pub mod error;
 pub mod finalizer;
 pub mod history;
 pub mod k8s_errors;
+pub mod metadata;
 pub mod podutils;
 pub mod reconcile;
 
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
+
 pub use crd::CRD;
 use k8s_openapi::api::core::v1::{ConfigMap, Toleration};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
-use k8s_openapi::Resource;
 use kube::api::{Meta, ObjectMeta, PatchParams, PatchStrategy};
 use kube::Api;
 use kube_runtime::controller::{Context, ReconcilerAction};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::BTreeMap;
+use std::fmt::Display;
 use std::time::Duration;
 use tracing::error;
 use tracing_subscriber::EnvFilter;
@@ -106,20 +108,6 @@ pub fn create_tolerations() -> Vec<Toleration> {
     ]
 }
 
-pub fn object_to_owner_reference<K: Resource>(meta: ObjectMeta) -> OperatorResult<OwnerReference> {
-    Ok(OwnerReference {
-        api_version: K::API_VERSION.to_string(),
-        kind: K::KIND.to_string(),
-        name: meta.name.ok_or(Error::MissingObjectKey {
-            key: ".metadata.name",
-        })?,
-        uid: meta.uid.ok_or(Error::MissingObjectKey {
-            key: ".metadata.backtrace",
-        })?,
-        ..OwnerReference::default()
-    })
-}
-
 pub async fn patch_resource<T>(
     api: &Api<T>,
     resource_name: &str,
@@ -158,7 +146,7 @@ where
             namespace: Meta::namespace(resource),
             owner_references: Some(vec![OwnerReference {
                 controller: Some(true),
-                ..object_to_owner_reference::<T>(resource.meta().clone())?
+                ..metadata::object_to_owner_reference::<T>(resource.meta().clone())?
             }]),
             ..ObjectMeta::default()
         },
@@ -200,7 +188,7 @@ pub fn requeueing_error_policy<E, T: Sized>(
     duration: Duration,
 ) -> impl FnMut(&E, Context<T>) -> ReconcilerAction
 where
-    E: std::fmt::Display,
+    E: Display,
 {
     move |error, _context| {
         error!("Reconciliation error:\n{}", error);
