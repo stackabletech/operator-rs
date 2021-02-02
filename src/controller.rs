@@ -168,8 +168,7 @@ where
     let rc = ReconciliationContext::new(context.client.clone(), resource.clone());
 
     let mut state = strategy.init_reconcile_state(rc);
-    let foo = state.reconcile_operations();
-    let result = foo.await;
+    let result = state.reconcile_operations().await;
     match result {
         Ok(ReconcileFunctionAction::Requeue(duration)) => {
             trace!(?duration, "Reconciler loop: Requeue");
