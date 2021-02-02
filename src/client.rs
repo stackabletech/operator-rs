@@ -164,3 +164,10 @@ impl Client {
         Api::namespaced(self.client.clone(), namespace)
     }
 }
+
+pub async fn create_client(field_manager: Option<String>) -> OperatorResult<Client> {
+    Ok(Client::new(
+        kube::Client::try_default().await?,
+        field_manager,
+    ))
+}

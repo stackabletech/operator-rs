@@ -88,7 +88,7 @@ where
 {
     format!(
         "[{}/{}]",
-        Meta::namespace(resource).unwrap_or("<no namespace>".to_string()),
+        Meta::namespace(resource).unwrap_or_else(|| "<no namespace>".to_string()),
         Meta::name(resource)
     )
 }

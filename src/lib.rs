@@ -10,44 +10,14 @@ pub mod metadata;
 pub mod podutils;
 pub mod reconcile;
 
-use crate::client::Client;
-use crate::error::{Error, OperatorResult};
+use crate::error::OperatorResult;
 
 pub use crd::CRD;
 use k8s_openapi::api::core::v1::{ConfigMap, Toleration};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
-use kube::api::{Meta, ObjectMeta, PatchParams, PatchStrategy};
-use kube::Api;
-use kube_runtime::controller::{Context, ReconcilerAction};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use kube::api::{Meta, ObjectMeta};
 use std::collections::BTreeMap;
-use std::fmt::Display;
-use std::time::Duration;
-use tracing::error;
 use tracing_subscriber::EnvFilter;
-
-/// Context data inserted into the reconciliation handler with each call.
-pub struct ContextData {
-    /// Kubernetes client to manipulate Kubernetes resources
-    #[allow(dead_code)]
-    pub client: Client,
-}
-
-impl ContextData {
-    /// Creates a new instance of `ContextData`.
-    ///
-    /// # Arguments
-    ///
-    /// - `client` - Kubernetes client to manipulate Kubernetes resources
-    pub fn new(client: Client) -> Self {
-        ContextData { client }
-    }
-
-    pub fn new_context(client: Client) -> Context<ContextData> {
-        Context::new(ContextData::new(client))
-    }
-}
 
 /// Action to be taken by the controller if there is a new event on one of the watched resources
 pub enum ControllerAction {
@@ -108,28 +78,6 @@ pub fn create_tolerations() -> Vec<Toleration> {
     ]
 }
 
-pub async fn patch_resource<T>(
-    api: &Api<T>,
-    resource_name: &str,
-    resource: &T,
-    field_manager: &str,
-) -> OperatorResult<T>
-where
-    T: Clone + Meta + DeserializeOwned + Serialize,
-{
-    api.patch(
-        &resource_name,
-        &PatchParams {
-            patch_strategy: PatchStrategy::Apply,
-            field_manager: Some(field_manager.to_string()),
-            ..PatchParams::default()
-        },
-        serde_json::to_vec(&resource)?,
-    )
-    .await
-    .map_err(Error::from)
-}
-
 /// Creates a ConfigMap
 pub fn create_config_map<T>(
     resource: &T,
@@ -164,36 +112,4 @@ pub fn initialize_logging(env: &str) {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_env(env))
         .init();
-}
-
-pub async fn create_client(field_manager: Option<String>) -> OperatorResult<client::Client> {
-    Ok(client::Client::new(
-        kube::Client::try_default().await?,
-        field_manager,
-    ))
-}
-
-/// This method returns a closure which can be used as an `error_policy` by the [Controller](kube_runtime::Controller).
-/// The returned method will be called whenever there's an error during reconciliation.
-/// It just logs the error and requeues the event after a configurable amount of time
-///
-/// # Example
-/// ```ignore
-/// use std::time::Duration;
-/// use stackable_operator::requeueing_error_policy;
-///
-/// let error_policy = requeueing_error_policy(Duration::from_secs(10));
-/// ```
-pub fn requeueing_error_policy<E, T: Sized>(
-    duration: Duration,
-) -> impl FnMut(&E, Context<T>) -> ReconcilerAction
-where
-    E: Display,
-{
-    move |error, _context| {
-        error!("Reconciliation error:\n{}", error);
-        ReconcilerAction {
-            requeue_after: Some(duration),
-        }
-    }
 }

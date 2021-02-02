@@ -30,7 +30,8 @@ pub trait CRD {
 /// # Example
 ///
 /// ```no_run
-/// # use stackable_operator::{CRD, create_client};
+/// # use stackable_operator::CRD;
+/// # use stackable_operator::client;
 /// #
 /// # struct Test;
 /// # impl CRD for Test {
@@ -39,7 +40,7 @@ pub trait CRD {
 /// # }
 /// #
 /// # async {
-/// # let client = create_client(Some("foo".to_string())).await.unwrap();
+/// # let client = client::create_client(Some("foo".to_string())).await.unwrap();
 /// use stackable_operator::crd::exists;
 /// exists::<Test>(client).await;
 /// # };
