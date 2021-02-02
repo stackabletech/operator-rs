@@ -55,8 +55,8 @@ pub trait ReconciliationState {
     /// Provides a list of futures all taking no arguments and returning a [`ReconcileFunctionAction`].
     /// The controller will call them in order until one of them does _not_ return `Continue`.
     fn reconcile_operations(
-        &self,
-    ) -> Vec<Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Self::Error>> + Send + '_>>>;
+        &mut self,
+    ) -> Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Self::Error>> + Send + '_>>;
 }
 
 /// A Controller is the object that watches all required resources and runs the reconciliation loop.
@@ -167,33 +167,21 @@ where
 
     let rc = ReconciliationContext::new(context.client.clone(), resource.clone());
 
-    let state = strategy.init_reconcile_state(rc);
-    let futures = state.reconcile_operations();
-
-    for future in futures {
-        let result = future.await;
-
-        match result {
-            Ok(ReconcileFunctionAction::Continue) => {
-                trace!("Reconciler loop: Continue");
-            }
-            Ok(ReconcileFunctionAction::Done) => {
-                trace!("Reconciler loop: Done");
-                break;
-            }
-            Ok(ReconcileFunctionAction::Requeue(duration)) => {
-                trace!(?duration, "Reconciler loop: Requeue");
-                return Ok(ReconcilerAction {
-                    requeue_after: Some(duration),
-                });
-            }
-            Err(err) => {
-                error!(?err, "Error reconciling");
-                return Ok(reconcile::create_requeuing_reconciler_action(
-                    Duration::from_secs(30),
-                ));
-                // TODO: Make configurable
-            }
+    let mut state = strategy.init_reconcile_state(rc);
+    let foo = state.reconcile_operations();
+    let result = foo.await;
+    match result {
+        Ok(ReconcileFunctionAction::Requeue(duration)) => {
+            trace!(?duration, "Reconciler loop: Requeue");
+            return Ok(ReconcilerAction {
+                requeue_after: Some(duration),
+            });
+        }
+        Ok(action) => {
+            trace!("Reconciler loop: {:?}", action);
+        }
+        Err(b) => {
+            // TODO
         }
     }
 

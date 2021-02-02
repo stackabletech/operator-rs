@@ -5,6 +5,7 @@ use crate::podutils;
 use k8s_openapi::api::core::v1::Pod;
 use kube::api::{ListParams, Meta, ObjectMeta};
 use kube_runtime::controller::ReconcilerAction;
+use std::future::Future;
 use std::time::Duration;
 
 pub type ReconcileResult<E> = std::result::Result<ReconcileFunctionAction, E>;
@@ -23,7 +24,7 @@ pub fn create_non_requeuing_reconciler_action() -> ReconcilerAction {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum ReconcileFunctionAction {
     /// Run the next function in the reconciler chain
     Continue,
@@ -33,6 +34,18 @@ pub enum ReconcileFunctionAction {
 
     /// Skip the remaining reconciler chain and queue this object again
     Requeue(Duration),
+}
+
+impl ReconcileFunctionAction {
+    pub async fn then(
+        self,
+        next: impl Future<Output = ReconcileFunctionAction>,
+    ) -> ReconcileFunctionAction {
+        match self {
+            ReconcileFunctionAction::Continue => next.await,
+            action => action,
+        }
+    }
 }
 
 pub fn create_requeuing_reconcile_function_action(secs: u64) -> ReconcileFunctionAction {
