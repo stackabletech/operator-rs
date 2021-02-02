@@ -180,8 +180,8 @@ where
         Ok(action) => {
             trace!("Reconciler loop: {:?}", action);
         }
-        Err(b) => {
-            // TODO
+        Err(err) => {
+            error!("Error reconciling [{:?}]", err);
         }
     }
 
