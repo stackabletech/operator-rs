@@ -37,13 +37,13 @@ pub enum ReconcileFunctionAction {
 }
 
 impl ReconcileFunctionAction {
-    pub async fn then(
+    pub async fn then<E>(
         self,
-        next: impl Future<Output = ReconcileFunctionAction>,
-    ) -> ReconcileFunctionAction {
+        next: impl Future<Output = Result<ReconcileFunctionAction, E>>,
+    ) -> Result<ReconcileFunctionAction, E> {
         match self {
             ReconcileFunctionAction::Continue => next.await,
-            action => action,
+            action => Ok(action),
         }
     }
 }
