@@ -20,6 +20,8 @@
 //! By using the `then` method on `ReconcileFunctionAction` we can automatically abort and/or requeue
 //! in case of an `Error` or a `ReconciliationFunctionAction::Requeue(duration)`.
 //!
+//! See the example below for how to use this abstraction in a real-world operator.
+//!
 //! # Example
 //!
 //! ```no_run
