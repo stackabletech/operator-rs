@@ -3,3 +3,5 @@
 This is a simple library that includes all kinds of helper methods, structs and enums that can be used to write a Kubernetes Controller/Operator with the https://github.com/clux/kube-rs[kube-rs] crate.
 
 WARNING: This is very new, undocumented and untested!
+
+TEST!
