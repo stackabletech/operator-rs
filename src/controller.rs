@@ -299,6 +299,10 @@ where
         }
         Err(err) => {
             error!("Error reconciling [{:?}]", err);
+            return Ok(ReconcilerAction {
+                // TODO: Make this configurable
+                requeue_after: Some(Duration::from_secs(30)),
+            });
         }
     }
 
