@@ -7,18 +7,19 @@ edition = "2018"
 [dependencies]
 either = "1.6"
 futures = "0.3"
-k8s-openapi = { version = "0.9.0", default-features = false, features = ["v1_18"] } # 1.19 and k8s-openapi 0.10 are not supported in kube 0.43 yet, they will be in the next released version
-kube = { version = "0.43", default-features = false, features = ["derive"] }
-kube-runtime = "0.43"
+k8s-openapi = { version = "0.11", default-features = false }
+kube = { version = "0.48", default-features = false, features = ["derive"] }
+kube-runtime = "0.48"
 serde = "1.0"
 serde_json = "1.0"
 serde_yaml = "0.8"
 thiserror = "1.0"
-tokio = { version = "0.2", features = ["macros", "rt-threaded"] }
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"
 
 [dev-dependencies]
+k8s-openapi = { version = "0.11", default-features = false, features = ["v1_20"] }
 rstest = "0.6"
 
 [features]

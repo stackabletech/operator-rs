@@ -2,7 +2,7 @@ use crate::error::OperatorResult;
 
 use either::Either;
 use k8s_openapi::Resource;
-use kube::api::{DeleteParams, ListParams, Meta, PatchParams, PatchStrategy, PostParams};
+use kube::api::{DeleteParams, ListParams, Meta, Patch, PatchParams, PostParams};
 use kube::client::{Client as KubeClient, Status};
 use kube::Api;
 use serde::de::DeserializeOwned;
@@ -13,8 +13,7 @@ use serde::Serialize;
 #[derive(Clone)]
 pub struct Client {
     client: KubeClient,
-    merge_patch_params: PatchParams,
-    apply_patch_params: PatchParams,
+    patch_params: PatchParams,
     post_params: PostParams,
     delete_params: DeleteParams,
 }
@@ -27,13 +26,8 @@ impl Client {
                 field_manager: field_manager.clone(),
                 ..PostParams::default()
             },
-            merge_patch_params: PatchParams {
-                patch_strategy: PatchStrategy::Merge,
-                field_manager: field_manager.clone(),
-                ..PatchParams::default()
-            },
-            apply_patch_params: PatchParams {
-                patch_strategy: PatchStrategy::Apply,
+
+            patch_params: PatchParams {
                 field_manager,
                 ..PatchParams::default()
             },
@@ -81,34 +75,39 @@ impl Client {
 
     /// Patches a resource using the `MERGE` patch strategy.
     /// This will fail for objects that do not exist yet.
-    pub async fn merge_patch<T>(&self, resource: &T, patch: Vec<u8>) -> OperatorResult<T>
+    pub async fn merge_patch<T, P>(&self, resource: &T, patch: P) -> OperatorResult<T>
     where
         T: Clone + DeserializeOwned + Meta,
+        P: Serialize,
     {
-        self.patch(resource, patch, &self.merge_patch_params).await
+        self.patch(resource, Patch::Merge(patch), &self.patch_params)
+            .await
     }
 
     /// Patches a resource using the `APPLY` patch strategy.
     /// This will _create_ or _update_ existing resources.
-    pub async fn apply_patch<T>(&self, resource: &T, patch: Vec<u8>) -> OperatorResult<T>
+    pub async fn apply_patch<T, P>(&self, resource: &T, patch: P) -> OperatorResult<T>
     where
         T: Clone + DeserializeOwned + Meta,
+        P: Serialize,
     {
-        self.patch(resource, patch, &self.apply_patch_params).await
+        self.patch(resource, Patch::Apply(patch), &self.patch_params)
+            .await
     }
 
-    async fn patch<T>(
+    async fn patch<T, P>(
         &self,
         resource: &T,
-        patch: Vec<u8>,
+        patch: Patch<P>,
         patch_params: &PatchParams,
     ) -> OperatorResult<T>
     where
         T: Clone + DeserializeOwned + Meta,
+        P: Serialize,
     {
         Ok(self
             .get_api(Meta::namespace(resource))
-            .patch(&Meta::name(resource), patch_params, patch)
+            .patch(&Meta::name(resource), patch_params, &patch)
             .await?)
     }
 
