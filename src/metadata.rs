@@ -5,13 +5,15 @@ use k8s_openapi::Resource;
 use kube::api::{Meta, ObjectMeta};
 use std::collections::BTreeMap;
 
-/// Builds a `ObjectMeta` object out of a few common options:
+/// Builds a `ObjectMeta` object out of a template/owner object.
+///
 /// Automatically sets:
 /// * name
 /// * namespace (if the object passed in had one)
 /// * labels (if provided)
-/// * ownerReferences
+/// * ownerReferences (pointing at the object that was passed in).
 pub fn build_metadata<T>(
+    name: String,
     labels: Option<BTreeMap<String, String>>,
     resource: &T,
 ) -> OperatorResult<ObjectMeta>
@@ -20,7 +22,7 @@ where
 {
     Ok(ObjectMeta {
         labels,
-        name: Some(Meta::name(resource)),
+        name: Some(name),
         namespace: Meta::namespace(resource),
         owner_references: Some(vec![object_to_owner_reference::<T>(
             resource.meta().clone(),
@@ -56,12 +58,11 @@ mod tests {
         let mut labels = BTreeMap::new();
         labels.insert("foo".to_string(), "bar".to_string());
 
-        let name = Some(name.to_string());
         let namespace = namespace.map(|s| s.to_string());
 
         let pod = Pod {
             metadata: ObjectMeta {
-                name: name.clone(),
+                name: Some("foo_pod".to_string()),
                 namespace: namespace.clone(),
                 uid: Some("uid".to_string()),
                 ..ObjectMeta::default()
@@ -69,9 +70,9 @@ mod tests {
             ..Pod::default()
         };
 
-        let meta = build_metadata(Some(labels), &pod)?;
+        let meta = build_metadata(name.to_string(), Some(labels), &pod)?;
 
-        assert_eq!(meta.name, name);
+        assert_eq!(meta.name, Some(name.to_string()));
         assert_eq!(meta.namespace, namespace);
 
         let labels = meta.labels.unwrap();
