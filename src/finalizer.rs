@@ -22,11 +22,11 @@ pub async fn add_finalizer<T>(client: Client, resource: &T, finalizer: &str) -> 
 where
     T: Resource + Clone + Meta + DeserializeOwned,
 {
-    let new_metadata = serde_json::to_vec(&json!({
+    let new_metadata = json!({
         "metadata": {
             "finalizers": [finalizer.to_string()]
         }
-    }))?;
+    });
     client.merge_patch(resource, new_metadata).await
 }
 
@@ -61,11 +61,11 @@ where
                 // And then remove the finalizer from the list.
 
                 finalizers.swap_remove(index);
-                let new_metadata = serde_json::to_vec(&json!({
+                let new_metadata = json!({
                     "metadata": {
                         "finalizers": finalizers
                     }
-                }))?;
+                });
 
                 client.merge_patch(resource, new_metadata).await
             } else {
