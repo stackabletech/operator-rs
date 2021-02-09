@@ -116,7 +116,7 @@
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
 use crate::reconcile::{ReconcileFunctionAction, ReconciliationContext};
-use crate::{finalizer, podutils, reconcile};
+use crate::{finalizer, reconcile};
 
 use futures::StreamExt;
 use kube::api::{ListParams, Meta};
