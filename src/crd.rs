@@ -7,7 +7,7 @@ use tracing::info;
 
 /// This trait can be implemented to allow automatic handling
 /// (e.g. creation) of `CustomResourceDefinition`s in Kubernetes.
-pub trait CRD {
+pub trait Crd {
     /// The name of the Resource in Kubernetes
     ///
     /// # Example
@@ -30,11 +30,11 @@ pub trait CRD {
 /// # Example
 ///
 /// ```no_run
-/// # use stackable_operator::CRD;
+/// # use stackable_operator::Crd;
 /// # use stackable_operator::client;
 /// #
 /// # struct Test;
-/// # impl CRD for Test {
+/// # impl Crd for Test {
 /// #    const RESOURCE_NAME: &'static str = "foo.bar.com";
 /// #    const CRD_DEFINITION: &'static str = "mycrdhere";
 /// # }
@@ -47,7 +47,7 @@ pub trait CRD {
 /// ```
 pub async fn exists<T>(client: Client) -> OperatorResult<bool>
 where
-    T: CRD,
+    T: Crd,
 {
     match client
         .get::<CustomResourceDefinition>(T::RESOURCE_NAME, None)
@@ -67,7 +67,7 @@ where
 // TODO: Make sure to wait until it's enabled in the apiserver
 pub async fn ensure_crd_created<T>(client: Client) -> OperatorResult<()>
 where
-    T: CRD,
+    T: Crd,
 {
     if exists::<T>(client.clone()).await? {
         info!("CRD already exists in the cluster");
@@ -85,7 +85,7 @@ where
 /// just that it has been accepted by the apiserver.
 async fn create<T>(client: Client) -> OperatorResult<()>
 where
-    T: CRD,
+    T: Crd,
 {
     let zk_crd: CustomResourceDefinition = serde_yaml::from_str(T::CRD_DEFINITION)?;
     client.create(&zk_crd).await.and(Ok(()))

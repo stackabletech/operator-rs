@@ -12,7 +12,7 @@ pub mod reconcile;
 
 use crate::error::OperatorResult;
 
-pub use crd::CRD;
+pub use crd::Crd;
 use k8s_openapi::api::core::v1::{ConfigMap, Toleration};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use kube::api::{Meta, ObjectMeta};
