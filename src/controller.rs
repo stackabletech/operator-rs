@@ -128,7 +128,8 @@ use std::fmt::{Debug, Display};
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info, trace, Instrument};
+use uuid::Uuid;
 
 /// Every operator needs to provide an implementation of this trait as it provides the operator specific business logic.
 pub trait ControllerStrategy {
@@ -243,8 +244,12 @@ where
             .run(reconcile, error_policy, context)
             .for_each(|res| async move {
                 match res {
-                    Ok(o) => info!("Reconciled {:?}", o),
-                    Err(ref e) => error!("Reconcile failed: {:?}", e),
+                    Ok(o) => trace!(resource = ?o, "Reconciliation finished successfully (it is normal to see this message twice)"),
+                    Err(ref err) => {
+                        // If we get here it means that our `reconcile` method returned an error which should never happen because
+                        // we convert all errors to requeue operations.
+                        error!(?err, "Reconciliation finished with an error, this should not happen, please file an issue")
+                    }
                 };
             })
             .await
@@ -262,6 +267,14 @@ where
 }
 
 /// This method contains the logic of reconciling an object (the desired state) we received with the actual state.
+#[tracing::instrument(
+    skip(resource, context),
+    fields(
+        resource.name = ?resource.meta().name,
+        resource.namespace = ?resource.meta().namespace,
+        request_id = %Uuid::new_v4()
+    )
+)]
 async fn reconcile<S, T>(
     resource: T,
     context: Context<ControllerContext<S>>,
@@ -270,6 +283,7 @@ where
     T: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
     S: ControllerStrategy<Item = T> + 'static,
 {
+    debug!(?resource, "Beginning reconciliation");
     let context = context.get_ref();
 
     let client = &context.client;
@@ -286,41 +300,44 @@ where
     let rc = ReconciliationContext::new(context.client.clone(), resource.clone());
 
     let mut state = strategy.init_reconcile_state(rc);
-    let result = state.reconcile().await;
+    let result = state.reconcile().in_current_span().await;
     match result {
         Ok(ReconcileFunctionAction::Requeue(duration)) => {
-            trace!(?duration, "Reconciler loop: Requeue");
+            trace!(
+                action = "Requeue",
+                ?duration,
+                "Reconciliation finished successfully (it is normal to see this message twice)"
+            );
             return Ok(ReconcilerAction {
                 requeue_after: Some(duration),
             });
         }
         Ok(action) => {
-            trace!("Reconciler loop: {:?}", action);
+            trace!(
+                ?action,
+                "Reconciliation finished successfully (it is normal to see this message twice)"
+            );
+            Ok(ReconcilerAction {
+                requeue_after: None,
+            })
         }
         Err(err) => {
-            error!("Error reconciling [{:?}]", err);
+            error!(?err, "Reconciliation finished with an error, will requeue");
             return Ok(ReconcilerAction {
                 // TODO: Make this configurable
                 requeue_after: Some(Duration::from_secs(30)),
             });
         }
     }
-
-    Ok(ReconcilerAction {
-        requeue_after: None,
-    })
 }
 
 // TODO: Properly type the error so we can pass it along
-fn error_policy<S, E>(error: &E, context: Context<ControllerContext<S>>) -> ReconcilerAction
+fn error_policy<S, E>(err: &E, context: Context<ControllerContext<S>>) -> ReconcilerAction
 where
     E: Display,
     S: ControllerStrategy,
 {
-    trace!(
-        "Reconciliation error, calling strategy error_policy:\n{}",
-        error
-    );
+    trace!(%err, "Reconciliation error, calling strategy error_policy");
     context.get_ref().strategy.error_policy()
 }
 
@@ -332,44 +349,28 @@ async fn handle_deletion<T>(
 where
     T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
 {
-    trace!(
-        "Reconciler [handle_deletion] for {}",
-        podutils::get_log_name(resource)
-    );
+    trace!("[handle_deletion] Begin");
     if !finalizer::has_deletion_stamp(resource) {
-        debug!(
-            "[handle_deletion] for {}: Not deleted, continuing...",
-            podutils::get_log_name(resource)
-        );
+        debug!("Resource not deleted, continuing",);
         return Ok(ReconcileFunctionAction::Continue);
     }
 
-    info!(
-        "Removing finalizer [{}] for resource {}",
-        finalizer_name,
-        podutils::get_log_name(resource)
-    );
+    info!("Removing finalizer [{}]", finalizer_name,);
     finalizer::remove_finalizer(client, resource, finalizer_name).await?;
 
-    Ok(ReconcileFunctionAction::Done)
+    Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(10)))
 }
 
 async fn add_finalizer<T>(resource: &T, client: Client, finalizer_name: &str) -> OperatorResult<()>
 where
     T: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
 {
-    trace!(resource = ?resource, "Reconciler [add_finalizer] for {}", podutils::get_log_name(resource));
+    trace!("[add_finalizer] Begin");
 
     if finalizer::has_finalizer(resource, finalizer_name) {
-        debug!(
-            "[add_finalizer] for {}: Finalizer already exists, continuing...",
-            podutils::get_log_name(resource)
-        );
+        debug!("Finalizer already exists, continuing...",);
     } else {
-        debug!(
-            "[add_finalizer] for {}: Finalizer missing, adding now and continuing...",
-            podutils::get_log_name(resource)
-        );
+        debug!("Finalizer missing, adding now and continuing...",);
         finalizer::add_finalizer(client, resource, finalizer_name).await?;
     }
     Ok(())
