@@ -308,9 +308,9 @@ where
                 ?duration,
                 "Reconciliation finished successfully (it is normal to see this message twice)"
             );
-            return Ok(ReconcilerAction {
+            Ok(ReconcilerAction {
                 requeue_after: Some(duration),
-            });
+            })
         }
         Ok(action) => {
             trace!(
@@ -323,10 +323,10 @@ where
         }
         Err(err) => {
             error!(?err, "Reconciliation finished with an error, will requeue");
-            return Ok(ReconcilerAction {
+            Ok(ReconcilerAction {
                 // TODO: Make this configurable
                 requeue_after: Some(Duration::from_secs(30)),
-            });
+            })
         }
     }
 }
