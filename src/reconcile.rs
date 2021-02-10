@@ -1,8 +1,10 @@
 use crate::client::Client;
+use crate::controller_ref;
 use crate::error::Error;
 use crate::podutils;
 
 use k8s_openapi::api::core::v1::Pod;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use kube::api::{ListParams, Meta, ObjectMeta};
 use kube_runtime::controller::ReconcilerAction;
 use std::future::Future;
@@ -89,7 +91,9 @@ where
     pub async fn list_pods(&self) -> Result<Vec<Pod>, Error> {
         let api = self.client.get_namespaced_api(&self.namespace());
 
-        // TODO: We need to use a label selector to only get _our_ pods
+        // TODO: In addition to filtering by OwnerReference (which can only be done client-side)
+        // we could also add a custom label.
+
         // It'd be ideal if we could filter by ownerReferences but that's not possible in K8S today
         // so we apply a custom label to each pod
         let list_params = ListParams {
@@ -97,9 +101,60 @@ where
             ..ListParams::default()
         };
 
+        let owner_uid = self
+            .resource
+            .meta()
+            .uid
+            .as_ref()
+            .ok_or(Error::MissingObjectKey {
+                key: ".metadata.uid",
+            })?;
+
         api.list(&list_params)
             .await
             .map_err(Error::from)
             .map(|result| result.items)
+            .map(|pods| {
+                pods.into_iter()
+                    .filter(|pod| pod_owned_by(pod, owner_uid))
+                    .collect()
+            })
+    }
+}
+
+/// This returns `false` for Pods that have no OwnerReference (with a Controller flag)
+/// or where the Controller does not have the same `uid` as the passed in `owner_uid`.
+/// If however the `uid` exists and matches we return `true`.
+fn pod_owned_by(pod: &Pod, owner_uid: &str) -> bool {
+    let controller = controller_ref::get_controller_of(pod);
+    match controller {
+        Some(OwnerReference { uid, .. }) if uid == owner_uid => true,
+        _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pod_owned_by() {
+        let mut pod = Pod {
+            metadata: ObjectMeta {
+                name: Some("Foobar".to_string()),
+                owner_references: Some(vec![OwnerReference {
+                    controller: Some(true),
+                    uid: "1234-5678".to_string(),
+                    ..OwnerReference::default()
+                }]),
+                ..ObjectMeta::default()
+            },
+            ..Pod::default()
+        };
+
+        assert!(pod_owned_by(&pod, "1234-5678"));
+
+        pod.metadata.owner_references = None;
+        assert!(!pod_owned_by(&pod, "1234-5678"));
     }
 }
