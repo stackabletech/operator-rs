@@ -127,10 +127,7 @@ where
 /// If however the `uid` exists and matches we return `true`.
 fn pod_owned_by(pod: &Pod, owner_uid: &str) -> bool {
     let controller = controller_ref::get_controller_of(pod);
-    match controller {
-        Some(OwnerReference { uid, .. }) if uid == owner_uid => true,
-        _ => false,
-    }
+    matches!(controller, Some(OwnerReference { uid, .. }) if uid == owner_uid)
 }
 
 #[cfg(test)]
