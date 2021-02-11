@@ -14,7 +14,6 @@ use crate::error::OperatorResult;
 
 pub use crd::Crd;
 use k8s_openapi::api::core::v1::{ConfigMap, Toleration};
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use kube::api::{Meta, ObjectMeta};
 use std::collections::BTreeMap;
 use tracing_subscriber::EnvFilter;
@@ -92,10 +91,9 @@ where
         metadata: ObjectMeta {
             name: Some(String::from(cm_name)),
             namespace: Meta::namespace(resource),
-            owner_references: Some(vec![OwnerReference {
-                controller: Some(true),
-                ..metadata::object_to_owner_reference::<T>(resource.meta().clone())?
-            }]),
+            owner_references: Some(vec![metadata::object_to_owner_reference::<T>(
+                resource.meta().clone(),
+            )?]),
             ..ObjectMeta::default()
         },
         ..ConfigMap::default()

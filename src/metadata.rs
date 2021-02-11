@@ -31,6 +31,8 @@ where
     })
 }
 
+/// Creates an OwnerReference pointing to the resource type and `metadata` being passed in.
+/// The created OwnerReference has it's `controller` flag set to `true`
 pub fn object_to_owner_reference<K: Resource>(meta: ObjectMeta) -> OperatorResult<OwnerReference> {
     Ok(OwnerReference {
         api_version: K::API_VERSION.to_string(),
@@ -41,6 +43,7 @@ pub fn object_to_owner_reference<K: Resource>(meta: ObjectMeta) -> OperatorResul
         uid: meta.uid.ok_or(Error::MissingObjectKey {
             key: ".metadata.uid",
         })?,
+        controller: Some(true),
         ..OwnerReference::default()
     })
 }
