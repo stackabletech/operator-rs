@@ -1,4 +1,6 @@
 use crate::error::OperatorResult;
+use crate::finalizer;
+use crate::podutils;
 
 use either::Either;
 use k8s_openapi::Resource;
@@ -7,6 +9,7 @@ use kube::client::{Client as KubeClient, Status};
 use kube::Api;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use tracing::trace;
 
 /// This `Client` can be used to access Kubernetes.
 /// It wraps an underlying [kube::client::Client] and provides some common functionality.
@@ -135,6 +138,28 @@ impl Client {
         Ok(api
             .delete(&Meta::name(resource), &self.delete_params)
             .await?)
+    }
+
+    /// This potentially deletes a resource _if it is not already deleted_.
+    /// It checks by looking at the `deletion_timestamp` of the resource.
+    /// If that is the case it'll return a `Ok(None)`.
+    pub async fn maybe_delete<T>(&self, resource: &T) -> OperatorResult<Option<Either<T, Status>>>
+    where
+        T: Clone + DeserializeOwned + Meta,
+    {
+        if finalizer::has_deletion_stamp(resource) {
+            trace!(
+                "Resource ([{}]) already has `deletion_timestamp`, not deleting",
+                podutils::get_log_name(resource)
+            );
+            Ok(None)
+        } else {
+            trace!(
+                "Resource ([{}]) does not have a `deletion_timestamp`, deleting now",
+                podutils::get_log_name(resource)
+            );
+            Ok(Some(self.delete(resource).await?))
+        }
     }
 
     /// Returns an [kube::Api] object which is either namespaced or not depending on whether
