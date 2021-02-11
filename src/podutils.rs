@@ -1,4 +1,4 @@
-use k8s_openapi::api::core::v1::{Pod, PodCondition, PodStatus};
+use k8s_openapi::api::core::v1::{Pod, PodCondition, PodSpec, PodStatus};
 use kube::api::Meta;
 use std::fmt::{Debug, Display, Formatter, Result};
 
@@ -93,11 +93,35 @@ where
     )
 }
 
+/// Checks whether the given pod is assigned to (via the `spec.node_name` field) the given `node_name`.
+pub fn is_pod_assigned_to_node(pod: &Pod, node_name: &str) -> bool {
+    matches!(pod.spec, Some(PodSpec { node_name: Some(ref pod_node_name), ..}, ..) if pod_node_name == node_name)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use k8s_openapi::api::core::v1::{Pod, PodCondition, PodStatus};
+    use k8s_openapi::api::core::v1::{Pod, PodCondition, PodSpec, PodStatus};
     use kube::api::ObjectMeta;
+
+    #[test]
+    fn test_is_pod_assigned_to_node() {
+        let mut pod_spec = PodSpec::default();
+        let mut pod = Pod {
+            spec: Some(pod_spec.clone()),
+            ..Pod::default()
+        };
+
+        assert!(!is_pod_assigned_to_node(&pod, "foobar"));
+
+        pod_spec.node_name = Some("foobar".to_string());
+        pod.spec = Some(pod_spec);
+        assert!(is_pod_assigned_to_node(&pod, "foobar"));
+        assert!(!is_pod_assigned_to_node(&pod, "barfoo"));
+
+        pod.spec = None;
+        assert!(!is_pod_assigned_to_node(&pod, "foobar"));
+    }
 
     #[test]
     fn test_get_log_name() {
