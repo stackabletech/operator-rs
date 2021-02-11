@@ -118,6 +118,7 @@ use crate::error::{Error, OperatorResult};
 use crate::reconcile::{ReconcileFunctionAction, ReconciliationContext};
 use crate::{finalizer, reconcile};
 
+use async_trait::async_trait;
 use futures::StreamExt;
 use kube::api::{ListParams, Meta};
 use kube::Api;
@@ -132,9 +133,11 @@ use tracing::{debug, error, info, trace, Instrument};
 use uuid::Uuid;
 
 /// Every operator needs to provide an implementation of this trait as it provides the operator specific business logic.
+#[async_trait]
 pub trait ControllerStrategy {
     type Item;
     type State: ReconciliationState;
+    type Error: Debug;
 
     fn finalizer_name(&self) -> String;
 
@@ -152,7 +155,10 @@ pub trait ControllerStrategy {
     /// It needs to return another struct that needs to implement [`ReconciliationState`].
     /// The idea is that every reconciliation run has its own state and it is not shared
     /// between runs.
-    fn init_reconcile_state(&self, context: ReconciliationContext<Self::Item>) -> Self::State;
+    async fn init_reconcile_state(
+        &self,
+        context: ReconciliationContext<Self::Item>,
+    ) -> Result<Self::State, Self::Error>;
 }
 
 pub trait ReconciliationState {
@@ -299,7 +305,19 @@ where
 
     let rc = ReconciliationContext::new(context.client.clone(), resource.clone());
 
-    let mut state = strategy.init_reconcile_state(rc);
+    let mut state = match strategy.init_reconcile_state(rc).in_current_span().await {
+        Ok(state) => state,
+        Err(err) => {
+            error!(
+                ?err,
+                "Error initializing reconciliation state, will requeue"
+            );
+            return Ok(ReconcilerAction {
+                // TODO: Make this configurable
+                requeue_after: Some(Duration::from_secs(30)),
+            });
+        }
+    };
     let result = state.reconcile().in_current_span().await;
     match result {
         Ok(ReconcileFunctionAction::Requeue(duration)) => {
