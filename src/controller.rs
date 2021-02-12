@@ -25,6 +25,7 @@
 //! # Example
 //!
 //! ```no_run
+//! use async_trait::async_trait;
 //! use kube::Api;
 //! use k8s_openapi::api::core::v1::Pod;
 //! use stackable_operator::client;
@@ -85,19 +86,20 @@
 //!     }
 //!     
 //! }
-//!
+//! #[async_trait]
 //! impl ControllerStrategy for FooStrategy {
 //!     type Item = Pod;
 //!     type State = FooState;
+//!     type Error = String;
 //!
 //!     fn finalizer_name(&self) -> String {
 //!         "foo.stackable.de/finalizer".to_string()
 //!     }
 //!
-//!     fn init_reconcile_state(&self,context: ReconciliationContext<Self::Item>) -> Self::State {
-//!         FooState {
+//!     async fn init_reconcile_state(&self,context: ReconciliationContext<Self::Item>) -> Result<Self::State, Self::Error> {
+//!         Ok(FooState {
 //!             my_state: 1
-//!         }
+//!         })
 //!     }     
 //! }
 //!
