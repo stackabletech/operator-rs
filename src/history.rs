@@ -79,6 +79,7 @@ where
             namespace: Meta::namespace(parent),
             owner_references: Some(vec![metadata::object_to_owner_reference::<T>(
                 parent.meta().clone(),
+                true,
             )?]),
             ..ObjectMeta::default()
         },
