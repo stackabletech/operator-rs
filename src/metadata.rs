@@ -78,7 +78,7 @@ mod tests {
             ..Pod::default()
         };
 
-        let meta = build_metadata(name.to_string(), Some(labels), &pod)?;
+        let meta = build_metadata(name.to_string(), Some(labels), &pod, true)?;
 
         assert_eq!(meta.name, Some(name.to_string()));
         assert_eq!(meta.namespace, namespace);
