@@ -5,6 +5,7 @@ authors = ["Lars Francke <lars.francke@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+async-trait = "0.1"
 either = "1.6"
 futures = "0.3"
 k8s-openapi = { version = "0.11", default-features = false }

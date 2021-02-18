@@ -25,6 +25,7 @@
 //! # Example
 //!
 //! ```no_run
+//! use async_trait::async_trait;
 //! use kube::Api;
 //! use k8s_openapi::api::core::v1::Pod;
 //! use stackable_operator::client;
@@ -85,19 +86,20 @@
 //!     }
 //!     
 //! }
-//!
+//! #[async_trait]
 //! impl ControllerStrategy for FooStrategy {
 //!     type Item = Pod;
 //!     type State = FooState;
+//!     type Error = String;
 //!
 //!     fn finalizer_name(&self) -> String {
 //!         "foo.stackable.de/finalizer".to_string()
 //!     }
 //!
-//!     fn init_reconcile_state(&self,context: ReconciliationContext<Self::Item>) -> Self::State {
-//!         FooState {
+//!     async fn init_reconcile_state(&self,context: ReconciliationContext<Self::Item>) -> Result<Self::State, Self::Error> {
+//!         Ok(FooState {
 //!             my_state: 1
-//!         }
+//!         })
 //!     }     
 //! }
 //!
@@ -118,6 +120,7 @@ use crate::error::{Error, OperatorResult};
 use crate::reconcile::{ReconcileFunctionAction, ReconciliationContext};
 use crate::{finalizer, reconcile};
 
+use async_trait::async_trait;
 use futures::StreamExt;
 use kube::api::{ListParams, Meta};
 use kube::Api;
@@ -132,9 +135,11 @@ use tracing::{debug, error, info, trace, Instrument};
 use uuid::Uuid;
 
 /// Every operator needs to provide an implementation of this trait as it provides the operator specific business logic.
+#[async_trait]
 pub trait ControllerStrategy {
     type Item;
     type State: ReconciliationState;
+    type Error: Debug;
 
     fn finalizer_name(&self) -> String;
 
@@ -152,7 +157,10 @@ pub trait ControllerStrategy {
     /// It needs to return another struct that needs to implement [`ReconciliationState`].
     /// The idea is that every reconciliation run has its own state and it is not shared
     /// between runs.
-    fn init_reconcile_state(&self, context: ReconciliationContext<Self::Item>) -> Self::State;
+    async fn init_reconcile_state(
+        &self,
+        context: ReconciliationContext<Self::Item>,
+    ) -> Result<Self::State, Self::Error>;
 }
 
 pub trait ReconciliationState {
@@ -245,6 +253,19 @@ where
             .for_each(|res| async move {
                 match res {
                     Ok(o) => trace!(resource = ?o, "Reconciliation finished successfully (it is normal to see this message twice)"),
+                    Err(kube_runtime::controller::Error::ObjectNotFound {..}) => {
+                        // This can happen for all kinds of reasons according to the kube-rs docs.
+                        // An object that's deleted can still be found in the store or a new one 
+                        // might not have been added already but we still got notified.
+                        // I'm hazy on the kube-rs details but this is here to log only anyway.
+                        trace!("ObjectNotFound in store, this is normal and will be retried")
+                    },
+                    Err(kube_runtime::controller::Error::QueueError { source: kube_runtime::watcher::Error::WatchFailed {..}, .. }) => {
+                        // This can happen when we lose the connection to the apiserver or the 
+                        // connection gets interrupted for any other reason.
+                        // kube-rs will usually try to restart the watch automatically.
+                        trace!("QueueError(WatchFailed) during reconciliation, this is normal and will be retried")
+                    },
                     Err(ref err) => {
                         // If we get here it means that our `reconcile` method returned an error which should never happen because
                         // we convert all errors to requeue operations.
@@ -299,7 +320,19 @@ where
 
     let rc = ReconciliationContext::new(context.client.clone(), resource.clone());
 
-    let mut state = strategy.init_reconcile_state(rc);
+    let mut state = match strategy.init_reconcile_state(rc).in_current_span().await {
+        Ok(state) => state,
+        Err(err) => {
+            error!(
+                ?err,
+                "Error initializing reconciliation state, will requeue"
+            );
+            return Ok(ReconcilerAction {
+                // TODO: Make this configurable
+                requeue_after: Some(Duration::from_secs(30)),
+            });
+        }
+    };
     let result = state.reconcile().in_current_span().await;
     match result {
         Ok(ReconcileFunctionAction::Requeue(duration)) => {
