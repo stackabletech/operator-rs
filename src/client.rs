@@ -140,11 +140,7 @@ impl Client {
         T: Clone + DeserializeOwned + Meta + Resource,
         S: Serialize,
     {
-        let new_status = Patch::Merge(serde_json::json!({
-            "apiVersion": T::API_VERSION,
-            "kind": T::KIND,
-            "status": status
-        }));
+        let new_status = Patch::Merge(serde_json::json!({ "status": status }));
 
         Ok(self
             .patch_status(resource, new_status, &self.patch_params)
