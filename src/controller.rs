@@ -253,6 +253,19 @@ where
             .for_each(|res| async move {
                 match res {
                     Ok(o) => trace!(resource = ?o, "Reconciliation finished successfully (it is normal to see this message twice)"),
+                    Err(kube_runtime::controller::Error::ObjectNotFound {..}) => {
+                        // This can happen for all kinds of reasons according to the kube-rs docs.
+                        // An object that's deleted can still be found in the store or a new one 
+                        // might not have been added already but we still got notified.
+                        // I'm hazy on the kube-rs details but this is here to log only anyway.
+                        trace!("ObjectNotFound in store, this is normal and will be retried")
+                    },
+                    Err(kube_runtime::controller::Error::QueueError { source: kube_runtime::watcher::Error::WatchFailed {..}, .. }) => {
+                        // This can happen when we lose the connection to the apiserver or the 
+                        // connection gets interrupted for any other reason.
+                        // kube-rs will usually try to restart the watch automatically.
+                        trace!("QueueError(WatchFailed) during reconciliation, this is normal and will be retried")
+                    },
                     Err(ref err) => {
                         // If we get here it means that our `reconcile` method returned an error which should never happen because
                         // we convert all errors to requeue operations.
