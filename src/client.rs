@@ -73,7 +73,8 @@ impl Client {
             .await?)
     }
 
-    /// Patches a resource using the `MERGE` patch strategy.
+    /// Patches a resource using the `MERGE` patch strategy described
+    /// in [JSON Merge Patch](https://tools.ietf.org/html/rfc7386)
     /// This will fail for objects that do not exist yet.
     pub async fn merge_patch<T, P>(&self, resource: &T, patch: P) -> OperatorResult<T>
     where
@@ -85,6 +86,9 @@ impl Client {
     }
 
     /// Patches a resource using the `APPLY` patch strategy.
+    /// This is a [_Server-Side Apply_](https://kubernetes.io/docs/reference/using-api/server-side-apply/)
+    /// and the merge strategy can differ from field to field and will be defined by the
+    /// schema of the resource in question.
     /// This will _create_ or _update_ existing resources.
     pub async fn apply_patch<T, P>(&self, resource: &T, patch: P) -> OperatorResult<T>
     where
@@ -111,9 +115,10 @@ impl Client {
             .await?)
     }
 
-    /// Replaces a resource.
     /// This will _update_ an existing resource.
-    /// NOTE: I do not know what the difference is between `update` and `apply_patch` for updates.
+    /// The operation is called `replace` in the Kubernetes API.
+    /// While a `patch` can just update a partial object
+    /// a `update` will always replace the full object.
     pub async fn update<T>(&self, resource: &T) -> OperatorResult<T>
     where
         T: Clone + DeserializeOwned + Meta + Serialize,
