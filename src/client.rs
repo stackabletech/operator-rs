@@ -115,6 +115,71 @@ impl Client {
             .await?)
     }
 
+    /// Patches subresource status in a given Resource using apply strategy.
+    /// The subresource status must be defined beforehand in the Crd.
+    pub async fn apply_patch_status<T, S>(&self, resource: &T, status: &S) -> OperatorResult<T>
+    where
+        T: Clone + DeserializeOwned + Meta + Resource,
+        S: Serialize,
+    {
+        let new_status = Patch::Apply(serde_json::json!({
+            "apiVersion": T::API_VERSION,
+            "kind": T::KIND,
+            "status": status
+        }));
+
+        Ok(self
+            .patch_status(resource, new_status, &self.patch_params)
+            .await?)
+    }
+
+    /// Patches subresource status in a given Resource using merge strategy.
+    /// The subresource status must be defined beforehand in the Crd.
+    pub async fn merge_patch_status<T, S>(&self, resource: &T, status: &S) -> OperatorResult<T>
+    where
+        T: Clone + DeserializeOwned + Meta + Resource,
+        S: Serialize,
+    {
+        let new_status = Patch::Merge(serde_json::json!({
+            "apiVersion": T::API_VERSION,
+            "kind": T::KIND,
+            "status": status
+        }));
+
+        Ok(self
+            .patch_status(resource, new_status, &self.patch_params)
+            .await?)
+    }
+
+    async fn patch_status<T, S>(
+        &self,
+        resource: &T,
+        patch: Patch<S>,
+        patch_params: &PatchParams,
+    ) -> OperatorResult<T>
+    where
+        T: Clone + DeserializeOwned + Meta + Resource,
+        S: Serialize,
+    {
+        // There are four different strategies:
+        // 1) Apply (https://kubernetes.io/docs/reference/using-api/api-concepts/#server-side-apply)
+        //   Starting from Kubernetes v1.18, you can enable the Server Side Apply feature so that the control plane tracks managed fields for all newly created objects.
+        // 2) Json (https://tools.ietf.org/html/rfc6902):
+        //   This is supported on crate feature jsonpatch only
+        // 3) Merge (https://tools.ietf.org/html/rfc7386):
+        //   For example, if you want to update a list you have to specify the complete list and update everything
+        // 4) Strategic (not for CustomResource)
+        //   With a strategic merge patch, a list is either replaced or merged depending on its patch strategy.
+        //   The patch strategy is specified by the value of the patchStrategy key in a field tag in the Kubernetes source code.
+        //   For example, the Containers field of PodSpec struct has a patchStrategy of merge.
+        //
+
+        let api = self.get_api(Meta::namespace(resource));
+        Ok(api
+            .patch_status(&Meta::name(resource), patch_params, &patch)
+            .await?)
+    }
+
     /// This will _update_ an existing resource.
     /// The operation is called `replace` in the Kubernetes API.
     /// While a `patch` can just update a partial object
