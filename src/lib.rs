@@ -77,7 +77,9 @@ pub fn create_tolerations() -> Vec<Toleration> {
     ]
 }
 
-/// Creates a ConfigMap
+/// Creates a ConfigMap.
+/// This ConfigMap has its `block_owner_deletion` flag set to true.
+/// That means it'll be deleted if its owner is being deleted.
 pub fn create_config_map<T>(
     resource: &T,
     cm_name: &str,
@@ -93,6 +95,7 @@ where
             namespace: Meta::namespace(resource),
             owner_references: Some(vec![metadata::object_to_owner_reference::<T>(
                 resource.meta().clone(),
+                true,
             )?]),
             ..ObjectMeta::default()
         },
