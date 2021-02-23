@@ -31,7 +31,7 @@ fn max_len_error(length: usize) -> String {
 /// * `fmt` - this is the regular expression that did not match the input
 /// * `examples` - are optional well, formed examples that would match the regex
 fn regex_error(msg: &str, fmt: &str, examples: &[&str]) -> String {
-    if examples.len() == 0 {
+    if examples.is_empty() {
         return format!("{} (regex used for validation is '{}')", msg, fmt);
     }
 
@@ -41,7 +41,7 @@ fn regex_error(msg: &str, fmt: &str, examples: &[&str]) -> String {
         if i > 0 {
             msg.push_str(" or ");
         }
-        msg.push_str("'");
+        msg.push('\'');
         msg.push_str(example);
         msg.push_str("', ");
     }
@@ -49,7 +49,7 @@ fn regex_error(msg: &str, fmt: &str, examples: &[&str]) -> String {
     msg.push_str("regex used for validation is '");
     msg.push_str(&fmt);
     msg.push_str("')");
-    return msg;
+    msg
 }
 
 pub fn is_rfc_1123_subdomain(value: &str) -> Vec<String> {
@@ -62,7 +62,7 @@ pub fn is_rfc_1123_subdomain(value: &str) -> Vec<String> {
         errors.push(regex_error(
             RFC_1123_SUBDOMAIN_ERROR_MSG,
             RFC_1123_SUBDOMAIN_FMT,
-            &vec!["example.com"],
+            &["example.com"],
         ))
     }
 
@@ -72,7 +72,7 @@ pub fn is_rfc_1123_subdomain(value: &str) -> Vec<String> {
 // mask_trailing_dash replaces the final character of a string with a subdomain safe
 // value if is a dash.
 fn mask_trailing_dash(mut name: String) -> String {
-    if name.ends_with("-") {
+    if name.ends_with('-') {
         name.pop();
         name.push('a');
     }
@@ -116,12 +116,6 @@ mod tests {
     )]
     fn test_bad_values_is_rfc_1123_subdomain(value: &str) {
         assert!(!is_rfc_1123_subdomain(value).is_empty());
-    }
-
-    #[test]
-    fn test_bad_values_is_rfc_1123_subdomain2() {
-        println!("{:?}", is_rfc_1123_subdomain("A.B.C.D.E"));
-        panic!();
     }
 
     #[rstest(
