@@ -1,7 +1,7 @@
 [package]
 name = "stackable-operator"
 version = "0.1.0"
-authors = ["Lars Francke <lars.francke@gmail.com>"]
+authors = ["Lars Francke <lars.francke@stackable.de>"]
 edition = "2018"
 
 [dependencies]
