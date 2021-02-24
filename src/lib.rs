@@ -10,6 +10,7 @@ pub mod k8s_errors;
 pub mod metadata;
 pub mod podutils;
 pub mod reconcile;
+pub mod validation;
 
 use crate::error::OperatorResult;
 
