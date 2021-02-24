@@ -1,6 +1,7 @@
 use crate::error::OperatorResult;
 
 use either::Either;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
 use k8s_openapi::Resource;
 use kube::api::{DeleteParams, ListParams, Meta, Patch, PatchParams, PostParams};
 use kube::client::{Client as KubeClient, Status};
@@ -27,8 +28,10 @@ impl Client {
                 ..PostParams::default()
             },
 
+            // TODO: According to https://kubernetes.io/docs/reference/using-api/server-side-apply/#using-server-side-apply-in-a-controller we should always force conflicts in controllers.
             patch_params: PatchParams {
                 field_manager,
+                //force: true,
                 ..PatchParams::default()
             },
             delete_params: DeleteParams::default(),
@@ -154,7 +157,7 @@ impl Client {
         patch_params: &PatchParams,
     ) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta + Resource,
+        T: Clone + DeserializeOwned + Meta,
         S: Serialize,
     {
         // There are four different strategies:
@@ -200,6 +203,25 @@ impl Client {
         let api: Api<T> = self.get_api(Meta::namespace(resource));
         Ok(api
             .delete(&Meta::name(resource), &self.delete_params)
+            .await?)
+    }
+
+    /// Sets a condition on a status.
+    /// This will only work if there is a `status` subresource **and** it has a `conditions` array.
+    pub async fn set_condition<T>(&self, resource: &T, condition: Condition) -> OperatorResult<T>
+    where
+        T: Clone + DeserializeOwned + Meta + Resource,
+    {
+        let new_status = Patch::Apply(serde_json::json!({
+            "apiVersion": T::API_VERSION,
+            "kind": T::KIND,
+            "status": {
+                "conditions": vec![condition]
+            }
+        }));
+
+        Ok(self
+            .patch_status(resource, new_status, &self.patch_params)
             .await?)
     }
 
