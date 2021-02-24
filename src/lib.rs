@@ -1,6 +1,7 @@
 pub mod client;
 pub mod controller;
 pub mod controller_ref;
+pub mod controller_utils;
 pub mod crd;
 pub mod error;
 pub mod finalizer;
