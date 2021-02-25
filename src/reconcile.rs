@@ -1,12 +1,13 @@
 use crate::client::Client;
-use crate::controller_ref;
-use crate::error::Error;
-use crate::podutils;
+use crate::error::{Error, OperatorResult};
+use crate::{conditions, controller_ref, podutils};
 
+use crate::conditions::ConditionStatus;
 use k8s_openapi::api::core::v1::Pod;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, OwnerReference};
 use kube::api::{ListParams, Meta, ObjectMeta};
 use kube_runtime::controller::ReconcilerAction;
+use serde::de::DeserializeOwned;
 use std::future::Future;
 use std::time::Duration;
 
@@ -88,7 +89,7 @@ where
         self.resource.meta().clone()
     }
 
-    pub async fn list_pods(&self) -> Result<Vec<Pod>, Error> {
+    pub async fn list_pods(&self) -> OperatorResult<Vec<Pod>> {
         let api = self.client.get_namespaced_api(&self.namespace());
 
         // TODO: In addition to filtering by OwnerReference (which can only be done client-side)
@@ -119,6 +120,58 @@ where
                     .filter(|pod| pod_owned_by(pod, owner_uid))
                     .collect()
             })
+    }
+
+    /// Creates a new [`Condition`] for the `resource` this context contains.
+    ///
+    /// It's a convenience function that passes through all parameters and builds a `Condition`
+    /// using the [`conditions::build_condition`] method.
+    pub fn build_condition_for_resource(
+        &self,
+        current_conditions: Option<&[Condition]>,
+        message: String,
+        reason: String,
+        status: ConditionStatus,
+        condition_type: String,
+    ) -> Condition {
+        conditions::build_condition(
+            &self.resource,
+            current_conditions,
+            message,
+            reason,
+            status,
+            condition_type,
+        )
+    }
+}
+
+// TODO: Trait bound on Clone is not needed after https://github.com/clux/kube-rs/pull/436
+impl<T> ReconciliationContext<T>
+where
+    T: Clone + DeserializeOwned + Meta,
+{
+    /// Sets the [`Condition`] on the resource in this context.
+    pub async fn set_condition(&self, condition: Condition) -> OperatorResult<T> {
+        Ok(self.client.set_condition(&self.resource, condition).await?)
+    }
+
+    /// Builds a [`Condition`] using [`ReconciliationContext::build_condition_for_resource`] and then sets saves it.
+    pub async fn build_and_set_condition(
+        &self,
+        current_conditions: Option<&[Condition]>,
+        message: String,
+        reason: String,
+        status: ConditionStatus,
+        condition_type: String,
+    ) -> OperatorResult<T> {
+        let condition = self.build_condition_for_resource(
+            current_conditions,
+            message,
+            reason,
+            status,
+            condition_type,
+        );
+        self.set_condition(condition).await
     }
 }
 
