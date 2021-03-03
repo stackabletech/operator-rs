@@ -183,9 +183,58 @@ fn pod_owned_by(pod: &Pod, owner_uid: &str) -> bool {
     matches!(controller, Some(OwnerReference { uid, .. }) if uid == owner_uid)
 }
 
+pub fn find_pods_that_are_in_use<'a>(
+    candidate_nodes: &[Node],
+    existing_pods: &'a [Pod],
+    label_values: &BTreeMap<String, Option<String>>,
+) -> Vec<&'a Pod> {
+    existing_pods
+        .iter()
+        .filter(|pod| {
+            candidate_nodes.iter().any(|node| {
+                pod_matches_labels(pod, &label_values)
+                    && pod.spec.as_ref().unwrap().node_name.as_ref().unwrap()
+                        == node.metadata.name.as_ref().unwrap()
+            })
+        })
+        .collect()
+}
+
+fn pod_matches_labels(pod: &Pod, expected_labels: &BTreeMap<String, Option<String>>) -> bool {
+    let pod_labels = &pod.metadata.labels;
+
+    for (expected_key, expected_value) in expected_labels {
+        // We only do this here because `expected_labels` might be empty in which case
+        // it's totally fine if the Pod doesn't have any labels.
+        // Now however we're definitely looking for a key so if the Pod doesn't have any labels
+        // it will never be able to match.
+        let pod_labels = match pod_labels {
+            None => return false,
+            Some(pod_labels) => pod_labels,
+        };
+
+        // We can match two kinds:
+        //   * Just the label key (expected_value == None)
+        //   * Key and Value
+        if !pod_labels.contains_key(expected_key) {
+            return false;
+        }
+
+        if let Some(expected_value) = expected_value {
+            // unwrap is fine here as we already checked earlier if the key exists
+            if pod_labels.get(expected_key).unwrap() != expected_value {
+                return false;
+            }
+        }
+    }
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use k8s_openapi::api::core::v1::PodSpec;
+    use std::collections::BTreeMap;
 
     #[test]
     fn test_pod_owned_by() {
@@ -206,5 +255,171 @@ mod tests {
 
         pod.metadata.owner_references = None;
         assert!(!pod_owned_by(&pod, "1234-5678"));
+    }
+
+    #[test]
+    fn test_pod_matches_labels() {
+        let mut test_labels = BTreeMap::new();
+        test_labels.insert("label1".to_string(), "test1".to_string());
+        test_labels.insert("label2".to_string(), "test2".to_string());
+        test_labels.insert("label3".to_string(), "test3".to_string());
+
+        let test_pod = build_test_pod(None, Some(test_labels));
+
+        // Pod matches a label, should match
+        let mut matching_labels1 = BTreeMap::new();
+        matching_labels1.insert(String::from("label1"), Some(String::from("test1")));
+        assert!(pod_matches_labels(&test_pod, &matching_labels1));
+
+        // Pod matches a label, should match
+        let mut matching_labels2 = BTreeMap::new();
+        matching_labels2.insert(String::from("label2"), Some(String::from("test2")));
+        assert!(pod_matches_labels(&test_pod, &matching_labels2));
+
+        // Pods that are missing a label should not match
+        let mut non_matching_labels1 = BTreeMap::new();
+        non_matching_labels1.insert(String::from("wrong_label"), Some(String::from("test2")));
+        assert!(!pod_matches_labels(&test_pod, &non_matching_labels1));
+
+        // Empty list should match all pods - we have no requirements that the pod
+        // has to meet
+        let empty_labels = BTreeMap::new();
+        assert!(pod_matches_labels(&test_pod, &empty_labels));
+
+        // Pod matches only one of two required labels, should not match
+        let mut non_matching_multiple_labels = BTreeMap::new();
+        non_matching_multiple_labels.insert(String::from("label1"), Some(String::from("test1")));
+        non_matching_multiple_labels.insert(String::from("label2"), Some(String::from("test1")));
+        assert!(!pod_matches_labels(
+            &test_pod,
+            &non_matching_multiple_labels
+        ));
+
+        // Pod matches both labels, should match
+        let mut matching_multiple_labels = BTreeMap::new();
+        matching_multiple_labels.insert(String::from("label1"), Some(String::from("test1")));
+        matching_multiple_labels.insert(String::from("label2"), Some(String::from("test2")));
+        assert!(pod_matches_labels(&test_pod, &matching_multiple_labels));
+
+        // Pod has required label without specified value, should match
+        let mut matching_label_present = BTreeMap::new();
+        matching_label_present.insert(String::from("label1"), None);
+        assert!(pod_matches_labels(&test_pod, &matching_label_present));
+
+        // Pod has multiple required labels without specified value, should match
+        let mut matching_multiple_label_present = BTreeMap::new();
+        matching_multiple_label_present.insert(String::from("label1"), None);
+        matching_multiple_label_present.insert(String::from("label3"), None);
+        assert!(pod_matches_labels(
+            &test_pod,
+            &matching_multiple_label_present
+        ));
+
+        // Pod has one label missing and one present - should not match
+        let mut matching_label_present_and_missing = BTreeMap::new();
+        matching_label_present_and_missing.insert(String::from("label1"), None);
+        matching_label_present_and_missing.insert(String::from("label4"), None);
+        assert!(!pod_matches_labels(
+            &test_pod,
+            &matching_label_present_and_missing
+        ));
+
+        // Pod has _no_ labels, should not match because we are definitely asking for labels
+        let test_pod = build_test_pod(None, None);
+        let mut matching_label_present_and_missing = BTreeMap::new();
+        matching_label_present_and_missing.insert(String::from("label1"), None);
+        matching_label_present_and_missing.insert(String::from("label4"), None);
+        assert!(!pod_matches_labels(
+            &test_pod,
+            &matching_label_present_and_missing
+        ));
+
+        // Pod has _no_ labels but we're also asking for no labels
+        assert!(pod_matches_labels(&test_pod, &BTreeMap::new()));
+    }
+
+    #[test]
+    fn test_find_pods_that_are_in_use() {
+        // Two nodes, one pod, no labels on pod, but looking for labels, shouldn't match
+        let nodes = vec![build_test_node("foobar"), build_test_node("barfoo")];
+        let existing_pods = vec![build_test_pod(Some("foobar"), None)];
+
+        let mut label_values = BTreeMap::new();
+        label_values.insert("foo".to_string(), Some("bar".to_string()));
+
+        assert_eq!(
+            0,
+            find_pods_that_are_in_use(&nodes, &existing_pods, &label_values).len()
+        );
+
+        // Two nodes, one pod, matching labels on pod, but looking for labels, should match
+        let mut pod_labels = BTreeMap::new();
+        pod_labels.insert("foo".to_string(), "bar".to_string());
+
+        let nodes = vec![build_test_node("foobar"), build_test_node("barfoo")];
+        let existing_pods = vec![build_test_pod(Some("foobar"), Some(pod_labels))];
+
+        let mut expected_labels = BTreeMap::new();
+        expected_labels.insert("foo".to_string(), Some("bar".to_string()));
+        assert_eq!(
+            1,
+            find_pods_that_are_in_use(&nodes, &existing_pods, &expected_labels).len()
+        );
+
+        // Two nodes, one pod, matching label key on pod but wrong value, but looking for labels, shouldn't match
+        let mut pod_labels = BTreeMap::new();
+        pod_labels.insert("foo".to_string(), "WRONG".to_string());
+
+        let nodes = vec![build_test_node("foobar"), build_test_node("barfoo")];
+        let existing_pods = vec![build_test_pod(Some("foobar"), Some(pod_labels))];
+
+        let mut expected_labels = BTreeMap::new();
+        expected_labels.insert("foo".to_string(), Some("bar".to_string()));
+        assert_eq!(
+            0,
+            find_pods_that_are_in_use(&nodes, &existing_pods, &expected_labels).len()
+        );
+
+        // Two nodes, two pods. one matches the other doesn't
+        let mut pod_labels = BTreeMap::new();
+        pod_labels.insert("foo".to_string(), "bar".to_string());
+
+        let nodes = vec![build_test_node("foobar"), build_test_node("barfoo")];
+        let existing_pods = vec![
+            build_test_pod(Some("foobar"), Some(pod_labels.clone())),
+            build_test_pod(Some("wrong_node"), Some(pod_labels.clone())),
+        ];
+
+        let mut expected_labels = BTreeMap::new();
+        expected_labels.insert("foo".to_string(), Some("bar".to_string()));
+        assert_eq!(
+            1,
+            find_pods_that_are_in_use(&nodes, &existing_pods, &expected_labels).len()
+        );
+    }
+
+    fn build_test_node(name: &str) -> Node {
+        Node {
+            metadata: ObjectMeta {
+                name: Some(name.to_string()),
+                ..ObjectMeta::default()
+            },
+            spec: None,
+            status: None,
+        }
+    }
+
+    fn build_test_pod(node_name: Option<&str>, labels: Option<BTreeMap<String, String>>) -> Pod {
+        Pod {
+            metadata: ObjectMeta {
+                labels,
+                ..ObjectMeta::default()
+            },
+            spec: Some(PodSpec {
+                node_name: node_name.map(|name| name.to_string()),
+                ..PodSpec::default()
+            }),
+            status: None,
+        }
     }
 }
