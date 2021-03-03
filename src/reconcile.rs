@@ -277,12 +277,18 @@ fn add_stackable_selector(selector: &LabelSelector) -> LabelSelector {
     selector
 }
 */
-/*
-pub async fn find_excess_pods(
-    things: Vec<(Vec<Node>, HashMap<String, Option<String>>)>,
-    pods: Vec<Pod>,
-) -> Vec<Pod> {
+
+/// This method can be used to find Pods that are not needed anymore.
+///
+/// For this to work we'll compare a list of all Pods against a list of Pods that are actively being used.
+///
+pub fn find_excess_pods<'a>(
+    things: &[(&[Node], &BTreeMap<String, Option<String>>)],
+    pods: &'a [Pod],
+) -> Vec<&'a Pod> {
     let mut pods_in_use = Vec::new();
+
+    // For each pair of Nodes and labels we try to find
     for (eligible_nodes, mandatory_label_values) in things {
         let mut found_pods =
             find_pods_that_are_in_use(&eligible_nodes, &pods, mandatory_label_values);
