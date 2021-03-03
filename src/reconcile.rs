@@ -3,14 +3,15 @@ use crate::error::{Error, OperatorResult};
 use crate::{conditions, controller_ref, podutils};
 
 use crate::conditions::ConditionStatus;
-use k8s_openapi::api::core::v1::{Node, Pod};
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, OwnerReference};
+use k8s_openapi::api::core::v1::{Node, Pod, PodSpec};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector, OwnerReference};
 use kube::api::{ListParams, Meta, ObjectMeta};
 use kube_runtime::controller::ReconcilerAction;
 use serde::de::DeserializeOwned;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
 use std::time::Duration;
+use tracing::{debug, error};
 
 pub type ReconcileResult<E> = std::result::Result<ReconcileFunctionAction, E>;
 
@@ -123,16 +124,15 @@ where
             })
     }
 
-    /*
-    /// Finds nodes in the cluster that match a given labelselector
+    /// Finds nodes in the cluster that match a given LabelSelector
     /// This takes a hashmap of String -> LabelSelector and returns
     /// a map with found nodes per String
     pub async fn find_nodes_that_fit_selectors(
         &self,
-        node_groups: HashMap<String, LabelSelector>,
-    ) -> Result<HashMap<String, Vec<Node>>, Error> {
+        roles: &HashMap<String, LabelSelector>,
+    ) -> OperatorResult<HashMap<String, Vec<Node>>> {
         let mut found_nodes = HashMap::new();
-        for (group_name, selector) in node_groups {
+        for (group_name, selector) in roles {
             let nodes = self.get_nodes_for_selector(&selector).await?;
             debug!(
                 "Found [{}] nodes for datanode group [{}]: [{:?}]",
@@ -140,31 +140,30 @@ where
                 group_name,
                 nodes
             );
-            found_nodes.insert(group_name, nodes);
+            found_nodes.insert(group_name.clone(), nodes);
         }
         Ok(found_nodes)
     }
-     */
-    /*
-        async fn get_nodes_for_selector(&self, selector: &LabelSelector) -> Result<Vec<Node>, Error> {
-            let api = self.client.get_api(None);
-            let selector_with_stackable = add_stackable_selector(selector);
-            let selector_string = convert_label_selector_to_query_string(selector_with_stackable);
-            debug!(
-                "Got labelselector: [{}]",
-                selector_string.as_ref().unwrap_or(&String::from("None"))
-            );
-            let list_params = ListParams {
-                label_selector: Some(selector_string),
-                ..ListParams::default()
-            };
-            api.list(&list_params)
-                .await
-                .map_err(Error::from)
-                .map(|result| result.items)
-                .map(|nodes| nodes.into_iter().collect())
-        }
-    */
+
+    async fn get_nodes_for_selector(&self, selector: &LabelSelector) -> Result<Vec<Node>, Error> {
+        //let selector_with_stackable = add_stackable_selector(selector);
+        let selector_string = convert_label_selector_to_query_string(selector_with_stackable);
+        trace!(
+            "Got LabelSelector: [{}]",
+            selector_string.unwrap_or(&String::from("None"))
+        );
+        let list_params = ListParams {
+            label_selector: Some(selector_string),
+            ..ListParams::default()
+        };
+        self.client
+            .list(None, &list_params)
+            .await
+            .map_err(Error::from)
+            .map(|result| result.items)
+            .map(|nodes| nodes.into_iter().collect())
+    }
+
     /*
     /// Retrieves all pods that are owned by the resource and removes those that do not have all
     /// mandatory labels
@@ -277,6 +276,8 @@ fn add_stackable_selector(selector: &LabelSelector) -> LabelSelector {
     selector
 }
 */
+
+pub fn check_pod_requirements(pod: &Pod, required_labels: &[(&str, Option<&[&str]>)]) {}
 
 /// This method can be used to find Pods that are not needed anymore.
 ///
