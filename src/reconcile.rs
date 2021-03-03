@@ -281,25 +281,29 @@ fn add_stackable_selector(selector: &LabelSelector) -> LabelSelector {
 /// This method can be used to find Pods that are not needed anymore.
 ///
 /// For this to work we'll compare a list of all Pods against a list of Pods that are actively being used.
-///
+/// We'll do this for an arbitrary number of Node lists and match labels.
+// TODO: Test and docs
 pub fn find_excess_pods<'a>(
-    things: &[(&[Node], &BTreeMap<String, Option<String>>)],
-    pods: &'a [Pod],
+    nodes_and_labels: &[(&[Node], &BTreeMap<String, Option<String>>)],
+    existing_pods: &'a [Pod],
 ) -> Vec<&'a Pod> {
-    let mut pods_in_use = Vec::new();
+    let mut used_pods = Vec::new();
 
-    // For each pair of Nodes and labels we try to find
-    for (eligible_nodes, mandatory_label_values) in things {
+    // For each pair of Nodes and labels we try to find all Pods that are currently in use and valid
+    // We collect all of those in one big list.
+    for (eligible_nodes, mandatory_label_values) in nodes_and_labels {
         let mut found_pods =
-            find_pods_that_are_in_use(&eligible_nodes, &pods, mandatory_label_values);
-        pods_in_use.append(&mut found_pods);
+            find_pods_that_are_in_use(&eligible_nodes, &existing_pods, mandatory_label_values);
+        used_pods.append(&mut found_pods);
     }
 
-    pods.into_iter()
+    // Here we'll filter all existing Pods and will remove all Pods that are in use
+    existing_pods.into_iter()
         .filter(|pod| {
-            !pods_in_use
+            !used_pods
                 .iter()
-                .any(|used_pod| pod.metadata.uid.unwrap() == used_pod.metadata.uid.unwrap())
+                .any(|used_pod|
+                    matches!((pod.metadata.uid.as_ref(), used_pod.metadata.uid.as_ref()), (Some(existing_uid), Some(used_uid)) if existing_uid == used_uid))
         })
         .collect()
 }
