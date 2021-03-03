@@ -3,11 +3,12 @@ use crate::error::{Error, OperatorResult};
 use crate::{conditions, controller_ref, podutils};
 
 use crate::conditions::ConditionStatus;
-use k8s_openapi::api::core::v1::Pod;
+use k8s_openapi::api::core::v1::{Node, Pod, PodSpec};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, OwnerReference};
 use kube::api::{ListParams, Meta, ObjectMeta};
 use kube_runtime::controller::ReconcilerAction;
 use serde::de::DeserializeOwned;
+use std::collections::BTreeMap;
 use std::future::Future;
 use std::time::Duration;
 
@@ -122,6 +123,85 @@ where
             })
     }
 
+    /*
+    /// Finds nodes in the cluster that match a given labelselector
+    /// This takes a hashmap of String -> LabelSelector and returns
+    /// a map with found nodes per String
+    pub async fn find_nodes_that_fit_selectors(
+        &self,
+        node_groups: HashMap<String, LabelSelector>,
+    ) -> Result<HashMap<String, Vec<Node>>, Error> {
+        let mut found_nodes = HashMap::new();
+        for (group_name, selector) in node_groups {
+            let nodes = self.get_nodes_for_selector(&selector).await?;
+            debug!(
+                "Found [{}] nodes for datanode group [{}]: [{:?}]",
+                nodes.len(),
+                group_name,
+                nodes
+            );
+            found_nodes.insert(group_name, nodes);
+        }
+        Ok(found_nodes)
+    }
+     */
+    /*
+        async fn get_nodes_for_selector(&self, selector: &LabelSelector) -> Result<Vec<Node>, Error> {
+            let api = self.client.get_api(None);
+            let selector_with_stackable = add_stackable_selector(selector);
+            let selector_string = convert_label_selector_to_query_string(selector_with_stackable);
+            debug!(
+                "Got labelselector: [{}]",
+                selector_string.as_ref().unwrap_or(&String::from("None"))
+            );
+            let list_params = ListParams {
+                label_selector: Some(selector_string),
+                ..ListParams::default()
+            };
+            api.list(&list_params)
+                .await
+                .map_err(Error::from)
+                .map(|result| result.items)
+                .map(|nodes| nodes.into_iter().collect())
+        }
+    */
+    /*
+    /// Retrieves all pods that are owned by the resource and removes those that do not have all
+    /// mandatory labels
+    pub async fn delete_illegal_pods(&self, required_labels: &[&str]) -> OperatorResult<Vec<Pod>> {
+        let existing_pods = self.list_pods().await?;
+        let mut deleted_pods = vec![];
+        for pod in existing_pods {
+            if let (
+                Some(labels),
+                Some(PodSpec {
+                    node_name: Some(node_name),
+                    ..
+                }),
+            ) = (&pod.metadata.labels, &pod.spec)
+            {
+                for label_name in required_labels {
+                    if labels.get(label_name as &str).is_none() {
+                        error!("Pod [{:?}] does not have the `{}` label, this is illegal, deleting it.",
+                                pod, label_name);
+                        deleted_pods.push(pod.clone());
+                        self.client.delete(&pod).await?;
+                        continue;
+                    }
+                }
+            } else {
+                error!("HdfsCluster {}: Pod [{:?}] does not have any spec or labels, this is illegal, deleting it.",
+                        self.log_name(),
+                        pod);
+                deleted_pods.push(pod.clone());
+                self.client.delete(&pod).await?;
+            }
+        }
+        Ok(deleted_pods)
+    }
+
+     */
+
     /// Creates a new [`Condition`] for the `resource` this context contains.
     ///
     /// It's a convenience function that passes through all parameters and builds a `Condition`
@@ -183,6 +263,64 @@ fn pod_owned_by(pod: &Pod, owner_uid: &str) -> bool {
     matches!(controller, Some(OwnerReference { uid, .. }) if uid == owner_uid)
 }
 
+/*
+fn add_stackable_selector(selector: &LabelSelector) -> LabelSelector {
+    let mut selector = selector.clone();
+    // Add our specific Stackable selector to ensure we target only Stackable nodes
+    if selector.match_labels.is_none() {
+        selector.match_labels = Some(BTreeMap::new());
+    }
+    selector
+        .match_labels
+        .unwrap()
+        .insert("type".to_string(), "krustlet".to_string());
+    selector
+}
+*/
+/*
+pub async fn find_excess_pods(
+    things: Vec<(Vec<Node>, HashMap<String, Option<String>>)>,
+    pods: Vec<Pod>,
+) -> Vec<Pod> {
+    let mut pods_in_use = Vec::new();
+    for (eligible_nodes, mandatory_label_values) in things {
+        let mut found_pods =
+            find_pods_that_are_in_use(&eligible_nodes, &pods, mandatory_label_values).await;
+        pods_in_use.append(&mut found_pods);
+    }
+    pods.into_iter()
+        .filter(|pod| {
+            !pods_in_use
+                .iter()
+                .any(|used_pod| pod.metadata.uid.unwrap() == used_pod.metadata.uid.unwrap())
+        })
+        .collect()
+}
+
+//pub async fn find_excess_pods() -> Vec<Pod> {}
+pub async fn find_nodes_that_need_pods(
+    candidate_nodes: Vec<Node>,
+    existing_pods: Vec<Pod>,
+    label_values: HashMap<String, Option<String>>,
+) -> Vec<Node> {
+    candidate_nodes
+        .iter()
+        .filter(|node| {
+            !existing_pods.iter().any(|pod| {
+                pod_matches_labels(pod, &label_values)
+                    && pod.spec.unwrap().node_name.unwrap() == node.metadata.name.unwrap()
+            })
+        })
+        .collect()
+}
+*/
+
+/// This function can be used to get a list of Pods that are assigned (via their `spec.node_name` property)
+/// to specific nodes.
+///
+/// This is useful to find all _valid_ pods (i.e. ones that are actually required by an Operator)
+/// so it can be compared against _all_ Pods that belong to the Controller.
+/// All Pods that are not actually in use can be deleted.
 pub fn find_pods_that_are_in_use<'a>(
     candidate_nodes: &[Node],
     existing_pods: &'a [Pod],
@@ -191,11 +329,18 @@ pub fn find_pods_that_are_in_use<'a>(
     existing_pods
         .iter()
         .filter(|pod| {
-            candidate_nodes.iter().any(|node| {
-                pod_matches_labels(pod, &label_values)
-                    && pod.spec.as_ref().unwrap().node_name.as_ref().unwrap()
-                        == node.metadata.name.as_ref().unwrap()
-            })
+            // This tries checks whether the Pod has all the required labels and if it does
+            // it'll try to find a Node with the same `node_name` as the Pod.
+            pod_matches_labels(pod, &label_values)
+                && candidate_nodes.iter().any(|node| {
+                    // This is the part that checks whether the Pod.spec.node_name matches a Node.metadata.name
+                    matches!((pod.spec.as_ref(), node.metadata.name.as_ref()),
+                        (
+                            Some(PodSpec { node_name: Some(ref pod_node_name), ..}),
+                            Some(node_node_name),
+                        ) if pod_node_name == node_node_name
+                    )
+                })
         })
         .collect()
 }
