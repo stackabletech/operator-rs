@@ -5,7 +5,7 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 /// It will return an error if the LabelSelector contains illegal things (e.g. an `Exists` operator
 /// with a value).
 pub fn convert_label_selector_to_query_string(
-    label_selector: LabelSelector,
+    label_selector: &LabelSelector,
 ) -> OperatorResult<String> {
     let mut query_string = String::new();
 
@@ -14,7 +14,7 @@ pub fn convert_label_selector_to_query_string(
     // In a query string each key-value pair will be separated by an "=" and the pairs
     // are then joined on commas.
     // The whole match_labels part is optional so we only do this if there are match labels.
-    label_selector.match_labels.map(|label_map| {
+    if let Some(label_map) = &label_selector.match_labels {
         query_string.push_str(
             &label_map
                 .iter()
@@ -22,11 +22,11 @@ pub fn convert_label_selector_to_query_string(
                 .collect::<Vec<_>>()
                 .join(","),
         );
-    });
+    }
 
     // Match expressions are more complex than match labels, both can appear in the same API call
     // They support these operators: "In", "NotIn", "Exists" and "DoesNotExist"
-    let expressions = label_selector.match_expressions.map(|requirements| {
+    let expressions = label_selector.match_expressions.as_ref().map(|requirements| {
         // If we had match_labels AND we have match_expressions we need to separate those two
         // with a comma.
         if !requirements.is_empty() && !query_string.is_empty() {
@@ -138,7 +138,7 @@ mod tests {
         };
         assert_eq!(
             "foo=bar,hui=buh,foo in (bar),foo in (quick, bar),foo notin (quick, bar),foo,!foo",
-            convert_label_selector_to_query_string(ls).unwrap()
+            convert_label_selector_to_query_string(&ls).unwrap()
         );
 
         let ls = LabelSelector {
@@ -147,14 +147,14 @@ mod tests {
         };
         assert_eq!(
             "foo=bar,hui=buh",
-            convert_label_selector_to_query_string(ls).unwrap()
+            convert_label_selector_to_query_string(&ls).unwrap()
         );
 
         let ls = LabelSelector {
             match_expressions: None,
             match_labels: None,
         };
-        assert_eq!("", convert_label_selector_to_query_string(ls).unwrap());
+        assert_eq!("", convert_label_selector_to_query_string(&ls).unwrap());
     }
 
     #[test]
@@ -171,7 +171,7 @@ mod tests {
             match_labels: None,
         };
 
-        convert_label_selector_to_query_string(ls).unwrap();
+        convert_label_selector_to_query_string(&ls).unwrap();
     }
 
     #[test]
@@ -188,7 +188,7 @@ mod tests {
             match_labels: None,
         };
 
-        convert_label_selector_to_query_string(ls).unwrap();
+        convert_label_selector_to_query_string(&ls).unwrap();
     }
 
     #[test]
@@ -205,6 +205,6 @@ mod tests {
             match_labels: None,
         };
 
-        convert_label_selector_to_query_string(ls).unwrap();
+        convert_label_selector_to_query_string(&ls).unwrap();
     }
 }
