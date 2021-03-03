@@ -3,7 +3,7 @@ use crate::error::{Error, OperatorResult};
 use crate::{conditions, controller_ref, podutils};
 
 use crate::conditions::ConditionStatus;
-use k8s_openapi::api::core::v1::{Node, Pod, PodSpec};
+use k8s_openapi::api::core::v1::{Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, OwnerReference};
 use kube::api::{ListParams, Meta, ObjectMeta};
 use kube_runtime::controller::ReconcilerAction;
@@ -285,9 +285,10 @@ pub async fn find_excess_pods(
     let mut pods_in_use = Vec::new();
     for (eligible_nodes, mandatory_label_values) in things {
         let mut found_pods =
-            find_pods_that_are_in_use(&eligible_nodes, &pods, mandatory_label_values).await;
+            find_pods_that_are_in_use(&eligible_nodes, &pods, mandatory_label_values);
         pods_in_use.append(&mut found_pods);
     }
+
     pods.into_iter()
         .filter(|pod| {
             !pods_in_use
@@ -297,23 +298,46 @@ pub async fn find_excess_pods(
         .collect()
 }
 
-//pub async fn find_excess_pods() -> Vec<Pod> {}
-pub async fn find_nodes_that_need_pods(
-    candidate_nodes: Vec<Node>,
-    existing_pods: Vec<Pod>,
-    label_values: HashMap<String, Option<String>>,
-) -> Vec<Node> {
+/// This function can be used to find Nodes that are missing Pods.
+///
+/// It uses a simple label selector to find matching nodes.
+/// This is not a full LabelSelector because the expectation is that the calling code used a
+/// full LabelSelector to query the Kubernetes API for a set of candidate Nodes.
+///
+/// We now need to check whether these candidate nodes already contain a Pod or not.
+/// That's why we also pass in _all_ Pods that we know about and one or more labels (including optional values).
+/// This method checks if there are pods assigned to a node and if these pods have all required labels.
+/// These labels are _not_ meant to be user-defined but can be used to distinguish between different Pod types.
+///
+/// # Example
+///
+/// * HDFS has multiple roles (NameNode, DataNode, JournalNode)
+/// * Multiple roles may run on the same node
+///
+/// To check whether a certain Node is already running a NameNode Pod it is not enough to just check
+/// if there is a Pod assigned to that node.
+/// We also need to be able to distinguish the different roles.
+/// That's where the labels come in.
+/// In this scenario you'd add a label `hdfs.stackable.tech/role` with the value `NameNode` to each
+/// NameNode Pod.
+/// And this is the label you can now filter on using the `label_values` argument.
+
+// TODO: Tests
+pub async fn find_nodes_that_need_pods<'a>(
+    candidate_nodes: &'a [Node],
+    existing_pods: &[Pod],
+    label_values: &BTreeMap<String, Option<String>>,
+) -> Vec<&'a Node> {
     candidate_nodes
         .iter()
         .filter(|node| {
             !existing_pods.iter().any(|pod| {
-                pod_matches_labels(pod, &label_values)
-                    && pod.spec.unwrap().node_name.unwrap() == node.metadata.name.unwrap()
+                podutils::is_pod_assigned_to_node(pod, node)
+                    && pod_matches_labels(pod, &label_values)
             })
         })
         .collect()
 }
-*/
 
 /// This function can be used to get a list of Pods that are assigned (via their `spec.node_name` property)
 /// to specific nodes.
@@ -328,20 +352,11 @@ pub fn find_pods_that_are_in_use<'a>(
 ) -> Vec<&'a Pod> {
     existing_pods
         .iter()
-        .filter(|pod| {
-            // This tries checks whether the Pod has all the required labels and if it does
+        .filter(|pod|
+            // This checks whether the Pod has all the required labels and if it does
             // it'll try to find a Node with the same `node_name` as the Pod.
-            pod_matches_labels(pod, &label_values)
-                && candidate_nodes.iter().any(|node| {
-                    // This is the part that checks whether the Pod.spec.node_name matches a Node.metadata.name
-                    matches!((pod.spec.as_ref(), node.metadata.name.as_ref()),
-                        (
-                            Some(PodSpec { node_name: Some(ref pod_node_name), ..}),
-                            Some(node_node_name),
-                        ) if pod_node_name == node_node_name
-                    )
-                })
-        })
+            pod_matches_labels(pod, &label_values) && candidate_nodes.iter().any(|node| podutils::is_pod_assigned_to_node(pod, node))
+        )
         .collect()
 }
 
