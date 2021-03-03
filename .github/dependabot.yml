@@ -9,3 +9,8 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    ignore:
+      # We never want to be notified about a kube-rs update
+      # It often contains breaking changes so can't be updated manually anyway
+      # and it needs to be updated together with kube-runtime, kube-derive etc.
+      - dependency-name: "kube*"
