@@ -3,7 +3,7 @@ use crate::error::{Error, OperatorResult};
 use crate::{conditions, controller_ref, podutils};
 
 use crate::conditions::ConditionStatus;
-use k8s_openapi::api::core::v1::{Node, Pod, PodSpec};
+use k8s_openapi::api::core::v1::{Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector, OwnerReference};
 use kube::api::{ListParams, Meta, ObjectMeta};
 use kube_runtime::controller::ReconcilerAction;
@@ -11,7 +11,7 @@ use serde::de::DeserializeOwned;
 use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
 use std::time::Duration;
-use tracing::{debug, error};
+use tracing::debug;
 
 pub type ReconcileResult<E> = std::result::Result<ReconcileFunctionAction, E>;
 
@@ -91,11 +91,19 @@ where
         self.resource.meta().clone()
     }
 
+    /// This lists all Pods that have an OwnerReference that points to us (the object from `self.resource`)
+    /// as its Controller.
+    ///
+    /// Unfortunately the Kubernetes API does _not_ allow filtering by OwnerReference so we have to fetch
+    /// all Pods and filter them on the client.
+    /// To avoid this overhead provide a LabelSelector to narrow down the candidates.
+    /// TODO: LabelSelector not possible yet
     pub async fn list_pods(&self) -> OperatorResult<Vec<Pod>> {
         let api = self.client.get_namespaced_api(&self.namespace());
 
         // TODO: In addition to filtering by OwnerReference (which can only be done client-side)
         // we could also add a custom label.
+        // TODO: This can use the new list_with_label_selector method from Client
 
         // It'd be ideal if we could filter by ownerReferences but that's not possible in K8S today
         // so we apply a custom label to each pod
