@@ -133,9 +133,10 @@ where
     ) -> OperatorResult<HashMap<String, Vec<Node>>> {
         let mut found_nodes = HashMap::new();
         for (group_name, selector) in roles {
-            let nodes = self.get_nodes_for_selector(&selector).await?;
+            // TODO: add_stackable_selector
+            let nodes = self.client.list_with_label_selector(&selector).await?;
             debug!(
-                "Found [{}] nodes for datanode group [{}]: [{:?}]",
+                "Found [{}] nodes for role group [{}]: [{:?}]",
                 nodes.len(),
                 group_name,
                 nodes
@@ -143,25 +144,6 @@ where
             found_nodes.insert(group_name.clone(), nodes);
         }
         Ok(found_nodes)
-    }
-
-    async fn get_nodes_for_selector(&self, selector: &LabelSelector) -> Result<Vec<Node>, Error> {
-        //let selector_with_stackable = add_stackable_selector(selector);
-        let selector_string = convert_label_selector_to_query_string(selector_with_stackable);
-        trace!(
-            "Got LabelSelector: [{}]",
-            selector_string.unwrap_or(&String::from("None"))
-        );
-        let list_params = ListParams {
-            label_selector: Some(selector_string),
-            ..ListParams::default()
-        };
-        self.client
-            .list(None, &list_params)
-            .await
-            .map_err(Error::from)
-            .map(|result| result.items)
-            .map(|nodes| nodes.into_iter().collect())
     }
 
     /*

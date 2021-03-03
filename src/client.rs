@@ -1,4 +1,5 @@
 use crate::error::OperatorResult;
+use crate::label_selector;
 
 use either::Either;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
@@ -73,16 +74,13 @@ impl Client {
     where
         T: Clone + DeserializeOwned + Meta,
     {
-        let selector_string = convert_label_selector_to_query_string(selector_with_stackable);
-        trace!(
-            "Listing for LabelSelector [{}]",
-            selector_string.unwrap_or(&String::from("None"))
-        );
+        let selector_string = label_selector::convert_label_selector_to_query_string(selector)?;
+        trace!("Listing for LabelSelector [{}]", selector_string);
         let list_params = ListParams {
             label_selector: Some(selector_string),
             ..ListParams::default()
         };
-        self.list(None, &list_params)
+        self.list(None, &list_params).await
     }
 
     /// Creates a new resource.
