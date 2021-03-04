@@ -1,6 +1,6 @@
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
-use crate::{conditions, controller_ref, podutils};
+use crate::{conditions, controller_ref, finalizer, podutils};
 
 use crate::conditions::ConditionStatus;
 use k8s_openapi::api::core::v1::{Node, Pod, PodSpec};
