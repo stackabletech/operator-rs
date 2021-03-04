@@ -266,7 +266,7 @@ fn add_stackable_selector(selector: &LabelSelector) -> LabelSelector {
     let mut selector = selector.clone();
     selector
         .match_labels
-        .get_or_insert_with(|| BTreeMap::new())
+        .get_or_insert_with(BTreeMap::new)
         .insert("type".to_string(), "krustlet".to_string());
     selector
 }
@@ -293,7 +293,7 @@ pub fn find_excess_pods<'a>(
     }
 
     // Here we'll filter all existing Pods and will remove all Pods that are in use
-    existing_pods.into_iter()
+    existing_pods.iter()
         .filter(|pod| {
             !used_pods
                 .iter()
