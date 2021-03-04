@@ -3,7 +3,7 @@ use crate::error::{Error, OperatorResult};
 use crate::{conditions, controller_ref, podutils};
 
 use crate::conditions::ConditionStatus;
-use k8s_openapi::api::core::v1::{Node, Pod};
+use k8s_openapi::api::core::v1::{Node, Pod, PodSpec};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector, OwnerReference};
 use kube::api::{ListParams, Meta, ObjectMeta};
 use kube_runtime::controller::ReconcilerAction;
@@ -11,7 +11,7 @@ use serde::de::DeserializeOwned;
 use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
 use std::time::Duration;
-use tracing::debug;
+use tracing::{debug, info};
 
 pub type ReconcileResult<E> = std::result::Result<ReconcileFunctionAction, E>;
 
@@ -157,42 +157,27 @@ where
         Ok(found_nodes)
     }
 
-    /*
-    /// Retrieves all pods that are owned by the resource and removes those that do not have all
-    /// mandatory labels
-    pub async fn delete_illegal_pods(&self, required_labels: &[&str]) -> OperatorResult<Vec<Pod>> {
-        let existing_pods = self.list_pods().await?;
+    /// Checks all passed Pods to see if they fulfil some basic requirements.
+    ///
+    /// * They need to have all required labels and optionally one of a list of allowed values
+    /// * They need to have a spec.node_name
+    ///
+    /// If not they are considered invalid and will be deleted.
+    pub async fn delete_illegal_pods<'a>(
+        &self,
+        pods: &'a [Pod],
+        required_labels: &BTreeMap<String, Option<Vec<String>>>,
+    ) -> OperatorResult<Vec<&'a Pod>> {
         let mut deleted_pods = vec![];
-        for pod in existing_pods {
-            if let (
-                Some(labels),
-                Some(PodSpec {
-                    node_name: Some(node_name),
-                    ..
-                }),
-            ) = (&pod.metadata.labels, &pod.spec)
-            {
-                for label_name in required_labels {
-                    if labels.get(label_name as &str).is_none() {
-                        error!("Pod [{:?}] does not have the `{}` label, this is illegal, deleting it.",
-                                pod, label_name);
-                        deleted_pods.push(pod.clone());
-                        self.client.delete(&pod).await?;
-                        continue;
-                    }
-                }
-            } else {
-                error!("HdfsCluster {}: Pod [{:?}] does not have any spec or labels, this is illegal, deleting it.",
-                        self.log_name(),
-                        pod);
-                deleted_pods.push(pod.clone());
-                self.client.delete(&pod).await?;
+        for pod in pods {
+            if !is_valid_pod(pod, required_labels) {
+                info!("Deleting invalid Pod [{}]", podutils::get_log_name(pod));
+                deleted_pods.push(pod);
+                self.client.delete(pod).await?;
             }
         }
         Ok(deleted_pods)
     }
-
-     */
 
     /// Creates a new [`Condition`] for the `resource` this context contains.
     ///
@@ -271,7 +256,16 @@ fn add_stackable_selector(selector: &LabelSelector) -> LabelSelector {
     selector
 }
 
-pub fn check_pod_requirements(pod: &Pod, required_labels: &[(&str, Option<&[&str]>)]) {}
+// TODO: Docs & Test
+pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<String, Option<Vec<String>>>) -> bool {
+    matches!(
+        pod.spec,
+        Some(PodSpec {
+            node_name: Some(_),
+            ..
+        })
+    ) && pod_matches_multiple_label_values(pod, required_labels)
+}
 
 /// This method can be used to find Pods that are not needed anymore.
 ///
