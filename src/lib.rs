@@ -8,6 +8,7 @@ pub mod error;
 pub mod finalizer;
 pub mod history;
 pub mod k8s_errors;
+pub mod label_selector;
 pub mod metadata;
 pub mod podutils;
 pub mod reconcile;
