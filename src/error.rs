@@ -20,6 +20,9 @@ pub enum Error {
 
     #[error("Object is missing key: {key}")]
     MissingObjectKey { key: &'static str },
+
+    #[error("LabelSelector is invalid: {message}")]
+    InvalidLabelSelector { message: String },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
