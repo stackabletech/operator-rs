@@ -202,7 +202,7 @@ pub trait ReconciliationState {
 /// * TODO It calls a method on the strategy for every deleted resource so cleanup can happen
 ///   * It automatically removes the finalizer
 /// * It creates (via the Strategy) a [`ReconciliationState`] object for every reconciliation and
-///   calls its [`ReconciliationState::reconcile_operations`] method to get a list of operations (Futures) to run
+///   calls its [`ReconciliationState::reconcile`] method to get a list of operations (Futures) to run
 ///   * It then proceeds to poll all those futures serially until one of them does not return `Continue`
 pub struct Controller<T>
 where
