@@ -373,6 +373,21 @@ fn pod_matches_labels(pod: &Pod, expected_labels: &BTreeMap<String, Option<Strin
     podutils::pod_matches_multiple_label_values(pod, &converted)
 }
 
+// TODO: Docs & Test
+// TODO: The T is unused, can I remove it somehow?
+pub async fn wait_for_terminating_pods<T>(pods: &[Pod]) -> ReconcileResult<T> {
+    match pods.iter().any(|pod| finalizer::has_deletion_stamp(pod)) {
+        true => {
+            info!("Found terminating pods, requeuing to await termination!");
+            Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(10)))
+        }
+        false => {
+            debug!("No terminating pods found, continuing");
+            Ok(ReconcileFunctionAction::Continue)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
