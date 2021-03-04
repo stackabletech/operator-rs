@@ -400,6 +400,11 @@ fn pod_matches_multiple_label_values(
         //   * Just the label key (expected_value == None)
         //   * Key and Value
         if !pod_labels.contains_key(expected_key) {
+            debug!(
+                "Pod [{}] is missing label [{}]",
+                Meta::name(pod),
+                expected_key
+            );
             return false;
         }
 
@@ -408,6 +413,7 @@ fn pod_matches_multiple_label_values(
             let pod_value = pod_labels.get(expected_key).unwrap();
 
             if !expected_values.iter().any(|value| value == pod_value) {
+                debug!("Pod [{}] has correct label [{}] but the wrong value (has: [{}], should have one of: [{:?}]", Meta::name(pod), expected_key, pod_value, expected_values);
                 return false;
             }
         }
