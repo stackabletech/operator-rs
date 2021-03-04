@@ -263,9 +263,8 @@ fn pod_owned_by(pod: &Pod, owner_uid: &str) -> bool {
 ///
 /// We will not however change the original LabelSelector, a new one will be returned.
 fn add_stackable_selector(selector: &LabelSelector) -> LabelSelector {
-    let selector = selector.clone();
+    let mut selector = selector.clone();
     selector
-        .clone()
         .match_labels
         .get_or_insert_with(|| BTreeMap::new())
         .insert("type".to_string(), "krustlet".to_string());
@@ -280,7 +279,7 @@ pub fn check_pod_requirements(pod: &Pod, required_labels: &[(&str, Option<&[&str
 /// We'll do this for an arbitrary number of Node lists and match labels.
 // TODO: Test and docs
 pub fn find_excess_pods<'a>(
-    nodes_and_labels: &[(&[Node], &BTreeMap<String, Option<String>>)],
+    nodes_and_labels: &[(&[Node], BTreeMap<String, Option<String>>)],
     existing_pods: &'a [Pod],
 ) -> Vec<&'a Pod> {
     let mut used_pods = Vec::new();
@@ -351,6 +350,7 @@ pub async fn find_nodes_that_need_pods<'a>(
 /// This is useful to find all _valid_ pods (i.e. ones that are actually required by an Operator)
 /// so it can be compared against _all_ Pods that belong to the Controller.
 /// All Pods that are not actually in use can be deleted.
+/// TODO: Docs
 pub fn find_pods_that_are_in_use<'a>(
     candidate_nodes: &[Node],
     existing_pods: &'a [Pod],
@@ -367,6 +367,23 @@ pub fn find_pods_that_are_in_use<'a>(
 }
 
 fn pod_matches_labels(pod: &Pod, expected_labels: &BTreeMap<String, Option<String>>) -> bool {
+    let converted = expected_labels
+        .iter()
+        .map(|(key, value)| {
+            (
+                key.clone(),
+                value.as_ref().map(|string| vec![string.clone()]),
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    pod_matches_multiple_label_values(pod, &converted)
+}
+
+// TODO: Docs
+fn pod_matches_multiple_label_values(
+    pod: &Pod,
+    expected_labels: &BTreeMap<String, Option<Vec<String>>>,
+) -> bool {
     let pod_labels = &pod.metadata.labels;
 
     for (expected_key, expected_value) in expected_labels {
@@ -386,9 +403,11 @@ fn pod_matches_labels(pod: &Pod, expected_labels: &BTreeMap<String, Option<Strin
             return false;
         }
 
-        if let Some(expected_value) = expected_value {
+        if let Some(expected_values) = expected_value {
             // unwrap is fine here as we already checked earlier if the key exists
-            if pod_labels.get(expected_key).unwrap() != expected_value {
+            let pod_value = pod_labels.get(expected_key).unwrap();
+
+            if !expected_values.iter().any(|value| value == pod_value) {
                 return false;
             }
         }
@@ -572,20 +591,17 @@ mod tests {
         };
 
         // LS didn't have any match_label
-        add_stackable_selector(&mut ls);
         assert!(
-            matches!(ls.match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
+            matches!(add_stackable_selector(&ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
         );
 
         // LS has labels but no conflicts with our own
         let mut labels = BTreeMap::new();
-
         labels.insert("foo".to_string(), "bar".to_string());
 
         ls.match_labels = Some(labels);
-        add_stackable_selector(&mut ls);
         assert!(
-            matches!(ls.match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
+            matches!(add_stackable_selector(&mut ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
         );
 
         // LS already has a LS that matches our internal one
@@ -593,9 +609,8 @@ mod tests {
         labels.insert("foo".to_string(), "bar".to_string());
         labels.insert("type".to_string(), "foobar".to_string());
         ls.match_labels = Some(labels);
-        add_stackable_selector(&mut ls);
         assert!(
-            matches!(ls.match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
+            matches!(add_stackable_selector(&mut ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
         );
     }
 
