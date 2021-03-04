@@ -135,6 +135,8 @@ where
     /// Finds nodes in the cluster that match a given LabelSelector
     /// This takes a hashmap of String -> LabelSelector and returns
     /// a map with found nodes per String
+    ///
+    /// This will only match Stackable nodes (Nodes with a special label).
     /// TODO: Docs & Tests
     pub async fn find_nodes_that_fit_selectors(
         &self,
@@ -142,7 +144,7 @@ where
     ) -> OperatorResult<HashMap<String, Vec<Node>>> {
         let mut found_nodes = HashMap::new();
         for (group_name, selector) in roles {
-            // TODO: add_stackable_selector
+            let selector = add_stackable_selector(selector);
             let nodes = self.client.list_with_label_selector(&selector).await?;
             debug!(
                 "Found [{}] nodes for role group [{}]: [{:?}]",
@@ -258,11 +260,16 @@ fn pod_owned_by(pod: &Pod, owner_uid: &str) -> bool {
 ///
 /// WARN: Should a label "type" already be used this will be overridden!
 /// If this is really needed add a match…expression
-fn add_stackable_selector(selector: &mut LabelSelector) {
+///
+/// We will not however change the original LabelSelector, a new one will be returned.
+fn add_stackable_selector(selector: &LabelSelector) -> LabelSelector {
+    let selector = selector.clone();
     selector
+        .clone()
         .match_labels
         .get_or_insert_with(|| BTreeMap::new())
         .insert("type".to_string(), "krustlet".to_string());
+    selector
 }
 
 pub fn check_pod_requirements(pod: &Pod, required_labels: &[(&str, Option<&[&str]>)]) {}
