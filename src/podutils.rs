@@ -1,6 +1,9 @@
+use std::collections::BTreeMap;
+use std::fmt::{Debug, Display, Formatter, Result};
+
 use k8s_openapi::api::core::v1::{Node, Pod, PodCondition, PodSpec, PodStatus};
 use kube::api::Meta;
-use std::fmt::{Debug, Display, Formatter, Result};
+use tracing::debug;
 
 /// While the `phase` field of a Pod is a string only the values from this enum are allowed.
 #[derive(Debug, Eq, PartialEq)]
@@ -108,41 +111,102 @@ pub fn is_pod_assigned_to_node(pod: &Pod, node: &Node) -> bool {
     )
 }
 
+/// This method checks if a Pod contains all required labels including an optional check for values.
+///
+/// # Arguments
+///
+/// * `pod` - the Pod to check for labels
+/// * `required_labels` - is a BTreeMap of label keys to an optional vector of label values.
+///                       Multiple values can be passed in but the Pod must obviously match
+///                       _any_ of the values to be accepted
+///
+/// # Example
+///
+/// ```
+/// use stackable_operator::podutils;
+/// # use k8s_openapi::api::core::v1::{Pod, PodSpec};
+/// # use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
+/// use std::collections::BTreeMap;
+///
+/// # let pod = Pod {
+/// #            metadata: ObjectMeta {
+/// #                ..ObjectMeta::default()
+/// #            },
+/// #            spec: None,
+/// #            status: None,
+/// #        };
+///
+/// let mut required_labels = BTreeMap::new();
+/// required_labels.insert("foo".to_string(), None);
+///
+/// assert!(!podutils::pod_matches_multiple_label_values(&pod, &required_labels));
+/// ```
+pub fn pod_matches_multiple_label_values(
+    pod: &Pod,
+    required_labels: &BTreeMap<String, Option<Vec<String>>>,
+) -> bool {
+    let pod_labels = &pod.metadata.labels;
+
+    for (expected_key, expected_value) in required_labels {
+        // We only do this here because `expected_labels` might be empty in which case
+        // it's totally fine if the Pod doesn't have any labels.
+        // Now however we're definitely looking for a key so if the Pod doesn't have any labels
+        // it will never be able to match.
+        let pod_labels = match pod_labels {
+            None => return false,
+            Some(pod_labels) => pod_labels,
+        };
+
+        // We can match two kinds:
+        //   * Just the label key (expected_value == None)
+        //   * Key and Value
+        if !pod_labels.contains_key(expected_key) {
+            debug!(
+                "Pod [{}] is missing label [{}]",
+                Meta::name(pod),
+                expected_key
+            );
+            return false;
+        }
+
+        if let Some(expected_values) = expected_value {
+            // unwrap is fine here as we already checked earlier if the key exists
+            let pod_value = pod_labels.get(expected_key).unwrap();
+
+            if !expected_values.iter().any(|value| value == pod_value) {
+                debug!("Pod [{}] has correct label [{}] but the wrong value (has: [{}], should have one of: [{:?}]", Meta::name(pod), expected_key, pod_value, expected_values);
+                return false;
+            }
+        }
+    }
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use k8s_openapi::api::core::v1::{Pod, PodCondition, PodSpec, PodStatus};
-    use kube::api::ObjectMeta;
+    use crate::test::PodBuilder;
+    use k8s_openapi::api::core::v1::{Pod, PodCondition, PodStatus};
 
     #[test]
     fn test_is_pod_assigned_to_node() {
-        let mut pod_spec = PodSpec::default();
-        let mut pod = Pod {
-            spec: Some(pod_spec.clone()),
-            ..Pod::default()
-        };
-
+        // Pod with no node_name
+        let pod = PodBuilder::new().build();
         assert!(!is_pod_assigned_to_node_name(&pod, "foobar"));
 
-        pod_spec.node_name = Some("foobar".to_string());
-        pod.spec = Some(pod_spec);
+        // Pod with node_name, matches one but not the other
+        let mut pod = PodBuilder::new().node_name("foobar").build();
         assert!(is_pod_assigned_to_node_name(&pod, "foobar"));
         assert!(!is_pod_assigned_to_node_name(&pod, "barfoo"));
 
+        // Pod with empty spec doesn't match
         pod.spec = None;
         assert!(!is_pod_assigned_to_node_name(&pod, "foobar"));
     }
 
     #[test]
     fn test_get_log_name() {
-        let mut pod = Pod {
-            metadata: ObjectMeta {
-                name: Some("bar".to_string()),
-                ..ObjectMeta::default()
-            },
-            ..Pod::default()
-        };
-
+        let mut pod = PodBuilder::new().name("bar").build();
         assert_eq!("[<no namespace>/bar]", get_log_name(&pod));
 
         pod.metadata.namespace = Some("foo".to_string());

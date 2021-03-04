@@ -264,7 +264,7 @@ pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<String, Option<Vec<Str
             node_name: Some(_),
             ..
         })
-    ) && pod_matches_multiple_label_values(pod, required_labels)
+    ) && podutils::pod_matches_multiple_label_values(pod, required_labels)
 }
 
 /// This method can be used to find Pods that are not needed anymore.
@@ -370,55 +370,13 @@ fn pod_matches_labels(pod: &Pod, expected_labels: &BTreeMap<String, Option<Strin
             )
         })
         .collect::<BTreeMap<_, _>>();
-    pod_matches_multiple_label_values(pod, &converted)
-}
-
-// TODO: Docs
-fn pod_matches_multiple_label_values(
-    pod: &Pod,
-    expected_labels: &BTreeMap<String, Option<Vec<String>>>,
-) -> bool {
-    let pod_labels = &pod.metadata.labels;
-
-    for (expected_key, expected_value) in expected_labels {
-        // We only do this here because `expected_labels` might be empty in which case
-        // it's totally fine if the Pod doesn't have any labels.
-        // Now however we're definitely looking for a key so if the Pod doesn't have any labels
-        // it will never be able to match.
-        let pod_labels = match pod_labels {
-            None => return false,
-            Some(pod_labels) => pod_labels,
-        };
-
-        // We can match two kinds:
-        //   * Just the label key (expected_value == None)
-        //   * Key and Value
-        if !pod_labels.contains_key(expected_key) {
-            debug!(
-                "Pod [{}] is missing label [{}]",
-                Meta::name(pod),
-                expected_key
-            );
-            return false;
-        }
-
-        if let Some(expected_values) = expected_value {
-            // unwrap is fine here as we already checked earlier if the key exists
-            let pod_value = pod_labels.get(expected_key).unwrap();
-
-            if !expected_values.iter().any(|value| value == pod_value) {
-                debug!("Pod [{}] has correct label [{}] but the wrong value (has: [{}], should have one of: [{:?}]", Meta::name(pod), expected_key, pod_value, expected_values);
-                return false;
-            }
-        }
-    }
-    true
+    podutils::pod_matches_multiple_label_values(pod, &converted)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use k8s_openapi::api::core::v1::PodSpec;
+    use crate::test::*;
     use std::collections::BTreeMap;
 
     #[test]
@@ -612,30 +570,5 @@ mod tests {
         assert!(
             matches!(add_stackable_selector(&mut ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
         );
-    }
-
-    fn build_test_node(name: &str) -> Node {
-        Node {
-            metadata: ObjectMeta {
-                name: Some(name.to_string()),
-                ..ObjectMeta::default()
-            },
-            spec: None,
-            status: None,
-        }
-    }
-
-    fn build_test_pod(node_name: Option<&str>, labels: Option<BTreeMap<String, String>>) -> Pod {
-        Pod {
-            metadata: ObjectMeta {
-                labels,
-                ..ObjectMeta::default()
-            },
-            spec: Some(PodSpec {
-                node_name: node_name.map(|name| name.to_string()),
-                ..PodSpec::default()
-            }),
-            status: None,
-        }
     }
 }

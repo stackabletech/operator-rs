@@ -18,3 +18,6 @@ pub mod reconcile;
 pub mod validation;
 
 pub use crate::crd::Crd;
+
+#[cfg(test)]
+mod test;
