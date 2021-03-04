@@ -135,6 +135,7 @@ where
     /// Finds nodes in the cluster that match a given LabelSelector
     /// This takes a hashmap of String -> LabelSelector and returns
     /// a map with found nodes per String
+    /// TODO: Docs & Tests
     pub async fn find_nodes_that_fit_selectors(
         &self,
         roles: &HashMap<String, LabelSelector>,
@@ -252,20 +253,17 @@ fn pod_owned_by(pod: &Pod, owner_uid: &str) -> bool {
     matches!(controller, Some(OwnerReference { uid, .. }) if uid == owner_uid)
 }
 
-/*
-fn add_stackable_selector(selector: &LabelSelector) -> LabelSelector {
-    let mut selector = selector.clone();
-    // Add our specific Stackable selector to ensure we target only Stackable nodes
-    if selector.match_labels.is_none() {
-        selector.match_labels = Some(BTreeMap::new());
-    }
+/// Helper method to make sure that any LabelSelector we use only matches our own "special" nodes.
+/// At the moment this label is "type" with the value "krustlet" and we'll use match_labels.
+///
+/// WARN: Should a label "type" already be used this will be overridden!
+/// If this is really needed add a match…expression
+fn add_stackable_selector(selector: &mut LabelSelector) {
     selector
         .match_labels
-        .unwrap()
+        .get_or_insert_with(|| BTreeMap::new())
         .insert("type".to_string(), "krustlet".to_string());
-    selector
 }
-*/
 
 pub fn check_pod_requirements(pod: &Pod, required_labels: &[(&str, Option<&[&str]>)]) {}
 
@@ -556,6 +554,41 @@ mod tests {
         assert_eq!(
             1,
             find_pods_that_are_in_use(&nodes, &existing_pods, &expected_labels).len()
+        );
+    }
+
+    #[test]
+    fn test_add_stackable_selector() {
+        let mut ls = LabelSelector {
+            match_expressions: None,
+            match_labels: None,
+        };
+
+        // LS didn't have any match_label
+        add_stackable_selector(&mut ls);
+        assert!(
+            matches!(ls.match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
+        );
+
+        // LS has labels but no conflicts with our own
+        let mut labels = BTreeMap::new();
+
+        labels.insert("foo".to_string(), "bar".to_string());
+
+        ls.match_labels = Some(labels);
+        add_stackable_selector(&mut ls);
+        assert!(
+            matches!(ls.match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
+        );
+
+        // LS already has a LS that matches our internal one
+        let mut labels = BTreeMap::new();
+        labels.insert("foo".to_string(), "bar".to_string());
+        labels.insert("type".to_string(), "foobar".to_string());
+        ls.match_labels = Some(labels);
+        add_stackable_selector(&mut ls);
+        assert!(
+            matches!(ls.match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
         );
     }
 
