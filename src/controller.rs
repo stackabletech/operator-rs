@@ -241,12 +241,16 @@ where
 
     /// Call this method once your Controller object is fully configured.
     /// It'll start talking to Kubernetes and will call the `Strategy` implementation.
-    pub async fn run<S>(self, client: Client, strategy: S)
+    pub async fn run<S>(self, client: Client, strategy: S, requeue_timeout: Duration)
     where
         S: ControllerStrategy<Item = T> + Send + Sync + 'static,
         S::State: Send,
     {
-        let context = Context::new(ControllerContext { client, strategy });
+        let context = Context::new(ControllerContext {
+            client,
+            strategy,
+            requeue_timeout,
+        });
 
         self.kube_controller
             .run(reconcile, error_policy, context)
@@ -285,6 +289,7 @@ where
 {
     client: Client,
     strategy: S,
+    requeue_timeout: Duration,
 }
 
 /// This method contains the logic of reconciling an object (the desired state) we received with the actual state.
@@ -318,7 +323,11 @@ where
 
     add_finalizer(&resource, client.clone(), &strategy.finalizer_name()).await?;
 
-    let rc = ReconciliationContext::new(context.client.clone(), resource.clone());
+    let rc = ReconciliationContext::new(
+        context.client.clone(),
+        resource.clone(),
+        context.requeue_timeout,
+    );
 
     let mut state = match strategy.init_reconcile_state(rc).in_current_span().await {
         Ok(state) => state,
@@ -404,7 +413,7 @@ where
         debug!("Finalizer already exists, continuing...",);
     } else {
         debug!("Finalizer missing, adding now and continuing...",);
-        finalizer::add_finalizer(client, resource, finalizer_name).await?;
+        finalizer::add_finalizer(&client, resource, finalizer_name).await?;
     }
     Ok(())
 }

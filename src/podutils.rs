@@ -183,6 +183,26 @@ pub fn pod_matches_multiple_label_values(
     true
 }
 
+// TODO: Docs & Test
+pub fn find_invalid_pods<'a>(
+    pods: &'a [Pod],
+    required_labels: &BTreeMap<String, Option<Vec<String>>>,
+) -> Vec<&'a Pod> {
+    pods.iter()
+        .filter(|pod| !is_valid_pod(pod, required_labels))
+        .collect()
+}
+
+pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<String, Option<Vec<String>>>) -> bool {
+    matches!(
+        pod.spec,
+        Some(PodSpec {
+            node_name: Some(_),
+            ..
+        })
+    ) && pod_matches_multiple_label_values(pod, required_labels)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

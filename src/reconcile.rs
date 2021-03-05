@@ -3,7 +3,7 @@ use crate::error::{Error, OperatorResult};
 use crate::{conditions, controller_ref, finalizer, podutils};
 
 use crate::conditions::ConditionStatus;
-use k8s_openapi::api::core::v1::{Node, Pod, PodSpec};
+use k8s_openapi::api::core::v1::{Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector, OwnerReference};
 use kube::api::{ListParams, Meta, ObjectMeta};
 use kube_runtime::controller::ReconcilerAction;
@@ -57,14 +57,43 @@ pub fn create_requeuing_reconcile_function_action(secs: u64) -> ReconcileFunctio
     ReconcileFunctionAction::Requeue(Duration::from_secs(secs))
 }
 
+#[derive(Eq, PartialEq)]
+pub enum DeletionStrategy {
+    /// Will delete all illegal pods and continue with the reconciliation
+    AllContinue,
+
+    /// Will delete all illegal pods and requeue
+    AllRequeue,
+
+    /// Will delete just one illegal pod at a time and requeue
+    One,
+}
+
 pub struct ReconciliationContext<T> {
     pub client: Client,
     pub resource: T,
+    pub requeue_timeout: Duration,
 }
 
 impl<T> ReconciliationContext<T> {
-    pub fn new(client: Client, resource: T) -> Self {
-        ReconciliationContext { client, resource }
+    pub fn new(client: Client, resource: T, requeue_timeout: Duration) -> Self {
+        ReconciliationContext {
+            client,
+            resource,
+            requeue_timeout,
+        }
+    }
+}
+
+impl<T> ReconciliationContext<T> {
+    pub async fn are_pods_running_and_ready(&self, pods: &[Pod]) -> ReconcileResult<Error> {
+        for pod in pods {
+            if !podutils::is_pod_running_and_ready(pod) {
+                // TODO: Why does this not complain about moving out self.requeue_timeout?
+                return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
+            }
+        }
+        Ok(ReconcileFunctionAction::Continue)
     }
 }
 
@@ -167,16 +196,30 @@ where
         &self,
         pods: &'a [Pod],
         required_labels: &BTreeMap<String, Option<Vec<String>>>,
-    ) -> OperatorResult<Vec<&'a Pod>> {
-        let mut deleted_pods = vec![];
-        for pod in pods {
-            if !is_valid_pod(pod, required_labels) {
-                info!("Deleting invalid Pod [{}]", podutils::get_log_name(pod));
-                deleted_pods.push(pod);
-                self.client.delete(pod).await?;
+        deletion_strategy: DeletionStrategy,
+    ) -> ReconcileResult<Error> {
+        let illegal_pods = podutils::find_invalid_pods(pods, required_labels);
+        if illegal_pods.is_empty() {
+            return Ok(ReconcileFunctionAction::Continue);
+        }
+
+        for illegal_pod in illegal_pods {
+            info!(
+                "Deleting invalid Pod [{}]",
+                podutils::get_log_name(illegal_pod)
+            );
+            self.client.delete(illegal_pod).await?;
+
+            if deletion_strategy == DeletionStrategy::One {
+                return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
             }
         }
-        Ok(deleted_pods)
+
+        if deletion_strategy == DeletionStrategy::AllRequeue {
+            return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
+        }
+
+        Ok(ReconcileFunctionAction::Continue)
     }
 
     /// Creates a new [`Condition`] for the `resource` this context contains.
@@ -230,6 +273,14 @@ where
         );
         self.set_condition(condition).await
     }
+
+    /// Adds our finalizer to the list of finalizers.
+    /// It is a wrapper around [`finalizer::add_finalizer`].
+    /// Will either return an Error or [`ReconcileFunctionAction::Continue`].
+    pub async fn add_finalizer(&self, finalizer: &str) -> ReconcileResult<Error> {
+        finalizer::add_finalizer(&self.client, &self.resource, finalizer).await?;
+        Ok(ReconcileFunctionAction::Continue)
+    }
 }
 
 /// This returns `false` for Pods that have no OwnerReference (with a Controller flag)
@@ -254,17 +305,6 @@ fn add_stackable_selector(selector: &LabelSelector) -> LabelSelector {
         .get_or_insert_with(BTreeMap::new)
         .insert("type".to_string(), "krustlet".to_string());
     selector
-}
-
-// TODO: Docs & Test
-pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<String, Option<Vec<String>>>) -> bool {
-    matches!(
-        pod.spec,
-        Some(PodSpec {
-            node_name: Some(_),
-            ..
-        })
-    ) && podutils::pod_matches_multiple_label_values(pod, required_labels)
 }
 
 /// This method can be used to find Pods that are not needed anymore.
@@ -375,7 +415,7 @@ fn pod_matches_labels(pod: &Pod, expected_labels: &BTreeMap<String, Option<Strin
 
 // TODO: Docs & Test
 // TODO: The T is unused, can I remove it somehow?
-pub async fn wait_for_terminating_pods<T>(pods: &[Pod]) -> ReconcileResult<T> {
+pub async fn wait_for_terminating_pods(pods: &[Pod]) -> ReconcileResult<Error> {
     match pods.iter().any(|pod| finalizer::has_deletion_stamp(pod)) {
         true => {
             info!("Found terminating pods, requeuing to await termination!");
