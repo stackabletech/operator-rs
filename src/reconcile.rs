@@ -83,10 +83,8 @@ impl<T> ReconciliationContext<T> {
             requeue_timeout,
         }
     }
-}
 
-impl<T> ReconciliationContext<T> {
-    pub async fn are_pods_running_and_ready(&self, pods: &[Pod]) -> ReconcileResult<Error> {
+    pub async fn wait_for_running_and_ready_pods(&self, pods: &[Pod]) -> ReconcileResult<Error> {
         for pod in pods {
             if !podutils::is_pod_running_and_ready(pod) {
                 // TODO: Why does this not complain about moving out self.requeue_timeout?
@@ -94,6 +92,20 @@ impl<T> ReconciliationContext<T> {
             }
         }
         Ok(ReconcileFunctionAction::Continue)
+    }
+
+    // TODO: Docs & Test
+    pub async fn wait_for_terminating_pods(&self, pods: &[Pod]) -> ReconcileResult<Error> {
+        match pods.iter().any(|pod| finalizer::has_deletion_stamp(pod)) {
+            true => {
+                info!("Found terminating pods, requeuing to await termination!");
+                Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout))
+            }
+            false => {
+                debug!("No terminating pods found, continuing");
+                Ok(ReconcileFunctionAction::Continue)
+            }
+        }
     }
 }
 
@@ -400,6 +412,7 @@ pub fn find_pods_that_are_in_use<'a>(
         .collect()
 }
 
+// TODO: Move to podutils and rename? matches_labels?
 fn pod_matches_labels(pod: &Pod, expected_labels: &BTreeMap<String, Option<String>>) -> bool {
     let converted = expected_labels
         .iter()
@@ -411,21 +424,6 @@ fn pod_matches_labels(pod: &Pod, expected_labels: &BTreeMap<String, Option<Strin
         })
         .collect::<BTreeMap<_, _>>();
     podutils::pod_matches_multiple_label_values(pod, &converted)
-}
-
-// TODO: Docs & Test
-// TODO: The T is unused, can I remove it somehow?
-pub async fn wait_for_terminating_pods(pods: &[Pod]) -> ReconcileResult<Error> {
-    match pods.iter().any(|pod| finalizer::has_deletion_stamp(pod)) {
-        true => {
-            info!("Found terminating pods, requeuing to await termination!");
-            Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(10)))
-        }
-        false => {
-            debug!("No terminating pods found, continuing");
-            Ok(ReconcileFunctionAction::Continue)
-        }
-    }
 }
 
 #[cfg(test)]
