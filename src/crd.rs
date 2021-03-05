@@ -113,6 +113,7 @@ where
     client.create(&crd).await.and(Ok(()))
 }
 
+/// Waits until CRD of given type `T` is applied to Kubernetes.
 pub async fn wait_ready<T>(client: Client) -> OperatorResult<()>
 where
     T: Crd,

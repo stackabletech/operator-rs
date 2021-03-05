@@ -313,6 +313,12 @@ impl Client {
         Api::namespaced(self.client.clone(), namespace)
     }
 
+    /// Waits until given resource with metadata is recognized as applied by Kubernetes API
+    ///
+    /// # Arguments
+    ///
+    /// - `namespace` - Optional namespace to look for the resources in.
+    /// - `lp` - Parameters to filter resources in given namespace.
     pub async fn wait_ready<T>(&self, namespace: Option<String>, lp: ListParams)
     where
         T: Meta + Clone + DeserializeOwned + Send + 'static,
@@ -323,10 +329,10 @@ impl Client {
         while let Some(result) = watcher.next().await {
             match result {
                 Ok(event) => match event {
-                    Event::Applied(_) | Event::Deleted(_) => {
+                    Event::Applied(_) | Event::Restarted(_) => {
                         break;
                     }
-                    Event::Restarted(_) => {
+                    Event::Deleted(_) => {
                         continue;
                     }
                 },
