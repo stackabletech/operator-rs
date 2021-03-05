@@ -1,9 +1,12 @@
-use crate::client::Client;
-use crate::error::{Error, OperatorResult};
+use std::time::Duration;
 
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
 use kube::error::ErrorResponse;
 use tracing::info;
+
+use crate::client::Client;
+use crate::error::{Error, OperatorResult};
+use kube::api::ListParams;
 
 /// This trait can be implemented to allow automatic handling
 /// (e.g. creation) of `CustomResourceDefinition`s in Kubernetes.
@@ -61,11 +64,16 @@ where
     }
 }
 
-/// This makes sure the CRD is registered in the apiserver.
-/// Currently this does not retry internally.
-/// This means that running it again _might_ work in case of transient errors.
-// TODO: Make sure to wait until it's enabled in the apiserver
-pub async fn ensure_crd_created<T>(client: Client) -> OperatorResult<()>
+/// Makes sure CRD of given type `T` is running and accepted by the Kubernetes apiserver.
+/// If the CRD already exists at the time this method is invoked, this method exits.
+/// If there is no CRD of type `T` yet, it will attempt to create it and verify k8s apiserver
+/// applied the CRD.
+///
+/// # Parameters
+/// - `client`: Client to connect to Kubernetes API and create the CRD with
+/// - `timeout`: If specified, retries creating the CRD for given `Duration`. If not specified,
+///     retries indefinitely.
+pub async fn ensure_crd_created<T>(client: Client, timeout: Option<Duration>) -> OperatorResult<()>
 where
     T: Crd,
 {
@@ -74,8 +82,22 @@ where
         Ok(())
     } else {
         info!("CRD not detected in Kubernetes. Attempting to create it.");
-        create::<T>(client).await
-        // TODO: Maybe retry?
+
+        let crd_created = async {
+            loop {
+                if let Ok(res) = create::<T>(client.clone()).await {
+                    break res;
+                }
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+            wait_ready::<T>(client.clone()).await?;
+            Ok(())
+        };
+        if let Some(timeout) = timeout {
+            tokio::time::timeout(timeout, crd_created).await?
+        } else {
+            crd_created.await
+        }
     }
 }
 
@@ -89,4 +111,18 @@ where
 {
     let crd: CustomResourceDefinition = serde_yaml::from_str(T::CRD_DEFINITION)?;
     client.create(&crd).await.and(Ok(()))
+}
+
+pub async fn wait_ready<T>(client: Client) -> OperatorResult<()>
+where
+    T: Crd,
+{
+    let lp: ListParams = ListParams {
+        field_selector: Some(format!("metadata.name={}", T::RESOURCE_NAME)),
+        ..ListParams::default()
+    };
+    client
+        .wait_ready::<CustomResourceDefinition>(None, lp)
+        .await;
+    Ok(())
 }

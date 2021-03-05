@@ -5,12 +5,15 @@ use crate::podutils;
 
 use either::Either;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
+use futures::StreamExt;
 use k8s_openapi::Resource;
 use kube::api::{DeleteParams, ListParams, Meta, Patch, PatchParams, PostParams};
 use kube::client::{Client as KubeClient, Status};
 use kube::Api;
+use kube_runtime::watcher::Event;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use tracing::debug;
 use tracing::trace;
 
 /// This `Client` can be used to access Kubernetes.
@@ -236,7 +239,7 @@ impl Client {
     /// It checks whether the resource is already deleted by looking at the `deletion_timestamp`
     /// of the resource using the [`finalizer::has_deletion_stamp`] method.
     /// If that is the case it'll return a `Ok(None)`.
-    ///    
+    ///
     /// In case the object is actually deleted or marked for deletion there are two possible
     /// return types.
     /// Which of the two are returned depends on the API being called.
@@ -308,6 +311,30 @@ impl Client {
         T: Resource,
     {
         Api::namespaced(self.client.clone(), namespace)
+    }
+
+    pub async fn wait_ready<T>(&self, namespace: Option<String>, lp: ListParams)
+    where
+        T: Meta + Clone + DeserializeOwned + Send + 'static,
+    {
+        let api: Api<T> = self.get_api(namespace);
+        let mut watcher = kube_runtime::watcher(api, lp).boxed();
+
+        while let Some(result) = watcher.next().await {
+            match result {
+                Ok(event) => match event {
+                    Event::Applied(_) | Event::Deleted(_) => {
+                        break;
+                    }
+                    Event::Restarted(_) => {
+                        continue;
+                    }
+                },
+                Err(err) => {
+                    debug!("Error while waiting for readiness: {}", err);
+                }
+            }
+        }
     }
 }
 
