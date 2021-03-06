@@ -111,7 +111,7 @@
 //!     let controller = Controller::new(pods_api);
 //!
 //!     let strategy = FooStrategy {};
-//!     controller.run(client, strategy).await;
+//!     controller.run(client, strategy, Duration::from_secs(10)).await;
 //! }
 //! ```
 //!
