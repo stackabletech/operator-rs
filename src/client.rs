@@ -55,7 +55,8 @@ impl Client {
     }
 
     /// Retrieves all instances of the requested resource type.
-    /// NOTE: This _currently_ does not support label selectors
+    ///
+    /// The `list_params` parameter can be used to pass in a `label_selector` or a `field_selector`.
     pub async fn list<T>(
         &self,
         namespace: Option<String>,
