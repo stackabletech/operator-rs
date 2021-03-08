@@ -1,13 +1,15 @@
 use crate::error::OperatorResult;
+use crate::label_selector;
 
 use either::Either;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
 use k8s_openapi::Resource;
 use kube::api::{DeleteParams, ListParams, Meta, Patch, PatchParams, PostParams};
 use kube::client::{Client as KubeClient, Status};
 use kube::Api;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use tracing::trace;
 
 /// This `Client` can be used to access Kubernetes.
 /// It wraps an underlying [kube::client::Client] and provides some common functionality.
@@ -54,15 +56,31 @@ impl Client {
 
     /// Retrieves all instances of the requested resource type.
     /// NOTE: This _currently_ does not support label selectors
-    pub async fn list<T>(&self, namespace: Option<String>) -> OperatorResult<Vec<T>>
+    pub async fn list<T>(
+        &self,
+        namespace: Option<String>,
+        list_params: &ListParams,
+    ) -> OperatorResult<Vec<T>>
     where
         T: Clone + DeserializeOwned + Meta,
     {
-        Ok(self
-            .get_api(namespace)
-            .list(&ListParams::default())
-            .await?
-            .items)
+        Ok(self.get_api(namespace).list(&list_params).await?.items)
+    }
+
+    pub async fn list_with_label_selector<T>(
+        &self,
+        selector: &LabelSelector,
+    ) -> OperatorResult<Vec<T>>
+    where
+        T: Clone + DeserializeOwned + Meta,
+    {
+        let selector_string = label_selector::convert_label_selector_to_query_string(selector)?;
+        trace!("Listing for LabelSelector [{}]", selector_string);
+        let list_params = ListParams {
+            label_selector: Some(selector_string),
+            ..ListParams::default()
+        };
+        self.list(None, &list_params).await
     }
 
     /// Creates a new resource.
