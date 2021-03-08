@@ -57,18 +57,6 @@ pub fn create_requeuing_reconcile_function_action(secs: u64) -> ReconcileFunctio
     ReconcileFunctionAction::Requeue(Duration::from_secs(secs))
 }
 
-#[derive(Eq, PartialEq)]
-pub enum DeletionStrategy {
-    /// Will delete all illegal pods and continue with the reconciliation
-    AllContinue,
-
-    /// Will delete all illegal pods and requeue
-    AllRequeue,
-
-    /// Will delete just one illegal pod at a time and requeue
-    OneRequeue,
-}
-
 pub struct ReconciliationContext<T> {
     pub client: Client,
     pub resource: T,
@@ -82,6 +70,10 @@ impl<T> ReconciliationContext<T> {
             resource,
             requeue_timeout,
         }
+    }
+
+    fn requeue(&self) -> ReconcileFunctionAction {
+        ReconcileFunctionAction::Requeue(self.requeue_timeout)
     }
 }
 
@@ -141,15 +133,35 @@ where
             })
     }
 
+    /// This reconcile function can be added to the chain to automatically handle deleted objects
+    /// using finalizers.
+    ///
+    /// It'll add a finalizer to the object if it's not there yet, if the `deletion_timestamp` is set
+    /// it'll call the provided handler function and it'll remove the finalizer if the handler completes
+    /// with a `Done` result.
+    ///
+    /// If the object is not deleted this function will return a `Continue` event.
+    ///
+    /// # Arguments
+    ///
+    /// - `handler` - This future will be completed if the object has been marked for deletion
+    /// - `finalizer` - The finalizer to add and/or check for
+    /// - `requeue_if_changed` - If this is `true` we'll return a `Requeue` immediately if we had to
+    ///     change the resource due to the addition of the finalizer
     pub async fn handle_deletion(
         &self,
         handler: Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Error>> + Send + '_>>,
         finalizer: &str,
+        requeue_if_changed: bool,
     ) -> ReconcileResult<Error>
     where
         T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
     {
-        finalizer::add_finalizer(&self.client, &self.resource, finalizer).await?;
+        if finalizer::add_finalizer(&self.client, &self.resource, finalizer).await?
+            && requeue_if_changed
+        {
+            return Ok(self.requeue());
+        }
 
         if !finalizer::has_deletion_stamp(&self.resource) {
             debug!("Resource not deleted, continuing",);
@@ -163,9 +175,7 @@ where
                 finalizer::remove_finalizer(&self.client, &self.resource, finalizer).await?;
                 Ok(ReconcileFunctionAction::Done)
             }
-            ReconcileFunctionAction::Requeue(_) => {
-                Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout))
-            }
+            ReconcileFunctionAction::Requeue(_) => Ok(self.requeue()),
         }
     }
 
@@ -221,13 +231,24 @@ where
         self.set_condition(condition).await
     }
 
-    /// Adds our finalizer to the list of finalizers.
+    /// A reconciler function to adsour finalizer to the list of finalizers.
     /// It is a wrapper around [`finalizer::add_finalizer`].
-    /// Will either return an Error or [`ReconcileFunctionAction::Continue`].
-    pub async fn add_finalizer(&self, finalizer_name: &str) -> ReconcileResult<Error> {
-        // TODO: Add option to requeue?
-        finalizer::add_finalizer(&self.client, &self.resource, finalizer_name).await?;
-        Ok(ReconcileFunctionAction::Continue)
+    ///
+    /// It can return `Continue` or `Requeue` depending on the `requeue` argument and the state of the resource.
+    /// If the finalizer already exists it'll _always_ return `Continue`.
+    ///
+    /// There is a more full-featured alternative to this function ([`handle_deletion`]).
+    ///
+    /// # Arguments
+    ///
+    /// - `finalizer` - The finalizer to add
+    /// - `requeue` - If `true` this function will return `Requeue` if the object was changed (i.e. the finalizer was added) otherwise it'll return `Continue`
+    pub async fn add_finalizer(&self, finalizer: &str, requeue: bool) -> ReconcileResult<Error> {
+        if finalizer::add_finalizer(&self.client, &self.resource, finalizer).await? && requeue {
+            Ok(self.requeue())
+        } else {
+            Ok(ReconcileFunctionAction::Continue)
+        }
     }
 }
 

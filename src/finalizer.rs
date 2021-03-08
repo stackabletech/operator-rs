@@ -17,15 +17,22 @@ where
     };
 }
 
-/// This will add the passed finalizer to the list of finalizers for the resource and will
-/// update the resource in Kubernetes.
-pub async fn add_finalizer<T>(client: &Client, resource: &T, finalizer: &str) -> OperatorResult<T>
+/// This will add the passed finalizer to the list of finalizers for the resource if it doesn't exist yet
+/// and will update the resource in Kubernetes.
+///
+/// It'll return `true` if we changed the object in Kubernetes and `false` if no modification was needed.
+pub async fn add_finalizer<T>(
+    client: &Client,
+    resource: &T,
+    finalizer: &str,
+) -> OperatorResult<bool>
 where
     T: Clone + Meta + DeserializeOwned,
 {
     if has_finalizer(resource, finalizer) {
-        debug!("Finalizer already exists, continuing...",);
-        return Ok(resource.clone());
+        debug!("Finalizer [{}] already exists, continuing...", finalizer);
+
+        return Ok(false);
     }
 
     let new_metadata = json!({
@@ -33,7 +40,8 @@ where
             "finalizers": [finalizer.to_string()]
         }
     });
-    client.merge_patch(resource, new_metadata).await
+    client.merge_patch(resource, new_metadata).await?;
+    Ok(true)
 }
 
 /// Removes our finalizer from a resource object.
