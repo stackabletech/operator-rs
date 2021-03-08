@@ -116,9 +116,9 @@
 //! ```
 //!
 use crate::client::Client;
-use crate::error::{Error, OperatorResult};
+use crate::error::Error;
+use crate::reconcile;
 use crate::reconcile::{ReconcileFunctionAction, ReconciliationContext};
-use crate::{finalizer, reconcile};
 
 use async_trait::async_trait;
 use futures::StreamExt;
@@ -312,16 +312,7 @@ where
     debug!(?resource, "Beginning reconciliation");
     let context = context.get_ref();
 
-    let client = &context.client;
     let strategy = &context.strategy;
-
-    if handle_deletion(&resource, client.clone(), &strategy.finalizer_name()).await?
-        == ReconcileFunctionAction::Done
-    {
-        return Ok(reconcile::create_non_requeuing_reconciler_action());
-    }
-
-    add_finalizer(&resource, client.clone(), &strategy.finalizer_name()).await?;
 
     let rc = ReconciliationContext::new(
         context.client.clone(),
@@ -381,39 +372,4 @@ where
 {
     trace!(%err, "Reconciliation error, calling strategy error_policy");
     context.get_ref().strategy.error_policy()
-}
-
-async fn handle_deletion<T>(
-    resource: &T,
-    client: Client,
-    finalizer_name: &str,
-) -> OperatorResult<ReconcileFunctionAction>
-where
-    T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
-{
-    trace!("[handle_deletion] Begin");
-    if !finalizer::has_deletion_stamp(resource) {
-        debug!("Resource not deleted, continuing",);
-        return Ok(ReconcileFunctionAction::Continue);
-    }
-
-    info!("Removing finalizer [{}]", finalizer_name,);
-    finalizer::remove_finalizer(client, resource, finalizer_name).await?;
-
-    Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(10)))
-}
-
-async fn add_finalizer<T>(resource: &T, client: Client, finalizer_name: &str) -> OperatorResult<()>
-where
-    T: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
-{
-    trace!("[add_finalizer] Begin");
-
-    if finalizer::has_finalizer(resource, finalizer_name) {
-        debug!("Finalizer already exists, continuing...",);
-    } else {
-        debug!("Finalizer missing, adding now and continuing...",);
-        finalizer::add_finalizer(&client, resource, finalizer_name).await?;
-    }
-    Ok(())
 }

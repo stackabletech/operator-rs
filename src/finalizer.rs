@@ -35,7 +35,11 @@ where
 /// # Arguments
 /// `name` - is the name of the resource we want to patch
 /// `namespace` is the namespace of where the resource to patch lives
-pub async fn remove_finalizer<T>(client: Client, resource: &T, finalizer: &str) -> OperatorResult<T>
+pub async fn remove_finalizer<T>(
+    client: &Client,
+    resource: &T,
+    finalizer: &str,
+) -> OperatorResult<T>
 where
     T: Clone + DeserializeOwned + Meta,
 {

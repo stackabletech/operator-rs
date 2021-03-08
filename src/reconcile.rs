@@ -10,6 +10,7 @@ use kube_runtime::controller::ReconcilerAction;
 use serde::de::DeserializeOwned;
 use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
+use std::pin::Pin;
 use std::time::Duration;
 use tracing::{debug, info};
 
@@ -260,6 +261,32 @@ where
         Ok(ReconcileFunctionAction::Continue)
     }
 
+    pub async fn handle_deletion(
+        &self,
+        handler: Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Error>> + Send + '_>>,
+        finalizer_name: &str,
+    ) -> ReconcileResult<Error>
+    where
+        T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
+    {
+        if !finalizer::has_deletion_stamp(&self.resource) {
+            debug!("Resource not deleted, continuing",);
+            return Ok(ReconcileFunctionAction::Continue);
+        }
+
+        match handler.await? {
+            ReconcileFunctionAction::Continue => Ok(ReconcileFunctionAction::Continue),
+            ReconcileFunctionAction::Done => {
+                info!("Removing finalizer [{}]", finalizer_name,);
+                finalizer::remove_finalizer(&self.client, &self.resource, finalizer_name).await?;
+                Ok(ReconcileFunctionAction::Done)
+            }
+            ReconcileFunctionAction::Requeue(_) => {
+                Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout))
+            }
+        }
+    }
+
     /// Creates a new [`Condition`] for the `resource` this context contains.
     ///
     /// It's a convenience function that passes through all parameters and builds a `Condition`
@@ -315,9 +342,15 @@ where
     /// Adds our finalizer to the list of finalizers.
     /// It is a wrapper around [`finalizer::add_finalizer`].
     /// Will either return an Error or [`ReconcileFunctionAction::Continue`].
-    pub async fn add_finalizer(&self, finalizer: &str) -> ReconcileResult<Error> {
-        finalizer::add_finalizer(&self.client, &self.resource, finalizer).await?;
+    pub async fn add_finalizer(&self, finalizer_name: &str) -> ReconcileResult<Error> {
+        if finalizer::has_finalizer(&self.resource, finalizer_name) {
+            debug!("Finalizer already exists, continuing...",);
+        } else {
+            debug!("Finalizer missing, adding now and continuing...",);
+            finalizer::add_finalizer(&self.client, &self.resource, finalizer_name).await?;
+        }
         Ok(ReconcileFunctionAction::Continue)
+        // TODO: Add option to requeue?
     }
 }
 
@@ -389,7 +422,6 @@ pub async fn find_nodes_that_need_pods<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test::*;
     use std::collections::BTreeMap;
 
     #[test]
