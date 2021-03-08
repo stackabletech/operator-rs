@@ -68,6 +68,9 @@ impl Client {
         Ok(self.get_api(namespace).list(&list_params).await?.items)
     }
 
+    /// Lists resources from the API using a LabelSelector.
+    ///
+    /// This takes a LabelSelector and converts it into a query string using [`label_selector::convert_label_selector_to_query_string`].
     pub async fn list_with_label_selector<T>(
         &self,
         selector: &LabelSelector,
