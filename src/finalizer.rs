@@ -1,7 +1,6 @@
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
 
-use k8s_openapi::Resource;
 use kube::api::Meta;
 use serde::de::DeserializeOwned;
 use serde_json::json;
@@ -17,10 +16,11 @@ where
     };
 }
 
-/// Adds our finalizer to the list of finalizers.
-pub async fn add_finalizer<T>(client: Client, resource: &T, finalizer: &str) -> OperatorResult<T>
+/// This will add the passed finalizer to the list of finalizers for the resource and will
+/// update the resource in Kubernetes.
+pub async fn add_finalizer<T>(client: &Client, resource: &T, finalizer: &str) -> OperatorResult<T>
 where
-    T: Resource + Clone + Meta + DeserializeOwned,
+    T: Clone + Meta + DeserializeOwned,
 {
     let new_metadata = json!({
         "metadata": {
@@ -33,9 +33,14 @@ where
 /// Removes our finalizer from a resource object.
 ///
 /// # Arguments
-/// `name` - is the name of the resource we want to patch
-/// `namespace` is the namespace of where the resource to patch lives
-pub async fn remove_finalizer<T>(client: Client, resource: &T, finalizer: &str) -> OperatorResult<T>
+///
+/// `resource` - is the resource we want to remove the finalizer from
+/// `finalizer` - this is the actual finalizer string that we want to remove
+pub async fn remove_finalizer<T>(
+    client: &Client,
+    resource: &T,
+    finalizer: &str,
+) -> OperatorResult<T>
 where
     T: Clone + DeserializeOwned + Meta,
 {

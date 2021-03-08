@@ -111,14 +111,14 @@
 //!     let controller = Controller::new(pods_api);
 //!
 //!     let strategy = FooStrategy {};
-//!     controller.run(client, strategy).await;
+//!     controller.run(client, strategy, Duration::from_secs(10)).await;
 //! }
 //! ```
 //!
 use crate::client::Client;
-use crate::error::{Error, OperatorResult};
+use crate::error::Error;
+use crate::reconcile;
 use crate::reconcile::{ReconcileFunctionAction, ReconciliationContext};
-use crate::{finalizer, reconcile};
 
 use async_trait::async_trait;
 use futures::StreamExt;
@@ -131,7 +131,7 @@ use std::fmt::{Debug, Display};
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
-use tracing::{debug, error, info, trace, Instrument};
+use tracing::{debug, error, trace, Instrument};
 use uuid::Uuid;
 
 /// Every operator needs to provide an implementation of this trait as it provides the operator specific business logic.
@@ -241,12 +241,16 @@ where
 
     /// Call this method once your Controller object is fully configured.
     /// It'll start talking to Kubernetes and will call the `Strategy` implementation.
-    pub async fn run<S>(self, client: Client, strategy: S)
+    pub async fn run<S>(self, client: Client, strategy: S, requeue_timeout: Duration)
     where
         S: ControllerStrategy<Item = T> + Send + Sync + 'static,
         S::State: Send,
     {
-        let context = Context::new(ControllerContext { client, strategy });
+        let context = Context::new(ControllerContext {
+            client,
+            strategy,
+            requeue_timeout,
+        });
 
         self.kube_controller
             .run(reconcile, error_policy, context)
@@ -285,6 +289,7 @@ where
 {
     client: Client,
     strategy: S,
+    requeue_timeout: Duration,
 }
 
 /// This method contains the logic of reconciling an object (the desired state) we received with the actual state.
@@ -307,18 +312,13 @@ where
     debug!(?resource, "Beginning reconciliation");
     let context = context.get_ref();
 
-    let client = &context.client;
     let strategy = &context.strategy;
 
-    if handle_deletion(&resource, client.clone(), &strategy.finalizer_name()).await?
-        == ReconcileFunctionAction::Done
-    {
-        return Ok(reconcile::create_non_requeuing_reconciler_action());
-    }
-
-    add_finalizer(&resource, client.clone(), &strategy.finalizer_name()).await?;
-
-    let rc = ReconciliationContext::new(context.client.clone(), resource.clone());
+    let rc = ReconciliationContext::new(
+        context.client.clone(),
+        resource.clone(),
+        context.requeue_timeout,
+    );
 
     let mut state = match strategy.init_reconcile_state(rc).in_current_span().await {
         Ok(state) => state,
@@ -372,39 +372,4 @@ where
 {
     trace!(%err, "Reconciliation error, calling strategy error_policy");
     context.get_ref().strategy.error_policy()
-}
-
-async fn handle_deletion<T>(
-    resource: &T,
-    client: Client,
-    finalizer_name: &str,
-) -> OperatorResult<ReconcileFunctionAction>
-where
-    T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
-{
-    trace!("[handle_deletion] Begin");
-    if !finalizer::has_deletion_stamp(resource) {
-        debug!("Resource not deleted, continuing",);
-        return Ok(ReconcileFunctionAction::Continue);
-    }
-
-    info!("Removing finalizer [{}]", finalizer_name,);
-    finalizer::remove_finalizer(client, resource, finalizer_name).await?;
-
-    Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(10)))
-}
-
-async fn add_finalizer<T>(resource: &T, client: Client, finalizer_name: &str) -> OperatorResult<()>
-where
-    T: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
-{
-    trace!("[add_finalizer] Begin");
-
-    if finalizer::has_finalizer(resource, finalizer_name) {
-        debug!("Finalizer already exists, continuing...",);
-    } else {
-        debug!("Finalizer missing, adding now and continuing...",);
-        finalizer::add_finalizer(client, resource, finalizer_name).await?;
-    }
-    Ok(())
 }

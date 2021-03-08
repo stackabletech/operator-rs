@@ -1,6 +1,6 @@
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
-use crate::{conditions, controller_ref, podutils};
+use crate::{conditions, controller_ref, finalizer, podutils};
 
 use crate::conditions::ConditionStatus;
 use k8s_openapi::api::core::v1::Pod;
@@ -9,7 +9,9 @@ use kube::api::{ListParams, Meta, ObjectMeta};
 use kube_runtime::controller::ReconcilerAction;
 use serde::de::DeserializeOwned;
 use std::future::Future;
+use std::pin::Pin;
 use std::time::Duration;
+use tracing::{debug, info};
 
 pub type ReconcileResult<E> = std::result::Result<ReconcileFunctionAction, E>;
 
@@ -55,14 +57,31 @@ pub fn create_requeuing_reconcile_function_action(secs: u64) -> ReconcileFunctio
     ReconcileFunctionAction::Requeue(Duration::from_secs(secs))
 }
 
+#[derive(Eq, PartialEq)]
+pub enum DeletionStrategy {
+    /// Will delete all illegal pods and continue with the reconciliation
+    AllContinue,
+
+    /// Will delete all illegal pods and requeue
+    AllRequeue,
+
+    /// Will delete just one illegal pod at a time and requeue
+    OneRequeue,
+}
+
 pub struct ReconciliationContext<T> {
     pub client: Client,
     pub resource: T,
+    pub requeue_timeout: Duration,
 }
 
 impl<T> ReconciliationContext<T> {
-    pub fn new(client: Client, resource: T) -> Self {
-        ReconciliationContext { client, resource }
+    pub fn new(client: Client, resource: T, requeue_timeout: Duration) -> Self {
+        ReconciliationContext {
+            client,
+            resource,
+            requeue_timeout,
+        }
     }
 }
 
@@ -122,6 +141,32 @@ where
             })
     }
 
+    pub async fn handle_deletion(
+        &self,
+        handler: Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Error>> + Send + '_>>,
+        finalizer_name: &str,
+    ) -> ReconcileResult<Error>
+    where
+        T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
+    {
+        if !finalizer::has_deletion_stamp(&self.resource) {
+            debug!("Resource not deleted, continuing",);
+            return Ok(ReconcileFunctionAction::Continue);
+        }
+
+        match handler.await? {
+            ReconcileFunctionAction::Continue => Ok(ReconcileFunctionAction::Continue),
+            ReconcileFunctionAction::Done => {
+                info!("Removing finalizer [{}]", finalizer_name,);
+                finalizer::remove_finalizer(&self.client, &self.resource, finalizer_name).await?;
+                Ok(ReconcileFunctionAction::Done)
+            }
+            ReconcileFunctionAction::Requeue(_) => {
+                Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout))
+            }
+        }
+    }
+
     /// Creates a new [`Condition`] for the `resource` this context contains.
     ///
     /// It's a convenience function that passes through all parameters and builds a `Condition`
@@ -172,6 +217,20 @@ where
             condition_type,
         );
         self.set_condition(condition).await
+    }
+
+    /// Adds our finalizer to the list of finalizers.
+    /// It is a wrapper around [`finalizer::add_finalizer`].
+    /// Will either return an Error or [`ReconcileFunctionAction::Continue`].
+    pub async fn add_finalizer(&self, finalizer_name: &str) -> ReconcileResult<Error> {
+        if finalizer::has_finalizer(&self.resource, finalizer_name) {
+            debug!("Finalizer already exists, continuing...",);
+        } else {
+            debug!("Finalizer missing, adding now and continuing...",);
+            finalizer::add_finalizer(&self.client, &self.resource, finalizer_name).await?;
+        }
+        Ok(ReconcileFunctionAction::Continue)
+        // TODO: Add option to requeue?
     }
 }
 
