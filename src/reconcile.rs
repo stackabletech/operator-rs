@@ -67,7 +67,7 @@ pub enum DeletionStrategy {
     AllRequeue,
 
     /// Will delete just one illegal pod at a time and requeue
-    One,
+    OneRequeue,
 }
 
 pub struct ReconciliationContext<T> {
@@ -88,7 +88,6 @@ impl<T> ReconciliationContext<T> {
     pub async fn wait_for_running_and_ready_pods(&self, pods: &[Pod]) -> ReconcileResult<Error> {
         for pod in pods {
             if !podutils::is_pod_running_and_ready(pod) {
-                // TODO: Why does this not complain about moving out self.requeue_timeout?
                 return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
             }
         }
@@ -205,6 +204,9 @@ where
     /// * They need to have a spec.node_name
     ///
     /// If not they are considered invalid and will be deleted.
+
+    // TODO: delete_illegal_and_excess_pods and maybe take a list of BTreeMap<String<Option<String>> and convert it to the
+    // structure we need so users need to build the labels only once
     pub async fn delete_illegal_pods<'a>(
         &self,
         pods: &'a [Pod],
@@ -223,7 +225,7 @@ where
             );
             self.client.delete(illegal_pod).await?;
 
-            if deletion_strategy == DeletionStrategy::One {
+            if deletion_strategy == DeletionStrategy::OneRequeue {
                 return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
             }
         }
@@ -249,7 +251,7 @@ where
             );
             self.client.delete(excess_pod).await?;
 
-            if deletion_strategy == DeletionStrategy::One {
+            if deletion_strategy == DeletionStrategy::OneRequeue {
                 return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
             }
         }
