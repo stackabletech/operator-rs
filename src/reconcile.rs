@@ -144,11 +144,13 @@ where
     pub async fn handle_deletion(
         &self,
         handler: Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Error>> + Send + '_>>,
-        finalizer_name: &str,
+        finalizer: &str,
     ) -> ReconcileResult<Error>
     where
         T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
     {
+        finalizer::add_finalizer(&self.client, &self.resource, finalizer).await?;
+
         if !finalizer::has_deletion_stamp(&self.resource) {
             debug!("Resource not deleted, continuing",);
             return Ok(ReconcileFunctionAction::Continue);
@@ -157,8 +159,8 @@ where
         match handler.await? {
             ReconcileFunctionAction::Continue => Ok(ReconcileFunctionAction::Continue),
             ReconcileFunctionAction::Done => {
-                info!("Removing finalizer [{}]", finalizer_name,);
-                finalizer::remove_finalizer(&self.client, &self.resource, finalizer_name).await?;
+                info!("Removing finalizer [{}]", finalizer,);
+                finalizer::remove_finalizer(&self.client, &self.resource, finalizer).await?;
                 Ok(ReconcileFunctionAction::Done)
             }
             ReconcileFunctionAction::Requeue(_) => {
@@ -223,14 +225,9 @@ where
     /// It is a wrapper around [`finalizer::add_finalizer`].
     /// Will either return an Error or [`ReconcileFunctionAction::Continue`].
     pub async fn add_finalizer(&self, finalizer_name: &str) -> ReconcileResult<Error> {
-        if finalizer::has_finalizer(&self.resource, finalizer_name) {
-            debug!("Finalizer already exists, continuing...",);
-        } else {
-            debug!("Finalizer missing, adding now and continuing...",);
-            finalizer::add_finalizer(&self.client, &self.resource, finalizer_name).await?;
-        }
-        Ok(ReconcileFunctionAction::Continue)
         // TODO: Add option to requeue?
+        finalizer::add_finalizer(&self.client, &self.resource, finalizer_name).await?;
+        Ok(ReconcileFunctionAction::Continue)
     }
 }
 

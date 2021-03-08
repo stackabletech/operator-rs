@@ -4,6 +4,7 @@ use crate::error::{Error, OperatorResult};
 use kube::api::Meta;
 use serde::de::DeserializeOwned;
 use serde_json::json;
+use tracing::debug;
 
 /// Checks whether our own finalizer is in the list of finalizers for the provided object.
 pub fn has_finalizer<T>(resource: &T, finalizer: &str) -> bool
@@ -22,6 +23,11 @@ pub async fn add_finalizer<T>(client: &Client, resource: &T, finalizer: &str) ->
 where
     T: Clone + Meta + DeserializeOwned,
 {
+    if has_finalizer(resource, finalizer) {
+        debug!("Finalizer already exists, continuing...",);
+        return Ok(resource.clone());
+    }
+
     let new_metadata = json!({
         "metadata": {
             "finalizers": [finalizer.to_string()]

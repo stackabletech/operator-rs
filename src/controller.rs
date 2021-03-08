@@ -239,8 +239,13 @@ where
         self
     }
 
-    /// Call this method once your Controller object is fully configured.
-    /// It'll start talking to Kubernetes and will call the `Strategy` implementation.
+    /// Call this method once your Controller object is fully configured to start the reconciliation.
+    ///
+    /// # Arguments
+    ///
+    /// - `client` - The Client to access Kubernetes
+    /// - `strategy` - This implements the domain/business logic and the framework will call its methods for each reconcile operation
+    /// - `requeue_timeout` - Whenever a `Requeue` is returned this is the timeout/duration after which the same object will be requeued
     pub async fn run<S>(self, client: Client, strategy: S, requeue_timeout: Duration)
     where
         S: ControllerStrategy<Item = T> + Send + Sync + 'static,
