@@ -22,6 +22,7 @@ where
 /// and will update the resource in Kubernetes.
 ///
 /// It'll return `true` if we changed the object in Kubernetes and `false` if no modification was needed.
+/// If the object is currently being deleted this _will_ return an Error!
 pub async fn add_finalizer<T>(
     client: &Client,
     resource: &T,

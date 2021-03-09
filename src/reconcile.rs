@@ -174,6 +174,11 @@ where
             return Ok(ReconcileFunctionAction::Continue);
         }
 
+        if !finalizer::has_finalizer(&self.resource, finalizer) {
+            debug!("Resource being deleted but our finalizer is already gone, there might be others but we're done here!");
+            return Ok(ReconcileFunctionAction::Done);
+        }
+
         match handler.await? {
             ReconcileFunctionAction::Continue => Ok(ReconcileFunctionAction::Continue),
             ReconcileFunctionAction::Done => {
