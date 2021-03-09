@@ -1,9 +1,11 @@
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
 
+use json_patch::{PatchOperation, RemoveOperation, TestOperation};
 use kube::api::Meta;
 use serde::de::DeserializeOwned;
 use serde_json::json;
+use tracing::debug;
 
 /// Checks whether our own finalizer is in the list of finalizers for the provided object.
 pub fn has_finalizer<T>(resource: &T, finalizer: &str) -> bool
@@ -16,18 +18,31 @@ where
     };
 }
 
-/// This will add the passed finalizer to the list of finalizers for the resource and will
-/// update the resource in Kubernetes.
-pub async fn add_finalizer<T>(client: &Client, resource: &T, finalizer: &str) -> OperatorResult<T>
+/// This will add the passed finalizer to the list of finalizers for the resource if it doesn't exist yet
+/// and will update the resource in Kubernetes.
+///
+/// It'll return `true` if we changed the object in Kubernetes and `false` if no modification was needed.
+pub async fn add_finalizer<T>(
+    client: &Client,
+    resource: &T,
+    finalizer: &str,
+) -> OperatorResult<bool>
 where
     T: Clone + Meta + DeserializeOwned,
 {
+    if has_finalizer(resource, finalizer) {
+        debug!("Finalizer [{}] already exists, continuing...", finalizer);
+
+        return Ok(false);
+    }
+
     let new_metadata = json!({
         "metadata": {
             "finalizers": [finalizer.to_string()]
         }
     });
-    client.merge_patch(resource, new_metadata).await
+    client.merge_patch(resource, new_metadata).await?;
+    Ok(true)
 }
 
 /// Removes our finalizer from a resource object.
@@ -56,7 +71,7 @@ where
         None => Err(Error::MissingObjectKey {
             key: ".metadata.finalizers",
         }),
-        Some(mut finalizers) => {
+        Some(finalizers) => {
             let index = finalizers
                 .iter()
                 .position(|cur_finalizer| cur_finalizer == finalizer);
@@ -65,14 +80,18 @@ where
                 // We found our finalizer which means that we now need to handle our deletion logic
                 // And then remove the finalizer from the list.
 
-                finalizers.swap_remove(index);
-                let new_metadata = json!({
-                    "metadata": {
-                        "finalizers": finalizers
-                    }
-                });
+                let finalizer_path = format!("/metadata/finalizers/{}", index);
+                let patch = json_patch::Patch(vec![
+                    PatchOperation::Test(TestOperation {
+                        path: finalizer_path.clone(),
+                        value: finalizer.into(),
+                    }),
+                    PatchOperation::Remove(RemoveOperation {
+                        path: finalizer_path,
+                    }),
+                ]);
 
-                client.merge_patch(resource, new_metadata).await
+                client.json_patch(resource, patch).await
             } else {
                 Err(Error::MissingObjectKey {
                     key: ".metadata.finalizers",
