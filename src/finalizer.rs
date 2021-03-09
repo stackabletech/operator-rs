@@ -1,6 +1,7 @@
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
 
+use json_patch::{PatchOperation, RemoveOperation, TestOperation};
 use kube::api::Meta;
 use serde::de::DeserializeOwned;
 use serde_json::json;
@@ -70,7 +71,7 @@ where
         None => Err(Error::MissingObjectKey {
             key: ".metadata.finalizers",
         }),
-        Some(mut finalizers) => {
+        Some(finalizers) => {
             let index = finalizers
                 .iter()
                 .position(|cur_finalizer| cur_finalizer == finalizer);
@@ -79,14 +80,18 @@ where
                 // We found our finalizer which means that we now need to handle our deletion logic
                 // And then remove the finalizer from the list.
 
-                finalizers.swap_remove(index);
-                let new_metadata = json!({
-                    "metadata": {
-                        "finalizers": finalizers
-                    }
-                });
+                let finalizer_path = format!("/metadata/finalizers/{}", index);
+                let patch = json_patch::Patch(vec![
+                    PatchOperation::Test(TestOperation {
+                        path: finalizer_path.clone(),
+                        value: finalizer.into(),
+                    }),
+                    PatchOperation::Remove(RemoveOperation {
+                        path: finalizer_path,
+                    }),
+                ]);
 
-                client.merge_patch(resource, new_metadata).await
+                client.json_patch(resource, patch).await
             } else {
                 Err(Error::MissingObjectKey {
                     key: ".metadata.finalizers",

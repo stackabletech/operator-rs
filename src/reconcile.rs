@@ -157,13 +157,19 @@ where
     where
         T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
     {
-        if finalizer::add_finalizer(&self.client, &self.resource, finalizer).await?
+        let being_deleted = finalizer::has_deletion_stamp(&self.resource);
+
+        // Try to add a finalizer but only if the deletion_timestamp is not already set
+        // Kubernetes forbids setting new finalizers on objects under deletion and will return this error:
+        // Forbidden: no new finalizers can be added if the object is being deleted, found new finalizers []string{\"foo\"}
+        if !being_deleted
+            && finalizer::add_finalizer(&self.client, &self.resource, finalizer).await?
             && requeue_if_changed
         {
             return Ok(self.requeue());
         }
 
-        if !finalizer::has_deletion_stamp(&self.resource) {
+        if !being_deleted {
             debug!("Resource not deleted, continuing",);
             return Ok(ReconcileFunctionAction::Continue);
         }
