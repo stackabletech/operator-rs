@@ -124,7 +124,7 @@ impl Client {
             .await
     }
 
-    // TODO Docs
+    /// Patches a resource using the `JSON` patch strategy described in [JavaScript Object Notation (JSON) Patch](https://tools.ietf.org/html/rfc6902).
     pub async fn json_patch<T>(&self, resource: &T, patch: json_patch::Patch) -> OperatorResult<T>
     where
         T: Clone + DeserializeOwned + Meta,
