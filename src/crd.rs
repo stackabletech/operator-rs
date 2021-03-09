@@ -87,6 +87,6 @@ async fn create<T>(client: Client) -> OperatorResult<()>
 where
     T: Crd,
 {
-    let zk_crd: CustomResourceDefinition = serde_yaml::from_str(T::CRD_DEFINITION)?;
-    client.create(&zk_crd).await.and(Ok(()))
+    let crd: CustomResourceDefinition = serde_yaml::from_str(T::CRD_DEFINITION)?;
+    client.create(&crd).await.and(Ok(()))
 }
