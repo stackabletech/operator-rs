@@ -110,6 +110,7 @@ impl<T> ReconciliationContext<T> {
                 Ok(ReconcileFunctionAction::Continue)
             }
         }
+    }
 }
 
 impl<T> ReconciliationContext<T>
@@ -305,6 +306,11 @@ where
         if !being_deleted {
             debug!("Resource not deleted, continuing",);
             return Ok(ReconcileFunctionAction::Continue);
+        }
+
+        if !finalizer::has_finalizer(&self.resource, finalizer) {
+            debug!("Resource being deleted but our finalizer is already gone, there might be others but we're done here!");
+            return Ok(ReconcileFunctionAction::Done);
         }
 
         match handler.await? {
