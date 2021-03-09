@@ -243,9 +243,9 @@ where
     ///
     /// # Arguments
     ///
-    /// - `client` - The Client to access Kubernetes
-    /// - `strategy` - This implements the domain/business logic and the framework will call its methods for each reconcile operation
-    /// - `requeue_timeout` - Whenever a `Requeue` is returned this is the timeout/duration after which the same object will be requeued
+    /// * `client` - The Client to access Kubernetes
+    /// * `strategy` - This implements the domain/business logic and the framework will call its methods for each reconcile operation
+    /// * `requeue_timeout` - Whenever a `Requeue` is returned this is the timeout/duration after which the same object will be requeued
     pub async fn run<S>(self, client: Client, strategy: S, requeue_timeout: Duration)
     where
         S: ControllerStrategy<Item = T> + Send + Sync + 'static,

@@ -50,8 +50,9 @@ where
 ///
 /// # Arguments
 ///
-/// `resource` - is the resource we want to remove the finalizer from
-/// `finalizer` - this is the actual finalizer string that we want to remove
+/// * `client` - The Client to access Kubernetes
+/// * `resource` - is the resource we want to remove the finalizer from
+/// * `finalizer` - this is the actual finalizer string that we want to remove
 pub async fn remove_finalizer<T>(
     client: &Client,
     resource: &T,
