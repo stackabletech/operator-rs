@@ -8,7 +8,7 @@ use crate::{k8s_errors, metadata};
 use k8s_openapi::api::apps::v1::ControllerRevision;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use k8s_openapi::apimachinery::pkg::runtime::RawExtension;
-use kube::api::{Meta, ObjectMeta};
+use kube::api::{ListParams, Meta, ObjectMeta};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -21,7 +21,9 @@ pub async fn list_controller_revisions<T>(
 where
     T: Meta,
 {
-    let revisions = client.list(Meta::namespace(resource)).await?;
+    let revisions = client
+        .list(Meta::namespace(resource), &ListParams::default())
+        .await?;
     let owner_uid = resource.meta().uid.as_ref().unwrap(); // TODO: Error handling
     let mut owned = vec![];
     for revision in revisions {
@@ -79,6 +81,7 @@ where
             namespace: Meta::namespace(parent),
             owner_references: Some(vec![metadata::object_to_owner_reference::<T>(
                 parent.meta().clone(),
+                true,
             )?]),
             ..ObjectMeta::default()
         },
