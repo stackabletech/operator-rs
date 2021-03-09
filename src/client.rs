@@ -127,23 +127,18 @@ impl Client {
             .await?)
     }
 
-    /// Which of the two results this returns depends on the API.
+    /// This deletes a resource _if it is not deleted already_.
+    ///
+    /// It checks whether the resource is already deleted by looking at the `deletion_timestamp`
+    /// of the resource using the [`finalizer::has_deletion_stamp`] method.
+    /// If that is the case it'll return a `Ok(None)`.
+    ///    
+    /// In case the object is actually deleted or marked for deletion there are two possible
+    /// return types.
+    /// Which of the two are returned depends on the API being called.
     /// Take a look at the Kubernetes API reference.
     /// Some `delete` endpoints return the object and others return a `Status` object.
-    pub async fn delete<T>(&self, resource: &T) -> OperatorResult<Either<T, Status>>
-    where
-        T: Clone + DeserializeOwned + Meta,
-    {
-        let api: Api<T> = self.get_api(Meta::namespace(resource));
-        Ok(api
-            .delete(&Meta::name(resource), &self.delete_params)
-            .await?)
-    }
-
-    /// This potentially deletes a resource _if it is not already deleted_.
-    /// It checks by looking at the `deletion_timestamp` of the resource.
-    /// If that is the case it'll return a `Ok(None)`.
-    pub async fn maybe_delete<T>(&self, resource: &T) -> OperatorResult<Option<Either<T, Status>>>
+    pub async fn delete<T>(&self, resource: &T) -> OperatorResult<Option<Either<T, Status>>>
     where
         T: Clone + DeserializeOwned + Meta,
     {
@@ -158,7 +153,11 @@ impl Client {
                 "Resource ([{}]) does not have a `deletion_timestamp`, deleting now",
                 podutils::get_log_name(resource)
             );
-            Ok(Some(self.delete(resource).await?))
+            let api: Api<T> = self.get_api(Meta::namespace(resource));
+            Ok(Some(
+                api.delete(&Meta::name(resource), &self.delete_params)
+                    .await?,
+            ))
         }
     }
 
