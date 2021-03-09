@@ -132,7 +132,7 @@ impl Client {
         // The `()` type is not used. I need to provide _some_ type just to get it to compile.
         // But the type is not used _at all_ for the `Json` variant so I'd argue it's okay to
         // provide any type here.
-        // This is definitely a hack though but I don't know any better way.
+        // This is definitely a hack though but there is currently no better way.
         // See also: https://github.com/clux/kube-rs/pull/456
         let patch = Patch::Json::<()>(patch);
         self.patch(resource, patch, &self.patch_params).await
