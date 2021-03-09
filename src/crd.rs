@@ -13,7 +13,7 @@ pub trait Crd {
     /// # Example
     ///
     /// ```no_run
-    /// const RESOURCE_NAME: &'static str = "zookeeperclusters.zookeeper.stackable.de";
+    /// const RESOURCE_NAME: &'static str = "foo.bar.stackable.tech";
     /// ```
     const RESOURCE_NAME: &'static str;
 
@@ -35,7 +35,7 @@ pub trait Crd {
 /// #
 /// # struct Test;
 /// # impl Crd for Test {
-/// #    const RESOURCE_NAME: &'static str = "foo.bar.com";
+/// #    const RESOURCE_NAME: &'static str = "foo.bar.stackable.tech";
 /// #    const CRD_DEFINITION: &'static str = "mycrdhere";
 /// # }
 /// #
