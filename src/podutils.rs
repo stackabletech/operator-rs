@@ -182,7 +182,9 @@ pub fn pod_matches_multiple_label_values(
     true
 }
 
-// TODO: Docs & Test
+/// This method can be used to find Pods that are invalid.
+///
+/// It returns all Pods that return `false` when passed to the [`is_valid_pod`] method.
 pub fn find_invalid_pods<'a>(
     pods: &'a [Pod],
     required_labels: &BTreeMap<String, Option<Vec<String>>>,
@@ -192,6 +194,11 @@ pub fn find_invalid_pods<'a>(
         .collect()
 }
 
+/// Checks whether a Pod is valid or not.
+///
+/// For a Pod to be valid it must be assigned to a node (via `spec.node_name`) and it must
+/// have all required labels.
+/// See [`pod_matches_multiple_label_values`] for a description of the label format.
 pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<String, Option<Vec<String>>>) -> bool {
     matches!(
         pod.spec,
@@ -577,9 +584,12 @@ mod tests {
         let pod = PodBuilder::new().build();
 
         let mut required_labels = BTreeMap::new();
-        required_labels.insert("foo".to_string(), None);
+
+        // Pod has no labels but we don't require any either
+        assert!(pod_matches_multiple_label_values(&pod, &required_labels));
 
         // Pod has no labels but we want one but don't care about the value
+        required_labels.insert("foo".to_string(), None);
         assert!(!pod_matches_multiple_label_values(&pod, &required_labels));
 
         // Pod has only the required label
@@ -603,5 +613,53 @@ mod tests {
             Some(vec!["baz".to_string(), "foo".to_string()]),
         );
         assert!(pod_matches_multiple_label_values(&pod, &required_labels));
+    }
+
+    #[test]
+    // We'll only test very basic things with the labels because it should all be covered by other tests already
+    fn test_is_valid_pod() {
+        let pod = PodBuilder::new().build();
+        let mut required_labels = BTreeMap::new();
+
+        // Pod is not assigned to a node
+        assert!(!is_valid_pod(&pod, &required_labels));
+
+        // Pod is assigned to a node and no labels required
+        let pod = PodBuilder::new().node_name("foo").build();
+        assert!(is_valid_pod(&pod, &required_labels));
+
+        // Pod is missing label
+        required_labels.insert("foo".to_string(), None);
+        assert!(!is_valid_pod(&pod, &required_labels));
+
+        // Pod has required label
+        let pod = PodBuilder::new()
+            .node_name("foo")
+            .with_label("foo", "bar")
+            .build();
+        assert!(is_valid_pod(&pod, &required_labels));
+    }
+
+    #[test]
+    // Most things will be covered by other tests so this one is very basic
+    fn test_find_invalid_pods() {
+        let valid_pod = PodBuilder::new().node_name("foo").build();
+        let invalid_pod = PodBuilder::new().name("invalid").build();
+
+        let required_labels = BTreeMap::new();
+
+        let pods = vec![valid_pod.clone(), invalid_pod.clone()];
+        let mut invalid_pods = find_invalid_pods(&pods, &required_labels);
+        assert_eq!(invalid_pods.len(), 1);
+        let invalid_pod = invalid_pods.remove(0);
+        assert_eq!(Meta::name(invalid_pod), "invalid");
+
+        let pods = vec![valid_pod.clone(), valid_pod.clone()];
+        let invalid_pods = find_invalid_pods(&pods, &required_labels);
+        assert!(invalid_pods.is_empty());
+
+        let pods = vec![valid_pod.clone(), invalid_pod.clone(), invalid_pod.clone()];
+        let invalid_pods = find_invalid_pods(&pods, &required_labels);
+        assert_eq!(invalid_pods.len(), 2);
     }
 }
