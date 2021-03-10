@@ -13,7 +13,7 @@ pub trait Crd {
     /// # Example
     ///
     /// ```no_run
-    /// const RESOURCE_NAME: &'static str = "zookeeperclusters.zookeeper.stackable.de";
+    /// const RESOURCE_NAME: &'static str = "foo.bar.stackable.tech";
     /// ```
     const RESOURCE_NAME: &'static str;
 
@@ -35,7 +35,7 @@ pub trait Crd {
 /// #
 /// # struct Test;
 /// # impl Crd for Test {
-/// #    const RESOURCE_NAME: &'static str = "foo.bar.com";
+/// #    const RESOURCE_NAME: &'static str = "foo.bar.stackable.tech";
 /// #    const CRD_DEFINITION: &'static str = "mycrdhere";
 /// # }
 /// #
@@ -87,6 +87,6 @@ async fn create<T>(client: Client) -> OperatorResult<()>
 where
     T: Crd,
 {
-    let zk_crd: CustomResourceDefinition = serde_yaml::from_str(T::CRD_DEFINITION)?;
-    client.create(&zk_crd).await.and(Ok(()))
+    let crd: CustomResourceDefinition = serde_yaml::from_str(T::CRD_DEFINITION)?;
+    client.create(&crd).await.and(Ok(()))
 }

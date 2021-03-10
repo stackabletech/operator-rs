@@ -177,6 +177,63 @@ where
             })
     }
 
+    /// This reconcile function can be added to the chain to automatically handle deleted objects
+    /// using finalizers.
+    ///
+    /// It'll add a finalizer to the object if it's not there yet, if the `deletion_timestamp` is set
+    /// it'll call the provided handler function and it'll remove the finalizer if the handler completes
+    /// with a `Done` result.
+    ///
+    /// If the object is not deleted this function will return a `Continue` event.
+    ///
+    /// # Arguments
+    ///
+    /// * `handler` - This future will be completed if the object has been marked for deletion
+    /// * `finalizer` - The finalizer to add and/or check for
+    /// * `requeue_if_changed` - If this is `true` we'll return a `Requeue` immediately if we had to
+    ///     change the resource due to the addition of the finalizer
+    pub async fn handle_deletion(
+        &self,
+        handler: Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Error>> + Send + '_>>,
+        finalizer: &str,
+        requeue_if_changed: bool,
+    ) -> ReconcileResult<Error>
+    where
+        T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
+    {
+        let being_deleted = finalizer::has_deletion_stamp(&self.resource);
+
+        // Try to add a finalizer but only if the deletion_timestamp is not already set
+        // Kubernetes forbids setting new finalizers on objects under deletion and will return this error:
+        // Forbidden: no new finalizers can be added if the object is being deleted, found new finalizers []string{\"foo\"}
+        if !being_deleted
+            && finalizer::add_finalizer(&self.client, &self.resource, finalizer).await?
+            && requeue_if_changed
+        {
+            return Ok(self.requeue());
+        }
+
+        if !being_deleted {
+            debug!("Resource not deleted, continuing",);
+            return Ok(ReconcileFunctionAction::Continue);
+        }
+
+        if !finalizer::has_finalizer(&self.resource, finalizer) {
+            debug!("Resource being deleted but our finalizer is already gone, there might be others but we're done here!");
+            return Ok(ReconcileFunctionAction::Done);
+        }
+
+        match handler.await? {
+            ReconcileFunctionAction::Continue => Ok(ReconcileFunctionAction::Continue),
+            ReconcileFunctionAction::Done => {
+                info!("Removing finalizer [{}]", finalizer,);
+                finalizer::remove_finalizer(&self.client, &self.resource, finalizer).await?;
+                Ok(ReconcileFunctionAction::Done)
+            }
+            ReconcileFunctionAction::Requeue(_) => Ok(self.requeue()),
+        }
+    }
+
     /// Finds nodes in the cluster that match a given LabelSelector
     /// This takes a hashmap of String -> LabelSelector and returns
     /// a map with found nodes per String
@@ -267,63 +324,6 @@ where
         Ok(ReconcileFunctionAction::Continue)
     }
 
-    /// This reconcile function can be added to the chain to automatically handle deleted objects
-    /// using finalizers.
-    ///
-    /// It'll add a finalizer to the object if it's not there yet, if the `deletion_timestamp` is set
-    /// it'll call the provided handler function and it'll remove the finalizer if the handler completes
-    /// with a `Done` result.
-    ///
-    /// If the object is not deleted this function will return a `Continue` event.
-    ///
-    /// # Arguments
-    ///
-    /// - `handler` - This future will be completed if the object has been marked for deletion
-    /// - `finalizer` - The finalizer to add and/or check for
-    /// - `requeue_if_changed` - If this is `true` we'll return a `Requeue` immediately if we had to
-    ///     change the resource due to the addition of the finalizer
-    pub async fn handle_deletion(
-        &self,
-        handler: Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Error>> + Send + '_>>,
-        finalizer: &str,
-        requeue_if_changed: bool,
-    ) -> ReconcileResult<Error>
-    where
-        T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
-    {
-        let being_deleted = finalizer::has_deletion_stamp(&self.resource);
-
-        // Try to add a finalizer but only if the deletion_timestamp is not already set
-        // Kubernetes forbids setting new finalizers on objects under deletion and will return this error:
-        // Forbidden: no new finalizers can be added if the object is being deleted, found new finalizers []string{\"foo\"}
-        if !being_deleted
-            && finalizer::add_finalizer(&self.client, &self.resource, finalizer).await?
-            && requeue_if_changed
-        {
-            return Ok(self.requeue());
-        }
-
-        if !being_deleted {
-            debug!("Resource not deleted, continuing",);
-            return Ok(ReconcileFunctionAction::Continue);
-        }
-
-        if !finalizer::has_finalizer(&self.resource, finalizer) {
-            debug!("Resource being deleted but our finalizer is already gone, there might be others but we're done here!");
-            return Ok(ReconcileFunctionAction::Done);
-        }
-
-        match handler.await? {
-            ReconcileFunctionAction::Continue => Ok(ReconcileFunctionAction::Continue),
-            ReconcileFunctionAction::Done => {
-                info!("Removing finalizer [{}]", finalizer,);
-                finalizer::remove_finalizer(&self.client, &self.resource, finalizer).await?;
-                Ok(ReconcileFunctionAction::Done)
-            }
-            ReconcileFunctionAction::Requeue(_) => Ok(self.requeue()),
-        }
-    }
-
     /// Creates a new [`Condition`] for the `resource` this context contains.
     ///
     /// It's a convenience function that passes through all parameters and builds a `Condition`
@@ -376,7 +376,7 @@ where
         self.set_condition(condition).await
     }
 
-    /// A reconciler function to adsour finalizer to the list of finalizers.
+    /// A reconciler function to add to our finalizer to the list of finalizers.
     /// It is a wrapper around [`finalizer::add_finalizer`].
     ///
     /// It can return `Continue` or `Requeue` depending on the `requeue` argument and the state of the resource.
@@ -386,8 +386,8 @@ where
     ///
     /// # Arguments
     ///
-    /// - `finalizer` - The finalizer to add
-    /// - `requeue` - If `true` this function will return `Requeue` if the object was changed (i.e. the finalizer was added) otherwise it'll return `Continue`
+    /// * `finalizer` - The finalizer to add
+    /// * `requeue` - If `true` this function will return `Requeue` if the object was changed (i.e. the finalizer was added) otherwise it'll return `Continue`
     pub async fn add_finalizer(&self, finalizer: &str, requeue: bool) -> ReconcileResult<Error> {
         if finalizer::add_finalizer(&self.client, &self.resource, finalizer).await? && requeue {
             Ok(self.requeue())
