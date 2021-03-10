@@ -14,3 +14,4 @@ updates:
       # It often contains breaking changes so can't be updated manually anyway
       # and it needs to be updated together with kube-runtime, kube-derive etc.
       - dependency-name: "kube*"
+      - dependency-name: "k8s-openapi"
