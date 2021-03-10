@@ -141,7 +141,6 @@ pub fn is_pod_assigned_to_node(pod: &Pod, node: &Node) -> bool {
 ///
 /// assert!(!podutils::pod_matches_multiple_label_values(&pod, &required_labels));
 /// ```
-// TODO: Tests
 pub fn pod_matches_multiple_label_values(
     pod: &Pod,
     required_labels: &BTreeMap<String, Option<Vec<String>>>,
@@ -273,11 +272,11 @@ pub fn pod_matches_labels(pod: &Pod, expected_labels: &BTreeMap<String, Option<S
 mod tests {
     use super::*;
     use crate::test;
-    use crate::test::PodBuilder;
+    use crate::test::{NodeBuilder, PodBuilder};
     use k8s_openapi::api::core::v1::{Pod, PodCondition, PodStatus};
 
     #[test]
-    fn test_is_pod_assigned_to_node() {
+    fn test_is_pod_assigned_to_node_name() {
         // Pod with no node_name
         let pod = PodBuilder::new().build();
         assert!(!is_pod_assigned_to_node_name(&pod, "foobar"));
@@ -290,6 +289,24 @@ mod tests {
         // Pod with empty spec doesn't match
         pod.spec = None;
         assert!(!is_pod_assigned_to_node_name(&pod, "foobar"));
+    }
+
+    #[test]
+    fn test_is_pod_assigned_to_node() {
+        // Pod with no node_name
+        let pod = PodBuilder::new().build();
+        let node = NodeBuilder::new().name("foobar").build();
+        let node2 = NodeBuilder::new().name("barfoo").build();
+        assert!(!is_pod_assigned_to_node(&pod, &node));
+
+        // Pod with node_name, matches one but not the other
+        let mut pod = PodBuilder::new().node_name("foobar").build();
+        assert!(is_pod_assigned_to_node(&pod, &node));
+        assert!(!is_pod_assigned_to_node(&pod, &node2));
+
+        // Pod with empty spec doesn't match
+        pod.spec = None;
+        assert!(!is_pod_assigned_to_node(&pod, &node));
     }
 
     #[test]
@@ -553,5 +570,38 @@ mod tests {
             1,
             find_pods_that_are_in_use(&nodes, &existing_pods, &expected_labels).len()
         );
+    }
+
+    #[test]
+    fn test_pod_matches_multiple_label_values() {
+        let pod = PodBuilder::new().build();
+
+        let mut required_labels = BTreeMap::new();
+        required_labels.insert("foo".to_string(), None);
+
+        // Pod has no labels but we want one but don't care about the value
+        assert!(!pod_matches_multiple_label_values(&pod, &required_labels));
+
+        // Pod has only the required label
+        let pod = PodBuilder::new().with_label("foo", "bar").build();
+        assert!(pod_matches_multiple_label_values(&pod, &required_labels));
+
+        // Pod has multiple labels
+        let pod = PodBuilder::new()
+            .with_label("foo", "bar")
+            .with_label("bar", "foo")
+            .build();
+        assert!(pod_matches_multiple_label_values(&pod, &required_labels));
+
+        // Pod has correct label but wrong value
+        required_labels.insert("bar".to_string(), Some(vec!["baz".to_string()]));
+        assert!(!pod_matches_multiple_label_values(&pod, &required_labels));
+
+        // Pod cas correct label and also one of the correct values
+        required_labels.insert(
+            "bar".to_string(),
+            Some(vec!["baz".to_string(), "foo".to_string()]),
+        );
+        assert!(pod_matches_multiple_label_values(&pod, &required_labels));
     }
 }

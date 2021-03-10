@@ -45,6 +45,31 @@ impl PodBuilder {
     }
 }
 
+pub struct NodeBuilder {
+    node: Node,
+}
+
+impl NodeBuilder {
+    pub fn new() -> NodeBuilder {
+        NodeBuilder {
+            node: Node::default(),
+        }
+    }
+
+    pub fn name(&mut self, name: &str) -> &mut Self {
+        self.node.metadata.name = Some(name.to_string());
+        self
+    }
+
+    /// Consumes the Builder and returns a constructed Node
+    pub fn build(&self) -> Node {
+        // We're cloning here because we can't take just `self` in this method because then
+        // we couldn't chain the method with the others easily (because they return &mut self and not self)
+        //
+        self.node.clone()
+    }
+}
+
 pub fn build_test_node(name: &str) -> Node {
     Node {
         metadata: ObjectMeta {
@@ -52,20 +77,6 @@ pub fn build_test_node(name: &str) -> Node {
             ..ObjectMeta::default()
         },
         spec: None,
-        status: None,
-    }
-}
-
-pub fn build_test_pod(node_name: Option<&str>, labels: Option<BTreeMap<String, String>>) -> Pod {
-    Pod {
-        metadata: ObjectMeta {
-            labels,
-            ..ObjectMeta::default()
-        },
-        spec: Some(PodSpec {
-            node_name: node_name.map(|name| name.to_string()),
-            ..PodSpec::default()
-        }),
         status: None,
     }
 }
