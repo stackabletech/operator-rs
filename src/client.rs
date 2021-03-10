@@ -124,6 +124,20 @@ impl Client {
             .await
     }
 
+    /// Patches a resource using the `JSON` patch strategy described in [JavaScript Object Notation (JSON) Patch](https://tools.ietf.org/html/rfc6902).
+    pub async fn json_patch<T>(&self, resource: &T, patch: json_patch::Patch) -> OperatorResult<T>
+    where
+        T: Clone + DeserializeOwned + Meta,
+    {
+        // The `()` type is not used. I need to provide _some_ type just to get it to compile.
+        // But the type is not used _at all_ for the `Json` variant so I'd argue it's okay to
+        // provide any type here.
+        // This is definitely a hack though but there is currently no better way.
+        // See also: https://github.com/clux/kube-rs/pull/456
+        let patch = Patch::Json::<()>(patch);
+        self.patch(resource, patch, &self.patch_params).await
+    }
+
     async fn patch<T, P>(
         &self,
         resource: &T,
