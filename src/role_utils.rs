@@ -43,7 +43,7 @@
 //!
 //! Each Pod can have more operator specific labels.
 
-use crate::pod_utils;
+use crate::podutils;
 use k8s_openapi::api::core::v1::{Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use std::collections::BTreeMap;
@@ -65,7 +65,7 @@ pub struct RoleGroup {
 /// To clearly identify Pods (e.g. to distinguish two pods on the same node from each other) they
 /// usually need some labels (e.g. a `role` label).
 pub fn find_excess_pods<'a>(
-    nodes_and_required_labels: &[(Vec<Node>, BTreeMap<&str, Option<String>>)],
+    nodes_and_required_labels: &[(Vec<Node>, BTreeMap<String, Option<String>>)],
     existing_pods: &'a [Pod],
 ) -> Vec<&'a Pod> {
     let mut used_pods = Vec::new();
@@ -73,7 +73,7 @@ pub fn find_excess_pods<'a>(
     // For each pair of Nodes and labels we try to find all Pods that are currently in use and valid
     // We collect all of those in one big list.
     for (eligible_nodes, mandatory_label_values) in nodes_and_required_labels {
-        let mut found_pods = pod_utils::find_pods_that_are_in_use(
+        let mut found_pods = podutils::find_pods_that_are_in_use(
             &eligible_nodes,
             &existing_pods,
             mandatory_label_values,

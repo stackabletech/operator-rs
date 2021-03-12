@@ -123,7 +123,7 @@ pub fn is_pod_assigned_to_node(pod: &Pod, node: &Node) -> bool {
 /// # Example
 ///
 /// ```
-/// use stackable_operator::pod_utils;
+/// use stackable_operator::podutils;
 /// # use k8s_openapi::api::core::v1::{Pod, PodSpec};
 /// # use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 /// use std::collections::BTreeMap;
@@ -139,11 +139,11 @@ pub fn is_pod_assigned_to_node(pod: &Pod, node: &Node) -> bool {
 /// let mut required_labels = BTreeMap::new();
 /// required_labels.insert("foo".to_string(), None);
 ///
-/// assert!(!pod_utils::pod_matches_multiple_label_values(&pod, &required_labels));
+/// assert!(!podutils::pod_matches_multiple_label_values(&pod, &required_labels));
 /// ```
 pub fn pod_matches_multiple_label_values(
     pod: &Pod,
-    required_labels: &BTreeMap<&str, Option<Vec<String>>>,
+    required_labels: &BTreeMap<String, Option<Vec<String>>>,
 ) -> bool {
     let pod_labels = &pod.metadata.labels;
 
@@ -189,7 +189,7 @@ pub fn pod_matches_multiple_label_values(
 /// It returns all Pods that return `false` when passed to the [`is_valid_pod`] method.
 pub fn find_invalid_pods<'a>(
     pods: &'a [Pod],
-    required_labels: &BTreeMap<&str, Option<Vec<String>>>,
+    required_labels: &BTreeMap<String, Option<Vec<String>>>,
 ) -> Vec<&'a Pod> {
     pods.iter()
         .filter(|pod| !is_valid_pod(pod, required_labels))
@@ -201,7 +201,7 @@ pub fn find_invalid_pods<'a>(
 /// For a Pod to be valid it must be assigned to a node (via `spec.node_name`) and it must
 /// have all required labels.
 /// See [`pod_matches_multiple_label_values`] for a description of the label format.
-pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<&str, Option<Vec<String>>>) -> bool {
+pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<String, Option<Vec<String>>>) -> bool {
     matches!(
         pod.spec,
         Some(PodSpec {
@@ -221,7 +221,7 @@ pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<&str, Option<Vec<Strin
 pub fn find_pods_that_are_in_use<'a>(
     candidate_nodes: &[Node],
     existing_pods: &'a [Pod],
-    label_values: &BTreeMap<&str, Option<String>>,
+    label_values: &BTreeMap<String, Option<String>>,
 ) -> Vec<&'a Pod> {
     existing_pods
         .iter()
@@ -233,7 +233,7 @@ pub fn find_pods_that_are_in_use<'a>(
         .collect()
 }
 
-pub fn pod_matches_labels(pod: &Pod, expected_labels: &BTreeMap<&str, Option<String>>) -> bool {
+pub fn pod_matches_labels(pod: &Pod, expected_labels: &BTreeMap<String, Option<String>>) -> bool {
     let converted = expected_labels
         .iter()
         .map(|(key, value)| {

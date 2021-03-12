@@ -13,7 +13,7 @@ pub mod krustlet;
 pub mod label_selector;
 pub mod logging;
 pub mod metadata;
-pub mod pod_utils;
+pub mod podutils;
 pub mod reconcile;
 pub mod role_utils;
 pub mod validation;

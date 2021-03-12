@@ -1,7 +1,7 @@
 use crate::error::OperatorResult;
 use crate::finalizer;
 use crate::label_selector;
-use crate::pod_utils;
+use crate::podutils;
 
 use either::Either;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
@@ -249,13 +249,13 @@ impl Client {
         if finalizer::has_deletion_stamp(resource) {
             trace!(
                 "Resource ([{}]) already has `deletion_timestamp`, not deleting",
-                pod_utils::get_log_name(resource)
+                podutils::get_log_name(resource)
             );
             Ok(None)
         } else {
             trace!(
                 "Resource ([{}]) does not have a `deletion_timestamp`, deleting now",
-                pod_utils::get_log_name(resource)
+                podutils::get_log_name(resource)
             );
             let api: Api<T> = self.get_api(Meta::namespace(resource));
             Ok(Some(

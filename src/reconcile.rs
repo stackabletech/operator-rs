@@ -1,6 +1,6 @@
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
-use crate::{conditions, controller_ref, finalizer, pod_utils, role_utils};
+use crate::{conditions, controller_ref, finalizer, podutils, role_utils};
 
 use crate::conditions::ConditionStatus;
 use crate::role_utils::RoleGroup;
@@ -92,7 +92,7 @@ impl<T> ReconciliationContext<T> {
 
     pub async fn wait_for_running_and_ready_pods(&self, pods: &[Pod]) -> ReconcileResult<Error> {
         for pod in pods {
-            if !pod_utils::is_pod_running_and_ready(pod) {
+            if !podutils::is_pod_running_and_ready(pod) {
                 return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
             }
         }
@@ -130,7 +130,7 @@ where
     ///
     /// See [`crate::podutils::get_log_name()`] for details.
     pub fn log_name(&self) -> String {
-        pod_utils::get_log_name(&self.resource)
+        podutils::get_log_name(&self.resource)
     }
 
     pub fn metadata(&self) -> ObjectMeta {
@@ -248,10 +248,10 @@ where
     pub async fn delete_illegal_pods(
         &self,
         pods: &[Pod],
-        required_labels: &BTreeMap<&str, Option<Vec<String>>>,
+        required_labels: &BTreeMap<String, Option<Vec<String>>>,
         deletion_strategy: DeletionStrategy,
     ) -> ReconcileResult<Error> {
-        let illegal_pods = pod_utils::find_invalid_pods(pods, required_labels);
+        let illegal_pods = podutils::find_invalid_pods(pods, required_labels);
         if illegal_pods.is_empty() {
             return Ok(ReconcileFunctionAction::Continue);
         }
@@ -259,7 +259,7 @@ where
         for illegal_pod in illegal_pods {
             warn!(
                 "Deleting invalid Pod [{}]",
-                pod_utils::get_log_name(illegal_pod)
+                podutils::get_log_name(illegal_pod)
             );
             self.client.delete(illegal_pod).await?;
 
@@ -277,7 +277,7 @@ where
 
     pub async fn delete_excess_pods(
         &self,
-        nodes_and_labels: &[(Vec<Node>, BTreeMap<&str, Option<String>>)],
+        nodes_and_labels: &[(Vec<Node>, BTreeMap<String, Option<String>>)],
         existing_pods: &[Pod],
         deletion_strategy: DeletionStrategy,
     ) -> ReconcileResult<Error> {
@@ -285,7 +285,7 @@ where
         for excess_pod in excess_pods {
             info!(
                 "Deleting invalid Pod [{}]",
-                pod_utils::get_log_name(excess_pod)
+                podutils::get_log_name(excess_pod)
             );
             self.client.delete(excess_pod).await?;
 
@@ -461,14 +461,14 @@ fn add_stackable_selector(selector: &LabelSelector) -> LabelSelector {
 pub async fn find_nodes_that_need_pods<'a>(
     candidate_nodes: &'a [Node],
     existing_pods: &[Pod],
-    label_values: &BTreeMap<&str, Option<String>>,
+    label_values: &BTreeMap<String, Option<String>>,
 ) -> Vec<&'a Node> {
     let needy_pods = candidate_nodes
         .iter()
         .filter(|node| {
             !existing_pods.iter().any(|pod| {
-                pod_utils::is_pod_assigned_to_node(pod, node)
-                    && pod_utils::pod_matches_labels(pod, label_values)
+                podutils::is_pod_assigned_to_node(pod, node)
+                    && podutils::pod_matches_labels(pod, label_values)
             })
         })
         .collect::<Vec<&Node>>();
