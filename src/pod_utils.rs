@@ -123,7 +123,7 @@ pub fn is_pod_assigned_to_node(pod: &Pod, node: &Node) -> bool {
 /// # Example
 ///
 /// ```
-/// use stackable_operator::podutils;
+/// use stackable_operator::pod_utils;
 /// # use k8s_openapi::api::core::v1::{Pod, PodSpec};
 /// # use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 /// use std::collections::BTreeMap;
@@ -139,11 +139,11 @@ pub fn is_pod_assigned_to_node(pod: &Pod, node: &Node) -> bool {
 /// let mut required_labels = BTreeMap::new();
 /// required_labels.insert("foo".to_string(), None);
 ///
-/// assert!(!podutils::pod_matches_multiple_label_values(&pod, &required_labels));
+/// assert!(!pod_utils::pod_matches_multiple_label_values(&pod, &required_labels));
 /// ```
 pub fn pod_matches_multiple_label_values(
     pod: &Pod,
-    required_labels: &BTreeMap<String, Option<Vec<String>>>,
+    required_labels: &BTreeMap<&str, Option<Vec<String>>>,
 ) -> bool {
     let pod_labels = &pod.metadata.labels;
 
@@ -157,10 +157,12 @@ pub fn pod_matches_multiple_label_values(
             Some(pod_labels) => pod_labels,
         };
 
+        let expected_key = expected_key.to_string();
+
         // We can match two kinds:
         //   * Just the label key (expected_value == None)
         //   * Key and Value
-        if !pod_labels.contains_key(expected_key) {
+        if !pod_labels.contains_key(&expected_key.to_string()) {
             debug!(
                 "Pod [{}] is missing label [{}]",
                 Meta::name(pod),
@@ -171,7 +173,7 @@ pub fn pod_matches_multiple_label_values(
 
         if let Some(expected_values) = expected_value {
             // unwrap is fine here as we already checked earlier if the key exists
-            let pod_value = pod_labels.get(expected_key).unwrap();
+            let pod_value = pod_labels.get(&expected_key).unwrap();
 
             if !expected_values.iter().any(|value| value == pod_value) {
                 debug!("Pod [{}] has correct label [{}] but the wrong value (has: [{}], should have one of: [{:?}]", Meta::name(pod), expected_key, pod_value, expected_values);
@@ -187,7 +189,7 @@ pub fn pod_matches_multiple_label_values(
 /// It returns all Pods that return `false` when passed to the [`is_valid_pod`] method.
 pub fn find_invalid_pods<'a>(
     pods: &'a [Pod],
-    required_labels: &BTreeMap<String, Option<Vec<String>>>,
+    required_labels: &BTreeMap<&str, Option<Vec<String>>>,
 ) -> Vec<&'a Pod> {
     pods.iter()
         .filter(|pod| !is_valid_pod(pod, required_labels))
@@ -199,7 +201,7 @@ pub fn find_invalid_pods<'a>(
 /// For a Pod to be valid it must be assigned to a node (via `spec.node_name`) and it must
 /// have all required labels.
 /// See [`pod_matches_multiple_label_values`] for a description of the label format.
-pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<String, Option<Vec<String>>>) -> bool {
+pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<&str, Option<Vec<String>>>) -> bool {
     matches!(
         pod.spec,
         Some(PodSpec {
@@ -207,36 +209,6 @@ pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<String, Option<Vec<Str
             ..
         })
     ) && pod_matches_multiple_label_values(pod, required_labels)
-}
-
-/// This method can be used to find Pods that are not needed anymore.
-///
-/// For this to work we'll compare a list of all Pods against a list of Pods that are actively being used.
-/// We'll do this for an arbitrary number of Node lists and match labels.
-// TODO: Test and docs
-pub fn find_excess_pods<'a>(
-    nodes_and_labels: &[(Vec<Node>, BTreeMap<String, Option<String>>)],
-    existing_pods: &'a [Pod],
-) -> Vec<&'a Pod> {
-    let mut used_pods = Vec::new();
-
-    // For each pair of Nodes and labels we try to find all Pods that are currently in use and valid
-    // We collect all of those in one big list.
-    for (eligible_nodes, mandatory_label_values) in nodes_and_labels {
-        let mut found_pods =
-            find_pods_that_are_in_use(&eligible_nodes, &existing_pods, mandatory_label_values);
-        used_pods.append(&mut found_pods);
-    }
-
-    // Here we'll filter all existing Pods and will remove all Pods that are in use
-    existing_pods.iter()
-        .filter(|pod| {
-            !used_pods
-                .iter()
-                .any(|used_pod|
-                    matches!((pod.metadata.uid.as_ref(), used_pod.metadata.uid.as_ref()), (Some(existing_uid), Some(used_uid)) if existing_uid == used_uid))
-        })
-        .collect()
 }
 
 /// This function can be used to get a list of Pods that are assigned (via their `spec.node_name` property)
@@ -249,20 +221,19 @@ pub fn find_excess_pods<'a>(
 pub fn find_pods_that_are_in_use<'a>(
     candidate_nodes: &[Node],
     existing_pods: &'a [Pod],
-    label_values: &BTreeMap<String, Option<String>>,
+    label_values: &BTreeMap<&str, Option<String>>,
 ) -> Vec<&'a Pod> {
     existing_pods
         .iter()
         .filter(|pod|
             // This checks whether the Pod has all the required labels and if it does
             // it'll try to find a Node with the same `node_name` as the Pod.
-            pod_matches_labels(pod, &label_values) && candidate_nodes.iter().any(|node| is_pod_assigned_to_node(pod, node))
+            pod_matches_labels(pod, label_values) && candidate_nodes.iter().any(|node| is_pod_assigned_to_node(pod, node))
         )
         .collect()
 }
 
-// TODO: Move to podutils and rename? matches_labels?
-pub fn pod_matches_labels(pod: &Pod, expected_labels: &BTreeMap<String, Option<String>>) -> bool {
+pub fn pod_matches_labels(pod: &Pod, expected_labels: &BTreeMap<&str, Option<String>>) -> bool {
     let converted = expected_labels
         .iter()
         .map(|(key, value)| {

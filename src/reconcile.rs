@@ -1,6 +1,6 @@
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
-use crate::{conditions, controller_ref, finalizer, podutils};
+use crate::{conditions, controller_ref, finalizer, pod_utils, role_utils};
 
 use crate::conditions::ConditionStatus;
 use k8s_openapi::api::core::v1::{Node, Pod};
@@ -12,7 +12,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 pub type ReconcileResult<E> = std::result::Result<ReconcileFunctionAction, E>;
 
@@ -91,7 +91,7 @@ impl<T> ReconciliationContext<T> {
 
     pub async fn wait_for_running_and_ready_pods(&self, pods: &[Pod]) -> ReconcileResult<Error> {
         for pod in pods {
-            if !podutils::is_pod_running_and_ready(pod) {
+            if !pod_utils::is_pod_running_and_ready(pod) {
                 return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
             }
         }
@@ -129,7 +129,7 @@ where
     ///
     /// See [`crate::podutils::get_log_name()`] for details.
     pub fn log_name(&self) -> String {
-        podutils::get_log_name(&self.resource)
+        pod_utils::get_log_name(&self.resource)
     }
 
     pub fn metadata(&self) -> ObjectMeta {
@@ -175,6 +175,129 @@ where
                     .filter(|pod| pod_owned_by(pod, owner_uid))
                     .collect()
             })
+    }
+
+    /// Finds nodes in the cluster that match a given LabelSelector
+    /// This takes a hashmap of String -> LabelSelector and returns
+    /// a map with found nodes per String
+    ///
+    /// This will only match Stackable nodes (Nodes with a special label).
+    /// TODO: Docs & Tests
+    pub async fn find_nodes_that_fit_selectors(
+        &self,
+        roles: &HashMap<String, LabelSelector>,
+    ) -> OperatorResult<HashMap<String, Vec<Node>>> {
+        let mut found_nodes = HashMap::new();
+        for (group_name, selector) in roles {
+            let selector = add_stackable_selector(selector);
+            let nodes = self.client.list_with_label_selector(&selector).await?;
+            debug!(
+                "Found [{}] nodes for role group [{}]: [{:?}]",
+                nodes.len(),
+                group_name,
+                nodes
+            );
+            found_nodes.insert(group_name.clone(), nodes);
+        }
+        Ok(found_nodes)
+    }
+
+    /// Creates a new [`Condition`] for the `resource` this context contains.
+    ///
+    /// It's a convenience function that passes through all parameters and builds a `Condition`
+    /// using the [`conditions::build_condition`] method.
+    pub fn build_condition_for_resource(
+        &self,
+        current_conditions: Option<&[Condition]>,
+        message: String,
+        reason: String,
+        status: ConditionStatus,
+        condition_type: String,
+    ) -> Condition {
+        conditions::build_condition(
+            &self.resource,
+            current_conditions,
+            message,
+            reason,
+            status,
+            condition_type,
+        )
+    }
+
+    // TODO: delete_illegal_and_excess_pods and maybe take a list of BTreeMap<String<Option<String>> and convert it to the
+    // structure we need so users need to build the labels only once
+    // TODO: Should it be a list of BTReeMaps? It'd be different for each role group
+    //TODO: The key of the map could be a &str if that doesn't make things too complicated
+
+    /// Checks all passed Pods to see if they fulfil some basic requirements.
+    ///
+    /// * They need to have all required labels and optionally one of a list of allowed values
+    /// * They need to have a spec.node_name
+    ///
+    /// If not they are considered invalid and will be deleted.
+    ///
+    /// This is a safety measure and should never actually delete any Pods as all Pods operators create
+    /// should obviously all be valid.
+    /// If this ever deletes a Pod it'll be either a programming error or a user who created or changed
+    /// Pods manually.
+    ///
+    /// Implementation note: Unfortunately the required label structure is slightly different here than in `delete_excess_pods`
+    /// and while that one could be converted into the one we need it'd require another parameter
+    /// to ignore certain labels (e.g. `role group` values should never be checked)
+    pub async fn delete_illegal_pods(
+        &self,
+        pods: &[Pod],
+        required_labels: &BTreeMap<&str, Option<Vec<String>>>,
+        deletion_strategy: DeletionStrategy,
+    ) -> ReconcileResult<Error> {
+        let illegal_pods = pod_utils::find_invalid_pods(pods, required_labels);
+        if illegal_pods.is_empty() {
+            return Ok(ReconcileFunctionAction::Continue);
+        }
+
+        for illegal_pod in illegal_pods {
+            warn!(
+                "Deleting invalid Pod [{}]",
+                pod_utils::get_log_name(illegal_pod)
+            );
+            self.client.delete(illegal_pod).await?;
+
+            if deletion_strategy == DeletionStrategy::OneRequeue {
+                return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
+            }
+        }
+
+        if deletion_strategy == DeletionStrategy::AllRequeue {
+            return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
+        }
+
+        Ok(ReconcileFunctionAction::Continue)
+    }
+
+    pub async fn delete_excess_pods(
+        &self,
+        nodes_and_labels: &[(Vec<Node>, BTreeMap<&str, Option<String>>)],
+        existing_pods: &[Pod],
+        deletion_strategy: DeletionStrategy,
+    ) -> ReconcileResult<Error> {
+        let excess_pods = role_utils::find_excess_pods(nodes_and_labels, existing_pods);
+        for excess_pod in excess_pods {
+            info!(
+                "Deleting invalid Pod [{}]",
+                pod_utils::get_log_name(excess_pod)
+            );
+            self.client.delete(excess_pod).await?;
+
+            if deletion_strategy == DeletionStrategy::OneRequeue {
+                return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
+            }
+        }
+
+        if deletion_strategy == DeletionStrategy::AllRequeue {
+            return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
+        }
+
+        Ok(ReconcileFunctionAction::Continue)
     }
 
     /// This reconcile function can be added to the chain to automatically handle deleted objects
@@ -232,118 +355,6 @@ where
             }
             ReconcileFunctionAction::Requeue(_) => Ok(self.requeue()),
         }
-    }
-
-    /// Finds nodes in the cluster that match a given LabelSelector
-    /// This takes a hashmap of String -> LabelSelector and returns
-    /// a map with found nodes per String
-    ///
-    /// This will only match Stackable nodes (Nodes with a special label).
-    /// TODO: Docs & Tests
-    pub async fn find_nodes_that_fit_selectors(
-        &self,
-        roles: &HashMap<String, LabelSelector>,
-    ) -> OperatorResult<HashMap<String, Vec<Node>>> {
-        let mut found_nodes = HashMap::new();
-        for (group_name, selector) in roles {
-            let selector = add_stackable_selector(selector);
-            let nodes = self.client.list_with_label_selector(&selector).await?;
-            debug!(
-                "Found [{}] nodes for role group [{}]: [{:?}]",
-                nodes.len(),
-                group_name,
-                nodes
-            );
-            found_nodes.insert(group_name.clone(), nodes);
-        }
-        Ok(found_nodes)
-    }
-
-    /// Checks all passed Pods to see if they fulfil some basic requirements.
-    ///
-    /// * They need to have all required labels and optionally one of a list of allowed values
-    /// * They need to have a spec.node_name
-    ///
-    /// If not they are considered invalid and will be deleted.
-
-    // TODO: delete_illegal_and_excess_pods and maybe take a list of BTreeMap<String<Option<String>> and convert it to the
-    // structure we need so users need to build the labels only once
-    pub async fn delete_illegal_pods<'a>(
-        &self,
-        pods: &'a [Pod],
-        required_labels: &BTreeMap<String, Option<Vec<String>>>,
-        deletion_strategy: DeletionStrategy,
-    ) -> ReconcileResult<Error> {
-        let illegal_pods = podutils::find_invalid_pods(pods, required_labels);
-        if illegal_pods.is_empty() {
-            return Ok(ReconcileFunctionAction::Continue);
-        }
-
-        for illegal_pod in illegal_pods {
-            info!(
-                "Deleting invalid Pod [{}]",
-                podutils::get_log_name(illegal_pod)
-            );
-            self.client.delete(illegal_pod).await?;
-
-            if deletion_strategy == DeletionStrategy::OneRequeue {
-                return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
-            }
-        }
-
-        if deletion_strategy == DeletionStrategy::AllRequeue {
-            return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
-        }
-
-        Ok(ReconcileFunctionAction::Continue)
-    }
-
-    pub async fn delete_excess_pods(
-        &self,
-        nodes_and_labels: &[(Vec<Node>, BTreeMap<String, Option<String>>)],
-        existing_pods: &[Pod],
-        deletion_strategy: DeletionStrategy,
-    ) -> ReconcileResult<Error> {
-        let excess_pods = podutils::find_excess_pods(nodes_and_labels, existing_pods);
-        for excess_pod in excess_pods {
-            info!(
-                "Deleting invalid Pod [{}]",
-                podutils::get_log_name(excess_pod)
-            );
-            self.client.delete(excess_pod).await?;
-
-            if deletion_strategy == DeletionStrategy::OneRequeue {
-                return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
-            }
-        }
-
-        if deletion_strategy == DeletionStrategy::AllRequeue {
-            return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
-        }
-
-        Ok(ReconcileFunctionAction::Continue)
-    }
-
-    /// Creates a new [`Condition`] for the `resource` this context contains.
-    ///
-    /// It's a convenience function that passes through all parameters and builds a `Condition`
-    /// using the [`conditions::build_condition`] method.
-    pub fn build_condition_for_resource(
-        &self,
-        current_conditions: Option<&[Condition]>,
-        message: String,
-        reason: String,
-        status: ConditionStatus,
-        condition_type: String,
-    ) -> Condition {
-        conditions::build_condition(
-            &self.resource,
-            current_conditions,
-            message,
-            reason,
-            status,
-            condition_type,
-        )
     }
 }
 
@@ -449,17 +460,18 @@ fn add_stackable_selector(selector: &LabelSelector) -> LabelSelector {
 pub async fn find_nodes_that_need_pods<'a>(
     candidate_nodes: &'a [Node],
     existing_pods: &[Pod],
-    label_values: &BTreeMap<String, Option<String>>,
+    label_values: &BTreeMap<&str, Option<String>>,
 ) -> Vec<&'a Node> {
-    candidate_nodes
+    let needy_pods = candidate_nodes
         .iter()
         .filter(|node| {
             !existing_pods.iter().any(|pod| {
-                podutils::is_pod_assigned_to_node(pod, node)
-                    && podutils::pod_matches_labels(pod, &label_values)
+                pod_utils::is_pod_assigned_to_node(pod, node)
+                    && pod_utils::pod_matches_labels(pod, label_values)
             })
         })
-        .collect()
+        .collect::<Vec<&Node>>();
+    needy_pods
 }
 
 #[cfg(test)]
