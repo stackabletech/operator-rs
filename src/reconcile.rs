@@ -3,6 +3,7 @@ use crate::error::{Error, OperatorResult};
 use crate::{conditions, controller_ref, finalizer, pod_utils, role_utils};
 
 use crate::conditions::ConditionStatus;
+use crate::role_utils::RoleGroup;
 use k8s_openapi::api::core::v1::{Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector, OwnerReference};
 use kube::api::{ListParams, Meta, ObjectMeta};
@@ -178,26 +179,26 @@ where
     }
 
     /// Finds nodes in the cluster that match a given LabelSelector
-    /// This takes a hashmap of String -> LabelSelector and returns
+    /// This takes list of RoleGroup and returns
     /// a map with found nodes per String
     ///
     /// This will only match Stackable nodes (Nodes with a special label).
     /// TODO: Docs & Tests
     pub async fn find_nodes_that_fit_selectors(
         &self,
-        roles: &HashMap<String, LabelSelector>,
+        role_groups: Vec<RoleGroup>,
     ) -> OperatorResult<HashMap<String, Vec<Node>>> {
         let mut found_nodes = HashMap::new();
-        for (group_name, selector) in roles {
-            let selector = add_stackable_selector(selector);
+        for role_group in role_groups {
+            let selector = add_stackable_selector(&role_group.selector);
             let nodes = self.client.list_with_label_selector(&selector).await?;
             debug!(
                 "Found [{}] nodes for role group [{}]: [{:?}]",
                 nodes.len(),
-                group_name,
+                role_group.name,
                 nodes
             );
-            found_nodes.insert(group_name.clone(), nodes);
+            found_nodes.insert(role_group.name.clone(), nodes);
         }
         Ok(found_nodes)
     }
