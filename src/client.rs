@@ -426,8 +426,7 @@ mod tests {
             match result {
                 Ok(event) => match event {
                     Event::Applied(pod) => {
-                        panic!("The pod {} should be applied already, as the `wait_ready` function held until the pod is ready.\
-                        Expected Event::Restarted", pod.name())
+                        assert_eq!("test-wait-created-busybox", pod.name());
                     }
                     Event::Restarted(pods) => {
                         assert_eq!(1, pods.len());
