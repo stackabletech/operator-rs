@@ -339,8 +339,13 @@ impl Client {
         while let Some(result) = watcher.next().await {
             match result {
                 Ok(event) => match event {
-                    Event::Applied(_) | Event::Restarted(_) => {
+                    Event::Applied(_) => {
                         break;
+                    }
+                    Event::Restarted(pods) => {
+                        if !pods.is_empty() {
+                            break;
+                        }
                     }
                     Event::Deleted(_) => {
                         continue;
@@ -371,6 +376,7 @@ mod tests {
     use kube::api::{ListParams, Meta, ObjectMeta, PostParams};
     use kube_runtime::watcher::Event;
     use std::time::Duration;
+    use tokio::time::error::Elapsed;
 
     #[tokio::test]
     async fn test_wait_created() {
@@ -396,7 +402,6 @@ mod tests {
             }),
             ..Pod::default()
         };
-
         let api = client.get_api(Some(client.default_namespace.clone()));
         let created_pod = api
             .create(&PostParams::default(), &pod_to_wait_for)
@@ -447,5 +452,24 @@ mod tests {
             .delete(&created_pod)
             .await
             .expect("Expected test_wait_created pod to be deleted.");
+    }
+
+    #[tokio::test]
+    async fn test_wait_created_timeout() {
+        let client = super::create_client(None)
+            .await
+            .expect("KUBECONFIG variable must be configured.");
+
+        let lp: ListParams =
+            ListParams::default().fields(&format!("metadata.name=nonexistent-pod"));
+
+        // There is no such pod, therefore the `wait_created` function call times out.
+        let wait_created_result: Result<(), Elapsed> = tokio::time::timeout(
+            Duration::from_secs(1),
+            client.wait_created::<Pod>(Some(client.default_namespace.clone()), lp.clone()),
+        )
+        .await;
+
+        assert!(wait_created_result.is_err());
     }
 }
