@@ -4,8 +4,8 @@ use crate::label_selector;
 use crate::podutils;
 
 use either::Either;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
 use futures::StreamExt;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
 use k8s_openapi::Resource;
 use kube::api::{DeleteParams, ListParams, Meta, Patch, PatchParams, PostParams};
 use kube::client::{Client as KubeClient, Status};
