@@ -26,7 +26,7 @@ pub struct Client {
     post_params: PostParams,
     delete_params: DeleteParams,
     /// Default namespace as defined in the kubeconfig this client has been created from.
-    default_namespace: String,
+    pub default_namespace: String,
 }
 
 impl Client {
@@ -321,14 +321,39 @@ impl Client {
         Api::namespaced(self.client.clone(), namespace)
     }
 
-    /// Waits indefinitely until given resource with metadata is created in Kubernetes. If the resource
-    /// is already present, this method just returns. Makes no assumptions about resource's state,
+    /// Waits indefinitely until resources matching given `ListParams` are created in Kubernetes.
+    /// If the resource is already present, this method just returns. Makes no assumptions about resource's state,
     /// e.g. a pod created could be created, but not in a ready state.
     ///
     /// # Arguments
     ///
     /// - `namespace` - Optional namespace to look for the resources in.
     /// - `lp` - Parameters to filter resources to wait for in given namespace.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use kube::api::ListParams;
+    /// use std::time::Duration;
+    /// use tokio::time::error::Elapsed;
+    /// use k8s_openapi::api::core::v1::Pod;
+    /// use stackable_operator::client::{Client, create_client};
+    ///
+    /// #[tokio::main]
+    /// async fn main(){
+    /// let client: Client = create_client(None).await.expect("Unable to construct client.");
+    /// let lp: ListParams =
+    ///         ListParams::default().fields(&format!("metadata.name=nonexistent-pod"));
+    ///
+    /// // Will time out in 1 second unless the nonexistent-pod actually exists
+    ///  let wait_created_result: Result<(), Elapsed> = tokio::time::timeout(
+    ///          Duration::from_secs(1),
+    ///          client.wait_created::<Pod>(Some(client.default_namespace.clone()), lp.clone()),
+    ///      )
+    ///      .await;
+    /// }
+    /// ```
+    ///
     pub async fn wait_created<T>(&self, namespace: Option<String>, lp: ListParams)
     where
         T: Meta + Clone + DeserializeOwned + Send + 'static,
