@@ -9,10 +9,11 @@ use futures::StreamExt;
 use k8s_openapi::Resource;
 use kube::api::{DeleteParams, ListParams, Meta, Patch, PatchParams, PostParams};
 use kube::client::{Client as KubeClient, Status};
-use kube::Api;
+use kube::{Api, Config};
 use kube_runtime::watcher::Event;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::convert::TryFrom;
 use tracing::debug;
 use tracing::trace;
 
@@ -24,10 +25,16 @@ pub struct Client {
     patch_params: PatchParams,
     post_params: PostParams,
     delete_params: DeleteParams,
+    /// Default namespace as defined in the kubeconfig this client has been created from.
+    default_namespace: String,
 }
 
 impl Client {
-    pub fn new(client: KubeClient, field_manager: Option<String>) -> Self {
+    pub fn new(
+        client: KubeClient,
+        field_manager: Option<String>,
+        default_namespace: String,
+    ) -> Self {
         Client {
             client,
             post_params: PostParams {
@@ -42,6 +49,7 @@ impl Client {
                 ..PatchParams::default()
             },
             delete_params: DeleteParams::default(),
+            default_namespace,
         }
     }
 
@@ -313,13 +321,15 @@ impl Client {
         Api::namespaced(self.client.clone(), namespace)
     }
 
-    /// Waits until given resource with metadata is recognized as applied by Kubernetes API
+    /// Waits indefinitely until given resource with metadata is created in Kubernetes. If the resource
+    /// is already present, this method just returns. Makes no assumptions about resource's state,
+    /// e.g. a pod created could be created, but not in a ready state.
     ///
     /// # Arguments
     ///
     /// - `namespace` - Optional namespace to look for the resources in.
-    /// - `lp` - Parameters to filter resources in given namespace.
-    pub async fn wait_ready<T>(&self, namespace: Option<String>, lp: ListParams)
+    /// - `lp` - Parameters to filter resources to wait for in given namespace.
+    pub async fn wait_created<T>(&self, namespace: Option<String>, lp: ListParams)
     where
         T: Meta + Clone + DeserializeOwned + Send + 'static,
     {
@@ -345,8 +355,98 @@ impl Client {
 }
 
 pub async fn create_client(field_manager: Option<String>) -> OperatorResult<Client> {
+    let kubeconfig: Config = kube::Config::infer().await?;
+    let default_namespace = kubeconfig.default_ns.clone();
     Ok(Client::new(
-        kube::Client::try_default().await?,
+        kube::Client::try_from(kubeconfig)?,
         field_manager,
+        default_namespace,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use futures::StreamExt;
+    use k8s_openapi::api::core::v1::{Container, Pod, PodSpec};
+    use kube::api::{ListParams, Meta, ObjectMeta, PostParams};
+    use kube_runtime::watcher::Event;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn test_wait_created() {
+        let client = super::create_client(None)
+            .await
+            .expect("KUBECONFIG variable must be configured.");
+
+        // Definition of the pod the `wait_created` function will be waiting for.
+        let pod_to_wait_for: Pod = Pod {
+            metadata: ObjectMeta {
+                name: Some("test-wait-created-busybox".to_owned()),
+                ..ObjectMeta::default()
+            },
+            spec: Some(PodSpec {
+                containers: vec![Container {
+                    name: "test-wait-created-busybox".to_owned(),
+                    image: Some("busybox:latest".to_owned()),
+                    image_pull_policy: Some("IfNotPresent".to_owned()),
+                    command: Some(vec!["sleep".into(), "infinity".into()]),
+                    ..Container::default()
+                }],
+                ..PodSpec::default()
+            }),
+            ..Pod::default()
+        };
+
+        let api = client.get_api(Some(client.default_namespace.clone()));
+        let created_pod = api
+            .create(&PostParams::default(), &pod_to_wait_for)
+            .await
+            .expect("Test pod not created.");
+        let lp: ListParams = ListParams::default().fields(&format!(
+            "metadata.name={}",
+            created_pod
+                .metadata
+                .name
+                .as_ref()
+                .expect("Expected busybox pod to have metadata")
+        ));
+        // First, let the tested `wait_creation` function wait until the resource is present.
+        // Timeout is not acceptable
+        tokio::time::timeout(
+            Duration::from_secs(30), // Busybox is ~5MB and sub 1 sec to start.
+            client.wait_created::<Pod>(Some(client.default_namespace.clone()), lp.clone()),
+        )
+        .await
+        .expect("The tested wait_created function timed out.");
+
+        // A second, manually constructed watcher is used to verify the ListParams filter out the correct resource
+        // and the `wait_created` function returned when the correct resources had been detected.
+        let mut ready_watcher = kube_runtime::watcher::<Pod>(api, lp).boxed();
+        while let Some(result) = ready_watcher.next().await {
+            match result {
+                Ok(event) => match event {
+                    Event::Applied(pod) => {
+                        panic!("The pod {} should be applied already, as the `wait_ready` function held until the pod is ready.\
+                        Expected Event::Restarted", pod.name())
+                    }
+                    Event::Restarted(pods) => {
+                        assert_eq!(1, pods.len());
+                        assert_eq!("test-wait-created-busybox", &pods[0].name());
+                        break;
+                    }
+                    Event::Deleted(_) => {
+                        panic!("Not expected the test_wait_created busybox pod to be deleted");
+                    }
+                },
+                Err(_) => {
+                    panic!("Error while waiting for readiness.");
+                }
+            }
+        }
+
+        client
+            .delete(&created_pod)
+            .await
+            .expect("Expected test_wait_created pod to be deleted.");
+    }
 }

@@ -123,7 +123,7 @@ where
         ..ListParams::default()
     };
     client
-        .wait_ready::<CustomResourceDefinition>(None, lp)
+        .wait_created::<CustomResourceDefinition>(None, lp)
         .await;
     Ok(())
 }
