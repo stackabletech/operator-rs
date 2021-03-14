@@ -10,11 +10,9 @@ use k8s_openapi::Resource;
 use kube::api::{DeleteParams, ListParams, Meta, Patch, PatchParams, PostParams};
 use kube::client::{Client as KubeClient, Status};
 use kube::{Api, Config};
-use kube_runtime::watcher::Event;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::convert::TryFrom;
-use tracing::debug;
 use tracing::trace;
 
 /// This `Client` can be used to access Kubernetes.
@@ -359,28 +357,12 @@ impl Client {
         T: Meta + Clone + DeserializeOwned + Send + 'static,
     {
         let api: Api<T> = self.get_api(namespace);
-        let mut watcher = kube_runtime::watcher(api, lp).boxed();
+        let watcher = kube_runtime::watcher(api, lp).boxed();
 
-        while let Some(result) = watcher.next().await {
-            match result {
-                Ok(event) => match event {
-                    Event::Applied(_) => {
-                        break;
-                    }
-                    Event::Restarted(pods) => {
-                        if !pods.is_empty() {
-                            break;
-                        }
-                    }
-                    Event::Deleted(_) => {
-                        continue;
-                    }
-                },
-                Err(err) => {
-                    debug!("Error while waiting for readiness: {}", err);
-                }
-            }
-        }
+        kube_runtime::utils::try_flatten_applied(watcher)
+            .skip_while(|res| std::future::ready(res.is_err()))
+            .next()
+            .await;
     }
 }
 
@@ -423,6 +405,7 @@ mod tests {
                     command: Some(vec!["sleep".into(), "infinity".into()]),
                     ..Container::default()
                 }],
+                termination_grace_period_seconds: Some(1),
                 ..PodSpec::default()
             }),
             ..Pod::default()
