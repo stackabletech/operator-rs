@@ -73,7 +73,7 @@ pub fn find_excess_pods<'a>(
     // For each pair of Nodes and labels we try to find all Pods that are currently in use and valid
     // We collect all of those in one big list.
     for (eligible_nodes, mandatory_label_values) in nodes_and_required_labels {
-        let mut found_pods = podutils::find_pods_that_are_in_use(
+        let mut found_pods = podutils::find_valid_pods_for_nodes(
             &eligible_nodes,
             &existing_pods,
             mandatory_label_values,

@@ -111,6 +111,48 @@ pub fn is_pod_assigned_to_node(pod: &Pod, node: &Node) -> bool {
     )
 }
 
+/// This method checks if a Pod contains all required labels including an optional value per label.
+///
+/// # Arguments
+///
+/// - `pod` - the Pod to check for labels
+/// - `required_labels` - is a BTreeMap of label keys to an optional value
+///
+/// # Example
+///
+/// ```
+/// use stackable_operator::podutils;
+/// # use k8s_openapi::api::core::v1::{Pod, PodSpec};
+/// # use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
+/// use std::collections::BTreeMap;
+///
+/// # let pod = Pod {
+/// #            metadata: ObjectMeta {
+/// #                ..ObjectMeta::default()
+/// #            },
+/// #            spec: None,
+/// #            status: None,
+/// #        };
+///
+/// let mut required_labels = BTreeMap::new();
+/// required_labels.insert("foo".to_string(), Some("bar".to_string()));
+///
+/// assert!(!podutils::pod_matches_labels(&pod, &required_labels));
+/// ```
+pub fn pod_matches_labels(pod: &Pod, required_labels: &BTreeMap<String, Option<String>>) -> bool {
+    // We convert the `required_labels` into a form that can be understood by `pod_matches_multiple_label_values`
+    let converted = required_labels
+        .iter()
+        .map(|(key, value)| {
+            (
+                key.clone(),
+                value.as_ref().map(|string| vec![string.clone()]),
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    pod_matches_multiple_label_values(pod, &converted)
+}
+
 /// This method checks if a Pod contains all required labels including an optional check for values.
 ///
 /// # Arguments
@@ -198,7 +240,7 @@ pub fn find_invalid_pods<'a>(
 
 /// Checks whether a Pod is valid or not.
 ///
-/// For a Pod to be valid it must be assigned to a node (via `spec.node_name`) and it must
+/// For a Pod to be valid it must be assigned to any node (via `spec.node_name`) and it must
 /// have all required labels.
 /// See [`pod_matches_multiple_label_values`] for a description of the label format.
 pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<String, Option<Vec<String>>>) -> bool {
@@ -211,39 +253,26 @@ pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<String, Option<Vec<Str
     ) && pod_matches_multiple_label_values(pod, required_labels)
 }
 
-/// This function can be used to get a list of Pods that are assigned (via their `spec.node_name` property)
-/// to specific nodes.
+/// This function can be used to get a list of valid Pods that are assigned
+/// (via their `spec.node_name` property) to one of a list of candidate nodes.
 ///
 /// This is useful to find all _valid_ pods (i.e. ones that are actually required by an Operator)
 /// so it can be compared against _all_ Pods that belong to the Controller.
+///
 /// All Pods that are not actually in use can be deleted.
-/// TODO: Docs
-pub fn find_pods_that_are_in_use<'a>(
+pub fn find_valid_pods_for_nodes<'a>(
     candidate_nodes: &[Node],
     existing_pods: &'a [Pod],
-    label_values: &BTreeMap<String, Option<String>>,
+    required_labels: &BTreeMap<String, Option<String>>,
 ) -> Vec<&'a Pod> {
     existing_pods
         .iter()
         .filter(|pod|
             // This checks whether the Pod has all the required labels and if it does
             // it'll try to find a Node with the same `node_name` as the Pod.
-            pod_matches_labels(pod, label_values) && candidate_nodes.iter().any(|node| is_pod_assigned_to_node(pod, node))
+            pod_matches_labels(pod, required_labels) && candidate_nodes.iter().any(|node| is_pod_assigned_to_node(pod, node))
         )
         .collect()
-}
-
-pub fn pod_matches_labels(pod: &Pod, expected_labels: &BTreeMap<String, Option<String>>) -> bool {
-    let converted = expected_labels
-        .iter()
-        .map(|(key, value)| {
-            (
-                key.clone(),
-                value.as_ref().map(|string| vec![string.clone()]),
-            )
-        })
-        .collect::<BTreeMap<_, _>>();
-    pod_matches_multiple_label_values(pod, &converted)
 }
 
 #[cfg(test)]
@@ -480,7 +509,7 @@ mod tests {
 
         assert_eq!(
             0,
-            find_pods_that_are_in_use(&nodes, &existing_pods, &label_values).len()
+            find_valid_pods_for_nodes(&nodes, &existing_pods, &label_values).len()
         );
 
         // Two nodes, one pod, matching labels on pod, but looking for labels, should match
@@ -500,7 +529,7 @@ mod tests {
         expected_labels.insert("foo".to_string(), Some("bar".to_string()));
         assert_eq!(
             1,
-            find_pods_that_are_in_use(&nodes, &existing_pods, &expected_labels).len()
+            find_valid_pods_for_nodes(&nodes, &existing_pods, &expected_labels).len()
         );
 
         // Two nodes, one pod, matching label key on pod but wrong value, but looking for labels, shouldn't match
@@ -520,7 +549,7 @@ mod tests {
         expected_labels.insert("foo".to_string(), Some("bar".to_string()));
         assert_eq!(
             0,
-            find_pods_that_are_in_use(&nodes, &existing_pods, &expected_labels).len()
+            find_valid_pods_for_nodes(&nodes, &existing_pods, &expected_labels).len()
         );
 
         // Two nodes, two pods. one matches the other doesn't
@@ -546,7 +575,7 @@ mod tests {
         expected_labels.insert("foo".to_string(), Some("bar".to_string()));
         assert_eq!(
             1,
-            find_pods_that_are_in_use(&nodes, &existing_pods, &expected_labels).len()
+            find_valid_pods_for_nodes(&nodes, &existing_pods, &expected_labels).len()
         );
     }
 
