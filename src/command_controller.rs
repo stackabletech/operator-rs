@@ -250,3 +250,22 @@ where
 
     client.merge_patch(resource, new_metadata).await
 }
+
+/// Get a list of available commands of type T.
+///
+/// # Arguments
+/// * `client` - Kubernetes client
+///
+pub async fn list_commands<T>(client: &Client) -> OperatorResult<Vec<T>>
+where
+    T: CommandCrd,
+{
+    let restart: Api<T> = client.get_all_api();
+    let list = restart
+        .list(&ListParams {
+            ..ListParams::default()
+        })
+        .await?;
+
+    Ok(list.items.to_vec())
+}
