@@ -79,7 +79,6 @@ use crate::metadata;
 use crate::reconcile::{ReconcileFunctionAction, ReconcileResult, ReconciliationContext};
 use async_trait::async_trait;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
-use k8s_openapi::Resource;
 use kube::api::{ListParams, Meta};
 use kube::Api;
 use serde::de::DeserializeOwned;
@@ -94,7 +93,7 @@ const FINALIZER_NAME: &str = "command.stackable.tech/cleanup";
 type CommandReconcileResult = ReconcileResult<Error>;
 
 pub trait CommandCrd: Meta + Clone + DeserializeOwned + Serialize + Debug + Send + Sync {
-    type Parent: Resource + Meta + Clone + DeserializeOwned + Debug + Send + Sync;
+    type Parent: Meta + Clone + DeserializeOwned + Debug + Send + Sync;
     fn get_name(&self) -> String;
 }
 
@@ -184,7 +183,7 @@ where
 /// This is an async method and the returned future needs to be consumed to make progress.
 pub async fn create_command_controller<T>(client: Client)
 where
-    T: CommandCrd + Resource + Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
+    T: CommandCrd + 'static,
 {
     let command_api: Api<T> = client.get_all_api();
     let parent_api: Api<T::Parent> = client.get_all_api();
