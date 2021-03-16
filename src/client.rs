@@ -330,7 +330,7 @@ impl Client {
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```no_run
     /// use kube::api::ListParams;
     /// use std::time::Duration;
     /// use tokio::time::error::Elapsed;
@@ -358,7 +358,6 @@ impl Client {
     {
         let api: Api<T> = self.get_api(namespace);
         let watcher = kube_runtime::watcher(api, lp).boxed();
-
         kube_runtime::utils::try_flatten_applied(watcher)
             .skip_while(|res| std::future::ready(res.is_err()))
             .next()
@@ -386,7 +385,8 @@ mod tests {
     use tokio::time::error::Elapsed;
 
     #[tokio::test]
-    async fn test_wait_created() {
+    #[ignore = "Tests depending on Kubernetes are not ran by default"]
+    async fn k8s_test_wait_created() {
         let client = super::create_client(None)
             .await
             .expect("KUBECONFIG variable must be configured.");
@@ -463,7 +463,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_wait_created_timeout() {
+    #[ignore = "Tests depending on Kubernetes are not ran by default"]
+    async fn k8s_test_wait_created_timeout() {
         let client = super::create_client(None)
             .await
             .expect("KUBECONFIG variable must be configured.");

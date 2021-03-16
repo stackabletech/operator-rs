@@ -32,7 +32,8 @@ spec:
 }
 
 #[tokio::test]
-async fn test_ensure_crd_created() {
+#[ignore = "Tests depending on Kubernetes are not ran by default"]
+async fn k8s_test_test_ensure_crd_created() {
     let client = client::create_client(None)
         .await
         .expect("KUBECONFIG variable must be configured.");
