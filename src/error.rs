@@ -23,6 +23,9 @@ pub enum Error {
 
     #[error("LabelSelector is invalid: {message}")]
     InvalidLabelSelector { message: String },
+
+    #[error("CustomResource [{name}] not found in any 'metadata.name' field. Could not retrieve OwnerReference.")]
+    MissingCustomResource { name: String },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
