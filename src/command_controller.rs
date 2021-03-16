@@ -92,6 +92,10 @@ const FINALIZER_NAME: &str = "command.stackable.tech/cleanup";
 
 type CommandReconcileResult = ReconcileResult<Error>;
 
+/// The CommandCrd trait expects a get_name() method which should return the specified field in the
+/// CustomResource that will later be matched on metadata.name to find the "parent" resource.
+/// The Parent is the watched resource of the standard reconcile controller of which we want to set
+/// the OwnerReference to our command resource.
 pub trait CommandCrd: Meta + Clone + DeserializeOwned + Serialize + Debug + Send + Sync {
     type Parent: Meta + Clone + DeserializeOwned + Debug + Send + Sync;
     fn get_name(&self) -> String;
@@ -108,6 +112,9 @@ impl<T> CommandState<T>
 where
     T: CommandCrd,
 {
+    /// This controller only sets the parent owner reference to our custom resource object.
+    /// Later in the main controller loop we can list all references and decide how to act
+    /// on different commands.
     async fn set_owner_reference(&mut self) -> CommandReconcileResult {
         let owner = find_owner::<T::Parent>(
             &self.context.client.clone(),
