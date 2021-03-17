@@ -90,7 +90,7 @@ where
                 }
                 tokio::time::sleep(Duration::from_millis(100)).await;
             }
-            wait_ready::<T>(client.clone()).await?;
+            wait_created::<T>(client.clone()).await?;
             Ok(())
         };
         if let Some(timeout) = timeout {
@@ -114,7 +114,7 @@ where
 }
 
 /// Waits until CRD of given type `T` is applied to Kubernetes.
-pub async fn wait_ready<T>(client: Client) -> OperatorResult<()>
+pub async fn wait_created<T>(client: Client) -> OperatorResult<()>
 where
     T: Crd,
 {
