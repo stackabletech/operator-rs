@@ -67,13 +67,14 @@ where
 /// Makes sure CRD of given type `T` is running and accepted by the Kubernetes apiserver.
 /// If the CRD already exists at the time this method is invoked, this method exits.
 /// If there is no CRD of type `T` yet, it will attempt to create it and verify k8s apiserver
-/// applied the CRD.
+/// applied the CRD. This method retries indefinitely. Use timeout on the `future` returned
+/// to apply time limit constraint.
 ///
 /// # Parameters
 /// - `client`: Client to connect to Kubernetes API and create the CRD with
 /// - `timeout`: If specified, retries creating the CRD for given `Duration`. If not specified,
 ///     retries indefinitely.
-pub async fn ensure_crd_created<T>(client: Client, timeout: Option<Duration>) -> OperatorResult<()>
+pub async fn ensure_crd_created<T>(client: Client) -> OperatorResult<()>
 where
     T: Crd,
 {
@@ -83,21 +84,14 @@ where
     } else {
         info!("CRD not detected in Kubernetes. Attempting to create it.");
 
-        let crd_created = async {
-            loop {
-                if let Ok(res) = create::<T>(client.clone()).await {
-                    break res;
-                }
-                tokio::time::sleep(Duration::from_millis(100)).await;
+        loop {
+            if let Ok(res) = create::<T>(client.clone()).await {
+                break res;
             }
-            wait_created::<T>(client.clone()).await?;
-            Ok(())
-        };
-        if let Some(timeout) = timeout {
-            tokio::time::timeout(timeout, crd_created).await?
-        } else {
-            crd_created.await
+            tokio::time::sleep(Duration::from_millis(100)).await;
         }
+        wait_created::<T>(client.clone()).await?;
+        Ok(())
     }
 }
 

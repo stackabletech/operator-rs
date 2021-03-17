@@ -38,9 +38,13 @@ async fn k8s_test_test_ensure_crd_created() {
         .await
         .expect("KUBECONFIG variable must be configured.");
 
-    ensure_crd_created::<TestCrd>(client.clone(), Some(Duration::from_secs(10)))
-        .await
-        .expect("CRD not created in time");
+    tokio::time::timeout(
+        Duration::from_secs(30),
+        ensure_crd_created::<TestCrd>(client.clone()),
+    )
+    .await
+    .expect("CRD not created in time")
+    .expect("Error while creating CRD");
 
     exists::<TestCrd>(client.clone())
         .await
