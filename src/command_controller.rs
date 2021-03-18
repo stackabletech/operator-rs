@@ -5,6 +5,7 @@
 //!
 //! ```no_run
 //! use stackable_operator::Crd;
+//! use stackable_operator::command_controller::CommandStatus;
 //! use stackable_operator::{error, client};
 //!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -19,11 +20,22 @@
 //!     pub name: String,
 //! }
 //!
-//! impl stackable_operator::command_controller::CommandCrd for Restart {
-//!     type Parent = Foo;
-//!     fn get_name(&self) -> String {
+//! impl stackable_operator::command_controller::Command for Restart {
+//!     fn get_owner_name(&self) -> String {
 //!         self.spec.name.clone()
 //!     }
+//!
+//!     fn get_command_status(&self) -> Option<CommandStatus> {
+//!         self.status.clone()
+//!     }
+//!
+//!     fn set_command_status(&mut self,status: &CommandStatus) {
+//!         self.status = Some(status.clone());
+//!     }
+//! }
+//!
+//! impl stackable_operator::command_controller::Owner for Restart {
+//!     type Owner = Foo;
 //! }
 //!
 //! impl Crd for Restart {
@@ -53,7 +65,19 @@
 //!               type: object
 //!               properties:
 //!                 name:
-//!                   type: string";
+//!                   type: string
+//!             status:
+//!               nullable: true
+//!               type: object
+//!               properties:
+//!                 startedAt:
+//!                   type: string
+//!                 finishedAt:
+//!                   type: string
+//!                 message:
+//!                   type: string
+//!       subresources:
+//!         status: { }";
 //! }
 //!
 //! #[tokio::main]
@@ -75,14 +99,15 @@
 use crate::client::Client;
 use crate::controller::{Controller, ControllerStrategy, ReconciliationState};
 use crate::error::{Error, OperatorResult};
-use crate::metadata;
 use crate::reconcile::{ReconcileFunctionAction, ReconcileResult, ReconciliationContext};
+use crate::{metadata, Crd};
 use async_trait::async_trait;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use kube::api::{ListParams, Meta};
 use kube::Api;
+use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
@@ -92,38 +117,51 @@ const FINALIZER_NAME: &str = "command.stackable.tech/cleanup";
 
 type CommandReconcileResult = ReconcileResult<Error>;
 
-/// The CommandCrd trait expects a get_name() method which should return the specified field in the
-/// CustomResource that will later be matched on metadata.name to find the "parent" resource.
-/// The Parent is the watched resource of the standard reconcile controller of which we want to set
+/// The Command trait expects a get_owner_name() method which should return the specified field in the
+/// CustomResource that will later be matched on metadata.name to find the "owner" resource.
+/// The Owner is the watched resource of the standard reconcile controller of which we want to set
 /// the OwnerReference to our command resource.
-pub trait CommandCrd: Meta + Clone + DeserializeOwned + Serialize + Debug + Send + Sync {
-    type Parent: Meta + Clone + DeserializeOwned + Debug + Send + Sync;
-    fn get_name(&self) -> String;
+pub trait Command {
+    fn get_owner_name(&self) -> String;
+    fn get_command_status(&self) -> Option<CommandStatus>;
+    fn set_command_status(&mut self, status: &CommandStatus);
 }
 
-struct CommandState<T: CommandCrd>
-where
-    T: CommandCrd,
-{
+pub trait Owner {
+    type Owner: Meta + Clone + DeserializeOwned + Debug + Send + Sync + Crd;
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CommandStatus {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub finished_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+struct CommandState<T> {
     context: ReconciliationContext<T>,
 }
 
 impl<T> CommandState<T>
 where
-    T: CommandCrd,
+    T: Command + Owner + Meta + Clone + DeserializeOwned,
 {
-    /// This controller only sets the parent owner reference to our custom resource object.
+    /// This controller only sets the owner reference to our custom resource object.
     /// Later in the main controller loop we can list all references and decide how to act
     /// on different commands.
     async fn set_owner_reference(&mut self) -> CommandReconcileResult {
-        let owner = find_owner::<T::Parent>(
+        let owner = find_owner::<T::Owner>(
             &self.context.client.clone(),
-            &self.context.resource.get_name(),
+            &self.context.resource.get_owner_name(),
         )
         .await?;
 
         let owner_reference =
-            metadata::object_to_owner_reference::<T::Parent>(owner.meta().clone(), true)?;
+            metadata::object_to_owner_reference::<T::Owner>(owner.meta().clone(), true)?;
 
         patch_owner_reference(
             &self.context.client,
@@ -138,7 +176,7 @@ where
 
 impl<T> ReconciliationState for CommandState<T>
 where
-    T: CommandCrd,
+    T: Command + Owner + Meta + Clone + DeserializeOwned + Send + Sync,
 {
     type Error = Error;
 
@@ -151,14 +189,14 @@ where
 }
 
 #[derive(Debug)]
-struct CommandStrategy<T: CommandCrd> {
+struct CommandStrategy<T> {
     // TODO: Better workaround for PhantomData?
     // We use it here cause we need to make CommandStrategy generic to be able to do:
     // impl<T> ControllerStrategy for CommandStrategy<T>
     _ignore: Option<std::marker::PhantomData<T>>,
 }
 
-impl<T: CommandCrd> CommandStrategy<T> {
+impl<T> CommandStrategy<T> {
     pub fn new() -> CommandStrategy<T> {
         CommandStrategy { _ignore: None }
     }
@@ -167,7 +205,7 @@ impl<T: CommandCrd> CommandStrategy<T> {
 #[async_trait]
 impl<T> ControllerStrategy for CommandStrategy<T>
 where
-    T: CommandCrd,
+    T: Command + Owner + Meta + Clone + DeserializeOwned + Send + Sync,
 {
     type Item = T;
     type State = CommandState<T>;
@@ -190,12 +228,12 @@ where
 /// This is an async method and the returned future needs to be consumed to make progress.
 pub async fn create_command_controller<T>(client: Client)
 where
-    T: CommandCrd + 'static,
+    T: Command + Owner + Meta + Clone + Debug + DeserializeOwned + Send + Sync + 'static,
 {
     let command_api: Api<T> = client.get_all_api();
-    let parent_api: Api<T::Parent> = client.get_all_api();
+    let owner_api: Api<T::Owner> = client.get_all_api();
 
-    let controller = Controller::new(command_api).owns(parent_api, ListParams::default());
+    let controller = Controller::new(command_api).owns(owner_api, ListParams::default());
 
     let strategy = CommandStrategy::new();
 
@@ -255,17 +293,37 @@ where
 ///
 /// # Arguments
 /// * `client` - Kubernetes client
+/// * `sort_timestamp_ascending` - If true sort commands via creation_timestamp ascending
 ///
-pub async fn list_commands<T>(client: &Client) -> OperatorResult<Vec<T>>
+pub async fn list_commands<T>(
+    client: &Client,
+    sort_timestamp_ascending: bool,
+) -> OperatorResult<Vec<T>>
 where
-    T: CommandCrd,
+    T: Command + Meta + Clone + DeserializeOwned,
 {
     let restart: Api<T> = client.get_all_api();
-    let list = restart
+    let mut list = restart
         .list(&ListParams {
             ..ListParams::default()
         })
-        .await?;
+        .await?
+        .items
+        .to_vec();
 
-    Ok(list.items.to_vec())
+    if sort_timestamp_ascending {
+        list.sort_by(|a, b| {
+            a.meta()
+                .creation_timestamp
+                .cmp(&b.meta().creation_timestamp)
+        });
+    } else {
+        list.sort_by(|a, b| {
+            b.meta()
+                .creation_timestamp
+                .cmp(&a.meta().creation_timestamp)
+        });
+    }
+
+    Ok(list)
 }
