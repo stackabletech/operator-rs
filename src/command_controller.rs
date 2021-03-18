@@ -121,7 +121,7 @@ type CommandReconcileResult = ReconcileResult<Error>;
 /// CustomResource that will later be matched on metadata.name to find the "owner" resource.
 /// The Owner is the watched resource of the standard reconcile controller of which we want to set
 /// the OwnerReference to our command resource.
-pub trait Command {
+pub trait Command: Sync + Send {
     fn get_owner_name(&self) -> String;
     fn get_command_status(&self) -> Option<CommandStatus>;
     fn set_command_status(&mut self, status: &CommandStatus);
@@ -176,7 +176,7 @@ where
 
 impl<T> ReconciliationState for CommandState<T>
 where
-    T: Command + Owner + Meta + Clone + DeserializeOwned + Send + Sync,
+    T: Command + Owner + Meta + Clone + DeserializeOwned,
 {
     type Error = Error;
 
@@ -205,7 +205,7 @@ impl<T> CommandStrategy<T> {
 #[async_trait]
 impl<T> ControllerStrategy for CommandStrategy<T>
 where
-    T: Command + Owner + Meta + Clone + DeserializeOwned + Send + Sync,
+    T: Command + Owner + Meta + Clone + DeserializeOwned,
 {
     type Item = T;
     type State = CommandState<T>;
@@ -228,7 +228,7 @@ where
 /// This is an async method and the returned future needs to be consumed to make progress.
 pub async fn create_command_controller<T>(client: Client)
 where
-    T: Command + Owner + Meta + Clone + Debug + DeserializeOwned + Send + Sync + 'static,
+    T: Command + Owner + Meta + Clone + Debug + DeserializeOwned + 'static,
 {
     let command_api: Api<T> = client.get_all_api();
     let owner_api: Api<T::Owner> = client.get_all_api();
