@@ -4,13 +4,15 @@ use crate::label_selector;
 use crate::podutils;
 
 use either::Either;
+use futures::StreamExt;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
 use k8s_openapi::Resource;
 use kube::api::{DeleteParams, ListParams, Meta, Patch, PatchParams, PostParams};
 use kube::client::{Client as KubeClient, Status};
-use kube::Api;
+use kube::{Api, Config};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::convert::TryFrom;
 use tracing::trace;
 
 /// This `Client` can be used to access Kubernetes.
@@ -21,10 +23,16 @@ pub struct Client {
     patch_params: PatchParams,
     post_params: PostParams,
     delete_params: DeleteParams,
+    /// Default namespace as defined in the kubeconfig this client has been created from.
+    pub default_namespace: String,
 }
 
 impl Client {
-    pub fn new(client: KubeClient, field_manager: Option<String>) -> Self {
+    pub fn new(
+        client: KubeClient,
+        field_manager: Option<String>,
+        default_namespace: String,
+    ) -> Self {
         Client {
             client,
             post_params: PostParams {
@@ -39,6 +47,7 @@ impl Client {
                 ..PatchParams::default()
             },
             delete_params: DeleteParams::default(),
+            default_namespace,
         }
     }
 
@@ -236,7 +245,7 @@ impl Client {
     /// It checks whether the resource is already deleted by looking at the `deletion_timestamp`
     /// of the resource using the [`finalizer::has_deletion_stamp`] method.
     /// If that is the case it'll return a `Ok(None)`.
-    ///    
+    ///
     /// In case the object is actually deleted or marked for deletion there are two possible
     /// return types.
     /// Which of the two are returned depends on the API being called.
@@ -309,11 +318,167 @@ impl Client {
     {
         Api::namespaced(self.client.clone(), namespace)
     }
+
+    /// Waits indefinitely until resources matching given `ListParams` are created in Kubernetes.
+    /// If the resource is already present, this method just returns. Makes no assumptions about resource's state,
+    /// e.g. a pod created could be created, but not in a ready state.
+    ///
+    /// # Arguments
+    ///
+    /// - `namespace` - Optional namespace to look for the resources in.
+    /// - `lp` - Parameters to filter resources to wait for in given namespace.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use kube::api::ListParams;
+    /// use std::time::Duration;
+    /// use tokio::time::error::Elapsed;
+    /// use k8s_openapi::api::core::v1::Pod;
+    /// use stackable_operator::client::{Client, create_client};
+    ///
+    /// #[tokio::main]
+    /// async fn main(){
+    /// let client: Client = create_client(None).await.expect("Unable to construct client.");
+    /// let lp: ListParams =
+    ///         ListParams::default().fields(&format!("metadata.name=nonexistent-pod"));
+    ///
+    /// // Will time out in 1 second unless the nonexistent-pod actually exists
+    ///  let wait_created_result: Result<(), Elapsed> = tokio::time::timeout(
+    ///          Duration::from_secs(1),
+    ///          client.wait_created::<Pod>(Some(client.default_namespace.clone()), lp.clone()),
+    ///      )
+    ///      .await;
+    /// }
+    /// ```
+    ///
+    pub async fn wait_created<T>(&self, namespace: Option<String>, lp: ListParams)
+    where
+        T: Meta + Clone + DeserializeOwned + Send + 'static,
+    {
+        let api: Api<T> = self.get_api(namespace);
+        let watcher = kube_runtime::watcher(api, lp).boxed();
+        kube_runtime::utils::try_flatten_applied(watcher)
+            .skip_while(|res| std::future::ready(res.is_err()))
+            .next()
+            .await;
+    }
 }
 
 pub async fn create_client(field_manager: Option<String>) -> OperatorResult<Client> {
+    let kubeconfig: Config = kube::Config::infer().await?;
+    let default_namespace = kubeconfig.default_ns.clone();
     Ok(Client::new(
-        kube::Client::try_default().await?,
+        kube::Client::try_from(kubeconfig)?,
         field_manager,
+        default_namespace,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use futures::StreamExt;
+    use k8s_openapi::api::core::v1::{Container, Pod, PodSpec};
+    use kube::api::{ListParams, Meta, ObjectMeta, PostParams};
+    use kube_runtime::watcher::Event;
+    use std::time::Duration;
+    use tokio::time::error::Elapsed;
+
+    #[tokio::test]
+    #[ignore = "Tests depending on Kubernetes are not ran by default"]
+    async fn k8s_test_wait_created() {
+        let client = super::create_client(None)
+            .await
+            .expect("KUBECONFIG variable must be configured.");
+
+        // Definition of the pod the `wait_created` function will be waiting for.
+        let pod_to_wait_for: Pod = Pod {
+            metadata: ObjectMeta {
+                name: Some("test-wait-created-busybox".to_owned()),
+                ..ObjectMeta::default()
+            },
+            spec: Some(PodSpec {
+                containers: vec![Container {
+                    name: "test-wait-created-busybox".to_owned(),
+                    image: Some("busybox:latest".to_owned()),
+                    image_pull_policy: Some("IfNotPresent".to_owned()),
+                    command: Some(vec!["sleep".into(), "infinity".into()]),
+                    ..Container::default()
+                }],
+                termination_grace_period_seconds: Some(1),
+                ..PodSpec::default()
+            }),
+            ..Pod::default()
+        };
+        let api = client.get_api(Some(client.default_namespace.clone()));
+        let created_pod = api
+            .create(&PostParams::default(), &pod_to_wait_for)
+            .await
+            .expect("Test pod not created.");
+        let lp: ListParams = ListParams::default().fields(&format!(
+            "metadata.name={}",
+            created_pod
+                .metadata
+                .name
+                .as_ref()
+                .expect("Expected busybox pod to have metadata")
+        ));
+        // First, let the tested `wait_creation` function wait until the resource is present.
+        // Timeout is not acceptable
+        tokio::time::timeout(
+            Duration::from_secs(30), // Busybox is ~5MB and sub 1 sec to start.
+            client.wait_created::<Pod>(Some(client.default_namespace.clone()), lp.clone()),
+        )
+        .await
+        .expect("The tested wait_created function timed out.");
+
+        // A second, manually constructed watcher is used to verify the ListParams filter out the correct resource
+        // and the `wait_created` function returned when the correct resources had been detected.
+        let mut ready_watcher = kube_runtime::watcher::<Pod>(api, lp).boxed();
+        while let Some(result) = ready_watcher.next().await {
+            match result {
+                Ok(event) => match event {
+                    Event::Applied(pod) => {
+                        assert_eq!("test-wait-created-busybox", pod.name());
+                    }
+                    Event::Restarted(pods) => {
+                        assert_eq!(1, pods.len());
+                        assert_eq!("test-wait-created-busybox", &pods[0].name());
+                        break;
+                    }
+                    Event::Deleted(_) => {
+                        panic!("Not expected the test_wait_created busybox pod to be deleted");
+                    }
+                },
+                Err(_) => {
+                    panic!("Error while waiting for readiness.");
+                }
+            }
+        }
+
+        client
+            .delete(&created_pod)
+            .await
+            .expect("Expected test_wait_created pod to be deleted.");
+    }
+
+    #[tokio::test]
+    #[ignore = "Tests depending on Kubernetes are not ran by default"]
+    async fn k8s_test_wait_created_timeout() {
+        let client = super::create_client(None)
+            .await
+            .expect("KUBECONFIG variable must be configured.");
+
+        let lp: ListParams =
+            ListParams::default().fields(&format!("metadata.name=nonexistent-pod"));
+
+        // There is no such pod, therefore the `wait_created` function call times out.
+        let wait_created_result: Result<(), Elapsed> = tokio::time::timeout(
+            Duration::from_secs(1),
+            client.wait_created::<Pod>(Some(client.default_namespace.clone()), lp.clone()),
+        )
+        .await;
+
+        assert!(wait_created_result.is_err());
+    }
 }
