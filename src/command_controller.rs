@@ -117,16 +117,24 @@ const FINALIZER_NAME: &str = "command.stackable.tech/cleanup";
 
 type CommandReconcileResult = ReconcileResult<Error>;
 
-/// The Command trait expects a get_owner_name() method which should return the specified field in the
-/// CustomResource that will later be matched on metadata.name to find the "owner" resource.
-/// The Owner is the watched resource of the standard reconcile controller of which we want to set
-/// the OwnerReference to our command resource.
-pub trait Command: Sync + Send {
+/// The Command trait represents our operator command. We need to extract the "owner" name, which
+/// corresponds to to the main objects metadata name. Additionally we need to manipulate the
+/// command status to keep track of new, processed or completed commands.
+/// If the status is more complex than CommandStatus, the implementer must assure safe access
+/// to the Status in order to not override any other status changes (use custom Status and
+/// extract the CommandStatus from there).
+pub trait Command: Sync + Send + Sized {
+    /// Retrieve the potential "Owner" name of this custom resource
     fn get_owner_name(&self) -> String;
+    /// Read the current CommandStatus in the custom resource
     fn get_command_status(&self) -> Option<CommandStatus>;
+    /// Write the CommandStatus in the custom resource
     fn set_command_status(&mut self, status: &CommandStatus);
 }
 
+/// The Owner trait represents our main controller object. This is required to be able to search
+/// for the main controller object and extract metadata information to set the owner reference
+/// in our command object.
 pub trait Owner {
     type Owner: Meta + Clone + DeserializeOwned + Debug + Send + Sync + Crd;
 }
@@ -150,9 +158,10 @@ impl<T> CommandState<T>
 where
     T: Command + Owner + Meta + Clone + DeserializeOwned,
 {
-    /// This controller only sets the owner reference to our custom resource object.
-    /// Later in the main controller loop we can list all references and decide how to act
-    /// on different commands.
+    /// This controller sets the owner reference in our custom resource object. We need to
+    /// find the potential owner, extract its metadata into an OwnerReference object and
+    /// patch our command custom resource with that OwnerReference. This makes sure we can
+    /// list and work with the commands in the main controller loop.
     async fn set_owner_reference(&mut self) -> CommandReconcileResult {
         let owner = find_owner::<T::Owner>(
             &self.context.client.clone(),
@@ -293,7 +302,7 @@ where
 ///
 /// # Arguments
 /// * `client` - Kubernetes client
-/// * `sort_timestamp_ascending` - If true sort commands via creation_timestamp ascending
+/// * `sort_timestamp_ascending` - If true sort commands via creation_timestamp ascending, descending otherwise
 ///
 pub async fn list_commands<T>(
     client: &Client,
