@@ -4,54 +4,54 @@
 //! # Example
 //!
 //! ```no_run
+//! use kube::api::Meta;
 //! use stackable_operator::Crd;
-//! use stackable_operator::command_controller::CommandStatus;
 //! use stackable_operator::{error, client};
+//! use schemars::JsonSchema;
+//! use serde::{Deserialize, Serialize};
 //!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 //! #[kube(
 //!     group = "command.foo.stackable.tech",
 //!     version = "v1",
-//!     kind = "Restart",
+//!     kind = "Bar",
 //!     namespaced
 //! )]
+//! #[kube(status = "BarStatus")]
 //! #[serde(rename_all = "camelCase")]
-//! pub struct FooCommandRestartSpec {
+//! pub struct BarCommandSpec {
 //!     pub name: String,
 //! }
+//! #[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
+//! #[serde(rename_all = "camelCase")]
+//! pub struct BarCommandStatus {
+//!     pub started_at: Option<String>,
+//!     pub finished_at: Option<String>,
+//!     pub message: Option<String>,
+//! }
 //!
-//! impl stackable_operator::command_controller::Command for Restart {
+//! impl stackable_operator::command_controller::CommandOwner for Bar {
+//!     type Owner = Foo;
+//!
 //!     fn get_owner_name(&self) -> String {
 //!         self.spec.name.clone()
 //!     }
-//!
-//!     fn get_command_status(&self) -> Option<CommandStatus> {
-//!         self.status.clone()
-//!     }
-//!
-//!     fn set_command_status(&mut self,status: &CommandStatus) {
-//!         self.status = Some(status.clone());
-//!     }
 //! }
 //!
-//! impl stackable_operator::command_controller::Owner for Restart {
-//!     type Owner = Foo;
-//! }
-//!
-//! impl Crd for Restart {
+//! impl Crd for Bar {
 //!     const RESOURCE_NAME: &'static str = "restarts.command.foo.stackable.tech";
 //!     const CRD_DEFINITION: &'static str = "
 //! apiVersion: apiextensions.k8s.io/v1
 //! kind: CustomResourceDefinition
 //! metadata:
-//!   name: restarts.command.foo.stackable.tech
+//!   name: bars.command.foo.stackable.tech
 //! spec:
 //!   group: command.foo.stackable.tech
 //!   names:
-//!     kind: Restart
-//!     singular: restart
-//!     plural: restarts
-//!     listKind: RestartList
+//!     kind: Bar
+//!     singular: bar
+//!     plural: bars
+//!     listKind: BarList
 //!   scope: Namespaced
 //!   versions:
 //!     - name: v1
@@ -86,11 +86,11 @@
 //!    let client = client::create_client(Some("foo.stackable.tech".to_string())).await?;
 //!
 //!    stackable_operator::crd::ensure_crd_created::<Foo>(client.clone()).await?;
-//!    stackable_operator::crd::ensure_crd_created::<Restart>(client.clone()).await?;
+//!    stackable_operator::crd::ensure_crd_created::<Bar>(client.clone()).await?;
 //!
 //!    tokio::join!(
 //!        stackable_foo_operator::create_controller(client.clone()),
-//!        stackable_operator::command_controller::create_command_controller::<Restart>(client)
+//!        stackable_operator::command_controller::create_command_controller::<Bar>(client)
 //!    );
 //!    Ok(())
 //! }
@@ -105,9 +105,7 @@ use async_trait::async_trait;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use kube::api::{ListParams, Meta};
 use kube::Api;
-use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
@@ -115,39 +113,13 @@ use std::time::Duration;
 
 const FINALIZER_NAME: &str = "command.stackable.tech/cleanup";
 
-type CommandReconcileResult = ReconcileResult<Error>;
-
-/// The Command trait represents our operator command. We need to extract the "owner" name, which
-/// corresponds to to the main objects metadata name. Additionally we need to manipulate the
-/// command status to keep track of new, processed or completed commands.
-/// If the status is more complex than CommandStatus, the implementer must assure safe access
-/// to the Status in order to not override any other status changes (use custom Status and
-/// extract the CommandStatus from there).
-pub trait Command: Sync + Send + Sized {
-    /// Retrieve the potential "Owner" name of this custom resource
-    fn get_owner_name(&self) -> String;
-    /// Read the current CommandStatus in the custom resource
-    fn get_command_status(&self) -> Option<CommandStatus>;
-    /// Write the CommandStatus in the custom resource
-    fn set_command_status(&mut self, status: &CommandStatus);
-}
-
 /// The Owner trait represents our main controller object. This is required to be able to search
 /// for the main controller object and extract metadata information to set the owner reference
 /// in our command object.
-pub trait Owner {
+pub trait CommandOwner {
     type Owner: Meta + Clone + DeserializeOwned + Debug + Send + Sync + Crd;
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct CommandStatus {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub started_at: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub finished_at: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub message: Option<String>,
+    /// Retrieve the potential "Owner" name of this custom resource
+    fn get_owner_name(&self) -> String;
 }
 
 struct CommandState<T> {
@@ -156,13 +128,13 @@ struct CommandState<T> {
 
 impl<T> CommandState<T>
 where
-    T: Command + Owner + Meta + Clone + DeserializeOwned,
+    T: CommandOwner + Clone + DeserializeOwned + Meta,
 {
     /// This controller sets the owner reference in our custom resource object. We need to
     /// find the potential owner, extract its metadata into an OwnerReference object and
     /// patch our command custom resource with that OwnerReference. This makes sure we can
     /// list and work with the commands in the main controller loop.
-    async fn set_owner_reference(&mut self) -> CommandReconcileResult {
+    async fn set_owner_reference(&mut self) -> ReconcileResult<Error> {
         let owner = find_owner::<T::Owner>(
             &self.context.client.clone(),
             &self.context.resource.get_owner_name(),
@@ -185,7 +157,7 @@ where
 
 impl<T> ReconciliationState for CommandState<T>
 where
-    T: Command + Owner + Meta + Clone + DeserializeOwned,
+    T: CommandOwner + Clone + DeserializeOwned + Meta + Send + Sync,
 {
     type Error = Error;
 
@@ -214,7 +186,7 @@ impl<T> CommandStrategy<T> {
 #[async_trait]
 impl<T> ControllerStrategy for CommandStrategy<T>
 where
-    T: Command + Owner + Meta + Clone + DeserializeOwned,
+    T: CommandOwner + Meta + Clone + DeserializeOwned + Send + Sync,
 {
     type Item = T;
     type State = CommandState<T>;
@@ -237,7 +209,7 @@ where
 /// This is an async method and the returned future needs to be consumed to make progress.
 pub async fn create_command_controller<T>(client: Client)
 where
-    T: Command + Owner + Meta + Clone + Debug + DeserializeOwned + 'static,
+    T: CommandOwner + Meta + Clone + Debug + DeserializeOwned + Send + Sync + 'static,
 {
     let command_api: Api<T> = client.get_all_api();
     let owner_api: Api<T::Owner> = client.get_all_api();
@@ -302,37 +274,19 @@ where
 ///
 /// # Arguments
 /// * `client` - Kubernetes client
-/// * `sort_timestamp_ascending` - If true sort commands via creation_timestamp ascending, descending otherwise
 ///
-pub async fn list_commands<T>(
-    client: &Client,
-    sort_timestamp_ascending: bool,
-) -> OperatorResult<Vec<T>>
+pub async fn list_commands<T>(client: &Client) -> OperatorResult<Vec<T>>
 where
-    T: Command + Meta + Clone + DeserializeOwned,
+    T: Meta + Clone + DeserializeOwned,
 {
-    let restart: Api<T> = client.get_all_api();
-    let mut list = restart
+    let command_api: Api<T> = client.get_all_api();
+    let list = command_api
         .list(&ListParams {
             ..ListParams::default()
         })
         .await?
         .items
         .to_vec();
-
-    if sort_timestamp_ascending {
-        list.sort_by(|a, b| {
-            a.meta()
-                .creation_timestamp
-                .cmp(&b.meta().creation_timestamp)
-        });
-    } else {
-        list.sort_by(|a, b| {
-            b.meta()
-                .creation_timestamp
-                .cmp(&a.meta().creation_timestamp)
-        });
-    }
 
     Ok(list)
 }
