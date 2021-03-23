@@ -121,3 +121,18 @@ where
         .await;
     Ok(())
 }
+
+/// Waits until CRD of given type `T` is deleted in Kubernetes.
+pub async fn wait_deleted<T>(client: Client) -> OperatorResult<()>
+where
+    T: Crd,
+{
+    let lp: ListParams = ListParams {
+        field_selector: Some(format!("metadata.name={}", T::RESOURCE_NAME)),
+        ..ListParams::default()
+    };
+    client
+        .wait_deleted::<CustomResourceDefinition>(None, lp)
+        .await;
+    Ok(())
+}

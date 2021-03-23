@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
 use kube::api::Meta;
-use stackable_operator::crd::{ensure_crd_created, exists};
+use stackable_operator::crd::{ensure_crd_created, exists, wait_deleted};
 use stackable_operator::{client, Crd};
 
 struct TestCrd {}
@@ -59,7 +59,16 @@ async fn k8s_test_test_ensure_crd_created() {
         .delete(&created_crd)
         .await
         .expect("TestCrd not deleted");
-    assert!(exists::<TestCrd>(client.clone())
+
+    tokio::time::timeout(
+        Duration::from_secs(30),
+        wait_deleted::<TestCrd>(client.clone()),
+    )
+    .await
+    .expect("Expected CRD to be deleted")
+    .expect("");
+
+    assert!(!exists::<TestCrd>(client.clone())
         .await
-        .expect("CRD should be created"))
+        .expect("CRD should exist"))
 }

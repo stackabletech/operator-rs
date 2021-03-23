@@ -10,6 +10,7 @@ use k8s_openapi::Resource;
 use kube::api::{DeleteParams, ListParams, Meta, Patch, PatchParams, PostParams};
 use kube::client::{Client as KubeClient, Status};
 use kube::{Api, Config};
+use kube_runtime::watcher::Event;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::convert::TryFrom;
@@ -356,10 +357,49 @@ impl Client {
     where
         T: Meta + Clone + DeserializeOwned + Send + 'static,
     {
+        self.wait_until::<T>(
+            &|res| {
+                return match res.as_ref().unwrap() {
+                    Event::Deleted(_) => false,
+                    _ => true,
+                };
+            },
+            namespace,
+            lp,
+        )
+        .await
+    }
+
+    pub async fn wait_deleted<T>(&self, namespace: Option<String>, lp: ListParams)
+    where
+        T: Meta + Clone + DeserializeOwned + Send + 'static,
+    {
+        self.wait_until::<T>(
+            &|res| {
+                return match res.as_ref().unwrap() {
+                    Event::Deleted(_) => true,
+                    _ => false,
+                };
+            },
+            namespace,
+            lp,
+        )
+        .await
+    }
+
+    pub async fn wait_until<T>(
+        &self,
+        check: &dyn Fn(&Result<Event<T>, kube_runtime::watcher::Error>) -> bool,
+        namespace: Option<String>,
+        lp: ListParams,
+    ) where
+        T: Meta + Clone + DeserializeOwned + Send + 'static,
+    {
         let api: Api<T> = self.get_api(namespace);
         let watcher = kube_runtime::watcher(api, lp).boxed();
-        kube_runtime::utils::try_flatten_applied(watcher)
-            .skip_while(|res| std::future::ready(res.is_err()))
+
+        watcher
+            .skip_while(|res| std::future::ready(!check(res)))
             .next()
             .await;
     }
