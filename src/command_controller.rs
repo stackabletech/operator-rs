@@ -1,4 +1,4 @@
-//! Generic controller to add command CRDs for restart, start, stop etc. operations as
+//! Generic controller to add command CRDs for restart, start, stop (...) command operations as
 //! specified in [Stackable ADR010](https://github.com/stackabletech/documentation/blob/main/adr/ADR010-command_pattern.adoc).
 //!
 //! # Example
@@ -17,18 +17,14 @@
 //!     kind = "Bar",
 //!     namespaced
 //! )]
-//! #[kube(status = "BarStatus")]
+//! #[kube(status = "BarCommandStatus")]
 //! #[serde(rename_all = "camelCase")]
 //! pub struct BarCommandSpec {
 //!     pub name: String,
 //! }
 //! #[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
 //! #[serde(rename_all = "camelCase")]
-//! pub struct BarCommandStatus {
-//!     pub started_at: Option<String>,
-//!     pub finished_at: Option<String>,
-//!     pub message: Option<String>,
-//! }
+//! pub struct BarCommandStatus {}
 //!
 //! impl stackable_operator::command_controller::CommandOwner for Bar {
 //!     type Owner = Foo;
@@ -39,7 +35,7 @@
 //! }
 //!
 //! impl Crd for Bar {
-//!     const RESOURCE_NAME: &'static str = "restarts.command.foo.stackable.tech";
+//!     const RESOURCE_NAME: &'static str = "bars.command.foo.stackable.tech";
 //!     const CRD_DEFINITION: &'static str = "
 //! apiVersion: apiextensions.k8s.io/v1
 //! kind: CustomResourceDefinition
@@ -115,7 +111,7 @@ const FINALIZER_NAME: &str = "command.stackable.tech/cleanup";
 
 /// The Owner trait represents our main controller object. This is required to be able to search
 /// for the main controller object and extract metadata information to set the owner reference
-/// in our command object.
+/// in our command object. This must be implemented by every command custom resource.
 pub trait CommandOwner {
     type Owner: Meta + Clone + DeserializeOwned + Debug + Send + Sync + Crd;
     /// Retrieve the potential "Owner" name of this custom resource
@@ -223,7 +219,7 @@ where
         .await;
 }
 
-/// Find a Resource according to the metadata.name field.
+/// Find a resource according to the metadata.name field.
 ///
 /// # Arguments
 /// * `client` - Kubernetes client
@@ -245,7 +241,7 @@ where
     Ok(owners.pop().unwrap())
 }
 
-/// Add an OwnerReference to an existing Resource via merge strategy.
+/// Add an OwnerReference to an existing resource via merge strategy.
 ///
 /// # Arguments
 /// * `client` - Kubernetes client
@@ -270,7 +266,7 @@ where
     client.merge_patch(resource, new_metadata).await
 }
 
-/// Get a list of available commands of type T.
+/// Get a list of available commands of custom resource T.
 ///
 /// # Arguments
 /// * `client` - Kubernetes client
