@@ -14,7 +14,7 @@ pub fn create_config_map<T>(
     data: BTreeMap<String, String>,
 ) -> OperatorResult<ConfigMap>
 where
-    T: Meta,
+    T: Meta<DynamicType = ()>,
 {
     let cm = ConfigMap {
         data: Some(data),

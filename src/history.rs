@@ -72,7 +72,7 @@ pub async fn create_controller_revision<T>(
     revision: i64,
 ) -> OperatorResult<ControllerRevision>
 where
-    T: Meta + Hash,
+    T: Meta<DynamicType = ()> + Hash,
 {
     let mut cr = ControllerRevision {
         data: Some(data),

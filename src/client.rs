@@ -6,13 +6,13 @@ use crate::podutils;
 use either::Either;
 use futures::StreamExt;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
-use k8s_openapi::Resource;
 use kube::api::{DeleteParams, ListParams, Meta, Patch, PatchParams, PostParams};
 use kube::client::{Client as KubeClient, Status};
 use kube::{Api, Config};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::convert::TryFrom;
+use std::fmt::Debug;
 use tracing::trace;
 
 /// This `Client` can be used to access Kubernetes.
@@ -60,7 +60,8 @@ impl Client {
     /// Retrieves a single instance of the requested resource type with the given name.
     pub async fn get<T>(&self, resource_name: &str, namespace: Option<String>) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta,
+        T: Clone + Debug + DeserializeOwned + Meta,
+        <T as Meta>::DynamicType: Default,
     {
         Ok(self.get_api(namespace).get(resource_name).await?)
     }
@@ -74,7 +75,8 @@ impl Client {
         list_params: &ListParams,
     ) -> OperatorResult<Vec<T>>
     where
-        T: Clone + DeserializeOwned + Meta,
+        T: Clone + Debug + DeserializeOwned + Meta,
+        <T as Meta>::DynamicType: Default,
     {
         Ok(self.get_api(namespace).list(&list_params).await?.items)
     }
@@ -87,7 +89,8 @@ impl Client {
         selector: &LabelSelector,
     ) -> OperatorResult<Vec<T>>
     where
-        T: Clone + DeserializeOwned + Meta,
+        T: Clone + Debug + DeserializeOwned + Meta,
+        <T as Meta>::DynamicType: Default,
     {
         let selector_string = label_selector::convert_label_selector_to_query_string(selector)?;
         trace!("Listing for LabelSelector [{}]", selector_string);
@@ -101,7 +104,8 @@ impl Client {
     /// Creates a new resource.
     pub async fn create<T>(&self, resource: &T) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta + Serialize,
+        T: Clone + Debug + DeserializeOwned + Meta + Serialize,
+        <T as Meta>::DynamicType: Default,
     {
         Ok(self
             .get_api(Meta::namespace(resource))
@@ -114,8 +118,9 @@ impl Client {
     /// This will fail for objects that do not exist yet.
     pub async fn merge_patch<T, P>(&self, resource: &T, patch: P) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta,
-        P: Serialize,
+        T: Clone + Debug + DeserializeOwned + Meta,
+        <T as Meta>::DynamicType: Default,
+        P: Debug + Serialize,
     {
         self.patch(resource, Patch::Merge(patch), &self.patch_params)
             .await
@@ -128,8 +133,9 @@ impl Client {
     /// This will _create_ or _update_ existing resources.
     pub async fn apply_patch<T, P>(&self, resource: &T, patch: P) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta,
-        P: Serialize,
+        T: Clone + Debug + DeserializeOwned + Meta,
+        <T as Meta>::DynamicType: Default,
+        P: Debug + Serialize,
     {
         self.patch(resource, Patch::Apply(patch), &self.patch_params)
             .await
@@ -138,7 +144,8 @@ impl Client {
     /// Patches a resource using the `JSON` patch strategy described in [JavaScript Object Notation (JSON) Patch](https://tools.ietf.org/html/rfc6902).
     pub async fn json_patch<T>(&self, resource: &T, patch: json_patch::Patch) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta,
+        T: Clone + Debug + DeserializeOwned + Meta,
+        <T as Meta>::DynamicType: Default,
     {
         // The `()` type is not used. I need to provide _some_ type just to get it to compile.
         // But the type is not used _at all_ for the `Json` variant so I'd argue it's okay to
@@ -156,8 +163,9 @@ impl Client {
         patch_params: &PatchParams,
     ) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta,
-        P: Serialize,
+        T: Clone + Debug + DeserializeOwned + Meta,
+        <T as Meta>::DynamicType: Default,
+        P: Debug + Serialize,
     {
         Ok(self
             .get_api(Meta::namespace(resource))
@@ -169,12 +177,13 @@ impl Client {
     /// The subresource status must be defined beforehand in the Crd.
     pub async fn apply_patch_status<T, S>(&self, resource: &T, status: &S) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta + Resource,
-        S: Serialize,
+        T: Clone + Debug + DeserializeOwned + Meta<DynamicType = ()>,
+        <T as Meta>::DynamicType: Default,
+        S: Debug + Serialize,
     {
         let new_status = Patch::Apply(serde_json::json!({
-            "apiVersion": T::API_VERSION,
-            "kind": T::KIND,
+            "apiVersion": T::api_version(&()),
+            "kind": T::kind(&()),
             "status": status
         }));
 
@@ -187,8 +196,9 @@ impl Client {
     /// The subresource status must be defined beforehand in the Crd.
     pub async fn merge_patch_status<T, S>(&self, resource: &T, status: &S) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta + Resource,
-        S: Serialize,
+        T: Clone + Debug + DeserializeOwned + Meta,
+        <T as Meta>::DynamicType: Default,
+        S: Debug + Serialize,
     {
         let new_status = Patch::Merge(serde_json::json!({ "status": status }));
 
@@ -204,8 +214,9 @@ impl Client {
         patch_params: &PatchParams,
     ) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta,
-        S: Serialize,
+        T: Clone + Debug + DeserializeOwned + Meta,
+        <T as Meta>::DynamicType: Default,
+        S: Debug + Serialize,
     {
         // There are four different strategies:
         // 1) Apply (https://kubernetes.io/docs/reference/using-api/api-concepts/#server-side-apply)
@@ -232,7 +243,8 @@ impl Client {
     /// a `update` will always replace the full object.
     pub async fn update<T>(&self, resource: &T) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta + Serialize,
+        T: Clone + Debug + DeserializeOwned + Meta + Serialize,
+        <T as Meta>::DynamicType: Default,
     {
         Ok(self
             .get_api(Meta::namespace(resource))
@@ -253,7 +265,8 @@ impl Client {
     /// Some `delete` endpoints return the object and others return a `Status` object.
     pub async fn delete<T>(&self, resource: &T) -> OperatorResult<Option<Either<T, Status>>>
     where
-        T: Clone + DeserializeOwned + Meta,
+        T: Clone + Debug + DeserializeOwned + Meta,
+        <T as Meta>::DynamicType: Default,
     {
         if finalizer::has_deletion_stamp(resource) {
             trace!(
@@ -278,11 +291,11 @@ impl Client {
     /// This will only work if there is a `status` subresource **and** it has a `conditions` array.
     pub async fn set_condition<T>(&self, resource: &T, condition: Condition) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta + Resource,
+        T: Clone + Debug + DeserializeOwned + Meta<DynamicType = ()>,
     {
         let new_status = Patch::Apply(serde_json::json!({
-            "apiVersion": T::API_VERSION,
-            "kind": T::KIND,
+            "apiVersion": T::api_version(&()),
+            "kind": T::kind(&()),
             "status": {
                 "conditions": vec![condition]
             }
@@ -298,6 +311,7 @@ impl Client {
     pub fn get_api<T>(&self, namespace: Option<String>) -> Api<T>
     where
         T: Meta,
+        <T as Meta>::DynamicType: Default,
     {
         match namespace {
             None => self.get_all_api(),
@@ -307,14 +321,16 @@ impl Client {
 
     pub fn get_all_api<T>(&self) -> Api<T>
     where
-        T: Resource,
+        T: Meta,
+        <T as Meta>::DynamicType: Default,
     {
         Api::all(self.client.clone())
     }
 
     pub fn get_namespaced_api<T>(&self, namespace: &str) -> Api<T>
     where
-        T: Resource,
+        T: Meta,
+        <T as Meta>::DynamicType: Default,
     {
         Api::namespaced(self.client.clone(), namespace)
     }
@@ -354,7 +370,8 @@ impl Client {
     ///
     pub async fn wait_created<T>(&self, namespace: Option<String>, lp: ListParams)
     where
-        T: Meta + Clone + DeserializeOwned + Send + 'static,
+        T: Meta + Clone + Debug + DeserializeOwned + Send + 'static,
+        <T as Meta>::DynamicType: Default,
     {
         let api: Api<T> = self.get_api(namespace);
         let watcher = kube_runtime::watcher(api, lp).boxed();

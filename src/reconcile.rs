@@ -8,6 +8,7 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, OwnerReference};
 use kube::api::{ListParams, Meta, ObjectMeta};
 use kube_runtime::controller::ReconcilerAction;
 use serde::de::DeserializeOwned;
+use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
@@ -155,7 +156,8 @@ where
         requeue_if_changed: bool,
     ) -> ReconcileResult<Error>
     where
-        T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
+        T: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
+        <T as Meta>::DynamicType: Default,
     {
         let being_deleted = finalizer::has_deletion_stamp(&self.resource);
 
@@ -216,7 +218,7 @@ where
 // TODO: Trait bound on Clone is not needed after https://github.com/clux/kube-rs/pull/436
 impl<T> ReconciliationContext<T>
 where
-    T: Clone + DeserializeOwned + Meta,
+    T: Clone + Debug + DeserializeOwned + Meta<DynamicType = ()>,
 {
     /// Sets the [`Condition`] on the resource in this context.
     pub async fn set_condition(&self, condition: Condition) -> OperatorResult<T> {
