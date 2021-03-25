@@ -20,10 +20,22 @@ jobs:
           profile: minimal
           toolchain: nightly
           override: true
+      - name: Start K3S
+        uses: debianmaster/actions-k3s@v1.0.1
+        id: k3s
+        with:
+          version: 'latest'
       - uses: actions-rs/cargo@v1
+        name: Run tests
         with:
           command: test
       - uses: actions-rs/cargo@v1
+        name: Run ignored-by-default tests
+        with:
+          command: test
+          args: -- --ignored
+      - uses: actions-rs/cargo@v1
+        name: Release build
         with:
           command: build
           args: --release

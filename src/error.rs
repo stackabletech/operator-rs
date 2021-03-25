@@ -23,6 +23,11 @@ pub enum Error {
 
     #[error("LabelSelector is invalid: {message}")]
     InvalidLabelSelector { message: String },
+    #[error("Operation timed out: {source}")]
+    TimeoutError {
+        #[from]
+        source: tokio::time::error::Elapsed,
+    },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
