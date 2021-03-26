@@ -1,0 +1,23 @@
+= OPERATOR-RS CONTRIBUTING GUIDE
+
+Contributions in any form are welcome and appreciated. The recommended approach for code contributions is to fork this repository and create a pull request.
+
+== CODE
+
+* Use the *stable* branch of Rust, not nightly.
+* Code must be formatted with https://github.com/rust-lang/rustfmt[rustfmt]. Easiest way to install `rustfmt` is to to invoke `cargo install rustfmt` and then format the project with `cargo fmt`.
+* Rustdoc: Structs, functions and all other elements are documented. In general, documentation style follows the https://doc.rust-lang.org/rustdoc/what-is-rustdoc.html[Rustdoc] guide.
+* Tests dependent on Kubernetes runtime are prefixed with `k8s_test_` and ignored.
+
+
+== TESTS
+
+Tests requiring Kubernetes are *disabled* by default, yet enabled in link:.github/workflows/rust.yml[rust.yml] workflow. All others tests are *enabled* by default. This implies `cargo test` won't run Kubernetes-dependent tests by default. To run ignored test(s), invoke `cargo test -- --ignored`.
+
+Kubernetes tests require a `KUBECONFIG` environment variable pointing to a valid kubeconfig file. The kubeconfig must:
+
+* Point to a reachable Kubernetes cluster,
+* Use account with enough permissions to run the tests,
+* Be readable by the user running the tests.
+
+On Linux, a convenient way to install local Kubernetes cluster is https://k3s.io/:[K3S.io]. Invoking `curl -sfL https://get.k3s.io | sh -` installs latest version of K3S and exports a `KUBECONFIG` at `/etc/rancher/k3s/k3s.yaml`. To run Kubernetes-dependent tests with K3S, set the `KUBECONFIG` environment variable using `export KUBECONFIG=/etc/rancher/k3s/k3s.yaml`. Make sure it is readable by user invoking the tests by using `chown`/`chmod`. Running the `cargo test -- --ignored` command afterwards runs all tests, including Kubernetes tests. K3S is also leveraged in link:.github/workflows/rust.yml[rust.yml] workflow.
