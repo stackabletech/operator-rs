@@ -60,14 +60,14 @@ pub fn create_requeuing_reconcile_function_action(secs: u64) -> ReconcileFunctio
 }
 
 #[derive(Eq, PartialEq)]
-pub enum DeletionStrategy {
-    /// Will delete all illegal pods and continue with the reconciliation
+pub enum ContinuationStrategy {
+    /// Will process all resources (including potential changes) and then continue with the reconciliation
     AllContinue,
 
-    /// Will delete all illegal pods and requeue
+    /// Will process all resources (including potential changes) and then requeue the resource
     AllRequeue,
 
-    /// Will delete just one illegal pod at a time and requeue
+    /// Will process all resources but will return a requeue after any changes
     OneRequeue,
 }
 
@@ -90,7 +90,16 @@ impl<T> ReconciliationContext<T> {
         ReconcileFunctionAction::Requeue(self.requeue_timeout)
     }
 
+    /// This is a reconciliation gate to wait for a list of Pods to be running and ready.
+    ///
+    /// See [`podutils::is_pod_running_and_ready`] for details.
+    /// Will requeue as soon as a single Pod is not running or not ready.
     pub async fn wait_for_running_and_ready_pods(&self, pods: &[Pod]) -> ReconcileResult<Error> {
+        let (ready, not_ready) = pods
+            .iter()
+            .partition(|pod| podutils::is_pod_running_and_ready(pod));
+        let ready = ready;
+
         for pod in pods {
             if !podutils::is_pod_running_and_ready(pod) {
                 return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
@@ -249,7 +258,7 @@ where
         &self,
         pods: &[Pod],
         required_labels: &BTreeMap<String, Option<Vec<String>>>,
-        deletion_strategy: DeletionStrategy,
+        deletion_strategy: ContinuationStrategy,
     ) -> ReconcileResult<Error> {
         let illegal_pods = podutils::find_invalid_pods(pods, required_labels);
         if illegal_pods.is_empty() {
@@ -263,12 +272,12 @@ where
             );
             self.client.delete(illegal_pod).await?;
 
-            if deletion_strategy == DeletionStrategy::OneRequeue {
+            if deletion_strategy == ContinuationStrategy::OneRequeue {
                 return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
             }
         }
 
-        if deletion_strategy == DeletionStrategy::AllRequeue {
+        if deletion_strategy == ContinuationStrategy::AllRequeue {
             return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
         }
 
@@ -279,7 +288,7 @@ where
         &self,
         nodes_and_labels: &[(Vec<Node>, BTreeMap<String, Option<String>>)],
         existing_pods: &[Pod],
-        deletion_strategy: DeletionStrategy,
+        deletion_strategy: ContinuationStrategy,
     ) -> ReconcileResult<Error> {
         let excess_pods = role_utils::find_excess_pods(nodes_and_labels, existing_pods);
         for excess_pod in excess_pods {
@@ -289,12 +298,12 @@ where
             );
             self.client.delete(excess_pod).await?;
 
-            if deletion_strategy == DeletionStrategy::OneRequeue {
+            if deletion_strategy == ContinuationStrategy::OneRequeue {
                 return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
             }
         }
 
-        if deletion_strategy == DeletionStrategy::AllRequeue {
+        if deletion_strategy == ContinuationStrategy::AllRequeue {
             return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
         }
 

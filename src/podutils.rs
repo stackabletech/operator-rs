@@ -187,6 +187,8 @@ pub fn pod_matches_multiple_label_values(
     pod: &Pod,
     required_labels: &BTreeMap<String, Option<Vec<String>>>,
 ) -> bool {
+    // TODO: This method currently will abort on the first error, we could extend this
+    //  (or add a second function) to return all "validation" results instead.
     let pod_labels = &pod.metadata.labels;
 
     for (expected_key, expected_value) in required_labels {
