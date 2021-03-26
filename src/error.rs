@@ -26,6 +26,9 @@ pub enum Error {
 
     #[error("CustomResource [{name}] not found in any 'metadata.name' field. Could not retrieve OwnerReference.")]
     MissingCustomResource { name: String },
+
+    #[error("OwnerReference for command [{command}] with owner [{owner}] is missing.")]
+    MissingOwnerReference { command: String, owner: String },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
