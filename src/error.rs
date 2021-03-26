@@ -29,6 +29,7 @@ pub enum Error {
 
     #[error("OwnerReference for command [{command}] with owner [{owner}] is missing.")]
     MissingOwnerReference { command: String, owner: String },
+
     #[error("Operation timed out: {source}")]
     TimeoutError {
         #[from]
