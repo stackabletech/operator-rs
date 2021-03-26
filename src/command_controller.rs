@@ -104,6 +104,7 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
+use tracing::trace;
 
 // TODO: remove after hackathon merge
 const FINALIZER_NAME: &str = "command.stackable.tech/cleanup";
@@ -141,6 +142,12 @@ where
         )
         .await?;
 
+        trace!(
+            "Found owner [{}] for command [{}]",
+            &self.context.resource.get_owner_name(),
+            &self.context.resource.name()
+        );
+
         Ok(ReconcileFunctionAction::Continue)
     }
 
@@ -164,6 +171,12 @@ where
 
             // Already set -> we are done
             if owner_references.contains(&self.owner_reference.as_ref().unwrap()) {
+                trace!(
+                    "Command [{}] already has owner reference [{:?}]",
+                    &self.context.resource.get_owner_name(),
+                    &self.owner_reference
+                );
+
                 return Ok(ReconcileFunctionAction::Done);
             }
         }
@@ -180,6 +193,12 @@ where
             &self.owner_reference,
         )
         .await?;
+
+        trace!(
+            "Command [{}] got owner reference [{:?}]",
+            &self.context.resource.get_owner_name(),
+            &self.owner_reference
+        );
 
         Ok(ReconcileFunctionAction::Done)
     }
