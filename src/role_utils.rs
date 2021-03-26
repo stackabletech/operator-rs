@@ -9,7 +9,7 @@
 //!
 //! A CRD is often used to operate another piece of software.
 //! Software - especially the distributed kind - sometimes consists of multiple different types of program working together to achieve their goal.
-//! These different types is what we call a _role_.
+//! These different types are what we call a _role_.
 //!
 //! ## Examples
 //!
