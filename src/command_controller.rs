@@ -3,12 +3,14 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
+//! use kube::CustomResource;
 //! use kube::api::Meta;
 //! use stackable_operator::Crd;
 //! use stackable_operator::{error, client};
 //! use schemars::JsonSchema;
 //! use serde::{Deserialize, Serialize};
+//! use stackable_operator::error::Error;
 //!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 //! #[kube(
@@ -75,7 +77,7 @@
 //! }
 //!
 //! #[tokio::main]
-//! async fn main() -> Result<(), error::Error> {
+//! async fn main() -> Result<(),Error> {
 //!    stackable_operator::logging::initialize_logging("FOO_OPERATOR_LOG");
 //!    let client = client::create_client(Some("foo.stackable.tech".to_string())).await?;
 //!
@@ -84,7 +86,7 @@
 //!
 //!    tokio::join!(
 //!        stackable_foo_operator::create_controller(client.clone()),
-//!        stackable_operator::command_controller::create_command_controller::<Bar,Foo>(client)
+//!        stackable_operator::command_controller::create_command_controller::<Bar, Foo>(client)
 //!    );
 //!    Ok(())
 //! }
@@ -96,7 +98,7 @@ use crate::error::{Error, OperatorResult};
 use crate::metadata;
 use crate::reconcile::{ReconcileFunctionAction, ReconcileResult, ReconciliationContext};
 use async_trait::async_trait;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
+use json_patch::{AddOperation, PatchOperation};
 use kube::api::{ListParams, Meta};
 use kube::Api;
 use serde::de::DeserializeOwned;
@@ -111,6 +113,7 @@ const FINALIZER_NAME: &str = "command.stackable.tech/cleanup";
 
 /// Trait for all commands to be implemented. We need to retrieve the name of the
 /// main controller custom resource.
+/// The referenced resource has to be in the same namespace as the command itself.
 pub trait Command {
     /// Retrieve the potential "Owner" name of this custom resource
     fn get_owner_name(&self) -> String;
@@ -123,7 +126,6 @@ where
 {
     context: ReconciliationContext<C>,
     owner: Option<O>,
-    owner_reference: Option<OwnerReference>,
 }
 
 impl<C, O> CommandState<C, O>
@@ -131,16 +133,34 @@ where
     C: Command + Clone + DeserializeOwned + Meta,
     O: Clone + DeserializeOwned + Meta,
 {
+    /// Check if our custom resource command already has the owner reference set to the main
+    /// controller custom resource. If so we can stop the reconcile.
+    async fn owner_reference_existing(&mut self) -> ReconcileResult<Error> {
+        // If owner_references exist, check if any match our main resource owner reference.
+        if let Some(owner_references) = &self.context.resource.meta().owner_references {
+            for owner_reference in owner_references {
+                if owner_reference.name == self.context.resource.get_owner_name()
+                    && owner_reference.kind == O::KIND
+                {
+                    return Ok(ReconcileFunctionAction::Done);
+                }
+            }
+        }
+
+        Ok(ReconcileFunctionAction::Continue)
+    }
+
     /// Try to retrieve the owner (main controller custom resource).
     /// This is required to build the owner reference for our custom resource.
     async fn get_owner(&mut self) -> ReconcileResult<Error> {
-        // find main controller custom resource
-        self.owner = find_owner::<O>(
-            &self.context.client.clone(),
-            &self.context.resource.get_owner_name(),
-            &self.context.resource.namespace(),
-        )
-        .await?;
+        let owner: O = self
+            .context
+            .client
+            .get(
+                &self.context.resource.get_owner_name(),
+                self.context.resource.namespace(),
+            )
+            .await?;
 
         trace!(
             "Found owner [{}] for command [{}]",
@@ -148,38 +168,7 @@ where
             &self.context.resource.name()
         );
 
-        Ok(ReconcileFunctionAction::Continue)
-    }
-
-    /// Check if our custom resource already has the owner reference on the main
-    /// controller custom resource set.
-    async fn check_owner_reference(&mut self) -> ReconcileResult<Error> {
-        // store owner reference
-        self.owner_reference = Some(metadata::object_to_owner_reference::<O>(
-            self.owner.as_ref().unwrap().meta().clone(),
-            true,
-        )?);
-
-        // If owner_references exist, check if any match our main resource owner reference.
-        if let Some(owner_references) = &self.context.resource.meta().owner_references {
-            if self.owner_reference.is_none() {
-                return Err(Error::MissingOwnerReference {
-                    command: Meta::name(&self.context.resource),
-                    owner: self.context.resource.get_owner_name(),
-                });
-            }
-
-            // Already set -> we are done
-            if owner_references.contains(&self.owner_reference.as_ref().unwrap()) {
-                trace!(
-                    "Command [{}] already has owner reference [{:?}]",
-                    &self.context.resource.get_owner_name(),
-                    &self.owner_reference
-                );
-
-                return Ok(ReconcileFunctionAction::Done);
-            }
-        }
+        self.owner = Some(owner);
 
         Ok(ReconcileFunctionAction::Continue)
     }
@@ -187,20 +176,25 @@ where
     /// If the owner (main controller custom resource), we set its owner reference
     /// to our command custom resource.
     async fn set_owner_reference(&self) -> ReconcileResult<Error> {
-        patch_owner_reference(
-            &self.context.client,
-            &self.context.resource,
-            &self.owner_reference,
-        )
-        .await?;
+        let owner_reference = metadata::object_to_owner_reference::<O>(
+            self.owner.as_ref().unwrap().meta().clone(),
+            true,
+        )?;
 
-        trace!(
-            "Command [{}] got owner reference [{:?}]",
-            &self.context.resource.get_owner_name(),
-            &self.owner_reference
-        );
+        let owner_references_path = "/metadata/ownerReferences".to_string();
+        // we do not need to test here, if the owner ref is already in here, we would
+        // not reach this point in the reconcile loop (-> check owner_reference_existing())
+        let patch = json_patch::Patch(vec![PatchOperation::Add(AddOperation {
+            path: owner_references_path,
+            value: serde_json::json!([owner_reference]),
+        })]);
 
-        Ok(ReconcileFunctionAction::Done)
+        self.context
+            .client
+            .json_patch(&self.context.resource, patch)
+            .await?;
+
+        Ok(ReconcileFunctionAction::Continue)
     }
 }
 
@@ -216,9 +210,9 @@ where
     ) -> Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Self::Error>> + Send + '_>>
     {
         Box::pin(async move {
-            self.get_owner()
+            self.owner_reference_existing()
                 .await?
-                .then(self.check_owner_reference())
+                .then(self.get_owner())
                 .await?
                 .then(self.set_owner_reference())
                 .await
@@ -266,14 +260,16 @@ where
         Ok(CommandState {
             context,
             owner: None,
-            owner_reference: None,
         })
     }
 }
 
 /// This creates an instance of a [`Controller`] which waits for incoming commands.
-/// For each command, we set the owner reference of our main controller custom resource, to
-/// list and process commands in the main reconcile loop.
+/// For each command, we try to find the referenced resource and will set the Owner Reference
+/// of the command to this referenced resource.
+/// If we can't find the referenced object we TODO: delete?.
+/// This means that the controller of the parent resource can now watch for commands and this
+/// helper controller will make sure that they trigger a reconcile for the parent by setting the OwnerReference.
 ///
 /// This is an async method and the returned future needs to be consumed to make progress.
 pub async fn create_command_controller<C, O>(client: Client)
@@ -290,69 +286,6 @@ where
     controller
         .run(client, strategy, Duration::from_secs(10))
         .await;
-}
-
-/// Find a resource according to the metadata.name field.
-///
-/// # Arguments
-/// * `client` - Kubernetes client
-/// * `metadata_name` - The metadata.name value to be matched
-///
-async fn find_owner<O>(
-    client: &Client,
-    metadata_name: &str,
-    namespace: &Option<String>,
-) -> OperatorResult<Option<O>>
-where
-    O: Clone + DeserializeOwned + Meta,
-{
-    let lp = ListParams::default().fields(&format!("metadata.name={}", metadata_name));
-    let mut owners: Vec<O> = client.list(namespace.clone(), &lp).await?;
-
-    // TODO: What to do with commands that have no existing owner?
-    if owners.is_empty() {
-        return Err(Error::MissingCustomResource {
-            name: metadata_name.to_string(),
-        });
-    }
-
-    Ok(owners.pop())
-}
-
-/// Add an OwnerReference to an existing resource via merge strategy.
-///
-/// # Arguments
-/// * `client` - Kubernetes client
-/// * `resource` - The resource where to set the OwnerReference
-/// * `owner_reference` - The OwnerReference to add
-///
-async fn patch_owner_reference<C>(
-    client: &Client,
-    resource: &C,
-    owner_reference: &Option<OwnerReference>,
-) -> OperatorResult<()>
-where
-    C: Clone + DeserializeOwned + Meta,
-{
-    let mut owner_references = vec![];
-
-    if let Some(references) = &mut resource.meta().owner_references.clone() {
-        owner_references.append(references);
-    }
-
-    if let Some(owner_ref) = owner_reference {
-        owner_references.push(owner_ref.clone());
-
-        let new_metadata = serde_json::json!({
-            "metadata": {
-                "ownerReferences": owner_references
-            }
-        });
-
-        client.merge_patch(resource, new_metadata).await?;
-    }
-
-    Ok(())
 }
 
 /// Get a list of available commands of custom resource T.
