@@ -11,6 +11,7 @@ pub mod history;
 pub mod k8s_errors;
 pub mod krustlet;
 pub mod label_selector;
+pub mod labels;
 pub mod logging;
 pub mod metadata;
 pub mod podutils;

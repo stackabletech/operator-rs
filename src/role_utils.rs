@@ -36,12 +36,20 @@
 //!
 //! # Pod labels
 //!
-//! Each Pod that Operators create needs to have a common set of labels:
-//! * <TODO>/name - The name of the parent resource, this is useful so an operator can list all its pods by using a LabelSelector
-//! * <TODO>/role - The role/role type, this is used to distinguish multiple pods on the same node from each other
-//! * <TODO>roleGroup - The name of the role group this pod belongs to
+//! Each Pod that Operators create needs to have a common set of labels.
+//! These labels are (with one exception) listed in the Kubernetes [documentation](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/):
 //!
-//! Each Pod can have more operator specific labels.
+//! * app.kubernetes.io/name - The name of the application. This will usually be a static string (e.g. "zookeeper").
+//! * app.kubernetes.io/instance - The name of the parent resource, this is useful so an operator can list all its pods by using a LabelSelector
+//! * app.kubernetes.io/version - The current version of the application
+//! * app.kubernetes.io/component - The role/role type, this is used to distinguish multiple pods on the same node from each other
+//! * app.kubernetes.io/part-of - The name of a higher level application this one is part of. In our case this will usually be the same as `name`
+//! * app.kubernetes.io/managed-by - The tool being used to manage the operation of an application (e.g. "zookeeper-operator")
+//! * app.kubernetes.io/role-group - The name of the role group this pod belongs to
+//!
+//! NOTE: We find the official description to be ambiguous so we use these labels as defined above.
+//!
+//! Each resource can have more operator specific labels.
 
 use crate::podutils;
 use k8s_openapi::api::core::v1::{Node, Pod};
@@ -90,6 +98,48 @@ pub fn find_excess_pods<'a>(
                     matches!((pod.metadata.uid.as_ref(), used_pod.metadata.uid.as_ref()), (Some(existing_uid), Some(used_uid)) if existing_uid == used_uid))
         })
         .collect()
+}
+
+/// This function can be used to find Nodes that are missing Pods.
+///
+/// It uses a simple label selector to find matching nodes.
+/// This is not a full LabelSelector because the expectation is that the calling code used a
+/// full LabelSelector to query the Kubernetes API for a set of candidate Nodes.
+///
+/// We now need to check whether these candidate nodes already contain a Pod or not.
+/// That's why we also pass in _all_ Pods that we know about and one or more labels (including optional values).
+/// This method checks if there are pods assigned to a node and if these pods have all required labels.
+/// These labels are _not_ meant to be user-defined but can be used to distinguish between different Pod types.
+///
+/// You would usually call this function once per role group.
+///
+/// # Example
+///
+/// * HDFS has multiple roles (NameNode, DataNode, JournalNode)
+/// * Multiple roles may run on the same node
+///
+/// To check whether a certain Node is already running a NameNode Pod it is not enough to just check
+/// if there is a Pod assigned to that node.
+/// We also need to be able to distinguish the different roles.
+/// That's where the labels come in.
+/// In this scenario you'd add a label `app.kubernetes.io/component` with the value `NameNode` to each
+/// NameNode Pod.
+/// And this is the label you can now filter on using the `label_values` argument.
+// TODO: Tests
+pub fn find_nodes_that_need_pods<'a>(
+    candidate_nodes: &'a [Node],
+    existing_pods: &[Pod],
+    label_values: &BTreeMap<String, Option<String>>,
+) -> Vec<&'a Node> {
+    candidate_nodes
+        .iter()
+        .filter(|node| {
+            !existing_pods.iter().any(|pod| {
+                podutils::is_pod_assigned_to_node(pod, node)
+                    && podutils::pod_matches_labels(pod, label_values)
+            })
+        })
+        .collect::<Vec<&Node>>()
 }
 
 #[cfg(test)]

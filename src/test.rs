@@ -1,5 +1,5 @@
-use k8s_openapi::api::core::v1::{Node, Pod, PodSpec};
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
+use k8s_openapi::api::core::v1::{Node, Pod, PodCondition, PodSpec, PodStatus};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, Time};
 use std::collections::BTreeMap;
 
 // TODO: I assume this can also be useful for "real" code, I'm only exposing the fields I really need here though
@@ -34,6 +34,29 @@ impl PodBuilder {
 
     pub fn with_labels(&mut self, labels: BTreeMap<String, String>) -> &mut Self {
         self.pod.metadata.labels = Some(labels);
+        self
+    }
+
+    pub fn phase(&mut self, phase: &str) -> &mut Self {
+        let mut status = self.pod.status.get_or_insert_with(PodStatus::default);
+        status.phase = Some(phase.to_string());
+        self
+    }
+
+    pub fn with_condition(&mut self, condition_type: &str, condition_status: &str) -> &mut Self {
+        let status = self.pod.status.get_or_insert_with(PodStatus::default);
+        let conditions = status.conditions.get_or_insert_with(Vec::new);
+        let condition = PodCondition {
+            status: condition_status.to_string(),
+            type_: condition_type.to_string(),
+            ..PodCondition::default()
+        };
+        conditions.push(condition);
+        self
+    }
+
+    pub fn deletion_timestamp(&mut self, deletion_timestamp: Time) -> &mut Self {
+        self.pod.metadata.deletion_timestamp = Some(deletion_timestamp);
         self
     }
 
