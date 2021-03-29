@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
-use tracing::{debug, info, warn};
+use tracing::{debug, info, trace, warn};
 
 pub type ReconcileResult<E> = std::result::Result<ReconcileFunctionAction, E>;
 
@@ -88,24 +88,6 @@ impl<T> ReconciliationContext<T> {
 
     fn requeue(&self) -> ReconcileFunctionAction {
         ReconcileFunctionAction::Requeue(self.requeue_timeout)
-    }
-
-    /// This is a reconciliation gate to wait for a list of Pods to be running and ready.
-    ///
-    /// See [`podutils::is_pod_running_and_ready`] for details.
-    /// Will requeue as soon as a single Pod is not running or not ready.
-    pub async fn wait_for_running_and_ready_pods(&self, pods: &[Pod]) -> ReconcileResult<Error> {
-        let (ready, not_ready) = pods
-            .iter()
-            .partition(|pod| podutils::is_pod_running_and_ready(pod));
-        let ready = ready;
-
-        for pod in pods {
-            if !podutils::is_pod_running_and_ready(pod) {
-                return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
-            }
-        }
-        Ok(ReconcileFunctionAction::Continue)
     }
 
     // TODO: Docs & Test
@@ -484,9 +466,36 @@ pub async fn find_nodes_that_need_pods<'a>(
     needy_pods
 }
 
+/// This is a reconciliation gate to wait for a list of Pods to be running and ready.
+///
+/// See [`podutils::is_pod_running_and_ready`] for details.
+/// Will requeue as soon as a single Pod is not running or not ready.
+pub async fn wait_for_running_and_ready_pods(
+    requeue_timeout: Duration,
+    pods: &[Pod],
+) -> ReconcileResult<Error> {
+    let not_ready = pods
+        .iter()
+        .filter(|pod| !podutils::is_pod_running_and_ready(pod))
+        .collect::<Vec<_>>();
+
+    if !not_ready.is_empty() {
+        let pods = not_ready
+            .iter()
+            .map(|pod| podutils::get_log_name(*pod))
+            .collect::<Vec<_>>();
+        let pods = pods.join(", ");
+        trace!("Waiting for Pods to become ready: [{}]", pods);
+        return Ok(ReconcileFunctionAction::Requeue(requeue_timeout));
+    }
+
+    Ok(ReconcileFunctionAction::Continue)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test::PodBuilder;
     use std::collections::BTreeMap;
 
     #[test]
@@ -539,5 +548,16 @@ mod tests {
         assert!(
             matches!(add_stackable_selector(&mut ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
         );
+    }
+
+    #[test]
+    fn test_wait_for_running_and_ready() {
+        let duration = Duration::from_secs(30);
+
+        let pod1 = PodBuilder::new().build();
+        let pod2 = PodBuilder::new().build();
+        let pods = vec![pod1, pod2];
+
+        let result = wait_for_running_and_ready_pods(duration, &pods);
     }
 }
