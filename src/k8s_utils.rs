@@ -88,7 +88,9 @@ pub fn find_valid_pods_for_nodes<'a>(
 /// In this scenario you'd add a label `app.kubernetes.io/component` with the value `NameNode` to each
 /// NameNode Pod.
 /// And this is the label you can now filter on using the `label_values` argument.
-// TODO: Tests
+///
+/// NOTE: This method currently does not support multiple instances per Node!
+// TODO: Support multiple instances per Node
 pub fn find_nodes_that_need_pods<'a>(
     candidate_nodes: &'a [Node],
     existing_pods: &[Pod],
@@ -138,7 +140,7 @@ mod tests {
     }
 
     #[test]
-    fn test_find_pods_that_are_in_use() {
+    fn test_find_valid_pods_for_nodes() {
         // Two nodes, one pod, no labels on pod, but looking for labels, shouldn't match
         let nodes = vec![
             test::build_test_node("foobar"),
@@ -219,5 +221,32 @@ mod tests {
             1,
             find_valid_pods_for_nodes(&nodes, &existing_pods, &expected_labels).len()
         );
+    }
+
+    #[test]
+    fn test_find_nodes_that_need_pods() {
+        let foo_node = NodeBuilder::new().name("foo").build();
+        let foo_pod = PodBuilder::new().node_name("foo").build();
+
+        let mut labels = BTreeMap::new();
+        labels.insert("foo".to_string(), Some("bar".to_string()));
+
+        let nodes = vec![foo_node];
+        let pods = vec![foo_pod];
+
+        let foo = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
+        assert_eq!(foo.len(), 1);
+
+        let foo_pod = PodBuilder::new()
+            .node_name("foo")
+            .with_label("foo", "bar")
+            .build();
+        let pods = vec![foo_pod];
+        let foo = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
+        assert!(foo.is_empty());
+
+        labels.clear();
+        let foo = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
+        assert!(foo.is_empty());
     }
 }
