@@ -1,6 +1,6 @@
 use const_format::concatcp;
 
-const APP_KUBERNETES_LABEL_BASE: &str = "app.kubernetes.io";
+const APP_KUBERNETES_LABEL_BASE: &str = "app.kubernetes.io/";
 
 pub const APP_NAME_LABEL: &str = concatcp!(APP_KUBERNETES_LABEL_BASE, "name");
 pub const APP_INSTANCE_LABEL: &str = concatcp!(APP_KUBERNETES_LABEL_BASE, "instance");

@@ -9,6 +9,7 @@ pub mod error;
 pub mod finalizer;
 pub mod history;
 pub mod k8s_errors;
+pub mod k8s_utils;
 pub mod krustlet;
 pub mod label_selector;
 pub mod labels;

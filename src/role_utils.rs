@@ -32,7 +32,38 @@
 //!
 //! ## Example
 //!
-//! Role Groups: `default`, `20-cores`, `gpu`
+//! This example has one role (`leader`) and two role groups (`default`, and `20core`)
+//!
+//! ```yaml
+//!  leader:
+//     selectors:
+//       default:
+//         selector:
+//           matchLabels:
+//             component: spark
+//           matchExpressions:
+//             - { key: tier, operator: In, values: [ cache ] }
+//             - { key: environment, operator: NotIn, values: [ dev ] }
+//         config:
+//           cores: 1
+//           memory: "1g"
+//         instances: 3
+//         instancesPerNode: 1
+//       20core:
+//         selector:
+//           matchLabels:
+//             component: spark
+//             cores: 20
+//           matchExpressions:
+//             - { key: tier, operator: In, values: [ cache ] }
+//             - { key: environment, operator: NotIn, values: [ dev ] }
+//           config:
+//             cores: 10
+//             memory: "1g"
+//           instances: 3
+//           instancesPerNode: 2
+//     config:
+//! ```
 //!
 //! # Pod labels
 //!
@@ -51,127 +82,39 @@
 //!
 //! Each resource can have more operator specific labels.
 
-use crate::podutils;
-use k8s_openapi::api::core::v1::{Node, Pod};
+use crate::error::OperatorResult;
+use crate::krustlet;
+
+use std::collections::HashMap;
+
+use crate::client::Client;
+use k8s_openapi::api::core::v1::Node;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
-use std::collections::BTreeMap;
+use tracing::debug;
 
 pub struct RoleGroup {
     pub name: String,
     pub selector: LabelSelector,
 }
 
-/// This method can be used to find Pods that do not match a set of Nodes and required labels.
-///
-/// All Pods must match at least one of the node list & required labels combinations.
-/// All that don't match will be returned.
-///
-/// The idea is that you pass in a list of tuples, one tuple for each role group.
-/// Each tuple consists of a list of eligible nodes for that role group's LabelSelector and a
-/// Map of label keys to optional values.
-///
-/// To clearly identify Pods (e.g. to distinguish two pods on the same node from each other) they
-/// usually need some labels (e.g. a `role` label).
-pub fn find_excess_pods<'a>(
-    nodes_and_required_labels: &[(Vec<Node>, BTreeMap<String, Option<String>>)],
-    existing_pods: &'a [Pod],
-) -> Vec<&'a Pod> {
-    let mut used_pods = Vec::new();
-
-    // For each pair of Nodes and labels we try to find all Pods that are currently in use and valid
-    // We collect all of those in one big list.
-    for (eligible_nodes, mandatory_label_values) in nodes_and_required_labels {
-        let mut found_pods = podutils::find_valid_pods_for_nodes(
-            &eligible_nodes,
-            &existing_pods,
-            mandatory_label_values,
+pub async fn find_nodes_that_fit_selectors(
+    client: &Client,
+    namespace: Option<String>,
+    role_groups: Vec<RoleGroup>,
+) -> OperatorResult<HashMap<String, Vec<Node>>> {
+    let mut found_nodes = HashMap::new();
+    for role_group in role_groups {
+        let selector = krustlet::add_stackable_selector(&role_group.selector);
+        let nodes = client
+            .list_with_label_selector(namespace.clone(), &selector)
+            .await?;
+        debug!(
+            "Found [{}] nodes for role group [{}]: [{:?}]",
+            nodes.len(),
+            role_group.name,
+            nodes
         );
-        used_pods.append(&mut found_pods);
+        found_nodes.insert(role_group.name.clone(), nodes);
     }
-
-    // Here we'll filter all existing Pods and will remove all Pods that are in use
-    existing_pods.iter()
-        .filter(|pod| {
-            !used_pods
-                .iter()
-                .any(|used_pod|
-                    matches!((pod.metadata.uid.as_ref(), used_pod.metadata.uid.as_ref()), (Some(existing_uid), Some(used_uid)) if existing_uid == used_uid))
-        })
-        .collect()
-}
-
-/// This function can be used to find Nodes that are missing Pods.
-///
-/// It uses a simple label selector to find matching nodes.
-/// This is not a full LabelSelector because the expectation is that the calling code used a
-/// full LabelSelector to query the Kubernetes API for a set of candidate Nodes.
-///
-/// We now need to check whether these candidate nodes already contain a Pod or not.
-/// That's why we also pass in _all_ Pods that we know about and one or more labels (including optional values).
-/// This method checks if there are pods assigned to a node and if these pods have all required labels.
-/// These labels are _not_ meant to be user-defined but can be used to distinguish between different Pod types.
-///
-/// You would usually call this function once per role group.
-///
-/// # Example
-///
-/// * HDFS has multiple roles (NameNode, DataNode, JournalNode)
-/// * Multiple roles may run on the same node
-///
-/// To check whether a certain Node is already running a NameNode Pod it is not enough to just check
-/// if there is a Pod assigned to that node.
-/// We also need to be able to distinguish the different roles.
-/// That's where the labels come in.
-/// In this scenario you'd add a label `app.kubernetes.io/component` with the value `NameNode` to each
-/// NameNode Pod.
-/// And this is the label you can now filter on using the `label_values` argument.
-// TODO: Tests
-pub fn find_nodes_that_need_pods<'a>(
-    candidate_nodes: &'a [Node],
-    existing_pods: &[Pod],
-    label_values: &BTreeMap<String, Option<String>>,
-) -> Vec<&'a Node> {
-    candidate_nodes
-        .iter()
-        .filter(|node| {
-            !existing_pods.iter().any(|pod| {
-                podutils::is_pod_assigned_to_node(pod, node)
-                    && podutils::pod_matches_labels(pod, label_values)
-            })
-        })
-        .collect::<Vec<&Node>>()
-}
-
-#[cfg(test)]
-mod tests {
-
-    use crate::role_utils::find_excess_pods;
-    use crate::test::{NodeBuilder, PodBuilder};
-    use std::collections::BTreeMap;
-
-    #[test]
-    fn test_find_excess_pods() {
-        let node1 = NodeBuilder::new().name("node1").build();
-        let node2 = NodeBuilder::new().name("node2").build();
-        let node3 = NodeBuilder::new().name("node3").build();
-        let node4 = NodeBuilder::new().name("node4").build();
-        let node5 = NodeBuilder::new().name("node5").build();
-
-        let mut labels1 = BTreeMap::new();
-        labels1.insert("group1".to_string(), None);
-
-        let mut labels2 = BTreeMap::new();
-        labels2.insert("group2".to_string(), Some("foobar".to_string()));
-
-        let nodes_and_labels = vec![
-            (vec![node1, node2, node3.clone()], labels1),
-            (vec![node3, node4, node5], labels2),
-        ];
-
-        let pod = PodBuilder::new().node_name("node1").build();
-        let pods = vec![pod];
-
-        let excess_pods = find_excess_pods(nodes_and_labels.as_slice(), &pods);
-        assert_eq!(excess_pods.len(), 1);
-    }
+    Ok(found_nodes)
 }

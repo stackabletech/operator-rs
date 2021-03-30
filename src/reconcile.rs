@@ -1,15 +1,15 @@
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
-use crate::{conditions, controller_ref, finalizer, krustlet, labels, podutils, role_utils};
+use crate::{conditions, controller_ref, finalizer, labels, podutils};
 
 use crate::conditions::ConditionStatus;
-use crate::role_utils::RoleGroup;
+use crate::k8s_utils::find_excess_pods;
 use k8s_openapi::api::core::v1::{Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector, OwnerReference};
 use kube::api::{Meta, ObjectMeta};
 use kube_runtime::controller::ReconcilerAction;
 use serde::de::DeserializeOwned;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
@@ -166,34 +166,6 @@ where
             })
     }
 
-    /// Finds nodes in the cluster that match a given LabelSelector
-    /// This takes list of RoleGroup and returns
-    /// a map with found nodes per String
-    ///
-    /// This will only match Stackable nodes (Nodes with a special label).
-    /// TODO: Docs & Tests
-    pub async fn find_nodes_that_fit_selectors(
-        &self,
-        role_groups: Vec<RoleGroup>,
-    ) -> OperatorResult<HashMap<String, Vec<Node>>> {
-        let mut found_nodes = HashMap::new();
-        for role_group in role_groups {
-            let selector = krustlet::add_stackable_selector(&role_group.selector);
-            let nodes = self
-                .client
-                .list_with_label_selector(self.resource.namespace(), &selector)
-                .await?;
-            debug!(
-                "Found [{}] nodes for role group [{}]: [{:?}]",
-                nodes.len(),
-                role_group.name,
-                nodes
-            );
-            found_nodes.insert(role_group.name.clone(), nodes);
-        }
-        Ok(found_nodes)
-    }
-
     /// Creates a new [`Condition`] for the `resource` this context contains.
     ///
     /// It's a convenience function that passes through all parameters and builds a `Condition`
@@ -282,7 +254,7 @@ where
         existing_pods: &[Pod],
         deletion_strategy: ContinuationStrategy,
     ) -> ReconcileResult<Error> {
-        let excess_pods = role_utils::find_excess_pods(nodes_and_labels, existing_pods);
+        let excess_pods = find_excess_pods(nodes_and_labels, existing_pods);
         for excess_pod in excess_pods {
             info!(
                 "Deleting excess Pod [{}]",

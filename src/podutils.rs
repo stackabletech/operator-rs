@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Display, Formatter, Result};
 
+use crate::k8s_utils::LabelOptionalValueMap;
 use k8s_openapi::api::core::v1::{Node, Pod, PodCondition, PodSpec, PodStatus};
 use kube::api::Meta;
 use tracing::debug;
@@ -139,7 +140,7 @@ pub fn is_pod_assigned_to_node(pod: &Pod, node: &Node) -> bool {
 ///
 /// assert!(!podutils::pod_matches_labels(&pod, &required_labels));
 /// ```
-pub fn pod_matches_labels(pod: &Pod, required_labels: &BTreeMap<String, Option<String>>) -> bool {
+pub fn pod_matches_labels(pod: &Pod, required_labels: &LabelOptionalValueMap) -> bool {
     // We convert the `required_labels` into a form that can be understood by `pod_matches_multiple_label_values`
     let converted = required_labels
         .iter()
@@ -255,32 +256,9 @@ pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<String, Option<Vec<Str
     ) && pod_matches_multiple_label_values(pod, required_labels)
 }
 
-/// This function can be used to get a list of valid Pods that are assigned
-/// (via their `spec.node_name` property) to one of a list of candidate nodes.
-///
-/// This is useful to find all _valid_ pods (i.e. ones that are actually required by an Operator)
-/// so it can be compared against _all_ Pods that belong to the Controller.
-///
-/// All Pods that are not actually in use can be deleted.
-pub fn find_valid_pods_for_nodes<'a>(
-    candidate_nodes: &[Node],
-    existing_pods: &'a [Pod],
-    required_labels: &BTreeMap<String, Option<String>>,
-) -> Vec<&'a Pod> {
-    existing_pods
-        .iter()
-        .filter(|pod|
-            // This checks whether the Pod has all the required labels and if it does
-            // it'll try to find a Node with the same `node_name` as the Pod.
-            pod_matches_labels(pod, required_labels) && candidate_nodes.iter().any(|node| is_pod_assigned_to_node(pod, node))
-        )
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test;
     use crate::test::{NodeBuilder, PodBuilder};
     use k8s_openapi::api::core::v1::{Pod, PodCondition, PodStatus};
 
@@ -495,90 +473,6 @@ mod tests {
 
         // Pod has _no_ labels but we're also asking for no labels
         assert!(pod_matches_labels(&test_pod, &BTreeMap::new()));
-    }
-
-    #[test]
-    fn test_find_pods_that_are_in_use() {
-        // Two nodes, one pod, no labels on pod, but looking for labels, shouldn't match
-        let nodes = vec![
-            test::build_test_node("foobar"),
-            test::build_test_node("barfoo"),
-        ];
-        let existing_pods = vec![PodBuilder::new().node_name("foobar").build()];
-
-        let mut label_values = BTreeMap::new();
-        label_values.insert("foo".to_string(), Some("bar".to_string()));
-
-        assert_eq!(
-            0,
-            find_valid_pods_for_nodes(&nodes, &existing_pods, &label_values).len()
-        );
-
-        // Two nodes, one pod, matching labels on pod, but looking for labels, should match
-        let mut pod_labels = BTreeMap::new();
-        pod_labels.insert("foo".to_string(), "bar".to_string());
-
-        let nodes = vec![
-            test::build_test_node("foobar"),
-            test::build_test_node("barfoo"),
-        ];
-        let existing_pods = vec![PodBuilder::new()
-            .node_name("foobar")
-            .with_labels(pod_labels)
-            .build()];
-
-        let mut expected_labels = BTreeMap::new();
-        expected_labels.insert("foo".to_string(), Some("bar".to_string()));
-        assert_eq!(
-            1,
-            find_valid_pods_for_nodes(&nodes, &existing_pods, &expected_labels).len()
-        );
-
-        // Two nodes, one pod, matching label key on pod but wrong value, but looking for labels, shouldn't match
-        let mut pod_labels = BTreeMap::new();
-        pod_labels.insert("foo".to_string(), "WRONG".to_string());
-
-        let nodes = vec![
-            test::build_test_node("foobar"),
-            test::build_test_node("barfoo"),
-        ];
-        let existing_pods = vec![PodBuilder::new()
-            .node_name("foobar")
-            .with_labels(pod_labels)
-            .build()];
-
-        let mut expected_labels = BTreeMap::new();
-        expected_labels.insert("foo".to_string(), Some("bar".to_string()));
-        assert_eq!(
-            0,
-            find_valid_pods_for_nodes(&nodes, &existing_pods, &expected_labels).len()
-        );
-
-        // Two nodes, two pods. one matches the other doesn't
-        let mut pod_labels = BTreeMap::new();
-        pod_labels.insert("foo".to_string(), "bar".to_string());
-
-        let nodes = vec![
-            test::build_test_node("foobar"),
-            test::build_test_node("barfoo"),
-        ];
-        let existing_pods = vec![
-            PodBuilder::new()
-                .node_name("foobar")
-                .with_labels(pod_labels.clone())
-                .build(),
-            PodBuilder::new()
-                .node_name("wrong_node")
-                .with_labels(pod_labels)
-                .build(),
-        ];
-
-        let mut expected_labels = BTreeMap::new();
-        expected_labels.insert("foo".to_string(), Some("bar".to_string()));
-        assert_eq!(
-            1,
-            find_valid_pods_for_nodes(&nodes, &existing_pods, &expected_labels).len()
-        );
     }
 
     #[test]
