@@ -58,7 +58,7 @@ impl Client {
     }
 
     /// Retrieves a single instance of the requested resource type with the given name.
-    pub async fn get<T>(&self, resource_name: &str, namespace: Option<String>) -> OperatorResult<T>
+    pub async fn get<T>(&self, resource_name: &str, namespace: Option<&str>) -> OperatorResult<T>
     where
         T: Clone + DeserializeOwned + Meta,
     {
@@ -70,7 +70,7 @@ impl Client {
     /// The `list_params` parameter can be used to pass in a `label_selector` or a `field_selector`.
     pub async fn list<T>(
         &self,
-        namespace: Option<String>,
+        namespace: Option<&str>,
         list_params: &ListParams,
     ) -> OperatorResult<Vec<T>>
     where
@@ -82,9 +82,14 @@ impl Client {
     /// Lists resources from the API using a LabelSelector.
     ///
     /// This takes a LabelSelector and converts it into a query string using [`label_selector::convert_label_selector_to_query_string`].
+    ///
+    /// # Arguments
+    ///
+    /// - `namespace` - Optional name of the namespace to search in. Otherwise searches in all namespaces.
+    /// - `selector` - A reference to a `LabelSelector` to filter out pods
     pub async fn list_with_label_selector<T>(
         &self,
-        namespace: Option<String>,
+        namespace: Option<&str>,
         selector: &LabelSelector,
     ) -> OperatorResult<Vec<T>>
     where
@@ -105,7 +110,7 @@ impl Client {
         T: Clone + DeserializeOwned + Meta + Serialize,
     {
         Ok(self
-            .get_api(Meta::namespace(resource))
+            .get_api(Meta::namespace(resource).as_deref())
             .create(&self.post_params, resource)
             .await?)
     }
@@ -161,7 +166,7 @@ impl Client {
         P: Serialize,
     {
         Ok(self
-            .get_api(Meta::namespace(resource))
+            .get_api(Meta::namespace(resource).as_deref())
             .patch(&Meta::name(resource), patch_params, &patch)
             .await?)
     }
@@ -221,7 +226,7 @@ impl Client {
         //   For example, the Containers field of PodSpec struct has a patchStrategy of merge.
         //
 
-        let api = self.get_api(Meta::namespace(resource));
+        let api = self.get_api(Meta::namespace(resource).as_deref());
         Ok(api
             .patch_status(&Meta::name(resource), patch_params, &patch)
             .await?)
@@ -236,7 +241,7 @@ impl Client {
         T: Clone + DeserializeOwned + Meta + Serialize,
     {
         Ok(self
-            .get_api(Meta::namespace(resource))
+            .get_api(Meta::namespace(resource).as_deref())
             .replace(&Meta::name(resource), &self.post_params, resource)
             .await?)
     }
@@ -267,7 +272,7 @@ impl Client {
                 "Resource ([{}]) does not have a `deletion_timestamp`, deleting now",
                 pod_utils::get_log_name(resource)
             );
-            let api: Api<T> = self.get_api(Meta::namespace(resource));
+            let api: Api<T> = self.get_api(Meta::namespace(resource).as_deref());
             Ok(Some(
                 api.delete(&Meta::name(resource), &self.delete_params)
                     .await?,
@@ -296,7 +301,7 @@ impl Client {
 
     /// Returns an [kube::Api] object which is either namespaced or not depending on whether
     /// or not a namespace string is passed in.
-    pub fn get_api<T>(&self, namespace: Option<String>) -> Api<T>
+    pub fn get_api<T>(&self, namespace: Option<&str>) -> Api<T>
     where
         T: Meta,
     {
@@ -347,13 +352,13 @@ impl Client {
     /// // Will time out in 1 second unless the nonexistent-pod actually exists
     ///  let wait_created_result: Result<(), Elapsed> = tokio::time::timeout(
     ///          Duration::from_secs(1),
-    ///          client.wait_created::<Pod>(Some(client.default_namespace.clone()), lp.clone()),
+    ///          client.wait_created::<Pod>(Some(&client.default_namespace), lp.clone()),
     ///      )
     ///      .await;
     /// }
     /// ```
     ///
-    pub async fn wait_created<T>(&self, namespace: Option<String>, lp: ListParams)
+    pub async fn wait_created<T>(&self, namespace: Option<&str>, lp: ListParams)
     where
         T: Meta + Clone + DeserializeOwned + Send + 'static,
     {
@@ -380,8 +385,10 @@ pub async fn create_client(field_manager: Option<String>) -> OperatorResult<Clie
 mod tests {
     use futures::StreamExt;
     use k8s_openapi::api::core::v1::{Container, Pod, PodSpec};
+    use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
     use kube::api::{ListParams, Meta, ObjectMeta, PostParams};
     use kube_runtime::watcher::Event;
+    use std::collections::BTreeMap;
     use std::time::Duration;
     use tokio::time::error::Elapsed;
 
@@ -411,7 +418,7 @@ mod tests {
             }),
             ..Pod::default()
         };
-        let api = client.get_api(Some(client.default_namespace.clone()));
+        let api = client.get_api(Some(&client.default_namespace));
         let created_pod = api
             .create(&PostParams::default(), &pod_to_wait_for)
             .await
@@ -428,7 +435,7 @@ mod tests {
         // Timeout is not acceptable
         tokio::time::timeout(
             Duration::from_secs(30), // Busybox is ~5MB and sub 1 sec to start.
-            client.wait_created::<Pod>(Some(client.default_namespace.clone()), lp.clone()),
+            client.wait_created::<Pod>(Some(&client.default_namespace), lp.clone()),
         )
         .await
         .expect("The tested wait_created function timed out.");
@@ -476,10 +483,66 @@ mod tests {
         // There is no such pod, therefore the `wait_created` function call times out.
         let wait_created_result: Result<(), Elapsed> = tokio::time::timeout(
             Duration::from_secs(1),
-            client.wait_created::<Pod>(Some(client.default_namespace.clone()), lp.clone()),
+            client.wait_created::<Pod>(Some(&client.default_namespace), lp.clone()),
         )
         .await;
 
         assert!(wait_created_result.is_err());
+    }
+
+    #[tokio::test]
+    #[ignore = "Tests depending on Kubernetes are not ran by default"]
+    async fn k8s_test_list_with_label_selector() {
+        let client = super::create_client(None)
+            .await
+            .expect("KUBECONFIG variable must be configured.");
+
+        let mut match_labels: BTreeMap<String, String> = BTreeMap::new();
+        match_labels.insert("app".to_owned(), "busybox".to_owned());
+        let label_selector: LabelSelector = LabelSelector {
+            match_labels: Some(match_labels.clone()),
+            ..LabelSelector::default()
+        };
+        let no_pods: Vec<Pod> = client
+            .list_with_label_selector(Some(&client.default_namespace), &label_selector)
+            .await
+            .expect("Expected LabelSelector to return a result with zero pods.");
+        assert!(no_pods.is_empty());
+
+        let pod_to_wait_for: Pod = Pod {
+            metadata: ObjectMeta {
+                name: Some("pod-to-be-listed".to_owned()),
+                labels: Some(match_labels.clone()),
+                ..ObjectMeta::default()
+            },
+            spec: Some(PodSpec {
+                containers: vec![Container {
+                    name: "test-wait-created-busybox".to_owned(),
+                    image: Some("busybox:latest".to_owned()),
+                    image_pull_policy: Some("IfNotPresent".to_owned()),
+                    command: Some(vec!["sleep".into(), "infinity".into()]),
+                    ..Container::default()
+                }],
+                termination_grace_period_seconds: Some(1),
+                ..PodSpec::default()
+            }),
+            ..Pod::default()
+        };
+        let api = client.get_api(Some(&client.default_namespace));
+        let created_pod = api
+            .create(&PostParams::default(), &pod_to_wait_for)
+            .await
+            .expect("Test pod not created.");
+
+        let one_pod: Vec<Pod> = client
+            .list_with_label_selector(Some(&client.default_namespace), &label_selector)
+            .await
+            .expect("Expected LabelSelector to return a result with zero pods.");
+
+        assert_eq!(1, one_pod.len());
+        client
+            .delete(&created_pod)
+            .await
+            .expect("Expected Pod to be deleted");
     }
 }

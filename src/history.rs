@@ -22,7 +22,7 @@ where
     T: Meta,
 {
     let revisions = client
-        .list(Meta::namespace(resource), &ListParams::default())
+        .list(Meta::namespace(resource).as_deref(), &ListParams::default())
         .await?;
     let owner_uid = resource.meta().uid.as_ref().unwrap(); // TODO: Error handling
     let mut owned = vec![];
