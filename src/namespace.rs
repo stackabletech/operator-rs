@@ -1,6 +1,9 @@
 //! This module provides helpers and constants to deal with namespaces
+use crate::client::Client;
 use crate::error::{Error, OperatorResult};
 use crate::validation::validate_namespace_name;
+use k8s_openapi::Resource;
+use kube::Api;
 use std::env;
 use std::env::VarError;
 
@@ -19,6 +22,20 @@ pub const WATCH_NAMESPACE_ENV: &str = "WATCH_NAMESPACE";
 pub enum WatchNamespace {
     All,
     One(String),
+}
+
+impl WatchNamespace {
+    /// Gets an API object for the namespace in question or for all namespaces,
+    /// depending on which variant we are.
+    pub fn get_api<T>(&self, client: &Client) -> Api<T>
+    where
+        T: Resource,
+    {
+        match self {
+            WatchNamespace::All => client.get_all_api(),
+            WatchNamespace::One(namespace) => client.get_namespaced_api(namespace),
+        }
+    }
 }
 
 /// This gets the namespace to watch for an Operator.
