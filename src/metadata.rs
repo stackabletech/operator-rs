@@ -1,22 +1,10 @@
 use crate::error::{Error, OperatorResult};
 
+use crate::labels::get_recommended_labels;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use k8s_openapi::Resource;
 use kube::api::{Meta, ObjectMeta};
 use std::collections::BTreeMap;
-
-/// The name of the application e.g. "mysql"
-pub const APP_KUBERNETES_IO_NAME: &str = "app.kubernetes.io/name";
-/// A unique name identifying the instance of an application e.g. "mysql-abcxzy"
-pub const APP_KUBERNETES_IO_INSTANCE: &str = "app.kubernetes.io/instance";
-/// The current version of the application (e.g., a semantic version, revision hash, etc.) e.g."5.7.21"
-pub const APP_KUBERNETES_IO_VERSION: &str = "app.kubernetes.io/version";
-/// The component within the architecture e.g. database
-pub const APP_KUBERNETES_IO_COMPONENT: &str = "app.kubernetes.io/component";
-/// The name of a higher level application this one is part of e.g. "wordpress"
-pub const APP_KUBERNETES_IO_PART_OF: &str = "app.kubernetes.io/part-of";
-/// The tool being used to manage the operation of an application e.g. helm
-pub const APP_KUBERNETES_IO_MANAGED_BY: &str = "app.kubernetes.io/managed-by";
 
 /// Builds a `ObjectMeta` object out of a template/owner object.
 ///
@@ -26,6 +14,10 @@ pub const APP_KUBERNETES_IO_MANAGED_BY: &str = "app.kubernetes.io/managed-by";
 /// * labels (if provided)
 /// * kubernetes recommended labels e.g. app.kubernetes.io/instance
 /// * ownerReferences (pointing at the object that was passed in).
+///
+/// Caution:
+/// The kubernetes recommended labels can be overwritten by
+/// the labels provided by the user.
 ///
 pub fn build_metadata<T>(
     name: String,
@@ -54,27 +46,6 @@ where
     })
 }
 
-/// Create the kubernetes recommended labels:
-/// - app.kubernetes.io/name - The name of the application e.g. mysql
-/// - app.kubernetes.io/instance - A unique name identifying the instance of an application e.g. mysql-abcxzy
-/// - app.kubernetes.io/version - The current version of the application (e.g., a semantic version, revision hash, etc.) e.g. 5.7.21
-/// - app.kubernetes.io/component - The component within the architecture e.g. database
-/// - app.kubernetes.io/part-of - The name of a higher level application this one is part of e.g. wordpress
-/// - app.kubernetes.io/managed-by - The tool being used to manage the operation of an application e.g. helm
-///
-fn get_recommended_labels<T>(resource: &T) -> OperatorResult<BTreeMap<String, String>>
-where
-    T: Meta,
-{
-    let mut recommended_labels = BTreeMap::new();
-    // TODO: throw error if no name found? Can that even happen?
-    if let Some(name) = &resource.meta().name {
-        recommended_labels.insert(APP_KUBERNETES_IO_INSTANCE.to_string(), name.clone());
-    }
-
-    Ok(recommended_labels)
-}
-
 /// Creates an OwnerReference pointing to the resource type and `metadata` being passed in.
 /// The created OwnerReference has it's `controller` flag set to `true`
 pub fn object_to_owner_reference<K: Resource>(
@@ -100,6 +71,7 @@ mod tests {
 
     use super::*;
 
+    use crate::labels::APP_INSTANCE_LABEL;
     use k8s_openapi::api::core::v1::Pod;
     use rstest::rstest;
 
@@ -132,10 +104,7 @@ mod tests {
 
         let labels = meta.labels.unwrap();
         assert_eq!(labels.get("foo"), Some(&"bar".to_string()));
-        assert_eq!(
-            labels.get(APP_KUBERNETES_IO_INSTANCE),
-            Some(&"foo_pod".to_string())
-        );
+        assert_eq!(labels.get(APP_INSTANCE_LABEL), Some(&"foo_pod".to_string()));
         assert_eq!(labels.len(), 2);
 
         Ok(())
