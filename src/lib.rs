@@ -15,7 +15,7 @@ pub mod label_selector;
 pub mod labels;
 pub mod logging;
 pub mod metadata;
-pub mod podutils;
+pub mod pod_utils;
 pub mod reconcile;
 pub mod role_utils;
 pub mod validation;

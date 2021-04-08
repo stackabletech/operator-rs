@@ -1,4 +1,4 @@
-use crate::podutils;
+use crate::pod_utils;
 use k8s_openapi::api::core::v1::{Node, Pod};
 use std::collections::BTreeMap;
 
@@ -58,7 +58,7 @@ pub fn find_valid_pods_for_nodes<'a>(
         .filter(|pod|
             // This checks whether the Pod has all the required labels and if it does
             // it'll try to find a Node with the same `node_name` as the Pod.
-            podutils::pod_matches_labels(pod, required_labels) && candidate_nodes.iter().any(|node| podutils::is_pod_assigned_to_node(pod, node))
+            pod_utils::pod_matches_labels(pod, required_labels) && candidate_nodes.iter().any(|node| pod_utils::is_pod_assigned_to_node(pod, node))
         )
         .collect()
 }
@@ -100,8 +100,8 @@ pub fn find_nodes_that_need_pods<'a>(
         .iter()
         .filter(|node| {
             !existing_pods.iter().any(|pod| {
-                podutils::is_pod_assigned_to_node(pod, node)
-                    && podutils::pod_matches_labels(pod, label_values)
+                pod_utils::is_pod_assigned_to_node(pod, node)
+                    && pod_utils::pod_matches_labels(pod, label_values)
             })
         })
         .collect::<Vec<&Node>>()

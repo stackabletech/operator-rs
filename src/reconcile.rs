@@ -1,7 +1,7 @@
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
 use crate::k8s_utils::LabelOptionalValueMap;
-use crate::{conditions, controller_ref, finalizer, labels, podutils};
+use crate::{conditions, controller_ref, finalizer, labels, pod_utils};
 
 use crate::conditions::ConditionStatus;
 use crate::k8s_utils::find_excess_pods;
@@ -123,7 +123,7 @@ where
     ///
     /// See [`crate::podutils::get_log_name()`] for details.
     pub fn log_name(&self) -> String {
-        podutils::get_log_name(&self.resource)
+        pod_utils::get_log_name(&self.resource)
     }
 
     pub fn metadata(&self) -> ObjectMeta {
@@ -211,7 +211,7 @@ where
         required_labels: &BTreeMap<String, Option<Vec<String>>>,
         deletion_strategy: ContinuationStrategy,
     ) -> ReconcileResult<Error> {
-        let illegal_pods = podutils::find_invalid_pods(pods, required_labels);
+        let illegal_pods = pod_utils::find_invalid_pods(pods, required_labels);
         if illegal_pods.is_empty() {
             return Ok(ReconcileFunctionAction::Continue);
         }
@@ -219,7 +219,7 @@ where
         for illegal_pod in illegal_pods {
             warn!(
                 "Deleting invalid Pod [{}]",
-                podutils::get_log_name(illegal_pod)
+                pod_utils::get_log_name(illegal_pod)
             );
             self.client.delete(illegal_pod).await?;
 
@@ -259,7 +259,7 @@ where
         for excess_pod in excess_pods {
             info!(
                 "Deleting excess Pod [{}]",
-                podutils::get_log_name(excess_pod)
+                pod_utils::get_log_name(excess_pod)
             );
             self.client.delete(excess_pod).await?;
 
@@ -400,13 +400,13 @@ fn wait_for_running_and_ready_pods(
 ) -> ReconcileResult<Error> {
     let not_ready = pods
         .iter()
-        .filter(|pod| !podutils::is_pod_running_and_ready(pod))
+        .filter(|pod| !pod_utils::is_pod_running_and_ready(pod))
         .collect::<Vec<_>>();
 
     if !not_ready.is_empty() {
         let pods = not_ready
             .iter()
-            .map(|pod| podutils::get_log_name(*pod))
+            .map(|pod| pod_utils::get_log_name(*pod))
             .collect::<Vec<_>>();
         let pods = pods.join(", ");
         trace!("Waiting for Pods to become ready: [{}]", pods);
