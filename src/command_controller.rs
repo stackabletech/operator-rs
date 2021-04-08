@@ -3,14 +3,37 @@
 //!
 //! # Example
 //!
-//! ```ignore
+//! ```no_run
 //! use kube::CustomResource;
 //! use kube::api::Meta;
 //! use stackable_operator::Crd;
-//! use stackable_operator::{error, client};
+//! use stackable_operator::{client, error};
+//! use stackable_operator::client::Client;
+//! use stackable_operator::error::Error;
 //! use schemars::JsonSchema;
 //! use serde::{Deserialize, Serialize};
-//! use stackable_operator::error::Error;
+//!
+//! #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+//! #[kube(
+//!     group = "foo.stackable.tech",
+//!     version = "v1",
+//!     kind = "FooCluster",
+//!     namespaced
+//! )]
+//! #[kube(status = "FooClusterStatus")]
+//! #[serde(rename_all = "camelCase")]
+//! pub struct FooClusterSpec {
+//!     pub name: String,
+//! }
+//!
+//! #[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
+//! #[serde(rename_all = "camelCase")]
+//! pub struct FooClusterStatus {}
+//!
+//! impl Crd for FooCluster {
+//!     const RESOURCE_NAME: &'static str = "fooclusters.foo.stackable.tech";
+//!     const CRD_DEFINITION: &'static str = "...";
+//! }
 //!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 //! #[kube(
@@ -24,6 +47,7 @@
 //! pub struct BarCommandSpec {
 //!     pub name: String,
 //! }
+//!
 //! #[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
 //! #[serde(rename_all = "camelCase")]
 //! pub struct BarCommandStatus {}
@@ -76,17 +100,20 @@
 //!         status: {}";
 //! }
 //!
+//!
 //! #[tokio::main]
 //! async fn main() -> Result<(),Error> {
 //!    stackable_operator::logging::initialize_logging("FOO_OPERATOR_LOG");
 //!    let client = client::create_client(Some("foo.stackable.tech".to_string())).await?;
 //!
-//!    stackable_operator::crd::ensure_crd_created::<Foo>(client.clone()).await?;
+//!    stackable_operator::crd::ensure_crd_created::<FooCluster>(client.clone()).await?;
 //!    stackable_operator::crd::ensure_crd_created::<Bar>(client.clone()).await?;
 //!
 //!    tokio::join!(
-//!        stackable_foo_operator::create_controller(client.clone()),
-//!        stackable_operator::command_controller::create_command_controller::<Bar, Foo>(client)
+//!        // create main custom resource controller like ...
+//!        // stackable_foocluster_operator.create_controller(client.clone());
+//!        // create command controller
+//!        stackable_operator::command_controller::create_command_controller::<Bar, FooCluster>(client)
 //!    );
 //!    Ok(())
 //! }
