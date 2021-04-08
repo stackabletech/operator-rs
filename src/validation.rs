@@ -101,35 +101,114 @@ mod tests {
     use super::*;
     use rstest::rstest;
 
-    #[rstest(
-        value,
-        case(""), case("A"), case("ABC"), case("aBc"), case("A1"), case("A-1"), case("1-A"),
-        case("-"), case("a-"), case("-a"), case("1-"), case("-1"), case("_"), case("a_"),
-        case("_a"), case("a_b"), case("1_"), case("_1"), case("1_2"), case("."), case("a."),
-        case(".a"), case("a..b"), case("1."), case(".1"), case("1..2"), case(" "), case("a "),
-        case(" a"), case("a b"), case("1 "), case(" 1"), case("1 2"), case("A.a"), case("aB.a"),
-        case("ab.A"), case("A1.a"), case("a1.A"), case("A.1"), case("aB.1"), case("A1.1"),
-        case("1A.1"), case("0.A"), case("01.A"), case("012.A"), case("1A.a"), case("1a.A"),
-        case("A.B.C.D.E"), case("AA.BB.CC.DD.EE"), case("a.B.c.d.e"), case("aa.bB.cc.dd.ee"),
-        case("a@b"), case("a,b"), case("a_b"), case("a;b"), case("a:b"), case("a%b"), case("a?b"),
-        case("a$b"), case(&"a".repeat(254))
-    )]
-    fn test_bad_values_is_rfc_1123_subdomain(value: &str) {
+    #[rstest]
+    #[case("")]
+    #[case("A")]
+    #[case("ABC")]
+    #[case("aBc")]
+    #[case("A1")]
+    #[case("A-1")]
+    #[case("1-A")]
+    #[case("-")]
+    #[case("a-")]
+    #[case("-a")]
+    #[case("1-")]
+    #[case("-1")]
+    #[case("_")]
+    #[case("a_")]
+    #[case("_a")]
+    #[case("a_b")]
+    #[case("1_")]
+    #[case("_1")]
+    #[case("1_2")]
+    #[case(".")]
+    #[case("a.")]
+    #[case(".a")]
+    #[case("a..b")]
+    #[case("1.")]
+    #[case(".1")]
+    #[case("1..2")]
+    #[case(" ")]
+    #[case("a ")]
+    #[case(" a")]
+    #[case("a b")]
+    #[case("1 ")]
+    #[case(" 1")]
+    #[case("1 2")]
+    #[case("A.a")]
+    #[case("aB.a")]
+    #[case("ab.A")]
+    #[case("A1.a")]
+    #[case("a1.A")]
+    #[case("A.1")]
+    #[case("aB.1")]
+    #[case("A1.1")]
+    #[case("1A.1")]
+    #[case("0.A")]
+    #[case("01.A")]
+    #[case("012.A")]
+    #[case("1A.a")]
+    #[case("1a.A")]
+    #[case("A.B.C.D.E")]
+    #[case("AA.BB.CC.DD.EE")]
+    #[case("a.B.c.d.e")]
+    #[case("aa.bB.cc.dd.ee")]
+    #[case("a@b")]
+    #[case("a,b")]
+    #[case("a_b")]
+    #[case("a;b")]
+    #[case("a:b")]
+    #[case("a%b")]
+    #[case("a?b")]
+    #[case("a$b")]
+    #[case(&"a".repeat(254))]
+    fn test_bad_values_is_rfc_1123_subdomain(#[case] value: &str) {
         assert!(!is_rfc_1123_subdomain(value).is_empty());
     }
 
-    #[rstest(
-        value,
-        case("a"), case("ab"), case("abc"), case("a1"), case("a-1"), case("a--1--2--b"), case("0"),
-        case("01"), case("012"), case("1a"), case("1-a"), case("1--a--b--2"), case("a.a"),
-        case("ab.a"), case("abc.a"), case("a1.a"), case("a-1.a"), case("a--1--2--b.a"), case("a.1"),
-        case("ab.1"), case("abc.1"), case("a1.1"), case("a-1.1"), case("a--1--2--b.1"), case("0.a"),
-        case("01.a"), case("012.a"), case("1a.a"), case("1-a.a"), case("1--a--b--2"), case("0.1"),
-        case("01.1"), case("012.1"), case("1a.1"), case("1-a.1"), case("1--a--b--2.1"),
-        case("a.b.c.d.e"), case("aa.bb.cc.dd.ee"), case("1.2.3.4.5"), case("11.22.33.44.55"),
-        case(&"a".repeat(253))
-    )]
-    fn test_good_values_is_rfc_1123_subdomain(value: &str) {
+    #[rstest]
+    #[case("a")]
+    #[case("ab")]
+    #[case("abc")]
+    #[case("a1")]
+    #[case("a-1")]
+    #[case("a--1--2--b")]
+    #[case("0")]
+    #[case("01")]
+    #[case("012")]
+    #[case("1a")]
+    #[case("1-a")]
+    #[case("1--a--b--2")]
+    #[case("a.a")]
+    #[case("ab.a")]
+    #[case("abc.a")]
+    #[case("a1.a")]
+    #[case("a-1.a")]
+    #[case("a--1--2--b.a")]
+    #[case("a.1")]
+    #[case("ab.1")]
+    #[case("abc.1")]
+    #[case("a1.1")]
+    #[case("a-1.1")]
+    #[case("a--1--2--b.1")]
+    #[case("0.a")]
+    #[case("01.a")]
+    #[case("012.a")]
+    #[case("1a.a")]
+    #[case("1-a.a")]
+    #[case("1--a--b--2")]
+    #[case("0.1")]
+    #[case("01.1")]
+    #[case("012.1")]
+    #[case("1a.1")]
+    #[case("1-a.1")]
+    #[case("1--a--b--2.1")]
+    #[case("a.b.c.d.e")]
+    #[case("aa.bb.cc.dd.ee")]
+    #[case("1.2.3.4.5")]
+    #[case("11.22.33.44.55")]
+    #[case(&"a".repeat(253))]
+    fn test_good_values_is_rfc_1123_subdomain(#[case] value: &str) {
         assert!(is_rfc_1123_subdomain(value).is_empty());
     }
 
