@@ -121,6 +121,7 @@
 //!
 use crate::client::Client;
 use crate::controller::{Controller, ControllerStrategy, ReconciliationState};
+use crate::controller_ref::get_controller_of;
 use crate::error::{Error, OperatorResult};
 use crate::metadata;
 use crate::reconcile::{ReconcileFunctionAction, ReconcileResult, ReconciliationContext};
@@ -161,13 +162,11 @@ where
     /// controller custom resource. If so we can stop the reconcile.
     async fn owner_reference_existing(&mut self) -> ReconcileResult<Error> {
         // If owner_references exist, check if any match our main resource owner reference.
-        if let Some(owner_references) = &self.context.resource.meta().owner_references {
-            for owner_reference in owner_references {
-                if owner_reference.name == self.context.resource.get_owner_name()
-                    && owner_reference.kind == O::KIND
-                {
-                    return Ok(ReconcileFunctionAction::Done);
-                }
+        if let Some(owner_reference) = get_controller_of(&self.context.resource) {
+            if owner_reference.name == self.context.resource.get_owner_name()
+                && owner_reference.kind == O::KIND
+            {
+                return Ok(ReconcileFunctionAction::Done);
             }
         }
 
@@ -318,9 +317,7 @@ where
 {
     let command_api: Api<C> = client.get_all_api();
     let list = command_api
-        .list(&ListParams {
-            ..ListParams::default()
-        })
+        .list(&ListParams::default())
         .await?
         .items
         .to_vec();
