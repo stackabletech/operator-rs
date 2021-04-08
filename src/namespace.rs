@@ -1,5 +1,4 @@
 //! This module provides helpers and constants to deal with namespaces
-//!
 use crate::error::{Error, OperatorResult};
 use crate::validation::validate_namespace_name;
 use std::env;
