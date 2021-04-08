@@ -131,7 +131,11 @@ mod tests {
 
         let labels = meta.labels.unwrap();
         assert_eq!(labels.get("foo"), Some(&"bar".to_string()));
-        assert_eq!(labels.len(), 1);
+        assert_eq!(
+            labels.get(APP_KUBERNETES_IO_INSTANCE),
+            Some(&"foo_pod".to_string())
+        );
+        assert_eq!(labels.len(), 2);
 
         Ok(())
     }
