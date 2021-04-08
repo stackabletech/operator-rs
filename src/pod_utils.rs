@@ -122,7 +122,7 @@ pub fn is_pod_assigned_to_node(pod: &Pod, node: &Node) -> bool {
 /// # Example
 ///
 /// ```
-/// use stackable_operator::podutils;
+/// use stackable_operator::pod_utils;
 /// # use k8s_openapi::api::core::v1::{Pod, PodSpec};
 /// # use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 /// use std::collections::BTreeMap;
@@ -138,7 +138,7 @@ pub fn is_pod_assigned_to_node(pod: &Pod, node: &Node) -> bool {
 /// let mut required_labels = BTreeMap::new();
 /// required_labels.insert("foo".to_string(), Some("bar".to_string()));
 ///
-/// assert!(!podutils::pod_matches_labels(&pod, &required_labels));
+/// assert!(!pod_utils::pod_matches_labels(&pod, &required_labels));
 /// ```
 pub fn pod_matches_labels(pod: &Pod, required_labels: &LabelOptionalValueMap) -> bool {
     // We convert the `required_labels` into a form that can be understood by `pod_matches_multiple_label_values`
@@ -166,7 +166,7 @@ pub fn pod_matches_labels(pod: &Pod, required_labels: &LabelOptionalValueMap) ->
 /// # Example
 ///
 /// ```
-/// use stackable_operator::podutils;
+/// use stackable_operator::pod_utils;
 /// # use k8s_openapi::api::core::v1::{Pod, PodSpec};
 /// # use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 /// use std::collections::BTreeMap;
@@ -182,7 +182,7 @@ pub fn pod_matches_labels(pod: &Pod, required_labels: &LabelOptionalValueMap) ->
 /// let mut required_labels = BTreeMap::new();
 /// required_labels.insert("foo".to_string(), None);
 ///
-/// assert!(!podutils::pod_matches_multiple_label_values(&pod, &required_labels));
+/// assert!(!pod_utils::pod_matches_multiple_label_values(&pod, &required_labels));
 /// ```
 pub fn pod_matches_multiple_label_values(
     pod: &Pod,
