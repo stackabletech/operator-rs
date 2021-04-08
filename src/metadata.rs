@@ -1,5 +1,6 @@
 use crate::error::{Error, OperatorResult};
 
+use crate::labels::get_recommended_labels;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use k8s_openapi::Resource;
 use kube::api::{Meta, ObjectMeta};
@@ -11,7 +12,13 @@ use std::collections::BTreeMap;
 /// * name
 /// * namespace (if the object passed in had one)
 /// * labels (if provided)
+/// * kubernetes recommended labels e.g. app.kubernetes.io/instance
 /// * ownerReferences (pointing at the object that was passed in).
+///
+/// Caution:
+/// The kubernetes recommended labels can be overwritten by
+/// the labels provided by the user.
+///
 pub fn build_metadata<T>(
     name: String,
     labels: Option<BTreeMap<String, String>>,
@@ -21,8 +28,14 @@ pub fn build_metadata<T>(
 where
     T: Meta,
 {
+    let mut merged_labels = get_recommended_labels(resource)?;
+
+    if let Some(provided_labels) = labels {
+        merged_labels.extend(provided_labels);
+    }
+
     Ok(ObjectMeta {
-        labels,
+        labels: Some(merged_labels),
         name: Some(name),
         namespace: Meta::namespace(resource),
         owner_references: Some(vec![object_to_owner_reference::<T>(
@@ -58,6 +71,7 @@ mod tests {
 
     use super::*;
 
+    use crate::labels::APP_INSTANCE_LABEL;
     use k8s_openapi::api::core::v1::Pod;
     use rstest::rstest;
 
@@ -90,7 +104,8 @@ mod tests {
 
         let labels = meta.labels.unwrap();
         assert_eq!(labels.get("foo"), Some(&"bar".to_string()));
-        assert_eq!(labels.len(), 1);
+        assert_eq!(labels.get(APP_INSTANCE_LABEL), Some(&"foo_pod".to_string()));
+        assert_eq!(labels.len(), 2);
 
         Ok(())
     }
