@@ -84,6 +84,7 @@ impl Client {
     /// This takes a LabelSelector and converts it into a query string using [`label_selector::convert_label_selector_to_query_string`].
     pub async fn list_with_label_selector<T>(
         &self,
+        namespace: Option<String>,
         selector: &LabelSelector,
     ) -> OperatorResult<Vec<T>>
     where
@@ -95,7 +96,7 @@ impl Client {
             label_selector: Some(selector_string),
             ..ListParams::default()
         };
-        self.list(None, &list_params).await
+        self.list(namespace, &list_params).await
     }
 
     /// Creates a new resource.
