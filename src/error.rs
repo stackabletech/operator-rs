@@ -24,6 +24,12 @@ pub enum Error {
     #[error("LabelSelector is invalid: {message}")]
     InvalidLabelSelector { message: String },
 
+    #[error("CustomResource [{name}] not found in any 'metadata.name' field. Could not retrieve OwnerReference.")]
+    MissingCustomResource { name: String },
+
+    #[error("OwnerReference for command [{command}] with owner [{owner}] is missing.")]
+    MissingOwnerReference { command: String, owner: String },
+
     #[error("Operation timed out: {source}")]
     TimeoutError {
         #[from]
