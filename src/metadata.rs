@@ -5,13 +5,13 @@ use k8s_openapi::Resource;
 use kube::api::{Meta, ObjectMeta};
 use std::collections::BTreeMap;
 
-/// The name of the application	e.g. "mysql"
+/// The name of the application e.g. "mysql"
 pub const APP_KUBERNETES_IO_NAME: &str = "app.kubernetes.io/name";
 /// A unique name identifying the instance of an application e.g. "mysql-abcxzy"
 pub const APP_KUBERNETES_IO_INSTANCE: &str = "app.kubernetes.io/instance";
 /// The current version of the application (e.g., a semantic version, revision hash, etc.) e.g."5.7.21"
 pub const APP_KUBERNETES_IO_VERSION: &str = "app.kubernetes.io/version";
-///	The component within the architecture e.g. database
+/// The component within the architecture e.g. database
 pub const APP_KUBERNETES_IO_COMPONENT: &str = "app.kubernetes.io/component";
 /// The name of a higher level application this one is part of e.g. "wordpress"
 pub const APP_KUBERNETES_IO_PART_OF: &str = "app.kubernetes.io/part-of";
@@ -26,6 +26,7 @@ pub const APP_KUBERNETES_IO_MANAGED_BY: &str = "app.kubernetes.io/managed-by";
 /// * labels (if provided)
 /// * kubernetes recommended labels e.g. app.kubernetes.io/instance
 /// * ownerReferences (pointing at the object that was passed in).
+///
 pub fn build_metadata<T>(
     name: String,
     labels: Option<BTreeMap<String, String>>,
@@ -54,11 +55,11 @@ where
 }
 
 /// Create the kubernetes recommended labels:
-/// - app.kubernetes.io/name - The name of the application	e.g. mysql
+/// - app.kubernetes.io/name - The name of the application e.g. mysql
 /// - app.kubernetes.io/instance - A unique name identifying the instance of an application e.g. mysql-abcxzy
-/// - app.kubernetes.io/version	- The current version of the application (e.g., a semantic version, revision hash, etc.) e.g. 5.7.21
+/// - app.kubernetes.io/version - The current version of the application (e.g., a semantic version, revision hash, etc.) e.g. 5.7.21
 /// - app.kubernetes.io/component - The component within the architecture e.g. database
-/// - app.kubernetes.io/part-of	- The name of a higher level application this one is part of e.g. wordpress
+/// - app.kubernetes.io/part-of - The name of a higher level application this one is part of e.g. wordpress
 /// - app.kubernetes.io/managed-by - The tool being used to manage the operation of an application e.g. helm
 ///
 fn get_recommended_labels<T>(resource: &T) -> OperatorResult<BTreeMap<String, String>>
