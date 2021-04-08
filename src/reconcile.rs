@@ -1,19 +1,20 @@
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
-use crate::{conditions, controller_ref, finalizer, podutils, role_utils};
+use crate::k8s_utils::LabelOptionalValueMap;
+use crate::{conditions, controller_ref, finalizer, labels, pod_utils};
 
 use crate::conditions::ConditionStatus;
-use crate::role_utils::RoleGroup;
+use crate::k8s_utils::find_excess_pods;
 use k8s_openapi::api::core::v1::{Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector, OwnerReference};
-use kube::api::{ListParams, Meta, ObjectMeta};
+use kube::api::{Meta, ObjectMeta};
 use kube_runtime::controller::ReconcilerAction;
 use serde::de::DeserializeOwned;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
-use tracing::{debug, info, warn};
+use tracing::{debug, info, trace, warn};
 
 pub type ReconcileResult<E> = std::result::Result<ReconcileFunctionAction, E>;
 
@@ -44,6 +45,10 @@ pub enum ReconcileFunctionAction {
 }
 
 impl ReconcileFunctionAction {
+    /// Can be used to chain multiple functions which all return a Result<ReconcileFunctionAction, E>.
+    ///
+    /// Will call the `next` function in the chain only if the previous returned `Continue`.
+    /// Will return the result from the last one otherwise.
     pub async fn then<E>(
         self,
         next: impl Future<Output = Result<ReconcileFunctionAction, E>>,
@@ -55,19 +60,15 @@ impl ReconcileFunctionAction {
     }
 }
 
-pub fn create_requeuing_reconcile_function_action(secs: u64) -> ReconcileFunctionAction {
-    ReconcileFunctionAction::Requeue(Duration::from_secs(secs))
-}
-
 #[derive(Eq, PartialEq)]
-pub enum DeletionStrategy {
-    /// Will delete all illegal pods and continue with the reconciliation
+pub enum ContinuationStrategy {
+    /// Will process all resources (including potential changes) and then continue with the reconciliation
     AllContinue,
 
-    /// Will delete all illegal pods and requeue
+    /// Will process all resources (including potential changes) and then requeue the resource
     AllRequeue,
 
-    /// Will delete just one illegal pod at a time and requeue
+    /// Will process all resources but will return a requeue after any changes
     OneRequeue,
 }
 
@@ -90,27 +91,19 @@ impl<T> ReconciliationContext<T> {
         ReconcileFunctionAction::Requeue(self.requeue_timeout)
     }
 
+    /// This is a reconciliation gate to wait for a list of Pods to be running and ready.
+    ///
+    /// See [`podutils::is_pod_running_and_ready`] for details.
+    /// Will requeue as soon as a single Pod is not running or not ready.
     pub async fn wait_for_running_and_ready_pods(&self, pods: &[Pod]) -> ReconcileResult<Error> {
-        for pod in pods {
-            if !podutils::is_pod_running_and_ready(pod) {
-                return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
-            }
-        }
-        Ok(ReconcileFunctionAction::Continue)
+        wait_for_running_and_ready_pods(&self.requeue_timeout, pods)
     }
 
-    // TODO: Docs & Test
+    /// This is a reconciliation gate to wait for a list of Pods to terminate.
+    ///
+    /// Will requeue as soon as a single Pod is in the process of terminating.
     pub async fn wait_for_terminating_pods(&self, pods: &[Pod]) -> ReconcileResult<Error> {
-        match pods.iter().any(|pod| finalizer::has_deletion_stamp(pod)) {
-            true => {
-                info!("Found terminating pods, requeuing to await termination!");
-                Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout))
-            }
-            false => {
-                debug!("No terminating pods found, continuing");
-                Ok(ReconcileFunctionAction::Continue)
-            }
-        }
+        wait_for_terminating_pods(&self.requeue_timeout, pods)
     }
 }
 
@@ -130,7 +123,7 @@ where
     ///
     /// See [`crate::podutils::get_log_name()`] for details.
     pub fn log_name(&self) -> String {
-        podutils::get_log_name(&self.resource)
+        pod_utils::get_log_name(&self.resource)
     }
 
     pub fn metadata(&self) -> ObjectMeta {
@@ -142,22 +135,11 @@ where
     ///
     /// Unfortunately the Kubernetes API does _not_ allow filtering by OwnerReference so we have to fetch
     /// all Pods and filter them on the client.
-    /// To avoid this overhead provide a LabelSelector to narrow down the candidates.
-    /// TODO: LabelSelector not possible yet
+    /// To reduce this overhead a LabelSelector will be included that uses the standard
+    /// `app.kubernetes.io/instance` label and will use the name of the resource in this context
+    /// as its value.
+    /// You need to make sure to always set this label correctly!
     pub async fn list_pods(&self) -> OperatorResult<Vec<Pod>> {
-        let api = self.client.get_namespaced_api(&self.namespace());
-
-        // TODO: In addition to filtering by OwnerReference (which can only be done client-side)
-        // we could also add a custom label.
-        // TODO: This can use the new list_with_label_selector method from Client
-
-        // It'd be ideal if we could filter by ownerReferences but that's not possible in K8S today
-        // so we apply a custom label to each pod
-        let list_params = ListParams {
-            label_selector: None,
-            ..ListParams::default()
-        };
-
         let owner_uid = self
             .resource
             .meta()
@@ -167,40 +149,22 @@ where
                 key: ".metadata.uid",
             })?;
 
-        api.list(&list_params)
+        let mut labels = BTreeMap::new();
+        labels.insert(labels::APP_INSTANCE_LABEL.to_string(), self.resource.name());
+
+        let label_selector = LabelSelector {
+            match_expressions: None,
+            match_labels: Some(labels),
+        };
+
+        self.client
+            .list_with_label_selector(self.resource.namespace(), &label_selector)
             .await
-            .map_err(Error::from)
-            .map(|result| result.items)
             .map(|pods| {
                 pods.into_iter()
                     .filter(|pod| pod_owned_by(pod, owner_uid))
                     .collect()
             })
-    }
-
-    /// Finds nodes in the cluster that match a given LabelSelector
-    /// This takes list of RoleGroup and returns
-    /// a map with found nodes per String
-    ///
-    /// This will only match Stackable nodes (Nodes with a special label).
-    /// TODO: Docs & Tests
-    pub async fn find_nodes_that_fit_selectors(
-        &self,
-        role_groups: Vec<RoleGroup>,
-    ) -> OperatorResult<HashMap<String, Vec<Node>>> {
-        let mut found_nodes = HashMap::new();
-        for role_group in role_groups {
-            let selector = add_stackable_selector(&role_group.selector);
-            let nodes = self.client.list_with_label_selector(&selector).await?;
-            debug!(
-                "Found [{}] nodes for role group [{}]: [{:?}]",
-                nodes.len(),
-                role_group.name,
-                nodes
-            );
-            found_nodes.insert(role_group.name.clone(), nodes);
-        }
-        Ok(found_nodes)
     }
 
     /// Creates a new [`Condition`] for the `resource` this context contains.
@@ -225,15 +189,11 @@ where
         )
     }
 
-    // TODO: delete_illegal_and_excess_pods and maybe take a list of BTreeMap<String<Option<String>> and convert it to the
-    // structure we need so users need to build the labels only once
-    // TODO: Should it be a list of BTReeMaps? It'd be different for each role group
-    //TODO: The key of the map could be a &str if that doesn't make things too complicated
-
     /// Checks all passed Pods to see if they fulfil some basic requirements.
     ///
     /// * They need to have all required labels and optionally one of a list of allowed values
     /// * They need to have a spec.node_name
+    /// * TODO: Should check for all app.kubernetes.io labels
     ///
     /// If not they are considered invalid and will be deleted.
     ///
@@ -249,9 +209,9 @@ where
         &self,
         pods: &[Pod],
         required_labels: &BTreeMap<String, Option<Vec<String>>>,
-        deletion_strategy: DeletionStrategy,
+        deletion_strategy: ContinuationStrategy,
     ) -> ReconcileResult<Error> {
-        let illegal_pods = podutils::find_invalid_pods(pods, required_labels);
+        let illegal_pods = pod_utils::find_invalid_pods(pods, required_labels);
         if illegal_pods.is_empty() {
             return Ok(ReconcileFunctionAction::Continue);
         }
@@ -259,46 +219,63 @@ where
         for illegal_pod in illegal_pods {
             warn!(
                 "Deleting invalid Pod [{}]",
-                podutils::get_log_name(illegal_pod)
+                pod_utils::get_log_name(illegal_pod)
             );
             self.client.delete(illegal_pod).await?;
 
-            if deletion_strategy == DeletionStrategy::OneRequeue {
+            if deletion_strategy == ContinuationStrategy::OneRequeue {
+                trace!(
+                    "Will requeue after deleting an illegal pod, there might be more illegal ones"
+                );
                 return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
             }
         }
 
-        if deletion_strategy == DeletionStrategy::AllRequeue {
-            return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
+        if deletion_strategy == ContinuationStrategy::AllRequeue {
+            Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout))
+        } else {
+            Ok(ReconcileFunctionAction::Continue)
         }
-
-        Ok(ReconcileFunctionAction::Continue)
     }
 
+    /// This method can be used to find Pods that do not match a set of Nodes and required labels.
+    ///
+    /// All Pods must match at least one of the node list & required labels combinations.
+    /// All that don't match will be returned.
+    ///
+    /// The idea is that you pass in a list of tuples, one tuple for each role group.
+    /// Each tuple consists of a list of eligible nodes for that role group's LabelSelector and a
+    /// Map of label keys to optional values.
+    ///
+    /// To clearly identify Pods (e.g. to distinguish two pods on the same node from each other) they
+    /// usually need some labels (e.g. a `component` and a `role-group` label).     
     pub async fn delete_excess_pods(
         &self,
-        nodes_and_labels: &[(Vec<Node>, BTreeMap<String, Option<String>>)],
+        nodes_and_labels: &[(Vec<Node>, LabelOptionalValueMap)],
         existing_pods: &[Pod],
-        deletion_strategy: DeletionStrategy,
+        deletion_strategy: ContinuationStrategy,
     ) -> ReconcileResult<Error> {
-        let excess_pods = role_utils::find_excess_pods(nodes_and_labels, existing_pods);
+        let excess_pods = find_excess_pods(nodes_and_labels, existing_pods);
         for excess_pod in excess_pods {
             info!(
-                "Deleting invalid Pod [{}]",
-                podutils::get_log_name(excess_pod)
+                "Deleting excess Pod [{}]",
+                pod_utils::get_log_name(excess_pod)
             );
             self.client.delete(excess_pod).await?;
 
-            if deletion_strategy == DeletionStrategy::OneRequeue {
+            if deletion_strategy == ContinuationStrategy::OneRequeue {
+                trace!(
+                    "Will requeue after deleting an excess pod, there might be more illegal ones"
+                );
                 return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
             }
         }
 
-        if deletion_strategy == DeletionStrategy::AllRequeue {
-            return Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout));
+        if deletion_strategy == ContinuationStrategy::AllRequeue {
+            Ok(ReconcileFunctionAction::Requeue(self.requeue_timeout))
+        } else {
+            Ok(ReconcileFunctionAction::Continue)
         }
-
-        Ok(ReconcileFunctionAction::Continue)
     }
 
     /// This reconcile function can be added to the chain to automatically handle deleted objects
@@ -417,68 +394,47 @@ fn pod_owned_by(pod: &Pod, owner_uid: &str) -> bool {
     matches!(controller, Some(OwnerReference { uid, .. }) if uid == owner_uid)
 }
 
-/// Helper method to make sure that any LabelSelector we use only matches our own "special" nodes.
-/// At the moment this label is "type" with the value "krustlet" and we'll use match_labels.
-///
-/// WARN: Should a label "type" already be used this will be overridden!
-/// If this is really needed add a match…expression
-///
-/// We will not however change the original LabelSelector, a new one will be returned.
-fn add_stackable_selector(selector: &LabelSelector) -> LabelSelector {
-    let mut selector = selector.clone();
-    selector
-        .match_labels
-        .get_or_insert_with(BTreeMap::new)
-        .insert("type".to_string(), "krustlet".to_string());
-    selector
+fn wait_for_running_and_ready_pods(
+    requeue_timeout: &Duration,
+    pods: &[Pod],
+) -> ReconcileResult<Error> {
+    let not_ready = pods
+        .iter()
+        .filter(|pod| !pod_utils::is_pod_running_and_ready(pod))
+        .collect::<Vec<_>>();
+
+    if !not_ready.is_empty() {
+        let pods = not_ready
+            .iter()
+            .map(|pod| pod_utils::get_log_name(*pod))
+            .collect::<Vec<_>>();
+        let pods = pods.join(", ");
+        trace!("Waiting for Pods to become ready: [{}]", pods);
+        return Ok(ReconcileFunctionAction::Requeue(*requeue_timeout));
+    }
+
+    Ok(ReconcileFunctionAction::Continue)
 }
 
-/// This function can be used to find Nodes that are missing Pods.
-///
-/// It uses a simple label selector to find matching nodes.
-/// This is not a full LabelSelector because the expectation is that the calling code used a
-/// full LabelSelector to query the Kubernetes API for a set of candidate Nodes.
-///
-/// We now need to check whether these candidate nodes already contain a Pod or not.
-/// That's why we also pass in _all_ Pods that we know about and one or more labels (including optional values).
-/// This method checks if there are pods assigned to a node and if these pods have all required labels.
-/// These labels are _not_ meant to be user-defined but can be used to distinguish between different Pod types.
-///
-/// # Example
-///
-/// * HDFS has multiple roles (NameNode, DataNode, JournalNode)
-/// * Multiple roles may run on the same node
-///
-/// To check whether a certain Node is already running a NameNode Pod it is not enough to just check
-/// if there is a Pod assigned to that node.
-/// We also need to be able to distinguish the different roles.
-/// That's where the labels come in.
-/// In this scenario you'd add a label `hdfs.stackable.tech/role` with the value `NameNode` to each
-/// NameNode Pod.
-/// And this is the label you can now filter on using the `label_values` argument.
-
-// TODO: Tests
-pub async fn find_nodes_that_need_pods<'a>(
-    candidate_nodes: &'a [Node],
-    existing_pods: &[Pod],
-    label_values: &BTreeMap<String, Option<String>>,
-) -> Vec<&'a Node> {
-    let needy_pods = candidate_nodes
-        .iter()
-        .filter(|node| {
-            !existing_pods.iter().any(|pod| {
-                podutils::is_pod_assigned_to_node(pod, node)
-                    && podutils::pod_matches_labels(pod, label_values)
-            })
-        })
-        .collect::<Vec<&Node>>();
-    needy_pods
+fn wait_for_terminating_pods(requeue_timeout: &Duration, pods: &[Pod]) -> ReconcileResult<Error> {
+    match pods.iter().any(|pod| finalizer::has_deletion_stamp(pod)) {
+        true => {
+            info!("Found terminating pods, requeuing to await termination!");
+            Ok(ReconcileFunctionAction::Requeue(*requeue_timeout))
+        }
+        false => {
+            debug!("No terminating pods found, continuing");
+            Ok(ReconcileFunctionAction::Continue)
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::BTreeMap;
+    use crate::test::PodBuilder;
+    use chrono::Utc;
+    use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 
     #[test]
     fn test_pod_owned_by() {
@@ -502,33 +458,55 @@ mod tests {
     }
 
     #[test]
-    fn test_add_stackable_selector() {
-        let mut ls = LabelSelector {
-            match_expressions: None,
-            match_labels: None,
-        };
+    fn test_wait_for_running_and_ready_pods() {
+        let duration = Duration::from_secs(30);
+        let action = ReconcileFunctionAction::Requeue(duration);
 
-        // LS didn't have any match_label
-        assert!(
-            matches!(add_stackable_selector(&ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
-        );
+        let pod1 = PodBuilder::new().name("pod1").build();
+        let pod2 = PodBuilder::new().name("pod2").build();
+        let pods = vec![pod1, pod2];
+        let result = wait_for_running_and_ready_pods(&duration, &pods).unwrap();
+        assert_eq!(result, action);
 
-        // LS has labels but no conflicts with our own
-        let mut labels = BTreeMap::new();
-        labels.insert("foo".to_string(), "bar".to_string());
+        let result = wait_for_running_and_ready_pods(&duration, &vec![]).unwrap();
+        assert_eq!(result, ReconcileFunctionAction::Continue);
 
-        ls.match_labels = Some(labels);
-        assert!(
-            matches!(add_stackable_selector(&mut ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
-        );
+        let pod1 = PodBuilder::new().name("pod1").phase("Running").build();
+        let result = wait_for_running_and_ready_pods(&duration, vec![pod1].as_slice()).unwrap();
+        assert_eq!(result, action);
 
-        // LS already has a LS that matches our internal one
-        let mut labels = BTreeMap::new();
-        labels.insert("foo".to_string(), "bar".to_string());
-        labels.insert("type".to_string(), "foobar".to_string());
-        ls.match_labels = Some(labels);
-        assert!(
-            matches!(add_stackable_selector(&mut ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
-        );
+        let pod1 = PodBuilder::new()
+            .name("pod1")
+            .phase("Running")
+            .with_condition("Ready", "True")
+            .build();
+        let result =
+            wait_for_running_and_ready_pods(&duration, vec![pod1.clone()].as_slice()).unwrap();
+        assert_eq!(result, ReconcileFunctionAction::Continue);
+
+        let pod2 = PodBuilder::new().name("pod2").build();
+        let result =
+            wait_for_running_and_ready_pods(&duration, vec![pod1, pod2].as_slice()).unwrap();
+        assert_eq!(result, action);
+    }
+
+    #[test]
+    fn test_wait_for_terminating_pods() {
+        let duration = Duration::from_secs(30);
+        let action = ReconcileFunctionAction::Requeue(duration);
+
+        let pod1 = PodBuilder::new()
+            .deletion_timestamp(Time(Utc::now()))
+            .build();
+
+        let result = wait_for_terminating_pods(&duration, vec![pod1.clone()].as_slice()).unwrap();
+        assert_eq!(result, action);
+
+        let pod2 = PodBuilder::new().build();
+        let result = wait_for_terminating_pods(&duration, vec![pod2.clone()].as_slice()).unwrap();
+        assert_eq!(result, ReconcileFunctionAction::Continue);
+
+        let result = wait_for_terminating_pods(&duration, vec![pod1, pod2].as_slice()).unwrap();
+        assert_eq!(result, action);
     }
 }

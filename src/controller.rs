@@ -92,10 +92,6 @@
 //!     type State = FooState;
 //!     type Error = String;
 //!
-//!     fn finalizer_name(&self) -> String {
-//!         "foo.stackable.de/finalizer".to_string()
-//!     }
-//!
 //!     async fn init_reconcile_state(&self,context: ReconciliationContext<Self::Item>) -> Result<Self::State, Self::Error> {
 //!         Ok(FooState {
 //!             my_state: 1
@@ -140,8 +136,6 @@ pub trait ControllerStrategy {
     type Item;
     type State: ReconciliationState;
     type Error: Debug;
-
-    fn finalizer_name(&self) -> String;
 
     // TODO: Pass in error
     fn error_policy(&self) -> ReconcilerAction {

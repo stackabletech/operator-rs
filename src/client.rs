@@ -1,7 +1,7 @@
 use crate::error::OperatorResult;
 use crate::finalizer;
 use crate::label_selector;
-use crate::podutils;
+use crate::pod_utils;
 
 use either::Either;
 use futures::StreamExt;
@@ -84,6 +84,7 @@ impl Client {
     /// This takes a LabelSelector and converts it into a query string using [`label_selector::convert_label_selector_to_query_string`].
     pub async fn list_with_label_selector<T>(
         &self,
+        namespace: Option<String>,
         selector: &LabelSelector,
     ) -> OperatorResult<Vec<T>>
     where
@@ -95,7 +96,7 @@ impl Client {
             label_selector: Some(selector_string),
             ..ListParams::default()
         };
-        self.list(None, &list_params).await
+        self.list(namespace, &list_params).await
     }
 
     /// Creates a new resource.
@@ -258,13 +259,13 @@ impl Client {
         if finalizer::has_deletion_stamp(resource) {
             trace!(
                 "Resource ([{}]) already has `deletion_timestamp`, not deleting",
-                podutils::get_log_name(resource)
+                pod_utils::get_log_name(resource)
             );
             Ok(None)
         } else {
             trace!(
                 "Resource ([{}]) does not have a `deletion_timestamp`, deleting now",
-                podutils::get_log_name(resource)
+                pod_utils::get_log_name(resource)
             );
             let api: Api<T> = self.get_api(Meta::namespace(resource));
             Ok(Some(

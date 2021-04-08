@@ -61,8 +61,13 @@ mod tests {
     use k8s_openapi::api::core::v1::Pod;
     use rstest::rstest;
 
-    #[rstest(name, namespace, case("foo", Some("bar")), case("foo", None))]
-    fn test_build_metadata(name: &str, namespace: Option<&str>) -> OperatorResult<()> {
+    #[rstest]
+    #[case("foo", Some("bar"))]
+    #[case("foo", None)]
+    fn test_build_metadata(
+        #[case] name: &str,
+        #[case] namespace: Option<&str>,
+    ) -> OperatorResult<()> {
         let mut labels = BTreeMap::new();
         labels.insert("foo".to_string(), "bar".to_string());
 
