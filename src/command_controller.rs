@@ -1,5 +1,97 @@
 //! Generic controller to add command CRDs for restart, start, stop (...) command operations as
 //! specified in [Stackable ADR010](https://github.com/stackabletech/documentation/blob/main/adr/ADR010-command_pattern.adoc).
+//!
+//! # Example
+//!
+//! ```ignore
+//! use kube::CustomResource;
+//! use kube::api::Meta;
+//! use stackable_operator::Crd;
+//! use stackable_operator::{error, client};
+//! use schemars::JsonSchema;
+//! use serde::{Deserialize, Serialize};
+//! use stackable_operator::error::Error;
+//!
+//! #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+//! #[kube(
+//!     group = "command.foo.stackable.tech",
+//!     version = "v1",
+//!     kind = "Bar",
+//!     namespaced
+//! )]
+//! #[kube(status = "BarCommandStatus")]
+//! #[serde(rename_all = "camelCase")]
+//! pub struct BarCommandSpec {
+//!     pub name: String,
+//! }
+//! #[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
+//! #[serde(rename_all = "camelCase")]
+//! pub struct BarCommandStatus {}
+//!
+//! impl stackable_operator::command_controller::Command for Bar {
+//!     fn get_owner_name(&self) -> String {
+//!         self.spec.name.clone()
+//!     }
+//! }
+//!
+//! impl Crd for Bar {
+//!     const RESOURCE_NAME: &'static str = "bars.command.foo.stackable.tech";
+//!     const CRD_DEFINITION: &'static str = "
+//! apiVersion: apiextensions.k8s.io/v1
+//! kind: CustomResourceDefinition
+//! metadata:
+//!   name: bars.command.foo.stackable.tech
+//! spec:
+//!   group: command.foo.stackable.tech
+//!   names:
+//!     kind: Bar
+//!     singular: bar
+//!     plural: bars
+//!     listKind: BarList
+//!   scope: Namespaced
+//!   versions:
+//!     - name: v1
+//!       served: true
+//!       storage: true
+//!       schema:
+//!         openAPIV3Schema:
+//!           type: object
+//!           properties:
+//!             spec:
+//!               type: object
+//!               properties:
+//!                 name:
+//!                   type: string
+//!             status:
+//!               nullable: true
+//!               type: object
+//!               properties:
+//!                 startedAt:
+//!                   type: string
+//!                 finishedAt:
+//!                   type: string
+//!                 message:
+//!                   type: string
+//!       subresources:
+//!         status: {}";
+//! }
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(),Error> {
+//!    stackable_operator::logging::initialize_logging("FOO_OPERATOR_LOG");
+//!    let client = client::create_client(Some("foo.stackable.tech".to_string())).await?;
+//!
+//!    stackable_operator::crd::ensure_crd_created::<Foo>(client.clone()).await?;
+//!    stackable_operator::crd::ensure_crd_created::<Bar>(client.clone()).await?;
+//!
+//!    tokio::join!(
+//!        stackable_foo_operator::create_controller(client.clone()),
+//!        stackable_operator::command_controller::create_command_controller::<Bar, Foo>(client)
+//!    );
+//!    Ok(())
+//! }
+//! ```
+//!
 use crate::client::Client;
 use crate::controller::{Controller, ControllerStrategy, ReconciliationState};
 use crate::error::{Error, OperatorResult};
@@ -15,9 +107,6 @@ use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
 use tracing::trace;
-
-// TODO: remove after hackathon merge
-const FINALIZER_NAME: &str = "command.stackable.tech/cleanup";
 
 /// Trait for all commands to be implemented. We need to retrieve the name of the
 /// main controller custom resource.
@@ -131,7 +220,7 @@ where
 #[derive(Debug)]
 struct CommandStrategy<C, O> {
     // TODO: Better workaround for PhantomData?
-    // We use it here cause we need to make CommandStrategy generic to be able to do:
+    // We use it here because we need to make CommandStrategy generic to be able to do:
     // impl<C,O> ControllerStrategy for CommandStrategy<C,O>
     _ignore: Option<std::marker::PhantomData<C>>,
     _ignore2: Option<std::marker::PhantomData<O>>,
@@ -155,11 +244,6 @@ where
     type Item = C;
     type State = CommandState<C, O>;
     type Error = Error;
-
-    // TODO: remove after Hackathon merge
-    fn finalizer_name(&self) -> String {
-        FINALIZER_NAME.to_string()
-    }
 
     async fn init_reconcile_state(
         &self,
