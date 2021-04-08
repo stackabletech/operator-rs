@@ -13,9 +13,17 @@ const RFC_1123_SUBDOMAIN_ERROR_MSG: &str = "a lowercase RFC 1123 subdomain must 
 // This is a subdomain's max length in DNS (RFC 1123)
 const RFC_1123_SUBDOMAIN_MAX_LENGTH: usize = 253;
 
+const RFC_1035_LABEL_FMT: &str = "[a-z]([-a-z0-9]*[a-z0-9])?";
+const RFC_1035_LABEL_ERR_MSG: &str = "a DNS-1035 label must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character";
+
+// This is a label's max length in DNS (RFC 1035)
+const RFC_1035_LABEL_MAX_LENGTH: usize = 63;
+
 lazy_static! {
     static ref RFC_1123_SUBDOMAIN_REGEX: Regex =
         Regex::new(&format!("^{}$", RFC_1123_SUBDOMAIN_FMT)).unwrap();
+    static ref RFC_1035_LABEL_REGEX: Regex =
+        Regex::new(&format!("^{}$", RFC_1035_LABEL_FMT)).unwrap();
 }
 
 /// Returns a formatted error message for maximum length violations.
@@ -52,6 +60,7 @@ fn regex_error(msg: &str, fmt: &str, examples: &[&str]) -> String {
     msg
 }
 
+/// Tests for a string that conforms to the definition of a subdomain in DNS (RFC 1123).
 pub fn is_rfc_1123_subdomain(value: &str) -> Vec<String> {
     let mut errors = vec![];
     if value.len() > RFC_1123_SUBDOMAIN_MAX_LENGTH {
@@ -63,6 +72,24 @@ pub fn is_rfc_1123_subdomain(value: &str) -> Vec<String> {
             RFC_1123_SUBDOMAIN_ERROR_MSG,
             RFC_1123_SUBDOMAIN_FMT,
             &["example.com"],
+        ))
+    }
+
+    errors
+}
+
+/// Tests for a string that conforms to the definition of a label in DNS (RFC 1035).
+pub fn is_rfc_1035_label(value: &str) -> Vec<String> {
+    let mut errors = vec![];
+    if value.len() > RFC_1035_LABEL_MAX_LENGTH {
+        errors.push(max_len_error(RFC_1035_LABEL_MAX_LENGTH))
+    }
+
+    if !RFC_1035_LABEL_REGEX.is_match(value) {
+        errors.push(regex_error(
+            RFC_1035_LABEL_ERR_MSG,
+            RFC_1035_LABEL_FMT,
+            &["my-name", "abc-123"],
         ))
     }
 
@@ -94,6 +121,29 @@ pub fn name_is_dns_subdomain(name: &str, prefix: bool) -> Vec<String> {
     }
 
     is_rfc_1123_subdomain(&name)
+}
+
+/// name_is_dns_label checks whether the passed in name is a valid DNS label
+/// according to RFC 1035.
+///
+/// # Arguments
+///
+/// * `name` - is the name to check for validity
+/// * `prefix` - indicates whether `name` is just a prefix (ending in a dash, which would otherwise not be legal at the end)
+pub fn name_is_dns_label(name: &str, prefix: bool) -> Vec<String> {
+    let mut name = name.to_string();
+    if prefix {
+        name = mask_trailing_dash(name);
+    }
+
+    is_rfc_1035_label(&name)
+}
+
+/// Validates a namespace name.
+///
+/// See [`name_is_dns_label`] for more information.
+pub fn validate_namespace_name(name: &str, prefix: bool) -> Vec<String> {
+    name_is_dns_label(name, prefix)
 }
 
 #[cfg(test)]
@@ -218,5 +268,62 @@ mod tests {
         assert_eq!(mask_trailing_dash("abc".to_string()), "abc");
         assert_eq!(mask_trailing_dash(String::new()), String::new());
         assert_eq!(mask_trailing_dash("-".to_string()), "a");
+    }
+
+    #[rstest]
+    #[case("0")]
+    #[case("01")]
+    #[case("012")]
+    #[case("1a")]
+    #[case("1-a")]
+    #[case("1--a--b--2")]
+    #[case("")]
+    #[case("A")]
+    #[case("ABC")]
+    #[case("aBc")]
+    #[case("A1")]
+    #[case("A-1")]
+    #[case("1-A")]
+    #[case("-")]
+    #[case("a-")]
+    #[case("-a")]
+    #[case("1-")]
+    #[case("-1")]
+    #[case("_")]
+    #[case("a_")]
+    #[case("_a")]
+    #[case("a_b")]
+    #[case("1_")]
+    #[case("_1")]
+    #[case("1_2")]
+    #[case(".")]
+    #[case("a.")]
+    #[case(".a")]
+    #[case("a.b")]
+    #[case("1.")]
+    #[case(".1")]
+    #[case("1.2")]
+    #[case(" ")]
+    #[case("a ")]
+    #[case(" a")]
+    #[case("a b")]
+    #[case("1 ")]
+    #[case(" 1")]
+    #[case("1 2")]
+    #[case(&"a".repeat(64))]
+    fn test_bad_values_is_rfc_1035_label(#[case] value: &str) {
+        assert!(!is_rfc_1035_label(value).is_empty());
+    }
+
+    #[rstest]
+    #[case("a")]
+    #[case("ab")]
+    #[case("abc")]
+    #[case("a1")]
+    #[case("a-1")]
+    #[case("a--1--2--b")]
+    #[case(&"a".repeat(63))]
+    fn test_good_values_is_rfc_1035_label(#[case] value: &str) {
+        assert!(is_rfc_1035_label(value).is_empty());
     }
 }

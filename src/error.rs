@@ -23,11 +23,21 @@ pub enum Error {
 
     #[error("LabelSelector is invalid: {message}")]
     InvalidLabelSelector { message: String },
+
     #[error("Operation timed out: {source}")]
     TimeoutError {
         #[from]
         source: tokio::time::error::Elapsed,
     },
+
+    #[error("Environment variable error: {source}")]
+    EnvironmentVariableError {
+        #[from]
+        source: std::env::VarError,
+    },
+
+    #[error("Invalid name for resource: {errors:?}")]
+    InvalidName { errors: Vec<String> },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
