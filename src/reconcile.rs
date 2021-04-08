@@ -1,5 +1,6 @@
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
+use crate::k8s_utils::LabelOptionalValueMap;
 use crate::{conditions, controller_ref, finalizer, labels, podutils};
 
 use crate::conditions::ConditionStatus;
@@ -250,7 +251,7 @@ where
     /// usually need some labels (e.g. a `component` and a `role-group` label).     
     pub async fn delete_excess_pods(
         &self,
-        nodes_and_labels: &[(Vec<Node>, BTreeMap<String, Option<String>>)],
+        nodes_and_labels: &[(Vec<Node>, LabelOptionalValueMap)],
         existing_pods: &[Pod],
         deletion_strategy: ContinuationStrategy,
     ) -> ReconcileResult<Error> {
@@ -409,7 +410,7 @@ fn wait_for_running_and_ready_pods(
             .collect::<Vec<_>>();
         let pods = pods.join(", ");
         trace!("Waiting for Pods to become ready: [{}]", pods);
-        return Ok(ReconcileFunctionAction::Requeue(requeue_timeout.clone()));
+        return Ok(ReconcileFunctionAction::Requeue(*requeue_timeout));
     }
 
     Ok(ReconcileFunctionAction::Continue)
@@ -419,7 +420,7 @@ fn wait_for_terminating_pods(requeue_timeout: &Duration, pods: &[Pod]) -> Reconc
     match pods.iter().any(|pod| finalizer::has_deletion_stamp(pod)) {
         true => {
             info!("Found terminating pods, requeuing to await termination!");
-            Ok(ReconcileFunctionAction::Requeue(requeue_timeout.clone()))
+            Ok(ReconcileFunctionAction::Requeue(*requeue_timeout))
         }
         false => {
             debug!("No terminating pods found, continuing");
