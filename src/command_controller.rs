@@ -181,7 +181,7 @@ where
             .client
             .get(
                 &self.context.resource.get_owner_name(),
-                self.context.resource.namespace(),
+                self.context.resource.namespace().as_deref(),
             )
             .await?;
 
