@@ -106,7 +106,7 @@ pub async fn find_nodes_that_fit_selectors(
     for role_group in role_groups {
         let selector = krustlet::add_stackable_selector(&role_group.selector);
         let nodes = client
-            .list_with_label_selector(namespace.clone(), &selector)
+            .list_with_label_selector(namespace.clone().as_deref(), &selector)
             .await?;
         debug!(
             "Found [{}] nodes for role group [{}]: [{:?}]",

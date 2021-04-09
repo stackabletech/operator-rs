@@ -158,7 +158,7 @@ where
         };
 
         self.client
-            .list_with_label_selector(self.resource.namespace(), &label_selector)
+            .list_with_label_selector(self.resource.namespace().as_deref(), &label_selector)
             .await
             .map(|pods| {
                 pods.into_iter()
