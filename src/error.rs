@@ -35,6 +35,15 @@ pub enum Error {
         #[from]
         source: tokio::time::error::Elapsed,
     },
+
+    #[error("Environment variable error: {source}")]
+    EnvironmentVariableError {
+        #[from]
+        source: std::env::VarError,
+    },
+
+    #[error("Invalid name for resource: {errors:?}")]
+    InvalidName { errors: Vec<String> },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
