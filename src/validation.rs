@@ -61,7 +61,7 @@ fn regex_error(msg: &str, fmt: &str, examples: &[&str]) -> String {
 }
 
 /// Tests for a string that conforms to the definition of a subdomain in DNS (RFC 1123).
-pub fn is_rfc_1123_subdomain(value: &str) -> Vec<String> {
+pub fn is_rfc_1123_subdomain(value: &str) -> Result<(), Vec<String>> {
     let mut errors = vec![];
     if value.len() > RFC_1123_SUBDOMAIN_MAX_LENGTH {
         errors.push(max_len_error(RFC_1123_SUBDOMAIN_MAX_LENGTH))
@@ -75,11 +75,15 @@ pub fn is_rfc_1123_subdomain(value: &str) -> Vec<String> {
         ))
     }
 
-    errors
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
 }
 
 /// Tests for a string that conforms to the definition of a label in DNS (RFC 1035).
-pub fn is_rfc_1035_label(value: &str) -> Vec<String> {
+pub fn is_rfc_1035_label(value: &str) -> Result<(), Vec<String>> {
     let mut errors = vec![];
     if value.len() > RFC_1035_LABEL_MAX_LENGTH {
         errors.push(max_len_error(RFC_1035_LABEL_MAX_LENGTH))
@@ -93,7 +97,11 @@ pub fn is_rfc_1035_label(value: &str) -> Vec<String> {
         ))
     }
 
-    errors
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
 }
 
 // mask_trailing_dash replaces the final character of a string with a subdomain safe
@@ -114,7 +122,7 @@ fn mask_trailing_dash(mut name: String) -> String {
 ///
 /// * `name` - is the name to check for validity
 /// * `prefix` - indicates whether `name` is just a prefix (ending in a dash, which would otherwise not be legal at the end)
-pub fn name_is_dns_subdomain(name: &str, prefix: bool) -> Vec<String> {
+pub fn name_is_dns_subdomain(name: &str, prefix: bool) -> Result<(), Vec<String>> {
     let mut name = name.to_string();
     if prefix {
         name = mask_trailing_dash(name);
@@ -130,7 +138,7 @@ pub fn name_is_dns_subdomain(name: &str, prefix: bool) -> Vec<String> {
 ///
 /// * `name` - is the name to check for validity
 /// * `prefix` - indicates whether `name` is just a prefix (ending in a dash, which would otherwise not be legal at the end)
-pub fn name_is_dns_label(name: &str, prefix: bool) -> Vec<String> {
+pub fn name_is_dns_label(name: &str, prefix: bool) -> Result<(), Vec<String>> {
     let mut name = name.to_string();
     if prefix {
         name = mask_trailing_dash(name);
@@ -142,7 +150,7 @@ pub fn name_is_dns_label(name: &str, prefix: bool) -> Vec<String> {
 /// Validates a namespace name.
 ///
 /// See [`name_is_dns_label`] for more information.
-pub fn validate_namespace_name(name: &str, prefix: bool) -> Vec<String> {
+pub fn validate_namespace_name(name: &str, prefix: bool) -> Result<(), Vec<String>> {
     name_is_dns_label(name, prefix)
 }
 
@@ -213,7 +221,7 @@ mod tests {
     #[case("a$b")]
     #[case(&"a".repeat(254))]
     fn test_bad_values_is_rfc_1123_subdomain(#[case] value: &str) {
-        assert!(!is_rfc_1123_subdomain(value).is_empty());
+        assert!(is_rfc_1123_subdomain(value).is_err());
     }
 
     #[rstest]
@@ -259,7 +267,7 @@ mod tests {
     #[case("11.22.33.44.55")]
     #[case(&"a".repeat(253))]
     fn test_good_values_is_rfc_1123_subdomain(#[case] value: &str) {
-        assert!(is_rfc_1123_subdomain(value).is_empty());
+        assert!(is_rfc_1123_subdomain(value).is_ok());
     }
 
     #[test]
@@ -312,7 +320,7 @@ mod tests {
     #[case("1 2")]
     #[case(&"a".repeat(64))]
     fn test_bad_values_is_rfc_1035_label(#[case] value: &str) {
-        assert!(!is_rfc_1035_label(value).is_empty());
+        assert!(is_rfc_1035_label(value).is_err());
     }
 
     #[rstest]
@@ -324,6 +332,6 @@ mod tests {
     #[case("a--1--2--b")]
     #[case(&"a".repeat(63))]
     fn test_good_values_is_rfc_1035_label(#[case] value: &str) {
-        assert!(is_rfc_1035_label(value).is_empty());
+        assert!(is_rfc_1035_label(value).is_ok());
     }
 }

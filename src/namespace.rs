@@ -51,11 +51,10 @@ impl WatchNamespace {
 pub fn get_watch_namespace() -> OperatorResult<WatchNamespace> {
     match env::var(WATCH_NAMESPACE_ENV) {
         Ok(var) if var.is_empty() => Ok(WatchNamespace::All),
-        Ok(var) if !validate_namespace_name(&var, false).is_empty() => {
-            let errors = validate_namespace_name(&var, false);
-            Err(Error::InvalidName { errors })
-        }
-        Ok(var) => Ok(WatchNamespace::One(var)),
+        Ok(var) => match validate_namespace_name(&var, false) {
+            Ok(_) => Ok(WatchNamespace::One(var)),
+            Err(errors) => Err(Error::InvalidName { errors }),
+        },
         Err(VarError::NotPresent) => Ok(WatchNamespace::All),
         Err(err) => Err(Error::EnvironmentVariableError { source: err }),
     }
@@ -66,8 +65,12 @@ mod tests {
 
     use super::*;
 
+    // Note: There is a possibility of a race condition here because other tests might be using the
+    // same environment variable in parallel tests!
     #[test]
     fn test_parse_watch_namespaces() {
+        env::remove_var(WATCH_NAMESPACE_ENV);
+
         assert!(matches!(get_watch_namespace(), Ok(WatchNamespace::All)));
 
         let test_value = "foo".to_string();
