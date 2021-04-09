@@ -44,6 +44,12 @@ pub enum Error {
 
     #[error("Invalid name for resource: {errors:?}")]
     InvalidName { errors: Vec<String> },
+
+    #[error("IO Error: {source}")]
+    IoError {
+        #[from]
+        source: std::io::Error,
+    },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;

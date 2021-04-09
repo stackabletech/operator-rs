@@ -7,6 +7,9 @@ use tracing::info;
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
 use kube::api::ListParams;
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
 
 /// This trait can be implemented to allow automatic handling
 /// (e.g. creation) of `CustomResourceDefinition`s in Kubernetes.
@@ -20,34 +23,48 @@ pub trait Crd {
     /// ```
     const RESOURCE_NAME: &'static str;
 
-    /// The full YAML definition of the CRD.
-    /// In theory this can be generated from the structs itself but the kube-rs library
-    /// we use currently does not generate the required [schema](https://github.com/clux/kube-rs/issues/264)
-    /// and it also has no support for [validation](https://github.com/clux/kube-rs/issues/129)
-    const CRD_DEFINITION: &'static str;
+    /// Returns a [`CustomResourceDefinition`] for this resource.
+    ///
+    /// # Implementation note
+    ///
+    /// When using the [`CustomResource`] derive you'll get a `crd()` method automatically.
+    /// All you need to do is to forward to this method.
+    ///
+    /// ## Example
+    ///
+    /// ```text
+    ///     fn crd() -> CustomResourceDefinition {
+    ///         MyCustomResource::crd()
+    ///     }     
+    ///
+    /// ```
+    fn crd() -> CustomResourceDefinition;
+
+    /// Generates a YAML CustomResourceDefinition and writes it to a `Write`r.
+    fn generate_yaml_schema<W>(mut writer: W) -> OperatorResult<()>
+    where
+        W: Write,
+    {
+        let schema = serde_yaml::to_string(&Self::crd())?;
+        writer.write_all(schema.as_bytes())?;
+        Ok(())
+    }
+
+    /// Generates a YAML CustomResourceDefinition and writes it to the specified file.
+    fn write_yaml_schema<P: AsRef<Path>>(path: P) -> OperatorResult<()> {
+        let writer = File::create(path)?;
+        Self::generate_yaml_schema(writer)
+    }
+
+    /// Generates a YAML CustomResourceDefinition and prints it to stdout.
+    fn print_yaml_schema() -> OperatorResult<()> {
+        let writer = std::io::stdout();
+        Self::generate_yaml_schema(writer)
+    }
 }
 
 /// Returns Ok(true) if our CRD has been registered in Kubernetes, Ok(false) if it could not be found
 /// and Error in any other case (e.g. connection to Kubernetes failed in some way.
-///
-/// # Example
-///
-/// ```no_run
-/// # use stackable_operator::Crd;
-/// # use stackable_operator::client;
-/// #
-/// # struct Test;
-/// # impl Crd for Test {
-/// #    const RESOURCE_NAME: &'static str = "foo.bar.stackable.tech";
-/// #    const CRD_DEFINITION: &'static str = "mycrdhere";
-/// # }
-/// #
-/// # async {
-/// # let client = client::create_client(Some("foo".to_string())).await.unwrap();
-/// use stackable_operator::crd::exists;
-/// exists::<Test>(client).await;
-/// # };
-/// ```
 pub async fn exists<T>(client: Client) -> OperatorResult<bool>
 where
     T: Crd,
@@ -103,8 +120,7 @@ async fn create<T>(client: Client) -> OperatorResult<()>
 where
     T: Crd,
 {
-    let crd: CustomResourceDefinition = serde_yaml::from_str(T::CRD_DEFINITION)?;
-    client.create(&crd).await.and(Ok(()))
+    client.create(&T::crd()).await.and(Ok(()))
 }
 
 /// Waits until CRD of given type `T` is applied to Kubernetes.
