@@ -80,7 +80,7 @@ where
             name: None,
             namespace: Meta::namespace(parent),
             owner_references: Some(vec![metadata::object_to_owner_reference::<T>(
-                parent.meta().clone(),
+                parent.meta(),
                 true,
             )?]),
             ..ObjectMeta::default()

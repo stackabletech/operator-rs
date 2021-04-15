@@ -39,7 +39,7 @@ where
         name: Some(name),
         namespace: Meta::namespace(resource),
         owner_references: Some(vec![object_to_owner_reference::<T>(
-            resource.meta().clone(),
+            resource.meta(),
             block_owner_deletion,
         )?]),
         ..ObjectMeta::default()
@@ -49,16 +49,16 @@ where
 /// Creates an OwnerReference pointing to the resource type and `metadata` being passed in.
 /// The created OwnerReference has it's `controller` flag set to `true`
 pub fn object_to_owner_reference<K: Resource>(
-    meta: ObjectMeta,
+    meta: &ObjectMeta,
     block_owner_deletion: bool,
 ) -> OperatorResult<OwnerReference> {
     Ok(OwnerReference {
         api_version: K::API_VERSION.to_string(),
         kind: K::KIND.to_string(),
-        name: meta.name.ok_or(Error::MissingObjectKey {
+        name: meta.name.clone().ok_or(Error::MissingObjectKey {
             key: ".metadata.name",
         })?,
-        uid: meta.uid.ok_or(Error::MissingObjectKey {
+        uid: meta.uid.clone().ok_or(Error::MissingObjectKey {
             key: ".metadata.uid",
         })?,
         controller: Some(true),

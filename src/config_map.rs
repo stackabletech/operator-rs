@@ -22,7 +22,7 @@ where
             name: Some(String::from(cm_name)),
             namespace: Meta::namespace(resource),
             owner_references: Some(vec![metadata::object_to_owner_reference::<T>(
-                resource.meta().clone(),
+                resource.meta(),
                 true,
             )?]),
             ..ObjectMeta::default()

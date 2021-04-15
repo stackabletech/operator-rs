@@ -199,10 +199,8 @@ where
     /// If the owner (main controller custom resource), we set its owner reference
     /// to our command custom resource.
     async fn set_owner_reference(&self) -> ReconcileResult<Error> {
-        let owner_reference = metadata::object_to_owner_reference::<O>(
-            self.owner.as_ref().unwrap().meta().clone(),
-            true,
-        )?;
+        let owner_reference =
+            metadata::object_to_owner_reference::<O>(self.owner.as_ref().unwrap().meta(), true)?;
 
         let owner_references_path = "/metadata/ownerReferences".to_string();
         // we do not need to test here, if the owner ref is already in here, we would
