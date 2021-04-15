@@ -69,7 +69,7 @@ where
     //             "$deleteFromPrimitiveList/finalizers": [FINALIZER_NAME.to_string()]
     //         }
     // ```
-    return match resource.meta().finalizers.clone() {
+    return match resource.meta().finalizers.as_ref() {
         None => Err(Error::MissingObjectKey {
             key: ".metadata.finalizers",
         }),

@@ -106,8 +106,8 @@
 //!    stackable_operator::logging::initialize_logging("FOO_OPERATOR_LOG");
 //!    let client = client::create_client(Some("foo.stackable.tech".to_string())).await?;
 //!
-//!    stackable_operator::crd::ensure_crd_created::<FooCluster>(client.clone()).await?;
-//!    stackable_operator::crd::ensure_crd_created::<Bar>(client.clone()).await?;
+//!    stackable_operator::crd::ensure_crd_created::<FooCluster>(&client).await?;
+//!    stackable_operator::crd::ensure_crd_created::<Bar>(&client).await?;
 //!
 //!    tokio::join!(
 //!        // create main custom resource controller like ...
@@ -199,10 +199,8 @@ where
     /// If the owner (main controller custom resource), we set its owner reference
     /// to our command custom resource.
     async fn set_owner_reference(&self) -> ReconcileResult<Error> {
-        let owner_reference = metadata::object_to_owner_reference::<O>(
-            self.owner.as_ref().unwrap().meta().clone(),
-            true,
-        )?;
+        let owner_reference =
+            metadata::object_to_owner_reference::<O>(self.owner.as_ref().unwrap().meta(), true)?;
 
         let owner_references_path = "/metadata/ownerReferences".to_string();
         // we do not need to test here, if the owner ref is already in here, we would
