@@ -100,7 +100,7 @@ pub struct RoleGroup {
 pub async fn find_nodes_that_fit_selectors(
     client: &Client,
     namespace: Option<String>,
-    role_groups: &Vec<RoleGroup>,
+    role_groups: &[RoleGroup],
 ) -> OperatorResult<HashMap<String, Vec<Node>>> {
     let mut found_nodes = HashMap::new();
     for role_group in role_groups {
