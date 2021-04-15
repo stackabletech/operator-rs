@@ -1,8 +1,8 @@
 use crate::error::{Error, OperatorResult};
 
 use crate::labels::get_recommended_labels;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
-use kube::api::{Meta, ObjectMeta};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
+use kube::Resource;
 use std::collections::BTreeMap;
 
 /// Builds a `ObjectMeta` object out of a template/owner object.
@@ -25,7 +25,7 @@ pub fn build_metadata<T>(
     block_owner_deletion: bool,
 ) -> OperatorResult<ObjectMeta>
 where
-    T: Meta<DynamicType = ()>,
+    T: Resource<DynamicType = ()>,
 {
     let mut merged_labels = get_recommended_labels(resource)?;
 
@@ -36,7 +36,7 @@ where
     Ok(ObjectMeta {
         labels: Some(merged_labels),
         name: Some(name),
-        namespace: Meta::namespace(resource),
+        namespace: Resource::namespace(resource),
         owner_references: Some(vec![object_to_owner_reference::<T>(
             resource.meta(),
             block_owner_deletion,
@@ -52,7 +52,7 @@ pub fn object_to_owner_reference<K>(
     block_owner_deletion: bool,
 ) -> OperatorResult<OwnerReference>
 where
-    K: Meta<DynamicType = ()>,
+    K: Resource<DynamicType = ()>,
 {
     Ok(OwnerReference {
         api_version: K::api_version(&()).to_string(),

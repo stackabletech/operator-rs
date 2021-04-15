@@ -1,7 +1,7 @@
 //! This module deals with the [`Condition`] object from Kubernetes.
 use chrono::Utc;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, Time};
-use kube::api::Meta;
+use kube::Resource;
 use schemars::gen::SchemaGenerator;
 use schemars::schema::Schema;
 use serde_json::{from_value, json};
@@ -114,7 +114,7 @@ pub fn build_condition<T>(
     condition_type: String,
 ) -> Condition
 where
-    T: Meta,
+    T: Resource,
 {
     // In these two let statements we check if the same condition was already set and if the
     // status is different or not.

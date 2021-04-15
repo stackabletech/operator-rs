@@ -1,12 +1,12 @@
 // This file is modeled after the K8S controller_ref.go file from the apimachinery package
 
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
-use kube::api::Meta;
+use kube::Resource;
 
 /// Returns a reference to the controller of the passed in resource if it exists.
 pub fn get_controller_of<T>(resource: &T) -> Option<&OwnerReference>
 where
-    T: Meta,
+    T: Resource,
 {
     resource
         .meta()

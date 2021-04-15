@@ -2,8 +2,7 @@
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
 use crate::validation::validate_namespace_name;
-use k8s_openapi::Resource;
-use kube::Api;
+use kube::{Api, Resource};
 use std::env;
 use std::env::VarError;
 
@@ -29,7 +28,7 @@ impl WatchNamespace {
     /// depending on which variant we are.
     pub fn get_api<T>(&self, client: &Client) -> Api<T>
     where
-        T: Resource,
+        T: Resource<DynamicType = ()>,
     {
         match self {
             WatchNamespace::All => client.get_all_api(),

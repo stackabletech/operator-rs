@@ -5,7 +5,6 @@
 //!
 //! ```no_run
 //! use kube::CustomResource;
-//! use kube::api::Meta;
 //! use stackable_operator::Crd;
 //! use stackable_operator::{client, error};
 //! use stackable_operator::client::Client;
@@ -127,8 +126,8 @@ use crate::metadata;
 use crate::reconcile::{ReconcileFunctionAction, ReconcileResult, ReconciliationContext};
 use async_trait::async_trait;
 use json_patch::{AddOperation, PatchOperation};
-use kube::api::{ListParams, Meta};
-use kube::Api;
+use kube::api::ListParams;
+use kube::{Api, Resource};
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::future::Future;
@@ -146,8 +145,8 @@ pub trait Command {
 
 struct CommandState<C, O>
 where
-    C: Command + Clone + DeserializeOwned + Meta,
-    O: Clone + DeserializeOwned + Meta,
+    C: Command + Clone + DeserializeOwned + Resource,
+    O: Clone + DeserializeOwned + Resource,
 {
     context: ReconciliationContext<C>,
     owner: Option<O>,
@@ -155,8 +154,8 @@ where
 
 impl<C, O> CommandState<C, O>
 where
-    C: Command + Clone + DeserializeOwned + Meta,
-    O: Clone + DeserializeOwned + Meta,
+    C: Command + Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
+    O: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
 {
     /// Check if our custom resource command already has the owner reference set to the main
     /// controller custom resource. If so we can stop the reconcile.
@@ -164,7 +163,7 @@ where
         // If owner_references exist, check if any match our main resource owner reference.
         if let Some(owner_reference) = get_controller_of(&self.context.resource) {
             if owner_reference.name == self.context.resource.get_owner_name()
-                && owner_reference.kind == O::KIND
+                && owner_reference.kind == O::kind(&())
             {
                 return Ok(ReconcileFunctionAction::Done);
             }
@@ -221,8 +220,8 @@ where
 
 impl<C, O> ReconciliationState for CommandState<C, O>
 where
-    C: Command + Clone + DeserializeOwned + Meta + Send + Sync,
-    O: Clone + DeserializeOwned + Meta + Send + Sync,
+    C: Command + Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Send + Sync,
+    O: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Send + Sync,
 {
     type Error = Error;
 
@@ -262,8 +261,8 @@ impl<C, O> CommandStrategy<C, O> {
 #[async_trait]
 impl<C, O> ControllerStrategy for CommandStrategy<C, O>
 where
-    C: Command + Clone + DeserializeOwned + Meta + Send + Sync,
-    O: Clone + DeserializeOwned + Meta + Send + Sync,
+    C: Command + Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Send + Sync,
+    O: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Send + Sync,
 {
     type Item = C;
     type State = CommandState<C, O>;
@@ -290,8 +289,15 @@ where
 /// This is an async method and the returned future needs to be consumed to make progress.
 pub async fn create_command_controller<C, O>(client: Client)
 where
-    C: Command + Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
-    O: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
+    C: Command
+        + Clone
+        + Debug
+        + DeserializeOwned
+        + Resource<DynamicType = ()>
+        + Send
+        + Sync
+        + 'static,
+    O: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Send + Sync + 'static,
 {
     let command_api: Api<C> = client.get_all_api();
 
@@ -311,7 +317,7 @@ where
 ///
 pub async fn list_commands<C>(client: &Client) -> OperatorResult<Vec<C>>
 where
-    C: Meta + Clone + DeserializeOwned,
+    C: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
 {
     let command_api: Api<C> = client.get_all_api();
     let list = command_api
