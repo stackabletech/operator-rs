@@ -22,7 +22,7 @@ where
     T: Meta,
 {
     let revisions = client
-        .list(Meta::namespace(resource), &ListParams::default())
+        .list(Meta::namespace(resource).as_deref(), &ListParams::default())
         .await?;
     let owner_uid = resource.meta().uid.as_ref().unwrap(); // TODO: Error handling
     let mut owned = vec![];
@@ -80,7 +80,7 @@ where
             name: None,
             namespace: Meta::namespace(parent),
             owner_references: Some(vec![metadata::object_to_owner_reference::<T>(
-                parent.meta().clone(),
+                parent.meta(),
                 true,
             )?]),
             ..ObjectMeta::default()

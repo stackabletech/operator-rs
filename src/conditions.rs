@@ -10,7 +10,7 @@ use std::fmt;
 /// Returns a [`Schema`] that can be used with custom Conditions which have the same structure
 /// as the `io.k8s.pkg.apis.meta.v1.Condition` resource from Kubernetes.
 ///
-/// This is needed because the [`Condition`] from `kube-rs` does not derive `JsonSchema`.
+/// This is needed because the [`Condition`] from `k8s-openapi` does not derive `JsonSchema`.
 ///
 /// # Example
 ///
