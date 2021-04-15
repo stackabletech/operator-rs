@@ -106,8 +106,8 @@
 //!    stackable_operator::logging::initialize_logging("FOO_OPERATOR_LOG");
 //!    let client = client::create_client(Some("foo.stackable.tech".to_string())).await?;
 //!
-//!    stackable_operator::crd::ensure_crd_created::<FooCluster>(client.clone()).await?;
-//!    stackable_operator::crd::ensure_crd_created::<Bar>(client.clone()).await?;
+//!    stackable_operator::crd::ensure_crd_created::<FooCluster>(&client).await?;
+//!    stackable_operator::crd::ensure_crd_created::<Bar>(&client).await?;
 //!
 //!    tokio::join!(
 //!        // create main custom resource controller like ...
