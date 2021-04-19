@@ -118,13 +118,14 @@ use crate::reconcile::{ReconcileFunctionAction, ReconciliationContext};
 
 use async_trait::async_trait;
 use futures::StreamExt;
-use kube::api::{ListParams, Meta};
-use kube::Api;
+use kube::api::ListParams;
+use kube::{Api, Resource};
 use kube_runtime::controller::{Context, ReconcilerAction};
 use kube_runtime::Controller as KubeController;
 use serde::de::DeserializeOwned;
 use std::fmt::{Debug, Display};
 use std::future::Future;
+use std::hash::Hash;
 use std::pin::Pin;
 use std::time::Duration;
 use tracing::{debug, error, trace, Instrument};
@@ -200,14 +201,16 @@ pub trait ReconciliationState {
 ///   * It then proceeds to poll all those futures serially until one of them does not return `Continue`
 pub struct Controller<T>
 where
-    T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
+    T: Clone + Debug + DeserializeOwned + Resource + Send + Sync + 'static,
+    <T as Resource>::DynamicType: Debug + Eq + Hash,
 {
     kube_controller: KubeController<T>,
 }
 
 impl<T> Controller<T>
 where
-    T: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
+    T: Clone + Debug + DeserializeOwned + Resource + Send + Sync + 'static,
+    <T as Resource>::DynamicType: Clone + Debug + Default + Eq + Hash + Unpin,
 {
     pub fn new(api: Api<T>) -> Controller<T> {
         let controller = KubeController::new(api, ListParams::default());
@@ -224,11 +227,11 @@ where
     /// Only objects that have an `OwnerReference` for our main resource type will trigger
     /// a reconciliation.
     /// You need to make sure to add this `OwnerReference` yourself.
-    pub fn owns<Child: Clone + Meta + DeserializeOwned + Send + 'static>(
-        mut self,
-        api: Api<Child>,
-        lp: ListParams,
-    ) -> Self {
+    pub fn owns<Child>(mut self, api: Api<Child>, lp: ListParams) -> Self
+    where
+        Child: Clone + Debug + Resource + DeserializeOwned + Send + 'static,
+        <Child as Resource>::DynamicType: Clone + Debug + Eq + Hash,
+    {
         self.kube_controller = self.kube_controller.owns(api, lp);
         self
     }
@@ -305,7 +308,7 @@ async fn reconcile<S, T>(
     context: Context<ControllerContext<S>>,
 ) -> Result<ReconcilerAction, Error>
 where
-    T: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
+    T: Clone + Debug + DeserializeOwned + Resource + Send + Sync + 'static,
     S: ControllerStrategy<Item = T> + 'static,
 {
     debug!(?resource, "Beginning reconciliation");

@@ -2,15 +2,16 @@ use crate::client::Client;
 use crate::error::{Error, OperatorResult};
 
 use json_patch::{PatchOperation, RemoveOperation, TestOperation};
-use kube::api::Meta;
+use kube::Resource;
 use serde::de::DeserializeOwned;
 use serde_json::json;
+use std::fmt::Debug;
 use tracing::debug;
 
 /// Checks whether our own finalizer is in the list of finalizers for the provided object.
 pub fn has_finalizer<T>(resource: &T, finalizer: &str) -> bool
 where
-    T: Meta,
+    T: Resource,
 {
     return match resource.meta().finalizers.as_ref() {
         Some(finalizers) => finalizers.contains(&finalizer.to_string()),
@@ -29,7 +30,8 @@ pub async fn add_finalizer<T>(
     finalizer: &str,
 ) -> OperatorResult<bool>
 where
-    T: Clone + Meta + DeserializeOwned,
+    T: Clone + Debug + Resource + DeserializeOwned,
+    <T as Resource>::DynamicType: Default,
 {
     if has_finalizer(resource, finalizer) {
         debug!("Finalizer [{}] already exists, continuing...", finalizer);
@@ -59,7 +61,8 @@ pub async fn remove_finalizer<T>(
     finalizer: &str,
 ) -> OperatorResult<T>
 where
-    T: Clone + DeserializeOwned + Meta,
+    T: Clone + Debug + DeserializeOwned + Resource,
+    <T as Resource>::DynamicType: Default,
 {
     // It would be preferable to use a strategic merge but that currently (K8S 1.19) doesn't
     // seem to work against custom resources.
@@ -107,7 +110,7 @@ where
 /// If that is the case the object is in the process of being deleted pending the handling of all finalizers.
 pub fn has_deletion_stamp<T>(obj: &T) -> bool
 where
-    T: Meta,
+    T: Resource,
 {
     return obj.meta().deletion_timestamp.is_some();
 }
