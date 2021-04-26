@@ -6,13 +6,13 @@ use crate::pod_utils;
 use either::Either;
 use futures::StreamExt;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
-use k8s_openapi::Resource;
-use kube::api::{DeleteParams, ListParams, Meta, Patch, PatchParams, PostParams};
+use kube::api::{DeleteParams, ListParams, Patch, PatchParams, PostParams, Resource};
 use kube::client::{Client as KubeClient, Status};
 use kube::{Api, Config};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::convert::TryFrom;
+use std::fmt::Debug;
 use tracing::trace;
 
 /// This `Client` can be used to access Kubernetes.
@@ -60,7 +60,8 @@ impl Client {
     /// Retrieves a single instance of the requested resource type with the given name.
     pub async fn get<T>(&self, resource_name: &str, namespace: Option<&str>) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta,
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
     {
         Ok(self.get_api(namespace).get(resource_name).await?)
     }
@@ -74,7 +75,8 @@ impl Client {
         list_params: &ListParams,
     ) -> OperatorResult<Vec<T>>
     where
-        T: Clone + DeserializeOwned + Meta,
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
     {
         Ok(self.get_api(namespace).list(&list_params).await?.items)
     }
@@ -93,7 +95,8 @@ impl Client {
         selector: &LabelSelector,
     ) -> OperatorResult<Vec<T>>
     where
-        T: Clone + DeserializeOwned + Meta,
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
     {
         let selector_string = label_selector::convert_label_selector_to_query_string(selector)?;
         trace!("Listing for LabelSelector [{}]", selector_string);
@@ -107,10 +110,11 @@ impl Client {
     /// Creates a new resource.
     pub async fn create<T>(&self, resource: &T) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta + Serialize,
+        T: Clone + Debug + DeserializeOwned + Resource + Serialize,
+        <T as Resource>::DynamicType: Default,
     {
         Ok(self
-            .get_api(Meta::namespace(resource).as_deref())
+            .get_api(resource.namespace().as_deref())
             .create(&self.post_params, resource)
             .await?)
     }
@@ -120,8 +124,9 @@ impl Client {
     /// This will fail for objects that do not exist yet.
     pub async fn merge_patch<T, P>(&self, resource: &T, patch: P) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta,
-        P: Serialize,
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
+        P: Debug + Serialize,
     {
         self.patch(resource, Patch::Merge(patch), &self.patch_params)
             .await
@@ -134,8 +139,9 @@ impl Client {
     /// This will _create_ or _update_ existing resources.
     pub async fn apply_patch<T, P>(&self, resource: &T, patch: P) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta,
-        P: Serialize,
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
+        P: Debug + Serialize,
     {
         self.patch(resource, Patch::Apply(patch), &self.patch_params)
             .await
@@ -144,7 +150,8 @@ impl Client {
     /// Patches a resource using the `JSON` patch strategy described in [JavaScript Object Notation (JSON) Patch](https://tools.ietf.org/html/rfc6902).
     pub async fn json_patch<T>(&self, resource: &T, patch: json_patch::Patch) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta,
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
     {
         // The `()` type is not used. I need to provide _some_ type just to get it to compile.
         // But the type is not used _at all_ for the `Json` variant so I'd argue it's okay to
@@ -162,12 +169,13 @@ impl Client {
         patch_params: &PatchParams,
     ) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta,
-        P: Serialize,
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
+        P: Debug + Serialize,
     {
         Ok(self
-            .get_api(Meta::namespace(resource).as_deref())
-            .patch(&Meta::name(resource), patch_params, &patch)
+            .get_api(resource.namespace().as_deref())
+            .patch(&resource.name(), patch_params, &patch)
             .await?)
     }
 
@@ -175,12 +183,13 @@ impl Client {
     /// The subresource status must be defined beforehand in the Crd.
     pub async fn apply_patch_status<T, S>(&self, resource: &T, status: &S) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta + Resource,
-        S: Serialize,
+        T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
+        <T as Resource>::DynamicType: Default,
+        S: Debug + Serialize,
     {
         let new_status = Patch::Apply(serde_json::json!({
-            "apiVersion": T::API_VERSION,
-            "kind": T::KIND,
+            "apiVersion": T::api_version(&()),
+            "kind": T::kind(&()),
             "status": status
         }));
 
@@ -193,8 +202,9 @@ impl Client {
     /// The subresource status must be defined beforehand in the Crd.
     pub async fn merge_patch_status<T, S>(&self, resource: &T, status: &S) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta + Resource,
-        S: Serialize,
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
+        S: Debug + Serialize,
     {
         let new_status = Patch::Merge(serde_json::json!({ "status": status }));
 
@@ -203,6 +213,17 @@ impl Client {
             .await?)
     }
 
+    /// There are four different patch strategies:
+    /// 1) Apply (https://kubernetes.io/docs/reference/using-api/api-concepts/#server-side-apply)
+    ///   Starting from Kubernetes v1.18, you can enable the Server Side Apply feature so that the control plane tracks managed fields for all newly created objects.
+    /// 2) Json (https://tools.ietf.org/html/rfc6902):
+    ///   This is supported on crate feature jsonpatch only
+    /// 3) Merge (https://tools.ietf.org/html/rfc7386):
+    ///   For example, if you want to update a list you have to specify the complete list and update everything
+    /// 4) Strategic (not for CustomResource)
+    ///   With a strategic merge patch, a list is either replaced or merged depending on its patch strategy.
+    ///   The patch strategy is specified by the value of the patchStrategy key in a field tag in the Kubernetes source code.
+    ///   For example, the Containers field of PodSpec struct has a patchStrategy of merge.
     async fn patch_status<T, S>(
         &self,
         resource: &T,
@@ -210,25 +231,13 @@ impl Client {
         patch_params: &PatchParams,
     ) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta,
-        S: Serialize,
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
+        S: Debug + Serialize,
     {
-        // There are four different strategies:
-        // 1) Apply (https://kubernetes.io/docs/reference/using-api/api-concepts/#server-side-apply)
-        //   Starting from Kubernetes v1.18, you can enable the Server Side Apply feature so that the control plane tracks managed fields for all newly created objects.
-        // 2) Json (https://tools.ietf.org/html/rfc6902):
-        //   This is supported on crate feature jsonpatch only
-        // 3) Merge (https://tools.ietf.org/html/rfc7386):
-        //   For example, if you want to update a list you have to specify the complete list and update everything
-        // 4) Strategic (not for CustomResource)
-        //   With a strategic merge patch, a list is either replaced or merged depending on its patch strategy.
-        //   The patch strategy is specified by the value of the patchStrategy key in a field tag in the Kubernetes source code.
-        //   For example, the Containers field of PodSpec struct has a patchStrategy of merge.
-        //
-
-        let api = self.get_api(Meta::namespace(resource).as_deref());
+        let api = self.get_api(resource.namespace().as_deref());
         Ok(api
-            .patch_status(&Meta::name(resource), patch_params, &patch)
+            .patch_status(&resource.name(), patch_params, &patch)
             .await?)
     }
 
@@ -238,11 +247,12 @@ impl Client {
     /// a `update` will always replace the full object.
     pub async fn update<T>(&self, resource: &T) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta + Serialize,
+        T: Clone + Debug + DeserializeOwned + Resource + Serialize,
+        <T as Resource>::DynamicType: Default,
     {
         Ok(self
-            .get_api(Meta::namespace(resource).as_deref())
-            .replace(&Meta::name(resource), &self.post_params, resource)
+            .get_api(resource.namespace().as_deref())
+            .replace(&resource.name(), &self.post_params, resource)
             .await?)
     }
 
@@ -259,7 +269,8 @@ impl Client {
     /// Some `delete` endpoints return the object and others return a `Status` object.
     pub async fn delete<T>(&self, resource: &T) -> OperatorResult<Option<Either<T, Status>>>
     where
-        T: Clone + DeserializeOwned + Meta,
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
     {
         if finalizer::has_deletion_stamp(resource) {
             trace!(
@@ -272,10 +283,9 @@ impl Client {
                 "Resource ([{}]) does not have a `deletion_timestamp`, deleting now",
                 pod_utils::get_log_name(resource)
             );
-            let api: Api<T> = self.get_api(Meta::namespace(resource).as_deref());
+            let api: Api<T> = self.get_api(resource.namespace().as_deref());
             Ok(Some(
-                api.delete(&Meta::name(resource), &self.delete_params)
-                    .await?,
+                api.delete(&resource.name(), &self.delete_params).await?,
             ))
         }
     }
@@ -284,11 +294,11 @@ impl Client {
     /// This will only work if there is a `status` subresource **and** it has a `conditions` array.
     pub async fn set_condition<T>(&self, resource: &T, condition: Condition) -> OperatorResult<T>
     where
-        T: Clone + DeserializeOwned + Meta + Resource,
+        T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
     {
         let new_status = Patch::Apply(serde_json::json!({
-            "apiVersion": T::API_VERSION,
-            "kind": T::KIND,
+            "apiVersion": T::api_version(&()),
+            "kind": T::kind(&()),
             "status": {
                 "conditions": vec![condition]
             }
@@ -303,7 +313,8 @@ impl Client {
     /// or not a namespace string is passed in.
     pub fn get_api<T>(&self, namespace: Option<&str>) -> Api<T>
     where
-        T: Meta,
+        T: Resource,
+        <T as Resource>::DynamicType: Default,
     {
         match namespace {
             None => self.get_all_api(),
@@ -314,6 +325,7 @@ impl Client {
     pub fn get_all_api<T>(&self) -> Api<T>
     where
         T: Resource,
+        <T as Resource>::DynamicType: Default,
     {
         Api::all(self.client.clone())
     }
@@ -321,6 +333,7 @@ impl Client {
     pub fn get_namespaced_api<T>(&self, namespace: &str) -> Api<T>
     where
         T: Resource,
+        <T as Resource>::DynamicType: Default,
     {
         Api::namespaced(self.client.clone(), namespace)
     }
@@ -360,7 +373,8 @@ impl Client {
     ///
     pub async fn wait_created<T>(&self, namespace: Option<&str>, lp: ListParams)
     where
-        T: Meta + Clone + DeserializeOwned + Send + 'static,
+        T: Resource + Clone + Debug + DeserializeOwned + Send + 'static,
+        <T as Resource>::DynamicType: Default,
     {
         let api: Api<T> = self.get_api(namespace);
         let watcher = kube_runtime::watcher(api, lp).boxed();
@@ -386,7 +400,8 @@ mod tests {
     use futures::StreamExt;
     use k8s_openapi::api::core::v1::{Container, Pod, PodSpec};
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
-    use kube::api::{ListParams, Meta, ObjectMeta, PostParams};
+    use kube::api::{ListParams, ObjectMeta, PostParams};
+    use kube::Resource;
     use kube_runtime::watcher::Event;
     use std::collections::BTreeMap;
     use std::time::Duration;

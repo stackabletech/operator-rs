@@ -3,7 +3,7 @@ use std::fmt::{Debug, Display, Formatter, Result};
 
 use crate::k8s_utils::LabelOptionalValueMap;
 use k8s_openapi::api::core::v1::{Node, Pod, PodCondition, PodSpec, PodStatus};
-use kube::api::Meta;
+use kube::Resource;
 use tracing::debug;
 
 /// While the `phase` field of a Pod is a string only the values from this enum are allowed.
@@ -88,12 +88,14 @@ fn get_pod_condition<'a>(status: &'a PodStatus, condition: &str) -> Option<&'a P
 /// If the resource has no namespace, it'll print `<no namespace>` instead: `[<no namespace>/bar]`
 pub fn get_log_name<T>(resource: &T) -> String
 where
-    T: Meta,
+    T: Resource,
 {
     format!(
         "[{}/{}]",
-        Meta::namespace(resource).unwrap_or_else(|| "<no namespace>".to_string()),
-        Meta::name(resource)
+        resource
+            .namespace()
+            .unwrap_or_else(|| "<no namespace>".to_string()),
+        resource.name()
     )
 }
 
@@ -208,11 +210,7 @@ pub fn pod_matches_multiple_label_values(
         //   * Just the label key (expected_value == None)
         //   * Key and Value
         if !pod_labels.contains_key(&expected_key.to_string()) {
-            debug!(
-                "Pod [{}] is missing label [{}]",
-                Meta::name(pod),
-                expected_key
-            );
+            debug!("Pod [{}] is missing label [{}]", pod.name(), expected_key);
             return false;
         }
 
@@ -221,7 +219,7 @@ pub fn pod_matches_multiple_label_values(
             let pod_value = pod_labels.get(&expected_key).unwrap();
 
             if !expected_values.iter().any(|value| value == pod_value) {
-                debug!("Pod [{}] has correct label [{}] but the wrong value (has: [{}], should have one of: [{:?}]", Meta::name(pod), expected_key, pod_value, expected_values);
+                debug!("Pod [{}] has correct label [{}] but the wrong value (has: [{}], should have one of: [{:?}]", pod.name(), expected_key, pod_value, expected_values);
                 return false;
             }
         }
@@ -548,7 +546,7 @@ mod tests {
         let mut invalid_pods = find_invalid_pods(&pods, &required_labels);
         assert_eq!(invalid_pods.len(), 1);
         let invalid_pod = invalid_pods.remove(0);
-        assert_eq!(Meta::name(invalid_pod), "invalid");
+        assert_eq!(&invalid_pod.name(), "invalid");
 
         let pods = vec![valid_pod.clone(), valid_pod.clone()];
         let invalid_pods = find_invalid_pods(&pods, &required_labels);

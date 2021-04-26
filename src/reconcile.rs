@@ -7,10 +7,12 @@ use crate::conditions::ConditionStatus;
 use crate::k8s_utils::find_excess_pods;
 use k8s_openapi::api::core::v1::{Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector, OwnerReference};
-use kube::api::{Meta, ObjectMeta};
+use kube::api::ObjectMeta;
+use kube::Resource;
 use kube_runtime::controller::ReconcilerAction;
 use serde::de::DeserializeOwned;
 use std::collections::BTreeMap;
+use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
@@ -109,14 +111,14 @@ impl<T> ReconciliationContext<T> {
 
 impl<T> ReconciliationContext<T>
 where
-    T: Meta,
+    T: Resource,
 {
     pub fn name(&self) -> String {
-        Meta::name(&self.resource)
+        self.resource.name()
     }
 
     pub fn namespace(&self) -> String {
-        Meta::namespace(&self.resource).expect("Resources are namespaced")
+        self.resource.namespace().expect("Resources are namespaced")
     }
 
     /// Returns a name that is suitable for directly passing to a log macro.
@@ -300,7 +302,8 @@ where
         requeue_if_changed: bool,
     ) -> ReconcileResult<Error>
     where
-        T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
+        T: Clone + Debug + DeserializeOwned + Resource + Send + Sync + 'static,
+        <T as Resource>::DynamicType: Default,
     {
         let being_deleted = finalizer::has_deletion_stamp(&self.resource);
 
@@ -339,7 +342,7 @@ where
 // TODO: Trait bound on Clone is not needed after https://github.com/clux/kube-rs/pull/436
 impl<T> ReconciliationContext<T>
 where
-    T: Clone + DeserializeOwned + Meta,
+    T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
 {
     /// Sets the [`Condition`] on the resource in this context.
     pub async fn set_condition(&self, condition: Condition) -> OperatorResult<T> {

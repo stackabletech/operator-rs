@@ -8,7 +8,8 @@ use crate::{k8s_errors, metadata};
 use k8s_openapi::api::apps::v1::ControllerRevision;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use k8s_openapi::apimachinery::pkg::runtime::RawExtension;
-use kube::api::{ListParams, Meta, ObjectMeta};
+use kube::api::{ListParams, ObjectMeta};
+use kube::Resource;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -19,10 +20,10 @@ pub async fn list_controller_revisions<T>(
     resource: &T,
 ) -> OperatorResult<Vec<ControllerRevision>>
 where
-    T: Meta,
+    T: Resource,
 {
     let revisions = client
-        .list(Meta::namespace(resource).as_deref(), &ListParams::default())
+        .list(resource.namespace().as_deref(), &ListParams::default())
         .await?;
     let owner_uid = resource.meta().uid.as_ref().unwrap(); // TODO: Error handling
     let mut owned = vec![];
@@ -72,15 +73,15 @@ pub async fn create_controller_revision<T>(
     revision: i64,
 ) -> OperatorResult<ControllerRevision>
 where
-    T: Meta + Hash,
+    T: Resource<DynamicType = ()> + Hash,
 {
     let mut cr = ControllerRevision {
         data: Some(data),
         metadata: ObjectMeta {
             name: None,
-            namespace: Meta::namespace(parent),
+            namespace: parent.namespace(),
             owner_references: Some(vec![metadata::object_to_owner_reference::<T>(
-                parent.meta().clone(),
+                parent.meta(),
                 true,
             )?]),
             ..ObjectMeta::default()
@@ -95,7 +96,7 @@ where
         collision_count.hash(&mut hasher);
         let hash = hasher.finish();
 
-        let name = controller_revision_name(&Meta::name(parent), &format!("{:x}", hash));
+        let name = controller_revision_name(&parent.name(), &format!("{:x}", hash));
         cr.metadata.name = Some(name);
 
         let result = client.create(&cr).await;

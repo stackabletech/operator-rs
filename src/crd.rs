@@ -65,7 +65,7 @@ pub trait Crd {
 
 /// Returns Ok(true) if our CRD has been registered in Kubernetes, Ok(false) if it could not be found
 /// and Error in any other case (e.g. connection to Kubernetes failed in some way.
-pub async fn exists<T>(client: Client) -> OperatorResult<bool>
+pub async fn exists<T>(client: &Client) -> OperatorResult<bool>
 where
     T: Crd,
 {
@@ -91,23 +91,23 @@ where
 /// - `client`: Client to connect to Kubernetes API and create the CRD with
 /// - `timeout`: If specified, retries creating the CRD for given `Duration`. If not specified,
 ///     retries indefinitely.
-pub async fn ensure_crd_created<T>(client: Client) -> OperatorResult<()>
+pub async fn ensure_crd_created<T>(client: &Client) -> OperatorResult<()>
 where
     T: Crd,
 {
-    if exists::<T>(client.clone()).await? {
+    if exists::<T>(client).await? {
         info!("CRD already exists in the cluster");
         Ok(())
     } else {
         info!("CRD not detected in Kubernetes. Attempting to create it.");
 
         loop {
-            if let Ok(res) = create::<T>(client.clone()).await {
+            if let Ok(res) = create::<T>(client).await {
                 break res;
             }
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
-        wait_created::<T>(client.clone()).await?;
+        wait_created::<T>(client).await?;
         Ok(())
     }
 }
@@ -116,7 +116,7 @@ where
 /// It will return an error if the CRD already exists.
 /// If it returns successfully it does not mean that the CRD is fully established yet,
 /// just that it has been accepted by the apiserver.
-async fn create<T>(client: Client) -> OperatorResult<()>
+async fn create<T>(client: &Client) -> OperatorResult<()>
 where
     T: Crd,
 {
@@ -124,7 +124,7 @@ where
 }
 
 /// Waits until CRD of given type `T` is applied to Kubernetes.
-pub async fn wait_created<T>(client: Client) -> OperatorResult<()>
+pub async fn wait_created<T>(client: &Client) -> OperatorResult<()>
 where
     T: Crd,
 {

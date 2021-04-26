@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
-use kube::api::Meta;
+use kube::api::Resource;
 use stackable_operator::crd::{ensure_crd_created, exists};
 use stackable_operator::{client, Crd};
 
@@ -40,13 +40,13 @@ async fn k8s_test_test_ensure_crd_created() {
 
     tokio::time::timeout(
         Duration::from_secs(30),
-        ensure_crd_created::<TestCrd>(client.clone()),
+        ensure_crd_created::<TestCrd>(&client),
     )
     .await
     .expect("CRD not created in time")
     .expect("Error while creating CRD");
 
-    exists::<TestCrd>(client.clone())
+    exists::<TestCrd>(&client)
         .await
         .expect("CRD should be created");
     let created_crd: CustomResourceDefinition = client
@@ -59,7 +59,7 @@ async fn k8s_test_test_ensure_crd_created() {
         .delete(&created_crd)
         .await
         .expect("TestCrd not deleted");
-    assert!(exists::<TestCrd>(client.clone())
+    assert!(exists::<TestCrd>(&client)
         .await
         .expect("CRD should be created"))
 }
