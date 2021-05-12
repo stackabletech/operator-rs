@@ -11,7 +11,7 @@ env:
 
 jobs:
   build:
-    name: Run tests and create release build
+    name: Run tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2.3.4
@@ -20,13 +20,13 @@ jobs:
           profile: minimal
           toolchain: nightly
           override: true
+      - uses: Swatinem/rust-cache@v1
       - name: Start K3S
         uses: debianmaster/actions-k3s@v1.0.1
         id: k3s
         with:
           version: 'latest'
       - uses: actions-rs/cargo@v1
-        name: Run tests
         with:
           command: test
       - uses: actions-rs/cargo@v1
@@ -35,10 +35,8 @@ jobs:
           command: test
           args: -- --ignored
       - uses: actions-rs/cargo@v1
-        name: Release build
         with:
-          command: build
-          args: --release
+          command: clean
 
   fmt:
     name: Run Rustfmt
@@ -51,6 +49,7 @@ jobs:
           toolchain: nightly
           components: rustfmt
           override: true
+      - uses: Swatinem/rust-cache@v1
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -67,6 +66,7 @@ jobs:
             toolchain: nightly
             components: clippy
             override: true
+      - uses: Swatinem/rust-cache@v1
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
