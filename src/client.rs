@@ -21,6 +21,7 @@ use tracing::trace;
 pub struct Client {
     client: KubeClient,
     patch_params: PatchParams,
+    force_patch_params: PatchParams,
     post_params: PostParams,
     delete_params: DeleteParams,
     /// Default namespace as defined in the kubeconfig this client has been created from.
@@ -39,11 +40,16 @@ impl Client {
                 field_manager: field_manager.clone(),
                 ..PostParams::default()
             },
-
-            // TODO: According to https://kubernetes.io/docs/reference/using-api/server-side-apply/#using-server-side-apply-in-a-controller we should always force conflicts in controllers.
             patch_params: PatchParams {
+                field_manager: field_manager.clone(),
+                ..PatchParams::default()
+            },
+            // TODO: According to https://kubernetes.io/docs/reference/using-api/server-side-apply/#using-server-side-apply-in-a-controller we should always force conflicts in controllers.
+            //  we currently consider this a workaround until we can properly implement patching
+            //  (see https://github.com/stackabletech/operator-rs/issues/113)
+            force_patch_params: PatchParams {
                 field_manager,
-                //force: true,
+                force: true,
                 ..PatchParams::default()
             },
             delete_params: DeleteParams::default(),
@@ -194,7 +200,7 @@ impl Client {
         }));
 
         Ok(self
-            .patch_status(resource, new_status, &self.patch_params)
+            .patch_status(resource, new_status, &self.force_patch_params)
             .await?)
     }
 
@@ -305,7 +311,7 @@ impl Client {
         }));
 
         Ok(self
-            .patch_status(resource, new_status, &self.patch_params)
+            .patch_status(resource, new_status, &self.force_patch_params)
             .await?)
     }
 
