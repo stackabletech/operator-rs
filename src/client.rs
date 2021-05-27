@@ -498,8 +498,7 @@ mod tests {
             .await
             .expect("KUBECONFIG variable must be configured.");
 
-        let lp: ListParams =
-            ListParams::default().fields(&format!("metadata.name=nonexistent-pod"));
+        let lp: ListParams = ListParams::default().fields("metadata.name=nonexistent-pod");
 
         // There is no such pod, therefore the `wait_created` function call times out.
         let wait_created_result: Result<(), Elapsed> = tokio::time::timeout(

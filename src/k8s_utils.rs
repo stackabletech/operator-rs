@@ -234,19 +234,19 @@ mod tests {
         let nodes = vec![foo_node];
         let pods = vec![foo_pod];
 
-        let foo = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
-        assert_eq!(foo.len(), 1);
+        let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
+        assert_eq!(need_pods.len(), 1);
 
         let foo_pod = PodBuilder::new()
             .node_name("foo")
             .with_label("foo", "bar")
             .build();
         let pods = vec![foo_pod];
-        let foo = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
-        assert!(foo.is_empty());
+        let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
+        assert!(need_pods.is_empty());
 
         labels.clear();
-        let foo = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
-        assert!(foo.is_empty());
+        let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
+        assert!(need_pods.is_empty());
     }
 }
