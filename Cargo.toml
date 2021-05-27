@@ -1,6 +1,6 @@
 [package]
 authors = ["Lars Francke <lars.francke@stackable.de>"]
-description = "Stackable Operator for OpenPolicyAgent - The main binary"
+description = "Stackable Operator Framework"
 edition = "2018"
 license = "Apache-2.0"
 name = "stackable-operator"
