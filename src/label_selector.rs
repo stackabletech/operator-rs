@@ -202,7 +202,7 @@ mod tests {
 
         let ls = LabelSelector {
             match_expressions: Some(match_expressions),
-            match_labels: Some(match_labels),
+            match_labels: Some(match_labels.clone()),
         };
         assert_eq!(
             "foo=bar,hui=buh,foo in (bar),foo in (quick, bar),foo notin (quick, bar),foo,!foo",
