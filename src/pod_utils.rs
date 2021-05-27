@@ -542,7 +542,7 @@ mod tests {
 
         let required_labels = BTreeMap::new();
 
-        let pods = vec![valid_pod.clone(), invalid_pod.clone()];
+        let pods = vec![valid_pod.clone(), invalid_pod];
         let mut invalid_pods = find_invalid_pods(&pods, &required_labels);
         assert_eq!(invalid_pods.len(), 1);
         let invalid_pod = invalid_pods.remove(0);
@@ -552,7 +552,7 @@ mod tests {
         let invalid_pods = find_invalid_pods(&pods, &required_labels);
         assert!(invalid_pods.is_empty());
 
-        let pods = vec![valid_pod.clone(), invalid_pod.clone(), invalid_pod.clone()];
+        let pods = vec![valid_pod, invalid_pod.clone(), invalid_pod];
         let invalid_pods = find_invalid_pods(&pods, &required_labels);
         assert_eq!(invalid_pods.len(), 2);
     }

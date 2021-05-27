@@ -70,7 +70,7 @@ mod tests {
 
         ls.match_labels = Some(labels);
         assert!(
-            matches!(add_stackable_selector(&mut ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
+            matches!(add_stackable_selector(&ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
         );
 
         // LS already has a LS that matches our internal one
@@ -79,7 +79,7 @@ mod tests {
         labels.insert("type".to_string(), "foobar".to_string());
         ls.match_labels = Some(labels);
         assert!(
-            matches!(add_stackable_selector(&mut ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
+            matches!(add_stackable_selector(&ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
         );
     }
 }
