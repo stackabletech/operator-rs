@@ -552,7 +552,7 @@ mod tests {
         let invalid_pods = find_invalid_pods(&pods, &required_labels);
         assert!(invalid_pods.is_empty());
 
-        let pods = vec![valid_pod, invalid_pod.clone(), invalid_pod];
+        let pods = vec![valid_pod, invalid_pod.clone(), invalid_pod.clone()];
         let invalid_pods = find_invalid_pods(&pods, &required_labels);
         assert_eq!(invalid_pods.len(), 2);
     }
