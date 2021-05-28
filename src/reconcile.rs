@@ -7,7 +7,7 @@ use crate::conditions::ConditionStatus;
 use crate::k8s_utils::find_excess_pods;
 use k8s_openapi::api::core::v1::{Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector, OwnerReference};
-use kube::api::ObjectMeta;
+use kube::api::{ObjectMeta, ResourceExt};
 use kube::Resource;
 use kube_runtime::controller::ReconcilerAction;
 use serde::de::DeserializeOwned;

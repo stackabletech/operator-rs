@@ -8,7 +8,7 @@ use crate::{k8s_errors, metadata};
 use k8s_openapi::api::apps::v1::ControllerRevision;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use k8s_openapi::apimachinery::pkg::runtime::RawExtension;
-use kube::api::{ListParams, ObjectMeta};
+use kube::api::{ListParams, ObjectMeta, ResourceExt};
 use kube::Resource;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

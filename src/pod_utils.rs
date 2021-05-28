@@ -3,7 +3,7 @@ use std::fmt::{Debug, Display, Formatter, Result};
 
 use crate::k8s_utils::LabelOptionalValueMap;
 use k8s_openapi::api::core::v1::{Node, Pod, PodCondition, PodSpec, PodStatus};
-use kube::Resource;
+use kube::api::{Resource, ResourceExt};
 use tracing::debug;
 
 /// While the `phase` field of a Pod is a string only the values from this enum are allowed.
