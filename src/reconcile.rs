@@ -141,6 +141,7 @@ where
     /// `app.kubernetes.io/instance` label and will use the name of the resource in this context
     /// as its value.
     /// You need to make sure to always set this label correctly!
+    /// One way to achieve this is by using the [`labels::get_recommended_labels`] method.
     pub async fn list_owned<R>(&self) -> OperatorResult<Vec<R>>
     where
         R: Clone + Debug + DeserializeOwned + Resource,
@@ -155,8 +156,7 @@ where
                 key: ".metadata.uid",
             })?;
 
-        let mut labels = BTreeMap::new();
-        labels.insert(labels::APP_INSTANCE_LABEL.to_string(), self.resource.name());
+        let labels = labels::get_recommended_labels(&self.resource)?;
 
         let label_selector = LabelSelector {
             match_expressions: None,

@@ -1,6 +1,6 @@
 use crate::error::{Error, OperatorResult};
 
-use crate::labels::get_recommended_labels;
+use crate::labels;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
 use kube::Resource;
 use std::collections::BTreeMap;
@@ -27,7 +27,7 @@ pub fn build_metadata<T>(
 where
     T: Resource<DynamicType = ()>,
 {
-    let mut merged_labels = get_recommended_labels(resource)?;
+    let mut merged_labels = labels::get_recommended_labels(resource)?;
 
     if let Some(provided_labels) = labels {
         merged_labels.extend(provided_labels);
