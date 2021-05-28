@@ -6,7 +6,7 @@ use crate::{conditions, controller_ref, finalizer, labels, pod_utils};
 use crate::conditions::ConditionStatus;
 use crate::k8s_utils::find_excess_pods;
 use k8s_openapi::api::core::v1::{Node, Pod};
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector, OwnerReference};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
 use kube::api::ObjectMeta;
 use kube::Resource;
 use kube_runtime::controller::ReconcilerAction;
@@ -132,16 +132,21 @@ where
         self.resource.meta().clone()
     }
 
-    /// This lists all Pods that have an OwnerReference that points to us (the object from `self.resource`)
+    /// This lists all Resources that have an OwnerReference that points to us (the object from `self.resource`)
     /// as its Controller.
     ///
     /// Unfortunately the Kubernetes API does _not_ allow filtering by OwnerReference so we have to fetch
-    /// all Pods and filter them on the client.
+    /// all Resources and filter them on the client.
     /// To reduce this overhead a LabelSelector will be included that uses the standard
     /// `app.kubernetes.io/instance` label and will use the name of the resource in this context
     /// as its value.
     /// You need to make sure to always set this label correctly!
-    pub async fn list_pods(&self) -> OperatorResult<Vec<Pod>> {
+    /// One way to achieve this is by using the [`labels::get_recommended_labels`] method.
+    pub async fn list_owned<R>(&self) -> OperatorResult<Vec<R>>
+    where
+        R: Clone + Debug + DeserializeOwned + Resource,
+        <R as Resource>::DynamicType: Default,
+    {
         let owner_uid = self
             .resource
             .meta()
@@ -151,8 +156,7 @@ where
                 key: ".metadata.uid",
             })?;
 
-        let mut labels = BTreeMap::new();
-        labels.insert(labels::APP_INSTANCE_LABEL.to_string(), self.resource.name());
+        let labels = labels::get_recommended_labels(&self.resource)?;
 
         let label_selector = LabelSelector {
             match_expressions: None,
@@ -162,9 +166,10 @@ where
         self.client
             .list_with_label_selector(self.resource.namespace().as_deref(), &label_selector)
             .await
-            .map(|pods| {
-                pods.into_iter()
-                    .filter(|pod| pod_owned_by(pod, owner_uid))
+            .map(|resources| {
+                resources
+                    .into_iter()
+                    .filter(|resource| controller_ref::is_resource_owned_by(resource, owner_uid))
                     .collect()
             })
     }
@@ -389,14 +394,6 @@ where
     }
 }
 
-/// This returns `false` for Pods that have no OwnerReference (with a Controller flag)
-/// or where the Controller does not have the same `uid` as the passed in `owner_uid`.
-/// If however the `uid` exists and matches we return `true`.
-fn pod_owned_by(pod: &Pod, owner_uid: &str) -> bool {
-    let controller = controller_ref::get_controller_of(pod);
-    matches!(controller, Some(OwnerReference { uid, .. }) if uid == owner_uid)
-}
-
 fn wait_for_running_and_ready_pods(
     requeue_timeout: &Duration,
     pods: &[Pod],
@@ -438,27 +435,6 @@ mod tests {
     use crate::test::PodBuilder;
     use chrono::Utc;
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
-
-    #[test]
-    fn test_pod_owned_by() {
-        let mut pod = Pod {
-            metadata: ObjectMeta {
-                name: Some("Foobar".to_string()),
-                owner_references: Some(vec![OwnerReference {
-                    controller: Some(true),
-                    uid: "1234-5678".to_string(),
-                    ..OwnerReference::default()
-                }]),
-                ..ObjectMeta::default()
-            },
-            ..Pod::default()
-        };
-
-        assert!(pod_owned_by(&pod, "1234-5678"));
-
-        pod.metadata.owner_references = None;
-        assert!(!pod_owned_by(&pod, "1234-5678"));
-    }
 
     #[test]
     fn test_wait_for_running_and_ready_pods() {
