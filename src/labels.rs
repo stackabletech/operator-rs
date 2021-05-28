@@ -23,7 +23,7 @@ pub const APP_ROLE_GROUP_LABEL: &str = concatcp!(APP_KUBERNETES_LABEL_BASE, "rol
 /// - app.kubernetes.io/instance
 pub fn get_recommended_labels<T>(resource: &T) -> OperatorResult<BTreeMap<String, String>>
 where
-    T: Resource<DynamicType = ()>,
+    T: Resource,
 {
     let mut recommended_labels = BTreeMap::new();
 
