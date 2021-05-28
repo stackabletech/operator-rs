@@ -90,7 +90,6 @@ pub fn find_valid_pods_for_nodes<'a>(
 /// And this is the label you can now filter on using the `label_values` argument.
 ///
 /// NOTE: This method currently does not support multiple instances per Node!
-// TODO: Support multiple instances per Node
 pub fn find_nodes_that_need_pods<'a>(
     candidate_nodes: &'a [Node],
     existing_pods: &[Pod],
