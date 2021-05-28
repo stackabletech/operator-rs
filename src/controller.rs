@@ -138,7 +138,7 @@ pub trait ControllerStrategy {
     type State: ReconciliationState;
     type Error: Debug;
 
-    // TODO: Pass in error
+    // TODO: Pass in error: https://github.com/stackabletech/operator-rs/issues/122
     fn error_policy(&self) -> ReconcilerAction {
         error!("Reconciliation error");
         reconcile::create_requeuing_reconciler_action(Duration::from_secs(30))
@@ -181,6 +181,7 @@ pub trait ReconciliationState {
     ) -> Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Self::Error>> + Send + '_>>;
 }
 
+/// TODO: This comment needs to be updated: https://github.com/stackabletech/operator-rs/issues/123
 /// A Controller is the object that watches all required resources and runs the reconciliation loop.
 /// This struct wraps a [`kube_runtime::Controller`] and provides some comfort features.
 ///
@@ -194,7 +195,6 @@ pub trait ReconciliationState {
 /// * It automatically adds a finalizer to every new _main_ object
 ///   * If you need one on _owned_ objects you currently need to handle this yourself
 /// * It calls a method on the strategy for every error
-/// * TODO It calls a method on the strategy for every deleted resource so cleanup can happen
 ///   * It automatically removes the finalizer
 /// * It creates (via the Strategy) a [`ReconciliationState`] object for every reconciliation and
 ///   calls its [`ReconciliationState::reconcile`] method to get a list of operations (Futures) to run
@@ -330,7 +330,7 @@ where
                 "Error initializing reconciliation state, will requeue"
             );
             return Ok(ReconcilerAction {
-                // TODO: Make this configurable
+                // TODO: Make this configurable https://github.com/stackabletech/operator-rs/issues/124
                 requeue_after: Some(Duration::from_secs(30)),
             });
         }
@@ -359,14 +359,13 @@ where
         Err(err) => {
             error!(?err, "Reconciliation finished with an error, will requeue");
             Ok(ReconcilerAction {
-                // TODO: Make this configurable
+                // TODO: Make this configurable https://github.com/stackabletech/operator-rs/issues/124
                 requeue_after: Some(Duration::from_secs(30)),
             })
         }
     }
 }
 
-// TODO: Properly type the error so we can pass it along
 fn error_policy<S, E>(err: &E, context: Context<ControllerContext<S>>) -> ReconcilerAction
 where
     E: Display,

@@ -72,7 +72,7 @@ fn is_pod_ready_condition_true(status: &PodStatus) -> bool {
     }
 }
 
-// TODO: condition should be the enum PodConditionType
+// TODO: condition should be the enum PodConditionType: https://github.com/stackabletech/operator-rs/issues/128
 fn get_pod_condition<'a>(status: &'a PodStatus, condition: &str) -> Option<&'a PodCondition> {
     match &status.conditions {
         None => None,
