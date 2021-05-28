@@ -201,7 +201,7 @@ mod tests {
         ];
 
         let ls = LabelSelector {
-            match_expressions: Some(match_expressions.clone()),
+            match_expressions: Some(match_expressions),
             match_labels: Some(match_labels.clone()),
         };
         assert_eq!(
@@ -211,7 +211,7 @@ mod tests {
 
         let ls = LabelSelector {
             match_expressions: None,
-            match_labels: Some(match_labels.clone()),
+            match_labels: Some(match_labels),
         };
         assert_eq!(
             "foo=bar,hui=buh",
@@ -235,7 +235,7 @@ mod tests {
         }];
 
         let ls = LabelSelector {
-            match_expressions: Some(match_expressions.clone()),
+            match_expressions: Some(match_expressions),
             match_labels: None,
         };
 
@@ -252,7 +252,7 @@ mod tests {
         }];
 
         let ls = LabelSelector {
-            match_expressions: Some(match_expressions.clone()),
+            match_expressions: Some(match_expressions),
             match_labels: None,
         };
 
@@ -269,7 +269,7 @@ mod tests {
         }];
 
         let ls = LabelSelector {
-            match_expressions: Some(match_expressions.clone()),
+            match_expressions: Some(match_expressions),
             match_labels: None,
         };
 

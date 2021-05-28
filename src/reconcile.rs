@@ -447,7 +447,7 @@ mod tests {
         let result = wait_for_running_and_ready_pods(&duration, &pods).unwrap();
         assert_eq!(result, action);
 
-        let result = wait_for_running_and_ready_pods(&duration, &vec![]).unwrap();
+        let result = wait_for_running_and_ready_pods(&duration, &[]).unwrap();
         assert_eq!(result, ReconcileFunctionAction::Continue);
 
         let pod1 = PodBuilder::new().name("pod1").phase("Running").build();
