@@ -260,7 +260,6 @@ pub struct PodBuilder {
     deletion_timestamp: Option<Time>,
 
     containers: Vec<Container>,
-    configmaps: HashSet<String>,
 }
 
 impl PodBuilder {
@@ -329,7 +328,6 @@ impl PodBuilder {
     /// Consumes the Builder and returns a constructed Pod
     pub fn build(&self) -> OperatorResult<Pod> {
         // Retrieve all configmaps from all containers and add the relevant volumes to the Pod
-        /*
         let mount_names = self
             .containers
             .iter()
@@ -340,10 +338,9 @@ impl PodBuilder {
                     .map(|mount| (mount.name.clone(), mount.mount_path.clone()))
                     .collect(),
             })
+            .flatten()
             .collect::<HashMap<String, String>>();
 
-
-         */
         Ok(Pod {
             metadata: match self.metadata {
                 None => return Err(Error::MissingObjectKey { key: "metadata" }),
