@@ -130,8 +130,8 @@ impl OwnerreferenceBuilder {
 pub struct ObjectmetaBuilder {
     name: Option<String>,
     namespace: Option<String>,
+    ownerreference: Option<OwnerReference>,
     labels: BTreeMap<String, String>,
-    block_owner_deletion: Option<bool>,
 }
 
 impl ObjectmetaBuilder {
@@ -163,6 +163,16 @@ impl ObjectmetaBuilder {
 
     pub fn namespace<VALUE: Into<String>>(&mut self, namespace: VALUE) -> &mut Self {
         self.namespace = Some(namespace.into());
+        self
+    }
+
+    pub fn ownerreference(&mut self, ownerreference: OwnerReference) -> &mut Self {
+        self.ownerreference = Some(ownerreference);
+        self
+    }
+
+    pub fn ownerreference_opt(&mut self, ownerreference: Option<OwnerReference>) -> &mut Self {
+        self.ownerreference = ownerreference;
         self
     }
 
@@ -209,15 +219,15 @@ impl ObjectmetaBuilder {
         self
     }
 
-    pub fn block_owner_deletion(&mut self, value: bool) -> &mut Self {
-        self.block_owner_deletion = Some(value);
-        self
-    }
-
     pub fn build(&self) -> OperatorResult<ObjectMeta> {
         Ok(ObjectMeta {
             name: self.name.clone(),
             namespace: self.namespace.clone(),
+            owner_references: match self.ownerreference {
+                // TODO: map
+                Some(ref ownerreference) => Some(vec![ownerreference.clone()]),
+                None => None,
+            },
             labels: Some(self.labels.clone()),
 
             ..ObjectMeta::default()
