@@ -414,10 +414,10 @@ impl ContainerBuilder {
         self
     }
 
-    pub fn build(self) -> Container {
+    pub fn build(&self) -> Container {
         let mut volumes = vec![];
         let mut volume_mounts = vec![];
-        for (mount_path, configmap_name) in self.configmaps {
+        for (mount_path, configmap_name) in &self.configmaps {
             let volume = Volume {
                 name: configmap_name.clone(),
                 config_map: Some(ConfigMapVolumeSource {
@@ -429,19 +429,19 @@ impl ContainerBuilder {
             volumes.push(volume);
 
             let volume_mount = VolumeMount {
-                name: configmap_name,
-                mount_path,
+                name: configmap_name.clone(),
+                mount_path: mount_path.clone(),
                 ..VolumeMount::default()
             };
             volume_mounts.push(volume_mount);
         }
 
         Container {
-            image: self.image,
-            name: self.name,
-            env: Some(self.env),
-            command: Some(self.command),
-            args: Some(self.args),
+            image: self.image.clone(),
+            name: self.name.clone(),
+            env: Some(self.env.clone()),
+            command: Some(self.command.clone()),
+            args: Some(self.args.clone()),
             volume_mounts: Some(volume_mounts),
             ..Container::default()
         }
