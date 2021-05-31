@@ -4,9 +4,125 @@ use k8s_openapi::api::core::v1::{
     ConfigMapVolumeSource, Container, EnvVar, Node, Pod, PodCondition, PodSpec, PodStatus, Volume,
     VolumeMount,
 };
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, Time};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference, Time};
 use kube::Resource;
 use std::collections::{BTreeMap, HashMap, HashSet};
+
+#[derive(Clone, Default)]
+pub struct OwnerreferenceBuilder {
+    api_version: Option<String>,
+    block_owner_deletion: Option<bool>,
+    controller: Option<bool>,
+    kind: Option<String>,
+    name: Option<String>,
+    uid: Option<String>,
+}
+
+impl OwnerreferenceBuilder {
+    pub fn new() -> OwnerreferenceBuilder {
+        OwnerreferenceBuilder::default()
+    }
+
+    pub fn api_version<VALUE: Into<String>>(&mut self, api_version: VALUE) -> &mut Self {
+        self.api_version = Some(api_version.into());
+        self
+    }
+
+    pub fn api_version_opt<VALUE: Into<Option<String>>>(
+        &mut self,
+        api_version: VALUE,
+    ) -> &mut Self {
+        self.api_version = api_version.into();
+        self
+    }
+
+    pub fn block_owner_deletion<VALUE: Into<bool>>(
+        &mut self,
+        block_owner_deletion: VALUE,
+    ) -> &mut Self {
+        self.block_owner_deletion = Some(block_owner_deletion.into());
+        self
+    }
+
+    pub fn block_owner_deletion_opt<VALUE: Into<Option<bool>>>(
+        &mut self,
+        block_owner_deletion: VALUE,
+    ) -> &mut Self {
+        self.block_owner_deletion = block_owner_deletion.into();
+        self
+    }
+
+    pub fn controller<VALUE: Into<bool>>(&mut self, controller: VALUE) -> &mut Self {
+        self.controller = Some(controller.into());
+        self
+    }
+
+    pub fn controller_opt<VALUE: Into<Option<bool>>>(&mut self, controller: VALUE) -> &mut Self {
+        self.controller = controller.into();
+        self
+    }
+
+    pub fn kind<VALUE: Into<String>>(&mut self, kind: VALUE) -> &mut Self {
+        self.kind = Some(kind.into());
+        self
+    }
+
+    pub fn kind_opt<VALUE: Into<Option<String>>>(&mut self, kind: VALUE) -> &mut Self {
+        self.kind = kind.into();
+        self
+    }
+
+    pub fn name<VALUE: Into<String>>(&mut self, name: VALUE) -> &mut Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    pub fn name_opt<VALUE: Into<Option<String>>>(&mut self, name: VALUE) -> &mut Self {
+        self.name = name.into();
+        self
+    }
+
+    pub fn uid<VALUE: Into<String>>(&mut self, uid: VALUE) -> &mut Self {
+        self.uid = Some(uid.into());
+        self
+    }
+
+    pub fn uid_opt<VALUE: Into<Option<String>>>(&mut self, uid: VALUE) -> &mut Self {
+        self.uid = uid.into();
+        self
+    }
+
+    pub fn initialize_from_resource<T: Resource>(&mut self, resource: &T) -> &mut self {
+        self.api_version(T::api_version(&()))
+            .kind(T::kind(&()))
+            .name(resource.name())
+            .uid_opt(&resource.meta().uid);
+        self
+    }
+
+    pub fn build(&self) -> OperatorResult<OwnerReference> {
+        Ok(OwnerReference {
+            api_version: match self.api_version {
+                None => return Err(crate::error::Error::MissingObjectKey { key: "api_version" }),
+                Some(ref api_version) => api_version.clone(),
+            },
+            block_owner_deletion: self.block_owner_deletion.clone(),
+            controller: self.controller.clone(),
+            kind: match self.kind {
+                None => return Err(crate::error::Error::MissingObjectKey { key: "kind" }),
+                Some(ref kind) => kind.clone(),
+            },
+            name: match self.name {
+                None => return Err(crate::error::Error::MissingObjectKey { key: "name" }),
+                Some(ref name) => name.clone(),
+            },
+            uid: match self.uid {
+                None => return Err(crate::error::Error::MissingObjectKey { key: "uid" }),
+                Some(ref uid) => uid.clone(),
+            },
+        })
+    }
+}
 
 #[derive(Clone, Default)]
 pub struct ObjectmetaBuilder {
