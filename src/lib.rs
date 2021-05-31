@@ -23,5 +23,4 @@ pub mod validation;
 
 pub use crate::crd::Crd;
 
-#[cfg(test)]
-mod test;
+pub mod test;

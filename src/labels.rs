@@ -21,13 +21,29 @@ pub const APP_ROLE_GROUP_LABEL: &str = concatcp!(APP_KUBERNETES_LABEL_BASE, "rol
 
 /// Create kubernetes recommended labels:
 /// - app.kubernetes.io/instance
-pub fn get_recommended_labels<T>(resource: &T) -> OperatorResult<BTreeMap<String, String>>
+pub fn get_recommended_labels<T>(
+    resource: &T,
+    app_name: &str,
+    app_version: &str,
+    app_component: &str,
+    role_name: &str,
+) -> BTreeMap<String, String>
 where
     T: Resource,
 {
     let mut recommended_labels = BTreeMap::new();
 
+    // TODO: Add operator version label
+    // TODO: part-of is empty for now, decide on how this can be used in a proper fashion
     recommended_labels.insert(APP_INSTANCE_LABEL.to_string(), resource.name());
+    recommended_labels.insert(APP_NAME_LABEL.to_string(), app_name.to_string());
+    recommended_labels.insert(APP_VERSION_LABEL.to_string(), app_version.to_string());
+    recommended_labels.insert(APP_COMPONENT_LABEL.to_string(), app_component.to_string());
+    recommended_labels.insert(APP_ROLE_GROUP_LABEL.to_string(), role_name.to_string());
+    recommended_labels.insert(
+        APP_MANAGED_BY_LABEL.to_string(),
+        format!("{}-operator", app_name),
+    );
 
-    Ok(recommended_labels)
+    recommended_labels
 }

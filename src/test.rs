@@ -1,42 +1,108 @@
-use k8s_openapi::api::core::v1::{Node, Pod, PodCondition, PodSpec, PodStatus};
+use crate::labels;
+use kube::Resource;
+use k8s_openapi::api::core::v1::{
+    ConfigMapVolumeSource, Container, EnvVar, Node, Pod, PodCondition, PodSpec, PodStatus, Volume,
+    VolumeMount,
+};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, Time};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
+use crate::error::OperatorResult;
 
-// TODO: I assume this can also be useful for "real" code, I'm only exposing the fields I really need here though
-pub struct PodBuilder {
-    pod: Pod,
+
+
+#[derive(Clone, Default)]
+pub struct ObjectmetaBuilder {
+    name: Option<String>,
+    namespace: Option<String>,
+    labels: BTreeMap<String, String>,
+    block_owner_deletion: Option<bool>
 }
 
-impl PodBuilder {
-    pub fn new() -> PodBuilder {
-        PodBuilder {
-            pod: Pod::default(),
-        }
+impl ObjectmetaBuilder {
+    pub fn new() -> ObjectmetaBuilder {
+        ObjectmetaBuilder::default()
     }
 
-    pub fn name(&mut self, name: &str) -> &mut Self {
-        self.pod.metadata.name = Some(name.to_string());
+    /// This sets the name and namespace from a given resource
+    pub fn name_and_namespace<VALUE: Into<dyn Resource>>(&mut self , resource: &VALUE) -> &mut Self {
+        self.name = Some(resource.into().name());
+        self.namespace = resource.into().namespace();
         self
     }
 
-    pub fn node_name(&mut self, node_name: &str) -> &mut Self {
-        let mut spec = self.pod.spec.get_or_insert_with(PodSpec::default);
-        spec.node_name = Some(node_name.to_string());
+    pub fn name_opt<VALUE: Into<Option<String>>>(&mut self, name: VALUE) -> &mut Self {
+        self.name = name.into();
         self
     }
 
-    pub fn with_label(&mut self, label_key: &str, label_value: &str) -> &mut Self {
-        let labels = self.pod.metadata.labels.get_or_insert_with(BTreeMap::new);
-        labels.insert(label_key.to_string(), label_value.to_string());
-
+    pub fn name<VALUE: Into<String>>(&mut self, name: VALUE) -> &mut Self {
+        self.name = Some(name.into());
         self
     }
 
-    pub fn with_labels(&mut self, labels: BTreeMap<String, String>) -> &mut Self {
+    pub fn namespace_opt<VALUE: Into<Option<String>>>(&mut self, namespace: VALUE) -> &mut Self {
+        self.namespace = namespace.into();
+        self
+    }
+
+    pub fn namespace<VALUE: Into<String>>(&mut self, namespace: VALUE) -> &mut Self {
+        self.namespace = Some(namespace.into());
+        self
+    }
+
+    /// This adds a single label to the existing labels.
+    /// It'll override a label with the same key.
+    pub fn with_label<KEY, VALUE>(&mut self, label_key: KEY, label_value: VALUE) -> &mut Self
+        where
+            KEY: Into<String>,
+            VALUE: Into<String>,
+    {
+        self.labels.insert(label_key.into(), label_value.into());
+        self
+    }
+
+    /// This adds multiple labels to the existing labels.
+    /// Any existing label with a key that is contained in `labels` will be overwritten
+    pub fn with_labels<KEY, VALUE>(&mut self, labels: BTreeMap<KEY, VALUE>) -> &mut Self {
+        self.labels.extend(labels);
+        self
+    }
+
+    /// This will replace all existing labels
+    pub fn labels(&mut self, labels: BTreeMap<String, String>) -> &mut Self {
         self.pod.metadata.labels = Some(labels);
         self
     }
 
+}
+
+
+// TODO: I assume this can also be useful for "real" code, I'm only exposing the fields I really need here though
+#[derive(Clone, Default)]
+pub struct PodBuilder {
+
+    node_name: Option<String>,
+
+    #[cfg(test)]
+    deletion_timestamp: Option<Time>,
+
+    containers: Vec<Container>,
+    configmaps: HashSet<String>,
+}
+
+impl PodBuilder {
+    pub fn new(
+    ) -> PodBuilder {
+            PodBuilder::default()
+
+    }
+
+
+    pub fn node_name<VALUE: Into<String>>(&mut self, node_name: VALUE) -> &mut Self {
+        self.node_name = Some(node_name.into());
+        self
+    }
+    
     pub fn phase(&mut self, phase: &str) -> &mut Self {
         let mut status = self.pod.status.get_or_insert_with(PodStatus::default);
         status.phase = Some(phase.to_string());
@@ -55,16 +121,131 @@ impl PodBuilder {
         self
     }
 
-    pub fn deletion_timestamp(&mut self, deletion_timestamp: Time) -> &mut Self {
-        self.pod.metadata.deletion_timestamp = Some(deletion_timestamp);
+    #[cfg(test)]
+    pub fn deletion_timestamp<VALUE: Into<Time>>(
+        &mut self,
+        deletion_timestamp: VALUE,
+    ) -> &mut Self {
+        self.deletion_timestamp = Some(deletion_timestamp.into());
+        self
+    }
+
+    pub fn add_container(&mut self, container: Container) -> &mut Self {
+        self.containers.push(container);
         self
     }
 
     /// Consumes the Builder and returns a constructed Pod
     pub fn build(&self) -> Pod {
-        // We're cloning here because we can't take just `self` in this method because then
-        // we couldn't chain the method with the others easily (because they return &mut self and not self)
-        self.pod.clone()
+        // Retrieve all configmaps from all containers and add the relevant volumes to the Pod
+        let mount_names = self
+            .containers
+            .iter()
+            .map(|container| match &container.volume_mounts {
+                None => vec![],
+                Some(mounts) => mounts
+                    .iter()
+                    .map(|mount| (&mount.name, &mount.mount_path))
+                    .collect(),
+            })
+            .collect::<HashMap<String, String>>();
+
+        Pod {
+            spec: Some(PodSpec {
+                // TODO: See https://github.com/colin-kiegel/rust-derive-builder for now we could use an unwrap, this is just an example
+                node_name: match self.node_name {
+                    Some(ref node_name) => Some(node_name.clone()),
+                    None => {
+                        panic!("Uninitialized field");
+                    }
+                },
+
+                ..PodSpec::default()
+            }),
+            ..Pod::default()
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct ContainerBuilder {
+    image: Option<String>,
+    name: String,
+    env: Vec<EnvVar>,
+    command: Vec<String>,
+    args: Vec<String>,
+    configmaps: HashMap<String, String>,
+}
+
+impl ContainerBuilder {
+    pub fn new(name: &str) -> Self {
+        ContainerBuilder {
+            name: name.to_string(),
+            ..ContainerBuilder::default()
+        }
+    }
+
+    pub fn image(&mut self, image: &str) -> &mut Self {
+        self.image = Some(image.to_string());
+        self
+    }
+
+    pub fn add_env_var(&mut self, name: &str, value: &str) -> &mut Self {
+        self.env.push(EnvVar {
+            name: name.to_string(),
+            value: Some(value.to_string()),
+            ..EnvVar::default()
+        });
+        self
+    }
+
+    pub fn command(&mut self, command: Vec<String>) -> &mut Self {
+        self.command = command;
+        self
+    }
+
+    pub fn args(&mut self, args: Vec<String>) -> &mut Self {
+        self.args = args;
+        self
+    }
+
+    pub fn add_config_map(&mut self, configmap_name: &str, mount_path: &str) -> &mut Self {
+        self.configmaps
+            .insert(mount_path.to_string(), configmap_name.to_string());
+        self
+    }
+
+    pub fn build(self) -> Container {
+        let mut volumes = vec![];
+        let mut volume_mounts = vec![];
+        for (mount_path, configmap_name) in self.configmaps {
+            let volume = Volume {
+                name: configmap_name.clone(),
+                config_map: Some(ConfigMapVolumeSource {
+                    name: Some(configmap_name.clone()),
+                    ..ConfigMapVolumeSource::default()
+                }),
+                ..Volume::default()
+            };
+            volumes.push(volume);
+
+            let volume_mount = VolumeMount {
+                name: configmap_name,
+                mount_path,
+                ..VolumeMount::default()
+            };
+            volume_mounts.push(volume_mount);
+        }
+
+        Container {
+            image: self.image,
+            name: self.name,
+            env: Some(env),
+            command: Some(self.command),
+            args: Some(self.args),
+            volume_mounts: Some(volume_mounts),
+            ..Container::default()
+        }
     }
 }
 
@@ -101,5 +282,29 @@ pub fn build_test_node(name: &str) -> Node {
         },
         spec: None,
         status: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::test::{ContainerBuilder, PodBuilder};
+
+    #[test]
+    fn test() {
+        let mut container = ContainerBuilder::new("containername")
+            .image("stackable/zookeeper:2.4.14")
+            .command(vec!["zk-server-start.sh".to_string()])
+            .args(vec!["{{ configroot }}/conf/zk.properties".to_string()])
+            .add_config_map("zk-worker-1", "conf/")
+            .build();
+
+        let pod = PodBuilder::new()
+            .name("testpod")
+            .add_container(container)
+            .node_name("worker-1.stackable.demo")
+            .build();
+
+        assert_eq!(pod.metadata.name, "testpod");
+        assert_eq!(pod.spec.node_name, "worker-1.stackable.demo");
     }
 }
