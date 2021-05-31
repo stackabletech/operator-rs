@@ -21,7 +21,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - uses: Swatinem/rust-cache@v1.2.0
+      - uses: Swatinem/rust-cache@v1.3.0
       - uses: actions-rs/cargo@v1.0.3
         with:
           command: test
