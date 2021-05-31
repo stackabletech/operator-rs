@@ -432,7 +432,7 @@ fn wait_for_terminating_pods(requeue_timeout: &Duration, pods: &[Pod]) -> Reconc
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test::PodBuilder;
+    use crate::builder::PodBuilder;
     use chrono::Utc;
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 

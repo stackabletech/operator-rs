@@ -257,7 +257,7 @@ pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<String, Option<Vec<Str
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test::{NodeBuilder, PodBuilder};
+    use crate::builder::{NodeBuilder, PodBuilder};
     use k8s_openapi::api::core::v1::{Pod, PodCondition, PodStatus};
 
     #[test]

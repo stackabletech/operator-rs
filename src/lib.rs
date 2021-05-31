@@ -1,3 +1,4 @@
+pub mod builder;
 pub mod client;
 pub mod command_controller;
 pub mod conditions;
@@ -22,5 +23,3 @@ pub mod role_utils;
 pub mod validation;
 
 pub use crate::crd::Crd;
-
-pub mod test;

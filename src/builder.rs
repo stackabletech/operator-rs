@@ -1,21 +1,19 @@
+use crate::error::OperatorResult;
 use crate::labels;
-use kube::Resource;
 use k8s_openapi::api::core::v1::{
     ConfigMapVolumeSource, Container, EnvVar, Node, Pod, PodCondition, PodSpec, PodStatus, Volume,
     VolumeMount,
 };
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, Time};
+use kube::Resource;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use crate::error::OperatorResult;
-
-
 
 #[derive(Clone, Default)]
 pub struct ObjectmetaBuilder {
     name: Option<String>,
     namespace: Option<String>,
     labels: BTreeMap<String, String>,
-    block_owner_deletion: Option<bool>
+    block_owner_deletion: Option<bool>,
 }
 
 impl ObjectmetaBuilder {
@@ -24,7 +22,7 @@ impl ObjectmetaBuilder {
     }
 
     /// This sets the name and namespace from a given resource
-    pub fn name_and_namespace<VALUE: Into<dyn Resource>>(&mut self , resource: &VALUE) -> &mut Self {
+    pub fn name_and_namespace<VALUE: Into<dyn Resource>>(&mut self, resource: &VALUE) -> &mut Self {
         self.name = Some(resource.into().name());
         self.namespace = resource.into().namespace();
         self
@@ -53,9 +51,9 @@ impl ObjectmetaBuilder {
     /// This adds a single label to the existing labels.
     /// It'll override a label with the same key.
     pub fn with_label<KEY, VALUE>(&mut self, label_key: KEY, label_value: VALUE) -> &mut Self
-        where
-            KEY: Into<String>,
-            VALUE: Into<String>,
+    where
+        KEY: Into<String>,
+        VALUE: Into<String>,
     {
         self.labels.insert(label_key.into(), label_value.into());
         self
@@ -74,8 +72,21 @@ impl ObjectmetaBuilder {
         self
     }
 
-    pub fn with_recommended_labels<T: Resource>(&mut self, resource: &T, app_name: &str, app_version: &str, app_component: &str, role_name: &str) -> &mut Self {
-        let recommended_labels = labels::get_recommended_labels(resource, app_name, app_version, app_component, role_name);
+    pub fn with_recommended_labels<T: Resource>(
+        &mut self,
+        resource: &T,
+        app_name: &str,
+        app_version: &str,
+        app_component: &str,
+        role_name: &str,
+    ) -> &mut Self {
+        let recommended_labels = labels::get_recommended_labels(
+            resource,
+            app_name,
+            app_version,
+            app_component,
+            role_name,
+        );
         self.labels.extend(recommended_labels);
         self
     }
@@ -94,14 +105,11 @@ impl ObjectmetaBuilder {
             ..ObjectMeta::default()
         })
     }
-
 }
-
 
 // TODO: I assume this can also be useful for "real" code, I'm only exposing the fields I really need here though
 #[derive(Clone, Default)]
 pub struct PodBuilder {
-
     node_name: Option<String>,
 
     #[cfg(test)]
@@ -112,18 +120,15 @@ pub struct PodBuilder {
 }
 
 impl PodBuilder {
-    pub fn new(
-    ) -> PodBuilder {
-            PodBuilder::default()
-
+    pub fn new() -> PodBuilder {
+        PodBuilder::default()
     }
-
 
     pub fn node_name<VALUE: Into<String>>(&mut self, node_name: VALUE) -> &mut Self {
         self.node_name = Some(node_name.into());
         self
     }
-    
+
     pub fn phase(&mut self, phase: &str) -> &mut Self {
         let mut status = self.pod.status.get_or_insert_with(PodStatus::default);
         status.phase = Some(phase.to_string());
@@ -308,7 +313,7 @@ pub fn build_test_node(name: &str) -> Node {
 
 #[cfg(test)]
 mod tests {
-    use crate::test::{ContainerBuilder, PodBuilder};
+    use crate::builder::{ContainerBuilder, PodBuilder};
 
     #[test]
     fn test() {

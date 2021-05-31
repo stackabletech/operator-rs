@@ -109,8 +109,8 @@ pub fn find_nodes_that_need_pods<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test;
-    use crate::test::{NodeBuilder, PodBuilder};
+    use crate::builder;
+    use crate::builder::{NodeBuilder, PodBuilder};
 
     #[test]
     fn test_find_excess_pods() {
@@ -142,8 +142,8 @@ mod tests {
     fn test_find_valid_pods_for_nodes() {
         // Two nodes, one pod, no labels on pod, but looking for labels, shouldn't match
         let nodes = vec![
-            test::build_test_node("foobar"),
-            test::build_test_node("barfoo"),
+            builder::build_test_node("foobar"),
+            builder::build_test_node("barfoo"),
         ];
         let existing_pods = vec![PodBuilder::new().node_name("foobar").build()];
 
@@ -160,8 +160,8 @@ mod tests {
         pod_labels.insert("foo".to_string(), "bar".to_string());
 
         let nodes = vec![
-            test::build_test_node("foobar"),
-            test::build_test_node("barfoo"),
+            builder::build_test_node("foobar"),
+            builder::build_test_node("barfoo"),
         ];
         let existing_pods = vec![PodBuilder::new()
             .node_name("foobar")
@@ -180,8 +180,8 @@ mod tests {
         pod_labels.insert("foo".to_string(), "WRONG".to_string());
 
         let nodes = vec![
-            test::build_test_node("foobar"),
-            test::build_test_node("barfoo"),
+            builder::build_test_node("foobar"),
+            builder::build_test_node("barfoo"),
         ];
         let existing_pods = vec![PodBuilder::new()
             .node_name("foobar")
@@ -200,8 +200,8 @@ mod tests {
         pod_labels.insert("foo".to_string(), "bar".to_string());
 
         let nodes = vec![
-            test::build_test_node("foobar"),
-            test::build_test_node("barfoo"),
+            builder::build_test_node("foobar"),
+            builder::build_test_node("barfoo"),
         ];
         let existing_pods = vec![
             PodBuilder::new()
