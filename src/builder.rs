@@ -105,21 +105,21 @@ impl OwnerreferenceBuilder {
     pub fn build(&self) -> OperatorResult<OwnerReference> {
         Ok(OwnerReference {
             api_version: match self.api_version {
-                None => return Err(crate::error::Error::MissingObjectKey { key: "api_version" }),
+                None => return Err(Error::MissingObjectKey { key: "api_version" }),
                 Some(ref api_version) => api_version.clone(),
             },
             block_owner_deletion: self.block_owner_deletion.clone(),
             controller: self.controller.clone(),
             kind: match self.kind {
-                None => return Err(crate::error::Error::MissingObjectKey { key: "kind" }),
+                None => return Err(Error::MissingObjectKey { key: "kind" }),
                 Some(ref kind) => kind.clone(),
             },
             name: match self.name {
-                None => return Err(crate::error::Error::MissingObjectKey { key: "name" }),
+                None => return Err(Error::MissingObjectKey { key: "name" }),
                 Some(ref name) => name.clone(),
             },
             uid: match self.uid {
-                None => return Err(crate::error::Error::MissingObjectKey { key: "uid" }),
+                None => return Err(Error::MissingObjectKey { key: "uid" }),
                 Some(ref uid) => uid.clone(),
             },
         })
@@ -311,7 +311,7 @@ impl PodBuilder {
     }
 
     /// Consumes the Builder and returns a constructed Pod
-    pub fn build(&self) -> Pod {
+    pub fn build(&self) -> OperatorResult<Pod> {
         // Retrieve all configmaps from all containers and add the relevant volumes to the Pod
         /*
         let mount_names = self
@@ -328,7 +328,11 @@ impl PodBuilder {
 
 
          */
-        Pod {
+        Ok(Pod {
+            metadata: match self.metadata {
+                None => return Err(Error::MissingObjectKey { key: "metadata" }),
+                Some(ref metadata) => metadata.clone(),
+            },
             spec: Some(PodSpec {
                 // TODO: See https://github.com/colin-kiegel/rust-derive-builder for now we could use an unwrap, this is just an example
                 node_name: match self.node_name {
@@ -341,7 +345,7 @@ impl PodBuilder {
                 ..PodSpec::default()
             }),
             ..Pod::default()
-        }
+        })
     }
 }
 
