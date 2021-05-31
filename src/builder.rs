@@ -1,7 +1,7 @@
 use crate::error::{Error, OperatorResult};
 use crate::labels;
 use k8s_openapi::api::core::v1::{
-    ConfigMapVolumeSource, Container, EnvVar, Node, Pod, PodSpec, Volume, VolumeMount,
+    ConfigMapVolumeSource, Container, EnvVar, Node, Pod, PodSpec, Toleration, Volume, VolumeMount,
 };
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference, Time};
 use kube::Resource;
@@ -255,6 +255,7 @@ impl ObjectmetaBuilder {
 pub struct PodBuilder {
     metadata: Option<ObjectMeta>,
     node_name: Option<String>,
+    tolerations: Vec<Toleration>,
 
     #[cfg(test)]
     deletion_timestamp: Option<Time>,
@@ -325,6 +326,12 @@ impl PodBuilder {
         self
     }
 
+    pub fn add_krustlet_tolerations(&mut self) -> &mut Self {
+        self.tolerations
+            .extend(crate::krustlet::create_tolerations());
+        self
+    }
+
     /// Consumes the Builder and returns a constructed Pod
     pub fn build(&self) -> OperatorResult<Pod> {
         // Retrieve all configmaps from all containers and add the relevant volumes to the Pod
@@ -357,6 +364,7 @@ impl PodBuilder {
             },
             spec: Some(PodSpec {
                 containers: self.containers.clone(),
+                tolerations: Some(self.tolerations.clone()),
                 volumes: Some(volumes), // TODO: handle none case
                 node_name: self.node_name.clone(),
                 ..PodSpec::default()
