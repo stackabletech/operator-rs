@@ -74,6 +74,27 @@ impl ObjectmetaBuilder {
         self
     }
 
+    pub fn with_recommended_labels<T: Resource>(&mut self, resource: &T, app_name: &str, app_version: &str, app_component: &str, role_name: &str) -> &mut Self {
+        let recommended_labels = labels::get_recommended_labels(resource, app_name, app_version, app_component, role_name);
+        self.labels.extend(recommended_labels);
+        self
+    }
+
+    pub fn block_owner_deletion(&mut self, value: bool) -> &mut Self {
+        self.block_owner_deletion = Some(value);
+        self
+    }
+
+    pub fn build(&self) -> OperatorResult<ObjectMeta> {
+        Ok(ObjectMeta {
+            name: self.name.clone(),
+            namespace: self.namespace.clone(),
+            labels: Some(self.labels.clone()),
+
+            ..ObjectMeta::default()
+        })
+    }
+
 }
 
 
