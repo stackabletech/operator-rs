@@ -1,4 +1,4 @@
-use crate::error::OperatorResult;
+use crate::error::{Error, OperatorResult};
 use crate::labels;
 use k8s_openapi::api::core::v1::{
     ConfigMapVolumeSource, Container, EnvVar, Node, Pod, PodSpec, Volume, VolumeMount,
@@ -174,6 +174,22 @@ impl ObjectmetaBuilder {
     pub fn ownerreference_opt(&mut self, ownerreference: Option<OwnerReference>) -> &mut Self {
         self.ownerreference = ownerreference;
         self
+    }
+
+    pub fn ownerreference_from_resource<T: Resource<DynamicType = ()>>(
+        &mut self,
+        resource: &T,
+        block_owner_deletion: Option<bool>,
+        controller: Option<bool>,
+    ) -> OperatorResult<&mut Self> {
+        self.ownerreference = Some(
+            OwnerreferenceBuilder::new()
+                .initialize_from_resource(resource)
+                .block_owner_deletion_opt(block_owner_deletion)
+                .controller(controller)
+                .build()?,
+        );
+        Ok(self)
     }
 
     /// This adds a single label to the existing labels.
