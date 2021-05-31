@@ -1,8 +1,7 @@
 use crate::error::OperatorResult;
 use crate::labels;
 use k8s_openapi::api::core::v1::{
-    ConfigMapVolumeSource, Container, EnvVar, Node, Pod, PodCondition, PodSpec, PodStatus, Volume,
-    VolumeMount,
+    ConfigMapVolumeSource, Container, EnvVar, Node, Pod, PodSpec, Volume, VolumeMount,
 };
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference, Time};
 use kube::Resource;
@@ -92,11 +91,14 @@ impl OwnerreferenceBuilder {
         self
     }
 
-    pub fn initialize_from_resource<T: Resource>(&mut self, resource: &T) -> &mut Self {
+    pub fn initialize_from_resource<T: Resource<DynamicType = ()>>(
+        &mut self,
+        resource: &T,
+    ) -> &mut Self {
         self.api_version(T::api_version(&()))
             .kind(T::kind(&()))
             .name(resource.name())
-            .uid_opt(&resource.meta().uid);
+            .uid_opt(resource.meta().uid.clone());
         self
     }
 
@@ -138,12 +140,9 @@ impl ObjectmetaBuilder {
     }
 
     /// This sets the name and namespace from a given resource
-    pub fn name_and_namespace<VALUE: Into<dyn Resource<DynamicType = ()>>>(
-        &mut self,
-        resource: &VALUE,
-    ) -> &mut Self {
-        self.name = Some(resource.into().name());
-        self.namespace = resource.into().namespace();
+    pub fn name_and_namespace<T: Resource>(&mut self, resource: &T) -> &mut Self {
+        self.name = Some(resource.name());
+        self.namespace = resource.namespace();
         self
     }
 
@@ -180,14 +179,14 @@ impl ObjectmetaBuilder {
 
     /// This adds multiple labels to the existing labels.
     /// Any existing label with a key that is contained in `labels` will be overwritten
-    pub fn with_labels<KEY, VALUE>(&mut self, labels: BTreeMap<KEY, VALUE>) -> &mut Self {
+    pub fn with_labels(&mut self, labels: BTreeMap<String, String>) -> &mut Self {
         self.labels.extend(labels);
         self
     }
 
     /// This will replace all existing labels
     pub fn labels(&mut self, labels: BTreeMap<String, String>) -> &mut Self {
-        self.pod.metadata.labels = Some(labels);
+        self.labels = labels;
         self
     }
 
@@ -228,6 +227,7 @@ impl ObjectmetaBuilder {
 
 #[derive(Clone, Default)]
 pub struct PodBuilder {
+    metadata: Option<ObjectMeta>,
     node_name: Option<String>,
 
     #[cfg(test)]
@@ -242,16 +242,35 @@ impl PodBuilder {
         PodBuilder::default()
     }
 
+    pub fn objectmeta<VALUE: Into<ObjectMeta>>(&mut self, metadata: VALUE) -> &mut Self {
+        self.metadata = Some(metadata.into());
+        self
+    }
+
+    pub fn objectmeta_opt<VALUE: Into<Option<ObjectMeta>>>(
+        &mut self,
+        metadata: VALUE,
+    ) -> &mut Self {
+        self.metadata = metadata.into();
+        self
+    }
+
+    pub fn new_objectmeta() -> ObjectmetaBuilder {
+        ObjectmetaBuilder::new()
+    }
+
     pub fn node_name<VALUE: Into<String>>(&mut self, node_name: VALUE) -> &mut Self {
         self.node_name = Some(node_name.into());
         self
     }
 
+    /*
     pub fn phase(&mut self, phase: &str) -> &mut Self {
         let mut status = self.pod.status.get_or_insert_with(PodStatus::default);
         status.phase = Some(phase.to_string());
         self
     }
+
 
     pub fn with_condition(&mut self, condition_type: &str, condition_status: &str) -> &mut Self {
         let status = self.pod.status.get_or_insert_with(PodStatus::default);
@@ -265,6 +284,7 @@ impl PodBuilder {
         self
     }
 
+
     #[cfg(test)]
     pub fn deletion_timestamp<VALUE: Into<Time>>(
         &mut self,
@@ -273,6 +293,7 @@ impl PodBuilder {
         self.deletion_timestamp = Some(deletion_timestamp.into());
         self
     }
+     */
 
     pub fn add_container(&mut self, container: Container) -> &mut Self {
         self.containers.push(container);
@@ -282,6 +303,7 @@ impl PodBuilder {
     /// Consumes the Builder and returns a constructed Pod
     pub fn build(&self) -> Pod {
         // Retrieve all configmaps from all containers and add the relevant volumes to the Pod
+        /*
         let mount_names = self
             .containers
             .iter()
@@ -289,11 +311,13 @@ impl PodBuilder {
                 None => vec![],
                 Some(mounts) => mounts
                     .iter()
-                    .map(|mount| (&mount.name, &mount.mount_path))
+                    .map(|mount| (mount.name.clone(), mount.mount_path.clone()))
                     .collect(),
             })
             .collect::<HashMap<String, String>>();
 
+
+         */
         Pod {
             spec: Some(PodSpec {
                 // TODO: See https://github.com/colin-kiegel/rust-derive-builder for now we could use an unwrap, this is just an example

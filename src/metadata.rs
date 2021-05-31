@@ -27,14 +27,8 @@ pub fn build_metadata<T>(
 where
     T: Resource<DynamicType = ()>,
 {
-    let mut merged_labels = labels::get_recommended_labels(resource)?;
-
-    if let Some(provided_labels) = labels {
-        merged_labels.extend(provided_labels);
-    }
-
     Ok(ObjectMeta {
-        labels: Some(merged_labels),
+        labels,
         name: Some(name),
         namespace: Resource::namespace(resource),
         owner_references: Some(vec![object_to_owner_reference::<T>(
