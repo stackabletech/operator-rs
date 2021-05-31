@@ -92,7 +92,7 @@ impl OwnerreferenceBuilder {
         self
     }
 
-    pub fn initialize_from_resource<T: Resource>(&mut self, resource: &T) -> &mut self {
+    pub fn initialize_from_resource<T: Resource>(&mut self, resource: &T) -> &mut Self {
         self.api_version(T::api_version(&()))
             .kind(T::kind(&()))
             .name(resource.name())
@@ -138,7 +138,10 @@ impl ObjectmetaBuilder {
     }
 
     /// This sets the name and namespace from a given resource
-    pub fn name_and_namespace<VALUE: Into<dyn Resource>>(&mut self, resource: &VALUE) -> &mut Self {
+    pub fn name_and_namespace<VALUE: Into<dyn Resource<DynamicType = ()>>>(
+        &mut self,
+        resource: &VALUE,
+    ) -> &mut Self {
         self.name = Some(resource.into().name());
         self.namespace = resource.into().namespace();
         self
@@ -223,7 +226,6 @@ impl ObjectmetaBuilder {
     }
 }
 
-// TODO: I assume this can also be useful for "real" code, I'm only exposing the fields I really need here though
 #[derive(Clone, Default)]
 pub struct PodBuilder {
     node_name: Option<String>,
@@ -382,7 +384,7 @@ impl ContainerBuilder {
         Container {
             image: self.image,
             name: self.name,
-            env: Some(env),
+            env: Some(self.env),
             command: Some(self.command),
             args: Some(self.args),
             volume_mounts: Some(volume_mounts),
@@ -429,10 +431,12 @@ pub fn build_test_node(name: &str) -> Node {
 
 #[cfg(test)]
 mod tests {
-    use crate::builder::{ContainerBuilder, PodBuilder};
+    use crate::builder::{ContainerBuilder, OwnerreferenceBuilder, PodBuilder};
 
     #[test]
     fn test() {
+        let owner_reference = OwnerreferenceBuilder::new().name(Some("foo"));
+
         let mut container = ContainerBuilder::new("containername")
             .image("stackable/zookeeper:2.4.14")
             .command(vec!["zk-server-start.sh".to_string()])

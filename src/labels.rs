@@ -1,4 +1,3 @@
-use crate::error::OperatorResult;
 use const_format::concatcp;
 use kube::Resource;
 use std::collections::BTreeMap;
