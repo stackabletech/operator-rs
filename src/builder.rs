@@ -186,7 +186,7 @@ impl ObjectmetaBuilder {
             OwnerreferenceBuilder::new()
                 .initialize_from_resource(resource)
                 .block_owner_deletion_opt(block_owner_deletion)
-                .controller(controller)
+                .controller_opt(controller)
                 .build()?,
         );
         Ok(self)
@@ -350,14 +350,8 @@ impl PodBuilder {
                 Some(ref metadata) => metadata.clone(),
             },
             spec: Some(PodSpec {
-                // TODO: See https://github.com/colin-kiegel/rust-derive-builder for now we could use an unwrap, this is just an example
-                node_name: match self.node_name {
-                    Some(ref node_name) => Some(node_name.clone()),
-                    None => {
-                        panic!("Uninitialized field");
-                    }
-                },
-
+                containers: self.containers.clone(),
+                node_name: self.node_name.clone(),
                 ..PodSpec::default()
             }),
             ..Pod::default()
