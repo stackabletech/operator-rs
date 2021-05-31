@@ -83,38 +83,52 @@
 //! Each resource can have more operator specific labels.
 
 use crate::error::OperatorResult;
-use crate::krustlet;
+use crate::{krustlet, label_selector};
 
 use std::collections::HashMap;
 
 use crate::client::Client;
 use k8s_openapi::api::core::v1::Node;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use tracing::debug;
 
-pub struct RoleGroup {
-    pub name: String,
-    pub selector: LabelSelector,
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Role<T> {
+    pub config: Option<T>,
+    pub role_groups: HashMap<String, RoleGroup<T>>,
 }
 
-pub async fn find_nodes_that_fit_selectors(
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoleGroup<T> {
+    // Todo: In Kubernetes this is called `replicas` should we stay closer to that?
+    pub instances: u16,
+    pub config: Option<T>,
+    #[schemars(schema_with = "label_selector::schema")]
+    pub selector: Option<LabelSelector>,
+}
+
+pub async fn find_nodes_that_fit_selectors<T>(
     client: &Client,
     namespace: Option<String>,
-    role_groups: &[RoleGroup],
+    role: &Role<T>,
 ) -> OperatorResult<HashMap<String, Vec<Node>>> {
     let mut found_nodes = HashMap::new();
-    for role_group in role_groups {
-        let selector = krustlet::add_stackable_selector(&role_group.selector);
+    for (group_name, role_group) in &role.role_groups {
+        let selector = krustlet::add_stackable_selector(role_group.selector.as_ref());
         let nodes = client
             .list_with_label_selector(namespace.as_deref(), &selector)
             .await?;
         debug!(
-            "Found [{}] nodes for role group [{}]: [{:?}]",
+            "Found [pa{}] nodes for role group [{}]: [{:?}]",
             nodes.len(),
-            role_group.name,
+            group_name,
             nodes
         );
-        found_nodes.insert(role_group.name.clone(), nodes);
+        found_nodes.insert(group_name.clone(), nodes);
     }
     Ok(found_nodes)
 }

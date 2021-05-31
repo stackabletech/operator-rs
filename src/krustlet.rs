@@ -37,8 +37,12 @@ pub fn create_tolerations() -> Vec<Toleration> {
 /// If this is really needed add a match…expression
 ///
 /// We will not however change the original LabelSelector, a new one will be returned.
-pub fn add_stackable_selector(selector: &LabelSelector) -> LabelSelector {
-    let mut selector = selector.clone();
+pub fn add_stackable_selector(selector: Option<&LabelSelector>) -> LabelSelector {
+    let mut selector = match selector {
+        None => LabelSelector::default(),
+        Some(selector) => selector.clone(),
+    };
+
     selector
         .match_labels
         .get_or_insert_with(BTreeMap::new)
