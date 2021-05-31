@@ -328,18 +328,27 @@ impl PodBuilder {
     /// Consumes the Builder and returns a constructed Pod
     pub fn build(&self) -> OperatorResult<Pod> {
         // Retrieve all configmaps from all containers and add the relevant volumes to the Pod
-        let mount_names = self
+        let configmaps = self
             .containers
             .iter()
             .map(|container| match &container.volume_mounts {
                 None => vec![],
-                Some(mounts) => mounts
-                    .iter()
-                    .map(|mount| (mount.name.clone(), mount.mount_path.clone()))
-                    .collect(),
+                Some(mounts) => mounts.iter().map(|mount| mount.name.clone()).collect(),
             })
             .flatten()
-            .collect::<HashMap<String, String>>();
+            .collect::<HashSet<String>>();
+
+        let volumes = configmaps
+            .iter()
+            .map(|configmap| Volume {
+                name: configmap.clone(),
+                config_map: Some(ConfigMapVolumeSource {
+                    name: Some(configmap.clone()),
+                    ..ConfigMapVolumeSource::default()
+                }),
+                ..Volume::default()
+            })
+            .collect();
 
         Ok(Pod {
             metadata: match self.metadata {
@@ -348,6 +357,7 @@ impl PodBuilder {
             },
             spec: Some(PodSpec {
                 containers: self.containers.clone(),
+                volumes: Some(volumes), // TODO: handle none case
                 node_name: self.node_name.clone(),
                 ..PodSpec::default()
             }),
