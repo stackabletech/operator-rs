@@ -255,7 +255,7 @@ impl ObjectmetaBuilder {
 
 #[derive(Clone, Default)]
 pub struct PodBuilder {
-    objectmeta: Option<ObjectMeta>,
+    metadata: Option<ObjectMeta>,
     node_name: Option<String>,
     tolerations: Vec<Toleration>,
 
@@ -270,21 +270,14 @@ impl PodBuilder {
         PodBuilder::default()
     }
 
-    pub fn objectmeta<VALUE: Into<ObjectMeta>>(&mut self, metadata: VALUE) -> &mut Self {
-        self.objectmeta = Some(metadata.into());
+    pub fn metadata<VALUE: Into<ObjectMeta>>(&mut self, metadata: VALUE) -> &mut Self {
+        self.metadata = Some(metadata.into());
         self
     }
 
-    pub fn objectmeta_opt<VALUE: Into<Option<ObjectMeta>>>(
-        &mut self,
-        metadata: VALUE,
-    ) -> &mut Self {
-        self.objectmeta = metadata.into();
+    pub fn metadata_opt<VALUE: Into<Option<ObjectMeta>>>(&mut self, metadata: VALUE) -> &mut Self {
+        self.metadata = metadata.into();
         self
-    }
-
-    pub fn new_objectmeta() -> ObjectmetaBuilder {
-        ObjectmetaBuilder::new()
     }
 
     pub fn node_name<VALUE: Into<String>>(&mut self, node_name: VALUE) -> &mut Self {
@@ -360,7 +353,7 @@ impl PodBuilder {
             .collect();
 
         Ok(Pod {
-            metadata: match self.objectmeta {
+            metadata: match self.metadata {
                 None => return Err(Error::MissingObjectKey { key: "metadata" }),
                 Some(ref metadata) => metadata.clone(),
             },
@@ -460,7 +453,7 @@ impl ContainerBuilder {
 
 #[derive(Clone, Default)]
 pub struct ConfigmapBuilder {
-    objectmeta: Option<ObjectMeta>,
+    metadata: Option<ObjectMeta>,
     binary_data: BTreeMap<String, ByteString>,
     data: BTreeMap<String, String>,
     immutable: Option<bool>,
@@ -471,16 +464,13 @@ impl ConfigmapBuilder {
         ConfigmapBuilder::default()
     }
 
-    pub fn objectmeta<VALUE: Into<ObjectMeta>>(&mut self, metadata: VALUE) -> &mut Self {
-        self.objectmeta = Some(metadata.into());
+    pub fn metadata<VALUE: Into<ObjectMeta>>(&mut self, metadata: VALUE) -> &mut Self {
+        self.metadata = Some(metadata.into());
         self
     }
 
-    pub fn objectmeta_opt<VALUE: Into<Option<ObjectMeta>>>(
-        &mut self,
-        metadata: VALUE,
-    ) -> &mut Self {
-        self.objectmeta = metadata.into();
+    pub fn metadata_opt<VALUE: Into<Option<ObjectMeta>>>(&mut self, metadata: VALUE) -> &mut Self {
+        self.metadata = metadata.into();
         self
     }
 
@@ -493,9 +483,14 @@ impl ConfigmapBuilder {
         self
     }
 
+    pub fn data(&mut self, data: BTreeMap<String, String>) -> &mut Self {
+        self.data = data;
+        self
+    }
+
     pub fn build(&self) -> OperatorResult<ConfigMap> {
         Ok(ConfigMap {
-            metadata: match self.objectmeta {
+            metadata: match self.metadata {
                 None => return Err(Error::MissingObjectKey { key: "metadata" }),
                 Some(ref metadata) => metadata.clone(),
             },
@@ -543,11 +538,11 @@ pub fn build_test_node(name: &str) -> Node {
 
 #[cfg(test)]
 mod tests {
-    use crate::builder::{ContainerBuilder, OwnerreferenceBuilder, PodBuilder};
+    use crate::builder::{ContainerBuilder, ObjectmetaBuilder, OwnerreferenceBuilder, PodBuilder};
 
     #[test]
     fn test() {
-        let owner_reference = OwnerreferenceBuilder::new().name(Some("foo"));
+        let owner_reference = OwnerreferenceBuilder::new().name("foo");
 
         let mut container = ContainerBuilder::new("containername")
             .image("stackable/zookeeper:2.4.14")
@@ -557,7 +552,7 @@ mod tests {
             .build();
 
         let pod = PodBuilder::new()
-            .name("testpod")
+            .metadata(ObjectmetaBuilder::new().name("testpod").build().unwrap())
             .add_container(container)
             .node_name("worker-1.stackable.demo")
             .build();
