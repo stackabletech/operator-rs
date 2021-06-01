@@ -555,9 +555,62 @@ mod tests {
             .metadata(ObjectmetaBuilder::new().name("testpod").build().unwrap())
             .add_container(container)
             .node_name("worker-1.stackable.demo")
-            .build();
+            .build()
+            .unwrap();
 
-        assert_eq!(pod.metadata.name, "testpod");
-        assert_eq!(pod.spec.node_name, "worker-1.stackable.demo");
+        assert_eq!(pod.metadata.name.unwrap(), "testpod");
+        assert_eq!(
+            pod.spec.unwrap().node_name.unwrap(),
+            "worker-1.stackable.demo"
+        );
     }
 }
+
+/*
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    use crate::labels::APP_INSTANCE_LABEL;
+    use k8s_openapi::api::core::v1::Pod;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case("foo", Some("bar"))]
+    #[case("foo", None)]
+    fn test_build_metadata(
+        #[case] name: &str,
+        #[case] namespace: Option<&str>,
+    ) -> OperatorResult<()> {
+        let mut labels = BTreeMap::new();
+        labels.insert("foo".to_string(), "bar".to_string());
+
+        let namespace = namespace.map(|s| s.to_string());
+
+        let pod = Pod {
+            metadata: ObjectMeta {
+                name: Some("foo_pod".to_string()),
+                namespace: namespace.clone(),
+                uid: Some("uid".to_string()),
+                ..ObjectMeta::default()
+            },
+            ..Pod::default()
+        };
+
+        let meta = build_metadata(name.to_string(), Some(labels), &pod, true)?;
+
+        assert_eq!(meta.name, Some(name.to_string()));
+        assert_eq!(meta.namespace, namespace);
+
+        let labels = meta.labels.unwrap();
+        assert_eq!(labels.get("foo"), Some(&"bar".to_string()));
+        assert_eq!(labels.get(APP_INSTANCE_LABEL), Some(&"foo_pod".to_string()));
+        assert_eq!(labels.len(), 2);
+
+        Ok(())
+    }
+}
+
+ */
