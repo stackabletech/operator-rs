@@ -83,14 +83,15 @@
 //! Each resource can have more operator specific labels.
 
 use crate::error::OperatorResult;
-use crate::krustlet;
+use crate::{krustlet, labels};
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use crate::client::Client;
+use crate::k8s_utils::LabelOptionalValueMap;
 use k8s_openapi::api::core::v1::Node;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
-use tracing::debug;
+use tracing::{debug, trace};
 
 pub struct RoleGroup {
     pub name: String,
@@ -117,4 +118,45 @@ pub async fn find_nodes_that_fit_selectors(
         found_nodes.insert(role_group.name.clone(), nodes);
     }
     Ok(found_nodes)
+}
+
+/// For each role, return a tuple consisting of eligible nodes for a given selector.
+/// Required to delete excess pods that do not match any node or selector description.
+pub fn get_full_pod_node_map(
+    eligible_nodes: &HashMap<String, HashMap<String, Vec<Node>>>,
+) -> Vec<(Vec<Node>, LabelOptionalValueMap)> {
+    let mut eligible_nodes_for_role_and_group = vec![];
+    for (role, eligible_nodes_for_role) in eligible_nodes {
+        for (group_name, eligible_nodes) in eligible_nodes_for_role {
+            // Create labels to identify eligible nodes
+            trace!(
+                "Adding {} nodes to eligible node list for role [{}] and group [{}].",
+                eligible_nodes.len(),
+                role,
+                group_name
+            );
+            eligible_nodes_for_role_and_group.push((
+                eligible_nodes.clone(),
+                get_role_and_group_labels(role, group_name),
+            ))
+        }
+    }
+
+    eligible_nodes_for_role_and_group
+}
+
+/// Return a map with labels and values for role (component) and group (role_group).
+/// Required to find nodes that are a possible match for pods.
+/// TODO: move to operator-rs
+fn get_role_and_group_labels(role: &str, group_name: &str) -> LabelOptionalValueMap {
+    let mut labels = BTreeMap::new();
+    labels.insert(
+        labels::APP_COMPONENT_LABEL.to_string(),
+        Some(role.to_string()),
+    );
+    labels.insert(
+        labels::APP_ROLE_GROUP_LABEL.to_string(),
+        Some(group_name.to_string()),
+    );
+    labels
 }
