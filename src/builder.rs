@@ -493,8 +493,15 @@ impl ConfigmapBuilder {
         self
     }
 
-    pub fn build(&self) -> ConfigMap {
-        ConfigMap::default()
+    pub fn build(&self) -> OperatorResult<ConfigMap> {
+        Ok(ConfigMap {
+            metadata: match self.objectmeta {
+                None => return Err(Error::MissingObjectKey { key: "metadata" }),
+                Some(ref metadata) => metadata.clone(),
+            },
+            data: Some(self.data.clone()),
+            ..ConfigMap::default()
+        })
     }
 }
 
