@@ -1,9 +1,11 @@
 use crate::error::{Error, OperatorResult};
 use crate::labels;
 use k8s_openapi::api::core::v1::{
-    ConfigMapVolumeSource, Container, EnvVar, Node, Pod, PodSpec, Toleration, Volume, VolumeMount,
+    ConfigMap, ConfigMapVolumeSource, Container, EnvVar, Node, Pod, PodSpec, Toleration, Volume,
+    VolumeMount,
 };
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference, Time};
+use k8s_openapi::ByteString;
 use kube::Resource;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -253,7 +255,7 @@ impl ObjectmetaBuilder {
 
 #[derive(Clone, Default)]
 pub struct PodBuilder {
-    metadata: Option<ObjectMeta>,
+    objectmeta: Option<ObjectMeta>,
     node_name: Option<String>,
     tolerations: Vec<Toleration>,
 
@@ -269,7 +271,7 @@ impl PodBuilder {
     }
 
     pub fn objectmeta<VALUE: Into<ObjectMeta>>(&mut self, metadata: VALUE) -> &mut Self {
-        self.metadata = Some(metadata.into());
+        self.objectmeta = Some(metadata.into());
         self
     }
 
@@ -277,7 +279,7 @@ impl PodBuilder {
         &mut self,
         metadata: VALUE,
     ) -> &mut Self {
-        self.metadata = metadata.into();
+        self.objectmeta = metadata.into();
         self
     }
 
@@ -358,7 +360,7 @@ impl PodBuilder {
             .collect();
 
         Ok(Pod {
-            metadata: match self.metadata {
+            metadata: match self.objectmeta {
                 None => return Err(Error::MissingObjectKey { key: "metadata" }),
                 Some(ref metadata) => metadata.clone(),
             },
@@ -374,7 +376,7 @@ impl PodBuilder {
     }
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct ContainerBuilder {
     image: Option<String>,
     name: String,
@@ -453,6 +455,46 @@ impl ContainerBuilder {
             volume_mounts: Some(volume_mounts),
             ..Container::default()
         }
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct ConfigmapBuilder {
+    objectmeta: Option<ObjectMeta>,
+    binary_data: BTreeMap<String, ByteString>,
+    data: BTreeMap<String, String>,
+    immutable: Option<bool>,
+}
+
+impl ConfigmapBuilder {
+    pub fn new() -> ConfigmapBuilder {
+        ConfigmapBuilder::default()
+    }
+
+    pub fn objectmeta<VALUE: Into<ObjectMeta>>(&mut self, metadata: VALUE) -> &mut Self {
+        self.objectmeta = Some(metadata.into());
+        self
+    }
+
+    pub fn objectmeta_opt<VALUE: Into<Option<ObjectMeta>>>(
+        &mut self,
+        metadata: VALUE,
+    ) -> &mut Self {
+        self.objectmeta = metadata.into();
+        self
+    }
+
+    pub fn add_data<KEY: Into<String>, VALUE: Into<String>>(
+        &mut self,
+        key: KEY,
+        value: VALUE,
+    ) -> &mut Self {
+        self.data.insert(key.into(), value.into());
+        self
+    }
+
+    pub fn build(&self) -> ConfigMap {
+        ConfigMap::default()
     }
 }
 
