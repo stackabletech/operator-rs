@@ -1,6 +1,7 @@
 pub mod client;
 pub mod command_controller;
 pub mod conditions;
+pub mod config;
 pub mod config_map;
 pub mod controller;
 pub mod controller_ref;

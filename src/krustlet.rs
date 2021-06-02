@@ -65,7 +65,7 @@ mod tests {
 
         // LS didn't have any match_label
         assert!(
-            matches!(add_stackable_selector(&ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
+            matches!(add_stackable_selector(Some(&ls)).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
         );
 
         // LS has labels but no conflicts with our own
@@ -74,7 +74,7 @@ mod tests {
 
         ls.match_labels = Some(labels);
         assert!(
-            matches!(add_stackable_selector(&ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
+            matches!(add_stackable_selector(Some(&ls)).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
         );
 
         // LS already has a LS that matches our internal one
@@ -83,7 +83,7 @@ mod tests {
         labels.insert("type".to_string(), "foobar".to_string());
         ls.match_labels = Some(labels);
         assert!(
-            matches!(add_stackable_selector(&ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
+            matches!(add_stackable_selector(Some(&ls)).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
         );
     }
 }

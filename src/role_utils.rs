@@ -94,19 +94,31 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
+// TODO: This is an unused idea on how to support ignoring errors on validation
+pub enum Property {
+    Simple(String),
+    Complex {
+        ignore_warning: bool,
+        ignore_error: bool,
+        value: String,
+    },
+}
+
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Role<T> {
     pub config: Option<T>,
+    pub config_overrides: Option<HashMap<String, String>>,
     pub role_groups: HashMap<String, RoleGroup<T>>,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RoleGroup<T> {
-    // Todo: In Kubernetes this is called `replicas` should we stay closer to that?
+    // TODO: In Kubernetes this is called `replicas` should we stay closer to that?
     pub instances: u16,
     pub config: Option<T>,
+    pub config_overrides: Option<HashMap<String, String>>,
     #[schemars(schema_with = "label_selector::schema")]
     pub selector: Option<LabelSelector>,
 }
@@ -115,7 +127,10 @@ pub async fn find_nodes_that_fit_selectors<T>(
     client: &Client,
     namespace: Option<String>,
     role: &Role<T>,
-) -> OperatorResult<HashMap<String, Vec<Node>>> {
+) -> OperatorResult<HashMap<String, Vec<Node>>>
+where
+    T: Serialize,
+{
     let mut found_nodes = HashMap::new();
     for (group_name, role_group) in &role.role_groups {
         let selector = krustlet::add_stackable_selector(role_group.selector.as_ref());
