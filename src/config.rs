@@ -20,7 +20,7 @@ pub trait Configuration {
 }
 
 pub fn get_config<T>(
-    resource: T::Configurable,
+    resource: &T::Configurable,
     role: &Role<T>,
     role_group: &str,
 ) -> Result<HashMap<String, String>, ConfigError>
@@ -36,7 +36,7 @@ where
 
     // Properties from the role have the lowest priority, so they are computed and added first...
     if let Some(ref config) = role.config {
-        final_properties = config.compute_properties(&resource)?;
+        final_properties = config.compute_properties(resource)?;
     }
 
     // ...followed by config_overrides from the role
@@ -48,7 +48,7 @@ where
 
     // ...and now we need to check the config from the role group...
     if let Some(ref config) = role_group.config {
-        final_properties.extend(config.compute_properties(&resource)?);
+        final_properties.extend(config.compute_properties(resource)?);
     }
 
     // ...followed by the role group specific overrides.
