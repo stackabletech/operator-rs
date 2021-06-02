@@ -61,6 +61,45 @@ where
     Ok(final_properties)
 }
 
+pub fn process_validation_result(
+    validation_result: &[(String, PropertyValidationResult)],
+    ignore_warn: bool,
+) -> HashMap<String, String> {
+    let mut properties = HashMap::new();
+    for (key, result) in validation_result.iter() {
+        match result {
+            PropertyValidationResult::Default(value) => {
+                debug!("Property [{}] is not explicitly set, will not set and rely on the default instead ([{}])", key, value);
+            }
+            PropertyValidationResult::RecommendedDefault(value) => {
+                debug!(
+                    "Property [{}] is not set, will use recommended default [{}] instead",
+                    key, value
+                );
+                properties.insert(key.clone(), value.clone());
+            }
+            PropertyValidationResult::Valid(value) => {
+                debug!("Property [{}] is set to valid value [{}]", key, value);
+                properties.insert(key.clone(), value.clone());
+            }
+            PropertyValidationResult::Warn(value, err) => {
+                warn!("Property [{}] is set to value [{}] which causes a warning, `ignore_warn` is {}: {:?}", key, value, ignore_warn, err);
+                if ignore_warn {
+                    properties.insert(key.clone(), value.clone());
+                }
+            }
+            PropertyValidationResult::Error(err) => {
+                error!(
+                    "Property [{}] causes a validation error, will not set: {:?}",
+                    key, err
+                );
+                //TODO: Return error
+            }
+        }
+    }
+    properties
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -110,45 +149,6 @@ mod tests {
             role_groups,
         };
 
-        let config = get_config("foo".to_string(), &role, "foobar").unwrap();
+        let config = get_config(&"foo".to_string(), &role, "foobar").unwrap();
     }
-}
-
-pub fn process_validation_result(
-    validation_result: &[(String, PropertyValidationResult)],
-    ignore_warn: bool,
-) -> HashMap<String, String> {
-    let mut properties = HashMap::new();
-    for (key, result) in validation_result.iter() {
-        match result {
-            PropertyValidationResult::Default(value) => {
-                debug!("Property [{}] is not explicitly set, will not set and rely on the default instead ([{}])", key, value);
-            }
-            PropertyValidationResult::RecommendedDefault(value) => {
-                debug!(
-                    "Property [{}] is not set, will use recommended default [{}] instead",
-                    key, value
-                );
-                properties.insert(key.clone(), value.clone());
-            }
-            PropertyValidationResult::Valid(value) => {
-                debug!("Property [{}] is set to valid value [{}]", key, value);
-                properties.insert(key.clone(), value.clone());
-            }
-            PropertyValidationResult::Warn(value, err) => {
-                warn!("Property [{}] is set to value [{}] which causes a warning, `ignore_warn` is {}: {:?}", key, value, ignore_warn, err);
-                if ignore_warn {
-                    properties.insert(key.clone(), value.clone());
-                }
-            }
-            PropertyValidationResult::Error(err) => {
-                error!(
-                    "Property [{}] causes a validation error, will not set: {:?}",
-                    key, err
-                );
-                //TODO: Return error
-            }
-        }
-    }
-    properties
 }
