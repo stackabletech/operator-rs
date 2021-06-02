@@ -62,7 +62,7 @@ where
 }
 
 pub fn process_validation_result(
-    validation_result: &[(String, PropertyValidationResult)],
+    validation_result: &HashMap<String, PropertyValidationResult>,
     ignore_warn: bool,
 ) -> HashMap<String, String> {
     let mut properties = HashMap::new();
