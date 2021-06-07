@@ -4,13 +4,13 @@ use k8s_openapi::api::core::v1::{
     ConfigMap, ConfigMapVolumeSource, Container, EnvVar, Node, Pod, PodSpec, Toleration, Volume,
     VolumeMount,
 };
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference, Time};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
 use k8s_openapi::ByteString;
 use kube::Resource;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 #[derive(Clone, Default)]
-pub struct OwnerreferenceBuilder {
+pub struct OwnerReferenceBuilder {
     api_version: Option<String>,
     block_owner_deletion: Option<bool>,
     controller: Option<bool>,
@@ -19,9 +19,9 @@ pub struct OwnerreferenceBuilder {
     uid: Option<String>,
 }
 
-impl OwnerreferenceBuilder {
-    pub fn new() -> OwnerreferenceBuilder {
-        OwnerreferenceBuilder::default()
+impl OwnerReferenceBuilder {
+    pub fn new() -> OwnerReferenceBuilder {
+        OwnerReferenceBuilder::default()
     }
 
     pub fn api_version<VALUE: Into<String>>(&mut self, api_version: VALUE) -> &mut Self {
@@ -129,16 +129,16 @@ impl OwnerreferenceBuilder {
 }
 
 #[derive(Clone, Default)]
-pub struct ObjectmetaBuilder {
+pub struct ObjectMetaBuilder {
     name: Option<String>,
     namespace: Option<String>,
     ownerreference: Option<OwnerReference>,
     labels: BTreeMap<String, String>,
 }
 
-impl ObjectmetaBuilder {
-    pub fn new() -> ObjectmetaBuilder {
-        ObjectmetaBuilder::default()
+impl ObjectMetaBuilder {
+    pub fn new() -> ObjectMetaBuilder {
+        ObjectMetaBuilder::default()
     }
 
     /// This sets the name and namespace from a given resource
@@ -185,7 +185,7 @@ impl ObjectmetaBuilder {
         controller: Option<bool>,
     ) -> OperatorResult<&mut Self> {
         self.ownerreference = Some(
-            OwnerreferenceBuilder::new()
+            OwnerReferenceBuilder::new()
                 .initialize_from_resource(resource)
                 .block_owner_deletion_opt(block_owner_deletion)
                 .controller_opt(controller)
@@ -452,16 +452,16 @@ impl ContainerBuilder {
 }
 
 #[derive(Clone, Default)]
-pub struct ConfigmapBuilder {
+pub struct ConfigMapBuilder {
     metadata: Option<ObjectMeta>,
     binary_data: BTreeMap<String, ByteString>,
     data: BTreeMap<String, String>,
     immutable: Option<bool>,
 }
 
-impl ConfigmapBuilder {
-    pub fn new() -> ConfigmapBuilder {
-        ConfigmapBuilder::default()
+impl ConfigMapBuilder {
+    pub fn new() -> ConfigMapBuilder {
+        ConfigMapBuilder::default()
     }
 
     pub fn metadata<VALUE: Into<ObjectMeta>>(&mut self, metadata: VALUE) -> &mut Self {
@@ -538,11 +538,11 @@ pub fn build_test_node(name: &str) -> Node {
 
 #[cfg(test)]
 mod tests {
-    use crate::builder::{ContainerBuilder, ObjectmetaBuilder, OwnerreferenceBuilder, PodBuilder};
+    use crate::builder::{ContainerBuilder, ObjectMetaBuilder, OwnerReferenceBuilder, PodBuilder};
 
     #[test]
     fn test() {
-        let owner_reference = OwnerreferenceBuilder::new().name("foo");
+        let owner_reference = OwnerReferenceBuilder::new().name("foo");
 
         let mut container = ContainerBuilder::new("containername")
             .image("stackable/zookeeper:2.4.14")
@@ -552,7 +552,7 @@ mod tests {
             .build();
 
         let pod = PodBuilder::new()
-            .metadata(ObjectmetaBuilder::new().name("testpod").build().unwrap())
+            .metadata(ObjectMetaBuilder::new().name("testpod").build().unwrap())
             .add_container(container)
             .node_name("worker-1.stackable.demo")
             .build()
