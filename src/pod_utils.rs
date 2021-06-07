@@ -96,10 +96,10 @@ fn get_pod_condition(status: &PodStatus, condition: PodConditionType) -> Option<
         Some(conditions) => conditions.iter().find(|c| {
             let current_pod_condition = PodConditionType::from_str(&c.type_);
 
-            return match current_pod_condition {
+            match current_pod_condition {
                 Ok(c) => c == condition,
                 Err(_) => false,
-            };
+            }
         }),
     }
 }
