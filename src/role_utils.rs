@@ -106,19 +106,28 @@ pub enum Property {
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Role<T> {
+pub struct CommonConfiguration<T> {
     pub config: Option<T>,
-    pub config_overrides: Option<HashMap<String, String>>,
+    pub config_overrides: Option<HashMap<String, HashMap<String, String>>>,
+    pub env_overrides: Option<HashMap<String, String>>,
+    pub cli_overrides: Option<Vec<String>>,
+}
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Role<T> {
+    #[serde(flatten)]
+    pub config: Option<CommonConfiguration<T>>,
     pub role_groups: HashMap<String, RoleGroup<T>>,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RoleGroup<T> {
+    #[serde(flatten)]
+    pub config: Option<CommonConfiguration<T>>,
     // TODO: In Kubernetes this is called `replicas` should we stay closer to that?
     pub instances: u16,
-    pub config: Option<T>,
-    pub config_overrides: Option<HashMap<String, String>>,
     #[schemars(schema_with = "label_selector::schema")]
     pub selector: Option<LabelSelector>,
 }
