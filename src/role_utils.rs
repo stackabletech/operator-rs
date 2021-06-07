@@ -98,6 +98,8 @@ pub struct RoleGroup {
     pub selector: LabelSelector,
 }
 
+/// Return a map where the key corresponds to the role_group (e.g. "default", "10core10Gb") and
+/// a vector of nodes that fit the role_groups selector description.
 pub async fn find_nodes_that_fit_selectors(
     client: &Client,
     namespace: Option<String>,
@@ -128,7 +130,6 @@ pub fn get_full_pod_node_map(
     let mut eligible_nodes_for_role_and_group = vec![];
     for (role, eligible_nodes_for_role) in eligible_nodes {
         for (group_name, eligible_nodes) in eligible_nodes_for_role {
-            // Create labels to identify eligible nodes
             trace!(
                 "Adding {} nodes to eligible node list for role [{}] and group [{}].",
                 eligible_nodes.len(),
@@ -147,7 +148,6 @@ pub fn get_full_pod_node_map(
 
 /// Return a map with labels and values for role (component) and group (role_group).
 /// Required to find nodes that are a possible match for pods.
-/// TODO: move to operator-rs
 fn get_role_and_group_labels(role: &str, group_name: &str) -> LabelOptionalValueMap {
     let mut labels = BTreeMap::new();
     labels.insert(
@@ -159,4 +159,74 @@ fn get_role_and_group_labels(role: &str, group_name: &str) -> LabelOptionalValue
         Some(group_name.to_string()),
     );
     labels
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_full_pod_node_map() {
+        let role = "server";
+        let group_name = "default";
+        let group_name_2 = "default2";
+
+        let mut node_1 = Node::default();
+        node_1.metadata.name = Some("node_1".to_string());
+
+        let mut node_2 = Node::default();
+        node_2.metadata.name = Some("node_2".to_string());
+
+        let mut node_3 = Node::default();
+        node_3.metadata.name = Some("node_3".to_string());
+
+        let node_vec_1_2 = vec![node_1, node_2];
+        let node_vec_3 = vec![node_3];
+
+        let mut node_group = HashMap::new();
+        node_group.insert(group_name.to_string(), node_vec_1_2.clone());
+        node_group.insert(group_name_2.to_string(), node_vec_3.clone());
+
+        let mut eligible_nodes: HashMap<String, HashMap<String, Vec<Node>>> = HashMap::new();
+        eligible_nodes.insert(role.to_string(), node_group);
+
+        let full_pod_node_map = get_full_pod_node_map(&eligible_nodes);
+
+        for (nodes, labels) in full_pod_node_map {
+            if let Some(role_group_label) = labels.get(labels::APP_ROLE_GROUP_LABEL).unwrap() {
+                if role_group_label == group_name {
+                    assert_eq!(nodes.len(), node_vec_1_2.len())
+                }
+                if role_group_label == group_name_2 {
+                    assert_eq!(nodes.len(), node_vec_3.len())
+                }
+            }
+
+            if let Some(role_label) = labels.get(labels::APP_COMPONENT_LABEL).unwrap() {
+                assert_eq!(role_label, role);
+            }
+        }
+    }
+
+    #[test]
+    fn test_get_role_and_group_labels() {
+        let role = "server";
+        let group_name = "default";
+
+        let result = get_role_and_group_labels(role, group_name);
+
+        assert_eq!(result.len(), 2);
+
+        let mut expected = BTreeMap::new();
+        expected.insert(
+            labels::APP_COMPONENT_LABEL.to_string(),
+            Some(role.to_string()),
+        );
+        expected.insert(
+            labels::APP_ROLE_GROUP_LABEL.to_string(),
+            Some(group_name.to_string()),
+        );
+
+        assert_eq!(result, expected);
+    }
 }
