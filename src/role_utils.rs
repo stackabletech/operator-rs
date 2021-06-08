@@ -108,9 +108,10 @@ pub enum Property {
 #[serde(rename_all = "camelCase")]
 pub struct CommonConfiguration<T> {
     pub config: Option<T>,
+    // zoo.cfg: init_limit = 1234
     pub config_overrides: Option<HashMap<String, HashMap<String, String>>>,
     pub env_overrides: Option<HashMap<String, String>>,
-    pub cli_overrides: Option<Vec<String>>,
+    pub cli_overrides: Option<HashMap<String, Option<String>>>,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
