@@ -123,7 +123,7 @@ where
 {
     let mut result = HashMap::new();
 
-    for (role_name, (role, role_groups)) in roles {
+    for (role_name, (role, _role_groups)) in roles {
         let role_properties = get_role_config(
             &role_name,
             &role,
@@ -284,13 +284,27 @@ pub fn process_validation_result(
 
 #[cfg(test)]
 mod tests {
+    macro_rules! collection {
+        // map-like
+        ($($k:expr => $v:expr),* $(,)?) => {
+            std::iter::Iterator::collect(std::array::IntoIter::new([$(($k, $v),)*]))
+        };
+        // set-like
+        ($($v:expr),* $(,)?) => {
+            std::iter::Iterator::collect(std::array::IntoIter::new([$($v,)*]))
+        };
+    }
+
     use super::*;
     use crate::role_utils::{Role, RoleGroup};
+    use rstest::*;
     use std::collections::HashMap;
 
+    #[derive(Clone, Debug, PartialEq)]
     struct TestConfig {
-        pub return_error: bool,
-        pub test_string: String,
+        pub conf: Option<String>,
+        pub env: Option<String>,
+        pub cli: Option<String>,
     }
 
     impl Configuration for TestConfig {
@@ -301,14 +315,11 @@ mod tests {
             resource: &Self::Configurable,
             role_name: &str,
         ) -> Result<HashMap<String, String>, ConfigError> {
-            println!("Resource: {}", resource);
-            if self.return_error {
-                Err(ConfigError::InvalidConfiguration)
-            } else {
-                let mut result = HashMap::new();
-                result.insert("test_string".to_string(), self.test_string.clone());
-                Ok(result)
+            let mut result = HashMap::new();
+            if let Some(env) = &self.env {
+                result.insert("env".to_string(), env.to_string());
             }
+            Ok(result)
         }
 
         fn compute_cli(
@@ -316,14 +327,11 @@ mod tests {
             resource: &Self::Configurable,
             role_name: &str,
         ) -> Result<HashMap<String, String>, ConfigError> {
-            println!("Resource: {}", resource);
-            if self.return_error {
-                Err(ConfigError::InvalidConfiguration)
-            } else {
-                let mut result = HashMap::new();
-                result.insert("test_string".to_string(), self.test_string.clone());
-                Ok(result)
+            let mut result = HashMap::new();
+            if let Some(cli) = &self.cli {
+                result.insert("cli".to_string(), cli.to_string());
             }
+            Ok(result)
         }
 
         fn compute_properties(
@@ -332,14 +340,11 @@ mod tests {
             role_name: &str,
             file: &str,
         ) -> Result<HashMap<String, String>, ConfigError> {
-            println!("Resource: {}", resource);
-            if self.return_error {
-                Err(ConfigError::InvalidConfiguration)
-            } else {
-                let mut result = HashMap::new();
-                result.insert("test_string".to_string(), self.test_string.clone());
-                Ok(result)
+            let mut result = HashMap::new();
+            if let Some(conf) = &self.conf {
+                result.insert("conf".to_string(), conf.to_string());
             }
+            Ok(result)
         }
 
         fn config_information() -> HashMap<String, (PropertyNameKind, String)> {
@@ -347,56 +352,129 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test() {
-        let rolegroup_config = CommonConfiguration {
-            config: Some(TestConfig {
-                return_error: false,
-                test_string: "rolegroup".to_string(),
-            }),
-            config_overrides: None,
-            env_overrides: None,
-            cli_overrides: None,
-        };
+    fn build_role_and_group(
+        role_config: bool,
+        group_config: bool,
+        role_overrides: bool,
+        group_overrides: bool,
+    ) -> Role<TestConfig> {
+        //let role = "role".to_string();
+        let role_group = "role_group".to_string();
 
-        let mut role_groups: HashMap<String, RoleGroup<TestConfig>> = HashMap::new();
-        role_groups.insert(
-            "foobar".to_string(),
-            RoleGroup {
-                instances: 1,
-                config: Some(rolegroup_config),
-                selector: None,
-            },
-        );
-
-        let role_config = CommonConfiguration {
-            config: Some(TestConfig {
-                return_error: false,
-                test_string: "role".to_string(),
-            }),
-            config_overrides: None,
-            env_overrides: None,
-            cli_overrides: None,
-        };
-
-        let role = Role {
+        let mut role = Role {
             config: None,
-            role_groups,
+            role_groups: HashMap::new(),
         };
 
-        let role_name = "foobar";
+        if role_config {
+            role.config = Some(CommonConfiguration {
+                config: Some(TestConfig {
+                    conf: Some("role_conf".to_string()),
+                    env: Some("role_env".to_string()),
+                    cli: Some("role_cli".to_string()),
+                }),
+                config_overrides: None,
+                env_overrides: None,
+                cli_overrides: None,
+            })
+        }
 
-        let mut property_kinds = vec![
-            PropertyNameKind::Conf("foo.cfg".to_string()),
-            PropertyNameKind::Conf("bar.cfg".to_string()),
-            PropertyNameKind::Env,
-            PropertyNameKind::Cli,
-        ];
+        if group_config {
+            role.role_groups.insert(
+                role_group.clone(),
+                RoleGroup {
+                    instances: 1,
+                    config: Some(CommonConfiguration {
+                        config: Some(TestConfig {
+                            conf: Some("group_conf".to_string()),
+                            env: Some("group_env".to_string()),
+                            cli: Some("group_cli".to_string()),
+                        }),
+                        config_overrides: None,
+                        env_overrides: if group_overrides {
+                            Some(collection! {"group_override".to_string() => "env".to_string() })
+                        } else {
+                            None
+                        },
+                        cli_overrides: None,
+                    }),
+                    selector: None,
+                },
+            );
+        }
 
-        let resource = String::new();
+        if role_overrides {
+            if let Some(conf) = &mut role.config {
+                conf.env_overrides =
+                    Some(collection! {"role_override".to_string() => "env".to_string() });
+            }
+        }
 
-        let config = get_role_config(role_name, &role, &property_kinds, &resource);
-
-        println!("{:?}", config);
+        role
     }
+
+    #[rstest]
+    #[case(
+        true,
+        false,
+        false,
+        false,
+        collection!{
+            "role".to_string() =>
+            collection!{
+                PropertyNameKind::Env =>
+                collection!{
+                    "env".to_string() => "role_env".to_string(),
+                }
+            }
+        }
+    )]
+    #[trace]
+    fn test_get_role_config(
+        #[case] role_config: bool,
+        #[case] group_config: bool,
+        #[case] role_overrides: bool,
+        #[case] group_overrides: bool,
+        #[case] expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>,
+    ) {
+        let role_name = "role";
+        let role = build_role_and_group(role_config, group_config, role_overrides, group_overrides);
+
+        let property_kinds = vec![PropertyNameKind::Env];
+
+        let config = get_role_config(role_name, &role, &property_kinds, &String::new());
+
+        println!("{:?}", role);
+        println!("{:?}", expected);
+        println!("{:?}", config);
+
+        assert_eq!(config, expected);
+    }
+
+    #[test]
+    fn test_role_without_config() {}
+
+    #[test]
+    fn test_role_with_config_without_group_config() {}
+
+    #[test]
+    fn test_role_with_config_with_group_config() {}
+
+    #[test]
+    fn test_role_with_config_and_config_override() {}
+
+    #[test]
+    fn test_role_with_config_and_env_override() {}
+
+    #[test]
+    fn test_role_with_config_and_cli_override() {}
+
+    #[test]
+    fn test_role_with_config_and_group_with_config_and_config_override() {}
+
+    #[test]
+    fn test_role_without_config_and_group_with_config_and_config_override() {}
+
+    #[test]
+    fn test_role_without_config_and_group_without_config_and_config_override() {}
 }
