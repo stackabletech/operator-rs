@@ -363,7 +363,7 @@ mod tests {
 
         let mut role = Role {
             config: None,
-            role_groups: HashMap::new(),
+            role_groups: collection! {role_group.clone() => RoleGroup { config: None, instances: 1, selector:None }},
         };
 
         if role_config {
@@ -376,7 +376,7 @@ mod tests {
                 config_overrides: None,
                 env_overrides: None,
                 cli_overrides: None,
-            })
+            });
         }
 
         if group_config {
@@ -412,42 +412,61 @@ mod tests {
 
         role
     }
+    /*
+        #[rstest]
+        #[case(
+            true,
+            false,
+            false,
+            false,
+            collection!{
+                "role".to_string() =>
+                collection!{
+                    PropertyNameKind::Env =>
+                    collection!{
+                        "env".to_string() => "role_env".to_string(),
+                    }
+                }
+            }
+        )]
+        #[trace]
+        fn test_get_role_config(
+            #[case] role_config: bool,
+            #[case] group_config: bool,
+            #[case] role_overrides: bool,
+            #[case] group_overrides: bool,
+            #[case] expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>,
+        ) {
+            let role_name = "role";
+            let role = build_role_and_group(role_config, group_config, role_overrides, group_overrides);
 
-    #[rstest]
-    #[case(
-        true,
-        false,
-        false,
-        false,
-        collection!{
-            "role".to_string() =>
+            let property_kinds = vec![PropertyNameKind::Env];
+
+            let config = get_role_config(role_name, &role, &property_kinds, &String::new());
+
+            println!("{:?}", role);
+            println!("{:?}", expected);
+            println!("{:?}", config);
+
+            assert_eq!(config, expected);
+        }
+    */
+
+    #[test]
+    fn test_get_role_config() {
+        let role_name = "role";
+        let role = build_role_and_group(true, false, false, false);
+        let property_kinds = vec![PropertyNameKind::Env];
+        let config = get_role_config(role_name, &role, &property_kinds, &String::new());
+        let expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> = collection! {
+            "role_group".to_string() =>
             collection!{
                 PropertyNameKind::Env =>
                 collection!{
                     "env".to_string() => "role_env".to_string(),
                 }
             }
-        }
-    )]
-    #[trace]
-    fn test_get_role_config(
-        #[case] role_config: bool,
-        #[case] group_config: bool,
-        #[case] role_overrides: bool,
-        #[case] group_overrides: bool,
-        #[case] expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>,
-    ) {
-        let role_name = "role";
-        let role = build_role_and_group(role_config, group_config, role_overrides, group_overrides);
-
-        let property_kinds = vec![PropertyNameKind::Env];
-
-        let config = get_role_config(role_name, &role, &property_kinds, &String::new());
-
-        println!("{:?}", role);
-        println!("{:?}", expected);
-        println!("{:?}", config);
-
+        };
         assert_eq!(config, expected);
     }
 
