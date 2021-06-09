@@ -829,4 +829,59 @@ mod tests {
 
         assert_eq!(config, expected);
     }
+
+    #[test]
+    fn test_transform_role_to_config_overrides() {
+        let role_group = "role_group";
+        let file_name = "foo.bar";
+        let role = Role {
+            config: build_common_config(
+                build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
+                // should override
+                build_config_override(file_name, "conf"),
+                None,
+                // should override
+                build_cli_override("cli"),
+            ),
+            role_groups: collection! {role_group.to_string() => RoleGroup {
+                instances: 1,
+                config: build_common_config(
+                    build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                    // should override
+                    build_config_override(file_name, "conf"),
+                    build_env_override(GROUP_ENV_OVERRIDE),
+                    None),
+                    selector: None,
+            }},
+        };
+
+        let expected = collection! {
+        role_group.to_string() =>
+            collection!{
+                PropertyNameKind::Conf(file_name.to_string()) =>
+                    collection!(
+                        "conf".to_string() => "conf".to_string()
+                    ),
+                PropertyNameKind::Env =>
+                    collection!(
+                        "env".to_string() => GROUP_ENV.to_string(),
+                        GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string()
+                    ),
+                PropertyNameKind::Cli =>
+                    collection!(
+                        "cli".to_string() => GROUP_CLI.to_string(),
+                    ),
+            }
+        };
+
+        let property_kinds = vec![
+            PropertyNameKind::Conf(file_name.to_string()),
+            PropertyNameKind::Env,
+            PropertyNameKind::Cli,
+        ];
+
+        let config = transform_role_to_config(ROLE_GROUP, &role, &property_kinds, &String::new());
+
+        assert_eq!(config, expected);
+    }
 }
