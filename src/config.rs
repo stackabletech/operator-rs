@@ -1,4 +1,4 @@
-use crate::role_utils::{CommonConfiguration, Role, RoleGroup};
+use crate::role_utils::{CommonConfiguration, Role};
 use product_config::types::PropertyNameKind;
 use product_config::PropertyValidationResult;
 use std::collections::HashMap;
@@ -43,10 +43,10 @@ pub trait Configuration {
 }
 
 fn transform_role_to_config<T>(
+    resource: &T::Configurable,
     role_name: &str,
     role: &Role<T>,
     property_kinds: &[PropertyNameKind],
-    resource: &T::Configurable,
 ) -> HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>
 where
     T: Configuration,
@@ -110,25 +110,37 @@ where
 
     result
 }
+/*
+hashmap<server,
+hashmap<String, Role>
+spec:
+    server:
+        config:
+        name_of_group:
+            role_groups:
+                instances: 1
+                config: ab
+                selector:
+
+*/
 
 pub fn transform_all_roles_to_config<T>(
     resource: &T::Configurable,
-    // HashMap<Role Name, Vec<...>>
     role_information: HashMap<String, Vec<PropertyNameKind>>,
-    // HashMap<Role name, (Role, Vec<RoleGroup>)>
-    roles: HashMap<String, (Role<T>, HashMap<String, RoleGroup<T>>)>,
+    roles: HashMap<String, Role<T>>,
 ) -> HashMap<String, HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>>
 where
     T: Configuration,
 {
     let mut result = HashMap::new();
 
-    for (role_name, (role, _role_groups)) in roles {
+    for (role_name, role) in roles {
         let role_properties = transform_role_to_config(
+            resource,
             &role_name,
             &role,
+            // TODO: What to do when role_name not in role_information
             role_information.get(&role_name).unwrap(),
-            resource,
         );
         result.insert(role_name, role_properties);
     }
@@ -825,7 +837,7 @@ mod tests {
 
         let property_kinds = vec![PropertyNameKind::Env];
 
-        let config = transform_role_to_config(ROLE_GROUP, &role, &property_kinds, &String::new());
+        let config = transform_role_to_config(&String::new(), ROLE_GROUP, &role, &property_kinds);
 
         assert_eq!(config, expected);
     }
@@ -880,8 +892,110 @@ mod tests {
             PropertyNameKind::Cli,
         ];
 
-        let config = transform_role_to_config(ROLE_GROUP, &role, &property_kinds, &String::new());
+        let config = transform_role_to_config(&String::new(), ROLE_GROUP, &role, &property_kinds);
 
         assert_eq!(config, expected);
+    }
+
+    #[test]
+    fn test_transform_all_roles_to_config() {
+        let role_1 = "role_1";
+        let role_2 = "role_2";
+        let role_group_1 = "role_group_1";
+        let role_group_2 = "role_group_2";
+        let file_name = "foo.bar";
+
+        let role_information: HashMap<String, Vec<PropertyNameKind>> = collection! {
+            role_1.to_string() => vec![PropertyNameKind::Conf(file_name.to_string()), PropertyNameKind::Env],
+            role_2.to_string() => vec![PropertyNameKind::Cli]
+        };
+
+        let roles: HashMap<String, Role<TestConfig>> = collection! {
+            role_1.to_string() => Role {
+            config: build_common_config(
+                build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
+                None,
+                None,
+                None,
+            ),
+            role_groups: collection! {role_group_1.to_string() => RoleGroup {
+                instances: 1,
+                config: build_common_config(
+                    build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                    None,
+                    None,
+                    None
+                ),
+                selector: None,
+            },
+            role_group_2.to_string() => RoleGroup {
+                instances: 1,
+                config: build_common_config(
+                    build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                    None,
+                    None,
+                    None
+                ),
+                selector: None,
+            }}
+
+        },
+        role_2.to_string() => Role {
+            config: build_common_config(
+                build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
+                None,
+                None,
+                None,
+            ),
+            role_groups: collection! {role_group_1.to_string() => RoleGroup {
+                instances: 1,
+                config: build_common_config(
+                    build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                    None,
+                    None,
+                    None
+                ),
+                selector: None,
+            }},
+        }};
+
+        // temporary type definition. RustFmt cannot work with that
+        // let expected: HashMap<
+        //     String,
+        //     HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>,
+        // > = collection! {
+        type TempType =
+            HashMap<String, HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>>;
+
+        let expected: TempType = collection! {
+        role_1.to_string() => collection!{
+            role_group_1.to_string() => collection! {
+                PropertyNameKind::Env => collection! {
+                    "env".to_string() => GROUP_ENV.to_string()
+                },
+                PropertyNameKind::Conf(file_name.to_string()) => collection! {
+                    "conf".to_string() => GROUP_CONFIG.to_string()
+                }
+            },
+            role_group_2.to_string() => collection! {
+                PropertyNameKind::Env => collection! {
+                    "env".to_string() => GROUP_ENV.to_string()
+                },
+                PropertyNameKind::Conf(file_name.to_string()) => collection! {
+                    "conf".to_string() => GROUP_CONFIG.to_string()
+                }
+            }
+        },
+        role_2.to_string() => collection! {
+            role_group_1.to_string() => collection! {
+                PropertyNameKind::Cli => collection! {
+                    "cli".to_string() => GROUP_CLI.to_string()
+                }
+            }
+        }};
+
+        let all_config = transform_all_roles_to_config(&String::new(), role_information, roles);
+
+        assert_eq!(all_config, expected);
     }
 }
