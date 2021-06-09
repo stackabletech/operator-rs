@@ -452,12 +452,23 @@ mod tests {
         }
     */
 
-    #[test]
-    fn test_get_role_config() {
-        let role_name = "role";
+    /// Helper function that builds a role and transforms the configuration to a HashMap
+    fn get_role_config_for_sample(
+        role_name: &str,
+        role_config: bool,
+        group_config: bool,
+        role_overrides: bool,
+        group_overrides: bool,
+    ) -> HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> {
         let role = build_role_and_group(true, false, false, false);
         let property_kinds = vec![PropertyNameKind::Env];
-        let config = get_role_config(role_name, &role, &property_kinds, &String::new());
+        get_role_config(role_name, &role, &property_kinds, &String::new())
+    }
+
+    #[test]
+    fn test_get_role_config_no_role_groups_configs() {
+        let role_name = "role";
+        let got = get_role_config_for_sample(role_name, true, false, false, false);
         let expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> = collection! {
             "role_group".to_string() =>
             collection!{
@@ -467,33 +478,101 @@ mod tests {
                 }
             }
         };
-        assert_eq!(config, expected);
+        assert_eq!(got, expected);
     }
 
     #[test]
-    fn test_role_without_config() {}
+    fn test_get_role_config_no_config_with_role_groups_configs() {
+        let role_name = "role";
+        let got = get_role_config_for_sample(role_name, false, true, false, false);
+        let expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> = collection! {
+            "role_group".to_string() =>
+            collection!{
+                PropertyNameKind::Env =>
+                collection!{
+                    "env".to_string() => "role_env".to_string(),
+                }
+            }
+        };
+        assert_eq!(got, expected);
+    }
 
     #[test]
-    fn test_role_with_config_without_group_config() {}
+    fn test_get_role_with_config_with_group_config() {
+        let role_name = "role";
+        let got = get_role_config_for_sample(role_name, true, true, false, false);
+        let expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> = collection! {
+            "role_group".to_string() =>
+            collection!{
+                PropertyNameKind::Env =>
+                collection!{
+                    "env".to_string() => "role_env".to_string(),
+                }
+            }
+        };
+        assert_eq!(got, expected);
+    }
 
     #[test]
-    fn test_role_with_config_with_group_config() {}
+    fn test_get_role_with_config_and_config_override() {
+        let role_name = "role";
+        let got = get_role_config_for_sample(role_name, true, false, true, false);
+        let expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> = collection! {
+            "role_group".to_string() =>
+            collection!{
+                PropertyNameKind::Env =>
+                collection!{
+                    "env".to_string() => "role_env".to_string(),
+                }
+            }
+        };
+        assert_eq!(got, expected);
+    }
+
+    fn test_get_role_with_config_and_group_with_config_and_config_override() {
+        let role_name = "role";
+        let got = get_role_config_for_sample(role_name, true, true, true, false);
+        let expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> = collection! {
+            "role_group".to_string() =>
+            collection!{
+                PropertyNameKind::Env =>
+                collection!{
+                    "env".to_string() => "role_env".to_string(),
+                }
+            }
+        };
+        assert_eq!(got, expected);
+    }
 
     #[test]
-    fn test_role_with_config_and_config_override() {}
+    fn test_get_role_without_config_and_group_with_config_and_config_override() {
+        let role_name = "role";
+        let got = get_role_config_for_sample(role_name, false, true, true, false);
+        let expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> = collection! {
+            "role_group".to_string() =>
+            collection!{
+                PropertyNameKind::Env =>
+                collection!{
+                    "env".to_string() => "role_env".to_string(),
+                }
+            }
+        };
+        assert_eq!(got, expected);
+    }
 
     #[test]
-    fn test_role_with_config_and_env_override() {}
-
-    #[test]
-    fn test_role_with_config_and_cli_override() {}
-
-    #[test]
-    fn test_role_with_config_and_group_with_config_and_config_override() {}
-
-    #[test]
-    fn test_role_without_config_and_group_with_config_and_config_override() {}
-
-    #[test]
-    fn test_role_without_config_and_group_without_config_and_config_override() {}
+    fn test_get_role_without_config_and_group_without_config_and_config_override() {
+        let role_name = "role";
+        let got = get_role_config_for_sample(role_name, false, false, false, true);
+        let expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> = collection! {
+            "role_group".to_string() =>
+            collection!{
+                PropertyNameKind::Env =>
+                collection!{
+                    "env".to_string() => "role_env".to_string(),
+                }
+            }
+        };
+        assert_eq!(got, expected);
+    }
 }
