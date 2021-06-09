@@ -164,9 +164,84 @@ fn get_role_and_group_labels(role: &str, group_name: &str) -> LabelOptionalValue
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::*;
+
+    #[rstest]
+    #[case::single_role(
+        r#"
+        role1:
+          group1:
+            - node1
+            - node2
+          group2:
+            - node3"})
+    "#
+    )]
+    #[case::two_roles(
+        r#"
+        role1:
+          group1:
+            - node1
+            - node2
+        role2:
+          group2:
+            - node1
+          group3:
+            - nodenode
+    "#
+    )]
+    #[trace]
+    fn test_get_full_pod_node_map(#[case] eligible_node_names: &str) {
+        let eligible_node_names_parsed: HashMap<String, HashMap<String, Vec<String>>> =
+            serde_yaml::from_str(eligible_node_names).expect("Invalid test definition!");
+
+        // We need to map the innermost `String` objects to `Node` objects, but to get to them
+        // a couple of nested loops are required
+        // The entire purpose of this code is to transform `HashMap<String, HashMap<String, Vec<String>>>`
+        // into `HashMap<String, HashMap<String, Vec<Node>>>`
+        let eligible_nodes: HashMap<String, HashMap<String, Vec<Node>>> =
+            eligible_node_names_parsed
+                .iter()
+                .map(|(role, role_groups)| {
+                    (
+                        role.clone(),
+                        role_groups
+                            .iter()
+                            .map(|(group_name, nodes)| {
+                                (
+                                    group_name.clone(),
+                                    nodes
+                                        .iter()
+                                        .map(|node_name| {
+                                            let mut node = Node::default();
+                                            node.metadata.name = Some(node_name.clone());
+                                            node
+                                        })
+                                        .collect::<Vec<_>>(),
+                                )
+                            })
+                            .collect::<HashMap<_, _>>(),
+                    )
+                })
+                .collect::<HashMap<_, _>>();
+
+        let full_pod_node_map = get_full_pod_node_map(&eligible_nodes);
+
+        // We could also make this a parameter to the function to make it more explicit, not sure what would be better
+        // Check number of returned groups matches what was provided
+        let input_group_count: usize = eligible_nodes
+            .values()
+            .into_iter()
+            .map(|group| group.keys().len())
+            .sum();
+
+        assert_eq!(input_group_count, full_pod_node_map.len());
+
+        // ...
+    }
 
     #[test]
-    fn test_get_full_pod_node_map() {
+    fn test_get_full_pod_node_map1() {
         let role = "server";
         let group_name = "default";
         let group_name_2 = "default2";
