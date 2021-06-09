@@ -42,7 +42,7 @@ pub trait Configuration {
     fn config_information() -> HashMap<String, (PropertyNameKind, String)>;
 }
 
-pub fn get_role_config<T>(
+fn transform_role_to_config<T>(
     role_name: &str,
     role: &Role<T>,
     property_kinds: &[PropertyNameKind],
@@ -111,7 +111,7 @@ where
     result
 }
 
-pub fn get_all_config<T>(
+pub fn transform_all_roles_to_config<T>(
     resource: &T::Configurable,
     // HashMap<Role Name, Vec<...>>
     role_information: HashMap<String, Vec<PropertyNameKind>>,
@@ -124,7 +124,7 @@ where
     let mut result = HashMap::new();
 
     for (role_name, (role, _role_groups)) in roles {
-        let role_properties = get_role_config(
+        let role_properties = transform_role_to_config(
             &role_name,
             &role,
             role_information.get(&role_name).unwrap(),
@@ -299,6 +299,23 @@ mod tests {
     use crate::role_utils::{Role, RoleGroup};
     use rstest::*;
     use std::collections::HashMap;
+    const ROLE_GROUP: &str = "role_group";
+
+    const ROLE_CONFIG: &str = "role_config";
+    const ROLE_ENV: &str = "role_env";
+    const ROLE_CLI: &str = "role_cli";
+
+    const GROUP_CONFIG: &str = "group_config";
+    const GROUP_ENV: &str = "group_env";
+    const GROUP_CLI: &str = "group_cli";
+
+    const ROLE_CONF_OVERRIDE: &str = "role_conf_override";
+    const ROLE_ENV_OVERRIDE: &str = "role_env_override";
+    const ROLE_CLI_OVERRIDE: &str = "role_cli_override";
+
+    const GROUP_CONF_OVERRIDE: &str = "group_conf_override";
+    const GROUP_ENV_OVERRIDE: &str = "group_env_override";
+    const GROUP_CLI_OVERRIDE: &str = "group_cli_override";
 
     #[derive(Clone, Debug, PartialEq)]
     struct TestConfig {
@@ -352,227 +369,464 @@ mod tests {
         }
     }
 
+    fn build_test_config(conf: &str, env: &str, cli: &str) -> Option<TestConfig> {
+        Some(TestConfig {
+            conf: Some(conf.to_string()),
+            env: Some(env.to_string()),
+            cli: Some(cli.to_string()),
+        })
+    }
+
+    fn build_common_config(
+        test_config: Option<TestConfig>,
+        config_overrides: Option<HashMap<String, HashMap<String, String>>>,
+        env_overrides: Option<HashMap<String, String>>,
+        cli_overrides: Option<HashMap<String, Option<String>>>,
+    ) -> Option<CommonConfiguration<TestConfig>> {
+        Some(CommonConfiguration {
+            config: test_config,
+            config_overrides,
+            env_overrides,
+            cli_overrides,
+        })
+    }
+
+    fn build_config_override(
+        file_name: &str,
+        property: &str,
+    ) -> Option<HashMap<String, HashMap<String, String>>> {
+        Some(
+            collection!( file_name.to_string() => collection!( property.to_string() => property.to_string())),
+        )
+    }
+
+    fn build_env_override(property: &str) -> Option<HashMap<String, String>> {
+        Some(collection!( property.to_string() => property.to_string()))
+    }
+
+    fn build_cli_override(property: &str) -> Option<HashMap<String, Option<String>>> {
+        Some(collection!( property.to_string() => Some(property.to_string())))
+    }
+
     fn build_role_and_group(
         role_config: bool,
         group_config: bool,
         role_overrides: bool,
         group_overrides: bool,
     ) -> Role<TestConfig> {
-        //let role = "role".to_string();
-        let role_group = "role_group".to_string();
+        let role_group = ROLE_GROUP.to_string();
+        let file_name = "foo.conf";
 
-        let mut role = Role {
-            config: None,
-            role_groups: collection! {role_group.clone() => RoleGroup { config: None, instances: 1, selector:None }},
-        };
-
-        if role_config {
-            role.config = Some(CommonConfiguration {
-                config: Some(TestConfig {
-                    conf: Some("role_conf".to_string()),
-                    env: Some("role_env".to_string()),
-                    cli: Some("role_cli".to_string()),
-                }),
-                config_overrides: None,
-                env_overrides: None,
-                cli_overrides: None,
-            });
-        }
-
-        if group_config {
-            role.role_groups.insert(
-                role_group.clone(),
-                RoleGroup {
+        match (role_config, group_config, role_overrides, group_overrides) {
+            (true, true, true, true) => Role {
+                config: build_common_config(
+                    build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
+                    build_config_override(file_name, ROLE_CONF_OVERRIDE),
+                    build_env_override(ROLE_ENV_OVERRIDE),
+                    build_cli_override(ROLE_CLI_OVERRIDE),
+                ),
+                role_groups: collection! {role_group => RoleGroup {
                     instances: 1,
-                    config: Some(CommonConfiguration {
-                        config: Some(TestConfig {
-                            conf: Some("group_conf".to_string()),
-                            env: Some("group_env".to_string()),
-                            cli: Some("group_cli".to_string()),
-                        }),
-                        config_overrides: None,
-                        env_overrides: if group_overrides {
-                            Some(collection! {"group_override".to_string() => "env".to_string() })
-                        } else {
-                            None
-                        },
-                        cli_overrides: None,
-                    }),
+                    config: build_common_config(
+                        build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                        build_config_override(file_name, GROUP_CONF_OVERRIDE),
+                        build_env_override(GROUP_ENV_OVERRIDE),
+                        build_cli_override(GROUP_CLI_OVERRIDE)),
+                        selector: None,
+                }},
+            },
+            (true, true, true, false) => Role {
+                config: build_common_config(
+                    build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
+                    build_config_override(file_name, ROLE_CONF_OVERRIDE),
+                    build_env_override(ROLE_ENV_OVERRIDE),
+                    build_cli_override(ROLE_CLI_OVERRIDE),
+                ),
+                role_groups: collection! {role_group => RoleGroup {
+                    instances: 1,
+                    config: build_common_config(
+                        build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI), None, None, None),
                     selector: None,
-                },
-            );
+                }},
+            },
+            (true, true, false, true) => Role {
+                config: build_common_config(
+                    build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
+                    None,
+                    None,
+                    None,
+                ),
+                role_groups: collection! {role_group => RoleGroup {
+                    instances: 1,
+                    config: build_common_config(
+                        build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                        build_config_override(file_name, GROUP_CONF_OVERRIDE),
+                        build_env_override(GROUP_ENV_OVERRIDE),
+                        build_cli_override(GROUP_CLI_OVERRIDE)),
+                        selector: None,
+                }},
+            },
+            (true, true, false, false) => Role {
+                config: build_common_config(
+                    build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
+                    None,
+                    None,
+                    None,
+                ),
+                role_groups: collection! {role_group => RoleGroup {
+                    instances: 1,
+                    config: build_common_config(
+                        build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                        None,
+                        None,
+                        None),
+                        selector: None,
+                }},
+            },
+            (true, false, true, true) => Role {
+                config: build_common_config(
+                    build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
+                    build_config_override(file_name, ROLE_CONF_OVERRIDE),
+                    build_env_override(ROLE_ENV_OVERRIDE),
+                    build_cli_override(ROLE_CLI_OVERRIDE),
+                ),
+                role_groups: collection! {role_group => RoleGroup {
+                    instances: 1,
+                    config: build_common_config(
+                        None,
+                        build_config_override(file_name, GROUP_CONF_OVERRIDE),
+                        build_env_override(GROUP_ENV_OVERRIDE),
+                        build_cli_override(GROUP_CLI_OVERRIDE)),
+                        selector: None,
+                }},
+            },
+            (true, false, true, false) => Role {
+                config: build_common_config(
+                    build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
+                    build_config_override(file_name, ROLE_CONF_OVERRIDE),
+                    build_env_override(ROLE_ENV_OVERRIDE),
+                    build_cli_override(ROLE_CLI_OVERRIDE),
+                ),
+                role_groups: collection! {role_group => RoleGroup {
+                    instances: 1,
+                    config: None,
+                    selector: None,
+                }},
+            },
+            (true, false, false, true) => Role {
+                config: build_common_config(
+                    build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
+                    None,
+                    None,
+                    None,
+                ),
+                role_groups: collection! {role_group => RoleGroup {
+                    instances: 1,
+                    config: build_common_config(
+                        None,
+                        build_config_override(file_name, GROUP_CONF_OVERRIDE),
+                        build_env_override(GROUP_ENV_OVERRIDE),
+                        build_cli_override(GROUP_CLI_OVERRIDE)
+                    ),
+                    selector: None,
+                }},
+            },
+            (true, false, false, false) => Role {
+                config: build_common_config(
+                    build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
+                    None,
+                    None,
+                    None,
+                ),
+                role_groups: collection! {role_group => RoleGroup {
+                    instances: 1,
+                    config: None,
+                    selector: None,
+                }},
+            },
+            (false, true, true, true) => Role {
+                config: build_common_config(
+                    None,
+                    build_config_override(file_name, ROLE_CONF_OVERRIDE),
+                    build_env_override(ROLE_ENV_OVERRIDE),
+                    build_cli_override(ROLE_CLI_OVERRIDE),
+                ),
+                role_groups: collection! {role_group => RoleGroup {
+                    instances: 1,
+                    config: build_common_config(
+                        build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                        build_config_override(file_name, GROUP_CONF_OVERRIDE),
+                        build_env_override(GROUP_ENV_OVERRIDE),
+                        build_cli_override(GROUP_CLI_OVERRIDE)),
+                        selector: None,
+                }},
+            },
+            (false, true, true, false) => Role {
+                config: build_common_config(
+                    None,
+                    build_config_override(file_name, ROLE_CONF_OVERRIDE),
+                    build_env_override(ROLE_ENV_OVERRIDE),
+                    build_cli_override(ROLE_CLI_OVERRIDE),
+                ),
+                role_groups: collection! {role_group => RoleGroup {
+                    instances: 1,
+                    config: build_common_config(
+                        build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                        None,
+                        None,
+                        None),
+                        selector: None,
+                }},
+            },
+            (false, true, false, true) => Role {
+                config: None,
+                role_groups: collection! {role_group => RoleGroup {
+                    instances: 1,
+                    config: build_common_config(
+                        build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                        build_config_override(file_name, GROUP_CONF_OVERRIDE),
+                        build_env_override(GROUP_ENV_OVERRIDE),
+                        build_cli_override(GROUP_CLI_OVERRIDE)),
+                        selector: None,
+                }},
+            },
+            (false, true, false, false) => Role {
+                config: None,
+                role_groups: collection! {role_group => RoleGroup {
+                    instances: 1,
+                    config: build_common_config(
+                        build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                        None,
+                        None,
+                        None),
+                        selector: None,
+                }},
+            },
+            (false, false, true, true) => Role {
+                config: build_common_config(
+                    None,
+                    build_config_override(file_name, ROLE_CONF_OVERRIDE),
+                    build_env_override(ROLE_ENV_OVERRIDE),
+                    build_cli_override(ROLE_CLI_OVERRIDE),
+                ),
+                role_groups: collection! {role_group => RoleGroup {
+                    instances: 1,
+                    config: build_common_config(
+                        None,
+                        build_config_override(file_name, GROUP_CONF_OVERRIDE),
+                        build_env_override(GROUP_ENV_OVERRIDE),
+                        build_cli_override(GROUP_CLI_OVERRIDE)),
+                        selector: None,
+                }},
+            },
+            (false, false, true, false) => Role {
+                config: build_common_config(
+                    None,
+                    build_config_override(file_name, ROLE_CONF_OVERRIDE),
+                    build_env_override(ROLE_ENV_OVERRIDE),
+                    build_cli_override(ROLE_CLI_OVERRIDE),
+                ),
+                role_groups: collection! {role_group => RoleGroup {
+                    instances: 1,
+                    config: None,
+                    selector: None,
+                }},
+            },
+            (false, false, false, true) => Role {
+                config: None,
+                role_groups: collection! {role_group => RoleGroup {
+                    instances: 1,
+                    config: build_common_config(
+                        None,
+                        build_config_override(file_name, GROUP_CONF_OVERRIDE),
+                        build_env_override(GROUP_ENV_OVERRIDE),
+                        build_cli_override(GROUP_CLI_OVERRIDE)),
+                        selector: None,
+                }},
+            },
+            (false, false, false, false) => Role {
+                config: None,
+                role_groups: collection! {role_group => RoleGroup {
+                    instances: 1,
+                    config: None,
+                    selector: None,
+                }},
+            },
         }
-
-        if role_overrides {
-            if let Some(conf) = &mut role.config {
-                conf.env_overrides =
-                    Some(collection! {"role_override".to_string() => "env".to_string() });
-            }
-        }
-
-        role
     }
-    /*
-        #[rstest]
-        #[case(
-            true,
-            false,
-            false,
-            false,
-            collection!{
-                "role".to_string() =>
-                collection!{
-                    PropertyNameKind::Env =>
-                    collection!{
-                        "env".to_string() => "role_env".to_string(),
-                    }
+
+    #[rstest]
+    #[case(true, true, true, true,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    "env".to_string() => GROUP_ENV.to_string(),
+                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
                 }
             }
-        )]
-        #[trace]
-        fn test_get_role_config(
-            #[case] role_config: bool,
-            #[case] group_config: bool,
-            #[case] role_overrides: bool,
-            #[case] group_overrides: bool,
-            #[case] expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>,
-        ) {
-            let role_name = "role";
-            let role = build_role_and_group(role_config, group_config, role_overrides, group_overrides);
-
-            let property_kinds = vec![PropertyNameKind::Env];
-
-            let config = get_role_config(role_name, &role, &property_kinds, &String::new());
-
-            println!("{:?}", role);
-            println!("{:?}", expected);
-            println!("{:?}", config);
-
-            assert_eq!(config, expected);
         }
-    */
+    )]
+    #[case(true, true, true, false,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    "env".to_string() => GROUP_ENV.to_string(),
+                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                }
+            }
+        }
+    )]
+    #[case(true, true, false, true,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    "env".to_string() => GROUP_ENV.to_string(),
+                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                }
+            }
+        }
+    )]
+    #[case(true, true, false, false,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    "env".to_string() => GROUP_ENV.to_string(),
+                }
+            }
+        }
+    )]
+    #[case(true, false, true, true,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    "env".to_string() => ROLE_ENV.to_string(),
+                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                }
+            }
+        }
+    )]
+    #[case(true, false, true, false,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    "env".to_string() => ROLE_ENV.to_string(),
+                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                }
+            }
+        }
+    )]
+    #[case(true, false, false, true,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    "env".to_string() => ROLE_ENV.to_string(),
+                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                }
+            }
+        }
+    )]
+    #[case(true, false, false, false,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    "env".to_string() => ROLE_ENV.to_string(),
+                }
+            }
+        }
+    )]
+    #[case(false, true, true, true,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    "env".to_string() => GROUP_ENV.to_string(),
+                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                }
+            }
+        }
+    )]
+    #[case(false, true, true, false,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    "env".to_string() => GROUP_ENV.to_string(),
+                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                }
+            }
+        }
+    )]
+    #[case(false, true, false, true,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    "env".to_string() => GROUP_ENV.to_string(),
+                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                }
+            }
+        }
+    )]
+    #[case(false, true, false, false,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    "env".to_string() => GROUP_ENV.to_string(),
+                }
+            }
+        }
+    )]
+    #[case(false, false, true, true,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                }
+            }
+        }
+    )]
+    #[case(false, false, true, false,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                }
+            }
+        }
+    )]
+    #[case(false, false, false, true,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                }
+            }
+        }
+    )]
+    #[case(false, false, false, false,
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
 
-    /// Helper function that builds a role and transforms the configuration to a HashMap
-    fn get_role_config_for_sample(
-        role_name: &str,
-        role_config: bool,
-        group_config: bool,
-        role_overrides: bool,
-        group_overrides: bool,
-    ) -> HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> {
-        let role = build_role_and_group(true, false, false, false);
+                }
+            }
+        }
+    )]
+    #[trace]
+    fn test_transform_role_to_config(
+        #[case] role_config: bool,
+        #[case] group_config: bool,
+        #[case] role_overrides: bool,
+        #[case] group_overrides: bool,
+        #[case] expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>,
+    ) {
+        let role = build_role_and_group(role_config, group_config, role_overrides, group_overrides);
+
         let property_kinds = vec![PropertyNameKind::Env];
-        get_role_config(role_name, &role, &property_kinds, &String::new())
-    }
 
-    #[test]
-    fn test_get_role_config_no_role_groups_configs() {
-        let role_name = "role";
-        let got = get_role_config_for_sample(role_name, true, false, false, false);
-        let expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> = collection! {
-            "role_group".to_string() =>
-            collection!{
-                PropertyNameKind::Env =>
-                collection!{
-                    "env".to_string() => "role_env".to_string(),
-                }
-            }
-        };
-        assert_eq!(got, expected);
-    }
+        let config = transform_role_to_config(ROLE_GROUP, &role, &property_kinds, &String::new());
 
-    #[test]
-    fn test_get_role_config_no_config_with_role_groups_configs() {
-        let role_name = "role";
-        let got = get_role_config_for_sample(role_name, false, true, false, false);
-        let expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> = collection! {
-            "role_group".to_string() =>
-            collection!{
-                PropertyNameKind::Env =>
-                collection!{
-                    "env".to_string() => "role_env".to_string(),
-                }
-            }
-        };
-        assert_eq!(got, expected);
-    }
-
-    #[test]
-    fn test_get_role_with_config_with_group_config() {
-        let role_name = "role";
-        let got = get_role_config_for_sample(role_name, true, true, false, false);
-        let expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> = collection! {
-            "role_group".to_string() =>
-            collection!{
-                PropertyNameKind::Env =>
-                collection!{
-                    "env".to_string() => "role_env".to_string(),
-                }
-            }
-        };
-        assert_eq!(got, expected);
-    }
-
-    #[test]
-    fn test_get_role_with_config_and_config_override() {
-        let role_name = "role";
-        let got = get_role_config_for_sample(role_name, true, false, true, false);
-        let expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> = collection! {
-            "role_group".to_string() =>
-            collection!{
-                PropertyNameKind::Env =>
-                collection!{
-                    "env".to_string() => "role_env".to_string(),
-                }
-            }
-        };
-        assert_eq!(got, expected);
-    }
-
-    fn test_get_role_with_config_and_group_with_config_and_config_override() {
-        let role_name = "role";
-        let got = get_role_config_for_sample(role_name, true, true, true, false);
-        let expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> = collection! {
-            "role_group".to_string() =>
-            collection!{
-                PropertyNameKind::Env =>
-                collection!{
-                    "env".to_string() => "role_env".to_string(),
-                }
-            }
-        };
-        assert_eq!(got, expected);
-    }
-
-    #[test]
-    fn test_get_role_without_config_and_group_with_config_and_config_override() {
-        let role_name = "role";
-        let got = get_role_config_for_sample(role_name, false, true, true, false);
-        let expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> = collection! {
-            "role_group".to_string() =>
-            collection!{
-                PropertyNameKind::Env =>
-                collection!{
-                    "env".to_string() => "role_env".to_string(),
-                }
-            }
-        };
-        assert_eq!(got, expected);
-    }
-
-    #[test]
-    fn test_get_role_without_config_and_group_without_config_and_config_override() {
-        let role_name = "role";
-        let got = get_role_config_for_sample(role_name, false, false, false, true);
-        let expected: HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>> = collection! {
-            "role_group".to_string() =>
-            collection!{
-                PropertyNameKind::Env =>
-                collection!{
-                    "env".to_string() => "role_env".to_string(),
-                }
-            }
-        };
-        assert_eq!(got, expected);
+        assert_eq!(config, expected);
     }
 }
