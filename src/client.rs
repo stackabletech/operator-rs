@@ -1,4 +1,4 @@
-use crate::error::OperatorResult;
+use crate::error::{Error, OperatorResult};
 use crate::finalizer;
 use crate::label_selector;
 use crate::pod_utils;
@@ -8,6 +8,7 @@ use futures::StreamExt;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
 use kube::api::{DeleteParams, ListParams, Patch, PatchParams, PostParams, Resource};
 use kube::client::{Client as KubeClient, Status};
+use kube::error::ErrorResponse;
 use kube::{Api, Config};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -70,6 +71,31 @@ impl Client {
         <T as Resource>::DynamicType: Default,
     {
         Ok(self.get_api(namespace).get(resource_name).await?)
+    }
+
+    /// Returns Ok(true) if the resource has been registered in Kubernetes, Ok(false) if it could
+    /// not be found and Error in any other case (e.g. connection to Kubernetes failed in some way).
+    /// Kubernetes does not offer a pure exists check. Therefore we currently use the get() method
+    /// and ignore the (in case of existing) returned resource. We should replace this with a pure
+    /// exists method as soon as it becomes available (e.g. only returning Ok/Success) to reduce
+    /// network traffic.
+    pub async fn exists<T>(
+        &self,
+        resource_name: &str,
+        namespace: Option<&str>,
+    ) -> OperatorResult<bool>
+    where
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
+    {
+        let resource: OperatorResult<T> = self.get(resource_name, namespace).await;
+        match resource {
+            Ok(_) => Ok(true),
+            Err(Error::KubeError {
+                source: kube::error::Error::Api(ErrorResponse { reason, .. }),
+            }) if reason == "NotFound" => Ok(false),
+            Err(err) => Err(err),
+        }
     }
 
     /// Retrieves all instances of the requested resource type.
