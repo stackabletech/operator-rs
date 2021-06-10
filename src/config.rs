@@ -43,7 +43,7 @@ pub trait Configuration {
 }
 
 // This deep map causes problems with clippy and rustfmt.
-type RoleConfigByPropertyKind =
+pub type RoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>>;
 ///
 /// Given the configuration parameters of all `roles` partition them by `PropertyNameKind` and
