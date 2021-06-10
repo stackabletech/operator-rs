@@ -42,93 +42,17 @@ pub trait Configuration {
     fn config_information() -> HashMap<String, (PropertyNameKind, String)>;
 }
 
-/// Given the input parameters, generates a data structure suitable for usage as a
-/// product configuration.
-/// The configuration objects of the role groups contained in the given `role` are
-/// merged with that of the `role` it's self.
-/// In addition, the `*_overrides` settings are also merged in the resulting configuration
-/// with the highest priority.
-/// The merge priority chain looks like this:
 ///
-/// group overrides -> group config -> role overrides -> role config
+/// Given the configuration parameters of all `roles` partition them by `PropertyNameKind` and
+/// merge them with the role groups configuration parameters.
 ///
-/// where '->' means "overwrites if existing or adds".
-fn transform_role_to_config<T>(
-    resource: &T::Configurable,
-    role_name: &str,
-    role: &Role<T>,
-    property_kinds: &[PropertyNameKind],
-) -> HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>
-where
-    T: Configuration,
-{
-    let mut result = HashMap::new();
-
-    let role_properties =
-        parse_properties_by_kind(resource, role_name, &role.config, property_kinds);
-
-    // for each role group ...
-    for (role_group_name, role_group) in &role.role_groups {
-        // ... compute the group properties ...
-        let role_group_properties = parse_properties_by_kind(
-            resource,
-            role_group_name,
-            &role_group.config,
-            property_kinds,
-        );
-
-        // ... and merge them with the role properties.
-        let mut role_properties_copy = role_properties.clone();
-        for (property_kind, properties) in role_group_properties {
-            role_properties_copy
-                .entry(property_kind)
-                .or_default()
-                .extend(properties);
-        }
-
-        result.insert(role_group_name.clone(), role_properties_copy);
-    }
-
-    result
-}
-
-/// Each PropertyNameKind means either a config file, env properties or CLI argument.
-/// These can be customized per role.
-/// Each role we'll first make sure to process the role-wide configuration.
-/// To do this we need to iterate over all the PropertyKinds for this role and first
-/// compute the properties from the typed configuration and then make sure to apply the matching overrides.
-/// Then we'll do the same again but iterate over each role group.
-/// The result will be a Map<Role Name, Map<Role Group name, Map<Property Kind, Map<String, String>>>>
-fn parse_properties_by_kind<T>(
-    resource: &<T as Configuration>::Configurable,
-    role_name: &str,
-    config: &Option<CommonConfiguration<T>>,
-    property_kinds: &[PropertyNameKind],
-) -> HashMap<PropertyNameKind, HashMap<String, String>>
-where
-    T: Configuration,
-{
-    let mut result = HashMap::new();
-
-    for property_kind in property_kinds {
-        match property_kind {
-            PropertyNameKind::Conf(file) => result.insert(
-                property_kind.clone(),
-                parse_conf_properties(resource, role_name, config, file),
-            ),
-            PropertyNameKind::Env => result.insert(
-                property_kind.clone(),
-                parse_env_properties(resource, role_name, config),
-            ),
-            PropertyNameKind::Cli => result.insert(
-                property_kind.clone(),
-                parse_cli_properties(resource, role_name, config),
-            ),
-        };
-    }
-    result
-}
-
+/// The output is a map keyed by the role names. The value is also a map keyed by role group names and
+/// the values are the merged configuration properties "bucketed" by `PropertyNameKind`.
+/// # Arguments
+/// - `resource`         - Not used directly. It's passed on to the `Configuration::compute_*` calls.
+/// - `role_information` - A map keyed by role names. The value is a vector of `PropertyNameKind`
+/// - `roles`            - A map keyed by role names.
+///
 pub fn transform_all_roles_to_config<T>(
     resource: &T::Configurable,
     role_information: HashMap<String, Vec<PropertyNameKind>>,
@@ -150,6 +74,147 @@ where
         result.insert(role_name, role_properties);
     }
 
+    result
+}
+
+// TODO: boolean flags suck, move ignore_warn to be a flag
+pub fn process_validation_result(
+    validation_result: &HashMap<String, PropertyValidationResult>,
+    ignore_warn: bool,
+) -> HashMap<String, String> {
+    let mut properties = HashMap::new();
+    for (key, result) in validation_result.iter() {
+        match result {
+            PropertyValidationResult::Default(value) => {
+                debug!("Property [{}] is not explicitly set, will not set and rely on the default instead ([{}])", key, value);
+            }
+            PropertyValidationResult::RecommendedDefault(value) => {
+                debug!(
+                    "Property [{}] is not set, will use recommended default [{}] instead",
+                    key, value
+                );
+                properties.insert(key.clone(), value.clone());
+            }
+            PropertyValidationResult::Valid(value) => {
+                debug!("Property [{}] is set to valid value [{}]", key, value);
+                properties.insert(key.clone(), value.clone());
+            }
+            PropertyValidationResult::Warn(value, err) => {
+                warn!("Property [{}] is set to value [{}] which causes a warning, `ignore_warn` is {}: {:?}", key, value, ignore_warn, err);
+                if ignore_warn {
+                    properties.insert(key.clone(), value.clone());
+                }
+            }
+            PropertyValidationResult::Error(err) => {
+                error!(
+                    "Property [{}] causes a validation error, will not set: {:?}",
+                    key, err
+                );
+                //TODO: Return error
+            }
+        }
+    }
+    properties
+}
+
+/// Given a single `role`, it generates a data structure suitable for applying a
+/// product configuration.
+/// The configuration objects of the role groups contained in the given `role` are
+/// merged with that of the `role` it's self.
+/// In addition, the `*_overrides` settings are also merged in the resulting configuration
+/// with the highest priority.
+/// The merge priority chain looks like this:
+///
+/// group overrides -> group config -> role overrides -> role config
+///
+/// where '->' means "overwrites if existing or adds".
+///
+/// The output is a map with one entry, keyed by `role_name` and the value is a map where all
+/// configuration properties defined in the `role` are partitioned by `PropertyNameKind`.
+/// # Arguments
+/// - `resource`       - Not used directly. It's passed on to the `Configuration::compute_*` calls.
+/// - `role_name`      - Used as key in the output and to partition the configuration properties.
+/// - `role`           - The role for which to transform the configuration parameters.
+/// - `property_kinds` - Used as "buckets" to partition the configuration properties by.
+///
+fn transform_role_to_config<T>(
+    resource: &T::Configurable,
+    role_name: &str,
+    role: &Role<T>,
+    property_kinds: &[PropertyNameKind],
+) -> HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>
+where
+    T: Configuration,
+{
+    let mut result = HashMap::new();
+
+    let role_properties =
+        partition_properties_by_kind(resource, role_name, &role.config, property_kinds);
+
+    // for each role group ...
+    for (role_group_name, role_group) in &role.role_groups {
+        // ... compute the group properties ...
+        let role_group_properties = partition_properties_by_kind(
+            resource,
+            role_group_name,
+            &role_group.config,
+            property_kinds,
+        );
+
+        // ... and merge them with the role properties.
+        let mut role_properties_copy = role_properties.clone();
+        for (property_kind, properties) in role_group_properties {
+            role_properties_copy
+                .entry(property_kind)
+                .or_default()
+                .extend(properties);
+        }
+
+        result.insert(role_group_name.clone(), role_properties_copy);
+    }
+
+    result
+}
+
+/// Given a `config` object and the `property_kind` vector, it uses the `Configuration::compute_*` methods
+/// to partition the configuration properties by `PropertyNameKind`.
+///
+/// The output is map where the configuration properties are keyed by `PropertyNameKind`.
+///
+/// # Arguments
+/// - `resource`       - Not used directly. It's passed on to the `Configuration::compute_*` calls.
+/// - `name`           - Not used directly but passed on to the `Configuration::compute_*` calls. It usually
+///                      contains a role name or a role group name.
+/// - `config`         - The configuration properties to partition.
+/// - `property_kinds` - The "buckets" used to partition the configuration properties.
+///
+fn partition_properties_by_kind<T>(
+    resource: &<T as Configuration>::Configurable,
+    name: &str,
+    config: &Option<CommonConfiguration<T>>,
+    property_kinds: &[PropertyNameKind],
+) -> HashMap<PropertyNameKind, HashMap<String, String>>
+where
+    T: Configuration,
+{
+    let mut result = HashMap::new();
+
+    for property_kind in property_kinds {
+        match property_kind {
+            PropertyNameKind::Conf(file) => result.insert(
+                property_kind.clone(),
+                parse_conf_properties(resource, name, config, file),
+            ),
+            PropertyNameKind::Env => result.insert(
+                property_kind.clone(),
+                parse_env_properties(resource, name, config),
+            ),
+            PropertyNameKind::Cli => result.insert(
+                property_kind.clone(),
+                parse_cli_properties(resource, name, config),
+            ),
+        };
+    }
     result
 }
 
@@ -257,46 +322,6 @@ where
     }
 
     final_properties
-}
-
-// TODO: boolean flags suck, move ignore_warn to be a flag
-pub fn process_validation_result(
-    validation_result: &HashMap<String, PropertyValidationResult>,
-    ignore_warn: bool,
-) -> HashMap<String, String> {
-    let mut properties = HashMap::new();
-    for (key, result) in validation_result.iter() {
-        match result {
-            PropertyValidationResult::Default(value) => {
-                debug!("Property [{}] is not explicitly set, will not set and rely on the default instead ([{}])", key, value);
-            }
-            PropertyValidationResult::RecommendedDefault(value) => {
-                debug!(
-                    "Property [{}] is not set, will use recommended default [{}] instead",
-                    key, value
-                );
-                properties.insert(key.clone(), value.clone());
-            }
-            PropertyValidationResult::Valid(value) => {
-                debug!("Property [{}] is set to valid value [{}]", key, value);
-                properties.insert(key.clone(), value.clone());
-            }
-            PropertyValidationResult::Warn(value, err) => {
-                warn!("Property [{}] is set to value [{}] which causes a warning, `ignore_warn` is {}: {:?}", key, value, ignore_warn, err);
-                if ignore_warn {
-                    properties.insert(key.clone(), value.clone());
-                }
-            }
-            PropertyValidationResult::Error(err) => {
-                error!(
-                    "Property [{}] causes a validation error, will not set: {:?}",
-                    key, err
-                );
-                //TODO: Return error
-            }
-        }
-    }
-    properties
 }
 
 #[cfg(test)]
