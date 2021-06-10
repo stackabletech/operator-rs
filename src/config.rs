@@ -42,6 +42,9 @@ pub trait Configuration {
     fn config_information() -> HashMap<String, (PropertyNameKind, String)>;
 }
 
+// This deep map causes problems with clippy and rustfmt.
+type RoleConfigByPropertyKind =
+    HashMap<String, HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>>;
 ///
 /// Given the configuration parameters of all `roles` partition them by `PropertyNameKind` and
 /// merge them with the role groups configuration parameters.
@@ -57,7 +60,7 @@ pub fn transform_all_roles_to_config<T>(
     resource: &T::Configurable,
     role_information: HashMap<String, Vec<PropertyNameKind>>,
     roles: HashMap<String, Role<T>>,
-) -> HashMap<String, HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>>
+) -> RoleConfigByPropertyKind
 where
     T: Configuration,
 {
@@ -989,15 +992,7 @@ mod tests {
             }},
         }};
 
-        // temporary type definition. RustFmt cannot work with that
-        // let expected: HashMap<
-        //     String,
-        //     HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>,
-        // > = collection! {
-        type TempType =
-            HashMap<String, HashMap<String, HashMap<PropertyNameKind, HashMap<String, String>>>>;
-
-        let expected: TempType = collection! {
+        let expected: RoleConfigByPropertyKind = collection! {
         role_1.to_string() => collection!{
             role_group_1.to_string() => collection! {
                 PropertyNameKind::Env => collection! {
