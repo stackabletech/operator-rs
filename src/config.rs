@@ -201,7 +201,7 @@ where
 
     for property_kind in property_kinds {
         match property_kind {
-            PropertyNameKind::Conf(file) => result.insert(
+            PropertyNameKind::File(file) => result.insert(
                 property_kind.clone(),
                 parse_conf_properties(resource, name, config, file),
             ),
@@ -900,7 +900,7 @@ mod tests {
         let expected = collection! {
         role_group.to_string() =>
             collection!{
-                PropertyNameKind::Conf(file_name.to_string()) =>
+                PropertyNameKind::File(file_name.to_string()) =>
                     collection!(
                         "conf".to_string() => "conf".to_string()
                     ),
@@ -917,7 +917,7 @@ mod tests {
         };
 
         let property_kinds = vec![
-            PropertyNameKind::Conf(file_name.to_string()),
+            PropertyNameKind::File(file_name.to_string()),
             PropertyNameKind::Env,
             PropertyNameKind::Cli,
         ];
@@ -936,7 +936,7 @@ mod tests {
         let file_name = "foo.bar";
 
         let role_information: HashMap<String, Vec<PropertyNameKind>> = collection! {
-            role_1.to_string() => vec![PropertyNameKind::Conf(file_name.to_string()), PropertyNameKind::Env],
+            role_1.to_string() => vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env],
             role_2.to_string() => vec![PropertyNameKind::Cli]
         };
 
@@ -1003,7 +1003,7 @@ mod tests {
                 PropertyNameKind::Env => collection! {
                     "env".to_string() => GROUP_ENV.to_string()
                 },
-                PropertyNameKind::Conf(file_name.to_string()) => collection! {
+                PropertyNameKind::File(file_name.to_string()) => collection! {
                     "conf".to_string() => GROUP_CONFIG.to_string()
                 }
             },
@@ -1011,7 +1011,7 @@ mod tests {
                 PropertyNameKind::Env => collection! {
                     "env".to_string() => GROUP_ENV.to_string()
                 },
-                PropertyNameKind::Conf(file_name.to_string()) => collection! {
+                PropertyNameKind::File(file_name.to_string()) => collection! {
                     "conf".to_string() => GROUP_CONFIG.to_string()
                 }
             }
