@@ -93,7 +93,6 @@ use k8s_openapi::api::core::v1::Node;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use tracing::debug;
 use tracing::{debug, trace};
 
 // TODO: This is an unused idea on how to support ignoring errors on validation
