@@ -186,7 +186,7 @@ pub fn list_eligible_nodes_for_role_and_group(
 }
 
 /// Return a map with labels and values for role (component) and group (role_group).
-fn get_role_and_group_labels(role: &str, group_name: &str) -> LabelOptionalValueMap {
+pub fn get_role_and_group_labels(role: &str, group_name: &str) -> LabelOptionalValueMap {
     let mut labels = BTreeMap::new();
     labels.insert(
         labels::APP_COMPONENT_LABEL.to_string(),
