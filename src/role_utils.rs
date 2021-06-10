@@ -122,9 +122,9 @@ pub async fn find_nodes_that_fit_selectors(
     Ok(found_nodes)
 }
 
-/// For each role, return a tuple consisting of eligible nodes for a given selector.
+/// Return a list of eligible nodes for each role and group combination.
 /// Required to delete excess pods that do not match any node or selector description.
-pub fn get_full_pod_node_map(
+pub fn list_eligible_nodes_for_role_and_group(
     eligible_nodes: &HashMap<String, HashMap<String, Vec<Node>>>,
 ) -> Vec<(Vec<Node>, LabelOptionalValueMap)> {
     let mut eligible_nodes_for_role_and_group = vec![];
@@ -147,7 +147,6 @@ pub fn get_full_pod_node_map(
 }
 
 /// Return a map with labels and values for role (component) and group (role_group).
-/// Required to find nodes that are a possible match for pods.
 fn get_role_and_group_labels(role: &str, group_name: &str) -> LabelOptionalValueMap {
     let mut labels = BTreeMap::new();
     labels.insert(
@@ -167,31 +166,59 @@ mod tests {
     use rstest::*;
 
     #[rstest]
-    #[case::single_role(
+    #[case::one_role(
         r#"
-        role1:
-          group1:
-            - node1
-            - node2
+        role_1:
+          group_1:
+            - node_1
+            - node_2
           group2:
-            - node3"})
+            - node_3"
     "#
     )]
     #[case::two_roles(
         r#"
-        role1:
-          group1:
-            - node1
-            - node2
-        role2:
-          group2:
-            - node1
-          group3:
-            - nodenode
+        role_1:
+          group_1:
+            - node_1
+            - node_2
+        role_2:
+          group_2:
+            - node_1
+          group_3:
+            - node_3
+    "#
+    )]
+    #[case::three_roles_many_nodes(
+        r#"
+        role_1:
+          group_1:
+            - node_1
+            - node_2
+            - node_3
+          group_2:
+            - node_1
+            - node_4
+        role_2:
+          group_1:
+            - node_1
+            - node_4
+          group_4:
+            - node_2
+            - node_3
+        role_3:
+          group_1:
+            - node_2
+            - node_4
+          group_4: 
+            - node_4
+            - node_2
+            - node_3
+            - node_1
     "#
     )]
     #[trace]
-    fn test_get_full_pod_node_map(#[case] eligible_node_names: &str) {
+    fn test_list_eligible_nodes_for_role_and_group(#[case] eligible_node_names: &str) {
         let eligible_node_names_parsed: HashMap<String, HashMap<String, Vec<String>>> =
             serde_yaml::from_str(eligible_node_names).expect("Invalid test definition!");
 
@@ -225,9 +252,9 @@ mod tests {
                 })
                 .collect::<HashMap<_, _>>();
 
-        let full_pod_node_map = get_full_pod_node_map(&eligible_nodes);
+        let eligible_nodes_for_role_and_group =
+            list_eligible_nodes_for_role_and_group(&eligible_nodes);
 
-        // We could also make this a parameter to the function to make it more explicit, not sure what would be better
         // Check number of returned groups matches what was provided
         let input_group_count: usize = eligible_nodes
             .values()
@@ -235,50 +262,26 @@ mod tests {
             .map(|group| group.keys().len())
             .sum();
 
-        assert_eq!(input_group_count, full_pod_node_map.len());
+        assert_eq!(input_group_count, eligible_nodes_for_role_and_group.len());
 
-        // ...
-    }
-
-    #[test]
-    fn test_get_full_pod_node_map1() {
-        let role = "server";
-        let group_name = "default";
-        let group_name_2 = "default2";
-
-        let mut node_1 = Node::default();
-        node_1.metadata.name = Some("node_1".to_string());
-
-        let mut node_2 = Node::default();
-        node_2.metadata.name = Some("node_2".to_string());
-
-        let mut node_3 = Node::default();
-        node_3.metadata.name = Some("node_3".to_string());
-
-        let node_vec_1_2 = vec![node_1, node_2];
-        let node_vec_3 = vec![node_3];
-
-        let mut node_group = HashMap::new();
-        node_group.insert(group_name.to_string(), node_vec_1_2.clone());
-        node_group.insert(group_name_2.to_string(), node_vec_3.clone());
-
-        let mut eligible_nodes: HashMap<String, HashMap<String, Vec<Node>>> = HashMap::new();
-        eligible_nodes.insert(role.to_string(), node_group);
-
-        let full_pod_node_map = get_full_pod_node_map(&eligible_nodes);
-
-        for (nodes, labels) in full_pod_node_map {
-            if let Some(role_group_label) = labels.get(labels::APP_ROLE_GROUP_LABEL).unwrap() {
-                if role_group_label == group_name {
-                    assert_eq!(nodes.len(), node_vec_1_2.len())
+        // test expected outcome
+        for (role, group_and_nodes) in &eligible_node_names_parsed {
+            for (group, test_nodes) in group_and_nodes {
+                let test_labels = get_role_and_group_labels(&role, &group);
+                // find the corresponding nodes via labels
+                for (eligible_nodes, labels) in &eligible_nodes_for_role_and_group {
+                    if test_labels == *labels {
+                        // we found the corresponding nodes here, now we check if the size is correct
+                        assert_eq!(test_nodes.len(), eligible_nodes.len());
+                        // check if the correct nodes are in place
+                        for node_name in test_nodes {
+                            // create node and check if its contained in eligible nodes
+                            let mut node = Node::default();
+                            node.metadata.name = Some(node_name.clone());
+                            assert!(eligible_nodes.contains(&node));
+                        }
+                    }
                 }
-                if role_group_label == group_name_2 {
-                    assert_eq!(nodes.len(), node_vec_3.len())
-                }
-            }
-
-            if let Some(role_label) = labels.get(labels::APP_COMPONENT_LABEL).unwrap() {
-                assert_eq!(role_label, role);
             }
         }
     }
