@@ -1,6 +1,5 @@
 use tracing_subscriber::EnvFilter;
 
-// TODO: This does not really belong in this crate
 /// Initializes `tracing` logging with options from the environment variable
 /// given in the `env` parameter.
 ///

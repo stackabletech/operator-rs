@@ -1,9 +1,11 @@
 use std::collections::BTreeMap;
-use std::fmt::{Debug, Display, Formatter, Result};
+use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use std::result::Result;
 
 use crate::k8s_utils::LabelOptionalValueMap;
 use k8s_openapi::api::core::v1::{Node, Pod, PodCondition, PodSpec, PodStatus};
 use kube::api::{Resource, ResourceExt};
+use std::str::FromStr;
 use tracing::debug;
 
 /// While the `phase` field of a Pod is a string only the values from this enum are allowed.
@@ -17,16 +19,31 @@ pub enum PodPhase {
 }
 
 impl Display for PodPhase {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         Debug::fmt(self, f)
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub enum PodConditionType {
     ContainersReady,
     Initialized,
     Ready,
     PodScheduled,
+}
+
+impl FromStr for PodConditionType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, ()> {
+        return match s.to_lowercase().as_ref() {
+            "ready" => Ok(Self::Ready),
+            "podscheduled" => Ok(Self::PodScheduled),
+            "containersready" => Ok(Self::ContainersReady),
+            "initialized" => Ok(Self::Initialized),
+            _ => Err(()),
+        };
+    }
 }
 
 /// Returns whether the Pod has been created in the API server by
@@ -66,17 +83,24 @@ pub fn is_pod_running_and_ready(pod: &Pod) -> bool {
 }
 
 fn is_pod_ready_condition_true(status: &PodStatus) -> bool {
-    match get_pod_condition(status, "Ready") {
+    match get_pod_condition(status, PodConditionType::Ready) {
         None => false,
         Some(PodCondition { status, .. }) => status == "True",
     }
 }
 
-// TODO: condition should be the enum PodConditionType
-fn get_pod_condition<'a>(status: &'a PodStatus, condition: &str) -> Option<&'a PodCondition> {
+// TODO: condition should be the enum PodConditionType: https://github.com/stackabletech/operator-rs/issues/128
+fn get_pod_condition(status: &PodStatus, condition: PodConditionType) -> Option<&PodCondition> {
     match &status.conditions {
         None => None,
-        Some(conditions) => conditions.iter().find(|c| c.type_ == condition),
+        Some(conditions) => conditions.iter().find(|c| {
+            let current_pod_condition = PodConditionType::from_str(&c.type_);
+
+            match current_pod_condition {
+                Ok(c) => c == condition,
+                Err(_) => false,
+            }
+        }),
     }
 }
 
@@ -325,12 +349,6 @@ mod tests {
 
     #[test]
     fn test_get_pod_condition() {
-        let status = PodStatus {
-            conditions: Some(vec![]),
-            ..PodStatus::default()
-        };
-        assert_eq!(None, get_pod_condition(&status, "doesntexist"));
-
         let condition = PodCondition {
             status: "OrNot".to_string(),
             type_: "Ready".to_string(),
@@ -340,7 +358,10 @@ mod tests {
             conditions: Some(vec![condition.clone()]),
             ..PodStatus::default()
         };
-        assert_eq!(Some(&condition), get_pod_condition(&status, "Ready"));
+        assert_eq!(
+            Some(&condition),
+            get_pod_condition(&status, PodConditionType::Ready)
+        );
     }
 
     #[test]
