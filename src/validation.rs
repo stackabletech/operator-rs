@@ -1,5 +1,5 @@
-// See apimachinery/pkg/util/validation/validation.go
-// See also TODO apimachinery/pkg/api/validation/generic.go and pkg/apis/core/validation/validation.go
+// This is adapted from Kubernetes.
+// See apimachinery/pkg/util/validation/validation.go, apimachinery/pkg/api/validation/generic.go and pkg/apis/core/validation/validation.go in the Kubernetes source
 
 use const_format::concatcp;
 use lazy_static::lazy_static;

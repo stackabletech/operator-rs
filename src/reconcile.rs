@@ -200,7 +200,6 @@ where
     ///
     /// * They need to have all required labels and optionally one of a list of allowed values
     /// * They need to have a spec.node_name
-    /// * TODO: Should check for all app.kubernetes.io labels
     ///
     /// If not they are considered invalid and will be deleted.
     ///
@@ -344,7 +343,7 @@ where
     }
 }
 
-// TODO: Trait bound on Clone is not needed after https://github.com/clux/kube-rs/pull/436
+// TODO: Trait bound on Clone is not needed after https://github.com/clux/kube-rs/pull/436, see https://github.com/stackabletech/operator-rs/issues/140
 impl<T> ReconciliationContext<T>
 where
     T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
