@@ -1,7 +1,7 @@
 //! This module deals with the [`Condition`] object from Kubernetes.
 use chrono::Utc;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, Time};
-use kube::Resource;
+use kube::core::Resource;
 use schemars::gen::SchemaGenerator;
 use schemars::schema::Schema;
 use serde_json::{from_value, json};

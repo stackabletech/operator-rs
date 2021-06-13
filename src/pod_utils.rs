@@ -4,7 +4,7 @@ use std::result::Result;
 
 use crate::k8s_utils::LabelOptionalValueMap;
 use k8s_openapi::api::core::v1::{Node, Pod, PodCondition, PodSpec, PodStatus};
-use kube::Resource;
+use kube::api::{Resource, ResourceExt};
 use std::str::FromStr;
 use tracing::debug;
 
