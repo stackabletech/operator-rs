@@ -127,7 +127,7 @@ use crate::reconcile::{ReconcileFunctionAction, ReconcileResult, ReconciliationC
 use async_trait::async_trait;
 use json_patch::{AddOperation, PatchOperation};
 use kube::api::ListParams;
-use kube::{Api, Resource};
+use kube::{Api, Resource, ResourceExt};
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::future::Future;

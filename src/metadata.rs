@@ -2,7 +2,7 @@ use crate::error::{Error, OperatorResult};
 
 use crate::labels;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
-use kube::Resource;
+use kube::api::{Resource, ResourceExt};
 use std::collections::BTreeMap;
 
 /// Builds a `ObjectMeta` object out of a template/owner object.
@@ -36,7 +36,7 @@ where
     Ok(ObjectMeta {
         labels: Some(merged_labels),
         name: Some(name),
-        namespace: Resource::namespace(resource),
+        namespace: resource.namespace(),
         owner_references: Some(vec![object_to_owner_reference::<T>(
             resource.meta(),
             block_owner_deletion,

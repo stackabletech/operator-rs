@@ -1,6 +1,6 @@
 use crate::error::OperatorResult;
 use const_format::concatcp;
-use kube::Resource;
+use kube::api::{Resource, ResourceExt};
 use std::collections::BTreeMap;
 
 const APP_KUBERNETES_LABEL_BASE: &str = "app.kubernetes.io/";
