@@ -89,7 +89,6 @@ fn is_pod_ready_condition_true(status: &PodStatus) -> bool {
     }
 }
 
-// TODO: condition should be the enum PodConditionType: https://github.com/stackabletech/operator-rs/issues/128
 fn get_pod_condition(status: &PodStatus, condition: PodConditionType) -> Option<&PodCondition> {
     match &status.conditions {
         None => None,
@@ -216,6 +215,7 @@ pub fn pod_matches_multiple_label_values(
 ) -> bool {
     // TODO: This method currently will abort on the first error, we could extend this
     //  (or add a second function) to return all "validation" results instead.
+    //  https://github.com/stackabletech/operator-rs/issues/127
     let pod_labels = &pod.metadata.labels;
 
     for (expected_key, expected_value) in required_labels {
