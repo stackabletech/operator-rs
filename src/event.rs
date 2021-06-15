@@ -3,8 +3,7 @@ use crate::error::OperatorResult;
 use chrono::Utc;
 use k8s_openapi::api::core::v1::{Event, EventSource, ObjectReference};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{MicroTime, ObjectMeta, Time};
-use k8s_openapi::Resource;
-use kube::api::Meta;
+use kube::{Resource, ResourceExt};
 
 pub enum EventType {
     Normal,
@@ -63,14 +62,14 @@ pub fn create_event<T>(
     message: &str,
 ) -> Event
 where
-    T: Meta + Resource,
+    T: Resource<DynamicType = ()>,
 {
     let involved_object = ObjectReference {
-        api_version: Some(T::API_VERSION.to_string()),
+        api_version: Some(T::api_version(&()).to_string()),
         field_path: None,
-        kind: Some(T::KIND.to_string()),
-        name: Some(Meta::name(resource)),
-        namespace: Meta::namespace(resource),
+        kind: Some(T::kind(&()).to_string()),
+        name: resource.meta().name.clone(),
+        namespace: resource.namespace().clone(),
         resource_version: resource.meta().resource_version.clone(),
         uid: resource.meta().uid.clone(),
     };
@@ -91,7 +90,7 @@ where
         last_timestamp: Some(Time(time.clone())),
         message: Some(message.to_string()),
         metadata: ObjectMeta {
-            generate_name: Some(format!("{}-", Meta::name(resource))),
+            generate_name: Some(format!("{}-", resource.name())),
             ..ObjectMeta::default()
         },
         reason: Some(reason.to_string()),
