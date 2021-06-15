@@ -19,6 +19,7 @@ pub mod namespace;
 pub mod pod_utils;
 pub mod reconcile;
 pub mod role_utils;
+pub mod status;
 pub mod validation;
 
 pub use crate::crd::Crd;
