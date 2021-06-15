@@ -2,6 +2,6 @@
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
 
 pub trait Conditions {
-    fn conditions(&self) -> Vec<Condition>;
+    fn conditions(&self) -> &Vec<Condition>;
     fn conditions_mut(&mut self) -> &mut Vec<Condition>;
 }
