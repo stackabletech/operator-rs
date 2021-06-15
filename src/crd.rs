@@ -1,11 +1,10 @@
 use std::time::Duration;
 
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
-use kube::error::ErrorResponse;
 use tracing::info;
 
 use crate::client::Client;
-use crate::error::{Error, OperatorResult};
+use crate::error::OperatorResult;
 use kube::api::ListParams;
 
 /// This trait can be implemented to allow automatic handling
@@ -27,43 +26,6 @@ pub trait Crd {
     const CRD_DEFINITION: &'static str;
 }
 
-/// Returns Ok(true) if our CRD has been registered in Kubernetes, Ok(false) if it could not be found
-/// and Error in any other case (e.g. connection to Kubernetes failed in some way.
-///
-/// # Example
-///
-/// ```no_run
-/// # use stackable_operator::Crd;
-/// # use stackable_operator::client;
-/// #
-/// # struct Test;
-/// # impl Crd for Test {
-/// #    const RESOURCE_NAME: &'static str = "foo.bar.stackable.tech";
-/// #    const CRD_DEFINITION: &'static str = "mycrdhere";
-/// # }
-/// #
-/// # async {
-/// # let client = client::create_client(Some("foo".to_string())).await.unwrap();
-/// use stackable_operator::crd::exists;
-/// exists::<Test>(client).await;
-/// # };
-/// ```
-pub async fn exists<T>(client: Client) -> OperatorResult<bool>
-where
-    T: Crd,
-{
-    match client
-        .get::<CustomResourceDefinition>(T::RESOURCE_NAME, None)
-        .await
-    {
-        Ok(_) => Ok(true),
-        Err(Error::KubeError {
-            source: kube::error::Error::Api(ErrorResponse { reason, .. }),
-        }) if reason == "NotFound" => Ok(false),
-        Err(err) => Err(err),
-    }
-}
-
 /// Makes sure CRD of given type `T` is running and accepted by the Kubernetes apiserver.
 /// If the CRD already exists at the time this method is invoked, this method exits.
 /// If there is no CRD of type `T` yet, it will attempt to create it and verify k8s apiserver
@@ -74,23 +36,26 @@ where
 /// - `client`: Client to connect to Kubernetes API and create the CRD with
 /// - `timeout`: If specified, retries creating the CRD for given `Duration`. If not specified,
 ///     retries indefinitely.
-pub async fn ensure_crd_created<T>(client: Client) -> OperatorResult<()>
+pub async fn ensure_crd_created<T>(client: &Client) -> OperatorResult<()>
 where
     T: Crd,
 {
-    if exists::<T>(client.clone()).await? {
+    if client
+        .exists::<CustomResourceDefinition>(T::RESOURCE_NAME, None)
+        .await?
+    {
         info!("CRD already exists in the cluster");
         Ok(())
     } else {
         info!("CRD not detected in Kubernetes. Attempting to create it.");
 
         loop {
-            if let Ok(res) = create::<T>(client.clone()).await {
+            if let Ok(res) = create::<T>(client).await {
                 break res;
             }
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
-        wait_created::<T>(client.clone()).await?;
+        wait_created::<T>(client).await?;
         Ok(())
     }
 }
@@ -99,7 +64,7 @@ where
 /// It will return an error if the CRD already exists.
 /// If it returns successfully it does not mean that the CRD is fully established yet,
 /// just that it has been accepted by the apiserver.
-async fn create<T>(client: Client) -> OperatorResult<()>
+async fn create<T>(client: &Client) -> OperatorResult<()>
 where
     T: Crd,
 {
@@ -108,7 +73,7 @@ where
 }
 
 /// Waits until CRD of given type `T` is applied to Kubernetes.
-pub async fn wait_created<T>(client: Client) -> OperatorResult<()>
+pub async fn wait_created<T>(client: &Client) -> OperatorResult<()>
 where
     T: Crd,
 {

@@ -1,7 +1,7 @@
 //! This module deals with the [`Condition`] object from Kubernetes.
 use chrono::Utc;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, Time};
-use kube::api::Meta;
+use kube::core::Resource;
 use schemars::gen::SchemaGenerator;
 use schemars::schema::Schema;
 use serde_json::{from_value, json};
@@ -10,7 +10,7 @@ use std::fmt;
 /// Returns a [`Schema`] that can be used with custom Conditions which have the same structure
 /// as the `io.k8s.pkg.apis.meta.v1.Condition` resource from Kubernetes.
 ///
-/// This is needed because the [`Condition`] from `kube-rs` does not derive `JsonSchema`.
+/// This is needed because the [`Condition`] from `k8s-openapi` does not derive `JsonSchema`.
 ///
 /// # Example
 ///
@@ -114,7 +114,7 @@ pub fn build_condition<T>(
     condition_type: String,
 ) -> Condition
 where
-    T: Meta,
+    T: Resource,
 {
     // In these two let statements we check if the same condition was already set and if the
     // status is different or not.

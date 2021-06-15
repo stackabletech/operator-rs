@@ -92,10 +92,6 @@
 //!     type State = FooState;
 //!     type Error = String;
 //!
-//!     fn finalizer_name(&self) -> String {
-//!         "foo.stackable.de/finalizer".to_string()
-//!     }
-//!
 //!     async fn init_reconcile_state(&self,context: ReconciliationContext<Self::Item>) -> Result<Self::State, Self::Error> {
 //!         Ok(FooState {
 //!             my_state: 1
@@ -122,13 +118,14 @@ use crate::reconcile::{ReconcileFunctionAction, ReconciliationContext};
 
 use async_trait::async_trait;
 use futures::StreamExt;
-use kube::api::{ListParams, Meta};
-use kube::Api;
+use kube::api::ListParams;
+use kube::{Api, Resource};
 use kube_runtime::controller::{Context, ReconcilerAction};
 use kube_runtime::Controller as KubeController;
 use serde::de::DeserializeOwned;
 use std::fmt::{Debug, Display};
 use std::future::Future;
+use std::hash::Hash;
 use std::pin::Pin;
 use std::time::Duration;
 use tracing::{debug, error, trace, Instrument};
@@ -141,9 +138,7 @@ pub trait ControllerStrategy {
     type State: ReconciliationState;
     type Error: Debug;
 
-    fn finalizer_name(&self) -> String;
-
-    // TODO: Pass in error
+    // TODO: Pass in error: https://github.com/stackabletech/operator-rs/issues/122
     fn error_policy(&self) -> ReconcilerAction {
         error!("Reconciliation error");
         reconcile::create_requeuing_reconciler_action(Duration::from_secs(30))
@@ -186,6 +181,7 @@ pub trait ReconciliationState {
     ) -> Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Self::Error>> + Send + '_>>;
 }
 
+/// TODO: This comment needs to be updated: https://github.com/stackabletech/operator-rs/issues/123
 /// A Controller is the object that watches all required resources and runs the reconciliation loop.
 /// This struct wraps a [`kube_runtime::Controller`] and provides some comfort features.
 ///
@@ -199,21 +195,22 @@ pub trait ReconciliationState {
 /// * It automatically adds a finalizer to every new _main_ object
 ///   * If you need one on _owned_ objects you currently need to handle this yourself
 /// * It calls a method on the strategy for every error
-/// * TODO It calls a method on the strategy for every deleted resource so cleanup can happen
 ///   * It automatically removes the finalizer
 /// * It creates (via the Strategy) a [`ReconciliationState`] object for every reconciliation and
 ///   calls its [`ReconciliationState::reconcile`] method to get a list of operations (Futures) to run
 ///   * It then proceeds to poll all those futures serially until one of them does not return `Continue`
 pub struct Controller<T>
 where
-    T: Clone + DeserializeOwned + Meta + Send + Sync + 'static,
+    T: Clone + Debug + DeserializeOwned + Resource + Send + Sync + 'static,
+    <T as Resource>::DynamicType: Debug + Eq + Hash,
 {
     kube_controller: KubeController<T>,
 }
 
 impl<T> Controller<T>
 where
-    T: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
+    T: Clone + Debug + DeserializeOwned + Resource + Send + Sync + 'static,
+    <T as Resource>::DynamicType: Clone + Debug + Default + Eq + Hash + Unpin,
 {
     pub fn new(api: Api<T>) -> Controller<T> {
         let controller = KubeController::new(api, ListParams::default());
@@ -230,11 +227,11 @@ where
     /// Only objects that have an `OwnerReference` for our main resource type will trigger
     /// a reconciliation.
     /// You need to make sure to add this `OwnerReference` yourself.
-    pub fn owns<Child: Clone + Meta + DeserializeOwned + Send + 'static>(
-        mut self,
-        api: Api<Child>,
-        lp: ListParams,
-    ) -> Self {
+    pub fn owns<Child>(mut self, api: Api<Child>, lp: ListParams) -> Self
+    where
+        Child: Clone + Debug + Resource + DeserializeOwned + Send + 'static,
+        <Child as Resource>::DynamicType: Clone + Debug + Eq + Hash,
+    {
         self.kube_controller = self.kube_controller.owns(api, lp);
         self
     }
@@ -311,7 +308,7 @@ async fn reconcile<S, T>(
     context: Context<ControllerContext<S>>,
 ) -> Result<ReconcilerAction, Error>
 where
-    T: Clone + Debug + DeserializeOwned + Meta + Send + Sync + 'static,
+    T: Clone + Debug + DeserializeOwned + Resource + Send + Sync + 'static,
     S: ControllerStrategy<Item = T> + 'static,
 {
     debug!(?resource, "Beginning reconciliation");
@@ -333,7 +330,7 @@ where
                 "Error initializing reconciliation state, will requeue"
             );
             return Ok(ReconcilerAction {
-                // TODO: Make this configurable
+                // TODO: Make this configurable https://github.com/stackabletech/operator-rs/issues/124
                 requeue_after: Some(Duration::from_secs(30)),
             });
         }
@@ -362,14 +359,13 @@ where
         Err(err) => {
             error!(?err, "Reconciliation finished with an error, will requeue");
             Ok(ReconcilerAction {
-                // TODO: Make this configurable
+                // TODO: Make this configurable https://github.com/stackabletech/operator-rs/issues/124
                 requeue_after: Some(Duration::from_secs(30)),
             })
         }
     }
 }
 
-// TODO: Properly type the error so we can pass it along
 fn error_policy<S, E>(err: &E, context: Context<ControllerContext<S>>) -> ReconcilerAction
 where
     E: Display,

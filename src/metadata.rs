@@ -1,8 +1,8 @@
 use crate::error::{Error, OperatorResult};
 
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
-use k8s_openapi::Resource;
-use kube::api::{Meta, ObjectMeta};
+use crate::labels;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
+use kube::api::{Resource, ResourceExt};
 use std::collections::BTreeMap;
 
 /// Builds a `ObjectMeta` object out of a template/owner object.
@@ -11,7 +11,13 @@ use std::collections::BTreeMap;
 /// * name
 /// * namespace (if the object passed in had one)
 /// * labels (if provided)
+/// * kubernetes recommended labels e.g. app.kubernetes.io/instance
 /// * ownerReferences (pointing at the object that was passed in).
+///
+/// Caution:
+/// The kubernetes recommended labels can be overwritten by
+/// the labels provided by the user.
+///
 pub fn build_metadata<T>(
     name: String,
     labels: Option<BTreeMap<String, String>>,
@@ -19,14 +25,20 @@ pub fn build_metadata<T>(
     block_owner_deletion: bool,
 ) -> OperatorResult<ObjectMeta>
 where
-    T: Meta,
+    T: Resource<DynamicType = ()>,
 {
+    let mut merged_labels = labels::get_recommended_labels(resource)?;
+
+    if let Some(provided_labels) = labels {
+        merged_labels.extend(provided_labels);
+    }
+
     Ok(ObjectMeta {
-        labels,
+        labels: Some(merged_labels),
         name: Some(name),
-        namespace: Meta::namespace(resource),
+        namespace: resource.namespace(),
         owner_references: Some(vec![object_to_owner_reference::<T>(
-            resource.meta().clone(),
+            resource.meta(),
             block_owner_deletion,
         )?]),
         ..ObjectMeta::default()
@@ -35,17 +47,20 @@ where
 
 /// Creates an OwnerReference pointing to the resource type and `metadata` being passed in.
 /// The created OwnerReference has it's `controller` flag set to `true`
-pub fn object_to_owner_reference<K: Resource>(
-    meta: ObjectMeta,
+pub fn object_to_owner_reference<K>(
+    meta: &ObjectMeta,
     block_owner_deletion: bool,
-) -> OperatorResult<OwnerReference> {
+) -> OperatorResult<OwnerReference>
+where
+    K: Resource<DynamicType = ()>,
+{
     Ok(OwnerReference {
-        api_version: K::API_VERSION.to_string(),
-        kind: K::KIND.to_string(),
-        name: meta.name.ok_or(Error::MissingObjectKey {
+        api_version: K::api_version(&()).to_string(),
+        kind: K::kind(&()).to_string(),
+        name: meta.name.clone().ok_or(Error::MissingObjectKey {
             key: ".metadata.name",
         })?,
-        uid: meta.uid.ok_or(Error::MissingObjectKey {
+        uid: meta.uid.clone().ok_or(Error::MissingObjectKey {
             key: ".metadata.uid",
         })?,
         controller: Some(true),
@@ -58,11 +73,17 @@ mod tests {
 
     use super::*;
 
+    use crate::labels::APP_INSTANCE_LABEL;
     use k8s_openapi::api::core::v1::Pod;
     use rstest::rstest;
 
-    #[rstest(name, namespace, case("foo", Some("bar")), case("foo", None))]
-    fn test_build_metadata(name: &str, namespace: Option<&str>) -> OperatorResult<()> {
+    #[rstest]
+    #[case("foo", Some("bar"))]
+    #[case("foo", None)]
+    fn test_build_metadata(
+        #[case] name: &str,
+        #[case] namespace: Option<&str>,
+    ) -> OperatorResult<()> {
         let mut labels = BTreeMap::new();
         labels.insert("foo".to_string(), "bar".to_string());
 
@@ -85,7 +106,8 @@ mod tests {
 
         let labels = meta.labels.unwrap();
         assert_eq!(labels.get("foo"), Some(&"bar".to_string()));
-        assert_eq!(labels.len(), 1);
+        assert_eq!(labels.get(APP_INSTANCE_LABEL), Some(&"foo_pod".to_string()));
+        assert_eq!(labels.len(), 2);
 
         Ok(())
     }

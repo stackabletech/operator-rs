@@ -3,15 +3,17 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+    labels:
+      - "type/dependencies"
+    reviewers:
+      - "stackabletech/developers"
 
   - package-ecosystem: "cargo"
     directory: "/"
     schedule:
-      interval: "daily"
-    ignore:
-      # We never want to be notified about a kube-rs update
-      # It often contains breaking changes so can't be updated manually anyway
-      # and it needs to be updated together with kube-runtime, kube-derive etc.
-      - dependency-name: "kube*"
-      - dependency-name: "k8s-openapi"
+      interval: "weekly"
+    labels:
+      - "type/dependencies"
+    reviewers:
+      - "stackabletech/rust-developers"

@@ -1,5 +1,8 @@
 use crate::error::{Error, OperatorResult};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
+use schemars::gen::SchemaGenerator;
+use schemars::schema::Schema;
+use serde_json::{from_value, json};
 
 /// Takes a [`LabelSelector`] and converts it to a String that can be used in Kubernetes API calls.
 /// It will return an error if the LabelSelector contains illegal things (e.g. an `Exists` operator
@@ -37,7 +40,7 @@ pub fn convert_label_selector_to_query_string(
         // we create a Result<String, Error> with the Ok variant being the converted match expression
         // We then collect those Results into a single Result with the Error being the _first_ error.
         // This, unfortunately means, that we'll throw away all but one error.
-        // TODO: Return all errors in one go.
+        // TODO: Return all errors in one go: https://github.com/stackabletech/operator-rs/issues/127
         let expression_string: Result<Vec<String>, Error> = requirements
             .iter()
             .map(|requirement| match requirement.operator.as_str() {
@@ -92,6 +95,71 @@ pub fn convert_label_selector_to_query_string(
     Ok(query_string)
 }
 
+/// Returns a [`Schema`] that can be used with anything that has the same structure
+/// as the `io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector` resource from Kubernetes.
+///
+/// This is needed because the [`LabelSelector`] from `k8s-openapi` does not derive `JsonSchema`.
+///
+/// # Example
+///
+/// ```
+/// use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
+/// use schemars::JsonSchema;
+///
+/// #[derive(JsonSchema)]
+/// #[serde(rename_all = "camelCase")]
+/// pub struct FooCrd {
+///     #[schemars(schema_with = "stackable_operator::label_selector::schema")]
+///     pub label_selector: LabelSelector,
+/// }
+/// ```
+pub fn schema(_: &mut SchemaGenerator) -> Schema {
+    from_value(json!({
+      "description": "A label selector is a label query over a set of resources. The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.",
+      "properties": {
+        "matchExpressions": {
+          "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
+          "items": {
+            "description": "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.",
+            "properties": {
+              "key": {
+                "description": "key is the label key that the selector applies to.",
+                "type": "string",
+                "x-kubernetes-patch-merge-key": "key",
+                "x-kubernetes-patch-strategy": "merge"
+              },
+              "operator": {
+                "description": "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.",
+                "type": "string"
+              },
+              "values": {
+                "description": "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "key",
+              "operator"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "matchLabels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    })).unwrap()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -133,7 +201,7 @@ mod tests {
         ];
 
         let ls = LabelSelector {
-            match_expressions: Some(match_expressions.clone()),
+            match_expressions: Some(match_expressions),
             match_labels: Some(match_labels.clone()),
         };
         assert_eq!(
@@ -143,7 +211,7 @@ mod tests {
 
         let ls = LabelSelector {
             match_expressions: None,
-            match_labels: Some(match_labels.clone()),
+            match_labels: Some(match_labels),
         };
         assert_eq!(
             "foo=bar,hui=buh",
@@ -167,7 +235,7 @@ mod tests {
         }];
 
         let ls = LabelSelector {
-            match_expressions: Some(match_expressions.clone()),
+            match_expressions: Some(match_expressions),
             match_labels: None,
         };
 
@@ -184,7 +252,7 @@ mod tests {
         }];
 
         let ls = LabelSelector {
-            match_expressions: Some(match_expressions.clone()),
+            match_expressions: Some(match_expressions),
             match_labels: None,
         };
 
@@ -201,7 +269,7 @@ mod tests {
         }];
 
         let ls = LabelSelector {
-            match_expressions: Some(match_expressions.clone()),
+            match_expressions: Some(match_expressions),
             match_labels: None,
         };
 
