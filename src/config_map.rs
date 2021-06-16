@@ -2,7 +2,7 @@ use crate::error::OperatorResult;
 use crate::metadata;
 use k8s_openapi::api::core::v1::ConfigMap;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
-use kube::Resource;
+use kube::api::{Resource, ResourceExt};
 use std::collections::BTreeMap;
 
 /// Creates a ConfigMap.
