@@ -33,7 +33,7 @@ pub fn convert_label_selector_to_query_string(
 
     // If we had match_labels AND we have match_expressions we need to separate those two
     // with a comma.
-    if !label_selector.match_expressions.is_empty() && !query_string.is_empty() {
+    if !label_selector.match_expressions.is_empty() {
         if !query_string.is_empty() {
             query_string.push(',');
         }
@@ -264,6 +264,7 @@ mod tests {
             match_labels: BTreeMap::new(),
         };
 
+        println!("{:?}", convert_label_selector_to_query_string(&ls).unwrap());
         convert_label_selector_to_query_string(&ls).unwrap();
     }
 }
