@@ -52,32 +52,29 @@ mod tests {
 
     #[test]
     fn test_add_stackable_selector() {
-        let mut ls = LabelSelector {
-            match_expressions: None,
-            match_labels: None,
-        };
+        let mut ls = LabelSelector::default();
 
         // LS didn't have any match_label
         assert!(
-            matches!(add_stackable_selector(&ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
+            matches!(add_stackable_selector(&ls).match_labels, labels if labels.get("type").unwrap() == "krustlet")
         );
 
         // LS has labels but no conflicts with our own
         let mut labels = BTreeMap::new();
         labels.insert("foo".to_string(), "bar".to_string());
 
-        ls.match_labels = Some(labels);
+        ls.match_labels = labels;
         assert!(
-            matches!(add_stackable_selector(&ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
+            matches!(add_stackable_selector(&ls).match_labels, labels if labels.get("type").unwrap() == "krustlet")
         );
 
         // LS already has a LS that matches our internal one
         let mut labels = BTreeMap::new();
         labels.insert("foo".to_string(), "bar".to_string());
         labels.insert("type".to_string(), "foobar".to_string());
-        ls.match_labels = Some(labels);
+        ls.match_labels = labels;
         assert!(
-            matches!(add_stackable_selector(&ls).match_labels, Some(labels) if labels.get("type").unwrap() == "krustlet")
+            matches!(add_stackable_selector(&ls).match_labels, labels if labels.get("type").unwrap() == "krustlet")
         );
     }
 }

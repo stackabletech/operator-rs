@@ -457,7 +457,7 @@ mod tests {
                     name: "test-wait-created-busybox".to_owned(),
                     image: Some("busybox:latest".to_owned()),
                     image_pull_policy: Some("IfNotPresent".to_owned()),
-                    command: Some(vec!["sleep".into(), "infinity".into()]),
+                    command: vec!["sleep".into(), "infinity".into()],
                     ..Container::default()
                 }],
                 termination_grace_period_seconds: Some(1),
@@ -546,7 +546,7 @@ mod tests {
         let mut match_labels: BTreeMap<String, String> = BTreeMap::new();
         match_labels.insert("app".to_owned(), "busybox".to_owned());
         let label_selector: LabelSelector = LabelSelector {
-            match_labels: Some(match_labels.clone()),
+            match_labels: match_labels.clone(),
             ..LabelSelector::default()
         };
         let no_pods: Vec<Pod> = client
@@ -558,7 +558,7 @@ mod tests {
         let pod_to_wait_for: Pod = Pod {
             metadata: ObjectMeta {
                 name: Some("pod-to-be-listed".to_owned()),
-                labels: Some(match_labels.clone()),
+                labels: match_labels.clone(),
                 ..ObjectMeta::default()
             },
             spec: Some(PodSpec {
@@ -566,7 +566,7 @@ mod tests {
                     name: "test-wait-created-busybox".to_owned(),
                     image: Some("busybox:latest".to_owned()),
                     image_pull_policy: Some("IfNotPresent".to_owned()),
-                    command: Some(vec!["sleep".into(), "infinity".into()]),
+                    command: vec!["sleep".into(), "infinity".into()],
                     ..Container::default()
                 }],
                 termination_grace_period_seconds: Some(1),

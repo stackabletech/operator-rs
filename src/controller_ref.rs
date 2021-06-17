@@ -43,11 +43,11 @@ mod tests {
             controller
         );
 
-        pod.metadata.owner_references = Some(vec![OwnerReference {
+        pod.metadata.owner_references = vec![OwnerReference {
             controller: Some(true),
             uid: "1234".to_string(),
             ..OwnerReference::default()
-        }]);
+        }];
         let controller = get_controller_of(&pod);
         assert!(
             matches!(controller, Some(OwnerReference { uid, .. }) if uid == "1234"),
@@ -55,11 +55,11 @@ mod tests {
             controller
         );
 
-        pod.metadata.owner_references = Some(vec![OwnerReference {
+        pod.metadata.owner_references = vec![OwnerReference {
             controller: None,
             uid: "1234".to_string(),
             ..OwnerReference::default()
-        }]);
+        }];
         let controller = get_controller_of(&pod);
         assert!(
             matches!(controller, None),
@@ -67,7 +67,7 @@ mod tests {
             controller
         );
 
-        pod.metadata.owner_references = Some(vec![
+        pod.metadata.owner_references = vec![
             OwnerReference {
                 controller: None,
                 uid: "1234".to_string(),
@@ -78,7 +78,7 @@ mod tests {
                 uid: "5678".to_string(),
                 ..OwnerReference::default()
             },
-        ]);
+        ];
         let controller = get_controller_of(&pod);
         assert!(
             matches!(controller, Some(OwnerReference { uid, .. }) if uid == "5678"),
@@ -92,11 +92,11 @@ mod tests {
         let mut pod = Pod {
             metadata: ObjectMeta {
                 name: Some("Foobar".to_string()),
-                owner_references: Some(vec![OwnerReference {
+                owner_references: vec![OwnerReference {
                     controller: Some(true),
                     uid: "1234-5678".to_string(),
                     ..OwnerReference::default()
-                }]),
+                }],
                 ..ObjectMeta::default()
             },
             ..Pod::default()
@@ -104,7 +104,7 @@ mod tests {
 
         assert!(is_resource_owned_by(&pod, "1234-5678"));
 
-        pod.metadata.owner_references = None;
+        pod.metadata.owner_references = vec![];
         assert!(!is_resource_owned_by(&pod, "1234-5678"));
     }
 }

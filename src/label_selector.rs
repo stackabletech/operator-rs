@@ -167,33 +167,33 @@ mod tests {
             LabelSelectorRequirement {
                 key: "foo".to_string(),
                 operator: "In".to_string(),
-                values: Some(vec!["bar".to_string()]),
+                values: vec!["bar".to_string()],
             },
             LabelSelectorRequirement {
                 key: "foo".to_string(),
                 operator: "In".to_string(),
-                values: Some(vec!["quick".to_string(), "bar".to_string()]),
+                values: vec!["quick".to_string(), "bar".to_string()],
             },
             LabelSelectorRequirement {
                 key: "foo".to_string(),
                 operator: "NotIn".to_string(),
-                values: Some(vec!["quick".to_string(), "bar".to_string()]),
+                values: vec!["quick".to_string(), "bar".to_string()],
             },
             LabelSelectorRequirement {
                 key: "foo".to_string(),
                 operator: "Exists".to_string(),
-                values: None,
+                values: vec![],
             },
             LabelSelectorRequirement {
                 key: "foo".to_string(),
                 operator: "DoesNotExist".to_string(),
-                values: None,
+                values: vec![],
             },
         ];
 
         let ls = LabelSelector {
-            match_expressions: Some(match_expressions),
-            match_labels: Some(match_labels.clone()),
+            match_expressions: match_expressions,
+            match_labels: match_labels.clone(),
         };
         assert_eq!(
             "foo=bar,hui=buh,foo in (bar),foo in (quick, bar),foo notin (quick, bar),foo,!foo",
@@ -201,8 +201,8 @@ mod tests {
         );
 
         let ls = LabelSelector {
-            match_expressions: None,
-            match_labels: Some(match_labels),
+            match_expressions: vec![],
+            match_labels,
         };
         assert_eq!(
             "foo=bar,hui=buh",
@@ -210,8 +210,8 @@ mod tests {
         );
 
         let ls = LabelSelector {
-            match_expressions: None,
-            match_labels: None,
+            match_expressions: vec![],
+            match_labels: BTreeMap::new(),
         };
         assert_eq!("", convert_label_selector_to_query_string(&ls).unwrap());
     }
@@ -222,12 +222,12 @@ mod tests {
         let match_expressions = vec![LabelSelectorRequirement {
             key: "foo".to_string(),
             operator: "In".to_string(),
-            values: None,
+            values: vec![],
         }];
 
         let ls = LabelSelector {
-            match_expressions: Some(match_expressions),
-            match_labels: None,
+            match_expressions,
+            match_labels: BTreeMap::new(),
         };
 
         convert_label_selector_to_query_string(&ls).unwrap();
@@ -239,12 +239,12 @@ mod tests {
         let match_expressions = vec![LabelSelectorRequirement {
             key: "foo".to_string(),
             operator: "IllegalOperator".to_string(),
-            values: None,
+            values: vec![],
         }];
 
         let ls = LabelSelector {
-            match_expressions: Some(match_expressions),
-            match_labels: None,
+            match_expressions,
+            match_labels: BTreeMap::new(),
         };
 
         convert_label_selector_to_query_string(&ls).unwrap();
@@ -256,12 +256,12 @@ mod tests {
         let match_expressions = vec![LabelSelectorRequirement {
             key: "foo".to_string(),
             operator: "Exists".to_string(),
-            values: Some(vec!["foobar".to_string()]),
+            values: vec!["foobar".to_string()],
         }];
 
         let ls = LabelSelector {
-            match_expressions: Some(match_expressions),
-            match_labels: None,
+            match_expressions,
+            match_labels: BTreeMap::new(),
         };
 
         convert_label_selector_to_query_string(&ls).unwrap();

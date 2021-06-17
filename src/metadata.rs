@@ -104,7 +104,7 @@ mod tests {
         assert_eq!(meta.name, Some(name.to_string()));
         assert_eq!(meta.namespace, namespace);
 
-        let labels = meta.labels.unwrap();
+        let labels = meta.labels;
         assert_eq!(labels.get("foo"), Some(&"bar".to_string()));
         assert_eq!(labels.get(APP_INSTANCE_LABEL), Some(&"foo_pod".to_string()));
         assert_eq!(labels.len(), 2);
