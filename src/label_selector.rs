@@ -38,6 +38,11 @@ pub fn convert_label_selector_to_query_string(
             query_string.push(',');
         }
 
+        // Here we map over all requirements (which might be empty) and for each of the requirements
+        // we create a Result<String, Error> with the Ok variant being the converted match expression
+        // We then collect those Results into a single Result with the Error being the _first_ error.
+        // This, unfortunately means, that we'll throw away all but one error.
+        // TODO: Return all errors in one go: https://github.com/stackabletech/operator-rs/issues/127
         let expression_string: Result<Vec<String>, Error> = label_selector
             .match_expressions
             .iter()
