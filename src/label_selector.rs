@@ -30,24 +30,21 @@ pub fn convert_label_selector_to_query_string(
 
     // Match expressions are more complex than match labels, both can appear in the same API call
     // They support these operators: "In", "NotIn", "Exists" and "DoesNotExist"
-    let expressions = label_selector.match_expressions.as_ref().map(|requirements| {
-        // If we had match_labels AND we have match_expressions we need to separate those two
-        // with a comma.
-        if !label_selector.match_expressions.is_empty() && !query_string.is_empty() {
+
+    // If we had match_labels AND we have match_expressions we need to separate those two
+    // with a comma.
+    if !label_selector.match_expressions.is_empty() && !query_string.is_empty() {
+        if !query_string.is_empty() {
             query_string.push(',');
         }
 
-        // Here we map over all requirements (which might be empty) and for each of the requirements
-        // we create a Result<String, Error> with the Ok variant being the converted match expression
-        // We then collect those Results into a single Result with the Error being the _first_ error.
-        // This, unfortunately means, that we'll throw away all but one error.
-        // TODO: Return all errors in one go: https://github.com/stackabletech/operator-rs/issues/127
-        let expression_string: Result<Vec<String>, Error> = requirements
+        let expression_string: Result<Vec<String>, Error> = label_selector
+            .match_expressions
             .iter()
             .map(|requirement| match requirement.operator.as_str() {
                 // In and NotIn can be handled the same, they both map to a simple "key OPERATOR (values)" string
                 operator @ "In" | operator @ "NotIn" => match &requirement.values {
-                    Some(values) if !values.is_empty() => Ok(format!(
+                    values if !values.is_empty() => Ok(format!(
                         "{} {} ({})",
                         requirement.key,
                         operator.to_ascii_lowercase(),
@@ -62,36 +59,29 @@ pub fn convert_label_selector_to_query_string(
                 },
                 // "Exists" is just the key and nothing else, if values have been specified it's an error
                 "Exists" => match &requirement.values {
-                    Some(values) if !values.is_empty() => Err(
-                        Error::InvalidLabelSelector {
-                            message: "LabelSelector has [Exists] operator with values, this is not legal".to_string(),
+                    values if !values.is_empty() => Err(Error::InvalidLabelSelector {
+                        message: "LabelSelector has [Exists] operator with values, this is not legal"
+                            .to_string(),
                     }),
                     _ => Ok(requirement.key.to_string()),
                 },
                 // "DoesNotExist" is similar to "Exists" but it is preceded by an exclamation mark
                 "DoesNotExist" => match &requirement.values {
-                    Some(values) if !values.is_empty() => Err(
-                        Error::InvalidLabelSelector {
-                            message: "LabelSelector has [DoesNotExist] operator with values, this is not legal".to_string(),
-                        }),
-                    _ => Ok(format!("!{}", requirement.key))
-                }
-                op => {
-                    Err(
-                        Error::InvalidLabelSelector {
-                            message: format!("LabelSelector has illegal/unknown operator [{}]", op)
-                        })
-                }
+                    values if !values.is_empty() => Err(Error::InvalidLabelSelector {
+                        message:
+                            "LabelSelector has [DoesNotExist] operator with values, this is not legal"
+                                .to_string(),
+                    }),
+                    _ => Ok(format!("!{}", requirement.key)),
+                },
+                op => Err(Error::InvalidLabelSelector {
+                    message: format!("LabelSelector has illegal/unknown operator [{}]", op),
+                }),
             })
             .collect();
 
-        expression_string
-
-    });
-
-    if let Some(expressions) = expressions.transpose()? {
-        query_string.push_str(&expressions.join(","));
-    };
+        query_string.push_str(&expression_string?.join(","));
+    }
 
     Ok(query_string)
 }
