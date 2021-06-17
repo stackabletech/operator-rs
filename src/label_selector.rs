@@ -197,7 +197,7 @@ mod tests {
         ];
 
         let ls = LabelSelector {
-            match_expressions: match_expressions,
+            match_expressions,
             match_labels: match_labels.clone(),
         };
         assert_eq!(
