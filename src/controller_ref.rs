@@ -11,12 +11,8 @@ where
     resource
         .meta()
         .owner_references
-        .as_ref()
-        .and_then(|owners| {
-            owners
-                .iter()
-                .find(|owner| matches!(owner.controller, Some(true)))
-        })
+        .iter()
+        .find(|owner| matches!(owner.controller, Some(true)))
 }
 
 /// This returns `false` for Resources that have no OwnerReference (with a Controller flag)

@@ -34,13 +34,13 @@ where
     }
 
     Ok(ObjectMeta {
-        labels: Some(merged_labels),
+        labels: merged_labels,
         name: Some(name),
         namespace: resource.namespace(),
-        owner_references: Some(vec![object_to_owner_reference::<T>(
+        owner_references: vec![object_to_owner_reference::<T>(
             resource.meta(),
             block_owner_deletion,
-        )?]),
+        )?],
         ..ObjectMeta::default()
     })
 }

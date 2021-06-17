@@ -17,14 +17,14 @@ where
     T: Resource<DynamicType = ()>,
 {
     let cm = ConfigMap {
-        data: Some(data),
+        data,
         metadata: ObjectMeta {
             name: Some(String::from(cm_name)),
             namespace: resource.namespace(),
-            owner_references: Some(vec![metadata::object_to_owner_reference::<T>(
+            owner_references: vec![metadata::object_to_owner_reference::<T>(
                 resource.meta(),
                 true,
-            )?]),
+            )?],
             ..ObjectMeta::default()
         },
         ..ConfigMap::default()

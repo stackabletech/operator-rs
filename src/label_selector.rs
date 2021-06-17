@@ -17,9 +17,10 @@ pub fn convert_label_selector_to_query_string(
     // In a query string each key-value pair will be separated by an "=" and the pairs
     // are then joined on commas.
     // The whole match_labels part is optional so we only do this if there are match labels.
-    if let Some(label_map) = &label_selector.match_labels {
+    if !label_selector.match_labels.is_empty() {
         query_string.push_str(
-            &label_map
+            &label_selector
+                .match_labels
                 .iter()
                 .map(|(key, value)| format!("{}={}", key, value))
                 .collect::<Vec<_>>()
@@ -32,7 +33,7 @@ pub fn convert_label_selector_to_query_string(
     let expressions = label_selector.match_expressions.as_ref().map(|requirements| {
         // If we had match_labels AND we have match_expressions we need to separate those two
         // with a comma.
-        if !requirements.is_empty() && !query_string.is_empty() {
+        if !label_selector.match_expressions.is_empty() && !query_string.is_empty() {
             query_string.push(',');
         }
 
