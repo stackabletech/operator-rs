@@ -83,7 +83,7 @@ pub async fn wait_until_crds_present(
     delay: Option<Duration>,
     timeout: Option<Duration>,
 ) -> OperatorResult<()> {
-    let delay = delay.unwrap_or(Duration::from_secs(60));
+    let delay = delay.unwrap_or_else(|| Duration::from_secs(60));
     let start = Instant::now();
 
     // The loop will continue running until either all CRDs are present or a configured
