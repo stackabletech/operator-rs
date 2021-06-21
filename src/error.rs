@@ -48,7 +48,7 @@ pub enum Error {
     InvalidName { errors: Vec<String> },
 
     #[error("The following required CRDs are missing from Kubernetes: {names:?}")]
-    RequiredCrdsMissing { names: HashSet<String>}
+    RequiredCrdsMissing { names: HashSet<String> },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;

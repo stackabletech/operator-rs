@@ -137,7 +137,10 @@ pub async fn wait_until_crds_present(
                 );
                 if let Some(timeout_value) = &timeout {
                     if timeout.is_some() && start.elapsed() >= *timeout_value {
-                        info!("Timeout of [{}] seconds reached, returning.", timeout_value.as_secs());
+                        info!(
+                            "Timeout of [{}] seconds reached, returning.",
+                            timeout_value.as_secs()
+                        );
                         return Err(err);
                     }
                 }

@@ -102,7 +102,9 @@ async fn k8s_test_wait_for_crds() {
         Err(stackable_operator::error::Error::RequiredCrdsMissing { names }) => {
             assert_eq!(
                 names,
-                vec!["non_existing_crd_name".to_string()].into_iter().collect()
+                vec!["non_existing_crd_name".to_string()]
+                    .into_iter()
+                    .collect()
             )
         }
         _ => panic!("Did not get the expected error!"),
