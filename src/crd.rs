@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
-use tracing::{debug, info};
+use tracing::{debug, error, info, warn};
 
 use crate::client::Client;
 use crate::error::Error::RequiredCrdsMissing;
@@ -130,11 +130,34 @@ pub async fn wait_until_crds_present(
         //   3. queue another loop iteration if an error occurred and the timeout has not expired
         match check_result {
             Ok(()) => return Ok(()),
-            Err(err) => {
-                info!(
-                    "Error occurred when checking if all required CRDs are present: [{}]",
-                    err
+            Err(crate::error::Error::RequiredCrdsMissing { names }) => {
+                warn!(
+                    "The following required CRDs are missing from Kubernetes: [{:?}]",
+                    names
                 );
+                if let Some(timeout_value) = &timeout {
+                    if timeout.is_some() && start.elapsed() >= *timeout_value {
+                        info!(
+                            "Timeout of [{}] seconds reached, returning.",
+                            timeout_value.as_secs()
+                        );
+                        return Err(RequiredCrdsMissing { names });
+                    }
+                }
+            }
+            Err(err) => {
+                match &err {
+                    RequiredCrdsMissing { names } => warn!(
+                        "The following required CRDs are missing in Kubernetes: [{:?}]",
+                        names
+                    ),
+                    err => error!(
+                        "Error occurred when checking if all required CRDs are present: [{}]",
+                        err
+                    ),
+                }
+
+                // Check if we need to return
                 if let Some(timeout_value) = &timeout {
                     if timeout.is_some() && start.elapsed() >= *timeout_value {
                         info!(
