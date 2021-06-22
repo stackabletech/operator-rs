@@ -26,7 +26,7 @@
 //!
 //! # Role Groups
 //!
-//! There is sometimes a need to have different configuration options or different label selectors for different instances of the same role.
+//! There is sometimes a need to have different configuration options or different label selectors for different replicas of the same role.
 //! Role groups are what allows this.
 //! Nested under a role there can be multiple role groups, each with its own LabelSelector and configuration.
 //!
@@ -47,8 +47,7 @@
 //         config:
 //           cores: 1
 //           memory: "1g"
-//         instances: 3
-//         instancesPerNode: 1
+//         replicas: 3
 //       20core:
 //         selector:
 //           matchLabels:
@@ -60,8 +59,7 @@
 //           config:
 //             cores: 10
 //             memory: "1g"
-//           instances: 3
-//           instancesPerNode: 2
+//           replicas: 3
 //     config:
 //! ```
 //!
@@ -83,7 +81,7 @@
 //! Each resource can have more operator specific labels.
 
 use crate::error::OperatorResult;
-use crate::{krustlet, labels};
+use crate::{krustlet, label_selector, labels};
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -91,33 +89,70 @@ use crate::client::Client;
 use crate::k8s_utils::LabelOptionalValueMap;
 use k8s_openapi::api::core::v1::Node;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use tracing::{debug, trace};
 
-pub struct RoleGroup {
-    pub name: String,
-    pub selector: LabelSelector,
+// TODO: This is an unused idea on how to support ignoring errors on validation
+pub enum Property {
+    Simple(String),
+    Complex {
+        ignore_warning: bool,
+        ignore_error: bool,
+        value: String,
+    },
+}
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommonConfiguration<T> {
+    pub config: Option<T>,
+    pub config_overrides: Option<HashMap<String, HashMap<String, String>>>,
+    pub env_overrides: Option<HashMap<String, String>>,
+    pub cli_overrides: Option<Vec<String>>,
+}
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Role<T> {
+    #[serde(flatten)]
+    pub config: Option<CommonConfiguration<T>>,
+    pub role_groups: HashMap<String, RoleGroup<T>>,
+}
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoleGroup<T> {
+    #[serde(flatten)]
+    pub config: Option<CommonConfiguration<T>>,
+    pub replicas: u16,
+    #[schemars(schema_with = "label_selector::schema")]
+    pub selector: Option<LabelSelector>,
 }
 
 /// Return a map where the key corresponds to the role_group (e.g. "default", "10core10Gb") and
 /// a vector of nodes that fit the role_groups selector description.
-pub async fn find_nodes_that_fit_selectors(
+pub async fn find_nodes_that_fit_selectors<T>(
     client: &Client,
     namespace: Option<String>,
-    role_groups: &[RoleGroup],
-) -> OperatorResult<HashMap<String, Vec<Node>>> {
+    role: &Role<T>,
+) -> OperatorResult<HashMap<String, Vec<Node>>>
+where
+    T: Serialize,
+{
     let mut found_nodes = HashMap::new();
-    for role_group in role_groups {
-        let selector = krustlet::add_stackable_selector(&role_group.selector);
+    for (group_name, role_group) in &role.role_groups {
+        let selector = krustlet::add_stackable_selector(role_group.selector.as_ref());
         let nodes = client
             .list_with_label_selector(namespace.as_deref(), &selector)
             .await?;
         debug!(
             "Found [{}] nodes for role group [{}]: [{:?}]",
             nodes.len(),
-            role_group.name,
+            group_name,
             nodes
         );
-        found_nodes.insert(role_group.name.clone(), nodes);
+        found_nodes.insert(group_name.clone(), nodes);
     }
     Ok(found_nodes)
 }
@@ -147,7 +182,7 @@ pub fn list_eligible_nodes_for_role_and_group(
 }
 
 /// Return a map with labels and values for role (component) and group (role_group).
-fn get_role_and_group_labels(role: &str, group_name: &str) -> LabelOptionalValueMap {
+pub fn get_role_and_group_labels(role: &str, group_name: &str) -> LabelOptionalValueMap {
     let mut labels = BTreeMap::new();
     labels.insert(
         labels::APP_COMPONENT_LABEL.to_string(),
