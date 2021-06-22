@@ -59,41 +59,6 @@ spec:
 
 #[tokio::test]
 #[ignore = "Tests depending on Kubernetes are not ran by default"]
-async fn k8s_test_test_ensure_crd_created() {
-    let client = client::create_client(None)
-        .await
-        .expect("KUBECONFIG variable must be configured.");
-
-    tokio::time::timeout(
-        Duration::from_secs(30),
-        ensure_crd_created::<TestCrd>(&client),
-    )
-    .await
-    .expect("CRD not created in time")
-    .expect("Error while creating CRD");
-
-    client
-        .exists::<CustomResourceDefinition>(TestCrd::RESOURCE_NAME, None)
-        .await
-        .expect("CRD should be created");
-    let created_crd: CustomResourceDefinition = client
-        .get(TestCrd::RESOURCE_NAME.as_ref(), None)
-        .await
-        .unwrap();
-    assert_eq!(TestCrd::RESOURCE_NAME, created_crd.name());
-
-    client
-        .delete(&created_crd)
-        .await
-        .expect("TestCrd not deleted");
-    assert!(client
-        .exists::<CustomResourceDefinition>(TestCrd::RESOURCE_NAME, None)
-        .await
-        .expect("CRD should be created"))
-}
-
-#[tokio::test]
-#[ignore = "Tests depending on Kubernetes are not ran by default"]
 async fn k8s_test_wait_for_crds() {
     // TODO: Switch this to using TemporaryResource from the integration-test-commons crate
     let client = client::create_client(None)
@@ -243,4 +208,39 @@ async fn k8s_test_wait_for_crds() {
                 .unwrap_or_else(|_| panic!("Unable to delete CRD [{}]", crd_name));
         }
     }
+}
+
+#[tokio::test]
+#[ignore = "Tests depending on Kubernetes are not ran by default"]
+async fn k8s_test_test_ensure_crd_created() {
+    let client = client::create_client(None)
+        .await
+        .expect("KUBECONFIG variable must be configured.");
+
+    tokio::time::timeout(
+        Duration::from_secs(30),
+        ensure_crd_created::<TestCrd>(&client),
+    )
+        .await
+        .expect("CRD not created in time")
+        .expect("Error while creating CRD");
+
+    client
+        .exists::<CustomResourceDefinition>(TestCrd::RESOURCE_NAME, None)
+        .await
+        .expect("CRD should be created");
+    let created_crd: CustomResourceDefinition = client
+        .get(TestCrd::RESOURCE_NAME.as_ref(), None)
+        .await
+        .unwrap();
+    assert_eq!(TestCrd::RESOURCE_NAME, created_crd.name());
+
+    client
+        .delete(&created_crd)
+        .await
+        .expect("TestCrd not deleted");
+    assert!(client
+        .exists::<CustomResourceDefinition>(TestCrd::RESOURCE_NAME, None)
+        .await
+        .expect("CRD should be created"))
 }
