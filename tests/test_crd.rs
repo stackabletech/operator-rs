@@ -112,9 +112,9 @@ async fn k8s_test_wait_for_crds() {
         Duration::from_secs(30),
         ensure_crd_created::<TestCrd2>(&client),
     )
-        .await
-        .expect("CRD not created in time")
-        .expect("Error while creating CRD");
+    .await
+    .expect("CRD not created in time")
+    .expect("Error while creating CRD");
 
     // Give k8s some time to perform the deletion
     tokio::time::sleep(Duration::from_secs(2)).await;
@@ -195,47 +195,52 @@ async fn k8s_test_wait_for_crds() {
             Some(Duration::from_secs(10)),
         ),
     )
-        .await
-        .expect("Waiting for CRDs did not return within the configured timeout!");
+    .await
+    .expect("Waiting for CRDs did not return within the configured timeout!");
 
     match await_result {
         Ok(()) => {}
         Err(e) => panic!("Got error instead of expected Ok(()): [{:?}]", e),
     }
 
-
     // Check with two existing and a two missing CRDs
     let await_result = tokio::time::timeout(
         Duration::from_secs(30),
         wait_until_crds_present(
             &client,
-            vec![TestCrd::RESOURCE_NAME, TestCrd2::RESOURCE_NAME, "missing1", "missing2"],
+            vec![
+                TestCrd::RESOURCE_NAME,
+                TestCrd2::RESOURCE_NAME,
+                "missing1",
+                "missing2",
+            ],
             Some(Duration::from_secs(1)),
             Some(Duration::from_secs(10)),
         ),
     )
-        .await
-        .expect("Waiting for CRDs did not return within the configured timeout!");
+    .await
+    .expect("Waiting for CRDs did not return within the configured timeout!");
 
     match await_result {
         Err(stackable_operator::error::Error::RequiredCrdsMissing { names }) => {
             assert_eq!(
                 names,
-                vec!["missing1".to_string(), "missing2".to_string()].into_iter().collect()
+                vec!["missing1".to_string(), "missing2".to_string()]
+                    .into_iter()
+                    .collect()
             )
         }
         _ => panic!("Did not get the expected error!"),
     }
 
     // Cleanup
-    for crd_name in vec![TestCrd::RESOURCE_NAME, TestCrd2::RESOURCE_NAME] {
-        if let Ok(crd) = client
-            .get::<CustomResourceDefinition>(crd_name, None)
-            .await
-        {
+    for crd_name in &[TestCrd::RESOURCE_NAME, TestCrd2::RESOURCE_NAME] {
+        if let Ok(crd) = client.get::<CustomResourceDefinition>(crd_name, None).await {
             // Ensure CRD is not present
-            client.delete(&crd).await.expect(&format!("Unable to delete CRD [{}]", crd_name));
+            client
+                .delete(&crd)
+                .await
+                .unwrap_or_else(|_| panic!("Unable to delete CRD [{}]", crd_name));
         }
     }
 }
-
