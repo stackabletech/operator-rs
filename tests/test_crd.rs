@@ -2,8 +2,10 @@ use std::time::Duration;
 
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
 use kube::core::ResourceExt;
+use stackable_operator::client::Client;
 use stackable_operator::crd::{ensure_crd_created, wait_until_crds_present};
 use stackable_operator::{client, Crd};
+use serial_test::serial;
 
 struct TestCrd {}
 
@@ -57,14 +59,7 @@ spec:
 "#;
 }
 
-#[tokio::test]
-#[ignore = "Tests depending on Kubernetes are not ran by default"]
-async fn k8s_test_wait_for_crds() {
-    // TODO: Switch this to using TemporaryResource from the integration-test-commons crate
-    let client = client::create_client(None)
-        .await
-        .expect("KUBECONFIG variable must be configured.");
-
+async fn setup(client: &Client) {
     tokio::time::timeout(
         Duration::from_secs(30),
         ensure_crd_created::<TestCrd>(&client),
@@ -80,9 +75,44 @@ async fn k8s_test_wait_for_crds() {
     .await
     .expect("CRD not created in time")
     .expect("Error while creating CRD");
+}
 
-    // Give k8s some time to perform the deletion
-    tokio::time::sleep(Duration::from_secs(2)).await;
+async fn tear_down(client: &Client) {
+    let mut operations = vec![];
+
+    for crd_name in &[TestCrd::RESOURCE_NAME, TestCrd2::RESOURCE_NAME] {
+        if let Ok(crd) = client.get::<CustomResourceDefinition>(crd_name, None).await {
+            operations.push(client.ensure_deleted(crd));
+        }
+    }
+
+    let result = tokio::time::timeout(
+        Duration::from_secs(30),
+        futures::future::join_all(operations),
+    )
+    .await
+    .unwrap_or_else(|_| panic!("Unable to cleanup, delete operation timed out!"));
+
+    let failed_operations = result.iter().filter(|res| res.is_err()).collect::<Vec<_>>();
+
+    if !failed_operations.is_empty() {
+        panic!(
+            "Failed to delete the following CRDs during cleanup: [{:?}]",
+            failed_operations
+        );
+    }
+}
+
+#[tokio::test]
+#[serial]
+#[ignore = "Tests depending on Kubernetes are not ran by default"]
+async fn k8s_test_wait_for_crds() {
+    // TODO: Switch this to using TemporaryResource from the integration-test-commons crate
+    let client = client::create_client(None)
+        .await
+        .expect("KUBECONFIG variable must be configured.");
+
+    setup(&client).await;
 
     // Test waiting honors timeout
     let await_result = tokio::time::timeout(
@@ -198,19 +228,11 @@ async fn k8s_test_wait_for_crds() {
         _ => panic!("Did not get the expected error!"),
     }
 
-    // Cleanup
-    for crd_name in &[TestCrd::RESOURCE_NAME, TestCrd2::RESOURCE_NAME] {
-        if let Ok(crd) = client.get::<CustomResourceDefinition>(crd_name, None).await {
-            // Ensure CRD is not present
-            client
-                .delete(&crd)
-                .await
-                .unwrap_or_else(|_| panic!("Unable to delete CRD [{}]", crd_name));
-        }
-    }
+    tear_down(&client).await;
 }
 
 #[tokio::test]
+#[serial]
 #[ignore = "Tests depending on Kubernetes are not ran by default"]
 async fn k8s_test_test_ensure_crd_created() {
     let client = client::create_client(None)
@@ -221,9 +243,9 @@ async fn k8s_test_test_ensure_crd_created() {
         Duration::from_secs(30),
         ensure_crd_created::<TestCrd>(&client),
     )
-        .await
-        .expect("CRD not created in time")
-        .expect("Error while creating CRD");
+    .await
+    .expect("CRD not created in time")
+    .expect("Error while creating CRD");
 
     client
         .exists::<CustomResourceDefinition>(TestCrd::RESOURCE_NAME, None)
@@ -235,12 +257,5 @@ async fn k8s_test_test_ensure_crd_created() {
         .unwrap();
     assert_eq!(TestCrd::RESOURCE_NAME, created_crd.name());
 
-    client
-        .delete(&created_crd)
-        .await
-        .expect("TestCrd not deleted");
-    assert!(client
-        .exists::<CustomResourceDefinition>(TestCrd::RESOURCE_NAME, None)
-        .await
-        .expect("CRD should be created"))
+    tear_down(&client).await;
 }

@@ -15,6 +15,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::convert::TryFrom;
 use std::fmt::Debug;
+use std::time::Duration;
 use tracing::trace;
 
 /// This `Client` can be used to access Kubernetes.
@@ -320,6 +321,31 @@ impl Client {
             Ok(Some(
                 api.delete(&resource.name(), &self.delete_params).await?,
             ))
+        }
+    }
+
+    /// This deletes a resource _if it is not deleted already_ and waits until the deletion is
+    /// performed by Kubernetes.
+    ///
+    /// It calls `delete` to perform the deletion.
+    ///
+    /// Afterwards it loops and checks regularly whether the resource has been deleted
+    /// from Kubernetes
+    pub async fn ensure_deleted<T>(&self, resource: T) -> OperatorResult<()>
+    where
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
+    {
+        self.delete(&resource).await?;
+
+        loop {
+            if !self
+                .exists::<T>(&resource.name(), resource.namespace().as_deref())
+                .await?
+            {
+                return Ok(());
+            }
+            tokio::time::sleep(Duration::from_secs(5)).await;
         }
     }
 
