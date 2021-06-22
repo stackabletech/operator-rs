@@ -4,6 +4,7 @@ use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomRe
 use kube::core::ResourceExt;
 use stackable_operator::crd::{ensure_crd_created, wait_until_crds_present};
 use stackable_operator::{client, Crd};
+use serial_test::serial;
 
 struct TestCrd {}
 
@@ -58,6 +59,7 @@ spec:
 }
 
 #[tokio::test]
+#[serial]
 #[ignore = "Tests depending on Kubernetes are not ran by default"]
 async fn k8s_test_test_ensure_crd_created() {
     let client = client::create_client(None)
@@ -93,6 +95,7 @@ async fn k8s_test_test_ensure_crd_created() {
 }
 
 #[tokio::test]
+#[serial]
 #[ignore = "Tests depending on Kubernetes are not ran by default"]
 async fn k8s_test_wait_for_crds() {
     // TODO: Switch this to using TemporaryResource from the integration-test-commons crate
