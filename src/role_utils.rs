@@ -26,7 +26,7 @@
 //!
 //! # Role Groups
 //!
-//! There is sometimes a need to have different configuration options or different label selectors for different instances of the same role.
+//! There is sometimes a need to have different configuration options or different label selectors for different replicas of the same role.
 //! Role groups are what allows this.
 //! Nested under a role there can be multiple role groups, each with its own LabelSelector and configuration.
 //!
@@ -47,8 +47,7 @@
 //         config:
 //           cores: 1
 //           memory: "1g"
-//         instances: 3
-//         instancesPerNode: 1
+//         replicas: 3
 //       20core:
 //         selector:
 //           matchLabels:
@@ -60,8 +59,7 @@
 //           config:
 //             cores: 10
 //             memory: "1g"
-//           instances: 3
-//           instancesPerNode: 2
+//           replicas: 3
 //     config:
 //! ```
 //!
@@ -109,10 +107,9 @@ pub enum Property {
 #[serde(rename_all = "camelCase")]
 pub struct CommonConfiguration<T> {
     pub config: Option<T>,
-    // zoo.cfg: init_limit = 1234
     pub config_overrides: Option<HashMap<String, HashMap<String, String>>>,
     pub env_overrides: Option<HashMap<String, String>>,
-    pub cli_overrides: Option<HashMap<String, Option<String>>>,
+    pub cli_overrides: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -128,8 +125,7 @@ pub struct Role<T> {
 pub struct RoleGroup<T> {
     #[serde(flatten)]
     pub config: Option<CommonConfiguration<T>>,
-    // TODO: In Kubernetes this is called `replicas` should we stay closer to that?
-    pub instances: u16,
+    pub replicas: u16,
     #[schemars(schema_with = "label_selector::schema")]
     pub selector: Option<LabelSelector>,
 }
