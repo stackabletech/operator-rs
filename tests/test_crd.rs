@@ -57,7 +57,7 @@ spec:
 "#;
 }
 
-/*#[tokio::test]
+#[tokio::test]
 #[ignore = "Tests depending on Kubernetes are not ran by default"]
 async fn k8s_test_test_ensure_crd_created() {
     let client = client::create_client(None)
@@ -91,7 +91,6 @@ async fn k8s_test_test_ensure_crd_created() {
         .await
         .expect("CRD should be created"))
 }
-*/
 
 #[tokio::test]
 #[ignore = "Tests depending on Kubernetes are not ran by default"]
