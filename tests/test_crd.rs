@@ -2,10 +2,10 @@ use std::time::Duration;
 
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
 use kube::core::ResourceExt;
+use serial_test::serial;
 use stackable_operator::client::Client;
 use stackable_operator::crd::{ensure_crd_created, wait_until_crds_present};
 use stackable_operator::{client, Crd};
-use serial_test::serial;
 
 struct TestCrd {}
 
