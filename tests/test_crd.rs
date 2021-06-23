@@ -120,7 +120,6 @@ async fn k8s_test_wait_for_crds() {
         wait_until_crds_present(
             &client,
             vec!["non_existing_crd_name"],
-            Some(Duration::from_secs(1)),
             Some(Duration::from_secs(10)),
         ),
     )
@@ -145,7 +144,6 @@ async fn k8s_test_wait_for_crds() {
         wait_until_crds_present(
             &client,
             vec![TestCrd::RESOURCE_NAME],
-            Some(Duration::from_secs(1)),
             Some(Duration::from_secs(10)),
         ),
     )
@@ -163,7 +161,6 @@ async fn k8s_test_wait_for_crds() {
         wait_until_crds_present(
             &client,
             vec![TestCrd::RESOURCE_NAME, "MissingCrdName"],
-            Some(Duration::from_secs(1)),
             Some(Duration::from_secs(10)),
         ),
     )
@@ -186,7 +183,6 @@ async fn k8s_test_wait_for_crds() {
         wait_until_crds_present(
             &client,
             vec![TestCrd::RESOURCE_NAME, TestCrd2::RESOURCE_NAME],
-            Some(Duration::from_secs(1)),
             Some(Duration::from_secs(10)),
         ),
     )
@@ -209,7 +205,6 @@ async fn k8s_test_wait_for_crds() {
                 "missing1",
                 "missing2",
             ],
-            Some(Duration::from_secs(1)),
             Some(Duration::from_secs(10)),
         ),
     )

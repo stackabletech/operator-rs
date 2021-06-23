@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
 use tracing::{debug, error, info, warn};
@@ -6,6 +6,8 @@ use tracing::{debug, error, info, warn};
 use crate::client::Client;
 use crate::error::Error::RequiredCrdsMissing;
 use crate::error::OperatorResult;
+use backoff::backoff::Backoff;
+use backoff::ExponentialBackoff;
 use kube::api::ListParams;
 use std::collections::HashSet;
 
@@ -80,11 +82,12 @@ where
 pub async fn wait_until_crds_present(
     client: &Client,
     names: Vec<&str>,
-    delay: Option<Duration>,
     timeout: Option<Duration>,
 ) -> OperatorResult<()> {
-    let delay = delay.unwrap_or_else(|| Duration::from_secs(60));
-    let start = Instant::now();
+    let mut backoff_strategy = ExponentialBackoff {
+        max_elapsed_time: timeout,
+        ..ExponentialBackoff::default()
+    };
 
     // The loop will continue running until either all CRDs are present or a configured
     // timeout is reached
@@ -130,21 +133,6 @@ pub async fn wait_until_crds_present(
         //   3. queue another loop iteration if an error occurred and the timeout has not expired
         match check_result {
             Ok(()) => return Ok(()),
-            Err(crate::error::Error::RequiredCrdsMissing { names }) => {
-                warn!(
-                    "The following required CRDs are missing from Kubernetes: [{:?}]",
-                    names
-                );
-                if let Some(timeout_value) = &timeout {
-                    if timeout.is_some() && start.elapsed() >= *timeout_value {
-                        info!(
-                            "Timeout of [{}] seconds reached, returning.",
-                            timeout_value.as_secs()
-                        );
-                        return Err(RequiredCrdsMissing { names });
-                    }
-                }
-            }
             Err(err) => {
                 match &err {
                     RequiredCrdsMissing { names } => warn!(
@@ -157,25 +145,28 @@ pub async fn wait_until_crds_present(
                     ),
                 }
 
-                // Check if we need to return
-                if let Some(timeout_value) = &timeout {
-                    if timeout.is_some() && start.elapsed() >= *timeout_value {
+                // When backoff returns `None` the timeout has expired
+                match backoff_strategy.next_backoff() {
+                    Some(backoff) => {
                         info!(
-                            "Timeout of [{}] seconds reached, returning.",
-                            timeout_value.as_secs()
+                            "Waiting [{}] seconds before trying again..",
+                            backoff.as_secs()
+                        );
+                        tokio::time::sleep(backoff).await;
+                    }
+                    None => {
+                        info!(
+                            "Waiting for CRDs timed out after [{}] seconds.",
+                            backoff_strategy
+                                .max_elapsed_time
+                                .unwrap_or_else(|| Duration::from_secs(0))
+                                .as_secs()
                         );
                         return Err(err);
                     }
                 }
             }
-        }
-
-        // Wait before next iteration
-        info!(
-            "Waiting [{}] seconds before trying again..",
-            delay.as_secs()
-        );
-        tokio::time::sleep(delay).await;
+        };
     }
 }
 
