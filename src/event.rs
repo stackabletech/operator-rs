@@ -1,5 +1,3 @@
-use crate::client::Client;
-use crate::error::OperatorResult;
 use chrono::Utc;
 use k8s_openapi::api::core::v1::{Event, EventSource, ObjectReference};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{MicroTime, ObjectMeta, Time};
@@ -19,95 +17,94 @@ impl ToString for EventType {
     }
 }
 
-/*
-
-         s
-const (
-    // Event action describes what action was taken
-    eventActionReconcile = "Reconcile"
-    eventActionCreate    = "Create"
-    eventActionUpdate    = "Update"
-    eventActionDelete    = "Delete"
-)
-
-const (
-    // Short, machine understandable string that gives the reason for the transition into the object's current status
-    eventReasonReconcileStarted    = "ReconcileStarted"
-    eventReasonReconcileInProgress = "ReconcileInProgress"
-    eventReasonReconcileCompleted  = "ReconcileCompleted"
-    eventReasonReconcileFailed     = "ReconcileFailed"
-    eventReasonCreateStarted       = "CreateStarted"
-    eventReasonCreateInProgress    = "CreateInProgress"
-    eventReasonCreateCompleted     = "CreateCompleted"
-    eventReasonCreateFailed        = "CreateFailed"
-    eventReasonUpdateStarted       = "UpdateStarted"
-    eventReasonUpdateInProgress    = "UpdateInProgress"
-    eventReasonUpdateCompleted     = "UpdateCompleted"
-    eventReasonUpdateFailed        = "UpdateFailed"
-    eventReasonDeleteStarted       = "DeleteStarted"
-    eventReasonDeleteInProgress    = "DeleteInProgress"
-    eventReasonDeleteCompleted     = "DeleteCompleted"
-    eventReasonDeleteFailed        = "DeleteFailed"
-)
-
- */
-
-// action = reconcile, create, update, delete
+/// Creates an [`Event`] that can be sent to Kubernetes.
+///
+/// # Arguments
+///
+/// - `resource` - The resource for which this event is created, will be used to create the `involvedObject` and `metadata.name` fields
+/// - `event_type` - Type of this event (Normal, Warning). The restriction to those two values is not hardcoded in Kubernetes but by convention only.
+/// - `action` - What action was taken/failed regarding to the Regarding object (e.g. Create, Update, Delete, Reconcile, ...)
+/// - `reason` - This should be a short, machine understandable string that gives the reason for this event being generated (e.g. PodMissing, UpdateRunning, ...)
+/// - `message` - A human-readable description of the status of this operation.
+/// - `reporting_component` - Name of the controller that emitted this Event, e.g. `kubernetes.io/kubelet`.
+/// - `reporting_instance` - ID of the controller instance, e.g. `kubelet-xyzf`.
 pub fn create_event<T>(
     resource: &T,
-    source: &str,
-    event_type: &EventType,
-    action: &str,
-    reason: &str,
-    message: &str,
+    event_type: Option<&EventType>,
+    action: Option<&str>,
+    reason: Option<&str>,
+    message: Option<&str>,
+    reporting_component: Option<&str>,
+    reporting_instance: Option<&str>,
 ) -> Event
 where
     T: Resource<DynamicType = ()>,
 {
+    let component = reporting_component.map(String::from);
     let involved_object = ObjectReference {
         api_version: Some(T::api_version(&()).to_string()),
         field_path: None,
         kind: Some(T::kind(&()).to_string()),
         name: resource.meta().name.clone(),
-        namespace: resource.namespace().clone(),
+        namespace: resource.namespace(),
         resource_version: resource.meta().resource_version.clone(),
         uid: resource.meta().uid.clone(),
     };
 
     let source = Some(EventSource {
-        component: Some(source.to_string()),
+        component: component.clone(),
         host: None,
     });
 
     let time = Utc::now();
 
     let event = Event {
-        action: Some(action.to_string()),
+        action: action.map(String::from),
         count: Some(1),
-        event_time: Some(MicroTime(time.clone())),
-        first_timestamp: Some(Time(time.clone())),
+        event_time: Some(MicroTime(time)),
+        first_timestamp: Some(Time(time)),
         involved_object,
-        last_timestamp: Some(Time(time.clone())),
-        message: Some(message.to_string()),
+        last_timestamp: Some(Time(time)),
+        message: message.map(String::from),
         metadata: ObjectMeta {
             generate_name: Some(format!("{}-", resource.name())),
             ..ObjectMeta::default()
         },
-        reason: Some(reason.to_string()),
+        reason: reason.map(String::from),
         related: None,
-        reporting_component: None, // TODO: This should probably be a part of Controller
-        reporting_instance: None,
+        reporting_component: component,
+        reporting_instance: reporting_instance.map(String::from),
         series: None,
         source,
-        type_: Some(event_type.to_string()),
+        type_: event_type.map(|event_type| event_type.to_string()),
     };
 
     event
 }
 
-pub async fn emit_event(client: &Client, event: &Event) {
-    let result = client.create(event).await;
-    if let Err(err) = result {
-        // TODO: Log error
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test::PodBuilder;
+
+    #[test]
+    fn test_create_event() {
+        let pod = PodBuilder::new().name("testpod").build();
+        let event = create_event(
+            &pod,
+            Some(&EventType::Normal),
+            Some("action"),
+            None,
+            Some("message"),
+            None,
+            None,
+        );
+
+        assert!(
+            matches!(event.involved_object.kind, Some(pod_name) if pod_name == "Pod".to_string())
+        );
+
+        assert!(matches!(event.message, Some(message) if message == "message".to_string()));
+        assert!(matches!(event.reason, None));
     }
 }
