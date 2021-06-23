@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Failed to serialize template to JSON: {source}")]
@@ -44,6 +46,9 @@ pub enum Error {
 
     #[error("Invalid name for resource: {errors:?}")]
     InvalidName { errors: Vec<String> },
+
+    #[error("The following required CRDs are missing from Kubernetes: {names:?}")]
+    RequiredCrdsMissing { names: HashSet<String> },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;

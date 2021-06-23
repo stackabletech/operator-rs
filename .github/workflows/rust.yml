@@ -34,7 +34,7 @@ jobs:
         name: Run ignored-by-default tests
         with:
           command: test
-          args: -- --ignored
+          args: -- --ignored --test-threads=1
       - uses: actions-rs/cargo@v1.0.3
         with:
           command: clean
