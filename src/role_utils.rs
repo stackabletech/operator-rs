@@ -93,23 +93,14 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, trace};
 
-// TODO: This is an unused idea on how to support ignoring errors on validation
-pub enum Property {
-    Simple(String),
-    Complex {
-        ignore_warning: bool,
-        ignore_error: bool,
-        value: String,
-    },
-}
-
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommonConfiguration<T> {
     pub config: Option<T>,
     pub config_overrides: Option<HashMap<String, HashMap<String, String>>>,
     pub env_overrides: Option<HashMap<String, String>>,
-    pub cli_overrides: Option<Vec<String>>,
+    // BTreeMap to keep some order with the cli arguments.
+    pub cli_overrides: Option<BTreeMap<String, String>>,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
