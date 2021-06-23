@@ -337,7 +337,10 @@ impl Client {
         T: Clone + Debug + DeserializeOwned + Resource,
         <T as Resource>::DynamicType: Default,
     {
-        let mut backoff_strategy = ExponentialBackoff::default();
+        let mut backoff_strategy = ExponentialBackoff {
+            max_elapsed_time: None,
+            ..ExponentialBackoff::default()
+        };
 
         self.delete(&resource).await?;
 
