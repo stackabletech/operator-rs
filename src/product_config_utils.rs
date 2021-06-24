@@ -122,10 +122,7 @@ pub fn process_validation_result(
                 }
             }
             PropertyValidationResult::Error(value, err) => {
-                error!(
-                    "Property [{}] causes a validation error, will not set: {:?}",
-                    key, err
-                );
+                error!("Property [{}] is set to value [{}] which causes an error, `ignore_err` is {}: {:?}", key, value, ignore_err, err);
                 if ignore_err {
                     properties.insert(key.clone(), value.clone());
                 }
