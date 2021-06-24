@@ -9,10 +9,14 @@ use tracing::{debug, error, warn};
 pub enum ConfigError {
     #[error("Invalid configuration found")]
     InvalidConfiguration,
+
+    #[error("Collected product config validation errors: {collected_errors:?}")]
+    ProductConfigErrors {
+        collected_errors: Vec<product_config::error::Error>,
+    },
 }
 
-///
-/// This needs to be implemented by every [Config] struct that may appear in [Role<Config>]
+/// This needs to be implemented by every generic (T) struct that may appear in [Role<T>]
 /// or the top level in order to determine where config properties are configured.
 ///
 /// The options are:
@@ -23,12 +27,10 @@ pub enum ConfigError {
 /// Returned empty Maps will be ignored. Check out `to_hash_map(...)` in
 /// https://github.com/stackabletech/product-config/blob/main/src/ser.rs
 /// if you do not need to differentiate between the options and want to serialize all properties
-/// in a certain config [Config] to one option.
-///
+/// in a certain config T to one option.
 pub trait Configuration {
     type Configurable;
 
-    // TODO: Not sure if I need the role_name here
     // TODO: We need to pass in the existing config from parents to run validation checks and we should probably also pass in a "final" parameter or have another "finalize" method callback
     //  one for each role group, one for each role and one for all of it...
     fn compute_env(
@@ -54,51 +56,56 @@ pub trait Configuration {
 // This deep map causes problems with clippy and fmt.
 pub type RoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, String>>>>;
-///
+
 /// Given the configuration parameters of all `roles` partition them by `PropertyNameKind` and
 /// merge them with the role groups configuration parameters.
 ///
 /// The output is a map keyed by the role names. The value is also a map keyed by role group names and
 /// the values are the merged configuration properties "bucketed" by `PropertyNameKind`.
+///
 /// # Arguments
 /// - `resource`         - Not used directly. It's passed on to the `Configuration::compute_*` calls.
-/// - `role_information` - A map keyed by role names. The value is a vector of `PropertyNameKind`
-/// - `roles`            - A map keyed by role names.
-///
+/// - `roles`            - A map keyed by role names. The value is a tuple of the Role and
+///                        required PropertyNameKind like (Cli, Env or Files).
 pub fn transform_all_roles_to_config<T>(
     resource: &T::Configurable,
-    role_information: HashMap<String, Vec<PropertyNameKind>>,
-    roles: HashMap<String, Role<T>>,
+    roles: HashMap<String, (Role<T>, Vec<PropertyNameKind>)>,
 ) -> RoleConfigByPropertyKind
 where
     T: Configuration,
 {
     let mut result = HashMap::new();
 
-    for (role_name, role) in roles {
-        let property_name_kinds = match role_information.get(&role_name) {
-            Some(kind) => kind,
-            None => {
-                error!("The role [{}] was not specified in [{:?}]. This is a programming error please report a ticket. Will skip for now.", role_name, role_information.keys());
-                continue;
-            }
-        };
-
+    for (role_name, (role, property_name_kinds)) in &roles {
         let role_properties =
-            transform_role_to_config(resource, &role_name, &role, property_name_kinds);
-        result.insert(role_name, role_properties);
+            transform_role_to_config(resource, role_name, role, property_name_kinds);
+        result.insert(role_name.to_string(), role_properties);
     }
 
     result
 }
 
+/// This transforms the [PropertyValidationResult] back into a pure BTreeMap which can be used
+/// to set properties for config files, cli or environmental variables.
+/// Default values are ignored, Recommended and Valid values are used as is. For Warning and
+/// Error we recommend to not use the values unless you really know what you are doing.
+/// If you want to use the values anyways please check the "ignore_warn" and "ignore_err" switches.
+///
+/// # Arguments
+/// - `validation_result`   - The product config validation result for each property name.
+/// - `ignore_warn`         - A switch to ignore product config warnings and continue with
+///                           the value anyways. Not recommended!
+/// - `ignore_err`          - A switch to ignore product config errors and continue with
+///                           the value anyways. Not recommended!
 // TODO: boolean flags suck, move ignore_warn to be a flag
 pub fn process_validation_result(
     validation_result: &HashMap<String, PropertyValidationResult>,
     ignore_warn: bool,
     ignore_err: bool,
-) -> HashMap<String, String> {
-    let mut properties = HashMap::new();
+) -> Result<BTreeMap<String, String>, ConfigError> {
+    let mut properties = BTreeMap::new();
+    let mut collected_errors = Vec::new();
+
     for (key, result) in validation_result.iter() {
         match result {
             PropertyValidationResult::Default(value) => {
@@ -125,34 +132,37 @@ pub fn process_validation_result(
                 error!("Property [{}] is set to value [{}] which causes an error, `ignore_err` is {}: {:?}", key, value, ignore_err, err);
                 if ignore_err {
                     properties.insert(key.clone(), value.clone());
+                } else {
+                    collected_errors.push(err.clone());
                 }
-                //TODO: Return error
             }
         }
     }
-    properties
+
+    if !collected_errors.is_empty() {
+        return Err(ConfigError::ProductConfigErrors { collected_errors });
+    }
+
+    Ok(properties)
 }
 
-/// Given a single `role`, it generates a data structure suitable for applying a
-/// product configuration.
-/// The configuration objects of the role groups contained in the given `role` are
-/// merged with that of the `role` it's self.
+/// Given a single [Role], it generates a data structure that can be validated in the
+/// product configuration. The configuration objects of the [RoleGroup] contained in the
+/// given [Role] are merged with that of the [Role] itself.
 /// In addition, the `*_overrides` settings are also merged in the resulting configuration
-/// with the highest priority.
-/// The merge priority chain looks like this:
+/// with the highest priority. The merge priority chain looks like this where '->' means
+/// "overwrites if existing or adds":
 ///
-/// group overrides -> group config -> role overrides -> role config
+/// group overrides -> group config -> role overrides -> role config (TODO: -> common_config)
 ///
-/// where '->' means "overwrites if existing or adds".
+/// The output is a map where the [RoleGroup] name points to another map of [PropertyNameKind]
+/// that points to the mapped configuration properties in the (possibly overridden) [Role] and [RoleGroup].
 ///
-/// The output is a map with one entry, keyed by `role_name` and the value is a map where all
-/// configuration properties defined in the `role` are partitioned by `PropertyNameKind`.
 /// # Arguments
 /// - `resource`       - Not used directly. It's passed on to the `Configuration::compute_*` calls.
-/// - `role_name`      - Used as key in the output and to partition the configuration properties.
+/// - `role_name`      - The name of the role.
 /// - `role`           - The role for which to transform the configuration parameters.
 /// - `property_kinds` - Used as "buckets" to partition the configuration properties by.
-///
 fn transform_role_to_config<T>(
     resource: &T::Configurable,
     role_name: &str,
@@ -165,17 +175,13 @@ where
     let mut result = HashMap::new();
 
     let role_properties =
-        partition_properties_by_kind(resource, role_name, &role.config, property_kinds);
+        transform_properties_to_kind(resource, role_name, &role.config, property_kinds);
 
     // for each role group ...
     for (role_group_name, role_group) in &role.role_groups {
         // ... compute the group properties ...
-        let role_group_properties = partition_properties_by_kind(
-            resource,
-            role_group_name,
-            &role_group.config,
-            property_kinds,
-        );
+        let role_group_properties =
+            transform_properties_to_kind(resource, role_name, &role_group.config, property_kinds);
 
         // ... and merge them with the role properties.
         let mut role_properties_copy = role_properties.clone();
@@ -195,7 +201,7 @@ where
 /// Given a `config` object and the `property_kind` vector, it uses the `Configuration::compute_*` methods
 /// to partition the configuration properties by `PropertyNameKind`.
 ///
-/// The output is map where the configuration properties are keyed by `PropertyNameKind`.
+/// The output is a map where the configuration properties are keyed by `PropertyNameKind`.
 ///
 /// # Arguments
 /// - `resource`       - Not used directly. It's passed on to the `Configuration::compute_*` calls.
@@ -203,8 +209,7 @@ where
 ///                      contains a role name or a role group name.
 /// - `config`         - The configuration properties to partition.
 /// - `property_kinds` - The "buckets" used to partition the configuration properties.
-///
-fn partition_properties_by_kind<T>(
+fn transform_properties_to_kind<T>(
     resource: &<T as Configuration>::Configurable,
     name: &str,
     config: &Option<CommonConfiguration<T>>,
@@ -219,7 +224,7 @@ where
         match property_kind {
             PropertyNameKind::File(file) => result.insert(
                 property_kind.clone(),
-                parse_conf_properties(resource, name, config, file),
+                parse_file_properties(resource, name, config, file),
             ),
             PropertyNameKind::Env => result.insert(
                 property_kind.clone(),
@@ -300,8 +305,7 @@ where
     final_properties
 }
 
-// TODO: Can we pass a callback instead of "file" so we can merge all parse_* methods?
-fn parse_conf_properties<T>(
+fn parse_file_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
     config: &Option<CommonConfiguration<T>>,
@@ -946,13 +950,8 @@ mod tests {
         let role_group_2 = "role_group_2";
         let file_name = "foo.bar";
 
-        let role_information: HashMap<String, Vec<PropertyNameKind>> = collection! {
-            role_1.to_string() => vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env],
-            role_2.to_string() => vec![PropertyNameKind::Cli]
-        };
-
-        let roles: HashMap<String, Role<TestConfig>> = collection! {
-            role_1.to_string() => Role {
+        let roles: HashMap<String, (Role<TestConfig>, Vec<PropertyNameKind>)> = collection! {
+            role_1.to_string() => (Role {
             config: build_common_config(
                 build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
                 None,
@@ -980,8 +979,8 @@ mod tests {
                 selector: None,
             }}
 
-        },
-        role_2.to_string() => Role {
+        }, vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env]),
+            role_2.to_string() => (Role {
             config: build_common_config(
                 build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
                 None,
@@ -998,7 +997,8 @@ mod tests {
                 ),
                 selector: None,
             }},
-        }};
+        }, vec![PropertyNameKind::Cli])
+        };
 
         let expected: RoleConfigByPropertyKind = collection! {
         role_1.to_string() => collection!{
@@ -1027,7 +1027,7 @@ mod tests {
             }
         }};
 
-        let all_config = transform_all_roles_to_config(&String::new(), role_information, roles);
+        let all_config = transform_all_roles_to_config(&String::new(), roles);
 
         assert_eq!(all_config, expected);
     }
