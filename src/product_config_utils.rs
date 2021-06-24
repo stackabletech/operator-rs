@@ -29,7 +29,7 @@ pub trait Configuration {
         role_name: &str,
     ) -> Result<BTreeMap<String, String>, ConfigError>;
 
-    fn compute_properties(
+    fn compute_files(
         &self,
         resource: &Self::Configurable,
         role_name: &str,
@@ -37,7 +37,7 @@ pub trait Configuration {
     ) -> Result<BTreeMap<String, String>, ConfigError>;
 }
 
-// This deep map causes problems with clippy and rustfmt.
+// This deep map causes problems with clippy and fmt.
 pub type RoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, String>>>>;
 ///
@@ -305,7 +305,7 @@ where
     }) = config
     {
         final_properties = inner_config
-            .compute_properties(resource, role_name, file)
+            .compute_files(resource, role_name, file)
             .unwrap();
     }
 
@@ -395,7 +395,7 @@ mod tests {
             Ok(result)
         }
 
-        fn compute_properties(
+        fn compute_files(
             &self,
             _resource: &Self::Configurable,
             _role_name: &str,
