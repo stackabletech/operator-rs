@@ -11,6 +11,20 @@ pub enum ConfigError {
     InvalidConfiguration,
 }
 
+///
+/// This needs to be implemented by every [Config] struct that may appear in [Role<Config>]
+/// or the top level in order to determine where config properties are configured.
+///
+/// The options are:
+/// - Environmental variables (env)
+/// - Command line arguments (cli)
+/// - Configuration files (files)
+///
+/// Returned empty Maps will be ignored. Check out `to_hash_map(...)` in
+/// https://github.com/stackabletech/product-config/blob/main/src/ser.rs
+/// if you do not need to differentiate between the options and want to serialize all properties
+/// in a certain config [Config] to one option.
+///
 pub trait Configuration {
     type Configurable;
 
@@ -62,13 +76,16 @@ where
     let mut result = HashMap::new();
 
     for (role_name, role) in roles {
-        let role_properties = transform_role_to_config(
-            resource,
-            &role_name,
-            &role,
-            // TODO: What to do when role_name not in role_information
-            role_information.get(&role_name).unwrap(),
-        );
+        let property_name_kinds = match role_information.get(&role_name) {
+            Some(kind) => kind,
+            None => {
+                error!("The role [{}] was not specified in [{:?}]. This is a programming error please report a ticket. Will skip for now.", role_name, role_information.keys());
+                continue;
+            }
+        };
+
+        let role_properties =
+            transform_role_to_config(resource, &role_name, &role, property_name_kinds);
         result.insert(role_name, role_properties);
     }
 
