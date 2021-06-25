@@ -341,7 +341,6 @@ where
     }
 }
 
-// TODO: Trait bound on Clone is not needed after https://github.com/clux/kube-rs/pull/436, see https://github.com/stackabletech/operator-rs/issues/140
 impl<T> ReconciliationContext<T>
 where
     T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,

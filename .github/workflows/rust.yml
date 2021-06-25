@@ -21,10 +21,20 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - name: Start K3S
+        uses: debianmaster/actions-k3s@v1.0.1
+        id: k3s
+        with:
+          version: 'latest'
       - uses: Swatinem/rust-cache@v1.3.0
       - uses: actions-rs/cargo@v1.0.3
         with:
           command: test
+      - uses: actions-rs/cargo@v1.0.3
+        name: Run ignored-by-default tests
+        with:
+          command: test
+          args: -- --ignored --test-threads=1
       - uses: actions-rs/cargo@v1.0.3
         with:
           command: clean
