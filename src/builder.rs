@@ -264,11 +264,10 @@ impl ObjectMetaBuilder {
             name: self.name.clone(),
             namespace: self.namespace.clone(),
             owner_references: match self.ownerreference {
-                // TODO: map
-                Some(ref ownerreference) => Some(vec![ownerreference.clone()]),
-                None => None,
+                Some(ref ownerreference) => vec![ownerreference.clone()],
+                None => vec![],
             },
-            labels: Some(self.labels.clone()),
+            labels: self.labels.clone(),
 
             ..ObjectMeta::default()
         })
@@ -328,13 +327,12 @@ impl PodBuilder {
 
     pub fn with_condition(&mut self, condition_type: &str, condition_status: &str) -> &mut Self {
         let status = self.status.get_or_insert_with(PodStatus::default);
-        let conditions = status.conditions.get_or_insert_with(Vec::new);
         let condition = PodCondition {
             status: condition_status.to_string(),
             type_: condition_type.to_string(),
             ..PodCondition::default()
         };
-        conditions.push(condition);
+        status.conditions.push(condition);
         self
     }
 
@@ -365,9 +363,12 @@ impl PodBuilder {
         let configmaps = self
             .containers
             .iter()
-            .map(|container| match &container.volume_mounts {
-                None => vec![],
-                Some(mounts) => mounts.iter().map(|mount| mount.name.clone()).collect(),
+            .map(|container| {
+                container
+                    .volume_mounts
+                    .iter()
+                    .map(|mount| mount.name.clone())
+                    .collect::<Vec<String>>()
             })
             .flatten()
             .collect::<HashSet<String>>();
@@ -391,8 +392,8 @@ impl PodBuilder {
             },
             spec: Some(PodSpec {
                 containers: self.containers.clone(),
-                tolerations: Some(self.tolerations.clone()),
-                volumes: Some(volumes), // TODO: handle none case
+                tolerations: self.tolerations.clone(),
+                volumes,
                 node_name: self.node_name.clone(),
                 ..PodSpec::default()
             }),
@@ -478,10 +479,10 @@ impl ContainerBuilder {
         Container {
             image: self.image.clone(),
             name: self.name.clone(),
-            env: Some(self.env.clone()),
-            command: Some(self.command.clone()),
-            args: Some(self.args.clone()),
-            volume_mounts: Some(volume_mounts),
+            env: self.env.clone(),
+            command: self.command.clone(),
+            args: self.args.clone(),
+            volume_mounts,
             ..Container::default()
         }
     }
@@ -531,7 +532,7 @@ impl ConfigMapBuilder {
                 None => return Err(Error::MissingObjectKey { key: "metadata" }),
                 Some(ref metadata) => metadata.clone(),
             },
-            data: Some(self.data.clone()),
+            data: self.data.clone(),
             ..ConfigMap::default()
         })
     }

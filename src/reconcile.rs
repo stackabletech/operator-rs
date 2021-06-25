@@ -1,7 +1,7 @@
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
 use crate::k8s_utils::LabelOptionalValueMap;
-use crate::{conditions, controller_ref, finalizer, pod_utils};
+use crate::{conditions, controller_ref, finalizer, labels, pod_utils};
 
 use crate::conditions::ConditionStatus;
 use crate::k8s_utils::find_excess_pods;
