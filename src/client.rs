@@ -3,6 +3,8 @@ use crate::finalizer;
 use crate::label_selector;
 use crate::pod_utils;
 
+use backoff::backoff::Backoff;
+use backoff::ExponentialBackoff;
 use either::Either;
 use futures::StreamExt;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
@@ -15,7 +17,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::convert::TryFrom;
 use std::fmt::Debug;
-use tracing::trace;
+use tracing::{error, info, trace};
 
 /// This `Client` can be used to access Kubernetes.
 /// It wraps an underlying [kube::client::Client] and provides some common functionality.
@@ -320,6 +322,55 @@ impl Client {
             Ok(Some(
                 api.delete(&resource.name(), &self.delete_params).await?,
             ))
+        }
+    }
+
+    /// This deletes a resource _if it is not deleted already_ and waits until the deletion is
+    /// performed by Kubernetes.
+    ///
+    /// It calls `delete` to perform the deletion.
+    ///
+    /// Afterwards it loops and checks regularly whether the resource has been deleted
+    /// from Kubernetes
+    pub async fn ensure_deleted<T>(&self, resource: T) -> OperatorResult<()>
+    where
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
+    {
+        let mut backoff_strategy = ExponentialBackoff {
+            max_elapsed_time: None,
+            ..ExponentialBackoff::default()
+        };
+
+        self.delete(&resource).await?;
+
+        loop {
+            if !self
+                .exists::<T>(&resource.name(), resource.namespace().as_deref())
+                .await?
+            {
+                return Ok(());
+            }
+
+            // When backoff returns `None` the timeout has expired
+            match backoff_strategy.next_backoff() {
+                Some(backoff) => {
+                    info!(
+                        "Waiting [{}] seconds before trying again..",
+                        backoff.as_secs()
+                    );
+                    tokio::time::sleep(backoff).await;
+                }
+                None => {
+                    // We offer no way of specifying a timeout, so this shouldn't happen,
+                    // if it does we'll log an error for now and continue iterating and wait for
+                    // the last interval we saw
+                    error!(
+                        "Waiting for deletion timed out, but no timeout was specified, this is an error and should not happen!"
+                    );
+                    tokio::time::sleep(backoff_strategy.current_interval).await;
+                }
+            }
         }
     }
 
