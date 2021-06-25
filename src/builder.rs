@@ -566,8 +566,14 @@ impl NodeBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::builder::{ContainerBuilder, ObjectMetaBuilder, OwnerReferenceBuilder, PodBuilder};
-    use kube::Resource;
+    use crate::builder::{
+        ConfigMapBuilder, ContainerBuilder, ObjectMetaBuilder, OwnerReferenceBuilder, PodBuilder,
+    };
+
+    #[test]
+    fn test_configmap_builder() {
+        let builder = ConfigMapBuilder::new();
+    }
 
     #[test]
     fn test() {
@@ -601,52 +607,3 @@ mod tests {
         assert_eq!(pod.metadata.name.unwrap(), "foo");
     }
 }
-
-/*
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-
-    use crate::labels::APP_INSTANCE_LABEL;
-    use k8s_openapi::api::core::v1::Pod;
-    use rstest::rstest;
-
-    #[rstest]
-    #[case("foo", Some("bar"))]
-    #[case("foo", None)]
-    fn test_build_metadata(
-        #[case] name: &str,
-        #[case] namespace: Option<&str>,
-    ) -> OperatorResult<()> {
-        let mut labels = BTreeMap::new();
-        labels.insert("foo".to_string(), "bar".to_string());
-
-        let namespace = namespace.map(|s| s.to_string());
-
-        let pod = Pod {
-            metadata: ObjectMeta {
-                name: Some("foo_pod".to_string()),
-                namespace: namespace.clone(),
-                uid: Some("uid".to_string()),
-                ..ObjectMeta::default()
-            },
-            ..Pod::default()
-        };
-
-        let meta = build_metadata(name.to_string(), Some(labels), &pod, true)?;
-
-        assert_eq!(meta.name, Some(name.to_string()));
-        assert_eq!(meta.namespace, namespace);
-
-        let labels = meta.labels.unwrap();
-        assert_eq!(labels.get("foo"), Some(&"bar".to_string()));
-        assert_eq!(labels.get(APP_INSTANCE_LABEL), Some(&"foo_pod".to_string()));
-        assert_eq!(labels.len(), 2);
-
-        Ok(())
-    }
-}
-
- */
