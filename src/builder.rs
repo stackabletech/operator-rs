@@ -8,8 +8,6 @@ use k8s_openapi::api::core::v1::{
     ConfigMap, ConfigMapVolumeSource, Container, EnvVar, Node, Pod, PodCondition, PodSpec,
     PodStatus, Toleration, Volume, VolumeMount,
 };
-#[cfg(test)]
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
 use k8s_openapi::ByteString;
 use kube::{Resource, ResourceExt};
@@ -282,10 +280,6 @@ pub struct PodBuilder {
     node_name: Option<String>,
     tolerations: Vec<Toleration>,
     status: Option<PodStatus>,
-
-    #[cfg(test)]
-    deletion_timestamp: Option<Time>,
-
     containers: Vec<Container>,
 }
 
@@ -294,7 +288,12 @@ impl PodBuilder {
         PodBuilder::default()
     }
 
-    pub fn new_metadata<F>(&mut self, f: F) -> OperatorResult<&mut Self>
+    pub fn metadata_default(&mut self) -> &mut Self {
+        self.metadata(ObjectMeta::default());
+        self
+    }
+
+    pub fn metadata_builder<F>(&mut self, f: F) -> OperatorResult<&mut Self>
     where
         F: Fn(&mut ObjectMetaBuilder) -> &mut ObjectMetaBuilder,
     {
@@ -333,15 +332,6 @@ impl PodBuilder {
             ..PodCondition::default()
         };
         status.conditions.push(condition);
-        self
-    }
-
-    #[cfg(test)]
-    pub fn deletion_timestamp<VALUE: Into<Time>>(
-        &mut self,
-        deletion_timestamp: VALUE,
-    ) -> &mut Self {
-        self.deletion_timestamp = Some(deletion_timestamp.into());
         self
     }
 
@@ -601,7 +591,7 @@ mod tests {
         );
 
         let pod = PodBuilder::new()
-            .new_metadata(|builder| builder.name("foo"))
+            .metadata_builder(|builder| builder.name("foo"))
             .unwrap()
             .build()
             .unwrap();

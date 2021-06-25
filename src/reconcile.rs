@@ -156,7 +156,8 @@ where
                 key: ".metadata.uid",
             })?;
 
-        let match_labels = labels::get_recommended_labels(&self.resource)?;
+        let mut match_labels = BTreeMap::new();
+        match_labels.insert(labels::APP_NAME_LABEL.to_string(), self.name());
 
         let label_selector = LabelSelector {
             match_labels,
@@ -486,15 +487,14 @@ mod tests {
         let duration = Duration::from_secs(30);
         let action = ReconcileFunctionAction::Requeue(duration);
 
-        let pod1 = PodBuilder::new()
-            .deletion_timestamp(Time(Utc::now()))
-            .build()
-            .unwrap();
+        let mut pod1 = PodBuilder::new().metadata_default().build().unwrap();
+
+        pod1.metadata.deletion_timestamp = Some(Time(Utc::now()));
 
         let result = wait_for_terminating_pods(&duration, vec![pod1.clone()].as_slice()).unwrap();
         assert_eq!(result, action);
 
-        let pod2 = PodBuilder::new().build().unwrap();
+        let pod2 = PodBuilder::new().metadata_default().build().unwrap();
         let result = wait_for_terminating_pods(&duration, vec![pod2.clone()].as_slice()).unwrap();
         assert_eq!(result, ReconcileFunctionAction::Continue);
 

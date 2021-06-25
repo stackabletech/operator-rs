@@ -131,7 +131,11 @@ mod tests {
             (vec![node3, node4, node5], labels2),
         ];
 
-        let pod = PodBuilder::new().node_name("node1").build().unwrap();
+        let pod = PodBuilder::new()
+            .node_name("node1")
+            .metadata_default()
+            .build()
+            .unwrap();
         let pods = vec![pod];
 
         let excess_pods = find_excess_pods(nodes_and_labels.as_slice(), &pods);
@@ -145,7 +149,11 @@ mod tests {
             builder::NodeBuilder::new().name("foobar").build(),
             builder::NodeBuilder::new().name("barfoo").build(),
         ];
-        let existing_pods = vec![PodBuilder::new().node_name("foobar").build().unwrap()];
+        let existing_pods = vec![PodBuilder::new()
+            .node_name("foobar")
+            .metadata_default()
+            .build()
+            .unwrap()];
 
         let mut label_values = BTreeMap::new();
         label_values.insert("foo".to_string(), Some("bar".to_string()));
@@ -250,7 +258,11 @@ mod tests {
     #[test]
     fn test_find_nodes_that_need_pods() {
         let foo_node = NodeBuilder::new().name("foo").build();
-        let foo_pod = PodBuilder::new().node_name("foo").build().unwrap();
+        let foo_pod = PodBuilder::new()
+            .node_name("foo")
+            .metadata_default()
+            .build()
+            .unwrap();
 
         let mut labels = BTreeMap::new();
         labels.insert("foo".to_string(), Some("bar".to_string()));
