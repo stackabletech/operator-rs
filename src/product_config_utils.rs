@@ -16,18 +16,22 @@ pub enum ConfigError {
     },
 }
 
-/// This needs to be implemented by every generic (T) struct that may appear in [Role<T>]
-/// or the top level in order to determine where config properties are configured.
+/// This trait is used to compute configuration properties for products.
+///
+/// This needs to be implemented for every generic (T) config struct that may appear in
+/// [`crate::role_utils::Role`] or the top level in order to determine where and how
+/// config properties are configured within the product.
 ///
 /// The options are:
 /// - Environmental variables (env)
 /// - Command line arguments (cli)
 /// - Configuration files (files)
 ///
-/// Returned empty Maps will be ignored. Check out `to_hash_map(...)` in
-/// https://github.com/stackabletech/product-config/blob/main/src/ser.rs
-/// if you do not need to differentiate between the options and want to serialize all properties
-/// in a certain config T to one option.
+/// Returned empty Maps will be ignored.
+///
+/// Check out [`crate::ser::to_hash_map`] if you do need to convert a struct to a HashMap
+/// in an easy way, and do not need to differentiate where the properties are configured
+/// within the product.
 pub trait Configuration {
     type Configurable;
 
@@ -174,14 +178,13 @@ where
 {
     let mut result = HashMap::new();
 
-    let role_properties =
-        transform_properties_to_kind(resource, role_name, &role.config, property_kinds);
+    let role_properties = parse_role_config(resource, role_name, &role.config, property_kinds);
 
     // for each role group ...
     for (role_group_name, role_group) in &role.role_groups {
         // ... compute the group properties ...
         let role_group_properties =
-            transform_properties_to_kind(resource, role_name, &role_group.config, property_kinds);
+            parse_role_config(resource, role_name, &role_group.config, property_kinds);
 
         // ... and merge them with the role properties.
         let mut role_properties_copy = role_properties.clone();
@@ -205,13 +208,12 @@ where
 ///
 /// # Arguments
 /// - `resource`       - Not used directly. It's passed on to the `Configuration::compute_*` calls.
-/// - `name`           - Not used directly but passed on to the `Configuration::compute_*` calls. It usually
-///                      contains a role name or a role group name.
+/// - `role_name`      - Not used directly but passed on to the `Configuration::compute_*` calls.
 /// - `config`         - The configuration properties to partition.
 /// - `property_kinds` - The "buckets" used to partition the configuration properties.
-fn transform_properties_to_kind<T>(
+fn parse_role_config<T>(
     resource: &<T as Configuration>::Configurable,
-    name: &str,
+    role_name: &str,
     config: &Option<CommonConfiguration<T>>,
     property_kinds: &[PropertyNameKind],
 ) -> HashMap<PropertyNameKind, BTreeMap<String, String>>
@@ -224,15 +226,15 @@ where
         match property_kind {
             PropertyNameKind::File(file) => result.insert(
                 property_kind.clone(),
-                parse_file_properties(resource, name, config, file),
+                parse_file_properties(resource, role_name, config, file),
             ),
             PropertyNameKind::Env => result.insert(
                 property_kind.clone(),
-                parse_env_properties(resource, name, config),
+                parse_env_properties(resource, role_name, config),
             ),
             PropertyNameKind::Cli => result.insert(
                 property_kind.clone(),
-                parse_cli_properties(resource, name, config),
+                parse_cli_properties(resource, role_name, config),
             ),
         };
     }
