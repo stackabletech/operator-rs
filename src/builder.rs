@@ -1,14 +1,23 @@
+//! This module provides builders for various (Kubernetes) objects.
+//!
+//! They are often not _pure_ builders but contain extra logic to set fields based on others or
+//! to fill in defaults that make sense.
 use crate::error::{Error, OperatorResult};
 use crate::labels;
 use k8s_openapi::api::core::v1::{
-    ConfigMap, ConfigMapVolumeSource, Container, EnvVar, Node, Pod, PodSpec, Toleration, Volume,
-    VolumeMount,
+    ConfigMap, ConfigMapVolumeSource, Container, EnvVar, Node, Pod, PodCondition, PodSpec,
+    PodStatus, Toleration, Volume, VolumeMount,
 };
+#[cfg(test)]
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
 use k8s_openapi::ByteString;
-use kube::Resource;
+use kube::{Resource, ResourceExt};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+/// A builder to build [`OwnerReference`] objects.
+///
+/// Of special interest is the [`Self::initialize_from_resource()`] function.
 #[derive(Clone, Default)]
 pub struct OwnerReferenceBuilder {
     api_version: Option<String>,
@@ -93,6 +102,10 @@ impl OwnerReferenceBuilder {
         self
     }
 
+    /// Can be used to initialize a builder with settings from an existing resource.
+    /// The builder will create an `OwnerReference` that points to the passed resource.
+    ///
+    /// This will _not_ set `controller` or `block_owner_deletion`.
     pub fn initialize_from_resource<T: Resource<DynamicType = ()>>(
         &mut self,
         resource: &T,
@@ -128,6 +141,12 @@ impl OwnerReferenceBuilder {
     }
 }
 
+/// A builder to build [`ObjectMeta`] objects.
+///
+/// Of special interest is the [`Self::ownerreference_from_resource()`] function.
+/// Note: This builder only supports a single `OwnerReference`.
+///
+/// It is strongly recommended to always call [`Self::with_recommended_labels()`]!
 #[derive(Clone, Default)]
 pub struct ObjectMetaBuilder {
     name: Option<String>,
@@ -178,6 +197,7 @@ impl ObjectMetaBuilder {
         self
     }
 
+    /// This can be used to set the `OwnerReference` to the provided resource.
     pub fn ownerreference_from_resource<T: Resource<DynamicType = ()>>(
         &mut self,
         resource: &T,
@@ -218,6 +238,8 @@ impl ObjectMetaBuilder {
         self
     }
 
+    /// This sets the common recommended labels (in the `app.kubernetes.io` namespace).
+    /// It is recommended to always call this method and is mostly not required to make testing easier.
     pub fn with_recommended_labels<T: Resource>(
         &mut self,
         resource: &T,
@@ -253,11 +275,14 @@ impl ObjectMetaBuilder {
     }
 }
 
+/// A builder to build [`Pod`] objects.
+///
 #[derive(Clone, Default)]
 pub struct PodBuilder {
     metadata: Option<ObjectMeta>,
     node_name: Option<String>,
     tolerations: Vec<Toleration>,
+    status: Option<PodStatus>,
 
     #[cfg(test)]
     deletion_timestamp: Option<Time>,
@@ -268,6 +293,16 @@ pub struct PodBuilder {
 impl PodBuilder {
     pub fn new() -> PodBuilder {
         PodBuilder::default()
+    }
+
+    pub fn new_metadata<F>(&mut self, f: F) -> OperatorResult<&mut Self>
+    where
+        F: Fn(&mut ObjectMetaBuilder) -> &mut ObjectMetaBuilder,
+    {
+        let mut builder = ObjectMetaBuilder::new();
+        let builder = f(&mut builder);
+        self.metadata = Some(builder.build()?);
+        Ok(self)
     }
 
     pub fn metadata<VALUE: Into<ObjectMeta>>(&mut self, metadata: VALUE) -> &mut Self {
@@ -285,16 +320,14 @@ impl PodBuilder {
         self
     }
 
-    /*
     pub fn phase(&mut self, phase: &str) -> &mut Self {
-        let mut status = self.pod.status.get_or_insert_with(PodStatus::default);
+        let mut status = self.status.get_or_insert_with(PodStatus::default);
         status.phase = Some(phase.to_string());
         self
     }
 
-
     pub fn with_condition(&mut self, condition_type: &str, condition_status: &str) -> &mut Self {
-        let status = self.pod.status.get_or_insert_with(PodStatus::default);
+        let status = self.status.get_or_insert_with(PodStatus::default);
         let conditions = status.conditions.get_or_insert_with(Vec::new);
         let condition = PodCondition {
             status: condition_status.to_string(),
@@ -305,7 +338,6 @@ impl PodBuilder {
         self
     }
 
-
     #[cfg(test)]
     pub fn deletion_timestamp<VALUE: Into<Time>>(
         &mut self,
@@ -314,14 +346,14 @@ impl PodBuilder {
         self.deletion_timestamp = Some(deletion_timestamp.into());
         self
     }
-     */
 
     pub fn add_container(&mut self, container: Container) -> &mut Self {
         self.containers.push(container);
         self
     }
 
-    pub fn add_krustlet_tolerations(&mut self) -> &mut Self {
+    /// This will automatically add all required tolerations to target a Stackable agent.
+    pub fn add_stackable_agent_tolerations(&mut self) -> &mut Self {
         self.tolerations
             .extend(crate::krustlet::create_tolerations());
         self
@@ -364,11 +396,15 @@ impl PodBuilder {
                 node_name: self.node_name.clone(),
                 ..PodSpec::default()
             }),
+            status: self.status.clone(),
             ..Pod::default()
         })
     }
 }
 
+/// A builder to build [`Container`] objects.
+///
+/// This will automatically create the necessary volumes and mounts for each `ConfigMap` which is added.
 #[derive(Clone, Default)]
 pub struct ContainerBuilder {
     image: Option<String>,
@@ -451,6 +487,7 @@ impl ContainerBuilder {
     }
 }
 
+/// A builder to build [`ConfigMap`] objects.
 #[derive(Clone, Default)]
 pub struct ConfigMapBuilder {
     metadata: Option<ObjectMeta>,
@@ -500,6 +537,9 @@ impl ConfigMapBuilder {
     }
 }
 
+/// A builder to build [`Node`] objects.
+///
+/// This is mainly useful for tests.
 pub struct NodeBuilder {
     node: Node,
 }
@@ -520,25 +560,14 @@ impl NodeBuilder {
     pub fn build(&self) -> Node {
         // We're cloning here because we can't take just `self` in this method because then
         // we couldn't chain the method with the others easily (because they return &mut self and not self)
-        //
         self.node.clone()
-    }
-}
-
-pub fn build_test_node(name: &str) -> Node {
-    Node {
-        metadata: ObjectMeta {
-            name: Some(name.to_string()),
-            ..ObjectMeta::default()
-        },
-        spec: None,
-        status: None,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::builder::{ContainerBuilder, ObjectMetaBuilder, OwnerReferenceBuilder, PodBuilder};
+    use kube::Resource;
 
     #[test]
     fn test() {
@@ -563,6 +592,13 @@ mod tests {
             pod.spec.unwrap().node_name.unwrap(),
             "worker-1.stackable.demo"
         );
+
+        let pod = PodBuilder::new()
+            .new_metadata(|builder| builder.name("foo"))
+            .unwrap()
+            .build()
+            .unwrap();
+        assert_eq!(pod.metadata.name.unwrap(), "foo");
     }
 }
 

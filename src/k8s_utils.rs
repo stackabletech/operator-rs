@@ -110,7 +110,7 @@ pub fn find_nodes_that_need_pods<'a>(
 mod tests {
     use super::*;
     use crate::builder;
-    use crate::builder::{NodeBuilder, PodBuilder};
+    use crate::builder::{NodeBuilder, ObjectMetaBuilder, PodBuilder};
 
     #[test]
     fn test_find_excess_pods() {
@@ -131,7 +131,7 @@ mod tests {
             (vec![node3, node4, node5], labels2),
         ];
 
-        let pod = PodBuilder::new().node_name("node1").build();
+        let pod = PodBuilder::new().node_name("node1").build().unwrap();
         let pods = vec![pod];
 
         let excess_pods = find_excess_pods(nodes_and_labels.as_slice(), &pods);
@@ -142,10 +142,10 @@ mod tests {
     fn test_find_valid_pods_for_nodes() {
         // Two nodes, one pod, no labels on pod, but looking for labels, shouldn't match
         let nodes = vec![
-            builder::build_test_node("foobar"),
-            builder::build_test_node("barfoo"),
+            builder::NodeBuilder::new().name("foobar").build(),
+            builder::NodeBuilder::new().name("barfoo").build(),
         ];
-        let existing_pods = vec![PodBuilder::new().node_name("foobar").build()];
+        let existing_pods = vec![PodBuilder::new().node_name("foobar").build().unwrap()];
 
         let mut label_values = BTreeMap::new();
         label_values.insert("foo".to_string(), Some("bar".to_string()));
@@ -160,13 +160,20 @@ mod tests {
         pod_labels.insert("foo".to_string(), "bar".to_string());
 
         let nodes = vec![
-            builder::build_test_node("foobar"),
-            builder::build_test_node("barfoo"),
+            builder::NodeBuilder::new().name("foobar").build(),
+            builder::NodeBuilder::new().name("barfoo").build(),
         ];
+
         let existing_pods = vec![PodBuilder::new()
             .node_name("foobar")
-            .with_labels(pod_labels)
-            .build()];
+            .metadata(
+                ObjectMetaBuilder::new()
+                    .with_labels(pod_labels)
+                    .build()
+                    .unwrap(),
+            )
+            .build()
+            .unwrap()];
 
         let mut expected_labels = BTreeMap::new();
         expected_labels.insert("foo".to_string(), Some("bar".to_string()));
@@ -180,13 +187,19 @@ mod tests {
         pod_labels.insert("foo".to_string(), "WRONG".to_string());
 
         let nodes = vec![
-            builder::build_test_node("foobar"),
-            builder::build_test_node("barfoo"),
+            builder::NodeBuilder::new().name("foobar").build(),
+            builder::NodeBuilder::new().name("barfoo").build(),
         ];
         let existing_pods = vec![PodBuilder::new()
             .node_name("foobar")
-            .with_labels(pod_labels)
-            .build()];
+            .metadata(
+                ObjectMetaBuilder::new()
+                    .with_labels(pod_labels)
+                    .build()
+                    .unwrap(),
+            )
+            .build()
+            .unwrap()];
 
         let mut expected_labels = BTreeMap::new();
         expected_labels.insert("foo".to_string(), Some("bar".to_string()));
@@ -200,18 +213,30 @@ mod tests {
         pod_labels.insert("foo".to_string(), "bar".to_string());
 
         let nodes = vec![
-            builder::build_test_node("foobar"),
-            builder::build_test_node("barfoo"),
+            builder::NodeBuilder::new().name("foobar").build(),
+            builder::NodeBuilder::new().name("barfoo").build(),
         ];
         let existing_pods = vec![
             PodBuilder::new()
                 .node_name("foobar")
-                .with_labels(pod_labels.clone())
-                .build(),
+                .metadata(
+                    ObjectMetaBuilder::new()
+                        .with_labels(pod_labels.clone())
+                        .build()
+                        .unwrap(),
+                )
+                .build()
+                .unwrap(),
             PodBuilder::new()
                 .node_name("wrong_node")
-                .with_labels(pod_labels)
-                .build(),
+                .metadata(
+                    ObjectMetaBuilder::new()
+                        .with_labels(pod_labels)
+                        .build()
+                        .unwrap(),
+                )
+                .build()
+                .unwrap(),
         ];
 
         let mut expected_labels = BTreeMap::new();
@@ -225,7 +250,7 @@ mod tests {
     #[test]
     fn test_find_nodes_that_need_pods() {
         let foo_node = NodeBuilder::new().name("foo").build();
-        let foo_pod = PodBuilder::new().node_name("foo").build();
+        let foo_pod = PodBuilder::new().node_name("foo").build().unwrap();
 
         let mut labels = BTreeMap::new();
         labels.insert("foo".to_string(), Some("bar".to_string()));
@@ -238,8 +263,14 @@ mod tests {
 
         let foo_pod = PodBuilder::new()
             .node_name("foo")
-            .with_label("foo", "bar")
-            .build();
+            .metadata(
+                ObjectMetaBuilder::new()
+                    .with_label("foo", "bar")
+                    .build()
+                    .unwrap(),
+            )
+            .build()
+            .unwrap();
         let pods = vec![foo_pod];
         let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
         assert!(need_pods.is_empty());
