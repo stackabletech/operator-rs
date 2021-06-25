@@ -156,9 +156,11 @@ where
                 key: ".metadata.uid",
             })?;
 
+        let match_labels = labels::get_recommended_labels(&self.resource)?;
+
         let label_selector = LabelSelector {
-            match_expressions: None,
-            match_labels: None,
+            match_labels,
+            ..LabelSelector::default()
         };
 
         self.client

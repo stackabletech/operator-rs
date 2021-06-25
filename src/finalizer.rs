@@ -13,10 +13,7 @@ pub fn has_finalizer<T>(resource: &T, finalizer: &str) -> bool
 where
     T: Resource,
 {
-    return match resource.meta().finalizers.as_ref() {
-        Some(finalizers) => finalizers.contains(&finalizer.to_string()),
-        None => false,
-    };
+    resource.meta().finalizers.contains(&finalizer.to_string())
 }
 
 /// This will add the passed finalizer to the list of finalizers for the resource if it doesn't exist yet
@@ -72,38 +69,34 @@ where
     //             "$deleteFromPrimitiveList/finalizers": [FINALIZER_NAME.to_string()]
     //         }
     // ```
-    return match resource.meta().finalizers.as_ref() {
-        None => Err(Error::MissingObjectKey {
+
+    let index = resource
+        .meta()
+        .finalizers
+        .iter()
+        .position(|cur_finalizer| cur_finalizer == finalizer);
+
+    if let Some(index) = index {
+        // We found our finalizer which means that we now need to handle our deletion logic
+        // And then remove the finalizer from the list.
+
+        let finalizer_path = format!("/metadata/finalizers/{}", index);
+        let patch = json_patch::Patch(vec![
+            PatchOperation::Test(TestOperation {
+                path: finalizer_path.clone(),
+                value: finalizer.into(),
+            }),
+            PatchOperation::Remove(RemoveOperation {
+                path: finalizer_path,
+            }),
+        ]);
+
+        client.json_patch(resource, patch).await
+    } else {
+        Err(Error::MissingObjectKey {
             key: ".metadata.finalizers",
-        }),
-        Some(finalizers) => {
-            let index = finalizers
-                .iter()
-                .position(|cur_finalizer| cur_finalizer == finalizer);
-
-            if let Some(index) = index {
-                // We found our finalizer which means that we now need to handle our deletion logic
-                // And then remove the finalizer from the list.
-
-                let finalizer_path = format!("/metadata/finalizers/{}", index);
-                let patch = json_patch::Patch(vec![
-                    PatchOperation::Test(TestOperation {
-                        path: finalizer_path.clone(),
-                        value: finalizer.into(),
-                    }),
-                    PatchOperation::Remove(RemoveOperation {
-                        path: finalizer_path,
-                    }),
-                ]);
-
-                client.json_patch(resource, patch).await
-            } else {
-                Err(Error::MissingObjectKey {
-                    key: ".metadata.finalizers",
-                })
-            }
-        }
-    };
+        })
+    }
 }
 
 /// Checks whether the provided object has a deletion timestamp set.
