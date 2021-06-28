@@ -18,8 +18,10 @@ pub enum ConfigError {
 
 /// This trait is used to compute configuration properties for products.
 ///
-/// This needs to be implemented for every generic (T) config struct that may appear in
-/// [`crate::role_utils::Role`] or the top level in order to determine where and how
+/// This needs to be implemented for every T in the [`crate::role_utils::CommonConfig`] struct
+/// that is used in [`crate::role_utils::Role`] or the top level (cluster wide) configuration.
+///
+/// Each `compute_*` method is then called to determine where and how (see options below)
 /// config properties are configured within the product.
 ///
 /// The options are:
@@ -30,8 +32,7 @@ pub enum ConfigError {
 /// Returned empty Maps will be ignored.
 ///
 /// Check out [`crate::ser::to_hash_map`] if you do need to convert a struct to a HashMap
-/// in an easy way, and do not need to differentiate where the properties are configured
-/// within the product.
+/// in an easy way.
 pub trait Configuration {
     type Configurable;
 
@@ -69,7 +70,7 @@ pub type RoleConfigByPropertyKind =
 ///
 /// # Arguments
 /// - `resource`         - Not used directly. It's passed on to the `Configuration::compute_*` calls.
-/// - `roles`            - A map keyed by role names. The value is a tuple of the Role and
+/// - `roles`            - A map keyed by role names. The value is a tuple of the [`crate::role_utils::Role`] and
 ///                        required PropertyNameKind like (Cli, Env or Files).
 pub fn transform_all_roles_to_config<T>(
     resource: &T::Configurable,
@@ -89,7 +90,7 @@ where
     result
 }
 
-/// This transforms the [PropertyValidationResult] back into a pure BTreeMap which can be used
+/// This transforms the [`product_config::types::PropertyValidationResult`] back into a pure BTreeMap which can be used
 /// to set properties for config files, cli or environmental variables.
 /// Default values are ignored, Recommended and Valid values are used as is. For Warning and
 /// Error we recommend to not use the values unless you really know what you are doing.
@@ -150,17 +151,18 @@ pub fn process_validation_result(
     Ok(properties)
 }
 
-/// Given a single [Role], it generates a data structure that can be validated in the
-/// product configuration. The configuration objects of the [RoleGroup] contained in the
-/// given [Role] are merged with that of the [Role] itself.
+/// Given a single [`crate::role_utils::Role`], it generates a data structure that can be validated in the
+/// product configuration. The configuration objects of the [`crate::role_utils::RoleGroup] contained in the
+/// given [`crate::role_utils::Role`] are merged with that of the [`crate::role_utils::Role`] itself.
 /// In addition, the `*_overrides` settings are also merged in the resulting configuration
 /// with the highest priority. The merge priority chain looks like this where '->' means
 /// "overwrites if existing or adds":
 ///
 /// group overrides -> group config -> role overrides -> role config (TODO: -> common_config)
 ///
-/// The output is a map where the [RoleGroup] name points to another map of [PropertyNameKind]
-/// that points to the mapped configuration properties in the (possibly overridden) [Role] and [RoleGroup].
+/// The output is a map where the [`crate::role_utils::RoleGroup] name points to another map of
+/// [`product_config::types::PropertyValidationResult`] that points to the mapped configuration
+/// properties in the (possibly overridden) [`crate::role_utils::Role`] and [`crate::role_utils::RoleGroup].
 ///
 /// # Arguments
 /// - `resource`       - Not used directly. It's passed on to the `Configuration::compute_*` calls.
@@ -201,10 +203,10 @@ where
     result
 }
 
-/// Given a `config` object and the `property_kind` vector, it uses the `Configuration::compute_*` methods
-/// to partition the configuration properties by `PropertyNameKind`.
+/// Given a `config` object and the `property_kinds` vector, it uses the `Configuration::compute_*` methods
+/// to partition the configuration properties by [`product_config::types::PropertyValidationResult`].
 ///
-/// The output is a map where the configuration properties are keyed by `PropertyNameKind`.
+/// The output is a map where the configuration properties are keyed by [`product_config::types::PropertyValidationResult`].
 ///
 /// # Arguments
 /// - `resource`       - Not used directly. It's passed on to the `Configuration::compute_*` calls.
