@@ -215,7 +215,7 @@ impl EventBuilder {
         };
 
         EventBuilder {
-            name: resource.name().clone(),
+            name: resource.name(),
             involved_object,
             ..EventBuilder::default()
         }
@@ -764,11 +764,9 @@ mod tests {
             .message("message")
             .build();
 
-        assert!(
-            matches!(event.involved_object.kind, Some(pod_name) if pod_name == "Pod".to_string())
-        );
+        assert!(matches!(event.involved_object.kind, Some(pod_name) if pod_name == "Pod"));
 
-        assert!(matches!(event.message, Some(message) if message == "message".to_string()));
+        assert!(matches!(event.message, Some(message) if message == "message"));
         assert!(matches!(event.reason, None));
     }
 
