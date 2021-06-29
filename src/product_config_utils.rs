@@ -104,7 +104,7 @@ where
 ///                           the value anyways. Not recommended!
 // TODO: boolean flags suck, move ignore_warn to be a flag
 pub fn process_validation_result(
-    validation_result: &HashMap<String, PropertyValidationResult>,
+    validation_result: &BTreeMap<String, PropertyValidationResult>,
     ignore_warn: bool,
     ignore_err: bool,
 ) -> Result<BTreeMap<String, String>, ConfigError> {
