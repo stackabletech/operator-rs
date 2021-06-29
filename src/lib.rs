@@ -7,7 +7,6 @@ pub mod controller_ref;
 pub mod controller_utils;
 pub mod crd;
 pub mod error;
-pub mod event;
 pub mod finalizer;
 pub mod k8s_errors;
 pub mod k8s_utils;
