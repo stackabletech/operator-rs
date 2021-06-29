@@ -42,25 +42,25 @@ pub trait Configuration {
         &self,
         resource: &Self::Configurable,
         role_name: &str,
-    ) -> Result<BTreeMap<String, String>, ConfigError>;
+    ) -> Result<BTreeMap<String, Option<String>>, ConfigError>;
 
     fn compute_cli(
         &self,
         resource: &Self::Configurable,
         role_name: &str,
-    ) -> Result<BTreeMap<String, String>, ConfigError>;
+    ) -> Result<BTreeMap<String, Option<String>>, ConfigError>;
 
     fn compute_files(
         &self,
         resource: &Self::Configurable,
         role_name: &str,
         file: &str,
-    ) -> Result<BTreeMap<String, String>, ConfigError>;
+    ) -> Result<BTreeMap<String, Option<String>>, ConfigError>;
 }
 
 // This deep map causes problems with clippy and fmt.
 pub type RoleConfigByPropertyKind =
-    HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, String>>>>;
+    HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>>;
 
 /// Given the configuration parameters of all `roles` partition them by `PropertyNameKind` and
 /// merge them with the role groups configuration parameters.
@@ -127,6 +127,10 @@ pub fn process_validation_result(
                 debug!("Property [{}] is set to valid value [{}]", key, value);
                 properties.insert(key.clone(), value.clone());
             }
+            PropertyValidationResult::Override(value) => {
+                debug!("Property [{}] is set to override value [{}]", key, value);
+                properties.insert(key.clone(), value.clone());
+            }
             PropertyValidationResult::Warn(value, err) => {
                 warn!("Property [{}] is set to value [{}] which causes a warning, `ignore_warn` is {}: {:?}", key, value, ignore_warn, err);
                 if ignore_warn {
@@ -174,7 +178,7 @@ fn transform_role_to_config<T>(
     role_name: &str,
     role: &Role<T>,
     property_kinds: &[PropertyNameKind],
-) -> HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, String>>>
+) -> HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
     T: Configuration,
 {
@@ -218,7 +222,7 @@ fn parse_role_config<T>(
     role_name: &str,
     config: &Option<CommonConfiguration<T>>,
     property_kinds: &[PropertyNameKind],
-) -> HashMap<PropertyNameKind, BTreeMap<String, String>>
+) -> HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>
 where
     T: Configuration,
 {
@@ -247,7 +251,7 @@ fn parse_cli_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
     config: &Option<CommonConfiguration<T>>,
-) -> BTreeMap<String, String>
+) -> BTreeMap<String, Option<String>>
 where
     T: Configuration,
 {
@@ -269,7 +273,7 @@ where
     }) = config
     {
         for (key, value) in config {
-            final_properties.insert(key.clone(), value.clone());
+            final_properties.insert(key.clone(), Some(value.clone()));
         }
     }
 
@@ -280,7 +284,7 @@ fn parse_env_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
     config: &Option<CommonConfiguration<T>>,
-) -> BTreeMap<String, String>
+) -> BTreeMap<String, Option<String>>
 where
     T: Configuration,
 {
@@ -302,7 +306,7 @@ where
     }) = config
     {
         for (key, value) in config {
-            final_properties.insert(key.clone(), value.clone());
+            final_properties.insert(key.clone(), Some(value.clone()));
         }
     }
 
@@ -314,7 +318,7 @@ fn parse_file_properties<T>(
     role_name: &str,
     config: &Option<CommonConfiguration<T>>,
     file: &str,
-) -> BTreeMap<String, String>
+) -> BTreeMap<String, Option<String>>
 where
     T: Configuration,
 {
@@ -340,7 +344,7 @@ where
         // For Conf files only process overrides that match our file name
         if let Some(config) = inner_config.get(file) {
             for (key, value) in config {
-                final_properties.insert(key.clone(), value.clone());
+                final_properties.insert(key.clone(), Some(value.clone()));
             }
         }
     }
@@ -397,10 +401,10 @@ mod tests {
             &self,
             _resource: &Self::Configurable,
             _role_name: &str,
-        ) -> Result<BTreeMap<String, String>, ConfigError> {
+        ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
             let mut result = BTreeMap::new();
             if let Some(env) = &self.env {
-                result.insert("env".to_string(), env.to_string());
+                result.insert("env".to_string(), Some(env.to_string()));
             }
             Ok(result)
         }
@@ -409,10 +413,10 @@ mod tests {
             &self,
             _resource: &Self::Configurable,
             _role_name: &str,
-        ) -> Result<BTreeMap<String, String>, ConfigError> {
+        ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
             let mut result = BTreeMap::new();
             if let Some(cli) = &self.cli {
-                result.insert("cli".to_string(), cli.to_string());
+                result.insert("cli".to_string(), Some(cli.to_string()));
             }
             Ok(result)
         }
@@ -422,10 +426,10 @@ mod tests {
             _resource: &Self::Configurable,
             _role_name: &str,
             _file: &str,
-        ) -> Result<BTreeMap<String, String>, ConfigError> {
+        ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
             let mut result = BTreeMap::new();
             if let Some(conf) = &self.conf {
-                result.insert("conf".to_string(), conf.to_string());
+                result.insert("conf".to_string(), Some(conf.to_string()));
             }
             Ok(result)
         }
@@ -722,9 +726,9 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -733,8 +737,8 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -743,8 +747,8 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -753,7 +757,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
                 }
             }
         }
@@ -762,9 +766,9 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => ROLE_ENV.to_string(),
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(ROLE_ENV.to_string()),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -773,8 +777,8 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => ROLE_ENV.to_string(),
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(ROLE_ENV.to_string()),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -783,8 +787,8 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => ROLE_ENV.to_string(),
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(ROLE_ENV.to_string()),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -793,7 +797,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => ROLE_ENV.to_string(),
+                    "env".to_string() => Some(ROLE_ENV.to_string()),
                 }
             }
         }
@@ -802,9 +806,9 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -813,8 +817,8 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -823,8 +827,8 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -833,7 +837,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
                 }
             }
         }
@@ -842,8 +846,8 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -852,7 +856,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -861,7 +865,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -880,7 +884,10 @@ mod tests {
         #[case] group_config: bool,
         #[case] role_overrides: bool,
         #[case] group_overrides: bool,
-        #[case] expected: HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, String>>>,
+        #[case] expected: HashMap<
+            String,
+            HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>,
+        >,
     ) {
         let role = build_role_and_group(role_config, group_config, role_overrides, group_overrides);
 
@@ -921,16 +928,16 @@ mod tests {
             collection!{
                 PropertyNameKind::File(file_name.to_string()) =>
                     collection!(
-                        "conf".to_string() => "conf".to_string()
+                        "conf".to_string() => Some("conf".to_string())
                     ),
                 PropertyNameKind::Env =>
                     collection!(
-                        "env".to_string() => GROUP_ENV.to_string(),
-                        GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string()
+                        "env".to_string() => Some(GROUP_ENV.to_string()),
+                        GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string())
                     ),
                 PropertyNameKind::Cli =>
                     collection!(
-                        "cli".to_string() => GROUP_CLI.to_string(),
+                        "cli".to_string() => Some(GROUP_CLI.to_string()),
                     ),
             }
         };
@@ -1008,25 +1015,25 @@ mod tests {
         role_1.to_string() => collection!{
             role_group_1.to_string() => collection! {
                 PropertyNameKind::Env => collection! {
-                    "env".to_string() => GROUP_ENV.to_string()
+                    "env".to_string() => Some(GROUP_ENV.to_string())
                 },
                 PropertyNameKind::File(file_name.to_string()) => collection! {
-                    "conf".to_string() => GROUP_CONFIG.to_string()
+                    "conf".to_string() => Some(GROUP_CONFIG.to_string())
                 }
             },
             role_group_2.to_string() => collection! {
                 PropertyNameKind::Env => collection! {
-                    "env".to_string() => GROUP_ENV.to_string()
+                    "env".to_string() => Some(GROUP_ENV.to_string())
                 },
                 PropertyNameKind::File(file_name.to_string()) => collection! {
-                    "conf".to_string() => GROUP_CONFIG.to_string()
+                    "conf".to_string() => Some(GROUP_CONFIG.to_string())
                 }
             }
         },
         role_2.to_string() => collection! {
             role_group_1.to_string() => collection! {
                 PropertyNameKind::Cli => collection! {
-                    "cli".to_string() => GROUP_CLI.to_string()
+                    "cli".to_string() => Some(GROUP_CLI.to_string())
                 }
             }
         }};
