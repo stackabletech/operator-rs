@@ -55,7 +55,7 @@ fn regex_error(msg: &str, fmt: &str, examples: &[&str]) -> String {
     }
 
     msg.push_str("regex used for validation is '");
-    msg.push_str(&fmt);
+    msg.push_str(fmt);
     msg.push_str("')");
     msg
 }

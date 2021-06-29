@@ -90,17 +90,14 @@ fn is_pod_ready_condition_true(status: &PodStatus) -> bool {
 }
 
 fn get_pod_condition(status: &PodStatus, condition: PodConditionType) -> Option<&PodCondition> {
-    match &status.conditions {
-        None => None,
-        Some(conditions) => conditions.iter().find(|c| {
-            let current_pod_condition = PodConditionType::from_str(&c.type_);
+    status.conditions.iter().find(|c| {
+        let current_pod_condition = PodConditionType::from_str(&c.type_);
 
-            match current_pod_condition {
-                Ok(c) => c == condition,
-                Err(_) => false,
-            }
-        }),
-    }
+        match current_pod_condition {
+            Ok(c) => c == condition,
+            Err(_) => false,
+        }
+    })
 }
 
 /// Returns a name that is suitable for directly passing to a log macro.
@@ -219,15 +216,6 @@ pub fn pod_matches_multiple_label_values(
     let pod_labels = &pod.metadata.labels;
 
     for (expected_key, expected_value) in required_labels {
-        // We only do this here because `expected_labels` might be empty in which case
-        // it's totally fine if the Pod doesn't have any labels.
-        // Now however we're definitely looking for a key so if the Pod doesn't have any labels
-        // it will never be able to match.
-        let pod_labels = match pod_labels {
-            None => return false,
-            Some(pod_labels) => pod_labels,
-        };
-
         let expected_key = expected_key.to_string();
 
         // We can match two kinds:
@@ -281,17 +269,21 @@ pub fn is_valid_pod(pod: &Pod, required_labels: &BTreeMap<String, Option<Vec<Str
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test::{NodeBuilder, PodBuilder};
+    use crate::builder::{NodeBuilder, ObjectMetaBuilder, PodBuilder};
     use k8s_openapi::api::core::v1::{Pod, PodCondition, PodStatus};
 
     #[test]
     fn test_is_pod_assigned_to_node_name() {
         // Pod with no node_name
-        let pod = PodBuilder::new().build();
+        let pod = PodBuilder::new().metadata_default().build().unwrap();
         assert!(!is_pod_assigned_to_node_name(&pod, "foobar"));
 
         // Pod with node_name, matches one but not the other
-        let mut pod = PodBuilder::new().node_name("foobar").build();
+        let mut pod = PodBuilder::new()
+            .node_name("foobar")
+            .metadata_default()
+            .build()
+            .unwrap();
         assert!(is_pod_assigned_to_node_name(&pod, "foobar"));
         assert!(!is_pod_assigned_to_node_name(&pod, "barfoo"));
 
@@ -303,13 +295,17 @@ mod tests {
     #[test]
     fn test_is_pod_assigned_to_node() {
         // Pod with no node_name
-        let pod = PodBuilder::new().build();
+        let pod = PodBuilder::new().metadata_default().build().unwrap();
         let node = NodeBuilder::new().name("foobar").build();
         let node2 = NodeBuilder::new().name("barfoo").build();
         assert!(!is_pod_assigned_to_node(&pod, &node));
 
         // Pod with node_name, matches one but not the other
-        let mut pod = PodBuilder::new().node_name("foobar").build();
+        let mut pod = PodBuilder::new()
+            .node_name("foobar")
+            .metadata_default()
+            .build()
+            .unwrap();
         assert!(is_pod_assigned_to_node(&pod, &node));
         assert!(!is_pod_assigned_to_node(&pod, &node2));
 
@@ -320,7 +316,10 @@ mod tests {
 
     #[test]
     fn test_get_log_name() {
-        let mut pod = PodBuilder::new().name("bar").build();
+        let mut pod = PodBuilder::new()
+            .metadata(ObjectMetaBuilder::new().name("bar").build().unwrap())
+            .build()
+            .unwrap();
         assert_eq!("[<no namespace>/bar]", get_log_name(&pod));
 
         pod.metadata.namespace = Some("foo".to_string());
@@ -355,7 +354,7 @@ mod tests {
             ..PodCondition::default()
         };
         let status = PodStatus {
-            conditions: Some(vec![condition.clone()]),
+            conditions: vec![condition.clone()],
             ..PodStatus::default()
         };
         assert_eq!(
@@ -382,32 +381,32 @@ mod tests {
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
-            conditions: Some(vec![PodCondition {
+            conditions: vec![PodCondition {
                 type_: "Ready".to_string(),
                 ..PodCondition::default()
-            }]),
+            }],
             ..PodStatus::default()
         });
         assert!(!is_pod_running_and_ready(&pod));
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
-            conditions: Some(vec![PodCondition {
+            conditions: vec![PodCondition {
                 type_: "Ready".to_string(),
                 status: "False".to_string(),
                 ..PodCondition::default()
-            }]),
+            }],
             ..PodStatus::default()
         });
         assert!(!is_pod_running_and_ready(&pod));
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
-            conditions: Some(vec![PodCondition {
+            conditions: vec![PodCondition {
                 type_: "Ready".to_string(),
                 status: "True".to_string(),
                 ..PodCondition::default()
-            }]),
+            }],
             ..PodStatus::default()
         });
         assert!(is_pod_running_and_ready(&pod));
@@ -420,7 +419,15 @@ mod tests {
         test_labels.insert("label2".to_string(), "test2".to_string());
         test_labels.insert("label3".to_string(), "test3".to_string());
 
-        let test_pod = PodBuilder::new().with_labels(test_labels).build();
+        let test_pod = PodBuilder::new()
+            .metadata(
+                ObjectMetaBuilder::new()
+                    .with_labels(test_labels)
+                    .build()
+                    .unwrap(),
+            )
+            .build()
+            .unwrap();
 
         // Pod matches a label, should match
         let mut matching_labels1 = BTreeMap::new();
@@ -481,7 +488,7 @@ mod tests {
         ));
 
         // Pod has _no_ labels, should not match because we are definitely asking for labels
-        let test_pod = PodBuilder::new().build();
+        let test_pod = PodBuilder::new().metadata_default().build().unwrap();
         let mut matching_label_present_and_missing = BTreeMap::new();
         matching_label_present_and_missing.insert(String::from("label1"), None);
         matching_label_present_and_missing.insert(String::from("label4"), None);
@@ -496,7 +503,7 @@ mod tests {
 
     #[test]
     fn test_pod_matches_multiple_label_values() {
-        let pod = PodBuilder::new().build();
+        let pod = PodBuilder::new().metadata_default().build().unwrap();
 
         let mut required_labels = BTreeMap::new();
 
@@ -508,14 +515,28 @@ mod tests {
         assert!(!pod_matches_multiple_label_values(&pod, &required_labels));
 
         // Pod has only the required label
-        let pod = PodBuilder::new().with_label("foo", "bar").build();
+        let pod = PodBuilder::new()
+            .metadata(
+                ObjectMetaBuilder::new()
+                    .with_label("foo", "bar")
+                    .build()
+                    .unwrap(),
+            )
+            .build()
+            .unwrap();
         assert!(pod_matches_multiple_label_values(&pod, &required_labels));
 
         // Pod has multiple labels
         let pod = PodBuilder::new()
-            .with_label("foo", "bar")
-            .with_label("bar", "foo")
-            .build();
+            .metadata(
+                ObjectMetaBuilder::new()
+                    .with_label("foo", "bar")
+                    .with_label("bar", "foo")
+                    .build()
+                    .unwrap(),
+            )
+            .build()
+            .unwrap();
         assert!(pod_matches_multiple_label_values(&pod, &required_labels));
 
         // Pod has correct label but wrong value
@@ -533,14 +554,18 @@ mod tests {
     #[test]
     // We'll only test very basic things with the labels because it should all be covered by other tests already
     fn test_is_valid_pod() {
-        let pod = PodBuilder::new().build();
+        let pod = PodBuilder::new().metadata_default().build().unwrap();
         let mut required_labels = BTreeMap::new();
 
         // Pod is not assigned to a node
         assert!(!is_valid_pod(&pod, &required_labels));
 
         // Pod is assigned to a node and no labels required
-        let pod = PodBuilder::new().node_name("foo").build();
+        let pod = PodBuilder::new()
+            .node_name("foo")
+            .metadata_default()
+            .build()
+            .unwrap();
         assert!(is_valid_pod(&pod, &required_labels));
 
         // Pod is missing label
@@ -550,16 +575,29 @@ mod tests {
         // Pod has required label
         let pod = PodBuilder::new()
             .node_name("foo")
-            .with_label("foo", "bar")
-            .build();
+            .metadata(
+                ObjectMetaBuilder::new()
+                    .with_label("foo", "bar")
+                    .build()
+                    .unwrap(),
+            )
+            .build()
+            .unwrap();
         assert!(is_valid_pod(&pod, &required_labels));
     }
 
     #[test]
     // Most things will be covered by other tests so this one is very basic
     fn test_find_invalid_pods() {
-        let valid_pod = PodBuilder::new().node_name("foo").build();
-        let invalid_pod = PodBuilder::new().name("invalid").build();
+        let valid_pod = PodBuilder::new()
+            .node_name("foo")
+            .metadata_default()
+            .build()
+            .unwrap();
+        let invalid_pod = PodBuilder::new()
+            .metadata(ObjectMetaBuilder::new().name("invalid").build().unwrap())
+            .build()
+            .unwrap();
 
         let required_labels = BTreeMap::new();
 

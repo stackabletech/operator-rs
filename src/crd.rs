@@ -105,7 +105,7 @@ pub async fn wait_until_crds_present(
         let check_result = futures::future::try_join_all(
             names
                 .iter()
-                .map(|crd_name| check_crd(&client, crd_name))
+                .map(|crd_name| check_crd(client, crd_name))
                 .collect::<Vec<_>>(),
         )
         .await
