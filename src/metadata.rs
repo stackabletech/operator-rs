@@ -34,13 +34,13 @@ where
     }
 
     Ok(ObjectMeta {
-        labels: Some(merged_labels),
+        labels: merged_labels,
         name: Some(name),
         namespace: resource.namespace(),
-        owner_references: Some(vec![object_to_owner_reference::<T>(
+        owner_references: vec![object_to_owner_reference::<T>(
             resource.meta(),
             block_owner_deletion,
-        )?]),
+        )?],
         ..ObjectMeta::default()
     })
 }
@@ -104,7 +104,7 @@ mod tests {
         assert_eq!(meta.name, Some(name.to_string()));
         assert_eq!(meta.namespace, namespace);
 
-        let labels = meta.labels.unwrap();
+        let labels = meta.labels;
         assert_eq!(labels.get("foo"), Some(&"bar".to_string()));
         assert_eq!(labels.get(APP_INSTANCE_LABEL), Some(&"foo_pod".to_string()));
         assert_eq!(labels.len(), 2);

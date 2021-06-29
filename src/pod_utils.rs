@@ -90,17 +90,14 @@ fn is_pod_ready_condition_true(status: &PodStatus) -> bool {
 }
 
 fn get_pod_condition(status: &PodStatus, condition: PodConditionType) -> Option<&PodCondition> {
-    match &status.conditions {
-        None => None,
-        Some(conditions) => conditions.iter().find(|c| {
-            let current_pod_condition = PodConditionType::from_str(&c.type_);
+    status.conditions.iter().find(|c| {
+        let current_pod_condition = PodConditionType::from_str(&c.type_);
 
-            match current_pod_condition {
-                Ok(c) => c == condition,
-                Err(_) => false,
-            }
-        }),
-    }
+        match current_pod_condition {
+            Ok(c) => c == condition,
+            Err(_) => false,
+        }
+    })
 }
 
 /// Returns a name that is suitable for directly passing to a log macro.
@@ -219,15 +216,6 @@ pub fn pod_matches_multiple_label_values(
     let pod_labels = &pod.metadata.labels;
 
     for (expected_key, expected_value) in required_labels {
-        // We only do this here because `expected_labels` might be empty in which case
-        // it's totally fine if the Pod doesn't have any labels.
-        // Now however we're definitely looking for a key so if the Pod doesn't have any labels
-        // it will never be able to match.
-        let pod_labels = match pod_labels {
-            None => return false,
-            Some(pod_labels) => pod_labels,
-        };
-
         let expected_key = expected_key.to_string();
 
         // We can match two kinds:
@@ -355,7 +343,7 @@ mod tests {
             ..PodCondition::default()
         };
         let status = PodStatus {
-            conditions: Some(vec![condition.clone()]),
+            conditions: vec![condition.clone()],
             ..PodStatus::default()
         };
         assert_eq!(
@@ -382,32 +370,32 @@ mod tests {
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
-            conditions: Some(vec![PodCondition {
+            conditions: vec![PodCondition {
                 type_: "Ready".to_string(),
                 ..PodCondition::default()
-            }]),
+            }],
             ..PodStatus::default()
         });
         assert!(!is_pod_running_and_ready(&pod));
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
-            conditions: Some(vec![PodCondition {
+            conditions: vec![PodCondition {
                 type_: "Ready".to_string(),
                 status: "False".to_string(),
                 ..PodCondition::default()
-            }]),
+            }],
             ..PodStatus::default()
         });
         assert!(!is_pod_running_and_ready(&pod));
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
-            conditions: Some(vec![PodCondition {
+            conditions: vec![PodCondition {
                 type_: "Ready".to_string(),
                 status: "True".to_string(),
                 ..PodCondition::default()
-            }]),
+            }],
             ..PodStatus::default()
         });
         assert!(is_pod_running_and_ready(&pod));

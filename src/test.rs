@@ -26,14 +26,15 @@ impl PodBuilder {
     }
 
     pub fn with_label(&mut self, label_key: &str, label_value: &str) -> &mut Self {
-        let labels = self.pod.metadata.labels.get_or_insert_with(BTreeMap::new);
-        labels.insert(label_key.to_string(), label_value.to_string());
-
+        self.pod
+            .metadata
+            .labels
+            .insert(label_key.to_string(), label_value.to_string());
         self
     }
 
     pub fn with_labels(&mut self, labels: BTreeMap<String, String>) -> &mut Self {
-        self.pod.metadata.labels = Some(labels);
+        self.pod.metadata.labels = labels;
         self
     }
 
@@ -45,13 +46,12 @@ impl PodBuilder {
 
     pub fn with_condition(&mut self, condition_type: &str, condition_status: &str) -> &mut Self {
         let status = self.pod.status.get_or_insert_with(PodStatus::default);
-        let conditions = status.conditions.get_or_insert_with(Vec::new);
         let condition = PodCondition {
             status: condition_status.to_string(),
             type_: condition_type.to_string(),
             ..PodCondition::default()
         };
-        conditions.push(condition);
+        status.conditions.push(condition);
         self
     }
 
