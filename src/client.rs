@@ -113,7 +113,7 @@ impl Client {
         T: Clone + Debug + DeserializeOwned + Resource,
         <T as Resource>::DynamicType: Default,
     {
-        Ok(self.get_api(namespace).list(&list_params).await?.items)
+        Ok(self.get_api(namespace).list(list_params).await?.items)
     }
 
     /// Lists resources from the API using a LabelSelector.
@@ -402,7 +402,7 @@ impl Client {
     {
         match namespace {
             None => self.get_all_api(),
-            Some(namespace) => self.get_namespaced_api(&namespace),
+            Some(namespace) => self.get_namespaced_api(namespace),
         }
     }
 

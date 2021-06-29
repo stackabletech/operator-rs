@@ -26,7 +26,7 @@ pub fn find_excess_pods<'a>(
     // We collect all of those in one big list.
     for (eligible_nodes, mandatory_label_values) in nodes_and_required_labels {
         let mut found_pods =
-            find_valid_pods_for_nodes(&eligible_nodes, &existing_pods, mandatory_label_values);
+            find_valid_pods_for_nodes(eligible_nodes, existing_pods, mandatory_label_values);
         used_pods.append(&mut found_pods);
     }
 
