@@ -188,6 +188,12 @@ impl NodeBuilder {
     }
 }
 
+impl Default for NodeBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// A builder to build [`ObjectMeta`] objects.
 ///
 /// Of special interest is the [`Self::ownerreference_from_resource()`] function.
