@@ -429,8 +429,8 @@ impl OwnerReferenceBuilder {
                 None => return Err(Error::MissingObjectKey { key: "api_version" }),
                 Some(ref api_version) => api_version.clone(),
             },
-            block_owner_deletion: self.block_owner_deletion.clone(),
-            controller: self.controller.clone(),
+            block_owner_deletion: self.block_owner_deletion,
+            controller: self.controller,
             kind: match self.kind {
                 None => return Err(Error::MissingObjectKey { key: "kind" }),
                 Some(ref kind) => kind.clone(),
@@ -563,7 +563,6 @@ impl PodBuilder {
                 ..PodSpec::default()
             }),
             status: self.status.clone(),
-            ..Pod::default()
         })
     }
 }
