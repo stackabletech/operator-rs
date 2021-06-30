@@ -1,6 +1,7 @@
+use crate::error::OperatorResult;
 use crate::role_utils::{CommonConfiguration, Role};
 use product_config::types::PropertyNameKind;
-use product_config::PropertyValidationResult;
+use product_config::{ProductConfigManager, PropertyValidationResult};
 use std::collections::{BTreeMap, HashMap};
 use thiserror::Error;
 use tracing::{debug, error, warn};
@@ -90,6 +91,54 @@ where
     result
 }
 
+/// Calculates and validates a product configuration for a role and group. Requires a valid
+/// product config and existing [`RoleConfigByPropertyKind`] that can be obtained via
+/// `transform_all_roles_to_config`.  
+///
+/// # Arguments
+/// - `role`             - The role that needs configuration.
+/// - `role_group`       - The role group that needs configuration.
+/// - `version`          - The version of the product to be configured.
+/// - `role_config`      - The fully qualified configuration over all roles, groups, property kinds
+///                        and the resulting user configuration data. See [`RoleConfigByPropertyKind`].
+/// - `product_config`   - The [`product_config::ProductConfigManager`] used to validate the provided
+///                        user data.
+/// - `ignore_warn`      - A switch to ignore product config warnings and continue with
+///                        the value anyways. Not recommended!
+/// - `ignore_err`       - A switch to ignore product config errors and continue with
+///                        the value anyways. Not recommended!
+pub fn validate_role_and_group_config(
+    role: &str,
+    role_group: &str,
+    version: &str,
+    role_config: &RoleConfigByPropertyKind,
+    product_config: &ProductConfigManager,
+    ignore_warn: bool,
+    ignore_err: bool,
+) -> OperatorResult<HashMap<PropertyNameKind, BTreeMap<String, String>>> {
+    let mut result = HashMap::new();
+
+    if let Some(role_config) = role_config.get(role) {
+        if let Some(role_group_config) = role_config.get(role_group) {
+            for (property_name_kind, config) in role_group_config {
+                let validation_result = product_config.get(
+                    version,
+                    role,
+                    property_name_kind,
+                    config.clone().into_iter().collect::<HashMap<_, _>>(),
+                );
+
+                let validated_config =
+                    process_validation_result(&validation_result, ignore_warn, ignore_err)?;
+
+                result.insert(property_name_kind.clone(), validated_config);
+            }
+        }
+    }
+
+    Ok(result)
+}
+
 /// This transforms the [`product_config::types::PropertyValidationResult`] back into a pure BTreeMap which can be used
 /// to set properties for config files, cli or environmental variables.
 /// Default values are ignored, Recommended and Valid values are used as is. For Warning and
@@ -103,7 +152,7 @@ where
 /// - `ignore_err`          - A switch to ignore product config errors and continue with
 ///                           the value anyways. Not recommended!
 // TODO: boolean flags suck, move ignore_warn to be a flag
-pub fn process_validation_result(
+fn process_validation_result(
     validation_result: &BTreeMap<String, PropertyValidationResult>,
     ignore_warn: bool,
     ignore_err: bool,
@@ -1041,5 +1090,107 @@ mod tests {
         let all_config = transform_all_roles_to_config(&String::new(), roles);
 
         assert_eq!(all_config, expected);
+    }
+
+    #[test]
+    fn test_validate_role_and_group_config() {
+        let role_1 = "role_1";
+        let role_group_1 = "role_group_1";
+        let file_name = "foo.bar";
+
+        let pc_name = "pc_name";
+        let pc_value = "pc_value";
+        let pc_bad_version = "pc_bad_version";
+        let pc_bad_version_value = "pc_bad_version_value";
+
+        let roles: HashMap<String, (Role<TestConfig>, Vec<PropertyNameKind>)> = collection! {
+            role_1.to_string() => (Role {
+            config: None,
+            role_groups: collection! {
+                role_group_1.to_string() => RoleGroup {
+                replicas: 1,
+                config: build_common_config(
+                    build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                    None,
+                    None,
+                    None
+                ),
+                selector: None,
+            }}
+        },
+            vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env]),
+        };
+
+        let role_config = transform_all_roles_to_config(&String::new(), roles);
+
+        let config = &format!(
+            "
+            version: 0.1.0
+            spec:
+              units: []
+            properties:
+              - property: 
+                  propertyNames:
+                    - name: \"{}\"
+                      kind:
+                        type: \"file\"
+                        file: \"{}\"
+                  datatype:
+                    type: \"string\"
+                  recommendedValues:
+                    - value: \"{}\"
+                  roles:
+                    - name: \"{}\"
+                      required: true
+                  asOfVersion: \"0.0.0\"
+              - property: 
+                  propertyNames:
+                    - name: \"{}\"
+                      kind:
+                        type: \"file\"
+                        file: \"{}\"
+                  datatype:
+                    type: \"string\"
+                  recommendedValues:
+                    - value: \"{}\"
+                  roles:
+                    - name: \"{}\"
+                      required: true
+                  asOfVersion: \"0.5.0\"
+            ",
+            pc_name,
+            file_name,
+            pc_value,
+            role_1,
+            pc_bad_version,
+            file_name,
+            pc_bad_version_value,
+            role_1
+        );
+
+        let product_config = ProductConfigManager::from_str(config).unwrap();
+
+        let validated_config = validate_role_and_group_config(
+            role_1,
+            role_group_1,
+            "0.1.0",
+            &role_config,
+            &product_config,
+            false,
+            false,
+        )
+        .unwrap();
+
+        let expected: HashMap<PropertyNameKind, BTreeMap<String, String>> = collection! {
+          PropertyNameKind::File(file_name.to_string()) => collection! {
+                "conf".to_string() => GROUP_CONFIG.to_string(),
+                pc_name.to_string() => pc_value.to_string()
+          },
+          PropertyNameKind::Env => collection! {
+                "env".to_string() => GROUP_ENV.to_string()
+          }
+        };
+
+        assert_eq!(validated_config, expected);
     }
 }

@@ -1,3 +1,4 @@
+use crate::product_config_utils;
 use std::collections::HashSet;
 
 #[derive(Debug, thiserror::Error)]
@@ -49,6 +50,12 @@ pub enum Error {
 
     #[error("The following required CRDs are missing from Kubernetes: {names:?}")]
     RequiredCrdsMissing { names: HashSet<String> },
+
+    #[error("ProductConfig Framework reported error: {source}")]
+    ProductConfigError {
+        #[from]
+        source: product_config_utils::ConfigError,
+    },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
