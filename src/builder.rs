@@ -18,9 +18,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 #[derive(Clone, Default)]
 pub struct ConfigMapBuilder {
     metadata: Option<ObjectMeta>,
-    binary_data: BTreeMap<String, ByteString>,
     data: BTreeMap<String, String>,
-    immutable: Option<bool>,
 }
 
 impl ConfigMapBuilder {
@@ -118,7 +116,10 @@ impl ContainerBuilder {
         self
     }
 
-    pub fn add_config_map<NAME: Into<String>, PATH: Into<String>>(
+    /// This adds a [`VolumeMount`] and [`ConfigMapVolumeSource`] to the current container.
+    ///
+    /// This method does not do any validation on the name of the `ConfigMap` or the mount path.
+    pub fn add_configmapvolume<NAME: Into<String>, PATH: Into<String>>(
         &mut self,
         configmap_name: NAME,
         mount_path: PATH,
@@ -299,6 +300,7 @@ impl EventBuilder {
 /// A builder to build [`Node`] objects.
 ///
 /// This is mainly useful for tests.
+#[derive(Default)]
 pub struct NodeBuilder {
     node: Node,
 }
@@ -427,7 +429,9 @@ impl ObjectMetaBuilder {
     }
 
     /// This sets the common recommended labels (in the `app.kubernetes.io` namespace).
-    /// It is recommended to always call this method and is mostly not required to make testing easier.
+    /// It is recommended to always call this method.
+    /// The only reasons it is not _required_ is to make testing easier and to allow for more
+    /// flexibility if needed.
     pub fn with_recommended_labels<T: Resource>(
         &mut self,
         resource: &T,
@@ -737,7 +741,7 @@ mod tests {
     fn test_container_builder() {
         let container = ContainerBuilder::new("testcontainer")
             .add_env_var("foo", "bar")
-            .add_config_map("configmap", "/mount")
+            .add_configmapvolume("configmap", "/mount")
             .build();
 
         assert_eq!(container.name, "testcontainer");
@@ -805,7 +809,7 @@ mod tests {
             .image("stackable/zookeeper:2.4.14")
             .command(vec!["zk-server-start.sh".to_string()])
             .args(vec!["{{ configroot }}/conf/zk.properties".to_string()])
-            .add_config_map("zk-worker-1", "conf/")
+            .add_configmapvolume("zk-worker-1", "conf/")
             .build();
 
         let pod = PodBuilder::new()
