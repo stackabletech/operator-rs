@@ -10,7 +10,6 @@ use k8s_openapi::api::core::v1::{
     Pod, PodCondition, PodSpec, PodStatus, Toleration, Volume, VolumeMount,
 };
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{MicroTime, ObjectMeta, OwnerReference, Time};
-use k8s_openapi::ByteString;
 use kube::{Resource, ResourceExt};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -322,12 +321,6 @@ impl NodeBuilder {
         // We're cloning here because we can't take just `self` in this method because then
         // we couldn't chain the method with the others easily (because they return &mut self and not self)
         self.node.clone()
-    }
-}
-
-impl Default for NodeBuilder {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
