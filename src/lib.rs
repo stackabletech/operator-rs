@@ -8,7 +8,6 @@ pub mod controller_utils;
 pub mod crd;
 pub mod error;
 pub mod finalizer;
-pub mod history;
 pub mod k8s_errors;
 pub mod k8s_utils;
 pub mod krustlet;
@@ -18,8 +17,10 @@ pub mod logging;
 pub mod metadata;
 pub mod namespace;
 pub mod pod_utils;
+pub mod product_config_utils;
 pub mod reconcile;
 pub mod role_utils;
+pub mod status;
 pub mod validation;
 
 pub use crate::crd::Crd;

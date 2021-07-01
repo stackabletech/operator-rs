@@ -26,7 +26,7 @@ pub fn find_excess_pods<'a>(
     // We collect all of those in one big list.
     for (eligible_nodes, mandatory_label_values) in nodes_and_required_labels {
         let mut found_pods =
-            find_valid_pods_for_nodes(&eligible_nodes, &existing_pods, mandatory_label_values);
+            find_valid_pods_for_nodes(eligible_nodes, existing_pods, mandatory_label_values);
         used_pods.append(&mut found_pods);
     }
 
@@ -90,7 +90,6 @@ pub fn find_valid_pods_for_nodes<'a>(
 /// And this is the label you can now filter on using the `label_values` argument.
 ///
 /// NOTE: This method currently does not support multiple instances per Node!
-// TODO: Support multiple instances per Node
 pub fn find_nodes_that_need_pods<'a>(
     candidate_nodes: &'a [Node],
     existing_pods: &[Pod],
@@ -234,19 +233,19 @@ mod tests {
         let nodes = vec![foo_node];
         let pods = vec![foo_pod];
 
-        let foo = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
-        assert_eq!(foo.len(), 1);
+        let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
+        assert_eq!(need_pods.len(), 1);
 
         let foo_pod = PodBuilder::new()
             .node_name("foo")
             .with_label("foo", "bar")
             .build();
         let pods = vec![foo_pod];
-        let foo = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
-        assert!(foo.is_empty());
+        let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
+        assert!(need_pods.is_empty());
 
         labels.clear();
-        let foo = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
-        assert!(foo.is_empty());
+        let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
+        assert!(need_pods.is_empty());
     }
 }

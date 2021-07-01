@@ -2,7 +2,7 @@ use crate::error::OperatorResult;
 use crate::metadata;
 use k8s_openapi::api::core::v1::ConfigMap;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
-use kube::Resource;
+use kube::api::{Resource, ResourceExt};
 use std::collections::BTreeMap;
 
 /// Creates a ConfigMap.
@@ -17,14 +17,14 @@ where
     T: Resource<DynamicType = ()>,
 {
     let cm = ConfigMap {
-        data: Some(data),
+        data,
         metadata: ObjectMeta {
             name: Some(String::from(cm_name)),
             namespace: resource.namespace(),
-            owner_references: Some(vec![metadata::object_to_owner_reference::<T>(
+            owner_references: vec![metadata::object_to_owner_reference::<T>(
                 resource.meta(),
                 true,
-            )?]),
+            )?],
             ..ObjectMeta::default()
         },
         ..ConfigMap::default()

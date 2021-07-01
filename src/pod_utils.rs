@@ -1,9 +1,11 @@
 use std::collections::BTreeMap;
-use std::fmt::{Debug, Display, Formatter, Result};
+use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use std::result::Result;
 
 use crate::k8s_utils::LabelOptionalValueMap;
 use k8s_openapi::api::core::v1::{Node, Pod, PodCondition, PodSpec, PodStatus};
-use kube::Resource;
+use kube::api::{Resource, ResourceExt};
+use std::str::FromStr;
 use tracing::debug;
 
 /// While the `phase` field of a Pod is a string only the values from this enum are allowed.
@@ -17,16 +19,31 @@ pub enum PodPhase {
 }
 
 impl Display for PodPhase {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         Debug::fmt(self, f)
     }
 }
 
+#[derive(Eq, PartialEq)]
 pub enum PodConditionType {
     ContainersReady,
     Initialized,
     Ready,
     PodScheduled,
+}
+
+impl FromStr for PodConditionType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, ()> {
+        return match s.to_lowercase().as_ref() {
+            "ready" => Ok(Self::Ready),
+            "podscheduled" => Ok(Self::PodScheduled),
+            "containersready" => Ok(Self::ContainersReady),
+            "initialized" => Ok(Self::Initialized),
+            _ => Err(()),
+        };
+    }
 }
 
 /// Returns whether the Pod has been created in the API server by
@@ -66,18 +83,21 @@ pub fn is_pod_running_and_ready(pod: &Pod) -> bool {
 }
 
 fn is_pod_ready_condition_true(status: &PodStatus) -> bool {
-    match get_pod_condition(status, "Ready") {
+    match get_pod_condition(status, PodConditionType::Ready) {
         None => false,
         Some(PodCondition { status, .. }) => status == "True",
     }
 }
 
-// TODO: condition should be the enum PodConditionType
-fn get_pod_condition<'a>(status: &'a PodStatus, condition: &str) -> Option<&'a PodCondition> {
-    match &status.conditions {
-        None => None,
-        Some(conditions) => conditions.iter().find(|c| c.type_ == condition),
-    }
+fn get_pod_condition(status: &PodStatus, condition: PodConditionType) -> Option<&PodCondition> {
+    status.conditions.iter().find(|c| {
+        let current_pod_condition = PodConditionType::from_str(&c.type_);
+
+        match current_pod_condition {
+            Ok(c) => c == condition,
+            Err(_) => false,
+        }
+    })
 }
 
 /// Returns a name that is suitable for directly passing to a log macro.
@@ -192,18 +212,10 @@ pub fn pod_matches_multiple_label_values(
 ) -> bool {
     // TODO: This method currently will abort on the first error, we could extend this
     //  (or add a second function) to return all "validation" results instead.
+    //  https://github.com/stackabletech/operator-rs/issues/127
     let pod_labels = &pod.metadata.labels;
 
     for (expected_key, expected_value) in required_labels {
-        // We only do this here because `expected_labels` might be empty in which case
-        // it's totally fine if the Pod doesn't have any labels.
-        // Now however we're definitely looking for a key so if the Pod doesn't have any labels
-        // it will never be able to match.
-        let pod_labels = match pod_labels {
-            None => return false,
-            Some(pod_labels) => pod_labels,
-        };
-
         let expected_key = expected_key.to_string();
 
         // We can match two kinds:
@@ -325,22 +337,19 @@ mod tests {
 
     #[test]
     fn test_get_pod_condition() {
-        let status = PodStatus {
-            conditions: Some(vec![]),
-            ..PodStatus::default()
-        };
-        assert_eq!(None, get_pod_condition(&status, "doesntexist"));
-
         let condition = PodCondition {
             status: "OrNot".to_string(),
             type_: "Ready".to_string(),
             ..PodCondition::default()
         };
         let status = PodStatus {
-            conditions: Some(vec![condition.clone()]),
+            conditions: vec![condition.clone()],
             ..PodStatus::default()
         };
-        assert_eq!(Some(&condition), get_pod_condition(&status, "Ready"));
+        assert_eq!(
+            Some(&condition),
+            get_pod_condition(&status, PodConditionType::Ready)
+        );
     }
 
     #[test]
@@ -361,32 +370,32 @@ mod tests {
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
-            conditions: Some(vec![PodCondition {
+            conditions: vec![PodCondition {
                 type_: "Ready".to_string(),
                 ..PodCondition::default()
-            }]),
+            }],
             ..PodStatus::default()
         });
         assert!(!is_pod_running_and_ready(&pod));
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
-            conditions: Some(vec![PodCondition {
+            conditions: vec![PodCondition {
                 type_: "Ready".to_string(),
                 status: "False".to_string(),
                 ..PodCondition::default()
-            }]),
+            }],
             ..PodStatus::default()
         });
         assert!(!is_pod_running_and_ready(&pod));
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
-            conditions: Some(vec![PodCondition {
+            conditions: vec![PodCondition {
                 type_: "Ready".to_string(),
                 status: "True".to_string(),
                 ..PodCondition::default()
-            }]),
+            }],
             ..PodStatus::default()
         });
         assert!(is_pod_running_and_ready(&pod));
@@ -542,7 +551,7 @@ mod tests {
 
         let required_labels = BTreeMap::new();
 
-        let pods = vec![valid_pod.clone(), invalid_pod.clone()];
+        let pods = vec![valid_pod.clone(), invalid_pod];
         let mut invalid_pods = find_invalid_pods(&pods, &required_labels);
         assert_eq!(invalid_pods.len(), 1);
         let invalid_pod = invalid_pods.remove(0);
@@ -552,7 +561,7 @@ mod tests {
         let invalid_pods = find_invalid_pods(&pods, &required_labels);
         assert!(invalid_pods.is_empty());
 
-        let pods = vec![valid_pod.clone(), invalid_pod.clone(), invalid_pod.clone()];
+        let pods = vec![valid_pod, invalid_pod.clone(), invalid_pod.clone()];
         let invalid_pods = find_invalid_pods(&pods, &required_labels);
         assert_eq!(invalid_pods.len(), 2);
     }

@@ -1,5 +1,5 @@
-// See apimachinery/pkg/util/validation/validation.go
-// See also TODO apimachinery/pkg/api/validation/generic.go and pkg/apis/core/validation/validation.go
+// This is adapted from Kubernetes.
+// See apimachinery/pkg/util/validation/validation.go, apimachinery/pkg/api/validation/generic.go and pkg/apis/core/validation/validation.go in the Kubernetes source
 
 use const_format::concatcp;
 use lazy_static::lazy_static;
@@ -55,7 +55,7 @@ fn regex_error(msg: &str, fmt: &str, examples: &[&str]) -> String {
     }
 
     msg.push_str("regex used for validation is '");
-    msg.push_str(&fmt);
+    msg.push_str(fmt);
     msg.push_str("')");
     msg
 }

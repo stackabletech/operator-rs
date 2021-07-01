@@ -1,6 +1,6 @@
 use crate::error::OperatorResult;
 use const_format::concatcp;
-use kube::Resource;
+use kube::api::{Resource, ResourceExt};
 use std::collections::BTreeMap;
 
 const APP_KUBERNETES_LABEL_BASE: &str = "app.kubernetes.io/";
@@ -23,7 +23,7 @@ pub const APP_ROLE_GROUP_LABEL: &str = concatcp!(APP_KUBERNETES_LABEL_BASE, "rol
 /// - app.kubernetes.io/instance
 pub fn get_recommended_labels<T>(resource: &T) -> OperatorResult<BTreeMap<String, String>>
 where
-    T: Resource<DynamicType = ()>,
+    T: Resource,
 {
     let mut recommended_labels = BTreeMap::new();
 

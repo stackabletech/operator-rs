@@ -1,19 +1,23 @@
-use crate::error::OperatorResult;
+use crate::error::{Error, OperatorResult};
 use crate::finalizer;
 use crate::label_selector;
 use crate::pod_utils;
 
+use backoff::backoff::Backoff;
+use backoff::ExponentialBackoff;
 use either::Either;
 use futures::StreamExt;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
-use kube::api::{DeleteParams, ListParams, Patch, PatchParams, PostParams, Resource};
-use kube::client::{Client as KubeClient, Status};
+use kube::api::{DeleteParams, ListParams, Patch, PatchParams, PostParams, Resource, ResourceExt};
+use kube::client::Client as KubeClient;
+use kube::core::Status;
+use kube::error::ErrorResponse;
 use kube::{Api, Config};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::convert::TryFrom;
 use std::fmt::Debug;
-use tracing::trace;
+use tracing::{error, info, trace};
 
 /// This `Client` can be used to access Kubernetes.
 /// It wraps an underlying [kube::client::Client] and provides some common functionality.
@@ -21,6 +25,7 @@ use tracing::trace;
 pub struct Client {
     client: KubeClient,
     patch_params: PatchParams,
+    force_patch_params: PatchParams,
     post_params: PostParams,
     delete_params: DeleteParams,
     /// Default namespace as defined in the kubeconfig this client has been created from.
@@ -39,11 +44,16 @@ impl Client {
                 field_manager: field_manager.clone(),
                 ..PostParams::default()
             },
-
-            // TODO: According to https://kubernetes.io/docs/reference/using-api/server-side-apply/#using-server-side-apply-in-a-controller we should always force conflicts in controllers.
             patch_params: PatchParams {
+                field_manager: field_manager.clone(),
+                ..PatchParams::default()
+            },
+            // TODO: According to https://kubernetes.io/docs/reference/using-api/server-side-apply/#using-server-side-apply-in-a-controller we should always force conflicts in controllers.
+            //  we currently consider this a workaround until we can properly implement patching
+            //  (see https://github.com/stackabletech/operator-rs/issues/113)
+            force_patch_params: PatchParams {
                 field_manager,
-                //force: true,
+                force: true,
                 ..PatchParams::default()
             },
             delete_params: DeleteParams::default(),
@@ -66,6 +76,31 @@ impl Client {
         Ok(self.get_api(namespace).get(resource_name).await?)
     }
 
+    /// Returns Ok(true) if the resource has been registered in Kubernetes, Ok(false) if it could
+    /// not be found and Error in any other case (e.g. connection to Kubernetes failed in some way).
+    /// Kubernetes does not offer a pure exists check. Therefore we currently use the get() method
+    /// and ignore the (in case of existing) returned resource. We should replace this with a pure
+    /// exists method as soon as it becomes available (e.g. only returning Ok/Success) to reduce
+    /// network traffic.
+    pub async fn exists<T>(
+        &self,
+        resource_name: &str,
+        namespace: Option<&str>,
+    ) -> OperatorResult<bool>
+    where
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
+    {
+        let resource: OperatorResult<T> = self.get(resource_name, namespace).await;
+        match resource {
+            Ok(_) => Ok(true),
+            Err(Error::KubeError {
+                source: kube::error::Error::Api(ErrorResponse { reason, .. }),
+            }) if reason == "NotFound" => Ok(false),
+            Err(err) => Err(err),
+        }
+    }
+
     /// Retrieves all instances of the requested resource type.
     ///
     /// The `list_params` parameter can be used to pass in a `label_selector` or a `field_selector`.
@@ -78,7 +113,7 @@ impl Client {
         T: Clone + Debug + DeserializeOwned + Resource,
         <T as Resource>::DynamicType: Default,
     {
-        Ok(self.get_api(namespace).list(&list_params).await?.items)
+        Ok(self.get_api(namespace).list(list_params).await?.items)
     }
 
     /// Lists resources from the API using a LabelSelector.
@@ -194,7 +229,7 @@ impl Client {
         }));
 
         Ok(self
-            .patch_status(resource, new_status, &self.patch_params)
+            .patch_status(resource, new_status, &self.force_patch_params)
             .await?)
     }
 
@@ -290,6 +325,55 @@ impl Client {
         }
     }
 
+    /// This deletes a resource _if it is not deleted already_ and waits until the deletion is
+    /// performed by Kubernetes.
+    ///
+    /// It calls `delete` to perform the deletion.
+    ///
+    /// Afterwards it loops and checks regularly whether the resource has been deleted
+    /// from Kubernetes
+    pub async fn ensure_deleted<T>(&self, resource: T) -> OperatorResult<()>
+    where
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
+    {
+        let mut backoff_strategy = ExponentialBackoff {
+            max_elapsed_time: None,
+            ..ExponentialBackoff::default()
+        };
+
+        self.delete(&resource).await?;
+
+        loop {
+            if !self
+                .exists::<T>(&resource.name(), resource.namespace().as_deref())
+                .await?
+            {
+                return Ok(());
+            }
+
+            // When backoff returns `None` the timeout has expired
+            match backoff_strategy.next_backoff() {
+                Some(backoff) => {
+                    info!(
+                        "Waiting [{}] seconds before trying again..",
+                        backoff.as_secs()
+                    );
+                    tokio::time::sleep(backoff).await;
+                }
+                None => {
+                    // We offer no way of specifying a timeout, so this shouldn't happen,
+                    // if it does we'll log an error for now and continue iterating and wait for
+                    // the last interval we saw
+                    error!(
+                        "Waiting for deletion timed out, but no timeout was specified, this is an error and should not happen!"
+                    );
+                    tokio::time::sleep(backoff_strategy.current_interval).await;
+                }
+            }
+        }
+    }
+
     /// Sets a condition on a status.
     /// This will only work if there is a `status` subresource **and** it has a `conditions` array.
     pub async fn set_condition<T>(&self, resource: &T, condition: Condition) -> OperatorResult<T>
@@ -305,7 +389,7 @@ impl Client {
         }));
 
         Ok(self
-            .patch_status(resource, new_status, &self.patch_params)
+            .patch_status(resource, new_status, &self.force_patch_params)
             .await?)
     }
 
@@ -318,7 +402,7 @@ impl Client {
     {
         match namespace {
             None => self.get_all_api(),
-            Some(namespace) => self.get_namespaced_api(&namespace),
+            Some(namespace) => self.get_namespaced_api(namespace),
         }
     }
 
@@ -387,7 +471,7 @@ impl Client {
 
 pub async fn create_client(field_manager: Option<String>) -> OperatorResult<Client> {
     let kubeconfig: Config = kube::Config::infer().await?;
-    let default_namespace = kubeconfig.default_ns.clone();
+    let default_namespace = kubeconfig.default_namespace.clone();
     Ok(Client::new(
         kube::Client::try_from(kubeconfig)?,
         field_manager,
@@ -400,8 +484,7 @@ mod tests {
     use futures::StreamExt;
     use k8s_openapi::api::core::v1::{Container, Pod, PodSpec};
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
-    use kube::api::{ListParams, ObjectMeta, PostParams};
-    use kube::Resource;
+    use kube::api::{ListParams, ObjectMeta, PostParams, ResourceExt};
     use kube_runtime::watcher::Event;
     use std::collections::BTreeMap;
     use std::time::Duration;
@@ -425,7 +508,7 @@ mod tests {
                     name: "test-wait-created-busybox".to_owned(),
                     image: Some("busybox:latest".to_owned()),
                     image_pull_policy: Some("IfNotPresent".to_owned()),
-                    command: Some(vec!["sleep".into(), "infinity".into()]),
+                    command: vec!["sleep".into(), "infinity".into()],
                     ..Container::default()
                 }],
                 termination_grace_period_seconds: Some(1),
@@ -492,8 +575,7 @@ mod tests {
             .await
             .expect("KUBECONFIG variable must be configured.");
 
-        let lp: ListParams =
-            ListParams::default().fields(&format!("metadata.name=nonexistent-pod"));
+        let lp: ListParams = ListParams::default().fields("metadata.name=nonexistent-pod");
 
         // There is no such pod, therefore the `wait_created` function call times out.
         let wait_created_result: Result<(), Elapsed> = tokio::time::timeout(
@@ -515,7 +597,7 @@ mod tests {
         let mut match_labels: BTreeMap<String, String> = BTreeMap::new();
         match_labels.insert("app".to_owned(), "busybox".to_owned());
         let label_selector: LabelSelector = LabelSelector {
-            match_labels: Some(match_labels.clone()),
+            match_labels: match_labels.clone(),
             ..LabelSelector::default()
         };
         let no_pods: Vec<Pod> = client
@@ -527,7 +609,7 @@ mod tests {
         let pod_to_wait_for: Pod = Pod {
             metadata: ObjectMeta {
                 name: Some("pod-to-be-listed".to_owned()),
-                labels: Some(match_labels.clone()),
+                labels: match_labels.clone(),
                 ..ObjectMeta::default()
             },
             spec: Some(PodSpec {
@@ -535,7 +617,7 @@ mod tests {
                     name: "test-wait-created-busybox".to_owned(),
                     image: Some("busybox:latest".to_owned()),
                     image_pull_policy: Some("IfNotPresent".to_owned()),
-                    command: Some(vec!["sleep".into(), "infinity".into()]),
+                    command: vec!["sleep".into(), "infinity".into()],
                     ..Container::default()
                 }],
                 termination_grace_period_seconds: Some(1),

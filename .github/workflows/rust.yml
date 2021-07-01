@@ -10,72 +10,86 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    name: Run tests and create release build
+
+  test:
+    name: Run tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v2.3.4
+      - uses: actions-rs/toolchain@v1.0.7
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           override: true
       - name: Start K3S
         uses: debianmaster/actions-k3s@v1.0.1
         id: k3s
         with:
           version: 'latest'
-      - uses: actions-rs/cargo@v1
-        name: Run tests
+      - uses: Swatinem/rust-cache@v1.3.0
+      - uses: actions-rs/cargo@v1.0.3
         with:
           command: test
-      - uses: actions-rs/cargo@v1
+      - uses: actions-rs/cargo@v1.0.3
         name: Run ignored-by-default tests
         with:
           command: test
-          args: -- --ignored
-      - uses: actions-rs/cargo@v1
-        name: Release build
+          args: -- --ignored --test-threads=1
+      - uses: actions-rs/cargo@v1.0.3
         with:
-          command: build
-          args: --release
+          command: clean
 
-  fmt:
-    name: Run Rustfmt
+  rustfmt:
+    name: Run rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v2.3.4
+      - uses: actions-rs/toolchain@v1.0.7
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           components: rustfmt
           override: true
-      - uses: actions-rs/cargo@v1
+      - uses: actions-rs/cargo@v1.0.3
         with:
           command: fmt
           args: --all -- --check
 
-  clippy_check:
-    name: Run clippy check
+  clippy:
+    name: Run clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v2.3.4
+      - uses: actions-rs/toolchain@v1.0.7
         with:
             profile: minimal
-            toolchain: nightly
+            toolchain: stable
             components: clippy
             override: true
-      - uses: actions-rs/clippy-check@v1
+      - uses: Swatinem/rust-cache@v1.3.0
+      # We need this due to: https://github.com/actions-rs/clippy-check/issues/2
+      - name: Check workflow permissions
+        id: check_permissions
+        uses: scherermichael-oss/action-has-permission@1.0.6
         with:
+          required-permission: write
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run clippy action to produce annotations
+        uses: actions-rs/clippy-check@v1
+        if: steps.check_permissions.outputs.has-permission
+        with:
+          args: --all-targets -- -D warnings
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run clippy manually without annotations
+        if: ${{ !steps.check_permissions.outputs.has-permission }}
+        run: cargo clippy --all-targets -- -D warnings
 
   security_audit:
     name: Run security audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/audit-check@v1
+      - uses: actions/checkout@v2.3.4
+      - uses: actions-rs/audit-check@v1.2.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
