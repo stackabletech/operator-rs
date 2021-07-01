@@ -5,11 +5,11 @@ use kube::core::ResourceExt;
 use serial_test::serial;
 use stackable_operator::client::Client;
 use stackable_operator::crd::{ensure_crd_created, wait_until_crds_present};
-use stackable_operator::{client, Crd};
+use stackable_operator::{client, CustomResourceExt};
 
 struct TestCrd {}
 
-impl Crd for TestCrd {
+impl CustomResourceExt for TestCrd {
     const RESOURCE_NAME: &'static str = "tests.stackable.tech";
     const CRD_DEFINITION: &'static str = r#"
 apiVersion: apiextensions.k8s.io/v1
@@ -35,7 +35,7 @@ spec:
 
 struct TestCrd2 {}
 
-impl Crd for TestCrd2 {
+impl CustomResourceExt for TestCrd2 {
     const RESOURCE_NAME: &'static str = "tests2.stackable.tech";
     const CRD_DEFINITION: &'static str = r#"
 apiVersion: apiextensions.k8s.io/v1

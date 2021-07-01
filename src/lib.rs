@@ -23,7 +23,7 @@ pub mod role_utils;
 pub mod status;
 pub mod validation;
 
-pub use crate::crd::Crd;
+pub use crate::crd::CustomResourceExt;
 
 #[cfg(test)]
 mod test;

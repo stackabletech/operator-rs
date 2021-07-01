@@ -5,7 +5,7 @@
 //!
 //! ```no_run
 //! use kube::CustomResource;
-//! use stackable_operator::Crd;
+//! use stackable_operator::CustomResourceExt;
 //! use stackable_operator::{client, error};
 //! use stackable_operator::client::Client;
 //! use stackable_operator::error::Error;
@@ -29,7 +29,7 @@
 //! #[serde(rename_all = "camelCase")]
 //! pub struct FooClusterStatus {}
 //!
-//! impl Crd for FooCluster {
+//! impl CustomResourceExt for FooCluster {
 //!     const RESOURCE_NAME: &'static str = "fooclusters.foo.stackable.tech";
 //!     const CRD_DEFINITION: &'static str = "...";
 //! }
@@ -57,7 +57,7 @@
 //!     }
 //! }
 //!
-//! impl Crd for Bar {
+//! impl CustomResourceExt for Bar {
 //!     const RESOURCE_NAME: &'static str = "bars.command.foo.stackable.tech";
 //!     const CRD_DEFINITION: &'static str = "
 //! apiVersion: apiextensions.k8s.io/v1

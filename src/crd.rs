@@ -16,7 +16,7 @@ use std::path::Path;
 
 /// This trait can be implemented to allow automatic handling
 /// (e.g. creation) of `CustomResourceDefinition`s in Kubernetes.
-pub trait Crd {
+pub trait CustomResourceExt: kube::CustomResourceExt {
     /// The name of the Resource in Kubernetes
     ///
     /// # Example
@@ -25,23 +25,6 @@ pub trait Crd {
     /// const RESOURCE_NAME: &'static str = "foo.bar.stackable.tech";
     /// ```
     const RESOURCE_NAME: &'static str;
-
-    /// Returns a [`CustomResourceDefinition`] for this resource.
-    ///
-    /// # Implementation note
-    ///
-    /// When using the [`CustomResource`] derive you'll get a `crd()` method automatically.
-    /// All you need to do is to forward to this method.
-    ///
-    /// ## Example
-    ///
-    /// ```text
-    ///     fn crd() -> CustomResourceDefinition {
-    ///         MyCustomResource::crd()
-    ///     }     
-    ///
-    /// ```
-    fn crd() -> CustomResourceDefinition;
 
     /// Generates a YAML CustomResourceDefinition and writes it to a `Write`r.
     fn generate_yaml_schema<W>(mut writer: W) -> OperatorResult<()>
@@ -78,7 +61,7 @@ pub trait Crd {
 ///     retries indefinitely.
 pub async fn ensure_crd_created<T>(client: &Client) -> OperatorResult<()>
 where
-    T: Crd,
+    T: CustomResourceExt,
 {
     if client
         .exists::<CustomResourceDefinition>(T::RESOURCE_NAME, None)
@@ -221,7 +204,7 @@ async fn check_crd(client: &Client, crd_name: &str) -> OperatorResult<(String, b
 /// just that it has been accepted by the apiserver.
 async fn create<T>(client: &Client) -> OperatorResult<()>
 where
-    T: Crd,
+    T: CustomResourceExt,
 {
     client.create(&T::crd()).await.and(Ok(()))
 }
@@ -229,7 +212,7 @@ where
 /// Waits until CRD of given type `T` is applied to Kubernetes.
 pub async fn wait_created<T>(client: &Client) -> OperatorResult<()>
 where
-    T: Crd,
+    T: CustomResourceExt,
 {
     let lp: ListParams = ListParams {
         field_selector: Some(format!("metadata.name={}", T::RESOURCE_NAME)),
