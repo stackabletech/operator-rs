@@ -73,16 +73,16 @@ pub type RoleConfigByPropertyKind =
 /// - `resource`         - Not used directly. It's passed on to the `Configuration::compute_*` calls.
 /// - `roles`            - A map keyed by role names. The value is a tuple of the [`crate::role_utils::Role`] and
 ///                        required PropertyNameKind like (Cli, Env or Files).
-pub fn transform_all_roles_to_config<T>(
+pub fn transform_all_roles_to_config<T: ?Sized>(
     resource: &T::Configurable,
-    roles: HashMap<String, (Role<T>, Vec<PropertyNameKind>)>,
+    roles: HashMap<String, (Vec<PropertyNameKind>, Role<Box<T>>)>,
 ) -> RoleConfigByPropertyKind
 where
     T: Configuration,
 {
     let mut result = HashMap::new();
 
-    for (role_name, (role, property_name_kinds)) in &roles {
+    for (role_name, (property_name_kinds, role)) in &roles {
         let role_properties =
             transform_role_to_config(resource, role_name, role, property_name_kinds);
         result.insert(role_name.to_string(), role_properties);
@@ -229,10 +229,10 @@ fn process_validation_result(
 /// - `role_name`      - The name of the role.
 /// - `role`           - The role for which to transform the configuration parameters.
 /// - `property_kinds` - Used as "buckets" to partition the configuration properties by.
-fn transform_role_to_config<T>(
+fn transform_role_to_config<T: ?Sized>(
     resource: &T::Configurable,
     role_name: &str,
-    role: &Role<T>,
+    role: &Role<Box<T>>,
     property_kinds: &[PropertyNameKind],
 ) -> HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
@@ -273,10 +273,10 @@ where
 /// - `role_name`      - Not used directly but passed on to the `Configuration::compute_*` calls.
 /// - `config`         - The configuration properties to partition.
 /// - `property_kinds` - The "buckets" used to partition the configuration properties.
-fn parse_role_config<T>(
+fn parse_role_config<T: ?Sized>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<T>>,
+    config: &Option<CommonConfiguration<Box<T>>>,
     property_kinds: &[PropertyNameKind],
 ) -> HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>
 where
@@ -303,10 +303,10 @@ where
     result
 }
 
-fn parse_cli_properties<T>(
+fn parse_cli_properties<T: ?Sized>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<T>>,
+    config: &Option<CommonConfiguration<Box<T>>>,
 ) -> BTreeMap<String, Option<String>>
 where
     T: Configuration,
@@ -336,10 +336,10 @@ where
     final_properties
 }
 
-fn parse_env_properties<T>(
+fn parse_env_properties<T: ?Sized>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<T>>,
+    config: &Option<CommonConfiguration<Box<T>>>,
 ) -> BTreeMap<String, Option<String>>
 where
     T: Configuration,
@@ -369,10 +369,10 @@ where
     final_properties
 }
 
-fn parse_file_properties<T>(
+fn parse_file_properties<T: ?Sized>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<T>>,
+    config: &Option<CommonConfiguration<Box<T>>>,
     file: &str,
 ) -> BTreeMap<String, Option<String>>
 where
@@ -493,20 +493,20 @@ mod tests {
         }
     }
 
-    fn build_test_config(conf: &str, env: &str, cli: &str) -> Option<TestConfig> {
-        Some(TestConfig {
+    fn build_test_config(conf: &str, env: &str, cli: &str) -> Option<Box<TestConfig>> {
+        Some(Box::new(TestConfig {
             conf: Some(conf.to_string()),
             env: Some(env.to_string()),
             cli: Some(cli.to_string()),
-        })
+        }))
     }
 
     fn build_common_config(
-        test_config: Option<TestConfig>,
+        test_config: Option<Box<TestConfig>>,
         config_overrides: Option<HashMap<String, HashMap<String, String>>>,
         env_overrides: Option<HashMap<String, String>>,
         cli_overrides: Option<BTreeMap<String, String>>,
-    ) -> Option<CommonConfiguration<TestConfig>> {
+    ) -> Option<CommonConfiguration<Box<TestConfig>>> {
         Some(CommonConfiguration {
             config: test_config,
             config_overrides,
@@ -537,7 +537,7 @@ mod tests {
         group_config: bool,
         role_overrides: bool,
         group_overrides: bool,
-    ) -> Role<TestConfig> {
+    ) -> Role<Box<TestConfig>> {
         let role_group = ROLE_GROUP.to_string();
         let file_name = "foo.conf";
 
@@ -1019,8 +1019,8 @@ mod tests {
         let role_group_2 = "role_group_2";
         let file_name = "foo.bar";
 
-        let roles: HashMap<String, (Role<TestConfig>, Vec<PropertyNameKind>)> = collection! {
-            role_1.to_string() => (Role {
+        let roles: HashMap<String, (Vec<PropertyNameKind>, Role<Box<TestConfig>>)> = collection! {
+            role_1.to_string() => (vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env], Role {
             config: build_common_config(
                 build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
                 None,
@@ -1047,9 +1047,8 @@ mod tests {
                 ),
                 selector: None,
             }}
-
-        }, vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env]),
-            role_2.to_string() => (Role {
+        }),
+            role_2.to_string() => (vec![PropertyNameKind::Cli], Role {
             config: build_common_config(
                 build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
                 None,
@@ -1066,7 +1065,7 @@ mod tests {
                 ),
                 selector: None,
             }},
-        }, vec![PropertyNameKind::Cli])
+        })
         };
 
         let expected: RoleConfigByPropertyKind = collection! {
@@ -1112,8 +1111,8 @@ mod tests {
         let pc_bad_version = "pc_bad_version";
         let pc_bad_version_value = "pc_bad_version_value";
 
-        let roles: HashMap<String, (Role<TestConfig>, Vec<PropertyNameKind>)> = collection! {
-            role_1.to_string() => (Role {
+        let roles: HashMap<String, (Vec<PropertyNameKind>, Role<Box<TestConfig>>)> = collection! {
+            role_1.to_string() => (vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env], Role {
             config: None,
             role_groups: collection! {
                 role_group_1.to_string() => RoleGroup {
@@ -1126,8 +1125,8 @@ mod tests {
                 ),
                 selector: None,
             }}
-        },
-            vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env]),
+        }
+            ),
         };
 
         let role_config = transform_all_roles_to_config(&String::new(), roles);
@@ -1201,5 +1200,301 @@ mod tests {
         };
 
         assert_eq!(validated_config, expected);
+    }
+    //###########################################################################################
+    //###########################################################################################
+    //###########################################################################################
+
+    #[derive(Clone, Debug, PartialEq)]
+    struct TestConfig2 {
+        pub first: Option<String>,
+        pub second: Option<usize>,
+    }
+
+    impl Configuration for TestConfig2 {
+        type Configurable = String;
+
+        fn compute_env(
+            &self,
+            _resource: &Self::Configurable,
+            _role_name: &str,
+        ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
+            let mut result = BTreeMap::new();
+            if let Some(first) = &self.first {
+                result.insert("first".to_string(), Some(first.to_string()));
+            }
+            Ok(result)
+        }
+
+        fn compute_cli(
+            &self,
+            _resource: &Self::Configurable,
+            _role_name: &str,
+        ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
+            Ok(BTreeMap::new())
+        }
+
+        fn compute_files(
+            &self,
+            _resource: &Self::Configurable,
+            _role_name: &str,
+            _file: &str,
+        ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
+            let mut result = BTreeMap::new();
+            if let Some(second) = &self.second {
+                result.insert("second".to_string(), Some(second.to_string()));
+            }
+            Ok(result)
+        }
+    }
+
+    #[test]
+    fn test() {
+        let role_1 = "role_1";
+        let role_2 = "role_2";
+        let role_group_1 = "role_group_1";
+        let role_group_2 = "role_group_2";
+        let file_name = "foo.bar";
+
+        let mut roles: HashMap<String, Role<Box<dyn Configuration<Configurable = String>>>> =
+            HashMap::new();
+        roles.insert(
+            role_1.to_string(),
+            Role {
+                config: Some(CommonConfiguration {
+                    config: Some(Box::new(TestConfig {
+                        env: Some("first".to_string()),
+                        cli: Some("first".to_string()),
+                        conf: Some("first".to_string()),
+                    })),
+                    cli_overrides: None,
+                    env_overrides: None,
+                    config_overrides: None,
+                }),
+                role_groups: HashMap::new(),
+            },
+        );
+        roles.insert(
+            role_2.to_string(),
+            Role {
+                config: Some(CommonConfiguration {
+                    config: Some(Box::new(TestConfig2 {
+                        first: Some("first".to_string()),
+                        second: Some(5),
+                    })),
+                    cli_overrides: None,
+                    env_overrides: None,
+                    config_overrides: None,
+                }),
+                role_groups: HashMap::new(),
+            },
+        );
+    }
+
+    pub struct ConfigurableItem {
+        test: Option<String>,
+        vec: Vec<u32>,
+    }
+
+    pub trait TestConfiguration {
+        type Configurable;
+        fn compute(&self) -> String;
+    }
+
+    pub struct ConfigInt {
+        value: usize,
+    }
+
+    impl TestConfiguration for ConfigInt {
+        type Configurable = ConfigurableItem;
+
+        fn compute(&self) -> String {
+            self.value.to_string()
+        }
+    }
+
+    pub struct ConfigString {
+        value: String,
+    }
+
+    impl TestConfiguration for ConfigString {
+        type Configurable = ConfigurableItem;
+
+        fn compute(&self) -> String {
+            self.value.to_string()
+        }
+    }
+
+    #[test]
+    fn test2() {
+        let mut x: Vec<Box<dyn TestConfiguration<Configurable = ConfigurableItem>>> = Vec::new();
+        x.push(Box::new(ConfigInt { value: 5 }));
+        x.push(Box::new(ConfigString {
+            value: "15".to_string(),
+        }));
+    }
+
+    #[test]
+    fn test_role() {
+        // works
+        let mut x: Vec<Role<Box<dyn TestConfiguration<Configurable = ConfigurableItem>>>> =
+            Vec::new();
+        x.push(Role {
+            config: Some(CommonConfiguration {
+                config: Some(Box::new(ConfigInt { value: 5 })),
+                config_overrides: None,
+                env_overrides: None,
+                cli_overrides: None,
+            }),
+            role_groups: Default::default(),
+        });
+
+        x.push(Role {
+            config: Some(CommonConfiguration {
+                config: Some(Box::new(ConfigString {
+                    value: "15".to_string(),
+                })),
+                config_overrides: None,
+                env_overrides: None,
+                cli_overrides: None,
+            }),
+            role_groups: Default::default(),
+        });
+
+        let mut y: HashMap<
+            &str,
+            Role<Box<dyn TestConfiguration<Configurable = ConfigurableItem>>>,
+        > = HashMap::new();
+        y.insert(
+            "test",
+            Role {
+                config: Some(CommonConfiguration {
+                    config: Some(Box::new(ConfigInt { value: 5 })),
+                    config_overrides: None,
+                    env_overrides: None,
+                    cli_overrides: None,
+                }),
+                role_groups: Default::default(),
+            },
+        );
+
+        y.insert(
+            "test2",
+            Role {
+                config: Some(CommonConfiguration {
+                    config: Some(Box::new(ConfigString {
+                        value: "15".to_string(),
+                    })),
+                    config_overrides: None,
+                    env_overrides: None,
+                    cli_overrides: None,
+                }),
+                role_groups: Default::default(),
+            },
+        );
+
+        let mut z: HashMap<
+            &str,
+            (
+                Role<Box<dyn TestConfiguration<Configurable = ConfigurableItem>>>,
+                String,
+            ),
+        > = HashMap::new();
+        z.insert(
+            "test",
+            (
+                Role {
+                    config: Some(CommonConfiguration {
+                        config: Some(Box::new(ConfigInt { value: 5 })),
+                        config_overrides: None,
+                        env_overrides: None,
+                        cli_overrides: None,
+                    }),
+                    role_groups: Default::default(),
+                },
+                "test".to_string(),
+            ),
+        );
+
+        z.insert(
+            "test2",
+            (
+                Role {
+                    config: Some(CommonConfiguration {
+                        config: Some(Box::new(ConfigString {
+                            value: "15".to_string(),
+                        })),
+                        config_overrides: None,
+                        env_overrides: None,
+                        cli_overrides: None,
+                    }),
+                    role_groups: Default::default(),
+                },
+                "test2".to_string(),
+            ),
+        );
+
+        do_sth(z);
+
+        let mut a: HashMap<
+            String,
+            Role<Box<dyn TestConfiguration<Configurable = ConfigurableItem>>>,
+        > = HashMap::new();
+        a.insert(
+            "test".to_string(),
+            Role {
+                config: Some(CommonConfiguration {
+                    config: Some(Box::new(ConfigInt { value: 5 })),
+                    config_overrides: None,
+                    env_overrides: None,
+                    cli_overrides: None,
+                }),
+                role_groups: Default::default(),
+            },
+        );
+
+        a.insert(
+            "test2".to_string(),
+            Role {
+                config: Some(CommonConfiguration {
+                    config: Some(Box::new(ConfigString {
+                        value: "15".to_string(),
+                    })),
+                    config_overrides: None,
+                    env_overrides: None,
+                    cli_overrides: None,
+                }),
+                role_groups: Default::default(),
+            },
+        );
+
+        transform_all_roles_to_config_test(
+            &ConfigurableItem {
+                test: None,
+                vec: vec![],
+            },
+            a,
+        );
+    }
+
+    fn do_sth(
+        x: HashMap<
+            &str,
+            (
+                Role<Box<dyn TestConfiguration<Configurable = ConfigurableItem>>>,
+                String,
+            ),
+        >,
+    ) {
+    }
+
+    fn transform_all_roles_to_config_test<T: ?Sized>(
+        resource: &T::Configurable,
+        roles: HashMap<String, Role<Box<T>>>,
+    ) -> bool
+    where
+        T: TestConfiguration,
+    {
+        true
     }
 }
