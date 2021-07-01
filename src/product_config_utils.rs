@@ -8,8 +8,8 @@ use tracing::{debug, error, warn};
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
-    #[error("Invalid configuration found")]
-    InvalidConfiguration,
+    #[error("Invalid configuration found: {reason}")]
+    InvalidConfiguration { reason: String },
 
     #[error("Collected product config validation errors: {collected_errors:?}")]
     ProductConfigErrors {
@@ -121,12 +121,16 @@ pub fn validate_role_and_group_config(
     if let Some(role_config) = role_config.get(role) {
         if let Some(role_group_config) = role_config.get(role_group) {
             for (property_name_kind, config) in role_group_config {
-                let validation_result = product_config.get(
-                    version,
-                    role,
-                    property_name_kind,
-                    config.clone().into_iter().collect::<HashMap<_, _>>(),
-                );
+                let validation_result = product_config
+                    .get(
+                        version,
+                        role,
+                        property_name_kind,
+                        config.clone().into_iter().collect::<HashMap<_, _>>(),
+                    )
+                    .map_err(|err| ConfigError::InvalidConfiguration {
+                        reason: err.to_string(),
+                    })?;
 
                 let validated_config =
                     process_validation_result(&validation_result, ignore_warn, ignore_err)?;
@@ -176,8 +180,11 @@ fn process_validation_result(
                 debug!("Property [{}] is set to valid value [{}]", key, value);
                 properties.insert(key.clone(), value.clone());
             }
-            PropertyValidationResult::Override(value) => {
-                debug!("Property [{}] is set to override value [{}]", key, value);
+            PropertyValidationResult::Unknown(value) => {
+                debug!(
+                    "Property [{}] is unknown (no validation) and set to value [{}]",
+                    key, value
+                );
                 properties.insert(key.clone(), value.clone());
             }
             PropertyValidationResult::Warn(value, err) => {
@@ -418,6 +425,8 @@ mod tests {
     use crate::role_utils::{Role, RoleGroup};
     use rstest::*;
     use std::collections::HashMap;
+    use std::str::FromStr;
+
     const ROLE_GROUP: &str = "role_group";
 
     const ROLE_CONFIG: &str = "role_config";
