@@ -17,7 +17,7 @@ use std::path::Path;
 /// This trait can be implemented to allow automatic handling
 /// (e.g. creation) of `CustomResourceDefinition`s in Kubernetes.
 pub trait CustomResourceExt: kube::CustomResourceExt {
-    /// The name of the Resource in Kubernetes
+    /// The name of the CustomResource in Kubernetes.
     ///
     /// # Example
     ///

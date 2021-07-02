@@ -25,5 +25,6 @@ pub mod validation;
 
 pub use crate::crd::CustomResourceExt;
 
+mod config_option;
 #[cfg(test)]
 mod test;
