@@ -14,10 +14,9 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-/// This trait can be implemented to allow automatic handling
-/// (e.g. creation) of `CustomResourceDefinition`s in Kubernetes.
-pub trait CustomResourceExt: kube::CustomResourceExt {
-    /// The name of the CustomResource in Kubernetes.
+pub trait NamedCustomResourceExt {
+    /// The name of the CustomResourceDefinition in Kubernetes.
+    /// Note: This is not the name of an _instance_ of this definition.
     ///
     /// # Example
     ///
@@ -25,7 +24,11 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
     /// const RESOURCE_NAME: &'static str = "foo.bar.stackable.tech";
     /// ```
     const RESOURCE_NAME: &'static str;
+}
 
+/// This trait can be implemented to allow automatic handling
+/// (e.g. creation) of `CustomResourceDefinition`s in Kubernetes.
+pub trait CustomResourceExt: kube::CustomResourceExt {
     /// Generates a YAML CustomResourceDefinition and writes it to a `Write`r.
     fn generate_yaml_schema<W>(mut writer: W) -> OperatorResult<()>
     where
@@ -47,6 +50,13 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
         let writer = std::io::stdout();
         Self::generate_yaml_schema(writer)
     }
+
+    // Returns the YAML schema of this CustomResourceDefinition as a string.
+    fn yaml_schema() -> OperatorResult<String> {
+        let mut writer = Vec::new();
+        Self::generate_yaml_schema(&mut writer)?;
+        Ok(String::from_utf8(writer)?)
+    }
 }
 
 /// Makes sure CRD of given type `T` is running and accepted by the Kubernetes apiserver.
@@ -61,7 +71,7 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
 ///     retries indefinitely.
 pub async fn ensure_crd_created<T>(client: &Client) -> OperatorResult<()>
 where
-    T: CustomResourceExt,
+    T: CustomResourceExt + NamedCustomResourceExt,
 {
     if client
         .exists::<CustomResourceDefinition>(T::RESOURCE_NAME, None)
@@ -212,7 +222,7 @@ where
 /// Waits until CRD of given type `T` is applied to Kubernetes.
 pub async fn wait_created<T>(client: &Client) -> OperatorResult<()>
 where
-    T: CustomResourceExt,
+    T: CustomResourceExt + NamedCustomResourceExt,
 {
     let lp: ListParams = ListParams {
         field_selector: Some(format!("metadata.name={}", T::RESOURCE_NAME)),
