@@ -87,7 +87,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use crate::client::Client;
 use crate::k8s_utils::LabelOptionalValueMap;
-use crate::product_config_utils::Configuration;
+use crate::product_config_utils::{ConfigError, Configuration};
 use k8s_openapi::api::core::v1::Node;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use schemars::JsonSchema;
@@ -120,12 +120,6 @@ where
     /// and used in [`Role`] into a Box of the dynamically dispatched
     /// [`crate::product_config_utils::Configuration`] Trait. This is required to use the generic
     /// [`Role`] with more than a single generic struct.
-    ///
-    /// # Example
-    ///
-    /// ```
-    ///     
-    /// ```
     pub fn into_dyn(self) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>> {
         Role {
             config: self.config.map(|common| CommonConfiguration {
