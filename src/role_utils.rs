@@ -87,7 +87,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use crate::client::Client;
 use crate::k8s_utils::LabelOptionalValueMap;
-use crate::product_config_utils::{ConfigError, Configuration};
+use crate::product_config_utils::Configuration;
 use k8s_openapi::api::core::v1::Node;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use schemars::JsonSchema;
