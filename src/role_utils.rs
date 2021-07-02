@@ -116,6 +116,16 @@ impl<T> Role<T>
 where
     T: Configuration + 'static,
 {
+    /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
+    /// and used in [`Role`] into a Box of the dynamically dispatched
+    /// [`crate::product_config_utils::Configuration`] Trait. This is required to use the generic
+    /// [`Role`] with more than a single generic struct.
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///     
+    /// ```
     pub fn into_dyn(self) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>> {
         Role {
             config: self.config.map(|common| CommonConfiguration {
@@ -284,7 +294,6 @@ mod tests {
             - node_1
     "#
     )]
-    #[trace]
     fn test_list_eligible_nodes_for_role_and_group(#[case] eligible_node_names: &str) {
         let eligible_node_names_parsed: HashMap<String, HashMap<String, Vec<String>>> =
             serde_yaml::from_str(eligible_node_names).expect("Invalid test definition!");
