@@ -167,7 +167,8 @@ fn process_validation_result(
     for (key, result) in validation_result.iter() {
         match result {
             PropertyValidationResult::Default(value) => {
-                debug!("Property [{}] is not explicitly set, will not set and rely on the default instead ([{}])", key, value);
+                debug!("Property [{}] is not explicitly set, will set and rely to the default instead ([{}])", key, value);
+                properties.insert(key.clone(), value.clone());
             }
             PropertyValidationResult::RecommendedDefault(value) => {
                 debug!(
