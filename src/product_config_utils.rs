@@ -63,6 +63,10 @@ pub trait Configuration {
 pub type RoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>>;
 
+// This deep map causes problems with clippy and fmt.
+pub type ValidatedRoleConfigByPropertyKind =
+    HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, String>>>>;
+
 /// Given the configuration parameters of all `roles` partition them by `PropertyNameKind` and
 /// merge them with the role groups configuration parameters.
 ///
@@ -91,15 +95,43 @@ where
     result
 }
 
+pub fn validate_all_roles_and_group_configs(
+    version: &str,
+    role_config: &RoleConfigByPropertyKind,
+    product_config: &ProductConfigManager,
+    ignore_warn: bool,
+    ignore_err: bool,
+) -> OperatorResult<ValidatedRoleConfigByPropertyKind> {
+    let mut result = HashMap::new();
+    for (role, role_group) in role_config {
+        result.insert(role.to_string(), HashMap::new());
+
+        for (group, properties_by_kind) in role_group {
+            result.get_mut(role).unwrap().insert(
+                group.clone(),
+                validate_role_and_group_config(
+                    version,
+                    role,
+                    properties_by_kind,
+                    product_config,
+                    ignore_warn,
+                    ignore_err,
+                )?,
+            );
+        }
+    }
+
+    Ok(result)
+}
+
 /// Calculates and validates a product configuration for a role and group. Requires a valid
 /// product config and existing [`RoleConfigByPropertyKind`] that can be obtained via
 /// `transform_all_roles_to_config`.  
 ///
 /// # Arguments
-/// - `role`             - The role that needs configuration.
-/// - `role_group`       - The role group that needs configuration.
+/// - `role`          - The name of the role
 /// - `version`          - The version of the product to be configured.
-/// - `role_config`      - The fully qualified configuration over all roles, groups, property kinds
+/// - `properties_by_kind- Config properties sorted by PropertyKind
 ///                        and the resulting user configuration data. See [`RoleConfigByPropertyKind`].
 /// - `product_config`   - The [`product_config::ProductConfigManager`] used to validate the provided
 ///                        user data.
@@ -108,36 +140,31 @@ where
 /// - `ignore_err`       - A switch to ignore product config errors and continue with
 ///                        the value anyways. Not recommended!
 pub fn validate_role_and_group_config(
-    role: &str,
-    role_group: &str,
     version: &str,
-    role_config: &RoleConfigByPropertyKind,
+    role: &str,
+    properties_by_kind: &HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>,
     product_config: &ProductConfigManager,
     ignore_warn: bool,
     ignore_err: bool,
 ) -> OperatorResult<HashMap<PropertyNameKind, BTreeMap<String, String>>> {
     let mut result = HashMap::new();
 
-    if let Some(role_config) = role_config.get(role) {
-        if let Some(role_group_config) = role_config.get(role_group) {
-            for (property_name_kind, config) in role_group_config {
-                let validation_result = product_config
-                    .get(
-                        version,
-                        role,
-                        property_name_kind,
-                        config.clone().into_iter().collect::<HashMap<_, _>>(),
-                    )
-                    .map_err(|err| ConfigError::InvalidConfiguration {
-                        reason: err.to_string(),
-                    })?;
+    for (property_name_kind, config) in properties_by_kind {
+        let validation_result = product_config
+            .get(
+                version,
+                role,
+                property_name_kind,
+                config.clone().into_iter().collect::<HashMap<_, _>>(),
+            )
+            .map_err(|err| ConfigError::InvalidConfiguration {
+                reason: err.to_string(),
+            })?;
 
-                let validated_config =
-                    process_validation_result(&validation_result, ignore_warn, ignore_err)?;
+        let validated_config =
+            process_validation_result(&validation_result, ignore_warn, ignore_err)?;
 
-                result.insert(property_name_kind.clone(), validated_config);
-            }
-        }
+        result.insert(property_name_kind.clone(), validated_config);
     }
 
     Ok(result)
