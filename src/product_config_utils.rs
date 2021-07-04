@@ -59,11 +59,12 @@ pub trait Configuration {
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError>;
 }
 
-// This deep map causes problems with clippy and fmt.
+/// Type to sort config properties via kind (files, env, cli), via groups and via roles.
 pub type RoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>>;
 
-// This deep map causes problems with clippy and fmt.
+/// Type to sort config properties via kind (files, env, cli), via groups and via roles. This
+/// is the validated output to be used in other operators.
 pub type ValidatedRoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, String>>>>;
 
@@ -95,7 +96,21 @@ where
     result
 }
 
-pub fn validate_all_roles_and_group_configs(
+/// Validates a product configuration for all existing role and role_groups. Requires a valid
+/// product config and existing [`RoleConfigByPropertyKind`] that can be obtained via
+/// `transform_all_roles_to_config`.  
+///
+/// # Arguments
+/// - `version`            - The version of the product to be configured.
+/// - `role_config`        - Collected information about all roles, according role groups, required
+///                          properties sorted by config files, CLI parameters and ENV variables.
+/// - `product_config`     - The [`product_config::ProductConfigManager`] used to validate the provided
+///                          user data.
+/// - `ignore_warn`        - A switch to ignore product config warnings and continue with
+///                          the value anyways. Not recommended!
+/// - `ignore_err`         - A switch to ignore product config errors and continue with
+///                          the value anyways. Not recommended!
+pub fn validate_all_roles_and_groups_config(
     version: &str,
     role_config: &RoleConfigByPropertyKind,
     product_config: &ProductConfigManager,
@@ -129,17 +144,17 @@ pub fn validate_all_roles_and_group_configs(
 /// `transform_all_roles_to_config`.  
 ///
 /// # Arguments
-/// - `role`          - The name of the role
-/// - `version`          - The version of the product to be configured.
-/// - `properties_by_kind- Config properties sorted by PropertyKind
-///                        and the resulting user configuration data. See [`RoleConfigByPropertyKind`].
-/// - `product_config`   - The [`product_config::ProductConfigManager`] used to validate the provided
-///                        user data.
-/// - `ignore_warn`      - A switch to ignore product config warnings and continue with
-///                        the value anyways. Not recommended!
-/// - `ignore_err`       - A switch to ignore product config errors and continue with
-///                        the value anyways. Not recommended!
-pub fn validate_role_and_group_config(
+/// - `role`               - The name of the role
+/// - `version`            - The version of the product to be configured.
+/// - `properties_by_kind` - Config properties sorted by PropertyKind
+///                          and the resulting user configuration data. See [`RoleConfigByPropertyKind`].
+/// - `product_config`     - The [`product_config::ProductConfigManager`] used to validate the provided
+///                          user data.
+/// - `ignore_warn`        - A switch to ignore product config warnings and continue with
+///                          the value anyways. Not recommended!
+/// - `ignore_err`         - A switch to ignore product config errors and continue with
+///                          the value anyways. Not recommended!
+fn validate_role_and_group_config(
     version: &str,
     role: &str,
     properties_by_kind: &HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>,
@@ -515,7 +530,7 @@ mod tests {
         ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
             let mut result = BTreeMap::new();
             if let Some(conf) = &self.conf {
-                result.insert("conf".to_string(), Some(conf.to_string()));
+                result.insert("file".to_string(), Some(conf.to_string()));
             }
             Ok(result)
         }
@@ -991,7 +1006,7 @@ mod tests {
             config: build_common_config(
                 build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
                 // should override
-                build_config_override(file_name, "conf"),
+                build_config_override(file_name, "file"),
                 None,
                 // should override
                 build_cli_override("cli"),
@@ -1001,7 +1016,7 @@ mod tests {
                 config: build_common_config(
                     build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
                     // should override
-                    build_config_override(file_name, "conf"),
+                    build_config_override(file_name, "file"),
                     build_env_override(GROUP_ENV_OVERRIDE),
                     None),
                     selector: None,
@@ -1013,7 +1028,7 @@ mod tests {
             collection!{
                 PropertyNameKind::File(file_name.to_string()) =>
                     collection!(
-                        "conf".to_string() => Some("conf".to_string())
+                        "file".to_string() => Some("file".to_string())
                     ),
                 PropertyNameKind::Env =>
                     collection!(
@@ -1102,7 +1117,7 @@ mod tests {
                     "env".to_string() => Some(GROUP_ENV.to_string())
                 },
                 PropertyNameKind::File(file_name.to_string()) => collection! {
-                    "conf".to_string() => Some(GROUP_CONFIG.to_string())
+                    "file".to_string() => Some(GROUP_CONFIG.to_string())
                 }
             },
             role_group_2.to_string() => collection! {
@@ -1110,7 +1125,7 @@ mod tests {
                     "env".to_string() => Some(GROUP_ENV.to_string())
                 },
                 PropertyNameKind::File(file_name.to_string()) => collection! {
-                    "conf".to_string() => Some(GROUP_CONFIG.to_string())
+                    "file".to_string() => Some(GROUP_CONFIG.to_string())
                 }
             }
         },
@@ -1128,9 +1143,11 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_role_and_group_config() {
+    fn test_validate_all_roles_and_groups_config() {
         let role_1 = "role_1";
+        let role_2 = "role_2";
         let role_group_1 = "role_group_1";
+        let role_group_2 = "role_group_2";
         let file_name = "foo.bar";
 
         let pc_name = "pc_name";
@@ -1143,6 +1160,21 @@ mod tests {
             config: None,
             role_groups: collection! {
                 role_group_1.to_string() => RoleGroup {
+                replicas: 1,
+                config: build_common_config(
+                    build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                    None,
+                    None,
+                    None
+                ),
+                selector: None,
+            }}
+        }
+            ),
+            role_2.to_string() => (vec![PropertyNameKind::File(file_name.to_string())], Role {
+            config: None,
+            role_groups: collection! {
+                role_group_2.to_string() => RoleGroup {
                 replicas: 1,
                 config: build_common_config(
                     build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
@@ -1177,6 +1209,8 @@ mod tests {
                   roles:
                     - name: \"{}\"
                       required: true
+                    - name: \"{}\"
+                      required: true
                   asOfVersion: \"0.0.0\"
               - property: 
                   propertyNames:
@@ -1197,6 +1231,7 @@ mod tests {
             file_name,
             pc_value,
             role_1,
+            role_2,
             pc_bad_version,
             file_name,
             pc_bad_version_value,
@@ -1205,9 +1240,7 @@ mod tests {
 
         let product_config = ProductConfigManager::from_str(config).unwrap();
 
-        let validated_config = validate_role_and_group_config(
-            role_1,
-            role_group_1,
+        let full_validated_config = validate_all_roles_and_groups_config(
             "0.1.0",
             &role_config,
             &product_config,
@@ -1216,16 +1249,27 @@ mod tests {
         )
         .unwrap();
 
-        let expected: HashMap<PropertyNameKind, BTreeMap<String, String>> = collection! {
-          PropertyNameKind::File(file_name.to_string()) => collection! {
-                "conf".to_string() => GROUP_CONFIG.to_string(),
-                pc_name.to_string() => pc_value.to_string()
-          },
-          PropertyNameKind::Env => collection! {
-                "env".to_string() => GROUP_ENV.to_string()
+        let expected: ValidatedRoleConfigByPropertyKind = collection! {
+            role_1.to_string() => collection! {
+              role_group_1.to_string() => collection! {
+                PropertyNameKind::File(file_name.to_string()) => collection! {
+                      "file".to_string() => GROUP_CONFIG.to_string(),
+                      pc_name.to_string() => pc_value.to_string()
+                },
+                PropertyNameKind::Env => collection! {
+                      "env".to_string() => GROUP_ENV.to_string()
+                }
+              }
+            },
+            role_2.to_string() => collection! {
+              role_group_2.to_string() => collection! {
+                PropertyNameKind::File(file_name.to_string()) => collection! {
+                      "file".to_string() => GROUP_CONFIG.to_string(),
+                      pc_name.to_string() => pc_value.to_string()
+                },
+              }
           }
         };
-
-        assert_eq!(validated_config, expected);
+        assert_eq!(full_validated_config, expected);
     }
 }
