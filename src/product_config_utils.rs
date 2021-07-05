@@ -1,4 +1,5 @@
-use crate::error::OperatorResult;
+use crate::error;
+use crate::error::*;
 use crate::role_utils::{CommonConfiguration, Role};
 use product_config::types::PropertyNameKind;
 use product_config::{ProductConfigManager, PropertyValidationResult};
@@ -67,6 +68,38 @@ pub type RoleConfigByPropertyKind =
 /// is the validated output to be used in other operators.
 pub type ValidatedRoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, String>>>>;
+
+/// Extracts the config properties keyed by PropertyKindName (files, cli, env) for a role and
+/// role group.
+///
+/// # Arguments
+/// - `role`        - The role name.
+/// - `group`       - The role group name.
+/// - `role_config` - The validated product configuration for each role and group.  
+pub fn config_for_role_and_group(
+    role: &str,
+    group: &str,
+    role_config: &ValidatedRoleConfigByPropertyKind,
+) -> OperatorResult<HashMap<PropertyNameKind, BTreeMap<String, String>>> {
+    let result = match role_config.get(role) {
+        None => {
+            return Err(error::Error::MissingRole {
+                role: role.to_string(),
+            })
+        }
+        Some(group_config) => match group_config.get(group) {
+            None => {
+                return Err(error::Error::MissingRoleGroup {
+                    role: role.to_string(),
+                    role_group: group.to_string(),
+                })
+            }
+            Some(config_by_property_kind) => config_by_property_kind.clone(),
+        },
+    };
+
+    Ok(result)
+}
 
 /// Given the configuration parameters of all `roles` partition them by `PropertyNameKind` and
 /// merge them with the role groups configuration parameters.
@@ -1271,5 +1304,23 @@ mod tests {
           }
         };
         assert_eq!(full_validated_config, expected);
+
+        // test config_for_role_and_group
+        let valid_config_for_role_and_group =
+            config_for_role_and_group(role_1, role_group_1, &full_validated_config).unwrap();
+        assert_eq!(
+            expected.get(role_1).unwrap().get(role_group_1).unwrap(),
+            &valid_config_for_role_and_group
+        );
+
+        let config_for_wrong_role =
+            config_for_role_and_group("wrong_role", "wrong_group", &full_validated_config);
+
+        assert!(config_for_wrong_role.is_err());
+
+        let config_for_role_and_wrong_group =
+            config_for_role_and_group(role_1, "wrong_group", &full_validated_config);
+
+        assert!(config_for_role_and_wrong_group.is_err());
     }
 }
