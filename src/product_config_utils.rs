@@ -65,7 +65,8 @@ pub type RoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>>;
 
 /// Type to sort config properties via kind (files, env, cli), via groups and via roles. This
-/// is the validated output to be used in other operators.
+/// is the validated output to be used in other operators. The difference to [`RoleConfigByPropertyKind`]
+/// is that the properties BTreeMap does not contain any options.
 pub type ValidatedRoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, String>>>>;
 
