@@ -95,7 +95,7 @@ impl<T> ReconciliationContext<T> {
 
     /// This is a reconciliation gate to wait for a list of Pods to be running and ready.
     ///
-    /// See [`podutils::is_pod_running_and_ready`] for details.
+    /// See [`pod_utils::is_pod_running_and_ready`] for details.
     /// Will requeue as soon as a single Pod is not running or not ready.
     pub async fn wait_for_running_and_ready_pods(&self, pods: &[Pod]) -> ReconcileResult<Error> {
         wait_for_running_and_ready_pods(&self.requeue_timeout, pods)
@@ -156,7 +156,8 @@ where
                 key: ".metadata.uid",
             })?;
 
-        let match_labels = labels::get_recommended_labels(&self.resource)?;
+        let mut match_labels = BTreeMap::new();
+        match_labels.insert(labels::APP_NAME_LABEL.to_string(), self.name());
 
         let label_selector = LabelSelector {
             match_labels,
@@ -430,7 +431,7 @@ fn wait_for_terminating_pods(requeue_timeout: &Duration, pods: &[Pod]) -> Reconc
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test::PodBuilder;
+    use crate::builder::{ObjectMetaBuilder, PodBuilder};
     use chrono::Utc;
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 
@@ -439,8 +440,14 @@ mod tests {
         let duration = Duration::from_secs(30);
         let action = ReconcileFunctionAction::Requeue(duration);
 
-        let pod1 = PodBuilder::new().name("pod1").build();
-        let pod2 = PodBuilder::new().name("pod2").build();
+        let pod1 = PodBuilder::new()
+            .metadata(ObjectMetaBuilder::new().name("pod1").build().unwrap())
+            .build()
+            .unwrap();
+        let pod2 = PodBuilder::new()
+            .metadata(ObjectMetaBuilder::new().name("pod2").build().unwrap())
+            .build()
+            .unwrap();
         let pods = vec![pod1, pod2];
         let result = wait_for_running_and_ready_pods(&duration, &pods).unwrap();
         assert_eq!(result, action);
@@ -448,20 +455,28 @@ mod tests {
         let result = wait_for_running_and_ready_pods(&duration, &[]).unwrap();
         assert_eq!(result, ReconcileFunctionAction::Continue);
 
-        let pod1 = PodBuilder::new().name("pod1").phase("Running").build();
+        let pod1 = PodBuilder::new()
+            .metadata(ObjectMetaBuilder::new().name("pod1").build().unwrap())
+            .phase("Running")
+            .build()
+            .unwrap();
         let result = wait_for_running_and_ready_pods(&duration, vec![pod1].as_slice()).unwrap();
         assert_eq!(result, action);
 
         let pod1 = PodBuilder::new()
-            .name("pod1")
+            .metadata(ObjectMetaBuilder::new().name("pod1").build().unwrap())
             .phase("Running")
             .with_condition("Ready", "True")
-            .build();
+            .build()
+            .unwrap();
         let result =
             wait_for_running_and_ready_pods(&duration, vec![pod1.clone()].as_slice()).unwrap();
         assert_eq!(result, ReconcileFunctionAction::Continue);
 
-        let pod2 = PodBuilder::new().name("pod2").build();
+        let pod2 = PodBuilder::new()
+            .metadata(ObjectMetaBuilder::new().name("pod2").build().unwrap())
+            .build()
+            .unwrap();
         let result =
             wait_for_running_and_ready_pods(&duration, vec![pod1, pod2].as_slice()).unwrap();
         assert_eq!(result, action);
@@ -472,14 +487,14 @@ mod tests {
         let duration = Duration::from_secs(30);
         let action = ReconcileFunctionAction::Requeue(duration);
 
-        let pod1 = PodBuilder::new()
-            .deletion_timestamp(Time(Utc::now()))
-            .build();
+        let mut pod1 = PodBuilder::new().metadata_default().build().unwrap();
+
+        pod1.metadata.deletion_timestamp = Some(Time(Utc::now()));
 
         let result = wait_for_terminating_pods(&duration, vec![pod1.clone()].as_slice()).unwrap();
         assert_eq!(result, action);
 
-        let pod2 = PodBuilder::new().build();
+        let pod2 = PodBuilder::new().metadata_default().build().unwrap();
         let result = wait_for_terminating_pods(&duration, vec![pod2.clone()].as_slice()).unwrap();
         assert_eq!(result, ReconcileFunctionAction::Continue);
 
