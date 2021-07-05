@@ -36,7 +36,7 @@
 //!
 //! ```yaml
 //!   leader:
-//!     selectors:
+//!     roleGroups:
 //!       default:
 //!         selector:
 //!           matchLabels:
@@ -117,9 +117,10 @@ where
     T: Configuration + 'static,
 {
     /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
-    /// and used in [`Role`] into a Box of the dynamically dispatched
+    /// and used in [`Role`] into a Box of a dynamically dispatched
     /// [`crate::product_config_utils::Configuration`] Trait. This is required to use the generic
-    /// [`Role`] with more than a single generic struct.
+    /// [`Role`] with more than a single generic struct. For example different roles most likely
+    /// have different structs implementing Configuration.
     pub fn into_dyn(self) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>> {
         Role {
             config: self.config.map(|common| CommonConfiguration {
