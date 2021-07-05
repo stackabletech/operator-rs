@@ -278,13 +278,6 @@ fn process_validation_result(
                     collected_errors.push(err.clone());
                 }
             }
-            PropertyValidationResult::Unknown(value) => {
-                debug!(
-                    "Property [{}] is unknown (no validation) and set to value [{}]",
-                    key, value
-                );
-                properties.insert(key.clone(), value.clone());
-            }
         }
     }
 
