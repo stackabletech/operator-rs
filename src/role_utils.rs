@@ -72,7 +72,7 @@
 //! * app.kubernetes.io/instance - The name of the parent resource, this is useful so an operator can list all its pods by using a LabelSelector
 //! * app.kubernetes.io/version - The current version of the application
 //! * app.kubernetes.io/component - The role/role type, this is used to distinguish multiple pods on the same node from each other
-//! * app.kubernetes.io/part-of - The name of a higher level application this one is part of. In our case this will usually be the same as `name`
+//! * app.kubernetes.io/part-of - The name of a higher level application this one is part of. We have decided to leave this empty for now.
 //! * app.kubernetes.io/managed-by - The tool being used to manage the operation of an application (e.g. "zookeeper-operator")
 //! * app.kubernetes.io/role-group - The name of the role group this pod belongs to
 //!
