@@ -33,7 +33,7 @@ pub fn create_tolerations() -> Vec<Toleration> {
 /// At the moment this label is "type" with the value "krustlet" and we'll use match_labels.
 ///
 /// WARN: Should a label "type" already be used this will be overridden!
-/// If this is really needed add a match…expression
+/// If this is really needed add a match_expression
 ///
 /// We will not however change the original LabelSelector, a new one will be returned.
 pub fn add_stackable_selector(selector: Option<&LabelSelector>) -> LabelSelector {

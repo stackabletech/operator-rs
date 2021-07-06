@@ -1,7 +1,7 @@
+pub mod builder;
 pub mod client;
 pub mod command_controller;
 pub mod conditions;
-pub mod config_map;
 pub mod controller;
 pub mod controller_ref;
 pub mod controller_utils;
@@ -14,7 +14,6 @@ pub mod krustlet;
 pub mod label_selector;
 pub mod labels;
 pub mod logging;
-pub mod metadata;
 pub mod namespace;
 pub mod pod_utils;
 pub mod product_config_utils;
@@ -24,6 +23,3 @@ pub mod status;
 pub mod validation;
 
 pub use crate::crd::CustomResourceExt;
-
-#[cfg(test)]
-mod test;
