@@ -2,7 +2,6 @@ pub mod client;
 pub mod command_controller;
 pub mod conditions;
 pub mod config_map;
-pub mod config_option;
 pub mod controller;
 pub mod controller_ref;
 pub mod controller_utils;
