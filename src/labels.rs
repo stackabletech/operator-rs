@@ -45,3 +45,15 @@ where
 
     recommended_labels
 }
+
+/// The APP_NAME_LABEL (Spark, Kafka, ZooKeeper...) and APP_INSTANCES_LABEL (simple, test ...) are
+/// required to identify resources that belong to a certain Custom Resource.
+pub fn build_common_labels_for_all_managed_resources(
+    app_name: &str,
+    app_instance: &str,
+) -> BTreeMap<String, String> {
+    let mut labels = BTreeMap::new();
+    labels.insert(APP_NAME_LABEL.to_string(), app_name.to_string());
+    labels.insert(APP_INSTANCE_LABEL.to_string(), app_instance.to_string());
+    labels
+}
