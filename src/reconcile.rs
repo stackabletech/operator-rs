@@ -1,7 +1,7 @@
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
 use crate::k8s_utils::LabelOptionalValueMap;
-use crate::{conditions, controller_ref, finalizer, labels, pod_utils};
+use crate::{conditions, controller_ref, finalizer, pod_utils};
 
 use crate::conditions::ConditionStatus;
 use crate::k8s_utils::find_excess_pods;
@@ -142,7 +142,10 @@ where
     /// as its value.
     /// You need to make sure to always set this label correctly!
     /// One way to achieve this is by using the [`labels::get_recommended_labels`] method.
-    pub async fn list_owned<R>(&self) -> OperatorResult<Vec<R>>
+    pub async fn list_owned<R>(
+        &self,
+        match_labels: BTreeMap<String, String>,
+    ) -> OperatorResult<Vec<R>>
     where
         R: Clone + Debug + DeserializeOwned + Resource,
         <R as Resource>::DynamicType: Default,
@@ -155,9 +158,6 @@ where
             .ok_or(Error::MissingObjectKey {
                 key: ".metadata.uid",
             })?;
-
-        let mut match_labels = BTreeMap::new();
-        match_labels.insert(labels::APP_NAME_LABEL.to_string(), self.name());
 
         let label_selector = LabelSelector {
             match_labels,

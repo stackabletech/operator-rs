@@ -18,14 +18,13 @@ pub const APP_PART_OF_LABEL: &str = concatcp!(APP_KUBERNETES_LABEL_BASE, "part-o
 pub const APP_MANAGED_BY_LABEL: &str = concatcp!(APP_KUBERNETES_LABEL_BASE, "managed-by");
 pub const APP_ROLE_GROUP_LABEL: &str = concatcp!(APP_KUBERNETES_LABEL_BASE, "role-group");
 
-/// Create kubernetes recommended labels:
-/// - app.kubernetes.io/instance
+/// Create kubernetes recommended labels
 pub fn get_recommended_labels<T>(
     resource: &T,
     app_name: &str,
     app_version: &str,
-    app_component: &str,
-    role_name: &str,
+    app_role: &str,
+    app_role_group: &str,
 ) -> BTreeMap<String, String>
 where
     T: Resource,
@@ -37,8 +36,8 @@ where
     recommended_labels.insert(APP_INSTANCE_LABEL.to_string(), resource.name());
     recommended_labels.insert(APP_NAME_LABEL.to_string(), app_name.to_string());
     recommended_labels.insert(APP_VERSION_LABEL.to_string(), app_version.to_string());
-    recommended_labels.insert(APP_COMPONENT_LABEL.to_string(), app_component.to_string());
-    recommended_labels.insert(APP_ROLE_GROUP_LABEL.to_string(), role_name.to_string());
+    recommended_labels.insert(APP_COMPONENT_LABEL.to_string(), app_role.to_string());
+    recommended_labels.insert(APP_ROLE_GROUP_LABEL.to_string(), app_role_group.to_string());
     recommended_labels.insert(
         APP_MANAGED_BY_LABEL.to_string(),
         format!("{}-operator", app_name),
