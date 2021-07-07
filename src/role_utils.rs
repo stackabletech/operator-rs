@@ -116,6 +116,11 @@ impl<T> From<Role<T>> for Role<Box<dyn Configuration<Configurable = T::Configura
 where
     T: Configuration + 'static,
 {
+    /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
+    /// and used in [`Role`] into a Box of a dynamically dispatched
+    /// [`crate::product_config_utils::Configuration`] Trait. This is required to use the generic
+    /// [`Role`] with more than a single generic struct. For example different roles most likely
+    /// have different structs implementing Configuration.
     fn from(role: Role<T>) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>> {
         Role {
             config: role.config.map(|common| CommonConfiguration {
