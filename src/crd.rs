@@ -79,16 +79,12 @@ where
         info!("CRD already exists in the cluster");
         Ok(())
     } else {
-        println!("not detected");
         info!("CRD not detected in Kubernetes. Attempting to create it.");
-
         loop {
-            println!("trying to create");
             match create::<T>(client).await {
-                Ok(a) => break a,
-                Err(err) => println!("{:?}", err),
+                Ok(res) => break res,
+                Err(err) => warn!("Error creating CRD, will try again: {:?}", err),
             }
-            println!("waiting");
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
         wait_created::<T>(client).await?;
