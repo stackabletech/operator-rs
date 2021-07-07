@@ -2,67 +2,48 @@ use std::time::Duration;
 
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
 use kube::core::ResourceExt;
+use kube::CustomResource;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use serial_test::serial;
+use stackable_operator::client;
 use stackable_operator::client::Client;
-use stackable_operator::crd::{ensure_crd_created, wait_until_crds_present};
-use stackable_operator::{client, CustomResourceExt};
+use stackable_operator::crd::{
+    ensure_crd_created, wait_until_crds_present, NamedCustomResourceExt,
+};
 
+#[derive(Clone, CustomResource, Debug, Deserialize, Serialize, JsonSchema)]
+#[kube(
+    group = "zookeeper.stackable.tech",
+    version = "v1",
+    kind = "TestCrdStruct",
+    shortname = "zk",
+    namespaced
+)]
 struct TestCrd {}
 
-impl CustomResourceExt for TestCrd {
+impl NamedCustomResourceExt for TestCrdStruct {
     const RESOURCE_NAME: &'static str = "tests.stackable.tech";
-    const CRD_DEFINITION: &'static str = r#"
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: tests.stackable.tech
-spec:
-  group: stackable.tech
-  versions:
-    - name: v1
-      served: true
-      storage: true
-      schema:
-        openAPIV3Schema:
-          type: object
-  scope: Namespaced
-  names:
-    plural: tests
-    singular: test
-    kind: Test
-"#;
 }
 
+#[derive(Clone, CustomResource, Debug, Deserialize, Serialize, JsonSchema)]
+#[kube(
+    group = "zookeeper.stackable.tech",
+    version = "v1",
+    kind = "TestCrd2Struct",
+    shortname = "zk",
+    namespaced
+)]
 struct TestCrd2 {}
 
-impl CustomResourceExt for TestCrd2 {
+impl NamedCustomResourceExt for TestCrd2Struct {
     const RESOURCE_NAME: &'static str = "tests2.stackable.tech";
-    const CRD_DEFINITION: &'static str = r#"
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: tests2.stackable.tech
-spec:
-  group: stackable.tech
-  versions:
-    - name: v1
-      served: true
-      storage: true
-      schema:
-        openAPIV3Schema:
-          type: object
-  scope: Namespaced
-  names:
-    plural: tests2
-    singular: test2
-    kind: Test2
-"#;
 }
 
 async fn setup(client: &Client) {
     tokio::time::timeout(
         Duration::from_secs(30),
-        ensure_crd_created::<TestCrd>(&client),
+        ensure_crd_created::<TestCrdStruct>(&client),
     )
     .await
     .expect("CRD not created in time")
@@ -70,7 +51,7 @@ async fn setup(client: &Client) {
 
     tokio::time::timeout(
         Duration::from_secs(30),
-        ensure_crd_created::<TestCrd2>(&client),
+        ensure_crd_created::<TestCrd2Struct>(&client),
     )
     .await
     .expect("CRD not created in time")
@@ -80,7 +61,7 @@ async fn setup(client: &Client) {
 async fn tear_down(client: &Client) {
     let mut operations = vec![];
 
-    for crd_name in &[TestCrd::RESOURCE_NAME, TestCrd2::RESOURCE_NAME] {
+    for crd_name in &[TestCrdStruct::RESOURCE_NAME, TestCrd2Struct::RESOURCE_NAME] {
         if let Ok(crd) = client.get::<CustomResourceDefinition>(crd_name, None).await {
             operations.push(client.ensure_deleted(crd));
         }
@@ -143,7 +124,7 @@ async fn k8s_test_wait_for_crds() {
         Duration::from_secs(30),
         wait_until_crds_present(
             &client,
-            vec![TestCrd::RESOURCE_NAME],
+            vec![TestCrdStruct::RESOURCE_NAME],
             Some(Duration::from_secs(10)),
         ),
     )
@@ -160,7 +141,7 @@ async fn k8s_test_wait_for_crds() {
         Duration::from_secs(30),
         wait_until_crds_present(
             &client,
-            vec![TestCrd::RESOURCE_NAME, "MissingCrdName"],
+            vec![TestCrdStruct::RESOURCE_NAME, "MissingCrdName"],
             Some(Duration::from_secs(10)),
         ),
     )
@@ -182,7 +163,7 @@ async fn k8s_test_wait_for_crds() {
         Duration::from_secs(30),
         wait_until_crds_present(
             &client,
-            vec![TestCrd::RESOURCE_NAME, TestCrd2::RESOURCE_NAME],
+            vec![TestCrdStruct::RESOURCE_NAME, TestCrd2Struct::RESOURCE_NAME],
             Some(Duration::from_secs(10)),
         ),
     )
@@ -200,8 +181,8 @@ async fn k8s_test_wait_for_crds() {
         wait_until_crds_present(
             &client,
             vec![
-                TestCrd::RESOURCE_NAME,
-                TestCrd2::RESOURCE_NAME,
+                TestCrdStruct::RESOURCE_NAME,
+                TestCrd2Struct::RESOURCE_NAME,
                 "missing1",
                 "missing2",
             ],
@@ -236,21 +217,21 @@ async fn k8s_test_test_ensure_crd_created() {
 
     tokio::time::timeout(
         Duration::from_secs(30),
-        ensure_crd_created::<TestCrd>(&client),
+        ensure_crd_created::<TestCrdStruct>(&client),
     )
     .await
     .expect("CRD not created in time")
     .expect("Error while creating CRD");
 
     client
-        .exists::<CustomResourceDefinition>(TestCrd::RESOURCE_NAME, None)
+        .exists::<CustomResourceDefinition>(TestCrdStruct::RESOURCE_NAME, None)
         .await
         .expect("CRD should be created");
     let created_crd: CustomResourceDefinition = client
-        .get(TestCrd::RESOURCE_NAME.as_ref(), None)
+        .get(TestCrdStruct::RESOURCE_NAME.as_ref(), None)
         .await
         .unwrap();
-    assert_eq!(TestCrd::RESOURCE_NAME, created_crd.name());
+    assert_eq!(TestCrdStruct::RESOURCE_NAME, created_crd.name());
 
     tear_down(&client).await;
 }

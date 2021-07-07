@@ -59,6 +59,8 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
     }
 }
 
+impl<T> CustomResourceExt for T where T: kube::CustomResourceExt {}
+
 /// Makes sure CRD of given type `T` is running and accepted by the Kubernetes apiserver.
 /// If the CRD already exists at the time this method is invoked, this method exits.
 /// If there is no CRD of type `T` yet, it will attempt to create it and verify k8s apiserver

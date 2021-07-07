@@ -5,7 +5,7 @@
 //!
 //! ```no_run
 //! use kube::CustomResource;
-//! use stackable_operator::CustomResourceExt;
+//! use stackable_operator::crd::NamedCustomResourceExt;
 //! use stackable_operator::{client, error};
 //! use stackable_operator::client::Client;
 //! use stackable_operator::error::Error;
@@ -29,9 +29,8 @@
 //! #[serde(rename_all = "camelCase")]
 //! pub struct FooClusterStatus {}
 //!
-//! impl CustomResourceExt for FooCluster {
+//! impl NamedCustomResourceExt for FooCluster {
 //!     const RESOURCE_NAME: &'static str = "fooclusters.foo.stackable.tech";
-//!     const CRD_DEFINITION: &'static str = "...";
 //! }
 //!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -57,46 +56,8 @@
 //!     }
 //! }
 //!
-//! impl CustomResourceExt for Bar {
+//! impl NamedCustomResourceExt for Bar {
 //!     const RESOURCE_NAME: &'static str = "bars.command.foo.stackable.tech";
-//!     const CRD_DEFINITION: &'static str = "
-//! apiVersion: apiextensions.k8s.io/v1
-//! kind: CustomResourceDefinition
-//! metadata:
-//!   name: bars.command.foo.stackable.tech
-//! spec:
-//!   group: command.foo.stackable.tech
-//!   names:
-//!     kind: Bar
-//!     singular: bar
-//!     plural: bars
-//!     listKind: BarList
-//!   scope: Namespaced
-//!   versions:
-//!     - name: v1
-//!       served: true
-//!       storage: true
-//!       schema:
-//!         openAPIV3Schema:
-//!           type: object
-//!           properties:
-//!             spec:
-//!               type: object
-//!               properties:
-//!                 name:
-//!                   type: string
-//!             status:
-//!               nullable: true
-//!               type: object
-//!               properties:
-//!                 startedAt:
-//!                   type: string
-//!                 finishedAt:
-//!                   type: string
-//!                 message:
-//!                   type: string
-//!       subresources:
-//!         status: {}";
 //! }
 //!
 //!
