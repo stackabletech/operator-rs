@@ -61,12 +61,14 @@ pub trait Configuration {
 }
 
 /// Type to sort config properties via kind (files, env, cli), via groups and via roles.
+/// HashMap<Role, HashMap<RoleGroup, HashMap<PropertyNameKind, BTreeMap<PropertyName, PropertyValue>>>>
 pub type RoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>>;
 
 /// Type to sort config properties via kind (files, env, cli), via groups and via roles. This
 /// is the validated output to be used in other operators. The difference to [`RoleConfigByPropertyKind`]
 /// is that the properties BTreeMap does not contain any options.
+/// /// HashMap<Role, HashMap<RoleGroup, HashMap<PropertyNameKind, BTreeMap<PropertyName, Option<PropertyValue>>>>>
 pub type ValidatedRoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, String>>>>;
 
@@ -77,11 +79,11 @@ pub type ValidatedRoleConfigByPropertyKind =
 /// - `role`        - The role name.
 /// - `group`       - The role group name.
 /// - `role_config` - The validated product configuration for each role and group.  
-pub fn config_for_role_and_group(
+pub fn config_for_role_and_group<'a>(
     role: &str,
     group: &str,
-    role_config: &ValidatedRoleConfigByPropertyKind,
-) -> OperatorResult<HashMap<PropertyNameKind, BTreeMap<String, String>>> {
+    role_config: &'a ValidatedRoleConfigByPropertyKind,
+) -> OperatorResult<&'a HashMap<PropertyNameKind, BTreeMap<String, String>>> {
     let result = match role_config.get(role) {
         None => {
             return Err(error::Error::MissingRole {
@@ -95,7 +97,7 @@ pub fn config_for_role_and_group(
                     role_group: group.to_string(),
                 })
             }
-            Some(config_by_property_kind) => config_by_property_kind.clone(),
+            Some(config_by_property_kind) => config_by_property_kind,
         },
     };
 
@@ -109,9 +111,9 @@ pub fn config_for_role_and_group(
 /// the values are the merged configuration properties "bucketed" by `PropertyNameKind`.
 ///
 /// # Arguments
-/// - `resource`         - Not used directly. It's passed on to the `Configuration::compute_*` calls.
-/// - `roles`            - A map keyed by role names. The value is a tuple of the [`crate::role_utils::Role`] and
-///                        required PropertyNameKind like (Cli, Env or Files).
+/// - `resource`  - Not used directly. It's passed on to the `Configuration::compute_*` calls.
+/// - `roles`     - A map keyed by role names. The value is a tuple of a vector of `PropertyNameKind`
+///                 like (Cli, Env or Files) and [`crate::role_utils::Role`] with a boxed [`Configuration`].
 pub fn transform_all_roles_to_config<T: ?Sized>(
     resource: &T::Configurable,
     roles: HashMap<String, (Vec<PropertyNameKind>, Role<Box<T>>)>,
@@ -130,13 +132,12 @@ where
     result
 }
 
-/// Validates a product configuration for all existing role and role_groups. Requires a valid
-/// product config and existing [`RoleConfigByPropertyKind`] that can be obtained via
-/// `transform_all_roles_to_config`.  
+/// Validates a product configuration for all roles and role_groups. Requires a valid product config
+/// and [`RoleConfigByPropertyKind`] which can be obtained via `transform_all_roles_to_config`.  
 ///
 /// # Arguments
 /// - `version`            - The version of the product to be configured.
-/// - `role_config`        - Collected information about all roles, according role groups, required
+/// - `role_config`        - Collected information about all roles, role groups, required
 ///                          properties sorted by config files, CLI parameters and ENV variables.
 /// - `product_config`     - The [`product_config::ProductConfigManager`] used to validate the provided
 ///                          user data.
@@ -1311,7 +1312,7 @@ mod tests {
             config_for_role_and_group(role_1, role_group_1, &full_validated_config).unwrap();
         assert_eq!(
             expected.get(role_1).unwrap().get(role_group_1).unwrap(),
-            &valid_config_for_role_and_group
+            valid_config_for_role_and_group
         );
 
         let config_for_wrong_role =
