@@ -9,26 +9,23 @@ use crate::error::OperatorResult;
 use backoff::backoff::Backoff;
 use backoff::ExponentialBackoff;
 use kube::api::ListParams;
+use kube::ResourceExt;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-pub trait NamedCustomResourceExt {
-    /// The name of the CustomResourceDefinition in Kubernetes.
-    /// Note: This is not the name of an _instance_ of this definition.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// const RESOURCE_NAME: &'static str = "foo.bar.stackable.tech";
-    /// ```
-    const RESOURCE_NAME: &'static str;
-}
-
 /// This trait can be implemented to allow automatic handling
 /// (e.g. creation) of `CustomResourceDefinition`s in Kubernetes.
 pub trait CustomResourceExt: kube::CustomResourceExt {
+    /// Returns the name of this `CustomResourceDefinition` in Kubernetes.
+    ///
+    /// Note: This is the name of the CRD itself and not an instance of it.
+    // TODO: This can be removed when https://github.com/clux/kube-rs/pull/583 is merged
+    fn crd_name() -> String {
+        Self::crd().name()
+    }
+
     /// Generates a YAML CustomResourceDefinition and writes it to a `Write`r.
     fn generate_yaml_schema<W>(mut writer: W) -> OperatorResult<()>
     where
@@ -73,21 +70,25 @@ impl<T> CustomResourceExt for T where T: kube::CustomResourceExt {}
 ///     retries indefinitely.
 pub async fn ensure_crd_created<T>(client: &Client) -> OperatorResult<()>
 where
-    T: CustomResourceExt + NamedCustomResourceExt,
+    T: CustomResourceExt,
 {
     if client
-        .exists::<CustomResourceDefinition>(T::RESOURCE_NAME, None)
+        .exists::<CustomResourceDefinition>(&T::crd_name(), None)
         .await?
     {
         info!("CRD already exists in the cluster");
         Ok(())
     } else {
+        println!("not detected");
         info!("CRD not detected in Kubernetes. Attempting to create it.");
 
         loop {
-            if let Ok(res) = create::<T>(client).await {
-                break res;
+            println!("trying to create");
+            match create::<T>(client).await {
+                Ok(a) => break a,
+                Err(err) => println!("{:?}", err),
             }
+            println!("waiting");
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
         wait_created::<T>(client).await?;
@@ -224,10 +225,10 @@ where
 /// Waits until CRD of given type `T` is applied to Kubernetes.
 pub async fn wait_created<T>(client: &Client) -> OperatorResult<()>
 where
-    T: CustomResourceExt + NamedCustomResourceExt,
+    T: CustomResourceExt,
 {
     let lp: ListParams = ListParams {
-        field_selector: Some(format!("metadata.name={}", T::RESOURCE_NAME)),
+        field_selector: Some(format!("metadata.name={}", T::crd_name())),
         ..ListParams::default()
     };
     client

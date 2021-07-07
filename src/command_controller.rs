@@ -5,7 +5,6 @@
 //!
 //! ```no_run
 //! use kube::CustomResource;
-//! use stackable_operator::crd::NamedCustomResourceExt;
 //! use stackable_operator::{client, error};
 //! use stackable_operator::client::Client;
 //! use stackable_operator::error::Error;
@@ -29,10 +28,6 @@
 //! #[serde(rename_all = "camelCase")]
 //! pub struct FooClusterStatus {}
 //!
-//! impl NamedCustomResourceExt for FooCluster {
-//!     const RESOURCE_NAME: &'static str = "fooclusters.foo.stackable.tech";
-//! }
-//!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 //! #[kube(
 //!     group = "command.foo.stackable.tech",
@@ -55,11 +50,6 @@
 //!         self.spec.name.clone()
 //!     }
 //! }
-//!
-//! impl NamedCustomResourceExt for Bar {
-//!     const RESOURCE_NAME: &'static str = "bars.command.foo.stackable.tech";
-//! }
-//!
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(),Error> {
