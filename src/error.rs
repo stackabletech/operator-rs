@@ -62,6 +62,15 @@ pub enum Error {
         #[from]
         source: product_config_utils::ConfigError,
     },
+
+    #[error("IO Error: {source}")]
+    IoError {
+        #[from]
+        source: std::io::Error,
+    },
+
+    #[error("Error converting CRD byte array to UTF-8")]
+    FromUtf8Error(#[from] std::string::FromUtf8Error),
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;

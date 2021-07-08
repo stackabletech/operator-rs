@@ -9,26 +9,54 @@ use crate::error::OperatorResult;
 use backoff::backoff::Backoff;
 use backoff::ExponentialBackoff;
 use kube::api::ListParams;
+use kube::ResourceExt;
 use std::collections::HashSet;
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
 
 /// This trait can be implemented to allow automatic handling
 /// (e.g. creation) of `CustomResourceDefinition`s in Kubernetes.
-pub trait Crd {
-    /// The name of the Resource in Kubernetes
+pub trait CustomResourceExt: kube::CustomResourceExt {
+    /// Returns the name of this `CustomResourceDefinition` in Kubernetes.
     ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// const RESOURCE_NAME: &'static str = "foo.bar.stackable.tech";
-    /// ```
-    const RESOURCE_NAME: &'static str;
+    /// Note: This is the name of the CRD itself and not an instance of it.
+    // TODO: This can be removed when https://github.com/clux/kube-rs/pull/583 is released (probably in kube-rs 0.59)
+    fn crd_name() -> String {
+        Self::crd().name()
+    }
 
-    /// The full YAML definition of the CRD.
-    /// In theory this can be generated from the structs itself but the kube-rs library
-    /// we use currently does not generate the required [schema](https://github.com/clux/kube-rs/issues/264)
-    /// and it also has no support for [validation](https://github.com/clux/kube-rs/issues/129)
-    const CRD_DEFINITION: &'static str;
+    /// Generates a YAML CustomResourceDefinition and writes it to a `Write`.
+    fn generate_yaml_schema<W>(mut writer: W) -> OperatorResult<()>
+    where
+        W: Write,
+    {
+        let schema = serde_yaml::to_string(&Self::crd())?;
+        writer.write_all(schema.as_bytes())?;
+        Ok(())
+    }
+
+    /// Generates a YAML CustomResourceDefinition and writes it to the specified file.
+    fn write_yaml_schema<P: AsRef<Path>>(path: P) -> OperatorResult<()> {
+        let writer = File::create(path)?;
+        Self::generate_yaml_schema(writer)
+    }
+
+    /// Generates a YAML CustomResourceDefinition and prints it to stdout.
+    fn print_yaml_schema() -> OperatorResult<()> {
+        let writer = std::io::stdout();
+        Self::generate_yaml_schema(writer)
+    }
+
+    // Returns the YAML schema of this CustomResourceDefinition as a string.
+    fn yaml_schema() -> OperatorResult<String> {
+        let mut writer = Vec::new();
+        Self::generate_yaml_schema(&mut writer)?;
+        Ok(String::from_utf8(writer)?)
+    }
 }
+
+impl<T> CustomResourceExt for T where T: kube::CustomResourceExt {}
 
 /// Makes sure CRD of given type `T` is running and accepted by the Kubernetes apiserver.
 /// If the CRD already exists at the time this method is invoked, this method exits.
@@ -42,20 +70,20 @@ pub trait Crd {
 ///     retries indefinitely.
 pub async fn ensure_crd_created<T>(client: &Client) -> OperatorResult<()>
 where
-    T: Crd,
+    T: CustomResourceExt,
 {
     if client
-        .exists::<CustomResourceDefinition>(T::RESOURCE_NAME, None)
+        .exists::<CustomResourceDefinition>(&T::crd_name(), None)
         .await?
     {
         info!("CRD already exists in the cluster");
         Ok(())
     } else {
         info!("CRD not detected in Kubernetes. Attempting to create it.");
-
         loop {
-            if let Ok(res) = create::<T>(client).await {
-                break res;
+            match create::<T>(client).await {
+                Ok(res) => break res,
+                Err(err) => warn!("Error creating CRD, will try again: {:?}", err),
             }
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
@@ -185,19 +213,18 @@ async fn check_crd(client: &Client, crd_name: &str) -> OperatorResult<(String, b
 /// just that it has been accepted by the apiserver.
 async fn create<T>(client: &Client) -> OperatorResult<()>
 where
-    T: Crd,
+    T: CustomResourceExt,
 {
-    let crd: CustomResourceDefinition = serde_yaml::from_str(T::CRD_DEFINITION)?;
-    client.create(&crd).await.and(Ok(()))
+    client.create(&T::crd()).await.and(Ok(()))
 }
 
 /// Waits until CRD of given type `T` is applied to Kubernetes.
 pub async fn wait_created<T>(client: &Client) -> OperatorResult<()>
 where
-    T: Crd,
+    T: CustomResourceExt,
 {
     let lp: ListParams = ListParams {
-        field_selector: Some(format!("metadata.name={}", T::RESOURCE_NAME)),
+        field_selector: Some(format!("metadata.name={}", T::crd_name())),
         ..ListParams::default()
     };
     client
