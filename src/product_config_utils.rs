@@ -1,14 +1,16 @@
+use crate::error;
+use crate::error::*;
 use crate::role_utils::{CommonConfiguration, Role};
 use product_config::types::PropertyNameKind;
-use product_config::PropertyValidationResult;
+use product_config::{ProductConfigManager, PropertyValidationResult};
 use std::collections::{BTreeMap, HashMap};
 use thiserror::Error;
 use tracing::{debug, error, warn};
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
-    #[error("Invalid configuration found")]
-    InvalidConfiguration,
+    #[error("Invalid configuration found: {reason}")]
+    InvalidConfiguration { reason: String },
 
     #[error("Collected product config validation errors: {collected_errors:?}")]
     ProductConfigErrors {
@@ -42,25 +44,65 @@ pub trait Configuration {
         &self,
         resource: &Self::Configurable,
         role_name: &str,
-    ) -> Result<BTreeMap<String, String>, ConfigError>;
+    ) -> Result<BTreeMap<String, Option<String>>, ConfigError>;
 
     fn compute_cli(
         &self,
         resource: &Self::Configurable,
         role_name: &str,
-    ) -> Result<BTreeMap<String, String>, ConfigError>;
+    ) -> Result<BTreeMap<String, Option<String>>, ConfigError>;
 
     fn compute_files(
         &self,
         resource: &Self::Configurable,
         role_name: &str,
         file: &str,
-    ) -> Result<BTreeMap<String, String>, ConfigError>;
+    ) -> Result<BTreeMap<String, Option<String>>, ConfigError>;
 }
 
-// This deep map causes problems with clippy and fmt.
+/// Type to sort config properties via kind (files, env, cli), via groups and via roles.
+/// HashMap<Role, HashMap<RoleGroup, HashMap<PropertyNameKind, BTreeMap<PropertyName, PropertyValue>>>>
 pub type RoleConfigByPropertyKind =
+    HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>>;
+
+/// Type to sort config properties via kind (files, env, cli), via groups and via roles. This
+/// is the validated output to be used in other operators. The difference to [`RoleConfigByPropertyKind`]
+/// is that the properties BTreeMap does not contain any options.
+/// /// HashMap<Role, HashMap<RoleGroup, HashMap<PropertyNameKind, BTreeMap<PropertyName, Option<PropertyValue>>>>>
+pub type ValidatedRoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, String>>>>;
+
+/// Extracts the config properties keyed by PropertyKindName (files, cli, env) for a role and
+/// role group.
+///
+/// # Arguments
+/// - `role`        - The role name.
+/// - `group`       - The role group name.
+/// - `role_config` - The validated product configuration for each role and group.  
+pub fn config_for_role_and_group<'a>(
+    role: &str,
+    group: &str,
+    role_config: &'a ValidatedRoleConfigByPropertyKind,
+) -> OperatorResult<&'a HashMap<PropertyNameKind, BTreeMap<String, String>>> {
+    let result = match role_config.get(role) {
+        None => {
+            return Err(error::Error::MissingRole {
+                role: role.to_string(),
+            })
+        }
+        Some(group_config) => match group_config.get(group) {
+            None => {
+                return Err(error::Error::MissingRoleGroup {
+                    role: role.to_string(),
+                    role_group: group.to_string(),
+                })
+            }
+            Some(config_by_property_kind) => config_by_property_kind,
+        },
+    };
+
+    Ok(result)
+}
 
 /// Given the configuration parameters of all `roles` partition them by `PropertyNameKind` and
 /// merge them with the role groups configuration parameters.
@@ -69,25 +111,113 @@ pub type RoleConfigByPropertyKind =
 /// the values are the merged configuration properties "bucketed" by `PropertyNameKind`.
 ///
 /// # Arguments
-/// - `resource`         - Not used directly. It's passed on to the `Configuration::compute_*` calls.
-/// - `roles`            - A map keyed by role names. The value is a tuple of the [`crate::role_utils::Role`] and
-///                        required PropertyNameKind like (Cli, Env or Files).
-pub fn transform_all_roles_to_config<T>(
+/// - `resource`  - Not used directly. It's passed on to the `Configuration::compute_*` calls.
+/// - `roles`     - A map keyed by role names. The value is a tuple of a vector of `PropertyNameKind`
+///                 like (Cli, Env or Files) and [`crate::role_utils::Role`] with a boxed [`Configuration`].
+pub fn transform_all_roles_to_config<T: ?Sized>(
     resource: &T::Configurable,
-    roles: HashMap<String, (Role<T>, Vec<PropertyNameKind>)>,
+    roles: HashMap<String, (Vec<PropertyNameKind>, Role<Box<T>>)>,
 ) -> RoleConfigByPropertyKind
 where
     T: Configuration,
 {
     let mut result = HashMap::new();
 
-    for (role_name, (role, property_name_kinds)) in &roles {
+    for (role_name, (property_name_kinds, role)) in &roles {
         let role_properties =
             transform_role_to_config(resource, role_name, role, property_name_kinds);
         result.insert(role_name.to_string(), role_properties);
     }
 
     result
+}
+
+/// Validates a product configuration for all roles and role_groups. Requires a valid product config
+/// and [`RoleConfigByPropertyKind`] which can be obtained via `transform_all_roles_to_config`.  
+///
+/// # Arguments
+/// - `version`            - The version of the product to be configured.
+/// - `role_config`        - Collected information about all roles, role groups, required
+///                          properties sorted by config files, CLI parameters and ENV variables.
+/// - `product_config`     - The [`product_config::ProductConfigManager`] used to validate the provided
+///                          user data.
+/// - `ignore_warn`        - A switch to ignore product config warnings and continue with
+///                          the value anyways. Not recommended!
+/// - `ignore_err`         - A switch to ignore product config errors and continue with
+///                          the value anyways. Not recommended!
+pub fn validate_all_roles_and_groups_config(
+    version: &str,
+    role_config: &RoleConfigByPropertyKind,
+    product_config: &ProductConfigManager,
+    ignore_warn: bool,
+    ignore_err: bool,
+) -> OperatorResult<ValidatedRoleConfigByPropertyKind> {
+    let mut result = HashMap::new();
+    for (role, role_group) in role_config {
+        result.insert(role.to_string(), HashMap::new());
+
+        for (group, properties_by_kind) in role_group {
+            result.get_mut(role).unwrap().insert(
+                group.clone(),
+                validate_role_and_group_config(
+                    version,
+                    role,
+                    properties_by_kind,
+                    product_config,
+                    ignore_warn,
+                    ignore_err,
+                )?,
+            );
+        }
+    }
+
+    Ok(result)
+}
+
+/// Calculates and validates a product configuration for a role and group. Requires a valid
+/// product config and existing [`RoleConfigByPropertyKind`] that can be obtained via
+/// `transform_all_roles_to_config`.  
+///
+/// # Arguments
+/// - `role`               - The name of the role
+/// - `version`            - The version of the product to be configured.
+/// - `properties_by_kind` - Config properties sorted by PropertyKind
+///                          and the resulting user configuration data. See [`RoleConfigByPropertyKind`].
+/// - `product_config`     - The [`product_config::ProductConfigManager`] used to validate the provided
+///                          user data.
+/// - `ignore_warn`        - A switch to ignore product config warnings and continue with
+///                          the value anyways. Not recommended!
+/// - `ignore_err`         - A switch to ignore product config errors and continue with
+///                          the value anyways. Not recommended!
+fn validate_role_and_group_config(
+    version: &str,
+    role: &str,
+    properties_by_kind: &HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>,
+    product_config: &ProductConfigManager,
+    ignore_warn: bool,
+    ignore_err: bool,
+) -> OperatorResult<HashMap<PropertyNameKind, BTreeMap<String, String>>> {
+    let mut result = HashMap::new();
+
+    for (property_name_kind, config) in properties_by_kind {
+        let validation_result = product_config
+            .get(
+                version,
+                role,
+                property_name_kind,
+                config.clone().into_iter().collect::<HashMap<_, _>>(),
+            )
+            .map_err(|err| ConfigError::InvalidConfiguration {
+                reason: err.to_string(),
+            })?;
+
+        let validated_config =
+            process_validation_result(&validation_result, ignore_warn, ignore_err)?;
+
+        result.insert(property_name_kind.clone(), validated_config);
+    }
+
+    Ok(result)
 }
 
 /// This transforms the [`product_config::types::PropertyValidationResult`] back into a pure BTreeMap which can be used
@@ -103,8 +233,8 @@ where
 /// - `ignore_err`          - A switch to ignore product config errors and continue with
 ///                           the value anyways. Not recommended!
 // TODO: boolean flags suck, move ignore_warn to be a flag
-pub fn process_validation_result(
-    validation_result: &HashMap<String, PropertyValidationResult>,
+fn process_validation_result(
+    validation_result: &BTreeMap<String, PropertyValidationResult>,
     ignore_warn: bool,
     ignore_err: bool,
 ) -> Result<BTreeMap<String, String>, ConfigError> {
@@ -114,7 +244,8 @@ pub fn process_validation_result(
     for (key, result) in validation_result.iter() {
         match result {
             PropertyValidationResult::Default(value) => {
-                debug!("Property [{}] is not explicitly set, will not set and rely on the default instead ([{}])", key, value);
+                debug!("Property [{}] is not explicitly set, will set and rely to the default instead ([{}])", key, value);
+                properties.insert(key.clone(), value.clone());
             }
             PropertyValidationResult::RecommendedDefault(value) => {
                 debug!(
@@ -125,6 +256,13 @@ pub fn process_validation_result(
             }
             PropertyValidationResult::Valid(value) => {
                 debug!("Property [{}] is set to valid value [{}]", key, value);
+                properties.insert(key.clone(), value.clone());
+            }
+            PropertyValidationResult::Unknown(value) => {
+                debug!(
+                    "Property [{}] is unknown (no validation) and set to value [{}]",
+                    key, value
+                );
                 properties.insert(key.clone(), value.clone());
             }
             PropertyValidationResult::Warn(value, err) => {
@@ -140,13 +278,6 @@ pub fn process_validation_result(
                 } else {
                     collected_errors.push(err.clone());
                 }
-            }
-            PropertyValidationResult::Unknown(value) => {
-                debug!(
-                    "Property [{}] is unknown (no validation) and set to value [{}]",
-                    key, value
-                );
-                properties.insert(key.clone(), value.clone());
             }
         }
     }
@@ -176,12 +307,12 @@ pub fn process_validation_result(
 /// - `role_name`      - The name of the role.
 /// - `role`           - The role for which to transform the configuration parameters.
 /// - `property_kinds` - Used as "buckets" to partition the configuration properties by.
-fn transform_role_to_config<T>(
+fn transform_role_to_config<T: ?Sized>(
     resource: &T::Configurable,
     role_name: &str,
-    role: &Role<T>,
+    role: &Role<Box<T>>,
     property_kinds: &[PropertyNameKind],
-) -> HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, String>>>
+) -> HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
     T: Configuration,
 {
@@ -220,12 +351,12 @@ where
 /// - `role_name`      - Not used directly but passed on to the `Configuration::compute_*` calls.
 /// - `config`         - The configuration properties to partition.
 /// - `property_kinds` - The "buckets" used to partition the configuration properties.
-fn parse_role_config<T>(
+fn parse_role_config<T: ?Sized>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<T>>,
+    config: &Option<CommonConfiguration<Box<T>>>,
     property_kinds: &[PropertyNameKind],
-) -> HashMap<PropertyNameKind, BTreeMap<String, String>>
+) -> HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>
 where
     T: Configuration,
 {
@@ -250,11 +381,11 @@ where
     result
 }
 
-fn parse_cli_properties<T>(
+fn parse_cli_properties<T: ?Sized>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<T>>,
-) -> BTreeMap<String, String>
+    config: &Option<CommonConfiguration<Box<T>>>,
+) -> BTreeMap<String, Option<String>>
 where
     T: Configuration,
 {
@@ -276,18 +407,18 @@ where
     }) = config
     {
         for (key, value) in config {
-            final_properties.insert(key.clone(), value.clone());
+            final_properties.insert(key.clone(), Some(value.clone()));
         }
     }
 
     final_properties
 }
 
-fn parse_env_properties<T>(
+fn parse_env_properties<T: ?Sized>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<T>>,
-) -> BTreeMap<String, String>
+    config: &Option<CommonConfiguration<Box<T>>>,
+) -> BTreeMap<String, Option<String>>
 where
     T: Configuration,
 {
@@ -309,19 +440,19 @@ where
     }) = config
     {
         for (key, value) in config {
-            final_properties.insert(key.clone(), value.clone());
+            final_properties.insert(key.clone(), Some(value.clone()));
         }
     }
 
     final_properties
 }
 
-fn parse_file_properties<T>(
+fn parse_file_properties<T: ?Sized>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<T>>,
+    config: &Option<CommonConfiguration<Box<T>>>,
     file: &str,
-) -> BTreeMap<String, String>
+) -> BTreeMap<String, Option<String>>
 where
     T: Configuration,
 {
@@ -347,7 +478,7 @@ where
         // For Conf files only process overrides that match our file name
         if let Some(config) = inner_config.get(file) {
             for (key, value) in config {
-                final_properties.insert(key.clone(), value.clone());
+                final_properties.insert(key.clone(), Some(value.clone()));
             }
         }
     }
@@ -372,6 +503,8 @@ mod tests {
     use crate::role_utils::{Role, RoleGroup};
     use rstest::*;
     use std::collections::HashMap;
+    use std::str::FromStr;
+
     const ROLE_GROUP: &str = "role_group";
 
     const ROLE_CONFIG: &str = "role_config";
@@ -404,10 +537,10 @@ mod tests {
             &self,
             _resource: &Self::Configurable,
             _role_name: &str,
-        ) -> Result<BTreeMap<String, String>, ConfigError> {
+        ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
             let mut result = BTreeMap::new();
             if let Some(env) = &self.env {
-                result.insert("env".to_string(), env.to_string());
+                result.insert("env".to_string(), Some(env.to_string()));
             }
             Ok(result)
         }
@@ -416,10 +549,10 @@ mod tests {
             &self,
             _resource: &Self::Configurable,
             _role_name: &str,
-        ) -> Result<BTreeMap<String, String>, ConfigError> {
+        ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
             let mut result = BTreeMap::new();
             if let Some(cli) = &self.cli {
-                result.insert("cli".to_string(), cli.to_string());
+                result.insert("cli".to_string(), Some(cli.to_string()));
             }
             Ok(result)
         }
@@ -429,29 +562,29 @@ mod tests {
             _resource: &Self::Configurable,
             _role_name: &str,
             _file: &str,
-        ) -> Result<BTreeMap<String, String>, ConfigError> {
+        ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
             let mut result = BTreeMap::new();
             if let Some(conf) = &self.conf {
-                result.insert("conf".to_string(), conf.to_string());
+                result.insert("file".to_string(), Some(conf.to_string()));
             }
             Ok(result)
         }
     }
 
-    fn build_test_config(conf: &str, env: &str, cli: &str) -> Option<TestConfig> {
-        Some(TestConfig {
+    fn build_test_config(conf: &str, env: &str, cli: &str) -> Option<Box<TestConfig>> {
+        Some(Box::new(TestConfig {
             conf: Some(conf.to_string()),
             env: Some(env.to_string()),
             cli: Some(cli.to_string()),
-        })
+        }))
     }
 
     fn build_common_config(
-        test_config: Option<TestConfig>,
+        test_config: Option<Box<TestConfig>>,
         config_overrides: Option<HashMap<String, HashMap<String, String>>>,
         env_overrides: Option<HashMap<String, String>>,
         cli_overrides: Option<BTreeMap<String, String>>,
-    ) -> Option<CommonConfiguration<TestConfig>> {
+    ) -> Option<CommonConfiguration<Box<TestConfig>>> {
         Some(CommonConfiguration {
             config: test_config,
             config_overrides,
@@ -482,7 +615,7 @@ mod tests {
         group_config: bool,
         role_overrides: bool,
         group_overrides: bool,
-    ) -> Role<TestConfig> {
+    ) -> Role<Box<TestConfig>> {
         let role_group = ROLE_GROUP.to_string();
         let file_name = "foo.conf";
 
@@ -729,9 +862,9 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -740,8 +873,8 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -750,8 +883,8 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -760,7 +893,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
                 }
             }
         }
@@ -769,9 +902,9 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => ROLE_ENV.to_string(),
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(ROLE_ENV.to_string()),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -780,8 +913,8 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => ROLE_ENV.to_string(),
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(ROLE_ENV.to_string()),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -790,8 +923,8 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => ROLE_ENV.to_string(),
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(ROLE_ENV.to_string()),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -800,7 +933,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => ROLE_ENV.to_string(),
+                    "env".to_string() => Some(ROLE_ENV.to_string()),
                 }
             }
         }
@@ -809,9 +942,9 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -820,8 +953,8 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -830,8 +963,8 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -840,7 +973,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => GROUP_ENV.to_string(),
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
                 }
             }
         }
@@ -849,8 +982,8 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -859,7 +992,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    ROLE_ENV_OVERRIDE.to_string() => ROLE_ENV_OVERRIDE.to_string(),
+                    ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -868,7 +1001,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string(),
+                    GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
         }
@@ -881,13 +1014,15 @@ mod tests {
             }
         }
     )]
-    #[trace]
     fn test_transform_role_to_config(
         #[case] role_config: bool,
         #[case] group_config: bool,
         #[case] role_overrides: bool,
         #[case] group_overrides: bool,
-        #[case] expected: HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, String>>>,
+        #[case] expected: HashMap<
+            String,
+            HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>,
+        >,
     ) {
         let role = build_role_and_group(role_config, group_config, role_overrides, group_overrides);
 
@@ -906,7 +1041,7 @@ mod tests {
             config: build_common_config(
                 build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
                 // should override
-                build_config_override(file_name, "conf"),
+                build_config_override(file_name, "file"),
                 None,
                 // should override
                 build_cli_override("cli"),
@@ -916,7 +1051,7 @@ mod tests {
                 config: build_common_config(
                     build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
                     // should override
-                    build_config_override(file_name, "conf"),
+                    build_config_override(file_name, "file"),
                     build_env_override(GROUP_ENV_OVERRIDE),
                     None),
                     selector: None,
@@ -928,16 +1063,16 @@ mod tests {
             collection!{
                 PropertyNameKind::File(file_name.to_string()) =>
                     collection!(
-                        "conf".to_string() => "conf".to_string()
+                        "file".to_string() => Some("file".to_string())
                     ),
                 PropertyNameKind::Env =>
                     collection!(
-                        "env".to_string() => GROUP_ENV.to_string(),
-                        GROUP_ENV_OVERRIDE.to_string() => GROUP_ENV_OVERRIDE.to_string()
+                        "env".to_string() => Some(GROUP_ENV.to_string()),
+                        GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string())
                     ),
                 PropertyNameKind::Cli =>
                     collection!(
-                        "cli".to_string() => GROUP_CLI.to_string(),
+                        "cli".to_string() => Some(GROUP_CLI.to_string()),
                     ),
             }
         };
@@ -961,8 +1096,8 @@ mod tests {
         let role_group_2 = "role_group_2";
         let file_name = "foo.bar";
 
-        let roles: HashMap<String, (Role<TestConfig>, Vec<PropertyNameKind>)> = collection! {
-            role_1.to_string() => (Role {
+        let roles: HashMap<String, (Vec<PropertyNameKind>, Role<Box<TestConfig>>)> = collection! {
+            role_1.to_string() => (vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env], Role {
             config: build_common_config(
                 build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
                 None,
@@ -989,9 +1124,8 @@ mod tests {
                 ),
                 selector: None,
             }}
-
-        }, vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env]),
-            role_2.to_string() => (Role {
+        }),
+            role_2.to_string() => (vec![PropertyNameKind::Cli], Role {
             config: build_common_config(
                 build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
                 None,
@@ -1008,32 +1142,32 @@ mod tests {
                 ),
                 selector: None,
             }},
-        }, vec![PropertyNameKind::Cli])
+        })
         };
 
         let expected: RoleConfigByPropertyKind = collection! {
         role_1.to_string() => collection!{
             role_group_1.to_string() => collection! {
                 PropertyNameKind::Env => collection! {
-                    "env".to_string() => GROUP_ENV.to_string()
+                    "env".to_string() => Some(GROUP_ENV.to_string())
                 },
                 PropertyNameKind::File(file_name.to_string()) => collection! {
-                    "conf".to_string() => GROUP_CONFIG.to_string()
+                    "file".to_string() => Some(GROUP_CONFIG.to_string())
                 }
             },
             role_group_2.to_string() => collection! {
                 PropertyNameKind::Env => collection! {
-                    "env".to_string() => GROUP_ENV.to_string()
+                    "env".to_string() => Some(GROUP_ENV.to_string())
                 },
                 PropertyNameKind::File(file_name.to_string()) => collection! {
-                    "conf".to_string() => GROUP_CONFIG.to_string()
+                    "file".to_string() => Some(GROUP_CONFIG.to_string())
                 }
             }
         },
         role_2.to_string() => collection! {
             role_group_1.to_string() => collection! {
                 PropertyNameKind::Cli => collection! {
-                    "cli".to_string() => GROUP_CLI.to_string()
+                    "cli".to_string() => Some(GROUP_CLI.to_string())
                 }
             }
         }};
@@ -1041,5 +1175,154 @@ mod tests {
         let all_config = transform_all_roles_to_config(&String::new(), roles);
 
         assert_eq!(all_config, expected);
+    }
+
+    #[test]
+    fn test_validate_all_roles_and_groups_config() {
+        let role_1 = "role_1";
+        let role_2 = "role_2";
+        let role_group_1 = "role_group_1";
+        let role_group_2 = "role_group_2";
+        let file_name = "foo.bar";
+
+        let pc_name = "pc_name";
+        let pc_value = "pc_value";
+        let pc_bad_version = "pc_bad_version";
+        let pc_bad_version_value = "pc_bad_version_value";
+
+        let roles: HashMap<String, (Vec<PropertyNameKind>, Role<Box<TestConfig>>)> = collection! {
+            role_1.to_string() => (vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env], Role {
+            config: None,
+            role_groups: collection! {
+                role_group_1.to_string() => RoleGroup {
+                replicas: 1,
+                config: build_common_config(
+                    build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                    None,
+                    None,
+                    None
+                ),
+                selector: None,
+            }}
+        }
+            ),
+            role_2.to_string() => (vec![PropertyNameKind::File(file_name.to_string())], Role {
+            config: None,
+            role_groups: collection! {
+                role_group_2.to_string() => RoleGroup {
+                replicas: 1,
+                config: build_common_config(
+                    build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                    None,
+                    None,
+                    None
+                ),
+                selector: None,
+            }}
+        }
+            ),
+        };
+
+        let role_config = transform_all_roles_to_config(&String::new(), roles);
+
+        let config = &format!(
+            "
+            version: 0.1.0
+            spec:
+              units: []
+            properties:
+              - property: 
+                  propertyNames:
+                    - name: \"{}\"
+                      kind:
+                        type: \"file\"
+                        file: \"{}\"
+                  datatype:
+                    type: \"string\"
+                  recommendedValues:
+                    - value: \"{}\"
+                  roles:
+                    - name: \"{}\"
+                      required: true
+                    - name: \"{}\"
+                      required: true
+                  asOfVersion: \"0.0.0\"
+              - property: 
+                  propertyNames:
+                    - name: \"{}\"
+                      kind:
+                        type: \"file\"
+                        file: \"{}\"
+                  datatype:
+                    type: \"string\"
+                  recommendedValues:
+                    - value: \"{}\"
+                  roles:
+                    - name: \"{}\"
+                      required: true
+                  asOfVersion: \"0.5.0\"
+            ",
+            pc_name,
+            file_name,
+            pc_value,
+            role_1,
+            role_2,
+            pc_bad_version,
+            file_name,
+            pc_bad_version_value,
+            role_1
+        );
+
+        let product_config = ProductConfigManager::from_str(config).unwrap();
+
+        let full_validated_config = validate_all_roles_and_groups_config(
+            "0.1.0",
+            &role_config,
+            &product_config,
+            false,
+            false,
+        )
+        .unwrap();
+
+        let expected: ValidatedRoleConfigByPropertyKind = collection! {
+            role_1.to_string() => collection! {
+              role_group_1.to_string() => collection! {
+                PropertyNameKind::File(file_name.to_string()) => collection! {
+                      "file".to_string() => GROUP_CONFIG.to_string(),
+                      pc_name.to_string() => pc_value.to_string()
+                },
+                PropertyNameKind::Env => collection! {
+                      "env".to_string() => GROUP_ENV.to_string()
+                }
+              }
+            },
+            role_2.to_string() => collection! {
+              role_group_2.to_string() => collection! {
+                PropertyNameKind::File(file_name.to_string()) => collection! {
+                      "file".to_string() => GROUP_CONFIG.to_string(),
+                      pc_name.to_string() => pc_value.to_string()
+                },
+              }
+          }
+        };
+        assert_eq!(full_validated_config, expected);
+
+        // test config_for_role_and_group
+        let valid_config_for_role_and_group =
+            config_for_role_and_group(role_1, role_group_1, &full_validated_config).unwrap();
+        assert_eq!(
+            expected.get(role_1).unwrap().get(role_group_1).unwrap(),
+            valid_config_for_role_and_group
+        );
+
+        let config_for_wrong_role =
+            config_for_role_and_group("wrong_role", "wrong_group", &full_validated_config);
+
+        assert!(config_for_wrong_role.is_err());
+
+        let config_for_role_and_wrong_group =
+            config_for_role_and_group(role_1, "wrong_group", &full_validated_config);
+
+        assert!(config_for_role_and_wrong_group.is_err());
     }
 }

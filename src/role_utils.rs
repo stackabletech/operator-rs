@@ -35,32 +35,32 @@
 //! This example has one role (`leader`) and two role groups (`default`, and `20core`)
 //!
 //! ```yaml
-//!  leader:
-//     selectors:
-//       default:
-//         selector:
-//           matchLabels:
-//             component: spark
-//           matchExpressions:
-//             - { key: tier, operator: In, values: [ cache ] }
-//             - { key: environment, operator: NotIn, values: [ dev ] }
-//         config:
-//           cores: 1
-//           memory: "1g"
-//         replicas: 3
-//       20core:
-//         selector:
-//           matchLabels:
-//             component: spark
-//             cores: 20
-//           matchExpressions:
-//             - { key: tier, operator: In, values: [ cache ] }
-//             - { key: environment, operator: NotIn, values: [ dev ] }
-//           config:
-//             cores: 10
-//             memory: "1g"
-//           replicas: 3
-//     config:
+//!   leader:
+//!     roleGroups:
+//!       default:
+//!         selector:
+//!           matchLabels:
+//!             component: spark
+//!           matchExpressions:
+//!             - { key: tier, operator: In, values: [ cache ] }
+//!             - { key: environment, operator: NotIn, values: [ dev ] }
+//!         config:
+//!           cores: 1
+//!           memory: "1g"
+//!         replicas: 3
+//!       20core:
+//!         selector:
+//!           matchLabels:
+//!             component: spark
+//!             cores: 20
+//!           matchExpressions:
+//!             - { key: tier, operator: In, values: [ cache ] }
+//!             - { key: environment, operator: NotIn, values: [ dev ] }
+//!           config:
+//!             cores: 10
+//!             memory: "1g"
+//!           replicas: 3
+//!     config:
 //! ```
 //!
 //! # Pod labels
@@ -87,6 +87,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use crate::client::Client;
 use crate::k8s_utils::LabelOptionalValueMap;
+use crate::product_config_utils::Configuration;
 use k8s_openapi::api::core::v1::Node;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use schemars::JsonSchema;
@@ -95,7 +96,7 @@ use tracing::{debug, trace};
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CommonConfiguration<T> {
+pub struct CommonConfiguration<T: Sized> {
     pub config: Option<T>,
     pub config_overrides: Option<HashMap<String, HashMap<String, String>>>,
     pub env_overrides: Option<HashMap<String, String>>,
@@ -105,10 +106,55 @@ pub struct CommonConfiguration<T> {
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Role<T> {
+pub struct Role<T: Sized> {
     #[serde(flatten)]
     pub config: Option<CommonConfiguration<T>>,
     pub role_groups: HashMap<String, RoleGroup<T>>,
+}
+
+impl<T> From<Role<T>> for Role<Box<dyn Configuration<Configurable = T::Configurable>>>
+where
+    T: Configuration + 'static,
+{
+    /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
+    /// and used in [`Role`] into a Box of a dynamically dispatched
+    /// [`crate::product_config_utils::Configuration`] Trait. This is required to use the generic
+    /// [`Role`] with more than a single generic struct. For example different roles most likely
+    /// have different structs implementing Configuration.
+    fn from(role: Role<T>) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>> {
+        Role {
+            config: role.config.map(|common| CommonConfiguration {
+                config: common.config.map(|cfg| {
+                    Box::new(cfg) as Box<dyn Configuration<Configurable = T::Configurable>>
+                }),
+                config_overrides: common.config_overrides,
+                env_overrides: common.env_overrides,
+                cli_overrides: common.cli_overrides,
+            }),
+            role_groups: role
+                .role_groups
+                .into_iter()
+                .map(|(name, group)| {
+                    (
+                        name,
+                        RoleGroup {
+                            config: group.config.map(|common| CommonConfiguration {
+                                config: common.config.map(|cfg| {
+                                    Box::new(cfg)
+                                        as Box<dyn Configuration<Configurable = T::Configurable>>
+                                }),
+                                config_overrides: common.config_overrides,
+                                env_overrides: common.env_overrides,
+                                cli_overrides: common.cli_overrides,
+                            }),
+                            replicas: group.replicas,
+                            selector: group.selector,
+                        },
+                    )
+                })
+                .collect(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -243,7 +289,6 @@ mod tests {
             - node_1
     "#
     )]
-    #[trace]
     fn test_list_eligible_nodes_for_role_and_group(#[case] eligible_node_names: &str) {
         let eligible_node_names_parsed: HashMap<String, HashMap<String, Vec<String>>> =
             serde_yaml::from_str(eligible_node_names).expect("Invalid test definition!");
