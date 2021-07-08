@@ -21,12 +21,12 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
     /// Returns the name of this `CustomResourceDefinition` in Kubernetes.
     ///
     /// Note: This is the name of the CRD itself and not an instance of it.
-    // TODO: This can be removed when https://github.com/clux/kube-rs/pull/583 is merged
+    // TODO: This can be removed when https://github.com/clux/kube-rs/pull/583 is released (probably in kube-rs 0.59)
     fn crd_name() -> String {
         Self::crd().name()
     }
 
-    /// Generates a YAML CustomResourceDefinition and writes it to a `Write`r.
+    /// Generates a YAML CustomResourceDefinition and writes it to a `Write`.
     fn generate_yaml_schema<W>(mut writer: W) -> OperatorResult<()>
     where
         W: Write,
