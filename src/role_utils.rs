@@ -173,7 +173,7 @@ pub async fn find_nodes_that_fit_selectors<T>(
     client: &Client,
     namespace: Option<String>,
     role: &Role<T>,
-) -> OperatorResult<HashMap<String, Vec<Node>>>
+) -> OperatorResult<HashMap<String, (Vec<Node>, usize)>>
 where
     T: Serialize,
 {
@@ -189,7 +189,10 @@ where
             group_name,
             nodes
         );
-        found_nodes.insert(group_name.clone(), nodes);
+        found_nodes.insert(
+            group_name.clone(),
+            (nodes, usize::from(role_group.replicas)),
+        );
     }
     Ok(found_nodes)
 }
@@ -197,11 +200,11 @@ where
 /// Return a list of eligible nodes for each role and group combination.
 /// Required to delete excess pods that do not match any node or selector description.
 pub fn list_eligible_nodes_for_role_and_group(
-    eligible_nodes: &HashMap<String, HashMap<String, Vec<Node>>>,
-) -> Vec<(Vec<Node>, LabelOptionalValueMap)> {
+    eligible_nodes: &HashMap<String, HashMap<String, (Vec<Node>, usize)>>,
+) -> Vec<(Vec<Node>, LabelOptionalValueMap, usize)> {
     let mut eligible_nodes_for_role_and_group = vec![];
     for (role, eligible_nodes_for_role) in eligible_nodes {
-        for (group_name, eligible_nodes) in eligible_nodes_for_role {
+        for (group_name, (eligible_nodes, replicas)) in eligible_nodes_for_role {
             trace!(
                 "Adding {} nodes to eligible node list for role [{}] and group [{}].",
                 eligible_nodes.len(),
@@ -211,6 +214,7 @@ pub fn list_eligible_nodes_for_role_and_group(
             eligible_nodes_for_role_and_group.push((
                 eligible_nodes.clone(),
                 get_role_and_group_labels(role, group_name),
+                *replicas,
             ))
         }
     }

@@ -1,5 +1,6 @@
 use crate::pod_utils;
 use k8s_openapi::api::core::v1::{Node, Pod};
+use rand::prelude::SliceRandom;
 use std::collections::BTreeMap;
 
 /// This type is used in places where we need label keys with optional values.
@@ -17,17 +18,24 @@ pub type LabelOptionalValueMap = BTreeMap<String, Option<String>>;
 /// To clearly identify Pods (e.g. to distinguish two pods on the same node from each other) they
 /// usually need some labels (e.g. a `role` label).
 pub fn find_excess_pods<'a>(
-    nodes_and_required_labels: &[(Vec<Node>, LabelOptionalValueMap)],
+    nodes_and_required_labels: &[(Vec<Node>, LabelOptionalValueMap, usize)],
     existing_pods: &'a [Pod],
 ) -> Vec<&'a Pod> {
     let mut used_pods = Vec::new();
 
     // For each pair of Nodes and labels we try to find all Pods that are currently in use and valid
     // We collect all of those in one big list.
-    for (eligible_nodes, mandatory_label_values) in nodes_and_required_labels {
-        let mut found_pods =
+    for (eligible_nodes, mandatory_label_values, replicas) in nodes_and_required_labels {
+        let found_pods =
             find_valid_pods_for_nodes(eligible_nodes, existing_pods, mandatory_label_values);
-        used_pods.append(&mut found_pods);
+
+        // randomly pick pods according to amount of replicas that are desired
+        used_pods.append(
+            &mut found_pods
+                .choose_multiple(&mut rand::thread_rng(), *replicas)
+                .cloned()
+                .collect(),
+        );
     }
 
     // Here we'll filter all existing Pods and will remove all Pods that are in use
@@ -94,8 +102,9 @@ pub fn find_nodes_that_need_pods<'a>(
     candidate_nodes: &'a [Node],
     existing_pods: &[Pod],
     label_values: &BTreeMap<String, Option<String>>,
+    replicas: &usize,
 ) -> Vec<&'a Node> {
-    candidate_nodes
+    let nodes_that_need_pods = candidate_nodes
         .iter()
         .filter(|node| {
             !existing_pods.iter().any(|pod| {
@@ -103,7 +112,21 @@ pub fn find_nodes_that_need_pods<'a>(
                     && pod_utils::pod_matches_labels(pod, label_values)
             })
         })
-        .collect::<Vec<&Node>>()
+        .collect::<Vec<&Node>>();
+
+    let valid_pods_for_nodes =
+        find_valid_pods_for_nodes(candidate_nodes, existing_pods, label_values);
+
+    let diff = replicas - valid_pods_for_nodes.len();
+    // we found every matching node here, now it is time to filter if we found too many nodes
+    return if diff > 0 {
+        nodes_that_need_pods
+            .choose_multiple(&mut rand::thread_rng(), diff)
+            .cloned()
+            .collect()
+    } else {
+        Vec::new()
+    };
 }
 
 #[cfg(test)]
