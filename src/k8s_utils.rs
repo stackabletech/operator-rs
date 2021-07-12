@@ -141,8 +141,8 @@ mod tests {
         let label_group = "group";
         let label_value = "foobar";
 
-        let mut labels = BTreeMap::new();
-        labels.insert(label_group.to_string(), Some(label_value.to_string()));
+        let mut labels1 = BTreeMap::new();
+        labels1.insert(label_group.to_string(), Some(label_value.to_string()));
 
         let mut labels2 = BTreeMap::new();
         labels2.insert(label_group.to_string(), None);
@@ -199,7 +199,7 @@ mod tests {
         let nodes_and_labels = vec![
             (
                 vec![node1.clone(), node2.clone(), node3.clone()],
-                labels.clone(),
+                labels1.clone(),
                 // 2 replicas
                 2,
             ),
@@ -214,9 +214,9 @@ mod tests {
         // 2 valid pods and 2 replicas means one excess pod
         assert_eq!(excess_pods.len(), 1);
 
-        let nodes_and_labels = vec![(vec![node1, node2, node3], labels, 1)];
+        let nodes_and_labels = vec![(vec![node1, node2, node3], labels1, 1)];
         let excess_pods = find_excess_pods(nodes_and_labels.as_slice(), &pods);
-        // 2 valid pods and 1 replica means two excess pod
+        // 2 valid pods and 1 replica means two excess pods
         assert_eq!(excess_pods.len(), 2);
     }
 
