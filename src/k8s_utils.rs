@@ -102,7 +102,7 @@ pub fn find_nodes_that_need_pods<'a>(
     candidate_nodes: &'a [Node],
     existing_pods: &[Pod],
     label_values: &BTreeMap<String, Option<String>>,
-    replicas: &usize,
+    replicas: usize,
 ) -> Vec<&'a Node> {
     let nodes_that_need_pods = candidate_nodes
         .iter()
@@ -134,35 +134,90 @@ mod tests {
     use super::*;
     use crate::builder;
     use crate::builder::{NodeBuilder, ObjectMetaBuilder, PodBuilder};
+    use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 
     #[test]
     fn test_find_excess_pods() {
-        let node1 = NodeBuilder::new().name("node1").build();
-        let node2 = NodeBuilder::new().name("node2").build();
-        let node3 = NodeBuilder::new().name("node3").build();
-        let node4 = NodeBuilder::new().name("node4").build();
-        let node5 = NodeBuilder::new().name("node5").build();
+        let label_group = "group";
+        let label_value = "foobar";
 
-        let mut labels1 = BTreeMap::new();
-        labels1.insert("group1".to_string(), None);
+        let mut labels = BTreeMap::new();
+        labels.insert(label_group.to_string(), Some(label_value.to_string()));
 
         let mut labels2 = BTreeMap::new();
-        labels2.insert("group2".to_string(), Some("foobar".to_string()));
+        labels2.insert(label_group.to_string(), None);
 
-        let nodes_and_labels = vec![
-            (vec![node1, node2, node3.clone()], labels1),
-            (vec![node3, node4, node5], labels2),
-        ];
+        let mut correct_labels = BTreeMap::new();
+        correct_labels.insert(label_group.to_string(), label_value.to_string());
 
-        let pod = PodBuilder::new()
-            .node_name("node1")
-            .metadata_default()
+        let mut node1 = NodeBuilder::new().build();
+        node1.metadata = ObjectMeta {
+            labels: correct_labels.clone(),
+            name: Some("node1".to_string()),
+            ..Default::default()
+        };
+        let mut node2 = NodeBuilder::new().build();
+        node2.metadata = ObjectMeta {
+            labels: correct_labels.clone(),
+            name: Some("node2".to_string()),
+            ..Default::default()
+        };
+
+        let node3 = NodeBuilder::new().name("node3").build();
+
+        let pod1 = PodBuilder::new()
+            .node_name("node1".to_string())
+            .metadata(ObjectMeta {
+                labels: correct_labels.clone(),
+                uid: Some("1".to_string()),
+                ..Default::default()
+            })
             .build()
             .unwrap();
-        let pods = vec![pod];
 
+        let pod2 = PodBuilder::new()
+            .node_name("node2".to_string())
+            .metadata(ObjectMeta {
+                labels: correct_labels.clone(),
+                uid: Some("2".to_string()),
+                ..Default::default()
+            })
+            .build()
+            .unwrap();
+
+        let pod3 = PodBuilder::new()
+            .node_name("node3".to_string())
+            .metadata(ObjectMeta {
+                uid: Some("3".to_string()),
+                ..Default::default()
+            })
+            .build()
+            .unwrap();
+
+        let pods = vec![pod1, pod2, pod3];
+
+        let nodes_and_labels = vec![
+            (
+                vec![node1.clone(), node2.clone(), node3.clone()],
+                labels.clone(),
+                // 2 replicas
+                2,
+            ),
+            (
+                vec![node1.clone()],
+                labels2.clone(),
+                // 1 replicas
+                1,
+            ),
+        ];
         let excess_pods = find_excess_pods(nodes_and_labels.as_slice(), &pods);
+        // 2 valid pods and 2 replicas means one excess pod
         assert_eq!(excess_pods.len(), 1);
+
+        let nodes_and_labels = vec![(vec![node1, node2, node3], labels, 1)];
+        let excess_pods = find_excess_pods(nodes_and_labels.as_slice(), &pods);
+        // 2 valid pods and 1 replica means two excess pod
+        assert_eq!(excess_pods.len(), 2);
     }
 
     #[test]
@@ -280,9 +335,10 @@ mod tests {
 
     #[test]
     fn test_find_nodes_that_need_pods() {
-        let foo_node = NodeBuilder::new().name("foo").build();
-        let foo_pod = PodBuilder::new()
-            .node_name("foo")
+        let node1 = NodeBuilder::new().name("node1").build();
+        let node2 = NodeBuilder::new().name("node2").build();
+        let pod1 = PodBuilder::new()
+            .node_name("node1")
             .metadata_default()
             .build()
             .unwrap();
@@ -290,14 +346,14 @@ mod tests {
         let mut labels = BTreeMap::new();
         labels.insert("foo".to_string(), Some("bar".to_string()));
 
-        let nodes = vec![foo_node];
-        let pods = vec![foo_pod];
+        let nodes = vec![node1, node2];
+        let pods = vec![pod1];
 
-        let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
+        let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels, 1);
         assert_eq!(need_pods.len(), 1);
 
-        let foo_pod = PodBuilder::new()
-            .node_name("foo")
+        let pod2 = PodBuilder::new()
+            .node_name("node2")
             .metadata(
                 ObjectMetaBuilder::new()
                     .with_label("foo", "bar")
@@ -306,12 +362,13 @@ mod tests {
             )
             .build()
             .unwrap();
-        let pods = vec![foo_pod];
-        let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
+
+        let pods = vec![pod2];
+        let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels, 1);
         assert!(need_pods.is_empty());
 
         labels.clear();
-        let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels);
-        assert!(need_pods.is_empty());
+        let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels, 2);
+        assert_eq!(need_pods.len(), 1);
     }
 }

@@ -197,8 +197,8 @@ where
     Ok(found_nodes)
 }
 
-/// Return a list of eligible nodes for each role and group combination.
-/// Required to delete excess pods that do not match any node or selector description.
+/// Return a list of eligible nodes and the provided replicas count for each role and group
+/// combination. Required to delete excess pods that do not match any node or selector description.
 pub fn list_eligible_nodes_for_role_and_group(
     eligible_nodes: &HashMap<String, HashMap<String, (Vec<Node>, usize)>>,
 ) -> Vec<(Vec<Node>, LabelOptionalValueMap, usize)> {
@@ -300,32 +300,22 @@ mod tests {
         // We need to map the innermost `String` objects to `Node` objects, but to get to them
         // a couple of nested loops are required
         // The entire purpose of this code is to transform `HashMap<String, HashMap<String, Vec<String>>>`
-        // into `HashMap<String, HashMap<String, Vec<Node>>>`
-        let eligible_nodes: HashMap<String, HashMap<String, Vec<Node>>> =
-            eligible_node_names_parsed
-                .iter()
-                .map(|(role, role_groups)| {
-                    (
-                        role.clone(),
-                        role_groups
-                            .iter()
-                            .map(|(group_name, nodes)| {
-                                (
-                                    group_name.clone(),
-                                    nodes
-                                        .iter()
-                                        .map(|node_name| {
-                                            let mut node = Node::default();
-                                            node.metadata.name = Some(node_name.clone());
-                                            node
-                                        })
-                                        .collect::<Vec<_>>(),
-                                )
-                            })
-                            .collect::<HashMap<_, _>>(),
-                    )
-                })
-                .collect::<HashMap<_, _>>();
+        // into `HashMap<String, HashMap<String, (Vec<Node>, usize)>>`
+        let mut eligible_nodes = HashMap::new();
+        for (role_name, group) in &eligible_node_names_parsed {
+            let mut group_map = HashMap::new();
+            for (group_name, node_names) in group {
+                let mut collected_nodes = Vec::new();
+                for node_name in node_names {
+                    let mut node = Node::default();
+                    node.metadata.name = Some(node_name.clone());
+                    collected_nodes.push(node);
+                }
+                // replicas (0) does not affect here
+                group_map.insert(group_name.clone(), (collected_nodes, 0 as usize));
+            }
+            eligible_nodes.insert(role_name.clone(), group_map);
+        }
 
         let eligible_nodes_for_role_and_group =
             list_eligible_nodes_for_role_and_group(&eligible_nodes);
@@ -344,8 +334,14 @@ mod tests {
             for (group, test_nodes) in group_and_nodes {
                 let test_labels = get_role_and_group_labels(&role, &group);
                 // find the corresponding nodes via labels
-                for (eligible_nodes, labels) in &eligible_nodes_for_role_and_group {
+                for (eligible_nodes, labels, _replicas) in &eligible_nodes_for_role_and_group {
                     if test_labels == *labels {
+                        println!(
+                            "test {} -> eligable {}",
+                            test_nodes.len(),
+                            eligible_nodes.len()
+                        );
+                        println!("{:?} -> {:?}", test_nodes, eligible_nodes);
                         // we found the corresponding nodes here, now we check if the size is correct
                         assert_eq!(test_nodes.len(), eligible_nodes.len());
                         // check if the correct nodes are in place
