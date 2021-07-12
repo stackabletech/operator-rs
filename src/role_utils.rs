@@ -336,12 +336,6 @@ mod tests {
                 // find the corresponding nodes via labels
                 for (eligible_nodes, labels, _replicas) in &eligible_nodes_for_role_and_group {
                     if test_labels == *labels {
-                        println!(
-                            "test {} -> eligable {}",
-                            test_nodes.len(),
-                            eligible_nodes.len()
-                        );
-                        println!("{:?} -> {:?}", test_nodes, eligible_nodes);
                         // we found the corresponding nodes here, now we check if the size is correct
                         assert_eq!(test_nodes.len(), eligible_nodes.len());
                         // check if the correct nodes are in place
