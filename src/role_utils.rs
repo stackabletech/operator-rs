@@ -312,7 +312,7 @@ mod tests {
                     collected_nodes.push(node);
                 }
                 // replicas (0) does not affect here
-                group_map.insert(group_name.clone(), (collected_nodes, 0 as usize));
+                group_map.insert(group_name.clone(), (collected_nodes, 0_usize));
             }
             eligible_nodes.insert(role_name.clone(), group_map);
         }

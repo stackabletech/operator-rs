@@ -178,7 +178,7 @@ mod tests {
         let pod2 = PodBuilder::new()
             .node_name("node2".to_string())
             .metadata(ObjectMeta {
-                labels: correct_labels.clone(),
+                labels: correct_labels,
                 uid: Some("2".to_string()),
                 ..Default::default()
             })
@@ -205,7 +205,7 @@ mod tests {
             ),
             (
                 vec![node1.clone()],
-                labels2.clone(),
+                labels2,
                 // 1 replicas
                 1,
             ),
