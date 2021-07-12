@@ -22,7 +22,7 @@ jobs:
           toolchain: stable
           override: true
       - name: Start K3S
-        uses: debianmaster/actions-k3s@v1.0.1
+        uses: debianmaster/actions-k3s@v1.0.3
         id: k3s
         with:
           version: 'latest'
