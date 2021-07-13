@@ -15,6 +15,7 @@ allow = [
     "CC0-1.0",
     "ISC",
     "LicenseRef-ring",
+    "LicenseRef-webpki",
     "MIT",
     "Zlib"
 ]
@@ -28,6 +29,13 @@ name = "ring"
 expression = "LicenseRef-ring"
 license-files = [
     { path = "LICENSE", hash = 0xbd0eed23 },
+]
+
+[[licenses.clarify]]
+name = "webpki"
+expression = "LicenseRef-webpki"
+license-files = [
+    { path = "LICENSE", hash = 0x001c7e6c },
 ]
 
 [sources.allow-org]
