@@ -168,7 +168,8 @@ pub struct RoleGroup<T> {
 }
 
 /// Return a map where the key corresponds to the role_group (e.g. "default", "10core10Gb") and
-/// a vector of nodes that fit the role_groups selector description.
+/// a tuple of a vector of nodes that fit the role_groups selector description, and the role_groups
+/// "replicas" field for scheduling/removing a specified amount of pods.
 pub async fn find_nodes_that_fit_selectors<T>(
     client: &Client,
     namespace: Option<String>,
@@ -197,8 +198,13 @@ where
     Ok(found_nodes)
 }
 
-/// Return a list of eligible nodes and the provided replicas count for each role and group
-/// combination. Required to delete excess pods that do not match any node or selector description.
+/// Return a list of eligible nodes and the provided replica count for each role and group
+/// combination. Required to delete excess pods that do not match any node, selector description
+/// or exceed the replica count.
+///
+/// # Arguments
+/// * `eligible_nodes` - Represents the mappings for role on role_groups on nodes and replicas:
+///                      HashMap<`NameOfRole`, HashMap<`NameOfRoleGroup`, (Vec<`Node`>, `Replicas`)>>
 pub fn list_eligible_nodes_for_role_and_group(
     eligible_nodes: &HashMap<String, HashMap<String, (Vec<Node>, usize)>>,
 ) -> Vec<(Vec<Node>, LabelOptionalValueMap, usize)> {

@@ -23,13 +23,16 @@ pub fn find_excess_pods<'a>(
 ) -> Vec<&'a Pod> {
     let mut used_pods = Vec::new();
 
-    // For each pair of Nodes and labels we try to find all Pods that are currently in use and valid
-    // We collect all of those in one big list.
+    // For each pair of Nodes and labels we try to find all Pods that are currently in use and valid.
+    // We take into account the replicas field and pick (randomly) the amount of pods that are
+    // provided by the replicas. We collect all of those in one big list.
+    // TODO: Because of the randomness it may happen that pods are not
+    //   equally shared between the available nodes.
     for (eligible_nodes, mandatory_label_values, replicas) in nodes_and_required_labels {
         let found_pods =
             find_valid_pods_for_nodes(eligible_nodes, existing_pods, mandatory_label_values);
 
-        // randomly pick pods according to amount of replicas that are desired
+        // randomly pick pods according to the amount of replicas that are desired
         used_pods.append(
             &mut found_pods
                 .choose_multiple(&mut rand::thread_rng(), *replicas)
@@ -97,7 +100,12 @@ pub fn find_valid_pods_for_nodes<'a>(
 /// NameNode Pod.
 /// And this is the label you can now filter on using the `label_values` argument.
 ///
+/// Additionally the replicas field of a role group is taken into account. When selecting nodes,
+/// a random subset representing the size difference of "replicas" and "nodes_that_need_pods" is selected.
+///
 /// NOTE: This method currently does not support multiple instances per Node!
+/// Multiple instances on one node need to be described in different role groups (and with different
+/// settings like ports etc.)
 pub fn find_nodes_that_need_pods<'a>(
     candidate_nodes: &'a [Node],
     existing_pods: &[Pod],
