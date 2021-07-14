@@ -94,7 +94,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-
   cargo-deny:
     name: Run cargo deny
     runs-on: ubuntu-latest
