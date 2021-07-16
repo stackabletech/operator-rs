@@ -169,7 +169,7 @@ pub struct RoleGroup<T> {
 
 /// Return a map where the key corresponds to the role_group (e.g. "default", "10core10Gb") and
 /// a tuple of a vector of nodes that fit the role_groups selector description, and the role_groups
-/// "replicas" field for scheduling/removing a specified amount of pods.
+/// "replicas" field for scheduling missing pods or removing excess pods.
 pub async fn find_nodes_that_fit_selectors<T>(
     client: &Client,
     namespace: Option<String>,

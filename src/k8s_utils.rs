@@ -7,13 +7,17 @@ use std::collections::BTreeMap;
 pub type LabelOptionalValueMap = BTreeMap<String, Option<String>>;
 
 /// This method can be used to find Pods that do not match a set of Nodes and required labels.
+/// For matching pods, we randomly select the amount of pods provided by the replicas (usize)
+/// field in `node_and_required_labels`.
+///
+/// This makes sure that valid pods that exceed the number of desired replicas will be deleted.
 ///
 /// All Pods must match at least one of the node list & required labels combinations.
-/// All that don't match will be returned.
+/// All that don't match and/or exceed the number of replicas will be returned.
 ///
 /// The idea is that you pass in a list of tuples, one tuple for each role group.
-/// Each tuple consists of a list of eligible nodes for that role group's LabelSelector and a
-/// Map of label keys to optional values.
+/// Each tuple consists of a list of eligible nodes for that role group's LabelSelector, a
+/// Map of label keys to optional values and the number of desired replicas.
 ///
 /// To clearly identify Pods (e.g. to distinguish two pods on the same node from each other) they
 /// usually need some labels (e.g. a `role` label).
@@ -23,9 +27,9 @@ pub fn find_excess_pods<'a>(
 ) -> Vec<&'a Pod> {
     let mut used_pods = Vec::new();
 
-    // For each pair of Nodes and labels we try to find all Pods that are currently in use and valid.
-    // We take into account the replicas field and pick (randomly) the amount of pods that are
-    // provided by the replicas. We collect all of those in one big list.
+    // For each pair of nodes and labels we try to find valid pods equal to `replicas`.
+    // Should there be more than `replicas` pods we'll select a random subset...
+    // We collect all of those in one big list.
     // TODO: Because of the randomness it may happen that pods are not
     //   equally shared between the available nodes.
     for (eligible_nodes, mandatory_label_values, replicas) in nodes_and_required_labels {
@@ -101,7 +105,8 @@ pub fn find_valid_pods_for_nodes<'a>(
 /// And this is the label you can now filter on using the `label_values` argument.
 ///
 /// Additionally the replicas field of a role group is taken into account. When selecting nodes,
-/// a random subset representing the size difference of "replicas" and "nodes_that_need_pods" is selected.
+/// a random subset representing the size difference between "replicas" and "nodes_that_need_pods"
+/// is selected.
 ///
 /// NOTE: This method currently does not support multiple instances per Node!
 /// Multiple instances on one node need to be described in different role groups (and with different
