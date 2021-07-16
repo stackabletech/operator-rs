@@ -18,6 +18,7 @@ kube = { version = "0.57", default-features = false, features = ["jsonpatch"] }
 kube-runtime = "0.57"
 lazy_static = "1.4"
 product-config = { git = "https://github.com/stackabletech/product-config.git", branch = "main" }
+rand = "0.8"
 regex = "1.5"
 schemars = "0.8"
 serde = "1.0"

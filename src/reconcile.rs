@@ -258,7 +258,7 @@ where
     /// usually need some labels (e.g. a `component` and a `role-group` label).     
     pub async fn delete_excess_pods(
         &self,
-        nodes_and_labels: &[(Vec<Node>, LabelOptionalValueMap)],
+        nodes_and_labels: &[(Vec<Node>, LabelOptionalValueMap, usize)],
         existing_pods: &[Pod],
         deletion_strategy: ContinuationStrategy,
     ) -> ReconcileResult<Error> {
