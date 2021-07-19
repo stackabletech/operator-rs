@@ -119,6 +119,33 @@ where
     )
 }
 
+
+/// Generates a pod name based on the default set of parameters that Stackable uses to
+/// identify a process within a service instance:
+///   - Application
+///   - Service instance name
+///   - Role group the server belongs to
+///   - Role within the application
+///   - Hostname the process is scheduled on
+///
+///
+/// The returned name will be in the form:
+/// "application-instance-rolegroup-role-nodename"
+///
+/// The nodename will be stripped of any domains after the initial dot in the string.
+pub fn get_pod_name(application: &str, instance: &str, role_group: &str, role: &str, node: &str) -> String
+{
+    format!(
+        "{}-{}-{}-{}-{}",
+        application,
+        instance,
+        role_group,
+        role,
+        node.split(".").collect::<Vec<_>>()[0]
+    )
+        .to_lowercase()
+}
+
 /// Checks whether the given Pod is assigned to (via the `spec.node_name` field) the given `node_name`.
 pub fn is_pod_assigned_to_node_name(pod: &Pod, node_name: &str) -> bool {
     matches!(pod.spec, Some(PodSpec { node_name: Some(ref pod_node_name), ..}, ..) if pod_node_name == node_name)
