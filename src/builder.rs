@@ -218,7 +218,7 @@ impl ContainerPortBuilder {
             name: self.name.clone(),
             host_ip: self.host_ip.clone(),
             protocol: self.protocol.clone(),
-            host_port: self.host_port.map(|port| i32::from(port)),
+            host_port: self.host_port.map(i32::from),
         }
     }
 }
