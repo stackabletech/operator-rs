@@ -119,7 +119,6 @@ where
     )
 }
 
-
 /// Generates a pod name based on the default set of parameters that Stackable uses to
 /// identify a process within a service instance:
 ///   - Application
@@ -133,8 +132,13 @@ where
 /// "application-instance-rolegroup-role-nodename"
 ///
 /// The nodename will be stripped of any domains after the initial dot in the string.
-pub fn get_pod_name(application: &str, instance: &str, role_group: &str, role: &str, node: &str) -> String
-{
+pub fn get_pod_name(
+    application: &str,
+    instance: &str,
+    role_group: &str,
+    role: &str,
+    node: &str,
+) -> String {
     format!(
         "{}-{}-{}-{}-{}",
         application,
@@ -143,7 +147,7 @@ pub fn get_pod_name(application: &str, instance: &str, role_group: &str, role: &
         role,
         node.split(".").collect::<Vec<_>>()[0]
     )
-        .to_lowercase()
+    .to_lowercase()
 }
 
 /// Checks whether the given Pod is assigned to (via the `spec.node_name` field) the given `node_name`.
@@ -388,6 +392,30 @@ mod tests {
             Some(&condition),
             get_pod_condition(&status, PodConditionType::Ready)
         );
+    }
+
+    #[test]
+    fn test_get_pod_name() {
+        let application = "foo";
+        let instance = "bar";
+        let role_group = "default";
+        let role = "server";
+        let node1 = "server1.stackable.tech";
+        let node2 = "foobarnode";
+
+        let pod_name = get_pod_name(application, instance, role_group, role, node1);
+        let expected = format!(
+            "{}-{}-{}-{}-{}",
+            application, instance, role_group, role, "server1"
+        );
+        assert_eq!(expected, pod_name);
+
+        let pod_name = get_pod_name(application, instance, role_group, role, node2);
+        let expected = format!(
+            "{}-{}-{}-{}-{}",
+            application, instance, role_group, role, node2
+        );
+        assert_eq!(expected, pod_name);
     }
 
     #[test]
