@@ -145,7 +145,7 @@ pub fn get_pod_name(
         instance,
         role_group,
         role,
-        node.split(".").collect::<Vec<_>>()[0]
+        node.split('.').collect::<Vec<_>>()[0]
     )
     .to_lowercase()
 }
