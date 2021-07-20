@@ -7,6 +7,7 @@ name = "stackable-operator"
 version = "0.1.0-nightly"
 
 [dependencies]
+GSL = "2.0"
 async-trait = "0.1"
 chrono = "0.4"
 const_format = "0.2"
