@@ -6,8 +6,8 @@ use crate::error::{Error, OperatorResult};
 use crate::labels;
 use chrono::Utc;
 use k8s_openapi::api::core::v1::{
-    ConfigMap, ConfigMapVolumeSource, Container, EnvVar, Event, EventSource, Node, ObjectReference,
-    Pod, PodCondition, PodSpec, PodStatus, Toleration, Volume, VolumeMount,
+    ConfigMap, ConfigMapVolumeSource, Container, ContainerPort, EnvVar, Event, EventSource, Node,
+    ObjectReference, Pod, PodCondition, PodSpec, PodStatus, Toleration, Volume, VolumeMount,
 };
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{MicroTime, ObjectMeta, OwnerReference, Time};
 use kube::{Resource, ResourceExt};
@@ -77,6 +77,7 @@ pub struct ContainerBuilder {
     command: Vec<String>,
     args: Vec<String>,
     configmaps: HashMap<String, String>,
+    container_ports: Vec<ContainerPort>,
 }
 
 impl ContainerBuilder {
@@ -105,6 +106,11 @@ impl ContainerBuilder {
         self
     }
 
+    pub fn add_env_vars(&mut self, env_vars: Vec<EnvVar>) -> &mut Self {
+        self.env.extend(env_vars);
+        self
+    }
+
     pub fn command(&mut self, command: Vec<String>) -> &mut Self {
         self.command = command;
         self
@@ -125,6 +131,11 @@ impl ContainerBuilder {
     ) -> &mut Self {
         self.configmaps
             .insert(mount_path.into(), configmap_name.into());
+        self
+    }
+
+    pub fn add_container_port(&mut self, container_port: ContainerPort) -> &mut Self {
+        self.container_ports.push(container_port);
         self
     }
 
@@ -157,7 +168,57 @@ impl ContainerBuilder {
             command: self.command.clone(),
             args: self.args.clone(),
             volume_mounts,
+            ports: self.container_ports.clone(),
             ..Container::default()
+        }
+    }
+}
+
+/// A builder to build [`ContainerPort`] objects.
+#[derive(Clone, Default)]
+pub struct ContainerPortBuilder {
+    container_port: u16,
+    name: Option<String>,
+    host_ip: Option<String>,
+    protocol: Option<String>,
+    host_port: Option<u16>,
+}
+
+impl ContainerPortBuilder {
+    pub fn new(container_port: u16) -> Self {
+        ContainerPortBuilder {
+            container_port,
+            ..ContainerPortBuilder::default()
+        }
+    }
+
+    pub fn name<VALUE: Into<String>>(&mut self, name: VALUE) -> &mut Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    pub fn host_ip<VALUE: Into<String>>(&mut self, host_ip: VALUE) -> &mut Self {
+        self.host_ip = Some(host_ip.into());
+        self
+    }
+
+    pub fn protocol<VALUE: Into<String>>(&mut self, protocol: VALUE) -> &mut Self {
+        self.protocol = Some(protocol.into());
+        self
+    }
+
+    pub fn host_port(&mut self, host_port: u16) -> &mut Self {
+        self.host_port = Some(host_port);
+        self
+    }
+
+    pub fn build(&self) -> ContainerPort {
+        ContainerPort {
+            container_port: i32::from(self.container_port),
+            name: self.name.clone(),
+            host_ip: self.host_ip.clone(),
+            protocol: self.protocol.clone(),
+            host_port: self.host_port.map(i32::from),
         }
     }
 }
@@ -739,8 +800,8 @@ impl PodBuilder {
 #[cfg(test)]
 mod tests {
     use crate::builder::{
-        ConfigMapBuilder, ContainerBuilder, EventBuilder, EventType, NodeBuilder,
-        ObjectMetaBuilder, PodBuilder,
+        ConfigMapBuilder, ContainerBuilder, ContainerPortBuilder, EventBuilder, EventType,
+        NodeBuilder, ObjectMetaBuilder, PodBuilder,
     };
     use k8s_openapi::api::core::v1::{EnvVar, Pod, VolumeMount};
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
@@ -763,9 +824,17 @@ mod tests {
 
     #[test]
     fn test_container_builder() {
+        let container_port = 10000;
+        let container_port_name = "foo_port_name";
+
         let container = ContainerBuilder::new("testcontainer")
             .add_env_var("foo", "bar")
             .add_configmapvolume("configmap", "/mount")
+            .add_container_port(
+                ContainerPortBuilder::new(container_port)
+                    .name(container_port_name)
+                    .build(),
+            )
             .build();
 
         assert_eq!(container.name, "testcontainer");
@@ -776,6 +845,31 @@ mod tests {
         assert!(
             matches!(container.volume_mounts.get(0), Some(VolumeMount {mount_path, name, ..}) if mount_path == "/mount" && name == "configmap")
         );
+        assert!(
+            container.ports[0].container_port == i32::from(container_port)
+                && container.ports[0].name == Some(container_port_name.to_string())
+        );
+    }
+
+    #[test]
+    fn test_container_port_builder() {
+        let port: u16 = 10000;
+        let name = "foo";
+        let protocol = "http";
+        let host_port = 20000;
+        let host_ip = "1.1.1.1";
+        let container_port = ContainerPortBuilder::new(port)
+            .name(name)
+            .protocol(protocol)
+            .host_port(host_port)
+            .host_ip(host_ip)
+            .build();
+
+        assert_eq!(container_port.container_port, i32::from(port));
+        assert_eq!(container_port.name, Some(name.to_string()));
+        assert_eq!(container_port.protocol, Some(protocol.to_string()));
+        assert_eq!(container_port.host_ip, Some(host_ip.to_string()));
+        assert_eq!(container_port.host_port, Some(i32::from(host_port)));
     }
 
     #[test]
