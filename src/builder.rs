@@ -397,6 +397,7 @@ pub struct ObjectMetaBuilder {
     namespace: Option<String>,
     ownerreference: Option<OwnerReference>,
     labels: BTreeMap<String, String>,
+    annotations: BTreeMap<String, String>,
 }
 
 impl ObjectMetaBuilder {
@@ -458,6 +459,35 @@ impl ObjectMetaBuilder {
         Ok(self)
     }
 
+    /// This adds a single annotation to the existing annotations.
+    /// It'll override an annotation with the same key.
+    pub fn with_annotation<KEY, VALUE>(
+        &mut self,
+        annotation_key: KEY,
+        annotation_value: VALUE,
+    ) -> &mut Self
+    where
+        KEY: Into<String>,
+        VALUE: Into<String>,
+    {
+        self.annotations
+            .insert(annotation_key.into(), annotation_value.into());
+        self
+    }
+
+    /// This adds multiple annotations to the existing annotations.
+    /// Any existing annotation with a key that is contained in `annotations` will be overwritten
+    pub fn with_annotations(&mut self, annotations: BTreeMap<String, String>) -> &mut Self {
+        self.annotations.extend(annotations);
+        self
+    }
+
+    /// This will replace all existing annotations
+    pub fn annotations(&mut self, annotations: BTreeMap<String, String>) -> &mut Self {
+        self.annotations = annotations;
+        self
+    }
+
     /// This adds a single label to the existing labels.
     /// It'll override a label with the same key.
     pub fn with_label<KEY, VALUE>(&mut self, label_key: KEY, label_value: VALUE) -> &mut Self
@@ -514,6 +544,7 @@ impl ObjectMetaBuilder {
                 None => vec![],
             },
             labels: self.labels.clone(),
+            annotations: self.annotations.clone(),
 
             ..ObjectMeta::default()
         })
@@ -880,6 +911,7 @@ mod tests {
             .ownerreference_from_resource(&pod, Some(true), Some(false))
             .unwrap()
             .with_recommended_labels(&pod, "test_app", "1.0", "component", "role")
+            .with_annotation("foo", "bar")
             .build()
             .unwrap();
 
@@ -887,6 +919,11 @@ mod tests {
         assert_eq!(meta.owner_references.len(), 1);
         assert!(
             matches!(meta.owner_references.get(0), Some(OwnerReference { uid, ..}) if uid == "uid")
+        );
+        assert_eq!(meta.annotations.len(), 1);
+        assert_eq!(
+            meta.annotations.get(&"foo".to_string()),
+            Some(&"bar".to_string())
         );
     }
 
