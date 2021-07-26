@@ -38,6 +38,7 @@ k8s-openapi = { version = "0.12", default-features = false, features = ["v1_21"]
 kube = { version = "0.57", default-features = false, features = ["derive"] }
 rstest = "0.10"
 serial_test = "0.5"
+tempfile = "3.2"
 
 [features]
 default = ["native-tls"]
