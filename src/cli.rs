@@ -116,7 +116,7 @@ mod tests {
         let full_default_locations_ref =
             full_default_locations.iter().map(String::as_str).collect();
 
-        let file = File::create(full_path_to_create.clone())?;
+        let file = File::create(full_path_to_create)?;
 
         let found_path = check_path(
             full_user_provided_path.as_deref(),
@@ -139,13 +139,11 @@ mod tests {
 
     #[test]
     fn test_check_path_nothing_found_errors() {
-        match check_path(None, vec![DEPLOY_FILE_PATH, DEFAULT_FILE_PATH]) {
-            Err(error::Error::RequiredFileMissing {
-                search_path: errors,
-            }) => {
-                assert_eq!(errors, vec![DEPLOY_FILE_PATH, DEFAULT_FILE_PATH])
-            }
-            _ => {}
+        if let Err(error::Error::RequiredFileMissing {
+            search_path: errors,
+        }) = check_path(None, vec![DEPLOY_FILE_PATH, DEFAULT_FILE_PATH])
+        {
+            assert_eq!(errors, vec![DEPLOY_FILE_PATH, DEFAULT_FILE_PATH])
         }
     }
 }
