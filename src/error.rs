@@ -57,6 +57,11 @@ pub enum Error {
     #[error("The following required CRDs are missing from Kubernetes: {names:?}")]
     RequiredCrdsMissing { names: HashSet<String> },
 
+    #[error(
+        "A required File is missing. Not found in any of the following locations: {search_path:?}"
+    )]
+    RequiredFileMissing { search_path: Vec<String> },
+
     #[error("ProductConfig Framework reported error: {source}")]
     ProductConfigError {
         #[from]
