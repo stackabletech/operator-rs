@@ -1,4 +1,5 @@
 pub mod builder;
+pub mod cli;
 pub mod client;
 pub mod command_controller;
 pub mod conditions;
