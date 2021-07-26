@@ -38,7 +38,7 @@ fn check_path(
 
     // 1) User provides path to product-config file -> Error if not existing
     if let Some(path) = user_provided_file_path {
-        return if path_exists(path) {
+        return if Path::new(path).exists() {
             Ok(path.to_string())
         } else {
             search_paths.push(path.to_string());
@@ -51,7 +51,7 @@ fn check_path(
     // 2) User does not provide path to product-config-file -> search in default_locations and
     //    take the first existing file.
     for loc in default_locations {
-        if path_exists(loc) {
+        if Path::new(loc).exists() {
             return Ok(loc.to_string());
         } else {
             search_paths.push(loc.to_string())
@@ -62,11 +62,6 @@ fn check_path(
     Err(error::Error::RequiredFileMissing {
         search_path: search_paths,
     })
-}
-
-/// Check weather a provided path exists
-fn path_exists(path: &str) -> bool {
-    Path::new(path).exists()
 }
 
 #[cfg(test)]
