@@ -41,7 +41,7 @@ pub fn find_excess_pods<'a>(
 /// Finds all pods matching the required labels.
 /// NOTE: This list can contain duplicates!
 fn find_expected_pods<'a>(
-    nodes_and_required_labels: &[(Vec<Node>, BTreeMap<String, Option<String>>, Option<u16>)],
+    nodes_and_required_labels: &[(Vec<Node>, LabelOptionalValueMap, Option<u16>)],
     existing_pods: &'a [Pod],
 ) -> Vec<&'a Pod> {
     let mut used_pods = Vec::new();
@@ -320,17 +320,17 @@ mod tests {
             .build()
             .unwrap();
 
-        let pods = vec![pod1.clone(), pod2.clone(), pod3];
+        let pods = vec![pod1, pod2, pod3];
 
         let nodes_and_labels = vec![
             (
-                vec![node1.clone(), node2.clone(), node3.clone()],
-                labels1.clone(),
+                vec![node1.clone(), node2, node3],
+                labels1,
                 // 2 replicas
                 Some(2u16),
             ),
             (
-                vec![node1.clone()],
+                vec![node1],
                 labels2,
                 // 1 replicas
                 Some(1u16),
@@ -338,7 +338,7 @@ mod tests {
         ];
 
         let expected_pods = find_expected_pods(nodes_and_labels.as_slice(), &pods);
-        // 2 valid pods and 2 replicas means one excess pod
+        // 3 because node1 is found twice!
         assert_eq!(expected_pods.len(), 3);
     }
 
