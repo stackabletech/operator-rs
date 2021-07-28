@@ -195,16 +195,20 @@ where
     Ok(found_nodes)
 }
 
+/// Type to avoid clippy warnings
+/// HashMap<`NameOfRole`, HashMap<`NameOfRoleGroup`, (Vec<`Node`>, Option<`Replicas`>)>>
+pub type EligibleNodesForRoleAndGroup = HashMap<String, HashMap<String, (Vec<Node>, Option<u16>)>>;
+
 /// Return a list of eligible nodes and the provided replica count for each role and group
 /// combination. Required to delete excess pods that do not match any node, selector description
 /// or exceed the replica count.
 ///
 /// # Arguments
 /// * `eligible_nodes` - Represents the mappings for role on role_groups on nodes and replicas:
-///                      HashMap<`NameOfRole`, HashMap<`NameOfRoleGroup`, (Vec<`Node`>, `Replicas`)>>
+///                      HashMap<`NameOfRole`, HashMap<`NameOfRoleGroup`, (Vec<`Node`>, Option<`Replicas`>)>>
 pub fn list_eligible_nodes_for_role_and_group(
-    eligible_nodes: &HashMap<String, HashMap<String, (Vec<Node>, usize)>>,
-) -> Vec<(Vec<Node>, LabelOptionalValueMap, usize)> {
+    eligible_nodes: &EligibleNodesForRoleAndGroup,
+) -> Vec<(Vec<Node>, LabelOptionalValueMap, Option<u16>)> {
     let mut eligible_nodes_for_role_and_group = vec![];
     for (role, eligible_nodes_for_role) in eligible_nodes {
         for (group_name, (eligible_nodes, replicas)) in eligible_nodes_for_role {
@@ -315,7 +319,7 @@ mod tests {
                     collected_nodes.push(node);
                 }
                 // replicas (0) does not affect here
-                group_map.insert(group_name.clone(), (collected_nodes, 0_usize));
+                group_map.insert(group_name.clone(), (collected_nodes, Some(0u16)));
             }
             eligible_nodes.insert(role_name.clone(), group_map);
         }
