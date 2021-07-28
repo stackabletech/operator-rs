@@ -162,7 +162,7 @@ where
 pub struct RoleGroup<T> {
     #[serde(flatten)]
     pub config: Option<CommonConfiguration<T>>,
-    pub replicas: u16,
+    pub replicas: Option<u16>,
     #[schemars(schema_with = "label_selector::schema")]
     pub selector: Option<LabelSelector>,
 }
@@ -174,7 +174,7 @@ pub async fn find_nodes_that_fit_selectors<T>(
     client: &Client,
     namespace: Option<String>,
     role: &Role<T>,
-) -> OperatorResult<HashMap<String, (Vec<Node>, usize)>>
+) -> OperatorResult<HashMap<String, (Vec<Node>, Option<u16>)>>
 where
     T: Serialize,
 {
@@ -190,10 +190,7 @@ where
             group_name,
             nodes
         );
-        found_nodes.insert(
-            group_name.clone(),
-            (nodes, usize::from(role_group.replicas)),
-        );
+        found_nodes.insert(group_name.clone(), (nodes, role_group.replicas));
     }
     Ok(found_nodes)
 }
