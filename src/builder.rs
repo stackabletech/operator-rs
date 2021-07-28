@@ -215,7 +215,8 @@ impl ContainerPortBuilder {
     pub fn build(&self) -> ContainerPort {
         ContainerPort {
             container_port: i32::from(self.container_port),
-            name: self.name.clone(),
+            // container_port_names must be lowercase!
+            name: self.name.clone().map(|s| s.to_lowercase()),
             host_ip: self.host_ip.clone(),
             protocol: self.protocol.clone(),
             host_port: self.host_port.map(i32::from),
@@ -854,7 +855,7 @@ mod tests {
     #[test]
     fn test_container_port_builder() {
         let port: u16 = 10000;
-        let name = "foo";
+        let name = "FooBar";
         let protocol = "http";
         let host_port = 20000;
         let host_ip = "1.1.1.1";
@@ -866,7 +867,7 @@ mod tests {
             .build();
 
         assert_eq!(container_port.container_port, i32::from(port));
-        assert_eq!(container_port.name, Some(name.to_string()));
+        assert_eq!(container_port.name, Some(name.to_lowercase()));
         assert_eq!(container_port.protocol, Some(protocol.to_string()));
         assert_eq!(container_port.host_ip, Some(host_ip.to_string()));
         assert_eq!(container_port.host_port, Some(i32::from(host_port)));
