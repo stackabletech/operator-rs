@@ -216,7 +216,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let pods = vec![pod1.clone(), pod2.clone(), pod3.clone()];
+        let pods = vec![pod1.clone(), pod2.clone(), pod3];
 
         let nodes_and_labels = vec![
             (
@@ -245,7 +245,7 @@ mod tests {
         // 2 valid pods and 1 replica means two excess pods
         assert_eq!(excess_pods.len(), 2);
 
-        let pods = vec![pod1.clone(), pod2.clone()];
+        let pods = vec![pod1, pod2];
         let nodes_and_labels = vec![(vec![node1, node2, node3], labels1, None)];
         let excess_pods = find_excess_pods(nodes_and_labels.as_slice(), &pods);
         // 2 valid pods and replica wildcard (None) means no excess pods
