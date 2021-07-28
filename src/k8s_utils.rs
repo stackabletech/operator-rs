@@ -25,6 +25,25 @@ pub fn find_excess_pods<'a>(
     nodes_and_required_labels: &[(Vec<Node>, LabelOptionalValueMap, Option<u16>)],
     existing_pods: &'a [Pod],
 ) -> Vec<&'a Pod> {
+    let expected_pods = find_expected_pods(nodes_and_required_labels, existing_pods);
+
+    // Here we'll filter all existing Pods and will remove all Pods that are in use
+    existing_pods.iter()
+        .filter(|pod| {
+            !expected_pods
+                .iter()
+                .any(|used_pod|
+                    matches!((pod.metadata.uid.as_ref(), used_pod.metadata.uid.as_ref()), (Some(existing_uid), Some(used_uid)) if existing_uid == used_uid))
+        })
+        .collect()
+}
+
+/// Finds all pods matching the required labels.
+/// NOTE: This list can contain duplicates!
+fn find_expected_pods<'a>(
+    nodes_and_required_labels: &[(Vec<Node>, BTreeMap<String, Option<String>>, Option<u16>)],
+    existing_pods: &'a [Pod],
+) -> Vec<&'a Pod> {
     let mut used_pods = Vec::new();
 
     // For each pair of nodes and labels we try to find valid pods equal to `replicas`.
@@ -49,16 +68,7 @@ pub fn find_excess_pods<'a>(
             }
         }
     }
-
-    // Here we'll filter all existing Pods and will remove all Pods that are in use
-    existing_pods.iter()
-        .filter(|pod| {
-            !used_pods
-                .iter()
-                .any(|used_pod|
-                    matches!((pod.metadata.uid.as_ref(), used_pod.metadata.uid.as_ref()), (Some(existing_uid), Some(used_uid)) if existing_uid == used_uid))
-        })
-        .collect()
+    used_pods
 }
 
 /// This function can be used to get a list of valid Pods that are assigned
@@ -250,6 +260,86 @@ mod tests {
         let excess_pods = find_excess_pods(nodes_and_labels.as_slice(), &pods);
         // 2 valid pods and replica wildcard (None) means no excess pods
         assert_eq!(excess_pods.len(), 0);
+    }
+
+    #[test]
+    fn test_expected_pods() {
+        let label_group = "group";
+        let label_value = "foobar";
+
+        let mut labels1 = BTreeMap::new();
+        labels1.insert(label_group.to_string(), Some(label_value.to_string()));
+
+        let mut labels2 = BTreeMap::new();
+        labels2.insert(label_group.to_string(), None);
+
+        let mut correct_labels = BTreeMap::new();
+        correct_labels.insert(label_group.to_string(), label_value.to_string());
+
+        let mut node1 = NodeBuilder::new().build();
+        node1.metadata = ObjectMeta {
+            labels: correct_labels.clone(),
+            name: Some("node1".to_string()),
+            ..Default::default()
+        };
+        let mut node2 = NodeBuilder::new().build();
+        node2.metadata = ObjectMeta {
+            labels: correct_labels.clone(),
+            name: Some("node2".to_string()),
+            ..Default::default()
+        };
+
+        let node3 = NodeBuilder::new().name("node3").build();
+
+        let pod1 = PodBuilder::new()
+            .node_name("node1".to_string())
+            .metadata(ObjectMeta {
+                labels: correct_labels.clone(),
+                uid: Some("1".to_string()),
+                ..Default::default()
+            })
+            .build()
+            .unwrap();
+
+        let pod2 = PodBuilder::new()
+            .node_name("node2".to_string())
+            .metadata(ObjectMeta {
+                labels: correct_labels,
+                uid: Some("2".to_string()),
+                ..Default::default()
+            })
+            .build()
+            .unwrap();
+
+        let pod3 = PodBuilder::new()
+            .node_name("node3".to_string())
+            .metadata(ObjectMeta {
+                uid: Some("3".to_string()),
+                ..Default::default()
+            })
+            .build()
+            .unwrap();
+
+        let pods = vec![pod1.clone(), pod2.clone(), pod3];
+
+        let nodes_and_labels = vec![
+            (
+                vec![node1.clone(), node2.clone(), node3.clone()],
+                labels1.clone(),
+                // 2 replicas
+                Some(2u16),
+            ),
+            (
+                vec![node1.clone()],
+                labels2,
+                // 1 replicas
+                Some(1u16),
+            ),
+        ];
+
+        let expected_pods = find_expected_pods(nodes_and_labels.as_slice(), &pods);
+        // 2 valid pods and 2 replicas means one excess pod
+        assert_eq!(expected_pods.len(), 3);
     }
 
     #[test]
