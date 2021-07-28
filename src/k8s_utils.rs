@@ -22,7 +22,26 @@ pub type LabelOptionalValueMap = BTreeMap<String, Option<String>>;
 /// To clearly identify Pods (e.g. to distinguish two pods on the same node from each other) they
 /// usually need some labels (e.g. a `role` label).
 pub fn find_excess_pods<'a>(
-    nodes_and_required_labels: &[(Vec<Node>, LabelOptionalValueMap, usize)],
+    nodes_and_required_labels: &[(Vec<Node>, LabelOptionalValueMap, Option<u16>)],
+    existing_pods: &'a [Pod],
+) -> Vec<&'a Pod> {
+    let expected_pods = find_expected_pods(nodes_and_required_labels, existing_pods);
+
+    // Here we'll filter all existing Pods and will remove all Pods that are in use
+    existing_pods.iter()
+        .filter(|pod| {
+            !expected_pods
+                .iter()
+                .any(|used_pod|
+                    matches!((pod.metadata.uid.as_ref(), used_pod.metadata.uid.as_ref()), (Some(existing_uid), Some(used_uid)) if existing_uid == used_uid))
+        })
+        .collect()
+}
+
+/// Finds all pods matching the required labels.
+/// NOTE: This list can contain duplicates!
+fn find_expected_pods<'a>(
+    nodes_and_required_labels: &[(Vec<Node>, LabelOptionalValueMap, Option<u16>)],
     existing_pods: &'a [Pod],
 ) -> Vec<&'a Pod> {
     let mut used_pods = Vec::new();
@@ -33,27 +52,23 @@ pub fn find_excess_pods<'a>(
     // TODO: Because of the randomness it may happen that pods are not
     //   equally shared between the available nodes.
     for (eligible_nodes, mandatory_label_values, replicas) in nodes_and_required_labels {
-        let found_pods =
+        let mut found_pods =
             find_valid_pods_for_nodes(eligible_nodes, existing_pods, mandatory_label_values);
 
         // randomly pick pods according to the amount of replicas that are desired
-        used_pods.append(
-            &mut found_pods
-                .choose_multiple(&mut rand::thread_rng(), *replicas)
-                .cloned()
-                .collect(),
-        );
+        match replicas {
+            None => used_pods.append(&mut found_pods),
+            Some(replicas) => {
+                used_pods.append(
+                    &mut found_pods
+                        .choose_multiple(&mut rand::thread_rng(), usize::from(*replicas))
+                        .cloned()
+                        .collect(),
+                );
+            }
+        }
     }
-
-    // Here we'll filter all existing Pods and will remove all Pods that are in use
-    existing_pods.iter()
-        .filter(|pod| {
-            !used_pods
-                .iter()
-                .any(|used_pod|
-                    matches!((pod.metadata.uid.as_ref(), used_pod.metadata.uid.as_ref()), (Some(existing_uid), Some(used_uid)) if existing_uid == used_uid))
-        })
-        .collect()
+    used_pods
 }
 
 /// This function can be used to get a list of valid Pods that are assigned
@@ -106,7 +121,7 @@ pub fn find_valid_pods_for_nodes<'a>(
 ///
 /// Additionally the replicas field of a role group is taken into account. When selecting nodes,
 /// a random subset representing the size difference between "replicas" and "nodes_that_need_pods"
-/// is selected.
+/// is selected. If replicas is None, all "nodes_that_need_pods" are returned.
 ///
 /// NOTE: This method currently does not support multiple instances per Node!
 /// Multiple instances on one node need to be described in different role groups (and with different
@@ -115,7 +130,7 @@ pub fn find_nodes_that_need_pods<'a>(
     candidate_nodes: &'a [Node],
     existing_pods: &[Pod],
     label_values: &BTreeMap<String, Option<String>>,
-    replicas: usize,
+    replicas: Option<u16>,
 ) -> Vec<&'a Node> {
     let nodes_that_need_pods = candidate_nodes
         .iter()
@@ -130,16 +145,20 @@ pub fn find_nodes_that_need_pods<'a>(
     let valid_pods_for_nodes =
         find_valid_pods_for_nodes(candidate_nodes, existing_pods, label_values);
 
-    let diff = replicas - valid_pods_for_nodes.len();
-    // we found every matching node here, now it is time to filter if we found too many nodes
-    return if diff > 0 {
-        nodes_that_need_pods
-            .choose_multiple(&mut rand::thread_rng(), diff)
-            .cloned()
-            .collect()
-    } else {
-        Vec::new()
-    };
+    if let Some(replicas) = replicas {
+        let diff = usize::from(replicas) - valid_pods_for_nodes.len();
+        // we found every matching node here, now it is time to filter if we found too many nodes
+        return if diff > 0 {
+            nodes_that_need_pods
+                .choose_multiple(&mut rand::thread_rng(), diff)
+                .cloned()
+                .collect()
+        } else {
+            Vec::new()
+        };
+    }
+
+    nodes_that_need_pods
 }
 
 #[cfg(test)]
@@ -207,30 +226,120 @@ mod tests {
             .build()
             .unwrap();
 
-        let pods = vec![pod1, pod2, pod3];
+        let pods = vec![pod1.clone(), pod2.clone(), pod3];
 
         let nodes_and_labels = vec![
             (
                 vec![node1.clone(), node2.clone(), node3.clone()],
                 labels1.clone(),
                 // 2 replicas
-                2,
+                Some(2u16),
             ),
             (
                 vec![node1.clone()],
                 labels2,
                 // 1 replicas
-                1,
+                Some(1u16),
             ),
         ];
         let excess_pods = find_excess_pods(nodes_and_labels.as_slice(), &pods);
         // 2 valid pods and 2 replicas means one excess pod
         assert_eq!(excess_pods.len(), 1);
 
-        let nodes_and_labels = vec![(vec![node1, node2, node3], labels1, 1)];
+        let nodes_and_labels = vec![(
+            vec![node1.clone(), node2.clone(), node3.clone()],
+            labels1.clone(),
+            Some(1u16),
+        )];
         let excess_pods = find_excess_pods(nodes_and_labels.as_slice(), &pods);
         // 2 valid pods and 1 replica means two excess pods
         assert_eq!(excess_pods.len(), 2);
+
+        let pods = vec![pod1, pod2];
+        let nodes_and_labels = vec![(vec![node1, node2, node3], labels1, None)];
+        let excess_pods = find_excess_pods(nodes_and_labels.as_slice(), &pods);
+        // 2 valid pods and replica wildcard (None) means no excess pods
+        assert_eq!(excess_pods.len(), 0);
+    }
+
+    #[test]
+    fn test_expected_pods() {
+        let label_group = "group";
+        let label_value = "foobar";
+
+        let mut labels1 = BTreeMap::new();
+        labels1.insert(label_group.to_string(), Some(label_value.to_string()));
+
+        let mut labels2 = BTreeMap::new();
+        labels2.insert(label_group.to_string(), None);
+
+        let mut correct_labels = BTreeMap::new();
+        correct_labels.insert(label_group.to_string(), label_value.to_string());
+
+        let mut node1 = NodeBuilder::new().build();
+        node1.metadata = ObjectMeta {
+            labels: correct_labels.clone(),
+            name: Some("node1".to_string()),
+            ..Default::default()
+        };
+        let mut node2 = NodeBuilder::new().build();
+        node2.metadata = ObjectMeta {
+            labels: correct_labels.clone(),
+            name: Some("node2".to_string()),
+            ..Default::default()
+        };
+
+        let node3 = NodeBuilder::new().name("node3").build();
+
+        let pod1 = PodBuilder::new()
+            .node_name("node1".to_string())
+            .metadata(ObjectMeta {
+                labels: correct_labels.clone(),
+                uid: Some("1".to_string()),
+                ..Default::default()
+            })
+            .build()
+            .unwrap();
+
+        let pod2 = PodBuilder::new()
+            .node_name("node2".to_string())
+            .metadata(ObjectMeta {
+                labels: correct_labels,
+                uid: Some("2".to_string()),
+                ..Default::default()
+            })
+            .build()
+            .unwrap();
+
+        let pod3 = PodBuilder::new()
+            .node_name("node3".to_string())
+            .metadata(ObjectMeta {
+                uid: Some("3".to_string()),
+                ..Default::default()
+            })
+            .build()
+            .unwrap();
+
+        let pods = vec![pod1, pod2, pod3];
+
+        let nodes_and_labels = vec![
+            (
+                vec![node1.clone(), node2, node3],
+                labels1,
+                // 2 replicas
+                Some(2u16),
+            ),
+            (
+                vec![node1],
+                labels2,
+                // 1 replicas
+                Some(1u16),
+            ),
+        ];
+
+        let expected_pods = find_expected_pods(nodes_and_labels.as_slice(), &pods);
+        // 3 because node1 is found twice!
+        assert_eq!(expected_pods.len(), 3);
     }
 
     #[test]
@@ -362,7 +471,8 @@ mod tests {
         let nodes = vec![node1, node2];
         let pods = vec![pod1];
 
-        let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels, 1);
+        let need_pods =
+            find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels, Some(1u16));
         assert_eq!(need_pods.len(), 1);
 
         let pod2 = PodBuilder::new()
@@ -377,11 +487,13 @@ mod tests {
             .unwrap();
 
         let pods = vec![pod2];
-        let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels, 1);
+        let need_pods =
+            find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels, Some(1u16));
         assert!(need_pods.is_empty());
 
         labels.clear();
-        let need_pods = find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels, 2);
+        let need_pods =
+            find_nodes_that_need_pods(nodes.as_slice(), pods.as_slice(), &labels, Some(2u16));
         assert_eq!(need_pods.len(), 1);
     }
 }
