@@ -33,7 +33,7 @@ struct TestCrd2 {}
 async fn setup(client: &Client) {
     tokio::time::timeout(
         Duration::from_secs(30),
-        crd::ensure_crd_created::<TestCrdStruct>(&client),
+        crd::ensure_crd_created::<TestCrdStruct>(client),
     )
     .await
     .expect("CRD not created in time")
@@ -41,7 +41,7 @@ async fn setup(client: &Client) {
 
     tokio::time::timeout(
         Duration::from_secs(30),
-        crd::ensure_crd_created::<TestCrd2Struct>(&client),
+        crd::ensure_crd_created::<TestCrd2Struct>(client),
     )
     .await
     .expect("CRD not created in time")
