@@ -70,24 +70,6 @@ where
         .await
 }
 
-pub async fn process_command(resources: &[ApiResource], client: &Client) -> OperatorResult<()> {
-    let command = get_next_command(resources, client).await?;
-    if let Some(command) = command {
-        let kind = command.types.unwrap().kind;
-
-        match kind.as_str() {
-            "Pod" => handle_pod(serde_json::from_value(command.data).unwrap()),
-            _ => println!("nothing"),
-        }
-    }
-
-    Ok(())
-}
-
-fn handle_pod(pod: Pod) {
-    todo!()
-}
-
 /// Collect and sort all available commands and return the first (the one with
 /// the oldest creation timestamp) element.
 ///
