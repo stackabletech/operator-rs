@@ -69,6 +69,7 @@
 //! }
 //! ```
 //!
+use crate::builder::OwnerReferenceBuilder;
 use crate::client::Client;
 use crate::controller::{Controller, ControllerStrategy, ReconciliationState};
 use crate::error::{Error, OperatorResult};
@@ -83,7 +84,7 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
-use tracing::trace;
+use tracing::{trace, warn};
 
 /// Trait for all commands to be implemented. We need to retrieve the name of the
 /// main controller custom resource.
@@ -148,8 +149,8 @@ where
     /// If the owner (main controller custom resource), we set its owner reference
     /// to our command custom resource.
     async fn set_owner_reference(&self) -> ReconcileResult<Error> {
-        let owner_reference = ObjectMetaBuilder::new()
-            .ownerreference_from_resource(self.owner.as_ref().unwrap(), Some(true), Some(true))?
+        let owner_reference = OwnerReferenceBuilder::new()
+            .initialize_from_resource(self.owner.as_ref().unwrap())
             .build()?;
 
         let owner_references_path = "/metadata/ownerReferences".to_string();
@@ -159,6 +160,8 @@ where
             path: owner_references_path,
             value: serde_json::json!([owner_reference]),
         })]);
+
+        warn!("Trying to patch ownerReference with [{:?}]", patch);
 
         self.context
             .client

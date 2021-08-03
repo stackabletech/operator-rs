@@ -5,6 +5,8 @@ use k8s_openapi::api::core::v1::Pod;
 use k8s_openapi::serde::de::DeserializeOwned;
 use kube::api::{ApiResource, DynamicObject, ListParams, Resource};
 use kube::Api;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 /// Retrieve a timestamp in format: "2021-03-23T16:20:19Z".
@@ -15,37 +17,57 @@ pub fn get_current_timestamp() -> String {
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CurrentCommand {
+pub struct CommandRef {
     pub command_uid: String,
+    pub command_name: String,
+    pub command_ns: String,
     pub command_kind: String,
     pub started_at: String,
 }
 
 pub trait HasCurrentCommand {
-    fn current_command(&self) -> Option<&CurrentCommand>;
+    fn current_command(&self) -> Option<&CommandRef>;
 
     // TODO: setters are non-rusty, is there a better way? Dirkjan?
-    fn set_current_command(&mut self, command: CurrentCommand) -> &CurrentCommand;
+    fn set_current_command(&mut self, command: CommandRef) -> CommandRef;
 }
 
-pub async fn current_command<T>(mut resource: T, resources: &[ApiResource], client: &Client)
+pub async fn current_command<T>(
+    mut resource: T,
+    resources: &[ApiResource],
+    client: &Client,
+) -> OperatorResult<Option<CommandRef>>
 where
     T: HasCurrentCommand,
 {
-    let current_command = match resource.current_command() {
+    Ok(match resource.current_command() {
         None => {
-            let new_current_command = get_next_command(resources, client).await?.unwrap();
-            let new_current_command = CurrentCommand {
-                command_uid: new_current_command.metadata.uid.unwrap().clone(),
-                command_kind: new_current_command.types.unwrap().kind,
-                started_at: get_current_timestamp(),
-            };
-            resource.set_current_command(new_current_command)
+            if let Some(new_current_command) = get_next_command(resources, client).await? {
+                let new_current_command = CommandRef {
+                    command_uid: new_current_command.metadata.uid.unwrap().clone(),
+                    command_name: new_current_command.metadata.name.unwrap().clone(),
+                    command_ns: new_current_command.metadata.namespace.unwrap().clone(),
+                    command_kind: new_current_command.types.unwrap().kind,
+                    started_at: get_current_timestamp(),
+                };
+                Some(resource.set_current_command(new_current_command))
+            } else {
+                None
+            }
         }
-        Some(command) => command.clone(),
-    };
+        Some(command) => Some(command.clone()),
+    }
+    .clone())
+}
 
-    ()
+pub async fn materialize_command<T>(command_ref: &CommandRef, client: &Client) -> OperatorResult<T>
+where
+    T: Resource + Clone + Debug + DeserializeOwned,
+    <T as Resource>::DynamicType: Default,
+{
+    client
+        .get(&command_ref.command_name, Some(&command_ref.command_ns))
+        .await
 }
 
 pub async fn process_command(resources: &[ApiResource], client: &Client) -> OperatorResult<()> {
