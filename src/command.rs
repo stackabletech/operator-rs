@@ -60,6 +60,7 @@ where
     .clone())
 }
 
+/// Tries to retrieve the Command for a [`CommandRef`].
 pub async fn materialize_command<T>(command_ref: &CommandRef, client: &Client) -> OperatorResult<T>
 where
     T: Resource + Clone + Debug + DeserializeOwned,
@@ -74,6 +75,7 @@ where
 /// the oldest creation timestamp) element.
 ///
 /// # Arguments
+/// * `TODO`
 /// * `client` - Kubernetes client
 ///
 pub async fn get_next_command(
@@ -85,9 +87,10 @@ pub async fn get_next_command(
     Ok(all_commands.into_iter().next())
 }
 
-/// Collect all different commands in one vector.
+/// Collect all of a list of resources and returns them in one big list.
 ///
 /// # Arguments
+/// * `TODO`
 /// * `client` - Kubernetes client
 ///
 async fn collect_commands(
