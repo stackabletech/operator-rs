@@ -339,7 +339,7 @@ mod tests {
         // test expected outcome
         for (role, group_and_nodes) in &eligible_node_names_parsed {
             for (group, test_nodes) in group_and_nodes {
-                let test_labels = get_role_and_group_labels(&role, &group);
+                let test_labels = get_role_and_group_labels(role, group);
                 // find the corresponding nodes via labels
                 for (eligible_nodes, labels, _replicas) in &eligible_nodes_for_role_and_group {
                     if test_labels == *labels {
