@@ -1,6 +1,7 @@
 use crate::client::Client;
 use crate::command_controller;
 use crate::error::OperatorResult;
+use json_patch::{PatchOperation, ReplaceOperation};
 use k8s_openapi::api::core::v1::Pod;
 use k8s_openapi::serde::de::DeserializeOwned;
 use kube::api::{ApiResource, DynamicObject, ListParams, Resource};
@@ -8,6 +9,7 @@ use kube::Api;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use tracing::info;
 
 /// Retrieve a timestamp in format: "2021-03-23T16:20:19Z".
 /// Required to set command start and finish timestamps.
@@ -15,7 +17,7 @@ pub fn get_current_timestamp() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 }
 
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CommandRef {
     pub command_uid: String,
@@ -30,6 +32,31 @@ pub trait HasCurrentCommand {
 
     // TODO: setters are non-rusty, is there a better way? Dirkjan?
     fn set_current_command(&mut self, command: CommandRef) -> CommandRef;
+}
+
+pub trait State {}
+
+pub async fn maybe_update_current_command<T>(
+    mut resource: T,
+    command: &CommandRef,
+    client: &Client,
+) -> OperatorResult<()>
+where
+    T: Resource + HasCurrentCommand + Clone + Debug + DeserializeOwned + k8s_openapi::Metadata,
+    <T as Resource>::DynamicType: Default,
+{
+    if resource
+        .current_command()
+        .filter(|cmd| *cmd != command)
+        .is_some()
+    {
+        // Current command is none or not equal to the new command -> we need to patch
+
+        info!("Setting currentCommand to [{:?}]", command);
+        client.merge_patch_status(&resource, &serde_json::json!({ "currentCommand": command }));
+    }
+
+    Ok(())
 }
 
 pub async fn current_command<T>(
