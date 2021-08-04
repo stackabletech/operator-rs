@@ -237,7 +237,7 @@ impl Client {
     /// The subresource status must be defined beforehand in the Crd.
     pub async fn merge_patch_status<T, S>(&self, resource: &T, status: &S) -> OperatorResult<T>
     where
-        T: Clone + Debug + DeserializeOwned + Resource,
+        T: DeserializeOwned + Resource,
         <T as Resource>::DynamicType: Default,
         S: Debug + Serialize,
     {
@@ -266,7 +266,7 @@ impl Client {
         patch_params: &PatchParams,
     ) -> OperatorResult<T>
     where
-        T: Clone + Debug + DeserializeOwned + Resource,
+        T: DeserializeOwned + Resource,
         <T as Resource>::DynamicType: Default,
         S: Debug + Serialize,
     {

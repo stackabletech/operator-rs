@@ -1,6 +1,6 @@
 use crate::client::Client;
-use crate::command_controller;
 use crate::error::OperatorResult;
+use crate::{command_controller, CustomResourceExt};
 use json_patch::{PatchOperation, ReplaceOperation};
 use k8s_openapi::api::core::v1::Pod;
 use k8s_openapi::serde::de::DeserializeOwned;
@@ -42,20 +42,24 @@ pub async fn maybe_update_current_command<T>(
     client: &Client,
 ) -> OperatorResult<()>
 where
-    T: Resource + HasCurrentCommand + Clone + Debug + DeserializeOwned,
+    T: CustomResourceExt + Resource + Clone + Debug + DeserializeOwned + k8s_openapi::Metadata,
+    T::Status: HasCurrentCommand + Clone + Debug + Serialize,
     <T as Resource>::DynamicType: Default,
 {
-    if resource
+    let resource_clone = resource.clone();
+    let mut status = resource.status_mut().unwrap();
+
+    if status
         .current_command()
         .filter(|cmd| *cmd != *command)
         .is_some()
     {
         // Current command is none or not equal to the new command -> we need to patch
 
-        resource.set_current_command(command.clone());
+        status.set_current_command(command.clone());
 
         info!("Setting currentCommand to [{:?}]", command);
-        //client.merge_patch_status(&resource, &resource.status);
+        client.merge_patch_status(&resource_clone, status);
     }
 
     Ok(())
