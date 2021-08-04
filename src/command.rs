@@ -42,7 +42,7 @@ pub async fn maybe_update_current_command<T>(
     client: &Client,
 ) -> OperatorResult<()>
 where
-    T: Resource + HasCurrentCommand + Clone + Debug + DeserializeOwned + k8s_openapi::Metadata,
+    T: Resource + HasCurrentCommand + Clone + Debug + DeserializeOwned,
     <T as Resource>::DynamicType: Default,
 {
     if resource
