@@ -229,8 +229,7 @@ where
     /// You need to make sure to add this `OwnerReference` yourself.
     pub fn owns<Child>(mut self, api: Api<Child>, lp: ListParams) -> Self
     where
-        Child: Clone + Debug + Resource + DeserializeOwned + Send + 'static,
-        <Child as Resource>::DynamicType: Clone + Debug + Eq + Hash,
+        Child: Clone + Resource<DynamicType = ()> + DeserializeOwned + Debug + Send + 'static,
     {
         self.kube_controller = self.kube_controller.owns(api, lp);
         self
