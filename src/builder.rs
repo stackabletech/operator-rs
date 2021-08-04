@@ -139,6 +139,11 @@ impl ContainerBuilder {
         self
     }
 
+    pub fn add_container_ports(&mut self, container_port: Vec<ContainerPort>) -> &mut Self {
+        self.container_ports.extend(container_port);
+        self
+    }
+
     pub fn build(&self) -> Container {
         let mut volumes = vec![];
         let mut volume_mounts = vec![];
@@ -836,6 +841,14 @@ mod tests {
                     .name(container_port_name)
                     .build(),
             )
+            .add_container_ports(vec![
+                ContainerPortBuilder::new(container_port)
+                    .name(container_port_name)
+                    .build(),
+                ContainerPortBuilder::new(container_port)
+                    .name(container_port_name)
+                    .build(),
+            ])
             .build();
 
         assert_eq!(container.name, "testcontainer");
@@ -850,6 +863,8 @@ mod tests {
             container.ports[0].container_port == i32::from(container_port)
                 && container.ports[0].name == Some(container_port_name.to_string())
         );
+
+        assert_eq!(container.ports.len(), 3)
     }
 
     #[test]
