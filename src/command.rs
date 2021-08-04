@@ -28,16 +28,16 @@ pub struct CommandRef {
 }
 
 pub trait HasCurrentCommand {
-    fn current_command(&self) -> Option<&CommandRef>;
+    fn current_command(&self) -> Option<CommandRef>;
 
     // TODO: setters are non-rusty, is there a better way? Dirkjan?
-    fn set_current_command(&mut self, command: CommandRef) -> CommandRef;
+    fn set_current_command(&mut self, command: CommandRef);
 }
 
 pub trait State {}
 
 pub async fn maybe_update_current_command<T>(
-    mut resource: T,
+    resource: &mut T,
     command: &CommandRef,
     client: &Client,
 ) -> OperatorResult<()>
@@ -47,13 +47,15 @@ where
 {
     if resource
         .current_command()
-        .filter(|cmd| *cmd != command)
+        .filter(|cmd| *cmd != *command)
         .is_some()
     {
         // Current command is none or not equal to the new command -> we need to patch
 
+        resource.set_current_command(command.clone());
+
         info!("Setting currentCommand to [{:?}]", command);
-        client.merge_patch_status(&resource, &serde_json::json!({ "currentCommand": command }));
+        //client.merge_patch_status(&resource, &resource.status);
     }
 
     Ok(())
@@ -67,7 +69,7 @@ pub async fn current_command<T>(
 where
     T: HasCurrentCommand,
 {
-    Ok(match resource.current_command() {
+    /* Ok(match resource.current_command() {
         None => {
             if let Some(new_current_command) = get_next_command(resources, client).await? {
                 let new_current_command = CommandRef {
@@ -85,6 +87,8 @@ where
         Some(command) => Some(command.clone()),
     }
     .clone())
+    */
+    Ok(Some(CommandRef::default()))
 }
 
 /// Tries to retrieve the Command for a [`CommandRef`].
