@@ -77,7 +77,7 @@ where
         + DeserializeOwned
         + k8s_openapi::Metadata
         + HasStatus,
-    <T as HasStatus>::Status: HasCurrentCommand + Debug + Serialize + Copy,
+    <T as HasStatus>::Status: HasCurrentCommand + Debug + Serialize,
     <T as Resource>::DynamicType: Default,
 {
     let resource_clone = resource.clone();
