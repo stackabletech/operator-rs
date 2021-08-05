@@ -94,7 +94,7 @@ where
 }
 
 pub async fn current_command<T>(
-    resource: T,
+    resource: &T,
     resources: &[ApiResource],
     client: &Client,
 ) -> OperatorResult<Option<CommandRef>>
