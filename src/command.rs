@@ -1,7 +1,9 @@
 use crate::client::Client;
 use crate::error::Error::ConversionError;
 use crate::error::OperatorResult;
+use crate::status::HasCurrentCommand;
 use crate::CustomResourceExt;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 use k8s_openapi::serde::de::DeserializeOwned;
 use kube::api::{ApiResource, DynamicObject, ListParams, Resource};
 use kube::core::object::HasStatus;
@@ -10,12 +12,16 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
-use tracing::info;
+use tracing::{info, warn};
 
 /// Retrieve a timestamp in format: "2021-03-23T16:20:19Z".
 /// Required to set command start and finish timestamps.
 pub fn get_current_timestamp() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+}
+
+pub trait HasCommands {
+    fn get_command_types() -> Vec<ApiResource>;
 }
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize, Eq, PartialEq)]
@@ -25,14 +31,7 @@ pub struct CommandRef {
     pub command_name: String,
     pub command_ns: String,
     pub command_kind: String,
-    pub started_at: String,
-}
-
-pub trait HasCurrentCommand {
-    fn current_command(&self) -> Option<CommandRef>;
-
-    // TODO: setters are non-rusty, is there a better way? Dirkjan?
-    fn set_current_command(&mut self, command: CommandRef);
+    pub started_at: Option<String>,
 }
 
 impl TryFrom<DynamicObject> for CommandRef {
@@ -55,12 +54,28 @@ impl TryFrom<DynamicObject> for CommandRef {
                 .ok_or(report_error("test"))?
                 .clone(),
             command_kind: command.types.ok_or(report_error("test"))?.kind,
-            started_at: get_current_timestamp(),
+            started_at: Some(get_current_timestamp()),
         })
     }
 }
 
-pub trait State {}
+pub async fn clear_current_command<T>(resource: &mut T, client: &Client) -> OperatorResult<()>
+where
+    T: CustomResourceExt + Resource + Clone + Debug + DeserializeOwned + HasStatus,
+    <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
+    <T as Resource>::DynamicType: Default,
+{
+    let resource_clone = resource.clone();
+    let status = resource
+        .status_mut()
+        .get_or_insert_with(|| Default::default());
+
+    status.clear_current_command();
+
+    info!("Clearing currentCommand");
+    client.merge_patch_status(&resource_clone, &status).await?;
+    Ok(())
+}
 
 pub async fn maybe_update_current_command<T>(
     resource: &mut T,
@@ -80,7 +95,7 @@ where
     if status
         .current_command()
         .filter(|cmd| *cmd != *command)
-        .is_some()
+        .is_none()
     {
         // Current command is none or not equal to the new command -> we need to patch
 
@@ -102,10 +117,25 @@ where
     T: Resource + HasStatus,
     <T as HasStatus>::Status: HasCurrentCommand,
 {
+    warn!("Looking for current command ....");
     match resource.status() {
-        None => get_next_command(resources, client).await,
-        Some(status) if status.current_command().is_some() => Ok(status.current_command()),
-        Some(status) => get_next_command(resources, client).await,
+        None => {
+            warn!("No status set..");
+            let next_command = get_next_command(resources, client).await;
+            warn!("found next command: {:?}", next_command);
+            next_command
+        }
+        Some(status) if status.current_command().is_some() => {
+            warn!(
+                "Found current command in status: [{:?}]",
+                status.current_command()
+            );
+            Ok(status.current_command())
+        }
+        Some(status) => {
+            warn!("No current command set in status, retrieving from k8s..");
+            get_next_command(resources, client).await
+        }
     }
 }
 
@@ -133,6 +163,7 @@ pub async fn get_next_command(
 ) -> OperatorResult<Option<CommandRef>> {
     let mut all_commands = collect_commands(resources, client).await?;
     all_commands.sort_by_key(|a| a.metadata.creation_timestamp.clone());
+    warn!("all commands: {:?}", all_commands);
     all_commands
         .into_iter()
         .next()

@@ -223,3 +223,11 @@ where
         .await;
     Ok(())
 }
+
+pub trait HasInstance {
+    fn get_instance_name(&self) -> &str;
+}
+
+pub trait HasApplication {
+    fn get_application_name() -> &'static str;
+}

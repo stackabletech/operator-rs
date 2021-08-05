@@ -3,17 +3,31 @@ use crate::error::{Error, OperatorResult};
 use crate::k8s_utils::LabelOptionalValueMap;
 use crate::{conditions, controller_ref, finalizer, pod_utils};
 
+use crate::command::{maybe_update_current_command, CommandRef, HasCommands};
 use crate::conditions::ConditionStatus;
+use crate::crd::{HasApplication, HasInstance};
+use crate::error::Error::{InvalidName, KubeError};
 use crate::k8s_utils::find_excess_pods;
-use k8s_openapi::api::core::v1::{Node, Pod};
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
+use crate::labels::{APP_COMPONENT_LABEL, APP_INSTANCE_LABEL, APP_NAME_LABEL};
+use crate::status::HasCurrentCommand;
+use chrono::DateTime;
+use futures::StreamExt;
+use k8s_openapi::api::core::v1::{ConfigMap, Node, Pod};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
+    Condition, LabelSelector, LabelSelectorRequirement,
+};
 use kube::api::{ObjectMeta, ResourceExt};
-use kube::Resource;
+use kube::core::object::HasStatus;
+use kube::error::ErrorResponse;
+use kube::{CustomResourceExt, Resource};
 use kube_runtime::controller::ReconcilerAction;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::future::Future;
+use std::hash::Hasher;
+use std::ops::{Add, Deref};
 use std::pin::Pin;
 use std::time::Duration;
 use tracing::{debug, info, trace, warn};
@@ -283,6 +297,196 @@ where
         } else {
             Ok(ReconcileFunctionAction::Continue)
         }
+    }
+
+    /// This method can be used to ensure a ConfigMap exists and has the specified content.
+    ///
+    /// If a ConfigMap with the specified name does not exist it will be created.
+    ///
+    /// Should a ConfigMap with the specified name already exist the content is retrieved and
+    /// compared with the content from `config_map`, if content differs the existing ConfigMap is
+    /// updated.
+    ///
+    /// Returns `Ok(true)` if a change was made and `Ok(false}` if no change was necessary.
+    pub async fn create_config_map(&self, config_map: ConfigMap) -> OperatorResult<bool> {
+        let cm_name = match config_map.metadata.name.as_deref() {
+            None => {
+                return Err(InvalidName {
+                    errors: vec![String::from(
+                        "ConfigMap with empty name encountered, this is illegal!",
+                    )],
+                })
+            }
+            Some(name) => name,
+        };
+
+        match self
+            .client
+            .get::<ConfigMap>(cm_name, Some(&self.namespace()))
+            .await
+        {
+            Ok(ConfigMap {
+                data: existing_config_map_data,
+                ..
+            }) if existing_config_map_data == config_map.data => {
+                info!(
+                    "ConfigMap [{}] already exists with identical data, skipping creation!",
+                    cm_name
+                );
+                Ok(false)
+            }
+            Ok(_) => {
+                info!(
+                    "ConfigMap [{}] already exists, but differs, updating it!",
+                    cm_name
+                );
+                self.client.update(&config_map).await?;
+                Ok(true)
+            }
+            Err(KubeError {
+                source: kube::error::Error::Api(ErrorResponse { reason, .. }),
+            }) if reason == "NotFound" => {
+                info!("ConfigMap [{}] not found, creating it.", cm_name);
+                self.client.create(&config_map).await?;
+                Ok(true)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn remove_pods(
+        &self,
+        command: &CommandRef,
+        // TODO: I considered making this a trait that allows fetching the roles, but that would mean fixing the restart order
+        //   once ond for all when defining the implementation, this way we can use a custom order every time if needed
+        role_order: Vec<&str>,
+        restart_strategy: ContinuationStrategy,
+    ) -> ReconcileResult<Error>
+    where
+        T: HasApplication,
+    {
+        // List all pods
+
+        let mut leftover_pods = 0;
+        for role in role_order {
+            // Retrieve all pods for this service and role
+            let selector = self.get_role_selector(role, command.command_uid.as_str());
+            let pods = self
+                .client
+                .list_with_label_selector::<Pod>(self.resource.namespace().as_deref(), &selector)
+                .await?;
+
+            // Filter those out that have been restarted since the command was started
+            let pods = pods
+                .iter()
+                .filter(
+                    |pod| match (&pod.metadata.creation_timestamp, &command.started_at) {
+                        (Some(pod_start_time), Some(command_start_time)) => {
+                            let command_start_time =
+                                DateTime::parse_from_rfc3339(command_start_time).unwrap();
+                            pod_start_time.0 < command_start_time
+                                && pod.metadata.deletion_timestamp.is_none()
+                        }
+                        _ => false,
+                    },
+                )
+                .collect::<Vec<_>>();
+
+            // Track how many pods we found over all iterations, if this is zero after all roles
+            // have been restarted the restart is considered done
+            leftover_pods.add(pods.len());
+
+            // Restart pods depending on strategy
+            match restart_strategy {
+                ContinuationStrategy::OneRequeue => {
+                    self.client.delete(pods.first().unwrap().deref()).await?;
+                    // We return early for this case, as there is really nothing left to do
+                    return Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(10)));
+                }
+                ContinuationStrategy::AllContinue | ContinuationStrategy::AllRequeue => {
+                    for pod in pods {
+                        self.client.delete(pod).await?;
+                    }
+                }
+            }
+        }
+        if leftover_pods == 0 {
+            // No pods that were eligible for a restart were found, restart is done
+            Ok(ReconcileFunctionAction::Done)
+        } else {
+            match restart_strategy {
+                ContinuationStrategy::AllRequeue | ContinuationStrategy::OneRequeue => {
+                    Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(10)))
+                }
+                ContinuationStrategy::AllContinue => Ok(ReconcileFunctionAction::Continue),
+            }
+        }
+    }
+
+    fn get_role_selector(&self, role: &str, command_uid: &str) -> LabelSelector
+    where
+        T: HasApplication,
+    {
+        let command_match = LabelSelectorRequirement {
+            key: "start_command".to_string(),
+            operator: "notin".to_string(),
+            values: vec![command_uid.to_string()],
+        };
+        let application_match = LabelSelectorRequirement {
+            key: APP_NAME_LABEL.to_string(),
+            operator: "in".to_string(),
+            values: vec![<T as HasApplication>::get_application_name().to_string()],
+        };
+        let role_match = LabelSelectorRequirement {
+            key: APP_COMPONENT_LABEL.to_string(),
+            operator: "in".to_string(),
+            values: vec![],
+        };
+
+        let instance_match = LabelSelectorRequirement {
+            key: APP_INSTANCE_LABEL.to_string(),
+            operator: "in".to_string(),
+            values: vec![self.resource.name()],
+        };
+
+        LabelSelector {
+            match_expressions: vec![command_match, application_match, role_match, instance_match],
+            match_labels: Default::default(),
+        }
+    }
+
+    pub async fn retrieve_current_command(&mut self) -> OperatorResult<Option<CommandRef>>
+    where
+        T: Clone
+            + Debug
+            + DeserializeOwned
+            + Resource
+            + CustomResourceExt
+            + HasCommands
+            + HasStatus
+            + Send
+            + Sync
+            + 'static,
+        <T as Resource>::DynamicType: Default,
+        <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
+    {
+        let current_command_ref = crate::command::current_command(
+            &self.resource,
+            T::get_command_types().as_slice(),
+            &self.client,
+        )
+        .await?;
+
+        // Check if the one that should be running has already been set in the Status => was
+        // already started
+        Ok(match current_command_ref {
+            None => None,
+            Some(current_command) => {
+                maybe_update_current_command(&mut self.resource, &current_command, &self.client)
+                    .await?;
+                Some(current_command)
+            }
+        })
     }
 
     /// This reconcile function can be added to the chain to automatically handle deleted objects
