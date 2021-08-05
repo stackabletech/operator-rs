@@ -1,9 +1,7 @@
 use crate::client::Client;
 use crate::error::Error::ConversionError;
 use crate::error::OperatorResult;
-use crate::{command_controller, CustomResourceExt};
-use json_patch::{PatchOperation, ReplaceOperation};
-use k8s_openapi::api::core::v1::Pod;
+use crate::CustomResourceExt;
 use k8s_openapi::serde::de::DeserializeOwned;
 use kube::api::{ApiResource, DynamicObject, ListParams, Resource};
 use kube::core::object::HasStatus;
@@ -81,7 +79,7 @@ where
     <T as Resource>::DynamicType: Default,
 {
     let resource_clone = resource.clone();
-    let mut status = resource
+    let status = resource
         .status_mut()
         .get_or_insert_with(|| Default::default());
 
@@ -95,7 +93,7 @@ where
         status.set_current_command(command.clone());
 
         info!("Setting currentCommand to [{:?}]", command);
-        client.merge_patch_status(&resource_clone, &status);
+        client.merge_patch_status(&resource_clone, &status).await?;
     }
 
     Ok(())
