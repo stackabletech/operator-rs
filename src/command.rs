@@ -81,7 +81,9 @@ where
     <T as Resource>::DynamicType: Default,
 {
     let resource_clone = resource.clone();
-    let mut status = resource.status_mut().unwrap();
+    let mut status = resource
+        .status_mut()
+        .get_or_insert_with(|| Default::default());
 
     if status
         .current_command()
