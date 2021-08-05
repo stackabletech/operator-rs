@@ -76,6 +76,9 @@ pub enum Error {
 
     #[error("Error converting CRD byte array to UTF-8")]
     FromUtf8Error(#[from] std::string::FromUtf8Error),
+
+    #[error("Conversion error : [message]")]
+    ConversionError { message: String },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;

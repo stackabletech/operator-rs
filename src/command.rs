@@ -1,13 +1,16 @@
 use crate::client::Client;
+use crate::error::Error::ConversionError;
 use crate::error::OperatorResult;
 use crate::{command_controller, CustomResourceExt};
 use json_patch::{PatchOperation, ReplaceOperation};
 use k8s_openapi::api::core::v1::Pod;
 use k8s_openapi::serde::de::DeserializeOwned;
 use kube::api::{ApiResource, DynamicObject, ListParams, Resource};
+use kube::core::object::HasStatus;
 use kube::Api;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 use tracing::info;
 
@@ -34,6 +37,31 @@ pub trait HasCurrentCommand {
     fn set_current_command(&mut self, command: CommandRef);
 }
 
+impl TryFrom<DynamicObject> for CommandRef {
+    type Error = crate::error::Error;
+
+    fn try_from(command: DynamicObject) -> Result<Self, Self::Error> {
+        let report_error = |field: &str| ConversionError {
+            message: format!(
+                "Error converting to CommandRef from DynamicObject, [{}] cannot be empty!",
+                field
+            ),
+        };
+
+        Ok(CommandRef {
+            command_uid: command.metadata.uid.ok_or(report_error("test"))?.clone(),
+            command_name: command.metadata.name.ok_or(report_error("test"))?.clone(),
+            command_ns: command
+                .metadata
+                .namespace
+                .ok_or(report_error("test"))?
+                .clone(),
+            command_kind: command.types.ok_or(report_error("test"))?.kind,
+            started_at: get_current_timestamp(),
+        })
+    }
+}
+
 pub trait State {}
 
 pub async fn maybe_update_current_command<T>(
@@ -42,8 +70,14 @@ pub async fn maybe_update_current_command<T>(
     client: &Client,
 ) -> OperatorResult<()>
 where
-    T: CustomResourceExt + Resource + Clone + Debug + DeserializeOwned + k8s_openapi::Metadata,
-    T::Status: HasCurrentCommand + Clone + Debug + Serialize,
+    T: CustomResourceExt
+        + Resource
+        + Clone
+        + Debug
+        + DeserializeOwned
+        + k8s_openapi::Metadata
+        + HasStatus,
+    <T as HasStatus>::Status: HasCurrentCommand + Debug + Serialize + Copy,
     <T as Resource>::DynamicType: Default,
 {
     let resource_clone = resource.clone();
@@ -59,7 +93,7 @@ where
         status.set_current_command(command.clone());
 
         info!("Setting currentCommand to [{:?}]", command);
-        client.merge_patch_status(&resource_clone, status);
+        client.merge_patch_status(&resource_clone, &status);
     }
 
     Ok(())
@@ -71,28 +105,14 @@ pub async fn current_command<T>(
     client: &Client,
 ) -> OperatorResult<Option<CommandRef>>
 where
-    T: HasCurrentCommand,
+    T: Resource + HasStatus,
+    <T as HasStatus>::Status: HasCurrentCommand,
 {
-    /* Ok(match resource.current_command() {
-        None => {
-            if let Some(new_current_command) = get_next_command(resources, client).await? {
-                let new_current_command = CommandRef {
-                    command_uid: new_current_command.metadata.uid.unwrap().clone(),
-                    command_name: new_current_command.metadata.name.unwrap().clone(),
-                    command_ns: new_current_command.metadata.namespace.unwrap().clone(),
-                    command_kind: new_current_command.types.unwrap().kind,
-                    started_at: get_current_timestamp(),
-                };
-                Some(resource.set_current_command(new_current_command))
-            } else {
-                None
-            }
-        }
-        Some(command) => Some(command.clone()),
+    match resource.status() {
+        None => get_next_command(resources, client).await,
+        Some(status) if status.current_command().is_some() => Ok(status.current_command()),
+        Some(status) => get_next_command(resources, client).await,
     }
-    .clone())
-    */
-    Ok(Some(CommandRef::default()))
 }
 
 /// Tries to retrieve the Command for a [`CommandRef`].
@@ -116,10 +136,14 @@ where
 pub async fn get_next_command(
     resources: &[ApiResource],
     client: &Client,
-) -> OperatorResult<Option<DynamicObject>> {
+) -> OperatorResult<Option<CommandRef>> {
     let mut all_commands = collect_commands(resources, client).await?;
     all_commands.sort_by_key(|a| a.metadata.creation_timestamp.clone());
-    Ok(all_commands.into_iter().next())
+    all_commands
+        .into_iter()
+        .next()
+        .map(|bla| bla.try_into())
+        .transpose()
 }
 
 /// Collect all of a list of resources and returns them in one big list.
