@@ -68,13 +68,7 @@ pub async fn maybe_update_current_command<T>(
     client: &Client,
 ) -> OperatorResult<()>
 where
-    T: CustomResourceExt
-        + Resource
-        + Clone
-        + Debug
-        + DeserializeOwned
-        + k8s_openapi::Metadata
-        + HasStatus,
+    T: CustomResourceExt + Resource + Clone + Debug + DeserializeOwned + HasStatus,
     <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
     <T as Resource>::DynamicType: Default,
 {
@@ -100,7 +94,7 @@ where
 }
 
 pub async fn current_command<T>(
-    mut resource: T,
+    resource: T,
     resources: &[ApiResource],
     client: &Client,
 ) -> OperatorResult<Option<CommandRef>>

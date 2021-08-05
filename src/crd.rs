@@ -9,7 +9,6 @@ use crate::error::OperatorResult;
 use backoff::backoff::Backoff;
 use backoff::ExponentialBackoff;
 use kube::api::ListParams;
-use kube::ResourceExt;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
