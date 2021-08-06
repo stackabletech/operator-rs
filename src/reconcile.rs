@@ -3,13 +3,20 @@ use crate::error::{Error, OperatorResult};
 use crate::k8s_utils::LabelOptionalValueMap;
 use crate::{conditions, controller_ref, finalizer, pod_utils};
 
-use crate::command::{maybe_update_current_command, CommandRef, HasCommands};
+use crate::command::{
+    maybe_update_current_command, CanBeRolling, CommandRef, HasCommands, HasRoleRestartOrder,
+    HasRoles,
+};
+use crate::command_controller::Command;
 use crate::conditions::ConditionStatus;
 use crate::crd::{HasApplication, HasInstance};
 use crate::error::Error::{InvalidName, KubeError};
 use crate::k8s_utils::find_excess_pods;
-use crate::labels::{APP_COMPONENT_LABEL, APP_INSTANCE_LABEL, APP_NAME_LABEL};
+use crate::labels::{
+    APP_COMPONENT_LABEL, APP_INSTANCE_LABEL, APP_NAME_LABEL, APP_ROLE_GROUP_LABEL,
+};
 use crate::status::HasCurrentCommand;
+use async_trait::async_trait;
 use chrono::DateTime;
 use futures::StreamExt;
 use k8s_openapi::api::core::v1::{ConfigMap, Node, Pod};
@@ -18,6 +25,7 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
 };
 use kube::api::{ObjectMeta, ResourceExt};
 use kube::core::object::HasStatus;
+use kube::core::DynamicObject;
 use kube::error::ErrorResponse;
 use kube::{CustomResourceExt, Resource};
 use kube_runtime::controller::ReconcilerAction;
@@ -86,6 +94,16 @@ pub enum ContinuationStrategy {
 
     /// Will process all resources but will return a requeue after any changes
     OneRequeue,
+}
+
+#[async_trait]
+pub trait ProvidesPod {
+    async fn get_pod_and_context(
+        &self,
+        role: &str,
+        role_group: &str,
+        node: &str,
+    ) -> OperatorResult<(Pod, Vec<ConfigMap>)>; // We should convert this to something like (Vec<Pod>, Vec<DynamicObject>) for more flexibility
 }
 
 pub struct ReconciliationContext<T> {
@@ -354,23 +372,27 @@ where
         }
     }
 
-    pub async fn remove_pods(
+    pub async fn default_restart<C, P>(
         &self,
-        command: &CommandRef,
-        // TODO: I considered making this a trait that allows fetching the roles, but that would mean fixing the restart order
-        //   once ond for all when defining the implementation, this way we can use a custom order every time if needed
-        role_order: Vec<&str>,
-        restart_strategy: ContinuationStrategy,
+        command: &C,
+        pod_provider: &P,
     ) -> ReconcileResult<Error>
     where
-        T: HasApplication,
+        T: HasApplication + HasRoleRestartOrder,
+        C: Command + CanBeRolling + HasRoles,
+        // TODO: Not sure if we can skip 'HasRoles' here and conditinally run code below if it is implemented
+        P: ProvidesPod,
     {
-        // List all pods
+        // If the command provides a list of roles this overrides the default provided by the cluster
+        // definition itself
+        let role_order = command
+            .get_role_order()
+            .unwrap_or_else(|| T::get_role_restart_order());
 
-        let mut leftover_pods = 0;
+        let mut restart_occurred = false;
         for role in role_order {
             // Retrieve all pods for this service and role
-            let selector = self.get_role_selector(role, command.command_uid.as_str());
+            let selector = self.get_role_selector(&role);
             let pods = self
                 .client
                 .list_with_label_selector::<Pod>(self.resource.namespace().as_deref(), &selector)
@@ -380,11 +402,9 @@ where
             let pods = pods
                 .iter()
                 .filter(
-                    |pod| match (&pod.metadata.creation_timestamp, &command.started_at) {
+                    |pod| match (&pod.metadata.creation_timestamp, &command.start_time()) {
                         (Some(pod_start_time), Some(command_start_time)) => {
-                            let command_start_time =
-                                DateTime::parse_from_rfc3339(command_start_time).unwrap();
-                            pod_start_time.0 < command_start_time
+                            &pod_start_time.0 < command_start_time
                                 && pod.metadata.deletion_timestamp.is_none()
                         }
                         _ => false,
@@ -392,67 +412,82 @@ where
                 )
                 .collect::<Vec<_>>();
 
-            // Track how many pods we found over all iterations, if this is zero after all roles
-            // have been restarted the restart is considered done
-            leftover_pods.add(pods.len());
+            if pods.is_empty() {
+                // Got no pods for this role, skip rest of processing
+                debug!(
+                    "Skipping role [{}] during restart, no pods left to restart.",
+                    role
+                );
+                continue;
+            }
 
+            // Track if anything was changed during this run
+            restart_occurred = true;
             // Restart pods depending on strategy
-            match restart_strategy {
-                ContinuationStrategy::OneRequeue => {
+            match command.is_rolling() {
+                true => {
+                    let current_pod = pods.first().unwrap();
+                    let labels = &current_pod.meta().labels;
+
+                    let role_group = labels.get(APP_ROLE_GROUP_LABEL).unwrap();
+                    let node = current_pod
+                        .spec
+                        .clone()
+                        .unwrap_or_default()
+                        .node_name
+                        .unwrap();
+
+                    //let role_group = current_pod.
                     self.client.delete(pods.first().unwrap().deref()).await?;
-                    // We return early for this case, as there is really nothing left to do
-                    return Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(10)));
+                    let (pods, context) = pod_provider
+                        .get_pod_and_context(&role, role_group, &node)
+                        .await?;
+                    // We return early for this case, there is nothing left to do after one pod
+                    // was restarted
+                    return Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)));
                 }
-                ContinuationStrategy::AllContinue | ContinuationStrategy::AllRequeue => {
+                false => {
                     for pod in pods {
                         self.client.delete(pod).await?;
                     }
                 }
             }
         }
-        if leftover_pods == 0 {
+        if restart_occurred {
+            Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)))
+        } else {
             // No pods that were eligible for a restart were found, restart is done
             Ok(ReconcileFunctionAction::Done)
-        } else {
-            match restart_strategy {
-                ContinuationStrategy::AllRequeue | ContinuationStrategy::OneRequeue => {
-                    Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(10)))
-                }
-                ContinuationStrategy::AllContinue => Ok(ReconcileFunctionAction::Continue),
-            }
         }
     }
 
-    fn get_role_selector(&self, role: &str, command_uid: &str) -> LabelSelector
+    fn get_role_selector(&self, role: &str) -> LabelSelector
     where
         T: HasApplication,
     {
-        let command_match = LabelSelectorRequirement {
-            key: "start_command".to_string(),
-            operator: "notin".to_string(),
-            values: vec![command_uid.to_string()],
-        };
         let application_match = LabelSelectorRequirement {
             key: APP_NAME_LABEL.to_string(),
-            operator: "in".to_string(),
+            operator: "In".to_string(),
             values: vec![<T as HasApplication>::get_application_name().to_string()],
         };
         let role_match = LabelSelectorRequirement {
             key: APP_COMPONENT_LABEL.to_string(),
-            operator: "in".to_string(),
-            values: vec![],
+            operator: "In".to_string(),
+            values: vec![role.to_string()],
         };
 
         let instance_match = LabelSelectorRequirement {
             key: APP_INSTANCE_LABEL.to_string(),
-            operator: "in".to_string(),
+            operator: "In".to_string(),
             values: vec![self.resource.name()],
         };
 
-        LabelSelector {
-            match_expressions: vec![command_match, application_match, role_match, instance_match],
+        let result = LabelSelector {
+            match_expressions: vec![application_match, role_match, instance_match],
             match_labels: Default::default(),
-        }
+        };
+        warn!("Created labelselector: [{:?}]", result);
+        result
     }
 
     pub async fn retrieve_current_command(&mut self) -> OperatorResult<Option<CommandRef>>

@@ -1,9 +1,11 @@
 use crate::client::Client;
+use crate::command_controller::Command;
 use crate::error::Error::ConversionError;
 use crate::error::OperatorResult;
 use crate::status::HasCurrentCommand;
 use crate::CustomResourceExt;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
+use k8s_openapi::chrono::{DateTime, Utc};
 use k8s_openapi::serde::de::DeserializeOwned;
 use kube::api::{ApiResource, DynamicObject, ListParams, Resource};
 use kube::core::object::HasStatus;
@@ -20,8 +22,26 @@ pub fn get_current_timestamp() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 }
 
+/// Implemented on a cluster object this can be called to retrieve the order that roles need to
+/// be restarted
+pub trait HasRoleRestartOrder {
+    fn get_role_restart_order() -> Vec<String>;
+}
+/// Implemented on a Cluster object, this can be used to retrieve the types of commands that
+/// can be used to administer this cluster.
 pub trait HasCommands {
     fn get_command_types() -> Vec<ApiResource>;
+}
+
+/// When implemented this command can be executed in a rolling fashion
+pub trait CanBeRolling: Command {
+    fn is_rolling(&self) -> bool;
+}
+
+/// When implemented, this command can be restricted to only run on a subset of roles that are
+/// available for this application
+pub trait HasRoles: Command {
+    fn get_role_order(&self) -> Option<Vec<String>>;
 }
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize, Eq, PartialEq)]
@@ -31,6 +51,9 @@ pub struct CommandRef {
     pub command_name: String,
     pub command_ns: String,
     pub command_kind: String,
+    // TODO: Make started_at an Option<Time> or something similar
+    //   when I tried it I got an error that schema-rs doesn't support the Time type
+    //   and ran out of time to investigate
     pub started_at: Option<String>,
 }
 

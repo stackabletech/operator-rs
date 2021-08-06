@@ -76,6 +76,7 @@ use crate::controller_ref;
 use crate::error::{Error, OperatorResult};
 use crate::reconcile::{ReconcileFunctionAction, ReconcileResult, ReconciliationContext};
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use json_patch::{AddOperation, PatchOperation};
 use kube::api::ListParams;
 use kube::{Api, Resource, ResourceExt};
@@ -89,9 +90,12 @@ use tracing::{trace, warn};
 /// Trait for all commands to be implemented. We need to retrieve the name of the
 /// main controller custom resource.
 /// The referenced resource has to be in the same namespace as the command itself.
-pub trait Command {
+pub trait Command: Resource {
     /// Retrieve the potential "Owner" name of this custom resource
     fn get_owner_name(&self) -> String;
+    fn start(&mut self);
+    fn done(&mut self);
+    fn start_time(&self) -> Option<DateTime<Utc>>;
 }
 
 struct CommandState<C, O>
