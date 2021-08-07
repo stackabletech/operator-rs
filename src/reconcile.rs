@@ -404,17 +404,24 @@ where
                 .filter(
                     |pod| match (&pod.metadata.creation_timestamp, &command.start_time()) {
                         (Some(pod_start_time), Some(command_start_time)) => {
+                            warn!(
+                                "Comparing times: [{}] < [{}]",
+                                pod_start_time.0, command_start_time
+                            );
                             &pod_start_time.0 < command_start_time
                                 && pod.metadata.deletion_timestamp.is_none()
                         }
-                        _ => false,
+                        _ => {
+                            warn!("One of the times was not set!");
+                            false
+                        }
                     },
                 )
                 .collect::<Vec<_>>();
 
             if pods.is_empty() {
                 // Got no pods for this role, skip rest of processing
-                debug!(
+                warn!(
                     "Skipping role [{}] during restart, no pods left to restart.",
                     role
                 );
@@ -426,7 +433,7 @@ where
             // Restart pods depending on strategy
             match command.is_rolling() {
                 true => {
-                    let current_pod = pods.first().unwrap();
+                    let current_pod = pods.first().unwrap().deref();
                     let labels = &current_pod.meta().labels;
 
                     let role_group = labels.get(APP_ROLE_GROUP_LABEL).unwrap();
@@ -437,11 +444,17 @@ where
                         .node_name
                         .unwrap();
 
-                    //let role_group = current_pod.
-                    self.client.delete(pods.first().unwrap().deref()).await?;
+                    self.client.ensure_deleted(current_pod.clone()).await?;
+
                     let (pods, context) = pod_provider
                         .get_pod_and_context(&role, role_group, &node)
                         .await?;
+
+                    //for config_map in config_maps {
+                    //    self.create_config_map(config_map).await?;
+                    // }
+                    warn!("Creating pod on node [{}]: [{:?}]", node, pods);
+                    self.client.create(&pods).await?;
                     // We return early for this case, there is nothing left to do after one pod
                     // was restarted
                     return Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)));

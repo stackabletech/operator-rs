@@ -76,11 +76,12 @@ use crate::controller_ref;
 use crate::error::{Error, OperatorResult};
 use crate::reconcile::{ReconcileFunctionAction, ReconcileResult, ReconciliationContext};
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, FixedOffset, Utc};
 use json_patch::{AddOperation, PatchOperation};
 use kube::api::ListParams;
 use kube::{Api, Resource, ResourceExt};
 use serde::de::DeserializeOwned;
+use serde_json::Value;
 use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
@@ -95,7 +96,8 @@ pub trait Command: Resource {
     fn get_owner_name(&self) -> String;
     fn start(&mut self);
     fn done(&mut self);
-    fn start_time(&self) -> Option<DateTime<Utc>>;
+    fn start_time(&self) -> Option<DateTime<FixedOffset>>;
+    fn get_start_patch(&self) -> Value;
 }
 
 struct CommandState<C, O>

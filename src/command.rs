@@ -12,6 +12,7 @@ use kube::core::object::HasStatus;
 use kube::Api;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 use tracing::{info, warn};
@@ -121,10 +122,15 @@ where
         .is_none()
     {
         // Current command is none or not equal to the new command -> we need to patch
-
+        // TODO: We need to update the command object in Kubernetes with the start time
+        //   not the CommandRef object, but the actual command -
+        //   This is the reason why this entire house of cards is not currently doing anything, as
+        //   the started_at value for all commands will always be empty and thus the comparison against
+        //   the creation time for the pods fails
         status.set_current_command(command.clone());
 
         info!("Setting currentCommand to [{:?}]", command);
+
         client.merge_patch_status(&resource_clone, &status).await?;
     }
 
