@@ -234,7 +234,7 @@ where
 /// For each command, we try to find the referenced resource and will set the Owner Reference
 /// of the command to this referenced resource.
 /// If we can't find the referenced object we currently ignore this command.
-/// See https://github.com/stackabletech/operator-rs/issues/121.
+/// See <https://github.com/stackabletech/operator-rs/issues/121>.
 /// This means that the controller of the parent resource can now watch for commands and this
 /// helper controller will make sure that they trigger a reconcile for the parent by setting the OwnerReference.
 ///
