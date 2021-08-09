@@ -1,5 +1,6 @@
 use k8s_openapi::api::core::v1::Toleration;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
+use std::collections::BTreeMap;
 
 /// Creates a vector of tolerations we need to work with the Krustlet.
 /// Usually these would be added to a Pod so it can be scheduled on a Krustlet.
@@ -44,6 +45,7 @@ pub fn add_stackable_selector(selector: Option<&LabelSelector>) -> LabelSelector
 
     selector
         .match_labels
+        .get_or_insert_with(BTreeMap::new)
         .insert("type".to_string(), "krustlet".to_string());
     selector
 }
