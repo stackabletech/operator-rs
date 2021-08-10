@@ -397,7 +397,7 @@ mod tests {
             ..PodCondition::default()
         };
         let status = PodStatus {
-            conditions: vec![condition.clone()],
+            conditions: Some(vec![condition.clone()]),
             ..PodStatus::default()
         };
         assert_eq!(
@@ -448,32 +448,32 @@ mod tests {
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
-            conditions: vec![PodCondition {
+            conditions: Some(vec![PodCondition {
                 type_: "Ready".to_string(),
                 ..PodCondition::default()
-            }],
+            }]),
             ..PodStatus::default()
         });
         assert!(!is_pod_running_and_ready(&pod));
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
-            conditions: vec![PodCondition {
+            conditions: Some(vec![PodCondition {
                 type_: "Ready".to_string(),
                 status: "False".to_string(),
                 ..PodCondition::default()
-            }],
+            }]),
             ..PodStatus::default()
         });
         assert!(!is_pod_running_and_ready(&pod));
 
         pod.status = Some(PodStatus {
             phase: Some("Running".to_string()),
-            conditions: vec![PodCondition {
+            conditions: Some(vec![PodCondition {
                 type_: "Ready".to_string(),
                 status: "True".to_string(),
                 ..PodCondition::default()
-            }],
+            }]),
             ..PodStatus::default()
         });
         assert!(is_pod_running_and_ready(&pod));

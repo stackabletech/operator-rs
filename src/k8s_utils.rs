@@ -184,13 +184,13 @@ mod tests {
 
         let mut node1 = NodeBuilder::new().build();
         node1.metadata = ObjectMeta {
-            labels: correct_labels.clone(),
+            labels: Some(correct_labels.clone()),
             name: Some("node1".to_string()),
             ..Default::default()
         };
         let mut node2 = NodeBuilder::new().build();
         node2.metadata = ObjectMeta {
-            labels: correct_labels.clone(),
+            labels: Some(correct_labels.clone()),
             name: Some("node2".to_string()),
             ..Default::default()
         };
@@ -200,7 +200,7 @@ mod tests {
         let pod1 = PodBuilder::new()
             .node_name("node1".to_string())
             .metadata(ObjectMeta {
-                labels: correct_labels.clone(),
+                labels: Some(correct_labels.clone()),
                 uid: Some("1".to_string()),
                 ..Default::default()
             })
@@ -210,7 +210,7 @@ mod tests {
         let pod2 = PodBuilder::new()
             .node_name("node2".to_string())
             .metadata(ObjectMeta {
-                labels: correct_labels,
+                labels: Some(correct_labels),
                 uid: Some("2".to_string()),
                 ..Default::default()
             })
@@ -278,13 +278,13 @@ mod tests {
 
         let mut node1 = NodeBuilder::new().build();
         node1.metadata = ObjectMeta {
-            labels: correct_labels.clone(),
+            labels: Some(correct_labels.clone()),
             name: Some("node1".to_string()),
             ..Default::default()
         };
         let mut node2 = NodeBuilder::new().build();
         node2.metadata = ObjectMeta {
-            labels: correct_labels.clone(),
+            labels: Some(correct_labels.clone()),
             name: Some("node2".to_string()),
             ..Default::default()
         };
@@ -294,7 +294,7 @@ mod tests {
         let pod1 = PodBuilder::new()
             .node_name("node1".to_string())
             .metadata(ObjectMeta {
-                labels: correct_labels.clone(),
+                labels: Some(correct_labels.clone()),
                 uid: Some("1".to_string()),
                 ..Default::default()
             })
@@ -304,7 +304,7 @@ mod tests {
         let pod2 = PodBuilder::new()
             .node_name("node2".to_string())
             .metadata(ObjectMeta {
-                labels: correct_labels,
+                labels: Some(correct_labels),
                 uid: Some("2".to_string()),
                 ..Default::default()
             })
