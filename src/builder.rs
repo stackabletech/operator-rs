@@ -172,19 +172,13 @@ impl ContainerBuilder {
             volume_mounts.push(volume_mount);
         }
 
-        let volume_mounts = if volume_mounts.is_empty() {
-            None
-        } else {
-            Some(volume_mounts)
-        };
-
         Container {
             image: self.image.clone(),
             name: self.name.clone(),
             env: self.env.clone(),
             command: self.command.clone(),
             args: self.args.clone(),
-            volume_mounts,
+            volume_mounts: Some(volume_mounts), // Always using Some instead of None for an empty vec to convey ownership of the field
             ports: self.container_ports.clone(),
             ..Container::default()
         }
@@ -810,12 +804,6 @@ impl PodBuilder {
             })
             .collect();
 
-        let volumes = if configmaps.is_empty() {
-            None
-        } else {
-            Some(volumes)
-        };
-
         Ok(Pod {
             metadata: match self.metadata {
                 None => return Err(Error::MissingObjectKey { key: "metadata" }),
@@ -824,7 +812,7 @@ impl PodBuilder {
             spec: Some(PodSpec {
                 containers: self.containers.clone(),
                 tolerations: self.tolerations.clone(),
-                volumes,
+                volumes: Some(volumes), // Always using Some instead of None for an empty vec to convey ownership of the field
                 node_name: self.node_name.clone(),
                 ..PodSpec::default()
             }),
