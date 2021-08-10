@@ -152,7 +152,7 @@ async fn k8s_test_wait_for_crds() {
         Duration::from_secs(30),
         crd::wait_until_crds_present(
             &client,
-            vec![TestCrdStruct::crd_name(), &TestCrd2Struct::crd_name()],
+            vec![TestCrdStruct::crd_name(), TestCrd2Struct::crd_name()],
             Some(Duration::from_secs(10)),
         ),
     )
