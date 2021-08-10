@@ -181,7 +181,7 @@ pub trait ReconciliationState {
     ) -> Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Self::Error>> + Send + '_>>;
 }
 
-/// TODO: This comment needs to be updated: https://github.com/stackabletech/operator-rs/issues/123
+/// TODO: This comment needs to be updated: <https://github.com/stackabletech/operator-rs/issues/123>
 /// A Controller is the object that watches all required resources and runs the reconciliation loop.
 /// This struct wraps a [`kube_runtime::Controller`] and provides some comfort features.
 ///

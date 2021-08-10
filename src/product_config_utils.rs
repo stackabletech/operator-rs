@@ -20,7 +20,7 @@ pub enum ConfigError {
 
 /// This trait is used to compute configuration properties for products.
 ///
-/// This needs to be implemented for every T in the [`crate::role_utils::CommonConfig`] struct
+/// This needs to be implemented for every T in the [`crate::role_utils::CommonConfiguration`] struct
 /// that is used in [`crate::role_utils::Role`] or the top level (cluster wide) configuration.
 ///
 /// Each `compute_*` method is then called to determine where and how (see options below)
@@ -33,7 +33,7 @@ pub enum ConfigError {
 ///
 /// Returned empty Maps will be ignored.
 ///
-/// Check out [`crate::ser::to_hash_map`] if you do need to convert a struct to a HashMap
+/// Check out `ser::to_hash_map` in the `product-config` library if you do need to convert a struct to a HashMap
 /// in an easy way.
 pub trait Configuration {
     type Configurable;
@@ -220,7 +220,7 @@ fn validate_role_and_group_config(
     Ok(result)
 }
 
-/// This transforms the [`product_config::types::PropertyValidationResult`] back into a pure BTreeMap which can be used
+/// This transforms the [`product_config::PropertyValidationResult`] back into a pure BTreeMap which can be used
 /// to set properties for config files, cli or environmental variables.
 /// Default values are ignored, Recommended and Valid values are used as is. For Warning and
 /// Error we recommend to not use the values unless you really know what you are doing.
@@ -342,9 +342,9 @@ where
 }
 
 /// Given a `config` object and the `property_kinds` vector, it uses the `Configuration::compute_*` methods
-/// to partition the configuration properties by [`product_config::types::PropertyValidationResult`].
+/// to partition the configuration properties by [`product_config::PropertyValidationResult`].
 ///
-/// The output is a map where the configuration properties are keyed by [`product_config::types::PropertyValidationResult`].
+/// The output is a map where the configuration properties are keyed by [`product_config::PropertyValidationResult`].
 ///
 /// # Arguments
 /// - `resource`       - Not used directly. It's passed on to the `Configuration::compute_*` calls.
