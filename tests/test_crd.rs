@@ -2,12 +2,11 @@ use std::time::Duration;
 
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
 use kube::core::ResourceExt;
-use kube::CustomResource;
+use kube::{CustomResource, CustomResourceExt};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serial_test::serial;
 use stackable_operator::client::Client;
-use stackable_operator::CustomResourceExt;
 use stackable_operator::{client, crd};
 
 #[derive(Clone, CustomResource, Debug, Deserialize, Serialize, JsonSchema)]

@@ -566,6 +566,7 @@ impl ObjectMetaBuilder {
             namespace: self.namespace.clone(),
             owner_references: self
                 .ownerreference
+                .as_ref()
                 .map(|ownerreference| vec![ownerreference.clone()]),
             labels: self.labels.clone(),
             annotations: self.annotations.clone(),
@@ -790,6 +791,7 @@ impl PodBuilder {
                 container
                     .volume_mounts
                     .iter()
+                    .flatten()
                     .map(|mount| mount.name.clone())
                     .collect::<Vec<String>>()
             })
@@ -807,6 +809,12 @@ impl PodBuilder {
                 ..Volume::default()
             })
             .collect();
+
+        let volumes = if configmaps.is_empty() {
+            None
+        } else {
+            Some(volumes)
+        };
 
         Ok(Pod {
             metadata: match self.metadata {
@@ -846,8 +854,8 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(matches!(configmap.data.unwrap().get("foo"), Some(bar) if bar == "bar"));
-        assert!(matches!(configmap.data.unwrap().get("bar"), Some(bar) if bar == "foo"));
+        assert!(matches!(configmap.data.as_ref().unwrap().get("foo"), Some(bar) if bar == "bar"));
+        assert!(matches!(configmap.data.as_ref().unwrap().get("bar"), Some(bar) if bar == "foo"));
     }
 
     #[test]
@@ -877,13 +885,14 @@ mod tests {
         assert!(
             matches!(container.env.unwrap().get(0), Some(EnvVar {name, value: Some(value), ..}) if name == "foo" && value == "bar")
         );
-        assert_eq!(container.volume_mounts.unwrap().len(), 1);
+        assert_eq!(container.volume_mounts.as_ref().unwrap().len(), 1);
         assert!(
-            matches!(container.volume_mounts.unwrap().get(0), Some(VolumeMount {mount_path, name, ..}) if mount_path == "/mount" && name == "configmap")
+            matches!(container.volume_mounts.as_ref().unwrap().get(0), Some(VolumeMount {mount_path, name, ..}) if mount_path == "/mount" && name == "configmap")
         );
         assert!(
-            container.ports.unwrap()[0].container_port == i32::from(container_port)
-                && container.ports.unwrap()[0].name == Some(container_port_name.to_string())
+            container.ports.as_ref().unwrap()[0].container_port == i32::from(container_port)
+                && container.ports.as_ref().unwrap()[0].name
+                    == Some(container_port_name.to_string())
         );
 
         assert_eq!(container.ports.unwrap().len(), 3)
@@ -954,13 +963,13 @@ mod tests {
             .unwrap();
 
         assert_eq!(meta.name, Some("foo".to_string()));
-        assert_eq!(meta.owner_references.unwrap().len(), 1);
+        assert_eq!(meta.owner_references.as_ref().unwrap().len(), 1);
         assert!(
             matches!(meta.owner_references.unwrap().get(0), Some(OwnerReference { uid, ..}) if uid == "uid")
         );
-        assert_eq!(meta.annotations.unwrap().len(), 1);
+        assert_eq!(meta.annotations.as_ref().unwrap().len(), 1);
         assert_eq!(
-            meta.annotations.unwrap().get(&"foo".to_string()),
+            meta.annotations.as_ref().unwrap().get(&"foo".to_string()),
             Some(&"bar".to_string())
         );
     }
