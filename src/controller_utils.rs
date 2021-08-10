@@ -11,7 +11,7 @@ use std::hash::{Hash, Hasher};
 /// This differs from the Kubernetes hashing algorithms in that it creates 64-bit (8 byte) hashes
 /// and Kubernetes creates 32-bit (4 byte) hashes.
 /// TODO: This could be changed by using an external crate, Rust std library only contains 64-bit hashes
-///  https://github.com/stackabletech/operator-rs/issues/125
+///  <https://github.com/stackabletech/operator-rs/issues/125>
 ///
 /// # Example
 ///

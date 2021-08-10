@@ -249,11 +249,11 @@ impl Client {
     }
 
     /// There are four different patch strategies:
-    /// 1) Apply (https://kubernetes.io/docs/reference/using-api/api-concepts/#server-side-apply)
+    /// 1) Apply (<https://kubernetes.io/docs/reference/using-api/api-concepts/#server-side-apply>)
     ///   Starting from Kubernetes v1.18, you can enable the Server Side Apply feature so that the control plane tracks managed fields for all newly created objects.
-    /// 2) Json (https://tools.ietf.org/html/rfc6902):
+    /// 2) Json (<https://tools.ietf.org/html/rfc6902>):
     ///   This is supported on crate feature jsonpatch only
-    /// 3) Merge (https://tools.ietf.org/html/rfc7386):
+    /// 3) Merge (<https://tools.ietf.org/html/rfc7386>):
     ///   For example, if you want to update a list you have to specify the complete list and update everything
     /// 4) Strategic (not for CustomResource)
     ///   With a strategic merge patch, a list is either replaced or merged depending on its patch strategy.

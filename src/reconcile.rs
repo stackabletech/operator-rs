@@ -123,7 +123,7 @@ where
 
     /// Returns a name that is suitable for directly passing to a log macro.
     ///
-    /// See [`crate::podutils::get_log_name()`] for details.
+    /// See [`crate::pod_utils::get_log_name()`] for details.
     pub fn log_name(&self) -> String {
         pod_utils::get_log_name(&self.resource)
     }
@@ -141,7 +141,7 @@ where
     /// `app.kubernetes.io/instance` label and will use the name of the resource in this context
     /// as its value.
     /// You need to make sure to always set this label correctly!
-    /// One way to achieve this is by using the [`labels::get_recommended_labels`] method.
+    /// One way to achieve this is by using the [`crate::labels::get_recommended_labels`] method.
     pub async fn list_owned<R>(
         &self,
         match_labels: BTreeMap<String, String>,
@@ -378,7 +378,7 @@ where
     /// It can return `Continue` or `Requeue` depending on the `requeue` argument and the state of the resource.
     /// If the finalizer already exists it'll _always_ return `Continue`.
     ///
-    /// There is a more full-featured alternative to this function ([`handle_deletion`]).
+    /// There is a more full-featured alternative to this function ([`Self::handle_deletion`]).
     ///
     /// # Arguments
     ///
