@@ -69,11 +69,12 @@
 //! }
 //! ```
 //!
+use crate::builder::OwnerReferenceBuilder;
 use crate::client::Client;
 use crate::controller::{Controller, ControllerStrategy, ReconciliationState};
+use crate::controller_ref;
 use crate::error::{Error, OperatorResult};
 use crate::reconcile::{ReconcileFunctionAction, ReconcileResult, ReconciliationContext};
-use crate::{builder::ObjectMetaBuilder, controller_ref};
 use async_trait::async_trait;
 use json_patch::{AddOperation, PatchOperation};
 use kube::api::ListParams;
@@ -148,8 +149,10 @@ where
     /// If the owner (main controller custom resource), we set its owner reference
     /// to our command custom resource.
     async fn set_owner_reference(&self) -> ReconcileResult<Error> {
-        let owner_reference = ObjectMetaBuilder::new()
-            .ownerreference_from_resource(self.owner.as_ref().unwrap(), Some(true), Some(true))?
+        let owner_reference = OwnerReferenceBuilder::new()
+            .initialize_from_resource(self.owner.as_ref().unwrap())
+            .block_owner_deletion(true)
+            .controller(true)
             .build()?;
 
         let owner_references_path = "/metadata/ownerReferences".to_string();
@@ -239,7 +242,10 @@ where
 /// helper controller will make sure that they trigger a reconcile for the parent by setting the OwnerReference.
 ///
 /// This is an async method and the returned future needs to be consumed to make progress.
-pub async fn create_command_controller<C, O>(client: Client)
+///
+/// This method cannot _currently_ fail. It returns a result for ergonomic reasons so that it can
+/// be used together with other controllers in a `try_join!` macro.
+pub async fn create_command_controller<C, O>(client: Client) -> OperatorResult<()>
 where
     C: Command
         + Clone
@@ -260,6 +266,8 @@ where
     controller
         .run(client, strategy, Duration::from_secs(10))
         .await;
+
+    Ok(())
 }
 
 /// Get a list of available commands of custom resource T.
