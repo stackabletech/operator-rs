@@ -69,11 +69,12 @@
 //! }
 //! ```
 //!
+use crate::builder::OwnerReferenceBuilder;
 use crate::client::Client;
 use crate::controller::{Controller, ControllerStrategy, ReconciliationState};
+use crate::controller_ref;
 use crate::error::{Error, OperatorResult};
 use crate::reconcile::{ReconcileFunctionAction, ReconcileResult, ReconciliationContext};
-use crate::{builder::ObjectMetaBuilder, controller_ref};
 use async_trait::async_trait;
 use json_patch::{AddOperation, PatchOperation};
 use kube::api::ListParams;
@@ -110,11 +111,12 @@ where
     /// Check if our custom resource command already has the owner reference set to the main
     /// controller custom resource. If so we can stop the reconcile.
     async fn owner_reference_existing(&mut self) -> ReconcileResult<Error> {
-        // If owner_references exist, check if any match our main resource owner reference.
+        // If owner_references exists, check if any of them match the name of our main object
         if let Some(owner_reference) = controller_ref::get_controller_of(&self.context.resource) {
             if owner_reference.name == self.context.resource.get_owner_name()
                 && owner_reference.kind == O::kind(&())
             {
+                //trace!("Found command object with existing owner_reference: {}", self.context.resource)
                 return Ok(ReconcileFunctionAction::Done);
             }
         }
@@ -148,8 +150,10 @@ where
     /// If the owner (main controller custom resource), we set its owner reference
     /// to our command custom resource.
     async fn set_owner_reference(&self) -> ReconcileResult<Error> {
-        let owner_reference = ObjectMetaBuilder::new()
-            .ownerreference_from_resource(self.owner.as_ref().unwrap(), Some(true), Some(true))?
+        let owner_reference = OwnerReferenceBuilder::new()
+            .initialize_from_resource(self.owner.as_ref().unwrap())
+            .block_owner_deletion(true)
+            .controller(true)
             .build()?;
 
         let owner_references_path = "/metadata/ownerReferences".to_string();
