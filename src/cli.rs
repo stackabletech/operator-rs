@@ -4,26 +4,27 @@ use crate::CustomResourceExt;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::path::Path;
 
+const PRODUCT_CONFIG_ARG: &str = "product-config";
+
 /// Retrieve a file path from CLI arguments that points to product-config file.
 /// It is a temporary solution until we find out how to handle different CLI
 /// arguments for different operators.
 // TODO: write proper init method for all possible operator-rs arguments plus
 //    operator specific arguments
-pub fn product_config_path(name: &str, default_locations: Vec<&str>) -> OperatorResult<String> {
-    let argument = "product-config";
+pub fn generate_productconfig_arg<'a, 'b>() -> Arg<'a, 'b> {
+    Arg::with_name(PRODUCT_CONFIG_ARG)
+        .short("p")
+        .long(PRODUCT_CONFIG_ARG)
+        .value_name("FILE")
+        .help("Get path to a product-config file")
+        .takes_value(true)
+}
 
-    let matches = App::new(name)
-        .arg(
-            Arg::with_name(argument)
-                .short("p")
-                .long(argument)
-                .value_name("FILE")
-                .help("Get path to a product-config file")
-                .takes_value(true),
-        )
-        .get_matches();
-
-    check_path(matches.value_of(argument), default_locations)
+pub fn handle_productconfig_arg(
+    matches: &ArgMatches,
+    default_locations: &[&str],
+) -> OperatorResult<String> {
+    check_path(matches.value_of(PRODUCT_CONFIG_ARG), default_locations)
 }
 
 /// Check if the product-config can be found anywhere:
@@ -33,7 +34,7 @@ pub fn product_config_path(name: &str, default_locations: Vec<&str>) -> Operator
 /// 3) Error if nothing was found.
 fn check_path(
     user_provided_file_path: Option<&str>,
-    default_locations: Vec<&str>,
+    default_locations: &[&str],
 ) -> OperatorResult<String> {
     let mut search_paths = vec![];
 
