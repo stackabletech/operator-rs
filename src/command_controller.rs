@@ -148,8 +148,10 @@ where
     /// If the owner (main controller custom resource), we set its owner reference
     /// to our command custom resource.
     async fn set_owner_reference(&self) -> ReconcileResult<Error> {
-        let owner_reference = ObjectMetaBuilder::new()
-            .ownerreference_from_resource(self.owner.as_ref().unwrap(), Some(true), Some(true))?
+        let owner_reference = OwnerReferenceBuilder::new()
+            .initialize_from_resource(self.owner.as_ref().unwrap())
+            .block_owner_deletion(true)
+            .controller(true)
             .build()?;
 
         let owner_references_path = "/metadata/ownerReferences".to_string();
