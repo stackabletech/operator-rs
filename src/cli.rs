@@ -83,13 +83,10 @@ fn check_path(
 ///
 /// ```
 /// use kube::CustomResource;
-/// use stackable_operator::{client, error};
-/// use stackable_operator::client::Client;
-/// use stackable_operator::error::Error;
 /// use schemars::JsonSchema;
-/// use serde::{Deserialize, Serialize};
+/// use serde::{Serialize, Deserialize};
 ///
-/// #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+/// #[derive(Clone, CustomResource, Debug, JsonSchema, Serialize, Deserialize)]
 /// #[kube(
 ///     group = "foo.stackable.tech",
 ///     version = "v1",
@@ -107,23 +104,8 @@ where
     T: CustomResourceExt,
 {
     let kind = T::api_resource().kind;
-    let about = format!("Arguments to deal with the CRD of the {} resource", kind);
 
     SubCommand::with_name(&kind.to_lowercase())
-        /*
-        error[E0515]: cannot return value referencing local variable `about`
-           --> src/cli.rs:115:5
-            |
-        115 | /     SubCommand::with_name(&kind.to_lowercase())
-        116 | |         .about(about.as_str())
-            | |                ----- `about` is borrowed here
-        117 | |         .arg(
-        118 | |             Arg::with_name("print")
-        ...   |
-        130 | |                 .help("Will write the CRD schema in YAML format to the specified location"),
-        131 | |         )
-            | |_________^ returns a value referencing data owned by the current function */
-        // Fails -> .about(about.as_str())
         .arg(
             Arg::with_name("print")
                 .short("p")
