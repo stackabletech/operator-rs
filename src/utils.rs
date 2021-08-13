@@ -8,7 +8,7 @@ use tracing::info;
 ///
 /// Use the [`built`](https://crates.io/crates/built) crate and include it in your `main.rs` like this:
 ///
-/// ```ignore
+/// ```text
 /// mod built_info {
 ///     // The file has been placed there by the build script.
 ///     include!(concat!(env!("OUT_DIR"), "/built.rs"));
@@ -17,7 +17,7 @@ use tracing::info;
 ///
 /// Then call this method in your `main` method:
 ///
-/// ```ignore
+/// ```text
 /// stackable_operator::utils::print_startup_string(
 ///      built_info::PKG_DESCRIPTION,
 ///      built_info::PKG_VERSION,
