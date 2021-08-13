@@ -1,3 +1,4 @@
+use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::EnvFilter;
 
 /// Initializes `tracing` logging with options from the environment variable
@@ -5,8 +6,10 @@ use tracing_subscriber::EnvFilter;
 ///
 /// We force users to provide a variable name so it can be different per product.
 /// We encourage it to be the product name plus `_LOG`, e.g. `FOOBAR_OPERATOR_LOG`.
+/// If no environment variable is provided, the maximum log level is set to INFO.
 pub fn initialize_logging(env: &str) {
     tracing_subscriber::fmt()
+        .with_max_level(LevelFilter::INFO)
         .with_env_filter(EnvFilter::from_env(env))
         .init();
 }
