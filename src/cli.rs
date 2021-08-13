@@ -25,7 +25,7 @@ pub fn generate_productconfig_arg<'a, 'b>() -> Arg<'a, 'b> {
 /// * `default_locations`: These locations will be checked for the existence of a config file if the user doesn't provide one
 pub fn handle_productconfig_arg(
     matches: &ArgMatches,
-    default_locations: &[&str],
+    default_locations: Vec<&str>,
 ) -> OperatorResult<String> {
     check_path(matches.value_of(PRODUCT_CONFIG_ARG), default_locations)
 }
@@ -37,7 +37,7 @@ pub fn handle_productconfig_arg(
 /// 3) Error if nothing was found.
 fn check_path(
     user_provided_file_path: Option<&str>,
-    default_locations: &[&str],
+    default_locations: Vec<&str>,
 ) -> OperatorResult<String> {
     let mut search_paths = vec![];
 
@@ -160,7 +160,7 @@ where
 /// let command = stackable_operator::cli::generate_crd_subcommand::<FooCluster>();
 /// let matches = App::new("Test").subcommand(command).get_matches();
 ///
-/// if stackable_operator::cli::handle_crd_subcommand(&matches)? {
+/// if stackable_operator::cli::handle_crd_subcommand::<FooCluster>(&matches).unwrap() {
 ///     println!("Command handled... exit now")
 /// } else {
 ///     println!("Command not handled, continue with the next handler...")
