@@ -36,6 +36,5 @@ mod test {
         error!("ERROR level messages should be seen.");
         info!("INFO level messages should also be seen by default.");
         debug!("DEBUG level messages should be seen only if you set the NOT_SET env var.");
-
     }
 }
