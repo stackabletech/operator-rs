@@ -6,20 +6,23 @@ use std::path::Path;
 
 const PRODUCT_CONFIG_ARG: &str = "product-config";
 
-/// Retrieve a file path from CLI arguments that points to product-config file.
-/// It is a temporary solution until we find out how to handle different CLI
-/// arguments for different operators.
-// TODO: write proper init method for all possible operator-rs arguments plus
-//    operator specific arguments
+/// Generates a clap [`Arg`] that can be used to accept the location of a product configuration file.
+///
+/// Meant to be handled by [`self:handle_productconfig_arg`].
 pub fn generate_productconfig_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name(PRODUCT_CONFIG_ARG)
         .short("p")
         .long(PRODUCT_CONFIG_ARG)
         .value_name("FILE")
-        .help("Get path to a product-config file")
+        .help("Provides the path to a product-config file")
         .takes_value(true)
 }
 
+/// Handles the `product-config` CLI option.
+///
+/// # Arguments
+///
+/// * `default_locations`: These locations will be checked for the existence of a config file if the user doesn't provide one
 pub fn handle_productconfig_arg(
     matches: &ArgMatches,
     default_locations: &[&str],
@@ -138,7 +141,30 @@ where
 /// # Examples
 ///
 /// ```
-///     
+/// use clap::App;
+/// use kube::CustomResource;
+/// use schemars::JsonSchema;
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Clone, CustomResource, Debug, JsonSchema, Serialize, Deserialize)]
+/// #[kube(
+///     group = "foo.stackable.tech",
+///     version = "v1",
+///     kind = "FooCluster",
+///     namespaced
+/// )]
+/// pub struct FooClusterSpec {
+///     pub name: String,
+/// }
+///
+/// let command = stackable_operator::cli::generate_crd_subcommand::<FooCluster>();
+/// let matches = App::new("Test").subcommand(command).get_matches();
+///
+/// if stackable_operator::cli::handle_crd_subcommand(&matches)? {
+///     println!("Command handled... exit now")
+/// } else {
+///     println!("Command not handled, continue with the next handler...")
+/// }
 /// ```
 pub fn handle_crd_subcommand<T>(matches: &ArgMatches) -> OperatorResult<bool>
 where
