@@ -1,3 +1,5 @@
+use tracing::info;
+
 pub fn print_startup_string(
     pkg_description: &str,
     pkg_version: &str,
