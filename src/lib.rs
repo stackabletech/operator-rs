@@ -21,6 +21,7 @@ pub mod product_config_utils;
 pub mod reconcile;
 pub mod role_utils;
 pub mod status;
+pub mod utils;
 pub mod validation;
 
 pub use crate::crd::CustomResourceExt;
