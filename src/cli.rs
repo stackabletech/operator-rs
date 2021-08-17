@@ -1,3 +1,95 @@
+//! This module provides helper methods to deal with common CLI options using the `clap` crate.
+//!
+//! In particular it currently supports handling two kinds of options:
+//! * CRD handling (printing & saving to a file)
+//! * Product config location
+//!
+//! # Example
+//!
+//! This example show the usage of the CRD functionality.
+//!
+//! ```
+//! // Handle CLI arguments
+//! use clap::{crate_version, SubCommand};
+//! use clap::App;
+//! use stackable_operator::cli;
+//! use stackable_operator::error::OperatorResult;
+//! use kube::CustomResource;
+//! use schemars::JsonSchema;
+//! use serde::{Serialize, Deserialize};
+//!
+//! #[derive(Clone, CustomResource, Debug, JsonSchema, Serialize, Deserialize)]
+//! #[kube(
+//!     group = "foo.stackable.tech",
+//!     version = "v1",
+//!     kind = "FooCluster",
+//!     namespaced
+//! )]
+//! pub struct FooClusterSpec {
+//!     pub name: String,
+//! }
+//!
+//! #[derive(Clone, CustomResource, Debug, JsonSchema, Serialize, Deserialize)]
+//! #[kube(
+//!     group = "bar.stackable.tech",
+//!     version = "v1",
+//!     kind = "BarCluster",
+//!     namespaced
+//! )]
+//! pub struct BarClusterSpec {
+//!     pub name: String,
+//! }
+//!
+//! # fn main() -> OperatorResult<()> {
+//! let matches = App::new("Spark Operator")
+//!     .author("Stackable GmbH - info@stackable.de")
+//!     .about("Stackable Operator for Foobar")
+//!     .version(crate_version!())
+//!     .subcommand(
+//!         SubCommand::with_name("crd")
+//!             .subcommand(cli::generate_crd_subcommand::<FooCluster>())
+//!             .subcommand(cli::generate_crd_subcommand::<BarCluster>())
+//!     )
+//!     .get_matches();
+//!
+//! if let ("crd", Some(subcommand)) = matches.subcommand() {
+//!     if cli::handle_crd_subcommand::<FooCluster>(subcommand)? {
+//!         return Ok(());
+//!     };
+//!     if cli::handle_crd_subcommand::<BarCluster>(subcommand)? {
+//!         return Ok(());
+//!     };
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! Product config handling works similarly:
+//!
+//! ```no_run
+//! use clap::{crate_version, SubCommand};
+//! use stackable_operator::cli;
+//! use stackable_operator::error::OperatorResult;
+//! use clap::App;
+//!
+//! # fn main() -> OperatorResult<()> {
+//! let matches = App::new("Spark Operator")
+//!     .author("Stackable GmbH - info@stackable.de")
+//!     .about("Stackable Operator for Foobar")
+//!     .version(crate_version!())
+//!     .arg(cli::generate_productconfig_arg())
+//!     .get_matches();
+//!
+//! let paths = vec![
+//!     "deploy/config-spec/properties.yaml",
+//!     "/etc/stackable/spark-operator/config-spec/properties.yaml",
+//! ];
+//! let product_config_path = cli::handle_productconfig_arg(&matches, paths)?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//!
 use crate::error;
 use crate::error::OperatorResult;
 use crate::CustomResourceExt;
@@ -9,6 +101,8 @@ const PRODUCT_CONFIG_ARG: &str = "product-config";
 /// Generates a clap [`Arg`] that can be used to accept the location of a product configuration file.
 ///
 /// Meant to be handled by [`self:handle_productconfig_arg`].
+///
+/// See the module level documentation for a complete example.
 pub fn generate_productconfig_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name(PRODUCT_CONFIG_ARG)
         .short("p")
@@ -19,6 +113,8 @@ pub fn generate_productconfig_arg<'a, 'b>() -> Arg<'a, 'b> {
 }
 
 /// Handles the `product-config` CLI option.
+///
+/// See the module level documentation for a complete example.
 ///
 /// # Arguments
 ///
@@ -76,33 +172,14 @@ fn check_path(
 /// * `save`: This will save the schema to a file
 ///
 /// The resulting subcommand can be handled by the [`self::handle_crd_subcommand`] method.
-
+///
+/// See the module level documentation for a complete example.
+///
 /// # Arguments
 ///
 /// * `name`: Name of the CRD
 ///
 /// returns: App
-///
-/// # Examples
-///
-/// ```
-/// use kube::CustomResource;
-/// use schemars::JsonSchema;
-/// use serde::{Serialize, Deserialize};
-///
-/// #[derive(Clone, CustomResource, Debug, JsonSchema, Serialize, Deserialize)]
-/// #[kube(
-///     group = "foo.stackable.tech",
-///     version = "v1",
-///     kind = "FooCluster",
-///     namespaced
-/// )]
-/// pub struct FooClusterSpec {
-///     pub name: String,
-/// }
-///
-/// let command = stackable_operator::cli::generate_crd_subcommand::<FooCluster>();
-/// ```
 pub fn generate_crd_subcommand<'a, 'b, T>() -> App<'a, 'b>
 where
     T: CustomResourceExt,
@@ -131,41 +208,14 @@ where
 ///
 /// The CRD and the name of the subcommand will be identified by the `kind` of the generic parameter `T` being passed in.
 ///
+/// See the module level documentation for a complete example.
+///
 /// # Arguments
 ///
 /// * `matches`: The [`ArgMatches`] object which _might_ contain a match for our current CRD.
 ///
 /// returns: A boolean wrapped in a result indicating whether the this method did handle the argument.
 ///          If it returns `Ok(true)` the program should abort.
-///
-/// # Examples
-///
-/// ```
-/// use clap::App;
-/// use kube::CustomResource;
-/// use schemars::JsonSchema;
-/// use serde::{Serialize, Deserialize};
-///
-/// #[derive(Clone, CustomResource, Debug, JsonSchema, Serialize, Deserialize)]
-/// #[kube(
-///     group = "foo.stackable.tech",
-///     version = "v1",
-///     kind = "FooCluster",
-///     namespaced
-/// )]
-/// pub struct FooClusterSpec {
-///     pub name: String,
-/// }
-///
-/// let command = stackable_operator::cli::generate_crd_subcommand::<FooCluster>();
-/// let matches = App::new("Test").subcommand(command).get_matches();
-///
-/// if stackable_operator::cli::handle_crd_subcommand::<FooCluster>(&matches).unwrap() {
-///     println!("Command handled... exit now")
-/// } else {
-///     println!("Command not handled, continue with the next handler...")
-/// }
-/// ```
 pub fn handle_crd_subcommand<T>(matches: &ArgMatches) -> OperatorResult<bool>
 where
     T: CustomResourceExt,
