@@ -1,28 +1,129 @@
+//! This module provides helper methods to deal with common CLI options using the `clap` crate.
+//!
+//! In particular it currently supports handling two kinds of options:
+//! * CRD handling (printing & saving to a file)
+//! * Product config location
+//!
+//! # Example
+//!
+//! This example show the usage of the CRD functionality.
+//!
+//! ```
+//! // Handle CLI arguments
+//! use clap::{crate_version, SubCommand};
+//! use clap::App;
+//! use stackable_operator::cli;
+//! use stackable_operator::error::OperatorResult;
+//! use kube::CustomResource;
+//! use schemars::JsonSchema;
+//! use serde::{Serialize, Deserialize};
+//!
+//! #[derive(Clone, CustomResource, Debug, JsonSchema, Serialize, Deserialize)]
+//! #[kube(
+//!     group = "foo.stackable.tech",
+//!     version = "v1",
+//!     kind = "FooCluster",
+//!     namespaced
+//! )]
+//! pub struct FooClusterSpec {
+//!     pub name: String,
+//! }
+//!
+//! #[derive(Clone, CustomResource, Debug, JsonSchema, Serialize, Deserialize)]
+//! #[kube(
+//!     group = "bar.stackable.tech",
+//!     version = "v1",
+//!     kind = "BarCluster",
+//!     namespaced
+//! )]
+//! pub struct BarClusterSpec {
+//!     pub name: String,
+//! }
+//!
+//! # fn main() -> OperatorResult<()> {
+//! let matches = App::new("Spark Operator")
+//!     .author("Stackable GmbH - info@stackable.de")
+//!     .about("Stackable Operator for Foobar")
+//!     .version(crate_version!())
+//!     .subcommand(
+//!         SubCommand::with_name("crd")
+//!             .subcommand(cli::generate_crd_subcommand::<FooCluster>())
+//!             .subcommand(cli::generate_crd_subcommand::<BarCluster>())
+//!     )
+//!     .get_matches();
+//!
+//! if let ("crd", Some(subcommand)) = matches.subcommand() {
+//!     if cli::handle_crd_subcommand::<FooCluster>(subcommand)? {
+//!         return Ok(());
+//!     };
+//!     if cli::handle_crd_subcommand::<BarCluster>(subcommand)? {
+//!         return Ok(());
+//!     };
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! Product config handling works similarly:
+//!
+//! ```no_run
+//! use clap::{crate_version, SubCommand};
+//! use stackable_operator::cli;
+//! use stackable_operator::error::OperatorResult;
+//! use clap::App;
+//!
+//! # fn main() -> OperatorResult<()> {
+//! let matches = App::new("Spark Operator")
+//!     .author("Stackable GmbH - info@stackable.de")
+//!     .about("Stackable Operator for Foobar")
+//!     .version(crate_version!())
+//!     .arg(cli::generate_productconfig_arg())
+//!     .get_matches();
+//!
+//! let paths = vec![
+//!     "deploy/config-spec/properties.yaml",
+//!     "/etc/stackable/spark-operator/config-spec/properties.yaml",
+//! ];
+//! let product_config_path = cli::handle_productconfig_arg(&matches, paths)?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//!
 use crate::error;
 use crate::error::OperatorResult;
-use clap::{App, Arg};
+use crate::CustomResourceExt;
+use clap::{App, Arg, ArgMatches, SubCommand};
 use std::path::Path;
 
-/// Retrieve a file path from CLI arguments that points to product-config file.
-/// It is a temporary solution until we find out how to handle different CLI
-/// arguments for different operators.
-// TODO: write proper init method for all possible operator-rs arguments plus
-//    operator specific arguments
-pub fn product_config_path(name: &str, default_locations: Vec<&str>) -> OperatorResult<String> {
-    let argument = "product-config";
+const PRODUCT_CONFIG_ARG: &str = "product-config";
 
-    let matches = App::new(name)
-        .arg(
-            Arg::with_name(argument)
-                .short("p")
-                .long(argument)
-                .value_name("FILE")
-                .help("Get path to a product-config file")
-                .takes_value(true),
-        )
-        .get_matches();
+/// Generates a clap [`Arg`] that can be used to accept the location of a product configuration file.
+///
+/// Meant to be handled by [`self:handle_productconfig_arg`].
+///
+/// See the module level documentation for a complete example.
+pub fn generate_productconfig_arg<'a, 'b>() -> Arg<'a, 'b> {
+    Arg::with_name(PRODUCT_CONFIG_ARG)
+        .short("p")
+        .long(PRODUCT_CONFIG_ARG)
+        .value_name("FILE")
+        .help("Provides the path to a product-config file")
+        .takes_value(true)
+}
 
-    check_path(matches.value_of(argument), default_locations)
+/// Handles the `product-config` CLI option.
+///
+/// See the module level documentation for a complete example.
+///
+/// # Arguments
+///
+/// * `default_locations`: These locations will be checked for the existence of a config file if the user doesn't provide one
+pub fn handle_productconfig_arg(
+    matches: &ArgMatches,
+    default_locations: Vec<&str>,
+) -> OperatorResult<String> {
+    check_path(matches.value_of(PRODUCT_CONFIG_ARG), default_locations)
 }
 
 /// Check if the product-config can be found anywhere:
@@ -62,6 +163,75 @@ fn check_path(
     Err(error::Error::RequiredFileMissing {
         search_path: search_paths,
     })
+}
+
+/// This will generate a clap subcommand ([`App`]) that can be used for operations on CRDs.
+///
+/// Currently two arguments are supported:
+/// * `print`: This will print the schema to stdout
+/// * `save`: This will save the schema to a file
+///
+/// The resulting subcommand can be handled by the [`self::handle_crd_subcommand`] method.
+///
+/// See the module level documentation for a complete example.
+///
+/// # Arguments
+///
+/// * `name`: Name of the CRD
+///
+/// returns: App
+pub fn generate_crd_subcommand<'a, 'b, T>() -> App<'a, 'b>
+where
+    T: CustomResourceExt,
+{
+    let kind = T::api_resource().kind;
+
+    SubCommand::with_name(&kind.to_lowercase())
+        .arg(
+            Arg::with_name("print")
+                .short("p")
+                .long("print")
+                .help("Will print the CRD schema in YAML format to stdout"),
+        )
+        .arg(
+            Arg::with_name("save")
+                .short("s")
+                .long("save")
+                .takes_value(true)
+                .value_name("FILE")
+                .conflicts_with("print")
+                .help("Will write the CRD schema in YAML format to the specified location"),
+        )
+}
+
+/// This will handle a subcommand generated by the [`self::generate_crd_subcommand`] method.
+///
+/// The CRD and the name of the subcommand will be identified by the `kind` of the generic parameter `T` being passed in.
+///
+/// See the module level documentation for a complete example.
+///
+/// # Arguments
+///
+/// * `matches`: The [`ArgMatches`] object which _might_ contain a match for our current CRD.
+///
+/// returns: A boolean wrapped in a result indicating whether the this method did handle the argument.
+///          If it returns `Ok(true)` the program should abort.
+pub fn handle_crd_subcommand<T>(matches: &ArgMatches) -> OperatorResult<bool>
+where
+    T: CustomResourceExt,
+{
+    if let Some(crd_match) = matches.subcommand_matches(T::api_resource().kind.to_lowercase()) {
+        if crd_match.is_present("print") {
+            T::print_yaml_schema()?;
+            return Ok(true);
+        }
+        if let Some(value) = crd_match.value_of("save") {
+            T::write_yaml_schema(value)?;
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
 }
 
 #[cfg(test)]
