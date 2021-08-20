@@ -28,6 +28,7 @@ pub fn get_current_timestamp() -> String {
 pub trait HasRoleRestartOrder {
     fn get_role_restart_order() -> Vec<String>;
 }
+
 /// Implemented on a Cluster object, this can be used to retrieve the types of commands that
 /// can be used to administer this cluster.
 pub trait HasCommands {

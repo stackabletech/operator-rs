@@ -96,6 +96,12 @@ pub enum ContinuationStrategy {
     OneRequeue,
 }
 
+pub struct PodLocation {
+    role: String,
+    role_group: String,
+    node: String,
+}
+
 #[async_trait]
 pub trait ProvidesPod {
     async fn get_pod_and_context(
