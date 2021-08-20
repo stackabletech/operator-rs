@@ -157,6 +157,8 @@ where
     async fn set_owner_reference(&self) -> ReconcileResult<Error> {
         let owner_reference = OwnerReferenceBuilder::new()
             .initialize_from_resource(self.owner.as_ref().unwrap())
+            .block_owner_deletion(true)
+            .controller(true)
             .build()?;
 
         let owner_references_path = "/metadata/ownerReferences".to_string();
@@ -243,12 +245,15 @@ where
 /// For each command, we try to find the referenced resource and will set the Owner Reference
 /// of the command to this referenced resource.
 /// If we can't find the referenced object we currently ignore this command.
-/// See https://github.com/stackabletech/operator-rs/issues/121.
+/// See <https://github.com/stackabletech/operator-rs/issues/121>.
 /// This means that the controller of the parent resource can now watch for commands and this
 /// helper controller will make sure that they trigger a reconcile for the parent by setting the OwnerReference.
 ///
 /// This is an async method and the returned future needs to be consumed to make progress.
-pub async fn create_command_controller<C, O>(client: Client)
+///
+/// This method cannot _currently_ fail. It returns a result for ergonomic reasons so that it can
+/// be used together with other controllers in a `try_join!` macro.
+pub async fn create_command_controller<C, O>(client: Client) -> OperatorResult<()>
 where
     C: Command
         + Clone
@@ -269,6 +274,8 @@ where
     controller
         .run(client, strategy, Duration::from_secs(10))
         .await;
+
+    Ok(())
 }
 
 /// Get a list of available commands of custom resource T.
