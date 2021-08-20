@@ -1,3 +1,21 @@
+//! The "Stackable" way to implement our Kubernetes resource names.
+//!
+//! We follow the specification for RFC 1123 Names (https://tools.ietf.org/html/rfc1123):
+//! This means the name must:
+//! * contain at most 63 characters
+//! * contain only lowercase alphanumeric characters or '-'
+//! * start with an alphanumeric character
+//! * end with an alphanumeric character
+//!
+//! The Stackable name is structured in the following pattern ("[min..max]" indicates the
+//! amount of possible characters. Everything below throws an error and everything above is cut off
+//! and "(<...>)" is optional:
+//! <short-name[1..5]>-<cluster-name[1..10]>-<role_name[1..10]>-<group_name[1..8]>-(<node_name[0..10]>)-(<misc[0..5]>)-
+//!
+//! Additionally all non alphanumeric characters are removed.
+//!
+//! This generated name is supposed to work with the generatedName (to add a unique hash) from Kubernetes.
+//!
 use crate::error::{Error, OperatorResult};
 use strum_macros::EnumIter;
 
@@ -14,17 +32,25 @@ const NODE_NAME_MAX_LEN: u8 = 10;
 const MISC_MIN_LEN: u8 = 0;
 const MISC_MAX_LEN: u8 = 5;
 
+/// The sub names that make up the full resource name.
 #[derive(Debug, strum_macros::Display, strum_macros::EnumString, EnumIter)]
 enum SubName {
+    /// CustomResourceDefinition short name
     Short,
+    /// The CustomResource name
     Cluster,
+    /// The CustomResource role name
     Role,
+    /// The CustomResource role group name
     Group,
+    /// The optional node name (e.g. for pods)
     Node,
+    /// Miscellaneous identifiers (e.g. "data" or "conf" for config maps)
     Misc,
 }
 
 impl SubName {
+    /// Returns the minimum length for each sub name
     fn min(&self) -> u8 {
         match self {
             SubName::Short => SHORT_NAME_MIN_LEN,
@@ -36,6 +62,7 @@ impl SubName {
         }
     }
 
+    /// Returns the maximum length for each sub name
     fn max(&self) -> u8 {
         match self {
             SubName::Short => SHORT_NAME_MAX_LEN,
@@ -48,6 +75,26 @@ impl SubName {
     }
 }
 
+/// Build a Kubernetes resource name. This is intended to work with the generatedName (add a unique
+/// hash) from Kubernetes. This method ensures that all single components do not exceed a certain
+/// length in order to keep the resource name below 63 (the maximum allowed characters) minus an
+/// offset for the unique hash.
+///
+/// In each sub name (`short_name`, `cluster_name`...) all non alphanumeric parts are automatically
+/// removed. After the removal each sub_name is cut off if it exceeds its specified length.
+///
+/// After processing each sub name is concatenated with "-" and "-" as the last character (to
+/// separate from the kubernetes hash).
+///
+/// # Arguments
+///
+/// * `short_name` - The short name of the custom resource definition.
+/// * `cluster_name` - The name of the custom resource.
+/// * `role_name` - The role name of the custom resource.
+/// * `group_name` - The group name of the custom resource.
+/// * `node_name` - Optional node name if available (e.g. for pods).
+/// * `misc_name` - Optional miscellaneous identifiers (e.g. "data" for config maps).
+///
 pub fn build_resource_name(
     short_name: &str,
     cluster_name: &str,
@@ -83,6 +130,15 @@ pub fn build_resource_name(
     Ok(full_name.to_lowercase())
 }
 
+/// This method removes all non alphanumeric characters from a sub name, checks if the
+/// length after the removal is not below the minimum (throws error) or over the maximum
+/// (will be cut off) specified length.
+///
+/// # Arguments
+///
+/// * `kind` - The kind of the sub_name (e.g. ShortName, ClusterName...).
+/// * `sub_name` - The sub_name to be processed.
+///
 fn strip(kind: SubName, sub_name: &str) -> OperatorResult<String> {
     let alphanumeric: String = sub_name.chars().filter(|c| c.is_alphanumeric()).collect();
 
