@@ -51,6 +51,11 @@ pub enum Error {
         source: std::env::VarError,
     },
 
+    #[error(
+    "The provided sub name [{name}] for [{kind}] is too short (non alphanumeric characters are removed). Minimum length is [{min}]."
+    )]
+    SubNameTooShort { kind: String, name: String, min: u8 },
+
     #[error("Invalid name for resource: {errors:?}")]
     InvalidName { errors: Vec<String> },
 
