@@ -28,9 +28,14 @@ pub enum Error {
     SubNameEmpty { kind: String },
 
     #[error(
-        "The provided sub name for [{kind}] does not start with an alphanumeric character [{name}]."
+        "The provided sub name for [{kind}] does not start with an alphabetic character (Original: [{original}] -
+        Filtered alphanumeric: [{filtered}]). This is required for RFC 1035 names (https://tools.ietf.org/html/rfc1035)."
     )]
-    SubNameDoesNotStartAlphabetic { kind: String, name: String },
+    SubNameDoesNotStartAlphabetic {
+        kind: String,
+        original: String,
+        filtered: String,
+    },
 }
 
 /// The sub names that make up the full resource name.
@@ -213,22 +218,25 @@ fn to_alphanumeric_lowercase_not_empty(kind: SubName, sub_name: &str) -> Result<
         });
     }
 
+    let filtered = sub_name
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .collect::<String>()
+        .to_lowercase();
+
     if kind == SubName::Short {
-        if let Some(c) = sub_name.chars().next() {
+        if let Some(c) = filtered.chars().next() {
             if !c.is_alphabetic() {
                 return Err(Error::SubNameDoesNotStartAlphabetic {
                     kind: kind.to_string(),
-                    name: sub_name.to_string(),
+                    original: sub_name.to_string(),
+                    filtered: filtered.clone(),
                 });
             }
         }
     }
 
-    Ok(sub_name
-        .chars()
-        .filter(|c| c.is_alphanumeric())
-        .collect::<String>()
-        .to_lowercase())
+    Ok(filtered)
 }
 
 #[cfg(test)]
@@ -238,6 +246,7 @@ mod tests {
 
     #[rstest]
     #[case(SubName::Short, "short_name", "shortname")]
+    #[case(SubName::Short, "_short_name", "shortname")]
     #[case(SubName::Short, "short-&%#name", "shortname")]
     #[case(SubName::Cluster, "1short_name", "1shortname")]
     #[case(SubName::Cluster, "1short/*%_name", "1shortname")]
@@ -251,7 +260,6 @@ mod tests {
     }
 
     #[rstest]
-    #[case(SubName::Short, "_short_name")]
     #[case(SubName::Short, "1short_name")]
     #[case(SubName::Short, "")]
     fn test_to_alphanumeric_lowercase_not_empty_err(#[case] kind: SubName, #[case] name: &str) {
@@ -363,7 +371,7 @@ mod tests {
         Some("conf%&#1")
     )]
     #[case(
-        "-very_long_short_name",
+        "1very_long_short_name",
         "simple",
         "server",
         Some("default"),
