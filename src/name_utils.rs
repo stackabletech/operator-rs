@@ -118,7 +118,7 @@ pub fn build_resource_name(
     // The sub names vector length equals the size of additional required dashes
     let max_chars = RESOURCE_NAME_MAX_LEN - KUBERNETES_HASH_MIN_LENGTH - sub_names.len();
     // The amount of characters receives without carryover (even distributed)
-    let selectable_chars = selectable_chars(&sub_names, max_chars);
+    let selectable_chars = selectable_chars(sub_names.len(), max_chars);
     // The `carryover` are left over characters that will not be used by some sub names
     // and can be added to other longer sub names exceeding the amount of `selectable_chars`.
     let carryover = max_chars - used_characters(&sub_names, selectable_chars);
@@ -135,12 +135,13 @@ pub fn build_resource_name(
 ///
 /// # Arguments
 ///
-/// * `sub_names` - A vector of available sub names.
+/// * `sub_names_len` - The length of the sub names vector.
 /// * `max_chars` - The maximum available characters:
-///                 `RESOURCE_NAME_MAX_LEN` - `KUBERNETES_HASH_MIN_LENGTH` - sub_names.len()
+///                 `RESOURCE_NAME_MAX_LEN` - `KUBERNETES_HASH_MIN_LENGTH` - `sub_names_len`
+///                 where `sub_names_len` represents the dashed we have to add later.
 ///
-fn selectable_chars(sub_names: &[String], max_chars: usize) -> usize {
-    (1f32 / sub_names.len() as f32 * max_chars as f32).floor() as usize
+fn selectable_chars(sub_names_len: usize, max_chars: usize) -> usize {
+    max_chars / sub_names_len + max_chars % sub_names_len
 }
 
 /// This calculates the sum of used characters from each sub name. Sub names that exceed the
@@ -167,7 +168,7 @@ fn used_characters(sub_names: &[String], selectable_chars: usize) -> usize {
 
 /// This method concatenates each sub name and dynamically adapts the length of each sub name if
 /// `unused_chars` are available. The order of 'distributing' the unused_chars is determined by
-/// the sub_names vector. Items that come first may receive all `unused_chars` while items in
+/// the `sub_names` vector. Items that come first may receive all `unused_chars` while items in
 /// the end have to be cut down to the length of `selectable_chars`.
 ///
 /// # Arguments
@@ -201,7 +202,7 @@ fn build_name(sub_names: &[String], selectable_chars: usize, unused_chars: usize
     full_name
 }
 
-/// This will remove all non alphanumeric characters from a sub_name. If the sub name is empty an
+/// This will remove all non alphanumeric characters from a `sub_name`. If the sub name is empty an
 /// error is thrown.
 /// If the sub name is SubName::Short, it should start with an alphabetic character. If not, an
 /// error is thrown.
@@ -312,7 +313,7 @@ mod tests {
         "verylongshortname-simple-server-"
     )]
     #[case(
-        "very_long_short_name",
+        "&very_long_short_name",
         "simple",
         "server",
         Some("default"),
@@ -327,7 +328,7 @@ mod tests {
         Some("default"),
         Some("node_1"),
         Some("conf%&#1"),
-        "veryveryveryverylo-verylong-server-default-node1-conf1-"
+        "veryveryveryveryl-verylongc-server-default-node1-conf1-"
     )]
     #[case(
         "very-very+very&very#long\"short name",
@@ -336,7 +337,7 @@ mod tests {
         Some("default"),
         Some("node_1"),
         Some("conf%&#1"),
-        "veryveryveryverylo-verylong-server-default-node1-conf1-"
+        "veryveryveryveryl-verylongc-server-default-node1-conf1-"
     )]
     fn test_build_resource_name_ok(
         #[case] short_name: &str,
