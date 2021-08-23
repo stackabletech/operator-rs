@@ -34,6 +34,7 @@ pub enum Error {
 }
 
 /// The sub names that make up the full resource name.
+/// This is mostly used for error messages for now.
 #[derive(Debug, PartialEq, PartialOrd, strum_macros::Display)]
 enum SubName {
     /// CustomResourceDefinition short name
@@ -117,7 +118,11 @@ pub fn build_resource_name(
     // and can be added to other longer sub names exceeding the amount of `selectable_chars`.
     let carryover = max_chars - used_characters(&sub_names, selectable_chars);
 
-    build_name(sub_names, selectable_chars, carryover)
+    Ok(build_name(
+        sub_names.as_slice(),
+        selectable_chars,
+        carryover,
+    ))
 }
 
 /// This splits the number of available characters into equal blocks for each sub name and
@@ -167,11 +172,7 @@ fn used_characters(sub_names: &[String], selectable_chars: usize) -> usize {
 /// * `unused_chars` - Number of characters that are not used by some sub names and may be added to
 ///                    other longer sub names.
 ///
-fn build_name(
-    sub_names: Vec<String>,
-    selectable_chars: usize,
-    unused_chars: usize,
-) -> OperatorResult<String> {
+fn build_name(sub_names: &[String], selectable_chars: usize, unused_chars: usize) -> String {
     let mut full_name = String::new();
     let mut carryover = unused_chars;
 
@@ -192,7 +193,7 @@ fn build_name(
         full_name.push('-');
     }
 
-    Ok(full_name)
+    full_name
 }
 
 /// This will remove all non alphanumeric characters from a sub_name. If the sub name is empty an
@@ -233,103 +234,166 @@ fn to_alphanumeric_lowercase_not_empty(kind: SubName, sub_name: &str) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
-    //use rstest::*;
+    use rstest::*;
 
-    #[test]
-    fn test_abcde() {
-        let result = build_resource_name(
-            "zkaaaaa11",
-            "cluster_name_very_long",
-            "role22",
-            Some("group222"),
-            Some("node123456"),
-            Some("conf"),
-        )
-        .unwrap();
-        println!("{} ({})", result, result.len());
+    #[rstest]
+    #[case(SubName::Short, "short_name", "shortname")]
+    #[case(SubName::Short, "short-&%#name", "shortname")]
+    #[case(SubName::Cluster, "1short_name", "1shortname")]
+    #[case(SubName::Cluster, "1short/*%_name", "1shortname")]
+    fn test_to_alphanumeric_lowercase_not_empty_ok(
+        #[case] kind: SubName,
+        #[case] name: &str,
+        #[case] expected: &str,
+    ) {
+        let result = to_alphanumeric_lowercase_not_empty(kind, name).unwrap();
+        assert_eq!(&result, expected);
     }
 
-    // #[test]
-    // fn test_name_max_len() {
-    //     let mut length = 0;
-    //     for name in SubName::iter() {
-    //         length += name.max();
-    //     }
-    //
-    //     assert!(length <= FULL_NAME_MAX_LEN - GENERATED_HASH_MIN_LENGTH);
-    // }
-    //
-    // #[rstest]
-    // #[case(SubName::Short, "long_short_name", "longs")]
-    // #[case(SubName::Cluster, "pr!od.text1-1234a-asdcv", "prodtext11")]
-    // #[case(SubName::Misc, "", "")]
-    // fn test_strip_ok(#[case] kind: SubName, #[case] name: &str, #[case] expected: &str) {
-    //     let result = strip(kind, name).unwrap();
-    //     assert_eq!(&result, expected);
-    // }
-    //
-    // #[rstest]
-    // #[case(SubName::Cluster, "")]
-    // fn test_strip_err(#[case] kind: SubName, #[case] name: &str) {
-    //     assert!(strip(kind, name).is_err());
-    // }
-    //
-    // #[rstest]
-    // #[case(
-    //     "zk",
-    //     "prod",
-    //     "server",
-    //     Some("default"),
-    //     None,
-    //     None,
-    //     "zk-prod-server-default-"
-    // )]
-    // #[case(
-    //     "zookeeper",
-    //     "production",
-    //     "server",
-    //     Some("default"),
-    //     Some("aws.test-server-cluster.123456789"),
-    //     None,
-    //     "zooke-production-server-default-awstestser-"
-    // )]
-    // #[case(
-    //     "zookeeper",
-    //     "production.hamburg",
-    //     "server!&_big_cloud",
-    //     Some("default"),
-    //     None,
-    //     None,
-    //     "zooke-production-serverbigc-default-"
-    // )]
-    // #[case(
-    //     ".-zookeeper",
-    //     "production.hamburg",
-    //     "server!&_big_cloud",
-    //     Some("default"),
-    //     Some("aws.test-server-cluster.123456789"),
-    //     Some("config"),
-    //     "zooke-production-serverbigc-default-awstestser-confi-"
-    // )]
-    // fn test_build_resource_name_ok(
-    //     #[case] short_name: &str,
-    //     #[case] cluster_name: &str,
-    //     #[case] role_name: &str,
-    //     #[case] group_name: Option<&str>,
-    //     #[case] node_name: Option<&str>,
-    //     #[case] misc_name: Option<&str>,
-    //     #[case] expected: &str,
-    // ) {
-    //     let resource_name = &build_resource_name(
-    //         short_name,
-    //         cluster_name,
-    //         role_name,
-    //         group_name,
-    //         node_name,
-    //         misc_name,
-    //     )
-    //     .unwrap();
-    //     assert_eq!(resource_name, expected);
-    //     assert!(resource_name.len() <= usize::from(FULL_NAME_MAX_LEN - GENERATED_HASH_MIN_LENGTH));
-    // }
+    #[rstest]
+    #[case(SubName::Short, "_short_name")]
+    #[case(SubName::Short, "1short_name")]
+    #[case(SubName::Short, "")]
+    fn test_to_alphanumeric_lowercase_not_empty_err(#[case] kind: SubName, #[case] name: &str) {
+        let result = to_alphanumeric_lowercase_not_empty(kind, name).is_err();
+        assert!(result);
+    }
+
+    #[rstest]
+    #[case(vec!["shortname".to_string(), "clustername".to_string()], 8)]
+    #[case(vec!["short".to_string(), "clusternamelong".to_string()], 8)]
+    #[case(vec!["shortname".to_string(), "clustername".to_string()], 4)]
+    fn test_used_characters(#[case] sub_names: Vec<String>, #[case] selectable_chars: usize) {
+        let mut expected = 0;
+        for name in &sub_names {
+            if name.len() > selectable_chars {
+                expected += selectable_chars;
+            } else {
+                expected += name.len();
+            }
+        }
+
+        let result = used_characters(sub_names.as_slice(), selectable_chars);
+        assert_eq!(result, expected);
+    }
+
+    #[rstest]
+    #[case(vec!["short".to_string(), "clustername".to_string()], 8, 3, "short-clustername-")]
+    #[case(vec!["short".to_string(), "clustername".to_string()], 4, 0, "shor-clus-")]
+    #[case(vec!["short".to_string(), "clustername".to_string()], 4, 1, "short-clus-")]
+    #[case(vec!["short".to_string(), "clustername".to_string()], 4, 2, "short-clust-")]
+    fn test_build_name(
+        #[case] sub_names: Vec<String>,
+        #[case] selectable_chars: usize,
+        #[case] unused_chars: usize,
+        #[case] expected: &str,
+    ) {
+        let result = build_name(sub_names.as_slice(), selectable_chars, unused_chars);
+        assert_eq!(&result, expected);
+    }
+
+    #[rstest]
+    #[case("short", "simple", "server", None, None, None, "short-simple-server-")]
+    #[case(
+        "very_long_short_name",
+        "simple",
+        "server",
+        None,
+        None,
+        None,
+        "verylongshortname-simple-server-"
+    )]
+    #[case(
+        "very_long_short_name",
+        "simple",
+        "server",
+        Some("default"),
+        Some("node_1"),
+        Some("conf%&#1"),
+        "verylongshortname-simple-server-default-node1-conf1-"
+    )]
+    #[case(
+        "very_very_very_very_long_short_name",
+        "very_long_cluster_name_simple",
+        "server",
+        Some("default"),
+        Some("node_1"),
+        Some("conf%&#1"),
+        "veryveryveryverylo-verylong-server-default-node1-conf1-"
+    )]
+    #[case(
+        "very-very+very&very#long\"short name",
+        "-very_long_cluster_name_simple",
+        "#server",
+        Some("default"),
+        Some("node_1"),
+        Some("conf%&#1"),
+        "veryveryveryverylo-verylong-server-default-node1-conf1-"
+    )]
+    fn test_build_resource_name_ok(
+        #[case] short_name: &str,
+        #[case] cluster_name: &str,
+        #[case] role_name: &str,
+        #[case] group_name: Option<&str>,
+        #[case] node_name: Option<&str>,
+        #[case] misc_name: Option<&str>,
+        #[case] expected: &str,
+    ) {
+        let resource_name = &build_resource_name(
+            short_name,
+            cluster_name,
+            role_name,
+            group_name,
+            node_name,
+            misc_name,
+        )
+        .unwrap();
+
+        assert_eq!(resource_name, expected);
+        assert!(resource_name.len() <= RESOURCE_NAME_MAX_LEN - KUBERNETES_HASH_MIN_LENGTH);
+    }
+
+    #[rstest]
+    #[case(
+        "1234very_long_short_name",
+        "simple",
+        "server",
+        Some("default"),
+        Some("node_1"),
+        Some("conf%&#1")
+    )]
+    #[case(
+        "-very_long_short_name",
+        "simple",
+        "server",
+        Some("default"),
+        Some("node_1"),
+        Some("conf%&#1")
+    )]
+    #[case(
+        "very_long_short_name",
+        "",
+        "server",
+        Some("default"),
+        Some("node_1"),
+        Some("conf%&#1")
+    )]
+    fn test_build_resource_name_err(
+        #[case] short_name: &str,
+        #[case] cluster_name: &str,
+        #[case] role_name: &str,
+        #[case] group_name: Option<&str>,
+        #[case] node_name: Option<&str>,
+        #[case] misc_name: Option<&str>,
+    ) {
+        assert!(build_resource_name(
+            short_name,
+            cluster_name,
+            role_name,
+            group_name,
+            node_name,
+            misc_name,
+        )
+        .is_err());
+    }
 }
