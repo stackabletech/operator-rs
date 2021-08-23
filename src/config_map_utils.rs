@@ -7,6 +7,19 @@ use kube::Resource;
 use std::collections::BTreeMap;
 use tracing::{debug, info};
 
+/// This method can be used to build a config map.
+///
+/// The labels must contain:
+/// *
+///
+/// # Arguments
+///
+/// - `cluster` - The Kubernetes client.
+/// - `name` - The config map to create or update.
+/// - `namespace` - The config map to create or update.
+/// - `labels` - The config map to create or update.
+/// - `data` - The config map to create or update.
+///
 pub fn build_config_map<T>(
     cluster: &T,
     name: &str,
@@ -20,7 +33,7 @@ where
     ConfigMapBuilder::new()
         .metadata(
             ObjectMetaBuilder::new()
-                .name(name.clone())
+                .generate_name(name.clone())
                 .ownerreference_from_resource(cluster, Some(true), Some(true))?
                 .namespace(namespace)
                 .with_labels(labels)
@@ -38,7 +51,13 @@ where
 /// compared with the content from `config_map`, if content differs the existing ConfigMap is
 /// updated.
 ///
-/// Returns `Ok(true)` if a change was made and `Ok(false}` if no change was necessary.
+/// Returns `Ok(())` if created or updated. Otherwise error.
+///
+/// # Arguments
+///
+/// - `client` - The Kubernetes client.
+/// - `config_map` - The config map to create or update.
+///
 pub async fn create_config_map(client: &Client, config_map: ConfigMap) -> OperatorResult<()> {
     let existing_config_maps: Vec<ConfigMap> = client
         .list_with_label_selector(
