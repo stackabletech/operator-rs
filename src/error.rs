@@ -3,6 +3,19 @@ use std::collections::HashSet;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error(
+    "The configmap is missing a generated name. This is a programming error. Please open a ticket."
+    )]
+    ConfigMapMissingGenerateName,
+
+    #[error(
+    "The config map [{name}] is missing labels [:?labels]. This is a programming error. Please open a ticket."
+    )]
+    ConfigMapMissingLabels {
+        name: String,
+        labels: Vec<&'static str>,
+    },
+
     #[error("Failed to serialize template to JSON: {source}")]
     JsonSerializationError {
         #[from]
