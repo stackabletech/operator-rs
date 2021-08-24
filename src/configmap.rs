@@ -7,10 +7,10 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use kube::Resource;
 use lazy_static::lazy_static;
 use std::collections::BTreeMap;
-use tracing::info;
+use tracing::{info, warn};
 
 /// This is a required label to set in the configmaps to differentiate config maps for e.g.
-/// config, ids etc.
+/// config, data, ids etc.
 pub const CM_TYPE_LABEL: &str = "configmap.stackable.tech/type";
 
 lazy_static! {
@@ -19,6 +19,7 @@ lazy_static! {
             labels::APP_NAME_LABEL,
             labels::APP_INSTANCE_LABEL,
             labels::APP_COMPONENT_LABEL,
+            labels::APP_ROLE_GROUP_LABEL,
             labels::APP_MANAGED_BY_LABEL,
             CM_TYPE_LABEL,
         ]
@@ -31,6 +32,7 @@ lazy_static! {
 /// * `labels::APP_NAME_LABEL`
 /// * `labels::APP_INSTANCE_LABEL`
 /// * `labels::APP_COMPONENT_LABEL`
+/// * `labels::APP_ROLE_GROUP_LABEL`
 /// * `labels::APP_MANAGED_BY_LABEL`
 /// * `config_map_utils::CM_TYPE_LABEL`
 ///
@@ -67,10 +69,55 @@ where
         .build()
 }
 
+/// This method can be used to ensure a ConfigMap exists and has the specified content.
+///
+/// If a ConfigMap with the specified name does not exist it will be created.
+///
+/// Should a ConfigMap with the specified name already exist the content is retrieved and
+/// compared with the content from `config_map`, if content differs the existing ConfigMap is
+/// updated.
+///
+/// Returns `Ok(ConfigMap)` if created or updated. Otherwise error.
+///
+/// # Arguments
+///
+/// - `client` - The Kubernetes client.
+/// - `config_map` - The config map to create or update.
+///
+pub async fn create_config_map(
+    client: &Client,
+    config_map: ConfigMap,
+) -> OperatorResult<ConfigMap> {
+    return if let Some(mut cm) = list_config_map(client, &config_map).await? {
+        info!(
+            "Found a configmap [{}] with matching labels: {:?}",
+            name(&config_map),
+            config_map.metadata.labels
+        );
+
+        if cm.data != config_map.data {
+            cm = client.update(&config_map).await?;
+            info!(
+                "ConfigMap [{}] already exists, but differs, updating it!",
+                name(&config_map),
+            );
+        }
+
+        Ok(cm)
+    } else {
+        info!(
+            "ConfigMap [{}] not existing, creating it.",
+            name(&config_map),
+        );
+        Ok(client.create(&config_map).await?)
+    };
+}
+
 /// Checks if the labels contain the following:
 /// * `labels::APP_NAME_LABEL`
 /// * `labels::APP_INSTANCE_LABEL`
 /// * `labels::APP_COMPONENT_LABEL`
+/// * `labels::APP_ROLE_GROUP_LABEL`
 /// * `labels::APP_MANAGED_BY_LABEL`
 /// * `config_map_utils::CM_TYPE_LABEL`
 ///
@@ -95,23 +142,19 @@ fn check_labels(cm_name: &str, labels: &BTreeMap<String, String>) -> Result<(), 
     };
 }
 
-/// This method can be used to ensure a ConfigMap exists and has the specified content.
-///
-/// If a ConfigMap with the specified name does not exist it will be created.
-///
-/// Should a ConfigMap with the specified name already exist the content is retrieved and
-/// compared with the content from `config_map`, if content differs the existing ConfigMap is
-/// updated.
-///
-/// Returns `Ok(())` if created or updated. Otherwise error.
+/// Returns `Ok(Some(ConfigMap))` if created or updated. Otherwise Ok(None). Returns Err if
+/// anything with listing the configmaps went wrong.
 ///
 /// # Arguments
 ///
 /// - `client` - The Kubernetes client.
 /// - `config_map` - The config map to create or update.
 ///
-pub async fn create_config_map(client: &Client, config_map: ConfigMap) -> OperatorResult<()> {
-    let existing_config_maps = client
+async fn list_config_map(
+    client: &Client,
+    config_map: &ConfigMap,
+) -> OperatorResult<Option<ConfigMap>> {
+    let mut existing_config_maps = client
         .list_with_label_selector::<ConfigMap>(
             Some(&client.default_namespace),
             &LabelSelector {
@@ -121,35 +164,42 @@ pub async fn create_config_map(client: &Client, config_map: ConfigMap) -> Operat
         )
         .await?;
 
-    info!(
-        "Found {} configmap(s) with matching labels: {:?}",
-        existing_config_maps.len(),
-        config_map.metadata.labels
-    );
-
-    let cm_name = match config_map.metadata.generate_name.as_deref() {
-        None => return Err(Error::ConfigMapMissingGenerateName),
-        Some(name) => name,
-    };
-
-    if existing_config_maps.is_empty() {
-        // nothing there yet, we need to create
-        info!("ConfigMap [{}] not existing, creating it.", cm_name);
-        client.create(&config_map).await?;
-    } else if existing_config_maps.len() == 1 {
-        if existing_config_maps.get(0).unwrap().data == config_map.data {
-            info!(
-                "ConfigMap [{}] already exists with identical data, skipping creation!",
-                cm_name
+    return match existing_config_maps.len() {
+        0 => Ok(None),
+        // This unwrap cannot fail because the vector is not empty
+        1 => Ok(Some(existing_config_maps.pop().unwrap())),
+        _ => {
+            warn!(
+                "Found {} configmaps for labels {:?}. This is should not happen. Using the config map \
+                with the latest creation timestamp. Please open a ticket.",
+                existing_config_maps.len(),
+                config_map.metadata.labels
             );
-        } else {
-            info!(
-                "ConfigMap [{}] already exists, but differs, updating it!",
-                cm_name
-            );
-            client.update(&config_map).await?;
+
+            existing_config_maps.sort_by(|a, b| {
+                b.metadata
+                    .creation_timestamp
+                    .cmp(&a.metadata.creation_timestamp)
+            });
+            // This unwrap cannot fail because the vector is not empty
+            Ok(Some(existing_config_maps.pop().unwrap()))
         }
-    }
+    };
+}
 
-    Ok(())
+/// Extract the metadata.name or alternatively metadata.generate_name.
+///
+/// # Arguments
+///
+/// - `config_map` - The config map to extract name or generate_name from.
+///
+fn name(config_map: &ConfigMap) -> &str {
+    return match (
+        config_map.metadata.name.as_deref(),
+        config_map.metadata.generate_name.as_deref(),
+    ) {
+        (Some(name), Some(_)) | (Some(name), None) => name,
+        (None, Some(generate_name)) => generate_name,
+        _ => "<no-name-found>",
+    };
 }
