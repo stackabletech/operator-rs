@@ -8,7 +8,7 @@ use chrono::Utc;
 use k8s_openapi::api::core::v1::{
     ConfigMap, ConfigMapVolumeSource, Container, ContainerPort, EnvVar, Event, EventSource, Node,
     ObjectReference, Pod, PodCondition, PodSecurityContext, PodSpec, PodStatus, SELinuxOptions,
-    SeccompProfile, Sysctl, Toleration, Volume, VolumeMount,
+    SeccompProfile, Sysctl, Toleration, Volume, VolumeMount, WindowsSecurityContextOptions,
 };
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{MicroTime, ObjectMeta, OwnerReference, Time};
 use kube::{Resource, ResourceExt};
@@ -825,6 +825,51 @@ impl PodSecurityContextBuilder {
             .collect();
         self
     }
+
+    pub fn win_credential_spec(&mut self, spec: &str) -> &mut Self {
+        self.pod_security_context.windows_options =
+            Some(self.pod_security_context.windows_options.clone().map_or(
+                WindowsSecurityContextOptions {
+                    gmsa_credential_spec: Some(spec.to_string()),
+                    ..WindowsSecurityContextOptions::default()
+                },
+                |o| WindowsSecurityContextOptions {
+                    gmsa_credential_spec: Some(spec.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+
+    pub fn win_credential_spec_name(&mut self, name: &str) -> &mut Self {
+        self.pod_security_context.windows_options =
+            Some(self.pod_security_context.windows_options.clone().map_or(
+                WindowsSecurityContextOptions {
+                    gmsa_credential_spec_name: Some(name.to_string()),
+                    ..WindowsSecurityContextOptions::default()
+                },
+                |o| WindowsSecurityContextOptions {
+                    gmsa_credential_spec_name: Some(name.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+
+    pub fn win_run_as_user_name(&mut self, name: &str) -> &mut Self {
+        self.pod_security_context.windows_options =
+            Some(self.pod_security_context.windows_options.clone().map_or(
+                WindowsSecurityContextOptions {
+                    run_as_user_name: Some(name.to_string()),
+                    ..WindowsSecurityContextOptions::default()
+                },
+                |o| WindowsSecurityContextOptions {
+                    run_as_user_name: Some(name.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
 }
 /// A builder to build [`Pod`] objects.
 ///
@@ -964,6 +1009,7 @@ mod tests {
     };
     use k8s_openapi::api::core::v1::{
         EnvVar, Pod, PodSecurityContext, SELinuxOptions, SeccompProfile, Sysctl, VolumeMount,
+        WindowsSecurityContextOptions,
     };
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
     use std::collections::BTreeMap;
@@ -985,6 +1031,9 @@ mod tests {
             .seccomp_profile_localhost("localhost")
             .seccomp_profile_type("type")
             .sysctls(&[("param1", "value1"), ("param2", "value2")])
+            .win_credential_spec("spec")
+            .win_credential_spec_name("name")
+            .win_run_as_user_name("winuser")
             .build();
 
         assert_eq!(
@@ -1016,7 +1065,11 @@ mod tests {
                         value: "value2".to_string(),
                     },
                 ],
-                ..PodSecurityContext::default()
+                windows_options: Some(WindowsSecurityContextOptions {
+                    gmsa_credential_spec: Some("spec".to_string()),
+                    gmsa_credential_spec_name: Some("name".to_string()),
+                    run_as_user_name: Some("winuser".to_string()),
+                })
             }
         );
     }
