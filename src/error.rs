@@ -1,3 +1,4 @@
+use crate::name_utils;
 use crate::product_config_utils;
 use std::collections::HashSet;
 
@@ -62,6 +63,12 @@ pub enum Error {
     EnvironmentVariableError {
         #[from]
         source: std::env::VarError,
+    },
+
+    #[error("NameUtils reported error: {source}")]
+    NamingError {
+        #[from]
+        source: name_utils::Error,
     },
 
     #[error("Invalid name for resource: {errors:?}")]

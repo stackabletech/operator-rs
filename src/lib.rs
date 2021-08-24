@@ -16,6 +16,7 @@ pub mod krustlet;
 pub mod label_selector;
 pub mod labels;
 pub mod logging;
+pub mod name_utils;
 pub mod namespace;
 pub mod pod_utils;
 pub mod product_config_utils;
