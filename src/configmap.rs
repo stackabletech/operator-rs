@@ -295,6 +295,7 @@ mod tests {
     #[test]
     fn test_filter_config_maps_multiple() {
         let time_old = Time(Utc::now());
+        let time_old_2 = Time(Utc::now() + Duration::minutes(10));
         let time_new = Time(Utc::now() + Duration::days(1));
 
         let config_maps = vec![
@@ -308,6 +309,13 @@ mod tests {
             ConfigMap {
                 metadata: ObjectMeta {
                     creation_timestamp: Some(time_new.clone()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ConfigMap {
+                metadata: ObjectMeta {
+                    creation_timestamp: Some(time_old_2),
                     ..Default::default()
                 },
                 ..Default::default()
