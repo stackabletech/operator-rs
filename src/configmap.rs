@@ -14,6 +14,7 @@ use tracing::{debug, info, warn};
 /// This is a required label to set in the configmaps to differentiate config maps for e.g.
 /// config, data, ids etc.
 pub const CONFIGMAP_TYPE_LABEL: &str = "configmap.stackable.tech/type";
+/// This label will be set automatically to track the content of the config map.
 pub const CONFIGMAP_HASH_LABEL: &str = "configmap.stackable.tech/hash";
 
 lazy_static! {
