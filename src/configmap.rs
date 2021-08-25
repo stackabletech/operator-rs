@@ -26,7 +26,7 @@ use lazy_static::lazy_static;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 
 /// This is a required label to set in the configmaps to differentiate config maps for e.g.
 /// config, data, ids etc.
@@ -56,8 +56,6 @@ lazy_static! {
 /// * `labels::APP_ROLE_GROUP_LABEL`
 /// * `labels::APP_MANAGED_BY_LABEL`
 /// * `configmap::CONFIGMAP_TYPE_LABEL`
-///
-/// The labels and data are hashed and added as configmap::CONFIGMAP_HASH_LABEL.
 ///
 /// # Arguments
 ///
@@ -100,6 +98,9 @@ where
 /// compared with the content from `config_map`, if content differs the existing ConfigMap is
 /// updated.
 ///
+/// The config map labels and data are hashed and added as configmap::CONFIGMAP_HASH_LABEL in
+/// order to keep track of changes.
+///
 /// Returns `Ok(ConfigMap)` if created or updated. Otherwise error.
 ///
 /// # Arguments
@@ -127,7 +128,7 @@ pub async fn create_config_map(
                 .labels
                 .get(CONFIGMAP_HASH_LABEL)
         {
-            info!(
+            debug!(
                 "ConfigMap [{}] already exists, but differs, updating it!",
                 name(&existing_config_map)?,
             );
