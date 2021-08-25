@@ -1,3 +1,20 @@
+//! This module offers methods to build and create/update configmaps.
+//!
+//! ConfigMaps using this module are required to implement certain labels to be identifiable via
+//! a LabelSelector:
+//! * `labels::APP_NAME_LABEL`
+//! * `labels::APP_INSTANCE_LABEL`
+//! * `labels::APP_COMPONENT_LABEL`
+//! * `labels::APP_ROLE_GROUP_LABEL`
+//! * `labels::APP_MANAGED_BY_LABEL`
+//! * `configmap::CONFIGMAP_TYPE_LABEL`
+//!
+//! ConfigMap names should be created via `name_utils::build_resource_name`. The name represents
+//! the metadata.generate_name.
+//!
+//! To have the 'full' name the config maps have to be created before mounting them into pods.
+//! The generate_name from `name_utils::build_resource_name` cannot be used as mount name.   
+//!
 use crate::builder::{ConfigMapBuilder, ObjectMetaBuilder};
 use crate::client::Client;
 use crate::error::{Error, OperatorResult};
