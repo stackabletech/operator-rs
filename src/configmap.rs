@@ -98,7 +98,7 @@ pub async fn create_config_map(
     return if let Some(mut existing_config_map) = find_config_map(client, &config_map).await? {
         debug!(
             "Found an existing configmap [{}] with matching labels: {:?}",
-            name(&existing_config_map),
+            name(&existing_config_map)?,
             config_map.metadata.labels
         );
 
@@ -111,7 +111,7 @@ pub async fn create_config_map(
         {
             info!(
                 "ConfigMap [{}] already exists, but differs, updating it!",
-                name(&existing_config_map),
+                name(&existing_config_map)?,
             );
 
             merge_config_maps(&mut existing_config_map, config_map, hash);
@@ -122,7 +122,7 @@ pub async fn create_config_map(
     } else {
         debug!(
             "ConfigMap [{}] not existing, creating it.",
-            name(&config_map),
+            name(&config_map)?,
         );
 
         config_map
@@ -140,9 +140,6 @@ pub async fn create_config_map(
 /// For now we assume that the config map labels are unique. That means we will return only
 /// one matching config map.
 ///
-/// If for some reason multiple config maps match the label selector, we log a warning and
-/// return the 'newest' config map, meaning the youngest creation timestamp.
-///
 /// # Arguments
 ///
 /// - `client` - The Kubernetes client.
@@ -152,7 +149,7 @@ async fn find_config_map(
     client: &Client,
     config_map: &ConfigMap,
 ) -> OperatorResult<Option<ConfigMap>> {
-    let mut existing_config_maps = client
+    let existing_config_maps = client
         .list_with_label_selector::<ConfigMap>(
             Some(&client.default_namespace),
             &LabelSelector {
@@ -162,27 +159,48 @@ async fn find_config_map(
         )
         .await?;
 
-    return match existing_config_maps.len() {
-        0 => Ok(None),
+    Ok(filter_config_map(
+        existing_config_maps,
+        &config_map.metadata.labels,
+    ))
+}
+
+/// Returns `Some(ConfigMap)` if a config map was found. Otherwise None.
+///
+/// If the `config_maps` vector size is greater than 1, we log a warning and
+/// return the 'newest' config map, meaning the youngest creation timestamp.
+///
+/// # Arguments
+///
+/// - `config_maps` - The config maps to filter
+/// - `labels` - The labels used in the LabelSelector.
+///
+fn filter_config_map(
+    mut config_maps: Vec<ConfigMap>,
+    labels: &BTreeMap<String, String>,
+) -> Option<ConfigMap> {
+    match config_maps.len() {
+        0 => None,
         // This unwrap cannot fail because the vector is not empty
-        1 => Ok(Some(existing_config_maps.pop().unwrap())),
+        1 => Some(config_maps.pop().unwrap()),
         _ => {
+            // TODO: using the latest? Or error? Not sure what side effects this may have yet.
             warn!(
                 "Found {} configmaps for labels {:?}. This is should not happen. Using the config map \
                 with the latest creation timestamp. Please open a ticket.",
-                existing_config_maps.len(),
-                config_map.metadata.labels
+                config_maps.len(),
+                labels
             );
 
-            existing_config_maps.sort_by(|a, b| {
-                b.metadata
+            config_maps.sort_by(|a, b| {
+                a.metadata
                     .creation_timestamp
-                    .cmp(&a.metadata.creation_timestamp)
+                    .cmp(&b.metadata.creation_timestamp)
             });
             // This unwrap cannot fail because the vector is not empty
-            Ok(Some(existing_config_maps.pop().unwrap()))
+            Some(config_maps.pop().unwrap())
         }
-    };
+    }
 }
 
 /// Checks if the labels contain the following:
@@ -220,14 +238,16 @@ fn check_labels(cm_name: &str, labels: &BTreeMap<String, String>) -> Result<(), 
 ///
 /// - `config_map` - The config map to extract name or generate_name from.
 ///
-fn name(config_map: &ConfigMap) -> &str {
+fn name(config_map: &ConfigMap) -> OperatorResult<&str> {
     return match (
         config_map.metadata.name.as_deref(),
         config_map.metadata.generate_name.as_deref(),
     ) {
-        (Some(name), Some(_)) | (Some(name), None) => name,
-        (None, Some(generate_name)) => generate_name,
-        _ => "<no-name-found>",
+        (Some(name), Some(_)) | (Some(name), None) => Ok(name),
+        (None, Some(generate_name)) => Ok(generate_name),
+        _ => Err(Error::MissingObjectKey {
+            key: "metadata.name",
+        }),
     };
 }
 
@@ -260,4 +280,163 @@ fn merge_config_maps(existing: &mut ConfigMap, created: ConfigMap, hash: u64) {
         .metadata
         .labels
         .insert(CONFIGMAP_HASH_LABEL.to_string(), hash.to_string());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::labels;
+    use chrono::{Duration, Utc};
+    use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
+    use kube::api::ObjectMeta;
+    use rstest::*;
+
+    #[test]
+    fn test_filter_config_maps_multiple() {
+        let time_old = Time(Utc::now());
+        let time_new = Time(Utc::now() + Duration::days(1));
+
+        let config_maps = vec![
+            ConfigMap {
+                metadata: ObjectMeta {
+                    creation_timestamp: Some(time_old),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ConfigMap {
+                metadata: ObjectMeta {
+                    creation_timestamp: Some(time_new.clone()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        ];
+
+        let filtered = filter_config_map(config_maps, &BTreeMap::new()).unwrap();
+        assert_eq!(filtered.metadata.creation_timestamp, Some(time_new));
+    }
+
+    #[rstest]
+    #[case(vec![], false)]
+    #[case(vec![ConfigMap::default()], true)]
+    fn test_filter_config_maps_single(#[case] config_maps: Vec<ConfigMap>, #[case] expected: bool) {
+        let filtered = filter_config_map(config_maps, &BTreeMap::new());
+        assert_eq!(filtered.is_some(), expected);
+    }
+
+    #[test]
+    fn test_check_labels() {
+        let cm_name = "test";
+        let mut test_labels = BTreeMap::new();
+        test_labels.insert(labels::APP_NAME_LABEL.to_string(), "test".to_string());
+        test_labels.insert(labels::APP_INSTANCE_LABEL.to_string(), "test".to_string());
+
+        assert!(check_labels(cm_name, &test_labels).is_err());
+
+        test_labels.insert(labels::APP_COMPONENT_LABEL.to_string(), "test".to_string());
+        test_labels.insert(labels::APP_ROLE_GROUP_LABEL.to_string(), "test".to_string());
+        test_labels.insert(labels::APP_MANAGED_BY_LABEL.to_string(), "test".to_string());
+        test_labels.insert(CONFIGMAP_TYPE_LABEL.to_string(), "test".to_string());
+
+        assert!(check_labels(cm_name, &test_labels).is_ok());
+    }
+
+    #[rstest]
+    #[case(Some("name".to_string()), None, "name")]
+    #[case(Some("name".to_string()), Some("generated-name-".to_string()), "name")]
+    #[case(None, Some("generated-name-".to_string()), "generated-name-")]
+    fn test_name_ok(
+        #[case] normal_name: Option<String>,
+        #[case] generate_name: Option<String>,
+        #[case] expected: &str,
+    ) {
+        let mut cm = ConfigMap::default();
+        cm.metadata.name = normal_name;
+        cm.metadata.generate_name = generate_name;
+
+        assert_eq!(name(&cm).unwrap(), expected.to_string())
+    }
+
+    #[rstest]
+    #[case(None, None)]
+    fn test_name_err(#[case] normal_name: Option<String>, #[case] generate_name: Option<String>) {
+        let mut cm = ConfigMap::default();
+        cm.metadata.name = normal_name;
+        cm.metadata.generate_name = generate_name;
+
+        assert!(name(&cm).is_err());
+    }
+
+    #[rstest]
+    #[case(vec![], vec![], vec![], vec![], true)]
+    #[case(vec!["labels".to_string()], vec![], vec!["labels".to_string()], vec![], true)]
+    #[case(vec![], vec!["data".to_string()], vec![], vec!["data".to_string()], true)]
+    #[case(vec!["labels".to_string()], vec!["data".to_string()], vec!["labels".to_string()], vec!["data".to_string()], true)]
+    #[case(vec!["labels".to_string()], vec!["data".to_string()], vec!["other_labels".to_string()], vec!["data".to_string()], false)]
+    #[case(vec!["labels".to_string()], vec!["data".to_string()], vec!["other_labels".to_string()], vec!["other_data".to_string()], false)]
+    fn test_hash_config_map(
+        #[case] labels_1: Vec<String>,
+        #[case] data_1: Vec<String>,
+        #[case] labels_2: Vec<String>,
+        #[case] data_2: Vec<String>,
+        #[case] expected: bool,
+    ) {
+        let mut cm_1 = ConfigMap::default();
+        let mut cm_2 = ConfigMap::default();
+        let mut cm_labels_1 = BTreeMap::new();
+        let mut cm_data_1 = BTreeMap::new();
+        let mut cm_labels_2 = BTreeMap::new();
+        let mut cm_data_2 = BTreeMap::new();
+
+        for label in labels_1 {
+            cm_labels_1.insert(label.clone(), label.clone());
+        }
+
+        for data in data_1 {
+            cm_data_1.insert(data.clone(), data.clone());
+        }
+
+        for label in labels_2 {
+            cm_labels_2.insert(label.clone(), label.clone());
+        }
+
+        for data in data_2 {
+            cm_data_2.insert(data.clone(), data.clone());
+        }
+
+        cm_1.metadata.labels = cm_labels_1;
+        cm_1.data = cm_data_1;
+
+        cm_2.metadata.labels = cm_labels_2;
+        cm_2.data = cm_data_2;
+
+        assert_eq!(hash_config_map(&cm_1) == hash_config_map(&cm_2), expected);
+    }
+
+    #[test]
+    fn test_merge_config_maps() {
+        let mut cm_found = ConfigMap::default();
+        let mut cm_new = ConfigMap::default();
+        let mut cm_new_labels = BTreeMap::new();
+        let mut cm_new_data = BTreeMap::new();
+
+        cm_new_labels.insert("new_label_key".to_string(), "new_label_value".to_string());
+        cm_new_data.insert("new_data_key".to_string(), "new_data_value".to_string());
+
+        let hash = hash_config_map(&cm_new);
+        cm_new_labels.insert(CONFIGMAP_HASH_LABEL.to_string(), hash.to_string());
+
+        cm_new.metadata.labels = cm_new_labels.clone();
+        cm_new.data = cm_new_data.clone();
+
+        merge_config_maps(&mut cm_found, cm_new, hash);
+
+        assert_eq!(cm_new_labels, cm_found.metadata.labels);
+        assert_eq!(cm_new_data, cm_found.data);
+        assert_eq!(
+            Some(&hash.to_string()),
+            cm_found.metadata.labels.get(CONFIGMAP_HASH_LABEL)
+        );
+    }
 }
