@@ -13,6 +13,7 @@ use k8s_openapi::api::core::v1::{
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{MicroTime, ObjectMeta, OwnerReference, Time};
 use kube::{Resource, ResourceExt};
 use std::collections::{BTreeMap, HashMap, HashSet};
+use tracing::warn;
 
 /// A builder to build [`ConfigMap`] objects.
 #[derive(Clone, Default)]
@@ -557,6 +558,16 @@ impl ObjectMetaBuilder {
     }
 
     pub fn build(&self) -> OperatorResult<ObjectMeta> {
+        // if 'generate_name' and 'name' are set, Kubernetes will prioritize the 'name' field and
+        // 'generate_name' has no impact.
+        if let (Some(name), Some(generate_name)) = (&self.name, &self.generate_name) {
+            warn!(
+                "ObjectMeta has a 'name' [{}] and 'generate_name' [{}] field set. Kubernetes \
+		 will prioritize the 'name' field over 'generate_name'.",
+                name, generate_name
+            );
+        }
+
         Ok(ObjectMeta {
             generate_name: self.generate_name.clone(),
             name: self.name.clone(),
