@@ -13,6 +13,7 @@ use k8s_openapi::api::core::v1::{
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{MicroTime, ObjectMeta, OwnerReference, Time};
 use kube::{Resource, ResourceExt};
 use std::collections::{BTreeMap, HashMap, HashSet};
+use tracing::warn;
 
 /// A builder to build [`ConfigMap`] objects.
 #[derive(Clone, Default)]
@@ -401,6 +402,7 @@ impl NodeBuilder {
 #[derive(Clone, Default)]
 pub struct ObjectMetaBuilder {
     name: Option<String>,
+    generate_name: Option<String>,
     namespace: Option<String>,
     ownerreference: Option<OwnerReference>,
     labels: BTreeMap<String, String>,
@@ -426,6 +428,19 @@ impl ObjectMetaBuilder {
 
     pub fn name<VALUE: Into<String>>(&mut self, name: VALUE) -> &mut Self {
         self.name = Some(name.into());
+        self
+    }
+
+    pub fn generate_name<VALUE: Into<String>>(&mut self, generate_name: VALUE) -> &mut Self {
+        self.generate_name = Some(generate_name.into());
+        self
+    }
+
+    pub fn generate_name_opt<VALUE: Into<Option<String>>>(
+        &mut self,
+        generate_name: VALUE,
+    ) -> &mut Self {
+        self.generate_name = generate_name.into();
         self
     }
 
@@ -543,7 +558,18 @@ impl ObjectMetaBuilder {
     }
 
     pub fn build(&self) -> OperatorResult<ObjectMeta> {
+        // if 'generate_name' and 'name' are set, Kubernetes will prioritize the 'name' field and
+        // 'generate_name' has no impact.
+        if let (Some(name), Some(generate_name)) = (&self.name, &self.generate_name) {
+            warn!(
+                "ObjectMeta has a 'name' [{}] and 'generate_name' [{}] field set. Kubernetes \
+		 will prioritize the 'name' field over 'generate_name'.",
+                name, generate_name
+            );
+        }
+
         Ok(ObjectMeta {
+            generate_name: self.generate_name.clone(),
             name: self.name.clone(),
             namespace: self.namespace.clone(),
             owner_references: match self.ownerreference {
@@ -552,7 +578,6 @@ impl ObjectMetaBuilder {
             },
             labels: self.labels.clone(),
             annotations: self.annotations.clone(),
-
             ..ObjectMeta::default()
         })
     }
@@ -1183,6 +1208,7 @@ mod tests {
         pod.metadata.uid = Some("uid".to_string());
 
         let meta = ObjectMetaBuilder::new()
+            .generate_name("generate_foo")
             .name("foo")
             .namespace("bar")
             .ownerreference_from_resource(&pod, Some(true), Some(false))
@@ -1192,6 +1218,7 @@ mod tests {
             .build()
             .unwrap();
 
+        assert_eq!(meta.generate_name, Some("generate_foo".to_string()));
         assert_eq!(meta.name, Some("foo".to_string()));
         assert_eq!(meta.owner_references.len(), 1);
         assert!(

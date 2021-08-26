@@ -3,6 +3,7 @@ pub mod cli;
 pub mod client;
 pub mod command_controller;
 pub mod conditions;
+pub mod configmap;
 pub mod controller;
 pub mod controller_ref;
 pub mod controller_utils;
