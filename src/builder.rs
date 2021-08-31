@@ -7,11 +7,13 @@ use crate::labels;
 use chrono::Utc;
 use k8s_openapi::api::core::v1::{
     ConfigMap, ConfigMapVolumeSource, Container, ContainerPort, EnvVar, Event, EventSource, Node,
-    ObjectReference, Pod, PodCondition, PodSpec, PodStatus, Toleration, Volume, VolumeMount,
+    ObjectReference, Pod, PodCondition, PodSecurityContext, PodSpec, PodStatus, SELinuxOptions,
+    SeccompProfile, Sysctl, Toleration, Volume, VolumeMount, WindowsSecurityContextOptions,
 };
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{MicroTime, ObjectMeta, OwnerReference, Time};
 use kube::{Resource, ResourceExt};
 use std::collections::{BTreeMap, HashMap, HashSet};
+use tracing::warn;
 
 /// A builder to build [`ConfigMap`] objects.
 #[derive(Clone, Default)]
@@ -400,6 +402,7 @@ impl NodeBuilder {
 #[derive(Clone, Default)]
 pub struct ObjectMetaBuilder {
     name: Option<String>,
+    generate_name: Option<String>,
     namespace: Option<String>,
     ownerreference: Option<OwnerReference>,
     labels: BTreeMap<String, String>,
@@ -425,6 +428,19 @@ impl ObjectMetaBuilder {
 
     pub fn name<VALUE: Into<String>>(&mut self, name: VALUE) -> &mut Self {
         self.name = Some(name.into());
+        self
+    }
+
+    pub fn generate_name<VALUE: Into<String>>(&mut self, generate_name: VALUE) -> &mut Self {
+        self.generate_name = Some(generate_name.into());
+        self
+    }
+
+    pub fn generate_name_opt<VALUE: Into<Option<String>>>(
+        &mut self,
+        generate_name: VALUE,
+    ) -> &mut Self {
+        self.generate_name = generate_name.into();
         self
     }
 
@@ -542,7 +558,18 @@ impl ObjectMetaBuilder {
     }
 
     pub fn build(&self) -> OperatorResult<ObjectMeta> {
+        // if 'generate_name' and 'name' are set, Kubernetes will prioritize the 'name' field and
+        // 'generate_name' has no impact.
+        if let (Some(name), Some(generate_name)) = (&self.name, &self.generate_name) {
+            warn!(
+                "ObjectMeta has a 'name' [{}] and 'generate_name' [{}] field set. Kubernetes \
+		 will prioritize the 'name' field over 'generate_name'.",
+                name, generate_name
+            );
+        }
+
         Ok(ObjectMeta {
+            generate_name: self.generate_name.clone(),
             name: self.name.clone(),
             namespace: self.namespace.clone(),
             owner_references: match self.ownerreference {
@@ -551,7 +578,6 @@ impl ObjectMetaBuilder {
             },
             labels: self.labels.clone(),
             annotations: self.annotations.clone(),
-
             ..ObjectMeta::default()
         })
     }
@@ -683,6 +709,193 @@ impl OwnerReferenceBuilder {
     }
 }
 
+#[derive(Clone, Default)]
+pub struct PodSecurityContextBuilder {
+    pod_security_context: PodSecurityContext,
+}
+
+impl PodSecurityContextBuilder {
+    pub fn new() -> PodSecurityContextBuilder {
+        PodSecurityContextBuilder::default()
+    }
+
+    pub fn build(&self) -> PodSecurityContext {
+        self.pod_security_context.clone()
+    }
+
+    pub fn fs_group(&mut self, group: i64) -> &mut Self {
+        self.pod_security_context.fs_group = Some(group);
+        self
+    }
+
+    pub fn fs_group_change_policy(&mut self, policy: &str) -> &mut Self {
+        self.pod_security_context.fs_group_change_policy = Some(policy.to_string());
+        self
+    }
+
+    pub fn run_as_group(&mut self, group: i64) -> &mut Self {
+        self.pod_security_context.run_as_group = Some(group);
+        self
+    }
+
+    pub fn run_as_non_root(&mut self) -> &mut Self {
+        self.pod_security_context.run_as_non_root = Some(true);
+        self
+    }
+
+    pub fn run_as_user(&mut self, user: i64) -> &mut Self {
+        self.pod_security_context.run_as_user = Some(user);
+        self
+    }
+
+    pub fn supplemental_groups(&mut self, groups: &[i64]) -> &mut Self {
+        self.pod_security_context.supplemental_groups = groups.to_vec();
+        self
+    }
+
+    pub fn se_linux_level(&mut self, level: &str) -> &mut Self {
+        self.pod_security_context.se_linux_options =
+            Some(self.pod_security_context.se_linux_options.clone().map_or(
+                SELinuxOptions {
+                    level: Some(level.to_string()),
+                    ..SELinuxOptions::default()
+                },
+                |o| SELinuxOptions {
+                    level: Some(level.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+    pub fn se_linux_role(&mut self, role: &str) -> &mut Self {
+        self.pod_security_context.se_linux_options =
+            Some(self.pod_security_context.se_linux_options.clone().map_or(
+                SELinuxOptions {
+                    role: Some(role.to_string()),
+                    ..SELinuxOptions::default()
+                },
+                |o| SELinuxOptions {
+                    role: Some(role.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+    pub fn se_linux_type(&mut self, type_: &str) -> &mut Self {
+        self.pod_security_context.se_linux_options =
+            Some(self.pod_security_context.se_linux_options.clone().map_or(
+                SELinuxOptions {
+                    type_: Some(type_.to_string()),
+                    ..SELinuxOptions::default()
+                },
+                |o| SELinuxOptions {
+                    type_: Some(type_.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+    pub fn se_linux_user(&mut self, user: &str) -> &mut Self {
+        self.pod_security_context.se_linux_options =
+            Some(self.pod_security_context.se_linux_options.clone().map_or(
+                SELinuxOptions {
+                    user: Some(user.to_string()),
+                    ..SELinuxOptions::default()
+                },
+                |o| SELinuxOptions {
+                    user: Some(user.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+
+    pub fn seccomp_profile_localhost(&mut self, profile: &str) -> &mut Self {
+        self.pod_security_context.seccomp_profile =
+            Some(self.pod_security_context.seccomp_profile.clone().map_or(
+                SeccompProfile {
+                    localhost_profile: Some(profile.to_string()),
+                    ..SeccompProfile::default()
+                },
+                |o| SeccompProfile {
+                    localhost_profile: Some(profile.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+
+    pub fn seccomp_profile_type(&mut self, type_: &str) -> &mut Self {
+        self.pod_security_context.seccomp_profile =
+            Some(self.pod_security_context.seccomp_profile.clone().map_or(
+                SeccompProfile {
+                    type_: type_.to_string(),
+                    ..SeccompProfile::default()
+                },
+                |o| SeccompProfile {
+                    type_: type_.to_string(),
+                    ..o
+                },
+            ));
+        self
+    }
+
+    pub fn sysctls(&mut self, kparam: &[(&str, &str)]) -> &mut Self {
+        self.pod_security_context.sysctls = kparam
+            .iter()
+            .map(|&name_value| Sysctl {
+                name: name_value.0.to_string(),
+                value: name_value.1.to_string(),
+            })
+            .collect();
+        self
+    }
+
+    pub fn win_credential_spec(&mut self, spec: &str) -> &mut Self {
+        self.pod_security_context.windows_options =
+            Some(self.pod_security_context.windows_options.clone().map_or(
+                WindowsSecurityContextOptions {
+                    gmsa_credential_spec: Some(spec.to_string()),
+                    ..WindowsSecurityContextOptions::default()
+                },
+                |o| WindowsSecurityContextOptions {
+                    gmsa_credential_spec: Some(spec.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+
+    pub fn win_credential_spec_name(&mut self, name: &str) -> &mut Self {
+        self.pod_security_context.windows_options =
+            Some(self.pod_security_context.windows_options.clone().map_or(
+                WindowsSecurityContextOptions {
+                    gmsa_credential_spec_name: Some(name.to_string()),
+                    ..WindowsSecurityContextOptions::default()
+                },
+                |o| WindowsSecurityContextOptions {
+                    gmsa_credential_spec_name: Some(name.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+
+    pub fn win_run_as_user_name(&mut self, name: &str) -> &mut Self {
+        self.pod_security_context.windows_options =
+            Some(self.pod_security_context.windows_options.clone().map_or(
+                WindowsSecurityContextOptions {
+                    run_as_user_name: Some(name.to_string()),
+                    ..WindowsSecurityContextOptions::default()
+                },
+                |o| WindowsSecurityContextOptions {
+                    run_as_user_name: Some(name.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+}
 /// A builder to build [`Pod`] objects.
 ///
 #[derive(Clone, Default)]
@@ -692,6 +905,7 @@ pub struct PodBuilder {
     tolerations: Vec<Toleration>,
     status: Option<PodStatus>,
     containers: Vec<Container>,
+    security_context: Option<PodSecurityContext>,
 }
 
 impl PodBuilder {
@@ -758,6 +972,14 @@ impl PodBuilder {
         self
     }
 
+    pub fn security_context<VALUE: Into<PodSecurityContext>>(
+        &mut self,
+        security_context: VALUE,
+    ) -> &mut Self {
+        self.security_context = Some(security_context.into());
+        self
+    }
+
     /// Consumes the Builder and returns a constructed Pod
     pub fn build(&self) -> OperatorResult<Pod> {
         // Retrieve all configmaps from all containers and add the relevant volumes to the Pod
@@ -796,6 +1018,7 @@ impl PodBuilder {
                 tolerations: self.tolerations.clone(),
                 volumes,
                 node_name: self.node_name.clone(),
+                security_context: self.security_context.clone(),
                 ..PodSpec::default()
             }),
             status: self.status.clone(),
@@ -807,11 +1030,74 @@ impl PodBuilder {
 mod tests {
     use crate::builder::{
         ConfigMapBuilder, ContainerBuilder, ContainerPortBuilder, EventBuilder, EventType,
-        NodeBuilder, ObjectMetaBuilder, PodBuilder,
+        NodeBuilder, ObjectMetaBuilder, PodBuilder, PodSecurityContextBuilder,
     };
-    use k8s_openapi::api::core::v1::{EnvVar, Pod, VolumeMount};
+    use k8s_openapi::api::core::v1::{
+        EnvVar, Pod, PodSecurityContext, SELinuxOptions, SeccompProfile, Sysctl, VolumeMount,
+        WindowsSecurityContextOptions,
+    };
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
     use std::collections::BTreeMap;
+
+    #[test]
+    fn test_security_context_builder() {
+        let mut builder = PodSecurityContextBuilder::new();
+        let context = builder
+            .fs_group(1000)
+            .fs_group_change_policy("policy")
+            .run_as_user(1001)
+            .run_as_group(1001)
+            .run_as_non_root()
+            .supplemental_groups(&[1002, 1003])
+            .se_linux_level("level")
+            .se_linux_role("role")
+            .se_linux_type("type")
+            .se_linux_user("user")
+            .seccomp_profile_localhost("localhost")
+            .seccomp_profile_type("type")
+            .sysctls(&[("param1", "value1"), ("param2", "value2")])
+            .win_credential_spec("spec")
+            .win_credential_spec_name("name")
+            .win_run_as_user_name("winuser")
+            .build();
+
+        assert_eq!(
+            context,
+            PodSecurityContext {
+                fs_group: Some(1000),
+                fs_group_change_policy: Some("policy".to_string()),
+                run_as_user: Some(1001),
+                run_as_group: Some(1001),
+                run_as_non_root: Some(true),
+                supplemental_groups: vec![1002, 1003],
+                se_linux_options: Some(SELinuxOptions {
+                    level: Some("level".to_string()),
+                    role: Some("role".to_string()),
+                    type_: Some("type".to_string()),
+                    user: Some("user".to_string()),
+                }),
+                seccomp_profile: Some(SeccompProfile {
+                    localhost_profile: Some("localhost".to_string()),
+                    type_: "type".to_string(),
+                }),
+                sysctls: vec![
+                    Sysctl {
+                        name: "param1".to_string(),
+                        value: "value1".to_string(),
+                    },
+                    Sysctl {
+                        name: "param2".to_string(),
+                        value: "value2".to_string(),
+                    },
+                ],
+                windows_options: Some(WindowsSecurityContextOptions {
+                    gmsa_credential_spec: Some("spec".to_string()),
+                    gmsa_credential_spec_name: Some("name".to_string()),
+                    run_as_user_name: Some("winuser".to_string()),
+                })
+            }
+        );
+    }
 
     #[test]
     fn test_configmap_builder() {
@@ -922,6 +1208,7 @@ mod tests {
         pod.metadata.uid = Some("uid".to_string());
 
         let meta = ObjectMetaBuilder::new()
+            .generate_name("generate_foo")
             .name("foo")
             .namespace("bar")
             .ownerreference_from_resource(&pod, Some(true), Some(false))
@@ -931,6 +1218,7 @@ mod tests {
             .build()
             .unwrap();
 
+        assert_eq!(meta.generate_name, Some("generate_foo".to_string()));
         assert_eq!(meta.name, Some("foo".to_string()));
         assert_eq!(meta.owner_references.len(), 1);
         assert!(

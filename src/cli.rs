@@ -93,7 +93,7 @@
 use crate::error;
 use crate::error::OperatorResult;
 use crate::CustomResourceExt;
-use clap::{App, Arg, ArgMatches, SubCommand};
+use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use std::path::Path;
 
 const PRODUCT_CONFIG_ARG: &str = "product-config";
@@ -187,6 +187,7 @@ where
     let kind = T::api_resource().kind;
 
     SubCommand::with_name(&kind.to_lowercase())
+        .setting(AppSettings::ArgRequiredElseHelp)
         .arg(
             Arg::with_name("print")
                 .short("p")

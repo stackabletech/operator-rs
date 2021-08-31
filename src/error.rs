@@ -1,8 +1,22 @@
+use crate::name_utils;
 use crate::product_config_utils;
 use std::collections::HashSet;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error(
+    "The configmap is missing a generated name. This is a programming error. Please open a ticket."
+    )]
+    ConfigMapMissingGenerateName,
+
+    #[error(
+    "The config map [{name}] is missing labels [:?labels]. This is a programming error. Please open a ticket."
+    )]
+    ConfigMapMissingLabels {
+        name: String,
+        labels: Vec<&'static str>,
+    },
+
     #[error("Failed to serialize template to JSON: {source}")]
     JsonSerializationError {
         #[from]
@@ -49,6 +63,12 @@ pub enum Error {
     EnvironmentVariableError {
         #[from]
         source: std::env::VarError,
+    },
+
+    #[error("NameUtils reported error: {source}")]
+    NamingError {
+        #[from]
+        source: name_utils::Error,
     },
 
     #[error("Invalid name for resource: {errors:?}")]
