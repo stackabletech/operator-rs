@@ -1,6 +1,7 @@
 pub mod builder;
 pub mod cli;
 pub mod client;
+pub mod cluster_state;
 pub mod command_controller;
 pub mod conditions;
 pub mod configmap;

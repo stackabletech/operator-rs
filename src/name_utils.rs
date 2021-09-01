@@ -17,7 +17,8 @@
 use crate::error::OperatorResult;
 
 /// Adjustable number of characters reserved for a generated Kubernetes hash.
-const KUBERNETES_HASH_MIN_LENGTH: usize = 8;
+/// Proposed min length: 5 or 10
+const KUBERNETES_HASH_MIN_LENGTH: usize = 5;
 /// This is the overall fixed length for resource names.
 /// WARNING: Do not change this number unless any specifications change.
 const RESOURCE_NAME_MAX_LEN: usize = 63;
@@ -328,7 +329,7 @@ mod tests {
         Some("default"),
         Some("node_1"),
         Some("conf%&#1"),
-        "veryveryveryveryl-verylongc-server-default-node1-conf1-"
+        "veryveryveryveryl-verylongclus-server-default-node1-conf1-"
     )]
     #[case(
         "very-very+very&very#long\"short name",
@@ -337,7 +338,7 @@ mod tests {
         Some("default"),
         Some("node_1"),
         Some("conf%&#1"),
-        "veryveryveryveryl-verylongc-server-default-node1-conf1-"
+        "veryveryveryveryl-verylongclus-server-default-node1-conf1-"
     )]
     fn test_build_resource_name_ok(
         #[case] short_name: &str,

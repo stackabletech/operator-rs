@@ -195,9 +195,16 @@ where
     Ok(found_nodes)
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EligibleNodesAndReplicas {
+    pub nodes: Vec<Node>,
+    pub replicas: Option<u16>,
+}
+
 /// Type to avoid clippy warnings
-/// HashMap<`NameOfRole`, HashMap<`NameOfRoleGroup`, (Vec<`Node`>, Option<`Replicas`>)>>
-pub type EligibleNodesForRoleAndGroup = HashMap<String, HashMap<String, (Vec<Node>, Option<u16>)>>;
+/// HashMap<`NameOfRole`, HashMap<`NameOfRoleGroup`, EligibleNodesAndReplicas(Vec<`Node`>, Option<`Replicas`>)>>
+pub type EligibleNodesForRoleAndGroup = HashMap<String, HashMap<String, EligibleNodesAndReplicas>>;
 
 /// Return a list of eligible nodes and the provided replica count for each role and group
 /// combination. Required to delete excess pods that do not match any node, selector description
@@ -211,17 +218,17 @@ pub fn list_eligible_nodes_for_role_and_group(
 ) -> Vec<(Vec<Node>, LabelOptionalValueMap, Option<u16>)> {
     let mut eligible_nodes_for_role_and_group = vec![];
     for (role, eligible_nodes_for_role) in eligible_nodes {
-        for (group_name, (eligible_nodes, replicas)) in eligible_nodes_for_role {
+        for (group_name, eligible_nodes) in eligible_nodes_for_role {
             trace!(
                 "Adding {} nodes to eligible node list for role [{}] and group [{}].",
-                eligible_nodes.len(),
+                eligible_nodes.nodes.len(),
                 role,
                 group_name
             );
             eligible_nodes_for_role_and_group.push((
-                eligible_nodes.clone(),
+                eligible_nodes.nodes.clone(),
                 get_role_and_group_labels(role, group_name),
-                *replicas,
+                eligible_nodes.replicas,
             ))
         }
     }
@@ -256,7 +263,7 @@ mod tests {
             - node_1
             - node_2
           group2:
-            - node_3"
+            - node_3
     "#
     )]
     #[case::two_roles(
@@ -319,7 +326,13 @@ mod tests {
                     collected_nodes.push(node);
                 }
                 // replicas (0) does not affect here
-                group_map.insert(group_name.clone(), (collected_nodes, Some(0u16)));
+                group_map.insert(
+                    group_name.clone(),
+                    EligibleNodesAndReplicas {
+                        nodes: collected_nodes,
+                        replicas: Some(0u16),
+                    },
+                );
             }
             eligible_nodes.insert(role_name.clone(), group_map);
         }
