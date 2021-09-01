@@ -1,16 +1,29 @@
+targets = [
+    { triple = "x86_64-unknown-linux-gnu" },
+    { triple = "aarch64-unknown-linux-gnu" },
+    { triple = "x86_64-unknown-linux-musl" },
+    { triple = "aarch64-apple-darwin" },
+    { triple = "x86_64-apple-darwin" },
+]
+
+[advisories]
+vulnerability = "warn"
+unmaintained = "allow"
+unsound = "warn"
+yanked = "warn"
+notice = "warn"
+
+[bans]
+multiple-versions = "allow"
+
 [licenses]
-
-confidence-threshold = 1.0
-copyleft = "deny"
-
 unlicensed = "deny"
-
-# List of explictly allowed licenses
-# See https://spdx.org/licenses/ for list of possible licenses
-# [possible values: any SPDX 3.11 short identifier (+ optional exception)].
+copyleft = "deny"
+allow-osi-fsf-free = "neither"
+default = "deny"
+confidence-threshold = 1.0
 allow = [
     "Apache-2.0",
-    "Apache-2.0 WITH LLVM-exception",
     "BSD-3-Clause",
     "CC0-1.0",
     "ISC",
@@ -18,10 +31,6 @@ allow = [
     "LicenseRef-webpki",
     "MIT",
     "Zlib"
-]
-
-deny = [
-    "AGPL-3.0"
 ]
 
 [[licenses.clarify]]
@@ -37,6 +46,10 @@ expression = "LicenseRef-webpki"
 license-files = [
     { path = "LICENSE", hash = 0x001c7e6c },
 ]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
 
 [sources.allow-org]
 github = ["stackabletech"]
