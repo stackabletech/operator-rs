@@ -174,7 +174,7 @@ pub async fn find_nodes_that_fit_selectors<T>(
     client: &Client,
     namespace: Option<String>,
     role: &Role<T>,
-) -> OperatorResult<HashMap<String, (Vec<Node>, Option<u16>)>>
+) -> OperatorResult<HashMap<String, EligibleNodesAndReplicas>>
 where
     T: Serialize,
 {
@@ -190,7 +190,13 @@ where
             group_name,
             nodes
         );
-        found_nodes.insert(group_name.clone(), (nodes, role_group.replicas));
+        found_nodes.insert(
+            group_name.clone(),
+            EligibleNodesAndReplicas {
+                nodes,
+                replicas: role_group.replicas,
+            },
+        );
     }
     Ok(found_nodes)
 }

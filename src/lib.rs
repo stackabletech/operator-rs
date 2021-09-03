@@ -1,7 +1,6 @@
 pub mod builder;
 pub mod cli;
 pub mod client;
-pub mod cluster_state;
 pub mod command_controller;
 pub mod conditions;
 pub mod configmap;
@@ -23,6 +22,7 @@ pub mod pod_utils;
 pub mod product_config_utils;
 pub mod reconcile;
 pub mod role_utils;
+pub mod scheduler;
 pub mod status;
 pub mod utils;
 pub mod validation;
