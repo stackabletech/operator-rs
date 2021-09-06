@@ -46,6 +46,10 @@ pub struct PodToNodeMapping {
 }
 
 impl PodToNodeMapping {
+    pub fn get(&self, pod_id: &PodIdentity) -> Option<&NodeIdentity> {
+        self.mapping.get(pod_id)
+    }
+
     pub fn filter(&self, id: &PodIdentity) -> Vec<NodeIdentity> {
         self.mapping
             .iter()
@@ -70,6 +74,11 @@ pub struct SimpleSchedulerHistory {
     pub history: PodToNodeMapping,
 }
 
+impl SimpleSchedulerHistory {
+    pub fn find_pod(&self, pod_id: &PodIdentity) -> Option<&NodeIdentity> {
+        self.history.get(pod_id)
+    }
+}
 #[derive(
     Clone, Debug, Default, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
 )]
@@ -106,7 +115,7 @@ impl From<Node> for NodeIdentity {
 }
 
 pub struct StickyScheduler {
-    pub history: Option<SimpleSchedulerHistory>,
+    pub history: SimpleSchedulerHistory,
     pub strategy: ScheduleStrategy,
 }
 
@@ -115,8 +124,35 @@ pub enum ScheduleStrategy {
 }
 
 impl StickyScheduler {
-    pub fn new(history: Option<SimpleSchedulerHistory>, strategy: ScheduleStrategy) -> Self {
+    pub fn new(history: SimpleSchedulerHistory, strategy: ScheduleStrategy) -> Self {
         StickyScheduler { history, strategy }
+    }
+
+    fn next_node(
+        eligible_nodes: &mut BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>>,
+        opt_node_id: Option<&NodeIdentity>,
+        role: &str,
+        group: &str,
+    ) -> Option<NodeIdentity> {
+        if let Some(nodes) = eligible_nodes
+            .get_mut(role)
+            .and_then(|role| role.get_mut(group))
+        {
+            if !nodes.is_empty() {
+                if let Some(node_id) = opt_node_id {
+                    if let Some(index) = (1..nodes.len())
+                        .zip(nodes.iter_mut())
+                        .find(|(_, n)| node_id == *n)
+                        .and_then(|(i, _)| Some(i))
+                    {
+                        nodes.remove(index);
+                        return opt_node_id.map(|n| n.clone());
+                    }
+                }
+                return nodes.pop();
+            }
+        }
+        None
     }
 }
 
@@ -141,49 +177,17 @@ where
             // pod id not found in current setting
             if !current_mapping.mapping.contains_key(pod_id) {
                 // check if pod id can be found in history
-                if let Some(node_id) = self
-                    .history
-                    .as_ref()
-                    .and_then(|history| history.history.mapping.get(pod_id))
-                {
-                    // pod id available in history
-                    if let Some(nodes) = matching_nodes_cloned
-                        .get(&pod_id.role)
-                        .as_mut()
-                        .and_then(|role| role.get(&pod_id.group).as_mut())
-                    {
-                        // node still existing -> return pod_id and assigned node found history
-                        if nodes.contains(node_id) {
-                            result.insert(pod_id.clone(), node_id.clone());
-                        }
-                        // node offline / deleted / changed labels
-                        else {
-                            // if no nodes are available collect unscheduled pods for later error handling
-                            if nodes.is_empty() {
-                                unscheduled_pods.push(pod_id);
-                            // if nodes still available select first node and assign pod_id to selected node
-                            } else {
-                                // unwrap is safe here.
-                                result.insert(pod_id.clone(), nodes.pop().unwrap());
-                            }
-                        }
-                    }
-                }
-                // pod id not found in history ->  schedule to first node
-                else {
-                    if let Some(nodes) = &mut matching_nodes_cloned
-                        .get(&pod_id.role)
-                        .and_then(|role| role.get(&pod_id.group))
-                    {
-                        // if no nodes are available collect unscheduled pods for later error handling
-                        if nodes.is_empty() {
-                            unscheduled_pods.push(pod_id);
-                        // if nodes still available select first node and assign pod_id to selected node
-                        } else {
-                            // unwrap is safe here.
-                            result.insert(pod_id.clone(), nodes.pop().unwrap());
-                        }
-                    }
+                let history_node_id = self.history.find_pod(pod_id);
+
+                if let Some(next_node) = StickyScheduler::next_node(
+                    &mut matching_nodes_cloned,
+                    history_node_id,
+                    pod_id.role.as_str(),
+                    pod_id.group.as_str(),
+                ) {
+                    result.insert(pod_id.clone(), next_node);
+                } else {
+                    unscheduled_pods.push(pod_id);
                 }
             }
         }
@@ -197,12 +201,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use futures::{StreamExt, TryFutureExt};
     use k8s_openapi::api::core::v1::Node;
     use kube::api::ObjectMeta;
     use rand::prelude::IteratorRandom;
     use rstest::*;
+
+    use super::*;
 
     const APP_NAME: &str = "app";
     const INSTANCE: &str = "simple";
