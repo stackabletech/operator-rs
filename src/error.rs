@@ -1,5 +1,5 @@
-use crate::name_utils;
 use crate::product_config_utils;
+use crate::{name_utils, scheduler};
 use std::collections::HashSet;
 
 #[derive(Debug, thiserror::Error)]
@@ -81,6 +81,12 @@ pub enum Error {
         "A required File is missing. Not found in any of the following locations: {search_path:?}"
     )]
     RequiredFileMissing { search_path: Vec<String> },
+
+    #[error("Scheduler reported error: {source}")]
+    SchedulerError {
+        #[from]
+        source: scheduler::Error,
+    },
 
     #[error("ProductConfig Framework reported error: {source}")]
     ProductConfigError {
