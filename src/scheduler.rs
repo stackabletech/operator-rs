@@ -109,7 +109,7 @@ impl From<Node> for NodeIdentity {
             name: node
                 .metadata
                 .name
-                .unwrap_or("<no-nodename-set>".to_string()),
+                .unwrap_or_else(|| "<no-nodename-set>".to_string()),
         }
     }
 }
@@ -128,6 +128,14 @@ impl StickyScheduler {
         StickyScheduler { history, strategy }
     }
 
+    ///
+    /// Returns a node that is available for scheduling given `role` and `group`.
+    ///
+    /// If `opt_node_id` is not `None`, return it *if it exists in the eligible nodes*.
+    /// Otherwise, the first node in the corresponding group is returned.
+    ///
+    /// The returned node is also removed from `eligible_nodes`.
+    ///
     fn next_node(
         eligible_nodes: &mut BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>>,
         opt_node_id: Option<&NodeIdentity>,
@@ -143,10 +151,10 @@ impl StickyScheduler {
                     if let Some(index) = (1..nodes.len())
                         .zip(nodes.iter_mut())
                         .find(|(_, n)| node_id == *n)
-                        .and_then(|(i, _)| Some(i))
+                        .map(|(i, _)| i)
                     {
                         nodes.remove(index);
-                        return opt_node_id.map(|n| n.clone());
+                        return opt_node_id.cloned(); //map(|n| n.clone());
                     }
                 }
                 return nodes.pop();
@@ -169,16 +177,17 @@ where
     ) -> SchedulerResult<PodToNodeMapping> {
         let mut unscheduled_pods = vec![];
         let mut result = BTreeMap::new();
-        let mut matching_nodes_cloned = matching_nodes.clone();
-        // generate ids
+        let mut matching_nodes_cloned = matching_nodes;
+
         let pod_ids = id_generator.generate();
 
         for pod_id in &pod_ids {
-            // pod id not found in current setting
             if !current_mapping.mapping.contains_key(pod_id) {
-                // check if pod id can be found in history
+                // The pod with `pod_id` is not scheduled yet so try to find a node for it.
+                // Look in the history first.
                 let history_node_id = self.history.find_pod(pod_id);
 
+                // Find a node to schedule on (it might be the node from history)
                 if let Some(next_node) = StickyScheduler::next_node(
                     &mut matching_nodes_cloned,
                     history_node_id,
@@ -278,6 +287,76 @@ mod tests {
         }
 
         current_mapping
+    }
+
+    /// Eligible nodes look  like this:
+    ///
+    ///     {"role1": {
+    ///         "group0": [],
+    ///         "group1": [NodeIdentity { name: "node11" }],
+    ///         "group2": [NodeIdentity { name: "node21" }, NodeIdentity { name: "node22" }]}}
+    ///
+    fn fill_eligible_nodes() -> BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>> {
+        let mut roles = BTreeMap::new();
+        let mut groups = BTreeMap::new();
+        groups.insert("group0".to_string(), vec![]);
+        groups.insert(
+            "group1".to_string(),
+            vec![NodeIdentity {
+                name: "node11".to_string(),
+            }],
+        );
+        groups.insert(
+            "group2".to_string(),
+            vec![
+                NodeIdentity {
+                    name: "node21".to_string(),
+                },
+                NodeIdentity {
+                    name: "node22".to_string(),
+                },
+            ],
+        );
+
+        roles.insert("role1".to_string(), groups);
+
+        roles
+    }
+
+    #[rstest]
+    #[case(None, "", "", None)]
+    #[case(None, "does not exist", "group0", None)]
+    #[case(None, "role1", "does not exist", None)]
+    #[case(Some("node22"), "role1", "group0", None)]
+    #[case(Some("node22"), "role1", "group1", Some("node11"))] // node not found, use first!
+    #[case(Some("node22"), "role1", "group2", Some("node22"))] // node found, use it!
+    fn test_next_node(
+        #[case] opt_node_id: Option<&str>,
+        #[case] role: &str,
+        #[case] group: &str,
+        #[case] expected: Option<&str>,
+    ) {
+        let mut eligible_nodes = fill_eligible_nodes();
+
+        let got = StickyScheduler::next_node(
+            &mut eligible_nodes,
+            opt_node_id
+                .map(|n| NodeIdentity {
+                    name: n.to_string(),
+                })
+                .as_ref(),
+            role,
+            group,
+        );
+
+        //println!("{:?}", eligible_nodes);
+
+        assert_eq!(
+            got,
+            expected.map(|n| NodeIdentity {
+                name: n.to_string(),
+            })
+        )
     }
 
     #[test]
