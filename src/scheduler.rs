@@ -27,7 +27,7 @@ pub type SchedulerResult<T> = std::result::Result<T, Error>;
 
 pub trait Scheduler<T: PodIdentityGenerator> {
     fn schedule(
-        &self,
+        &mut self,
         id_generator: &T,
         nodes: BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>>,
         // current state of the cluster
@@ -48,6 +48,10 @@ pub struct PodToNodeMapping {
 impl PodToNodeMapping {
     pub fn get(&self, pod_id: &PodIdentity) -> Option<&NodeIdentity> {
         self.mapping.get(pod_id)
+    }
+
+    pub fn insert(&mut self, pod_id: PodIdentity, node_id: NodeIdentity) -> Option<NodeIdentity> {
+        self.mapping.insert(pod_id, node_id)
     }
 
     pub fn filter(&self, id: &PodIdentity) -> Vec<NodeIdentity> {
@@ -75,8 +79,19 @@ pub struct SimpleSchedulerHistory {
 }
 
 impl SimpleSchedulerHistory {
-    pub fn find_pod(&self, pod_id: &PodIdentity) -> Option<&NodeIdentity> {
+    pub fn find_node_id(&self, pod_id: &PodIdentity) -> Option<&NodeIdentity> {
         self.history.get(pod_id)
+    }
+
+    ///
+    /// Add mapping to history if doesn't already exist.
+    ///
+    pub fn update_mapping(&mut self, pod_id: PodIdentity, node_id: NodeIdentity) {
+        if let Some(history_node_id) = self.find_node_id(&pod_id) {
+            if *history_node_id != node_id {
+                self.history.insert(pod_id, node_id);
+            }
+        }
     }
 }
 #[derive(
@@ -154,7 +169,7 @@ impl StickyScheduler {
                         .map(|(i, _)| i)
                     {
                         nodes.remove(index);
-                        return opt_node_id.cloned(); //map(|n| n.clone());
+                        return opt_node_id.cloned();
                     }
                 }
                 return nodes.pop();
@@ -169,7 +184,7 @@ where
     T: PodIdentityGenerator,
 {
     fn schedule(
-        &self,
+        &mut self,
         // TODO: probably can move to "self"
         id_generator: &T,
         matching_nodes: BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>>,
@@ -185,7 +200,7 @@ where
             if !current_mapping.mapping.contains_key(pod_id) {
                 // The pod with `pod_id` is not scheduled yet so try to find a node for it.
                 // Look in the history first.
-                let history_node_id = self.history.find_pod(pod_id);
+                let history_node_id = self.history.find_node_id(pod_id);
 
                 // Find a node to schedule on (it might be the node from history)
                 if let Some(next_node) = StickyScheduler::next_node(
@@ -194,7 +209,10 @@ where
                     pod_id.role.as_str(),
                     pod_id.group.as_str(),
                 ) {
-                    result.insert(pod_id.clone(), next_node);
+                    // update result mapping
+                    result.insert(pod_id.clone(), next_node.clone());
+                    // update history
+                    self.history.update_mapping(pod_id.clone(), next_node)
                 } else {
                     unscheduled_pods.push(pod_id);
                 }
