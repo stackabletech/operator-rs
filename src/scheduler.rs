@@ -10,8 +10,10 @@ use std::fmt::{Debug, Display, Formatter};
 use k8s_openapi::api::core::v1::Node;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::array::IntoIter;
+use std::iter::FromIterator;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, PartialEq)]
 pub enum Error {
     #[error(
         "Not enough nodes [{number_of_nodes}] available to schedule pods [{number_of_pods}]. Unscheduled pods: {unscheduled_pods:?}."
@@ -39,13 +41,19 @@ pub trait PodIdentityGenerator {
     fn generate(&self) -> Vec<PodIdentity>;
 }
 
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PodToNodeMapping {
     mapping: BTreeMap<PodIdentity, NodeIdentity>,
 }
 
 impl PodToNodeMapping {
+    pub fn new() -> Self {
+        PodToNodeMapping {
+            mapping: BTreeMap::new(),
+        }
+    }
+
     pub fn get(&self, pod_id: &PodIdentity) -> Option<&NodeIdentity> {
         self.mapping.get(pod_id)
     }
@@ -79,6 +87,14 @@ pub struct SimpleSchedulerHistory {
 }
 
 impl SimpleSchedulerHistory {
+    pub fn new() -> Self {
+        SimpleSchedulerHistory {
+            history: PodToNodeMapping {
+                mapping: BTreeMap::new(),
+            },
+        }
+    }
+
     pub fn find_node_id(&self, pod_id: &PodIdentity) -> Option<&NodeIdentity> {
         self.history.get(pod_id)
     }
@@ -250,83 +266,177 @@ where
 
 #[cfg(test)]
 mod tests {
-    use k8s_openapi::api::core::v1::Node;
-    use kube::api::ObjectMeta;
-    use rand::prelude::IteratorRandom;
     use rstest::*;
 
     use super::*;
 
     const APP_NAME: &str = "app";
     const INSTANCE: &str = "simple";
-    const ROLE_1: &str = "role_1";
-    const ROLE_2: &str = "role_2";
-    const GROUP_1: &str = "group_1";
-    const GROUP_2: &str = "group_2";
 
-    const AVAILABLE_NODES: usize = 10;
-
-    struct TestIdGenerator {}
+    struct TestIdGenerator {
+        how_many: usize,
+    }
 
     impl PodIdentityGenerator for TestIdGenerator {
         fn generate(&self) -> Vec<PodIdentity> {
-            let mut identities = vec![];
-            for id in 1..2 {
-                identities.push(PodIdentity {
+            (0..self.how_many)
+                .map(|index| PodIdentity {
                     app: APP_NAME.to_string(),
                     instance: INSTANCE.to_string(),
-                    role: ROLE_1.to_string(),
-                    group: GROUP_1.to_string(),
-                    id: id.to_string(),
+                    role: format!("ROLE_{}", index % 2).to_string(),
+                    group: format!("GROUP_{}", index % 3).to_string(),
+                    id: format!("POD_{}", index).to_string(),
                 })
-            }
-            for id in 3..5 {
-                identities.push(PodIdentity {
-                    app: APP_NAME.to_string(),
-                    instance: INSTANCE.to_string(),
-                    role: ROLE_1.to_string(),
-                    group: GROUP_2.to_string(),
-                    id: id.to_string(),
-                })
-            }
-            for id in 6..8 {
-                identities.push(PodIdentity {
-                    app: APP_NAME.to_string(),
-                    instance: INSTANCE.to_string(),
-                    role: ROLE_2.to_string(),
-                    group: GROUP_1.to_string(),
-                    id: id.to_string(),
-                })
-            }
-            identities
+                .collect()
         }
     }
 
-    fn generate_node_identities(replicas: usize) -> Vec<NodeIdentity> {
-        let mut nodes = vec![];
-        for replica in 1..replicas {
-            nodes.push(NodeIdentity {
-                name: format!("node_{}", replica),
-            });
+    fn generate_available_nodes(
+        available_node_count: usize,
+    ) -> BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>> {
+        let mut roles: BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>> = BTreeMap::new();
+        for index in 0..available_node_count {
+            let role_name = format!("ROLE_{}", index % 2).to_string();
+            let group_name = format!("GROUP_{}", index % 3).to_string();
+            let node = NodeIdentity {
+                name: format!("NODE_{}", index),
+            };
+            if let Some(role) = roles.get_mut(&role_name) {
+                if let Some(group) = role.get_mut(&group_name) {
+                    group.push(node);
+                } else {
+                    role.insert(group_name, vec![node]);
+                }
+            } else {
+                let mut new_group = BTreeMap::new();
+                new_group.insert(group_name, vec![node]);
+                roles.insert(role_name, new_group);
+            }
         }
-        nodes
+        roles
     }
 
     fn generate_current_mapping(
-        already_mapped: usize,
-        pod_ids: &Vec<PodIdentity>,
-        node_ids: &Vec<NodeIdentity>,
-    ) -> BTreeMap<PodIdentity, NodeIdentity> {
+        scheduled_pods: &Vec<PodIdentity>,
+        available_nodes: &BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>>,
+    ) -> PodToNodeMapping {
         let mut current_mapping = BTreeMap::new();
+        let mut available_nodes_clone = available_nodes.clone();
 
-        for id in 1..already_mapped {
-            current_mapping.insert(
-                pod_ids.get(id).unwrap().clone(),
-                node_ids.get(id).unwrap().clone(),
-            );
+        for pod_id in scheduled_pods {
+            if let Some(role) = available_nodes_clone.get_mut(&pod_id.role.to_string()) {
+                if let Some(group) = role.get_mut(&pod_id.group.to_string()) {
+                    if !group.is_empty() {
+                        current_mapping.insert(pod_id.clone(), group.pop().unwrap().clone());
+                    }
+                }
+            }
         }
 
-        current_mapping
+        PodToNodeMapping {
+            mapping: current_mapping,
+        }
+    }
+
+    ///
+    /// Unfortunately I couldn't make this a rstest due to the complexity of the fixtures and because
+    /// the rstest case doesn't seem to play nice with Result<>.
+    ///
+    #[test]
+    fn test_scheduler_sticky_scheduler() {
+        let wanted_pod_count = [0usize, 3, 2, 3];
+        let scheduled_pods_count = [0usize, 3, 1, 2];
+        let available_node_count = [5usize, 5, 5, 10];
+
+        let history = [
+            SimpleSchedulerHistory::new(),
+            SimpleSchedulerHistory::new(),
+            SimpleSchedulerHistory::new(),
+            SimpleSchedulerHistory {
+                history: PodToNodeMapping {
+                    mapping: BTreeMap::from_iter(IntoIter::new([(
+                        PodIdentity {
+                            app: "app".to_string(),
+                            instance: "simple".to_string(),
+                            role: "ROLE_0".to_string(),
+                            group: "GROUP_0".to_string(),
+                            id: "POD_0".to_string(),
+                        },
+                        NodeIdentity {
+                            name: "NODE_6".to_string(),
+                        },
+                    )])),
+                },
+            },
+        ];
+
+        let expected: &[SchedulerResult<PodToNodeMapping>] = &[
+            Ok(PodToNodeMapping::new()),
+            Ok(PodToNodeMapping::new()),
+            Ok(PodToNodeMapping {
+                mapping: BTreeMap::from_iter(IntoIter::new([(
+                    PodIdentity {
+                        app: "app".to_string(),
+                        instance: "simple".to_string(),
+                        role: "ROLE_1".to_string(),
+                        group: "GROUP_1".to_string(),
+                        id: "POD_1".to_string(),
+                    },
+                    NodeIdentity {
+                        name: "NODE_1".to_string(),
+                    },
+                )])),
+            }),
+            Ok(PodToNodeMapping {
+                mapping: BTreeMap::from_iter(IntoIter::new([(
+                    PodIdentity {
+                        app: "app".to_string(),
+                        instance: "simple".to_string(),
+                        role: "ROLE_0".to_string(),
+                        group: "GROUP_0".to_string(),
+                        id: "POD_0".to_string(),
+                    },
+                    NodeIdentity {
+                        name: "NODE_6".to_string(), // <---- !!! From history !!!
+                    },
+                )])),
+            }),
+        ];
+
+        //
+        // Run poor man's rstests here ...
+        //
+        for case_index in 3..wanted_pod_count.len() {
+            println!(
+                "----------------------------- Iteration {} ----------------------------",
+                case_index
+            );
+            //
+            // Prepare fixtures (except for the history which is already built)
+            //
+            let id_generator = TestIdGenerator {
+                how_many: wanted_pod_count[case_index],
+            };
+            let wanted_pods = id_generator.generate();
+            let available_nodes = generate_available_nodes(available_node_count[case_index]);
+            let mut scheduled_pods = vec![];
+            for i in 0..scheduled_pods_count[case_index] {
+                scheduled_pods.push(wanted_pods.get(i).unwrap().clone());
+            }
+            let current_mapping = generate_current_mapping(&scheduled_pods, &available_nodes);
+
+            // println!("{:?}", available_nodes);
+            //
+            // Run scheduler
+            //
+            let mut scheduler = StickyScheduler::new(
+                history[case_index].clone(),
+                ScheduleStrategy::GroupAntiAffinity,
+            );
+            let got = scheduler.schedule(&id_generator, available_nodes, &current_mapping);
+
+            assert_eq!(expected[case_index], got);
+        }
     }
 
     /// Eligible nodes look  like this:
@@ -435,16 +545,5 @@ mod tests {
         roles.insert("role1".to_string(), groups);
 
         assert_eq!(3, StickyScheduler::count_unique_node_ids(&roles));
-    }
-
-    #[test]
-    fn test_schedule_no_history() {
-        // let nodes = generate_node_identities(10);
-        //
-        // let id_generator = TestIdGenerator {};
-        // let mapping = generate_current_mapping(7, &id_generator.generate(), &nodes);
-        //
-        // let scheduler = StickyScheduler::new(None, ScheduleStrategy::GroupAntiAffinity);
-        // println!("{:?}", scheduler.schedule(&id_generator, &nodes, &mapping));
     }
 }
