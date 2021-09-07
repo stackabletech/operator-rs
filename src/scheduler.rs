@@ -19,7 +19,7 @@ pub enum Error {
     NotEnoughNodesAvailable {
         number_of_nodes: usize,
         number_of_pods: usize,
-        unscheduled_pods: Vec<NodeIdentity>,
+        unscheduled_pods: Vec<PodIdentity>,
     },
 }
 
@@ -177,6 +177,14 @@ impl StickyScheduler {
         }
         None
     }
+
+    fn node_count(matching_nodes: &BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>>) -> usize {
+        matching_nodes.values().fold(0, |acc, groups| {
+            acc + groups
+                .values()
+                .fold(0, |gnodes, nodes| gnodes + nodes.len())
+        })
+    }
 }
 
 impl<T> Scheduler<T> for StickyScheduler
@@ -193,6 +201,9 @@ where
         let mut unscheduled_pods = vec![];
         let mut result = BTreeMap::new();
         let mut matching_nodes_cloned = matching_nodes;
+        // Need to compute this here because matching_nodes is dropped and
+        // matching_nodes_cloned is modified afterwards.
+        let number_of_nodes = Self::node_count(&matching_nodes_cloned);
 
         let pod_ids = id_generator.generate();
 
@@ -203,7 +214,7 @@ where
                 let history_node_id = self.history.find_node_id(pod_id);
 
                 // Find a node to schedule on (it might be the node from history)
-                if let Some(next_node) = StickyScheduler::next_node(
+                if let Some(next_node) = Self::next_node(
                     &mut matching_nodes_cloned,
                     history_node_id,
                     pod_id.role.as_str(),
@@ -214,15 +225,20 @@ where
                     // update history
                     self.history.update_mapping(pod_id.clone(), next_node)
                 } else {
-                    unscheduled_pods.push(pod_id);
+                    unscheduled_pods.push(pod_id.clone());
                 }
             }
         }
 
-        // TODO: calculate pod length
-        //return Err(Error::NotEnoughNodesAvailable {number_of_nodes: nodes.len(), number_of_pods: 0, unscheduled_pods: })
-
-        Ok(PodToNodeMapping { mapping: result })
+        if unscheduled_pods.is_empty() {
+            Ok(PodToNodeMapping { mapping: result })
+        } else {
+            return Err(Error::NotEnoughNodesAvailable {
+                number_of_nodes,
+                number_of_pods: pod_ids.len(),
+                unscheduled_pods,
+            });
+        }
     }
 }
 
