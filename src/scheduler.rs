@@ -4,7 +4,7 @@
 //! Node assignments are stored in the status to provide 'sticky' pods and ids for scheduling pods
 //! to nodes.
 //!
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 
 use k8s_openapi::api::core::v1::Node;
@@ -106,7 +106,7 @@ pub struct PodIdentity {
     pub id: String,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeIdentity {
     pub name: String,
@@ -178,12 +178,18 @@ impl StickyScheduler {
         None
     }
 
-    fn node_count(matching_nodes: &BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>>) -> usize {
-        matching_nodes.values().fold(0, |acc, groups| {
-            acc + groups
-                .values()
-                .fold(0, |gnodes, nodes| gnodes + nodes.len())
-        })
+    ///
+    /// Count the total number of unique node identities in the `matching_nodes`
+    ///
+    fn count_unique_node_ids(
+        matching_nodes: &BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>>,
+    ) -> usize {
+        matching_nodes
+            .values()
+            .flat_map(|groups| groups.values())
+            .flatten()
+            .collect::<HashSet<&NodeIdentity>>()
+            .len()
     }
 }
 
@@ -203,7 +209,7 @@ where
         let mut matching_nodes_cloned = matching_nodes;
         // Need to compute this here because matching_nodes is dropped and
         // matching_nodes_cloned is modified afterwards.
-        let number_of_nodes = Self::node_count(&matching_nodes_cloned);
+        let number_of_nodes = Self::count_unique_node_ids(&matching_nodes_cloned);
 
         let pod_ids = id_generator.generate();
 
@@ -364,7 +370,7 @@ mod tests {
     #[case(Some("node22"), "role1", "group0", None)]
     #[case(Some("node22"), "role1", "group1", Some("node11"))] // node not found, use first!
     #[case(Some("node22"), "role1", "group2", Some("node22"))] // node found, use it!
-    fn test_next_node(
+    fn test_scheduler_next_node(
         #[case] opt_node_id: Option<&str>,
         #[case] role: &str,
         #[case] group: &str,
@@ -391,6 +397,44 @@ mod tests {
                 name: n.to_string(),
             })
         )
+    }
+
+    #[test]
+    fn test_scheduler_count_unique_node_ids_null() {
+        assert_eq!(0, StickyScheduler::count_unique_node_ids(&BTreeMap::new()));
+    }
+
+    #[test]
+    fn test_scheduler_count_unique_node_ids() {
+        let mut roles = BTreeMap::new();
+        let mut groups = BTreeMap::new();
+        groups.insert("group0".to_string(), vec![]);
+        groups.insert(
+            "group1".to_string(),
+            vec![
+                NodeIdentity {
+                    name: "node11".to_string(),
+                },
+                NodeIdentity {
+                    name: "node21".to_string(), // duplicate!
+                },
+            ],
+        );
+        groups.insert(
+            "group2".to_string(),
+            vec![
+                NodeIdentity {
+                    name: "node21".to_string(), // duplicate!
+                },
+                NodeIdentity {
+                    name: "node22".to_string(),
+                },
+            ],
+        );
+
+        roles.insert("role1".to_string(), groups);
+
+        assert_eq!(3, StickyScheduler::count_unique_node_ids(&roles));
     }
 
     #[test]
