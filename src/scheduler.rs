@@ -1,8 +1,6 @@
-//! This module provides structs and methods to provide some stateful data in the custom resource
-//! status.
 //!
-//! Node assignments are stored in the status to provide 'sticky' pods and ids for scheduling pods
-//! to nodes.
+//! Implements scheduler with memory. Once a Pod with a given identifier is scheduled on a node,
+//! it will always be rescheduled to this node as long as it exists.
 //!
 use std::collections::{BTreeMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
@@ -417,7 +415,7 @@ mod tests {
                     role: "ROLE_0".to_string(),
                     group: "GROUP_0".to_string(),
                     id: "POD_0".to_string() }] }))]
-    fn rstest_scheduler_sticky_scheduler(
+    fn test_scheduler_sticky_scheduler(
         #[case] wanted_pod_count: usize,
         #[case] scheduled_pods_count: usize,
         #[case] available_node_count: usize,
@@ -435,8 +433,6 @@ mod tests {
         }
         let current_mapping = generate_current_mapping(&scheduled_pods, &available_nodes);
 
-        //println!("current_mapping {:?}", current_mapping);
-        //println!("available_nodes {:?}", available_nodes);
         //
         // Run scheduler
         //
