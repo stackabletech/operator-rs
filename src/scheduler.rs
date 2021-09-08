@@ -141,6 +141,10 @@ impl From<Node> for NodeIdentity {
     }
 }
 
+///
+/// A scheduler implementation that remembers where pods were once scheduled (based on
+/// their ids) and maps them to the same nodes in the future.
+///
 pub struct StickyScheduler {
     pub history: SimpleSchedulerHistory,
     pub strategy: ScheduleStrategy,
@@ -209,6 +213,17 @@ impl<T> Scheduler<T> for StickyScheduler
 where
     T: PodIdentityGenerator,
 {
+    ///
+    /// Given the desired pod ids, the eligible nodes and the current state (which pods are already
+    /// scheduled/mapped to nodes), computes a mapping of the remaining desired pods.
+    ///
+    /// Uses a (currently unbounded) history of mappings to reschedule pods to the same nodes
+    /// again, provided the nodes are still eligible. Pods that are successfully mapped to new nodes
+    /// are added to the history.
+    ///
+    /// It doesn't map more than one pod per role+group on the same node. If a pod cannot be mapped
+    /// (because not enough nodes available, for example) it returns an error.
+    ///
     fn schedule(
         &mut self,
         // TODO: probably can move to "self"
