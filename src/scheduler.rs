@@ -154,7 +154,11 @@ pub enum ScheduleStrategy {
     GroupAntiAffinity,
 }
 
+/// Implements scheduler with memory. Once a Pod with a given identifier is scheduled on a node,
+/// it will always be rescheduled to this node as long as it exists.
 impl StickyScheduler {
+    /// The `strategy` parameter is ignored for now and a `GroupAntiAffinity` strategy is implemented
+    /// by default.
     pub fn new(history: SimpleSchedulerHistory, strategy: ScheduleStrategy) -> Self {
         StickyScheduler { history, strategy }
     }
