@@ -81,7 +81,7 @@ impl PodToNodeMapping {
     pub fn get_filtered(&self, role: &str, group: &str) -> BTreeMap<PodIdentity, NodeIdentity> {
         let mut filtered = BTreeMap::new();
         for (pod_id, node_id) in &self.mapping {
-            if &pod_id.role == role && &pod_id.group == group {
+            if pod_id.role == *role && pod_id.group == *group {
                 filtered.insert(pod_id.clone(), node_id.clone());
             }
         }
@@ -248,10 +248,9 @@ impl StickyScheduler {
             .find(|(_, n)| to_remove == *n)
             .map(|(i, _)| i)
         {
-            Some(nodes.remove(index))
-        } else {
-            None
+            return Some(nodes.remove(index));
         }
+        None
     }
 
     fn remove_eligible_node(
