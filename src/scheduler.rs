@@ -44,6 +44,7 @@ pub struct PodToNodeMapping {
     mapping: BTreeMap<PodIdentity, NodeIdentity>,
 }
 
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct SchedulerState {
     current_mapping: PodToNodeMapping,
     new_mapping: PodToNodeMapping,
@@ -56,6 +57,7 @@ impl SchedulerState {
             new_mapping,
         }
     }
+
     pub fn mapping(&self) -> PodToNodeMapping {
         self.current_mapping.merge(&self.new_mapping)
     }
@@ -399,112 +401,122 @@ mod tests {
         }
     }
 
-    // #[rustfmt::skip]
-    // #[rstest]
-    // #[case::no_pods_to_schedule( 0, 0, 5, SimpleSchedulerHistory::new(), Ok(PodToNodeMapping::new()) )]
-    // #[case::all_pods_are_scheduled( 3, 3, 5, SimpleSchedulerHistory::new(), Ok(PodToNodeMapping::new()) )]
-    // #[case::one_pod_is_scheduled(3, 2, 10, SimpleSchedulerHistory::new(),
-    //     Ok(PodToNodeMapping {
-    //         mapping: BTreeMap::from_iter(IntoIter::new([(
-    //             PodIdentity {
-    //                 app: "app".to_string(),
-    //                 instance: "simple".to_string(),
-    //                 role: "ROLE_0".to_string(),
-    //                 group: "GROUP_0".to_string(),
-    //                 id: "POD_2".to_string(),
-    //             },
-    //             NodeIdentity {
-    //                 name: "NODE_8".to_string(), // <--- !!! default when history is empty
-    //             },)])), }))]
-    // #[case::one_pod_is_scheduled_on_histoy_node(3, 2, 10,
-    //     SimpleSchedulerHistory {
-    //         history: PodToNodeMapping {
-    //             mapping: BTreeMap::from_iter(IntoIter::new([(
-    //                 PodIdentity {
-    //                     app: "app".to_string(),
-    //                     instance: "simple".to_string(),
-    //                     role: "ROLE_0".to_string(),
-    //                     group: "GROUP_0".to_string(),
-    //                     id: "POD_2".to_string(),
-    //                 },
-    //                 NodeIdentity {
-    //                     name: "NODE_4".to_string(),
-    //                 },)])),},},
-    //     Ok(PodToNodeMapping {
-    //         mapping: BTreeMap::from_iter(IntoIter::new([(
-    //             PodIdentity {
-    //                 app: "app".to_string(),
-    //                 instance: "simple".to_string(),
-    //                 role: "ROLE_0".to_string(),
-    //                 group: "GROUP_0".to_string(),
-    //                 id: "POD_2".to_string(),
-    //             },
-    //             NodeIdentity {
-    //                 name: "NODE_4".to_string(), // <--- !!! from history
-    //             },)])),}))]
-    // #[case::one_pod_is_scheduled_histoy_node_does_not_exist(3, 2, 10,
-    //     SimpleSchedulerHistory {
-    //         history: PodToNodeMapping {
-    //             mapping: BTreeMap::from_iter(IntoIter::new([(
-    //                 PodIdentity {
-    //                     app: "app".to_string(),
-    //                     instance: "simple".to_string(),
-    //                     role: "ROLE_0".to_string(),
-    //                     group: "GROUP_0".to_string(),
-    //                     id: "POD_2".to_string(),
-    //                 },
-    //                 NodeIdentity {
-    //                     name: "NODE_14".to_string(), // <---- does not exist anymore
-    //                 },)])),},},
-    //     Ok(PodToNodeMapping {
-    //         mapping: BTreeMap::from_iter(IntoIter::new([(
-    //             PodIdentity {
-    //                 app: "app".to_string(),
-    //                 instance: "simple".to_string(),
-    //                 role: "ROLE_0".to_string(),
-    //                 group: "GROUP_0".to_string(),
-    //                 id: "POD_2".to_string(),
-    //             },
-    //             NodeIdentity {
-    //                 name: "NODE_8".to_string(), // <--- !!! not from history!
-    //             },)])),}))]
-    // #[case::pod_cannot_be_scheduled( 1, 0, 0, SimpleSchedulerHistory::new(),
-    //     Err(Error::NotEnoughNodesAvailable {
-    //         number_of_nodes: 0,
-    //         number_of_pods: 1,
-    //         unscheduled_pods: vec![
-    //             PodIdentity {
-    //                 app: "app".to_string(),
-    //                 instance: "simple".to_string(),
-    //                 role: "ROLE_0".to_string(),
-    //                 group: "GROUP_0".to_string(),
-    //                 id: "POD_0".to_string() }] }))]
-    // fn test_scheduler_sticky_scheduler(
-    //     #[case] wanted_pod_count: usize,
-    //     #[case] scheduled_pods_count: usize,
-    //     #[case] available_node_count: usize,
-    //     #[case] history: SimpleSchedulerHistory,
-    //     #[case] expected: SchedulerResult<PodToNodeMapping>,
-    // ) {
-    //     let id_generator = TestIdGenerator {
-    //         how_many: wanted_pod_count,
-    //     };
-    //     let wanted_pods = id_generator.generate();
-    //     let available_nodes = generate_available_nodes(available_node_count);
-    //     let mut scheduled_pods = vec![];
-    //     for i in 0..scheduled_pods_count {
-    //         scheduled_pods.push(wanted_pods.get(i).unwrap().clone());
-    //     }
-    //     let current_mapping = generate_current_mapping(&scheduled_pods, &available_nodes);
-    //
-    //     //
-    //     // Run scheduler
-    //     //
-    //     let mut scheduler = StickyScheduler::new(history, ScheduleStrategy::GroupAntiAffinity);
-    //     let got = scheduler.schedule(&id_generator, available_nodes, &current_mapping);
-    //
-    //     assert_eq!(expected, got);
-    // }
+    #[rustfmt::skip]
+     #[rstest]
+     #[case::no_pods_to_schedule( 0, 0, 5, SimpleSchedulerHistory::new(), Ok(SchedulerState::default()))]
+     #[case::all_pods_are_scheduled( 3, 3, 5, SimpleSchedulerHistory::new(),
+         Ok(SchedulerState {
+             current_mapping:
+                 PodToNodeMapping {
+                     mapping: BTreeMap::from_iter(IntoIter::new([
+                         (PodIdentity { app: "app".to_string(), instance: "simple".to_string(), role: "ROLE_0".to_string(), group: "GROUP_0".to_string(), id: "POD_0".to_string() }, NodeIdentity { name: "NODE_4".to_string() }),
+                         (PodIdentity { app: "app".to_string(), instance: "simple".to_string(), role: "ROLE_0".to_string(), group: "GROUP_0".to_string(), id: "POD_2".to_string() }, NodeIdentity { name: "NODE_2".to_string() }),
+                         (PodIdentity { app: "app".to_string(), instance: "simple".to_string(), role: "ROLE_1".to_string(), group: "GROUP_1".to_string(), id: "POD_1".to_string() }, NodeIdentity { name: "NODE_3".to_string() })
+                 ]))},
+             new_mapping: PodToNodeMapping::new() }))]    
+     #[case::one_pod_is_scheduled(3, 2, 10, SimpleSchedulerHistory::new(),
+        Ok(SchedulerState {
+            current_mapping:
+                PodToNodeMapping {
+                    mapping: BTreeMap::from_iter(IntoIter::new([
+                        (PodIdentity { app: "app".to_string(), instance: "simple".to_string(), role: "ROLE_0".to_string(), group: "GROUP_0".to_string(), id: "POD_0".to_string() }, NodeIdentity { name: "NODE_8".to_string() }),
+                        (PodIdentity { app: "app".to_string(), instance: "simple".to_string(), role: "ROLE_1".to_string(), group: "GROUP_1".to_string(), id: "POD_1".to_string() }, NodeIdentity { name: "NODE_9".to_string() }),
+                    ]))},
+            new_mapping:
+                PodToNodeMapping {
+                    mapping: BTreeMap::from_iter(IntoIter::new([
+                        (PodIdentity { app: "app".to_string(), instance: "simple".to_string(), role: "ROLE_0".to_string(), group: "GROUP_0".to_string(), id: "POD_2".to_string() }, NodeIdentity { name: "NODE_8".to_string() }),
+                    ]))},
+        }))]
+//     #[case::one_pod_is_scheduled_on_histoy_node(3, 2, 10,
+//         SimpleSchedulerHistory {
+//             history: PodToNodeMapping {
+//                 mapping: BTreeMap::from_iter(IntoIter::new([(
+//                     PodIdentity {
+//                         app: "app".to_string(),
+//                         instance: "simple".to_string(),
+//                         role: "ROLE_0".to_string(),
+//                         group: "GROUP_0".to_string(),
+//                         id: "POD_2".to_string(),
+//                     },
+//                     NodeIdentity {
+//                         name: "NODE_4".to_string(),
+//                     },)])),},},
+//         Ok(PodToNodeMapping {
+//             mapping: BTreeMap::from_iter(IntoIter::new([(
+//                 PodIdentity {
+//                     app: "app".to_string(),
+//                     instance: "simple".to_string(),
+//                     role: "ROLE_0".to_string(),
+//                     group: "GROUP_0".to_string(),
+//                     id: "POD_2".to_string(),
+//                 },
+//                 NodeIdentity {
+//                     name: "NODE_4".to_string(), // <--- !!! from history
+//                 },)])),}))]
+//     #[case::one_pod_is_scheduled_histoy_node_does_not_exist(3, 2, 10,
+//         SimpleSchedulerHistory {
+//             history: PodToNodeMapping {
+//                 mapping: BTreeMap::from_iter(IntoIter::new([(
+//                     PodIdentity {
+//                         app: "app".to_string(),
+//                         instance: "simple".to_string(),
+//                         role: "ROLE_0".to_string(),
+//                         group: "GROUP_0".to_string(),
+//                         id: "POD_2".to_string(),
+//                     },
+//                     NodeIdentity {
+//                         name: "NODE_14".to_string(), // <---- does not exist anymore
+//                     },)])),},},
+//         Ok(PodToNodeMapping {
+//             mapping: BTreeMap::from_iter(IntoIter::new([(
+//                 PodIdentity {
+//                     app: "app".to_string(),
+//                     instance: "simple".to_string(),
+//                     role: "ROLE_0".to_string(),
+//                     group: "GROUP_0".to_string(),
+//                     id: "POD_2".to_string(),
+//                 },
+//                 NodeIdentity {
+//                     name: "NODE_8".to_string(), // <--- !!! not from history!
+//                 },)])),}))]
+     #[case::pod_cannot_be_scheduled( 1, 0, 0, SimpleSchedulerHistory::new(),
+         Err(Error::NotEnoughNodesAvailable {
+             number_of_nodes: 0,
+             number_of_pods: 1,
+             unscheduled_pods: vec![
+                 PodIdentity {
+                     app: "app".to_string(),
+                     instance: "simple".to_string(),
+                     role: "ROLE_0".to_string(),
+                     group: "GROUP_0".to_string(),
+                     id: "POD_0".to_string() }] }))]
+     fn test_scheduler_sticky_scheduler(
+         #[case] wanted_pod_count: usize,
+         #[case] scheduled_pods_count: usize,
+         #[case] available_node_count: usize,
+         #[case] history: SimpleSchedulerHistory,
+         #[case] expected: SchedulerResult<SchedulerState>,
+     ) {
+         let id_generator = TestIdGenerator {
+             how_many: wanted_pod_count,
+         };
+         let wanted_pods = id_generator.generate();
+         let available_nodes = generate_available_nodes(available_node_count);
+         let mut scheduled_pods = vec![];
+         for i in 0..scheduled_pods_count {
+             scheduled_pods.push(wanted_pods.get(i).unwrap().clone());
+         }
+         let current_mapping = generate_current_mapping(&scheduled_pods, &available_nodes);
+    
+         //
+         // Run scheduler
+         //
+         let mut scheduler = StickyScheduler::new(history, ScheduleStrategy::GroupAntiAffinity);
+         let got = scheduler.schedule(&id_generator, available_nodes, &current_mapping);
+    
+         assert_eq!(expected, got);
+     }
 
     /// Eligible nodes look  like this:
     ///
