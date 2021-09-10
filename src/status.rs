@@ -13,5 +13,7 @@ pub trait HasCurrentCommand {
     // TODO: setters are non-rusty, is there a better way? Dirkjan?
     fn set_current_command(&mut self, command: CommandRef);
 
+    fn tracking_location() -> &'static str;
+
     fn clear_current_command(&mut self);
 }

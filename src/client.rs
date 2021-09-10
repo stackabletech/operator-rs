@@ -248,6 +248,27 @@ impl Client {
             .await?)
     }
 
+    /// Patches subresource status in a given Resource using merge strategy.
+    /// The subresource status must be defined beforehand in the Crd.
+    /// Patches a resource using the `JSON` patch strategy described in [JavaScript Object Notation (JSON) Patch](https://tools.ietf.org/html/rfc6902).
+    pub async fn json_patch_status<T>(
+        &self,
+        resource: &T,
+        patch: json_patch::Patch,
+    ) -> OperatorResult<T>
+    where
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
+    {
+        // The `()` type is not used. I need to provide _some_ type just to get it to compile.
+        // But the type is not used _at all_ for the `Json` variant so I'd argue it's okay to
+        // provide any type here.
+        // This is definitely a hack though but there is currently no better way.
+        // See also: https://github.com/clux/kube-rs/pull/456
+        let patch = Patch::Json::<()>(patch);
+        self.patch_status(resource, patch, &self.patch_params).await
+    }
+
     /// There are four different patch strategies:
     /// 1) Apply (<https://kubernetes.io/docs/reference/using-api/api-concepts/#server-side-apply>)
     ///   Starting from Kubernetes v1.18, you can enable the Server Side Apply feature so that the control plane tracks managed fields for all newly created objects.

@@ -4,8 +4,8 @@ use crate::k8s_utils::LabelOptionalValueMap;
 use crate::{conditions, controller_ref, finalizer, pod_utils};
 
 use crate::command::{
-    maybe_update_current_command, CanBeRolling, CommandRef, HasCommands, HasRoleRestartOrder,
-    HasRoles,
+    clear_current_command, maybe_update_current_command, CanBeRolling, CommandRef, HasCommands,
+    HasRoleRestartOrder, HasRoles,
 };
 use crate::command_controller::Command;
 use crate::conditions::ConditionStatus;
@@ -321,6 +321,12 @@ where
         } else {
             Ok(ReconcileFunctionAction::Continue)
         }
+    }
+
+    pub async fn create_missing_pods(&self, creation_strategy: ContinuationStrategy)
+    where
+        T: ProvidesPod + HasRoleRestartOrder,
+    {
     }
 
     /// This method can be used to ensure a ConfigMap exists and has the specified content.

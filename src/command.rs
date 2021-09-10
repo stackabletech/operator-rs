@@ -2,20 +2,24 @@ use crate::client::Client;
 use crate::command_controller::Command;
 use crate::error::Error::ConversionError;
 use crate::error::OperatorResult;
+use crate::reconcile::ReconcileFunctionAction;
 use crate::status::HasCurrentCommand;
 use crate::CustomResourceExt;
+use json_patch::{PatchOperation, RemoveOperation, ReplaceOperation};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 use k8s_openapi::chrono::{DateTime, Utc};
 use k8s_openapi::serde::de::DeserializeOwned;
-use kube::api::{ApiResource, DynamicObject, ListParams, Resource};
+use kube::api::{ApiResource, DynamicObject, ListParams, Patch, Resource};
 use kube::core::object::HasStatus;
 use kube::Api;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use serde_json::Value;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
-use tracing::{info, warn};
+use std::time::Duration;
+use tracing::{debug, error, info, warn};
 
 /// Retrieve a timestamp in format: "2021-03-23T16:20:19Z".
 /// Required to set command start and finish timestamps.
@@ -53,10 +57,17 @@ pub struct CommandRef {
     pub command_name: String,
     pub command_ns: String,
     pub command_kind: String,
-    // TODO: Make started_at an Option<Time> or something similar
-    //   when I tried it I got an error that schema-rs doesn't support the Time type
-    //   and ran out of time to investigate
-    pub started_at: Option<String>,
+}
+
+impl CommandRef {
+    pub fn none_command() -> Self {
+        CommandRef {
+            command_uid: "".to_string(),
+            command_name: "".to_string(),
+            command_ns: "".to_string(),
+            command_kind: "".to_string(),
+        }
+    }
 }
 
 impl TryFrom<DynamicObject> for CommandRef {
@@ -79,27 +90,48 @@ impl TryFrom<DynamicObject> for CommandRef {
                 .ok_or(report_error("test"))?
                 .clone(),
             command_kind: command.types.ok_or(report_error("test"))?.kind,
-            started_at: Some(get_current_timestamp()),
         })
     }
 }
 
-pub async fn clear_current_command<T>(resource: &mut T, client: &Client) -> OperatorResult<()>
+pub async fn clear_current_command<T>(resource: &mut T, client: &Client) -> OperatorResult<bool>
 where
     T: CustomResourceExt + Resource + Clone + Debug + DeserializeOwned + HasStatus,
     <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
     <T as Resource>::DynamicType: Default,
 {
-    let resource_clone = resource.clone();
-    let status = resource
-        .status_mut()
-        .get_or_insert_with(|| Default::default());
+    // TODO: There is a race condition here and this may fail if called in quick succession, because
+    //   a RemoveOperation on a non existing path seems to return an error
+    // If no current command is set we return right away
+    if let Some(status) = resource.status() {
+        if status.current_command().is_none() {
+            debug!("No current command set to be deleted, returning.");
+            return Ok(false);
+        }
+    }
 
-    status.clear_current_command();
+    let tracking_location = <<T as HasStatus>::Status as HasCurrentCommand>::tracking_location();
 
-    info!("Clearing currentCommand");
-    client.merge_patch_status(&resource_clone, &status).await?;
-    Ok(())
+    let patch = json_patch::Patch(vec![PatchOperation::Remove(RemoveOperation {
+        path: String::from(tracking_location),
+    })]);
+
+    debug!(
+        "Sending patch to delete current command at location {}: {:?}",
+        tracking_location, patch
+    );
+    client.json_patch_status(resource, patch).await?;
+
+    // Now we need to clear the command in the stashed status in our context
+    // In theory this can create an inconsistent state if the operator crashes after
+    // patching the status above and performing this `clear`. However, as this would in
+    // effect just mean restarting the reconciliaton which would then read the changed
+    // status from Kubernetes and thus have a clean state again this seems acceptable
+    if let Some(status) = resource.status_mut() {
+        status.clear_current_command();
+    }
+
+    Ok(true)
 }
 
 pub async fn maybe_update_current_command<T>(
@@ -147,14 +179,7 @@ where
     T: Resource + HasStatus,
     <T as HasStatus>::Status: HasCurrentCommand,
 {
-    warn!("Looking for current command ....");
     match resource.status() {
-        None => {
-            warn!("No status set..");
-            let next_command = get_next_command(resources, client).await;
-            warn!("found next command: {:?}", next_command);
-            next_command
-        }
         Some(status) if status.current_command().is_some() => {
             warn!(
                 "Found current command in status: [{:?}]",
@@ -162,8 +187,8 @@ where
             );
             Ok(status.current_command())
         }
-        Some(status) => {
-            warn!("No current command set in status, retrieving from k8s..");
+        _ => {
+            debug!("No current command set in status, looking for new commands ");
             get_next_command(resources, client).await
         }
     }
@@ -194,11 +219,32 @@ pub async fn get_next_command(
     let mut all_commands = collect_commands(resources, client).await?;
     all_commands.sort_by_key(|a| a.metadata.creation_timestamp.clone());
     warn!("all commands: {:?}", all_commands);
-    all_commands
+    // TODO: filter finished commands (those that have `finished_at` set
+    match all_commands
         .into_iter()
-        .next()
-        .map(|bla| bla.try_into())
-        .transpose()
+        .map(|command| command.try_into())
+        .into_iter()
+        .collect::<OperatorResult<Vec<CommandRef>>>()
+    {
+        Ok(commands) => {
+            debug!("Got list of commands: {:?}", commands);
+            Ok(None)
+        }
+        Err(err) => {
+            warn!(
+                "Error converting at least one existing command to a working object: {:?}",
+                err
+            );
+            Err(err)
+        }
+    }
+
+    /*all_commands
+    .into_iter()
+    .next()
+    .map(|bla| bla.try_into())
+    .transpose()*/
+    //Ok(None)
 }
 
 /// Collect all of a list of resources and returns them in one big list.
