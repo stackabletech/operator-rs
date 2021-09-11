@@ -242,29 +242,17 @@ impl StickyScheduler {
         None
     }
 
-    fn remove(nodes: &mut Vec<NodeIdentity>, to_remove: &NodeIdentity) -> Option<NodeIdentity> {
-        if let Some(index) = (0..nodes.len())
-            .zip(nodes.iter_mut())
-            .find(|(_, n)| to_remove == *n)
-            .map(|(i, _)| i)
-        {
-            return Some(nodes.remove(index));
-        }
-        None
-    }
-
     fn remove_eligible_node(
         eligible_nodes: &mut BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>>,
         to_remove: &NodeIdentity,
         role: &str,
         group: &str,
-    ) -> bool {
+    ) {
         if let Some(groups) = eligible_nodes.get_mut(role) {
             if let Some(nodes) = groups.get_mut(group) {
-                return Self::remove(nodes, to_remove).is_some();
+                nodes.retain(|n| n != to_remove);
             }
         }
-        false
     }
 
     ///
@@ -672,16 +660,5 @@ mod tests {
         roles.insert("role1".to_string(), groups);
 
         assert_eq!(3, StickyScheduler::count_unique_node_ids(&roles));
-    }
-
-    #[rstest]
-    #[case(&mut vec![], NodeIdentity{name: "node1".to_string()}, None)]
-    #[case(&mut vec![NodeIdentity{name: "node1".to_string()}], NodeIdentity{name: "node1".to_string()}, Some(NodeIdentity{name: "node1".to_string()}))]
-    fn test_scheduler_remove(
-        #[case] nodes: &mut Vec<NodeIdentity>,
-        #[case] to_remove: NodeIdentity,
-        #[case] expected: Option<NodeIdentity>,
-    ) {
-        assert_eq!(StickyScheduler::remove(nodes, &to_remove), expected);
     }
 }
