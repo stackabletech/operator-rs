@@ -84,24 +84,37 @@ pub trait PodIdentityGenerator {
     fn generate(&self) -> Vec<PodIdentity>;
 }
 
+pub trait PodPlacementStrategy {
+    /// Assign `pods` to `NodeIdentities`. For each pod to be placed, if the corresponding
+    /// node in `preferred_nodes` is `Some()` that try to choose this node.
+    /// An implementation might still choose a different node if the preferred node contradicts
+    /// the implementation strategy.
+    /// *Note* that is functions consumes the strategy so it cannot be reused after a call. This is
+    /// because strategies might have mutated their internal state so that repeated calls cannot
+    /// work correctly.
+    /// Arguments:
+    /// `pods` : A set of pods to assign to nodes.
+    /// `preferred_nodes` : Optional nodes to prioritize during placement (if not None)
+    /// Returns the nodes where each pod was placed or `None` if the placement for the pod
+    /// was not successful.
+    fn place(self, pods: &[&PodIdentity], preferred_nodes: &[Option<&NodeIdentity>]) -> Vec<Option<NodeIdentity>>;
+}
+
 /// Implements a pod placement strategy where no two pods from the same role+group
-/// are scheduled on the same node at the same time.
-/// It fails if there are not enough nodes to place pods on.
-/// *Important*: values of this struct are *not reusable* across `schedule()` calls
-/// because the `eligible_nodes` is mutated for every successful pod placement.
+/// are scheduled on the same node at the same time. It fails if there are not enough nodes to place pods on.
 pub struct GroupAntiAffinityStrategy<'a> {
     eligible_nodes: RoleGroupEligibleNodes,
-    pod_node_map: &'a PodToNodeMapping,
+    existing_mapping: &'a PodToNodeMapping,
 }
 
 pub enum ScheduleStrategy {
     GroupAntiAffinity,
+    Random, // not implemented
 }
 
-///
 /// A scheduler implementation that remembers where pods were once scheduled (based on
 /// their ids) and maps them to the same nodes in the future.
-///
+/// The `strategy` might choose a different node if the history node cannot be used.
 pub struct StickyScheduler {
     pub history: SimpleSchedulerHistory,
     pub strategy: ScheduleStrategy,
@@ -135,7 +148,7 @@ impl PodToNodeMapping {
         }
     }
 
-    pub fn from(pods: &Vec<Pod>, id_label_name: Option<&str>) -> Self {
+    pub fn from(pods: &[Pod], id_label_name: Option<&str>) -> Self {
         let mut pod_node_mapping = PodToNodeMapping::new();
         for pod in pods {
             let labels = &pod.metadata.labels;
@@ -146,11 +159,11 @@ impl PodToNodeMapping {
             let id = id_label_name.and_then(|n| labels.get(n));
             pod_node_mapping.insert(
                 PodIdentity {
-                    app: app.map(|s| s.clone()).unwrap_or_default(),
-                    instance: instance.map(|s| s.clone()).unwrap_or_default(),
-                    role: role.map(|s| s.clone()).unwrap_or_default(),
-                    group: group.map(|s| s.clone()).unwrap_or_default(),
-                    id: id.map(|s| s.clone()).unwrap_or_default(),
+                    app: app.cloned().unwrap_or_default(),
+                    instance: instance.cloned().unwrap_or_default(),
+                    role: role.cloned().unwrap_or_default(),
+                    group: group.cloned().unwrap_or_default(),
+                    id: id.cloned().unwrap_or_default(),
                 },
                 NodeIdentity {
                     name: pod.spec.as_ref().unwrap().node_name.as_ref().unwrap().to_string()
@@ -205,13 +218,25 @@ impl PodToNodeMapping {
         PodToNodeMapping { mapping: temp }
     }
 
-    pub fn contains_node(&self, node: &NodeIdentity) -> Option<&PodIdentity> {
+    /// Find the pod that is currently mapped onto `node`.
+    pub fn mapped_by(&self, node: &NodeIdentity) -> Option<&PodIdentity> {
         for (pod_id, mapped_node) in self.mapping.iter() {
             if node == mapped_node {
                 return Some(pod_id);
             }
         }
         None
+    }
+
+    /// Given `pods` return all that are not mapped.
+    pub fn missing<'a>(&self, pods: &'a [PodIdentity]) -> Vec<&'a PodIdentity> {
+        let mut result = vec![];
+        for p in pods {
+            if !self.mapping.contains_key(p) {
+                result.push(p)
+            }
+        }
+        result
     }
 }
 
@@ -224,17 +249,21 @@ impl SimpleSchedulerHistory {
         }
     }
 
-    pub fn find_node_id(&self, pod_id: &PodIdentity) -> Option<&NodeIdentity> {
+    pub fn find(&self, pod_id: &PodIdentity) -> Option<&NodeIdentity> {
         self.history.get(pod_id)
+    }
+
+    pub fn find_all(&self, pods: &[&PodIdentity]) -> Vec<Option<&NodeIdentity>> {
+        pods.iter().map(|p| self.history.get(*p)).collect()
     }
 
     ///
     /// Add mapping to history if doesn't already exist.
     ///
-    pub fn update_mapping(&mut self, pod_id: PodIdentity, node_id: &NodeIdentity) {
-        if let Some(history_node_id) = self.find_node_id(&pod_id) {
+    pub fn update(&mut self, pod_id: &PodIdentity, node_id: &NodeIdentity) {
+        if let Some(history_node_id) = self.find(pod_id) {
             if history_node_id != node_id {
-                self.history.insert(pod_id, node_id.clone());
+                self.history.insert(pod_id.clone(), node_id.clone());
             }
         }
     }
@@ -289,30 +318,25 @@ where
         eligible_nodes: &RoleGroupEligibleNodes,
         current_mapping: &PodToNodeMapping,
     ) -> SchedulerResult<SchedulerState> {
-        let mut result_err = vec![];
-        let mut result_ok = BTreeMap::new();
+       let mut result_err = vec![];
+       let mut result_ok = BTreeMap::new();
 
-        let mut strategy = match self.strategy {
-           ScheduleStrategy::GroupAntiAffinity => GroupAntiAffinityStrategy::new(eligible_nodes.clone(), current_mapping)
-        };
+       let all_pods = id_generator.generate();
+       let unscheduled_pods = current_mapping.missing(all_pods.as_slice());
+       let history_nodes = self.history.find_all(unscheduled_pods.as_slice());
 
-       let pod_ids = id_generator.generate();
-       for pod_id in pod_ids.iter() {
-           if current_mapping.get(pod_id).is_none() {
-               // This pod_id is not mapped yet so search for a node where this pod has previously been mapped to.
-               // First, lookup a node that has been used in the past (if any).
-               let history_node_id = self.history.find_node_id(pod_id);
-               // Find a node to schedule on. This might be the node from history, a new one or None.
-               let selected_node = strategy.select_node_for_pod(pod_id, history_node_id);
-               match selected_node {
-                   Some(next_node) => {
-                       // Found a node to schedule on so update the result
-                       result_ok.insert(pod_id.clone(), next_node.clone());
-                       // and update the history if needed.
-                       self.history.update_mapping(pod_id.clone(), &next_node);
-                   },
-                   None => result_err.push(pod_id.clone()), // No node available for this pod
-               }
+       let strategy = self.strategy(eligible_nodes, current_mapping);
+       let selected_nodes = strategy.place(unscheduled_pods.as_slice(), history_nodes.as_slice());
+
+       for (pod, opt_node) in unscheduled_pods.iter().zip(&selected_nodes) {
+            match opt_node {
+               Some(node) => {
+                   // Found a node to schedule on so update the result
+                   result_ok.insert((**pod).clone(), node.clone());
+                   // and update the history if needed.
+                   self.history.update(&(*pod).clone(), node);
+               },
+               None => result_err.push((**pod).clone()), // No node available for this pod
            }
        }
 
@@ -324,9 +348,18 @@ where
         } else {
             Err(Error::NotEnoughNodesAvailable {
                 number_of_nodes: eligible_nodes.count_unique_node_ids(),
-                number_of_pods: pod_ids.len(),
+                number_of_pods: all_pods.len(),
                 unscheduled_pods: result_err,
             })
+        }
+    }
+}
+
+impl StickyScheduler {
+    fn strategy<'a>(&self, eligible_nodes: &RoleGroupEligibleNodes, current_mapping: &'a PodToNodeMapping) -> impl PodPlacementStrategy + 'a {
+        match self.strategy {
+            ScheduleStrategy::GroupAntiAffinity => GroupAntiAffinityStrategy::new(eligible_nodes.clone(), current_mapping),
+            ScheduleStrategy::Random => unimplemented!(),
         }
     }
 }
@@ -409,7 +442,7 @@ impl <'a> GroupAntiAffinityStrategy<'a> {
     ) -> Self {
         GroupAntiAffinityStrategy {
             eligible_nodes,
-            pod_node_map,
+            existing_mapping: pod_node_map,
         }
     }
 
@@ -420,22 +453,28 @@ impl <'a> GroupAntiAffinityStrategy<'a> {
             pod_id.role.as_str(),
             pod_id.group.as_str(),
         ) {
+            self.eligible_nodes.remove_eligible_node(
+                &next_node,
+                pod_id.role.as_str(),
+                pod_id.group.as_str(),
+            );
             // check that the node is not already in use
-            if self.pod_node_map.contains_node(&next_node).is_some() {
-                // next_node is already in use
-                // remove node from matching_nodes_cloned and loop again
-                self.eligible_nodes.remove_eligible_node(
-                    &next_node,
-                    pod_id.role.as_str(),
-                    pod_id.group.as_str(),
-                );
-            }
-            else {
+            if self.existing_mapping.mapped_by(&next_node).is_none() {
                 return Some(next_node);
             }
         }
         None
     }
+}
+
+impl PodPlacementStrategy for GroupAntiAffinityStrategy<'_> {
+    fn place(mut self, pods: &[&PodIdentity], preferred_nodes: &[Option<&NodeIdentity>]) -> Vec<Option<NodeIdentity>> {
+        assert_eq!(pods.len(), preferred_nodes.len());
+        pods.iter().zip(preferred_nodes.iter())
+            .map(|(pod, preferred_node)| self.select_node_for_pod(*pod, *preferred_node))
+            .collect()
+    }
+
 }
 
 #[cfg(test)]
@@ -507,7 +546,43 @@ mod tests {
         }
     }
 
+
     #[rustfmt::skip]
+    #[rstest]
+    #[case::nothing_to_place(1, 1, 1, &[], &[])]
+    #[case::not_enough_nodes(1, 0, 0, &[None], &[None])]
+    #[case::place_one_pod(1, 0, 1, &[None], &[Some(NodeIdentity { name: "NODE_0".to_string() })])]
+    #[case::place_one_pod_on_preferred(1, 0, 5, &[Some(NodeIdentity { name: "NODE_2".to_string() })], &[Some(NodeIdentity { name: "NODE_2".to_string() })])]
+    #[case::place_three_pods(3, 0, 5, &[None, None, None],
+        &[Some(NodeIdentity { name: "NODE_4".to_string() }),
+          Some(NodeIdentity { name: "NODE_3".to_string() }),
+          Some(NodeIdentity { name: "NODE_2".to_string() })])]
+    #[case::place_three_pods_one_on_preferred(3, 0, 5, &[None, Some(NodeIdentity { name: "NODE_1".to_string() }), None],
+        &[Some(NodeIdentity { name: "NODE_4".to_string() }),
+          Some(NodeIdentity { name: "NODE_1".to_string() }),
+          Some(NodeIdentity { name: "NODE_2".to_string() })])]
+    fn test_scheduler_group_anti_affinity(
+        #[case] wanted_pod_count: usize,
+        #[case] scheduled_pods_count: usize,
+        #[case] available_node_count: usize,
+        #[case] preferred_nodes: &[Option<NodeIdentity>],
+        #[case] expected: &[Option<NodeIdentity>],
+    ) {
+        let id_generator = TestIdGenerator {
+            how_many: wanted_pod_count,
+        };
+        let wanted_pods = id_generator.generate();
+        let eligible_nodes = generate_eligible_nodes(available_node_count);
+        let scheduled_pods = wanted_pods.iter().take(scheduled_pods_count).map(|p| p.clone()).collect();
+        let current_mapping = generate_current_mapping(&scheduled_pods, eligible_nodes.clone());
+
+        let vec_preferred_nodes : Vec<Option<&NodeIdentity>> = preferred_nodes.iter().map(|o| o.as_ref()).collect();
+        let strategy = GroupAntiAffinityStrategy::new(eligible_nodes, &current_mapping);
+        let got = strategy.place(current_mapping.missing(wanted_pods.as_slice()).as_slice(), vec_preferred_nodes.as_slice());
+        assert_eq!(got, expected.to_vec());
+    }
+
+     #[rustfmt::skip]
      #[rstest]
      #[case::no_pods_to_schedule( 0, 0, 5, SimpleSchedulerHistory::new(), Ok(SchedulerState::default()))]
      #[case::all_pods_are_scheduled( 3, 3, 5, SimpleSchedulerHistory::new(),
@@ -628,7 +703,7 @@ mod tests {
     #[case(0, Some(NodeIdentity{name: "NODE_2".to_string()}), "ROLE_0", "GROUP_0", None)]
     #[case(3, Some(NodeIdentity{name: "NODE_2".to_string()}), "ROLE_1", "GROUP_1", Some(NodeIdentity{name: "NODE_1".to_string()}))] // node not found, use first!
     #[case(4, Some(NodeIdentity{name: "NODE_2".to_string()}), "ROLE_0", "GROUP_0", Some(NodeIdentity{name: "NODE_2".to_string()}))] // node found, use it!
-    fn test_scheduler_group_antiaffinity_next_node(
+    fn test_scheduler_group_next_node(
         #[case] eligible_node_count: usize,
         #[case] opt_node_id: Option<NodeIdentity>,
         #[case] role: &str,
