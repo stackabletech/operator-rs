@@ -5,10 +5,12 @@
 use std::collections::{BTreeMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 
-use k8s_openapi::api::core::v1::Node;
+use k8s_openapi::api::core::v1::{Node, Pod};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::btree_map::Iter;
+use crate::labels;
+use crate::role_utils::EligibleNodesForRoleAndGroup;
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum Error {
@@ -131,6 +133,31 @@ impl PodToNodeMapping {
         PodToNodeMapping {
             mapping: BTreeMap::new(),
         }
+    }
+
+    pub fn from(pods: &Vec<Pod>, id_label_name: Option<&str>) -> Self {
+        let mut pod_node_mapping = PodToNodeMapping::new();
+        for pod in pods {
+            let labels = &pod.metadata.labels;
+            let app = labels.get(labels::APP_NAME_LABEL);
+            let instance = labels.get(labels::APP_INSTANCE_LABEL);
+            let role = labels.get(labels::APP_COMPONENT_LABEL);
+            let group = labels.get(labels::APP_ROLE_GROUP_LABEL);
+            let id = id_label_name.and_then(|n| labels.get(n));
+            pod_node_mapping.insert(
+                PodIdentity {
+                    app: app.map(|s| s.clone()).unwrap_or_default(),
+                    instance: instance.map(|s| s.clone()).unwrap_or_default(),
+                    role: role.map(|s| s.clone()).unwrap_or_default(),
+                    group: group.map(|s| s.clone()).unwrap_or_default(),
+                    id: id.map(|s| s.clone()).unwrap_or_default(),
+                },
+                NodeIdentity {
+                    name: pod.spec.as_ref().unwrap().node_name.as_ref().unwrap().to_string()
+                }
+            );
+        }
+        pod_node_mapping
     }
 
     pub fn iter(&self) -> Iter<'_, PodIdentity, NodeIdentity> {
@@ -305,6 +332,19 @@ where
 }
 
 impl RoleGroupEligibleNodes {
+
+    pub fn from(nodes: &EligibleNodesForRoleAndGroup) -> Self {
+        let mut node_set = BTreeMap::new();
+        for (role_name, group) in nodes {
+            let mut temp = BTreeMap::new();
+            for (group_name, group_nodes) in group {
+                temp.insert(group_name.clone(), group_nodes.nodes.iter().map(|n| NodeIdentity::from(n.clone())).collect());
+            }
+            node_set.insert(role_name.clone(), temp);
+        }
+        RoleGroupEligibleNodes { node_set }
+    }
+
     ///
     /// Returns a node that is available for scheduling given `role` and `group`.
     ///
