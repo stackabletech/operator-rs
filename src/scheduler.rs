@@ -5,12 +5,19 @@
 use std::collections::{BTreeMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 
+use crate::client::Client;
+use crate::error::OperatorResult;
 use crate::labels;
 use crate::role_utils::EligibleNodesForRoleAndGroup;
 use k8s_openapi::api::core::v1::{Node, Pod};
+use kube::api::Resource;
 use schemars::JsonSchema;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::collections::btree_map::Iter;
+use std::convert::TryFrom;
+use tracing::error;
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum Error {
@@ -22,12 +29,46 @@ pub enum Error {
         number_of_pods: usize,
         unscheduled_pods: Vec<PodIdentity>,
     },
+
+    #[error("PodIdentity could not be parsed: {pod_id:?}. This should not be happening. Please open a ticket.")]
+    PodIdentityNotParseable { pod_id: String },
+}
+
+pub fn generate_ids(
+    app_name: &str,
+    instance: &str,
+    eligible_nodes: &EligibleNodesForRoleAndGroup,
+) -> Vec<PodIdentity> {
+    let mut id: u16 = 1;
+    let mut generated_ids = vec![];
+    for (role_name, groups) in eligible_nodes {
+        for (group_name, eligible_nodes) in groups {
+            let ids_per_group = eligible_nodes
+                .replicas
+                .map(|rep| usize::from(rep))
+                .unwrap_or_else(|| eligible_nodes.nodes.len());
+            for _ in 1..ids_per_group + 1 {
+                generated_ids.push(PodIdentity {
+                    app: app_name.to_string(),
+                    instance: instance.to_string(),
+                    role: role_name.clone(),
+                    group: group_name.clone(),
+                    id: id.to_string(),
+                });
+                id += 1;
+            }
+        }
+    }
+
+    generated_ids
 }
 
 #[derive(
     Clone, Debug, Default, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
 )]
 #[serde(rename_all = "camelCase")]
+#[serde(try_from = "String")]
+#[serde(into = "String")]
 pub struct PodIdentity {
     pub app: String,
     pub instance: String,
@@ -57,15 +98,37 @@ pub trait PodPlacementHistory {
     fn update(&mut self, pod_id: &PodIdentity, node_id: &NodeIdentity);
 }
 
-#[derive(Default)]
-pub struct K8SUnboundedHistory {
-    // TODO: add K8S client
+pub struct K8SUnboundedHistory<'a> {
+    pub client: &'a Client,
     pub history: PodToNodeMapping,
+    modified: bool,
 }
 
-impl K8SUnboundedHistory {
-    pub fn new(history: PodToNodeMapping) -> Self {
-        K8SUnboundedHistory { history }
+impl<'a> K8SUnboundedHistory<'a> {
+    pub fn new(client: &'a Client, history: PodToNodeMapping) -> Self {
+        K8SUnboundedHistory {
+            client,
+            history,
+            modified: false,
+        }
+    }
+
+    pub async fn save<T>(&mut self, resource: &T) -> OperatorResult<T>
+    where
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
+    {
+        match self
+            .client
+            .merge_patch_status(resource, &json!({ "history": self.history }))
+            .await
+        {
+            Ok(res) => {
+                self.modified = false;
+                Ok(res)
+            }
+            err => err,
+        }
     }
 }
 
@@ -86,17 +149,13 @@ pub type SchedulerResult<T> = std::result::Result<T, Error>;
 
 /// Schedule pods to nodes. The only implementation available at the moment is the `StickyScheduler`
 pub trait Scheduler {
-    fn schedule<T: PodIdentityGenerator>(
+    fn schedule(
         &mut self,
-        id_generator: &T,
+        all_pods: &[PodIdentity],
         nodes: &RoleGroupEligibleNodes,
         // current state of the cluster
         current_mapping: &PodToNodeMapping,
     ) -> SchedulerResult<SchedulerState>;
-}
-
-pub trait PodIdentityGenerator {
-    fn generate(&self) -> Vec<PodIdentity>;
 }
 
 pub trait PodPlacementStrategy {
@@ -157,6 +216,32 @@ impl SchedulerState {
 
     pub fn new_mapping(&self) -> PodToNodeMapping {
         self.new_mapping.clone()
+    }
+}
+
+impl TryFrom<String> for PodIdentity {
+    type Error = Error;
+    fn try_from(s: String) -> Result<Self, Error> {
+        let split = s.split(";").collect::<Vec<&str>>();
+        if split.len() != 5 {
+            return Err(Error::PodIdentityNotParseable { pod_id: s });
+        }
+        Ok(PodIdentity {
+            app: split[0].to_string(),
+            instance: split[1].to_string(),
+            role: split[2].to_string(),
+            group: split[3].to_string(),
+            id: split[4].to_string(),
+        })
+    }
+}
+
+impl Into<String> for PodIdentity {
+    fn into(self) -> String {
+        format!(
+            "{};{};{};{};{}",
+            self.app, self.instance, self.role, self.group, self.id
+        )
     }
 }
 
@@ -266,7 +351,7 @@ impl PodToNodeMapping {
     }
 }
 
-impl PodPlacementHistory for K8SUnboundedHistory {
+impl PodPlacementHistory for K8SUnboundedHistory<'_> {
     fn find(&self, pod_id: &PodIdentity) -> Option<&NodeIdentity> {
         self.history.get(pod_id)
     }
@@ -276,9 +361,15 @@ impl PodPlacementHistory for K8SUnboundedHistory {
     ///
     fn update(&mut self, pod_id: &PodIdentity, node_id: &NodeIdentity) {
         if let Some(history_node_id) = self.find(pod_id) {
+            // found but different
             if history_node_id != node_id {
                 self.history.insert(pod_id.clone(), node_id.clone());
+                self.modified = true;
             }
+        } else {
+            // not found
+            self.history.insert(pod_id.clone(), node_id.clone());
+            self.modified = true;
         }
     }
 }
@@ -326,18 +417,16 @@ where
     /// It doesn't map more than one pod per role+group on the same node. If a pod cannot be mapped
     /// (because not enough nodes available, for example) it returns an error.
     ///
-    fn schedule<G: PodIdentityGenerator>(
+    fn schedule(
         &mut self,
-        // TODO: probably can move to "self"
-        id_generator: &G,
+        all_pods: &[PodIdentity],
         eligible_nodes: &RoleGroupEligibleNodes,
         current_mapping: &PodToNodeMapping,
     ) -> SchedulerResult<SchedulerState> {
         let mut result_err = vec![];
         let mut result_ok = BTreeMap::new();
 
-        let all_pods = id_generator.generate();
-        let unscheduled_pods = current_mapping.missing(all_pods.as_slice());
+        let unscheduled_pods = current_mapping.missing(all_pods);
         let history_nodes = self.history.find_all(unscheduled_pods.as_slice());
 
         let strategy = self.strategy(eligible_nodes, current_mapping);
@@ -517,27 +606,21 @@ mod tests {
     const APP_NAME: &str = "app";
     const INSTANCE: &str = "simple";
 
-    struct TestIdGenerator {
-        how_many: usize,
-    }
-
     #[derive(Default)]
     struct TestHistory {
         pub history: PodToNodeMapping,
     }
 
-    impl PodIdentityGenerator for TestIdGenerator {
-        fn generate(&self) -> Vec<PodIdentity> {
-            (0..self.how_many)
-                .map(|index| PodIdentity {
-                    app: APP_NAME.to_string(),
-                    instance: INSTANCE.to_string(),
-                    role: format!("ROLE_{}", index % 2).to_string(),
-                    group: format!("GROUP_{}", index % 2).to_string(),
-                    id: format!("POD_{}", index).to_string(),
-                })
-                .collect()
-        }
+    fn generate_ids(how_many: usize) -> Vec<PodIdentity> {
+        (0..how_many)
+            .map(|index| PodIdentity {
+                app: APP_NAME.to_string(),
+                instance: INSTANCE.to_string(),
+                role: format!("ROLE_{}", index % 2).to_string(),
+                group: format!("GROUP_{}", index % 2).to_string(),
+                id: format!("POD_{}", index).to_string(),
+            })
+            .collect()
     }
 
     impl PodPlacementHistory for TestHistory {
@@ -612,10 +695,7 @@ mod tests {
         #[case] preferred_nodes: &[Option<NodeIdentity>],
         #[case] expected: &[Option<NodeIdentity>],
     ) {
-        let id_generator = TestIdGenerator {
-            how_many: wanted_pod_count,
-        };
-        let wanted_pods = id_generator.generate();
+        let wanted_pods = generate_ids(wanted_pod_count);
         let eligible_nodes = generate_eligible_nodes(available_node_count);
         let scheduled_pods = wanted_pods.iter().take(scheduled_pods_count).map(|p| p.clone()).collect();
         let current_mapping = generate_current_mapping(&scheduled_pods, eligible_nodes.clone());
@@ -725,10 +805,7 @@ mod tests {
          #[case] mut history: TestHistory,
          #[case] expected: SchedulerResult<SchedulerState>,
      ) {
-         let id_generator = TestIdGenerator {
-             how_many: wanted_pod_count,
-         };
-         let wanted_pods = id_generator.generate();
+         let wanted_pods = generate_ids(wanted_pod_count);
          let available_nodes = generate_eligible_nodes(available_node_count);
          let scheduled_pods = wanted_pods.iter().take(scheduled_pods_count).map(|p| p.clone()).collect();
          let current_mapping = generate_current_mapping(&scheduled_pods, available_nodes.clone());
@@ -737,7 +814,7 @@ mod tests {
          // Run scheduler
          //
          let mut scheduler = StickyScheduler::new(&mut history, ScheduleStrategy::GroupAntiAffinity);
-         let got = scheduler.schedule(&id_generator, &available_nodes, &current_mapping);
+         let got = scheduler.schedule(wanted_pods.as_slice(), &available_nodes, &current_mapping);
 
          assert_eq!(expected, got);
      }
