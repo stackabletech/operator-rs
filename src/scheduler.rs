@@ -63,6 +63,12 @@ pub struct K8SUnboundedHistory {
     pub history: PodToNodeMapping,
 }
 
+impl K8SUnboundedHistory {
+    pub fn new(history: PodToNodeMapping) -> Self {
+        K8SUnboundedHistory { history }
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct RoleGroupEligibleNodes {
     node_set: BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>>,
