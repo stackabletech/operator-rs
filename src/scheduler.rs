@@ -118,17 +118,21 @@ impl<'a> K8SUnboundedHistory<'a> {
         T: Clone + Debug + DeserializeOwned + Resource,
         <T as Resource>::DynamicType: Default,
     {
-        match self
-            .client
-            .merge_patch_status(resource, &json!({ "history": self.history }))
-            .await
-        {
-            Ok(res) => {
-                self.modified = false;
-                Ok(res)
-            }
-            err => err,
+        if self.modified {
+            return match self
+                .client
+                .merge_patch_status(resource, &json!({ "history": self.history }))
+                .await
+            {
+                Ok(res) => {
+                    self.modified = false;
+                    Ok(res)
+                }
+                err => err,
+            };
         }
+
+        Ok(resource.clone())
     }
 }
 
