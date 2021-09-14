@@ -1,6 +1,18 @@
 //!
-//! Implements scheduler with memory. Once a Pod with a given identifier is scheduled on a node,
-//! it will always be rescheduled to this node as long as it exists.
+//! A Kubernetes pod scheduler is responsible for assigning pods to eligible nodes. To achieve this,
+//! the scheduler may use different strategies.
+//!
+//! This module provides traits and implementations for a scheduler and a role+group anti-affinity strategy.
+//! The latter means that no two pods belonging to the same role+group pair may be scheduled on the
+//! same node. Also the scheduler implements the idea of "preferred nodes" where pods should be scheduled.
+//! Weather a preferred node is selected for a pod depends not only of the node's eligibility but also
+//! on the strategy used.
+//!
+//! One implementation for a preferred nodes provider is the [`K8SUnboundedHistory`] that keeps
+//! track of pod placements and reuses the nodes in the future. It uses the K8S resource to store
+//! and retrieve past pod to node assignments. The requirement for this preferred node provider is
+//! that pod id's are "stable" and have a semantic known to the calling operator.
+//!
 //!
 use std::collections::{BTreeMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
@@ -34,6 +46,11 @@ pub enum Error {
     PodIdentityNotParseable { pod_id: String },
 }
 
+/// Returns a Vec of pod identities according to the replica per role+group pair from [`eligible_nodes`].
+/// # Arguments
+/// * [`app_name`] : Application name
+/// * [`instance`] : Service instance
+/// * [`eligible_nodes`] : Eligible nodes grouped by role and groups.
 pub fn generate_ids(
     app_name: &str,
     instance: &str,
