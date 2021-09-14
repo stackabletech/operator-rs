@@ -1,3 +1,4 @@
+//! This module handles up and downgrades for the operator products.
 use crate::client::Client;
 use crate::conditions::{build_condition, ConditionStatus};
 use crate::error::OperatorResult;
