@@ -30,26 +30,21 @@ pub trait Versioned<V> {
 /// server and internally updated for later use. This should be called before anything status
 /// related will be processed.
 ///
+/// Returns the updated custom resource for further usage.
+///
 /// # Arguments
 ///
 /// * `client` - The Kubernetes client.
 /// * `resource` - The cluster custom resource.
-/// * `cluster_status` - The custom resource status.
 ///
-pub async fn init_status<T, S>(
-    client: &Client,
-    resource: &T,
-    cluster_status: &mut Option<S>,
-) -> OperatorResult<()>
+pub async fn init_status<T, S>(client: &Client, resource: &T) -> OperatorResult<T>
 where
-    T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
+    T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Status<S>,
     S: Debug + Default + Serialize,
 {
-    if cluster_status.is_none() {
-        let default_status = S::default();
-        client.merge_patch_status(resource, &default_status).await?;
-        cluster_status.as_mut().map(|_| default_status);
+    if resource.status().is_none() {
+        return client.merge_patch_status(resource, &S::default()).await;
     }
 
-    Ok(())
+    Ok(resource.clone())
 }

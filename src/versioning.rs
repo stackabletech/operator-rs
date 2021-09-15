@@ -34,7 +34,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fmt::{Debug, Display};
-use tracing::{debug, error, info, trace, warn};
+use tracing::{error, info, warn};
 
 /// Versioning condition type. Can only contain alphanumeric characters and '-'.
 const CONDITION_TYPE: &str = "UpOrDowngrading";
@@ -196,15 +196,14 @@ where
         (None, None) => {
             // No current_version and no target_version -> must be initial installation.
             // We set the Upgrading condition and the target_version to the version from spec.
-            info!(
-                "Initial installation, now moving towards version [{}]",
-                spec_version
-            );
+            let message = format!("Initial installation of version [{}]", spec_version);
+
+            info!("{}", message);
 
             let condition = build_versioning_condition(
                 resource,
                 conditions,
-                &format!("Initial installation to version [{}]", spec_version),
+                &message,
                 "InitialInstallation",
                 ConditionStatus::True,
             );
@@ -217,20 +216,20 @@ where
             // No current_version but a target_version means we are still doing the initial
             // installation. Will continue working towards that goal even if another version
             // was set in the meantime.
-            debug!(
-                "Initial installation, still moving towards version [{}]",
-                target_version
-            );
+            let message = format!("Installing version [{}]", spec_version);
+
+            info!("{}", message);
+
             if &spec_version != target_version {
-                info!("A new target version ([{}]) was requested while we still do the initial installation to [{}],\
-                          finishing running upgrade first", spec_version, target_version)
+                info!("A new target version ([{}]) was requested while we still do the installation to [{}],\
+                       finishing running upgrade first", spec_version, target_version)
             }
             // We do this here to update the observedGeneration if needed
             let condition = build_versioning_condition(
                 resource,
                 conditions,
-                &format!("Initial installation to version [{}]", target_version),
-                "InitialInstallation",
+                &message,
+                "Installing",
                 ConditionStatus::True,
             );
 
@@ -248,6 +247,8 @@ where
                         "Upgrading from [{}] to [{}]",
                         current_version, &spec_version
                     );
+
+                    info!("{}", message);
 
                     let condition = build_versioning_condition(
                         resource,
@@ -267,6 +268,8 @@ where
                         current_version, spec_version
                     );
 
+                    info!("{}", message);
+
                     let condition = build_versioning_condition(
                         resource,
                         conditions,
@@ -284,7 +287,9 @@ where
                         "No upgrade required [{}] is still the current_version",
                         current_version
                     );
-                    trace!("{}", message);
+
+                    info!("{}", message);
+
                     let condition = build_versioning_condition(
                         resource,
                         conditions,
