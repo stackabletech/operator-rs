@@ -1,4 +1,31 @@
-//! This module handles up and downgrades for the operator products.
+//! This module handles up and downgrades for the products handled by the operators.
+//!
+//! The [`crate::status::Conditions`] and [`crate::status::Versioned`] must be implemented
+//! for the custom resource status to ensure generic access.
+//!
+//! The status field names are fixed (for patching updates) and should be defined in the operators
+//! as follows:
+//! ```
+//! use k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
+//! use schemars::JsonSchema;
+//! use serde::{Deserialize, Serialize};
+//! use stackable_operator::versioning::ProductVersion;
+//! #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize)]
+//! #[serde(rename_all = "camelCase")]
+//! pub struct SomeClusterStatus {
+//! #[serde(default, skip_serializing_if = "Vec::is_empty")]
+//! #[schemars(schema_with = "stackable_operator::conditions::schema")]
+//! pub conditions: Vec<Condition>,
+//! #[serde(skip_serializing_if = "Option::is_none")]
+//! pub version: Option<ProductVersion<ZookeeperVersion>>,
+//! ```
+//!
+//! Additionally, the product version must implement [`crate::versioning:Versioning`] to
+//! indicate if upgrade or downgrades are valid, not supported or invalid.
+//!
+//! This module only provides the tracking of the `ProductVersion` and `Conditions`. Pods etc. are
+//! deleted via `delete_illegal_pods` and `delete_excess_pods` in the reconcile crate.
+//!
 use crate::client::Client;
 use crate::conditions::{build_condition, ConditionStatus};
 use crate::error::OperatorResult;
@@ -12,273 +39,329 @@ use serde_json::json;
 use std::fmt::{Debug, Display};
 use tracing::{debug, error, info, trace, warn};
 
+/// Versioning condition type. Can only contain alphanumeric characters and '-'.
+const CONDITION_TYPE: &str = "UpOrDowngrading";
+
+/// This is required to be implemented by the product version of the operators.
 pub trait Versioning {
+    /// Returns a `VersioningState` that indicates if an upgrade or downgrade is valid, not
+    /// supported or invalid.
     fn versioning_state(&self, other: &Self) -> VersioningState;
 }
 
+/// Possible return values of the `versioning_state` trait method.
 pub enum VersioningState {
+    /// Indicates that the planned upgrade from a lower to higher version is valid and supported.
     ValidUpgrade,
+    /// Indicates that the planned downgrade from a higher to lower version is valid and supported.
     ValidDowngrade,
+    /// Indicates that no action is required (because the current and target version are equal).
     NoOp,
+    /// Indicates that the planned up or downgrade is not supported (e.g. because of version
+    /// incompatibility).
     NotSupported,
+    /// Indicates that something (e.g. parsing of the current or target version) failed.
     Invalid(String),
 }
 
+/// The version of the product provided by the operator. Split into current and target version in
+/// order track upgrading and downgrading progress.
 #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Version<T> {
-    current_version: Option<T>,
-    target_version: Option<T>,
+pub struct ProductVersion<T> {
+    current: Option<T>,
+    target: Option<T>,
 }
 
-pub struct StatusVersionManager<'a, T>
-where
-    T: Resource,
-{
-    client: &'a Client,
-    resource: &'a T,
-}
-
-impl<'a, T> StatusVersionManager<'a, T>
+/// Checks the custom resource status (or creates the default status) and processes the contents
+/// of the `ProductVersion`. Will update the `ProductVersion` and `Conditions` of the status to
+/// signal the upgrading / downgrading progress.
+///
+/// # Arguments
+///
+/// * `client` - The Kubernetes client.
+/// * `resource` - The cluster custom resource.
+/// * `cluster_status` - The custom resource status.
+/// * `spec_version` - The version currently specified in the custom resource.
+///
+pub async fn init_versioning<T, S, V>(
+    client: &Client,
+    resource: &T,
+    cluster_status: Option<S>,
+    spec_version: V,
+) -> OperatorResult<()>
 where
     T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
+    S: Conditions + Debug + Default + Serialize + Versioned<V>,
+    V: Clone + Debug + Display + PartialEq + Serialize + Versioning,
 {
-    pub fn new(client: &'a Client, resource: &'a T) -> Self {
-        StatusVersionManager { client, resource }
+    // init the status if not available yet
+    let status = match cluster_status {
+        Some(status) => status,
+        None => {
+            let default_status = S::default();
+            client.merge_patch_status(resource, &default_status).await?;
+            default_status
+        }
+    };
+
+    let (version, condition) = build_version_and_condition(
+        resource,
+        &status.version().as_ref().and_then(|v| v.current.clone()),
+        &status.version().as_ref().and_then(|v| v.target.clone()),
+        spec_version,
+        status.conditions(),
+    );
+
+    if let Some(version) = version {
+        client
+            .merge_patch_status(resource, &json!({ "version": version }))
+            .await?;
     }
 
-    pub async fn process<S, V>(
-        &self,
-        cluster_status: Option<S>,
-        spec_version: V,
-    ) -> OperatorResult<()>
-    where
-        S: Conditions + Debug + Default + Serialize + Versioned<V>,
-        V: Clone + Debug + Display + PartialEq + Serialize + Versioning,
-    {
-        // init the status if not available yet
-        let status = match cluster_status {
-            Some(status) => status,
-            None => {
-                let default_status = S::default();
-                self.client
-                    .merge_patch_status(self.resource, &default_status)
+    if let Some(condition) = condition {
+        client.set_condition(resource, condition).await?;
+    }
+
+    Ok(())
+}
+
+/// Finalizes the `init_versioning`. This is required after e.g. all pods and config maps were
+/// created. It will remove the `target_version` from the status `ProductVersion` and set the
+/// condition status to false.
+///
+/// # Arguments
+///
+/// * `client` - The Kubernetes client.
+/// * `resource` - The cluster custom resource.
+/// * `cluster_status` - The custom resource status.
+///
+pub async fn finalize_versioning<T, S, V>(
+    client: &Client,
+    resource: &T,
+    cluster_status: Option<S>,
+) -> OperatorResult<()>
+where
+    T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
+    S: Conditions + Debug + Default + Serialize + Versioned<V>,
+    V: Clone + Debug + Display + PartialEq + Serialize + Versioning,
+{
+    if let Some(status) = &cluster_status {
+        if let Some(version) = status.version() {
+            if let Some(target_version) = &version.target {
+                let condition = build_versioning_condition(
+                    resource,
+                    status.conditions(),
+                    &format!(
+                        "No upgrade required [{}] is still the current_version",
+                        target_version
+                    ),
+                    "",
+                    ConditionStatus::False,
+                );
+
+                client.set_condition(resource, condition).await?;
+
+                let v = ProductVersion {
+                    current: Some(target_version.clone()),
+                    target: None,
+                };
+
+                client
+                    .merge_patch_status(resource, &json!({ "version": v }))
                     .await?;
-                default_status
             }
-        };
-
-        let (version, condition) = self.build_version_and_condition(
-            &status
-                .version()
-                .as_ref()
-                .and_then(|v| v.current_version.clone()),
-            &status
-                .version()
-                .as_ref()
-                .and_then(|v| v.target_version.clone()),
-            spec_version,
-            status.conditions(),
-        );
-
-        if let Some(version) = version {
-            self.client
-                .merge_patch_status(self.resource, &json!({ "version": version }))
-                .await?;
         }
-
-        if let Some(condition) = condition {
-            self.client.set_condition(self.resource, condition).await?;
-        }
-
-        Ok(())
     }
 
-    fn build_version_and_condition<V>(
-        &self,
-        current_version: &Option<V>,
-        target_version: &Option<V>,
-        spec_version: V,
-        conditions: &[Condition],
-    ) -> (Option<Version<V>>, Option<Condition>)
-    where
-        V: Clone + Debug + Display + PartialEq + Serialize + Versioning,
-    {
-        return match (current_version, target_version) {
-            (None, None) => {
-                // No current_version and no target_version -> must be initial installation.
-                // We set the Upgrading condition and the target_version to the version from spec.
-                info!(
-                    "Initial installation, now moving towards version [{}]",
-                    spec_version
-                );
+    Ok(())
+}
 
-                let condition = self.build_versioning_condition(
-                    conditions,
-                    &format!("Initial installation to version [{}]", spec_version),
-                    "InitialInstallation",
-                    ConditionStatus::True,
-                );
+/// Checks that the custom resource status (or creates the default status) and processes the contents
+/// of the `ProductVersion`. Will update the `ProductVersion` and `Conditions` of the status to
+/// signal the upgrading / downgrading progress.
+///
+/// # Arguments
+///
+/// * `resource` - The cluster custom resource.
+/// * `current_version` - The current version set in the status `ProductVersion`.
+/// * `target_version` - The target version set in the status `ProductVersion`.
+/// * `spec_version` - The version currently specified in the custom resource.
+/// * `conditions` - The conditions from the custom resource status.
+///
+fn build_version_and_condition<T, V>(
+    resource: &T,
+    current_version: &Option<V>,
+    target_version: &Option<V>,
+    spec_version: V,
+    conditions: &[Condition],
+) -> (Option<ProductVersion<V>>, Option<Condition>)
+where
+    T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
+    V: Clone + Debug + Display + PartialEq + Serialize + Versioning,
+{
+    return match (current_version, target_version) {
+        (None, None) => {
+            // No current_version and no target_version -> must be initial installation.
+            // We set the Upgrading condition and the target_version to the version from spec.
+            info!(
+                "Initial installation, now moving towards version [{}]",
+                spec_version
+            );
 
-                let version: Version<V> = build_version(None, Some(spec_version));
+            let condition = build_versioning_condition(
+                resource,
+                conditions,
+                &format!("Initial installation to version [{}]", spec_version),
+                "InitialInstallation",
+                ConditionStatus::True,
+            );
 
-                (Some(version), Some(condition))
-            }
-            (None, Some(target_version)) => {
-                // No current_version but a target_version means we are still doing the initial
-                // installation. Will continue working towards that goal even if another version
-                // was set in the meantime.
-                debug!(
-                    "Initial installation, still moving towards version [{}]",
-                    target_version
-                );
-                if &spec_version != target_version {
-                    info!("A new target version ([{}]) was requested while we still do the initial installation to [{}],\
+            let version: ProductVersion<V> = build_version(None, Some(spec_version));
+
+            (Some(version), Some(condition))
+        }
+        (None, Some(target_version)) => {
+            // No current_version but a target_version means we are still doing the initial
+            // installation. Will continue working towards that goal even if another version
+            // was set in the meantime.
+            debug!(
+                "Initial installation, still moving towards version [{}]",
+                target_version
+            );
+            if &spec_version != target_version {
+                info!("A new target version ([{}]) was requested while we still do the initial installation to [{}],\
                           finishing running upgrade first", spec_version, target_version)
-                }
-                // We do this here to update the observedGeneration if needed
-                let condition = self.build_versioning_condition(
-                    conditions,
-                    &format!("Initial installation to version [{}]", target_version),
-                    "InitialInstallation",
-                    ConditionStatus::True,
-                );
-
-                (None, Some(condition))
             }
-            (Some(current_version), None) => {
-                // We are at a stable version but have no target_version set.
-                // This will be the normal state.
-                // We'll check if there is a different version in spec and if it is will
-                // set it in target_version, but only if it's actually a compatible upgrade.
-                let versioning_option = current_version.versioning_state(&spec_version);
-                match versioning_option {
-                    VersioningState::ValidUpgrade => {
-                        let message = format!(
-                            "Upgrading from [{}] to [{}]",
-                            current_version, &spec_version
-                        );
+            // We do this here to update the observedGeneration if needed
+            let condition = build_versioning_condition(
+                resource,
+                conditions,
+                &format!("Initial installation to version [{}]", target_version),
+                "InitialInstallation",
+                ConditionStatus::True,
+            );
 
-                        let condition = self.build_versioning_condition(
-                            conditions,
-                            &message,
-                            "Upgrading",
-                            ConditionStatus::True,
-                        );
+            (None, Some(condition))
+        }
+        (Some(current_version), None) => {
+            // We are at a stable version but have no target_version set.
+            // This will be the normal state.
+            // We'll check if there is a different version in spec and if it is will
+            // set it in target_version, but only if it's actually a compatible upgrade.
+            let versioning_option = current_version.versioning_state(&spec_version);
+            match versioning_option {
+                VersioningState::ValidUpgrade => {
+                    let message = format!(
+                        "Upgrading from [{}] to [{}]",
+                        current_version, &spec_version
+                    );
 
-                        let version = build_version(None, Some(spec_version));
+                    let condition = build_versioning_condition(
+                        resource,
+                        conditions,
+                        &message,
+                        "Upgrading",
+                        ConditionStatus::True,
+                    );
 
-                        (Some(version), Some(condition))
-                    }
-                    VersioningState::ValidDowngrade => {
-                        let message = format!(
-                            "Downgrading from [{}] to [{}]",
-                            current_version, spec_version
-                        );
+                    let version = build_version(None, Some(spec_version));
 
-                        let condition = self.build_versioning_condition(
-                            conditions,
-                            &message,
-                            "Downgrading",
-                            ConditionStatus::True,
-                        );
-
-                        let version = build_version(None, Some(spec_version));
-
-                        (Some(version), Some(condition))
-                    }
-                    VersioningState::NoOp => {
-                        let message = format!(
-                            "No upgrade required [{}] is still the current_version",
-                            current_version
-                        );
-                        trace!("{}", message);
-                        let condition = self.build_versioning_condition(
-                            conditions,
-                            &message,
-                            "",
-                            ConditionStatus::False,
-                        );
-                        (None, Some(condition))
-                    }
-                    VersioningState::NotSupported => {
-                        warn!("Up-/Downgrade from [{}] to [{}] not possible but requested in spec: Ignoring, will continue \
-                              reconcile as if the invalid version weren't set", current_version, spec_version);
-                        (None, None)
-                    }
-                    VersioningState::Invalid(err) => {
-                        // TODO: throw error
-                        error!("Error occurred for versioning: {}", err);
-                        (None, None)
-                    }
+                    (Some(version), Some(condition))
                 }
-            }
-            _ => (None, None),
-        };
-    }
+                VersioningState::ValidDowngrade => {
+                    let message = format!(
+                        "Downgrading from [{}] to [{}]",
+                        current_version, spec_version
+                    );
 
-    pub async fn finalize<S, V>(&self, cluster_status: Option<S>) -> OperatorResult<()>
-    where
-        S: Conditions + Debug + Default + Serialize + Versioned<V>,
-        V: Clone + Debug + Display + PartialEq + Serialize + Versioning,
-    {
-        // If we reach here it means all pods must be running on target_version.
-        // We can now set current_version to target_version (if target_version was set) and
-        // target_version to None
-        if let Some(status) = &cluster_status {
-            if let Some(version) = status.version() {
-                if let Some(target_version) = &version.target_version {
-                    let condition = self.build_versioning_condition(
-                        status.conditions(),
-                        &format!(
-                            "No upgrade required [{}] is still the current_version",
-                            target_version
-                        ),
+                    let condition = build_versioning_condition(
+                        resource,
+                        conditions,
+                        &message,
+                        "Downgrading",
+                        ConditionStatus::True,
+                    );
+
+                    let version = build_version(None, Some(spec_version));
+
+                    (Some(version), Some(condition))
+                }
+                VersioningState::NoOp => {
+                    let message = format!(
+                        "No upgrade required [{}] is still the current_version",
+                        current_version
+                    );
+                    trace!("{}", message);
+                    let condition = build_versioning_condition(
+                        resource,
+                        conditions,
+                        &message,
                         "",
                         ConditionStatus::False,
                     );
-
-                    self.client.set_condition(self.resource, condition).await?;
-
-                    let v = Version {
-                        current_version: Some(target_version.clone()),
-                        target_version: None,
-                    };
-
-                    self.client
-                        .merge_patch_status(self.resource, &json!({ "version": v }))
-                        .await?;
+                    (None, Some(condition))
+                }
+                VersioningState::NotSupported => {
+                    warn!("Up-/Downgrade from [{}] to [{}] not possible but requested in spec: Ignoring, will continue \
+                              reconcile as if the invalid version weren't set", current_version, spec_version);
+                    (None, None)
+                }
+                VersioningState::Invalid(err) => {
+                    // TODO: throw error
+                    error!("Error occurred for versioning: {}", err);
+                    (None, None)
                 }
             }
         }
-
-        Ok(())
-    }
-
-    fn build_versioning_condition(
-        &self,
-        conditions: &[Condition],
-        message: &str,
-        reason: &str,
-        status: ConditionStatus,
-    ) -> Condition {
-        build_condition(
-            self.resource,
-            Some(conditions),
-            message.to_string(),
-            reason.to_string(),
-            status,
-            "UpOrDowngrading".to_string(),
-        )
-    }
+        _ => (None, None),
+    };
 }
 
-fn build_version<V>(current_version: Option<V>, target_version: Option<V>) -> Version<V>
+/// Builds a condition for versioning. It basically forwards every parameter and uses the
+/// fixed `CONDITION_TYPE` to identify the versioning condition.
+///
+/// # Arguments
+///
+/// * `resource` - The cluster custom resource.
+/// * `conditions` - The conditions from the custom resource status.
+/// * `message` - The message set in the conditions.
+/// * `reason` - The reason set in the conditions
+/// * `status` - The status set in the conditions.
+///
+fn build_versioning_condition<T>(
+    resource: &T,
+    conditions: &[Condition],
+    message: &str,
+    reason: &str,
+    status: ConditionStatus,
+) -> Condition
+where
+    T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
+{
+    build_condition(
+        resource,
+        Some(conditions),
+        message.to_string(),
+        reason.to_string(),
+        status,
+        CONDITION_TYPE.to_string(),
+    )
+}
+
+/// Builds a `ProductVersion` to be written into the custom resource status.
+///
+/// # Arguments
+///
+/// * `current_version` - The optional current version of the cluster.
+/// * `target_version` - The optional target version for upgrading / downgrading the cluster.
+///
+fn build_version<V>(current_version: Option<V>, target_version: Option<V>) -> ProductVersion<V>
 where
     V: Clone,
 {
-    Version {
-        current_version,
-        target_version,
+    ProductVersion {
+        current: current_version,
+        target: target_version,
     }
 }

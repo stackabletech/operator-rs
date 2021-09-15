@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 - Added traits to access generic operator versions ([#211]).
 
 ### Changed
-- Changed conditions() trait return value to be optional ([#211]). 
+- `BREAKING`: Changed `Conditions` trait return value to not optional ([#211]). 
 
 [#211]: https://github.com/stackabletech/operator-rs/pull/211
 
