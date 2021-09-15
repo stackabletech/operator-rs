@@ -3,7 +3,7 @@
 //! the scheduler may use different strategies.
 //!
 //! This module provides traits and implementations for a scheduler with memory called [`StickyScheduler`]
-//! and two pod placement strategies : [`GroupAntiAffinityStrategy`] and [`HashingStrategy`].
+//! and two pod placement strategies : [`ScheduleStrategy::GroupAntiAffinity`] and [`ScheduleStrategy::Hashing`].
 //!
 //! The former strategy means that no two pods belonging to the same role+group pair may be scheduled on the
 //! same node. This is useful for bare metal scenarios.
@@ -146,14 +146,23 @@ pub struct SchedulerState {
 
 pub type SchedulerResult<T> = std::result::Result<T, Error>;
 
-/// Schedule pods to nodes. The only implementation available at the moment is the `StickyScheduler`
+/// Schedule pods to nodes. Implementations might use different strategies to select nodes based on
+/// the current mapping of pods to nodes or ignore this completely.
 pub trait Scheduler {
+    /// Returns the state of the schedule which describes both the existing mapping as well as
+    /// the newly mapped pods.
+    ///
+    /// Implementations may return an error if not all pods can be mapped to nodes.
+    ///
+    /// # Arguments:
+    /// * `pods` : The list of desired pods. Should contain both already mapped as well as new pods.
+    /// * `nodes` : Currently available nodes in the system grouped by role and group.
+    /// * `mapped_pods` : Pods that are already mapped to nodes.
     fn schedule(
         &mut self,
-        all_pods: &[PodIdentity],
+        pods: &[PodIdentity],
         nodes: &RoleGroupEligibleNodes,
-        // current state of the cluster
-        current_mapping: &PodToNodeMapping,
+        mapped_pods: &PodToNodeMapping,
     ) -> SchedulerResult<SchedulerState>;
 }
 
@@ -177,7 +186,7 @@ pub trait PodPlacementStrategy {
 /// Implements a pod placement strategy where no two pods from the same role+group
 /// are scheduled on the same node at the same time. It fails if there are not enough nodes to place pods on.
 /// This useful for when pods are deployed on a bare metal K8S environment with Stackable agents as nodes.
-pub struct GroupAntiAffinityStrategy<'a> {
+struct GroupAntiAffinityStrategy<'a> {
     eligible_nodes: RefCell<RoleGroupEligibleNodes>,
     existing_mapping: &'a PodToNodeMapping,
 }
@@ -185,18 +194,25 @@ pub struct GroupAntiAffinityStrategy<'a> {
 /// Implements a pod placement strategy where pods are hashed to eligible nodes without regards to
 /// the existing mapping. This useful for when pods are deployed as containers on a standard K8S
 /// environment.
-pub struct HashingStrategy<'a> {
+struct HashingStrategy<'a> {
     eligible_nodes: &'a RoleGroupEligibleNodes,
     hasher: RefCell<DefaultHasher>,
 }
 
 pub enum ScheduleStrategy {
+    /// A scheduling strategy that will refuse to schedule two pods within one role+group on the same
+    /// node. If no enough pods are available, the pod will not be scheduled on any node.
+    /// This useful for when pods are deployed on a bare metal K8S environment with Stackable agents as nodes.
     GroupAntiAffinity,
+    /// A scheduling strategy that will simply hash the pod onto one of the existing pods without
+    /// any consideration for the distribution of all other existing pods.This useful for when pods
+    /// are deployed as containers on a standard K8S environment.
     Hashing,
 }
 
 /// A scheduler implementation that remembers where pods were once scheduled (based on
-/// their ids) and maps them to the same nodes in the future.
+/// their ids) and maps them to the same nodes in the future. The `history` provides preferred
+/// nodes to map onto based past mappings.
 /// The `strategy` might choose a different node if the history node cannot be used.
 pub struct StickyScheduler<'a, H: PodPlacementHistory> {
     pub history: &'a mut H,
@@ -457,27 +473,27 @@ where
     ///
     /// The nodes where unscheduled pods are mapped are selected by the configured strategy.
     /// # Arguments:
-    /// * `all_pods` : all pod ids required by the service.
-    /// * `eligible_nodes` : all eligible nodes available in the system
-    /// * `current_mapping` : existing pod to node mapping
+    /// * `pods` : all pod ids required by the service.
+    /// * `nodes` : all eligible nodes available in the system
+    /// * `mapped_pods` : existing pod to node mapping
     fn schedule(
         &mut self,
-        all_pods: &[PodIdentity],
-        eligible_nodes: &RoleGroupEligibleNodes,
-        current_mapping: &PodToNodeMapping,
+        pods: &[PodIdentity],
+        nodes: &RoleGroupEligibleNodes,
+        mapped_pods: &PodToNodeMapping,
     ) -> SchedulerResult<SchedulerState> {
-        let unscheduled_pods = current_mapping.missing(all_pods);
+        let unscheduled_pods = mapped_pods.missing(pods);
         let history_nodes = self.history.find_all(unscheduled_pods.as_slice());
 
-        let strategy = self.strategy(eligible_nodes, current_mapping);
+        let strategy = self.strategy(nodes, mapped_pods);
         let selected_nodes = strategy.place(unscheduled_pods.as_slice(), history_nodes.as_slice());
 
         self.update_history_and_result(
             unscheduled_pods,
             selected_nodes.to_vec(),
-            all_pods.len(),
-            eligible_nodes.count_unique_node_ids(),
-            current_mapping,
+            pods.len(),
+            nodes.count_unique_node_ids(),
+            mapped_pods,
         )
     }
 }
