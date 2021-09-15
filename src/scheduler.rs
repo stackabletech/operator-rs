@@ -2,10 +2,16 @@
 //! A Kubernetes pod scheduler is responsible for assigning pods to eligible nodes. To achieve this,
 //! the scheduler may use different strategies.
 //!
-//! This module provides traits and implementations for a scheduler and a role+group anti-affinity strategy.
-//! The latter means that no two pods belonging to the same role+group pair may be scheduled on the
-//! same node. Also the scheduler implements the idea of "preferred nodes" where pods should be scheduled.
-//! Weather a preferred node is selected for a pod depends not only of the node's eligibility but also
+//! This module provides traits and implementations for a scheduler with memory called [`StickyScheduler`]
+//! and two pod placement strategies : [`GroupAntiAffinityStrategy`] and [`HashingStrategy`].
+//!
+//! The former strategy means that no two pods belonging to the same role+group pair may be scheduled on the
+//! same node. This is useful for bare metal scenarios.
+//!
+//! The latter strategy hashes pods to nodes without any regards to the node load.
+//!
+//! The scheduler implements the idea of "preferred nodes" where pods should be scheduled.
+//! Whether a preferred node is selected for a pod depends not only of the node's eligibility but also
 //! on the strategy used.
 //!
 //! One implementation for a preferred nodes provider is the [`K8SUnboundedHistory`] that keeps
@@ -27,8 +33,12 @@ use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::cell::RefCell;
 use std::collections::btree_map::Iter;
+use std::collections::hash_map::DefaultHasher;
 use std::convert::TryFrom;
+use std::hash::{Hash, Hasher};
+use std::ops::DerefMut;
 use tracing::error;
 
 #[derive(Debug, thiserror::Error, PartialEq)]
@@ -154,14 +164,11 @@ pub trait PodPlacementStrategy {
     /// node in `preferred_nodes` is `Some()` that try to choose this node.
     /// An implementation might still choose a different node if the preferred node contradicts
     /// the implementation strategy.
-    /// *Note* that is functions consumes the strategy so it cannot be reused after a call. This is
-    /// because strategies might have mutated their internal state so that repeated calls cannot
-    /// work correctly.
     /// # Arguments:
     /// * `pods` : A set of pods to assign to nodes.
     /// * `preferred_nodes` : Optional nodes to prioritize during placement (if not None)
     fn place(
-        self,
+        &self,
         pods: &[&PodIdentity],
         preferred_nodes: &[Option<&NodeIdentity>],
     ) -> Vec<Option<NodeIdentity>>;
@@ -169,14 +176,23 @@ pub trait PodPlacementStrategy {
 
 /// Implements a pod placement strategy where no two pods from the same role+group
 /// are scheduled on the same node at the same time. It fails if there are not enough nodes to place pods on.
+/// This useful for when pods are deployed on a bare metal K8S environment with Stackable agents as nodes.
 pub struct GroupAntiAffinityStrategy<'a> {
-    eligible_nodes: RoleGroupEligibleNodes,
+    eligible_nodes: RefCell<RoleGroupEligibleNodes>,
     existing_mapping: &'a PodToNodeMapping,
+}
+
+/// Implements a pod placement strategy where pods are hashed to eligible nodes without regards to
+/// the existing mapping. This useful for when pods are deployed as containers on a standard K8S
+/// environment.
+pub struct HashingStrategy<'a> {
+    eligible_nodes: &'a RoleGroupEligibleNodes,
+    hasher: RefCell<DefaultHasher>,
 }
 
 pub enum ScheduleStrategy {
     GroupAntiAffinity,
-    Random, // not implemented
+    Hashing,
 }
 
 /// A scheduler implementation that remembers where pods were once scheduled (based on
@@ -458,7 +474,7 @@ where
 
         self.update_history_and_result(
             unscheduled_pods,
-            selected_nodes,
+            selected_nodes.to_vec(),
             all_pods.len(),
             eligible_nodes.count_unique_node_ids(),
             current_mapping,
@@ -472,14 +488,15 @@ where
 {
     fn strategy<'b>(
         &self,
-        eligible_nodes: &RoleGroupEligibleNodes,
+        eligible_nodes: &'b RoleGroupEligibleNodes,
         current_mapping: &'b PodToNodeMapping,
-    ) -> impl PodPlacementStrategy + 'b {
+    ) -> Box<dyn PodPlacementStrategy + 'b> {
         match self.strategy {
-            ScheduleStrategy::GroupAntiAffinity => {
-                GroupAntiAffinityStrategy::new(eligible_nodes.clone(), current_mapping)
-            }
-            ScheduleStrategy::Random => unimplemented!(),
+            ScheduleStrategy::Hashing => Box::new(HashingStrategy::new(eligible_nodes)),
+            ScheduleStrategy::GroupAntiAffinity => Box::new(GroupAntiAffinityStrategy::new(
+                eligible_nodes.clone(),
+                current_mapping,
+            )),
         }
     }
 
@@ -550,30 +567,49 @@ impl RoleGroupEligibleNodes {
         RoleGroupEligibleNodes { node_set }
     }
 
+    /// Returns a node that is available for scheduling the given `pod`.
     ///
-    /// Returns a node that is available for scheduling given `role` and `group`.
-    ///
-    /// If `opt_node_id` is not `None`, return it *if it exists in the eligible nodes*.
-    /// Otherwise, the first node in the corresponding group is returned.
-    ///
-    pub fn next_node(
+    /// If `preferred` is `Some` and it it exists in the eligible nodes, return it.
+    /// Otherwise, [`default`] is called with the given pod and a Vec of eligible nodes for the
+    /// pod's role and group.
+    /// # Arguments:
+    /// * [`pod`] : role name with eligible nodes.
+    /// * [`preferred`] : preferred eligible node to schedule on.
+    /// * [`default`] : a function to select a node for the given pod.
+    fn preferred_node_or<F>(
         &self,
-        preferred_node: Option<&NodeIdentity>,
-        role: &str,
-        group: &str,
-    ) -> Option<NodeIdentity> {
-        if let Some(nodes) = self.node_set.get(role).and_then(|role| role.get(group)) {
-            if !nodes.is_empty() {
-                if let Some(node_id) = preferred_node {
+        pod: &PodIdentity,
+        preferred: Option<&NodeIdentity>,
+        default: F,
+    ) -> Option<NodeIdentity>
+    where
+        F: Fn(&PodIdentity, &Vec<NodeIdentity>) -> Option<NodeIdentity>,
+    {
+        match self
+            .node_set
+            .get(&pod.role)
+            .and_then(|role| role.get(&pod.group))
+        {
+            Some(nodes) if !nodes.is_empty() => {
+                if let Some(node_id) = preferred {
                     let tmp = nodes.iter().find(|n| *n == node_id);
                     if tmp.is_some() {
                         return tmp.cloned();
                     }
                 }
-                return nodes.last().cloned();
+                default(pod, nodes)
             }
+            _ => None,
         }
-        None
+    }
+
+    /// Wrapper around [`RoleGroupEligibleNodes::preferred_node_or`] where the [`default`] is `Vec::last`
+    fn preferred_node_or_last(
+        &self,
+        pod: &PodIdentity,
+        preferred: Option<&NodeIdentity>,
+    ) -> Option<NodeIdentity> {
+        self.preferred_node_or(pod, preferred, |_pod, nodes| nodes.last().cloned())
     }
 
     pub fn remove_eligible_node(&mut self, to_remove: &NodeIdentity, role: &str, group: &str) {
@@ -605,23 +641,21 @@ impl RoleGroupEligibleNodes {
 impl<'a> GroupAntiAffinityStrategy<'a> {
     pub fn new(eligible_nodes: RoleGroupEligibleNodes, pod_node_map: &'a PodToNodeMapping) -> Self {
         GroupAntiAffinityStrategy {
-            eligible_nodes,
+            eligible_nodes: RefCell::new(eligible_nodes),
             existing_mapping: pod_node_map,
         }
     }
 
     pub fn select_node_for_pod(
-        &mut self,
+        &self,
         pod_id: &PodIdentity,
         preferred_node: Option<&NodeIdentity>,
     ) -> Option<NodeIdentity> {
+        let mut borrowed_nodes = self.eligible_nodes.borrow_mut();
+
         // Find a node to schedule on (it might be the node from history)
-        while let Some(next_node) = self.eligible_nodes.next_node(
-            preferred_node,
-            pod_id.role.as_str(),
-            pod_id.group.as_str(),
-        ) {
-            self.eligible_nodes.remove_eligible_node(
+        while let Some(next_node) = borrowed_nodes.preferred_node_or_last(pod_id, preferred_node) {
+            borrowed_nodes.remove_eligible_node(
                 &next_node,
                 pod_id.role.as_str(),
                 pod_id.group.as_str(),
@@ -636,8 +670,53 @@ impl<'a> GroupAntiAffinityStrategy<'a> {
 }
 
 impl PodPlacementStrategy for GroupAntiAffinityStrategy<'_> {
+    /// Returns a list of nodes to place to provided pods.
+    /// *Note* Do not call this more than once! This modifies the internal state of the value that
+    /// might not reflect the reality between calls.
     fn place(
-        mut self,
+        &self,
+        pods: &[&PodIdentity],
+        preferred_nodes: &[Option<&NodeIdentity>],
+    ) -> Vec<Option<NodeIdentity>> {
+        assert_eq!(pods.len(), preferred_nodes.len());
+        pods.iter()
+            .zip(preferred_nodes.iter())
+            .map(|(pod, preferred_node)| self.select_node_for_pod(*pod, *preferred_node))
+            .collect()
+    }
+}
+
+impl PodIdentity {
+    pub fn compute_hash(&self, hasher: &mut DefaultHasher) -> u64 {
+        self.hash(hasher);
+        hasher.finish()
+    }
+}
+impl<'a> HashingStrategy<'a> {
+    pub fn new(eligible_nodes: &'a RoleGroupEligibleNodes) -> Self {
+        Self {
+            eligible_nodes,
+            hasher: RefCell::new(DefaultHasher::new()),
+        }
+    }
+
+    fn select_node_for_pod(
+        &self,
+        pod: &PodIdentity,
+        preferred_node: Option<&NodeIdentity>,
+    ) -> Option<NodeIdentity> {
+        self.eligible_nodes
+            .preferred_node_or(pod, preferred_node, |pod, nodes| {
+                let index =
+                    pod.compute_hash(self.hasher.borrow_mut().deref_mut()) as usize % nodes.len();
+                nodes.get(index).cloned()
+            })
+    }
+}
+
+impl PodPlacementStrategy for HashingStrategy<'_> {
+    fn place(
+        &self,
         pods: &[&PodIdentity],
         preferred_nodes: &[Option<&NodeIdentity>],
     ) -> Vec<Option<NodeIdentity>> {
@@ -766,11 +845,51 @@ mod tests {
     }
 
     #[rstest]
+    #[case::nothing_to_place(1, 1, 1, &[], &[])]
+    #[case::not_enough_nodes(1, 0, 0, &[None], &[None])]
+    #[case::place_one_pod(1, 0, 1, &[None], &[Some(NodeIdentity { name: "NODE_0".to_string() })])]
+    #[case::place_one_pod_on_preferred(1, 0, 5, &[Some(NodeIdentity { name: "NODE_2".to_string() })], &[Some(NodeIdentity { name: "NODE_2".to_string() })])]
+    #[case::place_three_pods(3, 0, 5, &[None, None, None],
+        &[Some(NodeIdentity { name: "NODE_0".to_string() }),
+          Some(NodeIdentity { name: "NODE_1".to_string() }),
+          Some(NodeIdentity { name: "NODE_0".to_string() })])]
+    #[case::place_three_pods_one_on_preferred(3, 0, 5, &[Some(NodeIdentity { name: "NODE_2".to_string() }), Some(NodeIdentity { name: "NODE_3".to_string() }), None],
+        &[Some(NodeIdentity { name: "NODE_2".to_string() }),
+          Some(NodeIdentity { name: "NODE_3".to_string() }),
+          Some(NodeIdentity { name: "NODE_0".to_string() })])]
+    fn test_scheduler_hashing_strategy(
+        #[case] wanted_pod_count: usize,
+        #[case] scheduled_pods_count: usize,
+        #[case] available_node_count: usize,
+        #[case] preferred_nodes: &[Option<NodeIdentity>],
+        #[case] expected: &[Option<NodeIdentity>],
+    ) {
+        let wanted_pods = generate_ids(wanted_pod_count);
+        let eligible_nodes = generate_eligible_nodes(available_node_count);
+
+        let scheduled_pods: Vec<_> = wanted_pods
+            .iter()
+            .take(scheduled_pods_count)
+            .cloned()
+            .collect();
+        let current_mapping = generate_current_mapping(&scheduled_pods, eligible_nodes.clone());
+
+        let vec_preferred_nodes: Vec<Option<&NodeIdentity>> =
+            preferred_nodes.iter().map(|o| o.as_ref()).collect();
+        let strategy = HashingStrategy::new(&eligible_nodes);
+        let got = strategy.place(
+            current_mapping.missing(wanted_pods.as_slice()).as_slice(),
+            vec_preferred_nodes.as_slice(),
+        );
+        assert_eq!(got, expected.to_vec());
+    }
+
+    #[rstest]
     #[case(1, None, "", "", None)]
     #[case(0, Some(NodeIdentity{name: "NODE_2".to_string()}), "ROLE_0", "GROUP_0", None)]
     #[case(3, Some(NodeIdentity{name: "NODE_2".to_string()}), "ROLE_1", "GROUP_1", Some(NodeIdentity{name: "NODE_1".to_string()}))] // node not found, use first!
     #[case(4, Some(NodeIdentity{name: "NODE_2".to_string()}), "ROLE_0", "GROUP_0", Some(NodeIdentity{name: "NODE_2".to_string()}))] // node found, use it!
-    fn test_scheduler_group_next_node(
+    fn test_scheduler_preferred_node_or_last(
         #[case] eligible_node_count: usize,
         #[case] opt_node_id: Option<NodeIdentity>,
         #[case] role: &str,
@@ -778,8 +897,12 @@ mod tests {
         #[case] expected: Option<NodeIdentity>,
     ) {
         let eligible_nodes = generate_eligible_nodes(eligible_node_count);
-
-        let got = eligible_nodes.next_node(opt_node_id.as_ref(), role, group);
+        let pod = PodIdentity {
+            role: role.to_string(),
+            group: group.to_string(),
+            ..PodIdentity::default()
+        };
+        let got = eligible_nodes.preferred_node_or_last(&pod, opt_node_id.as_ref());
 
         assert_eq!(got, expected);
     }
