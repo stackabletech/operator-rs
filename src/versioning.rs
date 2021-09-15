@@ -3,21 +3,18 @@
 //! The [`crate::status::Conditions`] and [`crate::status::Versioned`] must be implemented
 //! for the custom resource status to ensure generic access.
 //!
-//! The status field names are fixed (for patching updates) and should be defined in the operators
-//! as follows:
+//! The status field names ("conditions" and "version") are fixed (for patching updates) and should
+//! be defined in the operators as follows:
 //! ```
 //! use k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
-//! use schemars::JsonSchema;
-//! use serde::{Deserialize, Serialize};
 //! use stackable_operator::versioning::ProductVersion;
-//! #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize)]
-//! #[serde(rename_all = "camelCase")]
+//!
+//! pub enum SomeVersion { SomeVersion }
+//!
 //! pub struct SomeClusterStatus {
-//! #[serde(default, skip_serializing_if = "Vec::is_empty")]
-//! #[schemars(schema_with = "stackable_operator::conditions::schema")]
-//! pub conditions: Vec<Condition>,
-//! #[serde(skip_serializing_if = "Option::is_none")]
-//! pub version: Option<ProductVersion<ZookeeperVersion>>,
+//!     pub conditions: Vec<Condition>,
+//!     pub version: Option<ProductVersion<SomeVersion>>,
+//! }
 //! ```
 //!
 //! Additionally, the product version must implement [`crate::versioning:Versioning`] to
@@ -29,7 +26,7 @@
 use crate::client::Client;
 use crate::conditions::{build_condition, ConditionStatus};
 use crate::error::OperatorResult;
-use crate::status::{Conditions, Versioned};
+use crate::status::{Conditions, Status, Versioned};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
 use k8s_openapi::serde::de::DeserializeOwned;
 use kube::Resource;
@@ -77,76 +74,71 @@ pub struct ProductVersion<T> {
 /// of the `ProductVersion`. Will update the `ProductVersion` and `Conditions` of the status to
 /// signal the upgrading / downgrading progress.
 ///
+/// Returns the updated custom resource for further usage.
+///
 /// # Arguments
 ///
 /// * `client` - The Kubernetes client.
 /// * `resource` - The cluster custom resource.
-/// * `cluster_status` - The custom resource status.
 /// * `spec_version` - The version currently specified in the custom resource.
 ///
 pub async fn init_versioning<T, S, V>(
     client: &Client,
     resource: &T,
-    cluster_status: Option<S>,
     spec_version: V,
-) -> OperatorResult<()>
+) -> OperatorResult<T>
 where
-    T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
+    T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Status<S>,
     S: Conditions + Debug + Default + Serialize + Versioned<V>,
     V: Clone + Debug + Display + PartialEq + Serialize + Versioning,
 {
-    // init the status if not available yet
-    let status = match cluster_status {
-        Some(status) => status,
-        None => {
-            let default_status = S::default();
-            client.merge_patch_status(resource, &default_status).await?;
-            default_status
+    if let Some(status) = resource.status() {
+        match build_version_and_condition(
+            resource,
+            &status.version().as_ref().and_then(|v| v.current.clone()),
+            &status.version().as_ref().and_then(|v| v.target.clone()),
+            spec_version,
+            status.conditions(),
+        ) {
+            (Some(version), Some(condition)) => {
+                client
+                    .merge_patch_status(resource, &json!({ "version": version }))
+                    .await?;
+                return client.set_condition(resource, condition).await;
+            }
+            (Some(version), None) => {
+                return client
+                    .merge_patch_status(resource, &json!({ "version": version }))
+                    .await;
+            }
+            (None, Some(condition)) => {
+                return client.set_condition(resource, condition).await;
+            }
+            _ => {}
         }
-    };
-
-    let (version, condition) = build_version_and_condition(
-        resource,
-        &status.version().as_ref().and_then(|v| v.current.clone()),
-        &status.version().as_ref().and_then(|v| v.target.clone()),
-        spec_version,
-        status.conditions(),
-    );
-
-    if let Some(version) = version {
-        client
-            .merge_patch_status(resource, &json!({ "version": version }))
-            .await?;
     }
 
-    if let Some(condition) = condition {
-        client.set_condition(resource, condition).await?;
-    }
-
-    Ok(())
+    Ok(resource.clone())
 }
 
 /// Finalizes the `init_versioning`. This is required after e.g. all pods and config maps were
 /// created. It will remove the `target_version` from the status `ProductVersion` and set the
 /// condition status to false.
 ///
+/// Returns the updated custom resource for further usage.
+///
 /// # Arguments
 ///
 /// * `client` - The Kubernetes client.
 /// * `resource` - The cluster custom resource.
-/// * `cluster_status` - The custom resource status.
 ///
-pub async fn finalize_versioning<T, S, V>(
-    client: &Client,
-    resource: &T,
-    cluster_status: Option<S>,
-) -> OperatorResult<()>
+pub async fn finalize_versioning<T, S, V>(client: &Client, resource: &T) -> OperatorResult<T>
 where
-    T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
+    T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Status<S>,
     S: Conditions + Debug + Default + Serialize + Versioned<V>,
     V: Clone + Debug + Display + PartialEq + Serialize + Versioning,
 {
-    if let Some(status) = &cluster_status {
+    if let Some(status) = resource.status() {
         if let Some(version) = status.version() {
             if let Some(target_version) = &version.target {
                 let condition = build_versioning_condition(
@@ -167,14 +159,14 @@ where
                     target: None,
                 };
 
-                client
+                return client
                     .merge_patch_status(resource, &json!({ "version": v }))
-                    .await?;
+                    .await;
             }
         }
     }
 
-    Ok(())
+    Ok(resource.clone())
 }
 
 /// Checks that the custom resource status (or creates the default status) and processes the contents
