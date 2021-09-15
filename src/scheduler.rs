@@ -56,11 +56,11 @@ pub enum Error {
     PodIdentityNotParseable { pod_id: String },
 }
 
-/// Returns a Vec of pod identities according to the replica per role+group pair from [`eligible_nodes`].
+/// Returns a Vec of pod identities according to the replica per role+group pair from `eligible_nodes`.
 /// # Arguments
-/// * [`app_name`] : Application name
-/// * [`instance`] : Service instance
-/// * [`eligible_nodes`] : Eligible nodes grouped by role and groups.
+/// * `app_name` : Application name
+/// * `instance` : Service instance
+/// * `eligible_nodes` : Eligible nodes grouped by role and groups.
 pub fn generate_ids(
     app_name: &str,
     instance: &str,
@@ -457,9 +457,9 @@ where
     ///
     /// The nodes where unscheduled pods are mapped are selected by the configured strategy.
     /// # Arguments:
-    /// * [`all_pods`] : all pod ids required by the service.
-    /// * [`eligible_nodes`] : all eligible nodes available in the system
-    /// * [`current_mapping`] : existing pod to node mapping
+    /// * `all_pods` : all pod ids required by the service.
+    /// * `eligible_nodes` : all eligible nodes available in the system
+    /// * `current_mapping` : existing pod to node mapping
     fn schedule(
         &mut self,
         all_pods: &[PodIdentity],
