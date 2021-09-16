@@ -540,11 +540,11 @@ where
             match opt_node {
                 Some(node) => {
                     // Found a node to schedule on so update the result
-                    result_ok.insert((**pod).clone(), node.clone());
+                    result_ok.insert((*pod).clone(), node.clone());
                     // and update the history if needed.
-                    self.history.update(&(*pod).clone(), node);
+                    self.history.update(pod, node);
                 }
-                None => result_err.push((**pod).clone()), // No node available for this pod
+                None => result_err.push((*pod).clone()), // No node available for this pod
             }
         }
 
