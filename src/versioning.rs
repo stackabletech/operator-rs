@@ -48,6 +48,7 @@ pub trait Versioning {
 }
 
 /// Possible return values of the `versioning_state` trait method.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum VersioningState {
     /// Indicates that the planned upgrade from a lower to higher version is valid and supported.
     ValidUpgrade,
