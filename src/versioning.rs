@@ -1,4 +1,5 @@
-//! This module handles up and downgrades for the products handled by the operators.
+//! This module updates the `UpOrDowngrading` status condition by comparing the current and the
+//! target cluster versions.
 //!
 //! The [`crate::status::Conditions`] and [`crate::status::Versioned`] must be implemented
 //! for the custom resource status to ensure generic access.
@@ -146,7 +147,7 @@ where
                     resource,
                     status.conditions(),
                     &format!(
-                        "No upgrade required [{}] is still the current_version",
+                        "No upgrade or downgrade required [{}] is still the current_version",
                         target_version
                     ),
                     VersioningConditionReason::Empty.as_ref(),
