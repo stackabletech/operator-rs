@@ -41,6 +41,8 @@ use std::hash::{Hash, Hasher};
 use std::ops::DerefMut;
 use tracing::error;
 
+const DEFAULT_NODE_NAME: &str = "<no-nodename-set>";
+
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum Error {
     #[error(
@@ -58,9 +60,9 @@ pub enum Error {
 
 /// Returns a Vec of pod identities according to the replica per role+group pair from `eligible_nodes`.
 /// # Arguments
-/// * `app_name` : Application name
-/// * `instance` : Service instance
-/// * `eligible_nodes` : Eligible nodes grouped by role and groups.
+/// * `app_name` - Application name
+/// * `instance` - Service instance
+/// * `eligible_nodes` - Eligible nodes grouped by role and groups.
 pub fn generate_ids(
     app_name: &str,
     instance: &str,
@@ -141,7 +143,7 @@ pub struct RoleGroupEligibleNodes {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct SchedulerState {
     current_mapping: PodToNodeMapping,
-    new_mapping: PodToNodeMapping,
+    remaining_mapping: PodToNodeMapping,
 }
 
 pub type SchedulerResult<T> = std::result::Result<T, Error>;
@@ -149,15 +151,15 @@ pub type SchedulerResult<T> = std::result::Result<T, Error>;
 /// Schedule pods to nodes. Implementations might use different strategies to select nodes based on
 /// the current mapping of pods to nodes or ignore this completely.
 pub trait Scheduler {
-    /// Returns the state of the schedule which describes both the existing mapping as well as
+    /// Returns the state of the scheduler which describes both the existing mapping as well as
     /// the newly mapped pods.
     ///
     /// Implementations may return an error if not all pods can be mapped to nodes.
     ///
     /// # Arguments:
-    /// * `pods` : The list of desired pods. Should contain both already mapped as well as new pods.
-    /// * `nodes` : Currently available nodes in the system grouped by role and group.
-    /// * `mapped_pods` : Pods that are already mapped to nodes.
+    /// * `pods` - The list of desired pods. Should contain both already mapped as well as new pods.
+    /// * `nodes` - Currently available nodes in the system grouped by role and group.
+    /// * `mapped_pods` - Pods that are already mapped to nodes.
     fn schedule(
         &mut self,
         pods: &[PodIdentity],
@@ -174,8 +176,8 @@ pub trait PodPlacementStrategy {
     /// An implementation might still choose a different node if the preferred node contradicts
     /// the implementation strategy.
     /// # Arguments:
-    /// * `pods` : A set of pods to assign to nodes.
-    /// * `preferred_nodes` : Optional nodes to prioritize during placement (if not None)
+    /// * `pods` - A set of pods to assign to nodes.
+    /// * `preferred_nodes` - Optional nodes to prioritize during placement (if not None)
     fn place(
         &self,
         pods: &[&PodIdentity],
@@ -204,7 +206,7 @@ pub enum ScheduleStrategy {
     /// node. If no enough pods are available, the pod will not be scheduled on any node.
     /// This useful for when pods are deployed on a bare metal K8S environment with Stackable agents as nodes.
     GroupAntiAffinity,
-    /// A scheduling strategy that will simply hash the pod onto one of the existing pods without
+    /// A scheduling strategy that will simply hash the pod onto one of the existing nodes without
     /// any consideration for the distribution of all other existing pods.This useful for when pods
     /// are deployed as containers on a standard K8S environment.
     Hashing,
@@ -259,16 +261,16 @@ impl SchedulerState {
     pub fn new(current_mapping: PodToNodeMapping, new_mapping: PodToNodeMapping) -> Self {
         SchedulerState {
             current_mapping,
-            new_mapping,
+            remaining_mapping: new_mapping,
         }
     }
 
     pub fn mapping(&self) -> PodToNodeMapping {
-        self.current_mapping.merge(&self.new_mapping)
+        self.current_mapping.merge(&self.remaining_mapping)
     }
 
     pub fn new_mapping(&self) -> PodToNodeMapping {
-        self.new_mapping.clone()
+        self.remaining_mapping.clone()
     }
 }
 
@@ -317,14 +319,10 @@ impl PodToNodeMapping {
                     id: id.cloned().unwrap_or_default(),
                 },
                 NodeIdentity {
-                    name: pod
-                        .spec
-                        .as_ref()
-                        .unwrap()
-                        .node_name
-                        .as_ref()
-                        .unwrap()
-                        .to_string(),
+                    name: pod.spec.as_ref().map(|s| s.node_name.as_ref()).map_or_else(
+                        || DEFAULT_NODE_NAME.to_string(),
+                        |name| name.unwrap().clone(),
+                    ),
                 },
             );
         }
@@ -442,7 +440,7 @@ impl From<Node> for NodeIdentity {
             name: node
                 .metadata
                 .name
-                .unwrap_or_else(|| "<no-nodename-set>".to_string()),
+                .unwrap_or_else(|| DEFAULT_NODE_NAME.to_string()),
         }
     }
 }
@@ -473,9 +471,9 @@ where
     ///
     /// The nodes where unscheduled pods are mapped are selected by the configured strategy.
     /// # Arguments:
-    /// * `pods` : all pod ids required by the service.
-    /// * `nodes` : all eligible nodes available in the system
-    /// * `mapped_pods` : existing pod to node mapping
+    /// * `pods` - all pod ids required by the service.
+    /// * `nodes` - all eligible nodes available in the system
+    /// * `mapped_pods` - existing pod to node mapping
     fn schedule(
         &mut self,
         pods: &[PodIdentity],
@@ -519,11 +517,11 @@ where
     /// Returns the new pod mapping or an error if not all desired pods could be mapped.
     /// As a side effect, it updates the scheduler history.
     /// # Arguments
-    /// * [`pods`] : pods that are not scheduled yet
-    /// * [`nodes`] : the nodes where the yet unscheduled pods whould be scheduled on
-    /// * [`number_of_pods`] : count of all pods required by the service
-    /// * [`number_of_nodes`] : count of all nodes available to the system
-    /// * [`current_mapping`] : existing pod to node mapping
+    /// * [`pods`] - pods that are not scheduled yet
+    /// * [`nodes`] - the nodes where the yet unscheduled pods whould be scheduled on
+    /// * [`number_of_pods`] - count of all pods required by the service
+    /// * [`number_of_nodes`] - count of all nodes available to the system
+    /// * [`current_mapping`] - existing pod to node mapping
     fn update_history_and_result(
         &mut self,
         pods: Vec<&PodIdentity>,
@@ -589,9 +587,9 @@ impl RoleGroupEligibleNodes {
     /// Otherwise, [`default`] is called with the given pod and a Vec of eligible nodes for the
     /// pod's role and group.
     /// # Arguments:
-    /// * [`pod`] : role name with eligible nodes.
-    /// * [`preferred`] : preferred eligible node to schedule on.
-    /// * [`default`] : a function to select a node for the given pod.
+    /// * [`pod`] - role name with eligible nodes.
+    /// * [`preferred`] - preferred eligible node to schedule on.
+    /// * [`default`] - a function to select a node for the given pod.
     fn preferred_node_or<F>(
         &self,
         pod: &PodIdentity,
@@ -962,7 +960,7 @@ mod tests {
     #[case::one_pod_is_scheduled(1, 1,
        Ok(SchedulerState {
            current_mapping: PodToNodeMapping::default(),
-           new_mapping:
+           remaining_mapping:
                PodToNodeMapping::new(vec![
                        (PodIdentity { app: "app".to_string(), instance: "simple".to_string(), role: "ROLE_0".to_string(), group: "GROUP_0".to_string(), id: "POD_0".to_string() }, NodeIdentity { name: "NODE_0".to_string() }),
                    ])},
