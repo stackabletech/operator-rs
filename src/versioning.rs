@@ -34,6 +34,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fmt::{Debug, Display};
+use strum_macros::AsRefStr;
 use tracing::{debug, error, info, warn};
 
 /// Versioning condition type. Can only contain alphanumeric characters and '-'.
@@ -100,10 +101,10 @@ where
             status.conditions(),
         ) {
             (Some(version), Some(condition)) => {
-                client
+                let updated_resource = client
                     .merge_patch_status(resource, &json!({ "version": version }))
                     .await?;
-                return client.set_condition(resource, condition).await;
+                return client.set_condition(&updated_resource, condition).await;
             }
             (Some(version), None) => {
                 return client
@@ -147,11 +148,11 @@ where
                         "No upgrade required [{}] is still the current_version",
                         target_version
                     ),
-                    "",
+                    VersioningConditionReason::Empty.as_ref(),
                     ConditionStatus::False,
                 );
 
-                client.set_condition(resource, condition).await?;
+                let updated_resource = client.set_condition(resource, condition).await?;
 
                 let v = ProductVersion {
                     current: Some(target_version.clone()),
@@ -159,7 +160,7 @@ where
                 };
 
                 return client
-                    .merge_patch_status(resource, &json!({ "version": v }))
+                    .merge_patch_status(&updated_resource, &json!({ "version": v }))
                     .await;
             }
         }
@@ -204,7 +205,7 @@ where
                 resource,
                 conditions,
                 &message,
-                "InitialInstallation",
+                VersioningConditionReason::InitialInstallation.as_ref(),
                 ConditionStatus::True,
             );
 
@@ -229,7 +230,7 @@ where
                 resource,
                 conditions,
                 &message,
-                "Installing",
+                VersioningConditionReason::Installing.as_ref(),
                 ConditionStatus::True,
             );
 
@@ -254,7 +255,7 @@ where
                         resource,
                         conditions,
                         &message,
-                        "Upgrading",
+                        VersioningConditionReason::Upgrading.as_ref(),
                         ConditionStatus::True,
                     );
 
@@ -274,7 +275,7 @@ where
                         resource,
                         conditions,
                         &message,
-                        "Downgrading",
+                        VersioningConditionReason::Downgrading.as_ref(),
                         ConditionStatus::True,
                     );
 
@@ -346,12 +347,194 @@ where
 /// * `current_version` - The optional current version of the cluster.
 /// * `target_version` - The optional target version for upgrading / downgrading the cluster.
 ///
-fn build_version<V>(current_version: Option<V>, target_version: Option<V>) -> ProductVersion<V>
-where
-    V: Clone,
-{
+fn build_version<V>(current_version: Option<V>, target_version: Option<V>) -> ProductVersion<V> {
     ProductVersion {
         current: current_version,
         target: target_version,
+    }
+}
+
+#[derive(AsRefStr, Debug)]
+enum VersioningConditionReason {
+    InitialInstallation,
+    Installing,
+    Upgrading,
+    Downgrading,
+    #[strum(serialize = "")]
+    Empty,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use kube::CustomResource;
+    use rstest::*;
+    use schemars::JsonSchema;
+    use serde::{Deserialize, Serialize};
+
+    const TEST_CLUSTER_YAML: &str = "
+        apiVersion: test.stackable.tech/v1alpha1
+        kind: TestCluster
+        metadata:
+          name: simple
+        spec:
+          test: test
+    ";
+
+    #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+    #[kube(
+        group = "test.stackable.tech",
+        version = "v1alpha1",
+        kind = "TestCluster",
+        plural = "testclusters",
+        namespaced
+    )]
+    #[kube(status = "TestClusterStatus")]
+    pub struct TestClusterSpec {
+        pub test: String,
+    }
+
+    impl Status<TestClusterStatus> for TestCluster {
+        fn status(&self) -> &Option<TestClusterStatus> {
+            &self.status
+        }
+        fn status_mut(&mut self) -> &mut Option<TestClusterStatus> {
+            &mut self.status
+        }
+    }
+
+    #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize)]
+    pub struct TestClusterStatus {
+        #[schemars(schema_with = "crate::conditions::schema")]
+        pub conditions: Vec<Condition>,
+        pub version: Option<ProductVersion<TestVersion>>,
+    }
+
+    impl Versioned<TestVersion> for TestClusterStatus {
+        fn version(&self) -> &Option<ProductVersion<TestVersion>> {
+            &self.version
+        }
+        fn version_mut(&mut self) -> &mut Option<ProductVersion<TestVersion>> {
+            &mut self.version
+        }
+    }
+
+    impl Conditions for TestClusterStatus {
+        fn conditions(&self) -> &[Condition] {
+            self.conditions.as_slice()
+        }
+        fn conditions_mut(&mut self) -> &mut Vec<Condition> {
+            &mut self.conditions
+        }
+    }
+
+    #[derive(
+        Clone,
+        Debug,
+        Deserialize,
+        Eq,
+        JsonSchema,
+        PartialEq,
+        Serialize,
+        strum_macros::Display,
+        strum_macros::EnumString,
+    )]
+    pub enum TestVersion {
+        #[strum(serialize = "1.2.3")]
+        V1_2_3,
+        #[strum(serialize = "3.2.1")]
+        V3_2_1,
+        #[strum(serialize = "NotSupported")]
+        NotSupported,
+        #[strum(serialize = "Invalid")]
+        Invalid,
+    }
+
+    impl Versioning for TestVersion {
+        fn versioning_state(&self, other: &Self) -> VersioningState {
+            if *self == TestVersion::V1_2_3 && *other == TestVersion::V3_2_1 {
+                VersioningState::ValidUpgrade
+            } else if *self == TestVersion::V3_2_1 && *other == TestVersion::V1_2_3 {
+                VersioningState::ValidDowngrade
+            } else if *self == *other
+                && (*self != TestVersion::NotSupported || *self != TestVersion::Invalid)
+            {
+                VersioningState::NoOp
+            } else if *self == TestVersion::NotSupported || *other == TestVersion::NotSupported {
+                VersioningState::NotSupported
+            } else {
+                VersioningState::Invalid("Invalid".to_string())
+            }
+        }
+    }
+
+    #[rstest]
+    #[case::initial_installation(
+        Some(ProductVersion{ current: None, target: None }),
+        TestVersion::V1_2_3,
+        Some(ProductVersion { current: None, target: Some(TestVersion::V1_2_3) }),
+        (Some(VersioningConditionReason::InitialInstallation.as_ref().to_string()), Some(ConditionStatus::True) )
+    )]
+    #[case::installation(
+        Some(ProductVersion{ current: None, target: Some(TestVersion::V1_2_3) }),
+        TestVersion::V1_2_3,
+        None,
+        (Some(VersioningConditionReason::Installing.as_ref().to_string()), Some(ConditionStatus::True) )
+    )]
+    #[case::no_op(
+        Some(ProductVersion{ current: Some(TestVersion::V1_2_3), target: None }),
+        TestVersion::V1_2_3,
+        None,
+        (None, None)
+    )]
+    #[case::upgrading(
+        Some(ProductVersion{ current: Some(TestVersion::V1_2_3), target: None }),
+        TestVersion::V3_2_1,
+        Some(ProductVersion { current: None, target: Some(TestVersion::V3_2_1) }),
+        (Some(VersioningConditionReason::Upgrading.as_ref().to_string()), Some(ConditionStatus::True) )
+    )]
+    #[case::downgrading(
+        Some(ProductVersion{ current: Some(TestVersion::V3_2_1), target: None }),
+        TestVersion::V1_2_3,
+        Some(ProductVersion { current: None, target: Some(TestVersion::V1_2_3) }),
+        (Some(VersioningConditionReason::Downgrading.as_ref().to_string()), Some(ConditionStatus::True) )
+    )]
+    #[case::not_supported(
+        Some(ProductVersion{ current: Some(TestVersion::V3_2_1), target: None }),
+        TestVersion::NotSupported,
+        None,
+        (None, None)
+    )]
+    #[case::invalid(
+        Some(ProductVersion{ current: Some(TestVersion::V3_2_1), target: None }),
+        TestVersion::Invalid,
+        None,
+        (None, None)
+    )]
+    fn test_build_version_and_conditions(
+        #[case] product_version: Option<ProductVersion<TestVersion>>,
+        #[case] spec_version: TestVersion,
+        #[case] expected_version: Option<ProductVersion<TestVersion>>,
+        // (reason, status)
+        #[case] expected_conditions: (Option<String>, Option<ConditionStatus>),
+    ) {
+        let cluster: TestCluster =
+            serde_yaml::from_str(TEST_CLUSTER_YAML).expect("Invalid test cluster definition!");
+
+        let (version, condition) = build_version_and_condition(
+            &cluster,
+            &product_version,
+            spec_version,
+            vec![].as_slice(),
+        );
+
+        let (reason, status) = expected_conditions;
+
+        assert_eq!(version, expected_version);
+        assert_eq!(reason, condition.as_ref().map(|c| c.reason.clone()));
+        assert_eq!(
+            status.map(|s| s.to_string()),
+            condition.as_ref().map(|c| c.status.clone())
+        );
     }
 }
