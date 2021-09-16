@@ -585,7 +585,7 @@ impl RoleGroupEligibleNodes {
 
     /// Returns a node that is available for scheduling the given `pod`.
     ///
-    /// If `preferred` is `Some` and it it exists in the eligible nodes, return it.
+    /// If `preferred` is `Some` and if it exists in the eligible nodes, return it.
     /// Otherwise, [`default`] is called with the given pod and a Vec of eligible nodes for the
     /// pod's role and group.
     /// # Arguments:
