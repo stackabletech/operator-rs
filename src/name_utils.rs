@@ -1,6 +1,6 @@
 //! The "Stackable" way to implement our Kubernetes resource names.
 //!
-//! We follow the specification for RFC 1035 names (https://tools.ietf.org/html/rfc1035):
+//! We follow the specification for RFC 1035 names <https://tools.ietf.org/html/rfc1035>:
 //! This means the name must:
 //! * contain at most 63 characters
 //! * contain only lowercase alphanumeric characters or '-'

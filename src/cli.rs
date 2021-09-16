@@ -100,7 +100,7 @@ const PRODUCT_CONFIG_ARG: &str = "product-config";
 
 /// Generates a clap [`Arg`] that can be used to accept the location of a product configuration file.
 ///
-/// Meant to be handled by [`self:handle_productconfig_arg`].
+/// Meant to be handled by [`handle_productconfig_arg`].
 ///
 /// See the module level documentation for a complete example.
 pub fn generate_productconfig_arg<'a, 'b>() -> Arg<'a, 'b> {
