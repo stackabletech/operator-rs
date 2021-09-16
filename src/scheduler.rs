@@ -219,7 +219,13 @@ pub enum ScheduleStrategy {
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```no_compile
+///     use stackable_operator::scheduler;
+///     use stackable_operator::scheduler::{
+///         K8SUnboundedHistory, PodToNodeMapping, RoleGroupEligibleNodes, ScheduleStrategy,
+///         Scheduler,StickyScheduler,
+///     };
+///
 ///     // somewhere inside on operator's reconcile loop...
 ///
 ///     // create an empty history object
@@ -548,11 +554,11 @@ where
     /// Returns the new pod mapping or an error if not all desired pods could be mapped.
     /// As a side effect, it updates the scheduler history.
     /// # Arguments
-    /// * [`pods`] - pods that are not scheduled yet
-    /// * [`nodes`] - the nodes where the yet unscheduled pods whould be scheduled on
-    /// * [`number_of_pods`] - count of all pods required by the service
-    /// * [`number_of_nodes`] - count of all nodes available to the system
-    /// * [`current_mapping`] - existing pod to node mapping
+    /// * `pods` - pods that are not scheduled yet
+    /// * `nodes` - the nodes where the yet unscheduled pods would be scheduled on
+    /// * `number_of_pods` - count of all pods required by the service
+    /// * `number_of_nodes` - count of all nodes available to the system
+    /// * `current_mapping` - existing pod to node mapping
     fn update_history_and_result(
         &mut self,
         pods: Vec<&PodIdentity>,
@@ -648,7 +654,7 @@ impl RoleGroupEligibleNodes {
         }
     }
 
-    /// Wrapper around [`RoleGroupEligibleNodes::preferred_node_or`] where the [`default`] is `Vec::last`
+    /// Wrapper around [`RoleGroupEligibleNodes::preferred_node_or`] where the `default` is `Vec::last`
     fn preferred_node_or_last(
         &self,
         pod: &PodIdentity,
