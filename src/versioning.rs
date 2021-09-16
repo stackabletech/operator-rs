@@ -17,7 +17,7 @@
 //! }
 //! ```
 //!
-//! Additionally, the product version must implement [`crate::versioning:Versioning`] to
+//! Additionally, the product version must implement [`Versioning`] to
 //! indicate if upgrade or downgrades are valid, not supported or invalid.
 //!
 //! This module only provides the tracking of the `ProductVersion` and `Conditions`. Pods etc. are
