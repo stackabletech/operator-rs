@@ -26,5 +26,6 @@ pub mod scheduler;
 pub mod status;
 pub mod utils;
 pub mod validation;
+pub mod versioning;
 
 pub use crate::crd::CustomResourceExt;
