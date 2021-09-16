@@ -52,7 +52,7 @@ pub enum Error {
         unscheduled_pods: Vec<PodIdentity>,
     },
 
-    #[error("PodIdentity could not be parsed: {pod_id:?}. This should not be happening. Please open a ticket.")]
+    #[error("PodIdentity could not be parsed: {pod_id:?}. This should not happen. Please open a ticket.")]
     PodIdentityNotParseable { pod_id: String },
 }
 
