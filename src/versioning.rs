@@ -34,7 +34,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fmt::{Debug, Display};
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 /// Versioning condition type. Can only contain alphanumeric characters and '-'.
 const CONDITION_TYPE: &str = "UpOrDowngrading";
@@ -95,8 +95,7 @@ where
     if let Some(status) = resource.status() {
         match build_version_and_condition(
             resource,
-            &status.version().as_ref().and_then(|v| v.current.clone()),
-            &status.version().as_ref().and_then(|v| v.target.clone()),
+            status.version(),
             spec_version,
             status.conditions(),
         ) {
@@ -176,15 +175,13 @@ where
 /// # Arguments
 ///
 /// * `resource` - The cluster custom resource.
-/// * `current_version` - The current version set in the status `ProductVersion`.
-/// * `target_version` - The target version set in the status `ProductVersion`.
+/// * `product_version` - The `ProductVersion` set in the status field `version`.
 /// * `spec_version` - The version currently specified in the custom resource.
 /// * `conditions` - The conditions from the custom resource status.
 ///
 fn build_version_and_condition<T, V>(
     resource: &T,
-    current_version: &Option<V>,
-    target_version: &Option<V>,
+    product_version: &Option<ProductVersion<V>>,
     spec_version: V,
     conditions: &[Condition],
 ) -> (Option<ProductVersion<V>>, Option<Condition>)
@@ -192,7 +189,10 @@ where
     T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
     V: Clone + Debug + Display + PartialEq + Serialize + Versioning,
 {
-    return match (current_version, target_version) {
+    return match (
+        product_version.as_ref().and_then(|v| v.current.as_ref()),
+        product_version.as_ref().and_then(|v| v.target.as_ref()),
+    ) {
         (None, None) => {
             // No current_version and no target_version -> must be initial installation.
             // We set the Upgrading condition and the target_version to the version from spec.
@@ -218,10 +218,10 @@ where
             // was set in the meantime.
             let message = format!("Installing version [{}]", spec_version);
 
-            info!("{}", message);
+            debug!("{}", message);
 
             if &spec_version != target_version {
-                info!("A new target version ([{}]) was requested while we still do the installation to [{}],\
+                warn!("A new target version ([{}]) was requested while we still do the installation to [{}],\
                        finishing running upgrade first", spec_version, target_version)
             }
             // We do this here to update the observedGeneration if needed
@@ -288,20 +288,13 @@ where
                         current_version
                     );
 
-                    info!("{}", message);
+                    debug!("{}", message);
 
-                    let condition = build_versioning_condition(
-                        resource,
-                        conditions,
-                        &message,
-                        "",
-                        ConditionStatus::False,
-                    );
-                    (None, Some(condition))
+                    (None, None)
                 }
                 VersioningState::NotSupported => {
                     warn!("Up-/Downgrade from [{}] to [{}] not possible but requested in spec: Ignoring, will continue \
-                              reconcile as if the invalid version weren't set", current_version, spec_version);
+                           reconcile as if the invalid version weren't set", current_version, spec_version);
                     (None, None)
                 }
                 VersioningState::Invalid(err) => {
