@@ -242,6 +242,9 @@ pub enum ScheduleStrategy {
 ///         &PodToNodeMapping::from(&self.existing_pods, Some(ID_LABEL)),
 ///     )?;
 ///
+///     // possibly store the updated history
+///     history.save(&self.context.resource).await?
+///
 ///     // use the state.remaining_mapping() to create the remaining pods
 /// ```
 pub struct StickyScheduler<'a, H: PodPlacementHistory> {
