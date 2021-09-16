@@ -8,11 +8,15 @@
 //! be defined in the operators as follows:
 //! ```
 //! use k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
+//! use schemars::JsonSchema;
+//! use serde::{Deserialize, Serialize};
 //! use stackable_operator::versioning::ProductVersion;
 //!
+//! #[derive(Clone, Debug, Deserialize, JsonSchema, Serialize)]
 //! pub enum SomeVersion { SomeVersion }
-//!
+//! #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize)]
 //! pub struct SomeClusterStatus {
+//!     #[schemars(schema_with = "stackable_operator::conditions::schema")]
 //!     pub conditions: Vec<Condition>,
 //!     pub version: Option<ProductVersion<SomeVersion>>,
 //! }
@@ -71,6 +75,19 @@ pub enum VersioningState {
 pub struct ProductVersion<T> {
     current: Option<T>,
     target: Option<T>,
+}
+
+impl<T> ProductVersion<T> {
+    /// Builds a `ProductVersion` to be written into the custom resource status.
+    ///
+    /// # Arguments
+    ///
+    /// * `current_version` - The optional current version of the cluster.
+    /// * `target_version` - The optional target version for upgrading / downgrading the cluster.
+    ///
+    pub fn new(current: Option<T>, target: Option<T>) -> Self {
+        ProductVersion { current, target }
+    }
 }
 
 /// Checks the custom resource status (or creates the default status) and processes the contents
@@ -211,7 +228,7 @@ where
                 ConditionStatus::True,
             );
 
-            let version: ProductVersion<V> = build_version(None, Some(spec_version));
+            let version = ProductVersion::new(None, Some(spec_version));
 
             (Some(version), Some(condition))
         }
@@ -261,7 +278,7 @@ where
                         ConditionStatus::True,
                     );
 
-                    let version = build_version(None, Some(spec_version));
+                    let version = ProductVersion::new(None, Some(spec_version));
 
                     (Some(version), Some(condition))
                 }
@@ -281,7 +298,7 @@ where
                         ConditionStatus::True,
                     );
 
-                    let version = build_version(None, Some(spec_version));
+                    let version = ProductVersion::new(None, Some(spec_version));
 
                     (Some(version), Some(condition))
                 }
@@ -340,20 +357,6 @@ where
         status,
         CONDITION_TYPE.to_string(),
     )
-}
-
-/// Builds a `ProductVersion` to be written into the custom resource status.
-///
-/// # Arguments
-///
-/// * `current_version` - The optional current version of the cluster.
-/// * `target_version` - The optional target version for upgrading / downgrading the cluster.
-///
-fn build_version<V>(current_version: Option<V>, target_version: Option<V>) -> ProductVersion<V> {
-    ProductVersion {
-        current: current_version,
-        target: target_version,
-    }
 }
 
 #[derive(AsRefStr, Debug)]
