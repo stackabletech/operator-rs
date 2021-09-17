@@ -703,7 +703,7 @@ impl PodPlacementStrategy for GroupAntiAffinityStrategy<'_> {
 
 impl PodIdentity {
     pub fn new(app: &str, instance: &str, role: &str, group: &str, id: &str) -> Self {
-        Self::warn_semicolon(app, instance, role, group, id);
+        Self::warn_forbidden_char(app, instance, role, group, id);
         PodIdentity {
             app: app.to_string(),
             instance: instance.to_string(),
@@ -718,21 +718,36 @@ impl PodIdentity {
         hasher.finish()
     }
 
-    fn warn_semicolon(app: &str, instance: &str, role: &str, group: &str, id: &str) {
+    fn warn_forbidden_char(app: &str, instance: &str, role: &str, group: &str, id: &str) {
         if app.contains(SEMICOLON) {
-            warn!("Found semicolon in application name: {}", app);
+            warn!(
+                "Found forbidden character [{}] in application name: {}",
+                SEMICOLON, app
+            );
         }
         if instance.contains(SEMICOLON) {
-            warn!("Found semicolon in instance name: {}", instance);
+            warn!(
+                "Found forbidden character [{}] in instance name: {}",
+                SEMICOLON, instance
+            );
         }
         if role.contains(SEMICOLON) {
-            warn!("Found semicolon in role name: {}", role);
+            warn!(
+                "Found forbidden character [{}] in role name: {}",
+                SEMICOLON, role
+            );
         }
         if group.contains(SEMICOLON) {
-            warn!("Found semicolon in group name: {}", group);
+            warn!(
+                "Found forbidden character [{}] in group name: {}",
+                SEMICOLON, group
+            );
         }
         if id.contains(SEMICOLON) {
-            warn!("Found semicolon in pod id: {}", id);
+            warn!(
+                "Found forbidden character [{}] in pod id: {}",
+                SEMICOLON, id
+            );
         }
     }
 }
