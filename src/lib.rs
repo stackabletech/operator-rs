@@ -22,6 +22,7 @@ pub mod pod_utils;
 pub mod product_config_utils;
 pub mod reconcile;
 pub mod role_utils;
+pub mod scheduler;
 pub mod status;
 pub mod utils;
 pub mod validation;
