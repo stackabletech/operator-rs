@@ -173,7 +173,7 @@ pub trait PodPlacementStrategy {
     /// Returns the nodes where each pod should be placed or `None` if the placement for the pod
     /// is not possible.
     /// Assigns `pods` to `NodeIdentities`. For each pod to be placed, if the corresponding
-    /// node in `preferred_nodes` is `Some()` that try to choose this node.
+    /// node in `preferred_nodes` is `Some()`, then try to choose this node.
     /// An implementation might still choose a different node if the preferred node contradicts
     /// the implementation strategy.
     /// # Arguments:
