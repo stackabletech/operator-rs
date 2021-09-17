@@ -39,9 +39,10 @@ use std::collections::hash_map::DefaultHasher;
 use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
 use std::ops::DerefMut;
-use tracing::error;
+use tracing::{error, warn};
 
 const DEFAULT_NODE_NAME: &str = "<no-nodename-set>";
+const SEMICOLON: &str = ";";
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum Error {
@@ -99,11 +100,11 @@ pub fn generate_ids(
 #[serde(try_from = "String")]
 #[serde(into = "String")]
 pub struct PodIdentity {
-    pub app: String,
-    pub instance: String,
-    pub role: String,
-    pub group: String,
-    pub id: String,
+    app: String,
+    instance: String,
+    role: String,
+    group: String,
+    id: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, JsonSchema, PartialEq, Serialize)]
@@ -277,26 +278,26 @@ impl SchedulerState {
 impl TryFrom<String> for PodIdentity {
     type Error = Error;
     fn try_from(s: String) -> Result<Self, Error> {
-        let split = s.split(';').collect::<Vec<&str>>();
+        let split = s.split(SEMICOLON).collect::<Vec<&str>>();
         if split.len() != 5 {
             return Err(Error::PodIdentityNotParseable { pod_id: s });
         }
-        Ok(PodIdentity {
-            app: split[0].to_string(),
-            instance: split[1].to_string(),
-            role: split[2].to_string(),
-            group: split[3].to_string(),
-            id: split[4].to_string(),
-        })
+        Ok(PodIdentity::new(
+            split[0], split[1], split[2], split[3], split[4],
+        ))
     }
 }
 
 impl From<PodIdentity> for String {
     fn from(pod_id: PodIdentity) -> Self {
-        format!(
-            "{};{};{};{};{}",
-            pod_id.app, pod_id.instance, pod_id.role, pod_id.group, pod_id.id
-        )
+        [
+            pod_id.app,
+            pod_id.instance,
+            pod_id.role,
+            pod_id.group,
+            pod_id.id,
+        ]
+        .join(SEMICOLON)
     }
 }
 
@@ -701,9 +702,38 @@ impl PodPlacementStrategy for GroupAntiAffinityStrategy<'_> {
 }
 
 impl PodIdentity {
+    pub fn new(app: &str, instance: &str, role: &str, group: &str, id: &str) -> Self {
+        Self::warn_semicolon(app, instance, role, group, id);
+        PodIdentity {
+            app: app.to_string(),
+            instance: instance.to_string(),
+            role: role.to_string(),
+            group: group.to_string(),
+            id: id.to_string(),
+        }
+    }
+
     pub fn compute_hash(&self, hasher: &mut DefaultHasher) -> u64 {
         self.hash(hasher);
         hasher.finish()
+    }
+
+    fn warn_semicolon(app: &str, instance: &str, role: &str, group: &str, id: &str) {
+        if app.contains(SEMICOLON) {
+            warn!("Found semicolon in application name: {}", app);
+        }
+        if instance.contains(SEMICOLON) {
+            warn!("Found semicolon in instance name: {}", instance);
+        }
+        if role.contains(SEMICOLON) {
+            warn!("Found semicolon in role name: {}", role);
+        }
+        if group.contains(SEMICOLON) {
+            warn!("Found semicolon in group name: {}", group);
+        }
+        if id.contains(SEMICOLON) {
+            warn!("Found semicolon in pod id: {}", id);
+        }
     }
 }
 impl<'a> HashingStrategy<'a> {
