@@ -216,43 +216,6 @@ pub enum ScheduleStrategy {
 /// their ids) and maps them to the same nodes in the future. The `history` provides preferred
 /// nodes to map onto based past mappings.
 /// The `strategy` might choose a different node if the history node cannot be used.
-///
-/// # Example
-///
-/// ```no_compile
-///     use stackable_operator::scheduler;
-///     use stackable_operator::scheduler::{
-///         K8SUnboundedHistory, PodToNodeMapping, RoleGroupEligibleNodes, ScheduleStrategy,
-///         Scheduler,StickyScheduler,
-///     };
-///
-///     // somewhere inside on operator's reconcile loop...
-///
-///     // create an empty history object
-///     let history = K8SUnboundedHistory::new(
-///         &k8s_client,
-///         PodToNodeMapping::default());
-///
-///     // generate the ids of the desired pods
-///     let pod_ids: &[PodIdentity] = scheduler::generate_ids(
-///         "my application",
-///         "my cluster",
-///         &self.eligible_nodes )
-///         .as_slice();
-///
-///     let mut scheduler =
-///         StickyScheduler::new(&mut history, ScheduleStrategy::GroupAntiAffinity);
-///
-///     let state = scheduler.schedule(
-///         &RoleGroupEligibleNodes::from(&self.eligible_nodes),
-///         &PodToNodeMapping::from(&self.existing_pods, Some(ID_LABEL)),
-///     )?;
-///
-///     // possibly store the updated history
-///     history.save(&self.context.resource).await?
-///
-///     // use the state.remaining_mapping() to create the remaining pods
-/// ```
 pub struct StickyScheduler<'a, H: PodPlacementHistory> {
     pub history: &'a mut H,
     pub strategy: ScheduleStrategy,
