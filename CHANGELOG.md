@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] - 2021-09-17
+
+
 ### Added
 - Extracted the versioning support for up and downgrades from operators ([#211]).
 - Added traits to access generic operator versions ([#211]).
