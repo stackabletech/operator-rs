@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Getter for `scheduler::PodIdentity` fields ([#215]).
+
+[#215]: https://github.com/stackabletech/operator-rs/pull/215
+
 ## [0.2.0] - 2021-09-17
 
 
