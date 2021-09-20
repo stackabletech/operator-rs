@@ -713,6 +713,22 @@ impl PodIdentity {
         }
     }
 
+    pub fn app(&self) -> &str {
+        self.app.as_ref()
+    }
+    pub fn instance(&self) -> &str {
+        self.instance.as_ref()
+    }
+    pub fn role(&self) -> &str {
+        self.role.as_ref()
+    }
+    pub fn group(&self) -> &str {
+        self.group.as_ref()
+    }
+    pub fn id(&self) -> &str {
+        self.id.as_ref()
+    }
+
     pub fn compute_hash(&self, hasher: &mut DefaultHasher) -> u64 {
         self.hash(hasher);
         hasher.finish()
