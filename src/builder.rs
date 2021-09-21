@@ -762,7 +762,7 @@ impl PodSecurityContextBuilder {
     }
 
     pub fn supplemental_groups(&mut self, groups: &[i64]) -> &mut Self {
-        self.pod_security_context.supplemental_groups = groups.to_vec();
+        self.pod_security_context.supplemental_groups = Some(groups.to_vec());
         self
     }
 
@@ -854,13 +854,15 @@ impl PodSecurityContextBuilder {
     }
 
     pub fn sysctls(&mut self, kparam: &[(&str, &str)]) -> &mut Self {
-        self.pod_security_context.sysctls = kparam
-            .iter()
-            .map(|&name_value| Sysctl {
-                name: name_value.0.to_string(),
-                value: name_value.1.to_string(),
-            })
-            .collect();
+        self.pod_security_context.sysctls = Some(
+            kparam
+                .iter()
+                .map(|&name_value| Sysctl {
+                    name: name_value.0.to_string(),
+                    value: name_value.1.to_string(),
+                })
+                .collect(),
+        );
         self
     }
 
@@ -1087,7 +1089,7 @@ mod tests {
                 run_as_user: Some(1001),
                 run_as_group: Some(1001),
                 run_as_non_root: Some(true),
-                supplemental_groups: vec![1002, 1003],
+                supplemental_groups: Some(vec![1002, 1003]),
                 se_linux_options: Some(SELinuxOptions {
                     level: Some("level".to_string()),
                     role: Some("role".to_string()),
@@ -1098,7 +1100,7 @@ mod tests {
                     localhost_profile: Some("localhost".to_string()),
                     type_: "type".to_string(),
                 }),
-                sysctls: vec![
+                sysctls: Some(vec![
                     Sysctl {
                         name: "param1".to_string(),
                         value: "value1".to_string(),
@@ -1107,7 +1109,7 @@ mod tests {
                         name: "param2".to_string(),
                         value: "value2".to_string(),
                     },
-                ],
+                ]),
                 windows_options: Some(WindowsSecurityContextOptions {
                     gmsa_credential_spec: Some("spec".to_string()),
                     gmsa_credential_spec_name: Some("name".to_string()),
