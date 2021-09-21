@@ -8,8 +8,10 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- `kube-rs`: `0.59` → `0.60` ([#217]).
 - BREAKING: `kube-rs`: `0.58` → `0.59` ([#186]).
 
+[#217]: https://github.com/stackabletech/operator-rs/pull/217
 [#186]: https://github.com/stackabletech/operator-rs/pull/186
 
 ### Added
