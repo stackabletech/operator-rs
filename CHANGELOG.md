@@ -6,6 +6,11 @@ All notable changes to this project will be documented in this file.
 
 ## [0.2.1] - 2021-09-20
 
+### Changed
+
+- BREAKING: `kube-rs`: `0.58` → `0.59` ([#186]).
+
+[#186]: https://github.com/stackabletech/operator-rs/pull/186
 
 ### Added
 - Getter for `scheduler::PodIdentity` fields ([#215]).
