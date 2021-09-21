@@ -9,7 +9,7 @@ use crate::command::{
 };
 use crate::command_controller::Command;
 use crate::conditions::ConditionStatus;
-use crate::crd::{HasApplication, HasInstance};
+use crate::crd::HasApplication;
 use crate::error::Error::{InvalidName, KubeError};
 use crate::k8s_utils::find_excess_pods;
 use crate::labels::{
@@ -17,15 +17,12 @@ use crate::labels::{
 };
 use crate::status::HasCurrentCommand;
 use async_trait::async_trait;
-use chrono::DateTime;
-use futures::StreamExt;
 use k8s_openapi::api::core::v1::{ConfigMap, Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
     Condition, LabelSelector, LabelSelectorRequirement,
 };
 use kube::api::{ObjectMeta, ResourceExt};
 use kube::core::object::HasStatus;
-use kube::core::DynamicObject;
 use kube::error::ErrorResponse;
 use kube::{CustomResourceExt, Resource};
 use kube_runtime::controller::ReconcilerAction;
@@ -34,8 +31,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::future::Future;
-use std::hash::Hasher;
-use std::ops::{Add, Deref};
+use std::ops::Deref;
 use std::pin::Pin;
 use std::time::Duration;
 use tracing::{debug, info, trace, warn};
@@ -380,14 +376,14 @@ where
     where
         T: HasApplication + HasRoleRestartOrder,
         C: Command + CanBeRolling + HasRoles,
-        // TODO: Not sure if we can skip 'HasRoles' here and conditinally run code below if it is implemented
+        // TODO: Not sure if we can skip 'HasRoles' here and conditionally run code below if it is implemented
         P: ProvidesPod,
     {
         // If the command provides a list of roles this overrides the default provided by the cluster
         // definition itself
         let role_order = command
             .get_role_order()
-            .unwrap_or_else(|| T::get_role_restart_order());
+            .unwrap_or_else(T::get_role_restart_order);
 
         let mut restart_occurred = false;
         for role in role_order {
@@ -434,30 +430,31 @@ where
             match command.is_rolling() {
                 true => {
                     let current_pod = pods.first().unwrap().deref();
-                    let labels = &current_pod.meta().labels;
 
-                    let role_group = labels.get(APP_ROLE_GROUP_LABEL).unwrap();
-                    let node = current_pod
-                        .spec
-                        .clone()
-                        .unwrap_or_default()
-                        .node_name
-                        .unwrap();
+                    if let Some(labels) = &current_pod.meta().labels {
+                        let role_group = labels.get(APP_ROLE_GROUP_LABEL).unwrap();
+                        let node = current_pod
+                            .spec
+                            .clone()
+                            .unwrap_or_default()
+                            .node_name
+                            .unwrap();
 
-                    self.client.ensure_deleted(current_pod.clone()).await?;
+                        self.client.ensure_deleted(current_pod.clone()).await?;
 
-                    let (pods, context) = pod_provider
-                        .get_pod_and_context(&role, role_group, &node)
-                        .await?;
+                        let (pods, _) = pod_provider
+                            .get_pod_and_context(&role, role_group, &node)
+                            .await?;
 
-                    //for config_map in config_maps {
-                    //    self.create_config_map(config_map).await?;
-                    // }
-                    warn!("Creating pod on node [{}]: [{:?}]", node, pods);
-                    self.client.create(&pods).await?;
-                    // We return early for this case, there is nothing left to do after one pod
-                    // was restarted
-                    return Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)));
+                        //for config_map in config_maps {
+                        //    self.create_config_map(config_map).await?;
+                        // }
+                        warn!("Creating pod on node [{}]: [{:?}]", node, pods);
+                        self.client.create(&pods).await?;
+                        // We return early for this case, there is nothing left to do after one pod
+                        // was restarted
+                        return Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)));
+                    }
                 }
                 false => {
                     for pod in pods {
@@ -481,22 +478,24 @@ where
         let application_match = LabelSelectorRequirement {
             key: APP_NAME_LABEL.to_string(),
             operator: "In".to_string(),
-            values: vec![<T as HasApplication>::get_application_name().to_string()],
+            values: Some(vec![
+                <T as HasApplication>::get_application_name().to_string()
+            ]),
         };
         let role_match = LabelSelectorRequirement {
             key: APP_COMPONENT_LABEL.to_string(),
             operator: "In".to_string(),
-            values: vec![role.to_string()],
+            values: Some(vec![role.to_string()]),
         };
 
         let instance_match = LabelSelectorRequirement {
             key: APP_INSTANCE_LABEL.to_string(),
             operator: "In".to_string(),
-            values: vec![self.resource.name()],
+            values: Some(vec![self.resource.name()]),
         };
 
         let result = LabelSelector {
-            match_expressions: vec![application_match, role_match, instance_match],
+            match_expressions: Some(vec![application_match, role_match, instance_match]),
             match_labels: Default::default(),
         };
         warn!("Created labelselector: [{:?}]", result);

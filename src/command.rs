@@ -4,15 +4,12 @@ use crate::error::Error::ConversionError;
 use crate::error::OperatorResult;
 use crate::status::HasCurrentCommand;
 use crate::CustomResourceExt;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
-use k8s_openapi::chrono::{DateTime, Utc};
 use k8s_openapi::serde::de::DeserializeOwned;
 use kube::api::{ApiResource, DynamicObject, ListParams, Resource};
 use kube::core::object::HasStatus;
 use kube::Api;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 use tracing::{info, warn};
@@ -70,14 +67,13 @@ impl TryFrom<DynamicObject> for CommandRef {
         };
 
         Ok(CommandRef {
-            command_uid: command.metadata.uid.ok_or(report_error("test"))?.clone(),
-            command_name: command.metadata.name.ok_or(report_error("test"))?.clone(),
+            command_uid: command.metadata.uid.ok_or_else(|| report_error("test"))?,
+            command_name: command.metadata.name.ok_or_else(|| report_error("test"))?,
             command_ns: command
                 .metadata
                 .namespace
-                .ok_or(report_error("test"))?
-                .clone(),
-            command_kind: command.types.ok_or(report_error("test"))?.kind,
+                .ok_or_else(|| report_error("test"))?,
+            command_kind: command.types.ok_or_else(|| report_error("test"))?.kind,
             started_at: Some(get_current_timestamp()),
         })
     }
@@ -90,9 +86,7 @@ where
     <T as Resource>::DynamicType: Default,
 {
     let resource_clone = resource.clone();
-    let status = resource
-        .status_mut()
-        .get_or_insert_with(|| Default::default());
+    let status = resource.status_mut().get_or_insert_with(Default::default);
 
     status.clear_current_command();
 
@@ -112,9 +106,7 @@ where
     <T as Resource>::DynamicType: Default,
 {
     let resource_clone = resource.clone();
-    let status = resource
-        .status_mut()
-        .get_or_insert_with(|| Default::default());
+    let status = resource.status_mut().get_or_insert_with(Default::default);
 
     if status
         .current_command()
@@ -161,7 +153,7 @@ where
             );
             Ok(status.current_command())
         }
-        Some(status) => {
+        Some(_) => {
             warn!("No current command set in status, retrieving from k8s..");
             get_next_command(resources, client).await
         }

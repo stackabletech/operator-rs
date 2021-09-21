@@ -3,13 +3,16 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```no_compile
 //! use kube::CustomResource;
 //! use stackable_operator::{client, error};
 //! use stackable_operator::client::Client;
 //! use stackable_operator::error::Error;
 //! use schemars::JsonSchema;
 //! use serde::{Deserialize, Serialize};
+//! use k8s_openapi::schemars::_serde_json::Value;
+//! use chrono::DateTime;
+//! use chrono::FixedOffset;
 //!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 //! #[kube(
@@ -49,6 +52,22 @@
 //!     fn get_owner_name(&self) -> String {
 //!         self.spec.name.clone()
 //!     }
+//!
+//!     fn start(&mut self) {
+//!         todo!()
+//!     }
+//!
+//!     fn done(&mut self) {
+//!         todo!()
+//!     }
+//!
+//!     fn start_time(&self) -> Option<DateTime<FixedOffset>> {
+//!         todo!()
+//!     }
+//!
+//!     fn get_start_patch(&self) -> Value {
+//!         todo!()
+//!     }
 //! }
 //!
 //! #[tokio::main]
@@ -76,7 +95,7 @@ use crate::controller_ref;
 use crate::error::{Error, OperatorResult};
 use crate::reconcile::{ReconcileFunctionAction, ReconcileResult, ReconciliationContext};
 use async_trait::async_trait;
-use chrono::{DateTime, FixedOffset, Utc};
+use chrono::{DateTime, FixedOffset};
 use json_patch::{AddOperation, PatchOperation};
 use kube::api::ListParams;
 use kube::{Api, Resource, ResourceExt};
