@@ -11,8 +11,12 @@ where
     resource
         .meta()
         .owner_references
-        .iter()
-        .find(|owner| matches!(owner.controller, Some(true)))
+        .as_ref()
+        .and_then(|owners| {
+            owners
+                .iter()
+                .find(|owner| matches!(owner.controller, Some(true)))
+        })
 }
 
 /// This returns `false` for Resources that have no OwnerReference (with a Controller flag)
@@ -43,11 +47,11 @@ mod tests {
             controller
         );
 
-        pod.metadata.owner_references = vec![OwnerReference {
+        pod.metadata.owner_references = Some(vec![OwnerReference {
             controller: Some(true),
             uid: "1234".to_string(),
             ..OwnerReference::default()
-        }];
+        }]);
         let controller = get_controller_of(&pod);
         assert!(
             matches!(controller, Some(OwnerReference { uid, .. }) if uid == "1234"),
@@ -55,11 +59,11 @@ mod tests {
             controller
         );
 
-        pod.metadata.owner_references = vec![OwnerReference {
+        pod.metadata.owner_references = Some(vec![OwnerReference {
             controller: None,
             uid: "1234".to_string(),
             ..OwnerReference::default()
-        }];
+        }]);
         let controller = get_controller_of(&pod);
         assert!(
             matches!(controller, None),
@@ -67,7 +71,7 @@ mod tests {
             controller
         );
 
-        pod.metadata.owner_references = vec![
+        pod.metadata.owner_references = Some(vec![
             OwnerReference {
                 controller: None,
                 uid: "1234".to_string(),
@@ -78,7 +82,7 @@ mod tests {
                 uid: "5678".to_string(),
                 ..OwnerReference::default()
             },
-        ];
+        ]);
         let controller = get_controller_of(&pod);
         assert!(
             matches!(controller, Some(OwnerReference { uid, .. }) if uid == "5678"),
@@ -92,11 +96,11 @@ mod tests {
         let mut pod = Pod {
             metadata: ObjectMeta {
                 name: Some("Foobar".to_string()),
-                owner_references: vec![OwnerReference {
+                owner_references: Some(vec![OwnerReference {
                     controller: Some(true),
                     uid: "1234-5678".to_string(),
                     ..OwnerReference::default()
-                }],
+                }]),
                 ..ObjectMeta::default()
             },
             ..Pod::default()
@@ -104,7 +108,7 @@ mod tests {
 
         assert!(is_resource_owned_by(&pod, "1234-5678"));
 
-        pod.metadata.owner_references = vec![];
+        pod.metadata.owner_references = None;
         assert!(!is_resource_owned_by(&pod, "1234-5678"));
     }
 }

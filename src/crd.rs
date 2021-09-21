@@ -64,7 +64,7 @@ where
     T: CustomResourceExt,
 {
     if client
-        .exists::<CustomResourceDefinition>(&T::crd_name(), None)
+        .exists::<CustomResourceDefinition>(T::crd_name(), None)
         .await?
     {
         info!("CRD already exists in the cluster");

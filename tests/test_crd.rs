@@ -2,12 +2,11 @@ use std::time::Duration;
 
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
 use kube::core::ResourceExt;
-use kube::CustomResource;
+use kube::{CustomResource, CustomResourceExt};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serial_test::serial;
 use stackable_operator::client::Client;
-use stackable_operator::CustomResourceExt;
 use stackable_operator::{client, crd};
 
 #[derive(Clone, CustomResource, Debug, Deserialize, Serialize, JsonSchema)]
@@ -114,7 +113,7 @@ async fn k8s_test_wait_for_crds() {
         Duration::from_secs(30),
         crd::wait_until_crds_present(
             &client,
-            vec![&TestCrdStruct::crd_name()],
+            vec![TestCrdStruct::crd_name()],
             Some(Duration::from_secs(10)),
         ),
     )
@@ -131,7 +130,7 @@ async fn k8s_test_wait_for_crds() {
         Duration::from_secs(30),
         crd::wait_until_crds_present(
             &client,
-            vec![&TestCrdStruct::crd_name(), "MissingCrdName"],
+            vec![TestCrdStruct::crd_name(), "MissingCrdName"],
             Some(Duration::from_secs(10)),
         ),
     )
@@ -153,7 +152,7 @@ async fn k8s_test_wait_for_crds() {
         Duration::from_secs(30),
         crd::wait_until_crds_present(
             &client,
-            vec![&TestCrdStruct::crd_name(), &TestCrd2Struct::crd_name()],
+            vec![TestCrdStruct::crd_name(), TestCrd2Struct::crd_name()],
             Some(Duration::from_secs(10)),
         ),
     )
@@ -171,8 +170,8 @@ async fn k8s_test_wait_for_crds() {
         crd::wait_until_crds_present(
             &client,
             vec![
-                &TestCrdStruct::crd_name(),
-                &TestCrd2Struct::crd_name(),
+                TestCrdStruct::crd_name(),
+                TestCrd2Struct::crd_name(),
                 "missing1",
                 "missing2",
             ],
@@ -214,11 +213,11 @@ async fn k8s_test_test_ensure_crd_created() {
     .expect("Error while creating CRD");
 
     client
-        .exists::<CustomResourceDefinition>(&TestCrdStruct::crd_name(), None)
+        .exists::<CustomResourceDefinition>(TestCrdStruct::crd_name(), None)
         .await
         .expect("CRD should be created");
     let created_crd: CustomResourceDefinition =
-        client.get(&TestCrdStruct::crd_name(), None).await.unwrap();
+        client.get(TestCrdStruct::crd_name(), None).await.unwrap();
     assert_eq!(TestCrdStruct::crd_name(), created_crd.name());
 
     tear_down(&client).await;

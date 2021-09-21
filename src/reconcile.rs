@@ -192,7 +192,7 @@ where
             })?;
 
         let label_selector = LabelSelector {
-            match_labels,
+            match_labels: Some(match_labels),
             ..LabelSelector::default()
         };
 
