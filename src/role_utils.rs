@@ -81,7 +81,7 @@
 //! Each resource can have more operator specific labels.
 
 use crate::error::OperatorResult;
-use crate::{krustlet, label_selector, labels};
+use crate::{krustlet, labels};
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -163,7 +163,6 @@ pub struct RoleGroup<T> {
     #[serde(flatten)]
     pub config: Option<CommonConfiguration<T>>,
     pub replicas: Option<u16>,
-    #[schemars(schema_with = "label_selector::schema")]
     pub selector: Option<LabelSelector>,
 }
 

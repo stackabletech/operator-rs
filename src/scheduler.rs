@@ -304,28 +304,30 @@ impl From<PodIdentity> for String {
 impl PodToNodeMapping {
     pub fn from(pods: &[Pod], id_label_name: Option<&str>) -> Self {
         let mut pod_node_mapping = PodToNodeMapping::default();
+
         for pod in pods {
-            let labels = &pod.metadata.labels;
-            let app = labels.get(labels::APP_NAME_LABEL);
-            let instance = labels.get(labels::APP_INSTANCE_LABEL);
-            let role = labels.get(labels::APP_COMPONENT_LABEL);
-            let group = labels.get(labels::APP_ROLE_GROUP_LABEL);
-            let id = id_label_name.and_then(|n| labels.get(n));
-            pod_node_mapping.insert(
-                PodIdentity {
-                    app: app.cloned().unwrap_or_default(),
-                    instance: instance.cloned().unwrap_or_default(),
-                    role: role.cloned().unwrap_or_default(),
-                    group: group.cloned().unwrap_or_default(),
-                    id: id.cloned().unwrap_or_default(),
-                },
-                NodeIdentity {
-                    name: pod.spec.as_ref().map(|s| s.node_name.as_ref()).map_or_else(
-                        || DEFAULT_NODE_NAME.to_string(),
-                        |name| name.unwrap().clone(),
-                    ),
-                },
-            );
+            if let Some(labels) = &pod.metadata.labels {
+                let app = labels.get(labels::APP_NAME_LABEL);
+                let instance = labels.get(labels::APP_INSTANCE_LABEL);
+                let role = labels.get(labels::APP_COMPONENT_LABEL);
+                let group = labels.get(labels::APP_ROLE_GROUP_LABEL);
+                let id = id_label_name.and_then(|n| labels.get(n));
+                pod_node_mapping.insert(
+                    PodIdentity {
+                        app: app.cloned().unwrap_or_default(),
+                        instance: instance.cloned().unwrap_or_default(),
+                        role: role.cloned().unwrap_or_default(),
+                        group: group.cloned().unwrap_or_default(),
+                        id: id.cloned().unwrap_or_default(),
+                    },
+                    NodeIdentity {
+                        name: pod.spec.as_ref().map(|s| s.node_name.as_ref()).map_or_else(
+                            || DEFAULT_NODE_NAME.to_string(),
+                            |name| name.unwrap().clone(),
+                        ),
+                    },
+                );
+            }
         }
         pod_node_mapping
     }

@@ -16,7 +16,6 @@
 //! pub enum SomeVersion { SomeVersion }
 //! #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize)]
 //! pub struct SomeClusterStatus {
-//!     #[schemars(schema_with = "stackable_operator::conditions::schema")]
 //!     pub conditions: Vec<Condition>,
 //!     pub version: Option<ProductVersion<SomeVersion>>,
 //! }
@@ -410,7 +409,6 @@ mod tests {
 
     #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize)]
     pub struct TestClusterStatus {
-        #[schemars(schema_with = "crate::conditions::schema")]
         pub conditions: Vec<Condition>,
         pub version: Option<ProductVersion<TestVersion>>,
     }

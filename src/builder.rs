@@ -19,7 +19,7 @@ use tracing::warn;
 #[derive(Clone, Default)]
 pub struct ConfigMapBuilder {
     metadata: Option<ObjectMeta>,
-    data: BTreeMap<String, String>,
+    data: Option<BTreeMap<String, String>>,
 }
 
 impl ConfigMapBuilder {
@@ -47,12 +47,14 @@ impl ConfigMapBuilder {
         key: KEY,
         value: VALUE,
     ) -> &mut Self {
-        self.data.insert(key.into(), value.into());
+        self.data
+            .get_or_insert_with(BTreeMap::new)
+            .insert(key.into(), value.into());
         self
     }
 
     pub fn data(&mut self, data: BTreeMap<String, String>) -> &mut Self {
-        self.data = data;
+        self.data = Some(data);
         self
     }
 
@@ -75,11 +77,11 @@ impl ConfigMapBuilder {
 pub struct ContainerBuilder {
     image: Option<String>,
     name: String,
-    env: Vec<EnvVar>,
-    command: Vec<String>,
-    args: Vec<String>,
+    env: Option<Vec<EnvVar>>,
+    command: Option<Vec<String>>,
+    args: Option<Vec<String>>,
     configmaps: HashMap<String, String>,
-    container_ports: Vec<ContainerPort>,
+    container_ports: Option<Vec<ContainerPort>>,
 }
 
 impl ContainerBuilder {
@@ -100,7 +102,7 @@ impl ContainerBuilder {
         name: NAME,
         value: VALUE,
     ) -> &mut Self {
-        self.env.push(EnvVar {
+        self.env.get_or_insert_with(Vec::new).push(EnvVar {
             name: name.into(),
             value: Some(value.into()),
             ..EnvVar::default()
@@ -109,17 +111,17 @@ impl ContainerBuilder {
     }
 
     pub fn add_env_vars(&mut self, env_vars: Vec<EnvVar>) -> &mut Self {
-        self.env.extend(env_vars);
+        self.env.get_or_insert_with(Vec::new).extend(env_vars);
         self
     }
 
     pub fn command(&mut self, command: Vec<String>) -> &mut Self {
-        self.command = command;
+        self.command = Some(command);
         self
     }
 
     pub fn args(&mut self, args: Vec<String>) -> &mut Self {
-        self.args = args;
+        self.args = Some(args);
         self
     }
 
@@ -137,12 +139,16 @@ impl ContainerBuilder {
     }
 
     pub fn add_container_port(&mut self, container_port: ContainerPort) -> &mut Self {
-        self.container_ports.push(container_port);
+        self.container_ports
+            .get_or_insert_with(Vec::new)
+            .push(container_port);
         self
     }
 
     pub fn add_container_ports(&mut self, container_port: Vec<ContainerPort>) -> &mut Self {
-        self.container_ports.extend(container_port);
+        self.container_ports
+            .get_or_insert_with(Vec::new)
+            .extend(container_port);
         self
     }
 
@@ -174,7 +180,7 @@ impl ContainerBuilder {
             env: self.env.clone(),
             command: self.command.clone(),
             args: self.args.clone(),
-            volume_mounts,
+            volume_mounts: Some(volume_mounts), // Always using Some instead of None for an empty vec to convey ownership of the field
             ports: self.container_ports.clone(),
             ..Container::default()
         }
@@ -405,8 +411,8 @@ pub struct ObjectMetaBuilder {
     generate_name: Option<String>,
     namespace: Option<String>,
     ownerreference: Option<OwnerReference>,
-    labels: BTreeMap<String, String>,
-    annotations: BTreeMap<String, String>,
+    labels: Option<BTreeMap<String, String>>,
+    annotations: Option<BTreeMap<String, String>>,
 }
 
 impl ObjectMetaBuilder {
@@ -493,6 +499,7 @@ impl ObjectMetaBuilder {
         VALUE: Into<String>,
     {
         self.annotations
+            .get_or_insert_with(BTreeMap::new)
             .insert(annotation_key.into(), annotation_value.into());
         self
     }
@@ -500,13 +507,15 @@ impl ObjectMetaBuilder {
     /// This adds multiple annotations to the existing annotations.
     /// Any existing annotation with a key that is contained in `annotations` will be overwritten
     pub fn with_annotations(&mut self, annotations: BTreeMap<String, String>) -> &mut Self {
-        self.annotations.extend(annotations);
+        self.annotations
+            .get_or_insert_with(BTreeMap::new)
+            .extend(annotations);
         self
     }
 
     /// This will replace all existing annotations
     pub fn annotations(&mut self, annotations: BTreeMap<String, String>) -> &mut Self {
-        self.annotations = annotations;
+        self.annotations = Some(annotations);
         self
     }
 
@@ -517,20 +526,22 @@ impl ObjectMetaBuilder {
         KEY: Into<String>,
         VALUE: Into<String>,
     {
-        self.labels.insert(label_key.into(), label_value.into());
+        self.labels
+            .get_or_insert_with(BTreeMap::new)
+            .insert(label_key.into(), label_value.into());
         self
     }
 
     /// This adds multiple labels to the existing labels.
     /// Any existing label with a key that is contained in `labels` will be overwritten
     pub fn with_labels(&mut self, labels: BTreeMap<String, String>) -> &mut Self {
-        self.labels.extend(labels);
+        self.labels.get_or_insert_with(BTreeMap::new).extend(labels);
         self
     }
 
     /// This will replace all existing labels
     pub fn labels(&mut self, labels: BTreeMap<String, String>) -> &mut Self {
-        self.labels = labels;
+        self.labels = Some(labels);
         self
     }
 
@@ -553,7 +564,9 @@ impl ObjectMetaBuilder {
             app_component,
             role_name,
         );
-        self.labels.extend(recommended_labels);
+        self.labels
+            .get_or_insert_with(BTreeMap::new)
+            .extend(recommended_labels);
         self
     }
 
@@ -572,10 +585,10 @@ impl ObjectMetaBuilder {
             generate_name: self.generate_name.clone(),
             name: self.name.clone(),
             namespace: self.namespace.clone(),
-            owner_references: match self.ownerreference {
-                Some(ref ownerreference) => vec![ownerreference.clone()],
-                None => vec![],
-            },
+            owner_references: self
+                .ownerreference
+                .as_ref()
+                .map(|ownerreference| vec![ownerreference.clone()]),
             labels: self.labels.clone(),
             annotations: self.annotations.clone(),
             ..ObjectMeta::default()
@@ -749,7 +762,7 @@ impl PodSecurityContextBuilder {
     }
 
     pub fn supplemental_groups(&mut self, groups: &[i64]) -> &mut Self {
-        self.pod_security_context.supplemental_groups = groups.to_vec();
+        self.pod_security_context.supplemental_groups = Some(groups.to_vec());
         self
     }
 
@@ -841,13 +854,15 @@ impl PodSecurityContextBuilder {
     }
 
     pub fn sysctls(&mut self, kparam: &[(&str, &str)]) -> &mut Self {
-        self.pod_security_context.sysctls = kparam
-            .iter()
-            .map(|&name_value| Sysctl {
-                name: name_value.0.to_string(),
-                value: name_value.1.to_string(),
-            })
-            .collect();
+        self.pod_security_context.sysctls = Some(
+            kparam
+                .iter()
+                .map(|&name_value| Sysctl {
+                    name: name_value.0.to_string(),
+                    value: name_value.1.to_string(),
+                })
+                .collect(),
+        );
         self
     }
 
@@ -902,7 +917,7 @@ impl PodSecurityContextBuilder {
 pub struct PodBuilder {
     metadata: Option<ObjectMeta>,
     node_name: Option<String>,
-    tolerations: Vec<Toleration>,
+    tolerations: Option<Vec<Toleration>>,
     status: Option<PodStatus>,
     containers: Vec<Container>,
     security_context: Option<PodSecurityContext>,
@@ -956,7 +971,10 @@ impl PodBuilder {
             type_: condition_type.to_string(),
             ..PodCondition::default()
         };
-        status.conditions.push(condition);
+        status
+            .conditions
+            .get_or_insert_with(Vec::new)
+            .push(condition);
         self
     }
 
@@ -968,6 +986,7 @@ impl PodBuilder {
     /// This will automatically add all required tolerations to target a Stackable agent.
     pub fn add_stackable_agent_tolerations(&mut self) -> &mut Self {
         self.tolerations
+            .get_or_insert_with(Vec::new)
             .extend(crate::krustlet::create_tolerations());
         self
     }
@@ -990,6 +1009,7 @@ impl PodBuilder {
                 container
                     .volume_mounts
                     .iter()
+                    .flatten()
                     .map(|mount| mount.name.clone())
                     .collect::<Vec<String>>()
             })
@@ -1016,7 +1036,7 @@ impl PodBuilder {
             spec: Some(PodSpec {
                 containers: self.containers.clone(),
                 tolerations: self.tolerations.clone(),
-                volumes,
+                volumes: Some(volumes), // Always using Some instead of None for an empty vec to convey ownership of the field
                 node_name: self.node_name.clone(),
                 security_context: self.security_context.clone(),
                 ..PodSpec::default()
@@ -1069,7 +1089,7 @@ mod tests {
                 run_as_user: Some(1001),
                 run_as_group: Some(1001),
                 run_as_non_root: Some(true),
-                supplemental_groups: vec![1002, 1003],
+                supplemental_groups: Some(vec![1002, 1003]),
                 se_linux_options: Some(SELinuxOptions {
                     level: Some("level".to_string()),
                     role: Some("role".to_string()),
@@ -1080,7 +1100,7 @@ mod tests {
                     localhost_profile: Some("localhost".to_string()),
                     type_: "type".to_string(),
                 }),
-                sysctls: vec![
+                sysctls: Some(vec![
                     Sysctl {
                         name: "param1".to_string(),
                         value: "value1".to_string(),
@@ -1089,7 +1109,7 @@ mod tests {
                         name: "param2".to_string(),
                         value: "value2".to_string(),
                     },
-                ],
+                ]),
                 windows_options: Some(WindowsSecurityContextOptions {
                     gmsa_credential_spec: Some("spec".to_string()),
                     gmsa_credential_spec_name: Some("name".to_string()),
@@ -1110,8 +1130,8 @@ mod tests {
             .build()
             .unwrap();
 
-        assert!(matches!(configmap.data.get("foo"), Some(bar) if bar == "bar"));
-        assert!(matches!(configmap.data.get("bar"), Some(bar) if bar == "foo"));
+        assert!(matches!(configmap.data.as_ref().unwrap().get("foo"), Some(bar) if bar == "bar"));
+        assert!(matches!(configmap.data.as_ref().unwrap().get("bar"), Some(bar) if bar == "foo"));
     }
 
     #[test]
@@ -1139,18 +1159,19 @@ mod tests {
 
         assert_eq!(container.name, "testcontainer");
         assert!(
-            matches!(container.env.get(0), Some(EnvVar {name, value: Some(value), ..}) if name == "foo" && value == "bar")
+            matches!(container.env.unwrap().get(0), Some(EnvVar {name, value: Some(value), ..}) if name == "foo" && value == "bar")
         );
-        assert_eq!(container.volume_mounts.len(), 1);
+        assert_eq!(container.volume_mounts.as_ref().unwrap().len(), 1);
         assert!(
-            matches!(container.volume_mounts.get(0), Some(VolumeMount {mount_path, name, ..}) if mount_path == "/mount" && name == "configmap")
+            matches!(container.volume_mounts.as_ref().unwrap().get(0), Some(VolumeMount {mount_path, name, ..}) if mount_path == "/mount" && name == "configmap")
         );
         assert!(
-            container.ports[0].container_port == i32::from(container_port)
-                && container.ports[0].name == Some(container_port_name.to_string())
+            container.ports.as_ref().unwrap()[0].container_port == i32::from(container_port)
+                && container.ports.as_ref().unwrap()[0].name
+                    == Some(container_port_name.to_string())
         );
 
-        assert_eq!(container.ports.len(), 3)
+        assert_eq!(container.ports.unwrap().len(), 3)
     }
 
     #[test]
@@ -1220,13 +1241,13 @@ mod tests {
 
         assert_eq!(meta.generate_name, Some("generate_foo".to_string()));
         assert_eq!(meta.name, Some("foo".to_string()));
-        assert_eq!(meta.owner_references.len(), 1);
+        assert_eq!(meta.owner_references.as_ref().unwrap().len(), 1);
         assert!(
-            matches!(meta.owner_references.get(0), Some(OwnerReference { uid, ..}) if uid == "uid")
+            matches!(meta.owner_references.unwrap().get(0), Some(OwnerReference { uid, ..}) if uid == "uid")
         );
-        assert_eq!(meta.annotations.len(), 1);
+        assert_eq!(meta.annotations.as_ref().unwrap().len(), 1);
         assert_eq!(
-            meta.annotations.get(&"foo".to_string()),
+            meta.annotations.as_ref().unwrap().get(&"foo".to_string()),
             Some(&"bar".to_string())
         );
     }

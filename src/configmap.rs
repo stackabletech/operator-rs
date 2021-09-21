@@ -122,21 +122,17 @@ pub async fn create_config_map(
         );
 
         // compare hashes and check for changes
-        if Some(&hash.to_string())
-            != existing_config_map
-                .metadata
-                .labels
-                .get(CONFIGMAP_HASH_LABEL)
-        {
-            debug!(
-                "ConfigMap [{}] already exists, but differs, updating it!",
-                name(&existing_config_map)?,
-            );
+        if let Some(labels) = &existing_config_map.metadata.labels {
+            if Some(&hash.to_string()) != labels.get(CONFIGMAP_HASH_LABEL) {
+                debug!(
+                    "ConfigMap [{}] already exists, but differs, updating it!",
+                    name(&existing_config_map)?,
+                );
 
-            merge_config_maps(&mut existing_config_map, config_map, hash);
-            existing_config_map = client.update(&existing_config_map).await?;
+                merge_config_maps(&mut existing_config_map, config_map, hash);
+                existing_config_map = client.update(&existing_config_map).await?;
+            }
         }
-
         Ok(existing_config_map)
     } else {
         debug!(
@@ -144,10 +140,9 @@ pub async fn create_config_map(
             name(&config_map)?,
         );
 
-        config_map
-            .metadata
-            .labels
-            .insert(CONFIGMAP_HASH_LABEL.to_string(), hash.to_string());
+        if let Some(labels) = &mut config_map.metadata.labels {
+            labels.insert(CONFIGMAP_HASH_LABEL.to_string(), hash.to_string());
+        }
 
         Ok(client.create(&config_map).await?)
     };
@@ -196,7 +191,7 @@ async fn find_config_map(
 ///
 fn filter_config_map(
     mut config_maps: Vec<ConfigMap>,
-    labels: &BTreeMap<String, String>,
+    labels: &Option<BTreeMap<String, String>>,
 ) -> Option<ConfigMap> {
     match config_maps.len() {
         0 => None,
@@ -295,10 +290,9 @@ fn merge_config_maps(existing: &mut ConfigMap, created: ConfigMap, hash: u64) {
     existing.data = created.data;
     existing.metadata.labels = created.metadata.labels;
     // update hash
-    existing
-        .metadata
-        .labels
-        .insert(CONFIGMAP_HASH_LABEL.to_string(), hash.to_string());
+    if let Some(labels) = &mut existing.metadata.labels {
+        labels.insert(CONFIGMAP_HASH_LABEL.to_string(), hash.to_string());
+    }
 }
 
 #[cfg(test)]
@@ -340,7 +334,7 @@ mod tests {
             },
         ];
 
-        let filtered = filter_config_map(config_maps, &BTreeMap::new()).unwrap();
+        let filtered = filter_config_map(config_maps, &Some(BTreeMap::new())).unwrap();
         assert_eq!(filtered.metadata.creation_timestamp, Some(time_new));
     }
 
@@ -348,7 +342,7 @@ mod tests {
     #[case(vec![], false)]
     #[case(vec![ConfigMap::default()], true)]
     fn test_filter_config_maps_single(#[case] config_maps: Vec<ConfigMap>, #[case] expected: bool) {
-        let filtered = filter_config_map(config_maps, &BTreeMap::new());
+        let filtered = filter_config_map(config_maps, &Some(BTreeMap::new()));
         assert_eq!(filtered.is_some(), expected);
     }
 
@@ -432,11 +426,11 @@ mod tests {
             cm_data_2.insert(data.clone(), data.clone());
         }
 
-        cm_1.metadata.labels = cm_labels_1;
-        cm_1.data = cm_data_1;
+        cm_1.metadata.labels = Some(cm_labels_1);
+        cm_1.data = Some(cm_data_1);
 
-        cm_2.metadata.labels = cm_labels_2;
-        cm_2.data = cm_data_2;
+        cm_2.metadata.labels = Some(cm_labels_2);
+        cm_2.data = Some(cm_data_2);
 
         assert_eq!(hash_config_map(&cm_1) == hash_config_map(&cm_2), expected);
     }
@@ -454,16 +448,15 @@ mod tests {
         let hash = hash_config_map(&cm_new);
         cm_new_labels.insert(CONFIGMAP_HASH_LABEL.to_string(), hash.to_string());
 
-        cm_new.metadata.labels = cm_new_labels.clone();
-        cm_new.data = cm_new_data.clone();
+        cm_new.metadata.labels = Some(cm_new_labels.clone());
+        cm_new.data = Some(cm_new_data.clone());
 
         merge_config_maps(&mut cm_found, cm_new, hash);
 
-        assert_eq!(cm_new_labels, cm_found.metadata.labels);
-        assert_eq!(cm_new_data, cm_found.data);
-        assert_eq!(
-            Some(&hash.to_string()),
-            cm_found.metadata.labels.get(CONFIGMAP_HASH_LABEL)
-        );
+        assert_eq!(Some(cm_new_labels), cm_found.metadata.labels);
+        assert_eq!(Some(cm_new_data), cm_found.data);
+        if let Some(labels) = cm_found.metadata.labels {
+            assert_eq!(Some(&hash.to_string()), labels.get(CONFIGMAP_HASH_LABEL));
+        }
     }
 }

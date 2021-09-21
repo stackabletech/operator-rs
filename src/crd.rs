@@ -9,7 +9,6 @@ use crate::error::OperatorResult;
 use backoff::backoff::Backoff;
 use backoff::ExponentialBackoff;
 use kube::api::ListParams;
-use kube::ResourceExt;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
@@ -18,14 +17,6 @@ use std::path::Path;
 /// This trait can be implemented to allow automatic handling
 /// (e.g. creation) of `CustomResourceDefinition`s in Kubernetes.
 pub trait CustomResourceExt: kube::CustomResourceExt {
-    /// Returns the name of this `CustomResourceDefinition` in Kubernetes.
-    ///
-    /// Note: This is the name of the CRD itself and not an instance of it.
-    // TODO: This can be removed when https://github.com/clux/kube-rs/pull/583 is released (probably in kube-rs 0.59)
-    fn crd_name() -> String {
-        Self::crd().name()
-    }
-
     /// Generates a YAML CustomResourceDefinition and writes it to a `Write`.
     fn generate_yaml_schema<W>(mut writer: W) -> OperatorResult<()>
     where
@@ -73,7 +64,7 @@ where
     T: CustomResourceExt,
 {
     if client
-        .exists::<CustomResourceDefinition>(&T::crd_name(), None)
+        .exists::<CustomResourceDefinition>(T::crd_name(), None)
         .await?
     {
         info!("CRD already exists in the cluster");
