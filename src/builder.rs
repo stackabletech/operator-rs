@@ -1114,6 +1114,7 @@ mod tests {
                     gmsa_credential_spec: Some("spec".to_string()),
                     gmsa_credential_spec_name: Some("name".to_string()),
                     run_as_user_name: Some("winuser".to_string()),
+                    ..Default::default()
                 })
             }
         );
