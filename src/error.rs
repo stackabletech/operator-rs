@@ -1,8 +1,22 @@
 use crate::product_config_utils;
+use crate::{name_utils, scheduler};
 use std::collections::HashSet;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error(
+    "The configmap is missing a generated name. This is a programming error. Please open a ticket."
+    )]
+    ConfigMapMissingGenerateName,
+
+    #[error(
+    "The config map [{name}] is missing labels [:?labels]. This is a programming error. Please open a ticket."
+    )]
+    ConfigMapMissingLabels {
+        name: String,
+        labels: Vec<&'static str>,
+    },
+
     #[error("Failed to serialize template to JSON: {source}")]
     JsonSerializationError {
         #[from]
@@ -51,6 +65,12 @@ pub enum Error {
         source: std::env::VarError,
     },
 
+    #[error("NameUtils reported error: {source}")]
+    NamingError {
+        #[from]
+        source: name_utils::Error,
+    },
+
     #[error("Invalid name for resource: {errors:?}")]
     InvalidName { errors: Vec<String> },
 
@@ -61,6 +81,12 @@ pub enum Error {
         "A required File is missing. Not found in any of the following locations: {search_path:?}"
     )]
     RequiredFileMissing { search_path: Vec<String> },
+
+    #[error("Scheduler reported error: {source}")]
+    SchedulerError {
+        #[from]
+        source: scheduler::Error,
+    },
 
     #[error("ProductConfig Framework reported error: {source}")]
     ProductConfigError {

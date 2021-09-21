@@ -135,6 +135,8 @@ where
 /// "application-instance-rolegroup-role-nodename"
 ///
 /// The nodename will be stripped of any domains after the initial dot in the string.
+// TODO: Kept for now for downwards compatibility.
+//    Should be removed in favor for name_utils::build_resource_name.
 pub fn get_pod_name(
     application: &str,
     instance: &str,
