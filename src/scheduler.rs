@@ -57,9 +57,22 @@ pub enum Error {
 
     #[error("PodIdentity could not be parsed: {pod_id:?}. This should not happen. Please open a ticket.")]
     PodIdentityNotParseable { pod_id: String },
+
+    #[error("Cannot build PodIdentity from Pod without labels.")]
+    PodWithoutLabelsNotSupported,
+
+    #[error("Cannot build NodeIdentity from node without name.")]
+    NodeWithoutNameNotSupported,
+
+    #[error("Cannot construct PodIdentity from empty id field.")]
+    PodIdentityFieldEmpty,
 }
 
 /// Returns a Vec of pod identities according to the replica per role+group pair from `eligible_nodes`.
+///
+/// *NOTE* This function is tightly coupled with [`PodToNodeMapping::try_from_pods`]! If you change it's
+/// implementation you also have to update that one.
+///
 /// # Arguments
 /// * `app_name` - Application name
 /// * `instance` - Service instance
@@ -275,6 +288,21 @@ impl SchedulerState {
     }
 }
 
+impl TryFrom<&Pod> for NodeIdentity {
+    type Error = Error;
+    fn try_from(p: &Pod) -> SchedulerResult<Self> {
+        let node_name = p
+            .spec
+            .as_ref()
+            .map(|s| s.node_name.as_ref())
+            .ok_or(Error::NodeWithoutNameNotSupported)?;
+
+        Ok(NodeIdentity {
+            name: node_name.unwrap().clone(),
+        })
+    }
+}
+
 impl TryFrom<String> for PodIdentity {
     type Error = Error;
     fn try_from(s: String) -> Result<Self, Error> {
@@ -302,34 +330,58 @@ impl From<PodIdentity> for String {
 }
 
 impl PodToNodeMapping {
-    pub fn from(pods: &[Pod], id_label_name: Option<&str>) -> Self {
+    /// Returns a `PodToNodeMapping` where pod ids are built from (expected) pod labels and self generated counter.
+    ///
+    /// Returns an `Err` if any of the required labels is not present.
+    ///
+    /// This is intended for pods that do not maintain state on the nodes where they are scheduled,
+    /// such as Spark masters or workers. For ZooKeeper see [`try_from_pods_and_id_label`].
+    ///
+    /// *NOTE* This function assumes that the operator has also generated id labels by using a counter
+    /// starting as one (1) such as [`generate_ids`] in this module. If this was not the case, you
+    /// should not use this function to construct [`PodToNodeMapping`]s from pods! Any change here
+    /// needs to be implemented in [`generate_ids`] too!
+    pub fn try_from_pods(pods: &[Pod]) -> SchedulerResult<PodToNodeMapping> {
+        let mut result = PodToNodeMapping::default();
+        for (index, pod) in (0..pods.len()).zip(pods) {
+            let index_str = (index + 1).to_string();
+            result.insert(
+                PodIdentity::try_from_pod_and_id(pod, &index_str)?,
+                NodeIdentity::try_from(pod)?,
+            );
+        }
+        Ok(result)
+    }
+
+    /// Returns a `PodToNodeMapping` where pod ids are built from (expected) pod labels including an id label
+    /// that must be present.
+    ///
+    /// Returns an `Err` if any of the required labels is not present.
+    ///
+    /// This is intended for pods that explicitly maintain state on the nodes where they are scheduled,
+    /// such as ZooKeeper pods. For services where this is not the case, such as Spark masters or workers,
+    /// see [`try_from_pods`].
+    pub fn try_from_pods_and_id_label(
+        pods: &[Pod],
+        id_label_name: &str,
+    ) -> SchedulerResult<PodToNodeMapping> {
         let mut pod_node_mapping = PodToNodeMapping::default();
 
         for pod in pods {
-            if let Some(labels) = &pod.metadata.labels {
-                let app = labels.get(labels::APP_NAME_LABEL);
-                let instance = labels.get(labels::APP_INSTANCE_LABEL);
-                let role = labels.get(labels::APP_COMPONENT_LABEL);
-                let group = labels.get(labels::APP_ROLE_GROUP_LABEL);
-                let id = id_label_name.and_then(|n| labels.get(n));
-                pod_node_mapping.insert(
-                    PodIdentity {
-                        app: app.cloned().unwrap_or_default(),
-                        instance: instance.cloned().unwrap_or_default(),
-                        role: role.cloned().unwrap_or_default(),
-                        group: group.cloned().unwrap_or_default(),
-                        id: id.cloned().unwrap_or_default(),
-                    },
-                    NodeIdentity {
-                        name: pod.spec.as_ref().map(|s| s.node_name.as_ref()).map_or_else(
-                            || DEFAULT_NODE_NAME.to_string(),
-                            |name| name.unwrap().clone(),
-                        ),
-                    },
-                );
+            match &pod.metadata.labels {
+                Some(labels) => {
+                    let id = labels
+                        .get(id_label_name)
+                        .ok_or(Error::PodWithoutLabelsNotSupported)?;
+                    pod_node_mapping.insert(
+                        PodIdentity::try_from_pod_and_id(pod, id.as_ref())?,
+                        NodeIdentity::try_from(pod)?,
+                    );
+                }
+                None => return Err(Error::PodWithoutLabelsNotSupported),
             }
         }
-        pod_node_mapping
+        Ok(pod_node_mapping)
     }
 
     pub fn iter(&self) -> Iter<'_, PodIdentity, NodeIdentity> {
@@ -715,6 +767,31 @@ impl PodIdentity {
         }
     }
 
+    pub fn try_from_pod_and_id(pod: &Pod, id: &str) -> SchedulerResult<Self> {
+        if id.is_empty() {
+            return Err(Error::PodIdentityFieldEmpty);
+        }
+
+        match &pod.metadata.labels {
+            Some(labels) => {
+                let app = labels.get(labels::APP_NAME_LABEL);
+                let instance = labels.get(labels::APP_INSTANCE_LABEL);
+                let role = labels.get(labels::APP_COMPONENT_LABEL);
+                let group = labels.get(labels::APP_ROLE_GROUP_LABEL);
+                Ok(PodIdentity {
+                    app: app.cloned().ok_or(Error::PodWithoutLabelsNotSupported)?,
+                    instance: instance
+                        .cloned()
+                        .ok_or(Error::PodWithoutLabelsNotSupported)?,
+                    role: role.cloned().ok_or(Error::PodWithoutLabelsNotSupported)?,
+                    group: group.cloned().ok_or(Error::PodWithoutLabelsNotSupported)?,
+                    id: id.to_string(),
+                })
+            }
+            _ => Err(Error::PodWithoutLabelsNotSupported),
+        }
+    }
+
     pub fn app(&self) -> &str {
         self.app.as_ref()
     }
@@ -808,6 +885,7 @@ impl PodPlacementStrategy for HashingStrategy<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::builder::{ObjectMetaBuilder, PodBuilder};
     use rstest::*;
 
     const APP_NAME: &str = "app";
@@ -1068,6 +1146,51 @@ mod tests {
             node_count,
             &current_mapping,
         );
+
+        assert_eq!(got, expected);
+    }
+
+    #[rstest]
+    #[case(&[], "", Err(Error::PodIdentityFieldEmpty))]
+    #[case(&[], "1", Err(Error::PodWithoutLabelsNotSupported))]
+    #[case::no_app_label(&[(labels::APP_INSTANCE_LABEL, "myinstance"),
+            (labels::APP_COMPONENT_LABEL, "myrole"),
+            (labels::APP_ROLE_GROUP_LABEL, "mygroup")],
+        "2",
+        Err(Error::PodWithoutLabelsNotSupported))]
+    #[case(&[(labels::APP_NAME_LABEL, "myapp"),
+            (labels::APP_INSTANCE_LABEL, "myinstance"),
+            (labels::APP_COMPONENT_LABEL, "myrole"),
+            (labels::APP_ROLE_GROUP_LABEL, "mygroup")],
+        "2",
+        Ok(PodIdentity{
+            app: "myapp".to_string(),
+            instance: "myinstance".to_string(),
+            role: "myrole".to_string(),
+            group: "mygroup".to_string(),
+            id: "2".to_string()}))]
+    fn test_scheduler_pod_identity_try_from(
+        #[case] labels: &[(&str, &str)],
+        #[case] id: &str,
+        #[case] expected: SchedulerResult<PodIdentity>,
+    ) {
+        let labels_map: BTreeMap<String, String> = labels
+            .into_iter()
+            .map(|t| (t.0.to_string(), t.1.to_string()))
+            .collect();
+        let pod = PodBuilder::new()
+            .metadata(
+                ObjectMetaBuilder::new()
+                    .generate_name("pod1")
+                    .namespace("default")
+                    .with_labels(labels_map)
+                    .build()
+                    .unwrap(),
+            )
+            .build()
+            .unwrap();
+
+        let got = PodIdentity::try_from_pod_and_id(&pod, id);
 
         assert_eq!(got, expected);
     }

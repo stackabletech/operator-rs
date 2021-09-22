@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- `scheduler::PodToNodeMapping::try_from_pods_and_id_label` as a replacement for the deleted `scheduler::PodToNodeMapping::from` function. Relevant for the zookeeper-operator.
+- `scheduler::PodToNodeMapping::try_from_pods` to support scheduling pods without an explicit `id` label.
+
+### Deleted
+ `scheduler::PodToNodeMapping::from`
+
 ## [0.2.2] - 2021-09-21
 
 
