@@ -350,7 +350,7 @@ impl PodToNodeMapping {
                 .entry(PodIdentity::labels(p)?)
                 .and_modify(|e| *e += 1)
                 .or_insert(1);
-            let index_str = (*index + 1).to_string();
+            let index_str = (*index).to_string();
             result.insert(
                 PodIdentity::try_from_pod_and_id(p, &index_str)?,
                 NodeIdentity::try_from(p)?,
