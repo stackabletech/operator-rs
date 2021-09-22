@@ -20,7 +20,7 @@
 //! that pod id's are "stable" and have a semantic known to the calling operator.
 //!
 //!
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::client::Client;
@@ -344,11 +344,16 @@ impl PodToNodeMapping {
     /// needs to be implemented in [`generate_ids`] too!
     pub fn try_from_pods(pods: &[Pod]) -> SchedulerResult<PodToNodeMapping> {
         let mut result = PodToNodeMapping::default();
-        for (index, pod) in (0..pods.len()).zip(pods) {
-            let index_str = (index + 1).to_string();
+        let mut label_count: HashMap<String, usize> = HashMap::new();
+        for p in pods {
+            let index = label_count
+                .entry(PodIdentity::labels(p)?)
+                .and_modify(|e| *e += 1)
+                .or_insert(1);
+            let index_str = (*index + 1).to_string();
             result.insert(
-                PodIdentity::try_from_pod_and_id(pod, &index_str)?,
-                NodeIdentity::try_from(pod)?,
+                PodIdentity::try_from_pod_and_id(p, &index_str)?,
+                NodeIdentity::try_from(p)?,
             );
         }
         Ok(result)
@@ -766,6 +771,31 @@ impl PodIdentity {
             group: group.to_string(),
             id: id.to_string(),
         }
+    }
+
+    /// Returns a string with all pod labels required by the [`PodIdentity`] joined with comma.
+    pub fn labels(pod: &Pod) -> SchedulerResult<String> {
+        if pod.metadata.labels.is_none() {
+            return Err(Error::PodWithoutLabelsNotSupported);
+        }
+
+        let mut result: Vec<String> = vec![];
+
+        let pod_labels = &pod.metadata.labels.as_ref().unwrap();
+        for label_name in [
+            labels::APP_NAME_LABEL,
+            labels::APP_INSTANCE_LABEL,
+            labels::APP_COMPONENT_LABEL,
+            labels::APP_ROLE_GROUP_LABEL,
+        ] {
+            result.push(
+                pod_labels
+                    .get(label_name)
+                    .cloned()
+                    .ok_or(Error::PodWithoutLabelsNotSupported)?,
+            );
+        }
+        Ok(result.join(","))
     }
 
     pub fn try_from_pod_and_id(pod: &Pod, id: &str) -> SchedulerResult<Self> {
