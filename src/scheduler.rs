@@ -70,6 +70,9 @@ pub enum Error {
 
 /// Returns a Vec of pod identities according to the replica per role+group pair from `eligible_nodes`.
 ///
+/// The `id` field is in the range from one (1) to the number of replicas per role+group. If no replicas
+/// are defined, then the range goes from one (1) to the number of eligible groups.
+///
 /// *NOTE* This function is tightly coupled with [`PodToNodeMapping::try_from_pods`]! If you change it's
 /// implementation you also have to update that one.
 ///
@@ -82,7 +85,6 @@ pub fn generate_ids(
     instance: &str,
     eligible_nodes: &EligibleNodesForRoleAndGroup,
 ) -> Vec<PodIdentity> {
-    let mut id: u16 = 1;
     let mut generated_ids = vec![];
     for (role_name, groups) in eligible_nodes {
         for (group_name, eligible_nodes) in groups {
@@ -90,7 +92,7 @@ pub fn generate_ids(
                 .replicas
                 .map(usize::from)
                 .unwrap_or_else(|| eligible_nodes.nodes.len());
-            for _ in 1..ids_per_group + 1 {
+            for id in 1..ids_per_group + 1 {
                 generated_ids.push(PodIdentity {
                     app: app_name.to_string(),
                     instance: instance.to_string(),
@@ -98,7 +100,6 @@ pub fn generate_ids(
                     group: group_name.clone(),
                     id: id.to_string(),
                 });
-                id += 1;
             }
         }
     }
@@ -1175,7 +1176,7 @@ mod tests {
         #[case] expected: SchedulerResult<PodIdentity>,
     ) {
         let labels_map: BTreeMap<String, String> = labels
-            .into_iter()
+            .iter()
             .map(|t| (t.0.to_string(), t.1.to_string()))
             .collect();
         let pod = PodBuilder::new()
