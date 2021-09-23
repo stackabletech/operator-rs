@@ -452,14 +452,14 @@ impl PodToNodeMapping {
         PodToNodeMapping { mapping: temp }
     }
 
-    /// Find the pod that is currently mapped onto `node`.
-    pub fn mapped_by(&self, node: &NodeIdentity) -> Option<&PodIdentity> {
+    /// Return true if the `node` is already mapped by pod from `role` and `group`.
+    pub fn mapped_by(&self, node: &NodeIdentity, role: &str, group: &str) -> bool {
         for (pod_id, mapped_node) in self.mapping.iter() {
-            if node == mapped_node {
-                return Some(pod_id);
+            if node == mapped_node && pod_id.role == role && pod_id.group == group {
+                return true;
             }
         }
-        None
+        false
     }
 
     /// Given `pods` return all that are not mapped.
@@ -752,8 +752,13 @@ impl<'a> GroupAntiAffinityStrategy<'a> {
                 pod_id.role.as_str(),
                 pod_id.group.as_str(),
             );
-            // check that the node is not already in use
-            if self.existing_mapping.mapped_by(&next_node).is_none() {
+
+            // check that the node is not already in use *by a pod from the same role+group*
+            if !self.existing_mapping.mapped_by(
+                &next_node,
+                pod_id.role.as_str(),
+                pod_id.group.as_str(),
+            ) {
                 return Some(next_node);
             }
         }
@@ -1065,6 +1070,8 @@ mod tests {
         &[Some(NodeIdentity { name: "NODE_0".to_string() }),
           Some(NodeIdentity { name: "NODE_1".to_string() }),
           Some(NodeIdentity { name: "NODE_4".to_string() })])]
+    #[case::place_one_pod_when_two_already_mapped(3, 2, 3, &[None],
+        &[Some(NodeIdentity { name: "NODE_1".to_string() })])]
     fn test_scheduler_group_anti_affinity(
         #[case] wanted_pod_count: usize,
         #[case] scheduled_pods_count: usize,
@@ -1091,6 +1098,88 @@ mod tests {
         );
 
         assert_eq!(got, expected.to_vec());
+    }
+
+    // This is a regression test for a bug that appeared when scheduling a Spark service
+    // with 2 masters, 2 workers and 1 history pods on 3 nodes.
+    #[test]
+    fn test_scheduler_group_anti_affinity_for_spark() {
+        let expected = [
+            Some(NodeIdentity {
+                name: "NODE_0".to_string(),
+            }),
+            Some(NodeIdentity {
+                name: "NODE_1".to_string(),
+            }),
+            Some(NodeIdentity {
+                name: "NODE_0".to_string(),
+            }),
+        ];
+
+        let nodes = vec![
+            NodeIdentity {
+                name: "NODE_2".to_string(),
+            },
+            NodeIdentity {
+                name: "NODE_1".to_string(),
+            },
+            NodeIdentity {
+                name: "NODE_0".to_string(),
+            },
+        ];
+
+        let mut node_set: BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>> = BTreeMap::new();
+        node_set.insert(
+            "master".to_string(),
+            [("default".to_string(), nodes.clone())]
+                .iter()
+                .cloned()
+                .collect(),
+        );
+        node_set.insert(
+            "worker".to_string(),
+            [("default".to_string(), nodes.clone())]
+                .iter()
+                .cloned()
+                .collect(),
+        );
+        node_set.insert(
+            "history".to_string(),
+            [("default".to_string(), nodes)].iter().cloned().collect(),
+        );
+        let eligible_nodes = RoleGroupEligibleNodes { node_set };
+
+        let current_mapping = PodToNodeMapping {
+            mapping: [
+                (
+                    PodIdentity::new("app", "instance", "master", "default", "1"),
+                    NodeIdentity {
+                        name: "NODE_1".to_string(),
+                    },
+                ),
+                (
+                    PodIdentity::new("app", "instance", "master", "default", "2"),
+                    NodeIdentity {
+                        name: "NODE_0".to_string(),
+                    },
+                ),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
+        };
+
+        let missing = [
+            &PodIdentity::new("app", "instance", "worker", "default", "1"),
+            &PodIdentity::new("app", "instance", "worker", "default", "2"),
+            &PodIdentity::new("app", "instance", "history", "default", "1"),
+        ];
+
+        let preferred_nodes = [None, None, None];
+        let strategy = GroupAntiAffinityStrategy::new(eligible_nodes, &current_mapping);
+        let got = strategy.place(&missing, &preferred_nodes);
+
+        assert_eq!(got.as_slice(), expected);
     }
 
     #[rstest]
