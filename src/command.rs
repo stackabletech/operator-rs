@@ -5,17 +5,12 @@ use crate::error::OperatorResult;
 use crate::reconcile::ReconcileFunctionAction;
 use crate::status::HasCurrentCommand;
 use crate::CustomResourceExt;
-use json_patch::{PatchOperation, RemoveOperation, ReplaceOperation};
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
-use k8s_openapi::chrono::{DateTime, Utc};
 use k8s_openapi::serde::de::DeserializeOwned;
 use kube::api::{ApiResource, DynamicObject, ListParams, Patch, Resource};
 use kube::core::object::HasStatus;
 use kube::Api;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use serde_json::Value;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 use std::time::Duration;
@@ -82,14 +77,14 @@ impl TryFrom<DynamicObject> for CommandRef {
         };
 
         Ok(CommandRef {
-            command_uid: command.metadata.uid.ok_or(report_error("test"))?.clone(),
-            command_name: command.metadata.name.ok_or(report_error("test"))?.clone(),
+            command_uid: command.metadata.uid.ok_or_else(|| report_error("test"))?,
+            command_name: command.metadata.name.ok_or_else(|| report_error("test"))?,
             command_ns: command
                 .metadata
                 .namespace
-                .ok_or(report_error("test"))?
-                .clone(),
-            command_kind: command.types.ok_or(report_error("test"))?.kind,
+                .ok_or_else(|| report_error("test"))?,
+            command_kind: command.types.ok_or_else(|| report_error("test"))?.kind,
+            started_at: Some(get_current_timestamp()),
         })
     }
 }
@@ -100,17 +95,8 @@ where
     <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
     <T as Resource>::DynamicType: Default,
 {
-    // TODO: There is a race condition here and this may fail if called in quick succession, because
-    //   a RemoveOperation on a non existing path seems to return an error
-    // If no current command is set we return right away
-    if let Some(status) = resource.status() {
-        if status.current_command().is_none() {
-            debug!("No current command set to be deleted, returning.");
-            return Ok(false);
-        }
-    }
-
-    let tracking_location = <<T as HasStatus>::Status as HasCurrentCommand>::tracking_location();
+    let resource_clone = resource.clone();
+    let status = resource.status_mut().get_or_insert_with(Default::default);
 
     let patch = json_patch::Patch(vec![PatchOperation::Remove(RemoveOperation {
         path: String::from(tracking_location),
@@ -145,9 +131,7 @@ where
     <T as Resource>::DynamicType: Default,
 {
     let resource_clone = resource.clone();
-    let status = resource
-        .status_mut()
-        .get_or_insert_with(|| Default::default());
+    let status = resource.status_mut().get_or_insert_with(Default::default);
 
     if status
         .current_command()
@@ -187,8 +171,8 @@ where
             );
             Ok(status.current_command())
         }
-        _ => {
-            debug!("No current command set in status, looking for new commands ");
+        Some(_) => {
+            warn!("No current command set in status, retrieving from k8s..");
             get_next_command(resources, client).await
         }
     }

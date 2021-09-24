@@ -3,13 +3,16 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```no_compile
 //! use kube::CustomResource;
 //! use stackable_operator::{client, error};
 //! use stackable_operator::client::Client;
 //! use stackable_operator::error::Error;
 //! use schemars::JsonSchema;
 //! use serde::{Deserialize, Serialize};
+//! use k8s_openapi::schemars::_serde_json::Value;
+//! use chrono::DateTime;
+//! use chrono::FixedOffset;
 //!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 //! #[kube(
@@ -49,6 +52,22 @@
 //!     fn get_owner_name(&self) -> String {
 //!         self.spec.name.clone()
 //!     }
+//!
+//!     fn start(&mut self) {
+//!         todo!()
+//!     }
+//!
+//!     fn done(&mut self) {
+//!         todo!()
+//!     }
+//!
+//!     fn start_time(&self) -> Option<DateTime<FixedOffset>> {
+//!         todo!()
+//!     }
+//!
+//!     fn get_start_patch(&self) -> Value {
+//!         todo!()
+//!     }
 //! }
 //!
 //! #[tokio::main]
@@ -76,7 +95,7 @@ use crate::controller_ref;
 use crate::error::{Error, OperatorResult};
 use crate::reconcile::{ReconcileFunctionAction, ReconcileResult, ReconciliationContext};
 use async_trait::async_trait;
-use chrono::{DateTime, FixedOffset, Utc};
+use chrono::{DateTime, FixedOffset};
 use json_patch::{AddOperation, PatchOperation};
 use kube::api::ListParams;
 use kube::{Api, Resource, ResourceExt};
@@ -117,11 +136,12 @@ where
     /// Check if our custom resource command already has the owner reference set to the main
     /// controller custom resource. If so we can stop the reconcile.
     async fn owner_reference_existing(&mut self) -> ReconcileResult<Error> {
-        // If owner_references exist, check if any match our main resource owner reference.
+        // If owner_references exists, check if any of them match the name of our main object
         if let Some(owner_reference) = controller_ref::get_controller_of(&self.context.resource) {
             if owner_reference.name == self.context.resource.get_owner_name()
                 && owner_reference.kind == O::kind(&())
             {
+                //trace!("Found command object with existing owner_reference: {}", self.context.resource)
                 return Ok(ReconcileFunctionAction::Done);
             }
         }
@@ -250,10 +270,7 @@ where
 /// helper controller will make sure that they trigger a reconcile for the parent by setting the OwnerReference.
 ///
 /// This is an async method and the returned future needs to be consumed to make progress.
-///
-/// This method cannot _currently_ fail. It returns a result for ergonomic reasons so that it can
-/// be used together with other controllers in a `try_join!` macro.
-pub async fn create_command_controller<C, O>(client: Client) -> OperatorResult<()>
+pub async fn create_command_controller<C, O>(client: Client)
 where
     C: Command
         + Clone
@@ -274,8 +291,6 @@ where
     controller
         .run(client, strategy, Duration::from_secs(10))
         .await;
-
-    Ok(())
 }
 
 /// Get a list of available commands of custom resource T.
