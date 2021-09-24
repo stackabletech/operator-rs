@@ -1,5 +1,5 @@
+use crate::name_utils;
 use crate::product_config_utils;
-use crate::{name_utils, scheduler};
 use std::collections::HashSet;
 
 #[derive(Debug, thiserror::Error)]
@@ -82,12 +82,6 @@ pub enum Error {
     )]
     RequiredFileMissing { search_path: Vec<String> },
 
-    #[error("Scheduler reported error: {source}")]
-    SchedulerError {
-        #[from]
-        source: scheduler::Error,
-    },
-
     #[error("ProductConfig Framework reported error: {source}")]
     ProductConfigError {
         #[from]
@@ -102,6 +96,37 @@ pub enum Error {
 
     #[error("Error converting CRD byte array to UTF-8")]
     FromUtf8Error(#[from] std::string::FromUtf8Error),
+    #[error(
+    "Not enough nodes [{number_of_nodes}] available to schedule pods [{number_of_pods}]. Unscheduled pods: {unscheduled_pods:?}."
+    )]
+    NotEnoughNodesAvailable {
+        number_of_nodes: usize,
+        number_of_pods: usize,
+        unscheduled_pods: Vec<String>,
+    },
+
+    #[error(
+        "PodIdentity could not be parsed: {pod_id}. This should not happen. Please open a ticket."
+    )]
+    PodIdentityNotParseable { pod_id: String },
+
+    #[error("Cannot build PodIdentity from Pod without labels. Missing labels: {0:?}")]
+    PodWithoutLabelsNotSupported(Vec<String>),
+
+    #[error("Cannot build NodeIdentity from node without name.")]
+    NodeWithoutNameNotSupported,
+
+    #[error("Cannot construct PodIdentity from empty id field.")]
+    PodIdentityFieldEmpty,
+
+    #[error(
+        "Pod identity field [{field}] with value [{value}] don't match expected value [{expected}]"
+    )]
+    UnexpectedPodIdentityField {
+        field: String,
+        value: String,
+        expected: String,
+    },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
