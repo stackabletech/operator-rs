@@ -2,20 +2,18 @@ use crate::client::Client;
 use crate::command_controller::Command;
 use crate::error::Error::ConversionError;
 use crate::error::OperatorResult;
-use crate::reconcile::ReconcileFunctionAction;
 use crate::status::HasCurrentCommand;
 use crate::CustomResourceExt;
 use json_patch::{PatchOperation, RemoveOperation};
 use k8s_openapi::serde::de::DeserializeOwned;
-use kube::api::{ApiResource, DynamicObject, ListParams, Patch, Resource};
+use kube::api::{ApiResource, DynamicObject, ListParams, Resource};
 use kube::core::object::HasStatus;
 use kube::Api;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
-use std::time::Duration;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 /// Retrieve a timestamp in format: "2021-03-23T16:20:19Z".
 /// Required to set command start and finish timestamps.
@@ -78,13 +76,22 @@ impl TryFrom<DynamicObject> for CommandRef {
         };
 
         Ok(CommandRef {
-            command_uid: command.metadata.uid.ok_or_else(|| report_error("test"))?,
-            command_name: command.metadata.name.ok_or_else(|| report_error("test"))?,
+            command_uid: command
+                .metadata
+                .uid
+                .ok_or_else(|| report_error("command_uid"))?,
+            command_name: command
+                .metadata
+                .name
+                .ok_or_else(|| report_error("command_name"))?,
             command_ns: command
                 .metadata
                 .namespace
-                .ok_or_else(|| report_error("test"))?,
-            command_kind: command.types.ok_or_else(|| report_error("test"))?.kind,
+                .ok_or_else(|| report_error("command_ns"))?,
+            command_kind: command
+                .types
+                .ok_or_else(|| report_error("command_kind"))?
+                .kind,
         })
     }
 }
@@ -112,7 +119,7 @@ where
     // Now we need to clear the command in the stashed status in our context
     // In theory this can create an inconsistent state if the operator crashes after
     // patching the status above and performing this `clear`. However, as this would in
-    // effect just mean restarting the reconciliaton which would then read the changed
+    // effect just mean restarting the reconciliation which would then read the changed
     // status from Kubernetes and thus have a clean state again this seems acceptable
     if let Some(status) = resource.status_mut() {
         status.clear_current_command();
