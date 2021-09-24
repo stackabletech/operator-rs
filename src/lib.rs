@@ -10,6 +10,7 @@ pub mod controller_utils;
 pub mod crd;
 pub mod error;
 pub mod finalizer;
+mod identity;
 pub mod k8s_errors;
 pub mod k8s_utils;
 pub mod krustlet;
