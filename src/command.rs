@@ -5,6 +5,7 @@ use crate::error::OperatorResult;
 use crate::reconcile::ReconcileFunctionAction;
 use crate::status::HasCurrentCommand;
 use crate::CustomResourceExt;
+use json_patch::{PatchOperation, RemoveOperation};
 use k8s_openapi::serde::de::DeserializeOwned;
 use kube::api::{ApiResource, DynamicObject, ListParams, Patch, Resource};
 use kube::core::object::HasStatus;
@@ -84,7 +85,6 @@ impl TryFrom<DynamicObject> for CommandRef {
                 .namespace
                 .ok_or_else(|| report_error("test"))?,
             command_kind: command.types.ok_or_else(|| report_error("test"))?.kind,
-            started_at: Some(get_current_timestamp()),
         })
     }
 }
@@ -95,6 +95,7 @@ where
     <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
     <T as Resource>::DynamicType: Default,
 {
+    let tracking_location = <<T as HasStatus>::Status as HasCurrentCommand>::tracking_location();
     let resource_clone = resource.clone();
     let status = resource.status_mut().get_or_insert_with(Default::default);
 
@@ -173,6 +174,10 @@ where
         }
         Some(_) => {
             warn!("No current command set in status, retrieving from k8s..");
+            get_next_command(resources, client).await
+        }
+        None => {
+            warn!("No status set, retrieving command from k8s...");
             get_next_command(resources, client).await
         }
     }
