@@ -43,6 +43,12 @@ use tracing::{error, warn};
 
 const DEFAULT_NODE_NAME: &str = "<no-nodename-set>";
 const SEMICOLON: &str = ";";
+const REQUIRED_LABELS: [&str; 4] = [
+    labels::APP_NAME_LABEL,
+    labels::APP_INSTANCE_LABEL,
+    labels::APP_COMPONENT_LABEL,
+    labels::APP_ROLE_GROUP_LABEL,
+];
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum Error {
@@ -58,8 +64,8 @@ pub enum Error {
     #[error("PodIdentity could not be parsed: {pod_id:?}. This should not happen. Please open a ticket.")]
     PodIdentityNotParseable { pod_id: String },
 
-    #[error("Cannot build PodIdentity from Pod without labels.")]
-    PodWithoutLabelsNotSupported,
+    #[error("Cannot build PodIdentity from Pod without labels. Missing labels: {0:?}")]
+    PodWithoutLabelsNotSupported(Vec<&'static str>),
 
     #[error("Cannot build NodeIdentity from node without name.")]
     NodeWithoutNameNotSupported,
@@ -353,7 +359,7 @@ impl PodToNodeMapping {
     /// Returns an `Err` if any of the required labels is not present.
     ///
     /// This is intended for pods that do not maintain state on the nodes where they are scheduled,
-    /// such as Spark masters or workers. For ZooKeeper see [`try_from_pods_and_id_label`].
+    /// such as Spark masters or workers. For ZooKeeper see [`Self::try_from_pods_and_id_label`].
     ///
     /// *NOTE* This function assumes that the operator has also generated id labels by using a counter
     /// starting as one (1) such as [`generate_ids`] in this module. If this was not the case, you
@@ -383,10 +389,10 @@ impl PodToNodeMapping {
     ///
     /// This is intended for pods that explicitly maintain state on the nodes where they are scheduled,
     /// such as ZooKeeper pods. For services where this is not the case, such as Spark masters or workers,
-    /// see [`try_from_pods`].
+    /// see [`Self::try_from_pods`].
     pub fn try_from_pods_and_id_label(
         pods: &[Pod],
-        id_label_name: &str,
+        id_label_name: &'static str,
     ) -> SchedulerResult<PodToNodeMapping> {
         let mut pod_node_mapping = PodToNodeMapping::default();
 
@@ -395,13 +401,17 @@ impl PodToNodeMapping {
                 Some(labels) => {
                     let id = labels
                         .get(id_label_name)
-                        .ok_or(Error::PodWithoutLabelsNotSupported)?;
+                        .ok_or_else(|| Error::PodWithoutLabelsNotSupported(vec![id_label_name]))?;
                     pod_node_mapping.insert(
                         PodIdentity::try_from_pod_and_id(pod, id.as_ref())?,
                         NodeIdentity::try_from(pod)?,
                     );
                 }
-                None => return Err(Error::PodWithoutLabelsNotSupported),
+                None => {
+                    return Err(Error::PodWithoutLabelsNotSupported(
+                        REQUIRED_LABELS.to_vec(),
+                    ))
+                }
             }
         }
         Ok(pod_node_mapping)
@@ -452,7 +462,7 @@ impl PodToNodeMapping {
         PodToNodeMapping { mapping: temp }
     }
 
-    /// Return true if the `node` is already mapped by pod from `role` and `group`.
+    /// Return true if the `node` is already mapped by a pod from `role` and `group`.
     pub fn mapped_by(&self, node: &NodeIdentity, role: &str, group: &str) -> bool {
         for (pod_id, mapped_node) in self.mapping.iter() {
             if node == mapped_node && pod_id.role == role && pod_id.group == group {
@@ -796,28 +806,30 @@ impl PodIdentity {
     }
 
     /// Returns a string with all pod labels required by the [`PodIdentity`] joined with comma.
+    /// If any required pod labels are missing, returns a [`Error::PodWithoutLabelsNotSupported`].
     pub fn labels(pod: &Pod) -> SchedulerResult<String> {
         if pod.metadata.labels.is_none() {
-            return Err(Error::PodWithoutLabelsNotSupported);
+            return Err(Error::PodWithoutLabelsNotSupported(
+                REQUIRED_LABELS.to_vec(),
+            ));
         }
 
         let mut result: Vec<String> = vec![];
 
         let pod_labels = &pod.metadata.labels.as_ref().unwrap();
-        for label_name in [
-            labels::APP_NAME_LABEL,
-            labels::APP_INSTANCE_LABEL,
-            labels::APP_COMPONENT_LABEL,
-            labels::APP_ROLE_GROUP_LABEL,
-        ] {
-            result.push(
-                pod_labels
-                    .get(label_name)
-                    .cloned()
-                    .ok_or(Error::PodWithoutLabelsNotSupported)?,
-            );
+        let mut missing_labels = Vec::with_capacity(REQUIRED_LABELS.len());
+        for label_name in REQUIRED_LABELS {
+            match pod_labels.get(label_name).cloned() {
+                Some(value) => result.push(value),
+                _ => missing_labels.push(label_name),
+            }
         }
-        Ok(result.join(","))
+
+        if missing_labels.is_empty() {
+            Ok(result.join(","))
+        } else {
+            Err(Error::PodWithoutLabelsNotSupported(missing_labels))
+        }
     }
 
     pub fn try_from_pod_and_id(pod: &Pod, id: &str) -> SchedulerResult<Self> {
@@ -827,21 +839,44 @@ impl PodIdentity {
 
         match &pod.metadata.labels {
             Some(labels) => {
-                let app = labels.get(labels::APP_NAME_LABEL);
-                let instance = labels.get(labels::APP_INSTANCE_LABEL);
-                let role = labels.get(labels::APP_COMPONENT_LABEL);
-                let group = labels.get(labels::APP_ROLE_GROUP_LABEL);
-                Ok(PodIdentity {
-                    app: app.cloned().ok_or(Error::PodWithoutLabelsNotSupported)?,
-                    instance: instance
-                        .cloned()
-                        .ok_or(Error::PodWithoutLabelsNotSupported)?,
-                    role: role.cloned().ok_or(Error::PodWithoutLabelsNotSupported)?,
-                    group: group.cloned().ok_or(Error::PodWithoutLabelsNotSupported)?,
-                    id: id.to_string(),
-                })
+                let mut missing_labels = Vec::with_capacity(4);
+                let mut app = String::new();
+                let mut instance = String::new();
+                let mut role = String::new();
+                let mut group = String::new();
+
+                match labels.get(labels::APP_NAME_LABEL).cloned() {
+                    Some(value) => app = value,
+                    _ => missing_labels.push(labels::APP_NAME_LABEL),
+                }
+                match labels.get(labels::APP_INSTANCE_LABEL).cloned() {
+                    Some(value) => instance = value,
+                    _ => missing_labels.push(labels::APP_INSTANCE_LABEL),
+                }
+                match labels.get(labels::APP_COMPONENT_LABEL).cloned() {
+                    Some(value) => role = value,
+                    _ => missing_labels.push(labels::APP_COMPONENT_LABEL),
+                }
+                match labels.get(labels::APP_ROLE_GROUP_LABEL).cloned() {
+                    Some(value) => group = value,
+                    _ => missing_labels.push(labels::APP_ROLE_GROUP_LABEL),
+                }
+
+                if missing_labels.is_empty() {
+                    Ok(PodIdentity::new(
+                        app.as_str(),
+                        instance.as_str(),
+                        role.as_str(),
+                        group.as_str(),
+                        id,
+                    ))
+                } else {
+                    Err(Error::PodWithoutLabelsNotSupported(missing_labels))
+                }
             }
-            _ => Err(Error::PodWithoutLabelsNotSupported),
+            _ => Err(Error::PodWithoutLabelsNotSupported(
+                REQUIRED_LABELS.to_vec(),
+            )),
         }
     }
 
@@ -1335,12 +1370,12 @@ mod tests {
 
     #[rstest]
     #[case(&[], "", Err(Error::PodIdentityFieldEmpty))]
-    #[case(&[], "1", Err(Error::PodWithoutLabelsNotSupported))]
+    #[case(&[], "1", Err(Error::PodWithoutLabelsNotSupported(REQUIRED_LABELS.to_vec())))]
     #[case::no_app_label(&[(labels::APP_INSTANCE_LABEL, "myinstance"),
             (labels::APP_COMPONENT_LABEL, "myrole"),
             (labels::APP_ROLE_GROUP_LABEL, "mygroup")],
         "2",
-        Err(Error::PodWithoutLabelsNotSupported))]
+        Err(Error::PodWithoutLabelsNotSupported([labels::APP_NAME_LABEL].to_vec())))]
     #[case(&[(labels::APP_NAME_LABEL, "myapp"),
             (labels::APP_INSTANCE_LABEL, "myinstance"),
             (labels::APP_COMPONENT_LABEL, "myrole"),
@@ -1352,7 +1387,7 @@ mod tests {
             role: "myrole".to_string(),
             group: "mygroup".to_string(),
             id: "2".to_string()}))]
-    fn test_scheduler_pod_identity_try_from(
+    fn test_scheduler_pod_identity_try_from_pod_and_id(
         #[case] labels: &[(&str, &str)],
         #[case] id: &str,
         #[case] expected: SchedulerResult<PodIdentity>,
