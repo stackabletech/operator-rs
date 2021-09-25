@@ -466,7 +466,8 @@ impl PodPlacementStrategy for GroupAntiAffinityStrategy<'_> {
         preferred_nodes: &[Option<NodeIdentity>],
     ) -> Vec<Option<NodeIdentity>> {
         assert_eq!(pod_identities.len(), preferred_nodes.len());
-        pod_identities.iter()
+        pod_identities
+            .iter()
             .zip(preferred_nodes.iter())
             .map(|(pod, preferred_node)| self.select_node_for_pod(pod, preferred_node.clone()))
             .collect()
@@ -518,9 +519,8 @@ mod tests {
 
     use super::*;
 
-
     #[derive(Default)]
-    struct TestHistory { }
+    struct TestHistory {}
 
     impl PodPlacementHistory for TestHistory {
         fn find(&self, _pod_id: &PodIdentity) -> Option<NodeIdentity> {
@@ -652,22 +652,37 @@ mod tests {
         assert_eq!(got, expected);
     }
 
-   fn build_role_group_nodes(eligible_nodes: Vec<(&str, &str, Vec<&str>)>) -> RoleGroupEligibleNodes {
+    fn build_role_group_nodes(
+        eligible_nodes: Vec<(&str, &str, Vec<&str>)>,
+    ) -> RoleGroupEligibleNodes {
         let mut node_set: BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>> = BTreeMap::new();
         for (role, group, node_names) in eligible_nodes {
-            node_set.entry(String::from(role))
+            node_set
+                .entry(String::from(role))
                 .and_modify(|r| {
                     r.insert(
                         String::from(group),
-                        node_names.iter().map(|nn| NodeIdentity { name: nn.to_string() }).collect()
+                        node_names
+                            .iter()
+                            .map(|nn| NodeIdentity {
+                                name: nn.to_string(),
+                            })
+                            .collect(),
                     );
-                }
-                )
-                .or_insert_with(|| vec![(
-                    String::from(group),
-                    node_names.iter().map(|nn| NodeIdentity { name: nn.to_string() }).collect()
-                )]
-                    .into_iter().collect());
+                })
+                .or_insert_with(|| {
+                    vec![(
+                        String::from(group),
+                        node_names
+                            .iter()
+                            .map(|nn| NodeIdentity {
+                                name: nn.to_string(),
+                            })
+                            .collect(),
+                    )]
+                    .into_iter()
+                    .collect()
+                });
         }
         RoleGroupEligibleNodes { node_set }
     }

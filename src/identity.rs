@@ -226,7 +226,9 @@ pub struct NodeIdentity {
 
 impl NodeIdentity {
     pub fn new(name: &str) -> Self {
-        NodeIdentity { name: String::from(name) }
+        NodeIdentity {
+            name: String::from(name),
+        }
     }
 }
 
@@ -263,7 +265,6 @@ pub struct PodToNodeMapping {
 }
 
 impl PodToNodeMapping {
-
     /// Return a mapping for `pods` given that the `id_factory` can convert them to pod identities.
     /// Return an `Error` if any of the given pods cannot be converted to a pod identity or
     /// is not mapped to a node.
@@ -277,9 +278,7 @@ impl PodToNodeMapping {
             mapping.insert(pod_id.clone(), NodeIdentity::try_from(pod)?);
         }
 
-        Ok(PodToNodeMapping {
-            mapping
-        })
+        Ok(PodToNodeMapping { mapping })
     }
 
     pub fn iter(&self) -> Iter<'_, PodIdentity, NodeIdentity> {
@@ -357,7 +356,6 @@ impl PodToNodeMapping {
         PodToNodeMapping { mapping: result }
     }
 }
-
 
 /// A pod identity generator that can be implemented by the operators.
 ///
@@ -498,7 +496,6 @@ impl LabeledPodIdentityFactory {
 
         generated_ids
     }
-
 }
 
 impl PodIdentityFactory for LabeledPodIdentityFactory {
@@ -729,7 +726,20 @@ pub mod tests {
 
         // Cannot compare `SchedulerResult`s directly because `crate::error::Error` doesn't implement `PartialEq`
         match (&got, &expected) {
-            (Ok(g), Ok(e)) => assert_eq!(g, &PodToNodeMapping { mapping: e.iter().map(|(node, id)| (id.clone(), NodeIdentity{name: node.to_string()})).collect()}),
+            (Ok(g), Ok(e)) => assert_eq!(
+                g,
+                &PodToNodeMapping {
+                    mapping: e
+                        .iter()
+                        .map(|(node, id)| (
+                            id.clone(),
+                            NodeIdentity {
+                                name: node.to_string()
+                            }
+                        ))
+                        .collect()
+                }
+            ),
             (Err(ge), Err(re)) => assert_eq!(format!("{:?}", ge), format!("{:?}", re)),
             _ => panic!("got: {:?}\nexpected: {:?}", got, expected),
         }
@@ -768,17 +778,19 @@ pub mod tests {
                 .map(|t| (t.0.to_string(), t.1.to_string()))
                 .collect();
 
-            result.push(PodBuilder::new()
-                .metadata(
-                    ObjectMetaBuilder::new()
-                        .namespace("default")
-                        .with_labels(labels_map)
-                        .build()
-                        .unwrap(),
-                )
-                .node_name(node_name)
-                .build()
-                .unwrap());
+            result.push(
+                PodBuilder::new()
+                    .metadata(
+                        ObjectMetaBuilder::new()
+                            .namespace("default")
+                            .with_labels(labels_map)
+                            .build()
+                            .unwrap(),
+                    )
+                    .node_name(node_name)
+                    .build()
+                    .unwrap(),
+            );
         }
         result
     }
@@ -800,7 +812,7 @@ pub mod tests {
                         },
                     );
                 })
-                .or_insert_with(||
+                .or_insert_with(|| {
                     vec![(
                         group.to_string(),
                         EligibleNodesAndReplicas {
@@ -809,18 +821,24 @@ pub mod tests {
                         },
                     )]
                     .into_iter()
-                    .collect(),
-                );
+                    .collect()
+                });
         }
         eligible_nodes
     }
 
-    pub fn build_mapping(node_pod_id: Vec<(&str, &str, &str, &str, &str, &str)>) -> PodToNodeMapping {
+    pub fn build_mapping(
+        node_pod_id: Vec<(&str, &str, &str, &str, &str, &str)>,
+    ) -> PodToNodeMapping {
         let mut mapping: BTreeMap<PodIdentity, NodeIdentity> = BTreeMap::default();
         for (node_name, app, instance, role, group, id) in node_pod_id {
-            mapping.insert(PodIdentity::new(app, instance, role, group, id), NodeIdentity { name: String::from(node_name) });
+            mapping.insert(
+                PodIdentity::new(app, instance, role, group, id),
+                NodeIdentity {
+                    name: String::from(node_name),
+                },
+            );
         }
         PodToNodeMapping { mapping }
     }
-
 }
