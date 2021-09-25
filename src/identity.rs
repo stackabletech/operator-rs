@@ -386,10 +386,21 @@ pub struct LabeledPodIdentityFactory {
 }
 
 impl LabeledPodIdentityFactory {
-    // Clippy complains that this function is unused but this is not true. It is used in tests
-    // and it is meant to be called by the operators. It's part of this module's API.
-    // Also clippy complains about the `generate_ids` which is called here.
-    // For this reason, this function is marked as "dead code".
+    /// Build a new instance of this factory.
+    ///
+    /// See `Self::generate_ids` for implemtation details.
+    ///
+    /// Clippy complains that this function is unused but this is not true. It is used in tests
+    /// and it is meant to be called by the operators. It's part of this module's API.
+    /// Also clippy complains about the `generate_ids` which is called here.
+    /// For this reason, this function is marked as "dead code".
+    ///
+    /// # Arguments
+    /// - `app` : Application name.
+    /// - `instance` : Application name.
+    /// - `eligible_nodes` : Eligible nodes (and pod replicas) grouped by role and group.
+    /// - `id_label_name` : Name of the pod's id label used to store the `id` field of `PodIdentity`
+    /// - `start` : The initial value when generating the `id` fields of pod identities.
     #[allow(dead_code)]
     pub fn new(
         app: &str,

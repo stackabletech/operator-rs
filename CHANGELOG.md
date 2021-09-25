@@ -5,12 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
-- Bugfix: pod id generation from pods should match the output of `generate_ids` when pods have no id label. ([#222])
 - Bugfix: when scheduling a pod, `GroupAntiAffinityStrategy` should not skip nodes that are mapped by other pods from different role+group. ([#222])
 
 ### Added
-- `scheduler::PodToNodeMapping::try_from_pods_and_id_label` as a replacement for the deleted `scheduler::PodToNodeMapping::from` function. Relevant for the zookeeper-operator. ([#222])
-- `scheduler::PodToNodeMapping::try_from_pods` to support scheduling pods without an explicit `id` label. ([#222])
+- `identity.rs` a new module split out of `scheduler.rs` that bundles code for pod and node id management.
+- `identity::PodIdentityFactory` trait and one implementation called `identity::LabeledPodIdentityFactory`
 
 ### Removed
  `scheduler::PodToNodeMapping::from` ([#222])
