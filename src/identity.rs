@@ -83,8 +83,8 @@ impl PodIdentity {
         }
     }
 
-    pub fn try_from_pod_and_id(pod: &Pod, id: &str) -> Result<Self, Error> {
-        if id.is_empty() {
+    pub fn try_from_pod_and_id(pod: &Pod, id_label: &str) -> Result<Self, Error> {
+        if id_label.is_empty() {
             return Err(Error::PodIdentityFieldEmpty);
         }
 
@@ -95,6 +95,7 @@ impl PodIdentity {
                 let mut instance = String::new();
                 let mut role = String::new();
                 let mut group = String::new();
+                let mut id = String::new();
 
                 match labels.get(labels::APP_NAME_LABEL).cloned() {
                     Some(value) => app = value,
@@ -112,6 +113,10 @@ impl PodIdentity {
                     Some(value) => group = value,
                     _ => missing_labels.push(String::from(labels::APP_ROLE_GROUP_LABEL)),
                 }
+                match labels.get(id_label).cloned() {
+                    Some(value) => id = value,
+                    _ => missing_labels.push(String::from(id_label)),
+                }
 
                 if missing_labels.is_empty() {
                     Ok(PodIdentity::new(
@@ -119,7 +124,7 @@ impl PodIdentity {
                         instance.as_str(),
                         role.as_str(),
                         group.as_str(),
-                        id,
+                        id.as_str(),
                     ))
                 } else {
                     Err(Error::PodWithoutLabelsNotSupported(missing_labels))
@@ -219,6 +224,12 @@ pub struct NodeIdentity {
     pub name: String,
 }
 
+impl NodeIdentity {
+    pub fn new(name: &str) -> Self {
+        NodeIdentity { name: String::from(name) }
+    }
+}
+
 impl TryFrom<&Pod> for NodeIdentity {
     type Error = Error;
     fn try_from(p: &Pod) -> Result<Self, Error> {
@@ -252,6 +263,25 @@ pub struct PodToNodeMapping {
 }
 
 impl PodToNodeMapping {
+
+    /// Return a mapping for `pods` given that the `id_factory` can convert them to pod identities.
+    /// Return an `Error` if any of the given pods cannot be converted to a pod identity or
+    /// is not mapped to a node.
+    /// # Argumens
+    /// - `id_factory` : A factory that can build a `PodIdentity` from a `Pod`.
+    /// - `pods` : The pods to add to the mapping.
+    pub fn try_from(id_factory: &dyn PodIdentityFactory, pods: &[Pod]) -> Result<Self, Error> {
+        let mut mapping = BTreeMap::default();
+
+        for (pod_id, pod) in id_factory.try_from(pods)?.iter().zip(pods) {
+            mapping.insert(pod_id.clone(), NodeIdentity::try_from(pod)?);
+        }
+
+        Ok(PodToNodeMapping {
+            mapping
+        })
+    }
+
     pub fn iter(&self) -> Iter<'_, PodIdentity, NodeIdentity> {
         self.mapping.iter()
     }
@@ -328,67 +358,6 @@ impl PodToNodeMapping {
     }
 }
 
-/// Returns a Vec of pod identities according to the replica per role+group pair from `eligible_nodes`.
-///
-/// The `id` field is in the range from one (1) to the number of replicas per role+group. If no replicas
-/// are defined, then the range goes from one (1) to the number of eligible groups.
-///
-/// Given a `start` value of 1000, a role with two groups where the first group has two replicas and
-/// the second has three replicas, the generated `id` fields of the pod identities are counted as follows:
-///
-/// ```yaml
-/// role_1:
-///     - group_1:
-///         - id: 1000
-///         - id: 1001
-///     - group_2:
-///         - id: 1002
-///         - id: 1003
-///         - id: 1004
-/// ```
-///
-/// # Arguments
-/// * `app_name` - Application name
-/// * `instance` - Service instance
-/// * `eligible_nodes` - Eligible nodes grouped by role and groups.
-/// * `start` - The starting value for the id field.
-pub fn generate_ids(
-    app_name: &str,
-    instance: &str,
-    eligible_nodes: &EligibleNodesForRoleAndGroup,
-    start: usize,
-) -> Vec<PodIdentity> {
-    let mut generated_ids = vec![];
-    let mut id = start;
-    let sorted_nodes: BTreeMap<&String, &HashMap<String, EligibleNodesAndReplicas>> =
-        eligible_nodes.iter().collect();
-    for (role_name, groups) in sorted_nodes {
-        let sorted_groups: BTreeMap<&String, &EligibleNodesAndReplicas> = groups
-            .iter()
-            .collect::<BTreeMap<&String, &EligibleNodesAndReplicas>>();
-        for (group_name, eligible_nodes) in sorted_groups {
-            let ids_per_group = eligible_nodes
-                .replicas
-                .map(usize::from)
-                .unwrap_or_else(|| eligible_nodes.nodes.len());
-            for _ in 0..ids_per_group {
-                generated_ids.push(PodIdentity {
-                    app: app_name.to_string(),
-                    instance: instance.to_string(),
-                    role: role_name.clone(),
-                    group: group_name.clone(),
-                    id: id.to_string(),
-                });
-                id += 1;
-            }
-        }
-    }
-
-    // Sort the result to make testing predictable. Otherwise the for-loop above is not
-    // guaranteed to preserve insertion order so the tests might fail at random.
-    //generated_ids.sort_by(|p| String::from(p.id()));
-    generated_ids
-}
 
 /// A pod identity generator that can be implemented by the operators.
 ///
@@ -399,11 +368,7 @@ pub trait PodIdentityFactory {
     /// A slice with all pod identities that should exist for a given service.
     fn as_slice(&self) -> &[PodIdentity];
     /// Returns a PodToNodeMapping for the given pods or an error if any pod could not be mapped.
-    fn try_mapping(&self, pods: &[Pod]) -> Result<PodToNodeMapping, Error>;
-    /// A convenience implementation for quickly finding out which pods are not scheduled yet.
-    fn missing(&self, pods: &[Pod]) -> Result<Vec<PodIdentity>, Error> {
-        Ok(self.try_mapping(pods)?.missing(self.as_slice()))
-    }
+    fn try_from(&self, pods: &[Pod]) -> Result<Vec<PodIdentity>, Error>;
 }
 
 /// An implementation of [`PodIdentityFactory`] where id's are incremented across all roles and groups
@@ -413,28 +378,31 @@ pub trait PodIdentityFactory {
 /// that can vary from operator to operator.
 ///
 /// See `generate_ids` for details.
-pub struct LabeledPodIdentityFactory<'a> {
+pub struct LabeledPodIdentityFactory {
     app: String,
     instance: String,
-    eligible_nodes: &'a EligibleNodesForRoleAndGroup,
     id_label_name: String,
     slice: Vec<PodIdentity>,
 }
 
-impl<'a> LabeledPodIdentityFactory<'a> {
+impl LabeledPodIdentityFactory {
+    // Clippy complains that this function is unused but this is not true. It is used in tests
+    // and it is meant to be called by the operators. It's part of this module's API.
+    // Also clippy complains about the `generate_ids` which is called here.
+    // For this reason, this function is marked as "dead code".
+    #[allow(dead_code)]
     pub fn new(
         app: &str,
         instance: &str,
-        eligible_nodes: &'a EligibleNodesForRoleAndGroup,
+        eligible_nodes: &EligibleNodesForRoleAndGroup,
         id_label_name: &str,
         start: usize,
     ) -> Self {
         LabeledPodIdentityFactory {
             app: app.to_string(),
             instance: instance.to_string(),
-            eligible_nodes,
             id_label_name: id_label_name.to_string(),
-            slice: generate_ids(app, instance, eligible_nodes, start),
+            slice: Self::generate_ids(app, instance, eligible_nodes, start),
         }
     }
 
@@ -458,45 +426,94 @@ impl<'a> LabeledPodIdentityFactory<'a> {
         }
         Ok(pod_id)
     }
+    /// Returns a Vec of pod identities according to the replica per role+group pair from `eligible_nodes`.
+    ///
+    /// The `id` field is in the range from one (1) to the number of replicas per role+group. If no replicas
+    /// are defined, then the range goes from one (1) to the number of eligible groups.
+    ///
+    /// Given a `start` value of 1000, a role with two groups where the first group has two replicas and
+    /// the second has three replicas, the generated `id` fields of the pod identities are counted as follows:
+    ///
+    /// ```yaml
+    /// role_1:
+    ///     - group_1:
+    ///         - id: 1000
+    ///         - id: 1001
+    ///     - group_2:
+    ///         - id: 1002
+    ///         - id: 1003
+    ///         - id: 1004
+    /// ```
+    ///
+    /// # Arguments
+    /// * `app_name` - Application name
+    /// * `instance` - Service instance
+    /// * `eligible_nodes` - Eligible nodes grouped by role and groups.
+    /// * `start` - The starting value for the id field.
+    #[allow(dead_code)] // see comment for Self::new
+    fn generate_ids(
+        app_name: &str,
+        instance: &str,
+        eligible_nodes: &EligibleNodesForRoleAndGroup,
+        start: usize,
+    ) -> Vec<PodIdentity> {
+        let mut generated_ids = vec![];
+        let mut id = start;
+        // sorting role and group to keep the output consistent and make this
+        // function testable.
+        let sorted_nodes: BTreeMap<&String, &HashMap<String, EligibleNodesAndReplicas>> =
+            eligible_nodes.iter().collect();
+        for (role_name, groups) in sorted_nodes {
+            let sorted_groups: BTreeMap<&String, &EligibleNodesAndReplicas> = groups
+                .iter()
+                .collect::<BTreeMap<&String, &EligibleNodesAndReplicas>>();
+            for (group_name, eligible_nodes) in sorted_groups {
+                let ids_per_group = eligible_nodes
+                    .replicas
+                    .map(usize::from)
+                    .unwrap_or_else(|| eligible_nodes.nodes.len());
+                for _ in 0..ids_per_group {
+                    generated_ids.push(PodIdentity {
+                        app: app_name.to_string(),
+                        instance: instance.to_string(),
+                        role: role_name.clone(),
+                        group: group_name.clone(),
+                        id: id.to_string(),
+                    });
+                    id += 1;
+                }
+            }
+        }
+
+        generated_ids
+    }
+
 }
 
-impl PodIdentityFactory for LabeledPodIdentityFactory<'_> {
+impl PodIdentityFactory for LabeledPodIdentityFactory {
+    fn as_slice(&self) -> &[PodIdentity] {
+        self.slice.as_slice()
+    }
+
     /// Returns a `PodToNodeMapping` for the given `pods`.
     /// Returns an `error::Error` if any of the pods doesn't have the expected labels
     /// or if any of the labels are invalid. A label is invalid if it doesn't match
     /// the corresponding field in `Self` like `app` or `instance`.
     /// # Arguments
     /// - `pods` : A pod slice.
-    fn try_mapping(&self, pods: &[Pod]) -> Result<PodToNodeMapping, Error> {
-        let mut result = PodToNodeMapping::default();
+    fn try_from(&self, pods: &[Pod]) -> Result<Vec<PodIdentity>, Error> {
+        let mut result = vec![];
 
         for pod in pods {
-            match &pod.metadata.labels {
-                Some(labels) => {
-                    let id = labels.get(self.id_label_name.as_str()).ok_or_else(|| {
-                        Error::PodWithoutLabelsNotSupported(vec![String::from(&self.id_label_name)])
-                    })?;
-
-                    let pod_id = PodIdentity::try_from_pod_and_id(pod, id.as_ref())?;
-                    result.insert(self.fields_match(pod_id)?, NodeIdentity::try_from(pod)?);
-                }
-                None => {
-                    return Err(Error::PodWithoutLabelsNotSupported(
-                        REQUIRED_LABELS.iter().map(|s| String::from(*s)).collect(),
-                    ))
-                }
-            }
+            let pod_id = PodIdentity::try_from_pod_and_id(pod, self.id_label_name.as_ref())?;
+            result.push(self.fields_match(pod_id)?);
         }
         Ok(result)
-    }
-
-    fn as_slice(&self) -> &[PodIdentity] {
-        self.slice.as_slice()
     }
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
 
     use super::*;
     use crate::builder::{ObjectMetaBuilder, PodBuilder};
@@ -504,26 +521,40 @@ mod tests {
     use rstest::*;
     use std::collections::{BTreeMap, HashMap};
 
+    pub const APP_NAME: &str = "app";
+    pub const INSTANCE: &str = "simple";
+
     #[rstest]
     #[case(&[], "", Err(Error::PodIdentityFieldEmpty))]
-    #[case(&[], "1", Err(Error::PodWithoutLabelsNotSupported(REQUIRED_LABELS.iter().map(|s| String::from(*s)).collect())))]
-    #[case::no_app_label(&[
+    #[case(&[], "ID_LABEL",
+        Err(Error::PodWithoutLabelsNotSupported([
+            labels::APP_NAME_LABEL,
+            labels::APP_INSTANCE_LABEL,
+            labels::APP_COMPONENT_LABEL,
+            labels::APP_ROLE_GROUP_LABEL,
+            "ID_LABEL"
+        ].iter().map(|s| String::from(*s)).collect())))]
+    #[case::no_app_and_id_label(&[
             (labels::APP_INSTANCE_LABEL, "myinstance"),
             (labels::APP_COMPONENT_LABEL, "myrole"),
             (labels::APP_ROLE_GROUP_LABEL, "mygroup")],
-        "2",
-        Err(Error::PodWithoutLabelsNotSupported([labels::APP_NAME_LABEL.to_string()].to_vec())))]
+        "ID_LABEL",
+        Err(Error::PodWithoutLabelsNotSupported([
+            labels::APP_NAME_LABEL,
+            "ID_LABEL"
+        ].iter().map(|s| String::from(*s)).collect())))]
     #[case(&[(labels::APP_NAME_LABEL, "myapp"),
             (labels::APP_INSTANCE_LABEL, "myinstance"),
             (labels::APP_COMPONENT_LABEL, "myrole"),
-            (labels::APP_ROLE_GROUP_LABEL, "mygroup")],
-        "2",
+            (labels::APP_ROLE_GROUP_LABEL, "mygroup"),
+            ("ID_LABEL", "123")],
+        "ID_LABEL",
         Ok(PodIdentity{
             app: "myapp".to_string(),
             instance: "myinstance".to_string(),
             role: "myrole".to_string(),
             group: "mygroup".to_string(),
-            id: "2".to_string()}))]
+            id: "123".to_string()}))]
     fn test_identity_pod_identity_try_from_pod_and_id(
         #[case] labels: &[(&str, &str)],
         #[case] id: &str,
@@ -557,8 +588,8 @@ mod tests {
 
     #[rstest]
     #[case(0, vec![], vec![])]
-    #[case::generate_one_id(0, vec![("role", "group", 0, 1)], vec![PodIdentity::new("app", "instance", "role", "group", "0")])]
-    #[case::generate_one_id_starting_at_1000(1000, vec![("role", "group", 0, 1)], vec![PodIdentity::new("app", "instance", "role", "group", "1000")])]
+    #[case::generate_one_id(0, vec![("role", "group", 0, 1)], vec![PodIdentity::new(APP_NAME, INSTANCE, "role", "group", "0")])]
+    #[case::generate_one_id_starting_at_1000(1000, vec![("role", "group", 0, 1)], vec![PodIdentity::new(APP_NAME, INSTANCE, "role", "group", "1000")])]
     #[case::generate_five_ids(1,
         vec![
             ("master", "default", 0, 2),
@@ -566,11 +597,11 @@ mod tests {
             ("history", "default", 0, 1),
         ],
         vec![
-            PodIdentity::new("app", "instance", "history", "default", "1"),
-            PodIdentity::new("app", "instance", "master", "default", "2"),
-            PodIdentity::new("app", "instance", "master", "default", "3"),
-            PodIdentity::new("app", "instance", "worker", "default", "4"),
-            PodIdentity::new("app", "instance", "worker", "default", "5"),
+            PodIdentity::new(APP_NAME, INSTANCE, "history", "default", "1"),
+            PodIdentity::new(APP_NAME, INSTANCE, "master", "default", "2"),
+            PodIdentity::new(APP_NAME, INSTANCE, "master", "default", "3"),
+            PodIdentity::new(APP_NAME, INSTANCE, "worker", "default", "4"),
+            PodIdentity::new(APP_NAME, INSTANCE, "worker", "default", "5"),
         ]
     )]
     #[case::generate_two_roles(10,
@@ -579,9 +610,9 @@ mod tests {
             ("role2", "default", 0, 1),
         ],
         vec![
-            PodIdentity::new("app", "instance", "role1", "default", "10"),
-            PodIdentity::new("app", "instance", "role1", "default", "11"),
-            PodIdentity::new("app", "instance", "role2", "default", "12"),
+            PodIdentity::new(APP_NAME, INSTANCE, "role1", "default", "10"),
+            PodIdentity::new(APP_NAME, INSTANCE, "role1", "default", "11"),
+            PodIdentity::new(APP_NAME, INSTANCE, "role2", "default", "12"),
         ]
     )]
     fn test_identity_labeled_factory_as_slice(
@@ -591,8 +622,8 @@ mod tests {
     ) {
         let eligible_nodes_and_replicas = build_eligible_nodes_and_replicas(nodes_and_replicas);
         let factory = LabeledPodIdentityFactory::new(
-            "app",
-            "instance",
+            APP_NAME,
+            INSTANCE,
             &eligible_nodes_and_replicas,
             "ID_LABEL",
             start,
@@ -602,22 +633,49 @@ mod tests {
     }
 
     #[rstest]
-    #[case(0, vec![], vec![], Ok(PodToNodeMapping::default()))]
-    fn test_identity_labeled_factory_try_mapping(
+    #[case(0, vec![], vec![], Ok(vec![]))]
+    #[case(1000,
+        vec![("role", "group", 1, 1)],
+        vec![
+            ("node_1", vec![
+                (labels::APP_NAME_LABEL, APP_NAME),
+                (labels::APP_INSTANCE_LABEL, INSTANCE),
+                (labels::APP_COMPONENT_LABEL, "role"),
+                (labels::APP_ROLE_GROUP_LABEL, "group"),
+                ("ID_LABEL", "1000")]),],
+        Ok(vec![
+            PodIdentity::new(APP_NAME, INSTANCE, "role", "group", "1000"),
+        ]))]
+    #[case(1000,
+        vec![("master", "default", 1, 1)],
+        vec![
+            ("node_1", vec![
+                (labels::APP_NAME_LABEL, "this-pod-belongs-to-another-app"),
+                (labels::APP_INSTANCE_LABEL, INSTANCE),
+                (labels::APP_COMPONENT_LABEL, "master"),
+                (labels::APP_ROLE_GROUP_LABEL, "default"),
+                ("ID_LABEL", "1000")]),],
+        Err(Error::UnexpectedPodIdentityField {
+            field: APP_NAME.to_string(),
+            value: "this-pod-belongs-to-another-app".to_string(),
+            expected: APP_NAME.to_string()
+        }))]
+    fn test_identity_labeled_factory_try_from(
         #[case] start: usize,
         #[case] nodes_and_replicas: Vec<(&str, &str, usize, usize)>,
-        #[case] pods: Vec<Pod>,
-        #[case] expected: Result<PodToNodeMapping, Error>,
+        #[case] pod_labels: Vec<(&str, Vec<(&str, &str)>)>,
+        #[case] expected: Result<Vec<PodIdentity>, Error>,
     ) {
         let eligible_nodes_and_replicas = build_eligible_nodes_and_replicas(nodes_and_replicas);
+        let pods = build_pods(pod_labels);
         let factory = LabeledPodIdentityFactory::new(
-            "app",
-            "instance",
+            APP_NAME,
+            INSTANCE,
             &eligible_nodes_and_replicas,
             "ID_LABEL",
             start,
         );
-        let got = factory.try_mapping(pods.as_slice());
+        let got = factory.try_from(pods.as_slice());
 
         // Cannot compare `SchedulerResult`s directly because `crate::error::Error` doesn't implement `PartialEq`
         match (&got, &expected) {
@@ -627,12 +685,99 @@ mod tests {
         }
     }
 
-    fn build_eligible_nodes_and_replicas(
+    #[rstest]
+    #[case(1, vec![], vec![], Ok(vec![]))]
+    #[case(1,
+        vec![("role", "group", 1, 1)],
+        vec![
+            ("node_1", vec![
+                (labels::APP_NAME_LABEL, APP_NAME),
+                (labels::APP_INSTANCE_LABEL, INSTANCE),
+                (labels::APP_COMPONENT_LABEL, "role"),
+                (labels::APP_ROLE_GROUP_LABEL, "group"),
+                ("ID_LABEL", "1000")]),],
+        Ok(vec![("node_1", PodIdentity::new(APP_NAME, INSTANCE, "role", "group", "1000"))])
+    )]
+    fn test_identity_pod_mapping_try_from(
+        #[case] start: usize,
+        #[case] nodes_and_replicas: Vec<(&str, &str, usize, usize)>,
+        #[case] pod_labels: Vec<(&str, Vec<(&str, &str)>)>,
+        #[case] expected: Result<Vec<(&str, PodIdentity)>, Error>,
+    ) {
+        let pods = build_pods(pod_labels);
+        let eligible_nodes_and_replicas = build_eligible_nodes_and_replicas(nodes_and_replicas);
+        let factory = LabeledPodIdentityFactory::new(
+            APP_NAME,
+            INSTANCE,
+            &eligible_nodes_and_replicas,
+            "ID_LABEL",
+            start,
+        );
+
+        let got = PodToNodeMapping::try_from(&factory, pods.as_slice());
+
+        // Cannot compare `SchedulerResult`s directly because `crate::error::Error` doesn't implement `PartialEq`
+        match (&got, &expected) {
+            (Ok(g), Ok(e)) => assert_eq!(g, &PodToNodeMapping { mapping: e.iter().map(|(node, id)| (id.clone(), NodeIdentity{name: node.to_string()})).collect()}),
+            (Err(ge), Err(re)) => assert_eq!(format!("{:?}", ge), format!("{:?}", re)),
+            _ => panic!("got: {:?}\nexpected: {:?}", got, expected),
+        }
+    }
+
+    #[rstest]
+    #[case(vec![], vec![], vec![])]
+    #[case(
+        vec![],
+        vec![ ("node_1", APP_NAME, INSTANCE, "role1", "group1", "50")],
+        vec![PodIdentity::new(APP_NAME, INSTANCE, "role1", "group1", "50")])]
+    #[case(
+        vec![PodIdentity::new(APP_NAME, INSTANCE, "role1", "group1", "51")],
+        vec![ ("node_1", APP_NAME, INSTANCE, "role1", "group1", "50")],
+        vec![
+            PodIdentity::new(APP_NAME, INSTANCE, "role1", "group1", "50"),
+            PodIdentity::new(APP_NAME, INSTANCE, "role1", "group1", "51"),
+        ])]
+    fn test_identity_pod_mapping_missing(
+        #[case] expected: Vec<PodIdentity>,
+        #[case] mapping_node_pod_id: Vec<(&str, &str, &str, &str, &str, &str)>,
+        #[case] pod_ids: Vec<PodIdentity>,
+    ) {
+        let mapping = build_mapping(mapping_node_pod_id);
+        let got = mapping.missing(pod_ids.as_slice());
+
+        assert_eq!(got, expected);
+    }
+
+    pub fn build_pods(node_and_labels: Vec<(&str, Vec<(&str, &str)>)>) -> Vec<Pod> {
+        let mut result = vec![];
+
+        for (node_name, pod_labels) in node_and_labels {
+            let labels_map: BTreeMap<String, String> = pod_labels
+                .iter()
+                .map(|t| (t.0.to_string(), t.1.to_string()))
+                .collect();
+
+            result.push(PodBuilder::new()
+                .metadata(
+                    ObjectMetaBuilder::new()
+                        .namespace("default")
+                        .with_labels(labels_map)
+                        .build()
+                        .unwrap(),
+                )
+                .node_name(node_name)
+                .build()
+                .unwrap());
+        }
+        result
+    }
+
+    pub fn build_eligible_nodes_and_replicas(
         nodes_and_replicas: Vec<(&str, &str, usize, usize)>,
     ) -> EligibleNodesForRoleAndGroup {
         let mut eligible_nodes: HashMap<String, HashMap<String, EligibleNodesAndReplicas>> =
             HashMap::new();
-        for (role, group, node_count, replicas) in nodes_and_replicas {
+        for (role, group, _node_count, replicas) in nodes_and_replicas {
             eligible_nodes
                 .entry(String::from(role))
                 .and_modify(|r| {
@@ -644,7 +789,7 @@ mod tests {
                         },
                     );
                 })
-                .or_insert(
+                .or_insert_with(||
                     vec![(
                         group.to_string(),
                         EligibleNodesAndReplicas {
@@ -658,4 +803,13 @@ mod tests {
         }
         eligible_nodes
     }
+
+    pub fn build_mapping(node_pod_id: Vec<(&str, &str, &str, &str, &str, &str)>) -> PodToNodeMapping {
+        let mut mapping: BTreeMap<PodIdentity, NodeIdentity> = BTreeMap::default();
+        for (node_name, app, instance, role, group, id) in node_pod_id {
+            mapping.insert(PodIdentity::new(app, instance, role, group, id), NodeIdentity { name: String::from(node_name) });
+        }
+        PodToNodeMapping { mapping }
+    }
+
 }
