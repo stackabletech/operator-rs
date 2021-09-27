@@ -4,6 +4,7 @@ use crate::error::Error::ConversionError;
 use crate::error::OperatorResult;
 use crate::status::HasCurrentCommand;
 use crate::CustomResourceExt;
+use futures::StreamExt;
 use json_patch::{PatchOperation, RemoveOperation};
 use k8s_openapi::serde::de::DeserializeOwned;
 use kube::api::{ApiResource, DynamicObject, ListParams, Resource};
@@ -110,7 +111,7 @@ where
         path: String::from(tracking_location),
     })]);
 
-    debug!(
+    warn!(
         "Sending patch to delete current command at location {}: {:?}",
         tracking_location, patch
     );
@@ -154,7 +155,7 @@ where
         //   the creation time for the pods fails
         status.set_current_command(command.clone());
 
-        info!("Setting currentCommand to [{:?}]", command);
+        warn!("Setting currentCommand to [{:?}]", command);
 
         client.merge_patch_status(&resource_clone, &status).await?;
     }
@@ -213,18 +214,23 @@ pub async fn get_next_command(
     client: &Client,
 ) -> OperatorResult<Option<CommandRef>> {
     let mut all_commands = collect_commands(resources, client).await?;
-    all_commands.sort_by_key(|a| a.metadata.creation_timestamp.clone());
+    all_commands.sort_by(|a, b| {
+        a.metadata
+            .creation_timestamp
+            .cmp(&b.metadata.creation_timestamp)
+    });
     warn!("all commands: {:?}", all_commands);
-    // TODO: filter finished commands (those that have `finished_at` set
+    // TODO: filter finished commands (those that have `finished_at` set)
     match all_commands
         .into_iter()
         .map(|command| command.try_into())
         .into_iter()
         .collect::<OperatorResult<Vec<CommandRef>>>()
     {
-        Ok(commands) => {
-            debug!("Got list of commands: {:?}", commands);
-            Ok(None)
+        Ok(mut commands) => {
+            warn!("Got list of commands: {:?}", commands);
+
+            Ok(commands.pop())
         }
         Err(err) => {
             warn!(
@@ -234,13 +240,6 @@ pub async fn get_next_command(
             Err(err)
         }
     }
-
-    /*all_commands
-    .into_iter()
-    .next()
-    .map(|bla| bla.try_into())
-    .transpose()*/
-    //Ok(None)
 }
 
 /// Collect all of a list of resources and returns them in one big list.

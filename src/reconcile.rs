@@ -442,31 +442,33 @@ where
             match command.is_rolling() {
                 true => {
                     let current_pod = pods.first().unwrap().deref();
+                    self.client.ensure_deleted(current_pod.clone()).await?;
+                    return Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)));
 
-                    if let Some(labels) = &current_pod.meta().labels {
-                        let role_group = labels.get(APP_ROLE_GROUP_LABEL).unwrap();
-                        let node = current_pod
-                            .spec
-                            .clone()
-                            .unwrap_or_default()
-                            .node_name
-                            .unwrap();
+                    //if let Some(labels) = &current_pod.meta().labels {
+                    // let role_group = labels.get(APP_ROLE_GROUP_LABEL).unwrap();
+                    // let node = current_pod
+                    //     .spec
+                    //     .clone()
+                    //     .unwrap_or_default()
+                    //     .node_name
+                    //     .unwrap();
 
-                        self.client.ensure_deleted(current_pod.clone()).await?;
+                    //self.client.ensure_deleted(current_pod.clone()).await?;
 
-                        let (pods, _) = pod_provider
-                            .get_pod_and_context(&role, role_group, &node)
-                            .await?;
-
-                        //for config_map in config_maps {
-                        //    self.create_config_map(config_map).await?;
-                        // }
-                        warn!("Creating pod on node [{}]: [{:?}]", node, pods);
-                        self.client.create(&pods).await?;
-                        // We return early for this case, there is nothing left to do after one pod
-                        // was restarted
-                        return Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)));
-                    }
+                    // let (pods, _) = pod_provider
+                    //     .get_pod_and_context(&role, role_group, &node)
+                    //     .await?;
+                    //
+                    // //for config_map in config_maps {
+                    // //    self.create_config_map(config_map).await?;
+                    // // }
+                    // warn!("Creating pod on node [{}]: [{:?}]", node, pods);
+                    // self.client.create(&pods).await?;
+                    // // We return early for this case, there is nothing left to do after one pod
+                    // // was restarted
+                    //return Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)));
+                    //}
                 }
                 false => {
                     for pod in pods {
