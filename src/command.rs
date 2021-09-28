@@ -54,17 +54,6 @@ pub struct CommandRef {
     pub command_kind: String,
 }
 
-impl CommandRef {
-    pub fn none_command() -> Self {
-        CommandRef {
-            command_uid: "".to_string(),
-            command_name: "".to_string(),
-            command_ns: "".to_string(),
-            command_kind: "".to_string(),
-        }
-    }
-}
-
 impl TryFrom<DynamicObject> for CommandRef {
     type Error = crate::error::Error;
 
@@ -220,16 +209,23 @@ pub async fn get_next_command(
             .cmp(&b.metadata.creation_timestamp)
     });
     warn!("all commands: {:?}", all_commands);
-    // TODO: filter finished commands (those that have `finished_at` set)
+
     match all_commands
         .into_iter()
+        // TODO: We need to traitify this in order to remove the hardcoding part to filter
+        //   finished commands (those that have `finished_at` set)
+        .filter(|cmd| {
+            cmd.data
+                .get("spec")
+                .and_then(|spec| spec.get("finishedAt"))
+                .is_none()
+        })
         .map(|command| command.try_into())
         .into_iter()
         .collect::<OperatorResult<Vec<CommandRef>>>()
     {
         Ok(mut commands) => {
             warn!("Got list of commands: {:?}", commands);
-
             Ok(commands.pop())
         }
         Err(err) => {
