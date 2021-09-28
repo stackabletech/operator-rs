@@ -314,11 +314,11 @@ where
             match opt_node {
                 Some(node) => {
                     // Found a node to schedule on so update the result
-                    result_ok.insert((*pod).clone(), node.clone());
+                    result_ok.insert(pod.clone(), node.clone());
                     // and update the history if needed.
                     self.history.update(pod, node);
                 }
-                None => result_err.push(format!("{:?}", (*pod).clone())), // No node available for this pod
+                None => result_err.push(format!("{:?}", pod.clone())), // No node available for this pod
             }
         }
 
@@ -537,13 +537,15 @@ mod tests {
     #[case::place_one_pod_id(
         vec![("master", "default", vec!["node_1"])],
         vec![],
-        vec![PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10")],
+        vec![PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10").unwrap()],
         vec![None],
         vec![Some(NodeIdentity::new("node_1"))])]
     #[case::place_two_pods_on_the_same_node(
         vec![("master", "default", vec!["node_1"]), ("worker", "default", vec!["node_1"])],
         vec![],
-        vec![PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10"), PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "worker", "default", "11")],
+        vec![
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10").unwrap(),
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "worker", "default", "11").unwrap()],
         vec![None, None],
         vec![Some(NodeIdentity::new("node_1")), Some(NodeIdentity::new("node_1"))])]
     #[case::place_five_pods_on_three_nodes(
@@ -553,11 +555,11 @@ mod tests {
             ("history", "default", vec!["node_1", "node_2", "node_3"]),],
         vec![],
         vec![
-            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10"),
-            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "11"),
-            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "worker", "default", "12"),
-            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "worker", "default", "13"),
-            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "worker", "default", "14"),],
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10").unwrap(),
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "11").unwrap(),
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "worker", "default", "12").unwrap(),
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "worker", "default", "13").unwrap(),
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "worker", "default", "14").unwrap(),],
         vec![None, None, None, None, None],
         vec![
             Some(NodeIdentity::new("node_3")),
@@ -569,7 +571,7 @@ mod tests {
     #[case::no_node_to_place_pod(
         vec![],
         vec![],
-        vec![PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10")],
+        vec![PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10").unwrap()],
         vec![None],
         vec![None])]
     #[case::not_enough_nodes_for_two_pods(
@@ -578,8 +580,8 @@ mod tests {
         ],
         vec![],
         vec![
-            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10"),
-            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "11"),],
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10").unwrap(),
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "11").unwrap(),],
         vec![None, None],
         vec![Some(NodeIdentity::new("node_1")), None])]
     #[case::current_mapping_occupies_node(
@@ -588,13 +590,13 @@ mod tests {
         ],
         vec![("node_1", identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10")],
         vec![
-            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "11"),],
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "11").unwrap(),],
         vec![None],
         vec![None])]
     #[case::place_pod_on_preferred_node(
         vec![("master", "default", vec!["node_1", "node_2", "node_3", "node_4"]),],
         vec![],
-        vec![PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10"),],
+        vec![PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10").unwrap(),],
         vec![Some(NodeIdentity::new("node_2"))],
         vec![Some(NodeIdentity::new("node_2"))])]
     fn test_scheduler_group_anti_affinity(
@@ -633,12 +635,12 @@ mod tests {
     #[case(None, PodIdentity::default(), None, vec![])]
     #[case::last(
         Some(NodeIdentity::new("node_3")),
-        PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "role1", "group1", "1"),
+        PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "role1", "group1", "1").unwrap(),
         None,
         vec![("role1", "group1", vec!["node_1", "node_2", "node_3"])])]
     #[case::preferred(
         Some(NodeIdentity::new("node_2")),
-        PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "role1", "group1", "1"),
+        PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "role1", "group1", "1").unwrap(),
         Some(NodeIdentity::new("node_2")),
         vec![("role1", "group1", vec!["node_1", "node_2", "node_3"])])]
     fn test_scheduler_preferred_node_or_last(

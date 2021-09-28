@@ -1,6 +1,6 @@
 use crate::name_utils;
 use crate::product_config_utils;
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -106,7 +106,7 @@ pub enum Error {
     },
 
     #[error(
-        "PodIdentity could not be parsed: {pod_id}. This should not happen. Please open a ticket."
+        "PodIdentity could not be parsed: [{pod_id}]. This should not happen. Please open a ticket."
     )]
     PodIdentityNotParseable { pod_id: String },
 
@@ -126,6 +126,12 @@ pub enum Error {
         field: String,
         value: String,
         expected: String,
+    },
+
+    #[error("Forbidden separator [{separator}] found in pod identity fields [{invalid_fields:?}]")]
+    PodIdentityFieldWithInvalidSeparator {
+        separator: String,
+        invalid_fields: BTreeMap<String, String>,
     },
 }
 
