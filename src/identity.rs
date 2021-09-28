@@ -271,7 +271,7 @@ impl PodToNodeMapping {
         instance: &str,
         role: &str,
         group: &str,
-    ) -> BTreeMap<&'_ PodIdentity, &'_ NodeIdentity> {
+    ) -> BTreeMap<PodIdentity, NodeIdentity> {
         self.mapping
             .iter()
             .filter_map(|(pod_id, node_id)| {
@@ -280,7 +280,7 @@ impl PodToNodeMapping {
                     && pod_id.role() == role
                     && pod_id.group() == group
                 {
-                    Some((pod_id, node_id))
+                    Some((pod_id.clone(), node_id.clone()))
                 } else {
                     None
                 }
@@ -289,9 +289,14 @@ impl PodToNodeMapping {
     }
 
     pub fn merge(&self, other: &Self) -> Self {
-        let mut temp = self.mapping.clone();
-        temp.extend(other.clone().mapping);
-        PodToNodeMapping { mapping: temp }
+        PodToNodeMapping {
+            mapping: self
+                .mapping
+                .clone()
+                .into_iter()
+                .chain(other.mapping.clone().into_iter())
+                .collect(),
+        }
     }
 
     /// Return true if the `node` is already mapped by a pod from `role` and `group`.
