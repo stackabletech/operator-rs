@@ -257,7 +257,7 @@ where
         pods: &[Pod],
     ) -> SchedulerResult<SchedulerState> {
         let mapping = PodToNodeMapping::try_from(pod_id_factory, pods)?;
-        let unscheduled_pods = mapping.missing(pod_id_factory.as_slice());
+        let unscheduled_pods = mapping.missing(pod_id_factory.as_ref());
         let history_nodes = self.history.find_all(unscheduled_pods.as_slice());
         let strategy = self.strategy(nodes, &mapping);
         let selected_nodes = strategy.place(unscheduled_pods.as_slice(), history_nodes.as_slice());

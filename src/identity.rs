@@ -244,7 +244,7 @@ impl PodToNodeMapping {
     pub fn try_from(id_factory: &dyn PodIdentityFactory, pods: &[Pod]) -> Result<Self, Error> {
         let mut mapping = BTreeMap::default();
 
-        for (pod_id, pod) in id_factory.try_from(pods)?.iter().zip(pods) {
+        for (pod_id, pod) in id_factory.try_map(pods)?.iter().zip(pods) {
             mapping.insert(pod_id.clone(), NodeIdentity::try_from(pod)?);
         }
 
@@ -328,13 +328,11 @@ impl PodToNodeMapping {
 /// A pod identity generator that can be implemented by the operators.
 ///
 /// Implementation of this trait are responsible for:
-/// - generating all pod identities expected by the service by implementing `PodIdentityFactory::as_slice`
-/// - map pods to their identity values by implementing `PodIdentityFactory::try_mapping`
-pub trait PodIdentityFactory {
-    /// A slice with all pod identities that should exist for a given service.
-    fn as_slice(&self) -> &[PodIdentity];
+/// - generating all pod identities expected by the service.
+/// - map pods to their identities by implementing `try_map`
+pub trait PodIdentityFactory: AsRef<[PodIdentity]> {
     /// Returns a PodToNodeMapping for the given pods or an error if any pod could not be mapped.
-    fn try_from(&self, pods: &[Pod]) -> Result<Vec<PodIdentity>, Error>;
+    fn try_map(&self, pods: &[Pod]) -> Result<Vec<PodIdentity>, Error>;
 }
 
 /// An implementation of [`PodIdentityFactory`] where id's are incremented across all roles and groups
@@ -459,18 +457,20 @@ impl LabeledPodIdentityFactory {
     }
 }
 
-impl PodIdentityFactory for LabeledPodIdentityFactory {
-    fn as_slice(&self) -> &[PodIdentity] {
-        self.slice.as_slice()
+impl AsRef<[PodIdentity]> for LabeledPodIdentityFactory {
+    fn as_ref(&self) -> &[PodIdentity] {
+        self.slice.as_ref()
     }
+}
 
+impl PodIdentityFactory for LabeledPodIdentityFactory {
     /// Returns a `PodToNodeMapping` for the given `pods`.
     /// Returns an `error::Error` if any of the pods doesn't have the expected labels
     /// or if any of the labels are invalid. A label is invalid if it doesn't match
     /// the corresponding field in `Self` like `app` or `instance`.
     /// # Arguments
     /// - `pods` : A pod slice.
-    fn try_from(&self, pods: &[Pod]) -> Result<Vec<PodIdentity>, Error> {
+    fn try_map(&self, pods: &[Pod]) -> Result<Vec<PodIdentity>, Error> {
         let mut result = vec![];
 
         for pod in pods {
@@ -597,7 +597,7 @@ pub mod tests {
             "ID_LABEL",
             start,
         );
-        let got = factory.as_slice();
+        let got = factory.as_ref();
         assert_eq!(got, expected.as_slice());
     }
 
@@ -644,7 +644,7 @@ pub mod tests {
             "ID_LABEL",
             start,
         );
-        let got = factory.try_from(pods.as_slice());
+        let got = factory.try_map(pods.as_slice());
 
         // Cannot compare `SchedulerResult`s directly because `crate::error::Error` doesn't implement `PartialEq`
         match (&got, &expected) {
