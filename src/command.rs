@@ -4,7 +4,6 @@ use crate::error::Error::ConversionError;
 use crate::error::OperatorResult;
 use crate::status::HasCurrentCommand;
 use crate::CustomResourceExt;
-use futures::StreamExt;
 use json_patch::{PatchOperation, RemoveOperation};
 use k8s_openapi::serde::de::DeserializeOwned;
 use kube::api::{ApiResource, DynamicObject, ListParams, Resource};
@@ -48,10 +47,10 @@ pub trait HasRoles: Command {
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CommandRef {
-    pub command_uid: String,
-    pub command_name: String,
-    pub command_ns: String,
-    pub command_kind: String,
+    pub uid: String,
+    pub name: String,
+    pub namespace: String,
+    pub kind: String,
 }
 
 impl TryFrom<DynamicObject> for CommandRef {
@@ -66,22 +65,13 @@ impl TryFrom<DynamicObject> for CommandRef {
         };
 
         Ok(CommandRef {
-            command_uid: command
-                .metadata
-                .uid
-                .ok_or_else(|| report_error("command_uid"))?,
-            command_name: command
-                .metadata
-                .name
-                .ok_or_else(|| report_error("command_name"))?,
-            command_ns: command
+            uid: command.metadata.uid.ok_or_else(|| report_error("uid"))?,
+            name: command.metadata.name.ok_or_else(|| report_error("name"))?,
+            namespace: command
                 .metadata
                 .namespace
-                .ok_or_else(|| report_error("command_ns"))?,
-            command_kind: command
-                .types
-                .ok_or_else(|| report_error("command_kind"))?
-                .kind,
+                .ok_or_else(|| report_error("namespace"))?,
+            kind: command.types.ok_or_else(|| report_error("kind"))?.kind,
         })
     }
 }
@@ -93,8 +83,6 @@ where
     <T as Resource>::DynamicType: Default,
 {
     let tracking_location = <<T as HasStatus>::Status as HasCurrentCommand>::tracking_location();
-    let resource_clone = resource.clone();
-    let status = resource.status_mut().get_or_insert_with(Default::default);
 
     let patch = json_patch::Patch(vec![PatchOperation::Remove(RemoveOperation {
         path: String::from(tracking_location),
@@ -128,7 +116,7 @@ where
     <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
     <T as Resource>::DynamicType: Default,
 {
-    let resource_clone = resource.clone();
+    let resource_cloned = resource.clone();
     let status = resource.status_mut().get_or_insert_with(Default::default);
 
     if status
@@ -146,7 +134,7 @@ where
 
         warn!("Setting currentCommand to [{:?}]", command);
 
-        client.merge_patch_status(&resource_clone, &status).await?;
+        client.merge_patch_status(&resource_cloned, &status).await?;
     }
 
     Ok(())
@@ -187,7 +175,7 @@ where
     <T as Resource>::DynamicType: Default,
 {
     client
-        .get(&command_ref.command_name, Some(&command_ref.command_ns))
+        .get(&command_ref.name, Some(&command_ref.namespace))
         .await
 }
 
@@ -216,7 +204,7 @@ pub async fn get_next_command(
         //   finished commands (those that have `finished_at` set)
         .filter(|cmd| {
             cmd.data
-                .get("spec")
+                .get("status")
                 .and_then(|spec| spec.get("finishedAt"))
                 .is_none()
         })

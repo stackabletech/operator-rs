@@ -95,8 +95,8 @@ use crate::controller_ref;
 use crate::error::{Error, OperatorResult};
 use crate::reconcile::{ReconcileFunctionAction, ReconcileResult, ReconciliationContext};
 use async_trait::async_trait;
-use chrono::{DateTime, FixedOffset};
 use json_patch::{AddOperation, PatchOperation};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 use kube::api::ListParams;
 use kube::{Api, Resource, ResourceExt};
 use serde::de::DeserializeOwned;
@@ -108,15 +108,19 @@ use std::time::Duration;
 use tracing::{trace, warn};
 
 /// Trait for all commands to be implemented. We need to retrieve the name of the
-/// main controller custom resource.
+/// main controller custom resource as well as started and finished timestamps.
 /// The referenced resource has to be in the same namespace as the command itself.
 pub trait Command: Resource {
-    /// Retrieve the potential "Owner" name of this custom resource
-    fn get_owner_name(&self) -> String;
-    fn start(&mut self);
-    fn done(&mut self);
-    fn start_time(&self) -> Option<DateTime<FixedOffset>>;
-    fn get_start_patch(&self) -> Value;
+    /// Retrieve the potential "Owner" name of this custom resource.
+    fn owner_name(&self) -> String;
+    /// Retrieve the start time
+    fn start_time(&self) -> Option<&Time>;
+    /// Retrieve the patch to set the started timestamp in the custom resource status.
+    fn start_patch(&mut self) -> Value;
+    /// Retrieve the finish time
+    fn finish_time(&self) -> Option<&Time>;
+    /// Retrieve the patch to set the finished timestamp in the custom resource status.
+    fn finish_patch(&mut self) -> Value;
 }
 
 struct CommandState<C, O>
@@ -138,7 +142,7 @@ where
     async fn owner_reference_existing(&mut self) -> ReconcileResult<Error> {
         // If owner_references exists, check if any of them match the name of our main object
         if let Some(owner_reference) = controller_ref::get_controller_of(&self.context.resource) {
-            if owner_reference.name == self.context.resource.get_owner_name()
+            if owner_reference.name == self.context.resource.owner_name()
                 && owner_reference.kind == O::kind(&())
             {
                 //trace!("Found command object with existing owner_reference: {}", self.context.resource)
@@ -156,14 +160,14 @@ where
             .context
             .client
             .get(
-                &self.context.resource.get_owner_name(),
+                &self.context.resource.owner_name(),
                 self.context.resource.namespace().as_deref(),
             )
             .await?;
 
         trace!(
             "Found owner [{}] for command [{}]",
-            &self.context.resource.get_owner_name(),
+            &self.context.resource.owner_name(),
             &self.context.resource.name()
         );
 

@@ -4,18 +4,16 @@ use crate::k8s_utils::LabelOptionalValueMap;
 use crate::{conditions, controller_ref, finalizer, pod_utils};
 
 use crate::command::{
-    clear_current_command, maybe_update_current_command, CanBeRolling, CommandRef, HasCommands,
-    HasRoleRestartOrder, HasRoles,
+    maybe_update_current_command, CanBeRolling, CommandRef, HasCommands, HasRoleRestartOrder,
+    HasRoles,
 };
 use crate::command_controller::Command;
 use crate::conditions::ConditionStatus;
 use crate::crd::HasApplication;
 use crate::error::Error::{InvalidName, KubeError};
 use crate::k8s_utils::find_excess_pods;
-use crate::labels::{
-    APP_COMPONENT_LABEL, APP_INSTANCE_LABEL, APP_NAME_LABEL, APP_ROLE_GROUP_LABEL,
-};
-use crate::status::HasCurrentCommand;
+use crate::labels::{APP_COMPONENT_LABEL, APP_INSTANCE_LABEL, APP_NAME_LABEL};
+use crate::status::{ClusterExecutionStatus, HasClusterExecutionStatus, HasCurrentCommand};
 use async_trait::async_trait;
 use k8s_openapi::api::core::v1::{ConfigMap, Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
@@ -90,12 +88,6 @@ pub enum ContinuationStrategy {
 
     /// Will process all resources but will return a requeue after any changes
     OneRequeue,
-}
-
-pub struct PodLocation {
-    role: String,
-    role_group: String,
-    node: String,
 }
 
 #[async_trait]
@@ -319,7 +311,7 @@ where
         }
     }
 
-    pub async fn create_missing_pods(&self, creation_strategy: ContinuationStrategy)
+    pub async fn create_missing_pods(&self, _creation_strategy: ContinuationStrategy)
     where
         T: ProvidesPod + HasRoleRestartOrder,
     {
@@ -383,10 +375,14 @@ where
     pub async fn default_restart<C, P>(
         &self,
         command: &C,
-        pod_provider: &P,
+        _pod_provider: &P,
     ) -> ReconcileResult<Error>
     where
-        T: HasApplication + HasRoleRestartOrder,
+        T: DeserializeOwned
+            + HasClusterExecutionStatus
+            + HasApplication
+            + HasRoleRestartOrder
+            + Resource<DynamicType = ()>,
         C: Command + CanBeRolling + HasRoles,
         // TODO: Not sure if we can skip 'HasRoles' here and conditionally run code below if it is implemented
         P: ProvidesPod,
@@ -414,9 +410,9 @@ where
                         (Some(pod_start_time), Some(command_start_time)) => {
                             warn!(
                                 "Comparing times: [{}] < [{}]",
-                                pod_start_time.0, command_start_time
+                                pod_start_time.0, command_start_time.0
                             );
-                            &pod_start_time.0 < command_start_time
+                            &pod_start_time.0 < &command_start_time.0
                                 && pod.metadata.deletion_timestamp.is_none()
                         }
                         _ => {
@@ -483,6 +479,88 @@ where
             // No pods that were eligible for a restart were found, restart is done
             Ok(ReconcileFunctionAction::Done)
         }
+    }
+
+    pub async fn default_stop<C>(&self, command: &C) -> ReconcileResult<Error>
+    where
+        T: DeserializeOwned
+            + HasClusterExecutionStatus
+            + HasApplication
+            + HasRoleRestartOrder
+            + Resource<DynamicType = ()>,
+        C: Command + CanBeRolling + HasRoles,
+    {
+        // If the command provides a list of roles this overrides the default provided by the cluster
+        // definition itself
+        let role_order = command
+            .get_role_order()
+            .unwrap_or_else(T::get_role_restart_order);
+
+        for role in role_order {
+            // Retrieve all pods for this service and role
+            let selector = self.get_role_selector(&role);
+            let mut pods = self
+                .client
+                .list_with_label_selector::<Pod>(self.resource.namespace().as_deref(), &selector)
+                .await?;
+
+            if pods.is_empty() {
+                // Got no pods for this role, skip rest of processing
+                warn!(
+                    "Skipping role [{}] during stop, no pods left to stop.",
+                    role
+                );
+                continue;
+            }
+
+            // Stop pods depending on strategy
+            match command.is_rolling() {
+                true => {
+                    if let Some(pod) = pods.pop() {
+                        self.client.ensure_deleted(pod).await?;
+                        return Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)));
+                    }
+                }
+                false => {
+                    for pod in &pods {
+                        self.client.delete(pod).await?;
+                    }
+                }
+            }
+        }
+
+        self.client
+            .merge_patch_status(
+                &self.resource,
+                &T::cluster_execution_status_patch(
+                    &self.resource,
+                    &ClusterExecutionStatus::Stopped,
+                ),
+            )
+            .await?;
+
+        Ok(ReconcileFunctionAction::Done)
+    }
+
+    pub async fn default_start(&self) -> ReconcileResult<Error>
+    where
+        T: Clone
+            + Debug
+            + DeserializeOwned
+            + HasClusterExecutionStatus
+            + Resource<DynamicType = ()>,
+    {
+        self.client
+            .merge_patch_status(
+                &self.resource,
+                &T::cluster_execution_status_patch(
+                    &self.resource,
+                    &ClusterExecutionStatus::Running,
+                ),
+            )
+            .await?;
+
+        Ok(ReconcileFunctionAction::Done)
     }
 
     fn get_role_selector(&self, role: &str) -> LabelSelector
