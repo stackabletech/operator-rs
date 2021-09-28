@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
 - `identity::PodIdentityFactory` trait and one implementation called `identity::LabeledPodIdentityFactory`
 
 ### Removed
- `scheduler::PodToNodeMapping::from` ([#222])
+- BREAKING: `scheduler::PodToNodeMapping::from` ([#222])
 
 [#222]: https://github.com/stackabletech/operator-rs/pull/222
 

@@ -15,14 +15,13 @@ use crate::role_utils::{EligibleNodesAndReplicas, EligibleNodesForRoleAndGroup};
 use k8s_openapi::api::core::v1::{Node, Pod};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::collections::btree_map::Iter;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
 use tracing::warn;
 
-const SEMICOLON: &str = ";";
+const POD_IDENTITY_FIELD_SEPARATOR: &str = ";";
 pub const REQUIRED_LABELS: [&str; 4] = [
     labels::APP_NAME_LABEL,
     labels::APP_INSTANCE_LABEL,
@@ -53,33 +52,6 @@ impl PodIdentity {
             role: role.to_string(),
             group: group.to_string(),
             id: id.to_string(),
-        }
-    }
-
-    /// Returns a string with all pod labels required by the [`PodIdentity`] joined with comma.
-    /// If any required pod labels are missing, returns a [`Error::PodWithoutLabelsNotSupported`].
-    pub fn labels(pod: &Pod) -> Result<String, Error> {
-        if pod.metadata.labels.is_none() {
-            return Err(Error::PodWithoutLabelsNotSupported(
-                REQUIRED_LABELS.iter().map(|s| String::from(*s)).collect(),
-            ));
-        }
-
-        let mut result: Vec<String> = vec![];
-
-        let pod_labels = &pod.metadata.labels.as_ref().unwrap();
-        let mut missing_labels = Vec::with_capacity(REQUIRED_LABELS.len());
-        for label_name in REQUIRED_LABELS {
-            match pod_labels.get(label_name).cloned() {
-                Some(value) => result.push(value),
-                _ => missing_labels.push(label_name.to_string()),
-            }
-        }
-
-        if missing_labels.is_empty() {
-            Ok(result.join(","))
-        } else {
-            Err(Error::PodWithoutLabelsNotSupported(missing_labels))
         }
     }
 
@@ -158,34 +130,34 @@ impl PodIdentity {
     }
 
     fn warn_forbidden_char(app: &str, instance: &str, role: &str, group: &str, id: &str) {
-        if app.contains(SEMICOLON) {
+        if app.contains(POD_IDENTITY_FIELD_SEPARATOR) {
             warn!(
                 "Found forbidden character [{}] in application name: {}",
-                SEMICOLON, app
+                POD_IDENTITY_FIELD_SEPARATOR, app
             );
         }
-        if instance.contains(SEMICOLON) {
+        if instance.contains(POD_IDENTITY_FIELD_SEPARATOR) {
             warn!(
                 "Found forbidden character [{}] in instance name: {}",
-                SEMICOLON, instance
+                POD_IDENTITY_FIELD_SEPARATOR, instance
             );
         }
-        if role.contains(SEMICOLON) {
+        if role.contains(POD_IDENTITY_FIELD_SEPARATOR) {
             warn!(
                 "Found forbidden character [{}] in role name: {}",
-                SEMICOLON, role
+                POD_IDENTITY_FIELD_SEPARATOR, role
             );
         }
-        if group.contains(SEMICOLON) {
+        if group.contains(POD_IDENTITY_FIELD_SEPARATOR) {
             warn!(
                 "Found forbidden character [{}] in group name: {}",
-                SEMICOLON, group
+                POD_IDENTITY_FIELD_SEPARATOR, group
             );
         }
-        if id.contains(SEMICOLON) {
+        if id.contains(POD_IDENTITY_FIELD_SEPARATOR) {
             warn!(
                 "Found forbidden character [{}] in pod id: {}",
-                SEMICOLON, id
+                POD_IDENTITY_FIELD_SEPARATOR, id
             );
         }
     }
@@ -193,7 +165,7 @@ impl PodIdentity {
 impl TryFrom<String> for PodIdentity {
     type Error = Error;
     fn try_from(s: String) -> Result<Self, Error> {
-        let split = s.split(SEMICOLON).collect::<Vec<&str>>();
+        let split = s.split(POD_IDENTITY_FIELD_SEPARATOR).collect::<Vec<&str>>();
         if split.len() != 5 {
             return Err(Error::PodIdentityNotParseable { pod_id: s });
         }
@@ -212,7 +184,7 @@ impl From<PodIdentity> for String {
             pod_id.group,
             pod_id.id,
         ]
-        .join(SEMICOLON)
+        .join(POD_IDENTITY_FIELD_SEPARATOR)
     }
 }
 
@@ -235,15 +207,13 @@ impl NodeIdentity {
 impl TryFrom<&Pod> for NodeIdentity {
     type Error = Error;
     fn try_from(p: &Pod) -> Result<Self, Error> {
-        let node_name = p
+        let node = p
             .spec
             .as_ref()
-            .map(|s| s.node_name.as_ref())
+            .and_then(|s| s.node_name.clone())
             .ok_or(Error::NodeWithoutNameNotSupported)?;
 
-        Ok(NodeIdentity {
-            name: node_name.unwrap().clone(),
-        })
+        Ok(NodeIdentity::new(node.as_ref()))
     }
 }
 
@@ -281,20 +251,6 @@ impl PodToNodeMapping {
         Ok(PodToNodeMapping { mapping })
     }
 
-    pub fn iter(&self) -> Iter<'_, PodIdentity, NodeIdentity> {
-        self.mapping.iter()
-    }
-
-    pub fn get_filtered(&self, role: &str, group: &str) -> BTreeMap<PodIdentity, NodeIdentity> {
-        let mut filtered = BTreeMap::new();
-        for (pod_id, node_id) in &self.mapping {
-            if role == pod_id.role() && pod_id.group() == group {
-                filtered.insert(pod_id.clone(), node_id.clone());
-            }
-        }
-        filtered
-    }
-
     pub fn get(&self, pod_id: &PodIdentity) -> Option<&NodeIdentity> {
         self.mapping.get(pod_id)
     }
@@ -303,16 +259,28 @@ impl PodToNodeMapping {
         self.mapping.insert(pod_id, node_id)
     }
 
-    pub fn filter(&self, id: &PodIdentity) -> Vec<NodeIdentity> {
+    /// Returns a map where entries are filtered by the given arguments.
+    /// # Arguments
+    /// - `app` : Application name.
+    /// - `instance` : Application instance name.
+    /// - `role` : Role name.
+    /// - `group` : Group name.
+    pub fn filter(
+        &self,
+        app: &str,
+        instance: &str,
+        role: &str,
+        group: &str,
+    ) -> BTreeMap<&'_ PodIdentity, &'_ NodeIdentity> {
         self.mapping
             .iter()
             .filter_map(|(pod_id, node_id)| {
-                if pod_id.app() == id.app()
-                    && pod_id.instance() == id.instance()
-                    && pod_id.role() == id.role()
-                    && pod_id.group() == id.group()
+                if pod_id.app() == app
+                    && pod_id.instance() == instance
+                    && pod_id.role() == role
+                    && pod_id.group() == group
                 {
-                    Some(node_id.clone())
+                    Some((pod_id, node_id))
                 } else {
                     None
                 }
@@ -351,7 +319,7 @@ impl PodToNodeMapping {
     pub fn new(map: Vec<(PodIdentity, NodeIdentity)>) -> Self {
         let mut result = BTreeMap::new();
         for (p, n) in map {
-            result.insert(p.clone(), n.clone());
+            result.insert(p, n);
         }
         PodToNodeMapping { mapping: result }
     }
@@ -388,18 +356,12 @@ impl LabeledPodIdentityFactory {
     ///
     /// See `Self::generate_ids` for implemtation details.
     ///
-    /// Clippy complains that this function is unused but this is not true. It is used in tests
-    /// and it is meant to be called by the operators. It's part of this module's API.
-    /// Also clippy complains about the `generate_ids` which is called here.
-    /// For this reason, this function is marked as "dead code".
-    ///
     /// # Arguments
     /// - `app` : Application name.
     /// - `instance` : Application name.
     /// - `eligible_nodes` : Eligible nodes (and pod replicas) grouped by role and group.
     /// - `id_label_name` : Name of the pod's id label used to store the `id` field of `PodIdentity`
     /// - `start` : The initial value when generating the `id` fields of pod identities.
-    #[allow(dead_code)]
     pub fn new(
         app: &str,
         instance: &str,
@@ -459,7 +421,6 @@ impl LabeledPodIdentityFactory {
     /// * `instance` - Service instance
     /// * `eligible_nodes` - Eligible nodes grouped by role and groups.
     /// * `start` - The starting value for the id field.
-    #[allow(dead_code)] // see comment for Self::new
     fn generate_ids(
         app_name: &str,
         instance: &str,

@@ -120,7 +120,7 @@ pub enum Error {
     PodIdentityFieldEmpty,
 
     #[error(
-        "Pod identity field [{field}] with value [{value}] don't match expected value [{expected}]"
+        "Pod identity field [{field}] with value [{value}] does not match the expected value [{expected}]"
     )]
     UnexpectedPodIdentityField {
         field: String,
