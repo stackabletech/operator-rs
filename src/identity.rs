@@ -19,7 +19,6 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
 use std::hash::{Hash, Hasher};
-use tracing::warn;
 
 const POD_IDENTITY_FIELD_SEPARATOR: &str = ";";
 pub const REQUIRED_LABELS: [&str; 4] = [
@@ -44,15 +43,21 @@ pub struct PodIdentity {
 }
 
 impl PodIdentity {
-    pub fn new(app: &str, instance: &str, role: &str, group: &str, id: &str) -> Self {
-        Self::warn_forbidden_char(app, instance, role, group, id);
-        PodIdentity {
+    pub fn new(
+        app: &str,
+        instance: &str,
+        role: &str,
+        group: &str,
+        id: &str,
+    ) -> Result<Self, Error> {
+        Self::assert_forbidden_char(app, instance, role, group, id)?;
+        Ok(PodIdentity {
             app: app.to_string(),
             instance: instance.to_string(),
             role: role.to_string(),
             group: group.to_string(),
             id: id.to_string(),
-        }
+        })
     }
 
     pub fn try_from_pod_and_id(pod: &Pod, id_label: &str) -> Result<Self, Error> {
@@ -97,7 +102,7 @@ impl PodIdentity {
                         role.as_str(),
                         group.as_str(),
                         id.as_str(),
-                    ))
+                    )?)
                 } else {
                     Err(Error::PodWithoutLabelsNotSupported(missing_labels))
                 }
@@ -129,36 +134,37 @@ impl PodIdentity {
         hasher.finish()
     }
 
-    fn warn_forbidden_char(app: &str, instance: &str, role: &str, group: &str, id: &str) {
+    fn assert_forbidden_char(
+        app: &str,
+        instance: &str,
+        role: &str,
+        group: &str,
+        id: &str,
+    ) -> Result<(), Error> {
+        let mut invalid_fields = BTreeMap::new();
         if app.contains(POD_IDENTITY_FIELD_SEPARATOR) {
-            warn!(
-                "Found forbidden character [{}] in application name: {}",
-                POD_IDENTITY_FIELD_SEPARATOR, app
-            );
+            invalid_fields.insert(String::from("app"), String::from(app));
         }
         if instance.contains(POD_IDENTITY_FIELD_SEPARATOR) {
-            warn!(
-                "Found forbidden character [{}] in instance name: {}",
-                POD_IDENTITY_FIELD_SEPARATOR, instance
-            );
+            invalid_fields.insert(String::from("instance"), String::from(instance));
         }
         if role.contains(POD_IDENTITY_FIELD_SEPARATOR) {
-            warn!(
-                "Found forbidden character [{}] in role name: {}",
-                POD_IDENTITY_FIELD_SEPARATOR, role
-            );
+            invalid_fields.insert(String::from("role"), String::from(role));
         }
         if group.contains(POD_IDENTITY_FIELD_SEPARATOR) {
-            warn!(
-                "Found forbidden character [{}] in group name: {}",
-                POD_IDENTITY_FIELD_SEPARATOR, group
-            );
+            invalid_fields.insert(String::from("group"), String::from(group));
         }
         if id.contains(POD_IDENTITY_FIELD_SEPARATOR) {
-            warn!(
-                "Found forbidden character [{}] in pod id: {}",
-                POD_IDENTITY_FIELD_SEPARATOR, id
-            );
+            invalid_fields.insert(String::from("id"), String::from(id));
+        }
+
+        if invalid_fields.is_empty() {
+            Ok(())
+        } else {
+            Err(Error::PodIdentityFieldWithInvalidSeparator {
+                separator: String::from(POD_IDENTITY_FIELD_SEPARATOR),
+                invalid_fields,
+            })
         }
     }
 }
@@ -169,9 +175,7 @@ impl TryFrom<String> for PodIdentity {
         if split.len() != 5 {
             return Err(Error::PodIdentityNotParseable { pod_id: s });
         }
-        Ok(PodIdentity::new(
-            split[0], split[1], split[2], split[3], split[4],
-        ))
+        PodIdentity::new(split[0], split[1], split[2], split[3], split[4])
     }
 }
 
@@ -562,8 +566,8 @@ pub mod tests {
 
     #[rstest]
     #[case(0, vec![], vec![])]
-    #[case::generate_one_id(0, vec![("role", "group", 0, 1)], vec![PodIdentity::new(APP_NAME, INSTANCE, "role", "group", "0")])]
-    #[case::generate_one_id_starting_at_1000(1000, vec![("role", "group", 0, 1)], vec![PodIdentity::new(APP_NAME, INSTANCE, "role", "group", "1000")])]
+    #[case::generate_one_id(0, vec![("role", "group", 0, 1)], vec![PodIdentity::new(APP_NAME, INSTANCE, "role", "group", "0").unwrap()])]
+    #[case::generate_one_id_starting_at_1000(1000, vec![("role", "group", 0, 1)], vec![PodIdentity::new(APP_NAME, INSTANCE, "role", "group", "1000").unwrap()])]
     #[case::generate_five_ids(1,
         vec![
             ("master", "default", 0, 2),
@@ -571,11 +575,11 @@ pub mod tests {
             ("history", "default", 0, 1),
         ],
         vec![
-            PodIdentity::new(APP_NAME, INSTANCE, "history", "default", "1"),
-            PodIdentity::new(APP_NAME, INSTANCE, "master", "default", "2"),
-            PodIdentity::new(APP_NAME, INSTANCE, "master", "default", "3"),
-            PodIdentity::new(APP_NAME, INSTANCE, "worker", "default", "4"),
-            PodIdentity::new(APP_NAME, INSTANCE, "worker", "default", "5"),
+            PodIdentity::new(APP_NAME, INSTANCE, "history", "default", "1").unwrap(),
+            PodIdentity::new(APP_NAME, INSTANCE, "master", "default", "2").unwrap(),
+            PodIdentity::new(APP_NAME, INSTANCE, "master", "default", "3").unwrap(),
+            PodIdentity::new(APP_NAME, INSTANCE, "worker", "default", "4").unwrap(),
+            PodIdentity::new(APP_NAME, INSTANCE, "worker", "default", "5").unwrap(),
         ]
     )]
     #[case::generate_two_roles(10,
@@ -584,9 +588,9 @@ pub mod tests {
             ("role2", "default", 0, 1),
         ],
         vec![
-            PodIdentity::new(APP_NAME, INSTANCE, "role1", "default", "10"),
-            PodIdentity::new(APP_NAME, INSTANCE, "role1", "default", "11"),
-            PodIdentity::new(APP_NAME, INSTANCE, "role2", "default", "12"),
+            PodIdentity::new(APP_NAME, INSTANCE, "role1", "default", "10").unwrap(),
+            PodIdentity::new(APP_NAME, INSTANCE, "role1", "default", "11").unwrap(),
+            PodIdentity::new(APP_NAME, INSTANCE, "role2", "default", "12").unwrap(),
         ]
     )]
     fn test_identity_labeled_factory_as_slice(
@@ -618,7 +622,7 @@ pub mod tests {
                 (labels::APP_ROLE_GROUP_LABEL, "group"),
                 ("ID_LABEL", "1000")]),],
         Ok(vec![
-            PodIdentity::new(APP_NAME, INSTANCE, "role", "group", "1000"),
+            PodIdentity::new(APP_NAME, INSTANCE, "role", "group", "1000").unwrap(),
         ]))]
     #[case(1000,
         vec![("master", "default", 1, 1)],
@@ -670,7 +674,7 @@ pub mod tests {
                 (labels::APP_COMPONENT_LABEL, "role"),
                 (labels::APP_ROLE_GROUP_LABEL, "group"),
                 ("ID_LABEL", "1000")]),],
-        Ok(vec![("node_1", PodIdentity::new(APP_NAME, INSTANCE, "role", "group", "1000"))])
+        Ok(vec![("node_1", PodIdentity::new(APP_NAME, INSTANCE, "role", "group", "1000").unwrap())])
     )]
     fn test_identity_pod_mapping_try_from(
         #[case] start: usize,
@@ -716,13 +720,13 @@ pub mod tests {
     #[case(
         vec![],
         vec![ ("node_1", APP_NAME, INSTANCE, "role1", "group1", "50")],
-        vec![PodIdentity::new(APP_NAME, INSTANCE, "role1", "group1", "50")])]
+        vec![PodIdentity::new(APP_NAME, INSTANCE, "role1", "group1", "50").unwrap()])]
     #[case(
-        vec![PodIdentity::new(APP_NAME, INSTANCE, "role1", "group1", "51")],
+        vec![PodIdentity::new(APP_NAME, INSTANCE, "role1", "group1", "51").unwrap()],
         vec![ ("node_1", APP_NAME, INSTANCE, "role1", "group1", "50")],
         vec![
-            PodIdentity::new(APP_NAME, INSTANCE, "role1", "group1", "50"),
-            PodIdentity::new(APP_NAME, INSTANCE, "role1", "group1", "51"),
+            PodIdentity::new(APP_NAME, INSTANCE, "role1", "group1", "50").unwrap(),
+            PodIdentity::new(APP_NAME, INSTANCE, "role1", "group1", "51").unwrap(),
         ])]
     fn test_identity_pod_mapping_missing(
         #[case] expected: Vec<PodIdentity>,
@@ -799,7 +803,7 @@ pub mod tests {
         let mut mapping: BTreeMap<PodIdentity, NodeIdentity> = BTreeMap::default();
         for (node_name, app, instance, role, group, id) in node_pod_id {
             mapping.insert(
-                PodIdentity::new(app, instance, role, group, id),
+                PodIdentity::new(app, instance, role, group, id).unwrap(),
                 NodeIdentity {
                     name: String::from(node_name),
                 },
