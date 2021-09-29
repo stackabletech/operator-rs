@@ -134,7 +134,7 @@ pub enum Error {
         invalid_fields: BTreeMap<String, String>,
     },
 
-    #[error("Conversion error : [message]")]
+    #[error("Conversion error: [message]")]
     ConversionError { message: String },
 }
 

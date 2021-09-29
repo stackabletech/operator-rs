@@ -568,10 +568,9 @@ where
         self.client
             .merge_patch_status(
                 &self.resource,
-                &T::cluster_execution_status_patch(
-                    &self.resource,
-                    &ClusterExecutionStatus::Stopped,
-                ),
+                &self
+                    .resource
+                    .cluster_execution_status_patch(&ClusterExecutionStatus::Stopped),
             )
             .await?;
 
@@ -590,10 +589,9 @@ where
         self.client
             .merge_patch_status(
                 &self.resource,
-                &T::cluster_execution_status_patch(
-                    &self.resource,
-                    &ClusterExecutionStatus::Running,
-                ),
+                &self
+                    .resource
+                    .cluster_execution_status_patch(&ClusterExecutionStatus::Running),
             )
             .await?;
 

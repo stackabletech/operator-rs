@@ -15,12 +15,6 @@ use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 use tracing::{debug, error, trace};
 
-/// Retrieve a timestamp in format: "2021-03-23T16:20:19Z".
-/// Required to set command start and finish timestamps.
-pub fn get_current_timestamp() -> String {
-    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
-}
-
 /// Implemented on a cluster object this can be called to retrieve the order that roles need to
 /// be restarted
 pub trait HasRoleRestartOrder {
@@ -76,6 +70,12 @@ impl TryFrom<DynamicObject> for CommandRef {
     }
 }
 
+/// Clear the current_command in the custom resource status. Must be done after a command is finished.
+///
+/// # Arguments
+/// * `client` - Kubernetes client
+/// * `resource` - Cluster custom resource
+///
 pub async fn clear_current_command<T>(client: &Client, resource: &mut T) -> OperatorResult<bool>
 where
     T: CustomResourceExt + Resource + Clone + Debug + DeserializeOwned + HasStatus,
@@ -108,6 +108,14 @@ where
     Ok(true)
 }
 
+/// Update the current_command in the custom resource status if it is not set or a different
+/// command is set. Adapt the current custom resource and write the status.
+///
+/// # Arguments
+/// * `client` - Kubernetes client
+/// * `resource` - Cluster custom resource
+/// * `command` - Reference to command
+///
 pub async fn maybe_update_current_command<T>(
     client: &Client,
     resource: &mut T,
