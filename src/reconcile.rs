@@ -399,15 +399,17 @@ where
         <C as kube::Resource>::DynamicType: Default,
         P: ProvidesPod,
     {
+        // set start time in command once
+        if command.start_time().is_none() {
+            let patch = command.start_patch();
+            self.client.merge_patch_status(command, &patch).await?;
+        }
+
         // If the command provides a list of roles this overrides the default provided by the cluster
         // definition itself
         let role_order = command
             .get_role_order()
             .unwrap_or_else(T::get_role_restart_order);
-
-        // set start time in command
-        let patch = command.start_patch();
-        self.client.merge_patch_status(command, &patch).await?;
 
         let mut restart_occurred = false;
         for role in role_order {
@@ -548,15 +550,17 @@ where
         C: Command + CanBeRolling + DeserializeOwned + HasRoles,
         <C as kube::Resource>::DynamicType: Default,
     {
+        // set start time in command once
+        if command.start_time().is_none() {
+            let patch = command.start_patch();
+            self.client.merge_patch_status(command, &patch).await?;
+        }
+
         // If the command provides a list of roles this overrides the default provided by the cluster
         // definition itself
         let role_order = command
             .get_role_order()
             .unwrap_or_else(T::get_role_restart_order);
-
-        // set start time in command
-        let patch = command.start_patch();
-        self.client.merge_patch_status(command, &patch).await?;
 
         for role in role_order {
             // Retrieve all pods for this service and role
@@ -626,9 +630,11 @@ where
         C: Command + CanBeRolling + DeserializeOwned + HasRoles,
         <C as kube::Resource>::DynamicType: Default,
     {
-        // set start time in command
-        let patch = command.start_patch();
-        self.client.merge_patch_status(command, &patch).await?;
+        // set start time in command once
+        if command.start_time().is_none() {
+            let patch = command.start_patch();
+            self.client.merge_patch_status(command, &patch).await?;
+        }
 
         self.client
             .merge_patch_status(
