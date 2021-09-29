@@ -372,6 +372,12 @@ where
         }
     }
 
+    /// Offers default restart command handling. Deletes specified pods in a rolling or non rolling
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The Stop command
+    ///
     pub async fn default_restart<C, P>(
         &self,
         command: &C,
@@ -499,6 +505,13 @@ where
         }
     }
 
+    /// Offers default stop command handling. Deletes specified pods in a rolling or non rolling
+    /// strategy and updates the cluster_execution_status to Stopped.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The Stop command
+    ///
     pub async fn default_stop<C>(&self, command: &C) -> ReconcileResult<Error>
     where
         T: DeserializeOwned
@@ -547,6 +560,7 @@ where
             }
         }
 
+        // we are done here and set the cluster_execution_status to Stopped
         self.client
             .merge_patch_status(
                 &self.resource,
@@ -560,6 +574,7 @@ where
         Ok(ReconcileFunctionAction::Done)
     }
 
+    /// Offers default start command handling. Updates the cluster_execution_status to Running.
     pub async fn default_start(&self) -> ReconcileResult<Error>
     where
         T: Clone
@@ -581,6 +596,10 @@ where
         Ok(ReconcileFunctionAction::Done)
     }
 
+    /// Create a LabelSelector with matching expressions ("In") containing:
+    /// - Application name
+    /// - Component (Role)
+    /// - Instance (cluster name)
     fn get_role_selector(&self, role: &str) -> LabelSelector
     where
         T: HasApplication,
@@ -612,6 +631,8 @@ where
         result
     }
 
+    /// This reconcile function returns an existing executing command or the next command
+    /// in the queue (with the oldest timestamp).
     pub async fn retrieve_current_command(&mut self) -> OperatorResult<Option<CommandRef>>
     where
         T: Clone

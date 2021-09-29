@@ -23,12 +23,13 @@ pub trait Conditions {
     fn conditions_mut(&mut self) -> &mut Vec<Condition>;
 }
 
+/// Provides access to the custom resource status to read, write or delete the current_command.
 pub trait HasCurrentCommand {
     fn current_command(&self) -> Option<CommandRef>;
     // TODO: setters are non-rusty, is there a better way? Dirkjan?
     fn set_current_command(&mut self, command: CommandRef);
-    fn tracking_location() -> &'static str;
     fn clear_current_command(&mut self);
+    fn tracking_location() -> &'static str;
 }
 
 /// Provides access to the custom resource status version for up or downgrades.
@@ -37,6 +38,7 @@ pub trait Versioned<V> {
     fn version_mut(&mut self) -> &mut Option<ProductVersion<V>>;
 }
 
+/// Required to indicate the current status of the cluster for command handling (e.g. Stopped, Running).
 pub trait HasClusterExecutionStatus {
     fn cluster_execution_status(&self) -> Option<ClusterExecutionStatus>;
     fn cluster_execution_status_patch(&self, execution_status: &ClusterExecutionStatus) -> Value;
