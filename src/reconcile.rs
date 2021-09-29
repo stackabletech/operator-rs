@@ -384,7 +384,6 @@ where
             + HasRoleRestartOrder
             + Resource<DynamicType = ()>,
         C: Command + CanBeRolling + HasRoles,
-        // TODO: Not sure if we can skip 'HasRoles' here and conditionally run code below if it is implemented
         P: ProvidesPod,
     {
         // If the command provides a list of roles this overrides the default provided by the cluster
@@ -407,16 +406,35 @@ where
                 .iter()
                 .filter(
                     |pod| match (&pod.metadata.creation_timestamp, &command.start_time()) {
-                        (Some(pod_start_time), Some(command_start_time)) => {
-                            warn!(
-                                "Comparing times: [{}] < [{}]",
+                        (Some(pod_start_time), Some(command_start_time))
+                            if pod_start_time.0 < command_start_time.0 =>
+                        {
+                            debug!(
+                                "Pod creation_timestamp [{}] < command start_time [{}]. Pod [{:?}] not restarted yet.",
+                                pod_start_time.0, command_start_time.0, pod.metadata.name
+                            );
+
+                            pod.metadata.deletion_timestamp.is_none()
+                        },
+                        (Some(pod_start_time), Some(command_start_time))
+                            if pod_start_time.0 >= command_start_time.0 =>
+                        {
+                            debug!(
+                                "Pod creation_timestamp [{}] >= command start_time [{}]. No restart required.",
                                 pod_start_time.0, command_start_time.0
                             );
-                            &pod_start_time.0 < &command_start_time.0
-                                && pod.metadata.deletion_timestamp.is_none()
-                        }
+                            false
+                        },
+                        (Some(_), None) => {
+                            warn!("Missing command start_time!");
+                            false
+                        },
+                        (None, Some(_)) => {
+                            warn!("Missing pod creation timestamp!");
+                            false
+                        },
                         _ => {
-                            warn!("One of the times was not set!");
+                            warn!("Missing pod creation_timestamp and command start_time!");
                             false
                         }
                     },
@@ -590,7 +608,7 @@ where
             match_expressions: Some(vec![application_match, role_match, instance_match]),
             match_labels: Default::default(),
         };
-        warn!("Created labelselector: [{:?}]", result);
+        trace!("Created LabelSelector: [{:?}]", result);
         result
     }
 
@@ -610,9 +628,9 @@ where
         <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
     {
         let current_command_ref = crate::command::current_command(
+            &self.client,
             &self.resource,
             T::get_command_types().as_slice(),
-            &self.client,
         )
         .await?;
 
@@ -621,7 +639,7 @@ where
         Ok(match current_command_ref {
             None => None,
             Some(current_command) => {
-                maybe_update_current_command(&mut self.resource, &current_command, &self.client)
+                maybe_update_current_command(&self.client, &mut self.resource, &current_command)
                     .await?;
                 Some(current_command)
             }

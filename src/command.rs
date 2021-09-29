@@ -13,7 +13,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
-use tracing::{debug, info, warn};
+use tracing::{debug, error, trace};
 
 /// Retrieve a timestamp in format: "2021-03-23T16:20:19Z".
 /// Required to set command start and finish timestamps.
@@ -59,7 +59,7 @@ impl TryFrom<DynamicObject> for CommandRef {
     fn try_from(command: DynamicObject) -> Result<Self, Self::Error> {
         let report_error = |field: &str| ConversionError {
             message: format!(
-                "Error converting to CommandRef from DynamicObject, [{}] cannot be empty!",
+                "Error converting to [CommandRef] from [DynamicObject]: [{}] cannot be empty!",
                 field
             ),
         };
@@ -76,7 +76,7 @@ impl TryFrom<DynamicObject> for CommandRef {
     }
 }
 
-pub async fn clear_current_command<T>(resource: &mut T, client: &Client) -> OperatorResult<bool>
+pub async fn clear_current_command<T>(client: &Client, resource: &mut T) -> OperatorResult<bool>
 where
     T: CustomResourceExt + Resource + Clone + Debug + DeserializeOwned + HasStatus,
     <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
@@ -88,10 +88,12 @@ where
         path: String::from(tracking_location),
     })]);
 
-    warn!(
-        "Sending patch to delete current command at location {}: {:?}",
-        tracking_location, patch
+    trace!(
+        "Patching current command at location {}: {:?}",
+        tracking_location,
+        patch
     );
+
     client.json_patch_status(resource, patch).await?;
 
     // Now we need to clear the command in the stashed status in our context
@@ -107,9 +109,9 @@ where
 }
 
 pub async fn maybe_update_current_command<T>(
+    client: &Client,
     resource: &mut T,
     command: &CommandRef,
-    client: &Client,
 ) -> OperatorResult<()>
 where
     T: CustomResourceExt + Resource + Clone + Debug + DeserializeOwned + HasStatus,
@@ -125,14 +127,9 @@ where
         .is_none()
     {
         // Current command is none or not equal to the new command -> we need to patch
-        // TODO: We need to update the command object in Kubernetes with the start time
-        //   not the CommandRef object, but the actual command -
-        //   This is the reason why this entire house of cards is not currently doing anything, as
-        //   the started_at value for all commands will always be empty and thus the comparison against
-        //   the creation time for the pods fails
         status.set_current_command(command.clone());
 
-        warn!("Setting currentCommand to [{:?}]", command);
+        debug!("Setting currentCommand to [{:?}]", command);
 
         client.merge_patch_status(&resource_cloned, &status).await?;
     }
@@ -140,10 +137,17 @@ where
     Ok(())
 }
 
+/// Return the current command in the `resource` status or an available command.
+///
+/// # Arguments
+/// * `client` - Kubernetes client
+/// * `resource` - Cluster custom resource
+/// * `resources` - Command API resources
+///
 pub async fn current_command<T>(
+    client: &Client,
     resource: &T,
     resources: &[ApiResource],
-    client: &Client,
 ) -> OperatorResult<Option<CommandRef>>
 where
     T: Resource + HasStatus,
@@ -151,25 +155,30 @@ where
 {
     match resource.status() {
         Some(status) if status.current_command().is_some() => {
-            warn!(
+            debug!(
                 "Found current command in status: [{:?}]",
                 status.current_command()
             );
             Ok(status.current_command())
         }
         Some(_) => {
-            warn!("No current command set in status, retrieving from k8s..");
-            get_next_command(resources, client).await
+            debug!("No current command set in status, retrieving from k8s...");
+            get_next_command(client, resources).await
         }
         None => {
-            warn!("No status set, retrieving command from k8s...");
-            get_next_command(resources, client).await
+            debug!("No status set, retrieving command from k8s...");
+            get_next_command(client, resources).await
         }
     }
 }
 
-/// Tries to retrieve the Command for a [`CommandRef`].
-pub async fn materialize_command<T>(command_ref: &CommandRef, client: &Client) -> OperatorResult<T>
+/// Tries to retrieve the Command object for a provided [`CommandRef`].
+///
+/// # Arguments
+/// * `client` - Kubernetes client
+/// * `command_ref` - `CommandRef` referencing the actual command
+///
+pub async fn materialize_command<T>(client: &Client, command_ref: &CommandRef) -> OperatorResult<T>
 where
     T: Resource + Clone + Debug + DeserializeOwned,
     <T as Resource>::DynamicType: Default,
@@ -183,24 +192,25 @@ where
 /// the oldest creation timestamp) element.
 ///
 /// # Arguments
-/// * `TODO`
 /// * `client` - Kubernetes client
+/// * `resources` - Kubernetes API Resources
 ///
 pub async fn get_next_command(
-    resources: &[ApiResource],
     client: &Client,
+    resources: &[ApiResource],
 ) -> OperatorResult<Option<CommandRef>> {
-    let mut all_commands = collect_commands(resources, client).await?;
+    let mut all_commands = collect_commands(client, resources).await?;
     all_commands.sort_by(|a, b| {
         a.metadata
             .creation_timestamp
             .cmp(&b.metadata.creation_timestamp)
     });
-    warn!("all commands: {:?}", all_commands);
+
+    trace!("Commands found: {:?}", all_commands);
 
     match all_commands
         .into_iter()
-        // TODO: We need to traitify this in order to remove the hardcoding part to filter
+        // TODO: We need to traitify this in order to remove the hardcoded part to filter
         //   finished commands (those that have `finished_at` set)
         .filter(|cmd| {
             cmd.data
@@ -213,11 +223,11 @@ pub async fn get_next_command(
         .collect::<OperatorResult<Vec<CommandRef>>>()
     {
         Ok(mut commands) => {
-            warn!("Got list of commands: {:?}", commands);
+            debug!("Commands to be processed: {:?}", commands);
             Ok(commands.pop())
         }
         Err(err) => {
-            warn!(
+            error!(
                 "Error converting at least one existing command to a working object: {:?}",
                 err
             );
@@ -226,15 +236,15 @@ pub async fn get_next_command(
     }
 }
 
-/// Collect all of a list of resources and returns them in one big list.
+/// Collect all provided api resources and return them in one big list.
 ///
 /// # Arguments
-/// * `TODO`
 /// * `client` - Kubernetes client
+/// * `resources` - Kubernetes API Resources
 ///
 async fn collect_commands(
-    resources: &[ApiResource],
     client: &Client,
+    resources: &[ApiResource],
 ) -> OperatorResult<Vec<DynamicObject>> {
     let mut all_commands = vec![];
     for resource in resources {
@@ -243,11 +253,17 @@ async fn collect_commands(
     Ok(all_commands)
 }
 
+/// Collect all objects of a api resource and return them in a list.
+///
+/// # Arguments
+/// * `client` - Kubernetes client
+/// * `resource` - Kubernetes API Resource
+///
 pub async fn list_resources(
     client: &Client,
-    api_resource: &ApiResource,
+    resource: &ApiResource,
 ) -> OperatorResult<Vec<DynamicObject>> {
     let kube_client = client.as_kube_client();
-    let api: Api<DynamicObject> = Api::all_with(kube_client, api_resource);
+    let api: Api<DynamicObject> = Api::all_with(kube_client, resource);
     Ok(api.list(&ListParams::default()).await?.items)
 }

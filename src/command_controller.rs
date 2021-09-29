@@ -274,7 +274,7 @@ where
 /// helper controller will make sure that they trigger a reconcile for the parent by setting the OwnerReference.
 ///
 /// This is an async method and the returned future needs to be consumed to make progress.
-pub async fn create_command_controller<C, O>(client: Client)
+pub async fn create_command_controller<C, O>(client: Client) -> OperatorResult<()>
 where
     C: Command
         + Clone
@@ -295,6 +295,8 @@ where
     controller
         .run(client, strategy, Duration::from_secs(10))
         .await;
+
+    Ok(())
 }
 
 /// Get a list of available commands of custom resource T.
