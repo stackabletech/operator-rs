@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- Bugfix: when scheduling a pod, `GroupAntiAffinityStrategy` should not skip nodes that are mapped by other pods from different role+group. ([#222])
+
+### Added
+- `identity.rs` a new module split out of `scheduler.rs` that bundles code for pod and node id management.
+- `identity::PodIdentityFactory` trait and one implementation called `identity::LabeledPodIdentityFactory`
+
+### Removed
+- BREAKING: `scheduler::PodToNodeMapping::from` ([#222])
+
+[#222]: https://github.com/stackabletech/operator-rs/pull/222
+
 ## [0.2.2] - 2021-09-21
 
 

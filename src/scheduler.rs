@@ -20,109 +20,26 @@
 //! that pod id's are "stable" and have a semantic known to the calling operator.
 //!
 //!
+use std::cell::RefCell;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::{BTreeMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
+use std::ops::DerefMut;
+
+use kube::api::Resource;
+use serde::de::DeserializeOwned;
+use serde_json::json;
 
 use crate::client::Client;
-use crate::error::OperatorResult;
-use crate::labels;
+use crate::error::{Error, OperatorResult};
+use crate::identity::{NodeIdentity, PodIdentity, PodIdentityFactory, PodToNodeMapping};
 use crate::role_utils::EligibleNodesForRoleAndGroup;
-use k8s_openapi::api::core::v1::{Node, Pod};
-use kube::api::Resource;
-use schemars::JsonSchema;
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::cell::RefCell;
-use std::collections::btree_map::Iter;
-use std::collections::hash_map::DefaultHasher;
-use std::convert::TryFrom;
-use std::hash::{Hash, Hasher};
-use std::ops::DerefMut;
-use tracing::{error, warn};
-
-const DEFAULT_NODE_NAME: &str = "<no-nodename-set>";
-const SEMICOLON: &str = ";";
-
-#[derive(Debug, thiserror::Error, PartialEq)]
-pub enum Error {
-    #[error(
-        "Not enough nodes [{number_of_nodes}] available to schedule pods [{number_of_pods}]. Unscheduled pods: {unscheduled_pods:?}."
-    )]
-    NotEnoughNodesAvailable {
-        number_of_nodes: usize,
-        number_of_pods: usize,
-        unscheduled_pods: Vec<PodIdentity>,
-    },
-
-    #[error("PodIdentity could not be parsed: {pod_id:?}. This should not happen. Please open a ticket.")]
-    PodIdentityNotParseable { pod_id: String },
-}
-
-/// Returns a Vec of pod identities according to the replica per role+group pair from `eligible_nodes`.
-/// # Arguments
-/// * `app_name` - Application name
-/// * `instance` - Service instance
-/// * `eligible_nodes` - Eligible nodes grouped by role and groups.
-pub fn generate_ids(
-    app_name: &str,
-    instance: &str,
-    eligible_nodes: &EligibleNodesForRoleAndGroup,
-) -> Vec<PodIdentity> {
-    let mut id: u16 = 1;
-    let mut generated_ids = vec![];
-    for (role_name, groups) in eligible_nodes {
-        for (group_name, eligible_nodes) in groups {
-            let ids_per_group = eligible_nodes
-                .replicas
-                .map(usize::from)
-                .unwrap_or_else(|| eligible_nodes.nodes.len());
-            for _ in 1..ids_per_group + 1 {
-                generated_ids.push(PodIdentity {
-                    app: app_name.to_string(),
-                    instance: instance.to_string(),
-                    role: role_name.clone(),
-                    group: group_name.clone(),
-                    id: id.to_string(),
-                });
-                id += 1;
-            }
-        }
-    }
-
-    generated_ids
-}
-
-#[derive(
-    Clone, Debug, Default, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
-)]
-#[serde(rename_all = "camelCase")]
-#[serde(try_from = "String")]
-#[serde(into = "String")]
-pub struct PodIdentity {
-    app: String,
-    instance: String,
-    role: String,
-    group: String,
-    id: String,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct NodeIdentity {
-    pub name: String,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PodToNodeMapping {
-    mapping: BTreeMap<PodIdentity, NodeIdentity>,
-}
+use k8s_openapi::api::core::v1::Pod;
 
 pub trait PodPlacementHistory {
-    fn find(&self, pod_id: &PodIdentity) -> Option<&NodeIdentity>;
-    fn find_all(&self, pods: &[&PodIdentity]) -> Vec<Option<&NodeIdentity>> {
-        pods.iter().map(|p| self.find(*p)).collect()
+    fn find(&self, pod_id: &PodIdentity) -> Option<NodeIdentity>;
+    fn find_all(&self, pods: &[PodIdentity]) -> Vec<Option<NodeIdentity>> {
+        pods.iter().map(|p| self.find(p)).collect()
     }
 
     fn update(&mut self, pod_id: &PodIdentity, node_id: &NodeIdentity);
@@ -158,14 +75,14 @@ pub trait Scheduler {
     /// Implementations may return an error if not all pods can be mapped to nodes.
     ///
     /// # Arguments:
-    /// * `pods` - The list of desired pods. Should contain both already mapped as well as new pods.
+    /// * `pod_id_factory` - A factory object for all pod identities required by the service.
     /// * `nodes` - Currently available nodes in the system grouped by role and group.
-    /// * `mapped_pods` - Pods that are already mapped to nodes.
+    /// * `pods` - Pods that are already mapped to nodes.
     fn schedule(
         &mut self,
-        pods: &[PodIdentity],
+        pod_id_factory: &dyn PodIdentityFactory,
         nodes: &RoleGroupEligibleNodes,
-        mapped_pods: &PodToNodeMapping,
+        pods: &[Pod],
     ) -> SchedulerResult<SchedulerState>;
 }
 
@@ -181,8 +98,8 @@ pub trait PodPlacementStrategy {
     /// * `preferred_nodes` - Optional nodes to prioritize during placement (if not None)
     fn place(
         &self,
-        pods: &[&PodIdentity],
-        preferred_nodes: &[Option<&NodeIdentity>],
+        pods: &[PodIdentity],
+        preferred_nodes: &[Option<NodeIdentity>],
     ) -> Vec<Option<NodeIdentity>>;
 }
 
@@ -275,142 +192,9 @@ impl SchedulerState {
     }
 }
 
-impl TryFrom<String> for PodIdentity {
-    type Error = Error;
-    fn try_from(s: String) -> Result<Self, Error> {
-        let split = s.split(SEMICOLON).collect::<Vec<&str>>();
-        if split.len() != 5 {
-            return Err(Error::PodIdentityNotParseable { pod_id: s });
-        }
-        Ok(PodIdentity::new(
-            split[0], split[1], split[2], split[3], split[4],
-        ))
-    }
-}
-
-impl From<PodIdentity> for String {
-    fn from(pod_id: PodIdentity) -> Self {
-        [
-            pod_id.app,
-            pod_id.instance,
-            pod_id.role,
-            pod_id.group,
-            pod_id.id,
-        ]
-        .join(SEMICOLON)
-    }
-}
-
-impl PodToNodeMapping {
-    pub fn from(pods: &[Pod], id_label_name: Option<&str>) -> Self {
-        let mut pod_node_mapping = PodToNodeMapping::default();
-
-        for pod in pods {
-            if let Some(labels) = &pod.metadata.labels {
-                let app = labels.get(labels::APP_NAME_LABEL);
-                let instance = labels.get(labels::APP_INSTANCE_LABEL);
-                let role = labels.get(labels::APP_COMPONENT_LABEL);
-                let group = labels.get(labels::APP_ROLE_GROUP_LABEL);
-                let id = id_label_name.and_then(|n| labels.get(n));
-                pod_node_mapping.insert(
-                    PodIdentity {
-                        app: app.cloned().unwrap_or_default(),
-                        instance: instance.cloned().unwrap_or_default(),
-                        role: role.cloned().unwrap_or_default(),
-                        group: group.cloned().unwrap_or_default(),
-                        id: id.cloned().unwrap_or_default(),
-                    },
-                    NodeIdentity {
-                        name: pod.spec.as_ref().map(|s| s.node_name.as_ref()).map_or_else(
-                            || DEFAULT_NODE_NAME.to_string(),
-                            |name| name.unwrap().clone(),
-                        ),
-                    },
-                );
-            }
-        }
-        pod_node_mapping
-    }
-
-    pub fn iter(&self) -> Iter<'_, PodIdentity, NodeIdentity> {
-        self.mapping.iter()
-    }
-
-    pub fn get_filtered(&self, role: &str, group: &str) -> BTreeMap<PodIdentity, NodeIdentity> {
-        let mut filtered = BTreeMap::new();
-        for (pod_id, node_id) in &self.mapping {
-            if pod_id.role == *role && pod_id.group == *group {
-                filtered.insert(pod_id.clone(), node_id.clone());
-            }
-        }
-        filtered
-    }
-
-    pub fn get(&self, pod_id: &PodIdentity) -> Option<&NodeIdentity> {
-        self.mapping.get(pod_id)
-    }
-
-    pub fn insert(&mut self, pod_id: PodIdentity, node_id: NodeIdentity) -> Option<NodeIdentity> {
-        self.mapping.insert(pod_id, node_id)
-    }
-
-    pub fn filter(&self, id: &PodIdentity) -> Vec<NodeIdentity> {
-        self.mapping
-            .iter()
-            .filter_map(|(pod_id, node_id)| {
-                if pod_id.app == id.app
-                    && pod_id.instance == id.instance
-                    && pod_id.role == id.role
-                    && pod_id.group == id.group
-                {
-                    Some(node_id.clone())
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
-    pub fn merge(&self, other: &Self) -> Self {
-        let mut temp = self.mapping.clone();
-        temp.extend(other.clone().mapping);
-        PodToNodeMapping { mapping: temp }
-    }
-
-    /// Find the pod that is currently mapped onto `node`.
-    pub fn mapped_by(&self, node: &NodeIdentity) -> Option<&PodIdentity> {
-        for (pod_id, mapped_node) in self.mapping.iter() {
-            if node == mapped_node {
-                return Some(pod_id);
-            }
-        }
-        None
-    }
-
-    /// Given `pods` return all that are not mapped.
-    pub fn missing<'a>(&self, pods: &'a [PodIdentity]) -> Vec<&'a PodIdentity> {
-        let mut result = vec![];
-        for p in pods {
-            if !self.mapping.contains_key(p) {
-                result.push(p)
-            }
-        }
-        result
-    }
-
-    #[cfg(test)]
-    pub fn new(map: Vec<(PodIdentity, NodeIdentity)>) -> Self {
-        let mut result = BTreeMap::new();
-        for (p, n) in map {
-            result.insert(p.clone(), n.clone());
-        }
-        PodToNodeMapping { mapping: result }
-    }
-}
-
 impl PodPlacementHistory for K8SUnboundedHistory<'_> {
-    fn find(&self, pod_id: &PodIdentity) -> Option<&NodeIdentity> {
-        self.history.get(pod_id)
+    fn find(&self, pod_id: &PodIdentity) -> Option<NodeIdentity> {
+        self.history.get(pod_id).cloned()
     }
 
     ///
@@ -419,7 +203,7 @@ impl PodPlacementHistory for K8SUnboundedHistory<'_> {
     fn update(&mut self, pod_id: &PodIdentity, node_id: &NodeIdentity) {
         if let Some(history_node_id) = self.find(pod_id) {
             // found but different
-            if history_node_id != node_id {
+            if history_node_id != *node_id {
                 self.history.insert(pod_id.clone(), node_id.clone());
                 self.modified = true;
             }
@@ -434,17 +218,6 @@ impl PodPlacementHistory for K8SUnboundedHistory<'_> {
 impl Display for NodeIdentity {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
-    }
-}
-
-impl From<Node> for NodeIdentity {
-    fn from(node: Node) -> Self {
-        NodeIdentity {
-            name: node
-                .metadata
-                .name
-                .unwrap_or_else(|| DEFAULT_NODE_NAME.to_string()),
-        }
     }
 }
 
@@ -474,27 +247,27 @@ where
     ///
     /// The nodes where unscheduled pods are mapped are selected by the configured strategy.
     /// # Arguments:
-    /// * `pods` - all pod ids required by the service.
+    /// * `pod_id_factory` - a provider for all pod ides required by the system.
     /// * `nodes` - all eligible nodes available in the system
-    /// * `mapped_pods` - existing pod to node mapping
+    /// * `pods` - existing pods that are mapped to nodes.
     fn schedule(
         &mut self,
-        pods: &[PodIdentity],
+        pod_id_factory: &dyn PodIdentityFactory,
         nodes: &RoleGroupEligibleNodes,
-        mapped_pods: &PodToNodeMapping,
+        pods: &[Pod],
     ) -> SchedulerResult<SchedulerState> {
-        let unscheduled_pods = mapped_pods.missing(pods);
+        let mapping = PodToNodeMapping::try_from(pod_id_factory, pods)?;
+        let unscheduled_pods = mapping.missing(pod_id_factory.as_ref());
         let history_nodes = self.history.find_all(unscheduled_pods.as_slice());
-
-        let strategy = self.strategy(nodes, mapped_pods);
+        let strategy = self.strategy(nodes, &mapping);
         let selected_nodes = strategy.place(unscheduled_pods.as_slice(), history_nodes.as_slice());
 
         self.update_history_and_result(
-            unscheduled_pods,
-            selected_nodes.to_vec(),
+            unscheduled_pods.as_slice(),
+            selected_nodes.as_slice(),
             pods.len(),
             nodes.count_unique_node_ids(),
-            mapped_pods,
+            &mapping,
         )
     }
 }
@@ -527,8 +300,8 @@ where
     /// * `current_mapping` - existing pod to node mapping
     fn update_history_and_result(
         &mut self,
-        pods: Vec<&PodIdentity>,
-        nodes: Vec<Option<NodeIdentity>>,
+        pods: &[PodIdentity],
+        nodes: &[Option<NodeIdentity>],
         number_of_pods: usize,
         number_of_nodes: usize,
         current_mapping: &PodToNodeMapping,
@@ -537,15 +310,15 @@ where
         let mut result_err = vec![];
         let mut result_ok = BTreeMap::new();
 
-        for (pod, opt_node) in pods.iter().zip(&nodes) {
+        for (pod, opt_node) in pods.iter().zip(nodes) {
             match opt_node {
                 Some(node) => {
                     // Found a node to schedule on so update the result
-                    result_ok.insert((*pod).clone(), node.clone());
+                    result_ok.insert(pod.clone(), node.clone());
                     // and update the history if needed.
                     self.history.update(pod, node);
                 }
-                None => result_err.push((*pod).clone()), // No node available for this pod
+                None => result_err.push(format!("{:?}", pod.clone())), // No node available for this pod
             }
         }
 
@@ -596,7 +369,7 @@ impl RoleGroupEligibleNodes {
     fn preferred_node_or<F>(
         &self,
         pod: &PodIdentity,
-        preferred: Option<&NodeIdentity>,
+        preferred: Option<NodeIdentity>,
         default: F,
     ) -> Option<NodeIdentity>
     where
@@ -604,12 +377,12 @@ impl RoleGroupEligibleNodes {
     {
         match self
             .node_set
-            .get(&pod.role)
-            .and_then(|role| role.get(&pod.group))
+            .get(&pod.role().to_string())
+            .and_then(|role| role.get(&pod.group().to_string()))
         {
             Some(nodes) if !nodes.is_empty() => {
                 if let Some(node_id) = preferred {
-                    let tmp = nodes.iter().find(|n| *n == node_id);
+                    let tmp = nodes.iter().find(|n| n == &&node_id);
                     if tmp.is_some() {
                         return tmp.cloned();
                     }
@@ -624,7 +397,7 @@ impl RoleGroupEligibleNodes {
     fn preferred_node_or_last(
         &self,
         pod: &PodIdentity,
-        preferred: Option<&NodeIdentity>,
+        preferred: Option<NodeIdentity>,
     ) -> Option<NodeIdentity> {
         self.preferred_node_or(pod, preferred, |_pod, nodes| nodes.last().cloned())
     }
@@ -638,7 +411,7 @@ impl RoleGroupEligibleNodes {
     }
 
     ///
-    /// Count the total number of unique node identities in the `matching_nodes`
+    /// Count the total number of unique node identities.
     ///
     pub fn count_unique_node_ids(&self) -> usize {
         self.node_set
@@ -647,11 +420,6 @@ impl RoleGroupEligibleNodes {
             .flatten()
             .collect::<HashSet<&NodeIdentity>>()
             .len()
-    }
-
-    #[cfg(test)]
-    fn get_nodes_mut(&mut self, role: &str, group: &str) -> Option<&mut Vec<NodeIdentity>> {
-        self.node_set.get_mut(role).and_then(|g| g.get_mut(group))
     }
 }
 
@@ -666,19 +434,21 @@ impl<'a> GroupAntiAffinityStrategy<'a> {
     pub fn select_node_for_pod(
         &self,
         pod_id: &PodIdentity,
-        preferred_node: Option<&NodeIdentity>,
+        preferred_node: Option<NodeIdentity>,
     ) -> Option<NodeIdentity> {
         let mut borrowed_nodes = self.eligible_nodes.borrow_mut();
 
         // Find a node to schedule on (it might be the node from history)
-        while let Some(next_node) = borrowed_nodes.preferred_node_or_last(pod_id, preferred_node) {
-            borrowed_nodes.remove_eligible_node(
-                &next_node,
-                pod_id.role.as_str(),
-                pod_id.group.as_str(),
-            );
-            // check that the node is not already in use
-            if self.existing_mapping.mapped_by(&next_node).is_none() {
+        while let Some(next_node) =
+            borrowed_nodes.preferred_node_or_last(pod_id, preferred_node.clone())
+        {
+            borrowed_nodes.remove_eligible_node(&next_node, pod_id.role(), pod_id.group());
+
+            // check that the node is not already in use *by a pod from the same role+group*
+            if !self
+                .existing_mapping
+                .mapped_by(&next_node, pod_id.role(), pod_id.group())
+            {
                 return Some(next_node);
             }
         }
@@ -692,83 +462,18 @@ impl PodPlacementStrategy for GroupAntiAffinityStrategy<'_> {
     /// might not reflect the reality between calls.
     fn place(
         &self,
-        pods: &[&PodIdentity],
-        preferred_nodes: &[Option<&NodeIdentity>],
+        pod_identities: &[PodIdentity],
+        preferred_nodes: &[Option<NodeIdentity>],
     ) -> Vec<Option<NodeIdentity>> {
-        assert_eq!(pods.len(), preferred_nodes.len());
-        pods.iter()
+        assert_eq!(pod_identities.len(), preferred_nodes.len());
+        pod_identities
+            .iter()
             .zip(preferred_nodes.iter())
-            .map(|(pod, preferred_node)| self.select_node_for_pod(*pod, *preferred_node))
+            .map(|(pod, preferred_node)| self.select_node_for_pod(pod, preferred_node.clone()))
             .collect()
     }
 }
 
-impl PodIdentity {
-    pub fn new(app: &str, instance: &str, role: &str, group: &str, id: &str) -> Self {
-        Self::warn_forbidden_char(app, instance, role, group, id);
-        PodIdentity {
-            app: app.to_string(),
-            instance: instance.to_string(),
-            role: role.to_string(),
-            group: group.to_string(),
-            id: id.to_string(),
-        }
-    }
-
-    pub fn app(&self) -> &str {
-        self.app.as_ref()
-    }
-    pub fn instance(&self) -> &str {
-        self.instance.as_ref()
-    }
-    pub fn role(&self) -> &str {
-        self.role.as_ref()
-    }
-    pub fn group(&self) -> &str {
-        self.group.as_ref()
-    }
-    pub fn id(&self) -> &str {
-        self.id.as_ref()
-    }
-
-    pub fn compute_hash(&self, hasher: &mut DefaultHasher) -> u64 {
-        self.hash(hasher);
-        hasher.finish()
-    }
-
-    fn warn_forbidden_char(app: &str, instance: &str, role: &str, group: &str, id: &str) {
-        if app.contains(SEMICOLON) {
-            warn!(
-                "Found forbidden character [{}] in application name: {}",
-                SEMICOLON, app
-            );
-        }
-        if instance.contains(SEMICOLON) {
-            warn!(
-                "Found forbidden character [{}] in instance name: {}",
-                SEMICOLON, instance
-            );
-        }
-        if role.contains(SEMICOLON) {
-            warn!(
-                "Found forbidden character [{}] in role name: {}",
-                SEMICOLON, role
-            );
-        }
-        if group.contains(SEMICOLON) {
-            warn!(
-                "Found forbidden character [{}] in group name: {}",
-                SEMICOLON, group
-            );
-        }
-        if id.contains(SEMICOLON) {
-            warn!(
-                "Found forbidden character [{}] in pod id: {}",
-                SEMICOLON, id
-            );
-        }
-    }
-}
 impl<'a> HashingStrategy<'a> {
     pub fn new(eligible_nodes: &'a RoleGroupEligibleNodes) -> Self {
         Self {
@@ -780,7 +485,7 @@ impl<'a> HashingStrategy<'a> {
     fn select_node_for_pod(
         &self,
         pod: &PodIdentity,
-        preferred_node: Option<&NodeIdentity>,
+        preferred_node: Option<NodeIdentity>,
     ) -> Option<NodeIdentity> {
         self.eligible_nodes
             .preferred_node_or(pod, preferred_node, |pod, nodes| {
@@ -794,45 +499,32 @@ impl<'a> HashingStrategy<'a> {
 impl PodPlacementStrategy for HashingStrategy<'_> {
     fn place(
         &self,
-        pods: &[&PodIdentity],
-        preferred_nodes: &[Option<&NodeIdentity>],
+        pods: &[PodIdentity],
+        preferred_nodes: &[Option<NodeIdentity>],
     ) -> Vec<Option<NodeIdentity>> {
         assert_eq!(pods.len(), preferred_nodes.len());
         pods.iter()
             .zip(preferred_nodes.iter())
-            .map(|(pod, preferred_node)| self.select_node_for_pod(*pod, *preferred_node))
+            .map(|(pod, preferred_node)| self.select_node_for_pod(pod, preferred_node.clone()))
             .collect()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::*;
 
-    const APP_NAME: &str = "app";
-    const INSTANCE: &str = "simple";
+    use crate::identity;
+    //use crate::identity::tests;
+
+    use super::*;
 
     #[derive(Default)]
-    struct TestHistory {
-        pub history: PodToNodeMapping,
-    }
-
-    fn generate_ids(how_many: usize) -> Vec<PodIdentity> {
-        (0..how_many)
-            .map(|index| PodIdentity {
-                app: APP_NAME.to_string(),
-                instance: INSTANCE.to_string(),
-                role: format!("ROLE_{}", index % 2),
-                group: format!("GROUP_{}", index % 2),
-                id: format!("POD_{}", index),
-            })
-            .collect()
-    }
+    struct TestHistory {}
 
     impl PodPlacementHistory for TestHistory {
-        fn find(&self, pod_id: &PodIdentity) -> Option<&NodeIdentity> {
-            self.history.get(pod_id)
+        fn find(&self, _pod_id: &PodIdentity) -> Option<NodeIdentity> {
+            None
         }
 
         fn update(&mut self, _pod_id: &PodIdentity, _node_id: &NodeIdentity) {
@@ -840,235 +532,160 @@ mod tests {
         }
     }
 
-    fn generate_eligible_nodes(available_node_count: usize) -> RoleGroupEligibleNodes {
+    #[rstest]
+    #[case(vec![], vec![], vec![], vec![], vec![])]
+    #[case::place_one_pod_id(
+        vec![("master", "default", vec!["node_1"])],
+        vec![],
+        vec![PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10").unwrap()],
+        vec![None],
+        vec![Some(NodeIdentity::new("node_1"))])]
+    #[case::place_two_pods_on_the_same_node(
+        vec![("master", "default", vec!["node_1"]), ("worker", "default", vec!["node_1"])],
+        vec![],
+        vec![
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10").unwrap(),
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "worker", "default", "11").unwrap()],
+        vec![None, None],
+        vec![Some(NodeIdentity::new("node_1")), Some(NodeIdentity::new("node_1"))])]
+    #[case::place_five_pods_on_three_nodes(
+        vec![
+            ("master", "default", vec!["node_1", "node_2", "node_3"]),
+            ("worker", "default", vec!["node_1", "node_2", "node_3"]),
+            ("history", "default", vec!["node_1", "node_2", "node_3"]),],
+        vec![],
+        vec![
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10").unwrap(),
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "11").unwrap(),
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "worker", "default", "12").unwrap(),
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "worker", "default", "13").unwrap(),
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "worker", "default", "14").unwrap(),],
+        vec![None, None, None, None, None],
+        vec![
+            Some(NodeIdentity::new("node_3")),
+            Some(NodeIdentity::new("node_2")),
+            Some(NodeIdentity::new("node_3")),
+            Some(NodeIdentity::new("node_2")),
+            Some(NodeIdentity::new("node_1")),
+        ])]
+    #[case::no_node_to_place_pod(
+        vec![],
+        vec![],
+        vec![PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10").unwrap()],
+        vec![None],
+        vec![None])]
+    #[case::not_enough_nodes_for_two_pods(
+        vec![
+            ("master", "default", vec!["node_1"]),
+        ],
+        vec![],
+        vec![
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10").unwrap(),
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "11").unwrap(),],
+        vec![None, None],
+        vec![Some(NodeIdentity::new("node_1")), None])]
+    #[case::current_mapping_occupies_node(
+        vec![
+            ("master", "default", vec!["node_1"]),
+        ],
+        vec![("node_1", identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10")],
+        vec![
+            PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "11").unwrap(),],
+        vec![None],
+        vec![None])]
+    #[case::place_pod_on_preferred_node(
+        vec![("master", "default", vec!["node_1", "node_2", "node_3", "node_4"]),],
+        vec![],
+        vec![PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "master", "default", "10").unwrap(),],
+        vec![Some(NodeIdentity::new("node_2"))],
+        vec![Some(NodeIdentity::new("node_2"))])]
+    fn test_scheduler_group_anti_affinity(
+        #[case] role_group_nodes: Vec<(&str, &str, Vec<&str>)>,
+        #[case] current_mapping_node_pod_id: Vec<(&str, &str, &str, &str, &str, &str)>,
+        #[case] pod_identities: Vec<PodIdentity>,
+        #[case] preferred_nodes: Vec<Option<NodeIdentity>>,
+        #[case] expected: Vec<Option<NodeIdentity>>,
+    ) {
+        let current_mapping = identity::tests::build_mapping(current_mapping_node_pod_id);
+        let nodes = build_role_group_nodes(role_group_nodes);
+
+        let strategy = GroupAntiAffinityStrategy::new(nodes, &current_mapping);
+
+        let got = strategy.place(pod_identities.as_slice(), preferred_nodes.as_slice());
+
+        assert_eq!(got, expected.to_vec());
+    }
+
+    #[rstest]
+    #[case(0, vec![],)]
+    #[case(2, vec![
+        ("role1", "group1", vec!["node_1", "node_2"]),
+        ("role1", "group2", vec!["node_1"]),
+    ],)]
+    #[case(4, vec![("role1", "group1", vec!["node_1", "node_2", "node_3", "node_4"]),],)]
+    fn test_scheduler_count_unique_node_ids(
+        #[case] expected: usize,
+        #[case] role_group_nodes: Vec<(&str, &str, Vec<&str>)>,
+    ) {
+        let nodes = build_role_group_nodes(role_group_nodes);
+        assert_eq!(expected, nodes.count_unique_node_ids());
+    }
+
+    #[rstest]
+    #[case(None, PodIdentity::default(), None, vec![])]
+    #[case::last(
+        Some(NodeIdentity::new("node_3")),
+        PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "role1", "group1", "1").unwrap(),
+        None,
+        vec![("role1", "group1", vec!["node_1", "node_2", "node_3"])])]
+    #[case::preferred(
+        Some(NodeIdentity::new("node_2")),
+        PodIdentity::new(identity::tests::APP_NAME, identity::tests::INSTANCE, "role1", "group1", "1").unwrap(),
+        Some(NodeIdentity::new("node_2")),
+        vec![("role1", "group1", vec!["node_1", "node_2", "node_3"])])]
+    fn test_scheduler_preferred_node_or_last(
+        #[case] expected: Option<NodeIdentity>,
+        #[case] pod_id: PodIdentity,
+        #[case] preferred: Option<NodeIdentity>,
+        #[case] role_group_nodes: Vec<(&str, &str, Vec<&str>)>,
+    ) {
+        let nodes = build_role_group_nodes(role_group_nodes);
+        let got = nodes.preferred_node_or_last(&pod_id, preferred);
+        assert_eq!(got, expected);
+    }
+
+    fn build_role_group_nodes(
+        eligible_nodes: Vec<(&str, &str, Vec<&str>)>,
+    ) -> RoleGroupEligibleNodes {
         let mut node_set: BTreeMap<String, BTreeMap<String, Vec<NodeIdentity>>> = BTreeMap::new();
-        for index in 0..available_node_count {
-            let role_name = format!("ROLE_{}", index % 2);
-            let group_name = format!("GROUP_{}", index % 2);
-            let node = NodeIdentity {
-                name: format!("NODE_{}", index),
-            };
-            if let Some(role) = node_set.get_mut(&role_name) {
-                if let Some(group) = role.get_mut(&group_name) {
-                    group.push(node);
-                } else {
-                    role.insert(group_name, vec![node]);
-                }
-            } else {
-                let mut new_group = BTreeMap::new();
-                new_group.insert(group_name, vec![node]);
-                node_set.insert(role_name, new_group);
-            }
+        for (role, group, node_names) in eligible_nodes {
+            node_set
+                .entry(String::from(role))
+                .and_modify(|r| {
+                    r.insert(
+                        String::from(group),
+                        node_names
+                            .iter()
+                            .map(|nn| NodeIdentity {
+                                name: nn.to_string(),
+                            })
+                            .collect(),
+                    );
+                })
+                .or_insert_with(|| {
+                    vec![(
+                        String::from(group),
+                        node_names
+                            .iter()
+                            .map(|nn| NodeIdentity {
+                                name: nn.to_string(),
+                            })
+                            .collect(),
+                    )]
+                    .into_iter()
+                    .collect()
+                });
         }
         RoleGroupEligibleNodes { node_set }
-    }
-
-    fn generate_current_mapping(
-        scheduled_pods: &[PodIdentity],
-        mut available_nodes: RoleGroupEligibleNodes,
-    ) -> PodToNodeMapping {
-        let mut current_mapping = BTreeMap::new();
-
-        for pod_id in scheduled_pods {
-            let nodes = available_nodes
-                .get_nodes_mut(&pod_id.role, &pod_id.group)
-                .unwrap();
-            current_mapping.insert(pod_id.clone(), nodes.pop().unwrap().clone());
-        }
-
-        PodToNodeMapping {
-            mapping: current_mapping,
-        }
-    }
-
-    #[rstest]
-    #[case::nothing_to_place(1, 1, 1, &[], &[])]
-    #[case::not_enough_nodes(1, 0, 0, &[None], &[None])]
-    #[case::place_one_pod(1, 0, 1, &[None], &[Some(NodeIdentity { name: "NODE_0".to_string() })])]
-    #[case::place_one_pod_on_preferred(1, 0, 5, &[Some(NodeIdentity { name: "NODE_2".to_string() })], &[Some(NodeIdentity { name: "NODE_2".to_string() })])]
-    #[case::place_three_pods(3, 0, 5, &[None, None, None],
-        &[Some(NodeIdentity { name: "NODE_4".to_string() }),
-          Some(NodeIdentity { name: "NODE_3".to_string() }),
-          Some(NodeIdentity { name: "NODE_2".to_string() })])]
-    #[case::place_three_pods_one_on_preferred(3, 0, 5, &[None, Some(NodeIdentity { name: "NODE_1".to_string() }), None],
-        &[Some(NodeIdentity { name: "NODE_4".to_string() }),
-          Some(NodeIdentity { name: "NODE_1".to_string() }),
-          Some(NodeIdentity { name: "NODE_2".to_string() })])]
-    fn test_scheduler_group_anti_affinity(
-        #[case] wanted_pod_count: usize,
-        #[case] scheduled_pods_count: usize,
-        #[case] available_node_count: usize,
-        #[case] preferred_nodes: &[Option<NodeIdentity>],
-        #[case] expected: &[Option<NodeIdentity>],
-    ) {
-        let wanted_pods = generate_ids(wanted_pod_count);
-        let eligible_nodes = generate_eligible_nodes(available_node_count);
-
-        let scheduled_pods: Vec<_> = wanted_pods
-            .iter()
-            .take(scheduled_pods_count)
-            .cloned()
-            .collect();
-        let current_mapping = generate_current_mapping(&scheduled_pods, eligible_nodes.clone());
-
-        let vec_preferred_nodes: Vec<Option<&NodeIdentity>> =
-            preferred_nodes.iter().map(|o| o.as_ref()).collect();
-        let strategy = GroupAntiAffinityStrategy::new(eligible_nodes, &current_mapping);
-        let got = strategy.place(
-            current_mapping.missing(wanted_pods.as_slice()).as_slice(),
-            vec_preferred_nodes.as_slice(),
-        );
-        assert_eq!(got, expected.to_vec());
-    }
-
-    #[rstest]
-    #[case::nothing_to_place(1, 1, 1, &[], &[])]
-    #[case::not_enough_nodes(1, 0, 0, &[None], &[None])]
-    #[case::place_one_pod(1, 0, 1, &[None], &[Some(NodeIdentity { name: "NODE_0".to_string() })])]
-    #[case::place_one_pod_on_preferred(1, 0, 5, &[Some(NodeIdentity { name: "NODE_2".to_string() })], &[Some(NodeIdentity { name: "NODE_2".to_string() })])]
-    #[case::place_three_pods(3, 0, 5, &[None, None, None],
-        &[Some(NodeIdentity { name: "NODE_0".to_string() }),
-          Some(NodeIdentity { name: "NODE_1".to_string() }),
-          Some(NodeIdentity { name: "NODE_0".to_string() })])]
-    #[case::place_three_pods_one_on_preferred(3, 0, 5, &[Some(NodeIdentity { name: "NODE_2".to_string() }), Some(NodeIdentity { name: "NODE_3".to_string() }), None],
-        &[Some(NodeIdentity { name: "NODE_2".to_string() }),
-          Some(NodeIdentity { name: "NODE_3".to_string() }),
-          Some(NodeIdentity { name: "NODE_0".to_string() })])]
-    fn test_scheduler_hashing_strategy(
-        #[case] wanted_pod_count: usize,
-        #[case] scheduled_pods_count: usize,
-        #[case] available_node_count: usize,
-        #[case] preferred_nodes: &[Option<NodeIdentity>],
-        #[case] expected: &[Option<NodeIdentity>],
-    ) {
-        let wanted_pods = generate_ids(wanted_pod_count);
-        let eligible_nodes = generate_eligible_nodes(available_node_count);
-
-        let scheduled_pods: Vec<_> = wanted_pods
-            .iter()
-            .take(scheduled_pods_count)
-            .cloned()
-            .collect();
-        let current_mapping = generate_current_mapping(&scheduled_pods, eligible_nodes.clone());
-
-        let vec_preferred_nodes: Vec<Option<&NodeIdentity>> =
-            preferred_nodes.iter().map(|o| o.as_ref()).collect();
-        let strategy = HashingStrategy::new(&eligible_nodes);
-        let got = strategy.place(
-            current_mapping.missing(wanted_pods.as_slice()).as_slice(),
-            vec_preferred_nodes.as_slice(),
-        );
-        assert_eq!(got, expected.to_vec());
-    }
-
-    #[rstest]
-    #[case(1, None, "", "", None)]
-    #[case(0, Some(NodeIdentity{name: "NODE_2".to_string()}), "ROLE_0", "GROUP_0", None)]
-    #[case(3, Some(NodeIdentity{name: "NODE_2".to_string()}), "ROLE_1", "GROUP_1", Some(NodeIdentity{name: "NODE_1".to_string()}))] // node not found, use first!
-    #[case(4, Some(NodeIdentity{name: "NODE_2".to_string()}), "ROLE_0", "GROUP_0", Some(NodeIdentity{name: "NODE_2".to_string()}))] // node found, use it!
-    fn test_scheduler_preferred_node_or_last(
-        #[case] eligible_node_count: usize,
-        #[case] opt_node_id: Option<NodeIdentity>,
-        #[case] role: &str,
-        #[case] group: &str,
-        #[case] expected: Option<NodeIdentity>,
-    ) {
-        let eligible_nodes = generate_eligible_nodes(eligible_node_count);
-        let pod = PodIdentity {
-            role: role.to_string(),
-            group: group.to_string(),
-            ..PodIdentity::default()
-        };
-        let got = eligible_nodes.preferred_node_or_last(&pod, opt_node_id.as_ref());
-
-        assert_eq!(got, expected);
-    }
-
-    #[rstest]
-    #[case(0, 0)]
-    #[case(3, 3)]
-    fn test_scheduler_count_unique_node_ids(
-        #[case] eligible_node_count: usize,
-        #[case] expected: usize,
-    ) {
-        let eligible_nodes = generate_eligible_nodes(eligible_node_count);
-        assert_eq!(expected, eligible_nodes.count_unique_node_ids());
-    }
-
-    #[rstest]
-    #[case::no_missing_pods(1, 1, 1, vec![])]
-    #[case::missing_one_pod(1, 0, 1, vec![PodIdentity { app: "app".to_string(), instance: "simple".to_string(), role: "ROLE_0".to_string(), group: "GROUP_0".to_string(), id: "POD_0".to_string() }])]
-    fn test_scheduler_pod_to_node_mapping_missing(
-        #[case] wanted_pod_count: usize,
-        #[case] scheduled_pods_count: usize,
-        #[case] available_node_count: usize,
-        #[case] expected: Vec<PodIdentity>,
-    ) {
-        let wanted_pods = generate_ids(wanted_pod_count);
-        let available_nodes = generate_eligible_nodes(available_node_count);
-        let scheduled_pods: Vec<_> = wanted_pods
-            .iter()
-            .take(scheduled_pods_count)
-            .cloned()
-            .collect();
-
-        let mapping = generate_current_mapping(&scheduled_pods, available_nodes);
-
-        let got = mapping.missing(wanted_pods.as_slice());
-        let expected_refs: Vec<&PodIdentity> = expected.iter().collect();
-        assert_eq!(got, expected_refs);
-    }
-
-    #[rstest]
-    #[case::one_pod_is_scheduled(1, 1,
-       Ok(SchedulerState {
-           current_mapping: PodToNodeMapping::default(),
-           remaining_mapping:
-               PodToNodeMapping::new(vec![
-                       (PodIdentity { app: "app".to_string(), instance: "simple".to_string(), role: "ROLE_0".to_string(), group: "GROUP_0".to_string(), id: "POD_0".to_string() }, NodeIdentity { name: "NODE_0".to_string() }),
-                   ])},
-       ))]
-    #[case::pod_cannot_be_scheduled(1, 0,
-        Err(Error::NotEnoughNodesAvailable {
-            number_of_nodes: 0,
-            number_of_pods: 1,
-            unscheduled_pods: vec![
-                PodIdentity {
-                    app: "app".to_string(),
-                    instance: "simple".to_string(),
-                    role: "ROLE_0".to_string(),
-                    group: "GROUP_0".to_string(),
-                    id: "POD_0".to_string() }] }))]
-    fn test_scheduler_update_history_and_result(
-        #[case] pod_count: usize,
-        #[case] node_count: usize,
-        #[case] expected: SchedulerResult<SchedulerState>,
-    ) {
-        let pods = generate_ids(pod_count);
-        let nodes = (0..pod_count)
-            .map(|i| {
-                if i < node_count {
-                    Some(NodeIdentity {
-                        name: format!("NODE_{}", i),
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect();
-        let current_mapping = PodToNodeMapping::default();
-        let mut history = TestHistory::default();
-
-        let mut scheduler = StickyScheduler::new(&mut history, ScheduleStrategy::GroupAntiAffinity);
-
-        let got = scheduler.update_history_and_result(
-            pods.iter().collect::<Vec<&PodIdentity>>(),
-            nodes,
-            pod_count,
-            node_count,
-            &current_mapping,
-        );
-
-        assert_eq!(got, expected);
     }
 }
