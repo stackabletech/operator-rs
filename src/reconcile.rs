@@ -379,11 +379,7 @@ where
     ///
     /// * `command` - The Stop command
     ///
-    pub async fn default_restart<C, P>(
-        &mut self,
-        command: &mut C,
-        _pod_provider: &P,
-    ) -> ReconcileResult<Error>
+    pub async fn default_restart<C>(&mut self, command: &mut C) -> ReconcileResult<Error>
     where
         T: Clone
             + Debug
@@ -397,7 +393,6 @@ where
         <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
         C: Command + CanBeRolling + DeserializeOwned + HasRoles,
         <C as kube::Resource>::DynamicType: Default,
-        P: ProvidesPod,
     {
         // set start time in command once
         if command.start_time().is_none() {
