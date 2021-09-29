@@ -465,6 +465,10 @@ where
                     self.client.ensure_deleted(current_pod.clone()).await?;
                     return Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)));
 
+                    // TODO: for now we let the reconcile method `create_missing_pods` in the operators
+                    //   create the pods. Once this is moved to the operator we can access it from
+                    //   here via the ProvidesPod trait.
+
                     //if let Some(labels) = &current_pod.meta().labels {
                     // let role_group = labels.get(APP_ROLE_GROUP_LABEL).unwrap();
                     // let node = current_pod
