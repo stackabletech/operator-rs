@@ -311,12 +311,6 @@ where
         }
     }
 
-    pub async fn create_missing_pods(&self, _creation_strategy: ContinuationStrategy)
-    where
-        T: ProvidesPod + HasRoleRestartOrder,
-    {
-    }
-
     /// This method can be used to ensure a ConfigMap exists and has the specified content.
     ///
     /// If a ConfigMap with the specified name does not exist it will be created.
@@ -377,7 +371,7 @@ where
     ///
     /// # Arguments
     ///
-    /// * `command` - The Stop command
+    /// * `command` - The Restart command
     ///
     pub async fn default_restart<C>(&mut self, command: &mut C) -> ReconcileResult<Error>
     where
@@ -610,6 +604,11 @@ where
 
     /// Offers default start command handling. Updates the cluster_execution_status to Running.
     /// Sets start and finish times.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The Start command
+    ///
     pub async fn default_start<C>(&mut self, command: &mut C) -> ReconcileResult<Error>
     where
         T: Clone
