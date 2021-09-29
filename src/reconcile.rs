@@ -10,18 +10,15 @@ use crate::command::{
 use crate::command_controller::Command;
 use crate::conditions::ConditionStatus;
 use crate::crd::HasApplication;
-use crate::error::Error::{InvalidName, KubeError};
 use crate::k8s_utils::find_excess_pods;
 use crate::labels::{APP_COMPONENT_LABEL, APP_INSTANCE_LABEL, APP_NAME_LABEL};
 use crate::status::{ClusterExecutionStatus, HasClusterExecutionStatus, HasCurrentCommand};
-use async_trait::async_trait;
-use k8s_openapi::api::core::v1::{ConfigMap, Node, Pod};
+use k8s_openapi::api::core::v1::{Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
     Condition, LabelSelector, LabelSelectorRequirement,
 };
 use kube::api::{ObjectMeta, ResourceExt};
 use kube::core::object::HasStatus;
-use kube::error::ErrorResponse;
 use kube::{CustomResourceExt, Resource};
 use kube_runtime::controller::ReconcilerAction;
 use serde::de::DeserializeOwned;
@@ -88,16 +85,6 @@ pub enum ContinuationStrategy {
 
     /// Will process all resources but will return a requeue after any changes
     OneRequeue,
-}
-
-#[async_trait]
-pub trait ProvidesPod {
-    async fn get_pod_and_context(
-        &self,
-        role: &str,
-        role_group: &str,
-        node: &str,
-    ) -> OperatorResult<(Pod, Vec<ConfigMap>)>; // We should convert this to something like (Vec<Pod>, Vec<DynamicObject>) for more flexibility
 }
 
 pub struct ReconciliationContext<T> {
@@ -311,61 +298,6 @@ where
         }
     }
 
-    /// This method can be used to ensure a ConfigMap exists and has the specified content.
-    ///
-    /// If a ConfigMap with the specified name does not exist it will be created.
-    ///
-    /// Should a ConfigMap with the specified name already exist the content is retrieved and
-    /// compared with the content from `config_map`, if content differs the existing ConfigMap is
-    /// updated.
-    ///
-    /// Returns `Ok(true)` if a change was made and `Ok(false}` if no change was necessary.
-    pub async fn create_config_map(&self, config_map: ConfigMap) -> OperatorResult<bool> {
-        let cm_name = match config_map.metadata.name.as_deref() {
-            None => {
-                return Err(InvalidName {
-                    errors: vec![String::from(
-                        "ConfigMap with empty name encountered, this is illegal!",
-                    )],
-                })
-            }
-            Some(name) => name,
-        };
-
-        match self
-            .client
-            .get::<ConfigMap>(cm_name, Some(&self.namespace()))
-            .await
-        {
-            Ok(ConfigMap {
-                data: existing_config_map_data,
-                ..
-            }) if existing_config_map_data == config_map.data => {
-                info!(
-                    "ConfigMap [{}] already exists with identical data, skipping creation!",
-                    cm_name
-                );
-                Ok(false)
-            }
-            Ok(_) => {
-                info!(
-                    "ConfigMap [{}] already exists, but differs, updating it!",
-                    cm_name
-                );
-                self.client.update(&config_map).await?;
-                Ok(true)
-            }
-            Err(KubeError {
-                source: kube::error::Error::Api(ErrorResponse { reason, .. }),
-            }) if reason == "NotFound" => {
-                info!("ConfigMap [{}] not found, creating it.", cm_name);
-                self.client.create(&config_map).await?;
-                Ok(true)
-            }
-            Err(e) => Err(e),
-        }
-    }
-
     /// Offers default restart command handling. Deletes specified pods in a rolling or non rolling
     /// Sets start and finish times.
     ///
@@ -467,34 +399,12 @@ where
                     self.client.ensure_deleted(current_pod.clone()).await?;
                     return Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)));
 
-                    // TODO: for now we let the reconcile method `create_missing_pods` in the operators
-                    //   create the pods. Once this is moved to the operator we can access it from
-                    //   here via the ProvidesPod trait.
-
-                    //if let Some(labels) = &current_pod.meta().labels {
-                    // let role_group = labels.get(APP_ROLE_GROUP_LABEL).unwrap();
-                    // let node = current_pod
-                    //     .spec
-                    //     .clone()
-                    //     .unwrap_or_default()
-                    //     .node_name
-                    //     .unwrap();
-
-                    //self.client.ensure_deleted(current_pod.clone()).await?;
-
-                    // let (pods, _) = pod_provider
-                    //     .get_pod_and_context(&role, role_group, &node)
-                    //     .await?;
-                    //
-                    // //for config_map in config_maps {
-                    // //    self.create_config_map(config_map).await?;
-                    // // }
-                    // warn!("Creating pod on node [{}]: [{:?}]", node, pods);
-                    // self.client.create(&pods).await?;
-                    // // We return early for this case, there is nothing left to do after one pod
-                    // // was restarted
-                    //return Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)));
-                    //}
+                    // TODO: Rolling currently does not work properly. We delete one pod after
+                    //   another here without creating one after deletion. Pods are created via the
+                    //   `create_missing_pods` method in the reconcile loop of the operators (after
+                    //   all pods are deleted for restart).
+                    //   We need a `ProvidesPod` trait to access pods and config maps that we want
+                    //   to create here in a rolling fashion.
                 }
                 false => {
                     for pod in pods {

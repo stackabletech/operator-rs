@@ -8,12 +8,24 @@ All notable changes to this project will be documented in this file.
 - Bugfix: when scheduling a pod, `GroupAntiAffinityStrategy` should not skip nodes that are mapped by other pods from different role+group. ([#222])
 
 ### Added
+- `command.rs` module to handle common command operations ([#184]).
+- Traits for command handling ([#184]):
+  - `HasCurrentCommand` to manipulate the current_command in the status
+  - `HasClusterExecutionStatus` to access cluster_execution_status in the status
+  - `HasRoleRestartOrder` to determine the restart order of different roles
+  - `HasCommands` to provide all supported commands like Restart, Start, Stop ...
+  - `CanBeRolling` to perform a rolling restart
+  - `HasRoles` to run a command only on a subset of roles
+- Enum `ClusterExecutionStatus` to signal that the cluster is running or stopped ([#184]).
+- Default implementations for Restart, Start and Stop commands ([#184]).
 - `identity.rs` a new module split out of `scheduler.rs` that bundles code for pod and node id management.
-- `identity::PodIdentityFactory` trait and one implementation called `identity::LabeledPodIdentityFactory`
+- `identity::PodIdentityFactory` trait and one implementation called `identity::LabeledPodIdentityFactory`.
 
 ### Removed
-- BREAKING: `scheduler::PodToNodeMapping::from` ([#222])
+- `reconcile::create_config_maps` which is obsolete and replaced by `configmap::create_config_maps` ([#184])
+- BREAKING: `scheduler::PodToNodeMapping::from` ([#222]).
 
+[#184]: https://github.com/stackabletech/operator-rs/pull/184
 [#222]: https://github.com/stackabletech/operator-rs/pull/222
 
 ## [0.2.2] - 2021-09-21
