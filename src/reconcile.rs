@@ -4,8 +4,8 @@ use crate::k8s_utils::LabelOptionalValueMap;
 use crate::{conditions, controller_ref, finalizer, pod_utils};
 
 use crate::command::{
-    maybe_update_current_command, CanBeRolling, CommandRef, HasCommands, HasRoleRestartOrder,
-    HasRoles,
+    clear_current_command, maybe_update_current_command, CanBeRolling, CommandRef, HasCommands,
+    HasRoleRestartOrder, HasRoles,
 };
 use crate::command_controller::Command;
 use crate::conditions::ConditionStatus;
@@ -373,23 +373,30 @@ where
     }
 
     /// Offers default restart command handling. Deletes specified pods in a rolling or non rolling
+    /// Sets start and finish times.
     ///
     /// # Arguments
     ///
     /// * `command` - The Stop command
     ///
     pub async fn default_restart<C, P>(
-        &self,
-        command: &C,
+        &mut self,
+        command: &mut C,
         _pod_provider: &P,
     ) -> ReconcileResult<Error>
     where
-        T: DeserializeOwned
+        T: Clone
+            + Debug
+            + DeserializeOwned
             + HasClusterExecutionStatus
             + HasApplication
             + HasRoleRestartOrder
-            + Resource<DynamicType = ()>,
-        C: Command + CanBeRolling + HasRoles,
+            + HasStatus
+            + Resource<DynamicType = ()>
+            + kube::CustomResourceExt,
+        <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
+        C: Command + CanBeRolling + DeserializeOwned + HasRoles,
+        <C as kube::Resource>::DynamicType: Default,
         P: ProvidesPod,
     {
         // If the command provides a list of roles this overrides the default provided by the cluster
@@ -397,6 +404,10 @@ where
         let role_order = command
             .get_role_order()
             .unwrap_or_else(T::get_role_restart_order);
+
+        // set start time in command
+        let patch = command.start_patch();
+        self.client.merge_patch_status(command, &patch).await?;
 
         let mut restart_occurred = false;
         for role in role_order {
@@ -505,31 +516,47 @@ where
             Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)))
         } else {
             // No pods that were eligible for a restart were found, restart is done
+            clear_current_command(&self.client, &mut self.resource).await?;
+
+            let patch = command.finish_patch();
+            self.client.merge_patch_status(command, &patch).await?;
+
             Ok(ReconcileFunctionAction::Done)
         }
     }
 
     /// Offers default stop command handling. Deletes specified pods in a rolling or non rolling
     /// strategy and updates the cluster_execution_status to Stopped.
+    /// Sets start and finish times.
     ///
     /// # Arguments
     ///
     /// * `command` - The Stop command
     ///
-    pub async fn default_stop<C>(&self, command: &C) -> ReconcileResult<Error>
+    pub async fn default_stop<C>(&mut self, command: &mut C) -> ReconcileResult<Error>
     where
-        T: DeserializeOwned
+        T: Clone
+            + Debug
+            + DeserializeOwned
             + HasClusterExecutionStatus
             + HasApplication
             + HasRoleRestartOrder
-            + Resource<DynamicType = ()>,
-        C: Command + CanBeRolling + HasRoles,
+            + HasStatus
+            + Resource<DynamicType = ()>
+            + kube::CustomResourceExt,
+        <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
+        C: Command + CanBeRolling + DeserializeOwned + HasRoles,
+        <C as kube::Resource>::DynamicType: Default,
     {
         // If the command provides a list of roles this overrides the default provided by the cluster
         // definition itself
         let role_order = command
             .get_role_order()
             .unwrap_or_else(T::get_role_restart_order);
+
+        // set start time in command
+        let patch = command.start_patch();
+        self.client.merge_patch_status(command, &patch).await?;
 
         for role in role_order {
             // Retrieve all pods for this service and role
@@ -574,18 +601,35 @@ where
             )
             .await?;
 
+        clear_current_command(&self.client, &mut self.resource).await?;
+
+        let patch = command.finish_patch();
+        self.client.merge_patch_status(command, &patch).await?;
+
         Ok(ReconcileFunctionAction::Done)
     }
 
     /// Offers default start command handling. Updates the cluster_execution_status to Running.
-    pub async fn default_start(&self) -> ReconcileResult<Error>
+    /// Sets start and finish times.
+    pub async fn default_start<C>(&mut self, command: &mut C) -> ReconcileResult<Error>
     where
         T: Clone
             + Debug
             + DeserializeOwned
             + HasClusterExecutionStatus
-            + Resource<DynamicType = ()>,
+            + HasApplication
+            + HasRoleRestartOrder
+            + HasStatus
+            + Resource<DynamicType = ()>
+            + kube::CustomResourceExt,
+        <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
+        C: Command + CanBeRolling + DeserializeOwned + HasRoles,
+        <C as kube::Resource>::DynamicType: Default,
     {
+        // set start time in command
+        let patch = command.start_patch();
+        self.client.merge_patch_status(command, &patch).await?;
+
         self.client
             .merge_patch_status(
                 &self.resource,
@@ -594,6 +638,11 @@ where
                     .cluster_execution_status_patch(&ClusterExecutionStatus::Running),
             )
             .await?;
+
+        clear_current_command(&self.client, &mut self.resource).await?;
+
+        let patch = command.finish_patch();
+        self.client.merge_patch_status(command, &patch).await?;
 
         Ok(ReconcileFunctionAction::Done)
     }
