@@ -38,6 +38,7 @@ pub trait Versioned<V> {
 }
 
 pub trait HasClusterExecutionStatus {
+    fn cluster_execution_status(&self) -> Option<ClusterExecutionStatus>;
     fn cluster_execution_status_patch(&self, execution_status: &ClusterExecutionStatus) -> Value;
 }
 
