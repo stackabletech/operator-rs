@@ -133,6 +133,9 @@ pub enum Error {
         separator: String,
         invalid_fields: BTreeMap<String, String>,
     },
+
+    #[error("Conversion error: [message]")]
+    ConversionError { message: String },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;

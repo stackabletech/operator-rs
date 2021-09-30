@@ -3,17 +3,30 @@ use crate::error::{Error, OperatorResult};
 use crate::k8s_utils::LabelOptionalValueMap;
 use crate::{conditions, controller_ref, finalizer, pod_utils};
 
+use crate::command::{
+    clear_current_command, maybe_update_current_command, CanBeRolling, CommandRef, HasCommands,
+    HasRoleRestartOrder, HasRoles,
+};
+use crate::command_controller::Command;
 use crate::conditions::ConditionStatus;
+use crate::crd::HasApplication;
 use crate::k8s_utils::find_excess_pods;
+use crate::labels::{APP_COMPONENT_LABEL, APP_INSTANCE_LABEL, APP_NAME_LABEL};
+use crate::status::{ClusterExecutionStatus, HasClusterExecutionStatus, HasCurrentCommand};
 use k8s_openapi::api::core::v1::{Node, Pod};
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
+    Condition, LabelSelector, LabelSelectorRequirement,
+};
 use kube::api::{ObjectMeta, ResourceExt};
-use kube::Resource;
+use kube::core::object::HasStatus;
+use kube::{CustomResourceExt, Resource};
 use kube_runtime::controller::ReconcilerAction;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::future::Future;
+use std::ops::Deref;
 use std::pin::Pin;
 use std::time::Duration;
 use tracing::{debug, info, trace, warn};
@@ -283,6 +296,336 @@ where
         } else {
             Ok(ReconcileFunctionAction::Continue)
         }
+    }
+
+    /// Offers default restart command handling. Deletes specified pods in a rolling or non rolling
+    /// Sets start and finish times.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The Restart command
+    ///
+    pub async fn default_restart<C>(&mut self, command: &mut C) -> ReconcileResult<Error>
+    where
+        T: Clone
+            + Debug
+            + DeserializeOwned
+            + HasClusterExecutionStatus
+            + HasApplication
+            + HasRoleRestartOrder
+            + HasStatus
+            + Resource<DynamicType = ()>
+            + kube::CustomResourceExt,
+        <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
+        C: Command + CanBeRolling + DeserializeOwned + HasRoles,
+        <C as kube::Resource>::DynamicType: Default,
+    {
+        // set start time in command once
+        if command.start_time().is_none() {
+            let patch = command.start_patch();
+            self.client.merge_patch_status(command, &patch).await?;
+        }
+
+        // If the command provides a list of roles this overrides the default provided by the cluster
+        // definition itself
+        let role_order = command
+            .get_role_order()
+            .unwrap_or_else(T::get_role_restart_order);
+
+        let mut restart_occurred = false;
+        for role in role_order {
+            // Retrieve all pods for this service and role
+            let selector = self.get_role_selector(&role);
+            let pods = self
+                .client
+                .list_with_label_selector::<Pod>(self.resource.namespace().as_deref(), &selector)
+                .await?;
+
+            // Filter those out that have been restarted since the command was started
+            let pods = pods
+                .iter()
+                .filter(
+                    |pod| match (&pod.metadata.creation_timestamp, &command.start_time()) {
+                        (Some(pod_start_time), Some(command_start_time))
+                            if pod_start_time.0 < command_start_time.0 =>
+                        {
+                            debug!(
+                                "Pod creation_timestamp [{}] < command start_time [{}]. Pod [{:?}] not restarted yet.",
+                                pod_start_time.0, command_start_time.0, pod.metadata.name
+                            );
+
+                            pod.metadata.deletion_timestamp.is_none()
+                        },
+                        (Some(pod_start_time), Some(command_start_time))
+                            if pod_start_time.0 >= command_start_time.0 =>
+                        {
+                            debug!(
+                                "Pod creation_timestamp [{}] >= command start_time [{}]. No restart required.",
+                                pod_start_time.0, command_start_time.0
+                            );
+                            false
+                        },
+                        (Some(_), None) => {
+                            warn!("Missing command start_time!");
+                            false
+                        },
+                        (None, Some(_)) => {
+                            warn!("Missing pod creation timestamp!");
+                            false
+                        },
+                        _ => {
+                            warn!("Missing pod creation_timestamp and command start_time!");
+                            false
+                        }
+                    },
+                )
+                .collect::<Vec<_>>();
+
+            if pods.is_empty() {
+                // Got no pods for this role, skip rest of processing
+                warn!(
+                    "Skipping role [{}] during restart, no pods left to restart.",
+                    role
+                );
+                continue;
+            }
+
+            // Track if anything was changed during this run
+            restart_occurred = true;
+            // Restart pods depending on strategy
+            match command.is_rolling() {
+                true => {
+                    let current_pod = pods.first().unwrap().deref();
+                    self.client.ensure_deleted(current_pod.clone()).await?;
+                    return Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)));
+
+                    // TODO: Rolling currently does not work properly. We delete one pod after
+                    //   another here without creating one after deletion. Pods are created via the
+                    //   `create_missing_pods` method in the reconcile loop of the operators (after
+                    //   all pods are deleted for restart).
+                    //   We need a `ProvidesPod` trait to access pods and config maps that we want
+                    //   to create here in a rolling fashion.
+                }
+                false => {
+                    for pod in pods {
+                        self.client.delete(pod).await?;
+                    }
+                }
+            }
+        }
+        if restart_occurred {
+            Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)))
+        } else {
+            // No pods that were eligible for a restart were found, restart is done
+            clear_current_command(&self.client, &mut self.resource).await?;
+
+            let patch = command.finish_patch();
+            self.client.merge_patch_status(command, &patch).await?;
+
+            Ok(ReconcileFunctionAction::Done)
+        }
+    }
+
+    /// Offers default stop command handling. Deletes specified pods in a rolling or non rolling
+    /// strategy and updates the cluster_execution_status to Stopped.
+    /// Sets start and finish times.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The Stop command
+    ///
+    pub async fn default_stop<C>(&mut self, command: &mut C) -> ReconcileResult<Error>
+    where
+        T: Clone
+            + Debug
+            + DeserializeOwned
+            + HasClusterExecutionStatus
+            + HasApplication
+            + HasRoleRestartOrder
+            + HasStatus
+            + Resource<DynamicType = ()>
+            + kube::CustomResourceExt,
+        <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
+        C: Command + CanBeRolling + DeserializeOwned + HasRoles,
+        <C as kube::Resource>::DynamicType: Default,
+    {
+        // set start time in command once
+        if command.start_time().is_none() {
+            let patch = command.start_patch();
+            self.client.merge_patch_status(command, &patch).await?;
+        }
+
+        // If the command provides a list of roles this overrides the default provided by the cluster
+        // definition itself
+        let role_order = command
+            .get_role_order()
+            .unwrap_or_else(T::get_role_restart_order);
+
+        for role in role_order {
+            // Retrieve all pods for this service and role
+            let selector = self.get_role_selector(&role);
+            let mut pods = self
+                .client
+                .list_with_label_selector::<Pod>(self.resource.namespace().as_deref(), &selector)
+                .await?;
+
+            if pods.is_empty() {
+                // Got no pods for this role, skip rest of processing
+                warn!(
+                    "Skipping role [{}] during stop, no pods left to stop.",
+                    role
+                );
+                continue;
+            }
+
+            // Stop pods depending on strategy
+            match command.is_rolling() {
+                true => {
+                    if let Some(pod) = pods.pop() {
+                        self.client.ensure_deleted(pod).await?;
+                        return Ok(ReconcileFunctionAction::Requeue(Duration::from_secs(5)));
+                    }
+                }
+                false => {
+                    for pod in &pods {
+                        self.client.delete(pod).await?;
+                    }
+                }
+            }
+        }
+
+        // we are done here and set the cluster_execution_status to Stopped
+        self.client
+            .merge_patch_status(
+                &self.resource,
+                &self
+                    .resource
+                    .cluster_execution_status_patch(&ClusterExecutionStatus::Stopped),
+            )
+            .await?;
+
+        clear_current_command(&self.client, &mut self.resource).await?;
+
+        let patch = command.finish_patch();
+        self.client.merge_patch_status(command, &patch).await?;
+
+        Ok(ReconcileFunctionAction::Done)
+    }
+
+    /// Offers default start command handling. Updates the cluster_execution_status to Running.
+    /// Sets start and finish times.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The Start command
+    ///
+    pub async fn default_start<C>(&mut self, command: &mut C) -> ReconcileResult<Error>
+    where
+        T: Clone
+            + Debug
+            + DeserializeOwned
+            + HasClusterExecutionStatus
+            + HasApplication
+            + HasRoleRestartOrder
+            + HasStatus
+            + Resource<DynamicType = ()>
+            + kube::CustomResourceExt,
+        <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
+        C: Command + CanBeRolling + DeserializeOwned + HasRoles,
+        <C as kube::Resource>::DynamicType: Default,
+    {
+        // set start time in command once
+        if command.start_time().is_none() {
+            let patch = command.start_patch();
+            self.client.merge_patch_status(command, &patch).await?;
+        }
+
+        self.client
+            .merge_patch_status(
+                &self.resource,
+                &self
+                    .resource
+                    .cluster_execution_status_patch(&ClusterExecutionStatus::Running),
+            )
+            .await?;
+
+        clear_current_command(&self.client, &mut self.resource).await?;
+
+        let patch = command.finish_patch();
+        self.client.merge_patch_status(command, &patch).await?;
+
+        Ok(ReconcileFunctionAction::Done)
+    }
+
+    /// Create a LabelSelector with matching expressions ("In") containing:
+    /// - Application name
+    /// - Component (Role)
+    /// - Instance (cluster name)
+    fn get_role_selector(&self, role: &str) -> LabelSelector
+    where
+        T: HasApplication,
+    {
+        let application_match = LabelSelectorRequirement {
+            key: APP_NAME_LABEL.to_string(),
+            operator: "In".to_string(),
+            values: Some(vec![
+                <T as HasApplication>::get_application_name().to_string()
+            ]),
+        };
+        let role_match = LabelSelectorRequirement {
+            key: APP_COMPONENT_LABEL.to_string(),
+            operator: "In".to_string(),
+            values: Some(vec![role.to_string()]),
+        };
+
+        let instance_match = LabelSelectorRequirement {
+            key: APP_INSTANCE_LABEL.to_string(),
+            operator: "In".to_string(),
+            values: Some(vec![self.resource.name()]),
+        };
+
+        let result = LabelSelector {
+            match_expressions: Some(vec![application_match, role_match, instance_match]),
+            match_labels: Default::default(),
+        };
+        trace!("Created LabelSelector: [{:?}]", result);
+        result
+    }
+
+    /// This reconcile function returns an existing executing command or the next command
+    /// in the queue (with the oldest timestamp).
+    pub async fn retrieve_current_command(&mut self) -> OperatorResult<Option<CommandRef>>
+    where
+        T: Clone
+            + Debug
+            + DeserializeOwned
+            + Resource
+            + CustomResourceExt
+            + HasCommands
+            + HasStatus
+            + Send
+            + Sync
+            + 'static,
+        <T as Resource>::DynamicType: Default,
+        <T as HasStatus>::Status: HasCurrentCommand + Debug + Default + Serialize,
+    {
+        let current_command_ref = crate::command::current_command(
+            &self.client,
+            &self.resource,
+            T::get_command_types().as_slice(),
+        )
+        .await?;
+
+        // Check if the one that should be running has already been set in the Status => was
+        // already started
+        Ok(match current_command_ref {
+            None => None,
+            Some(current_command) => {
+                maybe_update_current_command(&self.client, &mut self.resource, &current_command)
+                    .await?;
+                Some(current_command)
+            }
+        })
     }
 
     /// This reconcile function can be added to the chain to automatically handle deleted objects

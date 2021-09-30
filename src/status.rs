@@ -1,11 +1,14 @@
 //! This module provides structs and trades to generalize the custom resource status access.
 use crate::client::Client;
+use crate::command::CommandRef;
 use crate::error::OperatorResult;
 use crate::versioning::ProductVersion;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
 use k8s_openapi::serde::de::DeserializeOwned;
-use k8s_openapi::serde::Serialize;
 use kube::Resource;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::fmt::Debug;
 
 /// Provides access to the custom resource status.
@@ -20,10 +23,32 @@ pub trait Conditions {
     fn conditions_mut(&mut self) -> &mut Vec<Condition>;
 }
 
+/// Provides access to the custom resource status to read, write or delete the current_command.
+pub trait HasCurrentCommand {
+    fn current_command(&self) -> Option<CommandRef>;
+    // TODO: setters are non-rusty, is there a better way? Dirkjan?
+    fn set_current_command(&mut self, command: CommandRef);
+    fn clear_current_command(&mut self);
+    fn tracking_location() -> &'static str;
+}
+
 /// Provides access to the custom resource status version for up or downgrades.
 pub trait Versioned<V> {
     fn version(&self) -> &Option<ProductVersion<V>>;
     fn version_mut(&mut self) -> &mut Option<ProductVersion<V>>;
+}
+
+/// Required to indicate the current status of the cluster for command handling (e.g. Stopped, Running).
+pub trait HasClusterExecutionStatus {
+    fn cluster_execution_status(&self) -> Option<ClusterExecutionStatus>;
+    fn cluster_execution_status_patch(&self, execution_status: &ClusterExecutionStatus) -> Value;
+}
+
+/// Signals the current status of the cluster
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+pub enum ClusterExecutionStatus {
+    Stopped,
+    Running,
 }
 
 /// Initializes the custom resource status with its default. The status is written to the api

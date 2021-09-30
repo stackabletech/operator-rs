@@ -14,6 +14,16 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
+/// Retrieve the custom resource name (e.g. simple-test-cluster).
+pub trait HasInstance {
+    fn get_instance_name(&self) -> &str;
+}
+
+/// Retrieve the application name (e.g. spark, zookeeper).
+pub trait HasApplication {
+    fn get_application_name() -> &'static str;
+}
+
 /// This trait can be implemented to allow automatic handling
 /// (e.g. creation) of `CustomResourceDefinition`s in Kubernetes.
 pub trait CustomResourceExt: kube::CustomResourceExt {

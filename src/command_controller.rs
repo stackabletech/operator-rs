@@ -3,13 +3,16 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```no_compile
 //! use kube::CustomResource;
 //! use stackable_operator::{client, error};
 //! use stackable_operator::client::Client;
 //! use stackable_operator::error::Error;
 //! use schemars::JsonSchema;
 //! use serde::{Deserialize, Serialize};
+//! use k8s_openapi::schemars::_serde_json::Value;
+//! use chrono::DateTime;
+//! use chrono::FixedOffset;
 //!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 //! #[kube(
@@ -49,6 +52,22 @@
 //!     fn get_owner_name(&self) -> String {
 //!         self.spec.name.clone()
 //!     }
+//!
+//!     fn start(&mut self) {
+//!         todo!()
+//!     }
+//!
+//!     fn done(&mut self) {
+//!         todo!()
+//!     }
+//!
+//!     fn start_time(&self) -> Option<DateTime<FixedOffset>> {
+//!         todo!()
+//!     }
+//!
+//!     fn get_start_patch(&self) -> Value {
+//!         todo!()
+//!     }
 //! }
 //!
 //! #[tokio::main]
@@ -77,21 +96,31 @@ use crate::error::{Error, OperatorResult};
 use crate::reconcile::{ReconcileFunctionAction, ReconcileResult, ReconciliationContext};
 use async_trait::async_trait;
 use json_patch::{AddOperation, PatchOperation};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 use kube::api::ListParams;
 use kube::{Api, Resource, ResourceExt};
 use serde::de::DeserializeOwned;
+use serde_json::Value;
 use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
-use tracing::trace;
+use tracing::{trace, warn};
 
 /// Trait for all commands to be implemented. We need to retrieve the name of the
-/// main controller custom resource.
+/// main controller custom resource as well as started and finished timestamps.
 /// The referenced resource has to be in the same namespace as the command itself.
-pub trait Command {
-    /// Retrieve the potential "Owner" name of this custom resource
-    fn get_owner_name(&self) -> String;
+pub trait Command: Resource {
+    /// Retrieve the potential "Owner" name of this custom resource.
+    fn owner_name(&self) -> String;
+    /// Retrieve the start time
+    fn start_time(&self) -> Option<&Time>;
+    /// Retrieve the patch to set the started timestamp in the custom resource status.
+    fn start_patch(&mut self) -> Value;
+    /// Retrieve the finish time
+    fn finish_time(&self) -> Option<&Time>;
+    /// Retrieve the patch to set the finished timestamp in the custom resource status.
+    fn finish_patch(&mut self) -> Value;
 }
 
 struct CommandState<C, O>
@@ -113,7 +142,7 @@ where
     async fn owner_reference_existing(&mut self) -> ReconcileResult<Error> {
         // If owner_references exists, check if any of them match the name of our main object
         if let Some(owner_reference) = controller_ref::get_controller_of(&self.context.resource) {
-            if owner_reference.name == self.context.resource.get_owner_name()
+            if owner_reference.name == self.context.resource.owner_name()
                 && owner_reference.kind == O::kind(&())
             {
                 //trace!("Found command object with existing owner_reference: {}", self.context.resource)
@@ -131,14 +160,14 @@ where
             .context
             .client
             .get(
-                &self.context.resource.get_owner_name(),
+                &self.context.resource.owner_name(),
                 self.context.resource.namespace().as_deref(),
             )
             .await?;
 
         trace!(
             "Found owner [{}] for command [{}]",
-            &self.context.resource.get_owner_name(),
+            &self.context.resource.owner_name(),
             &self.context.resource.name()
         );
 
@@ -163,6 +192,8 @@ where
             path: owner_references_path,
             value: serde_json::json!([owner_reference]),
         })]);
+
+        warn!("Trying to patch ownerReference with [{:?}]", patch);
 
         self.context
             .client
@@ -243,9 +274,6 @@ where
 /// helper controller will make sure that they trigger a reconcile for the parent by setting the OwnerReference.
 ///
 /// This is an async method and the returned future needs to be consumed to make progress.
-///
-/// This method cannot _currently_ fail. It returns a result for ergonomic reasons so that it can
-/// be used together with other controllers in a `try_join!` macro.
 pub async fn create_command_controller<C, O>(client: Client) -> OperatorResult<()>
 where
     C: Command
