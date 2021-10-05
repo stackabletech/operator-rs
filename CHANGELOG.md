@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Bugfix: when scheduling a pod, `GroupAntiAffinityStrategy` should not skip nodes that are mapped by other pods from different role+group. ([#222])
+- Bugfix: annotate `conditions` as map-list ([#226])
+  - Requires manual action: add `#[schemars(schema_with = "stackable_operator::conditions::conditions_schema")]` annotation to `conditions` field in your status struct
 
 ### Added
 - `command.rs` module to handle common command operations ([#184]).
@@ -27,6 +29,7 @@ All notable changes to this project will be documented in this file.
 
 [#184]: https://github.com/stackabletech/operator-rs/pull/184
 [#222]: https://github.com/stackabletech/operator-rs/pull/222
+[#226]: https://github.com/stackabletech/operator-rs/pull/226
 
 ## [0.2.2] - 2021-09-21
 
