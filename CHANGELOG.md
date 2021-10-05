@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Bugfix: when scheduling a pod, `GroupAntiAffinityStrategy` should not skip nodes that are mapped by other pods from different role+group. ([#222])
+- BREAKING: `Client::apply_patch` and `Client::apply_patch_status` now take a `context` argument that scopes their fieldManager ([#225])
+- Bugfix: `Client::set_condition` now scopes its fieldManager to the condition being applied ([#225])
 
 ### Added
 - `command.rs` module to handle common command operations ([#184]).
