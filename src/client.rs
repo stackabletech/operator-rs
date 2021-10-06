@@ -58,7 +58,7 @@ impl Client {
     /// since it will revert changes that are owned by the `field_manager` but not part of the Apply request.
     fn apply_patch_params(&self, field_manager_scope: impl Display) -> PatchParams {
         let mut params = self.patch_params.clone();
-        // TODO: According to https://kubernetes.io/docs/reference/using-api/server-side-apply/#using-server-side-apply-in-a-controller we should always force conflicts in controllers.
+        // According to https://kubernetes.io/docs/reference/using-api/server-side-apply/#using-server-side-apply-in-a-controller we should always force conflicts in controllers.
         params.force = true;
         if let Some(manager) = &mut params.field_manager {
             *manager = format!("{}/{}", manager, field_manager_scope);
