@@ -56,12 +56,12 @@ impl Client {
 
     /// Server-side apply requires a `field_manager` that uniquely identifies a single usage site,
     /// since it will revert changes that are owned by the `field_manager` but not part of the Apply request.
-    fn apply_patch_params(&self, context: impl Display) -> PatchParams {
+    fn apply_patch_params(&self, field_manager_scope: impl Display) -> PatchParams {
         let mut params = self.patch_params.clone();
         // TODO: According to https://kubernetes.io/docs/reference/using-api/server-side-apply/#using-server-side-apply-in-a-controller we should always force conflicts in controllers.
         params.force = true;
         if let Some(manager) = &mut params.field_manager {
-            *manager = format!("{}/{}", manager, context);
+            *manager = format!("{}/{}", manager, field_manager_scope);
         }
         params
     }
@@ -179,7 +179,7 @@ impl Client {
     /// This will _create_ or _update_ existing resources.
     pub async fn apply_patch<T, P>(
         &self,
-        context: &str,
+        field_manager_scope: &str,
         resource: &T,
         patch: P,
     ) -> OperatorResult<T>
@@ -191,7 +191,7 @@ impl Client {
         self.patch(
             resource,
             Patch::Apply(patch),
-            &self.apply_patch_params(context),
+            &self.apply_patch_params(field_manager_scope),
         )
         .await
     }
@@ -232,7 +232,7 @@ impl Client {
     /// The subresource status must be defined beforehand in the Crd.
     pub async fn apply_patch_status<T, S>(
         &self,
-        context: &str,
+        field_manager_scope: &str,
         resource: &T,
         status: &S,
     ) -> OperatorResult<T>
@@ -248,7 +248,11 @@ impl Client {
         }));
 
         Ok(self
-            .patch_status(resource, new_status, &self.apply_patch_params(context))
+            .patch_status(
+                resource,
+                new_status,
+                &self.apply_patch_params(field_manager_scope),
+            )
             .await?)
     }
 
