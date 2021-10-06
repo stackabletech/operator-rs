@@ -16,7 +16,7 @@ use kube::{Api, Config};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::convert::TryFrom;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use tracing::{error, info, trace};
 
 /// This `Client` can be used to access Kubernetes.
@@ -24,8 +24,8 @@ use tracing::{error, info, trace};
 #[derive(Clone)]
 pub struct Client {
     client: KubeClient,
+    field_manager: Option<String>,
     patch_params: PatchParams,
-    force_patch_params: PatchParams,
     post_params: PostParams,
     delete_params: DeleteParams,
     /// Default namespace as defined in the kubeconfig this client has been created from.
@@ -40,25 +40,30 @@ impl Client {
     ) -> Self {
         Client {
             client,
+            field_manager: field_manager.clone(),
             post_params: PostParams {
                 field_manager: field_manager.clone(),
                 ..PostParams::default()
             },
             patch_params: PatchParams {
-                field_manager: field_manager.clone(),
-                ..PatchParams::default()
-            },
-            // TODO: According to https://kubernetes.io/docs/reference/using-api/server-side-apply/#using-server-side-apply-in-a-controller we should always force conflicts in controllers.
-            //  we currently consider this a workaround until we can properly implement patching
-            //  (see https://github.com/stackabletech/operator-rs/issues/113)
-            force_patch_params: PatchParams {
                 field_manager,
-                force: true,
                 ..PatchParams::default()
             },
             delete_params: DeleteParams::default(),
             default_namespace,
         }
+    }
+
+    /// Server-side apply requires a `field_manager` that uniquely identifies a single usage site,
+    /// since it will revert changes that are owned by the `field_manager` but not part of the Apply request.
+    fn apply_patch_params(&self, field_manager_scope: impl Display) -> PatchParams {
+        let mut params = self.patch_params.clone();
+        // According to https://kubernetes.io/docs/reference/using-api/server-side-apply/#using-server-side-apply-in-a-controller we should always force conflicts in controllers.
+        params.force = true;
+        if let Some(manager) = &mut params.field_manager {
+            *manager = format!("{}/{}", manager, field_manager_scope);
+        }
+        params
     }
 
     /// Returns a [kube::client::Client]] that can be freely used.
@@ -172,14 +177,23 @@ impl Client {
     /// and the merge strategy can differ from field to field and will be defined by the
     /// schema of the resource in question.
     /// This will _create_ or _update_ existing resources.
-    pub async fn apply_patch<T, P>(&self, resource: &T, patch: P) -> OperatorResult<T>
+    pub async fn apply_patch<T, P>(
+        &self,
+        field_manager_scope: &str,
+        resource: &T,
+        patch: P,
+    ) -> OperatorResult<T>
     where
         T: Clone + Debug + DeserializeOwned + Resource,
         <T as Resource>::DynamicType: Default,
         P: Debug + Serialize,
     {
-        self.patch(resource, Patch::Apply(patch), &self.patch_params)
-            .await
+        self.patch(
+            resource,
+            Patch::Apply(patch),
+            &self.apply_patch_params(field_manager_scope),
+        )
+        .await
     }
 
     /// Patches a resource using the `JSON` patch strategy described in [JavaScript Object Notation (JSON) Patch](https://tools.ietf.org/html/rfc6902).
@@ -216,7 +230,12 @@ impl Client {
 
     /// Patches subresource status in a given Resource using apply strategy.
     /// The subresource status must be defined beforehand in the Crd.
-    pub async fn apply_patch_status<T, S>(&self, resource: &T, status: &S) -> OperatorResult<T>
+    pub async fn apply_patch_status<T, S>(
+        &self,
+        field_manager_scope: &str,
+        resource: &T,
+        status: &S,
+    ) -> OperatorResult<T>
     where
         T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
         <T as Resource>::DynamicType: Default,
@@ -229,7 +248,11 @@ impl Client {
         }));
 
         Ok(self
-            .patch_status(resource, new_status, &self.force_patch_params)
+            .patch_status(
+                resource,
+                new_status,
+                &self.apply_patch_params(field_manager_scope),
+            )
             .await?)
     }
 
@@ -401,6 +424,7 @@ impl Client {
     where
         T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
     {
+        let patch_params = self.apply_patch_params(format_args!("condition-{}", condition.type_));
         let new_status = Patch::Apply(serde_json::json!({
             "apiVersion": T::api_version(&()),
             "kind": T::kind(&()),
@@ -410,7 +434,7 @@ impl Client {
         }));
 
         Ok(self
-            .patch_status(resource, new_status, &self.force_patch_params)
+            .patch_status(resource, new_status, &patch_params)
             .await?)
     }
 
