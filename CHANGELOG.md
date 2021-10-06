@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Bugfix: when scheduling a pod, `GroupAntiAffinityStrategy` should not skip nodes that are mapped by other pods from different role+group. ([#222])
 - BREAKING: `Client::apply_patch` and `Client::apply_patch_status` now take a `context` argument that scopes their fieldManager ([#225])
 - Bugfix: `Client::set_condition` now scopes its fieldManager to the condition being applied ([#225])
+- Bugfix: removed duplicate object identity from reconciler. ([#228])
 
 ### Added
 - `command.rs` module to handle common command operations ([#184]).
@@ -30,6 +31,7 @@ All notable changes to this project will be documented in this file.
 [#184]: https://github.com/stackabletech/operator-rs/pull/184
 [#222]: https://github.com/stackabletech/operator-rs/pull/222
 [#225]: https://github.com/stackabletech/operator-rs/pull/225
+[#228]: https://github.com/stackabletech/operator-rs/pull/228
 
 ## [0.2.2] - 2021-09-21
 

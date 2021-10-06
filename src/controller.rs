@@ -300,11 +300,7 @@ where
 /// This method contains the logic of reconciling an object (the desired state) we received with the actual state.
 #[tracing::instrument(
     skip(resource, context),
-    fields(
-        resource.name = ?resource.meta().name,
-        resource.namespace = ?resource.meta().namespace,
-        request_id = %Uuid::new_v4()
-    )
+    fields(request_id = %Uuid::new_v4()),
 )]
 async fn reconcile<S, T>(
     resource: T,
