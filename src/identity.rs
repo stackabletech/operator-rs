@@ -577,10 +577,10 @@ pub mod tests {
         ],
         vec![
             PodIdentity::new(APP_NAME, INSTANCE, "history", "default", "1").unwrap(),
+            PodIdentity::new(APP_NAME, INSTANCE, "master", "default", "1").unwrap(),
             PodIdentity::new(APP_NAME, INSTANCE, "master", "default", "2").unwrap(),
-            PodIdentity::new(APP_NAME, INSTANCE, "master", "default", "3").unwrap(),
-            PodIdentity::new(APP_NAME, INSTANCE, "worker", "default", "4").unwrap(),
-            PodIdentity::new(APP_NAME, INSTANCE, "worker", "default", "5").unwrap(),
+            PodIdentity::new(APP_NAME, INSTANCE, "worker", "default", "1").unwrap(),
+            PodIdentity::new(APP_NAME, INSTANCE, "worker", "default", "2").unwrap(),
         ]
     )]
     #[case::generate_two_roles(10,
@@ -591,7 +591,7 @@ pub mod tests {
         vec![
             PodIdentity::new(APP_NAME, INSTANCE, "role1", "default", "10").unwrap(),
             PodIdentity::new(APP_NAME, INSTANCE, "role1", "default", "11").unwrap(),
-            PodIdentity::new(APP_NAME, INSTANCE, "role2", "default", "12").unwrap(),
+            PodIdentity::new(APP_NAME, INSTANCE, "role2", "default", "10").unwrap(),
         ]
     )]
     fn test_identity_labeled_factory_as_slice(
