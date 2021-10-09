@@ -330,7 +330,7 @@ where
             );
             return Ok(ReconcilerAction {
                 // TODO: Make this configurable https://github.com/stackabletech/operator-rs/issues/124
-                requeue_after: Some(Duration::from_secs(30)),
+                requeue_after: Some(context.requeue_timeout),
             });
         }
     };
@@ -358,8 +358,7 @@ where
         Err(err) => {
             error!(?err, "Reconciliation finished with an error, will requeue");
             Ok(ReconcilerAction {
-                // TODO: Make this configurable https://github.com/stackabletech/operator-rs/issues/124
-                requeue_after: Some(Duration::from_secs(30)),
+                requeue_after: Some(context.requeue_timeout),
             })
         }
     }

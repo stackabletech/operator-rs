@@ -23,7 +23,7 @@ All notable changes to this project will be documented in this file.
 - Default implementations for Restart, Start and Stop commands ([#184]).
 - `identity.rs` a new module split out of `scheduler.rs` that bundles code for pod and node id management.
 - `identity::PodIdentityFactory` trait and one implementation called `identity::LabeledPodIdentityFactory`.
-
+- `controller.rs` - Configurable requeue timeout
 ### Removed
 - `reconcile::create_config_maps` which is obsolete and replaced by `configmap::create_config_maps` ([#184])
 - BREAKING: `scheduler::PodToNodeMapping::from` ([#222]).
