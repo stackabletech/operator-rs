@@ -435,7 +435,6 @@ impl LabeledPodIdentityFactory {
         start: usize,
     ) -> Vec<PodIdentity> {
         let mut generated_ids = vec![];
-        //let mut id = start;
         // sorting role and group to keep the output consistent and make this
         // function testable.
         let sorted_nodes: BTreeMap<&String, &HashMap<String, EligibleNodesAndReplicas>> =
