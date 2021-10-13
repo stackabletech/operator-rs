@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - Bugfix: when scheduling a pod, `GroupAntiAffinityStrategy` should not skip nodes that are mapped by other pods from different role+group. ([#222])
+- Bugfix: annotate `conditions` as map-list ([#226])
+  - Requires manual action: add `#[schemars(schema_with = "stackable_operator::conditions::conditions_schema")]` annotation to `conditions` field in your status struct
 - BREAKING: `Client::apply_patch` and `Client::apply_patch_status` now take a `context` argument that scopes their fieldManager ([#225])
 - Bugfix: `Client::set_condition` now scopes its fieldManager to the condition being applied ([#225])
 - Bugfix: removed duplicate object identity from reconciler. ([#228])
@@ -31,6 +33,7 @@ All notable changes to this project will be documented in this file.
 
 [#184]: https://github.com/stackabletech/operator-rs/pull/184
 [#222]: https://github.com/stackabletech/operator-rs/pull/222
+[#226]: https://github.com/stackabletech/operator-rs/pull/226
 [#225]: https://github.com/stackabletech/operator-rs/pull/225
 [#228]: https://github.com/stackabletech/operator-rs/pull/228
 [#236]: https://github.com/stackabletech/operator-rs/pull/236
