@@ -273,6 +273,8 @@ where
 /// This means that the controller of the parent resource can now watch for commands and this
 /// helper controller will make sure that they trigger a reconcile for the parent by setting the OwnerReference.
 ///
+/// Requeue timeout of the controller created defaults to 10 seconds.
+///
 /// This is an async method and the returned future needs to be consumed to make progress.
 pub async fn create_command_controller<C, O>(client: Client) -> OperatorResult<()>
 where

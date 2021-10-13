@@ -8,6 +8,9 @@ All notable changes to this project will be documented in this file.
 - Bugfix: when scheduling a pod, `GroupAntiAffinityStrategy` should not skip nodes that are mapped by other pods from different role+group. ([#222])
 - Bugfix: annotate `conditions` as map-list ([#226])
   - Requires manual action: add `#[schemars(schema_with = "stackable_operator::conditions::conditions_schema")]` annotation to `conditions` field in your status struct
+- BREAKING: `Client::apply_patch` and `Client::apply_patch_status` now take a `context` argument that scopes their fieldManager ([#225])
+- Bugfix: `Client::set_condition` now scopes its fieldManager to the condition being applied ([#225])
+- Bugfix: removed duplicate object identity from reconciler. ([#228])
 
 ### Added
 - `command.rs` module to handle common command operations ([#184]).
@@ -22,7 +25,7 @@ All notable changes to this project will be documented in this file.
 - Default implementations for Restart, Start and Stop commands ([#184]).
 - `identity.rs` a new module split out of `scheduler.rs` that bundles code for pod and node id management.
 - `identity::PodIdentityFactory` trait and one implementation called `identity::LabeledPodIdentityFactory`.
-
+- `controller.rs` - Configurable requeue timeout
 ### Removed
 - `reconcile::create_config_maps` which is obsolete and replaced by `configmap::create_config_maps` ([#184])
 - BREAKING: `scheduler::PodToNodeMapping::from` ([#222]).
@@ -30,6 +33,8 @@ All notable changes to this project will be documented in this file.
 [#184]: https://github.com/stackabletech/operator-rs/pull/184
 [#222]: https://github.com/stackabletech/operator-rs/pull/222
 [#226]: https://github.com/stackabletech/operator-rs/pull/226
+[#225]: https://github.com/stackabletech/operator-rs/pull/225
+[#228]: https://github.com/stackabletech/operator-rs/pull/228
 
 ## [0.2.2] - 2021-09-21
 

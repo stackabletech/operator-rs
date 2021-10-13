@@ -300,11 +300,7 @@ where
 /// This method contains the logic of reconciling an object (the desired state) we received with the actual state.
 #[tracing::instrument(
     skip(resource, context),
-    fields(
-        resource.name = ?resource.meta().name,
-        resource.namespace = ?resource.meta().namespace,
-        request_id = %Uuid::new_v4()
-    )
+    fields(request_id = %Uuid::new_v4()),
 )]
 async fn reconcile<S, T>(
     resource: T,
@@ -334,7 +330,7 @@ where
             );
             return Ok(ReconcilerAction {
                 // TODO: Make this configurable https://github.com/stackabletech/operator-rs/issues/124
-                requeue_after: Some(Duration::from_secs(30)),
+                requeue_after: Some(context.requeue_timeout),
             });
         }
     };
@@ -362,8 +358,7 @@ where
         Err(err) => {
             error!(?err, "Reconciliation finished with an error, will requeue");
             Ok(ReconcilerAction {
-                // TODO: Make this configurable https://github.com/stackabletech/operator-rs/issues/124
-                requeue_after: Some(Duration::from_secs(30)),
+                requeue_after: Some(context.requeue_timeout),
             })
         }
     }
