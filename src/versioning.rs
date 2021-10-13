@@ -29,7 +29,7 @@
 //!
 use crate::client::Client;
 use crate::conditions::{build_condition, ConditionStatus};
-use crate::error::OperatorResult;
+use crate::error::{Error, OperatorResult};
 use crate::status::{Conditions, Status, Versioned};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
 use k8s_openapi::serde::de::DeserializeOwned;
@@ -39,7 +39,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fmt::{Debug, Display};
 use strum_macros::AsRefStr;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 /// Versioning condition type. Can only contain alphanumeric characters and '-'.
 const CONDITION_TYPE: &str = "UpOrDowngrading";
@@ -117,7 +117,7 @@ where
             status.version(),
             spec_version,
             status.conditions(),
-        ) {
+        )? {
             (Some(version), Some(condition)) => {
                 let updated_resource = client
                     .merge_patch_status(resource, &json!({ "version": version }))
@@ -203,7 +203,7 @@ fn build_version_and_condition<T, V>(
     product_version: &Option<ProductVersion<V>>,
     spec_version: V,
     conditions: &[Condition],
-) -> (Option<ProductVersion<V>>, Option<Condition>)
+) -> OperatorResult<(Option<ProductVersion<V>>, Option<Condition>)>
 where
     T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
     V: Clone + Debug + Display + PartialEq + Serialize + Versioning,
@@ -229,7 +229,7 @@ where
 
             let version = ProductVersion::new(None, Some(spec_version));
 
-            (Some(version), Some(condition))
+            Ok((Some(version), Some(condition)))
         }
         (None, Some(target_version)) => {
             // No current_version but a target_version means we are still doing the initial
@@ -252,7 +252,7 @@ where
                 ConditionStatus::True,
             );
 
-            (None, Some(condition))
+            Ok((None, Some(condition)))
         }
         (Some(current_version), None) => {
             // We are at a stable version but have no target_version set.
@@ -279,7 +279,7 @@ where
 
                     let version = ProductVersion::new(None, Some(spec_version));
 
-                    (Some(version), Some(condition))
+                    Ok((Some(version), Some(condition)))
                 }
                 VersioningState::ValidDowngrade => {
                     let message = format!(
@@ -299,7 +299,7 @@ where
 
                     let version = ProductVersion::new(None, Some(spec_version));
 
-                    (Some(version), Some(condition))
+                    Ok((Some(version), Some(condition)))
                 }
                 VersioningState::NoOp => {
                     let message = format!(
@@ -309,21 +309,21 @@ where
 
                     debug!("{}", message);
 
-                    (None, None)
+                    Ok((None, None))
                 }
-                VersioningState::NotSupported => {
-                    warn!("Up-/Downgrade from [{}] to [{}] not possible but requested in spec: Ignoring, will continue \
-                           reconcile as if the invalid version weren't set", current_version, spec_version);
-                    (None, None)
-                }
-                VersioningState::Invalid(err) => {
-                    // TODO: throw error
-                    error!("Error occurred for versioning: {}", err);
-                    (None, None)
-                }
+                VersioningState::NotSupported => Err(Error::VersioningError {
+                    message: format!(
+                        "Up-/Downgrade from [{}] to [{}] not supported but requested in spec. \
+                        Please choose a valid version for Up-/Downgrading.",
+                        current_version, spec_version
+                    ),
+                }),
+                VersioningState::Invalid(err) => Err(Error::VersioningError {
+                    message: format!("Error occurred for versioning: {}", err),
+                }),
             }
         }
-        _ => (None, None),
+        _ => Ok((None, None)),
     };
 }
 
@@ -502,18 +502,6 @@ mod tests {
         Some(ProductVersion { current: None, target: Some(TestVersion::V1_2_3) }),
         (Some(VersioningConditionReason::Downgrading.as_ref().to_string()), Some(ConditionStatus::True) )
     )]
-    #[case::not_supported(
-        Some(ProductVersion{ current: Some(TestVersion::V3_2_1), target: None }),
-        TestVersion::NotSupported,
-        None,
-        (None, None)
-    )]
-    #[case::invalid(
-        Some(ProductVersion{ current: Some(TestVersion::V3_2_1), target: None }),
-        TestVersion::Invalid,
-        None,
-        (None, None)
-    )]
     fn test_build_version_and_conditions(
         #[case] product_version: Option<ProductVersion<TestVersion>>,
         #[case] spec_version: TestVersion,
@@ -529,7 +517,8 @@ mod tests {
             &product_version,
             spec_version,
             vec![].as_slice(),
-        );
+        )
+        .unwrap();
 
         let (reason, status) = expected_conditions;
 
@@ -539,5 +528,25 @@ mod tests {
             status.map(|s| s.to_string()),
             condition.as_ref().map(|c| c.status.clone())
         );
+    }
+
+    #[rstest]
+    #[case::not_supported(
+        Some(ProductVersion{ current: Some(TestVersion::V3_2_1), target: None }),
+        TestVersion::NotSupported,
+    )]
+    #[case::invalid(
+        Some(ProductVersion{ current: Some(TestVersion::V3_2_1), target: None }),
+        TestVersion::Invalid,
+    )]
+    fn test_build_version_and_conditions_failing(
+        #[case] product_version: Option<ProductVersion<TestVersion>>,
+        #[case] spec_version: TestVersion,
+    ) {
+        let cluster: TestCluster =
+            serde_yaml::from_str(TEST_CLUSTER_YAML).expect("Invalid test cluster definition!");
+
+        build_version_and_condition(&cluster, &product_version, spec_version, vec![].as_slice())
+            .unwrap_err();
     }
 }
