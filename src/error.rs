@@ -136,6 +136,9 @@ pub enum Error {
 
     #[error("Conversion error: [message]")]
     ConversionError { message: String },
+
+    #[error("Versioning error: {message}")]
+    VersioningError { message: String },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
