@@ -420,6 +420,9 @@ impl Client {
 
     /// Sets a condition on a status.
     /// This will only work if there is a `status` subresource **and** it has a `conditions` array.
+    ///
+    /// Additionally, the `conditions` array *must* be annotated as `#[schemars(schema_with = "stackable_operator::conditions::conditions_schema")]`,
+    /// see [`crate::conditions::conditions_schema`] for more information.
     pub async fn set_condition<T>(&self, resource: &T, condition: Condition) -> OperatorResult<T>
     where
         T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,

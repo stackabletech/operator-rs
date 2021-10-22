@@ -2,6 +2,8 @@
 use chrono::Utc;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, Time};
 use kube::core::Resource;
+use schemars::{gen::SchemaGenerator, schema::Schema, JsonSchema};
+use serde_json::json;
 use std::fmt;
 
 /// According to the Kubernetes schema the only allowed values for the `status` of a `Condition`
@@ -62,4 +64,20 @@ where
         status: status.to_string(),
         type_: condition_type,
     }
+}
+
+/// Schema for `.status.conditions` fields that annotates it as a map-list.
+///
+/// Must be applied (with `#[schemars(schema_with = ...)]`) in order to avoid conflicts when managing more than one condition
+pub fn conditions_schema(gen: &mut SchemaGenerator) -> Schema {
+    let mut schema = Vec::<Condition>::json_schema(gen);
+    if let Schema::Object(schema) = &mut schema {
+        schema
+            .extensions
+            .insert("x-kubernetes-list-type".to_string(), json!("map"));
+        schema
+            .extensions
+            .insert("x-kubernetes-list-map-keys".to_string(), json!(["type"]));
+    }
+    schema
 }

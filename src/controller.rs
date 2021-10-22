@@ -185,7 +185,6 @@ pub trait HasOwned {
     fn owned_objects() -> Vec<&'static str>;
 }
 
-/// TODO: This comment needs to be updated: <https://github.com/stackabletech/operator-rs/issues/123>
 /// A Controller is the object that watches all required resources and runs the reconciliation loop.
 /// This struct wraps a [`kube_runtime::Controller`] and provides some comfort features.
 ///
@@ -196,8 +195,6 @@ pub trait HasOwned {
 ///
 /// To customize the behavior of the Controller you need to provide a [`ControllerStrategy`].
 ///
-/// * It automatically adds a finalizer to every new _main_ object
-///   * If you need one on _owned_ objects you currently need to handle this yourself
 /// * It calls a method on the strategy for every error
 ///   * It automatically removes the finalizer
 /// * It creates (via the Strategy) a [`ReconciliationState`] object for every reconciliation and
