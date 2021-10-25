@@ -119,9 +119,9 @@ use crate::reconcile::{ReconcileFunctionAction, ReconciliationContext};
 use async_trait::async_trait;
 use futures::StreamExt;
 use kube::api::ListParams;
+use kube::runtime::controller::{Context, ReconcilerAction};
+use kube::runtime::Controller as KubeController;
 use kube::{Api, Resource};
-use kube_runtime::controller::{Context, ReconcilerAction};
-use kube_runtime::Controller as KubeController;
 use serde::de::DeserializeOwned;
 use std::fmt::{Debug, Display};
 use std::future::Future;
@@ -259,14 +259,14 @@ where
             .for_each(|res| async move {
                 match res {
                     Ok(o) => trace!(resource = ?o, "Reconciliation finished successfully (it is normal to see this message twice)"),
-                    Err(kube_runtime::controller::Error::ObjectNotFound {..}) => {
+                    Err(kube::runtime::controller::Error::ObjectNotFound {..}) => {
                         // This can happen for all kinds of reasons according to the kube-rs docs.
                         // An object that's deleted can still be found in the store or a new one 
                         // might not have been added already but we still got notified.
                         // I'm hazy on the kube-rs details but this is here to log only anyway.
                         trace!("ObjectNotFound in store, this is normal and will be retried")
                     },
-                    Err(kube_runtime::controller::Error::QueueError { source: kube_runtime::watcher::Error::WatchFailed {..}, .. }) => {
+                    Err(kube::runtime::controller::Error::QueueError { source: kube::runtime::watcher::Error::WatchFailed {..}, .. }) => {
                         // This can happen when we lose the connection to the apiserver or the 
                         // connection gets interrupted for any other reason.
                         // kube-rs will usually try to restart the watch automatically.

@@ -19,8 +19,8 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
 };
 use kube::api::{ObjectMeta, ResourceExt};
 use kube::core::object::HasStatus;
+use kube::runtime::controller::ReconcilerAction;
 use kube::{CustomResourceExt, Resource};
-use kube_runtime::controller::ReconcilerAction;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::BTreeMap;
