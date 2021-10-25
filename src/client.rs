@@ -509,8 +509,8 @@ impl Client {
         <T as Resource>::DynamicType: Default,
     {
         let api: Api<T> = self.get_api(namespace);
-        let watcher = kube_runtime::watcher(api, lp).boxed();
-        kube_runtime::utils::try_flatten_applied(watcher)
+        let watcher = kube::runtime::watcher(api, lp).boxed();
+        kube::runtime::utils::try_flatten_applied(watcher)
             .skip_while(|res| std::future::ready(res.is_err()))
             .next()
             .await;
@@ -533,7 +533,7 @@ mod tests {
     use k8s_openapi::api::core::v1::{Container, Pod, PodSpec};
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
     use kube::api::{ListParams, ObjectMeta, PostParams, ResourceExt};
-    use kube_runtime::watcher::Event;
+    use kube::runtime::watcher::Event;
     use std::collections::BTreeMap;
     use std::time::Duration;
     use tokio::time::error::Elapsed;
@@ -588,7 +588,7 @@ mod tests {
 
         // A second, manually constructed watcher is used to verify the ListParams filter out the correct resource
         // and the `wait_created` function returned when the correct resources had been detected.
-        let mut ready_watcher = kube_runtime::watcher::<Pod>(api, lp).boxed();
+        let mut ready_watcher = kube::runtime::watcher::<Pod>(api, lp).boxed();
         while let Some(result) = ready_watcher.next().await {
             match result {
                 Ok(event) => match event {
