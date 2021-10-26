@@ -30,6 +30,7 @@ All notable changes to this project will be documented in this file.
 ### Removed
 - `reconcile::create_config_maps` which is obsolete and replaced by `configmap::create_config_maps` ([#184])
 - BREAKING: `scheduler::PodToNodeMapping::from` ([#222]).
+- Reexport `kube`, `k8s-openapi`, `schemars` ([#247])
 
 [#184]: https://github.com/stackabletech/operator-rs/pull/184
 [#222]: https://github.com/stackabletech/operator-rs/pull/222
@@ -37,6 +38,7 @@ All notable changes to this project will be documented in this file.
 [#225]: https://github.com/stackabletech/operator-rs/pull/225
 [#228]: https://github.com/stackabletech/operator-rs/pull/228
 [#236]: https://github.com/stackabletech/operator-rs/pull/236
+[#247]: https://github.com/stackabletech/operator-rs/pull/247
 
 ## [0.2.2] - 2021-09-21
 
