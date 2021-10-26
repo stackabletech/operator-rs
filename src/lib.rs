@@ -31,3 +31,7 @@ pub mod validation;
 pub mod versioning;
 
 pub use crate::crd::CustomResourceExt;
+
+pub use ::k8s_openapi;
+pub use ::kube;
+pub use ::schemars;
