@@ -920,6 +920,7 @@ pub struct PodBuilder {
     tolerations: Option<Vec<Toleration>>,
     status: Option<PodStatus>,
     containers: Vec<Container>,
+    init_containers: Option<Vec<Container>>,
     security_context: Option<PodSecurityContext>,
 }
 
@@ -983,6 +984,13 @@ impl PodBuilder {
         self
     }
 
+    pub fn add_init_container(&mut self, container: Container) -> &mut Self {
+        self.init_containers
+            .get_or_insert_with(Vec::new)
+            .push(container);
+        self
+    }
+
     /// This will automatically add all required tolerations to target a Stackable agent.
     pub fn add_stackable_agent_tolerations(&mut self) -> &mut Self {
         self.tolerations
@@ -1035,6 +1043,7 @@ impl PodBuilder {
             },
             spec: Some(PodSpec {
                 containers: self.containers.clone(),
+                init_containers: self.init_containers.clone(),
                 tolerations: self.tolerations.clone(),
                 volumes: Some(volumes), // Always using Some instead of None for an empty vec to convey ownership of the field
                 node_name: self.node_name.clone(),
@@ -1262,17 +1271,37 @@ mod tests {
             .add_configmapvolume("zk-worker-1", "conf/")
             .build();
 
+        let init_container = ContainerBuilder::new("init_containername")
+            .image("stackable/zookeeper:2.4.14")
+            .command(vec!["wrapper.sh".to_string()])
+            .args(vec!["12345".to_string()])
+            .build();
+
         let pod = PodBuilder::new()
             .metadata(ObjectMetaBuilder::new().name("testpod").build().unwrap())
             .add_container(container)
+            .add_init_container(init_container)
             .node_name("worker-1.stackable.demo")
             .build()
             .unwrap();
 
+        let pod_spec = pod.spec.unwrap();
+
         assert_eq!(pod.metadata.name.unwrap(), "testpod");
         assert_eq!(
-            pod.spec.unwrap().node_name.unwrap(),
+            pod_spec.node_name.as_ref().unwrap(),
             "worker-1.stackable.demo"
+        );
+        assert_eq!(pod_spec.init_containers.as_ref().unwrap().len(), 1);
+        assert_eq!(
+            pod_spec
+                .init_containers
+                .as_ref()
+                .unwrap()
+                .get(0)
+                .unwrap()
+                .name,
+            "init_containername"
         );
 
         let pod = PodBuilder::new()
