@@ -34,4 +34,5 @@ pub use crate::crd::CustomResourceExt;
 
 pub use ::k8s_openapi;
 pub use ::kube;
+pub use ::product_config;
 pub use ::schemars;
