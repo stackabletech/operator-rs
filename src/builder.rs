@@ -6,13 +6,18 @@ use crate::error::{Error, OperatorResult};
 use crate::labels;
 use chrono::Utc;
 use k8s_openapi::api::core::v1::{
-    ConfigMap, ConfigMapVolumeSource, Container, ContainerPort, EnvVar, Event, EventSource, Node,
-    ObjectReference, Pod, PodCondition, PodSecurityContext, PodSpec, PodStatus, SELinuxOptions,
-    SeccompProfile, Sysctl, Toleration, Volume, VolumeMount, WindowsSecurityContextOptions,
+    AWSElasticBlockStoreVolumeSource, AzureDiskVolumeSource, AzureFileVolumeSource,
+    CephFSVolumeSource, ConfigMap, ConfigMapVolumeSource, Container, ContainerPort,
+    DownwardAPIVolumeSource, EmptyDirVolumeSource, EnvVar, EphemeralVolumeSource, Event,
+    EventSource, GCEPersistentDiskVolumeSource, HostPathVolumeSource, Node, ObjectReference,
+    PersistentVolumeClaimVolumeSource, Pod, PodCondition, PodSecurityContext, PodSpec, PodStatus,
+    SELinuxOptions, SeccompProfile, SecretVolumeSource, Sysctl, Toleration, Volume, VolumeMount,
+    WindowsSecurityContextOptions,
 };
+use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{MicroTime, ObjectMeta, OwnerReference, Time};
 use kube::{Resource, ResourceExt};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::BTreeMap;
 use tracing::warn;
 
 /// A builder to build [`ConfigMap`] objects.
@@ -75,13 +80,13 @@ impl ConfigMapBuilder {
 /// This will automatically create the necessary volumes and mounts for each `ConfigMap` which is added.
 #[derive(Clone, Default)]
 pub struct ContainerBuilder {
+    args: Option<Vec<String>>,
+    container_ports: Option<Vec<ContainerPort>>,
+    command: Option<Vec<String>>,
+    env: Option<Vec<EnvVar>>,
     image: Option<String>,
     name: String,
-    env: Option<Vec<EnvVar>>,
-    command: Option<Vec<String>>,
-    args: Option<Vec<String>>,
-    configmaps: HashMap<String, String>,
-    container_ports: Option<Vec<ContainerPort>>,
+    volume_mounts: Option<Vec<VolumeMount>>,
 }
 
 impl ContainerBuilder {
@@ -125,19 +130,6 @@ impl ContainerBuilder {
         self
     }
 
-    /// This adds a [`VolumeMount`] and [`ConfigMapVolumeSource`] to the current container.
-    ///
-    /// This method does not do any validation on the name of the `ConfigMap` or the mount path.
-    pub fn add_configmapvolume<NAME: Into<String>, PATH: Into<String>>(
-        &mut self,
-        configmap_name: NAME,
-        mount_path: PATH,
-    ) -> &mut Self {
-        self.configmaps
-            .insert(mount_path.into(), configmap_name.into());
-        self
-    }
-
     pub fn add_container_port(&mut self, container_port: ContainerPort) -> &mut Self {
         self.container_ports
             .get_or_insert_with(Vec::new)
@@ -152,35 +144,28 @@ impl ContainerBuilder {
         self
     }
 
+    pub fn add_volume_mount(&mut self, volume_mount: VolumeMount) -> &mut Self {
+        self.volume_mounts
+            .get_or_insert_with(Vec::new)
+            .push(volume_mount);
+        self
+    }
+
+    pub fn add_volume_mounts(&mut self, volume_mounts: Vec<VolumeMount>) -> &mut Self {
+        self.volume_mounts
+            .get_or_insert_with(Vec::new)
+            .extend(volume_mounts);
+        self
+    }
+
     pub fn build(&self) -> Container {
-        let mut volumes = vec![];
-        let mut volume_mounts = vec![];
-        for (mount_path, configmap_name) in &self.configmaps {
-            let volume = Volume {
-                name: configmap_name.clone(),
-                config_map: Some(ConfigMapVolumeSource {
-                    name: Some(configmap_name.clone()),
-                    ..ConfigMapVolumeSource::default()
-                }),
-                ..Volume::default()
-            };
-            volumes.push(volume);
-
-            let volume_mount = VolumeMount {
-                name: configmap_name.clone(),
-                mount_path: mount_path.clone(),
-                ..VolumeMount::default()
-            };
-            volume_mounts.push(volume_mount);
-        }
-
         Container {
             image: self.image.clone(),
             name: self.name.clone(),
             env: self.env.clone(),
             command: self.command.clone(),
             args: self.args.clone(),
-            volume_mounts: Some(volume_mounts), // Always using Some instead of None for an empty vec to convey ownership of the field
+            volume_mounts: self.volume_mounts.clone(),
             ports: self.container_ports.clone(),
             ..Container::default()
         }
@@ -911,17 +896,19 @@ impl PodSecurityContextBuilder {
         self
     }
 }
+
 /// A builder to build [`Pod`] objects.
 ///
 #[derive(Clone, Default)]
 pub struct PodBuilder {
-    metadata: Option<ObjectMeta>,
-    node_name: Option<String>,
-    tolerations: Option<Vec<Toleration>>,
-    status: Option<PodStatus>,
     containers: Vec<Container>,
     init_containers: Option<Vec<Container>>,
+    metadata: Option<ObjectMeta>,
+    node_name: Option<String>,
+    status: Option<PodStatus>,
     security_context: Option<PodSecurityContext>,
+    tolerations: Option<Vec<Toleration>>,
+    volumes: Option<Vec<Volume>>,
 }
 
 impl PodBuilder {
@@ -1007,35 +994,18 @@ impl PodBuilder {
         self
     }
 
+    pub fn add_volume(&mut self, volume: Volume) -> &mut Self {
+        self.volumes.get_or_insert_with(Vec::new).push(volume);
+        self
+    }
+
+    pub fn add_volumes(&mut self, volumes: Vec<Volume>) -> &mut Self {
+        self.volumes.get_or_insert_with(Vec::new).extend(volumes);
+        self
+    }
+
     /// Consumes the Builder and returns a constructed Pod
     pub fn build(&self) -> OperatorResult<Pod> {
-        // Retrieve all configmaps from all containers and add the relevant volumes to the Pod
-        let configmaps = self
-            .containers
-            .iter()
-            .map(|container| {
-                container
-                    .volume_mounts
-                    .iter()
-                    .flatten()
-                    .map(|mount| mount.name.clone())
-                    .collect::<Vec<String>>()
-            })
-            .flatten()
-            .collect::<HashSet<String>>();
-
-        let volumes = configmaps
-            .iter()
-            .map(|configmap| Volume {
-                name: configmap.clone(),
-                config_map: Some(ConfigMapVolumeSource {
-                    name: Some(configmap.clone()),
-                    ..ConfigMapVolumeSource::default()
-                }),
-                ..Volume::default()
-            })
-            .collect();
-
         Ok(Pod {
             metadata: match self.metadata {
                 None => return Err(Error::MissingObjectKey { key: "metadata" }),
@@ -1044,10 +1014,10 @@ impl PodBuilder {
             spec: Some(PodSpec {
                 containers: self.containers.clone(),
                 init_containers: self.init_containers.clone(),
-                tolerations: self.tolerations.clone(),
-                volumes: Some(volumes), // Always using Some instead of None for an empty vec to convey ownership of the field
                 node_name: self.node_name.clone(),
                 security_context: self.security_context.clone(),
+                tolerations: self.tolerations.clone(),
+                volumes: self.volumes.clone(),
                 ..PodSpec::default()
             }),
             status: self.status.clone(),
@@ -1055,15 +1025,222 @@ impl PodBuilder {
     }
 }
 
+/// A builder to build [`Volume`] objects.
+///
+#[derive(Clone, Default)]
+pub struct VolumeBuilder {
+    aws_elastic_block_store: Option<AWSElasticBlockStoreVolumeSource>,
+    azure_disk: Option<AzureDiskVolumeSource>,
+    azure_file: Option<AzureFileVolumeSource>,
+    cephfs: Option<CephFSVolumeSource>,
+    config_map: Option<ConfigMapVolumeSource>,
+    downward_api: Option<DownwardAPIVolumeSource>,
+    empty_dir: Option<EmptyDirVolumeSource>,
+    ephemeral: Option<EphemeralVolumeSource>,
+    gce_persistent_disk: Option<GCEPersistentDiskVolumeSource>,
+    host_path: Option<HostPathVolumeSource>,
+    name: String,
+    persistent_volume_claim: Option<PersistentVolumeClaimVolumeSource>,
+    secret: Option<SecretVolumeSource>,
+}
+
+impl VolumeBuilder {
+    pub fn new<VALUE: Into<String>>(name: VALUE) -> VolumeBuilder {
+        VolumeBuilder {
+            name: name.into(),
+            ..VolumeBuilder::default()
+        }
+    }
+
+    pub fn aws_elastic_block_store<VALUE: Into<AWSElasticBlockStoreVolumeSource>>(
+        &mut self,
+        aws_elastic_block_store: VALUE,
+    ) -> &mut Self {
+        self.aws_elastic_block_store = Some(aws_elastic_block_store.into());
+        self
+    }
+
+    pub fn azure_disk<VALUE: Into<AzureDiskVolumeSource>>(
+        &mut self,
+        azure_disk: VALUE,
+    ) -> &mut Self {
+        self.azure_disk = Some(azure_disk.into());
+        self
+    }
+
+    pub fn azure_file<VALUE: Into<AzureFileVolumeSource>>(
+        &mut self,
+        azure_file: VALUE,
+    ) -> &mut Self {
+        self.azure_file = Some(azure_file.into());
+        self
+    }
+
+    pub fn cephfs<VALUE: Into<CephFSVolumeSource>>(&mut self, cephfs: VALUE) -> &mut Self {
+        self.cephfs = Some(cephfs.into());
+        self
+    }
+
+    pub fn config_map<VALUE: Into<ConfigMapVolumeSource>>(
+        &mut self,
+        config_map: VALUE,
+    ) -> &mut Self {
+        self.config_map = Some(config_map.into());
+        self
+    }
+
+    pub fn with_config_map<VALUE: Into<String>>(&mut self, name: VALUE) -> &mut Self {
+        self.config_map = Some(ConfigMapVolumeSource {
+            name: Some(name.into()),
+            ..ConfigMapVolumeSource::default()
+        });
+        self
+    }
+
+    pub fn downward_api<VALUE: Into<DownwardAPIVolumeSource>>(
+        &mut self,
+        downward_api: VALUE,
+    ) -> &mut Self {
+        self.downward_api = Some(downward_api.into());
+        self
+    }
+
+    pub fn empty_dir<VALUE: Into<EmptyDirVolumeSource>>(&mut self, empty_dir: VALUE) -> &mut Self {
+        self.empty_dir = Some(empty_dir.into());
+        self
+    }
+
+    pub fn with_empty_dir<VALUE: Into<String>>(
+        &mut self,
+        medium: VALUE,
+        quantity: Quantity,
+    ) -> &mut Self {
+        self.empty_dir = Some(EmptyDirVolumeSource {
+            medium: Some(medium.into()),
+            size_limit: Some(quantity),
+        });
+        self
+    }
+
+    pub fn ephemeral<VALUE: Into<EphemeralVolumeSource>>(&mut self, ephemeral: VALUE) -> &mut Self {
+        self.ephemeral = Some(ephemeral.into());
+        self
+    }
+
+    pub fn gce_persistent_disk<VALUE: Into<GCEPersistentDiskVolumeSource>>(
+        &mut self,
+        gce_persistent_disk: VALUE,
+    ) -> &mut Self {
+        self.gce_persistent_disk = Some(gce_persistent_disk.into());
+        self
+    }
+
+    pub fn host_path<VALUE: Into<HostPathVolumeSource>>(&mut self, host_path: VALUE) -> &mut Self {
+        self.host_path = Some(host_path.into());
+        self
+    }
+
+    pub fn persistent_volume_claim<VALUE: Into<PersistentVolumeClaimVolumeSource>>(
+        &mut self,
+        persistent_volume_claim: VALUE,
+    ) -> &mut Self {
+        self.persistent_volume_claim = Some(persistent_volume_claim.into());
+        self
+    }
+
+    pub fn secret<VALUE: Into<SecretVolumeSource>>(&mut self, secret: VALUE) -> &mut Self {
+        self.secret = Some(secret.into());
+        self
+    }
+
+    /// Consumes the Builder and returns a constructed Volume
+    pub fn build(&self) -> Volume {
+        Volume {
+            aws_elastic_block_store: self.aws_elastic_block_store.clone(),
+            azure_disk: self.azure_disk.clone(),
+            azure_file: self.azure_file.clone(),
+            cephfs: self.cephfs.clone(),
+            config_map: self.config_map.clone(),
+            downward_api: self.downward_api.clone(),
+            empty_dir: self.empty_dir.clone(),
+            ephemeral: self.ephemeral.clone(),
+            gce_persistent_disk: self.gce_persistent_disk.clone(),
+            host_path: self.host_path.clone(),
+            name: self.name.clone(),
+            persistent_volume_claim: self.persistent_volume_claim.clone(),
+            secret: self.secret.clone(),
+            ..Volume::default()
+        }
+    }
+}
+
+/// A builder to build [`VolumeMount`] objects.
+///
+#[derive(Clone, Default)]
+pub struct VolumeMountBuilder {
+    mount_path: String,
+    mount_propagation: Option<String>,
+    name: String,
+    read_only: Option<bool>,
+    sub_path: Option<String>,
+    sub_path_expr: Option<String>,
+}
+
+impl VolumeMountBuilder {
+    pub fn new<VALUE: Into<String>>(name: VALUE, mount_path: VALUE) -> VolumeMountBuilder {
+        VolumeMountBuilder {
+            mount_path: mount_path.into(),
+            name: name.into(),
+            ..VolumeMountBuilder::default()
+        }
+    }
+
+    pub fn read_only<VALUE: Into<bool>>(&mut self, read_only: VALUE) -> &mut Self {
+        self.read_only = Some(read_only.into());
+        self
+    }
+
+    pub fn mount_propagation<VALUE: Into<String>>(
+        &mut self,
+        mount_propagation: VALUE,
+    ) -> &mut Self {
+        self.mount_propagation = Some(mount_propagation.into());
+        self
+    }
+
+    pub fn sub_path<VALUE: Into<String>>(&mut self, sub_path: VALUE) -> &mut Self {
+        self.sub_path = Some(sub_path.into());
+        self
+    }
+
+    pub fn sub_path_expr<VALUE: Into<String>>(&mut self, sub_path_expr: VALUE) -> &mut Self {
+        self.sub_path_expr = Some(sub_path_expr.into());
+        self
+    }
+
+    /// Consumes the Builder and returns a constructed VolumeMount
+    pub fn build(&self) -> VolumeMount {
+        VolumeMount {
+            mount_path: self.mount_path.clone(),
+            mount_propagation: self.mount_propagation.clone(),
+            name: self.name.clone(),
+            read_only: self.read_only,
+            sub_path: self.sub_path.clone(),
+            sub_path_expr: self.sub_path_expr.clone(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::builder::{
         ConfigMapBuilder, ContainerBuilder, ContainerPortBuilder, EventBuilder, EventType,
-        NodeBuilder, ObjectMetaBuilder, PodBuilder, PodSecurityContextBuilder,
+        NodeBuilder, ObjectMetaBuilder, PodBuilder, PodSecurityContextBuilder, VolumeBuilder,
+        VolumeMountBuilder,
     };
     use k8s_openapi::api::core::v1::{
-        EnvVar, Pod, PodSecurityContext, SELinuxOptions, SeccompProfile, Sysctl, VolumeMount,
-        WindowsSecurityContextOptions,
+        ConfigMapVolumeSource, EnvVar, Pod, PodSecurityContext, SELinuxOptions, SeccompProfile,
+        Sysctl, VolumeMount, WindowsSecurityContextOptions,
     };
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
     use std::collections::BTreeMap;
@@ -1151,7 +1328,7 @@ mod tests {
 
         let container = ContainerBuilder::new("testcontainer")
             .add_env_var("foo", "bar")
-            .add_configmapvolume("configmap", "/mount")
+            .add_volume_mount(VolumeMountBuilder::new("configmap", "/mount").build())
             .add_container_port(
                 ContainerPortBuilder::new(container_port)
                     .name(container_port_name)
@@ -1268,7 +1445,7 @@ mod tests {
             .image("stackable/zookeeper:2.4.14")
             .command(vec!["zk-server-start.sh".to_string()])
             .args(vec!["{{ configroot }}/conf/zk.properties".to_string()])
-            .add_configmapvolume("zk-worker-1", "conf/")
+            .add_volume_mount(VolumeMountBuilder::new("zk-worker-1", "conf/").build())
             .build();
 
         let init_container = ContainerBuilder::new("init_containername")
@@ -1282,6 +1459,14 @@ mod tests {
             .add_container(container)
             .add_init_container(init_container)
             .node_name("worker-1.stackable.demo")
+            .add_volume(
+                VolumeBuilder::new("zk-worker-1")
+                    .config_map(ConfigMapVolumeSource {
+                        name: Some("configmap".to_string()),
+                        ..ConfigMapVolumeSource::default()
+                    })
+                    .build(),
+            )
             .build()
             .unwrap();
 
