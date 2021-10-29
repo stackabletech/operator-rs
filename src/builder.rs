@@ -1280,8 +1280,8 @@ mod tests {
         VolumeMountBuilder,
     };
     use k8s_openapi::api::core::v1::{
-        ConfigMapVolumeSource, EnvVar, Pod, PodSecurityContext, SELinuxOptions, SeccompProfile,
-        Sysctl, VolumeMount, WindowsSecurityContextOptions,
+        EnvVar, Pod, PodSecurityContext, SELinuxOptions, SeccompProfile, Sysctl, VolumeMount,
+        WindowsSecurityContextOptions,
     };
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
     use std::collections::BTreeMap;
@@ -1502,10 +1502,7 @@ mod tests {
             .node_name("worker-1.stackable.demo")
             .add_volume(
                 VolumeBuilder::new("zk-worker-1")
-                    .config_map(ConfigMapVolumeSource {
-                        name: Some("configmap".to_string()),
-                        ..ConfigMapVolumeSource::default()
-                    })
+                    .with_config_map("configmap")
                     .build(),
             )
             .build()
@@ -1523,11 +1520,19 @@ mod tests {
             pod_spec
                 .init_containers
                 .as_ref()
-                .unwrap()
+                .and_then(|containers| containers
+                    .get(0)
+                    .as_ref()
+                    .and_then(|c| Some(c.name.clone()))),
+            Some("init_containername".to_string())
+        );
+
+        assert_eq!(
+            pod_spec.volumes.as_ref().and_then(|volumes| volumes
                 .get(0)
-                .unwrap()
-                .name,
-            "init_containername"
+                .as_ref()
+                .and_then(|volume| volume.config_map.as_ref().and_then(|cm| cm.name.clone()))),
+            Some("configmap".to_string())
         );
 
         let pod = PodBuilder::new()
