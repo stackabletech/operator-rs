@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- `VolumeBuilder` and `VolumeMountBuilder` ([#253]).
+
+### Removed
+- `configmaps` field from container builder ([#253]).
+- Automatic volume and volume mount creation from the `configmaps` field ([#253]). 
+
+[#253]: https://github.com/stackabletech/operator-rs/pull/253
+
 ## [0.3.0] - 2021-10-27
 
 
