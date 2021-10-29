@@ -1113,12 +1113,12 @@ impl VolumeBuilder {
 
     pub fn with_empty_dir<VALUE: Into<String>>(
         &mut self,
-        medium: VALUE,
-        quantity: Quantity,
+        medium: Option<VALUE>,
+        quantity: Option<Quantity>,
     ) -> &mut Self {
         self.empty_dir = Some(EmptyDirVolumeSource {
-            medium: Some(medium.into()),
-            size_limit: Some(quantity),
+            medium: medium.map(|m| m.into()),
+            size_limit: quantity,
         });
         self
     }
@@ -1505,7 +1505,7 @@ mod tests {
         let mut volume_builder = VolumeBuilder::new("name");
         volume_builder
             .with_config_map("configmap")
-            .with_empty_dir("medium", Quantity("quantity".to_string()))
+            .with_empty_dir(Some("medium"), Some(Quantity("quantity".to_string())))
             .with_secret("secret", None, None, None)
             .with_host_path("path", Some("type_"));
 
