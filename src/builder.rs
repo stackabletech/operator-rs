@@ -1283,6 +1283,7 @@ mod tests {
         EnvVar, Pod, PodSecurityContext, SELinuxOptions, SeccompProfile, Sysctl, VolumeMount,
         WindowsSecurityContextOptions,
     };
+    use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
     use std::collections::BTreeMap;
 
@@ -1481,6 +1482,55 @@ mod tests {
     }
 
     #[test]
+    fn test_volume_mount_builder() {
+        let mut volume_mount_builder = VolumeMountBuilder::new("name", "mount_path");
+        volume_mount_builder
+            .mount_propagation("mount_propagation")
+            .read_only(true)
+            .sub_path("sub_path")
+            .sub_path_expr("sub_path_expr");
+
+        let vm = volume_mount_builder.build();
+
+        assert_eq!(vm.name, "name".to_string());
+        assert_eq!(vm.mount_path, "mount_path".to_string());
+        assert_eq!(vm.mount_propagation, Some("mount_propagation".to_string()));
+        assert_eq!(vm.read_only, Some(true));
+        assert_eq!(vm.sub_path, Some("sub_path".to_string()));
+        assert_eq!(vm.sub_path_expr, Some("sub_path_expr".to_string()));
+    }
+
+    #[test]
+    fn test_volume_builder() {
+        let mut volume_builder = VolumeBuilder::new("name");
+        volume_builder
+            .with_config_map("configmap")
+            .with_empty_dir("medium", Quantity("quantity".to_string()))
+            .with_secret("secret", None, None, None)
+            .with_host_path("path", Some("type_"));
+
+        let vol = volume_builder.build();
+
+        assert_eq!(vol.name, "name".to_string());
+        assert_eq!(
+            vol.config_map.and_then(|cm| cm.name),
+            Some("configmap".to_string())
+        );
+        assert_eq!(
+            vol.empty_dir.and_then(|dir| dir.medium),
+            Some("medium".to_string())
+        );
+        assert_eq!(
+            vol.secret.and_then(|secret| secret.secret_name),
+            Some("secret".to_string())
+        );
+        assert_eq!(
+            vol.host_path.map(|host| host.path),
+            Some("path".to_string())
+        );
+    }
+
+    #[test]
     fn test_pod_builder() {
         let container = ContainerBuilder::new("containername")
             .image("stackable/zookeeper:2.4.14")
@@ -1520,10 +1570,7 @@ mod tests {
             pod_spec
                 .init_containers
                 .as_ref()
-                .and_then(|containers| containers
-                    .get(0)
-                    .as_ref()
-                    .and_then(|c| Some(c.name.clone()))),
+                .and_then(|containers| containers.get(0).as_ref().map(|c| c.name.clone())),
             Some("init_containername".to_string())
         );
 
