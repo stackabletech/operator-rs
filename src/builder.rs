@@ -3,6 +3,7 @@
 //! They are often not _pure_ builders but contain extra logic to set fields based on others or
 //! to fill in defaults that make sense.
 use crate::error::{Error, OperatorResult};
+use crate::k8s_openapi::api::core::v1::KeyToPath;
 use crate::labels;
 use chrono::Utc;
 use k8s_openapi::api::core::v1::{
@@ -1140,6 +1141,18 @@ impl VolumeBuilder {
         self
     }
 
+    pub fn with_host_path<VALUE: Into<String>>(
+        &mut self,
+        path: VALUE,
+        type_: Option<VALUE>,
+    ) -> &mut Self {
+        self.host_path = Some(HostPathVolumeSource {
+            path: path.into(),
+            type_: type_.map(|t| t.into()),
+        });
+        self
+    }
+
     pub fn persistent_volume_claim<VALUE: Into<PersistentVolumeClaimVolumeSource>>(
         &mut self,
         persistent_volume_claim: VALUE,
@@ -1148,8 +1161,36 @@ impl VolumeBuilder {
         self
     }
 
+    pub fn with_persistent_volume_claim<VALUE: Into<String>>(
+        &mut self,
+        claim_name: VALUE,
+        read_only: bool,
+    ) -> &mut Self {
+        self.persistent_volume_claim = Some(PersistentVolumeClaimVolumeSource {
+            claim_name: claim_name.into(),
+            read_only: Some(read_only),
+        });
+        self
+    }
+
     pub fn secret<VALUE: Into<SecretVolumeSource>>(&mut self, secret: VALUE) -> &mut Self {
         self.secret = Some(secret.into());
+        self
+    }
+
+    pub fn with_secret<VALUE: Into<String>>(
+        &mut self,
+        secret_name: VALUE,
+        default_mode: Option<i32>,
+        items: Option<Vec<KeyToPath>>,
+        optional: Option<bool>,
+    ) -> &mut Self {
+        self.secret = Some(SecretVolumeSource {
+            default_mode,
+            items,
+            optional,
+            secret_name: Some(secret_name.into()),
+        });
         self
     }
 
