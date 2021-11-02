@@ -7,9 +7,12 @@ All notable changes to this project will be documented in this file.
 ### Added
 - `VolumeBuilder` and `VolumeMountBuilder` ([#253]).
 
+### Changed
+- Generic `VALUE` paramters to `impl Into<_>` arguments for consistency ([#253]). 
+
 ### Removed
-- `configmaps` field from container builder ([#253]).
-- Automatic volume and volume mount creation from the `configmaps` field ([#253]). 
+- BREAKING: `configmaps` field from container builder ([#253]).
+- BREAKING: Automatic `Volume` and `VolumeMount` creation from the `configmaps` field ([#253]). 
 
 [#253]: https://github.com/stackabletech/operator-rs/pull/253
 
