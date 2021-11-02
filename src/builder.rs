@@ -120,16 +120,12 @@ impl ContainerBuilder {
         self
     }
 
-    pub fn add_container_port(
-        &mut self,
-        name: impl Into<String>,
-        port: impl Into<i32>,
-    ) -> &mut Self {
+    pub fn add_container_port(&mut self, name: impl Into<String>, port: i32) -> &mut Self {
         self.container_ports
             .get_or_insert_with(Vec::new)
             .push(ContainerPort {
                 name: Some(name.into()),
-                container_port: port.into(),
+                container_port: port,
                 ..ContainerPort::default()
             });
         self
@@ -605,26 +601,23 @@ impl OwnerReferenceBuilder {
         self
     }
 
-    pub fn block_owner_deletion(&mut self, block_owner_deletion: impl Into<bool>) -> &mut Self {
-        self.block_owner_deletion = Some(block_owner_deletion.into());
+    pub fn block_owner_deletion(&mut self, block_owner_deletion: bool) -> &mut Self {
+        self.block_owner_deletion = Some(block_owner_deletion);
         self
     }
 
-    pub fn block_owner_deletion_opt(
-        &mut self,
-        block_owner_deletion: impl Into<Option<bool>>,
-    ) -> &mut Self {
-        self.block_owner_deletion = block_owner_deletion.into();
+    pub fn block_owner_deletion_opt(&mut self, block_owner_deletion: Option<bool>) -> &mut Self {
+        self.block_owner_deletion = block_owner_deletion;
         self
     }
 
-    pub fn controller(&mut self, controller: impl Into<bool>) -> &mut Self {
-        self.controller = Some(controller.into());
+    pub fn controller(&mut self, controller: bool) -> &mut Self {
+        self.controller = Some(controller);
         self
     }
 
-    pub fn controller_opt(&mut self, controller: impl Into<Option<bool>>) -> &mut Self {
-        self.controller = controller.into();
+    pub fn controller_opt(&mut self, controller: Option<bool>) -> &mut Self {
+        self.controller = controller;
         self
     }
 
@@ -1043,69 +1036,6 @@ impl Default for VolumeSource {
     }
 }
 
-impl From<VolumeSource> for Option<ConfigMapVolumeSource> {
-    fn from(volume_source: VolumeSource) -> Option<ConfigMapVolumeSource> {
-        match volume_source {
-            VolumeSource::ConfigMap(configmap) => Some(configmap),
-            _ => None,
-        }
-    }
-}
-
-impl From<VolumeSource> for Option<DownwardAPIVolumeSource> {
-    fn from(volume_source: VolumeSource) -> Option<DownwardAPIVolumeSource> {
-        match volume_source {
-            VolumeSource::DownwardApi(downward_api) => Some(downward_api),
-            _ => None,
-        }
-    }
-}
-
-impl From<VolumeSource> for Option<EmptyDirVolumeSource> {
-    fn from(volume_source: VolumeSource) -> Option<EmptyDirVolumeSource> {
-        match volume_source {
-            VolumeSource::EmptyDir(empty_dir) => Some(empty_dir),
-            _ => None,
-        }
-    }
-}
-
-impl From<VolumeSource> for Option<HostPathVolumeSource> {
-    fn from(volume_source: VolumeSource) -> Option<HostPathVolumeSource> {
-        match volume_source {
-            VolumeSource::HostPath(host_path) => Some(host_path),
-            _ => None,
-        }
-    }
-}
-
-impl From<VolumeSource> for Option<PersistentVolumeClaimVolumeSource> {
-    fn from(volume_source: VolumeSource) -> Option<PersistentVolumeClaimVolumeSource> {
-        match volume_source {
-            VolumeSource::PersistentVolumeClaim(pvc) => Some(pvc),
-            _ => None,
-        }
-    }
-}
-
-impl From<VolumeSource> for Option<ProjectedVolumeSource> {
-    fn from(volume_source: VolumeSource) -> Option<ProjectedVolumeSource> {
-        match volume_source {
-            VolumeSource::Projected(projected) => Some(projected),
-            _ => None,
-        }
-    }
-}
-
-impl From<VolumeSource> for Option<SecretVolumeSource> {
-    fn from(volume_source: VolumeSource) -> Option<SecretVolumeSource> {
-        match volume_source {
-            VolumeSource::Secret(secret) => Some(secret),
-            _ => None,
-        }
-    }
-}
-
 impl VolumeBuilder {
     pub fn new(name: impl Into<String>) -> VolumeBuilder {
         VolumeBuilder {
@@ -1210,13 +1140,34 @@ impl VolumeBuilder {
     pub fn build(&self) -> Volume {
         Volume {
             name: self.name.clone(),
-            config_map: self.volume_source.clone().into(),
-            downward_api: self.volume_source.clone().into(),
-            empty_dir: self.volume_source.clone().into(),
-            host_path: self.volume_source.clone().into(),
-            persistent_volume_claim: self.volume_source.clone().into(),
-            projected: self.volume_source.clone().into(),
-            secret: self.volume_source.clone().into(),
+            config_map: match &self.volume_source {
+                VolumeSource::ConfigMap(configmap) => Some(configmap.clone()),
+                _ => None,
+            },
+            downward_api: match &self.volume_source {
+                VolumeSource::DownwardApi(downward_api) => Some(downward_api.clone()),
+                _ => None,
+            },
+            empty_dir: match &self.volume_source {
+                VolumeSource::EmptyDir(empty_dir) => Some(empty_dir.clone()),
+                _ => None,
+            },
+            host_path: match &self.volume_source {
+                VolumeSource::HostPath(host_path) => Some(host_path.clone()),
+                _ => None,
+            },
+            persistent_volume_claim: match &self.volume_source {
+                VolumeSource::PersistentVolumeClaim(pvc) => Some(pvc.clone()),
+                _ => None,
+            },
+            projected: match &self.volume_source {
+                VolumeSource::Projected(projected) => Some(projected.clone()),
+                _ => None,
+            },
+            secret: match &self.volume_source {
+                VolumeSource::Secret(secret) => Some(secret.clone()),
+                _ => None,
+            },
             ..Volume::default()
         }
     }
@@ -1243,8 +1194,8 @@ impl VolumeMountBuilder {
         }
     }
 
-    pub fn read_only(&mut self, read_only: impl Into<bool>) -> &mut Self {
-        self.read_only = Some(read_only.into());
+    pub fn read_only(&mut self, read_only: bool) -> &mut Self {
+        self.read_only = Some(read_only);
         self
     }
 
@@ -1359,7 +1310,7 @@ mod tests {
         let configmap = ConfigMapBuilder::new()
             .data(data)
             .add_data("bar", "foo")
-            .metadata_default()
+            .metadata_opt(Some(ObjectMetaBuilder::new().name("test").build().unwrap()))
             .build()
             .unwrap();
 
