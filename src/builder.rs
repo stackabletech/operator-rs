@@ -222,12 +222,12 @@ impl ContainerPortBuilder {
 
     pub fn build(&self) -> ContainerPort {
         ContainerPort {
-            container_port: self.container_port.clone(),
+            container_port: self.container_port,
             // container_port_names must be lowercase!
             name: self.name.clone().map(|s| s.to_lowercase()),
             host_ip: self.host_ip.clone(),
             protocol: self.protocol.clone(),
-            host_port: self.host_port.clone(),
+            host_port: self.host_port,
         }
     }
 }
@@ -1043,64 +1043,64 @@ impl Default for VolumeSource {
     }
 }
 
-impl Into<Option<ConfigMapVolumeSource>> for VolumeSource {
-    fn into(self) -> Option<ConfigMapVolumeSource> {
-        match self {
-            Self::ConfigMap(configmap) => Some(configmap),
+impl From<VolumeSource> for Option<ConfigMapVolumeSource> {
+    fn from(volume_source: VolumeSource) -> Option<ConfigMapVolumeSource> {
+        match volume_source {
+            VolumeSource::ConfigMap(configmap) => Some(configmap),
             _ => None,
         }
     }
 }
 
-impl Into<Option<DownwardAPIVolumeSource>> for VolumeSource {
-    fn into(self) -> Option<DownwardAPIVolumeSource> {
-        match self {
-            Self::DownwardApi(downward_api) => Some(downward_api),
+impl From<VolumeSource> for Option<DownwardAPIVolumeSource> {
+    fn from(volume_source: VolumeSource) -> Option<DownwardAPIVolumeSource> {
+        match volume_source {
+            VolumeSource::DownwardApi(downward_api) => Some(downward_api),
             _ => None,
         }
     }
 }
 
-impl Into<Option<EmptyDirVolumeSource>> for VolumeSource {
-    fn into(self) -> Option<EmptyDirVolumeSource> {
-        match self {
-            Self::EmptyDir(empty_dir) => Some(empty_dir),
+impl From<VolumeSource> for Option<EmptyDirVolumeSource> {
+    fn from(volume_source: VolumeSource) -> Option<EmptyDirVolumeSource> {
+        match volume_source {
+            VolumeSource::EmptyDir(empty_dir) => Some(empty_dir),
             _ => None,
         }
     }
 }
 
-impl Into<Option<HostPathVolumeSource>> for VolumeSource {
-    fn into(self) -> Option<HostPathVolumeSource> {
-        match self {
-            Self::HostPath(host_path) => Some(host_path),
+impl From<VolumeSource> for Option<HostPathVolumeSource> {
+    fn from(volume_source: VolumeSource) -> Option<HostPathVolumeSource> {
+        match volume_source {
+            VolumeSource::HostPath(host_path) => Some(host_path),
             _ => None,
         }
     }
 }
 
-impl Into<Option<PersistentVolumeClaimVolumeSource>> for VolumeSource {
-    fn into(self) -> Option<PersistentVolumeClaimVolumeSource> {
-        match self {
-            Self::PersistentVolumeClaim(pvc) => Some(pvc),
+impl From<VolumeSource> for Option<PersistentVolumeClaimVolumeSource> {
+    fn from(volume_source: VolumeSource) -> Option<PersistentVolumeClaimVolumeSource> {
+        match volume_source {
+            VolumeSource::PersistentVolumeClaim(pvc) => Some(pvc),
             _ => None,
         }
     }
 }
 
-impl Into<Option<ProjectedVolumeSource>> for VolumeSource {
-    fn into(self) -> Option<ProjectedVolumeSource> {
-        match self {
-            Self::Projected(projected) => Some(projected),
+impl From<VolumeSource> for Option<ProjectedVolumeSource> {
+    fn from(volume_source: VolumeSource) -> Option<ProjectedVolumeSource> {
+        match volume_source {
+            VolumeSource::Projected(projected) => Some(projected),
             _ => None,
         }
     }
 }
 
-impl Into<Option<SecretVolumeSource>> for VolumeSource {
-    fn into(self) -> Option<SecretVolumeSource> {
-        match self {
-            Self::Secret(secret) => Some(secret),
+impl From<VolumeSource> for Option<SecretVolumeSource> {
+    fn from(volume_source: VolumeSource) -> Option<SecretVolumeSource> {
+        match volume_source {
+            VolumeSource::Secret(secret) => Some(secret),
             _ => None,
         }
     }
