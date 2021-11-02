@@ -3,7 +3,6 @@
 //! They are often not _pure_ builders but contain extra logic to set fields based on others or
 //! to fill in defaults that make sense.
 use crate::error::{Error, OperatorResult};
-use crate::k8s_openapi::api::core::v1::KeyToPath;
 use crate::labels;
 use chrono::Utc;
 use k8s_openapi::api::core::v1::{
@@ -1017,7 +1016,8 @@ impl PodBuilder {
 }
 
 /// A builder to build [`Volume`] objects.
-///
+/// May only contain one `volume_source` at a time.
+/// E.g. a call like `secret` after `empty_dir` will overwrite the `empty_dir`.
 #[derive(Clone, Default)]
 pub struct VolumeBuilder {
     name: String,
@@ -1197,18 +1197,11 @@ impl VolumeBuilder {
         self
     }
 
-    pub fn with_secret(
-        &mut self,
-        secret_name: impl Into<String>,
-        default_mode: Option<i32>,
-        items: Option<Vec<KeyToPath>>,
-        optional: bool,
-    ) -> &mut Self {
+    pub fn with_secret(&mut self, secret_name: impl Into<String>, optional: bool) -> &mut Self {
         self.volume_source = VolumeSource::Secret(SecretVolumeSource {
-            default_mode,
-            items,
             optional: Some(optional),
             secret_name: Some(secret_name.into()),
+            ..SecretVolumeSource::default()
         });
         self
     }
@@ -1540,7 +1533,7 @@ mod tests {
             Some("path".to_string())
         );
 
-        volume_builder.with_secret("secret", None, None, false);
+        volume_builder.with_secret("secret", false);
         let vol = volume_builder.build();
 
         assert_eq!(
