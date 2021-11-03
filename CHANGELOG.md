@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - `VolumeBuilder` and `VolumeMountBuilder` ([#253]).
+- `image_pull_policy` to `ContainerBuilder` ([#253]).
+- `host_network` to `PodBuilder` ([#253]).
 
 ### Changed
 - Generic `VALUE` paramters to `impl Into<_>` arguments for consistency ([#253]). 

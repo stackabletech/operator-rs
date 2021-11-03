@@ -79,6 +79,7 @@ pub struct ContainerBuilder {
     command: Option<Vec<String>>,
     env: Option<Vec<EnvVar>>,
     image: Option<String>,
+    image_pull_policy: Option<String>,
     name: String,
     volume_mounts: Option<Vec<VolumeMount>>,
 }
@@ -93,6 +94,11 @@ impl ContainerBuilder {
 
     pub fn image(&mut self, image: impl Into<String>) -> &mut Self {
         self.image = Some(image.into());
+        self
+    }
+
+    pub fn image_pull_policy(&mut self, image_pull_policy: impl Into<String>) -> &mut Self {
+        self.image_pull_policy = Some(image_pull_policy.into());
         self
     }
 
@@ -165,13 +171,14 @@ impl ContainerBuilder {
 
     pub fn build(&self) -> Container {
         Container {
-            image: self.image.clone(),
-            name: self.name.clone(),
-            env: self.env.clone(),
-            command: self.command.clone(),
             args: self.args.clone(),
-            volume_mounts: self.volume_mounts.clone(),
+            command: self.command.clone(),
+            env: self.env.clone(),
+            image: self.image.clone(),
+            image_pull_policy: self.image_pull_policy.clone(),
+            name: self.name.clone(),
             ports: self.container_ports.clone(),
+            volume_mounts: self.volume_mounts.clone(),
             ..Container::default()
         }
     }
@@ -885,6 +892,7 @@ impl PodSecurityContextBuilder {
 #[derive(Clone, Default)]
 pub struct PodBuilder {
     containers: Vec<Container>,
+    host_network: Option<bool>,
     init_containers: Option<Vec<Container>>,
     metadata: Option<ObjectMeta>,
     node_name: Option<String>,
@@ -897,6 +905,11 @@ pub struct PodBuilder {
 impl PodBuilder {
     pub fn new() -> PodBuilder {
         PodBuilder::default()
+    }
+
+    pub fn host_network(&mut self, host_network: bool) -> &mut Self {
+        self.host_network = Some(host_network);
+        self
     }
 
     pub fn metadata_default(&mut self) -> &mut Self {
@@ -996,6 +1009,7 @@ impl PodBuilder {
             },
             spec: Some(PodSpec {
                 containers: self.containers.clone(),
+                host_network: self.host_network.clone(),
                 init_containers: self.init_containers.clone(),
                 node_name: self.node_name.clone(),
                 security_context: self.security_context.clone(),
