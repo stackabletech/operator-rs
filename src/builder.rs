@@ -1009,7 +1009,7 @@ impl PodBuilder {
             },
             spec: Some(PodSpec {
                 containers: self.containers.clone(),
-                host_network: self.host_network.clone(),
+                host_network: self.host_network,
                 init_containers: self.init_containers.clone(),
                 node_name: self.node_name.clone(),
                 security_context: self.security_context.clone(),
