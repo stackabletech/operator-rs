@@ -39,15 +39,10 @@ All notable changes to this project will be documented in this file.
 - `identity::PodIdentityFactory` trait and one implementation called `identity::LabeledPodIdentityFactory`.
 - `controller.rs` - Configurable requeue timeout
 
-### Changed
-- BREAKING: In builder: `add_stackable_agent_tolerations` to `add_tolerations` ([#255]). 
-
 ### Removed
 - `reconcile::create_config_maps` which is obsolete and replaced by `configmap::create_config_maps` ([#184])
 - BREAKING: `scheduler::PodToNodeMapping::from` ([#222]).
 - Reexport `kube`, `k8s-openapi`, `schemars` ([#247])
-- `krustlet.rs` ([#255]).
-- `find_nodes_that_fit_selectors` no longer adds label `type=krustlet` to selector ([#255]).
 
 [#184]: https://github.com/stackabletech/operator-rs/pull/184
 [#222]: https://github.com/stackabletech/operator-rs/pull/222
