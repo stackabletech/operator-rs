@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.0] - 2021-11-05
+
+
 ### Added
 - `VolumeBuilder` and `VolumeMountBuilder` ([#253]).
 - `image_pull_policy` to `ContainerBuilder` ([#253]).
