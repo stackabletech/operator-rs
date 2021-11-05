@@ -4,14 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- `VolumeBuilder` and `VolumeMountBuilder` ([#253]).
+- `image_pull_policy` to `ContainerBuilder` ([#253]).
+- `host_network` to `PodBuilder` ([#253]).
+
 ### Changed
 - BREAKING: In builder: `add_stackable_agent_tolerations` to `add_tolerations` ([#255]).
+- Generic `VALUE` paramters to `impl Into<_>` arguments for consistency ([#253]). 
 
 ### Removed
 - `krustlet.rs` ([#255]).
 - `find_nodes_that_fit_selectors` no longer adds label `type=krustlet` to selector ([#255]).
+- BREAKING: `configmaps` field from container builder ([#253]).
+- BREAKING: Automatic `Volume` and `VolumeMount` creation from the `configmaps` field ([#253]). 
 
 [#255]: https://github.com/stackabletech/operator-rs/pull/255
+[#253]: https://github.com/stackabletech/operator-rs/pull/253
 
 ## [0.3.0] - 2021-10-27
 

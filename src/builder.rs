@@ -6,13 +6,16 @@ use crate::error::{Error, OperatorResult};
 use crate::labels;
 use chrono::Utc;
 use k8s_openapi::api::core::v1::{
-    ConfigMap, ConfigMapVolumeSource, Container, ContainerPort, EnvVar, Event, EventSource, Node,
-    ObjectReference, Pod, PodCondition, PodSecurityContext, PodSpec, PodStatus, SELinuxOptions,
-    SeccompProfile, Sysctl, Toleration, Volume, VolumeMount, WindowsSecurityContextOptions,
+    ConfigMap, ConfigMapVolumeSource, Container, ContainerPort, DownwardAPIVolumeSource,
+    EmptyDirVolumeSource, EnvVar, Event, EventSource, HostPathVolumeSource, Node, ObjectReference,
+    PersistentVolumeClaimVolumeSource, Pod, PodCondition, PodSecurityContext, PodSpec, PodStatus,
+    ProjectedVolumeSource, SELinuxOptions, SeccompProfile, SecretVolumeSource, Sysctl, Toleration,
+    Volume, VolumeMount, WindowsSecurityContextOptions,
 };
+use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{MicroTime, ObjectMeta, OwnerReference, Time};
 use kube::{Resource, ResourceExt};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::BTreeMap;
 use tracing::warn;
 
 /// A builder to build [`ConfigMap`] objects.
@@ -32,21 +35,17 @@ impl ConfigMapBuilder {
         self
     }
 
-    pub fn metadata<VALUE: Into<ObjectMeta>>(&mut self, metadata: VALUE) -> &mut Self {
+    pub fn metadata(&mut self, metadata: impl Into<ObjectMeta>) -> &mut Self {
         self.metadata = Some(metadata.into());
         self
     }
 
-    pub fn metadata_opt<VALUE: Into<Option<ObjectMeta>>>(&mut self, metadata: VALUE) -> &mut Self {
+    pub fn metadata_opt(&mut self, metadata: impl Into<Option<ObjectMeta>>) -> &mut Self {
         self.metadata = metadata.into();
         self
     }
 
-    pub fn add_data<KEY: Into<String>, VALUE: Into<String>>(
-        &mut self,
-        key: KEY,
-        value: VALUE,
-    ) -> &mut Self {
+    pub fn add_data(&mut self, key: impl Into<String>, value: impl Into<String>) -> &mut Self {
         self.data
             .get_or_insert_with(BTreeMap::new)
             .insert(key.into(), value.into());
@@ -75,13 +74,14 @@ impl ConfigMapBuilder {
 /// This will automatically create the necessary volumes and mounts for each `ConfigMap` which is added.
 #[derive(Clone, Default)]
 pub struct ContainerBuilder {
-    image: Option<String>,
-    name: String,
-    env: Option<Vec<EnvVar>>,
-    command: Option<Vec<String>>,
     args: Option<Vec<String>>,
-    configmaps: HashMap<String, String>,
     container_ports: Option<Vec<ContainerPort>>,
+    command: Option<Vec<String>>,
+    env: Option<Vec<EnvVar>>,
+    image: Option<String>,
+    image_pull_policy: Option<String>,
+    name: String,
+    volume_mounts: Option<Vec<VolumeMount>>,
 }
 
 impl ContainerBuilder {
@@ -92,16 +92,17 @@ impl ContainerBuilder {
         }
     }
 
-    pub fn image<VALUE: Into<String>>(&mut self, image: VALUE) -> &mut Self {
+    pub fn image(&mut self, image: impl Into<String>) -> &mut Self {
         self.image = Some(image.into());
         self
     }
 
-    pub fn add_env_var<NAME: Into<String>, VALUE: Into<String>>(
-        &mut self,
-        name: NAME,
-        value: VALUE,
-    ) -> &mut Self {
+    pub fn image_pull_policy(&mut self, image_pull_policy: impl Into<String>) -> &mut Self {
+        self.image_pull_policy = Some(image_pull_policy.into());
+        self
+    }
+
+    pub fn add_env_var(&mut self, name: impl Into<String>, value: impl Into<String>) -> &mut Self {
         self.env.get_or_insert_with(Vec::new).push(EnvVar {
             name: name.into(),
             value: Some(value.into()),
@@ -125,23 +126,14 @@ impl ContainerBuilder {
         self
     }
 
-    /// This adds a [`VolumeMount`] and [`ConfigMapVolumeSource`] to the current container.
-    ///
-    /// This method does not do any validation on the name of the `ConfigMap` or the mount path.
-    pub fn add_configmapvolume<NAME: Into<String>, PATH: Into<String>>(
-        &mut self,
-        configmap_name: NAME,
-        mount_path: PATH,
-    ) -> &mut Self {
-        self.configmaps
-            .insert(mount_path.into(), configmap_name.into());
-        self
-    }
-
-    pub fn add_container_port(&mut self, container_port: ContainerPort) -> &mut Self {
+    pub fn add_container_port(&mut self, name: impl Into<String>, port: i32) -> &mut Self {
         self.container_ports
             .get_or_insert_with(Vec::new)
-            .push(container_port);
+            .push(ContainerPort {
+                name: Some(name.into()),
+                container_port: port,
+                ..ContainerPort::default()
+            });
         self
     }
 
@@ -152,36 +144,41 @@ impl ContainerBuilder {
         self
     }
 
-    pub fn build(&self) -> Container {
-        let mut volumes = vec![];
-        let mut volume_mounts = vec![];
-        for (mount_path, configmap_name) in &self.configmaps {
-            let volume = Volume {
-                name: configmap_name.clone(),
-                config_map: Some(ConfigMapVolumeSource {
-                    name: Some(configmap_name.clone()),
-                    ..ConfigMapVolumeSource::default()
-                }),
-                ..Volume::default()
-            };
-            volumes.push(volume);
-
-            let volume_mount = VolumeMount {
-                name: configmap_name.clone(),
-                mount_path: mount_path.clone(),
+    pub fn add_volume_mount(
+        &mut self,
+        name: impl Into<String>,
+        path: impl Into<String>,
+    ) -> &mut Self {
+        self.volume_mounts
+            .get_or_insert_with(Vec::new)
+            .push(VolumeMount {
+                name: name.into(),
+                mount_path: path.into(),
                 ..VolumeMount::default()
-            };
-            volume_mounts.push(volume_mount);
-        }
+            });
+        self
+    }
 
+    pub fn add_volume_mounts(
+        &mut self,
+        volume_mounts: impl IntoIterator<Item = VolumeMount>,
+    ) -> &mut Self {
+        self.volume_mounts
+            .get_or_insert_with(Vec::new)
+            .extend(volume_mounts);
+        self
+    }
+
+    pub fn build(&self) -> Container {
         Container {
-            image: self.image.clone(),
-            name: self.name.clone(),
-            env: self.env.clone(),
-            command: self.command.clone(),
             args: self.args.clone(),
-            volume_mounts: Some(volume_mounts), // Always using Some instead of None for an empty vec to convey ownership of the field
+            command: self.command.clone(),
+            env: self.env.clone(),
+            image: self.image.clone(),
+            image_pull_policy: self.image_pull_policy.clone(),
+            name: self.name.clone(),
             ports: self.container_ports.clone(),
+            volume_mounts: self.volume_mounts.clone(),
             ..Container::default()
         }
     }
@@ -190,49 +187,49 @@ impl ContainerBuilder {
 /// A builder to build [`ContainerPort`] objects.
 #[derive(Clone, Default)]
 pub struct ContainerPortBuilder {
-    container_port: u16,
+    container_port: i32,
     name: Option<String>,
     host_ip: Option<String>,
     protocol: Option<String>,
-    host_port: Option<u16>,
+    host_port: Option<i32>,
 }
 
 impl ContainerPortBuilder {
-    pub fn new(container_port: u16) -> Self {
+    pub fn new(container_port: i32) -> Self {
         ContainerPortBuilder {
             container_port,
             ..ContainerPortBuilder::default()
         }
     }
 
-    pub fn name<VALUE: Into<String>>(&mut self, name: VALUE) -> &mut Self {
+    pub fn name(&mut self, name: impl Into<String>) -> &mut Self {
         self.name = Some(name.into());
         self
     }
 
-    pub fn host_ip<VALUE: Into<String>>(&mut self, host_ip: VALUE) -> &mut Self {
+    pub fn host_ip(&mut self, host_ip: impl Into<String>) -> &mut Self {
         self.host_ip = Some(host_ip.into());
         self
     }
 
-    pub fn protocol<VALUE: Into<String>>(&mut self, protocol: VALUE) -> &mut Self {
+    pub fn protocol(&mut self, protocol: impl Into<String>) -> &mut Self {
         self.protocol = Some(protocol.into());
         self
     }
 
-    pub fn host_port(&mut self, host_port: u16) -> &mut Self {
+    pub fn host_port(&mut self, host_port: i32) -> &mut Self {
         self.host_port = Some(host_port);
         self
     }
 
     pub fn build(&self) -> ContainerPort {
         ContainerPort {
-            container_port: i32::from(self.container_port),
+            container_port: self.container_port,
             // container_port_names must be lowercase!
             name: self.name.clone().map(|s| s.to_lowercase()),
             host_ip: self.host_ip.clone(),
             protocol: self.protocol.clone(),
-            host_port: self.host_port.map(i32::from),
+            host_port: self.host_port,
         }
     }
 }
@@ -302,37 +299,31 @@ impl EventBuilder {
     }
 
     /// What action was taken/failed regarding to the Regarding object (e.g. Create, Update, Delete, Reconcile, ...)
-    pub fn action<VALUE: Into<String>>(&mut self, action: VALUE) -> &mut Self {
+    pub fn action(&mut self, action: impl Into<String>) -> &mut Self {
         self.action = Some(action.into());
         self
     }
 
     /// This should be a short, machine understandable string that gives the reason for this event being generated (e.g. PodMissing, UpdateRunning, ...)
-    pub fn reason<VALUE: Into<String>>(&mut self, reason: VALUE) -> &mut Self {
+    pub fn reason(&mut self, reason: impl Into<String>) -> &mut Self {
         self.reason = Some(reason.into());
         self
     }
 
     /// A human-readable description of the status of this operation.
-    pub fn message<VALUE: Into<String>>(&mut self, message: VALUE) -> &mut Self {
+    pub fn message(&mut self, message: impl Into<String>) -> &mut Self {
         self.message = Some(message.into());
         self
     }
 
     /// Name of the controller that emitted this Event, e.g. `kubernetes.io/kubelet`.
-    pub fn reporting_component<VALUE: Into<String>>(
-        &mut self,
-        reporting_component: VALUE,
-    ) -> &mut Self {
+    pub fn reporting_component(&mut self, reporting_component: impl Into<String>) -> &mut Self {
         self.reporting_component = Some(reporting_component.into());
         self
     }
 
     /// ID of the controller instance, e.g. `kubelet-xyzf`.
-    pub fn reporting_instance<VALUE: Into<String>>(
-        &mut self,
-        reporting_instance: VALUE,
-    ) -> &mut Self {
+    pub fn reporting_instance(&mut self, reporting_instance: impl Into<String>) -> &mut Self {
         self.reporting_instance = Some(reporting_instance.into());
         self
     }
@@ -386,7 +377,7 @@ impl NodeBuilder {
         }
     }
 
-    pub fn name<VALUE: Into<String>>(&mut self, name: VALUE) -> &mut Self {
+    pub fn name(&mut self, name: impl Into<String>) -> &mut Self {
         self.node.metadata.name = Some(name.into());
         self
     }
@@ -427,35 +418,32 @@ impl ObjectMetaBuilder {
         self
     }
 
-    pub fn name_opt<VALUE: Into<Option<String>>>(&mut self, name: VALUE) -> &mut Self {
+    pub fn name_opt(&mut self, name: impl Into<Option<String>>) -> &mut Self {
         self.name = name.into();
         self
     }
 
-    pub fn name<VALUE: Into<String>>(&mut self, name: VALUE) -> &mut Self {
+    pub fn name(&mut self, name: impl Into<String>) -> &mut Self {
         self.name = Some(name.into());
         self
     }
 
-    pub fn generate_name<VALUE: Into<String>>(&mut self, generate_name: VALUE) -> &mut Self {
+    pub fn generate_name(&mut self, generate_name: impl Into<String>) -> &mut Self {
         self.generate_name = Some(generate_name.into());
         self
     }
 
-    pub fn generate_name_opt<VALUE: Into<Option<String>>>(
-        &mut self,
-        generate_name: VALUE,
-    ) -> &mut Self {
+    pub fn generate_name_opt(&mut self, generate_name: impl Into<Option<String>>) -> &mut Self {
         self.generate_name = generate_name.into();
         self
     }
 
-    pub fn namespace_opt<VALUE: Into<Option<String>>>(&mut self, namespace: VALUE) -> &mut Self {
+    pub fn namespace_opt(&mut self, namespace: impl Into<Option<String>>) -> &mut Self {
         self.namespace = namespace.into();
         self
     }
 
-    pub fn namespace<VALUE: Into<String>>(&mut self, namespace: VALUE) -> &mut Self {
+    pub fn namespace(&mut self, namespace: impl Into<String>) -> &mut Self {
         self.namespace = Some(namespace.into());
         self
     }
@@ -489,15 +477,11 @@ impl ObjectMetaBuilder {
 
     /// This adds a single annotation to the existing annotations.
     /// It'll override an annotation with the same key.
-    pub fn with_annotation<KEY, VALUE>(
+    pub fn with_annotation(
         &mut self,
-        annotation_key: KEY,
-        annotation_value: VALUE,
-    ) -> &mut Self
-    where
-        KEY: Into<String>,
-        VALUE: Into<String>,
-    {
+        annotation_key: impl Into<String>,
+        annotation_value: impl Into<String>,
+    ) -> &mut Self {
         self.annotations
             .get_or_insert_with(BTreeMap::new)
             .insert(annotation_key.into(), annotation_value.into());
@@ -521,11 +505,11 @@ impl ObjectMetaBuilder {
 
     /// This adds a single label to the existing labels.
     /// It'll override a label with the same key.
-    pub fn with_label<KEY, VALUE>(&mut self, label_key: KEY, label_value: VALUE) -> &mut Self
-    where
-        KEY: Into<String>,
-        VALUE: Into<String>,
-    {
+    pub fn with_label(
+        &mut self,
+        label_key: impl Into<String>,
+        label_value: impl Into<String>,
+    ) -> &mut Self {
         self.labels
             .get_or_insert_with(BTreeMap::new)
             .insert(label_key.into(), label_value.into());
@@ -614,71 +598,62 @@ impl OwnerReferenceBuilder {
         OwnerReferenceBuilder::default()
     }
 
-    pub fn api_version<VALUE: Into<String>>(&mut self, api_version: VALUE) -> &mut Self {
+    pub fn api_version(&mut self, api_version: impl Into<String>) -> &mut Self {
         self.api_version = Some(api_version.into());
         self
     }
 
-    pub fn api_version_opt<VALUE: Into<Option<String>>>(
-        &mut self,
-        api_version: VALUE,
-    ) -> &mut Self {
+    pub fn api_version_opt(&mut self, api_version: impl Into<Option<String>>) -> &mut Self {
         self.api_version = api_version.into();
         self
     }
 
-    pub fn block_owner_deletion<VALUE: Into<bool>>(
-        &mut self,
-        block_owner_deletion: VALUE,
-    ) -> &mut Self {
-        self.block_owner_deletion = Some(block_owner_deletion.into());
+    pub fn block_owner_deletion(&mut self, block_owner_deletion: bool) -> &mut Self {
+        self.block_owner_deletion = Some(block_owner_deletion);
         self
     }
 
-    pub fn block_owner_deletion_opt<VALUE: Into<Option<bool>>>(
-        &mut self,
-        block_owner_deletion: VALUE,
-    ) -> &mut Self {
-        self.block_owner_deletion = block_owner_deletion.into();
+    pub fn block_owner_deletion_opt(&mut self, block_owner_deletion: Option<bool>) -> &mut Self {
+        self.block_owner_deletion = block_owner_deletion;
         self
     }
 
-    pub fn controller<VALUE: Into<bool>>(&mut self, controller: VALUE) -> &mut Self {
-        self.controller = Some(controller.into());
+    pub fn controller(&mut self, controller: bool) -> &mut Self {
+        self.controller = Some(controller);
         self
     }
 
-    pub fn controller_opt<VALUE: Into<Option<bool>>>(&mut self, controller: VALUE) -> &mut Self {
-        self.controller = controller.into();
+    pub fn controller_opt(&mut self, controller: Option<bool>) -> &mut Self {
+        self.controller = controller;
         self
     }
 
-    pub fn kind<VALUE: Into<String>>(&mut self, kind: VALUE) -> &mut Self {
+    pub fn kind(&mut self, kind: impl Into<String>) -> &mut Self {
         self.kind = Some(kind.into());
         self
     }
 
-    pub fn kind_opt<VALUE: Into<Option<String>>>(&mut self, kind: VALUE) -> &mut Self {
+    pub fn kind_opt(&mut self, kind: impl Into<Option<String>>) -> &mut Self {
         self.kind = kind.into();
         self
     }
 
-    pub fn name<VALUE: Into<String>>(&mut self, name: VALUE) -> &mut Self {
+    pub fn name(&mut self, name: impl Into<String>) -> &mut Self {
         self.name = Some(name.into());
         self
     }
 
-    pub fn name_opt<VALUE: Into<Option<String>>>(&mut self, name: VALUE) -> &mut Self {
+    pub fn name_opt(&mut self, name: impl Into<Option<String>>) -> &mut Self {
         self.name = name.into();
         self
     }
 
-    pub fn uid<VALUE: Into<String>>(&mut self, uid: VALUE) -> &mut Self {
+    pub fn uid(&mut self, uid: impl Into<String>) -> &mut Self {
         self.uid = Some(uid.into());
         self
     }
 
-    pub fn uid_opt<VALUE: Into<Option<String>>>(&mut self, uid: VALUE) -> &mut Self {
+    pub fn uid_opt(&mut self, uid: impl Into<Option<String>>) -> &mut Self {
         self.uid = uid.into();
         self
     }
@@ -911,22 +886,30 @@ impl PodSecurityContextBuilder {
         self
     }
 }
+
 /// A builder to build [`Pod`] objects.
 ///
 #[derive(Clone, Default)]
 pub struct PodBuilder {
+    containers: Vec<Container>,
+    host_network: Option<bool>,
+    init_containers: Option<Vec<Container>>,
     metadata: Option<ObjectMeta>,
     node_name: Option<String>,
-    tolerations: Option<Vec<Toleration>>,
     status: Option<PodStatus>,
-    containers: Vec<Container>,
-    init_containers: Option<Vec<Container>>,
     security_context: Option<PodSecurityContext>,
+    tolerations: Option<Vec<Toleration>>,
+    volumes: Option<Vec<Volume>>,
 }
 
 impl PodBuilder {
     pub fn new() -> PodBuilder {
         PodBuilder::default()
+    }
+
+    pub fn host_network(&mut self, host_network: bool) -> &mut Self {
+        self.host_network = Some(host_network);
+        self
     }
 
     pub fn metadata_default(&mut self) -> &mut Self {
@@ -944,17 +927,17 @@ impl PodBuilder {
         Ok(self)
     }
 
-    pub fn metadata<VALUE: Into<ObjectMeta>>(&mut self, metadata: VALUE) -> &mut Self {
+    pub fn metadata(&mut self, metadata: impl Into<ObjectMeta>) -> &mut Self {
         self.metadata = Some(metadata.into());
         self
     }
 
-    pub fn metadata_opt<VALUE: Into<Option<ObjectMeta>>>(&mut self, metadata: VALUE) -> &mut Self {
+    pub fn metadata_opt(&mut self, metadata: impl Into<Option<ObjectMeta>>) -> &mut Self {
         self.metadata = metadata.into();
         self
     }
 
-    pub fn node_name<VALUE: Into<String>>(&mut self, node_name: VALUE) -> &mut Self {
+    pub fn node_name(&mut self, node_name: impl Into<String>) -> &mut Self {
         self.node_name = Some(node_name.into());
         self
     }
@@ -998,43 +981,26 @@ impl PodBuilder {
         self
     }
 
-    pub fn security_context<VALUE: Into<PodSecurityContext>>(
+    pub fn security_context(
         &mut self,
-        security_context: VALUE,
+        security_context: impl Into<PodSecurityContext>,
     ) -> &mut Self {
         self.security_context = Some(security_context.into());
         self
     }
 
+    pub fn add_volume(&mut self, volume: Volume) -> &mut Self {
+        self.volumes.get_or_insert_with(Vec::new).push(volume);
+        self
+    }
+
+    pub fn add_volumes(&mut self, volumes: Vec<Volume>) -> &mut Self {
+        self.volumes.get_or_insert_with(Vec::new).extend(volumes);
+        self
+    }
+
     /// Consumes the Builder and returns a constructed Pod
     pub fn build(&self) -> OperatorResult<Pod> {
-        // Retrieve all configmaps from all containers and add the relevant volumes to the Pod
-        let configmaps = self
-            .containers
-            .iter()
-            .map(|container| {
-                container
-                    .volume_mounts
-                    .iter()
-                    .flatten()
-                    .map(|mount| mount.name.clone())
-                    .collect::<Vec<String>>()
-            })
-            .flatten()
-            .collect::<HashSet<String>>();
-
-        let volumes = configmaps
-            .iter()
-            .map(|configmap| Volume {
-                name: configmap.clone(),
-                config_map: Some(ConfigMapVolumeSource {
-                    name: Some(configmap.clone()),
-                    ..ConfigMapVolumeSource::default()
-                }),
-                ..Volume::default()
-            })
-            .collect();
-
         Ok(Pod {
             metadata: match self.metadata {
                 None => return Err(Error::MissingObjectKey { key: "metadata" }),
@@ -1042,11 +1008,12 @@ impl PodBuilder {
             },
             spec: Some(PodSpec {
                 containers: self.containers.clone(),
+                host_network: self.host_network,
                 init_containers: self.init_containers.clone(),
-                tolerations: self.tolerations.clone(),
-                volumes: Some(volumes), // Always using Some instead of None for an empty vec to convey ownership of the field
                 node_name: self.node_name.clone(),
                 security_context: self.security_context.clone(),
+                tolerations: self.tolerations.clone(),
+                volumes: self.volumes.clone(),
                 ..PodSpec::default()
             }),
             status: self.status.clone(),
@@ -1054,16 +1021,237 @@ impl PodBuilder {
     }
 }
 
+/// A builder to build [`Volume`] objects.
+/// May only contain one `volume_source` at a time.
+/// E.g. a call like `secret` after `empty_dir` will overwrite the `empty_dir`.
+#[derive(Clone, Default)]
+pub struct VolumeBuilder {
+    name: String,
+    volume_source: VolumeSource,
+}
+
+#[derive(Clone)]
+pub enum VolumeSource {
+    ConfigMap(ConfigMapVolumeSource),
+    DownwardApi(DownwardAPIVolumeSource),
+    EmptyDir(EmptyDirVolumeSource),
+    HostPath(HostPathVolumeSource),
+    PersistentVolumeClaim(PersistentVolumeClaimVolumeSource),
+    Projected(ProjectedVolumeSource),
+    Secret(SecretVolumeSource),
+}
+
+impl Default for VolumeSource {
+    fn default() -> Self {
+        Self::EmptyDir(EmptyDirVolumeSource {
+            ..EmptyDirVolumeSource::default()
+        })
+    }
+}
+
+impl VolumeBuilder {
+    pub fn new(name: impl Into<String>) -> VolumeBuilder {
+        VolumeBuilder {
+            name: name.into(),
+            ..VolumeBuilder::default()
+        }
+    }
+
+    pub fn config_map(&mut self, config_map: impl Into<ConfigMapVolumeSource>) -> &mut Self {
+        self.volume_source = VolumeSource::ConfigMap(config_map.into());
+        self
+    }
+
+    pub fn with_config_map(&mut self, name: impl Into<String>) -> &mut Self {
+        self.volume_source = VolumeSource::ConfigMap(ConfigMapVolumeSource {
+            name: Some(name.into()),
+            ..ConfigMapVolumeSource::default()
+        });
+        self
+    }
+
+    pub fn downward_api(&mut self, downward_api: impl Into<DownwardAPIVolumeSource>) -> &mut Self {
+        self.volume_source = VolumeSource::DownwardApi(downward_api.into());
+        self
+    }
+
+    pub fn empty_dir(&mut self, empty_dir: impl Into<EmptyDirVolumeSource>) -> &mut Self {
+        self.volume_source = VolumeSource::EmptyDir(empty_dir.into());
+        self
+    }
+
+    pub fn with_empty_dir(
+        &mut self,
+        medium: Option<impl Into<String>>,
+        quantity: Option<Quantity>,
+    ) -> &mut Self {
+        self.volume_source = VolumeSource::EmptyDir(EmptyDirVolumeSource {
+            medium: medium.map(|m| m.into()),
+            size_limit: quantity,
+        });
+        self
+    }
+
+    pub fn host_path(&mut self, host_path: impl Into<HostPathVolumeSource>) -> &mut Self {
+        self.volume_source = VolumeSource::HostPath(host_path.into());
+        self
+    }
+
+    pub fn with_host_path(
+        &mut self,
+        path: impl Into<String>,
+        type_: Option<impl Into<String>>,
+    ) -> &mut Self {
+        self.volume_source = VolumeSource::HostPath(HostPathVolumeSource {
+            path: path.into(),
+            type_: type_.map(|t| t.into()),
+        });
+        self
+    }
+
+    pub fn persistent_volume_claim(
+        &mut self,
+        persistent_volume_claim: impl Into<PersistentVolumeClaimVolumeSource>,
+    ) -> &mut Self {
+        self.volume_source = VolumeSource::PersistentVolumeClaim(persistent_volume_claim.into());
+        self
+    }
+
+    pub fn with_persistent_volume_claim(
+        &mut self,
+        claim_name: impl Into<String>,
+        read_only: bool,
+    ) -> &mut Self {
+        self.volume_source =
+            VolumeSource::PersistentVolumeClaim(PersistentVolumeClaimVolumeSource {
+                claim_name: claim_name.into(),
+                read_only: Some(read_only),
+            });
+        self
+    }
+
+    pub fn projected(&mut self, projected: impl Into<ProjectedVolumeSource>) -> &mut Self {
+        self.volume_source = VolumeSource::Projected(projected.into());
+        self
+    }
+
+    pub fn secret(&mut self, secret: impl Into<SecretVolumeSource>) -> &mut Self {
+        self.volume_source = VolumeSource::Secret(secret.into());
+        self
+    }
+
+    pub fn with_secret(&mut self, secret_name: impl Into<String>, optional: bool) -> &mut Self {
+        self.volume_source = VolumeSource::Secret(SecretVolumeSource {
+            optional: Some(optional),
+            secret_name: Some(secret_name.into()),
+            ..SecretVolumeSource::default()
+        });
+        self
+    }
+
+    /// Consumes the Builder and returns a constructed Volume
+    pub fn build(&self) -> Volume {
+        Volume {
+            name: self.name.clone(),
+            config_map: match &self.volume_source {
+                VolumeSource::ConfigMap(configmap) => Some(configmap.clone()),
+                _ => None,
+            },
+            downward_api: match &self.volume_source {
+                VolumeSource::DownwardApi(downward_api) => Some(downward_api.clone()),
+                _ => None,
+            },
+            empty_dir: match &self.volume_source {
+                VolumeSource::EmptyDir(empty_dir) => Some(empty_dir.clone()),
+                _ => None,
+            },
+            host_path: match &self.volume_source {
+                VolumeSource::HostPath(host_path) => Some(host_path.clone()),
+                _ => None,
+            },
+            persistent_volume_claim: match &self.volume_source {
+                VolumeSource::PersistentVolumeClaim(pvc) => Some(pvc.clone()),
+                _ => None,
+            },
+            projected: match &self.volume_source {
+                VolumeSource::Projected(projected) => Some(projected.clone()),
+                _ => None,
+            },
+            secret: match &self.volume_source {
+                VolumeSource::Secret(secret) => Some(secret.clone()),
+                _ => None,
+            },
+            ..Volume::default()
+        }
+    }
+}
+
+/// A builder to build [`VolumeMount`] objects.
+///
+#[derive(Clone, Default)]
+pub struct VolumeMountBuilder {
+    mount_path: String,
+    mount_propagation: Option<String>,
+    name: String,
+    read_only: Option<bool>,
+    sub_path: Option<String>,
+    sub_path_expr: Option<String>,
+}
+
+impl VolumeMountBuilder {
+    pub fn new(name: impl Into<String>, mount_path: impl Into<String>) -> VolumeMountBuilder {
+        VolumeMountBuilder {
+            mount_path: mount_path.into(),
+            name: name.into(),
+            ..VolumeMountBuilder::default()
+        }
+    }
+
+    pub fn read_only(&mut self, read_only: bool) -> &mut Self {
+        self.read_only = Some(read_only);
+        self
+    }
+
+    pub fn mount_propagation(&mut self, mount_propagation: impl Into<String>) -> &mut Self {
+        self.mount_propagation = Some(mount_propagation.into());
+        self
+    }
+
+    pub fn sub_path(&mut self, sub_path: impl Into<String>) -> &mut Self {
+        self.sub_path = Some(sub_path.into());
+        self
+    }
+
+    pub fn sub_path_expr(&mut self, sub_path_expr: impl Into<String>) -> &mut Self {
+        self.sub_path_expr = Some(sub_path_expr.into());
+        self
+    }
+
+    /// Consumes the Builder and returns a constructed VolumeMount
+    pub fn build(&self) -> VolumeMount {
+        VolumeMount {
+            mount_path: self.mount_path.clone(),
+            mount_propagation: self.mount_propagation.clone(),
+            name: self.name.clone(),
+            read_only: self.read_only,
+            sub_path: self.sub_path.clone(),
+            sub_path_expr: self.sub_path_expr.clone(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::builder::{
         ConfigMapBuilder, ContainerBuilder, ContainerPortBuilder, EventBuilder, EventType,
-        NodeBuilder, ObjectMetaBuilder, PodBuilder, PodSecurityContextBuilder,
+        NodeBuilder, ObjectMetaBuilder, PodBuilder, PodSecurityContextBuilder, VolumeBuilder,
+        VolumeMountBuilder,
     };
     use k8s_openapi::api::core::v1::{
         EnvVar, Pod, PodSecurityContext, SELinuxOptions, SeccompProfile, Sysctl, VolumeMount,
         WindowsSecurityContextOptions,
     };
+    use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
     use std::collections::BTreeMap;
 
@@ -1135,7 +1323,7 @@ mod tests {
         let configmap = ConfigMapBuilder::new()
             .data(data)
             .add_data("bar", "foo")
-            .metadata_default()
+            .metadata_opt(Some(ObjectMetaBuilder::new().name("test").build().unwrap()))
             .build()
             .unwrap();
 
@@ -1145,25 +1333,18 @@ mod tests {
 
     #[test]
     fn test_container_builder() {
-        let container_port = 10000;
+        let container_port: i32 = 10000;
         let container_port_name = "foo_port_name";
+        let container_port_1: i32 = 20000;
+        let container_port_name_1 = "bar_port_name";
 
         let container = ContainerBuilder::new("testcontainer")
             .add_env_var("foo", "bar")
-            .add_configmapvolume("configmap", "/mount")
-            .add_container_port(
-                ContainerPortBuilder::new(container_port)
-                    .name(container_port_name)
-                    .build(),
-            )
-            .add_container_ports(vec![
-                ContainerPortBuilder::new(container_port)
-                    .name(container_port_name)
-                    .build(),
-                ContainerPortBuilder::new(container_port)
-                    .name(container_port_name)
-                    .build(),
-            ])
+            .add_volume_mount("configmap", "/mount")
+            .add_container_port(container_port_name, container_port)
+            .add_container_ports(vec![ContainerPortBuilder::new(container_port_1)
+                .name(container_port_name_1)
+                .build()])
             .build();
 
         assert_eq!(container.name, "testcontainer");
@@ -1174,18 +1355,26 @@ mod tests {
         assert!(
             matches!(container.volume_mounts.as_ref().unwrap().get(0), Some(VolumeMount {mount_path, name, ..}) if mount_path == "/mount" && name == "configmap")
         );
-        assert!(
-            container.ports.as_ref().unwrap()[0].container_port == i32::from(container_port)
-                && container.ports.as_ref().unwrap()[0].name
-                    == Some(container_port_name.to_string())
+        assert_eq!(container.ports.as_ref().unwrap().len(), 2);
+        assert_eq!(
+            container
+                .ports
+                .as_ref()
+                .map(|ports| (&ports[0].name, ports[0].container_port)),
+            Some((&Some(container_port_name.to_string()), container_port))
         );
-
-        assert_eq!(container.ports.unwrap().len(), 3)
+        assert_eq!(
+            container
+                .ports
+                .as_ref()
+                .map(|ports| (&ports[1].name, ports[1].container_port)),
+            Some((&Some(container_port_name_1.to_string()), container_port_1))
+        );
     }
 
     #[test]
     fn test_container_port_builder() {
-        let port: u16 = 10000;
+        let port: i32 = 10000;
         let name = "FooBar";
         let protocol = "http";
         let host_port = 20000;
@@ -1197,11 +1386,11 @@ mod tests {
             .host_ip(host_ip)
             .build();
 
-        assert_eq!(container_port.container_port, i32::from(port));
+        assert_eq!(container_port.container_port, port);
         assert_eq!(container_port.name, Some(name.to_lowercase()));
         assert_eq!(container_port.protocol, Some(protocol.to_string()));
         assert_eq!(container_port.host_ip, Some(host_ip.to_string()));
-        assert_eq!(container_port.host_port, Some(i32::from(host_port)));
+        assert_eq!(container_port.host_port, Some(host_port));
     }
 
     #[test]
@@ -1262,12 +1451,68 @@ mod tests {
     }
 
     #[test]
+    fn test_volume_mount_builder() {
+        let mut volume_mount_builder = VolumeMountBuilder::new("name", "mount_path");
+        volume_mount_builder
+            .mount_propagation("mount_propagation")
+            .read_only(true)
+            .sub_path("sub_path")
+            .sub_path_expr("sub_path_expr");
+
+        let vm = volume_mount_builder.build();
+
+        assert_eq!(vm.name, "name".to_string());
+        assert_eq!(vm.mount_path, "mount_path".to_string());
+        assert_eq!(vm.mount_propagation, Some("mount_propagation".to_string()));
+        assert_eq!(vm.read_only, Some(true));
+        assert_eq!(vm.sub_path, Some("sub_path".to_string()));
+        assert_eq!(vm.sub_path_expr, Some("sub_path_expr".to_string()));
+    }
+
+    #[test]
+    fn test_volume_builder() {
+        let mut volume_builder = VolumeBuilder::new("name");
+        volume_builder.with_config_map("configmap");
+        let vol = volume_builder.build();
+
+        assert_eq!(vol.name, "name".to_string());
+        assert_eq!(
+            vol.config_map.and_then(|cm| cm.name),
+            Some("configmap".to_string())
+        );
+
+        volume_builder.with_empty_dir(Some("medium"), Some(Quantity("quantity".to_string())));
+        let vol = volume_builder.build();
+
+        assert_eq!(
+            vol.empty_dir.and_then(|dir| dir.medium),
+            Some("medium".to_string())
+        );
+
+        volume_builder.with_host_path("path", Some("type_"));
+        let vol = volume_builder.build();
+
+        assert_eq!(
+            vol.host_path.map(|host| host.path),
+            Some("path".to_string())
+        );
+
+        volume_builder.with_secret("secret", false);
+        let vol = volume_builder.build();
+
+        assert_eq!(
+            vol.secret.and_then(|secret| secret.secret_name),
+            Some("secret".to_string())
+        );
+    }
+
+    #[test]
     fn test_pod_builder() {
         let container = ContainerBuilder::new("containername")
             .image("stackable/zookeeper:2.4.14")
             .command(vec!["zk-server-start.sh".to_string()])
-            .args(vec!["{{ configroot }}/conf/zk.properties".to_string()])
-            .add_configmapvolume("zk-worker-1", "conf/")
+            .args(vec!["stackable/conf/zk.properties".to_string()])
+            .add_volume_mount("zk-worker-1", "conf/")
             .build();
 
         let init_container = ContainerBuilder::new("init_containername")
@@ -1281,6 +1526,11 @@ mod tests {
             .add_container(container)
             .add_init_container(init_container)
             .node_name("worker-1.stackable.demo")
+            .add_volume(
+                VolumeBuilder::new("zk-worker-1")
+                    .with_config_map("configmap")
+                    .build(),
+            )
             .build()
             .unwrap();
 
@@ -1296,11 +1546,16 @@ mod tests {
             pod_spec
                 .init_containers
                 .as_ref()
-                .unwrap()
+                .and_then(|containers| containers.get(0).as_ref().map(|c| c.name.clone())),
+            Some("init_containername".to_string())
+        );
+
+        assert_eq!(
+            pod_spec.volumes.as_ref().and_then(|volumes| volumes
                 .get(0)
-                .unwrap()
-                .name,
-            "init_containername"
+                .as_ref()
+                .and_then(|volume| volume.config_map.as_ref()?.name.clone())),
+            Some("configmap".to_string())
         );
 
         let pod = PodBuilder::new()
