@@ -81,7 +81,7 @@
 //! Each resource can have more operator specific labels.
 
 use crate::error::OperatorResult;
-use crate::{krustlet, labels};
+use crate::labels;
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -179,7 +179,7 @@ where
 {
     let mut found_nodes = HashMap::new();
     for (group_name, role_group) in &role.role_groups {
-        let selector = krustlet::add_stackable_selector(role_group.selector.as_ref());
+        let selector = role_group.selector.to_owned().unwrap_or_default();
         let nodes = client
             .list_with_label_selector(namespace.as_deref(), &selector)
             .await?;

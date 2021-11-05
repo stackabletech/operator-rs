@@ -974,11 +974,10 @@ impl PodBuilder {
         self
     }
 
-    /// This will automatically add all required tolerations to target a Stackable agent.
-    pub fn add_stackable_agent_tolerations(&mut self) -> &mut Self {
+    pub fn add_tolerations(&mut self, tolerations: Vec<Toleration>) -> &mut Self {
         self.tolerations
             .get_or_insert_with(Vec::new)
-            .extend(crate::krustlet::create_tolerations());
+            .extend(tolerations);
         self
     }
 
