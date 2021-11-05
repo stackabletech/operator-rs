@@ -14,7 +14,6 @@ pub mod finalizer;
 pub mod identity;
 pub mod k8s_errors;
 pub mod k8s_utils;
-pub mod krustlet;
 pub mod label_selector;
 pub mod labels;
 pub mod logging;

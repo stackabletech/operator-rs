@@ -4,8 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.3.0] - 2021-10-27
+### Changed
+- BREAKING: In builder: `add_stackable_agent_tolerations` to `add_tolerations` ([#255]).
 
+### Removed
+- `krustlet.rs` ([#255]).
+- `find_nodes_that_fit_selectors` no longer adds label `type=krustlet` to selector ([#255]).
+
+[#255]: https://github.com/stackabletech/operator-rs/pull/255
+
+## [0.3.0] - 2021-10-27
 
 ### Fixed
 - Bugfix: when scheduling a pod, `GroupAntiAffinityStrategy` should not skip nodes that are mapped by other pods from different role+group. ([#222])
@@ -30,6 +38,7 @@ All notable changes to this project will be documented in this file.
 - `identity.rs` a new module split out of `scheduler.rs` that bundles code for pod and node id management.
 - `identity::PodIdentityFactory` trait and one implementation called `identity::LabeledPodIdentityFactory`.
 - `controller.rs` - Configurable requeue timeout
+
 ### Removed
 - `reconcile::create_config_maps` which is obsolete and replaced by `configmap::create_config_maps` ([#184])
 - BREAKING: `scheduler::PodToNodeMapping::from` ([#222]).
