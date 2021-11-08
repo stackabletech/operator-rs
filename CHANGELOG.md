@@ -4,8 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.4.0] - 2021-11-05
+### Added
+- `build_template` to `PodBuilder` ([#259]).
+- `readiness_probe` and `liveness_probe` to `ContainerBuilder` ([#259]).
 
+[#259]: https://github.com/stackabletech/operator-rs/pull/259
+
+## [0.4.0] - 2021-11-05
 
 ### Added
 - `VolumeBuilder` and `VolumeMountBuilder` ([#253]).
