@@ -9,8 +9,8 @@ use k8s_openapi::api::core::v1::{
     ConfigMap, ConfigMapVolumeSource, Container, ContainerPort, DownwardAPIVolumeSource,
     EmptyDirVolumeSource, EnvVar, Event, EventSource, HostPathVolumeSource, Node, ObjectReference,
     PersistentVolumeClaimVolumeSource, Pod, PodCondition, PodSecurityContext, PodSpec, PodStatus,
-    ProjectedVolumeSource, SELinuxOptions, SeccompProfile, SecretVolumeSource, Sysctl, Toleration,
-    Volume, VolumeMount, WindowsSecurityContextOptions,
+    Probe, ProjectedVolumeSource, SELinuxOptions, SeccompProfile, SecretVolumeSource, Sysctl,
+    Toleration, Volume, VolumeMount, WindowsSecurityContextOptions,
 };
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{MicroTime, ObjectMeta, OwnerReference, Time};
@@ -82,6 +82,8 @@ pub struct ContainerBuilder {
     image_pull_policy: Option<String>,
     name: String,
     volume_mounts: Option<Vec<VolumeMount>>,
+    readiness_probe: Option<Probe>,
+    liveness_probe: Option<Probe>,
 }
 
 impl ContainerBuilder {
@@ -169,6 +171,16 @@ impl ContainerBuilder {
         self
     }
 
+    pub fn readiness_probe(&mut self, probe: Probe) -> &mut Self {
+        self.readiness_probe = Some(probe);
+        self
+    }
+
+    pub fn liveness_probe(&mut self, probe: Probe) -> &mut Self {
+        self.liveness_probe = Some(probe);
+        self
+    }
+
     pub fn build(&self) -> Container {
         Container {
             args: self.args.clone(),
@@ -179,6 +191,8 @@ impl ContainerBuilder {
             name: self.name.clone(),
             ports: self.container_ports.clone(),
             volume_mounts: self.volume_mounts.clone(),
+            readiness_probe: self.readiness_probe.clone(),
+            liveness_probe: self.liveness_probe.clone(),
             ..Container::default()
         }
     }
