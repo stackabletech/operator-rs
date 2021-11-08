@@ -784,11 +784,11 @@ mod tests {
         let action = ReconcileFunctionAction::Requeue(duration);
 
         let pod1 = PodBuilder::new()
-            .metadata(ObjectMetaBuilder::new().name("pod1").build().unwrap())
+            .metadata(ObjectMetaBuilder::new().name("pod1").build())
             .build()
             .unwrap();
         let pod2 = PodBuilder::new()
-            .metadata(ObjectMetaBuilder::new().name("pod2").build().unwrap())
+            .metadata(ObjectMetaBuilder::new().name("pod2").build())
             .build()
             .unwrap();
         let pods = vec![pod1, pod2];
@@ -799,7 +799,7 @@ mod tests {
         assert_eq!(result, ReconcileFunctionAction::Continue);
 
         let pod1 = PodBuilder::new()
-            .metadata(ObjectMetaBuilder::new().name("pod1").build().unwrap())
+            .metadata(ObjectMetaBuilder::new().name("pod1").build())
             .phase("Running")
             .build()
             .unwrap();
@@ -807,7 +807,7 @@ mod tests {
         assert_eq!(result, action);
 
         let pod1 = PodBuilder::new()
-            .metadata(ObjectMetaBuilder::new().name("pod1").build().unwrap())
+            .metadata(ObjectMetaBuilder::new().name("pod1").build())
             .phase("Running")
             .with_condition("Ready", "True")
             .build()
@@ -817,7 +817,7 @@ mod tests {
         assert_eq!(result, ReconcileFunctionAction::Continue);
 
         let pod2 = PodBuilder::new()
-            .metadata(ObjectMetaBuilder::new().name("pod2").build().unwrap())
+            .metadata(ObjectMetaBuilder::new().name("pod2").build())
             .build()
             .unwrap();
         let result =
