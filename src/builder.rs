@@ -9,8 +9,8 @@ use k8s_openapi::api::core::v1::{
     ConfigMap, ConfigMapVolumeSource, Container, ContainerPort, DownwardAPIVolumeSource,
     EmptyDirVolumeSource, EnvVar, Event, EventSource, HostPathVolumeSource, Node, ObjectReference,
     PersistentVolumeClaimVolumeSource, Pod, PodCondition, PodSecurityContext, PodSpec, PodStatus,
-    Probe, ProjectedVolumeSource, SELinuxOptions, SeccompProfile, SecretVolumeSource, Sysctl,
-    Toleration, Volume, VolumeMount, WindowsSecurityContextOptions,
+    PodTemplate, PodTemplateSpec, Probe, ProjectedVolumeSource, SELinuxOptions, SeccompProfile,
+    SecretVolumeSource, Sysctl, Toleration, Volume, VolumeMount, WindowsSecurityContextOptions,
 };
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{MicroTime, ObjectMeta, OwnerReference, Time};
@@ -1013,25 +1013,40 @@ impl PodBuilder {
         self
     }
 
-    /// Consumes the Builder and returns a constructed Pod
+    fn build_spec(&self) -> PodSpec {
+        PodSpec {
+            containers: self.containers.clone(),
+            host_network: self.host_network,
+            init_containers: self.init_containers.clone(),
+            node_name: self.node_name.clone(),
+            security_context: self.security_context.clone(),
+            tolerations: self.tolerations.clone(),
+            volumes: self.volumes.clone(),
+            ..PodSpec::default()
+        }
+    }
+
+    /// Consumes the Builder and returns a constructed [`Pod`]
     pub fn build(&self) -> OperatorResult<Pod> {
         Ok(Pod {
             metadata: match self.metadata {
                 None => return Err(Error::MissingObjectKey { key: "metadata" }),
                 Some(ref metadata) => metadata.clone(),
             },
-            spec: Some(PodSpec {
-                containers: self.containers.clone(),
-                host_network: self.host_network,
-                init_containers: self.init_containers.clone(),
-                node_name: self.node_name.clone(),
-                security_context: self.security_context.clone(),
-                tolerations: self.tolerations.clone(),
-                volumes: self.volumes.clone(),
-                ..PodSpec::default()
-            }),
+            spec: Some(self.build_spec()),
             status: self.status.clone(),
         })
+    }
+
+    /// Returns a [`PodTemplateSpec`], usable for building a [`StatefulSet`] or [`Deployment`]
+    pub fn build_template(&self) -> PodTemplateSpec {
+        if self.status.is_some() {
+            tracing::warn!("Tried building a PodTemplate for a PodBuilder with a status, the status will be ignored...");
+        }
+        PodTemplateSpec {
+            metadata: self.metadata.clone(),
+            spec: Some(self.build_spec()),
+        }
     }
 }
 
