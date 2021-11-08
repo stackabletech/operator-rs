@@ -374,12 +374,7 @@ mod tests {
 
         let existing_pods = vec![PodBuilder::new()
             .node_name("foobar")
-            .metadata(
-                ObjectMetaBuilder::new()
-                    .with_labels(pod_labels)
-                    .build()
-                    .unwrap(),
-            )
+            .metadata(ObjectMetaBuilder::new().with_labels(pod_labels).build())
             .build()
             .unwrap()];
 
@@ -400,12 +395,7 @@ mod tests {
         ];
         let existing_pods = vec![PodBuilder::new()
             .node_name("foobar")
-            .metadata(
-                ObjectMetaBuilder::new()
-                    .with_labels(pod_labels)
-                    .build()
-                    .unwrap(),
-            )
+            .metadata(ObjectMetaBuilder::new().with_labels(pod_labels).build())
             .build()
             .unwrap()];
 
@@ -430,19 +420,13 @@ mod tests {
                 .metadata(
                     ObjectMetaBuilder::new()
                         .with_labels(pod_labels.clone())
-                        .build()
-                        .unwrap(),
+                        .build(),
                 )
                 .build()
                 .unwrap(),
             PodBuilder::new()
                 .node_name("wrong_node")
-                .metadata(
-                    ObjectMetaBuilder::new()
-                        .with_labels(pod_labels)
-                        .build()
-                        .unwrap(),
-                )
+                .metadata(ObjectMetaBuilder::new().with_labels(pod_labels).build())
                 .build()
                 .unwrap(),
         ];
@@ -477,12 +461,7 @@ mod tests {
 
         let pod2 = PodBuilder::new()
             .node_name("node2")
-            .metadata(
-                ObjectMetaBuilder::new()
-                    .with_label("foo", "bar")
-                    .build()
-                    .unwrap(),
-            )
+            .metadata(ObjectMetaBuilder::new().with_label("foo", "bar").build())
             .build()
             .unwrap();
 

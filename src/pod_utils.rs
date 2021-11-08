@@ -362,7 +362,7 @@ mod tests {
     #[test]
     fn test_get_log_name() {
         let mut pod = PodBuilder::new()
-            .metadata(ObjectMetaBuilder::new().name("bar").build().unwrap())
+            .metadata(ObjectMetaBuilder::new().name("bar").build())
             .build()
             .unwrap();
         assert_eq!("[<no namespace>/bar]", get_log_name(&pod));
@@ -489,12 +489,7 @@ mod tests {
         test_labels.insert("label3".to_string(), "test3".to_string());
 
         let test_pod = PodBuilder::new()
-            .metadata(
-                ObjectMetaBuilder::new()
-                    .with_labels(test_labels)
-                    .build()
-                    .unwrap(),
-            )
+            .metadata(ObjectMetaBuilder::new().with_labels(test_labels).build())
             .build()
             .unwrap();
 
@@ -585,12 +580,7 @@ mod tests {
 
         // Pod has only the required label
         let pod = PodBuilder::new()
-            .metadata(
-                ObjectMetaBuilder::new()
-                    .with_label("foo", "bar")
-                    .build()
-                    .unwrap(),
-            )
+            .metadata(ObjectMetaBuilder::new().with_label("foo", "bar").build())
             .build()
             .unwrap();
         assert!(pod_matches_multiple_label_values(&pod, &required_labels));
@@ -601,8 +591,7 @@ mod tests {
                 ObjectMetaBuilder::new()
                     .with_label("foo", "bar")
                     .with_label("bar", "foo")
-                    .build()
-                    .unwrap(),
+                    .build(),
             )
             .build()
             .unwrap();
@@ -644,12 +633,7 @@ mod tests {
         // Pod has required label
         let pod = PodBuilder::new()
             .node_name("foo")
-            .metadata(
-                ObjectMetaBuilder::new()
-                    .with_label("foo", "bar")
-                    .build()
-                    .unwrap(),
-            )
+            .metadata(ObjectMetaBuilder::new().with_label("foo", "bar").build())
             .build()
             .unwrap();
         assert!(is_valid_pod(&pod, &required_labels));
@@ -664,7 +648,7 @@ mod tests {
             .build()
             .unwrap();
         let invalid_pod = PodBuilder::new()
-            .metadata(ObjectMetaBuilder::new().name("invalid").build().unwrap())
+            .metadata(ObjectMetaBuilder::new().name("invalid").build())
             .build()
             .unwrap();
 

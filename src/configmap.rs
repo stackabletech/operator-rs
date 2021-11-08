@@ -84,7 +84,7 @@ where
                 .ownerreference_from_resource(cluster, Some(true), Some(true))?
                 .namespace(namespace)
                 .with_labels(labels)
-                .build()?,
+                .build(),
         )
         .data(data)
         .build()

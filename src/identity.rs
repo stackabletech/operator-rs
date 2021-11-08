@@ -548,8 +548,7 @@ pub mod tests {
                     .generate_name("pod1")
                     .namespace("default")
                     .with_labels(labels_map)
-                    .build()
-                    .unwrap(),
+                    .build(),
             )
             .build()
             .unwrap();
@@ -754,8 +753,7 @@ pub mod tests {
                         ObjectMetaBuilder::new()
                             .namespace("default")
                             .with_labels(labels_map)
-                            .build()
-                            .unwrap(),
+                            .build(),
                     )
                     .node_name(node_name)
                     .build()

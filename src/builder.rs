@@ -9,7 +9,7 @@ use k8s_openapi::api::core::v1::{
     ConfigMap, ConfigMapVolumeSource, Container, ContainerPort, DownwardAPIVolumeSource,
     EmptyDirVolumeSource, EnvVar, Event, EventSource, HostPathVolumeSource, Node, ObjectReference,
     PersistentVolumeClaimVolumeSource, Pod, PodCondition, PodSecurityContext, PodSpec, PodStatus,
-    PodTemplate, PodTemplateSpec, Probe, ProjectedVolumeSource, SELinuxOptions, SeccompProfile,
+    PodTemplateSpec, Probe, ProjectedVolumeSource, SELinuxOptions, SeccompProfile,
     SecretVolumeSource, Sysctl, Toleration, Volume, VolumeMount, WindowsSecurityContextOptions,
 };
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
@@ -568,7 +568,7 @@ impl ObjectMetaBuilder {
         self
     }
 
-    pub fn build(&self) -> OperatorResult<ObjectMeta> {
+    pub fn build(&self) -> ObjectMeta {
         // if 'generate_name' and 'name' are set, Kubernetes will prioritize the 'name' field and
         // 'generate_name' has no impact.
         if let (Some(name), Some(generate_name)) = (&self.name, &self.generate_name) {
@@ -579,7 +579,7 @@ impl ObjectMetaBuilder {
             );
         }
 
-        Ok(ObjectMeta {
+        ObjectMeta {
             generate_name: self.generate_name.clone(),
             name: self.name.clone(),
             namespace: self.namespace.clone(),
@@ -590,7 +590,7 @@ impl ObjectMetaBuilder {
             labels: self.labels.clone(),
             annotations: self.annotations.clone(),
             ..ObjectMeta::default()
-        })
+        }
     }
 }
 
@@ -931,14 +931,14 @@ impl PodBuilder {
         self
     }
 
-    pub fn metadata_builder<F>(&mut self, f: F) -> OperatorResult<&mut Self>
+    pub fn metadata_builder<F>(&mut self, f: F) -> &mut Self
     where
         F: Fn(&mut ObjectMetaBuilder) -> &mut ObjectMetaBuilder,
     {
         let mut builder = ObjectMetaBuilder::new();
         let builder = f(&mut builder);
-        self.metadata = Some(builder.build()?);
-        Ok(self)
+        self.metadata = Some(builder.build());
+        self
     }
 
     pub fn metadata(&mut self, metadata: impl Into<ObjectMeta>) -> &mut Self {
@@ -1352,7 +1352,7 @@ mod tests {
         let configmap = ConfigMapBuilder::new()
             .data(data)
             .add_data("bar", "foo")
-            .metadata_opt(Some(ObjectMetaBuilder::new().name("test").build().unwrap()))
+            .metadata_opt(Some(ObjectMetaBuilder::new().name("test").build()))
             .build()
             .unwrap();
 
@@ -1426,7 +1426,6 @@ mod tests {
     fn test_event_builder() {
         let pod = PodBuilder::new()
             .metadata_builder(|builder| builder.name("testpod"))
-            .unwrap()
             .build()
             .unwrap();
 
@@ -1463,8 +1462,7 @@ mod tests {
             .unwrap()
             .with_recommended_labels(&pod, "test_app", "1.0", "component", "role")
             .with_annotation("foo", "bar")
-            .build()
-            .unwrap();
+            .build();
 
         assert_eq!(meta.generate_name, Some("generate_foo".to_string()));
         assert_eq!(meta.name, Some("foo".to_string()));
@@ -1551,7 +1549,7 @@ mod tests {
             .build();
 
         let pod = PodBuilder::new()
-            .metadata(ObjectMetaBuilder::new().name("testpod").build().unwrap())
+            .metadata(ObjectMetaBuilder::new().name("testpod").build())
             .add_container(container)
             .add_init_container(init_container)
             .node_name("worker-1.stackable.demo")
@@ -1589,7 +1587,6 @@ mod tests {
 
         let pod = PodBuilder::new()
             .metadata_builder(|builder| builder.name("foo"))
-            .unwrap()
             .build()
             .unwrap();
         assert_eq!(pod.metadata.name.unwrap(), "foo");
