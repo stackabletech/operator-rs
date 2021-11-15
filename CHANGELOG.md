@@ -7,12 +7,14 @@ All notable changes to this project will be documented in this file.
 ### Added
 - `build_template` to `PodBuilder` ([#259]).
 - `readiness_probe` and `liveness_probe` to `ContainerBuilder` ([#259]).
+- `role_group_selector_labels` to `labels` ([#261]).
 
 ### Changed
 - BREAKING: `ObjectMetaBuilder::build` is no longer fallible ([#259]).
 - BREAKING: `PodBuilder::metadata_builder` is no longer fallible ([#259]).
 
 [#259]: https://github.com/stackabletech/operator-rs/pull/259
+[#261]: https://github.com/stackabletech/operator-rs/pull/261
 
 ## [0.4.0] - 2021-11-05
 
