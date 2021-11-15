@@ -29,21 +29,31 @@ pub fn get_recommended_labels<T>(
 where
     T: Resource,
 {
-    let mut recommended_labels = BTreeMap::new();
+    let mut labels = role_group_selector_labels(resource, app_name, app_role, app_role_group);
 
     // TODO: Add operator version label
     // TODO: part-of is empty for now, decide on how this can be used in a proper fashion
-    recommended_labels.insert(APP_INSTANCE_LABEL.to_string(), resource.name());
-    recommended_labels.insert(APP_NAME_LABEL.to_string(), app_name.to_string());
-    recommended_labels.insert(APP_VERSION_LABEL.to_string(), app_version.to_string());
-    recommended_labels.insert(APP_COMPONENT_LABEL.to_string(), app_role.to_string());
-    recommended_labels.insert(APP_ROLE_GROUP_LABEL.to_string(), app_role_group.to_string());
-    recommended_labels.insert(
+    labels.insert(APP_VERSION_LABEL.to_string(), app_version.to_string());
+    labels.insert(
         APP_MANAGED_BY_LABEL.to_string(),
         format!("{}-operator", app_name),
     );
 
-    recommended_labels
+    labels
+}
+
+/// The labels required to match against objects of a certain role, assuming that those objects
+/// are defined using [`get_recommended_labels`]
+pub fn role_group_selector_labels<T: Resource>(
+    resource: &T,
+    app_name: &str,
+    app_role: &str,
+    app_role_group: &str,
+) -> BTreeMap<String, String> {
+    let mut labels = build_common_labels_for_all_managed_resources(app_name, &resource.name());
+    labels.insert(APP_COMPONENT_LABEL.to_string(), app_role.to_string());
+    labels.insert(APP_ROLE_GROUP_LABEL.to_string(), app_role_group.to_string());
+    labels
 }
 
 /// The APP_NAME_LABEL (Spark, Kafka, ZooKeeper...) and APP_INSTANCES_LABEL (simple, test ...) are
