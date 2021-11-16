@@ -68,7 +68,7 @@ impl<T: Configuration + ?Sized> Configuration for Box<T> {
         resource: &Self::Configurable,
         role_name: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
-        T::compute_env(&self, resource, role_name)
+        T::compute_env(self, resource, role_name)
     }
 
     fn compute_cli(
@@ -76,7 +76,7 @@ impl<T: Configuration + ?Sized> Configuration for Box<T> {
         resource: &Self::Configurable,
         role_name: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
-        T::compute_cli(&self, resource, role_name)
+        T::compute_cli(self, resource, role_name)
     }
 
     fn compute_files(
@@ -85,7 +85,7 @@ impl<T: Configuration + ?Sized> Configuration for Box<T> {
         role_name: &str,
         file: &str,
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
-        T::compute_files(&self, resource, role_name, file)
+        T::compute_files(self, resource, role_name, file)
     }
 }
 
