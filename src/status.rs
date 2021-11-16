@@ -13,7 +13,7 @@ use std::fmt::Debug;
 
 /// Provides access to the custom resource status.
 pub trait Status<T> {
-    fn status(&self) -> &Option<T>;
+    fn status(&self) -> Option<&T>;
     fn status_mut(&mut self) -> &mut Option<T>;
 }
 
@@ -34,7 +34,7 @@ pub trait HasCurrentCommand {
 
 /// Provides access to the custom resource status version for up or downgrades.
 pub trait Versioned<V> {
-    fn version(&self) -> &Option<ProductVersion<V>>;
+    fn version(&self) -> Option<&ProductVersion<V>>;
     fn version_mut(&mut self) -> &mut Option<ProductVersion<V>>;
 }
 

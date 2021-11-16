@@ -200,7 +200,7 @@ where
 ///
 fn build_version_and_condition<T, V>(
     resource: &T,
-    product_version: &Option<ProductVersion<V>>,
+    product_version: Option<&ProductVersion<V>>,
     spec_version: V,
     conditions: &[Condition],
 ) -> OperatorResult<(Option<ProductVersion<V>>, Option<Condition>)>
@@ -399,8 +399,8 @@ mod tests {
     }
 
     impl Status<TestClusterStatus> for TestCluster {
-        fn status(&self) -> &Option<TestClusterStatus> {
-            &self.status
+        fn status(&self) -> Option<&TestClusterStatus> {
+            self.status.as_ref()
         }
         fn status_mut(&mut self) -> &mut Option<TestClusterStatus> {
             &mut self.status
@@ -414,8 +414,8 @@ mod tests {
     }
 
     impl Versioned<TestVersion> for TestClusterStatus {
-        fn version(&self) -> &Option<ProductVersion<TestVersion>> {
-            &self.version
+        fn version(&self) -> Option<&ProductVersion<TestVersion>> {
+            self.version.as_ref()
         }
         fn version_mut(&mut self) -> &mut Option<ProductVersion<TestVersion>> {
             &mut self.version
@@ -514,7 +514,7 @@ mod tests {
 
         let (version, condition) = build_version_and_condition(
             &cluster,
-            &product_version,
+            product_version.as_ref(),
             spec_version,
             vec![].as_slice(),
         )
@@ -546,7 +546,12 @@ mod tests {
         let cluster: TestCluster =
             serde_yaml::from_str(TEST_CLUSTER_YAML).expect("Invalid test cluster definition!");
 
-        build_version_and_condition(&cluster, &product_version, spec_version, vec![].as_slice())
-            .unwrap_err();
+        build_version_and_condition(
+            &cluster,
+            product_version.as_ref(),
+            spec_version,
+            vec![].as_slice(),
+        )
+        .unwrap_err();
     }
 }

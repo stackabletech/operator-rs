@@ -347,13 +347,18 @@ where
 {
     let mut result = HashMap::new();
 
-    let role_properties = parse_role_config(resource, role_name, &role.config, property_kinds);
+    let role_properties =
+        parse_role_config(resource, role_name, role.config.as_ref(), property_kinds);
 
     // for each role group ...
     for (role_group_name, role_group) in &role.role_groups {
         // ... compute the group properties ...
-        let role_group_properties =
-            parse_role_config(resource, role_name, &role_group.config, property_kinds);
+        let role_group_properties = parse_role_config(
+            resource,
+            role_name,
+            role_group.config.as_ref(),
+            property_kinds,
+        );
 
         // ... and merge them with the role properties.
         let mut role_properties_copy = role_properties.clone();
@@ -383,7 +388,7 @@ where
 fn parse_role_config<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<T>>,
+    config: Option<&CommonConfiguration<T>>,
     property_kinds: &[PropertyNameKind],
 ) -> HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>
 where
@@ -413,7 +418,7 @@ where
 fn parse_cli_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<T>>,
+    config: Option<&CommonConfiguration<T>>,
 ) -> BTreeMap<String, Option<String>>
 where
     T: Configuration,
@@ -446,7 +451,7 @@ where
 fn parse_env_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<T>>,
+    config: Option<&CommonConfiguration<T>>,
 ) -> BTreeMap<String, Option<String>>
 where
     T: Configuration,
@@ -479,7 +484,7 @@ where
 fn parse_file_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<T>>,
+    config: Option<&CommonConfiguration<T>>,
     file: &str,
 ) -> BTreeMap<String, Option<String>>
 where
