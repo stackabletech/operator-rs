@@ -175,7 +175,7 @@ async fn find_config_map(
 
     Ok(filter_config_map(
         existing_config_maps,
-        &config_map.metadata.labels,
+        config_map.metadata.labels.as_ref(),
     ))
 }
 
@@ -191,7 +191,7 @@ async fn find_config_map(
 ///
 fn filter_config_map(
     mut config_maps: Vec<ConfigMap>,
-    labels: &Option<BTreeMap<String, String>>,
+    labels: Option<&BTreeMap<String, String>>,
 ) -> Option<ConfigMap> {
     match config_maps.len() {
         0 => None,
@@ -334,7 +334,7 @@ mod tests {
             },
         ];
 
-        let filtered = filter_config_map(config_maps, &Some(BTreeMap::new())).unwrap();
+        let filtered = filter_config_map(config_maps, Some(&BTreeMap::new())).unwrap();
         assert_eq!(filtered.metadata.creation_timestamp, Some(time_new));
     }
 
@@ -342,7 +342,7 @@ mod tests {
     #[case(vec![], false)]
     #[case(vec![ConfigMap::default()], true)]
     fn test_filter_config_maps_single(#[case] config_maps: Vec<ConfigMap>, #[case] expected: bool) {
-        let filtered = filter_config_map(config_maps, &Some(BTreeMap::new()));
+        let filtered = filter_config_map(config_maps, Some(&BTreeMap::new()));
         assert_eq!(filtered.is_some(), expected);
     }
 
