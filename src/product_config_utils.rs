@@ -60,6 +60,35 @@ pub trait Configuration {
     ) -> Result<BTreeMap<String, Option<String>>, ConfigError>;
 }
 
+impl<T: Configuration + ?Sized> Configuration for Box<T> {
+    type Configurable = T::Configurable;
+
+    fn compute_env(
+        &self,
+        resource: &Self::Configurable,
+        role_name: &str,
+    ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
+        T::compute_env(&self, resource, role_name)
+    }
+
+    fn compute_cli(
+        &self,
+        resource: &Self::Configurable,
+        role_name: &str,
+    ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
+        T::compute_cli(&self, resource, role_name)
+    }
+
+    fn compute_files(
+        &self,
+        resource: &Self::Configurable,
+        role_name: &str,
+        file: &str,
+    ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
+        T::compute_files(&self, resource, role_name, file)
+    }
+}
+
 /// Type to sort config properties via kind (files, env, cli), via groups and via roles.
 /// HashMap<Role, HashMap<RoleGroup, HashMap<PropertyNameKind, BTreeMap<PropertyName, PropertyValue>>>>
 pub type RoleConfigByPropertyKind =
@@ -114,9 +143,9 @@ pub fn config_for_role_and_group<'a>(
 /// - `resource`  - Not used directly. It's passed on to the `Configuration::compute_*` calls.
 /// - `roles`     - A map keyed by role names. The value is a tuple of a vector of `PropertyNameKind`
 ///                 like (Cli, Env or Files) and [`crate::role_utils::Role`] with a boxed [`Configuration`].
-pub fn transform_all_roles_to_config<T: ?Sized>(
+pub fn transform_all_roles_to_config<T>(
     resource: &T::Configurable,
-    roles: HashMap<String, (Vec<PropertyNameKind>, Role<Box<T>>)>,
+    roles: HashMap<String, (Vec<PropertyNameKind>, Role<T>)>,
 ) -> RoleConfigByPropertyKind
 where
     T: Configuration,
@@ -307,10 +336,10 @@ fn process_validation_result(
 /// - `role_name`      - The name of the role.
 /// - `role`           - The role for which to transform the configuration parameters.
 /// - `property_kinds` - Used as "buckets" to partition the configuration properties by.
-fn transform_role_to_config<T: ?Sized>(
+fn transform_role_to_config<T>(
     resource: &T::Configurable,
     role_name: &str,
-    role: &Role<Box<T>>,
+    role: &Role<T>,
     property_kinds: &[PropertyNameKind],
 ) -> HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
@@ -351,10 +380,10 @@ where
 /// - `role_name`      - Not used directly but passed on to the `Configuration::compute_*` calls.
 /// - `config`         - The configuration properties to partition.
 /// - `property_kinds` - The "buckets" used to partition the configuration properties.
-fn parse_role_config<T: ?Sized>(
+fn parse_role_config<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<Box<T>>>,
+    config: &Option<CommonConfiguration<T>>,
     property_kinds: &[PropertyNameKind],
 ) -> HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>
 where
@@ -381,10 +410,10 @@ where
     result
 }
 
-fn parse_cli_properties<T: ?Sized>(
+fn parse_cli_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<Box<T>>>,
+    config: &Option<CommonConfiguration<T>>,
 ) -> BTreeMap<String, Option<String>>
 where
     T: Configuration,
@@ -414,10 +443,10 @@ where
     final_properties
 }
 
-fn parse_env_properties<T: ?Sized>(
+fn parse_env_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<Box<T>>>,
+    config: &Option<CommonConfiguration<T>>,
 ) -> BTreeMap<String, Option<String>>
 where
     T: Configuration,
@@ -447,10 +476,10 @@ where
     final_properties
 }
 
-fn parse_file_properties<T: ?Sized>(
+fn parse_file_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &Option<CommonConfiguration<Box<T>>>,
+    config: &Option<CommonConfiguration<T>>,
     file: &str,
 ) -> BTreeMap<String, Option<String>>
 where

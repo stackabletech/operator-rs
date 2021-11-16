@@ -112,18 +112,15 @@ pub struct Role<T: Sized> {
     pub role_groups: HashMap<String, RoleGroup<T>>,
 }
 
-impl<T> From<Role<T>> for Role<Box<dyn Configuration<Configurable = T::Configurable>>>
-where
-    T: Configuration + 'static,
-{
+impl<T: Configuration + 'static> Role<T> {
     /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
     /// and used in [`Role`] into a Box of a dynamically dispatched
     /// [`crate::product_config_utils::Configuration`] Trait. This is required to use the generic
     /// [`Role`] with more than a single generic struct. For example different roles most likely
     /// have different structs implementing Configuration.
-    fn from(role: Role<T>) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>> {
+    pub fn erase(self) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>> {
         Role {
-            config: role.config.map(|common| CommonConfiguration {
+            config: self.config.map(|common| CommonConfiguration {
                 config: common.config.map(|cfg| {
                     Box::new(cfg) as Box<dyn Configuration<Configurable = T::Configurable>>
                 }),
@@ -131,7 +128,7 @@ where
                 env_overrides: common.env_overrides,
                 cli_overrides: common.cli_overrides,
             }),
-            role_groups: role
+            role_groups: self
                 .role_groups
                 .into_iter()
                 .map(|(name, group)| {
