@@ -1,6 +1,6 @@
 //! A way to implement a Kubernetes Operator on top of the [kube-rs](https://github.com/clux/kube-rs) library.
 //!
-//! This is an opinionated wrapper around the [`kube_runtime::Controller`] from said library.
+//! This is an opinionated wrapper around the [`kube::runtime::Controller`] from said library.
 //! The idea is that a single reconcile run can _and should_ be separated into lots of small steps
 //! each taking the reconciliation one step towards a stable state.
 //!
@@ -186,7 +186,7 @@ pub trait HasOwned {
 }
 
 /// A Controller is the object that watches all required resources and runs the reconciliation loop.
-/// This struct wraps a [`kube_runtime::Controller`] and provides some comfort features.
+/// This struct wraps a [`kube::runtime::Controller`] and provides some comfort features.
 ///
 /// A single Controller always has one _main_ resource type it watches for but you can add
 /// additional resource types via the `owns` method but those only trigger a reconciliation run if

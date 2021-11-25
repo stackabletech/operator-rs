@@ -1094,7 +1094,8 @@ impl PodBuilder {
         })
     }
 
-    /// Returns a [`PodTemplateSpec`], usable for building a [`StatefulSet`] or [`Deployment`]
+    /// Returns a [`PodTemplateSpec`], usable for building a [`StatefulSet`](`k8s_openapi::api::apps::v1::StatefulSet`)
+    /// or [`Deployment`](`k8s_openapi::api::apps::v1::Deployment`)
     pub fn build_template(&self) -> PodTemplateSpec {
         if self.status.is_some() {
             tracing::warn!("Tried building a PodTemplate for a PodBuilder with a status, the status will be ignored...");
