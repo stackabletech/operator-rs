@@ -6,14 +6,17 @@ use crate::error::{Error, OperatorResult};
 use crate::labels;
 use chrono::Utc;
 use k8s_openapi::api::core::v1::{
-    ConfigMap, ConfigMapVolumeSource, Container, ContainerPort, DownwardAPIVolumeSource,
-    EmptyDirVolumeSource, EnvVar, Event, EventSource, HostPathVolumeSource, Node, ObjectReference,
+    Affinity, ConfigMap, ConfigMapVolumeSource, Container, ContainerPort, DownwardAPIVolumeSource,
+    EmptyDirVolumeSource, EnvVar, Event, EventSource, HostPathVolumeSource, Node, NodeAffinity,
+    NodeSelector, NodeSelectorRequirement, NodeSelectorTerm, ObjectReference,
     PersistentVolumeClaimVolumeSource, Pod, PodCondition, PodSecurityContext, PodSpec, PodStatus,
     PodTemplateSpec, Probe, ProjectedVolumeSource, SELinuxOptions, SeccompProfile,
     SecretVolumeSource, Sysctl, Toleration, Volume, VolumeMount, WindowsSecurityContextOptions,
 };
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{MicroTime, ObjectMeta, OwnerReference, Time};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
+    LabelSelector, LabelSelectorRequirement, MicroTime, ObjectMeta, OwnerReference, Time,
+};
 use kube::{Resource, ResourceExt};
 use std::collections::BTreeMap;
 use tracing::warn;
@@ -910,6 +913,7 @@ pub struct PodBuilder {
     init_containers: Option<Vec<Container>>,
     metadata: Option<ObjectMeta>,
     node_name: Option<String>,
+    node_selector: Option<LabelSelector>,
     status: Option<PodStatus>,
     security_context: Option<PodSecurityContext>,
     tolerations: Option<Vec<Toleration>>,
@@ -953,6 +957,11 @@ impl PodBuilder {
 
     pub fn node_name(&mut self, node_name: impl Into<String>) -> &mut Self {
         self.node_name = Some(node_name.into());
+        self
+    }
+
+    pub fn node_selector(&mut self, node_selector: LabelSelector) -> &mut Self {
+        self.node_selector = Some(node_selector);
         self
     }
 
@@ -1013,12 +1022,59 @@ impl PodBuilder {
         self
     }
 
+    /// Hack because [`Pod`] predates [`LabelSelector`], and so its functionality is split between [`Pod::node_selector`] and [`Affinity::node_affinity`]
+    fn node_selector_for_label_selector(
+        label_selector: Option<LabelSelector>,
+    ) -> (Option<BTreeMap<String, String>>, Option<NodeAffinity>) {
+        let (node_labels, node_label_exprs) = match label_selector {
+            Some(LabelSelector {
+                match_labels,
+                match_expressions,
+            }) => (match_labels, match_expressions),
+            None => (None, None),
+        };
+        let node_affinity = node_label_exprs.map(|node_label_exprs| NodeAffinity {
+            required_during_scheduling_ignored_during_execution: Some(NodeSelector {
+                node_selector_terms: vec![NodeSelectorTerm {
+                    match_expressions: Some(
+                        node_label_exprs
+                            .into_iter()
+                            .map(
+                                |LabelSelectorRequirement {
+                                     key,
+                                     operator,
+                                     values,
+                                 }| {
+                                    NodeSelectorRequirement {
+                                        key,
+                                        operator,
+                                        values,
+                                    }
+                                },
+                            )
+                            .collect(),
+                    ),
+                    ..NodeSelectorTerm::default()
+                }],
+            }),
+            ..NodeAffinity::default()
+        });
+        (node_labels, node_affinity)
+    }
+
     fn build_spec(&self) -> PodSpec {
+        let (node_selector_labels, node_affinity) =
+            Self::node_selector_for_label_selector(self.node_selector.clone());
         PodSpec {
             containers: self.containers.clone(),
             host_network: self.host_network,
             init_containers: self.init_containers.clone(),
             node_name: self.node_name.clone(),
+            node_selector: node_selector_labels,
+            affinity: node_affinity.map(|node_affinity| Affinity {
+                node_affinity: Some(node_affinity),
+                ..Affinity::default()
+            }),
             security_context: self.security_context.clone(),
             tolerations: self.tolerations.clone(),
             volumes: self.volumes.clone(),
@@ -1038,7 +1094,8 @@ impl PodBuilder {
         })
     }
 
-    /// Returns a [`PodTemplateSpec`], usable for building a [`StatefulSet`] or [`Deployment`]
+    /// Returns a [`PodTemplateSpec`], usable for building a [`StatefulSet`](`k8s_openapi::api::apps::v1::StatefulSet`)
+    /// or [`Deployment`](`k8s_openapi::api::apps::v1::Deployment`)
     pub fn build_template(&self) -> PodTemplateSpec {
         if self.status.is_some() {
             tracing::warn!("Tried building a PodTemplate for a PodBuilder with a status, the status will be ignored...");

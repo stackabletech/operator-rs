@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - `readiness_probe` and `liveness_probe` to `ContainerBuilder` ([#259]).
 - `role_group_selector_labels` to `labels` ([#261]).
 - `Box<T: Configurable>` is now `Configurable` ([#262]).
+- `node_selector` to `PodBuilder` ([#267]).
 
 ### Changed
 - BREAKING: `ObjectMetaBuilder::build` is no longer fallible ([#259]).
@@ -21,6 +22,7 @@ All notable changes to this project will be documented in this file.
 [#261]: https://github.com/stackabletech/operator-rs/pull/261
 [#262]: https://github.com/stackabletech/operator-rs/pull/262
 [#263]: https://github.com/stackabletech/operator-rs/pull/263
+[#267]: https://github.com/stackabletech/operator-rs/pull/267
 
 ## [0.4.0] - 2021-11-05
 
