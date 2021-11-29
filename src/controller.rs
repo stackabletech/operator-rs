@@ -128,7 +128,7 @@ use std::future::Future;
 use std::hash::Hash;
 use std::pin::Pin;
 use std::time::Duration;
-use tracing::{debug, error, trace, Instrument};
+use tracing::{debug, error, trace, warn, Instrument};
 use uuid::Uuid;
 
 /// Every operator needs to provide an implementation of this trait as it provides the operator specific business logic.
@@ -259,23 +259,20 @@ where
             .for_each(|res| async move {
                 match res {
                     Ok(o) => trace!(resource = ?o, "Reconciliation finished successfully (it is normal to see this message twice)"),
-                    Err(kube::runtime::controller::Error::ObjectNotFound {..}) => {
-                        // This can happen for all kinds of reasons according to the kube-rs docs.
-                        // An object that's deleted can still be found in the store or a new one 
-                        // might not have been added already but we still got notified.
-                        // I'm hazy on the kube-rs details but this is here to log only anyway.
-                        trace!("ObjectNotFound in store, this is normal and will be retried")
+                    Err(err @ kube::runtime::controller::Error::ObjectNotFound {..}) => {
+                        // An object may have been deleted after it was scheduled (but before it was executed). This is typically not an error.
+                        trace!(err = &err as &(dyn std::error::Error + 'static), "ObjectNotFound in store, this is normal and will be retried")
                     },
-                    Err(kube::runtime::controller::Error::QueueError { source: kube::runtime::watcher::Error::WatchFailed {..}, .. }) => {
+                    Err(err @ kube::runtime::controller::Error::QueueError { source: kube::runtime::watcher::Error::WatchFailed {..}, .. }) => {
                         // This can happen when we lose the connection to the apiserver or the 
                         // connection gets interrupted for any other reason.
                         // kube-rs will usually try to restart the watch automatically.
-                        trace!("QueueError(WatchFailed) during reconciliation, this is normal and will be retried")
+                        warn!(err = &err as &(dyn std::error::Error + 'static), "controller watch failed, will retry")
                     },
-                    Err(ref err) => {
+                    Err(err) => {
                         // If we get here it means that our `reconcile` method returned an error which should never happen because
                         // we convert all errors to requeue operations.
-                        error!(?err, "Reconciliation finished with an error, this should not happen, please file an issue")
+                        error!(err = &err as &(dyn std::error::Error + 'static), "Reconciliation finished with an error, this should not happen, please file an issue")
                     }
                 };
             })

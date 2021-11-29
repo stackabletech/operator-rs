@@ -17,12 +17,14 @@ All notable changes to this project will be documented in this file.
 - `role_utils::transform_all_roles_to_config` now takes any `T: Configurable`, not just `Box<T>` ([#262]).
 - BREAKING: Type-erasing `Role<T>` into `Role<Box<dyn Configurable>>` must now be done using `Role::erase` rather than `Role::into` ([#262]).
 - BREAKING: Changed all `&Option<T>` into `Option<&T>`, some code will need to be rewritten to use `Option::as_ref` rather than `&foo` ([#263]).
+- Promoted controller watch failures to WARN log level (from TRACE) ([#269]).
 
 [#259]: https://github.com/stackabletech/operator-rs/pull/259
 [#261]: https://github.com/stackabletech/operator-rs/pull/261
 [#262]: https://github.com/stackabletech/operator-rs/pull/262
 [#263]: https://github.com/stackabletech/operator-rs/pull/263
 [#267]: https://github.com/stackabletech/operator-rs/pull/267
+[#269]: https://github.com/stackabletech/operator-rs/pull/269
 
 ## [0.4.0] - 2021-11-05
 
