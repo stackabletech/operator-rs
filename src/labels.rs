@@ -50,9 +50,20 @@ pub fn role_group_selector_labels<T: Resource>(
     app_role: &str,
     app_role_group: &str,
 ) -> BTreeMap<String, String> {
+    let mut labels = role_selector_labels(resource, app_name, app_role);
+    labels.insert(APP_ROLE_GROUP_LABEL.to_string(), app_role_group.to_string());
+    labels
+}
+
+/// The labels required to match against objects of a certain role group, assuming that those objects
+/// are defined using [`get_recommended_labels`]
+pub fn role_selector_labels<T: Resource>(
+    resource: &T,
+    app_name: &str,
+    app_role: &str,
+) -> BTreeMap<String, String> {
     let mut labels = build_common_labels_for_all_managed_resources(app_name, &resource.name());
     labels.insert(APP_COMPONENT_LABEL.to_string(), app_role.to_string());
-    labels.insert(APP_ROLE_GROUP_LABEL.to_string(), app_role_group.to_string());
     labels
 }
 

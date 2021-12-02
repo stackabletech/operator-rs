@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - `build_template` to `PodBuilder` ([#259]).
 - `readiness_probe` and `liveness_probe` to `ContainerBuilder` ([#259]).
 - `role_group_selector_labels` to `labels` ([#261]).
+- `role_selector_labels` to `labels` ([#270]).
 - `Box<T: Configurable>` is now `Configurable` ([#262]).
 - `node_selector` to `PodBuilder` ([#267]).
 
@@ -25,6 +26,7 @@ All notable changes to this project will be documented in this file.
 [#263]: https://github.com/stackabletech/operator-rs/pull/263
 [#267]: https://github.com/stackabletech/operator-rs/pull/267
 [#269]: https://github.com/stackabletech/operator-rs/pull/269
+[#270]: https://github.com/stackabletech/operator-rs/pull/270
 
 ## [0.4.0] - 2021-11-05
 
