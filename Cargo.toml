@@ -34,6 +34,7 @@ tracing-futures = "0.2.5"
 tracing-subscriber = { version = "0.3.1", features = ["env-filter"] }
 uuid = { version = "0.8.2", features = ["v4"] }
 backoff = "0.3.0"
+derivative = "2.2.0"
 
 [dev-dependencies]
 rstest = "0.11.0"
