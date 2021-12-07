@@ -24,7 +24,6 @@ use tracing::{error, info, trace};
 #[derive(Clone)]
 pub struct Client {
     client: KubeClient,
-    field_manager: Option<String>,
     patch_params: PatchParams,
     post_params: PostParams,
     delete_params: DeleteParams,
@@ -40,7 +39,6 @@ impl Client {
     ) -> Self {
         Client {
             client,
-            field_manager: field_manager.clone(),
             post_params: PostParams {
                 field_manager: field_manager.clone(),
                 ..PostParams::default()

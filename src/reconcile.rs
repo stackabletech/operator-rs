@@ -759,7 +759,7 @@ fn wait_for_running_and_ready_pods(
 }
 
 fn wait_for_terminating_pods(requeue_timeout: &Duration, pods: &[Pod]) -> ReconcileResult<Error> {
-    match pods.iter().any(|pod| finalizer::has_deletion_stamp(pod)) {
+    match pods.iter().any(finalizer::has_deletion_stamp) {
         true => {
             info!("Found terminating pods, requeuing to await termination!");
             Ok(ReconcileFunctionAction::Requeue(*requeue_timeout))
