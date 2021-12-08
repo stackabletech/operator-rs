@@ -83,13 +83,18 @@
 use crate::error::OperatorResult;
 use crate::labels;
 
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::{Debug, Display},
+};
 
 use crate::client::Client;
 use crate::k8s_utils::LabelOptionalValueMap;
 use crate::product_config_utils::Configuration;
+use derivative::Derivative;
 use k8s_openapi::api::core::v1::Node;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
+use kube::{runtime::reflector::ObjectRef, Resource};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, trace};
@@ -250,6 +255,33 @@ pub fn get_role_and_group_labels(role: &str, group_name: &str) -> LabelOptionalV
         Some(group_name.to_string()),
     );
     labels
+}
+
+/// A reference to a named role group of a given cluster object
+#[derive(Derivative)]
+#[derivative(
+    Debug(bound = "K::DynamicType: Debug"),
+    Clone(bound = "K::DynamicType: Clone")
+)]
+pub struct RoleGroupRef<K: Resource> {
+    pub cluster: ObjectRef<K>,
+    pub role: String,
+    pub role_group: String,
+}
+
+impl<K: Resource> RoleGroupRef<K> {
+    pub fn object_name(&self) -> String {
+        format!("{}-{}-{}", self.cluster.name, self.role, self.role_group)
+    }
+}
+
+impl<K: Resource> Display for RoleGroupRef<K> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "role group {}/{} of {}",
+            self.role, self.role_group, self.cluster
+        ))
+    }
 }
 
 #[cfg(test)]

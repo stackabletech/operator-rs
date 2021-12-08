@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 - `role_selector_labels` to `labels` ([#270]).
 - `Box<T: Configurable>` is now `Configurable` ([#262]).
 - `node_selector` to `PodBuilder` ([#267]).
+- `role_utils::RoleGroupRef` ([#272]).
 
 ### Changed
 - BREAKING: `ObjectMetaBuilder::build` is no longer fallible ([#259]).
@@ -27,6 +28,7 @@ All notable changes to this project will be documented in this file.
 [#267]: https://github.com/stackabletech/operator-rs/pull/267
 [#269]: https://github.com/stackabletech/operator-rs/pull/269
 [#270]: https://github.com/stackabletech/operator-rs/pull/270
+[#272]: https://github.com/stackabletech/operator-rs/pull/272
 
 ## [0.4.0] - 2021-11-05
 
