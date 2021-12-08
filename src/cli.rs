@@ -94,7 +94,78 @@ use crate::error;
 use crate::error::OperatorResult;
 use crate::CustomResourceExt;
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
-use std::path::Path;
+use product_config::ProductConfigManager;
+use std::{
+    convert::Infallible,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
+use structopt::StructOpt;
+
+pub const AUTHOR: &str = "Stackable GmbH - info@stackable.de";
+
+#[derive(StructOpt)]
+pub enum Command {
+    /// Print CRD objects
+    Crd,
+    /// Run operator
+    Run {
+        /// Provides the path to a product-config file
+        #[structopt(long, short = "p", value_name = "FILE", default_value = "")]
+        product_config: ProductConfigPath,
+    },
+}
+
+pub struct ProductConfigPath {
+    // Should be Option<PathBuf>, but that depends on https://github.com/stackabletech/product-config/pull/43
+    path: Option<String>,
+}
+
+impl FromStr for ProductConfigPath {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self {
+            // StructOpt doesn't let us hook in to see the underlying `Option<&str>`, so we treat the
+            // otherwise-invalid `""` as a sentinel for using the default instead.
+            path: if s.is_empty() {
+                None
+            } else {
+                Some(s.to_string())
+            },
+        })
+    }
+}
+
+impl ProductConfigPath {
+    /// Load the [`ProductConfigManager`] from the given path, falling back to the first
+    /// path that exists from `default_search_paths` if none is given by the user.
+    pub fn load(
+        self,
+        // Should be AsRef<Path>, but that depends on https://github.com/stackabletech/product-config/pull/43
+        default_search_paths: &[impl AsRef<str>],
+    ) -> OperatorResult<ProductConfigManager> {
+        // Use override if specified by the user, otherwise search through defaults given
+        let search_paths = if let Some(path) = self.path.as_deref() {
+            vec![path]
+        } else {
+            default_search_paths
+                .iter()
+                .map(|path| path.as_ref())
+                .collect()
+        };
+        for path in &search_paths {
+            if <str as AsRef<Path>>::as_ref(path).exists() {
+                return ProductConfigManager::from_yaml_file(path)
+                    // Fail early if we try and fail to load any files
+                    .map_err(|source| error::Error::ProductConfigLoadError { source });
+            }
+        }
+        Err(error::Error::RequiredFileMissing {
+            search_path: search_paths.into_iter().map(PathBuf::from).collect(),
+        })
+    }
+}
 
 const PRODUCT_CONFIG_ARG: &str = "product-config";
 
@@ -103,6 +174,7 @@ const PRODUCT_CONFIG_ARG: &str = "product-config";
 /// Meant to be handled by [`handle_productconfig_arg`].
 ///
 /// See the module level documentation for a complete example.
+#[deprecated(note = "use ProductConfigPath (or Command) instead")]
 pub fn generate_productconfig_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name(PRODUCT_CONFIG_ARG)
         .short("p")
@@ -119,6 +191,7 @@ pub fn generate_productconfig_arg<'a, 'b>() -> Arg<'a, 'b> {
 /// # Arguments
 ///
 /// * `default_locations`: These locations will be checked for the existence of a config file if the user doesn't provide one
+#[deprecated(note = "use ProductConfigPath (or Command) instead")]
 pub fn handle_productconfig_arg(
     matches: &ArgMatches,
     default_locations: Vec<&str>,
@@ -142,7 +215,7 @@ fn check_path(
         return if Path::new(path).exists() {
             Ok(path.to_string())
         } else {
-            search_paths.push(path.to_string());
+            search_paths.push(path.into());
             Err(error::Error::RequiredFileMissing {
                 search_path: search_paths,
             })
@@ -155,7 +228,7 @@ fn check_path(
         if Path::new(loc).exists() {
             return Ok(loc.to_string());
         } else {
-            search_paths.push(loc.to_string())
+            search_paths.push(loc.into())
         }
     }
 
@@ -180,6 +253,7 @@ fn check_path(
 /// * `name`: Name of the CRD
 ///
 /// returns: App
+#[deprecated(note = "use Command instead")]
 pub fn generate_crd_subcommand<'a, 'b, T>() -> App<'a, 'b>
 where
     T: CustomResourceExt,
@@ -217,6 +291,7 @@ where
 ///
 /// returns: A boolean wrapped in a result indicating whether the this method did handle the argument.
 ///          If it returns `Ok(true)` the program should abort.
+#[deprecated(note = "use Command instead")]
 pub fn handle_crd_subcommand<T>(matches: &ArgMatches) -> OperatorResult<bool>
 where
     T: CustomResourceExt,
@@ -305,11 +380,18 @@ mod tests {
 
     #[test]
     fn test_check_path_nothing_found_errors() {
-        if let Err(error::Error::RequiredFileMissing {
-            search_path: errors,
-        }) = check_path(None, vec![DEPLOY_FILE_PATH, DEFAULT_FILE_PATH])
+        if let Err(error::Error::RequiredFileMissing { search_path }) =
+            check_path(None, vec![DEPLOY_FILE_PATH, DEFAULT_FILE_PATH])
         {
-            assert_eq!(errors, vec![DEPLOY_FILE_PATH, DEFAULT_FILE_PATH])
+            assert_eq!(
+                search_path,
+                vec![
+                    PathBuf::from(DEPLOY_FILE_PATH),
+                    PathBuf::from(DEFAULT_FILE_PATH)
+                ]
+            )
+        } else {
+            panic!("must return RequiredFileMissing when file was not found")
         }
     }
 }
