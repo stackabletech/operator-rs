@@ -79,7 +79,7 @@
 //! NOTE: We find the official description to be ambiguous so we use these labels as defined above.
 //!
 //! Each resource can have more operator specific labels.
-
+#![allow(deprecated)]
 use crate::error::OperatorResult;
 use crate::labels;
 
@@ -89,6 +89,7 @@ use std::{
 };
 
 use crate::client::Client;
+#[allow(deprecated)]
 use crate::k8s_utils::LabelOptionalValueMap;
 use crate::product_config_utils::Configuration;
 use derivative::Derivative;
@@ -171,6 +172,11 @@ pub struct RoleGroup<T> {
 /// Return a map where the key corresponds to the role_group (e.g. "default", "10core10Gb") and
 /// a tuple of a vector of nodes that fit the role_groups selector description, and the role_groups
 /// "replicas" field for scheduling missing pods or removing excess pods.
+#[deprecated(
+    since = "0.5.0",
+    note = "Should not be needed anymore after move to statefulsets"
+)]
+#[allow(deprecated)]
 pub async fn find_nodes_that_fit_selectors<T>(
     client: &Client,
     namespace: Option<String>,
@@ -204,6 +210,10 @@ where
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[deprecated(
+    since = "0.5.0",
+    note = "Should not be needed anymore after move to statefulsets"
+)]
 pub struct EligibleNodesAndReplicas {
     pub nodes: Vec<Node>,
     pub replicas: Option<u16>,
@@ -211,6 +221,11 @@ pub struct EligibleNodesAndReplicas {
 
 /// Type to avoid clippy warnings
 /// HashMap<`NameOfRole`, HashMap<`NameOfRoleGroup`, EligibleNodesAndReplicas(Vec<`Node`>, Option<`Replicas`>)>>
+#[deprecated(
+    since = "0.5.0",
+    note = "Should not be needed anymore after move to statefulsets"
+)]
+#[allow(deprecated)]
 pub type EligibleNodesForRoleAndGroup = HashMap<String, HashMap<String, EligibleNodesAndReplicas>>;
 
 /// Return a list of eligible nodes and the provided replica count for each role and group
@@ -220,6 +235,11 @@ pub type EligibleNodesForRoleAndGroup = HashMap<String, HashMap<String, Eligible
 /// # Arguments
 /// * `eligible_nodes` - Represents the mappings for role on role_groups on nodes and replicas:
 ///                      HashMap<`NameOfRole`, HashMap<`NameOfRoleGroup`, (Vec<`Node`>, Option<`Replicas`>)>>
+#[deprecated(
+    since = "0.5.0",
+    note = "Should not be needed anymore after move to statefulsets"
+)]
+#[allow(deprecated)]
 pub fn list_eligible_nodes_for_role_and_group(
     eligible_nodes: &EligibleNodesForRoleAndGroup,
 ) -> Vec<(Vec<Node>, LabelOptionalValueMap, Option<u16>)> {
@@ -244,6 +264,11 @@ pub fn list_eligible_nodes_for_role_and_group(
 }
 
 /// Return a map with labels and values for role (component) and group (role_group).
+#[deprecated(
+    since = "0.5.0",
+    note = "Should not be needed anymore after move to statefulsets"
+)]
+#[allow(deprecated)]
 pub fn get_role_and_group_labels(role: &str, group_name: &str) -> LabelOptionalValueMap {
     let mut labels = BTreeMap::new();
     labels.insert(
@@ -281,149 +306,5 @@ impl<K: Resource> Display for RoleGroupRef<K> {
             "role group {}/{} of {}",
             self.role, self.role_group, self.cluster
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use rstest::*;
-
-    #[rstest]
-    #[case::one_role(
-        r#"
-        role_1:
-          group_1:
-            - node_1
-            - node_2
-          group2:
-            - node_3
-    "#
-    )]
-    #[case::two_roles(
-        r#"
-        role_1:
-          group_1:
-            - node_1
-            - node_2
-        role_2:
-          group_2:
-            - node_1
-          group_3:
-            - node_3
-    "#
-    )]
-    #[case::three_roles_many_nodes(
-        r#"
-        role_1:
-          group_1:
-            - node_1
-            - node_2
-            - node_3
-          group_2:
-            - node_1
-            - node_4
-        role_2:
-          group_1:
-            - node_1
-            - node_4
-          group_4:
-            - node_2
-            - node_3
-        role_3:
-          group_1:
-            - node_2
-            - node_4
-          group_4: 
-            - node_4
-            - node_2
-            - node_3
-            - node_1
-    "#
-    )]
-    fn test_list_eligible_nodes_for_role_and_group(#[case] eligible_node_names: &str) {
-        let eligible_node_names_parsed: HashMap<String, HashMap<String, Vec<String>>> =
-            serde_yaml::from_str(eligible_node_names).expect("Invalid test definition!");
-
-        // We need to map the innermost `String` objects to `Node` objects, but to get to them
-        // a couple of nested loops are required
-        // The entire purpose of this code is to transform `HashMap<String, HashMap<String, Vec<String>>>`
-        // into `HashMap<String, HashMap<String, (Vec<Node>, usize)>>`
-        let mut eligible_nodes = HashMap::new();
-        for (role_name, group) in &eligible_node_names_parsed {
-            let mut group_map = HashMap::new();
-            for (group_name, node_names) in group {
-                let mut collected_nodes = Vec::new();
-                for node_name in node_names {
-                    let mut node = Node::default();
-                    node.metadata.name = Some(node_name.clone());
-                    collected_nodes.push(node);
-                }
-                // replicas (0) does not affect here
-                group_map.insert(
-                    group_name.clone(),
-                    EligibleNodesAndReplicas {
-                        nodes: collected_nodes,
-                        replicas: Some(0u16),
-                    },
-                );
-            }
-            eligible_nodes.insert(role_name.clone(), group_map);
-        }
-
-        let eligible_nodes_for_role_and_group =
-            list_eligible_nodes_for_role_and_group(&eligible_nodes);
-
-        // Check number of returned groups matches what was provided
-        let input_group_count: usize = eligible_nodes
-            .values()
-            .into_iter()
-            .map(|group| group.keys().len())
-            .sum();
-
-        assert_eq!(input_group_count, eligible_nodes_for_role_and_group.len());
-
-        // test expected outcome
-        for (role, group_and_nodes) in &eligible_node_names_parsed {
-            for (group, test_nodes) in group_and_nodes {
-                let test_labels = get_role_and_group_labels(role, group);
-                // find the corresponding nodes via labels
-                for (eligible_nodes, labels, _replicas) in &eligible_nodes_for_role_and_group {
-                    if test_labels == *labels {
-                        // we found the corresponding nodes here, now we check if the size is correct
-                        assert_eq!(test_nodes.len(), eligible_nodes.len());
-                        // check if the correct nodes are in place
-                        for node_name in test_nodes {
-                            // create node and check if its contained in eligible nodes
-                            let mut node = Node::default();
-                            node.metadata.name = Some(node_name.clone());
-                            assert!(eligible_nodes.contains(&node));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn test_get_role_and_group_labels() {
-        let role = "server";
-        let group_name = "default";
-
-        let result = get_role_and_group_labels(role, group_name);
-
-        assert_eq!(result.len(), 2);
-
-        let mut expected = BTreeMap::new();
-        expected.insert(
-            labels::APP_COMPONENT_LABEL.to_string(),
-            Some(role.to_string()),
-        );
-        expected.insert(
-            labels::APP_ROLE_GROUP_LABEL.to_string(),
-            Some(group_name.to_string()),
-        );
-
-        assert_eq!(result, expected);
     }
 }

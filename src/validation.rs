@@ -1,3 +1,11 @@
+/*
+   Keep this around for now, it could be useful, because it allows performing Kubernetes checks
+   before actually sending a request and waiting for it to fail.
+
+   Warning: You should be sure that Kubernetes enforces these rules for the request you are trying
+   to validate.
+*/
+
 // This is adapted from Kubernetes.
 // See apimachinery/pkg/util/validation/validation.go, apimachinery/pkg/api/validation/generic.go and pkg/apis/core/validation/validation.go in the Kubernetes source
 

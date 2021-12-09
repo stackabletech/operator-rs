@@ -1,7 +1,14 @@
+/*
+We consider the functions in this module to be somewhat useful.
+Not necessarily these exact functions, but things in here will probably stick around in some
+shape or form.
+ */
+
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::result::Result;
 
+#[allow(deprecated)]
 use crate::k8s_utils::LabelOptionalValueMap;
 use k8s_openapi::api::core::v1::{Node, Pod, PodCondition, PodSpec, PodStatus};
 use kube::api::{Resource, ResourceExt};
@@ -198,6 +205,7 @@ pub fn is_pod_assigned_to_node(pod: &Pod, node: &Node) -> bool {
 ///
 /// assert!(!pod_utils::pod_matches_labels(&pod, &required_labels));
 /// ```
+#[allow(deprecated)]
 pub fn pod_matches_labels(pod: &Pod, required_labels: &LabelOptionalValueMap) -> bool {
     // We convert the `required_labels` into a form that can be understood by `pod_matches_multiple_label_values`
     let converted = required_labels
