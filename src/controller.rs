@@ -113,7 +113,9 @@
 //!
 use crate::client::Client;
 use crate::error::Error;
+#[allow(deprecated)]
 use crate::reconcile;
+#[allow(deprecated)]
 use crate::reconcile::{ReconcileFunctionAction, ReconciliationContext};
 
 use async_trait::async_trait;
@@ -133,6 +135,7 @@ use uuid::Uuid;
 
 /// Every operator needs to provide an implementation of this trait as it provides the operator specific business logic.
 #[async_trait]
+#[allow(deprecated)]
 pub trait ControllerStrategy {
     type Item;
     type State: ReconciliationState;
@@ -176,6 +179,7 @@ pub trait ReconciliationState {
     //
     /// Returns a Future that - when completed - will either return an `Error` or a `ReconciliationFunctionAction`.
     /// The return result can be used to requeue the same resource for later.
+    #[allow(deprecated)]
     fn reconcile(
         &mut self,
     ) -> Pin<Box<dyn Future<Output = Result<ReconcileFunctionAction, Self::Error>> + Send + '_>>;
@@ -296,6 +300,7 @@ where
     skip(resource, context),
     fields(request_id = %Uuid::new_v4()),
 )]
+#[allow(deprecated)]
 async fn reconcile<S, T>(
     resource: T,
     context: Context<ControllerContext<S>>,

@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use crate::name_utils;
 use crate::product_config_utils;
 use std::collections::{BTreeMap, HashSet};
@@ -66,6 +67,7 @@ pub enum Error {
     },
 
     #[error("NameUtils reported error: {source}")]
+    #[allow(deprecated)]
     NamingError {
         #[from]
         source: name_utils::Error,

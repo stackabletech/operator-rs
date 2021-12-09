@@ -92,6 +92,7 @@
 //!
 use crate::error;
 use crate::error::OperatorResult;
+#[allow(deprecated)]
 use crate::CustomResourceExt;
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use std::path::Path;
@@ -180,6 +181,7 @@ fn check_path(
 /// * `name`: Name of the CRD
 ///
 /// returns: App
+#[allow(deprecated)]
 pub fn generate_crd_subcommand<'a, 'b, T>() -> App<'a, 'b>
 where
     T: CustomResourceExt,
@@ -217,6 +219,7 @@ where
 ///
 /// returns: A boolean wrapped in a result indicating whether the this method did handle the argument.
 ///          If it returns `Ok(true)` the program should abort.
+#[allow(deprecated)]
 pub fn handle_crd_subcommand<T>(matches: &ArgMatches) -> OperatorResult<bool>
 where
     T: CustomResourceExt,

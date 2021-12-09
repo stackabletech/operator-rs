@@ -1,4 +1,5 @@
 use crate::error::{Error, OperatorResult};
+#[allow(deprecated)]
 use crate::finalizer;
 use crate::label_selector;
 use crate::pod_utils;
@@ -344,6 +345,7 @@ impl Client {
     /// Which of the two are returned depends on the API being called.
     /// Take a look at the Kubernetes API reference.
     /// Some `delete` endpoints return the object and others return a `Status` object.
+    #[allow(deprecated)]
     pub async fn delete<T>(&self, resource: &T) -> OperatorResult<Option<Either<T, Status>>>
     where
         T: Clone + Debug + DeserializeOwned + Resource,
