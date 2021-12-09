@@ -96,9 +96,8 @@ use crate::CustomResourceExt;
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use product_config::ProductConfigManager;
 use std::{
-    convert::Infallible,
+    ffi::OsStr,
     path::{Path, PathBuf},
-    str::FromStr,
 };
 use structopt::StructOpt;
 
@@ -123,30 +122,29 @@ pub enum Command {
     /// Run operator
     Run {
         /// Provides the path to a product-config file
-        #[structopt(long, short = "p", value_name = "FILE", default_value = "")]
+        #[structopt(
+            long,
+            short = "p",
+            value_name = "FILE",
+            default_value = "",
+            parse(from_os_str)
+        )]
         product_config: ProductConfigPath,
     },
 }
 
 /// A path to a [`ProductConfigManager`] spec file
 pub struct ProductConfigPath {
-    // Should be Option<PathBuf>, but that depends on https://github.com/stackabletech/product-config/pull/43
-    path: Option<String>,
+    path: Option<PathBuf>,
 }
 
-impl FromStr for ProductConfigPath {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self {
+impl From<&OsStr> for ProductConfigPath {
+    fn from(s: &OsStr) -> Self {
+        Self {
             // StructOpt doesn't let us hook in to see the underlying `Option<&str>`, so we treat the
             // otherwise-invalid `""` as a sentinel for using the default instead.
-            path: if s.is_empty() {
-                None
-            } else {
-                Some(s.to_string())
-            },
-        })
+            path: if s.is_empty() { None } else { Some(s.into()) },
+        }
     }
 }
 
@@ -155,8 +153,7 @@ impl ProductConfigPath {
     /// path that exists from `default_search_paths` if none is given by the user.
     pub fn load(
         &self,
-        // Should be AsRef<Path>, but that depends on https://github.com/stackabletech/product-config/pull/43
-        default_search_paths: &[impl AsRef<str>],
+        default_search_paths: &[impl AsRef<Path>],
     ) -> OperatorResult<ProductConfigManager> {
         ProductConfigManager::from_yaml_file(resolve_path(
             self.path.as_deref(),
@@ -172,11 +169,9 @@ impl ProductConfigPath {
 ///    take the first existing file.
 /// 3) `Error` if nothing was found.
 fn resolve_path<'a>(
-    // Should be AsRef<Path>, but that depends on https://github.com/stackabletech/product-config/pull/43
-    user_provided_path: Option<&'a str>,
-    // Should be AsRef<Path>, but that depends on https://github.com/stackabletech/product-config/pull/43
-    default_paths: &'a [impl AsRef<str> + 'a],
-) -> OperatorResult<&'a str> {
+    user_provided_path: Option<&'a Path>,
+    default_paths: &'a [impl AsRef<Path> + 'a],
+) -> OperatorResult<&'a Path> {
     // Use override if specified by the user, otherwise search through defaults given
     let search_paths = if let Some(path) = user_provided_path {
         vec![path]
@@ -184,7 +179,7 @@ fn resolve_path<'a>(
         default_paths.iter().map(|path| path.as_ref()).collect()
     };
     for path in &search_paths {
-        if <str as AsRef<Path>>::as_ref(path).exists() {
+        if path.exists() {
             return Ok(path);
         }
     }
@@ -222,7 +217,14 @@ pub fn handle_productconfig_arg(
     matches: &ArgMatches,
     default_locations: Vec<&str>,
 ) -> OperatorResult<String> {
-    resolve_path(matches.value_of(PRODUCT_CONFIG_ARG), &default_locations).map(str::to_owned)
+    Ok(resolve_path(
+        matches.value_of(PRODUCT_CONFIG_ARG).map(str::as_ref),
+        &default_locations,
+    )?
+    .to_str()
+    // ArgMatches::value_of and `str` both already validate UTF-8, so this should never be possible
+    .expect("product-config path must be UTF-8")
+    .to_owned())
 }
 
 /// This will generate a clap subcommand ([`App`]) that can be used for operations on CRDs.
@@ -330,8 +332,7 @@ mod tests {
     ) -> OperatorResult<()> {
         let temp_dir = tempdir()?;
         let full_path_to_create = temp_dir.path().join(path_to_create);
-        let full_user_provided_path =
-            user_provided_path.map(|p| temp_dir.path().join(p).to_str().unwrap().to_string());
+        let full_user_provided_path = user_provided_path.map(|p| temp_dir.path().join(p));
         let expected_path = temp_dir.path().join(expected);
 
         let mut full_default_locations = vec![];
@@ -353,7 +354,7 @@ mod tests {
             &full_default_locations_ref,
         )?;
 
-        assert_eq!(found_path, expected_path.to_str().unwrap());
+        assert_eq!(found_path, expected_path);
 
         drop(file);
         temp_dir.close()?;
@@ -364,7 +365,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_resolve_path_user_path_not_existing() {
-        resolve_path(Some(USER_PROVIDED_PATH), &[DEPLOY_FILE_PATH]).unwrap();
+        resolve_path(Some(USER_PROVIDED_PATH.as_ref()), &[DEPLOY_FILE_PATH]).unwrap();
     }
 
     #[test]
