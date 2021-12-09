@@ -1,6 +1,7 @@
 use crate::name_utils;
 use crate::product_config_utils;
 use std::collections::{BTreeMap, HashSet};
+use std::path::PathBuf;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -80,7 +81,13 @@ pub enum Error {
     #[error(
         "A required File is missing. Not found in any of the following locations: {search_path:?}"
     )]
-    RequiredFileMissing { search_path: Vec<String> },
+    RequiredFileMissing { search_path: Vec<PathBuf> },
+
+    #[error("Failed to load ProductConfig: {source}")]
+    ProductConfigLoadError {
+        #[source]
+        source: product_config::error::Error,
+    },
 
     #[error("ProductConfig Framework reported error: {source}")]
     ProductConfigError {
