@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.0] - 2021-12-09
+
+
 ### Added
 - `build_template` to `PodBuilder` ([#259]).
 - `readiness_probe` and `liveness_probe` to `ContainerBuilder` ([#259]).
