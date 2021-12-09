@@ -23,11 +23,8 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - name: Start K3S
-        uses: debianmaster/actions-k3s@v1.0.4
-        id: k3s
-        with:
-          version: 'latest'
+      - name: Create k8s Kind Cluster
+        uses: helm/kind-action@v1.2.0
       - uses: Swatinem/rust-cache@v1.3.0
       - uses: actions-rs/cargo@v1.0.3
         with:
