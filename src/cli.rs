@@ -138,13 +138,10 @@ impl FromStr for ProductConfigPath {
 }
 
 impl ProductConfigPath {
-    /// Load the [`ProductConfigManager`] from the given path, falling back to the first
-    /// path that exists from `default_search_paths` if none is given by the user.
-    pub fn load(
-        self,
-        // Should be AsRef<Path>, but that depends on https://github.com/stackabletech/product-config/pull/43
-        default_search_paths: &[impl AsRef<str>],
-    ) -> OperatorResult<ProductConfigManager> {
+    fn resolve_or_default<'a>(
+        &'a self,
+        default_search_paths: &'a [impl AsRef<str> + 'a],
+    ) -> OperatorResult<&'a str> {
         // Use override if specified by the user, otherwise search through defaults given
         let search_paths = if let Some(path) = self.path.as_deref() {
             vec![path]
@@ -156,14 +153,23 @@ impl ProductConfigPath {
         };
         for path in &search_paths {
             if <str as AsRef<Path>>::as_ref(path).exists() {
-                return ProductConfigManager::from_yaml_file(path)
-                    // Fail early if we try and fail to load any files
-                    .map_err(|source| error::Error::ProductConfigLoadError { source });
+                return Ok(path);
             }
         }
         Err(error::Error::RequiredFileMissing {
             search_path: search_paths.into_iter().map(PathBuf::from).collect(),
         })
+    }
+
+    /// Load the [`ProductConfigManager`] from the given path, falling back to the first
+    /// path that exists from `default_search_paths` if none is given by the user.
+    pub fn load(
+        &self,
+        // Should be AsRef<Path>, but that depends on https://github.com/stackabletech/product-config/pull/43
+        default_search_paths: &[impl AsRef<str>],
+    ) -> OperatorResult<ProductConfigManager> {
+        ProductConfigManager::from_yaml_file(self.resolve_or_default(default_search_paths)?)
+            .map_err(|source| error::Error::ProductConfigLoadError { source })
     }
 }
 
