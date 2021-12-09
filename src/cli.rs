@@ -138,29 +138,6 @@ impl FromStr for ProductConfigPath {
 }
 
 impl ProductConfigPath {
-    fn resolve_or_default<'a>(
-        &'a self,
-        default_search_paths: &'a [impl AsRef<str> + 'a],
-    ) -> OperatorResult<&'a str> {
-        // Use override if specified by the user, otherwise search through defaults given
-        let search_paths = if let Some(path) = self.path.as_deref() {
-            vec![path]
-        } else {
-            default_search_paths
-                .iter()
-                .map(|path| path.as_ref())
-                .collect()
-        };
-        for path in &search_paths {
-            if <str as AsRef<Path>>::as_ref(path).exists() {
-                return Ok(path);
-            }
-        }
-        Err(error::Error::RequiredFileMissing {
-            search_path: search_paths.into_iter().map(PathBuf::from).collect(),
-        })
-    }
-
     /// Load the [`ProductConfigManager`] from the given path, falling back to the first
     /// path that exists from `default_search_paths` if none is given by the user.
     pub fn load(
@@ -168,8 +145,11 @@ impl ProductConfigPath {
         // Should be AsRef<Path>, but that depends on https://github.com/stackabletech/product-config/pull/43
         default_search_paths: &[impl AsRef<str>],
     ) -> OperatorResult<ProductConfigManager> {
-        ProductConfigManager::from_yaml_file(self.resolve_or_default(default_search_paths)?)
-            .map_err(|source| error::Error::ProductConfigLoadError { source })
+        ProductConfigManager::from_yaml_file(resolve_path(
+            self.path.as_deref(),
+            default_search_paths,
+        )?)
+        .map_err(|source| error::Error::ProductConfigLoadError { source })
     }
 }
 
@@ -202,45 +182,33 @@ pub fn handle_productconfig_arg(
     matches: &ArgMatches,
     default_locations: Vec<&str>,
 ) -> OperatorResult<String> {
-    check_path(matches.value_of(PRODUCT_CONFIG_ARG), default_locations)
+    resolve_path(matches.value_of(PRODUCT_CONFIG_ARG), &default_locations).map(str::to_owned)
 }
 
-/// Check if the product-config can be found anywhere:
-/// 1) User provides path `user_provided_file_path` to product-config file -> Error if not existing.
-/// 2) User does not provide path to product-config-file -> search in default_locations and
+/// Check if the path can be found anywhere:
+/// 1) User provides path `user_provided_path` to file -> 'Error' if not existing.
+/// 2) User does not provide path to file -> search in `default_paths` and
 ///    take the first existing file.
-/// 3) Error if nothing was found.
-fn check_path(
-    user_provided_file_path: Option<&str>,
-    default_locations: Vec<&str>,
-) -> OperatorResult<String> {
-    let mut search_paths = vec![];
-
-    // 1) User provides path to product-config file -> Error if not existing
-    if let Some(path) = user_provided_file_path {
-        return if Path::new(path).exists() {
-            Ok(path.to_string())
-        } else {
-            search_paths.push(path.into());
-            Err(error::Error::RequiredFileMissing {
-                search_path: search_paths,
-            })
-        };
-    }
-
-    // 2) User does not provide path to product-config-file -> search in default_locations and
-    //    take the first existing file.
-    for loc in default_locations {
-        if Path::new(loc).exists() {
-            return Ok(loc.to_string());
-        } else {
-            search_paths.push(loc.into())
+/// 3) `Error` if nothing was found.
+fn resolve_path<'a>(
+    // Should be AsRef<Path>, but that depends on https://github.com/stackabletech/product-config/pull/43
+    user_provided_path: Option<&'a str>,
+    // Should be AsRef<Path>, but that depends on https://github.com/stackabletech/product-config/pull/43
+    default_paths: &'a [impl AsRef<str> + 'a],
+) -> OperatorResult<&'a str> {
+    // Use override if specified by the user, otherwise search through defaults given
+    let search_paths = if let Some(path) = user_provided_path {
+        vec![path]
+    } else {
+        default_paths.iter().map(|path| path.as_ref()).collect()
+    };
+    for path in &search_paths {
+        if <str as AsRef<Path>>::as_ref(path).exists() {
+            return Ok(path);
         }
     }
-
-    // 3) Error if nothing was found
     Err(error::Error::RequiredFileMissing {
-        search_path: search_paths,
+        search_path: search_paths.into_iter().map(PathBuf::from).collect(),
     })
 }
 
@@ -341,7 +309,7 @@ mod tests {
         DEPLOY_FILE_PATH
     )]
     #[case(None, vec!["bad", DEFAULT_FILE_PATH], DEFAULT_FILE_PATH, DEFAULT_FILE_PATH)]
-    fn test_check_path_good(
+    fn test_resolve_path_good(
         #[case] user_provided_path: Option<&str>,
         #[case] default_locations: Vec<&str>,
         #[case] path_to_create: &str,
@@ -360,17 +328,19 @@ mod tests {
             full_default_locations.push(temp.as_path().display().to_string());
         }
 
-        let full_default_locations_ref =
-            full_default_locations.iter().map(String::as_str).collect();
+        let full_default_locations_ref = full_default_locations
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>();
 
         let file = File::create(full_path_to_create)?;
 
-        let found_path = check_path(
+        let found_path = resolve_path(
             full_user_provided_path.as_deref(),
-            full_default_locations_ref,
+            &full_default_locations_ref,
         )?;
 
-        assert_eq!(&found_path, expected_path.to_str().unwrap());
+        assert_eq!(found_path, expected_path.to_str().unwrap());
 
         drop(file);
         temp_dir.close()?;
@@ -380,14 +350,14 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn test_check_path_user_path_not_existing() {
-        check_path(Some(USER_PROVIDED_PATH), vec![DEPLOY_FILE_PATH]).unwrap();
+    fn test_resolve_path_user_path_not_existing() {
+        resolve_path(Some(USER_PROVIDED_PATH), &[DEPLOY_FILE_PATH]).unwrap();
     }
 
     #[test]
-    fn test_check_path_nothing_found_errors() {
+    fn test_resolve_path_nothing_found_errors() {
         if let Err(error::Error::RequiredFileMissing { search_path }) =
-            check_path(None, vec![DEPLOY_FILE_PATH, DEFAULT_FILE_PATH])
+            resolve_path(None, &[DEPLOY_FILE_PATH, DEFAULT_FILE_PATH])
         {
             assert_eq!(
                 search_path,
