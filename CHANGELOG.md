@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - `Box<T: Configurable>` is now `Configurable` ([#262]).
 - `node_selector` to `PodBuilder` ([#267]).
 - `role_utils::RoleGroupRef` ([#272]).
+- Add support for managing CLI commands via `StructOpt` ([#273]).
 
 ### Changed
 - BREAKING: `ObjectMetaBuilder::build` is no longer fallible ([#259]).
@@ -29,6 +30,7 @@ All notable changes to this project will be documented in this file.
 [#269]: https://github.com/stackabletech/operator-rs/pull/269
 [#270]: https://github.com/stackabletech/operator-rs/pull/270
 [#272]: https://github.com/stackabletech/operator-rs/pull/272
+[#273]: https://github.com/stackabletech/operator-rs/pull/273
 
 ## [0.4.0] - 2021-11-05
 
