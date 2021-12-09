@@ -104,6 +104,18 @@ use structopt::StructOpt;
 
 pub const AUTHOR: &str = "Stackable GmbH - info@stackable.de";
 
+/// Framework-standardized commands
+///
+/// If you need operator-specific commands then you can flatten [`Command`] into your own command enum. For example:
+/// ```rust
+/// #[derive(structopt::StructOpt)]
+/// enum Command {
+///     /// Print hello world message
+///     Hello,
+///     #[structopt(flatten)]
+///     Framework(stackable_operator::cli::Command)
+/// }
+/// ```
 #[derive(StructOpt)]
 pub enum Command {
     /// Print CRD objects
@@ -116,6 +128,7 @@ pub enum Command {
     },
 }
 
+/// A path to a [`ProductConfigManager`] spec file
 pub struct ProductConfigPath {
     // Should be Option<PathBuf>, but that depends on https://github.com/stackabletech/product-config/pull/43
     path: Option<String>,
@@ -153,6 +166,33 @@ impl ProductConfigPath {
     }
 }
 
+/// Check if the path can be found anywhere:
+/// 1) User provides path `user_provided_path` to file -> 'Error' if not existing.
+/// 2) User does not provide path to file -> search in `default_paths` and
+///    take the first existing file.
+/// 3) `Error` if nothing was found.
+fn resolve_path<'a>(
+    // Should be AsRef<Path>, but that depends on https://github.com/stackabletech/product-config/pull/43
+    user_provided_path: Option<&'a str>,
+    // Should be AsRef<Path>, but that depends on https://github.com/stackabletech/product-config/pull/43
+    default_paths: &'a [impl AsRef<str> + 'a],
+) -> OperatorResult<&'a str> {
+    // Use override if specified by the user, otherwise search through defaults given
+    let search_paths = if let Some(path) = user_provided_path {
+        vec![path]
+    } else {
+        default_paths.iter().map(|path| path.as_ref()).collect()
+    };
+    for path in &search_paths {
+        if <str as AsRef<Path>>::as_ref(path).exists() {
+            return Ok(path);
+        }
+    }
+    Err(error::Error::RequiredFileMissing {
+        search_path: search_paths.into_iter().map(PathBuf::from).collect(),
+    })
+}
+
 const PRODUCT_CONFIG_ARG: &str = "product-config";
 
 /// Generates a clap [`Arg`] that can be used to accept the location of a product configuration file.
@@ -183,33 +223,6 @@ pub fn handle_productconfig_arg(
     default_locations: Vec<&str>,
 ) -> OperatorResult<String> {
     resolve_path(matches.value_of(PRODUCT_CONFIG_ARG), &default_locations).map(str::to_owned)
-}
-
-/// Check if the path can be found anywhere:
-/// 1) User provides path `user_provided_path` to file -> 'Error' if not existing.
-/// 2) User does not provide path to file -> search in `default_paths` and
-///    take the first existing file.
-/// 3) `Error` if nothing was found.
-fn resolve_path<'a>(
-    // Should be AsRef<Path>, but that depends on https://github.com/stackabletech/product-config/pull/43
-    user_provided_path: Option<&'a str>,
-    // Should be AsRef<Path>, but that depends on https://github.com/stackabletech/product-config/pull/43
-    default_paths: &'a [impl AsRef<str> + 'a],
-) -> OperatorResult<&'a str> {
-    // Use override if specified by the user, otherwise search through defaults given
-    let search_paths = if let Some(path) = user_provided_path {
-        vec![path]
-    } else {
-        default_paths.iter().map(|path| path.as_ref()).collect()
-    };
-    for path in &search_paths {
-        if <str as AsRef<Path>>::as_ref(path).exists() {
-            return Ok(path);
-        }
-    }
-    Err(error::Error::RequiredFileMissing {
-        search_path: search_paths.into_iter().map(PathBuf::from).collect(),
-    })
 }
 
 /// This will generate a clap subcommand ([`App`]) that can be used for operations on CRDs.
