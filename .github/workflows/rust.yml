@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+      - trying
+      - staging
   pull_request:
 
 env:
@@ -35,9 +37,6 @@ jobs:
         with:
           command: test
           args: -- --ignored --test-threads=1
-      - uses: actions-rs/cargo@v1.0.3
-        with:
-          command: clean
 
   rustfmt:
     name: Run rustfmt
