@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+### Changed
+- BREAKING: kube-rs 0.63.1 -> 0.65.0 ([#277])
+- strum 0.22.0 -> 0.23.0 ([#277])
+
+[#277]: https://github.com/stackabletech/operator-rs/pull/277
 
 ## [0.5.0] - 2021-12-09
 
