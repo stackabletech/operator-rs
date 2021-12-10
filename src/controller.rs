@@ -267,8 +267,8 @@ where
                         // An object may have been deleted after it was scheduled (but before it was executed). This is typically not an error.
                         trace!(err = &err as &(dyn std::error::Error + 'static), "ObjectNotFound in store, this is normal and will be retried")
                     },
-                    Err(err @ kube::runtime::controller::Error::QueueError { source: kube::runtime::watcher::Error::WatchFailed {..}, .. }) => {
-                        // This can happen when we lose the connection to the apiserver or the 
+                    Err(err @ kube::runtime::controller::Error::QueueError(kube::runtime::watcher::Error::WatchFailed {..})) => {
+                        // This can happen when we lose the connection to the apiserver or the
                         // connection gets interrupted for any other reason.
                         // kube-rs will usually try to restart the watch automatically.
                         warn!(err = &err as &(dyn std::error::Error + 'static), "controller watch failed, will retry")

@@ -518,7 +518,9 @@ impl Client {
 }
 
 pub async fn create_client(field_manager: Option<String>) -> OperatorResult<Client> {
-    let kubeconfig: Config = kube::Config::infer().await?;
+    let kubeconfig: Config = kube::Config::infer()
+        .await
+        .map_err(kube::Error::InferConfig)?;
     let default_namespace = kubeconfig.default_namespace.clone();
     Ok(Client::new(
         kube::Client::try_from(kubeconfig)?,
