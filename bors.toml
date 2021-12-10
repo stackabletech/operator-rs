@@ -1,0 +1,10 @@
+status = [
+    'Run tests',
+    'Run rustfmt',
+    'Run rustdoc',
+    'Run clippy',
+    'Run cargo deny (bans licenses sources)'
+]
+delete_merged_branches = true
+pr_status = [ 'license/cla' ]
+timeout_sec = 7200
