@@ -347,18 +347,13 @@ where
 {
     let mut result = HashMap::new();
 
-    let role_properties =
-        parse_role_config(resource, role_name, role.config.as_ref(), property_kinds);
+    let role_properties = parse_role_config(resource, role_name, &role.config, property_kinds);
 
     // for each role group ...
     for (role_group_name, role_group) in &role.role_groups {
         // ... compute the group properties ...
-        let role_group_properties = parse_role_config(
-            resource,
-            role_name,
-            role_group.config.as_ref(),
-            property_kinds,
-        );
+        let role_group_properties =
+            parse_role_config(resource, role_name, &role_group.config, property_kinds);
 
         // ... and merge them with the role properties.
         let mut role_properties_copy = role_properties.clone();
@@ -388,7 +383,7 @@ where
 fn parse_role_config<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: Option<&CommonConfiguration<T>>,
+    config: &CommonConfiguration<T>,
     property_kinds: &[PropertyNameKind],
 ) -> HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>
 where
@@ -418,31 +413,17 @@ where
 fn parse_cli_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: Option<&CommonConfiguration<T>>,
+    config: &CommonConfiguration<T>,
 ) -> BTreeMap<String, Option<String>>
 where
     T: Configuration,
 {
-    let mut final_properties = BTreeMap::new();
-
     // Properties from the role have the lowest priority, so they are computed and added first...
-    if let Some(CommonConfiguration {
-        config: Some(ref config),
-        ..
-    }) = config
-    {
-        final_properties = config.compute_cli(resource, role_name).unwrap();
-    }
+    let mut final_properties = config.config.compute_cli(resource, role_name).unwrap();
 
     // ...followed by config_overrides from the role
-    if let Some(CommonConfiguration {
-        cli_overrides: Some(ref config),
-        ..
-    }) = config
-    {
-        for (key, value) in config {
-            final_properties.insert(key.clone(), Some(value.clone()));
-        }
+    for (key, value) in &config.cli_overrides {
+        final_properties.insert(key.clone(), Some(value.clone()));
     }
 
     final_properties
@@ -451,31 +432,17 @@ where
 fn parse_env_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: Option<&CommonConfiguration<T>>,
+    config: &CommonConfiguration<T>,
 ) -> BTreeMap<String, Option<String>>
 where
     T: Configuration,
 {
-    let mut final_properties = BTreeMap::new();
-
     // Properties from the role have the lowest priority, so they are computed and added first...
-    if let Some(CommonConfiguration {
-        config: Some(ref config),
-        ..
-    }) = config
-    {
-        final_properties = config.compute_env(resource, role_name).unwrap();
-    }
+    let mut final_properties = config.config.compute_env(resource, role_name).unwrap();
 
     // ...followed by config_overrides from the role
-    if let Some(CommonConfiguration {
-        env_overrides: Some(ref config),
-        ..
-    }) = config
-    {
-        for (key, value) in config {
-            final_properties.insert(key.clone(), Some(value.clone()));
-        }
+    for (key, value) in &config.env_overrides {
+        final_properties.insert(key.clone(), Some(value.clone()));
     }
 
     final_properties
@@ -484,36 +451,23 @@ where
 fn parse_file_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: Option<&CommonConfiguration<T>>,
+    config: &CommonConfiguration<T>,
     file: &str,
 ) -> BTreeMap<String, Option<String>>
 where
     T: Configuration,
 {
-    let mut final_properties = BTreeMap::new();
-
     // Properties from the role have the lowest priority, so they are computed and added first...
-    if let Some(CommonConfiguration {
-        config: Some(ref inner_config),
-        ..
-    }) = config
-    {
-        final_properties = inner_config
-            .compute_files(resource, role_name, file)
-            .unwrap();
-    }
+    let mut final_properties = config
+        .config
+        .compute_files(resource, role_name, file)
+        .unwrap();
 
     // ...followed by config_overrides from the role
-    if let Some(CommonConfiguration {
-        config_overrides: Some(ref inner_config),
-        ..
-    }) = config
-    {
-        // For Conf files only process overrides that match our file name
-        if let Some(config) = inner_config.get(file) {
-            for (key, value) in config {
-                final_properties.insert(key.clone(), Some(value.clone()));
-            }
+    // For Conf files only process overrides that match our file name
+    if let Some(config) = config.config_overrides.get(file) {
+        for (key, value) in config {
+            final_properties.insert(key.clone(), Some(value.clone()));
         }
     }
 
@@ -557,7 +511,7 @@ mod tests {
     const GROUP_ENV_OVERRIDE: &str = "group_env_override";
     const GROUP_CLI_OVERRIDE: &str = "group_cli_override";
 
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Clone, Default, Debug, PartialEq)]
     struct TestConfig {
         pub conf: Option<String>,
         pub env: Option<String>,
@@ -618,13 +572,13 @@ mod tests {
         config_overrides: Option<HashMap<String, HashMap<String, String>>>,
         env_overrides: Option<HashMap<String, String>>,
         cli_overrides: Option<BTreeMap<String, String>>,
-    ) -> Option<CommonConfiguration<Box<TestConfig>>> {
-        Some(CommonConfiguration {
-            config: test_config,
-            config_overrides,
-            env_overrides,
-            cli_overrides,
-        })
+    ) -> CommonConfiguration<Box<TestConfig>> {
+        CommonConfiguration {
+            config: test_config.unwrap_or_default(),
+            config_overrides: config_overrides.unwrap_or_default(),
+            env_overrides: env_overrides.unwrap_or_default(),
+            cli_overrides: cli_overrides.unwrap_or_default(),
+        }
     }
 
     fn build_config_override(
@@ -745,7 +699,7 @@ mod tests {
                 ),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
-                    config: None,
+                    config: CommonConfiguration::default(),
                     selector: None,
                 }},
             },
@@ -776,7 +730,7 @@ mod tests {
                 ),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
-                    config: None,
+                    config: CommonConfiguration::default(),
                     selector: None,
                 }},
             },
@@ -815,7 +769,7 @@ mod tests {
                 }},
             },
             (false, true, false, true) => Role {
-                config: None,
+                config: CommonConfiguration::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -827,7 +781,7 @@ mod tests {
                 }},
             },
             (false, true, false, false) => Role {
-                config: None,
+                config: CommonConfiguration::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -864,12 +818,12 @@ mod tests {
                 ),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
-                    config: None,
+                    config: CommonConfiguration::default(),
                     selector: None,
                 }},
             },
             (false, false, false, true) => Role {
-                config: None,
+                config: CommonConfiguration::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -881,10 +835,10 @@ mod tests {
                 }},
             },
             (false, false, false, false) => Role {
-                config: None,
+                config: CommonConfiguration::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
-                    config: None,
+                    config: CommonConfiguration::default(),
                     selector: None,
                 }},
             },
@@ -1226,34 +1180,34 @@ mod tests {
 
         let roles: HashMap<String, (Vec<PropertyNameKind>, Role<Box<TestConfig>>)> = collection! {
             role_1.to_string() => (vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env], Role {
-            config: None,
-            role_groups: collection! {
-                role_group_1.to_string() => RoleGroup {
-                replicas: Some(1),
-                config: build_common_config(
-                    build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
-                    None,
-                    None,
-                    None
-                ),
-                selector: None,
-            }}
-        }
+                config: CommonConfiguration::default(),
+                role_groups: collection! {
+                    role_group_1.to_string() => RoleGroup {
+                        replicas: Some(1),
+                        config: build_common_config(
+                            build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                            None,
+                            None,
+                            None
+                        ),
+                        selector: None,
+                    }}
+            }
             ),
             role_2.to_string() => (vec![PropertyNameKind::File(file_name.to_string())], Role {
-            config: None,
-            role_groups: collection! {
-                role_group_2.to_string() => RoleGroup {
-                replicas: Some(1),
-                config: build_common_config(
-                    build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
-                    None,
-                    None,
-                    None
-                ),
-                selector: None,
-            }}
-        }
+                config: CommonConfiguration::default(),
+                role_groups: collection! {
+                    role_group_2.to_string() => RoleGroup {
+                        replicas: Some(1),
+                        config: build_common_config(
+                            build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                            None,
+                            None,
+                            None
+                        ),
+                        selector: None,
+                    }}
+            }
             ),
         };
 
