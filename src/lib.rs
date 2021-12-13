@@ -31,11 +31,6 @@ pub mod controller_ref;
 #[allow(deprecated)]
 pub mod controller_utils;
 
-#[deprecated(
-    since = "0.5.0",
-    note = "Waiting for resources to be present has been upstreamed to kube.rs in 0.58"
-)]
-#[allow(deprecated)]
 pub mod crd;
 pub mod error;
 
@@ -89,7 +84,6 @@ pub mod validation;
 #[allow(deprecated)]
 pub mod versioning;
 
-#[allow(deprecated)]
 pub use crate::crd::CustomResourceExt;
 
 pub use ::k8s_openapi;
