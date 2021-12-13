@@ -3,6 +3,9 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+
+## [0.6.0] - 2021-12-13
+
 ### Changed
 - BREAKING: kube-rs 0.63.1 -> 0.65.0 ([#277])
 - strum 0.22.0 -> 0.23.0 ([#277])
