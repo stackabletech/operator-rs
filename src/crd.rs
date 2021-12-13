@@ -69,6 +69,11 @@ impl<T> CustomResourceExt for T where T: kube::CustomResourceExt {}
 /// - `client`: Client to connect to Kubernetes API and create the CRD with
 /// - `timeout`: If specified, retries creating the CRD for given `Duration`. If not specified,
 ///     retries indefinitely.
+#[deprecated(
+    since = "0.5.0",
+    note = "CRDs should be installed statically rather than by the operator itself"
+)]
+#[allow(deprecated)]
 pub async fn ensure_crd_created<T>(client: &Client) -> OperatorResult<()>
 where
     T: CustomResourceExt,
@@ -108,6 +113,10 @@ where
 ///     CRDs are present. If not specified defaults to 60 seconds.
 /// - `timeout`: If specified, keeps checking for the given `Duration`. If not specified,
 ///     retries indefinitely.
+#[deprecated(
+    since = "0.5.0",
+    note = "Waiting for resources to be present has been upstreamed to kube.rs in 0.58"
+)]
 pub async fn wait_until_crds_present(
     client: &Client,
     names: Vec<&str>,
@@ -220,6 +229,10 @@ where
 }
 
 /// Waits until CRD of given type `T` is applied to Kubernetes.
+#[deprecated(
+    since = "0.5.0",
+    note = "Waiting for resources to be present has been upstreamed to kube.rs in 0.58"
+)]
 pub async fn wait_created<T>(client: &Client) -> OperatorResult<()>
 where
     T: CustomResourceExt,
