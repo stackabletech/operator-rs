@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- BREAKING: `Configuration::compute_*` are now invoked even when `config` field is not provided on `Role`/`RoleGroup` ([#282]).
+  - `CommonConfiguration::config` is no longer `Option`al
+  - `Role::config` is no longer `Option`al
+  - `RoleGroup::config` is no longer `Option`al
+
+[#282]: https://github.com/stackabletech/operator-rs/pull/282
+
 ## [0.6.0] - 2021-12-13
 
 ### Changed
