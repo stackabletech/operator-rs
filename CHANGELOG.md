@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- Fixed `cli::Command` including developer-facing docs in `--help` output ([#283])
+
+[#283]: https://github.com/stackabletech/operator-rs/pull/283
+
 ## [0.6.0] - 2021-12-13
 
 ### Changed
