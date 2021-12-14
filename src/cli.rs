@@ -117,6 +117,9 @@ pub const AUTHOR: &str = "Stackable GmbH - info@stackable.de";
 /// }
 /// ```
 #[derive(StructOpt)]
+// The enum-level doccomment is intended for developers, not end users
+// so supress it from being included in --help
+#[structopt(long_about = "")]
 pub enum Command {
     /// Print CRD objects
     Crd,

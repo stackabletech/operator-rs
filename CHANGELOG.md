@@ -9,8 +9,10 @@ All notable changes to this project will be documented in this file.
   - `CommonConfiguration::config` is no longer `Option`al
   - `Role::config` is no longer `Option`al
   - `RoleGroup::config` is no longer `Option`al
+- Fixed `cli::Command` including developer-facing docs in `--help` output ([#283])
 
 [#282]: https://github.com/stackabletech/operator-rs/pull/282
+[#283]: https://github.com/stackabletech/operator-rs/pull/283
 
 ## [0.6.0] - 2021-12-13
 
