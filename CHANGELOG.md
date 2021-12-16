@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Changed
-- BREAKING: Introduced proper error handling for `parse_cli_properties`, `parse_env_properties` and `parse_file_properties` ([#282]).
+- BREAKING: Introduced proper (Result) error handling for `transform_all_roles_to_config` ([#282]).
 - BREAKING: `Configuration::compute_*` are now invoked even when `config` field is not provided on `Role`/`RoleGroup` ([#282]).
   - `CommonConfiguration::config` is no longer `Option`al
   - `Role::config` is no longer `Option`al
