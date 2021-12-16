@@ -100,21 +100,39 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, trace};
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(
+    rename_all = "camelCase",
+    bound(deserialize = "T: Default + Deserialize<'de>")
+)]
 pub struct CommonConfiguration<T: Sized> {
-    pub config: Option<T>,
-    pub config_overrides: Option<HashMap<String, HashMap<String, String>>>,
-    pub env_overrides: Option<HashMap<String, String>>,
+    #[serde(default)]
+    // We can't depend on T being `Default`, since that trait is not object-safe
+    // We only need to generate schemas for fully specified types, but schemars_derive
+    // does not support specifying custom bounds.
+    #[schemars(default = "config_schema_default")]
+    pub config: T,
+    #[serde(default)]
+    pub config_overrides: HashMap<String, HashMap<String, String>>,
+    #[serde(default)]
+    pub env_overrides: HashMap<String, String>,
     // BTreeMap to keep some order with the cli arguments.
-    pub cli_overrides: Option<BTreeMap<String, String>>,
+    #[serde(default)]
+    pub cli_overrides: BTreeMap<String, String>,
+}
+
+fn config_schema_default() -> serde_json::Value {
+    serde_json::json!({})
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(
+    rename_all = "camelCase",
+    bound(deserialize = "T: Default + Deserialize<'de>")
+)]
 pub struct Role<T: Sized> {
     #[serde(flatten)]
-    pub config: Option<CommonConfiguration<T>>,
+    pub config: CommonConfiguration<T>,
     pub role_groups: HashMap<String, RoleGroup<T>>,
 }
 
@@ -126,14 +144,13 @@ impl<T: Configuration + 'static> Role<T> {
     /// have different structs implementing Configuration.
     pub fn erase(self) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>> {
         Role {
-            config: self.config.map(|common| CommonConfiguration {
-                config: common.config.map(|cfg| {
-                    Box::new(cfg) as Box<dyn Configuration<Configurable = T::Configurable>>
-                }),
-                config_overrides: common.config_overrides,
-                env_overrides: common.env_overrides,
-                cli_overrides: common.cli_overrides,
-            }),
+            config: CommonConfiguration {
+                config: Box::new(self.config.config)
+                    as Box<dyn Configuration<Configurable = T::Configurable>>,
+                config_overrides: self.config.config_overrides,
+                env_overrides: self.config.env_overrides,
+                cli_overrides: self.config.cli_overrides,
+            },
             role_groups: self
                 .role_groups
                 .into_iter()
@@ -141,15 +158,13 @@ impl<T: Configuration + 'static> Role<T> {
                     (
                         name,
                         RoleGroup {
-                            config: group.config.map(|common| CommonConfiguration {
-                                config: common.config.map(|cfg| {
-                                    Box::new(cfg)
-                                        as Box<dyn Configuration<Configurable = T::Configurable>>
-                                }),
-                                config_overrides: common.config_overrides,
-                                env_overrides: common.env_overrides,
-                                cli_overrides: common.cli_overrides,
-                            }),
+                            config: CommonConfiguration {
+                                config: Box::new(group.config.config)
+                                    as Box<dyn Configuration<Configurable = T::Configurable>>,
+                                config_overrides: group.config.config_overrides,
+                                env_overrides: group.config.env_overrides,
+                                cli_overrides: group.config.cli_overrides,
+                            },
                             replicas: group.replicas,
                             selector: group.selector,
                         },
@@ -161,10 +176,13 @@ impl<T: Configuration + 'static> Role<T> {
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(
+    rename_all = "camelCase",
+    bound(deserialize = "T: Default + Deserialize<'de>")
+)]
 pub struct RoleGroup<T> {
     #[serde(flatten)]
-    pub config: Option<CommonConfiguration<T>>,
+    pub config: CommonConfiguration<T>,
     pub replicas: Option<u16>,
     pub selector: Option<LabelSelector>,
 }
