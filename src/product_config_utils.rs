@@ -18,6 +18,8 @@ pub enum ConfigError {
     },
 }
 
+pub type ConfigResult<T> = std::result::Result<T, ConfigError>;
+
 /// This trait is used to compute configuration properties for products.
 ///
 /// This needs to be implemented for every T in the [`crate::role_utils::CommonConfiguration`] struct
@@ -44,20 +46,20 @@ pub trait Configuration {
         &self,
         resource: &Self::Configurable,
         role_name: &str,
-    ) -> Result<BTreeMap<String, Option<String>>, ConfigError>;
+    ) -> ConfigResult<BTreeMap<String, Option<String>>>;
 
     fn compute_cli(
         &self,
         resource: &Self::Configurable,
         role_name: &str,
-    ) -> Result<BTreeMap<String, Option<String>>, ConfigError>;
+    ) -> ConfigResult<BTreeMap<String, Option<String>>>;
 
     fn compute_files(
         &self,
         resource: &Self::Configurable,
         role_name: &str,
         file: &str,
-    ) -> Result<BTreeMap<String, Option<String>>, ConfigError>;
+    ) -> ConfigResult<BTreeMap<String, Option<String>>>;
 }
 
 impl<T: Configuration + ?Sized> Configuration for Box<T> {
@@ -67,7 +69,7 @@ impl<T: Configuration + ?Sized> Configuration for Box<T> {
         &self,
         resource: &Self::Configurable,
         role_name: &str,
-    ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
+    ) -> ConfigResult<BTreeMap<String, Option<String>>> {
         T::compute_env(self, resource, role_name)
     }
 
@@ -75,7 +77,7 @@ impl<T: Configuration + ?Sized> Configuration for Box<T> {
         &self,
         resource: &Self::Configurable,
         role_name: &str,
-    ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
+    ) -> ConfigResult<BTreeMap<String, Option<String>>> {
         T::compute_cli(self, resource, role_name)
     }
 
@@ -84,7 +86,7 @@ impl<T: Configuration + ?Sized> Configuration for Box<T> {
         resource: &Self::Configurable,
         role_name: &str,
         file: &str,
-    ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
+    ) -> ConfigResult<BTreeMap<String, Option<String>>> {
         T::compute_files(self, resource, role_name, file)
     }
 }
@@ -93,6 +95,11 @@ impl<T: Configuration + ?Sized> Configuration for Box<T> {
 /// HashMap<Role, HashMap<RoleGroup, HashMap<PropertyNameKind, BTreeMap<PropertyName, PropertyValue>>>>
 pub type RoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>>;
+
+/// Type to sort config properties via kind (files, env, cli) and via groups.
+/// HashMap<RoleGroup, HashMap<PropertyNameKind, BTreeMap<PropertyName, PropertyValue>>>
+pub type RoleGroupConfigByPropertyKind =
+    HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>;
 
 /// Type to sort config properties via kind (files, env, cli), via groups and via roles. This
 /// is the validated output to be used in other operators. The difference to [`RoleConfigByPropertyKind`]
@@ -146,7 +153,7 @@ pub fn config_for_role_and_group<'a>(
 pub fn transform_all_roles_to_config<T>(
     resource: &T::Configurable,
     roles: HashMap<String, (Vec<PropertyNameKind>, Role<T>)>,
-) -> RoleConfigByPropertyKind
+) -> ConfigResult<RoleConfigByPropertyKind>
 where
     T: Configuration,
 {
@@ -154,11 +161,11 @@ where
 
     for (role_name, (property_name_kinds, role)) in &roles {
         let role_properties =
-            transform_role_to_config(resource, role_name, role, property_name_kinds);
+            transform_role_to_config(resource, role_name, role, property_name_kinds)?;
         result.insert(role_name.to_string(), role_properties);
     }
 
-    result
+    Ok(result)
 }
 
 /// Validates a product configuration for all roles and role_groups. Requires a valid product config
@@ -341,19 +348,19 @@ fn transform_role_to_config<T>(
     role_name: &str,
     role: &Role<T>,
     property_kinds: &[PropertyNameKind],
-) -> HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
+) -> ConfigResult<RoleGroupConfigByPropertyKind>
 where
     T: Configuration,
 {
     let mut result = HashMap::new();
 
-    let role_properties = parse_role_config(resource, role_name, &role.config, property_kinds);
+    let role_properties = parse_role_config(resource, role_name, &role.config, property_kinds)?;
 
     // for each role group ...
     for (role_group_name, role_group) in &role.role_groups {
         // ... compute the group properties ...
         let role_group_properties =
-            parse_role_config(resource, role_name, &role_group.config, property_kinds);
+            parse_role_config(resource, role_name, &role_group.config, property_kinds)?;
 
         // ... and merge them with the role properties.
         let mut role_properties_copy = role_properties.clone();
@@ -367,7 +374,7 @@ where
         result.insert(role_group_name.clone(), role_properties_copy);
     }
 
-    result
+    Ok(result)
 }
 
 /// Given a `config` object and the `property_kinds` vector, it uses the `Configuration::compute_*` methods
@@ -385,7 +392,7 @@ fn parse_role_config<T>(
     role_name: &str,
     config: &CommonConfiguration<T>,
     property_kinds: &[PropertyNameKind],
-) -> HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>
+) -> ConfigResult<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
     T: Configuration,
 {
@@ -395,57 +402,58 @@ where
         match property_kind {
             PropertyNameKind::File(file) => result.insert(
                 property_kind.clone(),
-                parse_file_properties(resource, role_name, config, file),
+                parse_file_properties(resource, role_name, config, file)?,
             ),
             PropertyNameKind::Env => result.insert(
                 property_kind.clone(),
-                parse_env_properties(resource, role_name, config),
+                parse_env_properties(resource, role_name, config)?,
             ),
             PropertyNameKind::Cli => result.insert(
                 property_kind.clone(),
-                parse_cli_properties(resource, role_name, config),
+                parse_cli_properties(resource, role_name, config)?,
             ),
         };
     }
-    result
+
+    Ok(result)
 }
 
 fn parse_cli_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
     config: &CommonConfiguration<T>,
-) -> BTreeMap<String, Option<String>>
+) -> ConfigResult<BTreeMap<String, Option<String>>>
 where
     T: Configuration,
 {
     // Properties from the role have the lowest priority, so they are computed and added first...
-    let mut final_properties = config.config.compute_cli(resource, role_name).unwrap();
+    let mut final_properties = config.config.compute_cli(resource, role_name)?;
 
     // ...followed by config_overrides from the role
     for (key, value) in &config.cli_overrides {
         final_properties.insert(key.clone(), Some(value.clone()));
     }
 
-    final_properties
+    Ok(final_properties)
 }
 
 fn parse_env_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
     config: &CommonConfiguration<T>,
-) -> BTreeMap<String, Option<String>>
+) -> ConfigResult<BTreeMap<String, Option<String>>>
 where
     T: Configuration,
 {
     // Properties from the role have the lowest priority, so they are computed and added first...
-    let mut final_properties = config.config.compute_env(resource, role_name).unwrap();
+    let mut final_properties = config.config.compute_env(resource, role_name)?;
 
     // ...followed by config_overrides from the role
     for (key, value) in &config.env_overrides {
         final_properties.insert(key.clone(), Some(value.clone()));
     }
 
-    final_properties
+    Ok(final_properties)
 }
 
 fn parse_file_properties<T>(
@@ -453,15 +461,12 @@ fn parse_file_properties<T>(
     role_name: &str,
     config: &CommonConfiguration<T>,
     file: &str,
-) -> BTreeMap<String, Option<String>>
+) -> ConfigResult<BTreeMap<String, Option<String>>>
 where
     T: Configuration,
 {
     // Properties from the role have the lowest priority, so they are computed and added first...
-    let mut final_properties = config
-        .config
-        .compute_files(resource, role_name, file)
-        .unwrap();
+    let mut final_properties = config.config.compute_files(resource, role_name, file)?;
 
     // ...followed by config_overrides from the role
     // For Conf files only process overrides that match our file name
@@ -471,7 +476,7 @@ where
         }
     }
 
-    final_properties
+    Ok(final_properties)
 }
 
 #[cfg(test)]
@@ -1016,7 +1021,8 @@ mod tests {
 
         let property_kinds = vec![PropertyNameKind::Env];
 
-        let config = transform_role_to_config(&String::new(), ROLE_GROUP, &role, &property_kinds);
+        let config =
+            transform_role_to_config(&String::new(), ROLE_GROUP, &role, &property_kinds).unwrap();
 
         assert_eq!(config, expected);
     }
@@ -1071,7 +1077,8 @@ mod tests {
             PropertyNameKind::Cli,
         ];
 
-        let config = transform_role_to_config(&String::new(), ROLE_GROUP, &role, &property_kinds);
+        let config =
+            transform_role_to_config(&String::new(), ROLE_GROUP, &role, &property_kinds).unwrap();
 
         assert_eq!(config, expected);
     }
@@ -1160,7 +1167,7 @@ mod tests {
             }
         }};
 
-        let all_config = transform_all_roles_to_config(&String::new(), roles);
+        let all_config = transform_all_roles_to_config(&String::new(), roles).unwrap();
 
         assert_eq!(all_config, expected);
     }
@@ -1211,7 +1218,7 @@ mod tests {
             ),
         };
 
-        let role_config = transform_all_roles_to_config(&String::new(), roles);
+        let role_config = transform_all_roles_to_config(&String::new(), roles).unwrap();
 
         let config = &format!(
             "
