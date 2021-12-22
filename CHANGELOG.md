@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.7.0] - 2021-12-22
+
+
 ### Changed
 - BREAKING: Introduced proper (Result) error handling for `transform_all_roles_to_config` ([#282]).
 - BREAKING: `Configuration::compute_*` are now invoked even when `config` field is not provided on `Role`/`RoleGroup` ([#282]).
