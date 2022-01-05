@@ -94,13 +94,12 @@ use crate::error;
 use crate::error::OperatorResult;
 #[allow(deprecated)]
 use crate::CustomResourceExt;
-use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
+use clap::{App, AppSettings, Arg, ArgMatches};
 use product_config::ProductConfigManager;
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
 };
-use structopt::StructOpt;
 
 pub const AUTHOR: &str = "Stackable GmbH - info@stackable.de";
 
@@ -116,19 +115,19 @@ pub const AUTHOR: &str = "Stackable GmbH - info@stackable.de";
 ///     Framework(stackable_operator::cli::Command)
 /// }
 /// ```
-#[derive(StructOpt)]
+#[derive(clap::Parser)]
 // The enum-level doccomment is intended for developers, not end users
 // so supress it from being included in --help
-#[structopt(long_about = "")]
+#[clap(long_about = "")]
 pub enum Command {
     /// Print CRD objects
     Crd,
     /// Run operator
     Run {
         /// Provides the path to a product-config file
-        #[structopt(
+        #[clap(
             long,
-            short = "p",
+            short = 'p',
             value_name = "FILE",
             default_value = "",
             parse(from_os_str)
@@ -200,9 +199,9 @@ const PRODUCT_CONFIG_ARG: &str = "product-config";
 ///
 /// See the module level documentation for a complete example.
 #[deprecated(note = "use ProductConfigPath (or Command) instead")]
-pub fn generate_productconfig_arg<'a, 'b>() -> Arg<'a, 'b> {
-    Arg::with_name(PRODUCT_CONFIG_ARG)
-        .short("p")
+pub fn generate_productconfig_arg() -> Arg<'static> {
+    Arg::new(PRODUCT_CONFIG_ARG)
+        .short('p')
         .long(PRODUCT_CONFIG_ARG)
         .value_name("FILE")
         .help("Provides the path to a product-config file")
@@ -248,23 +247,23 @@ pub fn handle_productconfig_arg(
 /// returns: App
 #[deprecated(note = "use Command instead")]
 #[allow(deprecated)]
-pub fn generate_crd_subcommand<'a, 'b, T>() -> App<'a, 'b>
+pub fn generate_crd_subcommand<T>() -> App<'static>
 where
     T: CustomResourceExt,
 {
     let kind = T::api_resource().kind;
 
-    SubCommand::with_name(&kind.to_lowercase())
+    App::new(&kind.to_lowercase())
         .setting(AppSettings::ArgRequiredElseHelp)
         .arg(
             Arg::with_name("print")
-                .short("p")
+                .short('p')
                 .long("print")
                 .help("Will print the CRD schema in YAML format to stdout"),
         )
         .arg(
             Arg::with_name("save")
-                .short("s")
+                .short('s')
                 .long("save")
                 .takes_value(true)
                 .value_name("FILE")
