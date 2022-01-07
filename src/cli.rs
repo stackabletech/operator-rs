@@ -1,7 +1,7 @@
 //! This module provides helper methods to deal with common CLI options using the `clap` crate.
 //!
 //! In particular it currently supports handling two kinds of options:
-//! * CRD handling (printing & saving to a file)
+//! * CRD printing
 //! * Product config location
 //!
 //! # Example
@@ -10,8 +10,7 @@
 //!
 //! ```
 //! // Handle CLI arguments
-//! use clap::{crate_version, SubCommand};
-//! use clap::App;
+//! use clap::{crate_version, App};
 //! use stackable_operator::cli;
 //! use stackable_operator::error::OperatorResult;
 //! use kube::CustomResource;
@@ -46,13 +45,13 @@
 //!     .about("Stackable Operator for Foobar")
 //!     .version(crate_version!())
 //!     .subcommand(
-//!         SubCommand::with_name("crd")
+//!         App::new("crd")
 //!             .subcommand(cli::generate_crd_subcommand::<FooCluster>())
 //!             .subcommand(cli::generate_crd_subcommand::<BarCluster>())
 //!     )
 //!     .get_matches();
 //!
-//! if let ("crd", Some(subcommand)) = matches.subcommand() {
+//! if let Some(("crd", subcommand)) = matches.subcommand() {
 //!     if cli::handle_crd_subcommand::<FooCluster>(subcommand)? {
 //!         return Ok(());
 //!     };
@@ -67,10 +66,9 @@
 //! Product config handling works similarly:
 //!
 //! ```no_run
-//! use clap::{crate_version, SubCommand};
+//! use clap::{crate_version, App};
 //! use stackable_operator::cli;
 //! use stackable_operator::error::OperatorResult;
-//! use clap::App;
 //!
 //! # fn main() -> OperatorResult<()> {
 //! let matches = App::new("Spark Operator")
@@ -107,7 +105,7 @@ pub const AUTHOR: &str = "Stackable GmbH - info@stackable.de";
 ///
 /// If you need operator-specific commands then you can flatten [`Command`] into your own command enum. For example:
 /// ```rust
-/// #[derive(structopt::StructOpt)]
+/// #[derive(clap::Parser)]
 /// enum Command {
 ///     /// Print hello world message
 ///     Hello,

@@ -10,7 +10,7 @@ repository = "https://github.com/stackabletech/operator-rs"
 [dependencies]
 async-trait = "0.1.51"
 chrono = "0.4.19"
-clap = { version = "3.0.4", features = ["derive"] }
+clap = { version = "3.0.4", features = ["derive", "cargo"] }
 const_format = "0.2.22"
 either = "1.6.1"
 futures = "0.3.17"
