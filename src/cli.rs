@@ -8,14 +8,14 @@
 //!
 //! This example show the usage of the CRD functionality.
 //!
-//! ```
+//! ```no_run
 //! // Handle CLI arguments
-//! use clap::{crate_version, App};
+//! use clap::{crate_version, App, Parser};
+//! use kube::{CustomResource, CustomResourceExt};
+//! use schemars::JsonSchema;
+//! use serde::{Deserialize, Serialize};
 //! use stackable_operator::cli;
 //! use stackable_operator::error::OperatorResult;
-//! use kube::CustomResource;
-//! use schemars::JsonSchema;
-//! use serde::{Serialize, Deserialize};
 //!
 //! #[derive(Clone, CustomResource, Debug, JsonSchema, Serialize, Deserialize)]
 //! #[kube(
@@ -39,25 +39,30 @@
 //!     pub name: String,
 //! }
 //!
-//! # fn main() -> OperatorResult<()> {
-//! let matches = App::new("Spark Operator")
-//!     .author("Stackable GmbH - info@stackable.de")
-//!     .about("Stackable Operator for Foobar")
-//!     .version(crate_version!())
-//!     .subcommand(
-//!         App::new("crd")
-//!             .subcommand(cli::generate_crd_subcommand::<FooCluster>())
-//!             .subcommand(cli::generate_crd_subcommand::<BarCluster>())
-//!     )
-//!     .get_matches();
+//! #[derive(clap::Parser)]
+//! #[clap(
+//!     name = "Spark Operator",
+//!     author,
+//!     version,
+//!     about = "Stackable Operator for Foobar"
+//! )]
+//! struct Opts {
+//!     #[clap(subcommand)]
+//!     command: cli::Command,
+//! }
 //!
-//! if let Some(("crd", subcommand)) = matches.subcommand() {
-//!     if cli::handle_crd_subcommand::<FooCluster>(subcommand)? {
-//!         return Ok(());
-//!     };
-//!     if cli::handle_crd_subcommand::<BarCluster>(subcommand)? {
-//!         return Ok(());
-//!     };
+//! # fn main() -> OperatorResult<()> {
+//! let opts = Opts::from_args();
+//!
+//! match opts.command {
+//!     cli::Command::Crd => println!(
+//!         "{}{}",
+//!         serde_yaml::to_string(&FooCluster::crd())?,
+//!         serde_yaml::to_string(&BarCluster::crd())?,
+//!     ),
+//!     cli::Command::Run { .. } => {
+//!         // Run the operator
+//!     }
 //! }
 //! # Ok(())
 //! # }
@@ -66,25 +71,39 @@
 //! Product config handling works similarly:
 //!
 //! ```no_run
-//! use clap::{crate_version, App};
+//! use clap::{crate_version, App, Parser};
 //! use stackable_operator::cli;
 //! use stackable_operator::error::OperatorResult;
 //!
-//! # fn main() -> OperatorResult<()> {
-//! let matches = App::new("Spark Operator")
-//!     .author("Stackable GmbH - info@stackable.de")
-//!     .about("Stackable Operator for Foobar")
-//!     .version(crate_version!())
-//!     .arg(cli::generate_productconfig_arg())
-//!     .get_matches();
+//! #[derive(clap::Parser)]
+//! #[clap(
+//!     name = "Spark Operator",
+//!     author,
+//!     version,
+//!     about = "Stackable Operator for Foobar"
+//! )]
+//! struct Opts {
+//!     #[clap(subcommand)]
+//!     command: cli::Command,
+//! }
 //!
-//! let paths = vec![
-//!     "deploy/config-spec/properties.yaml",
-//!     "/etc/stackable/spark-operator/config-spec/properties.yaml",
-//! ];
-//! let product_config_path = cli::handle_productconfig_arg(&matches, paths)?;
+//! # fn main() -> OperatorResult<()> {
+//! let opts = Opts::from_args();
+//!
+//! match opts.command {
+//!     cli::Command::Crd => {
+//!         // Print CRD objects
+//!     }
+//!     cli::Command::Run { product_config } => {
+//!         let product_config = product_config.load(&[
+//!             "deploy/config-spec/properties.yaml",
+//!             "/etc/stackable/spark-operator/config-spec/properties.yaml",
+//!         ])?;
+//!     }
+//! }
 //! # Ok(())
 //! # }
+//!
 //! ```
 //!
 //!
@@ -109,7 +128,7 @@ pub const AUTHOR: &str = "Stackable GmbH - info@stackable.de";
 /// enum Command {
 ///     /// Print hello world message
 ///     Hello,
-///     #[structopt(flatten)]
+///     #[clap(flatten)]
 ///     Framework(stackable_operator::cli::Command)
 /// }
 /// ```
