@@ -1,22 +1,21 @@
 //! This module provides helper methods to deal with common CLI options using the `clap` crate.
 //!
 //! In particular it currently supports handling two kinds of options:
-//! * CRD handling (printing & saving to a file)
+//! * CRD printing
 //! * Product config location
 //!
 //! # Example
 //!
 //! This example show the usage of the CRD functionality.
 //!
-//! ```
+//! ```no_run
 //! // Handle CLI arguments
-//! use clap::{crate_version, SubCommand};
-//! use clap::App;
+//! use clap::{crate_version, App, Parser};
+//! use kube::{CustomResource, CustomResourceExt};
+//! use schemars::JsonSchema;
+//! use serde::{Deserialize, Serialize};
 //! use stackable_operator::cli;
 //! use stackable_operator::error::OperatorResult;
-//! use kube::CustomResource;
-//! use schemars::JsonSchema;
-//! use serde::{Serialize, Deserialize};
 //!
 //! #[derive(Clone, CustomResource, Debug, JsonSchema, Serialize, Deserialize)]
 //! #[kube(
@@ -40,25 +39,30 @@
 //!     pub name: String,
 //! }
 //!
-//! # fn main() -> OperatorResult<()> {
-//! let matches = App::new("Spark Operator")
-//!     .author("Stackable GmbH - info@stackable.de")
-//!     .about("Stackable Operator for Foobar")
-//!     .version(crate_version!())
-//!     .subcommand(
-//!         SubCommand::with_name("crd")
-//!             .subcommand(cli::generate_crd_subcommand::<FooCluster>())
-//!             .subcommand(cli::generate_crd_subcommand::<BarCluster>())
-//!     )
-//!     .get_matches();
+//! #[derive(clap::Parser)]
+//! #[clap(
+//!     name = "Foobar Operator",
+//!     author,
+//!     version,
+//!     about = "Stackable Operator for Foobar"
+//! )]
+//! struct Opts {
+//!     #[clap(subcommand)]
+//!     command: cli::Command,
+//! }
 //!
-//! if let ("crd", Some(subcommand)) = matches.subcommand() {
-//!     if cli::handle_crd_subcommand::<FooCluster>(subcommand)? {
-//!         return Ok(());
-//!     };
-//!     if cli::handle_crd_subcommand::<BarCluster>(subcommand)? {
-//!         return Ok(());
-//!     };
+//! # fn main() -> OperatorResult<()> {
+//! let opts = Opts::from_args();
+//!
+//! match opts.command {
+//!     cli::Command::Crd => println!(
+//!         "{}{}",
+//!         serde_yaml::to_string(&FooCluster::crd())?,
+//!         serde_yaml::to_string(&BarCluster::crd())?,
+//!     ),
+//!     cli::Command::Run { .. } => {
+//!         // Run the operator
+//!     }
 //! }
 //! # Ok(())
 //! # }
@@ -67,26 +71,39 @@
 //! Product config handling works similarly:
 //!
 //! ```no_run
-//! use clap::{crate_version, SubCommand};
+//! use clap::{crate_version, App, Parser};
 //! use stackable_operator::cli;
 //! use stackable_operator::error::OperatorResult;
-//! use clap::App;
+//!
+//! #[derive(clap::Parser)]
+//! #[clap(
+//!     name = "Foobar Operator",
+//!     author,
+//!     version,
+//!     about = "Stackable Operator for Foobar"
+//! )]
+//! struct Opts {
+//!     #[clap(subcommand)]
+//!     command: cli::Command,
+//! }
 //!
 //! # fn main() -> OperatorResult<()> {
-//! let matches = App::new("Spark Operator")
-//!     .author("Stackable GmbH - info@stackable.de")
-//!     .about("Stackable Operator for Foobar")
-//!     .version(crate_version!())
-//!     .arg(cli::generate_productconfig_arg())
-//!     .get_matches();
+//! let opts = Opts::from_args();
 //!
-//! let paths = vec![
-//!     "deploy/config-spec/properties.yaml",
-//!     "/etc/stackable/spark-operator/config-spec/properties.yaml",
-//! ];
-//! let product_config_path = cli::handle_productconfig_arg(&matches, paths)?;
+//! match opts.command {
+//!     cli::Command::Crd => {
+//!         // Print CRD objects
+//!     }
+//!     cli::Command::Run { product_config } => {
+//!         let product_config = product_config.load(&[
+//!             "deploy/config-spec/properties.yaml",
+//!             "/etc/stackable/spark-operator/config-spec/properties.yaml",
+//!         ])?;
+//!     }
+//! }
 //! # Ok(())
 //! # }
+//!
 //! ```
 //!
 //!
@@ -94,13 +111,12 @@ use crate::error;
 use crate::error::OperatorResult;
 #[allow(deprecated)]
 use crate::CustomResourceExt;
-use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
+use clap::{App, AppSettings, Arg, ArgMatches};
 use product_config::ProductConfigManager;
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
 };
-use structopt::StructOpt;
 
 pub const AUTHOR: &str = "Stackable GmbH - info@stackable.de";
 
@@ -108,27 +124,27 @@ pub const AUTHOR: &str = "Stackable GmbH - info@stackable.de";
 ///
 /// If you need operator-specific commands then you can flatten [`Command`] into your own command enum. For example:
 /// ```rust
-/// #[derive(structopt::StructOpt)]
+/// #[derive(clap::Parser)]
 /// enum Command {
 ///     /// Print hello world message
 ///     Hello,
-///     #[structopt(flatten)]
+///     #[clap(flatten)]
 ///     Framework(stackable_operator::cli::Command)
 /// }
 /// ```
-#[derive(StructOpt)]
+#[derive(clap::Parser)]
 // The enum-level doccomment is intended for developers, not end users
 // so supress it from being included in --help
-#[structopt(long_about = "")]
+#[clap(long_about = "")]
 pub enum Command {
     /// Print CRD objects
     Crd,
     /// Run operator
     Run {
         /// Provides the path to a product-config file
-        #[structopt(
+        #[clap(
             long,
-            short = "p",
+            short = 'p',
             value_name = "FILE",
             default_value = "",
             parse(from_os_str)
@@ -200,9 +216,9 @@ const PRODUCT_CONFIG_ARG: &str = "product-config";
 ///
 /// See the module level documentation for a complete example.
 #[deprecated(note = "use ProductConfigPath (or Command) instead")]
-pub fn generate_productconfig_arg<'a, 'b>() -> Arg<'a, 'b> {
-    Arg::with_name(PRODUCT_CONFIG_ARG)
-        .short("p")
+pub fn generate_productconfig_arg() -> Arg<'static> {
+    Arg::new(PRODUCT_CONFIG_ARG)
+        .short('p')
         .long(PRODUCT_CONFIG_ARG)
         .value_name("FILE")
         .help("Provides the path to a product-config file")
@@ -248,23 +264,23 @@ pub fn handle_productconfig_arg(
 /// returns: App
 #[deprecated(note = "use Command instead")]
 #[allow(deprecated)]
-pub fn generate_crd_subcommand<'a, 'b, T>() -> App<'a, 'b>
+pub fn generate_crd_subcommand<T>() -> App<'static>
 where
     T: CustomResourceExt,
 {
     let kind = T::api_resource().kind;
 
-    SubCommand::with_name(&kind.to_lowercase())
+    App::new(&kind.to_lowercase())
         .setting(AppSettings::ArgRequiredElseHelp)
         .arg(
             Arg::with_name("print")
-                .short("p")
+                .short('p')
                 .long("print")
                 .help("Will print the CRD schema in YAML format to stdout"),
         )
         .arg(
             Arg::with_name("save")
-                .short("s")
+                .short('s')
                 .long("save")
                 .takes_value(true)
                 .value_name("FILE")

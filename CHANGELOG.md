@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- BREAKING: clap 2.33.3 -> 3.0.4 ([#289]).
+
+[#289]: https://github.com/stackabletech/operator-rs/pull/289
+
 ## [0.7.0] - 2021-12-22
 
 
