@@ -41,7 +41,7 @@
 //!
 //! #[derive(clap::Parser)]
 //! #[clap(
-//!     name = "Spark Operator",
+//!     name = "Foobar Operator",
 //!     author,
 //!     version,
 //!     about = "Stackable Operator for Foobar"
@@ -77,7 +77,7 @@
 //!
 //! #[derive(clap::Parser)]
 //! #[clap(
-//!     name = "Spark Operator",
+//!     name = "Foobar Operator",
 //!     author,
 //!     version,
 //!     about = "Stackable Operator for Foobar"
