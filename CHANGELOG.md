@@ -4,10 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Allow adding custom CLI arguments to `run` subcommand ([#291]).
+
 ### Changed
 - BREAKING: clap 2.33.3 -> 3.0.4 ([#289]).
+- BREAKING: `cli::Command::Run` now just wraps `cli::ProductOperatorRun` rather than defining the struct inline ([#291]).
 
 [#289]: https://github.com/stackabletech/operator-rs/pull/289
+[#291]: https://github.com/stackabletech/operator-rs/pull/291
 
 ## [0.7.0] - 2021-12-22
 
