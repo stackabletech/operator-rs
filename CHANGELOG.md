@@ -9,10 +9,12 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - BREAKING: clap 2.33.3 -> 3.0.4 ([#289]).
+- BREAKING: kube 0.65 -> 0.66 ([#293]).
 - BREAKING: `cli::Command::Run` now just wraps `cli::ProductOperatorRun` rather than defining the struct inline ([#291]).
 
 [#289]: https://github.com/stackabletech/operator-rs/pull/289
 [#291]: https://github.com/stackabletech/operator-rs/pull/291
+[#293]: https://github.com/stackabletech/operator-rs/pull/293
 
 ## [0.7.0] - 2021-12-22
 
