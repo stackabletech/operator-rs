@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- BREAKING: kube-rs 0.65.0 -> 0.66.0 ([#295])
+
+[#295]: https://github.com/stackabletech/operator-rs/pull/295
+
 ## [0.7.0] - 2021-12-22
 
 
