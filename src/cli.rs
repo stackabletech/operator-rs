@@ -94,7 +94,7 @@
 //!     cli::Command::Crd => {
 //!         // Print CRD objects
 //!     }
-//!     cli::Command::Run { product_config } => {
+//!     cli::Command::Run(cli::ProductOperatorRun { product_config }) => {
 //!         let product_config = product_config.load(&[
 //!             "deploy/config-spec/properties.yaml",
 //!             "/etc/stackable/spark-operator/config-spec/properties.yaml",
@@ -111,7 +111,7 @@ use crate::error;
 use crate::error::OperatorResult;
 #[allow(deprecated)]
 use crate::CustomResourceExt;
-use clap::{App, AppSettings, Arg, ArgMatches};
+use clap::{App, AppSettings, Arg, ArgMatches, Args};
 use product_config::ProductConfigManager;
 use std::{
     ffi::OsStr,
@@ -132,28 +132,71 @@ pub const AUTHOR: &str = "Stackable GmbH - info@stackable.de";
 ///     Framework(stackable_operator::cli::Command)
 /// }
 /// ```
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Debug, PartialEq, Eq)]
 // The enum-level doccomment is intended for developers, not end users
 // so supress it from being included in --help
 #[clap(long_about = "")]
-pub enum Command {
+pub enum Command<Run: Args = ProductOperatorRun> {
     /// Print CRD objects
     Crd,
     /// Run operator
-    Run {
-        /// Provides the path to a product-config file
-        #[clap(
-            long,
-            short = 'p',
-            value_name = "FILE",
-            default_value = "",
-            parse(from_os_str)
-        )]
-        product_config: ProductConfigPath,
-    },
+    Run(Run),
+}
+
+/// Default parameters that all product operators take when running
+///
+/// Can be embedded into an extended argument set:
+///
+/// ```rust
+/// # use stackable_operator::cli::{Command, ProductOperatorRun, ProductConfigPath};
+/// #[derive(clap::Parser, Debug, PartialEq, Eq)]
+/// struct Run {
+///     #[clap(long)]
+///     name: String,
+///     #[clap(flatten)]
+///     common: ProductOperatorRun,
+/// }
+/// use clap::Parser;
+/// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar"]);
+/// assert_eq!(opts, Command::Run(Run {
+///     name: "foo".to_string(),
+///     common: ProductOperatorRun {
+///         product_config: ProductConfigPath::from("bar".as_ref()),
+///     },
+/// }));
+/// ```
+///
+/// or replaced entirely
+///
+/// ```rust
+/// # use stackable_operator::cli::{Command, ProductOperatorRun};
+/// #[derive(clap::Parser, Debug, PartialEq, Eq)]
+/// struct Run {
+///     #[clap(long)]
+///     name: String,
+/// }
+/// use clap::Parser;
+/// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo"]);
+/// assert_eq!(opts, Command::Run(Run {
+///     name: "foo".to_string(),
+/// }));
+/// ```
+#[derive(clap::Parser, Debug, PartialEq, Eq)]
+#[clap(long_about = "")]
+pub struct ProductOperatorRun {
+    /// Provides the path to a product-config file
+    #[clap(
+        long,
+        short = 'p',
+        value_name = "FILE",
+        default_value = "",
+        parse(from_os_str)
+    )]
+    pub product_config: ProductConfigPath,
 }
 
 /// A path to a [`ProductConfigManager`] spec file
+#[derive(Debug, PartialEq, Eq)]
 pub struct ProductConfigPath {
     path: Option<PathBuf>,
 }
