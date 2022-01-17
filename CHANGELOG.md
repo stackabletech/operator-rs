@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.8.0] - 2022-01-17
+
+
 ### Added
 - Allow adding custom CLI arguments to `run` subcommand ([#291]).
 
