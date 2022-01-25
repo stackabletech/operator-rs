@@ -1083,7 +1083,7 @@ impl PodBuilder {
                 pod_affinity: self.pod_affinity.clone(),
                 ..Affinity::default()
             }).or_else(||{
-                Some(Affinity{node_affinity: None, pod_affinity: self.pod_affinity.clone(),..Affinity::default()})
+                Some(Affinity{pod_affinity: self.pod_affinity.clone(),..Affinity::default()})
             }),
             security_context: self.security_context.clone(),
             tolerations: self.tolerations.clone(),
