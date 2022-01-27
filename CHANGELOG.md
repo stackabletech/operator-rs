@@ -4,8 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.8.0] - 2022-01-17
+### Changed
+- Fixed `Client::apply_patch_status` always failing ([#300]).
 
+[#300]: https://github.com/stackabletech/operator-rs/pull/300
+
+## [0.8.0] - 2022-01-17
 
 ### Added
 - Allow adding custom CLI arguments to `run` subcommand ([#291]).
