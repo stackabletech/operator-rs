@@ -245,8 +245,8 @@ impl Client {
             "apiVersion": T::api_version(&()),
             "kind": T::kind(&()),
             "metadata": {
-                "name": meta().name,
-                "namespace": meta().namespace,
+                "name": meta.name,
+                "namespace": meta.namespace,
             },
             "status": status
         }));
