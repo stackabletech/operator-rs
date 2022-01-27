@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.9.0] - 2022-01-27
+
+
 ### Changed
 - Fixed `Client::apply_patch_status` always failing ([#300]).
 
