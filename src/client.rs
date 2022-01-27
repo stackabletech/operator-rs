@@ -240,9 +240,14 @@ impl Client {
         <T as Resource>::DynamicType: Default,
         S: Debug + Serialize,
     {
+        let meta = resource.meta();
         let new_status = Patch::Apply(serde_json::json!({
             "apiVersion": T::api_version(&()),
             "kind": T::kind(&()),
+            "metadata": {
+                "name": meta().name,
+                "namespace": meta().namespace,
+            },
             "status": status
         }));
 
