@@ -9,8 +9,8 @@ use k8s_openapi::api::core::v1::{
     Affinity, ConfigMap, ConfigMapVolumeSource, Container, ContainerPort, DownwardAPIVolumeSource,
     EmptyDirVolumeSource, EnvVar, Event, EventSource, HostPathVolumeSource, Node, NodeAffinity,
     NodeSelector, NodeSelectorRequirement, NodeSelectorTerm, ObjectReference,
-    PersistentVolumeClaimVolumeSource, Pod, PodAffinity, PodCondition, PodSecurityContext, PodSpec, PodStatus,
-    PodTemplateSpec, Probe, ProjectedVolumeSource, SELinuxOptions, SeccompProfile,
+    PersistentVolumeClaimVolumeSource, Pod, PodAffinity, PodCondition, PodSecurityContext, PodSpec,
+    PodStatus, PodTemplateSpec, Probe, ProjectedVolumeSource, SELinuxOptions, SeccompProfile,
     SecretVolumeSource, Sysctl, Toleration, Volume, VolumeMount, WindowsSecurityContextOptions,
 };
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
@@ -1078,13 +1078,18 @@ impl PodBuilder {
             init_containers: self.init_containers.clone(),
             node_name: self.node_name.clone(),
             node_selector: node_selector_labels,
-            affinity: node_affinity.map(|node_affinity| Affinity {
-                node_affinity: Some(node_affinity),
-                pod_affinity: self.pod_affinity.clone(),
-                ..Affinity::default()
-            }).or_else(||{
-                Some(Affinity{pod_affinity: self.pod_affinity.clone(),..Affinity::default()})
-            }),
+            affinity: node_affinity
+                .map(|node_affinity| Affinity {
+                    node_affinity: Some(node_affinity),
+                    pod_affinity: self.pod_affinity.clone(),
+                    ..Affinity::default()
+                })
+                .or_else(|| {
+                    Some(Affinity {
+                        pod_affinity: self.pod_affinity.clone(),
+                        ..Affinity::default()
+                    })
+                }),
             security_context: self.security_context.clone(),
             tolerations: self.tolerations.clone(),
             volumes: self.volumes.clone(),
@@ -1343,9 +1348,14 @@ mod tests {
         NodeBuilder, ObjectMetaBuilder, PodBuilder, PodSecurityContextBuilder, VolumeBuilder,
         VolumeMountBuilder,
     };
-    use k8s_openapi::api::core::v1::{EnvVar, Pod, PodAffinity, PodAffinityTerm, PodSecurityContext, SELinuxOptions, SeccompProfile, Sysctl, VolumeMount, WindowsSecurityContextOptions};
+    use k8s_openapi::api::core::v1::{
+        EnvVar, Pod, PodAffinity, PodAffinityTerm, PodSecurityContext, SELinuxOptions,
+        SeccompProfile, Sysctl, VolumeMount, WindowsSecurityContextOptions,
+    };
     use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
-    use k8s_openapi::apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement, OwnerReference};
+    use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
+        LabelSelector, LabelSelectorRequirement, OwnerReference,
+    };
     use std::collections::BTreeMap;
 
     #[test]
@@ -1612,15 +1622,21 @@ mod tests {
             .args(vec!["12345".to_string()])
             .build();
 
-        let pod_affinity = PodAffinity{ preferred_during_scheduling_ignored_during_execution: None, required_during_scheduling_ignored_during_execution: Some(vec![PodAffinityTerm{
-            label_selector: Some(LabelSelector{ match_expressions: Some(vec![LabelSelectorRequirement{
-                key: "security".to_string(),
-                operator: "In".to_string(),
-                values: Some(vec!["S1".to_string()])
-            }]), match_labels: None }),
-            topology_key: "topology.kubernetes.io/zone".to_string(),
-            ..Default::default()
-        }]) };
+        let pod_affinity = PodAffinity {
+            preferred_during_scheduling_ignored_during_execution: None,
+            required_during_scheduling_ignored_during_execution: Some(vec![PodAffinityTerm {
+                label_selector: Some(LabelSelector {
+                    match_expressions: Some(vec![LabelSelectorRequirement {
+                        key: "security".to_string(),
+                        operator: "In".to_string(),
+                        values: Some(vec!["S1".to_string()]),
+                    }]),
+                    match_labels: None,
+                }),
+                topology_key: "topology.kubernetes.io/zone".to_string(),
+                ..Default::default()
+            }]),
+        };
 
         let pod = PodBuilder::new()
             .pod_affinity(pod_affinity.clone())
@@ -1638,7 +1654,10 @@ mod tests {
 
         let pod_spec = pod.spec.unwrap();
 
-        assert_eq!(pod_spec.affinity.unwrap().pod_affinity, Some(pod_affinity.clone()));
+        assert_eq!(
+            pod_spec.affinity.unwrap().pod_affinity,
+            Some(pod_affinity.clone())
+        );
         assert_eq!(pod.metadata.name.unwrap(), "testpod");
         assert_eq!(
             pod_spec.node_name.as_ref().unwrap(),
