@@ -129,6 +129,7 @@ use std::fmt::{Debug, Display};
 use std::future::Future;
 use std::hash::Hash;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, error, trace, warn, Instrument};
 use uuid::Uuid;
@@ -302,7 +303,7 @@ where
 )]
 #[allow(deprecated)]
 async fn reconcile<S, T>(
-    resource: T,
+    resource: Arc<T>,
     context: Context<ControllerContext<S>>,
 ) -> Result<ReconcilerAction, Error>
 where
@@ -316,7 +317,7 @@ where
 
     let rc = ReconciliationContext::new(
         context.client.clone(),
-        resource.clone(),
+        T::clone(&resource),
         context.requeue_timeout,
     );
 
