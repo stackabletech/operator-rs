@@ -1654,10 +1654,7 @@ mod tests {
 
         let pod_spec = pod.spec.unwrap();
 
-        assert_eq!(
-            pod_spec.affinity.unwrap().pod_affinity,
-            Some(pod_affinity)
-        );
+        assert_eq!(pod_spec.affinity.unwrap().pod_affinity, Some(pod_affinity));
         assert_eq!(pod.metadata.name.unwrap(), "testpod");
         assert_eq!(
             pod_spec.node_name.as_ref().unwrap(),
