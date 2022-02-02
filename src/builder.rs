@@ -9,8 +9,8 @@ use k8s_openapi::api::core::v1::{
     Affinity, ConfigMap, ConfigMapVolumeSource, Container, ContainerPort, DownwardAPIVolumeSource,
     EmptyDirVolumeSource, EnvVar, Event, EventSource, HostPathVolumeSource, Node, NodeAffinity,
     NodeSelector, NodeSelectorRequirement, NodeSelectorTerm, ObjectReference,
-    PersistentVolumeClaimVolumeSource, Pod, PodCondition, PodSecurityContext, PodSpec, PodStatus,
-    PodTemplateSpec, Probe, ProjectedVolumeSource, SELinuxOptions, SeccompProfile,
+    PersistentVolumeClaimVolumeSource, Pod, PodAffinity, PodCondition, PodSecurityContext, PodSpec,
+    PodStatus, PodTemplateSpec, Probe, ProjectedVolumeSource, SELinuxOptions, SeccompProfile,
     SecretVolumeSource, Sysctl, Toleration, Volume, VolumeMount, WindowsSecurityContextOptions,
 };
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
@@ -914,6 +914,7 @@ pub struct PodBuilder {
     metadata: Option<ObjectMeta>,
     node_name: Option<String>,
     node_selector: Option<LabelSelector>,
+    pod_affinity: Option<PodAffinity>,
     status: Option<PodStatus>,
     security_context: Option<PodSecurityContext>,
     tolerations: Option<Vec<Toleration>>,
@@ -957,6 +958,11 @@ impl PodBuilder {
 
     pub fn node_name(&mut self, node_name: impl Into<String>) -> &mut Self {
         self.node_name = Some(node_name.into());
+        self
+    }
+
+    pub fn pod_affinity(&mut self, affinity: PodAffinity) -> &mut Self {
+        self.pod_affinity = Some(affinity);
         self
     }
 
@@ -1033,6 +1039,7 @@ impl PodBuilder {
             }) => (match_labels, match_expressions),
             None => (None, None),
         };
+
         let node_affinity = node_label_exprs.map(|node_label_exprs| NodeAffinity {
             required_during_scheduling_ignored_during_execution: Some(NodeSelector {
                 node_selector_terms: vec![NodeSelectorTerm {
@@ -1071,10 +1078,18 @@ impl PodBuilder {
             init_containers: self.init_containers.clone(),
             node_name: self.node_name.clone(),
             node_selector: node_selector_labels,
-            affinity: node_affinity.map(|node_affinity| Affinity {
-                node_affinity: Some(node_affinity),
-                ..Affinity::default()
-            }),
+            affinity: node_affinity
+                .map(|node_affinity| Affinity {
+                    node_affinity: Some(node_affinity),
+                    pod_affinity: self.pod_affinity.clone(),
+                    ..Affinity::default()
+                })
+                .or_else(|| {
+                    Some(Affinity {
+                        pod_affinity: self.pod_affinity.clone(),
+                        ..Affinity::default()
+                    })
+                }),
             security_context: self.security_context.clone(),
             tolerations: self.tolerations.clone(),
             volumes: self.volumes.clone(),
@@ -1334,11 +1349,13 @@ mod tests {
         VolumeMountBuilder,
     };
     use k8s_openapi::api::core::v1::{
-        EnvVar, Pod, PodSecurityContext, SELinuxOptions, SeccompProfile, Sysctl, VolumeMount,
-        WindowsSecurityContextOptions,
+        EnvVar, Pod, PodAffinity, PodAffinityTerm, PodSecurityContext, SELinuxOptions,
+        SeccompProfile, Sysctl, VolumeMount, WindowsSecurityContextOptions,
     };
     use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
-    use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
+    use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
+        LabelSelector, LabelSelectorRequirement, OwnerReference,
+    };
     use std::collections::BTreeMap;
 
     #[test]
@@ -1605,7 +1622,24 @@ mod tests {
             .args(vec!["12345".to_string()])
             .build();
 
+        let pod_affinity = PodAffinity {
+            preferred_during_scheduling_ignored_during_execution: None,
+            required_during_scheduling_ignored_during_execution: Some(vec![PodAffinityTerm {
+                label_selector: Some(LabelSelector {
+                    match_expressions: Some(vec![LabelSelectorRequirement {
+                        key: "security".to_string(),
+                        operator: "In".to_string(),
+                        values: Some(vec!["S1".to_string()]),
+                    }]),
+                    match_labels: None,
+                }),
+                topology_key: "topology.kubernetes.io/zone".to_string(),
+                ..Default::default()
+            }]),
+        };
+
         let pod = PodBuilder::new()
+            .pod_affinity(pod_affinity.clone())
             .metadata(ObjectMetaBuilder::new().name("testpod").build())
             .add_container(container)
             .add_init_container(init_container)
@@ -1620,6 +1654,7 @@ mod tests {
 
         let pod_spec = pod.spec.unwrap();
 
+        assert_eq!(pod_spec.affinity.unwrap().pod_affinity, Some(pod_affinity));
         assert_eq!(pod.metadata.name.unwrap(), "testpod");
         assert_eq!(
             pod_spec.node_name.as_ref().unwrap(),
