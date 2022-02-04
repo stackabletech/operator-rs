@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.10.0] - 2022-02-04
+
+
 ### Added
 - Unified `ClusterRef` type for referring to cluster objects ([#307]).
 
