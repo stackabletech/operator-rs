@@ -1093,6 +1093,10 @@ impl PodBuilder {
             security_context: self.security_context.clone(),
             tolerations: self.tolerations.clone(),
             volumes: self.volumes.clone(),
+            // Legacy feature for ancient Docker images
+            // In practice, this just causes a bunch of unused environment variables that may conflict with other uses,
+            // such as https://github.com/stackabletech/spark-operator/pull/256.
+            enable_service_links: Some(false),
             ..PodSpec::default()
         }
     }

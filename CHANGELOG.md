@@ -11,7 +11,11 @@ All notable changes to this project will be documented in this file.
 - BREAKING: kube 0.66 -> 0.68 ([#303]).
 - BREAKING: k8s-openapi 0.13 -> 0.14 ([#303]).
 
+### Removed
+- Auto-generated service link environment variables for built pods ([#305]).
+
 [#303]: https://github.com/stackabletech/operator-rs/pull/303
+[#305]: https://github.com/stackabletech/operator-rs/pull/305
 [#307]: https://github.com/stackabletech/operator-rs/pull/307
 
 ## [0.9.0] - 2022-01-27
