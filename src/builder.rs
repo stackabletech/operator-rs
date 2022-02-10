@@ -10,8 +10,9 @@ use k8s_openapi::api::core::v1::{
     EmptyDirVolumeSource, EnvVar, Event, EventSource, HostPathVolumeSource, Node, NodeAffinity,
     NodeSelector, NodeSelectorRequirement, NodeSelectorTerm, ObjectReference,
     PersistentVolumeClaimVolumeSource, Pod, PodAffinity, PodCondition, PodSecurityContext, PodSpec,
-    PodStatus, PodTemplateSpec, Probe, ProjectedVolumeSource, SELinuxOptions, SeccompProfile,
-    SecretVolumeSource, Sysctl, Toleration, Volume, VolumeMount, WindowsSecurityContextOptions,
+    PodStatus, PodTemplateSpec, Probe, ProjectedVolumeSource, ResourceRequirements, SELinuxOptions,
+    SeccompProfile, SecretVolumeSource, Sysctl, Toleration, Volume, VolumeMount,
+    WindowsSecurityContextOptions,
 };
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
@@ -84,6 +85,7 @@ pub struct ContainerBuilder {
     image: Option<String>,
     image_pull_policy: Option<String>,
     name: String,
+    resources: Option<ResourceRequirements>,
     volume_mounts: Option<Vec<VolumeMount>>,
     readiness_probe: Option<Probe>,
     liveness_probe: Option<Probe>,
@@ -149,6 +151,11 @@ impl ContainerBuilder {
         self
     }
 
+    pub fn resources(&mut self, resources: ResourceRequirements) -> &mut Self {
+        self.resources = Some(resources);
+        self
+    }
+
     pub fn add_volume_mount(
         &mut self,
         name: impl Into<String>,
@@ -191,6 +198,7 @@ impl ContainerBuilder {
             env: self.env.clone(),
             image: self.image.clone(),
             image_pull_policy: self.image_pull_policy.clone(),
+            resources: self.resources.clone(),
             name: self.name.clone(),
             ports: self.container_ports.clone(),
             volume_mounts: self.volume_mounts.clone(),
@@ -1353,14 +1361,16 @@ mod tests {
         VolumeMountBuilder,
     };
     use k8s_openapi::api::core::v1::{
-        EnvVar, Pod, PodAffinity, PodAffinityTerm, PodSecurityContext, SELinuxOptions,
-        SeccompProfile, Sysctl, VolumeMount, WindowsSecurityContextOptions,
+        EnvVar, Pod, PodAffinity, PodAffinityTerm, PodSecurityContext, ResourceRequirements,
+        SELinuxOptions, SeccompProfile, Sysctl, VolumeMount, WindowsSecurityContextOptions,
     };
     use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
         LabelSelector, LabelSelectorRequirement, OwnerReference,
     };
+    use std::array::IntoIter;
     use std::collections::BTreeMap;
+    use std::iter::FromIterator;
 
     #[test]
     fn test_security_context_builder() {
@@ -1444,11 +1454,23 @@ mod tests {
         let container_port_name = "foo_port_name";
         let container_port_1: i32 = 20000;
         let container_port_name_1 = "bar_port_name";
+        let resources = ResourceRequirements {
+            limits: Some(BTreeMap::from_iter(IntoIter::new([
+                ("cpu".to_string(), Quantity("3000m".to_string())),
+                ("memory".to_string(), Quantity("6Gi".to_string())),
+                ("nvidia.com/gpu".to_string(), Quantity("1".to_string())),
+            ]))),
+            requests: Some(BTreeMap::from_iter(IntoIter::new([
+                ("cpu".to_string(), Quantity("2000m".to_string())),
+                ("memory".to_string(), Quantity("4Gi".to_string())),
+            ]))),
+        };
 
         let container = ContainerBuilder::new("testcontainer")
             .add_env_var("foo", "bar")
             .add_volume_mount("configmap", "/mount")
             .add_container_port(container_port_name, container_port)
+            .resources(resources.clone())
             .add_container_ports(vec![ContainerPortBuilder::new(container_port_1)
                 .name(container_port_name_1)
                 .build()])
@@ -1477,6 +1499,7 @@ mod tests {
                 .map(|ports| (&ports[1].name, ports[1].container_port)),
             Some((&Some(container_port_name_1.to_string()), container_port_1))
         );
+        assert_eq!(container.resources, Some(resources));
     }
 
     #[test]
