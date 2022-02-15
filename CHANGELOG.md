@@ -9,9 +9,11 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 - Chrono's time 0.1 compatibility ([#310]).
+- Deprecated pre-rework utilities ([#320]).
 
 [#310]: https://github.com/stackabletech/operator-rs/pull/310
 [#319]: https://github.com/stackabletech/operator-rs/pull/319
+[#320]: https://github.com/stackabletech/operator-rs/pull/320
 
 ## [0.10.0] - 2022-02-04
 
