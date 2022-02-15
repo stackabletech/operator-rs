@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-use crate::name_utils;
 use crate::product_config_utils;
 use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
@@ -65,13 +63,6 @@ pub enum Error {
     EnvironmentVariableError {
         #[from]
         source: std::env::VarError,
-    },
-
-    #[error("NameUtils reported error: {source}")]
-    #[allow(deprecated)]
-    NamingError {
-        #[from]
-        source: name_utils::Error,
     },
 
     #[error("Invalid name for resource: {errors:?}")]
