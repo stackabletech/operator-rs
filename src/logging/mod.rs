@@ -1,5 +1,4 @@
 use kube::{
-    core::DynamicObject,
     runtime::{
         controller::{self, ReconcilerAction},
         reflector::ObjectRef,
@@ -43,7 +42,11 @@ pub fn report_controller_reconciled<K, ReconcileErr, QueueErr>(
 {
     match result {
         Ok((obj, _)) => {
-            tracing::info!(object = %obj, controller.name = controller_name, "Reconciled object")
+            tracing::info!(
+                controller.name = controller_name,
+                object = %obj,
+                "Reconciled object"
+            );
         }
         Err(err) => report_controller_error(client, controller_name, err),
     }
@@ -59,8 +62,8 @@ pub fn report_controller_error<ReconcileErr, QueueErr>(
     QueueErr: std::error::Error,
 {
     tracing::error!(
-        error = &*error as &dyn std::error::Error,
         controller.name = controller_name,
+        error = &*error as &dyn std::error::Error,
         "Failed to reconcile object",
     );
     publish_controller_error_as_k8s_event(client, controller_name, error);

@@ -11,6 +11,7 @@ use kube::{
         reflector::ObjectRef,
     },
 };
+use tracing::Instrument;
 
 /// [`Error`] extensions that help serialize it to helpful [`Event`]s
 ///
@@ -82,14 +83,18 @@ pub fn publish_controller_error_as_k8s_event<ReconcileErr, QueueErr>(
         obj.clone().into(),
     );
     let event = error_to_event(error);
-    tokio::spawn(async move {
-        if let Err(err) = recorder.publish(event).await {
-            tracing::error!(
-                error = &err as &dyn std::error::Error,
-                "Failed to report error as K8s event"
-            )
+    // Run in the background
+    tokio::spawn(
+        async move {
+            if let Err(err) = recorder.publish(event).await {
+                tracing::error!(
+                    error = &err as &dyn std::error::Error,
+                    "Failed to report error as K8s event"
+                );
+            }
         }
-    });
+        .in_current_span(),
+    );
 }
 
 #[cfg(test)]
