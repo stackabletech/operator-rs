@@ -1,5 +1,19 @@
+use kube::{
+    core::DynamicObject,
+    runtime::{
+        controller::{self, ReconcilerAction},
+        reflector::ObjectRef,
+    },
+    Resource,
+};
 use tracing;
 use tracing_subscriber::EnvFilter;
+
+use crate::{client::Client, logging::k8s_events::publish_controller_error_as_k8s_event};
+
+use self::k8s_events::PublishableError;
+
+pub mod k8s_events;
 
 /// Initializes `tracing` logging with options from the environment variable
 /// given in the `env` parameter.
@@ -15,6 +29,41 @@ pub fn initialize_logging(env: &str) {
     };
 
     tracing_subscriber::fmt().with_env_filter(filter).init();
+}
+
+/// Reports the controller reconciliation result to all relevant targets
+pub fn report_controller_reconciled<K, ReconcileErr, QueueErr>(
+    client: &Client,
+    controller_name: &str,
+    result: &Result<(ObjectRef<K>, ReconcilerAction), controller::Error<ReconcileErr, QueueErr>>,
+) where
+    K: Resource,
+    ReconcileErr: PublishableError,
+    QueueErr: std::error::Error,
+{
+    match result {
+        Ok((obj, _)) => {
+            tracing::info!(object = %obj, controller.name = controller_name, "Reconciled object")
+        }
+        Err(err) => report_controller_error(client, controller_name, err),
+    }
+}
+
+/// Reports an error to the operator administrator and, if relevant, the end user
+pub fn report_controller_error<ReconcileErr, QueueErr>(
+    client: &Client,
+    controller_name: &str,
+    error: &controller::Error<ReconcileErr, QueueErr>,
+) where
+    ReconcileErr: PublishableError,
+    QueueErr: std::error::Error,
+{
+    tracing::error!(
+        error = &*error as &dyn std::error::Error,
+        controller.name = controller_name,
+        "Failed to reconcile object",
+    );
+    publish_controller_error_as_k8s_event(client, controller_name, error);
 }
 
 #[cfg(test)]
