@@ -1,8 +1,5 @@
 use crate::error::{Error, OperatorResult};
-#[allow(deprecated)]
-use crate::finalizer;
 use crate::label_selector;
-use crate::pod_utils;
 
 use backoff::backoff::Backoff;
 use backoff::ExponentialBackoff;
@@ -341,37 +338,18 @@ impl Client {
 
     /// This deletes a resource _if it is not deleted already_.
     ///
-    /// It checks whether the resource is already deleted by looking at the `deletion_timestamp`
-    /// of the resource using the [`finalizer::has_deletion_stamp`] method.
-    /// If that is the case it'll return a `Ok(None)`.
-    ///
     /// In case the object is actually deleted or marked for deletion there are two possible
     /// return types.
     /// Which of the two are returned depends on the API being called.
     /// Take a look at the Kubernetes API reference.
     /// Some `delete` endpoints return the object and others return a `Status` object.
-    #[allow(deprecated)]
-    pub async fn delete<T>(&self, resource: &T) -> OperatorResult<Option<Either<T, Status>>>
+    pub async fn delete<T>(&self, resource: &T) -> OperatorResult<Either<T, Status>>
     where
         T: Clone + Debug + DeserializeOwned + Resource,
         <T as Resource>::DynamicType: Default,
     {
-        if finalizer::has_deletion_stamp(resource) {
-            trace!(
-                "Resource ([{}]) already has `deletion_timestamp`, not deleting",
-                pod_utils::get_log_name(resource)
-            );
-            Ok(None)
-        } else {
-            trace!(
-                "Resource ([{}]) does not have a `deletion_timestamp`, deleting now",
-                pod_utils::get_log_name(resource)
-            );
-            let api: Api<T> = self.get_api(resource.namespace().as_deref());
-            Ok(Some(
-                api.delete(&resource.name(), &self.delete_params).await?,
-            ))
-        }
+        let api: Api<T> = self.get_api(resource.namespace().as_deref());
+        Ok(api.delete(&resource.name(), &self.delete_params).await?)
     }
 
     /// This deletes a resource _if it is not deleted already_ and waits until the deletion is
