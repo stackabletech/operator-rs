@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Infrastructure for logging errors as K8s events ([#322])
+
 ### Changed
 - BREAKING: kube 0.68 -> 0.69 ([#319]).
 
@@ -12,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 [#310]: https://github.com/stackabletech/operator-rs/pull/310
 [#319]: https://github.com/stackabletech/operator-rs/pull/319
+[#322]: https://github.com/stackabletech/operator-rs/pull/322
 
 ## [0.10.0] - 2022-02-04
 
