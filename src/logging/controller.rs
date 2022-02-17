@@ -35,6 +35,10 @@ pub trait ReconcilerError: Error {
 }
 
 /// Reports the controller reconciliation result to all relevant targets
+///
+/// Currently this means that the result is reported to:
+/// * The current [`tracing`] `Subscriber`, typically at least stderr
+/// * Kubernetes events, if there is an error that is relevant to the end user
 pub fn report_controller_reconciled<K, ReconcileErr, QueueErr>(
     client: &Client,
     controller_name: &str,
