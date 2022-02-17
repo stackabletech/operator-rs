@@ -1,6 +1,9 @@
 use tracing;
 use tracing_subscriber::EnvFilter;
 
+pub mod controller;
+mod k8s_events;
+
 /// Initializes `tracing` logging with options from the environment variable
 /// given in the `env` parameter.
 ///
