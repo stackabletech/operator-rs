@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 - Infrastructure for logging errors as K8s events ([#322])
 
 ### Changed
-- BREAKING: kube 0.68 -> 0.69 ([#319]).
+- BREAKING: kube 0.68 -> 0.69.1 ([#319, [#322]]).
 
 ### Removed
 - Chrono's time 0.1 compatibility ([#310]).
