@@ -248,13 +248,12 @@ impl Client {
             "status": status
         }));
 
-        Ok(self
-            .patch_status(
-                resource,
-                new_status,
-                &self.apply_patch_params(field_manager_scope),
-            )
-            .await?)
+        self.patch_status(
+            resource,
+            new_status,
+            &self.apply_patch_params(field_manager_scope),
+        )
+        .await
     }
 
     /// Patches subresource status in a given Resource using merge strategy.
@@ -267,9 +266,8 @@ impl Client {
     {
         let new_status = Patch::Merge(serde_json::json!({ "status": status }));
 
-        Ok(self
-            .patch_status(resource, new_status, &self.patch_params)
-            .await?)
+        self.patch_status(resource, new_status, &self.patch_params)
+            .await
     }
 
     /// Patches subresource status in a given Resource using merge strategy.
