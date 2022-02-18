@@ -87,8 +87,10 @@ mod message {
         const ELLIPSIS_LEN: usize = ELLIPSIS.len_utf8();
         let len = msg.len();
         if len > max_len {
-            msg.truncate(find_start_of_char(msg, len - ELLIPSIS_LEN));
-            msg.push(ELLIPSIS);
+            msg.truncate(find_start_of_char(msg, len.saturating_sub(ELLIPSIS_LEN)));
+            if ELLIPSIS_LEN <= max_len {
+                msg.push(ELLIPSIS);
+            }
         }
     }
 
