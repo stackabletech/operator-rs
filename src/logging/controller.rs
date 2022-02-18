@@ -1,6 +1,6 @@
 //! Facilities for reporting Kubernetes controller outcomes
 //!
-//! The primary entry point is [`report_controller_reconcilied`].
+//! The primary entry point is [`report_controller_reconciled`].
 
 use std::error::Error;
 
@@ -22,13 +22,15 @@ use crate::{client::Client, logging::k8s_events::publish_controller_error_as_k8s
 pub trait ReconcilerError: Error {
     /// `PascalCase`d name for the error category
     ///
-    /// This can typically be implemented by delegating to [`strum_macros::EnumDiscriminants`] and [`strum_macros::IntoStaticStr`].
+    /// This can typically be implemented by delegating to [`strum::EnumDiscriminants`] and [`strum::IntoStaticStr`].
     fn category(&self) -> &'static str;
 
     /// A reference to a secondary object providing additional context, if any
     ///
     /// This should be [`Some`] if the error happens while evaluating some related object
     /// (for example: when writing a [`StatefulSet`] owned by your controller object).
+    ///
+    /// [`StatefulSet`]: `k8s_openapi::api::apps::v1::StatefulSet`
     fn secondary_object(&self) -> Option<ObjectRef<DynamicObject>> {
         None
     }
@@ -37,8 +39,10 @@ pub trait ReconcilerError: Error {
 /// Reports the controller reconciliation result to all relevant targets
 ///
 /// Currently this means that the result is reported to:
-/// * The current [`tracing`] `Subscriber`, typically at least stderr
-/// * Kubernetes events, if there is an error that is relevant to the end user
+/// * The current [`tracing::Subscriber`], typically at least stderr
+/// * Kubernetes [`Event`]s, if there is an error that is relevant to the end user
+///
+/// [`Event`]: `k8s_openapi::api::events::v1::Event`
 pub fn report_controller_reconciled<K, ReconcileErr, QueueErr>(
     client: &Client,
     controller_name: &str,

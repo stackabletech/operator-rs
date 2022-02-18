@@ -81,12 +81,12 @@ pub fn publish_controller_error_as_k8s_event<ReconcileErr, QueueErr>(
 mod tests {
     use k8s_openapi::api::core::v1::ConfigMap;
     use kube::runtime::reflector::ObjectRef;
-    use strum_macros::EnumDiscriminants;
+    use strum::EnumDiscriminants;
 
     use super::{error_to_event, ReconcilerError};
 
     #[derive(Debug, thiserror::Error, EnumDiscriminants)]
-    #[strum_discriminants(derive(strum_macros::IntoStaticStr))]
+    #[strum_discriminants(derive(strum::IntoStaticStr))]
     enum ErrorFoo {
         #[error("bar failed")]
         Bar { source: ErrorBar },

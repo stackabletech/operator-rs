@@ -4,7 +4,7 @@ use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::error::OperatorResult;
+use crate::error::{Error, OperatorResult};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -97,7 +97,7 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
     fn yaml_schema() -> OperatorResult<String> {
         let mut writer = Vec::new();
         Self::generate_yaml_schema(&mut writer)?;
-        Ok(String::from_utf8(writer)?)
+        String::from_utf8(writer).map_err(Error::CrdFromUtf8Error)
     }
 }
 
