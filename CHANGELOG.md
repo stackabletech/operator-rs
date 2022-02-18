@@ -4,11 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Removed
+- `Client::set_condition` ([#326]).
+- `Error` variants that are no longer used ([#326]).
+
+[#326]: https://github.com/stackabletech/operator-rs/pull/326
+
 ## [0.11.0] - 2022-02-17
 
 
 ### Added
-- Infrastructure for logging errors as K8s events ([#322])
+- Infrastructure for logging errors as K8s events ([#322]).
 
 ### Changed
 - BREAKING: kube 0.68 -> 0.69.1 ([#319, [#322]]).
