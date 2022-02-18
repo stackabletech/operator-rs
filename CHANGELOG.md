@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.12.0] - 2022-02-18
+
+
 ### Changed
 - Reported K8s events are now limited to 1024 bytes ([#327]).
 
