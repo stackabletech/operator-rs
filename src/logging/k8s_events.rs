@@ -79,6 +79,9 @@ pub fn publish_controller_error_as_k8s_event<ReconcileErr, QueueErr>(
 }
 
 mod message {
+    /// Ensures that `msg` is at most `max_len` _bytes_ long
+    ///
+    /// If `msg` is longer than `max_len` then the extra text is replaced with an ellipsis.
     pub fn truncate_with_ellipsis(msg: &mut String, max_len: usize) {
         const ELLIPSIS: char = '…';
         const ELLIPSIS_LEN: usize = ELLIPSIS.len_utf8();
