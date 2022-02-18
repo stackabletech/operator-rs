@@ -4,11 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- Reported K8s events are now limited to 1024 bytes ([#327]).
+
 ### Removed
 - `Client::set_condition` ([#326]).
 - `Error` variants that are no longer used ([#326]).
 
 [#326]: https://github.com/stackabletech/operator-rs/pull/326
+[#327]: https://github.com/stackabletech/operator-rs/pull/327
 
 ## [0.11.0] - 2022-02-17
 
