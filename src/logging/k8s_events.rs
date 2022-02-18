@@ -14,7 +14,7 @@ use super::controller::ReconcilerError;
 /// Converts an [`Error`] into a publishable Kubernetes [`Event`]
 fn error_to_event<E: ReconcilerError>(err: &E) -> Event {
     // Walk the whole error chain, so that we get all the full reason for the error
-    let full_msg = {
+    let mut full_msg = {
         use std::fmt::Write;
         let mut buf = err.to_string();
         let mut err: &dyn Error = err;
@@ -28,6 +28,7 @@ fn error_to_event<E: ReconcilerError>(err: &E) -> Event {
             }
         }
     };
+    message::truncate_with_ellipsis(&mut full_msg, 1024);
     Event {
         type_: EventType::Warning,
         reason: err.category().to_string(),
@@ -75,6 +76,68 @@ pub fn publish_controller_error_as_k8s_event<ReconcileErr, QueueErr>(
         }
         .in_current_span(),
     );
+}
+
+mod message {
+    pub fn truncate_with_ellipsis(msg: &mut String, max_len: usize) {
+        const ELLIPSIS: char = '…';
+        const ELLIPSIS_LEN: usize = ELLIPSIS.len_utf8();
+        let len = msg.len();
+        if len > max_len {
+            msg.truncate(find_start_of_char(msg, len - ELLIPSIS_LEN));
+            msg.push(ELLIPSIS);
+        }
+    }
+
+    fn find_start_of_char(s: &str, mut pos: usize) -> usize {
+        loop {
+            if s.is_char_boundary(pos) {
+                break pos;
+            }
+            pos -= 1;
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::logging::k8s_events::message::find_start_of_char;
+
+        use super::truncate_with_ellipsis;
+
+        #[test]
+        fn truncate_should_be_noop_if_string_fits() {
+            let mut x = "hello".to_string();
+            truncate_with_ellipsis(&mut x, 5);
+            assert_eq!(&x, "hello");
+        }
+
+        #[test]
+        fn truncate_should_ellipsize_large_string() {
+            let mut x = "hello".to_string();
+            truncate_with_ellipsis(&mut x, 4);
+            assert_eq!(&x, "he…");
+        }
+
+        #[test]
+        fn truncate_should_ellipsize_emoji() {
+            let mut x = "hello🙋".to_string();
+            truncate_with_ellipsis(&mut x, 8);
+            assert_eq!(&x, "hello…");
+        }
+
+        #[test]
+        fn find_start_of_char_should_be_noop_for_ascii() {
+            assert_eq!(find_start_of_char("hello", 2 /* l */), 2);
+        }
+
+        #[test]
+        fn find_start_of_char_should_find_start_of_emoji() {
+            assert_eq!(
+                find_start_of_char("hello🙋", 7 /* in the middle of the emoji */),
+                5
+            );
+        }
+    }
 }
 
 #[cfg(test)]
