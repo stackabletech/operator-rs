@@ -5,7 +5,7 @@ use backoff::backoff::Backoff;
 use backoff::ExponentialBackoff;
 use either::Either;
 use futures::StreamExt;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use kube::api::{DeleteParams, ListParams, Patch, PatchParams, PostParams, Resource, ResourceExt};
 use kube::client::Client as KubeClient;
 use kube::core::Status;
@@ -399,29 +399,6 @@ impl Client {
                 }
             }
         }
-    }
-
-    /// Sets a condition on a status.
-    /// This will only work if there is a `status` subresource **and** it has a `conditions` array.
-    ///
-    /// Additionally, the `conditions` array *must* be annotated as `#[schemars(schema_with = "stackable_operator::conditions::conditions_schema")]`,
-    /// see [`crate::conditions::conditions_schema`] for more information.
-    pub async fn set_condition<T>(&self, resource: &T, condition: Condition) -> OperatorResult<T>
-    where
-        T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
-    {
-        let patch_params = self.apply_patch_params(format_args!("condition-{}", condition.type_));
-        let new_status = Patch::Apply(serde_json::json!({
-            "apiVersion": T::api_version(&()),
-            "kind": T::kind(&()),
-            "status": {
-                "conditions": vec![condition]
-            }
-        }));
-
-        Ok(self
-            .patch_status(resource, new_status, &patch_params)
-            .await?)
     }
 
     /// Returns an [kube::Api] object which is either namespaced or not depending on whether
