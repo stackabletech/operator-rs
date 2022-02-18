@@ -8,7 +8,6 @@ version = "0.11.0"
 repository = "https://github.com/stackabletech/operator-rs"
 
 [dependencies]
-async-trait = "0.1.52"
 chrono = { version = "0.4.19", default-features = false }
 clap = { version = "3.0.13", features = ["derive", "cargo"] }
 const_format = "0.2.22"
@@ -25,20 +24,16 @@ schemars = "0.8.8"
 serde = "1.0.136"
 serde_json = "1.0.78"
 serde_yaml = "0.8.23"
-strum = "0.23.0"
-strum_macros = "0.23.1"
+strum = { version = "0.23.0", features = ["derive"] }
 thiserror = "1.0.30"
 tokio = { version = "1.16.1", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.29"
-tracing-futures = "0.2.5"
 tracing-subscriber = { version = "0.3.7", features = ["env-filter"] }
-uuid = { version = "0.8.2", features = ["v4"] }
 backoff = "0.4.0"
 derivative = "2.2.0"
 
 [dev-dependencies]
 rstest = "0.12.0"
-serial_test = "0.5.1"
 tempfile = "3.3.0"
 
 [features]

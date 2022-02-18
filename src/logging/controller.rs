@@ -22,7 +22,7 @@ use crate::{client::Client, logging::k8s_events::publish_controller_error_as_k8s
 pub trait ReconcilerError: Error {
     /// `PascalCase`d name for the error category
     ///
-    /// This can typically be implemented by delegating to [`strum_macros::EnumDiscriminants`] and [`strum_macros::IntoStaticStr`].
+    /// This can typically be implemented by delegating to [`strum::EnumDiscriminants`] and [`strum::IntoStaticStr`].
     fn category(&self) -> &'static str;
 
     /// A reference to a secondary object providing additional context, if any
