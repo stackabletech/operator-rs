@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Build against Kubernetes 1.23 ([#330]).
+
+[#330]: https://github.com/stackabletech/operator-rs/pull/330
+
 ## [0.12.0] - 2022-02-18
 
 
