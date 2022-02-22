@@ -108,8 +108,8 @@ impl SecurityContextBuilder {
         self
     }
 
-    pub fn proc_mount(&mut self, value: String) -> &mut Self {
-        self.security_context.proc_mount = Some(value);
+    pub fn proc_mount(&mut self, value: impl Into<String>) -> &mut Self {
+        self.security_context.proc_mount = Some(value.into());
         self
     }
 
@@ -204,7 +204,7 @@ impl SecurityContextBuilder {
         self
     }
 
-    pub fn win_run_as_user_name(&mut self, name: &str) -> &mut Self {
+    pub fn win_run_as_user_name(&mut self, name: impl Into<String>) -> &mut Self {
         let mut wo = self
             .security_context
             .windows_options
