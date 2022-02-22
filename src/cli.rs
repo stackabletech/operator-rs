@@ -94,7 +94,7 @@
 //!     cli::Command::Crd => {
 //!         // Print CRD objects
 //!     }
-//!     cli::Command::Run(cli::ProductOperatorRun { product_config }) => {
+//!     cli::Command::Run(cli::ProductOperatorRun { product_config, watch_namespace }) => {
 //!         let product_config = product_config.load(&[
 //!             "deploy/config-spec/properties.yaml",
 //!             "/etc/stackable/spark-operator/config-spec/properties.yaml",
@@ -155,11 +155,12 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///     common: ProductOperatorRun,
 /// }
 /// use clap::Parser;
-/// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar"]);
+/// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar", "--watch-namespace", "foobar"]);
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
 ///     common: ProductOperatorRun {
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
+///         watch_namespace: Some("foobar".to_string())
 ///     },
 /// }));
 /// ```
@@ -191,6 +192,9 @@ pub struct ProductOperatorRun {
         parse(from_os_str)
     )]
     pub product_config: ProductConfigPath,
+    /// Provides a specific namespace to watch (instead of watching all namespaces)
+    #[clap(long, env)]
+    pub watch_namespace: Option<String>
 }
 
 /// A path to a [`ProductConfigManager`] spec file
