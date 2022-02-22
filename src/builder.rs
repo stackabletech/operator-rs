@@ -232,8 +232,8 @@ impl fmt::Display for FieldPathEnvVar {
             FieldPathEnvVar::Name => write!(f, "metadata.name"),
             FieldPathEnvVar::Namespace => write!(f, "metadata.namespace"),
             FieldPathEnvVar::UID => write!(f, "metadata.uid"),
-            FieldPathEnvVar::Labels(name) => write!(f, "metadata.labels['{name}']"),
-            FieldPathEnvVar::Annotations(name) => write!(f, "metadata.annotations['{name}']"),
+            FieldPathEnvVar::Labels(name) => write!(f, "metadata.labels['{}']", name),
+            FieldPathEnvVar::Annotations(name) => write!(f, "metadata.annotations['{}']", name),
         }
     }
 }
