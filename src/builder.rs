@@ -6,12 +6,13 @@ use crate::error::{Error, OperatorResult};
 use crate::labels;
 use chrono::Utc;
 use k8s_openapi::api::core::v1::{
-    Affinity, ConfigMap, ConfigMapVolumeSource, Container, ContainerPort, DownwardAPIVolumeSource,
-    EmptyDirVolumeSource, EnvVar, Event, EventSource, HostPathVolumeSource, Node, NodeAffinity,
-    NodeSelector, NodeSelectorRequirement, NodeSelectorTerm, ObjectReference,
-    PersistentVolumeClaimVolumeSource, Pod, PodAffinity, PodCondition, PodSecurityContext, PodSpec,
-    PodStatus, PodTemplateSpec, Probe, ProjectedVolumeSource, ResourceRequirements, SELinuxOptions,
-    SeccompProfile, SecretVolumeSource, Sysctl, Toleration, Volume, VolumeMount,
+    Affinity, Capabilities, ConfigMap, ConfigMapVolumeSource, Container, ContainerPort,
+    DownwardAPIVolumeSource, EmptyDirVolumeSource, EnvVar, EnvVarSource, Event, EventSource,
+    HostPathVolumeSource, Node, NodeAffinity, NodeSelector, NodeSelectorRequirement,
+    NodeSelectorTerm, ObjectFieldSelector, ObjectReference, PersistentVolumeClaimVolumeSource, Pod,
+    PodAffinity, PodCondition, PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec, Probe,
+    ProjectedVolumeSource, ResourceRequirements, SELinuxOptions, SeccompProfile,
+    SecretVolumeSource, SecurityContext, Sysctl, Toleration, Volume, VolumeMount,
     WindowsSecurityContextOptions,
 };
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
@@ -73,6 +74,198 @@ impl ConfigMapBuilder {
     }
 }
 
+/// A builder for [`SecurityContext`] objects (not to be confused with `PodSecurityContext`).
+#[derive(Clone, Default)]
+pub struct SecurityContextBuilder {
+    security_context: SecurityContext,
+}
+
+impl SecurityContextBuilder {
+    /// Convenience function for a wide use-case.
+    pub fn run_as_root() -> SecurityContext {
+        SecurityContext {
+            run_as_user: Some(0),
+            ..SecurityContext::default()
+        }
+    }
+
+    pub fn new() -> SecurityContextBuilder {
+        SecurityContextBuilder::default()
+    }
+
+    pub fn allow_privilege_escalation(&mut self, value: bool) -> &mut Self {
+        self.security_context.allow_privilege_escalation = Some(value);
+        self
+    }
+
+    pub fn capabilities(&mut self, value: Capabilities) -> &mut Self {
+        self.security_context.capabilities = Some(value);
+        self
+    }
+
+    pub fn privileged(&mut self, value: bool) -> &mut Self {
+        self.security_context.privileged = Some(value);
+        self
+    }
+
+    pub fn proc_mount(&mut self, value: String) -> &mut Self {
+        self.security_context.proc_mount = Some(value);
+        self
+    }
+
+    pub fn read_only_root_filesystem(&mut self, value: bool) -> &mut Self {
+        self.security_context.read_only_root_filesystem = Some(value);
+        self
+    }
+
+    pub fn run_as_group(&mut self, value: i64) -> &mut Self {
+        self.security_context.run_as_group = Some(value);
+        self
+    }
+
+    pub fn run_as_non_root(&mut self, value: bool) -> &mut Self {
+        self.security_context.run_as_non_root = Some(value);
+        self
+    }
+
+    pub fn run_as_user(&mut self, value: i64) -> &mut Self {
+        self.security_context.run_as_user = Some(value);
+        self
+    }
+
+    pub fn se_linux_level(&mut self, level: &str) -> &mut Self {
+        self.security_context.se_linux_options =
+            Some(self.security_context.se_linux_options.clone().map_or(
+                SELinuxOptions {
+                    level: Some(level.to_string()),
+                    ..SELinuxOptions::default()
+                },
+                |o| SELinuxOptions {
+                    level: Some(level.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+    pub fn se_linux_role(&mut self, role: &str) -> &mut Self {
+        self.security_context.se_linux_options =
+            Some(self.security_context.se_linux_options.clone().map_or(
+                SELinuxOptions {
+                    role: Some(role.to_string()),
+                    ..SELinuxOptions::default()
+                },
+                |o| SELinuxOptions {
+                    role: Some(role.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+    pub fn se_linux_type(&mut self, type_: &str) -> &mut Self {
+        self.security_context.se_linux_options =
+            Some(self.security_context.se_linux_options.clone().map_or(
+                SELinuxOptions {
+                    type_: Some(type_.to_string()),
+                    ..SELinuxOptions::default()
+                },
+                |o| SELinuxOptions {
+                    type_: Some(type_.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+    pub fn se_linux_user(&mut self, user: &str) -> &mut Self {
+        self.security_context.se_linux_options =
+            Some(self.security_context.se_linux_options.clone().map_or(
+                SELinuxOptions {
+                    user: Some(user.to_string()),
+                    ..SELinuxOptions::default()
+                },
+                |o| SELinuxOptions {
+                    user: Some(user.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+
+    pub fn seccomp_profile_localhost(&mut self, profile: &str) -> &mut Self {
+        self.security_context.seccomp_profile =
+            Some(self.security_context.seccomp_profile.clone().map_or(
+                SeccompProfile {
+                    localhost_profile: Some(profile.to_string()),
+                    ..SeccompProfile::default()
+                },
+                |o| SeccompProfile {
+                    localhost_profile: Some(profile.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+
+    pub fn seccomp_profile_type(&mut self, type_: &str) -> &mut Self {
+        self.security_context.seccomp_profile =
+            Some(self.security_context.seccomp_profile.clone().map_or(
+                SeccompProfile {
+                    type_: type_.to_string(),
+                    ..SeccompProfile::default()
+                },
+                |o| SeccompProfile {
+                    type_: type_.to_string(),
+                    ..o
+                },
+            ));
+        self
+    }
+
+    pub fn win_credential_spec(&mut self, spec: &str) -> &mut Self {
+        self.security_context.windows_options =
+            Some(self.security_context.windows_options.clone().map_or(
+                WindowsSecurityContextOptions {
+                    gmsa_credential_spec: Some(spec.to_string()),
+                    ..WindowsSecurityContextOptions::default()
+                },
+                |o| WindowsSecurityContextOptions {
+                    gmsa_credential_spec: Some(spec.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+
+    pub fn win_credential_spec_name(&mut self, name: &str) -> &mut Self {
+        self.security_context.windows_options =
+            Some(self.security_context.windows_options.clone().map_or(
+                WindowsSecurityContextOptions {
+                    gmsa_credential_spec_name: Some(name.to_string()),
+                    ..WindowsSecurityContextOptions::default()
+                },
+                |o| WindowsSecurityContextOptions {
+                    gmsa_credential_spec_name: Some(name.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+
+    pub fn win_run_as_user_name(&mut self, name: &str) -> &mut Self {
+        self.security_context.windows_options =
+            Some(self.security_context.windows_options.clone().map_or(
+                WindowsSecurityContextOptions {
+                    run_as_user_name: Some(name.to_string()),
+                    ..WindowsSecurityContextOptions::default()
+                },
+                |o| WindowsSecurityContextOptions {
+                    run_as_user_name: Some(name.to_string()),
+                    ..o
+                },
+            ));
+        self
+    }
+}
+
 /// A builder to build [`Container`] objects.
 ///
 /// This will automatically create the necessary volumes and mounts for each `ConfigMap` which is added.
@@ -89,6 +282,7 @@ pub struct ContainerBuilder {
     volume_mounts: Option<Vec<VolumeMount>>,
     readiness_probe: Option<Probe>,
     liveness_probe: Option<Probe>,
+    security_context: Option<SecurityContext>,
 }
 
 impl ContainerBuilder {
@@ -113,6 +307,26 @@ impl ContainerBuilder {
         self.env.get_or_insert_with(Vec::new).push(EnvVar {
             name: name.into(),
             value: Some(value.into()),
+            ..EnvVar::default()
+        });
+        self
+    }
+
+    /// Used for pushing down attributes like the Pod's namespace into the containers.
+    pub fn add_env_var_from_field_ref(
+        &mut self,
+        name: impl Into<String>,
+        value: impl Into<String>,
+    ) -> &mut Self {
+        self.env.get_or_insert_with(Vec::new).push(EnvVar {
+            name: name.into(),
+            value_from: Some(EnvVarSource {
+                field_ref: Some(ObjectFieldSelector {
+                    field_path: value.into(),
+                    ..ObjectFieldSelector::default()
+                }),
+                ..EnvVarSource::default()
+            }),
             ..EnvVar::default()
         });
         self
@@ -191,6 +405,11 @@ impl ContainerBuilder {
         self
     }
 
+    pub fn security_context(&mut self, context: SecurityContext) -> &mut Self {
+        self.security_context = Some(context);
+        self
+    }
+
     pub fn build(&self) -> Container {
         Container {
             args: self.args.clone(),
@@ -204,6 +423,7 @@ impl ContainerBuilder {
             volume_mounts: self.volume_mounts.clone(),
             readiness_probe: self.readiness_probe.clone(),
             liveness_probe: self.liveness_probe.clone(),
+            security_context: self.security_context.clone(),
             ..Container::default()
         }
     }
