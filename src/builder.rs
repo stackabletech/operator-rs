@@ -1095,11 +1095,17 @@ pub struct PodBuilder {
     security_context: Option<PodSecurityContext>,
     tolerations: Option<Vec<Toleration>>,
     volumes: Option<Vec<Volume>>,
+    service_account_name: Option<String>,
 }
 
 impl PodBuilder {
     pub fn new() -> PodBuilder {
         PodBuilder::default()
+    }
+
+    pub fn service_account_name(&mut self, value: impl Into<String>) -> &mut Self {
+        self.service_account_name = Some(value.into());
+        self
     }
 
     pub fn host_network(&mut self, host_network: bool) -> &mut Self {
@@ -1273,6 +1279,7 @@ impl PodBuilder {
             // In practice, this just causes a bunch of unused environment variables that may conflict with other uses,
             // such as https://github.com/stackabletech/spark-operator/pull/256.
             enable_service_links: Some(false),
+            service_account_name: self.service_account_name.clone(),
             ..PodSpec::default()
         }
     }

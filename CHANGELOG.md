@@ -9,7 +9,10 @@ All notable changes to this project will be documented in this file.
 - Build against Kubernetes 1.23 ([#330]).
 
 ### Added
-- More builder functionality: `SecurityContext` objects and `EnvVar`s from field refs ([#331])
+- More builder functionality ([#331]) 
+  - builder for `SecurityContext` objects 
+  - add  `EnvVar`s from field refs
+  - set `serviceServiceAccountName` in pod templates
 
 [#330]: https://github.com/stackabletech/operator-rs/pull/330
 [#331]: https://github.com/stackabletech/operator-rs/pull/331
