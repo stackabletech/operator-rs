@@ -133,135 +133,83 @@ impl SecurityContextBuilder {
         self
     }
 
-    pub fn se_linux_level(&mut self, level: &str) -> &mut Self {
-        self.security_context.se_linux_options =
-            Some(self.security_context.se_linux_options.clone().map_or(
-                SELinuxOptions {
-                    level: Some(level.to_string()),
-                    ..SELinuxOptions::default()
-                },
-                |o| SELinuxOptions {
-                    level: Some(level.to_string()),
-                    ..o
-                },
-            ));
+    pub fn se_linux_level(&mut self, level: impl Into<String>) -> &mut Self {
+        let mut sc = self
+            .security_context
+            .se_linux_options
+            .get_or_insert_with(SELinuxOptions::default);
+        sc.level = Some(level.into());
         self
     }
-    pub fn se_linux_role(&mut self, role: &str) -> &mut Self {
-        self.security_context.se_linux_options =
-            Some(self.security_context.se_linux_options.clone().map_or(
-                SELinuxOptions {
-                    role: Some(role.to_string()),
-                    ..SELinuxOptions::default()
-                },
-                |o| SELinuxOptions {
-                    role: Some(role.to_string()),
-                    ..o
-                },
-            ));
-        self
-    }
-    pub fn se_linux_type(&mut self, type_: &str) -> &mut Self {
-        self.security_context.se_linux_options =
-            Some(self.security_context.se_linux_options.clone().map_or(
-                SELinuxOptions {
-                    type_: Some(type_.to_string()),
-                    ..SELinuxOptions::default()
-                },
-                |o| SELinuxOptions {
-                    type_: Some(type_.to_string()),
-                    ..o
-                },
-            ));
-        self
-    }
-    pub fn se_linux_user(&mut self, user: &str) -> &mut Self {
-        self.security_context.se_linux_options =
-            Some(self.security_context.se_linux_options.clone().map_or(
-                SELinuxOptions {
-                    user: Some(user.to_string()),
-                    ..SELinuxOptions::default()
-                },
-                |o| SELinuxOptions {
-                    user: Some(user.to_string()),
-                    ..o
-                },
-            ));
+    pub fn se_linux_role(&mut self, role: impl Into<String>) -> &mut Self {
+        let mut sc = self
+            .security_context
+            .se_linux_options
+            .get_or_insert_with(SELinuxOptions::default);
+        sc.role = Some(role.into());
         self
     }
 
-    pub fn seccomp_profile_localhost(&mut self, profile: &str) -> &mut Self {
-        self.security_context.seccomp_profile =
-            Some(self.security_context.seccomp_profile.clone().map_or(
-                SeccompProfile {
-                    localhost_profile: Some(profile.to_string()),
-                    ..SeccompProfile::default()
-                },
-                |o| SeccompProfile {
-                    localhost_profile: Some(profile.to_string()),
-                    ..o
-                },
-            ));
+    pub fn se_linux_type(&mut self, type_: impl Into<String>) -> &mut Self {
+        let mut sc = self
+            .security_context
+            .se_linux_options
+            .get_or_insert_with(SELinuxOptions::default);
+        sc.type_ = Some(type_.into());
         self
     }
 
-    pub fn seccomp_profile_type(&mut self, type_: &str) -> &mut Self {
-        self.security_context.seccomp_profile =
-            Some(self.security_context.seccomp_profile.clone().map_or(
-                SeccompProfile {
-                    type_: type_.to_string(),
-                    ..SeccompProfile::default()
-                },
-                |o| SeccompProfile {
-                    type_: type_.to_string(),
-                    ..o
-                },
-            ));
+    pub fn se_linux_user(&mut self, user: impl Into<String>) -> &mut Self {
+        let mut sc = self
+            .security_context
+            .se_linux_options
+            .get_or_insert_with(SELinuxOptions::default);
+        sc.user = Some(user.into());
         self
     }
 
-    pub fn win_credential_spec(&mut self, spec: &str) -> &mut Self {
-        self.security_context.windows_options =
-            Some(self.security_context.windows_options.clone().map_or(
-                WindowsSecurityContextOptions {
-                    gmsa_credential_spec: Some(spec.to_string()),
-                    ..WindowsSecurityContextOptions::default()
-                },
-                |o| WindowsSecurityContextOptions {
-                    gmsa_credential_spec: Some(spec.to_string()),
-                    ..o
-                },
-            ));
+    pub fn seccomp_profile_localhost(&mut self, profile: impl Into<String>) -> &mut Self {
+        let mut sc = self
+            .security_context
+            .seccomp_profile
+            .get_or_insert_with(SeccompProfile::default);
+        sc.localhost_profile = Some(profile.into());
         self
     }
 
-    pub fn win_credential_spec_name(&mut self, name: &str) -> &mut Self {
-        self.security_context.windows_options =
-            Some(self.security_context.windows_options.clone().map_or(
-                WindowsSecurityContextOptions {
-                    gmsa_credential_spec_name: Some(name.to_string()),
-                    ..WindowsSecurityContextOptions::default()
-                },
-                |o| WindowsSecurityContextOptions {
-                    gmsa_credential_spec_name: Some(name.to_string()),
-                    ..o
-                },
-            ));
+    pub fn seccomp_profile_type(&mut self, type_: impl Into<String>) -> &mut Self {
+        let mut sc = self
+            .security_context
+            .seccomp_profile
+            .get_or_insert_with(SeccompProfile::default);
+        sc.type_ = type_.into();
+        self
+    }
+
+    pub fn win_credential_spec(&mut self, spec: impl Into<String>) -> &mut Self {
+        let mut wo = self
+            .security_context
+            .windows_options
+            .get_or_insert_with(WindowsSecurityContextOptions::default);
+        wo.gmsa_credential_spec = Some(spec.into());
+        self
+    }
+
+    pub fn win_credential_spec_name(&mut self, name: impl Into<String>) -> &mut Self {
+        let mut wo = self
+            .security_context
+            .windows_options
+            .get_or_insert_with(WindowsSecurityContextOptions::default);
+        wo.gmsa_credential_spec_name = Some(name.into());
         self
     }
 
     pub fn win_run_as_user_name(&mut self, name: &str) -> &mut Self {
-        self.security_context.windows_options =
-            Some(self.security_context.windows_options.clone().map_or(
-                WindowsSecurityContextOptions {
-                    run_as_user_name: Some(name.to_string()),
-                    ..WindowsSecurityContextOptions::default()
-                },
-                |o| WindowsSecurityContextOptions {
-                    run_as_user_name: Some(name.to_string()),
-                    ..o
-                },
-            ));
+        let mut wo = self
+            .security_context
+            .windows_options
+            .get_or_insert_with(WindowsSecurityContextOptions::default);
+        wo.run_as_user_name = Some(name.into());
         self
     }
 }
