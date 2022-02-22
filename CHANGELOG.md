@@ -8,7 +8,11 @@ All notable changes to this project will be documented in this file.
 
 - Build against Kubernetes 1.23 ([#330]).
 
+### Added
+- More builder functionality: `SecurityContext` objects and `EnvVar`s from field refs ([xxx])
+
 [#330]: https://github.com/stackabletech/operator-rs/pull/330
+[#xxx]: https://github.com/stackabletech/operator-rs/pull/xxx
 
 ## [0.12.0] - 2022-02-18
 
