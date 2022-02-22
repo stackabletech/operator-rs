@@ -194,7 +194,7 @@ pub struct ProductOperatorRun {
     pub product_config: ProductConfigPath,
     /// Provides a specific namespace to watch (instead of watching all namespaces)
     #[clap(long, env)]
-    pub watch_namespace: Option<String>
+    pub watch_namespace: Option<String>,
 }
 
 /// A path to a [`ProductConfigManager`] spec file
