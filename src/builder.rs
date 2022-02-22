@@ -21,6 +21,7 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
 };
 use kube::{Resource, ResourceExt};
 use std::collections::BTreeMap;
+use std::fmt;
 use tracing::warn;
 
 /// A builder to build [`ConfigMap`] objects.
@@ -214,6 +215,28 @@ impl SecurityContextBuilder {
     }
 }
 
+/// Downward API capabilities available via `fieldRef`
+/// See: https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#capabilities-of-the-downward-api
+#[derive(Debug)]
+pub enum FieldPathEnvVar {
+    Name,
+    Namespace,
+    UID,
+    Labels(String),
+    Annotations(String),
+}
+
+impl fmt::Display for FieldPathEnvVar {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            FieldPathEnvVar::Name => write!(f, "metadata.name"),
+            FieldPathEnvVar::Namespace => write!(f, "metadata.namespace"),
+            FieldPathEnvVar::UID => write!(f, "metadata.uid"),
+            FieldPathEnvVar::Labels(name) => write!(f, "metadata.labels['{name}']"),
+            FieldPathEnvVar::Annotations(name) => write!(f, "metadata.annotations['{name}']"),
+        }
+    }
+}
 /// A builder to build [`Container`] objects.
 ///
 /// This will automatically create the necessary volumes and mounts for each `ConfigMap` which is added.
@@ -261,16 +284,16 @@ impl ContainerBuilder {
     }
 
     /// Used for pushing down attributes like the Pod's namespace into the containers.
-    pub fn add_env_var_from_field_ref(
+    pub fn add_env_var_from_field_path(
         &mut self,
         name: impl Into<String>,
-        value: impl Into<String>,
+        field_path: FieldPathEnvVar,
     ) -> &mut Self {
         self.env.get_or_insert_with(Vec::new).push(EnvVar {
             name: name.into(),
             value_from: Some(EnvVarSource {
                 field_ref: Some(ObjectFieldSelector {
-                    field_path: value.into(),
+                    field_path: field_path.to_string(),
                     ..ObjectFieldSelector::default()
                 }),
                 ..EnvVarSource::default()
@@ -1532,8 +1555,8 @@ impl VolumeMountBuilder {
 mod tests {
     use crate::builder::{
         ConfigMapBuilder, ContainerBuilder, ContainerPortBuilder, EventBuilder, EventType,
-        NodeBuilder, ObjectMetaBuilder, PodBuilder, PodSecurityContextBuilder, VolumeBuilder,
-        VolumeMountBuilder,
+        FieldPathEnvVar, NodeBuilder, ObjectMetaBuilder, PodBuilder, PodSecurityContextBuilder,
+        VolumeBuilder, VolumeMountBuilder,
     };
     use k8s_openapi::api::core::v1::{
         EnvVar, Pod, PodAffinity, PodAffinityTerm, PodSecurityContext, ResourceRequirements,
@@ -1884,5 +1907,13 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(pod.metadata.name.unwrap(), "foo");
+    }
+
+    #[test]
+    pub fn test_field_ref_env_var_serialization() {
+        assert_eq!(
+            "metadata.labels['some-label-name']",
+            FieldPathEnvVar::Labels("some-label-name".to_string()).to_string()
+        );
     }
 }
