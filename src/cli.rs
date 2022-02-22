@@ -189,6 +189,7 @@ pub struct ProductOperatorRun {
         short = 'p',
         value_name = "FILE",
         default_value = "",
+        env,
         parse(from_os_str)
     )]
     pub product_config: ProductConfigPath,
