@@ -4,21 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Changed
-
-- Build against Kubernetes 1.23 ([#330]).
-
 ### Added
+
+- BREAKING: Added CLI `watch_namespace` parameter to ProductOperatorRun in
+  preparation for operators watching a single namespace ([#332]).
 - More builder functionality ([#331]) 
   - builder for `SecurityContext` objects 
   - add  `EnvVar`s from field refs
   - set `serviceServiceAccountName` in pod templates
 
+
+### Changed
+
+- Build against Kubernetes 1.23 ([#330]).
+
 [#330]: https://github.com/stackabletech/operator-rs/pull/330
 [#331]: https://github.com/stackabletech/operator-rs/pull/331
+[#332]: https://github.com/stackabletech/operator-rs/pull/332
 
 ## [0.12.0] - 2022-02-18
-
 
 ### Changed
 - Reported K8s events are now limited to 1024 bytes ([#327]).
@@ -31,7 +35,6 @@ All notable changes to this project will be documented in this file.
 [#327]: https://github.com/stackabletech/operator-rs/pull/327
 
 ## [0.11.0] - 2022-02-17
-
 
 ### Added
 - Infrastructure for logging errors as K8s events ([#322]).
@@ -50,7 +53,6 @@ All notable changes to this project will be documented in this file.
 
 ## [0.10.0] - 2022-02-04
 
-
 ### Added
 - Unified `ClusterRef` type for referring to cluster objects ([#307]).
 
@@ -66,7 +68,6 @@ All notable changes to this project will be documented in this file.
 [#307]: https://github.com/stackabletech/operator-rs/pull/307
 
 ## [0.9.0] - 2022-01-27
-
 
 ### Changed
 - Fixed `Client::apply_patch_status` always failing ([#300]).
@@ -88,7 +89,6 @@ All notable changes to this project will be documented in this file.
 [#293]: https://github.com/stackabletech/operator-rs/pull/293
 
 ## [0.7.0] - 2021-12-22
-
 
 ### Changed
 - BREAKING: Introduced proper (Result) error handling for `transform_all_roles_to_config` ([#282]).
@@ -203,7 +203,6 @@ All notable changes to this project will be documented in this file.
 
 ## [0.2.2] - 2021-09-21
 
-
 ### Changed
 
 - `kube-rs`: `0.59` → `0.60` ([#217]).
@@ -220,7 +219,6 @@ All notable changes to this project will be documented in this file.
 [#215]: https://github.com/stackabletech/operator-rs/pull/215
 
 ## [0.2.0] - 2021-09-17
-
 
 ### Added
 - Extracted the versioning support for up and downgrades from operators ([#211]).

@@ -1,7 +1,7 @@
 [package]
-authors = ["Lars Francke <lars.francke@stackable.de>"]
+authors = ["Stackable GmbH <info@stackable.de>"]
 description = "Stackable Operator Framework"
-edition = "2018"
+edition = "2021"
 license = "Apache-2.0"
 name = "stackable-operator"
 version = "0.12.0"
@@ -9,7 +9,7 @@ repository = "https://github.com/stackabletech/operator-rs"
 
 [dependencies]
 chrono = { version = "0.4.19", default-features = false }
-clap = { version = "3.0.13", features = ["derive", "cargo"] }
+clap = { version = "3.0.13", features = ["derive", "cargo", "env"] }
 const_format = "0.2.22"
 either = "1.6.1"
 futures = "0.3.19"
