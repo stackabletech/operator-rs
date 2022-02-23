@@ -363,7 +363,7 @@ mod tests {
 
     #[test]
     fn test_product_operator_run_without_namespace() {
-        let opts = ProductOperatorRun::parse_from(["foobar-operator", "--product-config", "bar"]);
+        let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
         assert_eq!(
             opts,
             ProductOperatorRun {
