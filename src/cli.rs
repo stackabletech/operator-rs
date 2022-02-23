@@ -346,7 +346,7 @@ mod tests {
     #[test]
     fn test_product_operator_run_with_namespace() {
         let opts = ProductOperatorRun::parse_from([
-            "foobar-operator",
+            "run",
             "--product-config",
             "bar",
             "--watch-namespace",
