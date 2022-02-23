@@ -346,7 +346,7 @@ mod tests {
     }
 
     #[test]
-    fn test_product_operator_run_with_namespace() {
+    fn test_product_operator_run_with_cli_namespace() {
         let opts = ProductOperatorRun::parse_from([
             "run",
             "--product-config",
@@ -364,7 +364,7 @@ mod tests {
     }
 
     #[test]
-    fn test_product_operator_run_without_namespace() {
+    fn test_product_operator_run_without_cli_namespace() {
         let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
         assert_eq!(
             opts,
