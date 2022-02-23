@@ -17,10 +17,12 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Build against Kubernetes 1.23 ([#330]).
+- BREAKING: Using `WatchNamespace` now for CLI `watch_namespace` ([#333]).
 
 [#330]: https://github.com/stackabletech/operator-rs/pull/330
 [#331]: https://github.com/stackabletech/operator-rs/pull/331
 [#332]: https://github.com/stackabletech/operator-rs/pull/332
+[#333]: https://github.com/stackabletech/operator-rs/pull/333
 
 ## [0.12.0] - 2022-02-18
 
