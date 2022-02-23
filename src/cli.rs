@@ -346,7 +346,11 @@ mod tests {
     }
 
     #[test]
-    fn test_product_operator_run_with_cli_namespace() {
+    fn test_product_operator_run_watch_namespace() {
+        // clean env var to not interfere if already set
+        env::remove_var(WATCH_NAMESPACE);
+
+        // cli with namespace
         let opts = ProductOperatorRun::parse_from([
             "run",
             "--product-config",
@@ -361,10 +365,8 @@ mod tests {
                 watch_namespace: WatchNamespace::One("foo".to_string())
             }
         );
-    }
 
-    #[test]
-    fn test_product_operator_run_without_cli_namespace() {
+        // no cli / no env
         let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
         assert_eq!(
             opts,
@@ -373,32 +375,15 @@ mod tests {
                 watch_namespace: WatchNamespace::All
             }
         );
-    }
 
-    #[test]
-    fn test_product_operator_run_with_env_namespace() {
+        // env with namespace
         env::set_var(WATCH_NAMESPACE, "foo");
         let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
-
         assert_eq!(
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string())
-            }
-        );
-    }
-
-    #[test]
-    fn test_product_operator_run_without_env_namespace() {
-        env::remove_var(WATCH_NAMESPACE);
-        let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
-
-        assert_eq!(
-            opts,
-            ProductOperatorRun {
-                product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::All
             }
         );
     }
