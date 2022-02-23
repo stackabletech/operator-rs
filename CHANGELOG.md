@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.13.0] - 2022-02-23
+
 ### Added
 
 - BREAKING: Added CLI `watch_namespace` parameter to ProductOperatorRun in
