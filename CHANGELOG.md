@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
   preparation for operators watching a single namespace ([#332]).
 - More builder functionality ([#331]) 
   - builder for `SecurityContext` objects 
-  - add  `EnvVar`s from field refs
+  - add `EnvVar`s from field refs
   - set `serviceServiceAccountName` in pod templates
 
 

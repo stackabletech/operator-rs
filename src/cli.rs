@@ -109,6 +109,7 @@
 //!
 use crate::error;
 use crate::error::OperatorResult;
+use crate::namespace::WatchNamespace;
 use clap::Args;
 use product_config::ProductConfigManager;
 use std::{
@@ -155,12 +156,13 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///     common: ProductOperatorRun,
 /// }
 /// use clap::Parser;
+/// use stackable_operator::namespace::WatchNamespace;
 /// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar", "--watch-namespace", "foobar"]);
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
 ///     common: ProductOperatorRun {
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
-///         watch_namespace: Some("foobar".to_string())
+///         watch_namespace: WatchNamespace::One("foobar".to_string())
 ///     },
 /// }));
 /// ```
@@ -194,8 +196,8 @@ pub struct ProductOperatorRun {
     )]
     pub product_config: ProductConfigPath,
     /// Provides a specific namespace to watch (instead of watching all namespaces)
-    #[clap(long, env)]
-    pub watch_namespace: Option<String>,
+    #[clap(long, env, default_value = "", parse(from_str))]
+    pub watch_namespace: WatchNamespace,
 }
 
 /// A path to a [`ProductConfigManager`] spec file
@@ -257,6 +259,7 @@ fn resolve_path<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::Parser;
     use rstest::*;
     use std::fs::File;
     use tempfile::tempdir;
@@ -338,5 +341,35 @@ mod tests {
         } else {
             panic!("must return RequiredFileMissing when file was not found")
         }
+    }
+
+    #[test]
+    fn test_product_operator_run_with_namespace() {
+        let opts = ProductOperatorRun::parse_from([
+            "foobar-operator",
+            "--product-config",
+            "bar",
+            "--watch-namespace",
+            "foo",
+        ]);
+        assert_eq!(
+            opts,
+            ProductOperatorRun {
+                product_config: ProductConfigPath::from("bar".as_ref()),
+                watch_namespace: WatchNamespace::One("foo".to_string())
+            }
+        );
+    }
+
+    #[test]
+    fn test_product_operator_run_without_namespace() {
+        let opts = ProductOperatorRun::parse_from(["foobar-operator", "--product-config", "bar"]);
+        assert_eq!(
+            opts,
+            ProductOperatorRun {
+                product_config: ProductConfigPath::from("bar".as_ref()),
+                watch_namespace: WatchNamespace::All
+            }
+        );
     }
 }
