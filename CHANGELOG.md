@@ -8,12 +8,18 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: Added CLI `watch_namespace` parameter to ProductOperatorRun in
   preparation for operators watching a single namespace ([#332]).
+- More builder functionality ([#331]) 
+  - builder for `SecurityContext` objects 
+  - add  `EnvVar`s from field refs
+  - set `serviceServiceAccountName` in pod templates
+
 
 ### Changed
 
 - Build against Kubernetes 1.23 ([#330]).
 
 [#330]: https://github.com/stackabletech/operator-rs/pull/330
+[#331]: https://github.com/stackabletech/operator-rs/pull/331
 [#332]: https://github.com/stackabletech/operator-rs/pull/332
 
 ## [0.12.0] - 2022-02-18
