@@ -261,12 +261,14 @@ mod tests {
     use super::*;
     use clap::Parser;
     use rstest::*;
+    use std::env;
     use std::fs::File;
     use tempfile::tempdir;
 
     const USER_PROVIDED_PATH: &str = "user_provided_path_properties.yaml";
     const DEPLOY_FILE_PATH: &str = "deploy_config_spec_properties.yaml";
     const DEFAULT_FILE_PATH: &str = "default_file_path_properties.yaml";
+    const WATCH_NAMESPACE: &str = "WATCH_NAMESPACE";
 
     #[rstest]
     #[case(
@@ -364,6 +366,34 @@ mod tests {
     #[test]
     fn test_product_operator_run_without_namespace() {
         let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
+        assert_eq!(
+            opts,
+            ProductOperatorRun {
+                product_config: ProductConfigPath::from("bar".as_ref()),
+                watch_namespace: WatchNamespace::All
+            }
+        );
+    }
+
+    #[test]
+    fn test_product_operator_run_with_env_namespace() {
+        env::set_var(WATCH_NAMESPACE, "foo");
+        let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
+
+        assert_eq!(
+            opts,
+            ProductOperatorRun {
+                product_config: ProductConfigPath::from("bar".as_ref()),
+                watch_namespace: WatchNamespace::One("foo".to_string())
+            }
+        );
+    }
+
+    #[test]
+    fn test_product_operator_run_without_env_namespace() {
+        env::remove_var(WATCH_NAMESPACE);
+        let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
+
         assert_eq!(
             opts,
             ProductOperatorRun {
