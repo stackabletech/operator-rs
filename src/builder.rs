@@ -1651,15 +1651,21 @@ mod tests {
         let container_port_1: i32 = 20000;
         let container_port_name_1 = "bar_port_name";
         let resources = ResourceRequirements {
-            limits: Some([
-                ("cpu".to_string(), Quantity("3000m".to_string())),
-                ("memory".to_string(), Quantity("6Gi".to_string())),
-                ("nvidia.com/gpu".to_string(), Quantity("1".to_string())),
-            ].into()),
-            requests: Some([
-                ("cpu".to_string(), Quantity("2000m".to_string())),
-                ("memory".to_string(), Quantity("4Gi".to_string())),
-            ].into()),
+            limits: Some(
+                [
+                    ("cpu".to_string(), Quantity("3000m".to_string())),
+                    ("memory".to_string(), Quantity("6Gi".to_string())),
+                    ("nvidia.com/gpu".to_string(), Quantity("1".to_string())),
+                ]
+                .into(),
+            ),
+            requests: Some(
+                [
+                    ("cpu".to_string(), Quantity("2000m".to_string())),
+                    ("memory".to_string(), Quantity("4Gi".to_string())),
+                ]
+                .into(),
+            ),
         };
 
         let container = ContainerBuilder::new("testcontainer")

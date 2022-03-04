@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Truncate k8s event strings correctly, when required ([#337]).
+
+[#337]: https://github.com/stackabletech/operator-rs/pull/337
+
 ## [0.13.0] - 2022-02-23
 
 ### Added
