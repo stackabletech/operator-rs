@@ -28,7 +28,10 @@ fn error_to_event<E: ReconcilerError>(err: &E) -> Event {
             }
         }
     };
+    dbg!(full_msg.len());
     message::truncate_with_ellipsis(&mut full_msg, 1024);
+    dbg!(full_msg.len());
+    assert!(full_msg.len() <= 1024);
     Event {
         type_: EventType::Warning,
         reason: err.category().to_string(),
@@ -87,11 +90,13 @@ mod message {
         const ELLIPSIS_LEN: usize = ELLIPSIS.len_utf8();
         let len = msg.len();
         if len > max_len {
-            msg.truncate(find_start_of_char(msg, len.saturating_sub(ELLIPSIS_LEN)));
+            let start_of_trunc_char = find_start_of_char(msg, max_len.saturating_sub(ELLIPSIS_LEN));
+            msg.truncate(start_of_trunc_char);
             if ELLIPSIS_LEN <= max_len {
                 msg.push(ELLIPSIS);
             }
         }
+        debug_assert!(msg.len() <= max_len);
     }
 
     fn find_start_of_char(s: &str, mut pos: usize) -> usize {
@@ -120,7 +125,10 @@ mod message {
         fn truncate_should_ellipsize_large_string() {
             let mut x = "hello".to_string();
             truncate_with_ellipsis(&mut x, 4);
-            assert_eq!(&x, "he…");
+            assert_eq!(&x, "h…");
+            x = "hello, this is a much larger string".to_string();
+            truncate_with_ellipsis(&mut x, 4);
+            assert_eq!(&x, "h…");
         }
 
         #[test]
