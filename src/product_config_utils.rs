@@ -484,7 +484,7 @@ mod tests {
     macro_rules! collection {
         // map-like
         ($($k:expr => $v:expr),* $(,)?) => {
-            std::iter::Iterator::collect(std::array::IntoIter::new([$(($k, $v),)*]))
+            std::iter::Iterator::collect(std::iter::IntoIterator::into_iter([$(($k, $v),)*]))
         };
         // set-like
         ($($v:expr),* $(,)?) => {
@@ -554,11 +554,14 @@ mod tests {
             &self,
             _resource: &Self::Configurable,
             _role_name: &str,
-            _file: &str,
+            file: &str,
         ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
             let mut result = BTreeMap::new();
             if let Some(conf) = &self.conf {
                 result.insert("file".to_string(), Some(conf.to_string()));
+            }
+            if file == "role_overrides_test" {
+                result.insert(String::from("override"), Some(String::from("from compute_files")));
             }
             Ok(result)
         }
@@ -1320,4 +1323,59 @@ mod tests {
 
         assert!(config_for_role_and_wrong_group.is_err());
     }
+
+
+    // This test demonstrates a bug and fails with:
+    // 
+    // thread 'product_config_utils::tests::test_role_config_overrides_win' panicked at 'assertion failed: `(left == right)`
+    // left: `{"role_group": {File("foo.bar"): {"override": Some("from compute_files")}}}`,
+    // right: `{"role_group": {File("foo.bar"): {"override": Some("from role")}}}`', src/product_config_utils.rs:1366:9
+    //
+    // The problem: overrides defined at the role level are overriden (sic!) by Configuration::compute_files().
+    // This is not the expected behaviour. Role level overrides should only be overriden by group level overrides.
+    #[ignore]
+    #[test]
+    fn test_role_config_overrides_win() {
+        let role_group = "role_group";
+        let file_name = "role_overrides_test";
+        let role = Role {
+            config: build_common_config(
+                None,
+                // should override
+                Some([(String::from(file_name), [(String::from("override"), String::from("from role"))].into())].into()),
+                None,
+                None
+            ),
+            role_groups: collection! {role_group.to_string() => RoleGroup {
+                replicas: Some(1),
+                config: build_common_config(
+                    None,
+                    None,
+                    None,
+                    None),
+                    selector: None,
+            }},
+        };
+
+        let expected = collection! {
+        role_group.to_string() =>
+            collection!{
+                PropertyNameKind::File(file_name.to_string()) =>
+                    collection!(
+                        "override".to_string() => Some("from role".to_string())
+                    ),
+            }
+        };
+
+        let property_kinds = vec![
+            PropertyNameKind::File(file_name.to_string()),
+        ];
+
+        let config =
+            transform_role_to_config(&String::new(), ROLE_GROUP, &role, &property_kinds).unwrap();
+
+        assert_eq!(config, expected);
+    }
+
+
 }
