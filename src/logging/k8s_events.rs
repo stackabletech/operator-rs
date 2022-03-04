@@ -28,10 +28,7 @@ fn error_to_event<E: ReconcilerError>(err: &E) -> Event {
             }
         }
     };
-    dbg!(full_msg.len());
     message::truncate_with_ellipsis(&mut full_msg, 1024);
-    dbg!(full_msg.len());
-    assert!(full_msg.len() <= 1024);
     Event {
         type_: EventType::Warning,
         reason: err.category().to_string(),
