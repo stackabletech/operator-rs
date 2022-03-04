@@ -561,7 +561,10 @@ mod tests {
                 result.insert("file".to_string(), Some(conf.to_string()));
             }
             if file == "role_overrides_test" {
-                result.insert(String::from("override"), Some(String::from("from compute_files")));
+                result.insert(
+                    String::from("override"),
+                    Some(String::from("from compute_files")),
+                );
             }
             Ok(result)
         }
@@ -1324,9 +1327,8 @@ mod tests {
         assert!(config_for_role_and_wrong_group.is_err());
     }
 
-
     // This test demonstrates a bug and fails with:
-    // 
+    //
     // thread 'product_config_utils::tests::test_role_config_overrides_win' panicked at 'assertion failed: `(left == right)`
     // left: `{"role_group": {File("foo.bar"): {"override": Some("from compute_files")}}}`,
     // right: `{"role_group": {File("foo.bar"): {"override": Some("from role")}}}`', src/product_config_utils.rs:1366:9
@@ -1342,9 +1344,15 @@ mod tests {
             config: build_common_config(
                 None,
                 // should override
-                Some([(String::from(file_name), [(String::from("override"), String::from("from role"))].into())].into()),
+                Some(
+                    [(
+                        String::from(file_name),
+                        [(String::from("override"), String::from("from role"))].into(),
+                    )]
+                    .into(),
+                ),
                 None,
-                None
+                None,
             ),
             role_groups: collection! {role_group.to_string() => RoleGroup {
                 replicas: Some(1),
@@ -1367,15 +1375,11 @@ mod tests {
             }
         };
 
-        let property_kinds = vec![
-            PropertyNameKind::File(file_name.to_string()),
-        ];
+        let property_kinds = vec![PropertyNameKind::File(file_name.to_string())];
 
         let config =
             transform_role_to_config(&String::new(), ROLE_GROUP, &role, &property_kinds).unwrap();
 
         assert_eq!(config, expected);
     }
-
-
 }
