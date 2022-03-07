@@ -1,0 +1,160 @@
+---
+name: Stackable Build Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - trying
+      - "renovate/**"
+    tags:
+      - "*"
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: '0'
+  CARGO_PROFILE_DEV_DEBUG: '0'
+  RUSTFLAGS: "-D warnings"
+  RUSTDOCFLAGS: "-D warnings"
+  RUST_LOG: "info"
+
+jobs:
+  # Identify unused dependencies
+  run_udeps:
+    name: Run Cargo Udeps
+    runs-on: ubuntu-latest
+    env:
+      RUSTC_BOOTSTRAP: 1
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # renovate: tag=v1.0.7
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: Swatinem/rust-cache@842ef286fff290e445b90b4002cc9807c3669641 # renovate: tag=v1.3.0
+        with:
+          key: udeps
+      - uses: actions-rs/cargo@844f36862e911db73fe0815f00a4a2602c279505 # renovate: tag=v1.0.3
+        with:
+          command: install
+          args: cargo-udeps --locked
+      - uses: actions-rs/cargo@844f36862e911db73fe0815f00a4a2602c279505 # renovate: tag=v1.0.3
+        with:
+          command: udeps
+          args: --all-targets
+
+  run_cargodeny:
+    name: Run Cargo Deny
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        checks:
+          - advisories
+          - bans licenses sources
+
+    # Prevent sudden announcement of a new advisory from failing ci:
+    continue-on-error: ${{ matrix.checks == 'advisories' }}
+
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: EmbarkStudios/cargo-deny-action@8acbae97b5d01b0481ae14cee8fcd8f5aa9e374d # tag=v1.2.12
+        with:
+          command: check ${{ matrix.checks }}
+
+  run_rustfmt:
+    name: Run Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # renovate: tag=v1.0.7
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt
+          override: true
+      - uses: actions-rs/cargo@844f36862e911db73fe0815f00a4a2602c279505 # renovate: tag=v1.0.3
+        with:
+          command: fmt
+          args: --all -- --check
+
+  run_clippy:
+    name: Run Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # renovate: tag=v1.0.7
+        with:
+          profile: minimal
+          toolchain: stable
+          components: clippy
+          override: true
+      - uses: Swatinem/rust-cache@842ef286fff290e445b90b4002cc9807c3669641 # renovate: tag=v1.3.0
+        with:
+          key: clippy
+      - name: Run clippy action to produce annotations
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions-rs/clippy-check@b5b5f21f4797c02da247df37026fcd0a5024aa4d # renovate: tag=v1.0.7
+        if: env.GITHUB_TOKEN != null
+        with:
+          args: --all-targets -- -D warnings
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run clippy manually without annotations
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: env.GITHUB_TOKEN == null
+        run: cargo clippy --all-targets -- -D warnings
+
+  run_rustdoc:
+    name: Run RustDoc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # renovate: tag=v1.0.7
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt
+          override: true
+      - uses: Swatinem/rust-cache@842ef286fff290e445b90b4002cc9807c3669641 # renovate: tag=v1.3.0
+        with:
+          key: doc
+      - uses: actions-rs/cargo@844f36862e911db73fe0815f00a4a2602c279505 # renovate: tag=v1.0.3
+        with:
+          command: doc
+          args: --document-private-items
+
+  run_tests:
+    name: Run Cargo Tests
+    needs:
+      - run_cargodeny
+      - run_clippy
+      - run_rustfmt
+      - run_rustdoc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # renovate: tag=v1.0.7
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: Swatinem/rust-cache@842ef286fff290e445b90b4002cc9807c3669641 # renovate: tag=v1.3.0
+        with:
+          key: test
+      - uses: actions-rs/cargo@844f36862e911db73fe0815f00a4a2602c279505 # renovate: tag=v1.0.3
+        with:
+          command: test
+
+  tests_passed:
+    name: All tests passed
+    needs:
+      - run_udeps
+      - run_tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: log
+        run: echo All tests have passed!

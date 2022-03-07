@@ -1,0 +1,43 @@
+---
+name: reviewdog
+on:
+  pull_request
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: reviewdog/action-actionlint@b90911e83b48ae099d609be666e2ff7a3dde25d8 # tag=v1.19.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  detect-secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: reviewdog/action-detect-secrets@0034e2d330af20c02fb6d9b3a813404a4ef6ba12 # tag=v0.8.0
+        with:
+          github_token: ${{ secrets.github_token }}
+
+  markdownlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: reviewdog/action-markdownlint@40f5a7a4afc06d314a2c3a72f42c387b5187deaa # renovate: tag=v0.3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  yamllint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
+      - uses: reviewdog/action-yamllint@aabd7aef24430a8da23122ca6711faec445dfcf6 # renovate: tag=v1.4.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}

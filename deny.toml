@@ -16,10 +16,6 @@ notice = "warn"
 [bans]
 multiple-versions = "allow"
 
-[[bans.deny]]
-name = "time"
-version = "0.1"
-
 [licenses]
 unlicensed = "deny"
 copyleft = "deny"

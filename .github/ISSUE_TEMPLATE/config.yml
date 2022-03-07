@@ -1,0 +1,12 @@
+---
+blank_issues_enabled: true
+contact_links:
+  - name: Feature request
+    about: 🚀 Suggest an idea for this project
+    url: https://github.com/stackabletech/operator-templating-operator/discussions/new?category=ideas
+  - name: 🙋🏾 Question
+    about: Use this to ask a question about this project
+    url: https://github.com/stackabletech/operator-templating-operator/discussions/new?category=q-a
+  - name: Other issue
+    about: Open an issue that doesn't fit any other category
+    url: https://github.com/stackabletech/operator-templating-operator/issues/new
