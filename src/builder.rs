@@ -6,9 +6,9 @@ use crate::error::{Error, OperatorResult};
 use crate::labels;
 use chrono::Utc;
 use k8s_openapi::api::core::v1::{
-    Affinity, Capabilities, ConfigMap, ConfigMapVolumeSource, Container, ContainerPort,
-    DownwardAPIVolumeSource, EmptyDirVolumeSource, EnvVar, EnvVarSource, Event, EventSource,
-    HostPathVolumeSource, Node, NodeAffinity, NodeSelector, NodeSelectorRequirement,
+    Affinity, CSIVolumeSource, Capabilities, ConfigMap, ConfigMapVolumeSource, Container,
+    ContainerPort, DownwardAPIVolumeSource, EmptyDirVolumeSource, EnvVar, EnvVarSource, Event,
+    EventSource, HostPathVolumeSource, Node, NodeAffinity, NodeSelector, NodeSelectorRequirement,
     NodeSelectorTerm, ObjectFieldSelector, ObjectReference, PersistentVolumeClaimVolumeSource, Pod,
     PodAffinity, PodCondition, PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec, Probe,
     ProjectedVolumeSource, ResourceRequirements, SELinuxOptions, SeccompProfile,
@@ -1350,6 +1350,8 @@ pub enum VolumeSource {
     PersistentVolumeClaim(PersistentVolumeClaimVolumeSource),
     Projected(ProjectedVolumeSource),
     Secret(SecretVolumeSource),
+    SecretOperator(SecretOperatorVolumeSourceBuilder),
+    Csi(CSIVolumeSource),
 }
 
 impl Default for VolumeSource {
@@ -1460,6 +1462,11 @@ impl VolumeBuilder {
         self
     }
 
+    pub fn csi(&mut self, csi: impl Into<CSIVolumeSource>) -> &mut Self {
+        self.volume_source = VolumeSource::Csi(csi.into());
+        self
+    }
+
     /// Consumes the Builder and returns a constructed Volume
     pub fn build(&self) -> Volume {
         Volume {
@@ -1492,9 +1499,82 @@ impl VolumeBuilder {
                 VolumeSource::Secret(secret) => Some(secret.clone()),
                 _ => None,
             },
+            csi: match &self.volume_source {
+                VolumeSource::Csi(csi) => Some(csi.clone()),
+                _ => None,
+            },
             ..Volume::default()
         }
     }
+}
+
+#[derive(Clone)]
+pub struct SecretOperatorVolumeSourceBuilder {
+    secret_class: String,
+    scopes: Vec<SecretOperatorVolumeScope>,
+}
+
+impl SecretOperatorVolumeSourceBuilder {
+    pub fn new(secret_class: impl Into<String>) -> Self {
+        Self {
+            secret_class: secret_class.into(),
+            scopes: Vec::new(),
+        }
+    }
+
+    pub fn with_node_scope(&mut self) -> &mut Self {
+        self.scopes.push(SecretOperatorVolumeScope::Node);
+        self
+    }
+
+    pub fn with_pod_scope(&mut self) -> &mut Self {
+        self.scopes.push(SecretOperatorVolumeScope::Pod);
+        self
+    }
+
+    pub fn with_service_scope(&mut self, name: impl Into<String>) -> &mut Self {
+        self.scopes
+            .push(SecretOperatorVolumeScope::Service { name: name.into() });
+        self
+    }
+
+    pub fn build(&self) -> CSIVolumeSource {
+        let mut attrs = BTreeMap::from([(
+            "secrets.stackable.tech/class".to_string(),
+            self.secret_class.clone(),
+        )]);
+
+        if !self.scopes.is_empty() {
+            let mut scopes = String::new();
+            for scope in self.scopes.iter() {
+                if !scopes.is_empty() {
+                    scopes.push(',');
+                };
+                match scope {
+                    SecretOperatorVolumeScope::Node => scopes.push_str("node"),
+                    SecretOperatorVolumeScope::Pod => scopes.push_str("pod"),
+                    SecretOperatorVolumeScope::Service { name } => {
+                        scopes.push_str("service=");
+                        scopes.push_str(name);
+                    }
+                }
+            }
+            attrs.insert("secrets.stackable.tech/scope".to_string(), scopes);
+        }
+
+        CSIVolumeSource {
+            driver: "secrets.stackable.tech".to_string(),
+            volume_attributes: Some(attrs),
+            ..CSIVolumeSource::default()
+        }
+    }
+}
+
+#[derive(Clone)]
+enum SecretOperatorVolumeScope {
+    Node,
+    Pod,
+    Service { name: String },
 }
 
 /// A builder to build [`VolumeMount`] objects.
