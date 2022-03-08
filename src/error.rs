@@ -61,6 +61,9 @@ pub enum Error {
 
     #[error("Error converting CRD byte array to UTF-8")]
     CrdFromUtf8Error(#[source] std::string::FromUtf8Error),
+
+    #[error("Invalid scope for secret-operator volume")]
+    InvalidSecretOperatorVolumeScopeError { scope: String },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;

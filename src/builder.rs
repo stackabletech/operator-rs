@@ -22,6 +22,7 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
 use kube::{Resource, ResourceExt};
 use std::collections::BTreeMap;
 use std::fmt;
+use std::str::FromStr;
 use tracing::warn;
 
 /// A builder to build [`ConfigMap`] objects.
@@ -1508,7 +1509,7 @@ impl VolumeBuilder {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SecretOperatorVolumeSourceBuilder {
     secret_class: String,
     scopes: Vec<SecretOperatorVolumeScope>,
@@ -1520,6 +1521,14 @@ impl SecretOperatorVolumeSourceBuilder {
             secret_class: secret_class.into(),
             scopes: Vec::new(),
         }
+    }
+
+    pub fn with_scope_str(&mut self, scope: &str) -> Result<&mut Self, Error> {
+        self.scopes = scope
+            .split(',')
+            .map(SecretOperatorVolumeScope::from_str)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(self)
     }
 
     pub fn with_node_scope(&mut self) -> &mut Self {
@@ -1570,11 +1579,28 @@ impl SecretOperatorVolumeSourceBuilder {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum SecretOperatorVolumeScope {
     Node,
     Pod,
     Service { name: String },
+}
+
+impl FromStr for SecretOperatorVolumeScope {
+    type Err = Error;
+
+    fn from_str(input: &str) -> Result<SecretOperatorVolumeScope, Self::Err> {
+        match input {
+            "node" => Ok(SecretOperatorVolumeScope::Node),
+            "pod" => Ok(SecretOperatorVolumeScope::Pod),
+            input if input.starts_with("service=") => Ok(SecretOperatorVolumeScope::Service {
+                name: input.trim_start_matches("service=").into(),
+            }),
+            _ => Err(Error::InvalidSecretOperatorVolumeScopeError {
+                scope: input.into(),
+            }),
+        }
+    }
 }
 
 /// A builder to build [`VolumeMount`] objects.
@@ -1636,8 +1662,9 @@ mod tests {
     use crate::builder::{
         ConfigMapBuilder, ContainerBuilder, ContainerPortBuilder, EventBuilder, EventType,
         FieldPathEnvVar, NodeBuilder, ObjectMetaBuilder, PodBuilder, PodSecurityContextBuilder,
-        VolumeBuilder, VolumeMountBuilder,
+        SecretOperatorVolumeSourceBuilder, VolumeBuilder, VolumeMountBuilder,
     };
+    use crate::error::Error;
     use k8s_openapi::api::core::v1::{
         EnvVar, Pod, PodAffinity, PodAffinityTerm, PodSecurityContext, ResourceRequirements,
         SELinuxOptions, SeccompProfile, Sysctl, VolumeMount, WindowsSecurityContextOptions,
@@ -1913,6 +1940,40 @@ mod tests {
         assert_eq!(
             vol.secret.and_then(|secret| secret.secret_name),
             Some("secret".to_string())
+        );
+
+        volume_builder.csi(
+            SecretOperatorVolumeSourceBuilder::new("mysecretclass")
+                .with_scope_str("node,pod,service=secret-consumer-nginx")
+                .unwrap()
+                .build(),
+        );
+        let vol = volume_builder.build();
+
+        assert_eq!(vol.csi.as_ref().unwrap().driver, "secrets.stackable.tech");
+        assert_eq!(
+            vol.csi
+                .as_ref()
+                .unwrap()
+                .volume_attributes
+                .as_ref()
+                .unwrap(),
+            &BTreeMap::from([
+                (
+                    "secrets.stackable.tech/class".into(),
+                    "mysecretclass".into(),
+                ),
+                (
+                    "secrets.stackable.tech/scope".into(),
+                    "node,pod,service=secret-consumer-nginx".into(),
+                ),
+            ])
+        );
+
+        assert!(
+            matches!(SecretOperatorVolumeSourceBuilder::new("mysecretclass")
+            .with_scope_str("node,pod,invalidScope"),
+        Err(Error::InvalidSecretOperatorVolumeScopeError {scope}) if scope == "invalidScope")
         );
     }
 
