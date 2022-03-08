@@ -4,11 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Builder for CSI and Secret Operator volumes ([#342], [#344])
+
 ### Fixed
 
 - Truncate k8s event strings correctly, when required ([#337]).
 
 [#337]: https://github.com/stackabletech/operator-rs/pull/337
+[#342]: https://github.com/stackabletech/operator-rs/pull/342
+[#344]: https://github.com/stackabletech/operator-rs/pull/344
 
 ## [0.13.0] - 2022-02-23
 
