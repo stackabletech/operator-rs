@@ -1350,7 +1350,6 @@ pub enum VolumeSource {
     PersistentVolumeClaim(PersistentVolumeClaimVolumeSource),
     Projected(ProjectedVolumeSource),
     Secret(SecretVolumeSource),
-    SecretOperator(SecretOperatorVolumeSourceBuilder),
     Csi(CSIVolumeSource),
 }
 
@@ -1469,41 +1468,48 @@ impl VolumeBuilder {
 
     /// Consumes the Builder and returns a constructed Volume
     pub fn build(&self) -> Volume {
-        Volume {
-            name: self.name.clone(),
-            config_map: match &self.volume_source {
-                VolumeSource::ConfigMap(configmap) => Some(configmap.clone()),
-                _ => None,
+        let name = self.name.clone();
+        match &self.volume_source {
+            VolumeSource::ConfigMap(cm) => Volume {
+                name,
+                config_map: Some(cm.clone()),
+                ..Volume::default()
             },
-            downward_api: match &self.volume_source {
-                VolumeSource::DownwardApi(downward_api) => Some(downward_api.clone()),
-                _ => None,
+            VolumeSource::DownwardApi(downward_api) => Volume {
+                name,
+                downward_api: Some(downward_api.clone()),
+                ..Volume::default()
             },
-            empty_dir: match &self.volume_source {
-                VolumeSource::EmptyDir(empty_dir) => Some(empty_dir.clone()),
-                _ => None,
+            VolumeSource::EmptyDir(empty_dir) => Volume {
+                name,
+                empty_dir: Some(empty_dir.clone()),
+                ..Volume::default()
             },
-            host_path: match &self.volume_source {
-                VolumeSource::HostPath(host_path) => Some(host_path.clone()),
-                _ => None,
+            VolumeSource::HostPath(host_path) => Volume {
+                name,
+                host_path: Some(host_path.clone()),
+                ..Volume::default()
             },
-            persistent_volume_claim: match &self.volume_source {
-                VolumeSource::PersistentVolumeClaim(pvc) => Some(pvc.clone()),
-                _ => None,
+            VolumeSource::PersistentVolumeClaim(pvc) => Volume {
+                name,
+                persistent_volume_claim: Some(pvc.clone()),
+                ..Volume::default()
             },
-            projected: match &self.volume_source {
-                VolumeSource::Projected(projected) => Some(projected.clone()),
-                _ => None,
+            VolumeSource::Projected(projected) => Volume {
+                name,
+                projected: Some(projected.clone()),
+                ..Volume::default()
             },
-            secret: match &self.volume_source {
-                VolumeSource::Secret(secret) => Some(secret.clone()),
-                _ => None,
+            VolumeSource::Secret(secret) => Volume {
+                name,
+                secret: Some(secret.clone()),
+                ..Volume::default()
             },
-            csi: match &self.volume_source {
-                VolumeSource::Csi(csi) => Some(csi.clone()),
-                _ => None,
+            VolumeSource::Csi(csi) => Volume {
+                name,
+                csi: Some(csi.clone()),
+                ..Volume::default()
             },
-            ..Volume::default()
         }
     }
 }
