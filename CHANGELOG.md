@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.14.0] - 2022-03-08
+
 ### Added
 
 - Builder for CSI and Secret Operator volumes ([#342], [#344])
