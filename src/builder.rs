@@ -216,7 +216,7 @@ impl SecurityContextBuilder {
 }
 
 /// Downward API capabilities available via `fieldRef`
-/// See: https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#capabilities-of-the-downward-api
+/// See: <https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#capabilities-of-the-downward-api>
 #[derive(Debug)]
 pub enum FieldPathEnvVar {
     Name,
@@ -1233,7 +1233,7 @@ impl PodBuilder {
         self
     }
 
-    /// Hack because [`Pod`] predates [`LabelSelector`], and so its functionality is split between [`Pod::node_selector`] and [`Affinity::node_affinity`]
+    /// Hack because [`Pod`] predates [`LabelSelector`], and so its functionality is split between [`PodSpec::node_selector`] and [`Affinity::node_affinity`]
     fn node_selector_for_label_selector(
         label_selector: Option<LabelSelector>,
     ) -> (Option<BTreeMap<String, String>>, Option<NodeAffinity>) {

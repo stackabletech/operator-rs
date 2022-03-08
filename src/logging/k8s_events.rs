@@ -40,7 +40,7 @@ fn error_to_event<E: ReconcilerError>(err: &E) -> Event {
 
 /// Reports an error coming from a controller to Kubernetes
 ///
-/// This is inteded to be executed on the log entries returned by [`Controller::run`]
+/// This is inteded to be executed on the log entries returned by [`kube::runtime::Controller::run`]
 #[tracing::instrument(skip(client))]
 pub fn publish_controller_error_as_k8s_event<ReconcileErr, QueueErr>(
     client: &Client,
