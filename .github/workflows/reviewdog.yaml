@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
-      - uses: reviewdog/action-actionlint@b90911e83b48ae099d609be666e2ff7a3dde25d8 # tag=v1.19.0
+      - uses: reviewdog/action-actionlint@fb012b9df4b74c9ca9c45515548098a6df8169d8 # tag=v1.21.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
