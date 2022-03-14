@@ -38,6 +38,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2.4.0
-      - uses: reviewdog/action-yamllint@aabd7aef24430a8da23122ca6711faec445dfcf6 # renovate: tag=v1.4.0
+      - uses: reviewdog/action-yamllint@21974b17ac095af86ed938bcc1eb59ce08432b97 # tag=v1.5.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
