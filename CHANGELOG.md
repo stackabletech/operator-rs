@@ -80,7 +80,7 @@ All notable changes to this project will be documented in this file.
 - Unified `ClusterRef` type for referring to cluster objects ([#307]).
 
 ### Changed
-- BREAKING: kube 0.66 -*Please add a description here. This will become the commit message of the merge request later.*> 0.68 ([#303]).
+- BREAKING: kube 0.66 -> 0.68 ([#303]).
 - BREAKING: k8s-openapi 0.13 -> 0.14 ([#303]).
 
 ### Removed
