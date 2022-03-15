@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- product-config 0.3.0 -> 0.3.1 ([#346])
+
+[#346]: https://github.com/stackabletech/operator-rs/pull/346
+
 ## [0.14.0] - 2022-03-08
 
 ### Added
