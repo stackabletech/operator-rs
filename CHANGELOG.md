@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.14.1] - 2022.03.15
+
 ### Changed
 
 - product-config 0.3.0 -> 0.3.1 ([#346])
