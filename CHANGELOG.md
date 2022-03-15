@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: Split up the builder module into submodules ([#348]).
+- Split up the builder module into submodules. This is not breaking yet due to reexports. Deprecation warning has been added for `operator-rs` `0.15.0` ([#348]).
 
 [#348]: https://github.com/stackabletech/operator-rs/pull/348
 

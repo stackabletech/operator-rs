@@ -315,7 +315,7 @@ impl OwnerReferenceBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builder::resource::ObjectMetaBuilder;
+    use crate::builder::meta::ObjectMetaBuilder;
     use k8s_openapi::api::core::v1::Pod;
 
     #[test]

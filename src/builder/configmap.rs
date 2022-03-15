@@ -55,7 +55,7 @@ impl ConfigMapBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::builder::{configmap::ConfigMapBuilder, resource::ObjectMetaBuilder};
+    use crate::builder::{configmap::ConfigMapBuilder, meta::ObjectMetaBuilder};
 
     use std::collections::BTreeMap;
 

@@ -1,10 +1,8 @@
 pub mod container;
 pub mod security;
 pub mod volume;
-pub mod volume_mount;
-pub mod volume_source;
 
-use crate::builder::resource::ObjectMetaBuilder;
+use crate::builder::meta::ObjectMetaBuilder;
 use crate::error::{Error, OperatorResult};
 
 use k8s_openapi::{
@@ -254,8 +252,8 @@ mod tests {
     };
 
     use crate::builder::{
+        meta::ObjectMetaBuilder,
         pod::{container::ContainerBuilder, volume::VolumeBuilder, PodBuilder},
-        resource::ObjectMetaBuilder,
     };
 
     #[test]
