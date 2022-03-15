@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Split up the builder module into submodules ([#348]).
+
+[#348]: https://github.com/stackabletech/operator-rs/pull/348
+
 ## [0.14.1] - 2022.03.15
 
 ### Changed
