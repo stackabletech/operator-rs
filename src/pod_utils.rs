@@ -22,7 +22,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builder::{ObjectMetaBuilder, PodBuilder};
+    use crate::builder::{pod::PodBuilder, resource::ObjectMetaBuilder};
 
     #[test]
     fn test_get_log_name() {
