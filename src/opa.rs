@@ -4,6 +4,54 @@
 //!
 //! Additionally several methods are provided to build an URL to query the OPA data API.
 //!
+//! # Example
+//! ```rust
+//! use serde::{Deserialize, Serialize};
+//! use stackable_operator::kube::CustomResource;
+//! use stackable_operator::opa::OpaConfig;
+//! use stackable_operator::schemars::{self, JsonSchema};
+//!
+//! #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+//! #[kube(
+//!     group = "test.stackable.tech",
+//!     version = "v1alpha1",
+//!     kind = "TestCluster",
+//!     plural = "testclusters",
+//!     shortname = "test",
+//!     namespaced,
+//!     crates(
+//!         kube_core = "stackable_operator::kube::core",
+//!         k8s_openapi = "stackable_operator::k8s_openapi",
+//!         schemars = "stackable_operator::schemars"
+//!     )
+//! )]
+//! #[serde(rename_all = "camelCase")]
+//! pub struct TestClusterSpec {
+//!     opa: Option<OpaConfig>    
+//! }
+//!
+//! fn main() {
+//!     let cluster: TestCluster = serde_yaml::from_str(
+//!     "
+//!     apiVersion: test.stackable.tech/v1alpha1
+//!     kind: TestCluster
+//!     metadata:
+//!       name: simple-test
+//!     spec:
+//!       opa:
+//!         configMapName: simple-opa
+//!         package: test
+//!     ",
+//!     ).unwrap();
+//!
+//!     let opa_config: &OpaConfig = cluster.spec.opa.as_ref().unwrap();
+//!
+//!     assert_eq!(opa_config.package_url(&cluster), "v1/data/test".to_string());
+//!     assert_eq!(opa_config.full_package_url(&cluster, "http://localhost:8081"), "http://localhost:8081/v1/data/test".to_string());
+//!     assert_eq!(opa_config.rule_url(&cluster, Some("myrule")), "v1/data/test/myrule".to_string());
+//!     assert_eq!(opa_config.full_rule_url(&cluster, "http://localhost:8081", Some("myrule")), "http://localhost:8081/v1/data/test/myrule".to_string());
+//! }
+//! ```
 use crate::client::Client;
 use crate::error;
 use crate::error::OperatorResult;
