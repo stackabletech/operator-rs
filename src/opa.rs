@@ -25,8 +25,7 @@
 //!     opa: Option<OpaConfig>    
 //! }
 //!
-//! fn main() {
-//!     let cluster: TestCluster = serde_yaml::from_str(
+//! let cluster: TestCluster = serde_yaml::from_str(
 //!     "
 //!     apiVersion: test.stackable.tech/v1alpha1
 //!     kind: TestCluster
@@ -39,13 +38,12 @@
 //!     ",
 //!     ).unwrap();
 //!
-//!     let opa_config: &OpaConfig = cluster.spec.opa.as_ref().unwrap();
+//! let opa_config: &OpaConfig = cluster.spec.opa.as_ref().unwrap();
 //!
-//!     assert_eq!(opa_config.package_url(&cluster), "v1/data/test".to_string());
-//!     assert_eq!(opa_config.full_package_url(&cluster, "http://localhost:8081"), "http://localhost:8081/v1/data/test".to_string());
-//!     assert_eq!(opa_config.rule_url(&cluster, Some("myrule")), "v1/data/test/myrule".to_string());
-//!     assert_eq!(opa_config.full_rule_url(&cluster, "http://localhost:8081", Some("myrule")), "http://localhost:8081/v1/data/test/myrule".to_string());
-//! }
+//! assert_eq!(opa_config.package_url(&cluster), "v1/data/test".to_string());
+//! assert_eq!(opa_config.full_package_url(&cluster, "http://localhost:8081"), "http://localhost:8081/v1/data/test".to_string());
+//! assert_eq!(opa_config.rule_url(&cluster, Some("myrule")), "v1/data/test/myrule".to_string());
+//! assert_eq!(opa_config.full_rule_url(&cluster, "http://localhost:8081", Some("myrule")), "http://localhost:8081/v1/data/test/myrule".to_string());
 //! ```
 use crate::client::Client;
 use crate::error;
