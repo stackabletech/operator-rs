@@ -55,7 +55,7 @@ use kube::ResourceExt;
 use schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
 
-const OPA_API: &str = "v1/data/";
+const OPA_API: &str = "v1/data";
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
