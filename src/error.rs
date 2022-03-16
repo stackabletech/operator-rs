@@ -61,6 +61,9 @@ pub enum Error {
 
     #[error("Error converting CRD byte array to UTF-8")]
     CrdFromUtf8Error(#[source] std::string::FromUtf8Error),
+
+    #[error("Missing OPA connect string in configmap [{configmap_name}]")]
+    MissingOpaConnectString { configmap_name: String },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
