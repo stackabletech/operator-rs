@@ -8,7 +8,7 @@
 //! ```rust
 //! use serde::{Deserialize, Serialize};
 //! use stackable_operator::kube::CustomResource;
-//! use stackable_operator::opa::OpaConfig;
+//! use stackable_operator::opa::{OpaApiVersion, OpaConfig};
 //! use stackable_operator::schemars::{self, JsonSchema};
 //!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -40,10 +40,8 @@
 //!
 //! let opa_config: &OpaConfig = cluster.spec.opa.as_ref().unwrap();
 //!
-//! assert_eq!(opa_config.package_url(&cluster), "v1/data/test".to_string());
-//! assert_eq!(opa_config.full_package_url(&cluster, "http://localhost:8081"), "http://localhost:8081/v1/data/test".to_string());
-//! assert_eq!(opa_config.rule_url(&cluster, Some("myrule")), "v1/data/test/myrule".to_string());
-//! assert_eq!(opa_config.full_rule_url(&cluster, "http://localhost:8081", Some("myrule")), "http://localhost:8081/v1/data/test/myrule".to_string());
+//! assert_eq!(opa_config.document_url(&cluster, Some("allow"), OpaApiVersion::V1), "v1/data/test/allow".to_string());
+//! assert_eq!(opa_config.full_document_url(&cluster, "http://localhost:8081", None, OpaApiVersion::V1), "http://localhost:8081/v1/data/test".to_string());
 //! ```
 use crate::client::Client;
 use crate::error;
@@ -53,7 +51,20 @@ use kube::ResourceExt;
 use schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
 
-const OPA_API: &str = "v1/data";
+/// Indicates the OPA api version. This is required to choose the correct
+/// path when constructing the OPA urls to query.
+pub enum OpaApiVersion {
+    V1,
+}
+
+impl OpaApiVersion {
+    /// Returns the OPA data API path for the selected version
+    pub fn get_data_api(&self) -> &'static str {
+        match self {
+            Self::V1 => "v1/data",
+        }
+    }
+}
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -63,18 +74,26 @@ pub struct OpaConfig {
 }
 
 impl OpaConfig {
-    /// Returns the OPA data API url up to the package. If [`OpaConfig`] has
-    /// no `package` set, will default to the cluster `resource` name.
+    /// Returns the OPA data API url. If [`OpaConfig`] has no `package` set,
+    /// will default to the cluster `resource` name.
     ///
     /// This may be used if the OPA base url is contained in an ENV variable.
     ///
     /// # Example
     ///
-    /// v1/data/<package>
+    /// * `v1/data/<package>`
+    /// * `v1/data/<package>/<rule>`
     ///
     /// # Arguments
     /// * `resource`     - The cluster resource.
-    pub fn package_url<T>(&self, resource: &T) -> String
+    /// * `rule`         - The rule name. Defaults to `allow`.
+    /// * `api_version`  - The [`OpaApiVersion`] to extract the data API path.
+    pub fn document_url<T>(
+        &self,
+        resource: &T,
+        rule: Option<&str>,
+        api_version: OpaApiVersion,
+    ) -> String
     where
         T: ResourceExt,
     {
@@ -83,118 +102,76 @@ impl OpaConfig {
             None => resource.name(),
         };
 
-        format!("{}/{}", OPA_API, package_name)
+        let mut document_url = format!("{}/{}", api_version.get_data_api(), package_name);
+
+        if let Some(document_rule) = rule {
+            document_url.push('/');
+            document_url.push_str(document_rule);
+        }
+
+        document_url
     }
 
-    /// Returns the OPA data API url up to the rule. If [`OpaConfig`] has
-    /// no `package` set, will default to the cluster `resource` name.
-    ///
-    /// This may be used if the OPA base url is contained in an ENV variable.
+    /// Returns the full qualified OPA data API url. If [`OpaConfig`] has no `package` set,
+    /// will default to the cluster `resource` name.
     ///
     /// # Example
     ///
-    /// v1/data/<package>/<rule>
-    ///
-    /// # Arguments
-    /// * `resource`     - The cluster resource.
-    /// * `rule`         - The rule name. Defaults to `allow`.
-    pub fn rule_url<T>(&self, resource: &T, rule: Option<&str>) -> String
-    where
-        T: ResourceExt,
-    {
-        format!("{}/{}", self.package_url(resource), rule.unwrap_or("allow"))
-    }
-
-    /// Returns the full qualified OPA data API url up to the package. If [`OpaConfig`] has
-    /// no `package` set, will default to the cluster `resource` name.
-    ///
-    /// # Example
-    ///
-    /// http://localhost:8080/v1/data/<package>
+    /// * `http://localhost:8081/v1/data/<package>`
+    /// * `http://localhost:8081/v1/data/<package>/<rule>`
     ///
     /// # Arguments
     /// * `resource`     - The cluster resource
     /// * `opa_base_url` - The base url to OPA e.g. http://localhost:8081
-    pub fn full_package_url<T>(&self, resource: &T, opa_base_url: &str) -> String
+    /// * `rule`         - The rule name.
+    /// * `api_version`  - The [`OpaApiVersion`] to extract the data API path.
+    pub fn full_document_url<T>(
+        &self,
+        resource: &T,
+        opa_base_url: &str,
+        rule: Option<&str>,
+        api_version: OpaApiVersion,
+    ) -> String
     where
         T: ResourceExt,
     {
         if opa_base_url.ends_with('/') {
-            format!("{}{}", opa_base_url, self.package_url(resource))
+            format!(
+                "{}{}",
+                opa_base_url,
+                self.document_url(resource, rule, api_version)
+            )
         } else {
-            format!("{}/{}", opa_base_url, self.package_url(resource))
-        }
-    }
-
-    /// Returns the full qualified OPA data API url up to the rule. If [`OpaConfig`] has
-    /// no `package` set, will default to the cluster `resource` name.
-    ///
-    /// # Example
-    ///
-    /// http://localhost:8080/v1/data/<package>/<rule>
-    ///
-    /// # Arguments
-    /// * `resource`     - The cluster resource.
-    /// * `opa_base_url` - The base url to OPA e.g. http://localhost:8081.
-    /// * `rule`         - The rule name. Defaults to `allow`.
-    pub fn full_rule_url<T>(&self, resource: &T, opa_base_url: &str, rule: Option<&str>) -> String
-    where
-        T: ResourceExt,
-    {
-        if opa_base_url.ends_with('/') {
-            format!("{}{}", opa_base_url, self.rule_url(resource, rule))
-        } else {
-            format!("{}/{}", opa_base_url, self.rule_url(resource, rule))
+            format!(
+                "{}/{}",
+                opa_base_url,
+                self.document_url(resource, rule, api_version)
+            )
         }
     }
 
     /// Returns the full qualified OPA data API url up to the package. If [`OpaConfig`] has
     /// no `package` set, will default to the cluster `resource` name.
     ///
-    /// In contrast to `full_package_url`, this queries the OPA base url from the provided
+    /// In contrast to `full_document_url`, this extracts the OPA base url from the provided
     /// `config_map_name` in the [`OpaConfig`].
     ///
     /// # Example
     ///
-    /// http://localhost:8080/v1/data/<package>
+    /// * `http://localhost:8081/v1/data/<package>`
+    /// * `http://localhost:8081/v1/data/<package>/<rule>`
     ///
     /// # Arguments
     /// * `client`       - The kubernetes client.
     /// * `resource`     - The cluster resource.
-    pub async fn full_package_url_from_config_map<T>(
-        &self,
-        client: &Client,
-        resource: &T,
-    ) -> OperatorResult<String>
-    where
-        T: ResourceExt,
-    {
-        let opa_base_url = self
-            .base_url_from_config_map(client, resource.namespace().as_deref())
-            .await?;
-
-        Ok(self.full_package_url(resource, &opa_base_url))
-    }
-
-    /// Returns the full qualified OPA data API url up to the rule. If [`OpaConfig`] has
-    /// no `package` set, will default to the cluster `resource` name.
-    ///
-    /// In contrast to `full_rule_url`, this queries the OPA base url from the provided
-    /// `config_map_name` in the [`OpaConfig`].
-    ///
-    /// # Example
-    ///
-    /// http://localhost:8080/v1/data/<package>/<rule>
-    ///
-    /// # Arguments
-    /// * `client`       - The kubernetes client.
-    /// * `resource`     - The cluster resource.
-    /// * `rule`         - The rule name. Defaults to `allow`.
-    pub async fn full_rule_url_from_config_map<T>(
+    /// * `rule`         - The rule name.
+    /// * `api_version`  - The [`OpaApiVersion`] to extract the data API path.
+    pub async fn full_document_url_from_config_map<T>(
         &self,
         client: &Client,
         resource: &T,
         rule: Option<&str>,
+        api_version: OpaApiVersion,
     ) -> OperatorResult<String>
     where
         T: ResourceExt,
@@ -203,7 +180,7 @@ impl OpaConfig {
             .base_url_from_config_map(client, resource.namespace().as_deref())
             .await?;
 
-        Ok(self.full_rule_url(resource, &opa_base_url, rule))
+        Ok(self.full_document_url(resource, &opa_base_url, rule, api_version))
     }
 
     /// Returns the OPA base url defined in the [`k8s_openapi::api::core::v1::ConfigMap`]
@@ -237,104 +214,68 @@ mod tests {
 
     const CLUSTER_NAME: &str = "simple-cluster";
     const PACKAGE_NAME: &str = "my-package";
-    const RULE_DEFAULT: &str = "allow";
-    const RULE_NAME: &str = "test-rule";
+    const RULE_NAME: &str = "allow";
     const OPA_BASE_URL_WITH_SLASH: &str = "http://opa:8081/";
     const OPA_BASE_URL_WITHOUT_SLASH: &str = "http://opa:8081";
 
+    const V1: OpaApiVersion = OpaApiVersion::V1;
+
     #[test]
-    fn test_package_url_with_package_name() {
+    fn test_document_url_with_package_name() {
         let cluster = build_test_cluster();
         let opa_config = build_opa_config(Some(PACKAGE_NAME));
 
         assert_eq!(
-            opa_config.package_url(&cluster),
-            format!("{}/{}", OPA_API, PACKAGE_NAME)
-        )
+            opa_config.document_url(&cluster, None, V1),
+            format!("{}/{}", V1.get_data_api(), PACKAGE_NAME)
+        );
+
+        assert_eq!(
+            opa_config.document_url(&cluster, Some(RULE_NAME), V1),
+            format!("{}/{}/{}", V1.get_data_api(), PACKAGE_NAME, RULE_NAME)
+        );
     }
 
     #[test]
-    fn test_package_url_without_package_name() {
+    fn test_document_url_without_package_name() {
         let cluster = build_test_cluster();
         let opa_config = build_opa_config(None);
 
         assert_eq!(
-            opa_config.package_url(&cluster),
-            format!("{}/{}", OPA_API, CLUSTER_NAME)
-        )
-    }
-
-    #[test]
-    fn test_rule_url_with_package_name() {
-        let cluster = build_test_cluster();
-        let opa_config = build_opa_config(Some(PACKAGE_NAME));
-
-        assert_eq!(
-            opa_config.rule_url(&cluster, None),
-            format!("{}/{}/{}", OPA_API, PACKAGE_NAME, RULE_DEFAULT)
+            opa_config.document_url(&cluster, None, V1),
+            format!("{}/{}", V1.get_data_api(), CLUSTER_NAME)
         );
 
         assert_eq!(
-            opa_config.rule_url(&cluster, Some(RULE_NAME)),
-            format!("{}/{}/{}", OPA_API, PACKAGE_NAME, RULE_NAME)
+            opa_config.document_url(&cluster, Some(RULE_NAME), V1),
+            format!("{}/{}/{}", V1.get_data_api(), CLUSTER_NAME, RULE_NAME)
         );
     }
 
     #[test]
-    fn test_rule_url_without_package_name() {
+    fn test_full_document_url() {
         let cluster = build_test_cluster();
         let opa_config = build_opa_config(None);
 
         assert_eq!(
-            opa_config.rule_url(&cluster, None),
-            format!("{}/{}/{}", OPA_API, CLUSTER_NAME, RULE_DEFAULT)
-        );
-
-        assert_eq!(
-            opa_config.rule_url(&cluster, Some(RULE_NAME)),
-            format!("{}/{}/{}", OPA_API, CLUSTER_NAME, RULE_NAME)
-        );
-    }
-
-    #[test]
-    fn test_full_package_url() {
-        let cluster = build_test_cluster();
-        let opa_config = build_opa_config(None);
-
-        assert_eq!(
-            opa_config.full_package_url(&cluster, OPA_BASE_URL_WITH_SLASH),
-            format!("{}{}/{}", OPA_BASE_URL_WITH_SLASH, OPA_API, CLUSTER_NAME)
-        );
-
-        let opa_config = build_opa_config(Some(PACKAGE_NAME));
-
-        assert_eq!(
-            opa_config.full_package_url(&cluster, OPA_BASE_URL_WITHOUT_SLASH),
+            opa_config.full_document_url(&cluster, OPA_BASE_URL_WITH_SLASH, None, V1),
             format!(
                 "{}/{}/{}",
-                OPA_BASE_URL_WITHOUT_SLASH, OPA_API, PACKAGE_NAME
-            )
-        );
-    }
-
-    #[test]
-    fn test_full_rule_url() {
-        let cluster = build_test_cluster();
-        let opa_config = build_opa_config(None);
-
-        assert_eq!(
-            opa_config.full_rule_url(&cluster, OPA_BASE_URL_WITHOUT_SLASH, None),
-            format!(
-                "{}/{}/{}/{}",
-                OPA_BASE_URL_WITHOUT_SLASH, OPA_API, CLUSTER_NAME, RULE_DEFAULT
+                OPA_BASE_URL_WITHOUT_SLASH,
+                V1.get_data_api(),
+                CLUSTER_NAME
             )
         );
 
+        let opa_config = build_opa_config(Some(PACKAGE_NAME));
+
         assert_eq!(
-            opa_config.full_rule_url(&cluster, OPA_BASE_URL_WITHOUT_SLASH, Some(RULE_NAME)),
+            opa_config.full_document_url(&cluster, OPA_BASE_URL_WITHOUT_SLASH, None, V1),
             format!(
-                "{}/{}/{}/{}",
-                OPA_BASE_URL_WITHOUT_SLASH, OPA_API, CLUSTER_NAME, RULE_NAME
+                "{}/{}/{}",
+                OPA_BASE_URL_WITHOUT_SLASH,
+                V1.get_data_api(),
+                PACKAGE_NAME
             )
         );
     }
