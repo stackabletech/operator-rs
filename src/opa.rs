@@ -77,6 +77,9 @@ impl OpaConfig {
     /// Returns the OPA data API url. If [`OpaConfig`] has no `package` set,
     /// will default to the cluster `resource` name.
     ///
+    /// The rule is optional and will be appended to the `<package>` part if
+    /// provided as can be seen in the examples below.
+    ///
     /// This may be used if the OPA base url is contained in an ENV variable.
     ///
     /// # Example
@@ -86,7 +89,7 @@ impl OpaConfig {
     ///
     /// # Arguments
     /// * `resource`     - The cluster resource.
-    /// * `rule`         - The rule name. Defaults to `allow`.
+    /// * `rule`         - The rule name. Can be omitted.
     /// * `api_version`  - The [`OpaApiVersion`] to extract the data API path.
     pub fn document_url<T>(
         &self,
@@ -115,6 +118,9 @@ impl OpaConfig {
     /// Returns the full qualified OPA data API url. If [`OpaConfig`] has no `package` set,
     /// will default to the cluster `resource` name.
     ///
+    /// The rule is optional and will be appended to the `<package>` part if
+    /// provided as can be seen in the examples below.
+    ///
     /// # Example
     ///
     /// * `http://localhost:8081/v1/data/<package>`
@@ -123,7 +129,7 @@ impl OpaConfig {
     /// # Arguments
     /// * `resource`     - The cluster resource
     /// * `opa_base_url` - The base url to OPA e.g. http://localhost:8081
-    /// * `rule`         - The rule name.
+    /// * `rule`         - The rule name. Can be omitted.
     /// * `api_version`  - The [`OpaApiVersion`] to extract the data API path.
     pub fn full_document_url<T>(
         &self,
@@ -153,6 +159,9 @@ impl OpaConfig {
     /// Returns the full qualified OPA data API url up to the package. If [`OpaConfig`] has
     /// no `package` set, will default to the cluster `resource` name.
     ///
+    /// The rule is optional and will be appended to the `<package>` part if
+    /// provided as can be seen in the examples below.
+    ///
     /// In contrast to `full_document_url`, this extracts the OPA base url from the provided
     /// `config_map_name` in the [`OpaConfig`].
     ///
@@ -164,7 +173,7 @@ impl OpaConfig {
     /// # Arguments
     /// * `client`       - The kubernetes client.
     /// * `resource`     - The cluster resource.
-    /// * `rule`         - The rule name.
+    /// * `rule`         - The rule name. Can be omitted.
     /// * `api_version`  - The [`OpaApiVersion`] to extract the data API path.
     pub async fn full_document_url_from_config_map<T>(
         &self,
