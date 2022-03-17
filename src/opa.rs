@@ -51,7 +51,7 @@ use kube::ResourceExt;
 use schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
 
-/// Indicates the OPA api version. This is required to choose the correct
+/// Indicates the OPA API version. This is required to choose the correct
 /// path when constructing the OPA urls to query.
 pub enum OpaApiVersion {
     V1,
