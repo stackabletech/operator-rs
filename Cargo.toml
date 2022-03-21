@@ -31,6 +31,9 @@ tracing = "0.1.29"
 tracing-subscriber = { version = "0.3.7", features = ["env-filter"] }
 backoff = "0.4.0"
 derivative = "2.2.0"
+tracing-opentelemetry = "0.17.1"
+opentelemetry = { version = "0.17.0", features = ["rt-tokio"] }
+opentelemetry-jaeger = { version = "0.16.0", features = ["rt-tokio"] }
 
 [dev-dependencies]
 rstest = "0.12.0"

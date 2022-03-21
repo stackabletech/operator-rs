@@ -107,9 +107,9 @@
 //! ```
 //!
 //!
-use crate::error;
 use crate::error::OperatorResult;
 use crate::namespace::WatchNamespace;
+use crate::{error, logging::TracingTarget};
 use clap::Args;
 use product_config::ProductConfigManager;
 use std::{
@@ -198,6 +198,9 @@ pub struct ProductOperatorRun {
     /// Provides a specific namespace to watch (instead of watching all namespaces)
     #[clap(long, env, default_value = "", parse(from_str))]
     pub watch_namespace: WatchNamespace,
+    /// Tracing log collector system
+    #[clap(long, env, default_value_t, arg_enum)]
+    pub tracing_target: TracingTarget,
 }
 
 /// A path to a [`ProductConfigManager`] spec file
@@ -362,7 +365,8 @@ mod tests {
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::One("foo".to_string())
+                watch_namespace: WatchNamespace::One("foo".to_string()),
+                tracing_target: TracingTarget::None,
             }
         );
 
@@ -372,7 +376,8 @@ mod tests {
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::All
+                watch_namespace: WatchNamespace::All,
+                tracing_target: TracingTarget::None,
             }
         );
 
@@ -383,7 +388,8 @@ mod tests {
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::One("foo".to_string())
+                watch_namespace: WatchNamespace::One("foo".to_string()),
+                tracing_target: TracingTarget::None,
             }
         );
     }
