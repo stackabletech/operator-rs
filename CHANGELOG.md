@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.15.0] - 2022.03.21
+
 ### Added
 
 - Common `OpaConfig` to specify a config map and package name ([#357]).
@@ -11,6 +13,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Split up the builder module into submodules. This is not breaking yet due to reexports. Deprecation warning has been added for `operator-rs` `0.15.0` ([#348]).
+- Update to `kube` `0.70.0` ([Release Notes](https://github.com/kube-rs/kube-rs/releases/tag/0.70.0)). The signature and the Ok action in reconcile fns has been simplified slightly. Because of this the signature of `report_controller_reconciled` had to be changed slightly ([#359]).
 
 [#348]: https://github.com/stackabletech/operator-rs/pull/348
 [#357]: https://github.com/stackabletech/operator-rs/pull/357
