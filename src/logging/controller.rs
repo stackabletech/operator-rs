@@ -7,7 +7,7 @@ use std::error::Error;
 use kube::{
     core::DynamicObject,
     runtime::{
-        controller::{self, ReconcilerAction},
+        controller::{self, Action},
         reflector::ObjectRef,
     },
     Resource,
@@ -46,7 +46,7 @@ pub trait ReconcilerError: Error {
 pub fn report_controller_reconciled<K, ReconcileErr, QueueErr>(
     client: &Client,
     controller_name: &str,
-    result: &Result<(ObjectRef<K>, ReconcilerAction), controller::Error<ReconcileErr, QueueErr>>,
+    result: &Result<(ObjectRef<K>, Action), controller::Error<ReconcileErr, QueueErr>>,
 ) where
     K: Resource,
     ReconcileErr: ReconcilerError,
