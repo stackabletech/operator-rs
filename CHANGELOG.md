@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `initialize_logging` now takes an app name and tracing target ([#360]).
+- BREAKING: `initialize_logging` now takes an app name and tracing target ([#360]).
 
 [#360]: https://github.com/stackabletech/operator-rs/pull/360
 
