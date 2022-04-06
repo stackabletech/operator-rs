@@ -62,8 +62,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Resources<T, K = NoRuntimeLimits> {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     memory: Option<MemoryLimits<K>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     cpu: Option<CpuLimits>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     storage: Option<T>,
 }
 
@@ -76,6 +79,7 @@ pub struct MemoryLimits<T> {
     // Should in most cases be mapped to resources.limits.memory
     limit: String,
     // Additional options that may be required
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     runtime_limits: Option<T>,
 }
 
@@ -89,6 +93,7 @@ pub struct NoRuntimeLimits {}
 #[serde(rename_all = "camelCase")]
 pub struct JvmHeapLimits {
     max: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     min: Option<String>,
 }
 
@@ -106,6 +111,8 @@ pub struct CpuLimits {
 #[serde(rename_all = "camelCase")]
 pub struct PvcConfig {
     capacity: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     storage_class: Option<String>,
-    selectors: LabelSelector,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    selectors: Option<LabelSelector>,
 }
