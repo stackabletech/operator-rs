@@ -21,19 +21,18 @@
 //! # Example
 //!
 //! ```no_run
-//! use stackable_operator::role_utils::Role;
 //! #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 //! #[kube(
-//!     group = "product.stackable.tech",
-//!     version = "v1alpha1",
-//!     kind = "ProductCluster",
-//!     shortname = "product",
-//!     namespaced,
-//!     crates(
-//!         kube_core = "stackable_operator::kube::core",
-//!         k8s_openapi = "stackable_operator::k8s_openapi",
-//!         schemars = "stackable_operator::schemars"
-//!     )
+//! group = "product.stackable.tech",
+//! version = "v1alpha1",
+//! kind = "ProductCluster",
+//! shortname = "product",
+//! namespaced,
+//! crates(
+//! kube_core = "stackable_operator::kube::core",
+//! k8s_openapi = "stackable_operator::k8s_openapi",
+//! schemars = "stackable_operator::schemars"
+//! )
 //! )]
 //! #[kube()]
 //! #[serde(rename_all = "camelCase")]
@@ -53,11 +52,14 @@
 //!     metadata_storage: PvcConfig,
 //!     shared_storage: PvcConfig,
 //! }
+
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 // This struct allows specifying memory and cpu limits as well as generically adding storage
 // settings.
-#[derive(strum::Display, Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Resources<T, K = NoRuntimeLimits> {
     memory: Option<MemoryLimits<K>>,
@@ -65,8 +67,9 @@ pub struct Resources<T, K = NoRuntimeLimits> {
     storage: Option<T>,
 }
 
-// Defines
-#[derive(strum::Display, Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+// Defines memory limits to be set on the pods
+// Is generic to enable adding custom configuration for specific runtimes or products
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MemoryLimits<T> {
     // The maximum amount of memory that should be available
@@ -82,7 +85,7 @@ pub struct NoRuntimeLimits {}
 // Definition of Java Heap settings
 // `min` is optional and should usually be defaulted to the same value as `max` by the implementing
 // code
-#[derive(strum::Display, Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JvmHeapLimits {
     max: String,
@@ -91,7 +94,7 @@ pub struct JvmHeapLimits {
 
 // Cpu limits
 // These should usually be forwarded to resources.limits.cpu
-#[derive(strum::Display, Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CpuLimits {
     min: String,
@@ -99,10 +102,10 @@ pub struct CpuLimits {
 }
 
 // Struct that exposes the values for a PVC which the user should be able to influence
-#[derive(strum::Display, Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PvcConfig {
     capacity: String,
-    storageClass: Option<String>,
+    storage_class: Option<String>,
     selectors: LabelSelector,
 }
