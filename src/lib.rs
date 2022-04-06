@@ -80,6 +80,7 @@ pub mod status;
 pub mod utils;
 pub mod validation;
 
+mod resources;
 #[deprecated(since = "0.5.0", note = "Unneeded due move to statefulsets")]
 #[allow(deprecated)]
 pub mod versioning;
