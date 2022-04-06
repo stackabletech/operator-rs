@@ -20,7 +20,13 @@
 //!
 //! # Example
 //!
-//! ```no_run
+//! ```ignore
+//! use stackable_operator::role_utils::Role;
+//! use stackable_operator::resources::{Resources, PvcConfig, JvmHeapLimits};
+//! use schemars::JsonSchema;
+//! use serde::{Deserialize, Serialize};
+//! use kube::CustomResource;
+//!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 //! #[kube(
 //! group = "product.stackable.tech",
@@ -53,9 +59,14 @@
 //!     shared_storage: PvcConfig,
 //! }
 
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
+use k8s_openapi::api::core::v1::{
+    PersistentVolumeClaim, PersistentVolumeClaimSpec, ResourceRequirements,
+};
+use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{LabelSelector, ObjectMeta};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 // This struct allows specifying memory and cpu limits as well as generically adding storage
 // settings.
@@ -115,4 +126,63 @@ pub struct PvcConfig {
     storage_class: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     selectors: Option<LabelSelector>,
+}
+
+impl PvcConfig {
+    /// Create a PVC from this PvcConfig
+    pub fn build_pvc(
+        &self,
+        name: &str,
+        access_modes: Option<Vec<String>>,
+    ) -> PersistentVolumeClaim {
+        PersistentVolumeClaim {
+            metadata: ObjectMeta {
+                name: Some(name.to_string()),
+                ..ObjectMeta::default()
+            },
+            spec: Some(PersistentVolumeClaimSpec {
+                access_modes,
+                resources: Some(ResourceRequirements {
+                    requests: Some({
+                        let mut map = BTreeMap::new();
+                        map.insert("storage".to_string(), Quantity(self.capacity.to_string()));
+                        map
+                    }),
+                    ..ResourceRequirements::default()
+                }),
+                ..PersistentVolumeClaimSpec::default()
+            }),
+            ..PersistentVolumeClaim::default()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::resources::PvcConfig;
+    use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+
+    #[test]
+    fn test_build_pvc() {
+        let test = PvcConfig {
+            capacity: "10Gb".to_string(),
+            storage_class: None,
+            selectors: None,
+        };
+        let pvc = test.build_pvc("test", None);
+
+        assert_eq!(
+            pvc.spec
+                .expect("spec in none")
+                .resources
+                .expect("resources field is none")
+                .requests
+                .expect("requests field is none")
+                .get("storage")
+                .expect("no key storage found but expected"),
+            &Quantity("10Gb".to_string())
+        );
+
+        assert_eq!(pvc.metadata.name.unwrap(), "test".to_string());
+    }
 }
