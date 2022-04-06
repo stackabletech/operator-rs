@@ -79,26 +79,18 @@
 //! NOTE: We find the official description to be ambiguous so we use these labels as defined above.
 //!
 //! Each resource can have more operator specific labels.
-#![allow(deprecated)]
-use crate::error::OperatorResult;
-use crate::labels;
 
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::{Debug, Display},
 };
 
-use crate::client::Client;
-#[allow(deprecated)]
-use crate::k8s_utils::LabelOptionalValueMap;
 use crate::product_config_utils::Configuration;
 use derivative::Derivative;
-use k8s_openapi::api::core::v1::Node;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use kube::{runtime::reflector::ObjectRef, Resource};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, trace};
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(
@@ -185,119 +177,6 @@ pub struct RoleGroup<T> {
     pub config: CommonConfiguration<T>,
     pub replicas: Option<u16>,
     pub selector: Option<LabelSelector>,
-}
-
-/// Return a map where the key corresponds to the role_group (e.g. "default", "10core10Gb") and
-/// a tuple of a vector of nodes that fit the role_groups selector description, and the role_groups
-/// "replicas" field for scheduling missing pods or removing excess pods.
-#[deprecated(
-    since = "0.5.0",
-    note = "Should not be needed anymore after move to statefulsets"
-)]
-#[allow(deprecated)]
-pub async fn find_nodes_that_fit_selectors<T>(
-    client: &Client,
-    namespace: Option<String>,
-    role: &Role<T>,
-) -> OperatorResult<HashMap<String, EligibleNodesAndReplicas>>
-where
-    T: Serialize,
-{
-    let mut found_nodes = HashMap::new();
-    for (group_name, role_group) in &role.role_groups {
-        let selector = role_group.selector.to_owned().unwrap_or_default();
-        let nodes = client
-            .list_with_label_selector(namespace.as_deref(), &selector)
-            .await?;
-        debug!(
-            "Found [{}] nodes for role group [{}]: [{:?}]",
-            nodes.len(),
-            group_name,
-            nodes
-        );
-        found_nodes.insert(
-            group_name.clone(),
-            EligibleNodesAndReplicas {
-                nodes,
-                replicas: role_group.replicas,
-            },
-        );
-    }
-    Ok(found_nodes)
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[deprecated(
-    since = "0.5.0",
-    note = "Should not be needed anymore after move to statefulsets"
-)]
-pub struct EligibleNodesAndReplicas {
-    pub nodes: Vec<Node>,
-    pub replicas: Option<u16>,
-}
-
-/// Type to avoid clippy warnings
-/// HashMap<`NameOfRole`, HashMap<`NameOfRoleGroup`, EligibleNodesAndReplicas(Vec<`Node`>, Option<`Replicas`>)>>
-#[deprecated(
-    since = "0.5.0",
-    note = "Should not be needed anymore after move to statefulsets"
-)]
-#[allow(deprecated)]
-pub type EligibleNodesForRoleAndGroup = HashMap<String, HashMap<String, EligibleNodesAndReplicas>>;
-
-/// Return a list of eligible nodes and the provided replica count for each role and group
-/// combination. Required to delete excess pods that do not match any node, selector description
-/// or exceed the replica count.
-///
-/// # Arguments
-/// * `eligible_nodes` - Represents the mappings for role on role_groups on nodes and replicas:
-///                      HashMap<`NameOfRole`, HashMap<`NameOfRoleGroup`, (Vec<`Node`>, Option<`Replicas`>)>>
-#[deprecated(
-    since = "0.5.0",
-    note = "Should not be needed anymore after move to statefulsets"
-)]
-#[allow(deprecated)]
-pub fn list_eligible_nodes_for_role_and_group(
-    eligible_nodes: &EligibleNodesForRoleAndGroup,
-) -> Vec<(Vec<Node>, LabelOptionalValueMap, Option<u16>)> {
-    let mut eligible_nodes_for_role_and_group = vec![];
-    for (role, eligible_nodes_for_role) in eligible_nodes {
-        for (group_name, eligible_nodes) in eligible_nodes_for_role {
-            trace!(
-                "Adding {} nodes to eligible node list for role [{}] and group [{}].",
-                eligible_nodes.nodes.len(),
-                role,
-                group_name
-            );
-            eligible_nodes_for_role_and_group.push((
-                eligible_nodes.nodes.clone(),
-                get_role_and_group_labels(role, group_name),
-                eligible_nodes.replicas,
-            ))
-        }
-    }
-
-    eligible_nodes_for_role_and_group
-}
-
-/// Return a map with labels and values for role (component) and group (role_group).
-#[deprecated(
-    since = "0.5.0",
-    note = "Should not be needed anymore after move to statefulsets"
-)]
-#[allow(deprecated)]
-pub fn get_role_and_group_labels(role: &str, group_name: &str) -> LabelOptionalValueMap {
-    let mut labels = BTreeMap::new();
-    labels.insert(
-        labels::APP_COMPONENT_LABEL.to_string(),
-        Some(role.to_string()),
-    );
-    labels.insert(
-        labels::APP_ROLE_GROUP_LABEL.to_string(),
-        Some(group_name.to_string()),
-    );
-    labels
 }
 
 /// A reference to a named role group of a given cluster object

@@ -1,14 +1,11 @@
 use crate::error::{Error, OperatorResult};
-#[allow(deprecated)]
-use crate::finalizer;
 use crate::label_selector;
-use crate::pod_utils;
 
 use backoff::backoff::Backoff;
 use backoff::ExponentialBackoff;
 use either::Either;
 use futures::StreamExt;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, LabelSelector};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use kube::api::{DeleteParams, ListParams, Patch, PatchParams, PostParams, Resource, ResourceExt};
 use kube::client::Client as KubeClient;
 use kube::core::Status;
@@ -251,13 +248,12 @@ impl Client {
             "status": status
         }));
 
-        Ok(self
-            .patch_status(
-                resource,
-                new_status,
-                &self.apply_patch_params(field_manager_scope),
-            )
-            .await?)
+        self.patch_status(
+            resource,
+            new_status,
+            &self.apply_patch_params(field_manager_scope),
+        )
+        .await
     }
 
     /// Patches subresource status in a given Resource using merge strategy.
@@ -270,9 +266,8 @@ impl Client {
     {
         let new_status = Patch::Merge(serde_json::json!({ "status": status }));
 
-        Ok(self
-            .patch_status(resource, new_status, &self.patch_params)
-            .await?)
+        self.patch_status(resource, new_status, &self.patch_params)
+            .await
     }
 
     /// Patches subresource status in a given Resource using merge strategy.
@@ -341,37 +336,18 @@ impl Client {
 
     /// This deletes a resource _if it is not deleted already_.
     ///
-    /// It checks whether the resource is already deleted by looking at the `deletion_timestamp`
-    /// of the resource using the [`finalizer::has_deletion_stamp`] method.
-    /// If that is the case it'll return a `Ok(None)`.
-    ///
     /// In case the object is actually deleted or marked for deletion there are two possible
     /// return types.
     /// Which of the two are returned depends on the API being called.
     /// Take a look at the Kubernetes API reference.
     /// Some `delete` endpoints return the object and others return a `Status` object.
-    #[allow(deprecated)]
-    pub async fn delete<T>(&self, resource: &T) -> OperatorResult<Option<Either<T, Status>>>
+    pub async fn delete<T>(&self, resource: &T) -> OperatorResult<Either<T, Status>>
     where
         T: Clone + Debug + DeserializeOwned + Resource,
         <T as Resource>::DynamicType: Default,
     {
-        if finalizer::has_deletion_stamp(resource) {
-            trace!(
-                "Resource ([{}]) already has `deletion_timestamp`, not deleting",
-                pod_utils::get_log_name(resource)
-            );
-            Ok(None)
-        } else {
-            trace!(
-                "Resource ([{}]) does not have a `deletion_timestamp`, deleting now",
-                pod_utils::get_log_name(resource)
-            );
-            let api: Api<T> = self.get_api(resource.namespace().as_deref());
-            Ok(Some(
-                api.delete(&resource.name(), &self.delete_params).await?,
-            ))
-        }
+        let api: Api<T> = self.get_api(resource.namespace().as_deref());
+        Ok(api.delete(&resource.name(), &self.delete_params).await?)
     }
 
     /// This deletes a resource _if it is not deleted already_ and waits until the deletion is
@@ -421,29 +397,6 @@ impl Client {
                 }
             }
         }
-    }
-
-    /// Sets a condition on a status.
-    /// This will only work if there is a `status` subresource **and** it has a `conditions` array.
-    ///
-    /// Additionally, the `conditions` array *must* be annotated as `#[schemars(schema_with = "stackable_operator::conditions::conditions_schema")]`,
-    /// see [`crate::conditions::conditions_schema`] for more information.
-    pub async fn set_condition<T>(&self, resource: &T, condition: Condition) -> OperatorResult<T>
-    where
-        T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
-    {
-        let patch_params = self.apply_patch_params(format_args!("condition-{}", condition.type_));
-        let new_status = Patch::Apply(serde_json::json!({
-            "apiVersion": T::api_version(&()),
-            "kind": T::kind(&()),
-            "status": {
-                "conditions": vec![condition]
-            }
-        }));
-
-        Ok(self
-            .patch_status(resource, new_status, &patch_params)
-            .await?)
     }
 
     /// Returns an [kube::Api] object which is either namespaced or not depending on whether

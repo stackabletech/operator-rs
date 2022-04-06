@@ -484,11 +484,11 @@ mod tests {
     macro_rules! collection {
         // map-like
         ($($k:expr => $v:expr),* $(,)?) => {
-            std::iter::Iterator::collect(std::array::IntoIter::new([$(($k, $v),)*]))
+            [$(($k, $v),)*].into()
         };
         // set-like
         ($($v:expr),* $(,)?) => {
-            std::iter::Iterator::collect(std::array::IntoIter::new([$($v,)*]))
+            [$($v,)*].into()
         };
     }
 
