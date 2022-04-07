@@ -10,7 +10,7 @@
 //!
 //! ```no_run
 //! // Handle CLI arguments
-//! use clap::{crate_version, App, Parser};
+//! use clap::{crate_version, Parser};
 //! use kube::{CustomResource, CustomResourceExt};
 //! use schemars::JsonSchema;
 //! use serde::{Deserialize, Serialize};
@@ -71,7 +71,7 @@
 //! Product config handling works similarly:
 //!
 //! ```no_run
-//! use clap::{crate_version, App, Parser};
+//! use clap::{crate_version, Parser};
 //! use stackable_operator::cli;
 //! use stackable_operator::error::OperatorResult;
 //!
@@ -94,7 +94,7 @@
 //!     cli::Command::Crd => {
 //!         // Print CRD objects
 //!     }
-//!     cli::Command::Run(cli::ProductOperatorRun { product_config, watch_namespace }) => {
+//!     cli::Command::Run(cli::ProductOperatorRun { product_config, watch_namespace, .. }) => {
 //!         let product_config = product_config.load(&[
 //!             "deploy/config-spec/properties.yaml",
 //!             "/etc/stackable/spark-operator/config-spec/properties.yaml",
@@ -107,9 +107,9 @@
 //! ```
 //!
 //!
-use crate::error;
 use crate::error::OperatorResult;
 use crate::namespace::WatchNamespace;
+use crate::{error, logging::TracingTarget};
 use clap::Args;
 use product_config::ProductConfigManager;
 use std::{
@@ -156,13 +156,15 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///     common: ProductOperatorRun,
 /// }
 /// use clap::Parser;
+/// use stackable_operator::logging::TracingTarget;
 /// use stackable_operator::namespace::WatchNamespace;
 /// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar", "--watch-namespace", "foobar"]);
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
 ///     common: ProductOperatorRun {
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
-///         watch_namespace: WatchNamespace::One("foobar".to_string())
+///         watch_namespace: WatchNamespace::One("foobar".to_string()),
+///         tracing_target: TracingTarget::None
 ///     },
 /// }));
 /// ```
@@ -198,6 +200,9 @@ pub struct ProductOperatorRun {
     /// Provides a specific namespace to watch (instead of watching all namespaces)
     #[clap(long, env, default_value = "", parse(from_str))]
     pub watch_namespace: WatchNamespace,
+    /// Tracing log collector system
+    #[clap(long, env, default_value_t, arg_enum)]
+    pub tracing_target: TracingTarget,
 }
 
 /// A path to a [`ProductConfigManager`] spec file
@@ -362,7 +367,8 @@ mod tests {
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::One("foo".to_string())
+                watch_namespace: WatchNamespace::One("foo".to_string()),
+                tracing_target: TracingTarget::None,
             }
         );
 
@@ -372,7 +378,8 @@ mod tests {
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::All
+                watch_namespace: WatchNamespace::All,
+                tracing_target: TracingTarget::None,
             }
         );
 
@@ -383,7 +390,8 @@ mod tests {
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::One("foo".to_string())
+                watch_namespace: WatchNamespace::One("foo".to_string()),
+                tracing_target: TracingTarget::None,
             }
         );
     }

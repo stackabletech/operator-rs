@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Export logs to Jaeger ([#360]).
+
+### Changed
+
+- BREAKING: `initialize_logging` now takes an app name and tracing target ([#360]).
+
+[#360]: https://github.com/stackabletech/operator-rs/pull/360
+
 ## [0.15.0] - 2022.03.21
 
 ### Added
