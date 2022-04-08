@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Export logs to Jaeger ([#360]).
+- Added common datastructures shared between all operators like `Tls` oder `AuthenticationClass`
 
 ### Changed
 
