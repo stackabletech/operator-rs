@@ -13,6 +13,7 @@ pub mod product_config_utils;
 pub mod role_utils;
 pub mod utils;
 pub mod validation;
+pub mod commons;
 
 pub use crate::crd::CustomResourceExt;
 
