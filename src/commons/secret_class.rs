@@ -1,7 +1,7 @@
-use k8s_openapi::api::core::v1::CSIVolumeSource;
-use serde::{Deserialize, Serialize};
-use schemars::JsonSchema;
 use crate::builder::SecretOperatorVolumeSourceBuilder;
+use k8s_openapi::api::core::v1::CSIVolumeSource;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -59,7 +59,7 @@ mod tests {
                 services: vec!["myservice".to_string()],
             }),
         }
-            .to_csi_volume();
+        .to_csi_volume();
 
         let expected_volume_attributes = BTreeMap::from([
             (

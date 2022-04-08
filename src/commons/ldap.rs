@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use schemars::JsonSchema;
 use crate::commons::secret_class::SecretClassVolume;
 use crate::commons::tls::Tls;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+use crate::commons::ldap::LdapAuthenticationProvider;
 use kube::CustomResource;
 use schemars::JsonSchema;
-use crate::commons::ldap::LdapAuthenticationProvider;
 
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
