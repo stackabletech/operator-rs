@@ -59,7 +59,6 @@
 //!     shared_storage: PvcConfig,
 //! }
 
-use backoff::Clock;
 use k8s_openapi::api::core::v1::{
     PersistentVolumeClaim, PersistentVolumeClaimSpec, ResourceRequirements,
 };
@@ -75,8 +74,8 @@ use std::collections::BTreeMap;
 #[serde(rename_all = "camelCase")]
 pub struct Resources<T, K = NoRuntimeLimits>
 where
-    T: Clone + PartialEq + Eq,
-    K: Clone + PartialEq + Eq,
+    T: Clone,
+    K: Clone,
 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub memory: Option<MemoryLimits<K>>,
@@ -86,52 +85,13 @@ where
     pub storage: Option<T>,
 }
 
-impl<T, K> Resources<T, K>
-where
-    T: Clone + PartialEq + Eq,
-    K: Clone + PartialEq + Eq,
-{
-    pub fn merge(primary: Option<Self>, secondary: Option<Self>, default: Self) -> Self {
-        match primary {
-            Some(primary_object) => primary_object.merge_with(secondary),
-            None => {
-                if secondary.is_none() {
-                    default
-                } else {
-                    Self::merge(secondary, None, default)
-                }
-            }
-        }
-    }
-
-    pub fn merge_with(&self, lesser_prioritized: Option<Self>) -> Self {
-        match lesser_prioritized {
-            None => self.clone(),
-            Some(lesser_prioritized_object) => Self {
-                memory: self
-                    .memory
-                    .clone()
-                    .or_else(|| lesser_prioritized_object.memory.clone()),
-                cpu: self
-                    .cpu
-                    .clone()
-                    .or_else(|| lesser_prioritized_object.cpu.clone()),
-                storage: self
-                    .storage
-                    .clone()
-                    .or_else(|| lesser_prioritized_object.storage.clone()),
-            },
-        }
-    }
-}
-
 // Defines memory limits to be set on the pods
 // Is generic to enable adding custom configuration for specific runtimes or products
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct MemoryLimits<T>
 where
-    T: Clone + PartialEq + Eq,
+    T: Clone,
 {
     // The maximum amount of memory that should be available
     // Should in most cases be mapped to resources.limits.memory
@@ -141,33 +101,8 @@ where
     pub runtime_limits: Option<T>,
 }
 
-impl<T> MemoryLimits<T>
-where
-    T: Clone + PartialEq + Eq,
-{
-    pub fn merge(primary: Option<Self>, secondary: Option<Self>, default: Self) -> Self {
-        match primary {
-            Some(primary_object) => primary_object.merge_with(secondary),
-            None => {
-                if secondary.is_none() {
-                    default
-                } else {
-                    Self::merge(secondary, None, default)
-                }
-            }
-        }
-    }
-
-    pub fn merge_with(&self, lesser_prioritized: Option<Self>) -> Self {
-        Self {
-            limit: self.limit.clone(),
-            runtime_limits: self.runtime_limits.clone(),
-        }
-    }
-}
-
 // Default struct to allow operators not specifying `runtime_limits` when using [`MemoryLimits`]
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct NoRuntimeLimits {}
 
 // Definition of Java Heap settings
