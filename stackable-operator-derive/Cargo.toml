@@ -1,0 +1,13 @@
+[package]
+name = "stackable-operator-derive"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+darling = "0.13.4"
+proc-macro2 = "1.0.37"
+quote = "1.0.17"
+syn = "1.0.91"
