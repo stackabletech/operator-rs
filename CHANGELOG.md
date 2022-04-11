@@ -7,12 +7,14 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Export logs to Jaeger ([#360]).
+- Added common datastructures shared between all operators like `Tls` oder `AuthenticationClass` ([#366]).
 
 ### Changed
 
 - BREAKING: `initialize_logging` now takes an app name and tracing target ([#360]).
 
 [#360]: https://github.com/stackabletech/operator-rs/pull/360
+[#366]: https://github.com/stackabletech/operator-rs/pull/366
 
 ## [0.15.0] - 2022.03.21
 

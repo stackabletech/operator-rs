@@ -203,14 +203,14 @@ impl OpaConfig {
         client: &Client,
         namespace: Option<&str>,
     ) -> OperatorResult<String> {
-        Ok(client
+        client
             .get::<ConfigMap>(&self.config_map_name, namespace)
             .await?
             .data
             .and_then(|mut data| data.remove("OPA"))
             .ok_or(error::Error::MissingOpaConnectString {
                 configmap_name: self.config_map_name.clone(),
-            })?)
+            })
     }
 }
 
