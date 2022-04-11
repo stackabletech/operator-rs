@@ -17,7 +17,6 @@ All notable changes to this project will be documented in this file.
 
 [#360]: https://github.com/stackabletech/operator-rs/pull/360
 [#366]: https://github.com/stackabletech/operator-rs/pull/366
-[#370]: https://github.com/stackabletech/operator-rs/pull/370
 [#369]: https://github.com/stackabletech/operator-rs/pull/369
 [#370]: https://github.com/stackabletech/operator-rs/pull/370
 
