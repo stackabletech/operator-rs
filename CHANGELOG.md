@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Export logs to Jaeger ([#360]).
+- Added common datastructures shared between all operators like `Tls` oder `AuthenticationClass` ([#366]).
+- Added helpers for env variables from Secrets or ConfigMaps ([#370]).
+
+### Changed
+
+- BREAKING: `initialize_logging` now takes an app name and tracing target ([#360]).
+- BREAKING: Move opa struct to commons ([#369]).
+
+[#360]: https://github.com/stackabletech/operator-rs/pull/360
+[#366]: https://github.com/stackabletech/operator-rs/pull/366
+[#369]: https://github.com/stackabletech/operator-rs/pull/369
+[#370]: https://github.com/stackabletech/operator-rs/pull/370
+
 ## [0.15.0] - 2022.03.21
 
 ### Added

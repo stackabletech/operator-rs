@@ -1,6 +1,6 @@
 use k8s_openapi::api::core::v1::{
-    Container, ContainerPort, EnvVar, EnvVarSource, ObjectFieldSelector, Probe,
-    ResourceRequirements, SecurityContext, VolumeMount,
+    ConfigMapKeySelector, Container, ContainerPort, EnvVar, EnvVarSource, ObjectFieldSelector,
+    Probe, ResourceRequirements, SecretKeySelector, SecurityContext, VolumeMount,
 };
 use std::fmt;
 
@@ -50,23 +50,77 @@ impl ContainerBuilder {
         self
     }
 
+    pub fn add_env_var_from_source(
+        &mut self,
+        name: impl Into<String>,
+        value: EnvVarSource,
+    ) -> &mut Self {
+        self.env.get_or_insert_with(Vec::new).push(EnvVar {
+            name: name.into(),
+            value_from: Some(value),
+            ..EnvVar::default()
+        });
+        self
+    }
+
     /// Used for pushing down attributes like the Pod's namespace into the containers.
     pub fn add_env_var_from_field_path(
         &mut self,
         name: impl Into<String>,
         field_path: FieldPathEnvVar,
     ) -> &mut Self {
-        self.env.get_or_insert_with(Vec::new).push(EnvVar {
-            name: name.into(),
-            value_from: Some(EnvVarSource {
+        self.add_env_var_from_source(
+            name,
+            EnvVarSource {
                 field_ref: Some(ObjectFieldSelector {
                     field_path: field_path.to_string(),
                     ..ObjectFieldSelector::default()
                 }),
                 ..EnvVarSource::default()
-            }),
-            ..EnvVar::default()
-        });
+            },
+        );
+        self
+    }
+
+    /// Reference a value from a Secret
+    pub fn add_env_var_from_secret(
+        &mut self,
+        name: impl Into<String>,
+        secret_name: impl Into<String>,
+        secret_key: impl Into<String>,
+    ) -> &mut Self {
+        self.add_env_var_from_source(
+            name,
+            EnvVarSource {
+                secret_key_ref: Some(SecretKeySelector {
+                    name: Some(secret_name.into()),
+                    key: secret_key.into(),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        );
+        self
+    }
+
+    /// Reference a value from a ConfigMap
+    pub fn add_env_var_from_config_map(
+        &mut self,
+        name: impl Into<String>,
+        config_map_name: impl Into<String>,
+        config_map_key: impl Into<String>,
+    ) -> &mut Self {
+        self.add_env_var_from_source(
+            name,
+            EnvVarSource {
+                config_map_key_ref: Some(ConfigMapKeySelector {
+                    name: Some(config_map_name.into()),
+                    key: config_map_key.into(),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        );
         self
     }
 
@@ -273,6 +327,8 @@ mod tests {
 
         let container = ContainerBuilder::new("testcontainer")
             .add_env_var("foo", "bar")
+            .add_env_var_from_config_map("envFromConfigMap", "my-configmap", "my-key")
+            .add_env_var_from_secret("envFromSecret", "my-secret", "my-key")
             .add_volume_mount("configmap", "/mount")
             .add_container_port(container_port_name, container_port)
             .resources(resources.clone())
@@ -283,7 +339,13 @@ mod tests {
 
         assert_eq!(container.name, "testcontainer");
         assert!(
-            matches!(container.env.unwrap().get(0), Some(EnvVar {name, value: Some(value), ..}) if name == "foo" && value == "bar")
+            matches!(container.env.as_ref().unwrap().get(0), Some(EnvVar {name, value: Some(value), ..}) if name == "foo" && value == "bar")
+        );
+        assert!(
+            matches!(container.env.as_ref().unwrap().get(1), Some(EnvVar {name, value_from: Some(EnvVarSource {config_map_key_ref: Some(ConfigMapKeySelector {name: Some(config_map_name), key: config_map_key, ..}), ..}), ..}) if name == "envFromConfigMap" && config_map_name == "my-configmap" && config_map_key == "my-key")
+        );
+        assert!(
+            matches!(container.env.as_ref().unwrap().get(2), Some(EnvVar {name, value_from: Some(EnvVarSource {secret_key_ref: Some(SecretKeySelector {name: Some(secret_name), key: secret_key, ..}), ..}), ..}) if name == "envFromSecret" && secret_name == "my-secret" && secret_key == "my-key")
         );
         assert_eq!(container.volume_mounts.as_ref().unwrap().len(), 1);
         assert!(
