@@ -4,3 +4,4 @@ pub mod authentication;
 pub mod ldap;
 pub mod secret_class;
 pub mod tls;
+pub mod opa;

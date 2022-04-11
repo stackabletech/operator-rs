@@ -8,7 +8,6 @@ pub mod label_selector;
 pub mod labels;
 pub mod logging;
 pub mod namespace;
-pub mod opa;
 pub mod pod_utils;
 pub mod product_config_utils;
 pub mod role_utils;
