@@ -6,6 +6,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+### Changed
+
+## [0.16.0] - 2022.04.11
+
+### Added
+
 - Export logs to Jaeger ([#360]).
 - Added common datastructures shared between all operators like `Tls` oder `AuthenticationClass` ([#366]).
 - Added helpers for env variables from Secrets or ConfigMaps ([#370]).
