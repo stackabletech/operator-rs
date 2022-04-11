@@ -13,9 +13,12 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: `initialize_logging` now takes an app name and tracing target ([#360]).
+- BREAKING: Move opa struct to commons ([#369]).
 
 [#360]: https://github.com/stackabletech/operator-rs/pull/360
 [#366]: https://github.com/stackabletech/operator-rs/pull/366
+[#370]: https://github.com/stackabletech/operator-rs/pull/370
+[#369]: https://github.com/stackabletech/operator-rs/pull/369
 [#370]: https://github.com/stackabletech/operator-rs/pull/370
 
 ## [0.15.0] - 2022.03.21
