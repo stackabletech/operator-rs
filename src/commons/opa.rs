@@ -8,7 +8,7 @@
 //! ```rust
 //! use serde::{Deserialize, Serialize};
 //! use stackable_operator::kube::CustomResource;
-//! use stackable_operator::opa::{OpaApiVersion, OpaConfig};
+//! use stackable_operator::commons::opa::{OpaApiVersion, OpaConfig};
 //! use stackable_operator::schemars::{self, JsonSchema};
 //!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
