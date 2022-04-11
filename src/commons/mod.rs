@@ -2,6 +2,6 @@
 
 pub mod authentication;
 pub mod ldap;
+pub mod opa;
 pub mod secret_class;
 pub mod tls;
-pub mod opa;
