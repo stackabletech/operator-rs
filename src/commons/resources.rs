@@ -194,7 +194,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::resources::{PvcConfig, Resources};
+    use crate::commons::resources::{PvcConfig, Resources};
     use k8s_openapi::api::core::v1::{PersistentVolumeClaim, ResourceRequirements};
     use rstest::rstest;
     use serde::{Deserialize, Serialize};
