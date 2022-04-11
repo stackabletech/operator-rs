@@ -102,7 +102,7 @@ where
 }
 
 // Default struct to allow operators not specifying `runtime_limits` when using [`MemoryLimits`]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NoRuntimeLimits {}
 
 // Definition of Java Heap settings
@@ -138,18 +138,15 @@ pub struct PvcConfig {
 
 impl PvcConfig {
     /// Create a PVC from this PvcConfig
-    pub fn build_pvc(
-        &self,
-        name: &str,
-        access_modes: Option<Vec<String>>,
-    ) -> PersistentVolumeClaim {
+    pub fn build_pvc(&self, name: &str, access_modes: Option<Vec<&str>>) -> PersistentVolumeClaim {
         PersistentVolumeClaim {
             metadata: ObjectMeta {
                 name: Some(name.to_string()),
                 ..ObjectMeta::default()
             },
             spec: Some(PersistentVolumeClaimSpec {
-                access_modes,
+                access_modes: access_modes
+                    .map(|modes| modes.into_iter().map(String::from).collect()),
                 resources: Some(ResourceRequirements {
                     requests: Some({
                         let mut map = BTreeMap::new();
@@ -165,40 +162,176 @@ impl PvcConfig {
     }
 }
 
+// Since we don't own ResourceRequirement we implement Into instead of From
+#[allow(clippy::from_over_into)]
+impl<T, K> Into<ResourceRequirements> for Resources<T, K>
+where
+    T: Clone,
+    K: Clone,
+{
+    fn into(self) -> ResourceRequirements {
+        let mut limits = BTreeMap::new();
+        let mut requests = BTreeMap::new();
+        if let Some(memory_limit) = self.memory {
+            limits.insert(
+                "memory".to_string(),
+                Quantity(memory_limit.limit.to_string()),
+            );
+            requests.insert("memory".to_string(), Quantity(memory_limit.limit));
+        }
+
+        if let Some(cpu_limit) = self.cpu {
+            limits.insert("cpu".to_string(), Quantity(cpu_limit.max));
+            requests.insert("cpu".to_string(), Quantity(cpu_limit.min));
+        }
+
+        ResourceRequirements {
+            limits: Some(limits),
+            requests: Some(requests),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::resources::{MemoryLimits, NoRuntimeLimits, PvcConfig};
-    use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+    use crate::resources::{PvcConfig, Resources};
+    use k8s_openapi::api::core::v1::{PersistentVolumeClaim, ResourceRequirements};
+    use rstest::rstest;
+    use serde::{Deserialize, Serialize};
 
-    #[test]
-    fn test_build_pvc() {
-        let test = PvcConfig {
-            capacity: "10Gb".to_string(),
-            storage_class: None,
-            selectors: None,
-        };
-        let pvc = test.build_pvc("test", None);
+    #[derive(Clone, Debug, Default, Serialize, Deserialize)]
+    struct TestStorageConfig {}
 
-        assert_eq!(
-            pvc.spec
-                .expect("spec in none")
-                .resources
-                .expect("resources field is none")
-                .requests
-                .expect("requests field is none")
-                .get("storage")
-                .expect("no key storage found but expected"),
-            &Quantity("10Gb".to_string())
-        );
+    #[rstest]
+    #[case::no_access(
+        "test",
+        None,
+        r#"
+        capacity: 10Gi"#,
+        r#"
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+            name: test
+        spec:
+            resources:
+                requests:
+                    storage: 10Gi"#
+    )]
+    #[case::access_readmany(
+        "test2",
+        Some(vec!["ReadWriteMany"]),
+        r#"
+        capacity: 100Gi"#,
+        r#"
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+            name: test2
+        spec:
+            accessModes:
+                - ReadWriteMany
+            resources:
+                requests:
+                    storage: 100Gi"#
+    )]
+    #[case::multiple_accessmodes(
+        "testtest",
+        Some(vec!["ReadWriteMany", "ReadOnlyMany"]),
+        r#"
+        capacity: 200Gi"#,
+        r#"
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+            name: testtest
+        spec:
+            accessModes:
+                - ReadWriteMany
+                - ReadOnlyMany
+            resources:
+                requests:
+                    storage: 200Gi"#
+    )]
+    #[case::storage_class(
+        "test",
+        None,
+        r#"
+        capacity: 10Gi
+        storageClass: CustomClass"#,
+        r#"
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+            name: test
+        spec:
+            storageClass: CustomClass
+            resources:
+                requests:
+                    storage: 10Gi"#
+    )]
 
-        assert_eq!(pvc.metadata.name.unwrap(), "test".to_string());
+    fn test_build_pvc(
+        #[case] name: String,
+        #[case] access_modes: Option<Vec<&str>>,
+        #[case] input: String,
+        #[case] expected: String,
+    ) {
+        let input_pvcconfig: PvcConfig = serde_yaml::from_str(&input).expect("illegal test input");
+
+        let result = input_pvcconfig.build_pvc(&name, access_modes);
+
+        let expected_volumeclaim: PersistentVolumeClaim =
+            serde_yaml::from_str(&expected).expect("illegal expected output");
+
+        assert_eq!(result, expected_volumeclaim);
     }
 
-    #[test]
-    fn test_merge_memorylimits_with_default() {
-        let default = MemoryLimits::<NoRuntimeLimits> {
-            limit: "2Gi".to_string(),
-            runtime_limits: None,
-        };
+    #[rstest]
+    #[case::only_memlimits(
+        r#"
+        memory:
+            limit: 1Gi"#,
+        r#"
+        limits:
+            memory: 1Gi
+        requests:
+            memory: 1Gi"#
+    )]
+    #[case::only_cpulimits(
+        r#"
+        cpu:
+            min: 1000
+            max: 2000"#,
+        r#"
+        limits:
+            cpu: 2000
+        requests:
+            cpu: 1000"#
+    )]
+    #[case::mem_and_cpu_limits(
+        r#"
+        cpu:
+            min: 1000
+            max: 2000
+        memory:
+            limit: 20Gi"#,
+        r#"
+        limits:
+            memory: 20Gi
+            cpu: 2000
+        requests:
+            memory: 20Gi
+            cpu: 1000"#
+    )]
+    fn test_into_resourcelimits(#[case] input: String, #[case] expected: String) {
+        let input_resources: Resources<TestStorageConfig> =
+            serde_yaml::from_str(&input).expect("illegal test input");
+
+        let result: ResourceRequirements = input_resources.into();
+        let expected_requirements: ResourceRequirements =
+            serde_yaml::from_str(&expected).expect("illegal expected output");
+
+        assert_eq!(result, expected_requirements);
     }
 }
