@@ -17,7 +17,7 @@ json-patch = "0.2.6"
 k8s-openapi = { version = "0.14.0", default-features = false, features = ["schemars", "v1_23"] }
 kube = { version = "0.70.0", features = ["jsonpatch", "runtime", "derive"] }
 lazy_static = "1.4.0"
-product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.3.1" }
+product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.4.0" }
 rand = "0.8.5"
 regex = "1.5.5"
 schemars = "0.8.8"
