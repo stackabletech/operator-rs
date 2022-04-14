@@ -1,7 +1,7 @@
 use darling::{ast::Data, FromDeriveInput, FromField, FromMeta};
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use syn::{parse_macro_input, parse_quote, Path};
+use syn::{parse_macro_input, parse_quote, Generics, Path, WherePredicate};
 
 #[derive(FromMeta)]
 struct PathOverrides {
@@ -25,9 +25,12 @@ impl PathOverrides {
 #[darling(attributes(merge))]
 struct MergeInput {
     ident: Ident,
+    generics: Generics,
     data: Data<(), MergeField>,
     #[darling(default)]
     path_overrides: PathOverrides,
+    #[darling(default)]
+    bounds: Option<Vec<WherePredicate>>,
 }
 
 #[derive(FromField)]
@@ -39,8 +42,10 @@ struct MergeField {
 pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let MergeInput {
         ident,
+        mut generics,
         data,
         path_overrides: PathOverrides { merge: merge_mod },
+        bounds,
     } = match MergeInput::from_derive_input(&parse_macro_input!(input)) {
         Ok(input) => input,
         Err(err) => return err.write_errors().into(),
@@ -62,8 +67,13 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         })
         .collect::<TokenStream>();
 
+    if let Some(bounds) = bounds {
+        let where_clause = generics.make_where_clause();
+        where_clause.predicates.extend(bounds);
+    }
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     quote! {
-        impl #merge_mod::Merge for #ident {
+        impl #impl_generics #merge_mod::Merge for #ident #ty_generics #where_clause {
             fn merge(&mut self, defaults: &Self) {
                 #merge_fields
             }

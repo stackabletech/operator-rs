@@ -50,6 +50,7 @@ impl Atomic for i128 {}
 impl Atomic for isize {}
 impl Atomic for bool {}
 impl Atomic for String {}
+impl<'a> Atomic for &'a str {}
 
 impl<T: Atomic> Merge for Option<T> {
     fn merge(&mut self, defaults: &Self) {
@@ -166,6 +167,42 @@ mod tests {
                     two: Some(1),
                     three: Some(true)
                 },
+            }
+        );
+    }
+
+    #[test]
+    fn merge_derived_struct_with_generics() {
+        #[derive(Merge, PartialEq, Eq, Debug)]
+        #[merge(bounds = "B: Merge", path_overrides(merge = "super"))]
+        struct Mergeable<'a, B, const C: u8> {
+            one: Option<&'a str>,
+            two: B,
+            three: ParametrizedUnit<C>,
+        }
+        #[derive(PartialEq, Eq, Debug)]
+        struct ParametrizedUnit<const N: u8>;
+        impl<const N: u8> Merge for ParametrizedUnit<N> {
+            fn merge(&mut self, _defaults: &Self) {}
+        }
+
+        assert_eq!(
+            merge(
+                Mergeable {
+                    one: None,
+                    two: Some(23),
+                    three: ParametrizedUnit::<23>,
+                },
+                &Mergeable {
+                    one: Some("abc"),
+                    two: None,
+                    three: ParametrizedUnit,
+                },
+            ),
+            Mergeable {
+                one: Some("abc"),
+                two: Some(23),
+                three: ParametrizedUnit,
             }
         );
     }
