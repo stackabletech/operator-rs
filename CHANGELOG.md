@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
+## [0.17.0] - 2022-04-14
 
 ### Changed
 
@@ -14,7 +14,7 @@ All notable changes to this project will be documented in this file.
 [#372]: https://github.com/stackabletech/operator-rs/pull/372
 [#373]: https://github.com/stackabletech/operator-rs/pull/373
 
-## [0.16.0] - 2022.04.11
+## [0.16.0] - 2022-04-11
 
 ### Added
 
@@ -32,7 +32,7 @@ All notable changes to this project will be documented in this file.
 [#369]: https://github.com/stackabletech/operator-rs/pull/369
 [#370]: https://github.com/stackabletech/operator-rs/pull/370
 
-## [0.15.0] - 2022.03.21
+## [0.15.0] - 2022-03-21
 
 ### Added
 
@@ -46,7 +46,7 @@ All notable changes to this project will be documented in this file.
 [#348]: https://github.com/stackabletech/operator-rs/pull/348
 [#357]: https://github.com/stackabletech/operator-rs/pull/357
 
-## [0.14.1] - 2022.03.15
+## [0.14.1] - 2022-03-15
 
 ### Changed
 
