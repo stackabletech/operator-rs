@@ -34,6 +34,12 @@ pub trait Merge {
     fn merge(&mut self, defaults: &Self);
 }
 
+impl<T: Merge> Merge for Box<T> {
+    fn merge(&mut self, defaults: &Self) {
+        T::merge(self, defaults)
+    }
+}
+
 /// A marker trait for types that are merged atomically and have no subfields
 trait Atomic: Clone {}
 impl Atomic for u8 {}
