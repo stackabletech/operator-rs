@@ -206,4 +206,106 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn merge_derived_tuple_struct() {
+        #[derive(Merge, PartialEq, Eq, Debug)]
+        #[merge(path_overrides(merge = "super"))]
+        struct Mergeable(Option<u8>, Option<u16>);
+
+        assert_eq!(
+            merge(Mergeable(Some(1), None), &Mergeable(Some(2), Some(3))),
+            Mergeable(Some(1), Some(3))
+        );
+    }
+
+    #[test]
+    fn merge_derived_enum() {
+        #[derive(Merge, PartialEq, Eq, Debug, Clone)]
+        #[merge(path_overrides(merge = "super"))]
+        enum Mergeable {
+            Foo { one: Option<u8>, two: Option<u16> },
+            Bar(Option<u32>),
+        }
+
+        assert_eq!(
+            merge(
+                Some(Mergeable::Foo {
+                    one: Some(1),
+                    two: None,
+                }),
+                &Some(Mergeable::Foo {
+                    one: Some(2),
+                    two: Some(3),
+                }),
+            ),
+            Some(Mergeable::Foo {
+                one: Some(1),
+                two: Some(3),
+            })
+        );
+
+        assert_eq!(
+            merge(
+                Some(Mergeable::Foo {
+                    one: Some(1),
+                    two: Some(2),
+                }),
+                &None,
+            ),
+            Some(Mergeable::Foo {
+                one: Some(1),
+                two: Some(2),
+            })
+        );
+        assert_eq!(
+            merge(
+                None,
+                &Some(Mergeable::Foo {
+                    one: Some(1),
+                    two: Some(2),
+                }),
+            ),
+            Some(Mergeable::Foo {
+                one: Some(1),
+                two: Some(2),
+            })
+        );
+
+        assert_eq!(
+            merge(
+                Some(Mergeable::Foo {
+                    one: None,
+                    two: None,
+                }),
+                &Some(Mergeable::Bar(None))
+            ),
+            Some(Mergeable::Foo {
+                one: None,
+                two: None,
+            })
+        );
+
+        // This is more of a consequence of how enums are merged, but it's worth calling out explicitly
+        // When the enum variant mismatches, *all* default fields are discarded and entirely replaced with the new variant
+        assert_eq!(
+            merge(
+                Some(Mergeable::Foo {
+                    one: Some(1),
+                    two: None,
+                }),
+                &merge(
+                    Some(Mergeable::Bar(None)),
+                    &Some(Mergeable::Foo {
+                        one: None,
+                        two: Some(2),
+                    })
+                )
+            ),
+            Some(Mergeable::Foo {
+                one: Some(1),
+                two: None,
+            })
+        );
+    }
 }
