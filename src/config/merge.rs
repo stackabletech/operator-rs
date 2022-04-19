@@ -5,6 +5,8 @@ pub use stackable_operator_derive::Merge;
 /// This is primarily intended to be implemented for configuration values that can come from several sources, for example
 /// configuration files with different scopes (role group, role, cluster) where a tighter scope should take precedence.
 ///
+/// Most users will want to implement this for custom types using [the associated derive macro](`derive@Merge`).
+///
 /// # Example
 ///
 /// ```
@@ -29,6 +31,11 @@ pub use stackable_operator_derive::Merge;
 ///     baz: Some(2), // Fallback is used
 /// });
 /// ```
+///
+/// # Options
+///
+/// A field should be [`Option`]al if it is [`Atomic`] (for example: [`u8`]) or an enum (since the discriminant matters in this case).
+/// Composite objects (such as regular structs) should generally *not* be optional.
 pub trait Merge {
     /// Merge with `defaults`, preferring values from `self` if they are set there
     fn merge(&mut self, defaults: &Self);
@@ -40,8 +47,9 @@ impl<T: Merge> Merge for Box<T> {
     }
 }
 
-/// A marker trait for types that are merged atomically and have no subfields
-trait Atomic: Clone {}
+/// A marker trait for types that are merged atomically (as one single value) rather than
+/// trying to merge each field individually
+pub trait Atomic: Clone {}
 impl Atomic for u8 {}
 impl Atomic for u16 {}
 impl Atomic for u32 {}
