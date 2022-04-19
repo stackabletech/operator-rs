@@ -8,7 +8,7 @@
 //! ```rust
 //! use serde::{Deserialize, Serialize};
 //! use stackable_operator::kube::CustomResource;
-//! use stackable_operator::opa::{OpaApiVersion, OpaConfig};
+//! use stackable_operator::commons::opa::{OpaApiVersion, OpaConfig};
 //! use stackable_operator::schemars::{self, JsonSchema};
 //!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -203,14 +203,14 @@ impl OpaConfig {
         client: &Client,
         namespace: Option<&str>,
     ) -> OperatorResult<String> {
-        Ok(client
+        client
             .get::<ConfigMap>(&self.config_map_name, namespace)
             .await?
             .data
             .and_then(|mut data| data.remove("OPA"))
             .ok_or(error::Error::MissingOpaConnectString {
                 configmap_name: self.config_map_name.clone(),
-            })?)
+            })
     }
 }
 
