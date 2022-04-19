@@ -62,6 +62,8 @@ enum InputType {
 /// ## `#[merge(bounds = "...")]`
 ///
 /// This attribute can be used to specify additional `where` clauses on the derived trait implementation.
+/// Bounds specified on the struct itself are automatically inherited for the generated implementation, and
+/// do not need to be repeated here.
 ///
 /// For example, this:
 ///
@@ -69,7 +71,7 @@ enum InputType {
 /// # use stackable_operator::config::merge::Merge;
 /// #[derive(Merge)]
 /// #[merge(bounds = "T: Merge")]
-/// struct Wrapper<T> {
+/// struct Wrapper<T> where T: Clone {
 ///     inner: T,
 /// }
 /// ```
@@ -77,11 +79,15 @@ enum InputType {
 /// Expands to (roughly) the following:
 ///
 /// ```
-/// struct Wrapper<T> {
+/// # use stackable_operator::config::merge::Merge;
+/// struct Wrapper<T> where T: Clone {
 ///     inner: T,
 /// }
-///
-/// impl<T> Merge for Wrapper<T> {
+/// impl<T> Merge for Wrapper<T>
+/// where
+///     T: Clone, // this clause was inherited from the struct
+///     T: Merge, // this clause was specified using #[merge(bounds)]
+/// {
 ///     fn merge(&mut self, defaults: &Self) {
 ///         self.inner.merge(&defaults.inner);
 ///     }
