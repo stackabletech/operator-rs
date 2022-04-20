@@ -1,3 +1,8 @@
+use std::{
+    collections::{btree_map, hash_map, BTreeMap, HashMap},
+    hash::Hash,
+};
+
 pub use stackable_operator_derive::Merge;
 
 /// A type that can be merged with itself
@@ -46,6 +51,34 @@ impl<T: Merge> Merge for Box<T> {
         T::merge(self, defaults)
     }
 }
+impl<K: Ord + Clone, V: Merge + Clone> Merge for BTreeMap<K, V> {
+    fn merge(&mut self, defaults: &Self) {
+        for (k, default_v) in defaults {
+            match self.entry(k.clone()) {
+                btree_map::Entry::Occupied(mut entry) => {
+                    entry.get_mut().merge(default_v);
+                }
+                btree_map::Entry::Vacant(entry) => {
+                    entry.insert(default_v.clone());
+                }
+            }
+        }
+    }
+}
+impl<K: Hash + Eq + Clone, V: Merge + Clone> Merge for HashMap<K, V> {
+    fn merge(&mut self, defaults: &Self) {
+        for (k, default_v) in defaults {
+            match self.entry(k.clone()) {
+                hash_map::Entry::Occupied(mut entry) => {
+                    entry.get_mut().merge(default_v);
+                }
+                hash_map::Entry::Vacant(entry) => {
+                    entry.insert(default_v.clone());
+                }
+            }
+        }
+    }
+}
 
 /// A marker trait for types that are merged atomically (as one single value) rather than
 /// trying to merge each field individually
@@ -76,12 +109,22 @@ impl<T: Atomic> Merge for Option<T> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::{BTreeMap, HashMap};
+
     use super::Merge;
 
     /// Moving version of [`Merge::merge`], to produce slightly nicer test output
     fn merge<T: Merge>(mut overrides: T, defaults: &T) -> T {
         overrides.merge(defaults);
         overrides
+    }
+
+    #[derive(Debug, PartialEq, Eq, Clone)]
+    struct Accumulator(u8);
+    impl Merge for Accumulator {
+        fn merge(&mut self, defaults: &Self) {
+            self.0 += defaults.0
+        }
     }
 
     #[test]
@@ -320,6 +363,30 @@ mod tests {
                 one: Some(1),
                 two: None,
             })
+        );
+    }
+
+    #[test]
+    fn merge_hash_map() {
+        use self::Accumulator as Acc;
+        assert_eq!(
+            merge(
+                HashMap::from([("a", Acc(1)), ("b", Acc(2))]),
+                &[("a", Acc(3)), ("c", Acc(5))].into()
+            ),
+            HashMap::from([("a", Acc(4)), ("b", Acc(2)), ("c", Acc(5))])
+        );
+    }
+
+    #[test]
+    fn merge_btree_map() {
+        use self::Accumulator as Acc;
+        assert_eq!(
+            merge(
+                BTreeMap::from([("a", Acc(1)), ("b", Acc(2))]),
+                &[("a", Acc(3)), ("c", Acc(5))].into()
+            ),
+            BTreeMap::from([("a", Acc(4)), ("b", Acc(2)), ("c", Acc(5))])
         );
     }
 }
