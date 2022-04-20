@@ -4,18 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.17.0] - 2022-04-14
-
 ### Added
 
 - Typed `Merge` trait ([#368])
+
+[#368]: https://github.com/stackabletech/operator-rs/pull/368
+
+## [0.17.0] - 2022-04-14
 
 ### Changed
 
 - product-config 0.3.1 -> 0.4.0 ([#373])
 - kube 0.70.0 -> 0.71.0 ([#372])
 
-[#368]: https://github.com/stackabletech/operator-rs/pull/368
 [#372]: https://github.com/stackabletech/operator-rs/pull/372
 [#373]: https://github.com/stackabletech/operator-rs/pull/373
 
