@@ -34,7 +34,7 @@ derivative = "2.2.0"
 tracing-opentelemetry = "0.17.1"
 opentelemetry = { version = "0.17.0", features = ["rt-tokio"] }
 opentelemetry-jaeger = { version = "0.16.0", features = ["rt-tokio"] }
-stackable-operator-derive = { version = "0.1.0", path = "stackable-operator-derive" }
+stackable-operator-derive = { path = "stackable-operator-derive" }
 
 [dev-dependencies]
 rstest = "0.12.0"
