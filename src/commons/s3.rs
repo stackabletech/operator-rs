@@ -9,7 +9,7 @@ use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, CustomResource, Debug, Default, Deserialize, JsonSchema, Eq, PartialEq, Serialize)]
+#[derive(Clone, CustomResource, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
     group = "s3.stackable.tech",
     version = "v1alpha1",
@@ -21,7 +21,8 @@ use serde::{Deserialize, Serialize};
         schemars = "schemars"
     ),
     namespaced
-)]#[serde(rename_all = "camelCase")]
+)]
+#[serde(rename_all = "camelCase")]
 pub struct S3BucketSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bucket_name: Option<String>,
@@ -29,36 +30,36 @@ pub struct S3BucketSpec {
     pub connection: Option<ConnectionDef>,
 }
 
-impl S3Bucket {
+impl S3BucketSpec {
     pub async fn get(
         resource_name: &str,
         client: &Client,
         namespace: Option<&str>,
-    ) -> OperatorResult<Self> {
+    ) -> OperatorResult<S3Bucket> {
         client
-            .get::<Self>(resource_name, namespace)
+            .get::<S3Bucket>(resource_name, namespace)
             .await
             .map_err(|_source| error::Error::MissingS3Bucket {
                 name: resource_name.to_string(),
             })
     }
 
-    pub async fn secret_class(&self, client: &Client, namespace: Option<&str>) -> Option<String> {
-        match self.spec.connection.as_ref() {
+    pub async fn secret_class(&self, client: &Client, namespace: Option<String>) -> Option<String> {
+        match self.connection.as_ref() {
             Some(ConnectionDef::Inline(S3ConnectionSpec { secret_class, .. })) => {
                 secret_class.clone()
             }
             Some(ConnectionDef::Reference(s3_conn_ref)) => {
                 S3Connection::get(s3_conn_ref.as_ref(), client, namespace)
                     .await
-                    .map_or(None,|s3c| s3c.spec.secret_class)
+                    .map_or(None, |s3c| s3c.spec.secret_class)
             }
             _ => None,
         }
     }
 }
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum S3BucketDef {
     Inline(S3BucketSpec),
@@ -66,7 +67,7 @@ pub enum S3BucketDef {
 }
 
 impl S3BucketDef {
-    pub async fn secret_class(&self, client: &Client, namespace: Option<&str>) -> Option<String> {
+    pub async fn secret_class(&self, client: &Client, namespace: Option<String>) -> Option<String> {
         match self {
             S3BucketDef::Inline(s3_bucket) => s3_bucket.secret_class(client, namespace).await,
             S3BucketDef::Reference(_s3_bucket) => todo!("get secret_class from bucket ref"),
@@ -74,14 +75,14 @@ impl S3BucketDef {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ConnectionDef {
     Inline(S3ConnectionSpec),
     Reference(String),
 }
 
-#[derive(CustomResource, Clone, Debug, Default, Deserialize, JsonSchema, Eq, PartialEq, Serialize)]
+#[derive(CustomResource, Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
     group = "s3.stackable.tech",
     version = "v1alpha1",
@@ -109,10 +110,10 @@ impl S3Connection {
     pub async fn get(
         resource_name: &str,
         client: &Client,
-        namespace: Option<&str>,
+        namespace: Option<String>,
     ) -> OperatorResult<Self> {
         client
-            .get::<Self>(resource_name, namespace)
+            .get::<Self>(resource_name, namespace.as_deref())
             .await
             .map_err(|_source| error::Error::MissingS3Connection {
                 name: resource_name.to_string(),
