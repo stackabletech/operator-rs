@@ -64,6 +64,17 @@ pub enum Error {
 
     #[error("Missing OPA connect string in configmap [{configmap_name}]")]
     MissingOpaConnectString { configmap_name: String },
+
+    #[error("Missing S3 connection [{name}]")]
+    MissingS3Connection {
+        name: String,
+    },
+
+    #[error("Missing S3 bucket [{name}]")]
+    MissingS3Bucket {
+        name: String,
+    },
+
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
