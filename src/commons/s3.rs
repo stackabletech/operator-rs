@@ -1,6 +1,7 @@
 //! Implementation of the bucket definition as described in
 //! https://github.com/stackabletech/documentation/pull/177
 //!
+//! Operator CRDs are expected to use the [`S3BucketDef`] as an entry point to this module,
 //!
 use crate::commons::tls::Tls;
 use crate::error;
@@ -34,27 +35,30 @@ impl S3BucketSpec {
     pub async fn get(
         resource_name: &str,
         client: &Client,
-        namespace: Option<&str>,
-    ) -> OperatorResult<S3Bucket> {
+        namespace: Option<String>,
+    ) -> OperatorResult<S3BucketSpec> {
         client
-            .get::<S3Bucket>(resource_name, namespace)
+            .get::<S3Bucket>(resource_name, namespace.as_deref())
             .await
+            .map(|crd| crd.spec)
             .map_err(|_source| error::Error::MissingS3Bucket {
                 name: resource_name.to_string(),
             })
     }
 
-    pub async fn secret_class(&self, client: &Client, namespace: Option<String>) -> Option<String> {
+    pub async fn inlined(
+        &self,
+        client: &Client,
+        namespace: Option<String>,
+    ) -> OperatorResult<S3BucketSpec> {
         match self.connection.as_ref() {
-            Some(ConnectionDef::Inline(S3ConnectionSpec { secret_class, .. })) => {
-                secret_class.clone()
-            }
-            Some(ConnectionDef::Reference(s3_conn_ref)) => {
-                S3Connection::get(s3_conn_ref.as_ref(), client, namespace)
-                    .await
-                    .map_or(None, |s3c| s3c.spec.secret_class)
-            }
-            _ => None,
+            Some(ConnectionDef::Reference(res_name)) => Ok(S3BucketSpec {
+                connection: Some(ConnectionDef::Inline(
+                    S3ConnectionSpec::get(res_name, client, namespace).await?,
+                )),
+                bucket_name: self.bucket_name.clone(),
+            }),
+            _ => Ok(self.clone()),
         }
     }
 }
@@ -67,10 +71,20 @@ pub enum S3BucketDef {
 }
 
 impl S3BucketDef {
-    pub async fn secret_class(&self, client: &Client, namespace: Option<String>) -> Option<String> {
+    /// Returns an s3 bucket spec with an inlined connection.
+    pub async fn resolve(
+        &self,
+        client: &Client,
+        namespace: Option<String>,
+    ) -> OperatorResult<S3BucketSpec> {
         match self {
-            S3BucketDef::Inline(s3_bucket) => s3_bucket.secret_class(client, namespace).await,
-            S3BucketDef::Reference(_s3_bucket) => todo!("get secret_class from bucket ref"),
+            S3BucketDef::Inline(s3_bucket) => s3_bucket.inlined(client, namespace).await,
+            S3BucketDef::Reference(_s3_bucket) => {
+                S3BucketSpec::get(_s3_bucket.as_str(), client, namespace.clone())
+                    .await?
+                    .inlined(client, namespace)
+                    .await
+            }
         }
     }
 }
@@ -106,15 +120,16 @@ pub struct S3ConnectionSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tls: Option<Tls>,
 }
-impl S3Connection {
+impl S3ConnectionSpec {
     pub async fn get(
         resource_name: &str,
         client: &Client,
         namespace: Option<String>,
-    ) -> OperatorResult<Self> {
+    ) -> OperatorResult<S3ConnectionSpec> {
         client
-            .get::<Self>(resource_name, namespace.as_deref())
+            .get::<S3Connection>(resource_name, namespace.as_deref())
             .await
+            .map(|conn| conn.spec)
             .map_err(|_source| error::Error::MissingS3Connection {
                 name: resource_name.to_string(),
             })
