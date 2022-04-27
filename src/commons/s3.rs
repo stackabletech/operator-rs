@@ -50,16 +50,43 @@ impl S3BucketSpec {
         &self,
         client: &Client,
         namespace: Option<String>,
-    ) -> OperatorResult<S3BucketSpec> {
+    ) -> OperatorResult<InlinedS3BucketSpec> {
         match self.connection.as_ref() {
-            Some(ConnectionDef::Reference(res_name)) => Ok(S3BucketSpec {
-                connection: Some(ConnectionDef::Inline(
-                    S3ConnectionSpec::get(res_name, client, namespace).await?,
-                )),
+            Some(ConnectionDef::Reference(res_name)) => Ok(InlinedS3BucketSpec {
+                connection: Some(S3ConnectionSpec::get(res_name, client, namespace).await?,),
                 bucket_name: self.bucket_name.clone(),
             }),
-            _ => Ok(self.clone()),
+            Some(ConnectionDef::Inline(conn_spec)) => Ok(InlinedS3BucketSpec {
+                bucket_name: self.bucket_name.clone(),
+                connection: Some(conn_spec.clone()),
+            }),
+            None => Ok(InlinedS3BucketSpec {
+                bucket_name: self.bucket_name.clone(),
+                connection: None,
+            }),
         }
+    }
+}
+
+pub struct InlinedS3BucketSpec {
+    pub bucket_name: Option<String>,
+    pub connection: Option<S3ConnectionSpec>,
+}
+
+impl InlinedS3BucketSpec {
+    pub fn host(&self) -> Option<String> {
+        match self.connection.as_ref() {
+            Some(conn_spec) => conn_spec.host.clone(),
+            _ => None,
+        }
+    }
+
+    pub fn secret_class(&self) -> Option<String> {
+        match self.connection.as_ref() {
+            Some(conn_spec) => conn_spec.secret_class.clone(),
+            _ => None,
+        }
+ 
     }
 }
 
@@ -76,7 +103,7 @@ impl S3BucketDef {
         &self,
         client: &Client,
         namespace: Option<String>,
-    ) -> OperatorResult<S3BucketSpec> {
+    ) -> OperatorResult<InlinedS3BucketSpec> {
         match self {
             S3BucketDef::Inline(s3_bucket) => s3_bucket.inlined(client, namespace).await,
             S3BucketDef::Reference(_s3_bucket) => {
