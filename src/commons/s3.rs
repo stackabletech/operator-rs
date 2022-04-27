@@ -53,7 +53,7 @@ impl S3BucketSpec {
     ) -> OperatorResult<InlinedS3BucketSpec> {
         match self.connection.as_ref() {
             Some(ConnectionDef::Reference(res_name)) => Ok(InlinedS3BucketSpec {
-                connection: Some(S3ConnectionSpec::get(res_name, client, namespace).await?,),
+                connection: Some(S3ConnectionSpec::get(res_name, client, namespace).await?),
                 bucket_name: self.bucket_name.clone(),
             }),
             Some(ConnectionDef::Inline(conn_spec)) => Ok(InlinedS3BucketSpec {
@@ -86,7 +86,6 @@ impl InlinedS3BucketSpec {
             Some(conn_spec) => conn_spec.secret_class.clone(),
             _ => None,
         }
- 
     }
 }
 
