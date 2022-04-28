@@ -80,7 +80,7 @@ pub struct InlinedS3BucketSpec {
 }
 
 impl InlinedS3BucketSpec {
-    /// Build the endpoint URL from [S3Connection::host] and [S3Connection::port].
+    /// Build the endpoint URL from [S3ConnectionSpec::host] and [S3ConnectionSpec::port].
     pub fn endpoint(&self) -> Option<String> {
         match self.connection.as_ref() {
             Some(conn_spec) => conn_spec.host.as_ref().map(|h| match conn_spec.port {
