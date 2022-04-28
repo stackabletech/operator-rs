@@ -4,5 +4,6 @@ pub mod authentication;
 pub mod ldap;
 pub mod opa;
 pub mod resources;
+pub mod s3;
 pub mod secret_class;
 pub mod tls;

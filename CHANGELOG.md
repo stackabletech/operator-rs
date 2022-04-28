@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- New commons::s3 module with common S3 connection structs ([#377])
+
+[#377]: https://github.com/stackabletech/operator-rs/issues/377
+
 ## [0.17.0] - 2022-04-14
 
 ### Changed
