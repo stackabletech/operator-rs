@@ -39,10 +39,10 @@ impl S3BucketSpec {
     pub async fn get(
         resource_name: &str,
         client: &Client,
-        namespace: Option<String>,
+        namespace: Option<&str>,
     ) -> OperatorResult<S3BucketSpec> {
         client
-            .get::<S3Bucket>(resource_name, namespace.as_deref())
+            .get::<S3Bucket>(resource_name, namespace)
             .await
             .map(|crd| crd.spec)
             .map_err(|_source| error::Error::MissingS3Bucket {
@@ -54,7 +54,7 @@ impl S3BucketSpec {
     pub async fn inlined(
         &self,
         client: &Client,
-        namespace: Option<String>,
+        namespace: Option<&str>,
     ) -> OperatorResult<InlinedS3BucketSpec> {
         match self.connection.as_ref() {
             Some(ConnectionDef::Reference(res_name)) => Ok(InlinedS3BucketSpec {
@@ -113,12 +113,12 @@ impl S3BucketDef {
     pub async fn resolve(
         &self,
         client: &Client,
-        namespace: Option<String>,
+        namespace: Option<&str>,
     ) -> OperatorResult<InlinedS3BucketSpec> {
         match self {
             S3BucketDef::Inline(s3_bucket) => s3_bucket.inlined(client, namespace).await,
             S3BucketDef::Reference(_s3_bucket) => {
-                S3BucketSpec::get(_s3_bucket.as_str(), client, namespace.clone())
+                S3BucketSpec::get(_s3_bucket.as_str(), client, namespace)
                     .await?
                     .inlined(client, namespace)
                     .await
@@ -165,10 +165,10 @@ impl S3ConnectionSpec {
     pub async fn get(
         resource_name: &str,
         client: &Client,
-        namespace: Option<String>,
+        namespace: Option<&str>,
     ) -> OperatorResult<S3ConnectionSpec> {
         client
-            .get::<S3Connection>(resource_name, namespace.as_deref())
+            .get::<S3Connection>(resource_name, namespace)
             .await
             .map(|conn| conn.spec)
             .map_err(|_source| error::Error::MissingS3Connection {
