@@ -179,14 +179,14 @@ impl S3ConnectionSpec {
 
 #[cfg(test)]
 mod test {
-    use crate::commons::s3::ConnectionDef::Inline;
+    use crate::commons::s3::ConnectionDef;
     use crate::commons::s3::{S3BucketSpec, S3ConnectionSpec};
 
     #[test]
     fn test_ser_inline() {
         let bucket = S3BucketSpec {
             bucket_name: Some("test-bucket-name".to_owned()),
-            connection: Some(Inline(S3ConnectionSpec {
+            connection: Some(ConnectionDef::Inline(S3ConnectionSpec {
                 host: Some("host".to_owned()),
                 port: Some(8080),
                 secret_class: None,
