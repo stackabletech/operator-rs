@@ -1,7 +1,8 @@
 //! Implementation of the bucket definition as described in
-//! https://github.com/stackabletech/documentation/pull/177
+//! the <https://github.com/stackabletech/documentation/pull/177>
 //!
-//! Operator CRDs are expected to use the [`S3BucketDef`] as an entry point to this module,
+//! Operator CRDs are expected to use the [S3BucketDef] as an entry point to this module
+//! and obtain an [InlinedS3BucketSpec] by calling [`S3BucketDef::resolve`].
 //!
 use crate::commons::tls::Tls;
 use crate::error;
@@ -10,6 +11,8 @@ use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// S3 bucket specification containing only the bucket name and an inlined or
+/// referenced connection specification.
 #[derive(Clone, CustomResource, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
     group = "s3.stackable.tech",
@@ -32,6 +35,7 @@ pub struct S3BucketSpec {
 }
 
 impl S3BucketSpec {
+    /// Convenience function to retrieve the spec of a S3 bucket resource from the K8S API service.
     pub async fn get(
         resource_name: &str,
         client: &Client,
@@ -46,6 +50,7 @@ impl S3BucketSpec {
             })
     }
 
+    /// Map &self to an [InlinedS3BucketSpec] by obtaining connection spec from the K8S API service if necessary
     pub async fn inlined(
         &self,
         client: &Client,
@@ -68,12 +73,14 @@ impl S3BucketSpec {
     }
 }
 
+/// Convenience struct with the connection spec inlined.
 pub struct InlinedS3BucketSpec {
     pub bucket_name: Option<String>,
     pub connection: Option<S3ConnectionSpec>,
 }
 
 impl InlinedS3BucketSpec {
+    /// Shortcut to [S3ConnectionSpec::host]
     pub fn host(&self) -> Option<String> {
         match self.connection.as_ref() {
             Some(conn_spec) => conn_spec.host.clone(),
@@ -81,6 +88,7 @@ impl InlinedS3BucketSpec {
         }
     }
 
+    /// Shortcut to [S3ConnectionSpec::secret_class]
     pub fn secret_class(&self) -> Option<String> {
         match self.connection.as_ref() {
             Some(conn_spec) => conn_spec.secret_class.clone(),
@@ -89,6 +97,7 @@ impl InlinedS3BucketSpec {
     }
 }
 
+/// Operators are expected to define fields for this type in order to work with S3 buckets.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum S3BucketDef {
@@ -97,7 +106,7 @@ pub enum S3BucketDef {
 }
 
 impl S3BucketDef {
-    /// Returns an s3 bucket spec with an inlined connection.
+    /// Returns an [InlinedS3BucketSpec].
     pub async fn resolve(
         &self,
         client: &Client,
@@ -115,6 +124,7 @@ impl S3BucketDef {
     }
 }
 
+/// S3 connection definition used by [S3BucketSpec]
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ConnectionDef {
@@ -122,6 +132,7 @@ pub enum ConnectionDef {
     Reference(String),
 }
 
+/// S3 connection definition as CRD.
 #[derive(CustomResource, Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
     group = "s3.stackable.tech",
@@ -147,6 +158,7 @@ pub struct S3ConnectionSpec {
     pub tls: Option<Tls>,
 }
 impl S3ConnectionSpec {
+    /// Convenience function to retrieve the spec of a S3 connection resource from the K8S API service.
     pub async fn get(
         resource_name: &str,
         client: &Client,
