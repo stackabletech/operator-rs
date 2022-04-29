@@ -81,14 +81,14 @@ pub struct InlinedS3BucketSpec {
 
 impl InlinedS3BucketSpec {
     /// Build the endpoint URL from [S3ConnectionSpec::host] and [S3ConnectionSpec::port].
-    pub fn endpoint(&self) -> Option<String> {
-        match self.connection.as_ref() {
-            Some(conn_spec) => conn_spec.host.as_ref().map(|h| match conn_spec.port {
-                Some(p) => format!("s3a://{h}:{p}"),
-                _ => format!("s3a://{h}"),
-            }),
-            _ => None,
-        }
+    /// The argument protocol is the protocol that should be prepended to the endpoint, e.g. 's3', 's3a` or `cos`.
+    pub fn endpoint(&self, protocol: &str) -> Option<String> {
+        self.connection.as_ref().and_then(|connection| {
+            connection.host.as_ref().map(|h| match connection.port {
+                Some(p) => format!("{protocol}://{h}:{p}"),
+                None => format!("{protocol}://{h}"),
+            })
+        })
     }
 
     /// Shortcut to [S3ConnectionSpec::secret_class]
