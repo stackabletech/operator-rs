@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::commons::ldap::LdapAuthenticationProvider;
+use crate::commons::{ldap::LdapAuthenticationProvider, tls::TlsAuthenticationProvider};
 use kube::CustomResource;
 use schemars::JsonSchema;
 
@@ -24,6 +24,8 @@ pub struct AuthenticationClassSpec {
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(clippy::large_enum_variant)]
 pub enum AuthenticationClassProvider {
     Ldap(LdapAuthenticationProvider),
+    Tls(TlsAuthenticationProvider),
 }

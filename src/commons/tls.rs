@@ -14,8 +14,6 @@ pub enum TlsVerification {
     None {},
     /// Use TLS and ca certificate to verify the server
     Server(TlsServerVerification),
-    /// Use TLS and ca certificate to verify the server and the client
-    Mutual(TlsMutualVerification),
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -42,4 +40,14 @@ pub enum CaCert {
     /// Note that a SecretClass does not need to have a key but can also work with just a ca cert.
     /// So if you got provided with a ca cert but don't have access to the key you can still use this method.
     SecretClass(String),
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TlsAuthenticationProvider {
+    /// See `<https://github.com/stackabletech/documentation/tree/main/modules/contributor/pages/adr/ADR016-tls-authentication.adoc>`.
+    /// If `client_cert_secret_class` is not set, the TLS settings may also be used for client authentication.
+    /// If `client_cert_secret_class` is set, the [SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html)
+    /// will be used to provision client certificates.
+    pub client_cert_secret_class: Option<String>,
 }
