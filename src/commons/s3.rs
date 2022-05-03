@@ -158,7 +158,9 @@ impl S3ConnectionDef {
     ) -> OperatorResult<S3ConnectionSpec> {
         match self {
             S3ConnectionDef::Inline(s3_connection_spec) => Ok(s3_connection_spec.clone()),
-            S3ConnectionDef::Reference(s3_conn_reference) => S3ConnectionSpec::get(s3_conn_reference, client, namespace),
+            S3ConnectionDef::Reference(s3_conn_reference) => {
+                S3ConnectionSpec::get(s3_conn_reference, client, namespace)
+            }
         }
     }
 }
