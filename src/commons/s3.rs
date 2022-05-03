@@ -31,7 +31,7 @@ pub struct S3BucketSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bucket_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub connection: Option<ConnectionDef>,
+    pub connection: Option<S3ConnectionDef>,
 }
 
 impl S3BucketSpec {
@@ -57,13 +57,9 @@ impl S3BucketSpec {
         namespace: Option<&str>,
     ) -> OperatorResult<InlinedS3BucketSpec> {
         match self.connection.as_ref() {
-            Some(ConnectionDef::Reference(res_name)) => Ok(InlinedS3BucketSpec {
-                connection: Some(S3ConnectionSpec::get(res_name, client, namespace).await?),
+            Some(connection_def) => Ok(InlinedS3BucketSpec {
+                connection: Some(connection_def.resolve(client, namespace)),
                 bucket_name: self.bucket_name.clone(),
-            }),
-            Some(ConnectionDef::Inline(conn_spec)) => Ok(InlinedS3BucketSpec {
-                bucket_name: self.bucket_name.clone(),
-                connection: Some(conn_spec.clone()),
             }),
             None => Ok(InlinedS3BucketSpec {
                 bucket_name: self.bucket_name.clone(),
@@ -135,8 +131,8 @@ impl S3BucketDef {
     ) -> OperatorResult<InlinedS3BucketSpec> {
         match self {
             S3BucketDef::Inline(s3_bucket) => s3_bucket.inlined(client, namespace).await,
-            S3BucketDef::Reference(_s3_bucket) => {
-                S3BucketSpec::get(_s3_bucket.as_str(), client, namespace)
+            S3BucketDef::Reference(s3_bucket) => {
+                S3BucketSpec::get(s3_bucket.as_str(), client, namespace)
                     .await?
                     .inlined(client, namespace)
                     .await
@@ -145,12 +141,26 @@ impl S3BucketDef {
     }
 }
 
-/// S3 connection definition used by [S3BucketSpec]
+/// Operators are expected to define fields for this type in order to work with S3 connections.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum ConnectionDef {
+pub enum S3ConnectionDef {
     Inline(S3ConnectionSpec),
     Reference(String),
+}
+
+impl S3ConnectionDef {
+    /// Returns an [S3ConnectionSpec].
+    pub async fn resolve(
+        &self,
+        client: &Client,
+        namespace: Option<&str>,
+    ) -> OperatorResult<S3ConnectionSpec> {
+        match self {
+            S3ConnectionDef::Inline(s3_connection_spec) => Ok(s3_connection_spec.clone()),
+            S3ConnectionDef::Reference(s3_conn_reference) => S3ConnectionSpec::get(s3_conn_reference, client, namespace),
+        }
+    }
 }
 
 /// S3 connection definition as CRD.
@@ -197,14 +207,14 @@ impl S3ConnectionSpec {
 
 #[cfg(test)]
 mod test {
-    use crate::commons::s3::ConnectionDef;
+    use crate::commons::s3::S3ConnectionDef;
     use crate::commons::s3::{S3BucketSpec, S3ConnectionSpec};
 
     #[test]
     fn test_ser_inline() {
         let bucket = S3BucketSpec {
             bucket_name: Some("test-bucket-name".to_owned()),
-            connection: Some(ConnectionDef::Inline(S3ConnectionSpec {
+            connection: Some(S3ConnectionDef::Inline(S3ConnectionSpec {
                 host: Some("host".to_owned()),
                 port: Some(8080),
                 secret_class: None,
