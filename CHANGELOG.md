@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.18.0] - 2022-05-04
+
 ### Added
 
 - Typed `Merge` trait ([#368])
