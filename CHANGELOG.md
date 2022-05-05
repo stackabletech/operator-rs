@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Removed `commons::s3::S3ConnectionImplementation`. `commons::s3::InlinedBucketSpec::endpoint()` doesn't take arguments since the protocol decision is now based on the existance of TLS configuration ([#390]).
+
+[#390]: https://github.com/stackabletech/operator-rs/issues/390
+
 ## [0.18.0] - 2022-05-04
 
 ### Added
