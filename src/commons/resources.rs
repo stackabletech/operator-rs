@@ -59,6 +59,7 @@
 //!     shared_storage: PvcConfig,
 //! }
 
+use crate::config::merge::Merge;
 use k8s_openapi::api::core::v1::{
     PersistentVolumeClaim, PersistentVolumeClaimSpec, ResourceRequirements,
 };
@@ -70,66 +71,73 @@ use std::collections::BTreeMap;
 
 // This struct allows specifying memory and cpu limits as well as generically adding storage
 // settings.
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Default, Merge, JsonSchema, PartialEq, Serialize)]
+#[merge(path_overrides(merge = "crate::config::merge"))]
 #[serde(rename_all = "camelCase")]
 pub struct Resources<T, K = NoRuntimeLimits>
 where
-    T: Clone,
-    K: Clone,
+    T: Clone + Default + Merge,
+    K: Clone + Default + Merge,
 {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub memory: Option<MemoryLimits<K>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub cpu: Option<CpuLimits>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub storage: Option<T>,
+    #[serde(default)]
+    pub memory: MemoryLimits<K>,
+    #[serde(default)]
+    pub cpu: CpuLimits,
+    #[serde(default)]
+    pub storage: T,
 }
 
 // Defines memory limits to be set on the pods
 // Is generic to enable adding custom configuration for specific runtimes or products
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize, Eq)]
+#[derive(Clone, Debug, Deserialize, Default, Merge, JsonSchema, PartialEq, Serialize, Eq)]
+#[merge(path_overrides(merge = "crate::config::merge"))]
 #[serde(rename_all = "camelCase")]
 pub struct MemoryLimits<T>
 where
-    T: Clone,
+    T: Clone + Default + Merge,
 {
     // The maximum amount of memory that should be available
     // Should in most cases be mapped to resources.limits.memory
-    pub limit: String,
+    pub limit: Option<String>,
     // Additional options that may be required
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub runtime_limits: Option<T>,
+    #[serde(default)]
+    pub runtime_limits: T,
 }
 
 // Default struct to allow operators not specifying `runtime_limits` when using [`MemoryLimits`]
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize, Merge, JsonSchema, PartialEq, Serialize)]
+#[merge(path_overrides(merge = "crate::config::merge"))]
+#[serde(rename_all = "camelCase")]
 pub struct NoRuntimeLimits {}
 
 // Definition of Java Heap settings
 // `min` is optional and should usually be defaulted to the same value as `max` by the implementing
 // code
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Merge, JsonSchema, PartialEq, Serialize)]
+#[merge(path_overrides(merge = "crate::config::merge"))]
 #[serde(rename_all = "camelCase")]
 pub struct JvmHeapLimits {
-    pub max: String,
+    pub max: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min: Option<String>,
 }
 
 // Cpu limits
 // These should usually be forwarded to resources.limits.cpu
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Merge, JsonSchema, PartialEq, Serialize)]
+#[merge(path_overrides(merge = "crate::config::merge"))]
 #[serde(rename_all = "camelCase")]
 pub struct CpuLimits {
-    pub min: String,
-    pub max: String,
+    pub min: Option<String>,
+    pub max: Option<String>,
 }
 
 // Struct that exposes the values for a PVC which the user should be able to influence
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Merge, JsonSchema, PartialEq, Serialize)]
+#[merge(path_overrides(merge = "crate::config::merge"))]
 #[serde(rename_all = "camelCase")]
 pub struct PvcConfig {
-    pub capacity: String,
+    pub capacity: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub storage_class: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -147,10 +155,13 @@ impl PvcConfig {
             spec: Some(PersistentVolumeClaimSpec {
                 access_modes: access_modes
                     .map(|modes| modes.into_iter().map(String::from).collect()),
+                selector: self.selectors.clone(),
                 resources: Some(ResourceRequirements {
                     requests: Some({
                         let mut map = BTreeMap::new();
-                        map.insert("storage".to_string(), Quantity(self.capacity.to_string()));
+                        if let Some(capacity) = &self.capacity {
+                            map.insert("storage".to_string(), Quantity(capacity.to_string()));
+                        }
                         map
                     }),
                     ..ResourceRequirements::default()
@@ -166,23 +177,22 @@ impl PvcConfig {
 #[allow(clippy::from_over_into)]
 impl<T, K> Into<ResourceRequirements> for Resources<T, K>
 where
-    T: Clone,
-    K: Clone,
+    T: Clone + Merge + Default,
+    K: Clone + Merge + Default,
 {
     fn into(self) -> ResourceRequirements {
         let mut limits = BTreeMap::new();
         let mut requests = BTreeMap::new();
-        if let Some(memory_limit) = self.memory {
-            limits.insert(
-                "memory".to_string(),
-                Quantity(memory_limit.limit.to_string()),
-            );
-            requests.insert("memory".to_string(), Quantity(memory_limit.limit));
+        if let Some(memory_limit) = self.memory.limit {
+            limits.insert("memory".to_string(), Quantity(memory_limit.to_string()));
+            requests.insert("memory".to_string(), Quantity(memory_limit));
         }
 
-        if let Some(cpu_limit) = self.cpu {
-            limits.insert("cpu".to_string(), Quantity(cpu_limit.max));
-            requests.insert("cpu".to_string(), Quantity(cpu_limit.min));
+        if let Some(cpu_max) = self.cpu.max {
+            limits.insert("cpu".to_string(), Quantity(cpu_max));
+        }
+        if let Some(cpu_min) = self.cpu.min {
+            requests.insert("cpu".to_string(), Quantity(cpu_min));
         }
 
         ResourceRequirements {
@@ -195,11 +205,13 @@ where
 #[cfg(test)]
 mod tests {
     use crate::commons::resources::{PvcConfig, Resources};
+    use crate::config::merge::Merge;
     use k8s_openapi::api::core::v1::{PersistentVolumeClaim, ResourceRequirements};
     use rstest::rstest;
     use serde::{Deserialize, Serialize};
 
-    #[derive(Clone, Debug, Default, Serialize, Deserialize)]
+    #[derive(Clone, Debug, Default, Merge, Serialize, Deserialize)]
+    #[merge(path_overrides(merge = "crate::config::merge"))]
     struct TestStorageConfig {}
 
     #[rstest]
@@ -270,7 +282,29 @@ mod tests {
                 requests:
                     storage: 10Gi"#
     )]
-
+    #[case::selector(
+        "test",
+        None,
+        r#"
+        capacity: 10Gi
+        storageClass: CustomClass
+        selectors:
+            matchLabels:
+                nodeType: directstorage"#,
+        r#"
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+            name: test
+        spec:
+            storageClass: CustomClass
+            resources:
+                requests:
+                    storage: 10Gi
+            selector:
+                matchLabels:
+                    nodeType: directstorage"#
+    )]
     fn test_build_pvc(
         #[case] name: String,
         #[case] access_modes: Option<Vec<&str>>,

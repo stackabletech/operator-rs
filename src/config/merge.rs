@@ -1,3 +1,4 @@
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use std::{
     collections::{btree_map, hash_map, BTreeMap, HashMap},
     hash::Hash,
@@ -98,6 +99,7 @@ impl Atomic for isize {}
 impl Atomic for bool {}
 impl Atomic for String {}
 impl<'a> Atomic for &'a str {}
+impl Atomic for LabelSelector {}
 
 impl<T: Atomic> Merge for Option<T> {
     fn merge(&mut self, defaults: &Self) {
