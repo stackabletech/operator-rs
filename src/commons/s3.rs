@@ -78,16 +78,9 @@ pub struct InlinedS3BucketSpec {
 impl InlinedS3BucketSpec {
     /// Build the endpoint URL from [S3ConnectionSpec::host] and [S3ConnectionSpec::port] and the S3 implementation to use
     pub fn endpoint(&self) -> Option<String> {
-        let protocol = match self.connection.as_ref().and_then(|c| c.tls.as_ref()) {
-            Some(_tls) => "https",
-            _ => "http",
-        };
-        self.connection.as_ref().and_then(|connection| {
-            connection.host.as_ref().map(|h| match connection.port {
-                Some(p) => format!("{protocol}://{h}:{p}"),
-                None => format!("{protocol}://{h}"),
-            })
-        })
+        self.connection
+            .as_ref()
+            .and_then(|connection| connection.endpoint())
     }
 
     /// Shortcut to [S3ConnectionSpec::secret_class]
@@ -189,6 +182,18 @@ impl S3ConnectionSpec {
             .map_err(|_source| error::Error::MissingS3Connection {
                 name: resource_name.to_string(),
             })
+    }
+
+    /// Build the endpoint URL from this connection
+    pub fn endpoint(&self) -> Option<String> {
+        let protocol = match self.tls.as_ref() {
+            Some(_tls) => "https",
+            _ => "http",
+        };
+        self.host.as_ref().map(|h| match self.port {
+            Some(p) => format!("{protocol}://{h}:{p}"),
+            None => format!("{protocol}://{h}"),
+        })
     }
 }
 
