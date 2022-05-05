@@ -270,7 +270,29 @@ mod tests {
                 requests:
                     storage: 10Gi"#
     )]
-
+    #[case::selector(
+        "test",
+        None,
+        r#"
+        capacity: 10Gi
+        storageClass: CustomClass
+        selectors:
+            matchLabels:
+                nodeType: directstorage"#,
+        r#"
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+            name: test
+        spec:
+            storageClass: CustomClass
+            resources:
+                requests:
+                    storage: 10Gi
+            selector:
+                matchLabels:
+                    nodeType: directstorage"#
+    )]
     fn test_build_pvc(
         #[case] name: String,
         #[case] access_modes: Option<Vec<&str>>,
