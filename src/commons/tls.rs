@@ -25,13 +25,6 @@ pub struct TlsServerVerification {
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TlsMutualVerification {
-    /// [SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html) which will provide ca.crt, tls.crt and tls.key
-    pub cert_secret_class: String,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub enum CaCert {
     /// Use TLS and the ca certificates trusted by the common web browsers to verify the server.
     /// This can be useful when you e.g. use public AWS S3 or other public available services.

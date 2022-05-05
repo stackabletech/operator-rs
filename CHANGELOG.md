@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Changes to resource requirements structs to enable deep merging ([#392])
   - Changed fields in `Resources` to no longer be optional
   - Changed atomic fields in `MemoryLimits`, `JvmHeapLimits`, `CpuLimits` and `PvcConfig` to be optional
+- BREAKING: Removed `commons::tls::TlsMutualVerification` ([#394](https://github.com/stackabletech/operator-rs/issues/394)).
 
 [#390]: https://github.com/stackabletech/operator-rs/issues/390
 [#392]: https://github.com/stackabletech/operator-rs/pull/392
