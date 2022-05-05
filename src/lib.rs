@@ -2,6 +2,7 @@ pub mod builder;
 pub mod cli;
 pub mod client;
 pub mod commons;
+pub mod config;
 pub mod crd;
 pub mod error;
 pub mod label_selector;

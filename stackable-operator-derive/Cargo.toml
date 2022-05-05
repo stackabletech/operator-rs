@@ -1,0 +1,20 @@
+[package]
+authors = ["Stackable GmbH <info@stackable.de>"]
+description = "Stackable Operator Framework"
+edition = "2021"
+license = "Apache-2.0"
+name = "stackable-operator-derive"
+version = "0.17.0"
+repository = "https://github.com/stackabletech/operator-rs"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+darling = "0.13.4"
+proc-macro2 = "1.0.37"
+quote = "1.0.17"
+syn = "1.0.91"
+
+[dev-dependencies]
+stackable-operator = { path = ".." }
