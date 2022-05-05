@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+### Changed
+ - BREAKING: Changes to resource requirements structs to enable deep merging ([#392])
+   - Changed fields in `Resources` to no longer be optional
+   - Changed atomic fields in `MemoryLimits`, `JvmHeapLimits`, `CpuLimits` and `PvcConfig` to be optional
+
+[#392]: https://github.com/stackabletech/operator-rs/pull/392
 
 ## [0.18.0] - 2022-05-04
 
