@@ -6,10 +6,12 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- BREAKING: Removed `commons::s3::S3ConnectionImplementation`. `commons::s3::InlinedBucketSpec::endpoint()` doesn't take arguments since the protocol decision is now based on the existance of TLS configuration ([#390]).
 - BREAKING: Changes to resource requirements structs to enable deep merging ([#392])
   - Changed fields in `Resources` to no longer be optional
   - Changed atomic fields in `MemoryLimits`, `JvmHeapLimits`, `CpuLimits` and `PvcConfig` to be optional
 
+[#390]: https://github.com/stackabletech/operator-rs/issues/390
 [#392]: https://github.com/stackabletech/operator-rs/pull/392
 
 ## [0.18.0] - 2022-05-04

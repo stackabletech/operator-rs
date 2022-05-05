@@ -77,14 +77,10 @@ pub struct InlinedS3BucketSpec {
 
 impl InlinedS3BucketSpec {
     /// Build the endpoint URL from [S3ConnectionSpec::host] and [S3ConnectionSpec::port] and the S3 implementation to use
-    pub fn endpoint(&self, implementation: &S3ConnectionImplementation) -> Option<String> {
-        let implementation = implementation.to_string();
-        self.connection.as_ref().and_then(|connection| {
-            connection.host.as_ref().map(|h| match connection.port {
-                Some(p) => format!("{implementation}://{h}:{p}"),
-                None => format!("{implementation}://{h}"),
-            })
-        })
+    pub fn endpoint(&self) -> Option<String> {
+        self.connection
+            .as_ref()
+            .and_then(|connection| connection.endpoint())
     }
 
     /// Shortcut to [S3ConnectionSpec::secret_class]
@@ -92,24 +88,6 @@ impl InlinedS3BucketSpec {
         match self.connection.as_ref() {
             Some(conn_spec) => conn_spec.secret_class.clone(),
             _ => None,
-        }
-    }
-}
-
-/// The implementation the product should use when interacting with S3
-/// It is sometimes called protocol as it is prepended to the connection endpoint, e.g. `s3a://<host>`
-/// but it often specifies which s3 client implemtation to use, the used protocol on the wire is always S3.
-/// Spark e.g. supports `s3a` and `cos` as S3 connectors/implementations, which are different implementations but talk to the same S3 endpoint.
-pub enum S3ConnectionImplementation {
-    S3,
-    S3a,
-}
-
-impl ToString for S3ConnectionImplementation {
-    fn to_string(&self) -> String {
-        match self {
-            S3ConnectionImplementation::S3 => "s3".to_string(),
-            S3ConnectionImplementation::S3a => "s3a".to_string(),
         }
     }
 }
@@ -204,6 +182,18 @@ impl S3ConnectionSpec {
             .map_err(|_source| error::Error::MissingS3Connection {
                 name: resource_name.to_string(),
             })
+    }
+
+    /// Build the endpoint URL from this connection
+    pub fn endpoint(&self) -> Option<String> {
+        let protocol = match self.tls.as_ref() {
+            Some(_tls) => "https",
+            _ => "http",
+        };
+        self.host.as_ref().map(|h| match self.port {
+            Some(p) => format!("{protocol}://{h}:{p}"),
+            None => format!("{protocol}://{h}"),
+        })
     }
 }
 
