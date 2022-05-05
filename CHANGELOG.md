@@ -7,9 +7,13 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: Removed `commons::s3::S3ConnectionImplementation`. `commons::s3::InlinedBucketSpec::endpoint()` doesn't take arguments since the protocol decision is now based on the existance of TLS configuration ([#390]).
+- BREAKING: Changes to resource requirements structs to enable deep merging ([#392])
+  - Changed fields in `Resources` to no longer be optional
+  - Changed atomic fields in `MemoryLimits`, `JvmHeapLimits`, `CpuLimits` and `PvcConfig` to be optional
 - BREAKING: Removed `commons::tls::TlsMutualVerification` ([#394](https://github.com/stackabletech/operator-rs/issues/394)).
 
 [#390]: https://github.com/stackabletech/operator-rs/issues/390
+[#392]: https://github.com/stackabletech/operator-rs/pull/392
 
 ## [0.18.0] - 2022-05-04
 
@@ -93,11 +97,10 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: Added CLI `watch_namespace` parameter to ProductOperatorRun in
   preparation for operators watching a single namespace ([#332], [#333]).
-- More builder functionality ([#331]) 
-  - builder for `SecurityContext` objects 
+- More builder functionality ([#331])
+  - builder for `SecurityContext` objects
   - add `EnvVar`s from field refs
   - set `serviceServiceAccountName` in pod templates
-
 
 ### Changed
 
@@ -111,9 +114,11 @@ All notable changes to this project will be documented in this file.
 ## [0.12.0] - 2022-02-18
 
 ### Changed
+
 - Reported K8s events are now limited to 1024 bytes ([#327]).
 
 ### Removed
+
 - `Client::set_condition` ([#326]).
 - `Error` variants that are no longer used ([#326]).
 
@@ -123,12 +128,15 @@ All notable changes to this project will be documented in this file.
 ## [0.11.0] - 2022-02-17
 
 ### Added
+
 - Infrastructure for logging errors as K8s events ([#322]).
 
 ### Changed
+
 - BREAKING: kube 0.68 -> 0.69.1 ([#319, [#322]]).
 
 ### Removed
+
 - Chrono's time 0.1 compatibility ([#310]).
 - Deprecated pre-rework utilities ([#320]).
 
@@ -140,13 +148,16 @@ All notable changes to this project will be documented in this file.
 ## [0.10.0] - 2022-02-04
 
 ### Added
+
 - Unified `ClusterRef` type for referring to cluster objects ([#307]).
 
 ### Changed
+
 - BREAKING: kube 0.66 -> 0.68 ([#303]).
 - BREAKING: k8s-openapi 0.13 -> 0.14 ([#303]).
 
 ### Removed
+
 - Auto-generated service link environment variables for built pods ([#305]).
 
 [#303]: https://github.com/stackabletech/operator-rs/pull/303
@@ -156,6 +167,7 @@ All notable changes to this project will be documented in this file.
 ## [0.9.0] - 2022-01-27
 
 ### Changed
+
 - Fixed `Client::apply_patch_status` always failing ([#300]).
 
 [#300]: https://github.com/stackabletech/operator-rs/pull/300
@@ -163,9 +175,11 @@ All notable changes to this project will be documented in this file.
 ## [0.8.0] - 2022-01-17
 
 ### Added
+
 - Allow adding custom CLI arguments to `run` subcommand ([#291]).
 
 ### Changed
+
 - BREAKING: clap 2.33.3 -> 3.0.4 ([#289]).
 - BREAKING: kube 0.65 -> 0.66 ([#293]).
 - BREAKING: `cli::Command::Run` now just wraps `cli::ProductOperatorRun` rather than defining the struct inline ([#291]).
@@ -177,6 +191,7 @@ All notable changes to this project will be documented in this file.
 ## [0.7.0] - 2021-12-22
 
 ### Changed
+
 - BREAKING: Introduced proper (Result) error handling for `transform_all_roles_to_config` ([#282]).
 - BREAKING: `Configuration::compute_*` are now invoked even when `config` field is not provided on `Role`/`RoleGroup` ([#282]).
   - `CommonConfiguration::config` is no longer `Option`al
@@ -190,6 +205,7 @@ All notable changes to this project will be documented in this file.
 ## [0.6.0] - 2021-12-13
 
 ### Changed
+
 - BREAKING: kube-rs 0.63.1 -> 0.65.0 ([#277])
 - strum 0.22.0 -> 0.23.0 ([#277])
 - Undeprecated `CustomResourceExt` ([#279])
@@ -199,8 +215,8 @@ All notable changes to this project will be documented in this file.
 
 ## [0.5.0] - 2021-12-09
 
-
 ### Added
+
 - `build_template` to `PodBuilder` ([#259]).
 - `readiness_probe` and `liveness_probe` to `ContainerBuilder` ([#259]).
 - `role_group_selector_labels` to `labels` ([#261]).
@@ -211,6 +227,7 @@ All notable changes to this project will be documented in this file.
 - Add support for managing CLI commands via `StructOpt` ([#273]).
 
 ### Changed
+
 - BREAKING: `ObjectMetaBuilder::build` is no longer fallible ([#259]).
 - BREAKING: `PodBuilder::metadata_builder` is no longer fallible ([#259]).
 - `role_utils::transform_all_roles_to_config` now takes any `T: Configurable`, not just `Box<T>` ([#262]).
@@ -231,19 +248,22 @@ All notable changes to this project will be documented in this file.
 ## [0.4.0] - 2021-11-05
 
 ### Added
+
 - `VolumeBuilder` and `VolumeMountBuilder` ([#253]).
 - `image_pull_policy` to `ContainerBuilder` ([#253]).
 - `host_network` to `PodBuilder` ([#253]).
 
 ### Changed
+
 - BREAKING: In builder: `add_stackable_agent_tolerations` to `add_tolerations` ([#255]).
-- Generic `VALUE` paramters to `impl Into<_>` arguments for consistency ([#253]). 
+- Generic `VALUE` paramters to `impl Into<_>` arguments for consistency ([#253]).
 
 ### Removed
+
 - `krustlet.rs` ([#255]).
 - `find_nodes_that_fit_selectors` no longer adds label `type=krustlet` to selector ([#255]).
 - BREAKING: `configmaps` field from container builder ([#253]).
-- BREAKING: Automatic `Volume` and `VolumeMount` creation from the `configmaps` field ([#253]). 
+- BREAKING: Automatic `Volume` and `VolumeMount` creation from the `configmaps` field ([#253]).
 
 [#255]: https://github.com/stackabletech/operator-rs/pull/255
 [#253]: https://github.com/stackabletech/operator-rs/pull/253
@@ -251,6 +271,7 @@ All notable changes to this project will be documented in this file.
 ## [0.3.0] - 2021-10-27
 
 ### Fixed
+
 - Bugfix: when scheduling a pod, `GroupAntiAffinityStrategy` should not skip nodes that are mapped by other pods from different role+group. ([#222])
 - Bugfix: annotate `conditions` as map-list ([#226])
   - Requires manual action: add `#[schemars(schema_with = "stackable_operator::conditions::conditions_schema")]` annotation to `conditions` field in your status struct
@@ -260,6 +281,7 @@ All notable changes to this project will be documented in this file.
 - Bugfix: added proper error handling for versioning. If versions are not supported or invalid an error is thrown which should stop further reconciliation ([#236]).
 
 ### Added
+
 - `command.rs` module to handle common command operations ([#184]).
 - Traits for command handling ([#184]):
   - `HasCurrentCommand` to manipulate the current_command in the status
@@ -275,6 +297,7 @@ All notable changes to this project will be documented in this file.
 - `controller.rs` - Configurable requeue timeout
 
 ### Removed
+
 - `reconcile::create_config_maps` which is obsolete and replaced by `configmap::create_config_maps` ([#184])
 - BREAKING: `scheduler::PodToNodeMapping::from` ([#222]).
 - Reexport `kube`, `k8s-openapi`, `schemars` ([#247])
@@ -300,6 +323,7 @@ All notable changes to this project will be documented in this file.
 ## [0.2.1] - 2021-09-20
 
 ### Added
+
 - Getter for `scheduler::PodIdentity` fields ([#215]).
 
 [#215]: https://github.com/stackabletech/operator-rs/pull/215
@@ -307,13 +331,15 @@ All notable changes to this project will be documented in this file.
 ## [0.2.0] - 2021-09-17
 
 ### Added
+
 - Extracted the versioning support for up and downgrades from operators ([#211]).
 - Added traits to access generic operator versions ([#211]).
 - Added init_status method that uses the status default ([#211]).
 - Implement StickyScheduler with two pod placement strategies and history stored as K8S status field. ([#210])
 
 ### Changed
-- `BREAKING`: Changed `Conditions` trait return value to not optional ([#211]). 
+
+- `BREAKING`: Changed `Conditions` trait return value to not optional ([#211]).
 
 [#211]: https://github.com/stackabletech/operator-rs/pull/211
 [#210]: https://github.com/stackabletech/operator-rs/pull/210
