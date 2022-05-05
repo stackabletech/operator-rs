@@ -8,8 +8,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Typed `Merge` trait ([#368])
-- New commons::s3 module with common S3 connection structs ([#377])
+- Typed `Merge` trait ([#368]).
+- New commons::s3 module with common S3 connection structs ([#377]).
 - New `TlsAuthenticationProvider` for `AuthenticationClass` ([#387]).
 
 [#368]: https://github.com/stackabletech/operator-rs/pull/368
