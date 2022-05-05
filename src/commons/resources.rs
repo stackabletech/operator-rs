@@ -185,7 +185,7 @@ where
         let mut requests = BTreeMap::new();
         if let Some(memory_limit) = self.memory.limit {
             limits.insert("memory".to_string(), Quantity(memory_limit.to_string()));
-            requests.insert("memory".to_string(), Quantity(memory_limit.to_string()));
+            requests.insert("memory".to_string(), Quantity(memory_limit));
         }
 
         if let Some(cpu_max) = self.cpu.max {
