@@ -146,7 +146,7 @@ impl<T: Atomic> Merge for Option<T> {
 mod tests {
     use std::collections::{BTreeMap, HashMap};
 
-    use super::{chainable_merge, merge, Merge};
+    use super::{merge, Merge};
 
     #[derive(Debug, PartialEq, Eq, Clone)]
     struct Accumulator(u8);
