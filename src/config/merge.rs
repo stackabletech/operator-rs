@@ -418,24 +418,4 @@ mod tests {
             BTreeMap::from([("a", Acc(4)), ("b", Acc(2)), ("c", Acc(5))])
         );
     }
-
-    #[test]
-    fn test_chainable_merge() {
-        #[derive(Clone, Default, Merge, PartialEq)]
-        #[merge(path_overrides(merge = "super"))]
-        struct MyConfig {
-            field: Option<i32>,
-        }
-
-        let mut c0 = None;
-        let mut c1 = Some(MyConfig { field: Some(23) });
-        let mut c2 = Some(MyConfig { field: Some(7) });
-
-        let merged = [c0.as_mut(), c1.as_mut(), c2.as_mut()]
-            .into_iter()
-            .flatten()
-            .reduce(|old, new| chainable_merge(new, old));
-
-        assert_eq!(7, merged.unwrap().field.unwrap());
-    }
 }
