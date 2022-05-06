@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `SecretClassVolume` and `SecretOperatorVolumeSourceBuilder` now support secret-aware pod scheduling ([#396], [secret-#125]).
+
+### Changed
+
+- BREAKING: `SecretClassVolume::to_csi_volume` renamed to `to_ephemeral_volume` and now returns `EphemeralVolumeSource` ([#396]).
+- BREAKING: `SecretOperatorVolumeSourceBuilder` now returns `EphemeralVolumeSource` ([#396]).
+- BREAKING: Secret-Operator-related features now require Secret-Operator 0.4.0 ([#396]).
+
+[#396]: https://github.com/stackabletech/operator-rs/pull/396
+[secret-#125]: https://github.com/stackabletech/secret-operator/pull/125
+
 ## [0.19.0] - 2022-05-05
 
 ### Changed
