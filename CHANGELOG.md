@@ -6,7 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Added `config::merge::chainable_merge()` ([#XXX]).
+- Added `config::merge::chainable_merge()` ([#397]).
+
+[#397]: https://github.com/stackabletech/operator-rs/pull/397
 
 ## [0.19.0] - 2022-05-05
 
