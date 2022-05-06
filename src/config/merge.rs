@@ -81,6 +81,39 @@ impl<K: Hash + Eq + Clone, V: Merge + Clone> Merge for HashMap<K, V> {
     }
 }
 
+/// Moving version of [`Merge::merge`], to produce slightly nicer test output
+pub fn merge<T: Merge>(mut overrides: T, defaults: &T) -> T {
+    overrides.merge(defaults);
+    overrides
+}
+
+/// Composable version of [`Merge::merge`] that allows reducing a sequence of `Option<mut& T>`.
+///
+/// Example:
+///
+/// ```
+/// use stackable_operator::config::merge::{Merge, chainable_merge};
+/// #[derive(Clone, Default, Merge, PartialEq)]
+/// struct MyConfig {
+///     field: Option<i32>,
+/// }
+///
+/// let mut c0 = None;
+/// let mut c1 = Some(MyConfig { field: Some(23) });
+/// let mut c2 = Some(MyConfig { field: Some(7) });
+///
+/// let merged = [c0.as_mut(), c1.as_mut(), c2.as_mut()]
+///     .into_iter()
+///     .flatten()
+///     .reduce(|old, new| chainable_merge(new, old));
+///
+/// assert_eq!(7, merged.unwrap().field.unwrap());
+/// ```
+pub fn chainable_merge<'a, T: Merge + Clone>(this: &'a mut T, defaults: &T) -> &'a mut T {
+    this.merge(defaults);
+    this
+}
+
 /// A marker trait for types that are merged atomically (as one single value) rather than
 /// trying to merge each field individually
 pub trait Atomic: Clone {}
@@ -113,13 +146,7 @@ impl<T: Atomic> Merge for Option<T> {
 mod tests {
     use std::collections::{BTreeMap, HashMap};
 
-    use super::Merge;
-
-    /// Moving version of [`Merge::merge`], to produce slightly nicer test output
-    fn merge<T: Merge>(mut overrides: T, defaults: &T) -> T {
-        overrides.merge(defaults);
-        overrides
-    }
+    use super::{chainable_merge, merge, Merge};
 
     #[derive(Debug, PartialEq, Eq, Clone)]
     struct Accumulator(u8);
@@ -390,5 +417,25 @@ mod tests {
             ),
             BTreeMap::from([("a", Acc(4)), ("b", Acc(2)), ("c", Acc(5))])
         );
+    }
+
+    #[test]
+    fn test_chainable_merge() {
+        #[derive(Clone, Default, Merge, PartialEq)]
+        #[merge(path_overrides(merge = "super"))]
+        struct MyConfig {
+            field: Option<i32>,
+        }
+
+        let mut c0 = None;
+        let mut c1 = Some(MyConfig { field: Some(23) });
+        let mut c2 = Some(MyConfig { field: Some(7) });
+
+        let merged = [c0.as_mut(), c1.as_mut(), c2.as_mut()]
+            .into_iter()
+            .flatten()
+            .reduce(|old, new| chainable_merge(new, old));
+
+        assert_eq!(7, merged.unwrap().field.unwrap());
     }
 }
