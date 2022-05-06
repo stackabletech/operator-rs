@@ -196,8 +196,16 @@ where
         }
 
         ResourceRequirements {
-            limits: Some(limits),
-            requests: Some(requests),
+            limits: if limits.is_empty() {
+                None
+            } else {
+                Some(limits)
+            },
+            requests: if requests.is_empty() {
+                None
+            } else {
+                Some(requests)
+            },
         }
     }
 }
