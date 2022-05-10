@@ -70,6 +70,12 @@ pub enum Error {
 
     #[error("Missing S3 bucket [{name}]")]
     MissingS3Bucket { name: String },
+
+    #[error("Invalid quantity [{value}]")]
+    InvalidQuantity { value: String },
+
+    #[error("Invalid quantity unit [{value}]")]
+    InvalidQuantityUnit { value: String },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
