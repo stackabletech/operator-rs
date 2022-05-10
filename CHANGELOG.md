@@ -6,11 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Added `config::merge::chainable_merge()` ([#397]).
 - New `memory` module ([#400]).
 
-[#400]: https://github.com/stackabletech/operator-rs/issues/400
+[#397]: https://github.com/stackabletech/operator-rs/pull/397
+[#400]: https://github.com/stackabletech/operator-rs/pull/400
 
--## [0.19.0] - 2022-05-05
+## [0.19.0] - 2022-05-05
 
 ### Changed
 
