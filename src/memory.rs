@@ -1,5 +1,7 @@
 //! Utilities for converting Kubernetes quantities to Java heap settings.
 
+use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+
 use crate::error::{Error, OperatorResult};
 use std::str::FromStr;
 
@@ -92,7 +94,7 @@ impl Memory {
 impl FromStr for Memory {
     type Err = Error;
 
-    fn from_str(q: &str) -> OperatorResult<Memory> {
+    fn from_str(q: &str) -> OperatorResult<Self> {
         let mut v = String::from("");
         let mut u = String::from("");
 
@@ -109,6 +111,14 @@ impl FromStr for Memory {
             })?,
             unit: u.parse()?,
         })
+    }
+}
+
+impl TryFrom<Quantity> for Memory {
+    type Error = Error;
+
+    fn try_from(quantity: Quantity) -> OperatorResult<Self> {
+        quantity.0.parse()
     }
 }
 
@@ -137,7 +147,7 @@ mod test {
     #[case("2mib", 0.8, "-Xmx1638k")]
     #[case("1.5GiB", 0.8, "-Xmx1229m")]
     pub fn test_memory_scale(#[case] q: &str, #[case] factor: f32, #[case] heap: &str) {
-        let qu: Memory = Quantity(q.to_owned()).0.parse().unwrap();
+        let qu: Memory = Quantity(q.to_owned()).try_into().unwrap();
         assert_eq!(heap, qu.to_java_heap(factor));
     }
 }
