@@ -4,7 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.19.0] - 2022-05-05
+### Added
+
+- New `memory` module ([#400]).
+
+[#400]: https://github.com/stackabletech/operator-rs/issues/400
+
+-## [0.19.0] - 2022-05-05
 
 ### Changed
 
