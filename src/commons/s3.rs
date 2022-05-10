@@ -164,6 +164,8 @@ pub struct S3ConnectionSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub port: Option<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path_style_access: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub secret_class: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tls: Option<Tls>,
@@ -209,6 +211,7 @@ mod test {
             connection: Some(S3ConnectionDef::Inline(S3ConnectionSpec {
                 host: Some("host".to_owned()),
                 port: Some(8080),
+                path_style_access: Some(true),
                 secret_class: None,
                 tls: None,
             })),
@@ -222,6 +225,7 @@ connection:
   inline:
     host: host
     port: 8080
+    pathStyleAccess: true
 "
             .to_owned()
         )
