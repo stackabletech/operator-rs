@@ -64,6 +64,9 @@ pub struct Memory {
 }
 
 impl Memory {
+    /// Scale by the given factor. If the factor is less then one
+    /// the unit granularity is increased one level to ensure eventual
+    /// conversions to Java heap settings don't end up with zero values..
     pub fn scale(&self, factor: f32) -> Self {
         if factor < 1.0 && self.unit != BinaryMultiple::Kibi {
             Memory {
@@ -78,6 +81,8 @@ impl Memory {
         }
     }
 
+    /// The Java heap settings do not support fractional values therefore
+    /// this cannot be implemented without loss of precision.
     pub fn to_java_heap(&self, factor: f32) -> String {
         let scaled = self.scale(factor);
         format!("-Xmx{:.0}{}", scaled.value, scaled.unit.to_legacy())
@@ -121,7 +126,7 @@ mod test {
     #[case("0.8tib", Memory { value: 0.8f32, unit: BinaryMultiple::Tebi })]
     #[case("3.2Pi", Memory { value: 3.2f32, unit: BinaryMultiple::Pebi })]
     #[case("0.2ei", Memory { value: 0.2f32, unit: BinaryMultiple::Exbi })]
-    pub fn test_quantity_parse(#[case] input: &str, #[case] output: Memory) {
+    pub fn test_memory_parse(#[case] input: &str, #[case] output: Memory) {
         let got = input.parse::<Memory>().unwrap();
         assert_eq!(got, output);
     }
@@ -131,7 +136,7 @@ mod test {
     #[case("256ki", 0.8, "-Xmx205k")]
     #[case("2mib", 0.8, "-Xmx1638k")]
     #[case("1.5GiB", 0.8, "-Xmx1229m")]
-    pub fn test_quantity_scale(#[case] q: &str, #[case] factor: f32, #[case] heap: &str) {
+    pub fn test_memory_scale(#[case] q: &str, #[case] factor: f32, #[case] heap: &str) {
         let qu: Memory = Quantity(q.to_owned()).0.parse().unwrap();
         assert_eq!(heap, qu.to_java_heap(factor));
     }
