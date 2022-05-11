@@ -79,6 +79,9 @@ pub enum Error {
 
     #[error("No quantity unit provided for [{value}]")]
     NoQuantityUnit { value: String },
+
+    #[error("Cannot convert quantity [{value}] to Java heap.")]
+    CannotConvertToJavaHeap { value: String },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;

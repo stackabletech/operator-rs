@@ -26,17 +26,6 @@ impl BinaryMultiple {
             BinaryMultiple::Exbi => "e".to_string(),
         }
     }
-
-    pub fn upscale(&self) -> Self {
-        match self {
-            BinaryMultiple::Kibi => BinaryMultiple::Kibi,
-            BinaryMultiple::Mebi => BinaryMultiple::Kibi,
-            BinaryMultiple::Gibi => BinaryMultiple::Mebi,
-            BinaryMultiple::Tebi => BinaryMultiple::Gibi,
-            BinaryMultiple::Pebi => BinaryMultiple::Tebi,
-            BinaryMultiple::Exbi => BinaryMultiple::Pebi,
-        }
-    }
 }
 
 impl FromStr for BinaryMultiple {
@@ -65,19 +54,58 @@ pub struct Memory {
     unit: BinaryMultiple,
 }
 
-impl Memory {
-    /// The Java heap settings do not support fractional values therefore
-    /// this cannot be implemented without loss of precision.
-    pub fn to_java_heap(&self, factor: f32) -> String {
-        let scaled = *self * factor;
-        format!(
+/// Convert a (memory) [`Qunatity`] to Java heap settings.
+/// Qunatities are usually passed on to container resources whily Java heap
+/// sizes need to be scaled to them.
+/// This implements a very simple euristic to ensure that:
+/// - the quantity unit has been mapped to a java supported heap unit.
+/// - the heap size has a non-zero value.
+pub fn to_java_heap(q: &Quantity, factor: f32) -> OperatorResult<String> {
+    let scaled = (q.0.parse::<Memory>()? * factor).scale_for_java();
+    if scaled.value < 1.0 {
+        Err(Error::CannotConvertToJavaHeap {
+            value: q.0.to_owned(),
+        })
+    } else {
+        Ok(format!(
             "-Xmx{:.0}{}",
             scaled.value,
             scaled.unit.to_java_memory_unit()
-        )
+        ))
     }
 }
 
+impl Memory {
+    /// Scales the unit to a value supported by Java and may even scaled
+    /// further in an attempt to avoid having zero sizes or loosing too
+    /// much precision.
+    pub fn scale_for_java(&self) -> Self {
+        let (norm_value, norm_unit) = match self.unit {
+            BinaryMultiple::Kibi => (self.value, self.unit),
+            BinaryMultiple::Mebi => (self.value, self.unit),
+            BinaryMultiple::Gibi => (self.value, self.unit),
+            BinaryMultiple::Tebi => (self.value * 1024.0, BinaryMultiple::Gibi),
+            BinaryMultiple::Pebi => (self.value * 1024.0 * 1024.0, BinaryMultiple::Gibi),
+            BinaryMultiple::Exbi => (self.value * 1024.0 * 1024.0 * 1024.0, BinaryMultiple::Gibi),
+        };
+
+        const EPS: f32 = 0.2;
+        let (scaled_value, scaled_unit) = if norm_value < 1.0 || norm_value.fract() > EPS {
+            match norm_unit {
+                BinaryMultiple::Mebi => (norm_value * 1024.0, BinaryMultiple::Kibi),
+                BinaryMultiple::Gibi => (norm_value * 1024.0, BinaryMultiple::Mebi),
+                _ => (norm_value, norm_unit),
+            }
+        } else {
+            (norm_value, norm_unit)
+        };
+
+        Memory {
+            value: scaled_value,
+            unit: scaled_unit,
+        }
+    }
+}
 impl Mul<f32> for Memory {
     type Output = Memory;
 
@@ -85,16 +113,9 @@ impl Mul<f32> for Memory {
     /// the unit granularity is increased one level to ensure eventual
     /// conversions to Java heap settings don't end up with zero values..
     fn mul(self, factor: f32) -> Self {
-        if factor < 1.0 && self.unit != BinaryMultiple::Kibi {
-            Memory {
-                value: self.value * factor * 1024.0,
-                unit: self.unit.upscale(),
-            }
-        } else {
-            Memory {
-                value: self.value * factor,
-                unit: self.unit.clone(),
-            }
+        Memory {
+            value: self.value * factor,
+            unit: self.unit.clone(),
         }
     }
 }
@@ -152,7 +173,6 @@ mod test {
     #[case("1.5Gi", 0.8, "-Xmx1229m")]
     #[case("2Gi", 0.8, "-Xmx1638m")]
     pub fn test_memory_scale(#[case] q: &str, #[case] factor: f32, #[case] heap: &str) {
-        let qu: Memory = Quantity(q.to_owned()).try_into().unwrap();
-        assert_eq!(heap, qu.to_java_heap(factor));
+        assert_eq!(heap, to_java_heap(&Quantity(q.to_owned()), factor).unwrap());
     }
 }
