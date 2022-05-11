@@ -54,8 +54,8 @@ pub struct Memory {
     unit: BinaryMultiple,
 }
 
-/// Convert a (memory) [`Qunatity`] to Java heap settings.
-/// Qunatities are usually passed on to container resources whily Java heap
+/// Convert a (memory) [`Quantity`] to Java heap settings.
+/// Quantities are usually passed on to container resources whily Java heap
 /// sizes need to be scaled to them.
 /// This implements a very simple euristic to ensure that:
 /// - the quantity unit has been mapped to a java supported heap unit.
