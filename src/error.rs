@@ -76,6 +76,9 @@ pub enum Error {
 
     #[error("Invalid quantity unit [{value}]")]
     InvalidQuantityUnit { value: String },
+
+    #[error("No quantity unit provided for [{value}]")]
+    NoQuantityUnit { value: String },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
