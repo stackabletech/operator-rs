@@ -56,10 +56,12 @@ pub struct Memory {
 
 /// Convert a (memory) [`Quantity`] to Java heap settings.
 /// Quantities are usually passed on to container resources whily Java heap
-/// sizes need to be scaled to them.
-/// This implements a very simple euristic to ensure that:
-/// - the quantity unit has been mapped to a java supported heap unit.
+/// sizes need to be scaled accordingly.
+/// This implements a very simple heuristic to ensure that:
+/// - the quantity unit has been mapped to a java supported heap unit. Java only
+///   supports up to Gibibytes while K8S quantities can be expressed in Exbibytes.
 /// - the heap size has a non-zero value.
+/// Fails if it can't enforce the above restrictions.
 pub fn to_java_heap(q: &Quantity, factor: f32) -> OperatorResult<String> {
     let scaled = (q.0.parse::<Memory>()? * factor).scale_for_java();
     if scaled.value < 1.0 {
@@ -76,10 +78,10 @@ pub fn to_java_heap(q: &Quantity, factor: f32) -> OperatorResult<String> {
 }
 
 impl Memory {
-    /// Scales the unit to a value supported by Java and may even scaled
-    /// further in an attempt to avoid having zero sizes or loosing too
+    /// Scales the unit to a value supported by Java and may even scale
+    /// further down, in an attempt to avoid having zero sizes or losing too
     /// much precision.
-    pub fn scale_for_java(&self) -> Self {
+    pub fn sclale_for_java(&self) -> Self {
         let (norm_value, norm_unit) = match self.unit {
             BinaryMultiple::Kibi => (self.value, self.unit),
             BinaryMultiple::Mebi => (self.value, self.unit),
@@ -109,9 +111,6 @@ impl Memory {
 impl Mul<f32> for Memory {
     type Output = Memory;
 
-    /// Scale by the given factor. If the factor is less then one
-    /// the unit granularity is increased one level to ensure eventual
-    /// conversions to Java heap settings don't end up with zero values..
     fn mul(self, factor: f32) -> Self {
         Memory {
             value: self.value * factor,
