@@ -10,6 +10,12 @@ All notable changes to this project will be documented in this file.
 
 [#397]: https://github.com/stackabletech/operator-rs/pull/397
 
+### Changed
+
+- BREAKING: Memory and CPU resource definitions use quantity instead of String ([#402])
+
+[#402]: https://github.com/stackabletech/operator-rs/pull/402
+
 ## [0.19.0] - 2022-05-05
 
 ### Changed
