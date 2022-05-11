@@ -16,7 +16,7 @@ pub enum BinaryMultiple {
 }
 
 impl BinaryMultiple {
-    pub fn to_legacy(&self) -> String {
+    pub fn to_java_memory_unit(&self) -> String {
         match self {
             BinaryMultiple::Kibi => "k".to_string(),
             BinaryMultiple::Mebi => "m".to_string(),
