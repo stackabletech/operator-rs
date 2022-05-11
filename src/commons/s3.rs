@@ -164,12 +164,13 @@ pub struct S3ConnectionSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub port: Option<u16>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub path_style_access: Option<bool>,
+    pub access_style: Option<S3AccessStyle>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub secret_class: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tls: Option<Tls>,
 }
+
 impl S3ConnectionSpec {
     /// Convenience function to retrieve the spec of a S3 connection resource from the K8S API service.
     pub async fn get(
@@ -199,9 +200,22 @@ impl S3ConnectionSpec {
     }
 }
 
+#[derive(strum::Display, Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[strum(serialize_all = "PascalCase")]
+pub enum S3AccessStyle {
+    Path,
+    VirtualHosted,
+}
+
+impl Default for S3AccessStyle {
+    fn default() -> Self {
+        S3AccessStyle::VirtualHosted
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use crate::commons::s3::S3ConnectionDef;
+    use crate::commons::s3::{S3AccessStyle, S3ConnectionDef};
     use crate::commons::s3::{S3BucketSpec, S3ConnectionSpec};
 
     #[test]
@@ -211,8 +225,8 @@ mod test {
             connection: Some(S3ConnectionDef::Inline(S3ConnectionSpec {
                 host: Some("host".to_owned()),
                 port: Some(8080),
-                path_style_access: Some(true),
                 secret_class: None,
+                access_style: Some(S3AccessStyle::VirtualHosted),
                 tls: None,
             })),
         };
@@ -225,7 +239,7 @@ connection:
   inline:
     host: host
     port: 8080
-    pathStyleAccess: true
+    accessStyle: VirtualHosted
 "
             .to_owned()
         )
