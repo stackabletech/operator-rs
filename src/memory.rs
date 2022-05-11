@@ -115,7 +115,7 @@ impl Mul<f32> for Memory {
     fn mul(self, factor: f32) -> Self {
         Memory {
             value: self.value * factor,
-            unit: self.unit.clone(),
+            unit: self.unit,
         }
     }
 }
