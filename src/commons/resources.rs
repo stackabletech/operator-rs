@@ -89,7 +89,7 @@ where
 
 // Defines memory limits to be set on the pods
 // Is generic to enable adding custom configuration for specific runtimes or products
-#[derive(Clone, Debug, Deserialize, Default, Merge, JsonSchema, PartialEq, Serialize, Eq)]
+#[derive(Clone, Debug, Deserialize, Default, Merge, JsonSchema, PartialEq, Serialize)]
 #[merge(path_overrides(merge = "crate::config::merge"))]
 #[serde(rename_all = "camelCase")]
 pub struct MemoryLimits<T>
@@ -98,7 +98,7 @@ where
 {
     // The maximum amount of memory that should be available
     // Should in most cases be mapped to resources.limits.memory
-    pub limit: Option<String>,
+    pub limit: Option<Quantity>,
     // Additional options that may be required
     #[serde(default)]
     pub runtime_limits: T,
@@ -117,9 +117,9 @@ pub struct NoRuntimeLimits {}
 #[merge(path_overrides(merge = "crate::config::merge"))]
 #[serde(rename_all = "camelCase")]
 pub struct JvmHeapLimits {
-    pub max: Option<String>,
+    pub max: Option<Quantity>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub min: Option<String>,
+    pub min: Option<Quantity>,
 }
 
 // Cpu limits
@@ -128,8 +128,8 @@ pub struct JvmHeapLimits {
 #[merge(path_overrides(merge = "crate::config::merge"))]
 #[serde(rename_all = "camelCase")]
 pub struct CpuLimits {
-    pub min: Option<String>,
-    pub max: Option<String>,
+    pub min: Option<Quantity>,
+    pub max: Option<Quantity>,
 }
 
 // Struct that exposes the values for a PVC which the user should be able to influence
@@ -137,7 +137,7 @@ pub struct CpuLimits {
 #[merge(path_overrides(merge = "crate::config::merge"))]
 #[serde(rename_all = "camelCase")]
 pub struct PvcConfig {
-    pub capacity: Option<String>,
+    pub capacity: Option<Quantity>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub storage_class: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -160,7 +160,7 @@ impl PvcConfig {
                     requests: Some({
                         let mut map = BTreeMap::new();
                         if let Some(capacity) = &self.capacity {
-                            map.insert("storage".to_string(), Quantity(capacity.to_string()));
+                            map.insert("storage".to_string(), capacity.clone());
                         }
                         map
                     }),
@@ -184,15 +184,15 @@ where
         let mut limits = BTreeMap::new();
         let mut requests = BTreeMap::new();
         if let Some(memory_limit) = self.memory.limit {
-            limits.insert("memory".to_string(), Quantity(memory_limit.to_string()));
-            requests.insert("memory".to_string(), Quantity(memory_limit));
+            limits.insert("memory".to_string(), memory_limit.clone());
+            requests.insert("memory".to_string(), memory_limit);
         }
 
         if let Some(cpu_max) = self.cpu.max {
-            limits.insert("cpu".to_string(), Quantity(cpu_max));
+            limits.insert("cpu".to_string(), cpu_max);
         }
         if let Some(cpu_min) = self.cpu.min {
-            requests.insert("cpu".to_string(), Quantity(cpu_min));
+            requests.insert("cpu".to_string(), cpu_min);
         }
 
         ResourceRequirements {
