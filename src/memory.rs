@@ -81,7 +81,7 @@ impl Memory {
     /// Scales the unit to a value supported by Java and may even scale
     /// further down, in an attempt to avoid having zero sizes or losing too
     /// much precision.
-    pub fn sclale_for_java(&self) -> Self {
+    pub fn scale_for_java(&self) -> Self {
         let (norm_value, norm_unit) = match self.unit {
             BinaryMultiple::Kibi => (self.value, self.unit),
             BinaryMultiple::Mebi => (self.value, self.unit),
