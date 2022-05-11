@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Added `config::merge::chainable_merge()` ([#397]).
-- `pathStyleAccess` added to `commons::s3::S3ConnectionSpec` ([#401])
+- `S3AccessStyle` enum added to `commons::s3::S3ConnectionSpec` ([#401])
 
 [#397]: https://github.com/stackabletech/operator-rs/pull/397
 [#401]: https://github.com/stackabletech/operator-rs/pull/401
