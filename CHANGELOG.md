@@ -8,9 +8,11 @@ All notable changes to this project will be documented in this file.
 
 - Added `config::merge::chainable_merge()` ([#397]).
 - New `memory` module ([#400]).
+- `S3AccessStyle` enum added to `commons::s3::S3ConnectionSpec` ([#401])
 
 [#397]: https://github.com/stackabletech/operator-rs/pull/397
 [#400]: https://github.com/stackabletech/operator-rs/pull/400
+[#401]: https://github.com/stackabletech/operator-rs/pull/401
 
 ### Changed
 
