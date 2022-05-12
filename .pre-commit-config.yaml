@@ -14,6 +14,7 @@ repos:
       rev: v1.0
       hooks:
           - id: fmt
+            args: ["--all", "--", "--check"]
           - id: clippy
             args: ["--all-targets", "--", "-D", "warnings"]
     - repo: https://github.com/adrienverge/yamllint
