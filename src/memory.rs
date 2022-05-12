@@ -1,4 +1,13 @@
 //! Utilities for converting Kubernetes quantities to Java heap settings.
+//! Since Java heap sizes are a subset of Kubernetes quantities, the conversion
+//! might lose precision or fail completely.
+//! In addition:
+//! - decimal quantities are not supported ("2G" is invalid)
+//! - units are case sensitive ("2gi" is invalid)
+//! - exponential notation is not supported.
+//!
+//! For more info in Kubernetes qunatities see: https://github.com/kubernetes/apimachinery/blob/master/pkg/api/resource/quantity.go
+//! 
 
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 
@@ -32,14 +41,13 @@ impl FromStr for BinaryMultiple {
     type Err = Error;
 
     fn from_str(q: &str) -> OperatorResult<BinaryMultiple> {
-        let lq = q.to_lowercase();
-        match lq.as_str() {
-            "k" | "ki" => Ok(BinaryMultiple::Kibi),
-            "m" | "mi" => Ok(BinaryMultiple::Mebi),
-            "g" | "gi" => Ok(BinaryMultiple::Gibi),
-            "t" | "ti" => Ok(BinaryMultiple::Tebi),
-            "p" | "pi" => Ok(BinaryMultiple::Pebi),
-            "e" | "ei" => Ok(BinaryMultiple::Exbi),
+        match q {
+            "Ki" => Ok(BinaryMultiple::Kibi),
+            "Mi" => Ok(BinaryMultiple::Mebi),
+            "Gi" => Ok(BinaryMultiple::Gibi),
+            "Ti" => Ok(BinaryMultiple::Tebi),
+            "Pi" => Ok(BinaryMultiple::Pebi),
+            "Ei" => Ok(BinaryMultiple::Exbi),
             _ => Err(Error::InvalidQuantityUnit {
                 value: q.to_string(),
             }),
@@ -154,21 +162,21 @@ mod test {
     use rstest::rstest;
 
     #[rstest]
-    #[case("256ki", Memory { value: 256f32, unit: BinaryMultiple::Kibi })]
+    #[case("256Ki", Memory { value: 256f32, unit: BinaryMultiple::Kibi })]
     #[case("8Mi", Memory { value: 8f32, unit: BinaryMultiple::Mebi })]
     #[case("1.5Gi", Memory { value: 1.5f32, unit: BinaryMultiple::Gibi })]
-    #[case("0.8ti", Memory { value: 0.8f32, unit: BinaryMultiple::Tebi })]
+    #[case("0.8Ti", Memory { value: 0.8f32, unit: BinaryMultiple::Tebi })]
     #[case("3.2Pi", Memory { value: 3.2f32, unit: BinaryMultiple::Pebi })]
-    #[case("0.2ei", Memory { value: 0.2f32, unit: BinaryMultiple::Exbi })]
+    #[case("0.2Ei", Memory { value: 0.2f32, unit: BinaryMultiple::Exbi })]
     pub fn test_memory_parse(#[case] input: &str, #[case] output: Memory) {
         let got = input.parse::<Memory>().unwrap();
         assert_eq!(got, output);
     }
 
     #[rstest]
-    #[case("256ki", 1.0, "-Xmx256k")]
-    #[case("256ki", 0.8, "-Xmx205k")]
-    #[case("2mi", 0.8, "-Xmx1638k")]
+    #[case("256Ki", 1.0, "-Xmx256k")]
+    #[case("256Ki", 0.8, "-Xmx205k")]
+    #[case("2Mi", 0.8, "-Xmx1638k")]
     #[case("1.5Gi", 0.8, "-Xmx1229m")]
     #[case("2Gi", 0.8, "-Xmx1638m")]
     pub fn test_memory_scale(#[case] q: &str, #[case] factor: f32, #[case] heap: &str) {
