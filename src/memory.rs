@@ -6,7 +6,7 @@
 //! - units are case sensitive ("2gi" is invalid)
 //! - exponential notation is not supported.
 //!
-//! For more info in Kubernetes qunatities see: <https://github.com/kubernetes/apimachinery/blob/master/pkg/api/resource/quantity.go>
+//! For details on Kubernetes quantities see: <https://github.com/kubernetes/apimachinery/blob/master/pkg/api/resource/quantity.go>
 
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 
