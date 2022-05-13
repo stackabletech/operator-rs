@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.20.0] - 2022-05-13
+
 ### Added
 
 - Added `config::merge::chainable_merge()` ([#397]).
