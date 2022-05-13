@@ -1,5 +1,5 @@
 use crate::builder::SecretOperatorVolumeSourceBuilder;
-use k8s_openapi::api::core::v1::CSIVolumeSource;
+use k8s_openapi::api::core::v1::EphemeralVolumeSource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,7 @@ pub struct SecretClassVolume {
 }
 
 impl SecretClassVolume {
-    pub fn to_csi_volume(&self) -> CSIVolumeSource {
+    pub fn to_ephemeral_volume(&self) -> EphemeralVolumeSource {
         let mut secret_operator_volume_builder =
             SecretOperatorVolumeSourceBuilder::new(&self.secret_class);
 
@@ -59,7 +59,7 @@ mod tests {
                 services: vec!["myservice".to_string()],
             }),
         }
-        .to_csi_volume();
+        .to_ephemeral_volume();
 
         let expected_volume_attributes = BTreeMap::from([
             (
@@ -74,7 +74,13 @@ mod tests {
 
         assert_eq!(
             expected_volume_attributes,
-            secret_class_volume.volume_attributes.unwrap()
+            secret_class_volume
+                .volume_claim_template
+                .unwrap()
+                .metadata
+                .unwrap()
+                .annotations
+                .unwrap()
         );
     }
 }

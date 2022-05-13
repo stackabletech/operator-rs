@@ -1,4 +1,7 @@
-use k8s_openapi::api::core::v1::VolumeMount;
+use k8s_openapi::api::core::v1::{
+    EphemeralVolumeSource, PersistentVolumeClaimSpec, PersistentVolumeClaimTemplate,
+    ResourceRequirements, VolumeMount,
+};
 use k8s_openapi::{
     api::core::v1::{
         CSIVolumeSource, ConfigMapVolumeSource, DownwardAPIVolumeSource, EmptyDirVolumeSource,
@@ -8,6 +11,8 @@ use k8s_openapi::{
     apimachinery::pkg::api::resource::Quantity,
 };
 use std::collections::BTreeMap;
+
+use crate::builder::ObjectMetaBuilder;
 
 /// A builder to build [`Volume`] objects.
 /// May only contain one `volume_source` at a time.
@@ -28,6 +33,7 @@ pub enum VolumeSource {
     Projected(ProjectedVolumeSource),
     Secret(SecretVolumeSource),
     Csi(CSIVolumeSource),
+    Ephemeral(Box<EphemeralVolumeSource>),
 }
 
 impl Default for VolumeSource {
@@ -187,6 +193,11 @@ impl VolumeBuilder {
                 csi: Some(csi.clone()),
                 ..Volume::default()
             },
+            VolumeSource::Ephemeral(ephemeral) => Volume {
+                name,
+                ephemeral: Some((**ephemeral).clone()),
+                ..Volume::default()
+            },
         }
     }
 }
@@ -275,7 +286,7 @@ impl SecretOperatorVolumeSourceBuilder {
         self
     }
 
-    pub fn build(&self) -> CSIVolumeSource {
+    pub fn build(&self) -> EphemeralVolumeSource {
         let mut attrs = BTreeMap::from([(
             "secrets.stackable.tech/class".to_string(),
             self.secret_class.clone(),
@@ -299,10 +310,19 @@ impl SecretOperatorVolumeSourceBuilder {
             attrs.insert("secrets.stackable.tech/scope".to_string(), scopes);
         }
 
-        CSIVolumeSource {
-            driver: "secrets.stackable.tech".to_string(),
-            volume_attributes: Some(attrs),
-            ..CSIVolumeSource::default()
+        EphemeralVolumeSource {
+            volume_claim_template: Some(PersistentVolumeClaimTemplate {
+                metadata: Some(ObjectMetaBuilder::new().annotations(attrs).build()),
+                spec: PersistentVolumeClaimSpec {
+                    storage_class_name: Some("secrets.stackable.tech".to_string()),
+                    resources: Some(ResourceRequirements {
+                        requests: Some([("storage".to_string(), Quantity("1".to_string()))].into()),
+                        ..ResourceRequirements::default()
+                    }),
+                    access_modes: Some(vec!["ReadWriteOnce".to_string()]),
+                    ..PersistentVolumeClaimSpec::default()
+                },
+            }),
         }
     }
 }
