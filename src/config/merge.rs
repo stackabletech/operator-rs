@@ -1,4 +1,4 @@
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
+use k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector};
 use std::{
     collections::{btree_map, hash_map, BTreeMap, HashMap},
     hash::Hash,
@@ -131,6 +131,7 @@ impl Atomic for i128 {}
 impl Atomic for isize {}
 impl Atomic for bool {}
 impl Atomic for String {}
+impl Atomic for Quantity {}
 impl<'a> Atomic for &'a str {}
 impl Atomic for LabelSelector {}
 
