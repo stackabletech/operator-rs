@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- `impl Into<Resourcerequirements> for Resources` set's fields to `None` instead of `Some(<empty map>)` when nothing is defined.([#398]).
+
+[#398]: https://github.com/stackabletech/operator-rs/pull/398
+
 ## [0.20.0] - 2022-05-13
 
 ### Added
