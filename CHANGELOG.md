@@ -10,6 +10,29 @@ All notable changes to this project will be documented in this file.
 
 [#398]: https://github.com/stackabletech/operator-rs/pull/398
 
+## [0.20.0] - 2022-05-13
+
+### Added
+
+- Added `config::merge::chainable_merge()` ([#397]).
+- `SecretClassVolume` and `SecretOperatorVolumeSourceBuilder` now support secret-aware pod scheduling ([#396], [secret-#125]).
+- New `memory` module ([#400]).
+- `S3AccessStyle` enum added to `commons::s3::S3ConnectionSpec` ([#401])
+
+### Changed
+
+- BREAKING: `SecretClassVolume::to_csi_volume` renamed to `to_ephemeral_volume` and now returns `EphemeralVolumeSource` ([#396]).
+- BREAKING: `SecretOperatorVolumeSourceBuilder` now returns `EphemeralVolumeSource` ([#396]).
+- BREAKING: Secret-Operator-related features now require Secret-Operator 0.4.0 ([#396]).
+- BREAKING: Memory and CPU resource definitions use quantity instead of String ([#402])
+
+[#396]: https://github.com/stackabletech/operator-rs/pull/396
+[#397]: https://github.com/stackabletech/operator-rs/pull/397
+[#400]: https://github.com/stackabletech/operator-rs/pull/400
+[#401]: https://github.com/stackabletech/operator-rs/pull/401
+[#402]: https://github.com/stackabletech/operator-rs/pull/402
+[secret-#125]: https://github.com/stackabletech/secret-operator/pull/125
+
 ## [0.19.0] - 2022-05-05
 
 ### Changed

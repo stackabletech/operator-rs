@@ -8,6 +8,7 @@ pub mod error;
 pub mod label_selector;
 pub mod labels;
 pub mod logging;
+pub mod memory;
 pub mod namespace;
 pub mod pod_utils;
 pub mod product_config_utils;
