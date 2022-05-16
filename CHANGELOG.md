@@ -6,9 +6,11 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- `impl Into<Resourcerequirements> for Resources` set's fields to `None` instead of `Some(<empty map>)` when nothing is defined.([#398]).
+- `impl Into<Resourcerequirements> for Resources` set's fields to `None` instead of `Some(<empty map>)` when nothing is defined. ([#398]).
+- BREAKING: Change credentials of `S3ConnectionSpec` to use the common `SecretClassVolume` struct ([#405]).
 
 [#398]: https://github.com/stackabletech/operator-rs/pull/398
+[#405]: https://github.com/stackabletech/operator-rs/pull/405
 
 ## [0.20.0] - 2022-05-13
 

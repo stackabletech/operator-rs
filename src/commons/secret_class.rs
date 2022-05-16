@@ -1,5 +1,5 @@
-use crate::builder::SecretOperatorVolumeSourceBuilder;
-use k8s_openapi::api::core::v1::EphemeralVolumeSource;
+use crate::builder::{SecretOperatorVolumeSourceBuilder, VolumeBuilder};
+use k8s_openapi::api::core::v1::{EphemeralVolumeSource, Volume};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,7 @@ pub struct SecretClassVolume {
 }
 
 impl SecretClassVolume {
-    pub fn to_ephemeral_volume(&self) -> EphemeralVolumeSource {
+    pub fn to_ephemeral_volume_source(&self) -> EphemeralVolumeSource {
         let mut secret_operator_volume_builder =
             SecretOperatorVolumeSourceBuilder::new(&self.secret_class);
 
@@ -30,6 +30,12 @@ impl SecretClassVolume {
         }
 
         secret_operator_volume_builder.build()
+    }
+
+    pub fn to_volume(&self, volume_name: &str) -> Volume {
+        VolumeBuilder::new(volume_name)
+            .ephemeral(self.to_ephemeral_volume_source())
+            .build()
     }
 }
 
@@ -50,8 +56,8 @@ mod tests {
     use std::collections::BTreeMap;
 
     #[test]
-    fn test_secret_class_volume_to_csi_volume() {
-        let secret_class_volume = SecretClassVolume {
+    fn test_secret_class_volume_to_csi_volume_source() {
+        let secret_class_volume_source = SecretClassVolume {
             secret_class: "myclass".to_string(), // pragma: allowlist secret
             scope: Some(SecretClassVolumeScope {
                 pod: true,
@@ -59,7 +65,7 @@ mod tests {
                 services: vec!["myservice".to_string()],
             }),
         }
-        .to_ephemeral_volume();
+        .to_ephemeral_volume_source();
 
         let expected_volume_attributes = BTreeMap::from([
             (
@@ -74,7 +80,7 @@ mod tests {
 
         assert_eq!(
             expected_volume_attributes,
-            secret_class_volume
+            secret_class_volume_source
                 .volume_claim_template
                 .unwrap()
                 .metadata
