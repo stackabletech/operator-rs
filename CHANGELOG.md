@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.21.0] - 2022-05-16
+
 ### Changed
 
 - `impl Into<Resourcerequirements> for Resources` set's fields to `None` instead of `Some(<empty map>)` when nothing is defined. ([#398]).
