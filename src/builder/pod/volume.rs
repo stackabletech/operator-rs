@@ -149,6 +149,11 @@ impl VolumeBuilder {
         self
     }
 
+    pub fn ephemeral(&mut self, ephemeral: impl Into<EphemeralVolumeSource>) -> &mut Self {
+        self.volume_source = VolumeSource::Ephemeral(Box::new(ephemeral.into()));
+        self
+    }
+
     /// Consumes the Builder and returns a constructed Volume
     pub fn build(&self) -> Volume {
         let name = self.name.clone();
