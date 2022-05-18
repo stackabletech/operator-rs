@@ -131,8 +131,12 @@ impl Memory {
         }
     }
 
-    pub fn unit(&self) -> f32 {
+    pub fn value(&self) -> f32 {
         self.value
+    }
+
+    pub fn unit(&self) -> BinaryMultiple {
+        self.unit
     }
 }
 
@@ -215,12 +219,11 @@ mod test {
     pub fn test_scale_to(
         #[case] value: f32,
         #[case] unit: BinaryMultiple,
-        #[case] to_unit: BinaryMultiple,
+        #[case] desired_unit: BinaryMultiple,
         #[case] expected: f32,
     ) {
         let memory = Memory { value, unit };
-        let scaled_memory = memory.scale_to(to_unit);
-        println!("{:?}", scaled_memory);
+        let scaled_memory = memory.scale_to(desired_unit);
         assert_eq!(scaled_memory.value, expected);
     }
 }
