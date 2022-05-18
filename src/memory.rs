@@ -13,6 +13,8 @@ use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use crate::error::{Error, OperatorResult};
 use std::{ops::Mul, str::FromStr};
 
+// Important: Do not change the order of the elements. The enum discriminants are used
+// for unit conversion and calculations!
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum BinaryMultiple {
     Kibi,
@@ -114,7 +116,26 @@ impl Memory {
             unit: scaled_unit,
         }
     }
+
+    /// Scale up or down to the desired `binary_multiple`. Returns a new `Memory` and does
+    /// not change itself.
+    pub fn scale_to(&self, binary_multiple: BinaryMultiple) -> Self {
+        let self_discriminant = self.unit as i32;
+        let to_discriminant = binary_multiple as i32;
+
+        let diff: i32 = (self_discriminant - to_discriminant) as i32;
+
+        Memory {
+            value: self.value * 1024f32.powi(diff),
+            unit: binary_multiple,
+        }
+    }
+
+    pub fn unit(&self) -> f32 {
+        self.value
+    }
 }
+
 impl Mul<f32> for Memory {
     type Output = Memory;
 
@@ -180,5 +201,26 @@ mod test {
     #[case("2Gi", 0.8, "-Xmx1638m")]
     pub fn test_memory_scale(#[case] q: &str, #[case] factor: f32, #[case] heap: &str) {
         assert_eq!(heap, to_java_heap(&Quantity(q.to_owned()), factor).unwrap());
+    }
+
+    #[rstest]
+    #[case(2000f32, BinaryMultiple::Kibi, BinaryMultiple::Kibi, 2000f32)]
+    #[case(2000f32, BinaryMultiple::Kibi, BinaryMultiple::Mebi, 2000f32/1024f32)]
+    #[case(2000f32, BinaryMultiple::Kibi, BinaryMultiple::Gibi, 2000f32/1024f32/1024f32)]
+    #[case(2000f32, BinaryMultiple::Kibi, BinaryMultiple::Tebi, 2000f32/1024f32/1024f32/1024f32)]
+    #[case(2000f32, BinaryMultiple::Kibi, BinaryMultiple::Pebi, 2000f32/1024f32/1024f32/1024f32/1024f32)]
+    #[case(2000f32, BinaryMultiple::Pebi, BinaryMultiple::Mebi, 2000f32*1024f32*1024f32*1024f32)]
+    #[case(2000f32, BinaryMultiple::Pebi, BinaryMultiple::Kibi, 2000f32*1024f32*1024f32*1024f32*1024f32)]
+    #[case(2000f32, BinaryMultiple::Exbi, BinaryMultiple::Pebi, 2000f32*1024f32)]
+    pub fn test_scale_to(
+        #[case] value: f32,
+        #[case] unit: BinaryMultiple,
+        #[case] to_unit: BinaryMultiple,
+        #[case] expected: f32,
+    ) {
+        let memory = Memory { value, unit };
+        let scaled_memory = memory.scale_to(to_unit);
+        println!("{:?}", scaled_memory);
+        assert_eq!(scaled_memory.value, expected);
     }
 }
