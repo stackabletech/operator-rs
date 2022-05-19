@@ -13,8 +13,6 @@ use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use crate::error::{Error, OperatorResult};
 use std::{ops::Mul, str::FromStr};
 
-// Important: Do not change the order of the elements. The enum discriminants are used
-// for unit conversion and calculations!
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum BinaryMultiple {
     Kibi,
