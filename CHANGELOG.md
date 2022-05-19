@@ -6,7 +6,11 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- `scale_to` and getters for `value` and `unit` fields to `Memory` to scale units up or down ([#407]).
+- `scale_to` and `to_java_heap_value` in `Memory` to scale units up or down ([#407]).
+
+### Changed 
+
+- Visibility of `Memory` in `memory.rs` ([#407]).
 
 [#407]: https://github.com/stackabletech/operator-rs/pull/407
 
