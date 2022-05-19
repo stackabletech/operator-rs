@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `scale_to` and `to_java_heap_value` in `Memory` to scale units up or down ([#407]).
+
+### Changed
+
+- Visibility of `Memory` in `memory.rs` to private ([#407]).
+
+[#407]: https://github.com/stackabletech/operator-rs/pull/407
+
 ## [0.21.0] - 2022-05-16
 
 ### Changed

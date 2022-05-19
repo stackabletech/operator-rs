@@ -34,6 +34,19 @@ impl BinaryMultiple {
             BinaryMultiple::Exbi => "e".to_string(),
         }
     }
+
+    /// The exponential scale factor used when converting a `BinaryMultiple`
+    /// to another one.
+    fn exponential_scale_factor(&self) -> i32 {
+        match self {
+            BinaryMultiple::Kibi => 1,
+            BinaryMultiple::Mebi => 2,
+            BinaryMultiple::Gibi => 3,
+            BinaryMultiple::Tebi => 4,
+            BinaryMultiple::Pebi => 5,
+            BinaryMultiple::Exbi => 6,
+        }
+    }
 }
 
 impl FromStr for BinaryMultiple {
@@ -56,13 +69,13 @@ impl FromStr for BinaryMultiple {
 
 /// Easily transform K8S memory resources to Java heap options.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Memory {
+struct Memory {
     value: f32,
     unit: BinaryMultiple,
 }
 
 /// Convert a (memory) [`Quantity`] to Java heap settings.
-/// Quantities are usually passed on to container resources whily Java heap
+/// Quantities are usually passed on to container resources while Java heap
 /// sizes need to be scaled accordingly.
 /// This implements a very simple heuristic to ensure that:
 /// - the quantity unit has been mapped to a java supported heap unit. Java only
@@ -84,11 +97,41 @@ pub fn to_java_heap(q: &Quantity, factor: f32) -> OperatorResult<String> {
     }
 }
 
+/// Convert a (memory) [`Quantity`] to a raw Java heap value of the desired `target_unit`.
+/// Quantities are usually passed on to container resources while Java heap
+/// sizes need to be scaled accordingly.
+/// The raw heap value is converted to the specified `target_unit` (this conversion
+/// is done even if specified a unit greater that Gibibytes. It is not recommended to scale
+/// to anything bigger than Gibibytes.
+/// This implements a very simple heuristic to ensure that:
+/// - the quantity unit has been mapped to a java supported heap unit. Java only
+///   supports up to Gibibytes while K8S quantities can be expressed in Exbibytes.
+/// - the heap size has a non-zero value.
+/// Fails if it can't enforce the above restrictions.
+pub fn to_java_heap_value(
+    q: &Quantity,
+    factor: f32,
+    target_unit: BinaryMultiple,
+) -> OperatorResult<u32> {
+    let scaled = (q.0.parse::<Memory>()? * factor)
+        .scale_for_java()
+        .scale_to(target_unit);
+
+    if scaled.value < 1.0 {
+        Err(Error::CannotConvertToJavaHeapValue {
+            value: q.0.to_owned(),
+            target_unit: format!("{:?}", target_unit),
+        })
+    } else {
+        Ok(scaled.value as u32)
+    }
+}
+
 impl Memory {
     /// Scales the unit to a value supported by Java and may even scale
     /// further down, in an attempt to avoid having zero sizes or losing too
     /// much precision.
-    pub fn scale_for_java(&self) -> Self {
+    fn scale_for_java(&self) -> Self {
         let (norm_value, norm_unit) = match self.unit {
             BinaryMultiple::Kibi => (self.value, self.unit),
             BinaryMultiple::Mebi => (self.value, self.unit),
@@ -114,7 +157,22 @@ impl Memory {
             unit: scaled_unit,
         }
     }
+
+    /// Scale up or down to the desired `BinaryMultiple`. Returns a new `Memory` and does
+    /// not change itself.
+    fn scale_to(&self, binary_multiple: BinaryMultiple) -> Self {
+        let from_exponent: i32 = self.unit.exponential_scale_factor();
+        let to_exponent: i32 = binary_multiple.exponential_scale_factor();
+
+        let exponent_diff = from_exponent - to_exponent;
+
+        Memory {
+            value: self.value * 1024f32.powi(exponent_diff),
+            unit: binary_multiple,
+        }
+    }
 }
+
 impl Mul<f32> for Memory {
     type Output = Memory;
 
@@ -167,7 +225,7 @@ mod test {
     #[case("0.8Ti", Memory { value: 0.8f32, unit: BinaryMultiple::Tebi })]
     #[case("3.2Pi", Memory { value: 3.2f32, unit: BinaryMultiple::Pebi })]
     #[case("0.2Ei", Memory { value: 0.2f32, unit: BinaryMultiple::Exbi })]
-    pub fn test_memory_parse(#[case] input: &str, #[case] output: Memory) {
+    fn test_memory_parse(#[case] input: &str, #[case] output: Memory) {
         let got = input.parse::<Memory>().unwrap();
         assert_eq!(got, output);
     }
@@ -178,7 +236,67 @@ mod test {
     #[case("2Mi", 0.8, "-Xmx1638k")]
     #[case("1.5Gi", 0.8, "-Xmx1229m")]
     #[case("2Gi", 0.8, "-Xmx1638m")]
-    pub fn test_memory_scale(#[case] q: &str, #[case] factor: f32, #[case] heap: &str) {
+    pub fn test_to_java_heap(#[case] q: &str, #[case] factor: f32, #[case] heap: &str) {
         assert_eq!(heap, to_java_heap(&Quantity(q.to_owned()), factor).unwrap());
+    }
+
+    #[rstest]
+    #[case(2000f32, BinaryMultiple::Kibi, BinaryMultiple::Kibi, 2000f32)]
+    #[case(2000f32, BinaryMultiple::Kibi, BinaryMultiple::Mebi, 2000f32/1024f32)]
+    #[case(2000f32, BinaryMultiple::Kibi, BinaryMultiple::Gibi, 2000f32/1024f32/1024f32)]
+    #[case(2000f32, BinaryMultiple::Kibi, BinaryMultiple::Tebi, 2000f32/1024f32/1024f32/1024f32)]
+    #[case(2000f32, BinaryMultiple::Kibi, BinaryMultiple::Pebi, 2000f32/1024f32/1024f32/1024f32/1024f32)]
+    #[case(2000f32, BinaryMultiple::Pebi, BinaryMultiple::Mebi, 2000f32*1024f32*1024f32*1024f32)]
+    #[case(2000f32, BinaryMultiple::Pebi, BinaryMultiple::Kibi, 2000f32*1024f32*1024f32*1024f32*1024f32)]
+    #[case(2000f32, BinaryMultiple::Exbi, BinaryMultiple::Pebi, 2000f32*1024f32)]
+    pub fn test_scale_to(
+        #[case] value: f32,
+        #[case] unit: BinaryMultiple,
+        #[case] target_unit: BinaryMultiple,
+        #[case] expected: f32,
+    ) {
+        let memory = Memory { value, unit };
+        let scaled_memory = memory.scale_to(target_unit);
+        assert_eq!(scaled_memory.value, expected);
+    }
+
+    #[rstest]
+    #[case("256Ki", 1.0, BinaryMultiple::Kibi, 256)]
+    #[case("256Ki", 0.8, BinaryMultiple::Kibi, 204)]
+    #[case("2Mi", 0.8, BinaryMultiple::Kibi, 1638)]
+    #[case("1.5Gi", 0.8, BinaryMultiple::Mebi, 1228)]
+    #[case("2Gi", 0.8, BinaryMultiple::Mebi, 1638)]
+    #[case("2Ti", 0.8, BinaryMultiple::Mebi, 1677721)]
+    #[case("2Ti", 0.8, BinaryMultiple::Gibi, 1638)]
+    #[case("2Ti", 1.0, BinaryMultiple::Gibi, 2048)]
+    #[case("2048Ki", 1.0, BinaryMultiple::Mebi, 2)]
+    #[case("2000Ki", 1.0, BinaryMultiple::Mebi, 1)]
+    #[case("4000Mi", 1.0, BinaryMultiple::Gibi, 3)]
+    #[case("4000Mi", 0.8, BinaryMultiple::Gibi, 3)]
+    pub fn test_to_java_heap_value(
+        #[case] q: &str,
+        #[case] factor: f32,
+        #[case] target_unit: BinaryMultiple,
+        #[case] heap: u32,
+    ) {
+        assert_eq!(
+            to_java_heap_value(&Quantity(q.to_owned()), factor, target_unit).unwrap(),
+            heap
+        );
+    }
+
+    #[rstest]
+    #[case("1000Ki", 0.8, BinaryMultiple::Gibi)]
+    #[case("1000Ki", 0.8, BinaryMultiple::Mebi)]
+    #[case("1000Mi", 0.8, BinaryMultiple::Gibi)]
+    #[case("1000Mi", 1.0, BinaryMultiple::Gibi)]
+    #[case("1023Mi", 1.0, BinaryMultiple::Gibi)]
+    #[case("1024Mi", 0.8, BinaryMultiple::Gibi)]
+    pub fn test_to_java_heap_value_failure(
+        #[case] q: &str,
+        #[case] factor: f32,
+        #[case] target_unit: BinaryMultiple,
+    ) {
+        assert!(to_java_heap_value(&Quantity(q.to_owned()), factor, target_unit).is_err());
     }
 }
