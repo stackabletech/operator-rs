@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Visibility of `Memory` in `memory.rs` ([#407]).
+- Visibility of `Memory` in `memory.rs` to private ([#407]).
 
 [#407]: https://github.com/stackabletech/operator-rs/pull/407
 
