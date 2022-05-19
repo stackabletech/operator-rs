@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - `scale_to` and `to_java_heap_value` in `Memory` to scale units up or down ([#407]).
 
-### Changed 
+### Changed
 
 - Visibility of `Memory` in `memory.rs` ([#407]).
 
