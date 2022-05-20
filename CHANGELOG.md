@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.21.1] - 2022-05-22
+
 ### Added
 
 - `scale_to` and `to_java_heap_value` in `Memory` to scale units up or down ([#407]).
