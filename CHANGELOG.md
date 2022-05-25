@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Correctly propagate storage class in `PVCConfig::build_pvc()` ([#412]).
+
+[#412]: https://github.com/stackabletech/operator-rs/pull/412
+
 ## [0.21.1] - 2022-05-22
 
 ### Added
