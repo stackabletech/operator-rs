@@ -156,6 +156,7 @@ impl PvcConfig {
                 access_modes: access_modes
                     .map(|modes| modes.into_iter().map(String::from).collect()),
                 selector: self.selectors.clone(),
+                storage_class_name: self.storage_class.clone(),
                 resources: Some(ResourceRequirements {
                     requests: Some({
                         let mut map = BTreeMap::new();
@@ -285,7 +286,7 @@ mod tests {
         metadata:
             name: test
         spec:
-            storageClass: CustomClass
+            storageClassName: CustomClass
             resources:
                 requests:
                     storage: 10Gi"#
@@ -305,7 +306,7 @@ mod tests {
         metadata:
             name: test
         spec:
-            storageClass: CustomClass
+            storageClassName: CustomClass
             resources:
                 requests:
                     storage: 10Gi
