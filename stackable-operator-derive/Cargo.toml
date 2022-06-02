@@ -12,9 +12,9 @@ proc-macro = true
 
 [dependencies]
 darling = "0.14.1"
-proc-macro2 = "1.0.37"
-quote = "1.0.17"
-syn = "1.0.91"
+proc-macro2 = "1.0.39"
+quote = "1.0.18"
+syn = "1.0.96"
 
 [dev-dependencies]
 stackable-operator = { path = ".." }
