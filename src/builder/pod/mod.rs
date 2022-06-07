@@ -5,10 +5,9 @@ pub mod volume;
 use crate::builder::meta::ObjectMetaBuilder;
 use crate::error::{Error, OperatorResult};
 
-use k8s_openapi::api::core::v1::LocalObjectReference;
 use k8s_openapi::{
     api::core::v1::{
-        Affinity, Container, NodeAffinity, NodeSelector, NodeSelectorRequirement, NodeSelectorTerm,
+        Affinity, Container, LocalObjectReference, NodeAffinity, NodeSelector, NodeSelectorRequirement, NodeSelectorTerm,
         Pod, PodAffinity, PodCondition, PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec,
         Toleration, Volume,
     },
