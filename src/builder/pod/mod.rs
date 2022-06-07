@@ -7,9 +7,9 @@ use crate::error::{Error, OperatorResult};
 
 use k8s_openapi::{
     api::core::v1::{
-        Affinity, Container, LocalObjectReference, NodeAffinity, NodeSelector, NodeSelectorRequirement, NodeSelectorTerm,
-        Pod, PodAffinity, PodCondition, PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec,
-        Toleration, Volume,
+        Affinity, Container, LocalObjectReference, NodeAffinity, NodeSelector,
+        NodeSelectorRequirement, NodeSelectorTerm, Pod, PodAffinity, PodCondition,
+        PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec, Toleration, Volume,
     },
     apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement, ObjectMeta},
 };
