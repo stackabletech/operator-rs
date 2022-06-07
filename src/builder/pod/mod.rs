@@ -7,9 +7,9 @@ use crate::error::{Error, OperatorResult};
 
 use k8s_openapi::{
     api::core::v1::{
-        Affinity, Container, NodeAffinity, NodeSelector, NodeSelectorRequirement, NodeSelectorTerm,
-        Pod, PodAffinity, PodCondition, PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec,
-        Toleration, Volume,
+        Affinity, Container, LocalObjectReference, NodeAffinity, NodeSelector,
+        NodeSelectorRequirement, NodeSelectorTerm, Pod, PodAffinity, PodCondition,
+        PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec, Toleration, Volume,
     },
     apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement, ObjectMeta},
 };
@@ -31,6 +31,7 @@ pub struct PodBuilder {
     tolerations: Option<Vec<Toleration>>,
     volumes: Option<Vec<Volume>>,
     service_account_name: Option<String>,
+    image_pull_secrets: Option<Vec<LocalObjectReference>>,
 }
 
 impl PodBuilder {
@@ -145,6 +146,16 @@ impl PodBuilder {
         self
     }
 
+    pub fn image_pull_secrets(
+        &mut self,
+        secrets: impl IntoIterator<Item = String> + Iterator<Item = String>,
+    ) -> &mut Self {
+        self.image_pull_secrets
+            .get_or_insert_with(Vec::new)
+            .extend(secrets.map(|s| LocalObjectReference { name: Some(s) }));
+        self
+    }
+
     /// Hack because [`Pod`] predates [`LabelSelector`], and so its functionality is split between [`PodSpec::node_selector`] and [`Affinity::node_affinity`]
     fn node_selector_for_label_selector(
         label_selector: Option<LabelSelector>,
@@ -215,6 +226,7 @@ impl PodBuilder {
             // such as https://github.com/stackabletech/spark-operator/pull/256.
             enable_service_links: Some(false),
             service_account_name: self.service_account_name.clone(),
+            image_pull_secrets: self.image_pull_secrets.clone(),
             ..PodSpec::default()
         }
     }
@@ -246,14 +258,13 @@ impl PodBuilder {
 
 #[cfg(test)]
 mod tests {
-    use k8s_openapi::{
-        api::core::v1::{PodAffinity, PodAffinityTerm},
-        apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
-    };
-
     use crate::builder::{
         meta::ObjectMetaBuilder,
         pod::{container::ContainerBuilder, volume::VolumeBuilder, PodBuilder},
+    };
+    use k8s_openapi::{
+        api::core::v1::{LocalObjectReference, PodAffinity, PodAffinityTerm},
+        apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
     };
 
     #[test]
@@ -332,5 +343,26 @@ mod tests {
             .unwrap();
 
         assert_eq!(pod.metadata.name.unwrap(), "foo");
+    }
+
+    #[test]
+    fn test_pod_builder_image_pull_secrets() {
+        let container = ContainerBuilder::new("container")
+            .image("private-comapany/product:2.4.14")
+            .build();
+
+        let pod = PodBuilder::new()
+            .metadata(ObjectMetaBuilder::new().name("testpod").build())
+            .add_container(container)
+            .image_pull_secrets(vec!["company-registry-secret".to_string()].into_iter())
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            pod.spec.unwrap().image_pull_secrets.unwrap(),
+            vec![LocalObjectReference {
+                name: Some("company-registry-secret".to_string())
+            }]
+        );
     }
 }
