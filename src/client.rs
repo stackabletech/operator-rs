@@ -469,7 +469,8 @@ impl Client {
     {
         let api: Api<T> = self.get_api(namespace);
         let watcher = kube::runtime::watcher(api, lp).boxed();
-        watcher.applied_objects()
+        watcher
+            .applied_objects()
             .skip_while(|res| std::future::ready(res.is_err()))
             .next()
             .await;
