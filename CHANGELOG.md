@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Bump to k8s 1.24 and kube 0.73.1 ([#408]).
+- BREAKING: Bump to k8s 1.24 and kube 0.73.1 ([#408]).
 
 ### Fixed
 
