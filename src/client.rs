@@ -10,6 +10,7 @@ use kube::api::{DeleteParams, ListParams, Patch, PatchParams, PostParams, Resour
 use kube::client::Client as KubeClient;
 use kube::core::Status;
 use kube::error::ErrorResponse;
+use kube::runtime::WatchStreamExt;
 use kube::{Api, Config};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -468,7 +469,8 @@ impl Client {
     {
         let api: Api<T> = self.get_api(namespace);
         let watcher = kube::runtime::watcher(api, lp).boxed();
-        kube::runtime::utils::try_flatten_applied(watcher)
+        watcher
+            .applied_objects()
             .skip_while(|res| std::future::ready(res.is_err()))
             .next()
             .await;

@@ -4,10 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Bump to k8s 1.24 and kube 0.73.1 ([#408]).
+
 ### Fixed
 
 - Correctly propagate storage class in `PVCConfig::build_pvc()` ([#412]).
 
+[#408]: https://github.com/stackabletech/operator-rs/pull/408
 [#412]: https://github.com/stackabletech/operator-rs/pull/412
 
 ## [0.21.1] - 2022-05-22
