@@ -70,20 +70,17 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// This attribute can be used to provide a default implementation to fall back on if the optional
 /// value in the generated struct is not set
 ///
-/// For example, this:
-///
+/// # Example
 /// ```
+/// # use stackable_operator::config::config::Config;
+/// const DEFAULT_PORT: u16 = 11111;
+/// // For example, this:
 /// #[derive(Config)]
 /// struct FooConfig {
 ///     #[config(default = "DEFAULT_PORT")]
 ///     port: u16,
-///}
-/// ```
-///
-/// Expands to roughly the following:
-/// ```
-/// # use stackable_operator::config::config::Config;
-/// const DEFAULT_PORT: u16 = 11111;
+/// }
+/// // Expands to roughly the following:
 /// #[derive(Merge)]
 /// struct MergableFooConfig {
 ///     port: Option<u16>,
