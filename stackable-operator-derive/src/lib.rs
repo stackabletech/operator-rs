@@ -1,3 +1,4 @@
+mod config;
 mod merge;
 
 /// Derives [`Merge`](trait.Merge.html) for a given struct or enum, by merging each field individually.
@@ -48,4 +49,54 @@ mod merge;
 #[proc_macro_derive(Merge, attributes(merge))]
 pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     merge::derive(input)
+}
+
+/// Derives a [`Config`](trait.Config.html) trait for a given struct. The [`Config`] trait expands to
+/// a copy of the original struct with all fields transformed to Options. Furthermore an implementation
+/// to retrieve the back the derived struct is generated.
+///
+/// The generated struct is intended to be used in the operators CRD (e.g. FooConfig) as well as
+/// in the merging process of role configs and role group configs.
+///
+/// # Supported field attributes
+///
+/// ## `#[config(default_value = "...")]`
+///
+/// This attribute can be used to provide a default value to fall back on if the optional value in
+/// the generated struct is not set
+///
+/// ## `#[config(default_impl = "...")]`
+///
+/// This attribute can be used to provide a default implementation to fall back on if the optional
+/// value in the generated struct is not set
+///
+/// For example, this:
+///
+/// ```
+/// #[derive(Config)]
+/// struct FooConfig {
+///     #[config(default = "DEFAULT_PORT")]
+///     port: u16,
+///}
+/// ```
+///
+/// Expands to roughly the following:
+/// ```
+/// # use stackable_operator::config::config::Config;
+/// const DEFAULT_PORT: u16 = 11111;
+/// #[derive(Merge)]
+/// struct MergableFooConfig {
+///     port: Option<u16>,
+/// }
+/// impl From<MergableFooConfig> for FooConfig {
+///    fn from(c: MergableFooConfig) -> Self {
+///        Self {
+///            port: c.port.unwrap_or(DEFAULT_PORT),
+///        }
+///    }
+///}
+/// ```
+#[proc_macro_derive(Config, attributes(config))]
+pub fn derive_config(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    config::derive(input)
 }
