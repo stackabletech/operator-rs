@@ -134,6 +134,7 @@ impl Atomic for String {}
 impl Atomic for Quantity {}
 impl<'a> Atomic for &'a str {}
 impl Atomic for LabelSelector {}
+impl<T: Clone> Atomic for Vec<T> {}
 
 impl<T: Atomic> Merge for Option<T> {
     fn merge(&mut self, defaults: &Self) {
