@@ -31,7 +31,7 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let fields = match data {
         Data::Struct(fields) => fields.fields,
         _ => {
-            return syn::Error::new_spanned(&ident, r#"Enums/Unions can not #[derive(Config)]"#)
+            return syn::Error::new_spanned(&ident, r#"Enums/Unions can not #[derive(Optional)]"#)
                 .to_compile_error()
                 .into()
         }
@@ -40,7 +40,7 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let original_struct_name = &ident;
     let original_struct_vis = vis;
 
-    let optional_name = Ident::new(
+    let derived_struct_name = Ident::new(
         &format!("Optional{}", original_struct_name.to_string()),
         Span::call_site(),
     );
@@ -61,7 +61,7 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             (Some(_), Some(_)) =>
             return syn::Error::new_spanned(
                 &ident,
-                r#"The #[config(default_value = ...)] and #[config(default_impl = ...)] attributes are mutually exclusive"#)
+                r#"The #[optional(default_value = ...)] and #[optional(default_impl = ...)] attributes are mutually exclusive"#)
             .to_compile_error()
             .into(),
             (Some(value), _) => {
@@ -83,14 +83,14 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     // Concat output
     let struct_optional = quote! {
         #[derive(Merge)]
-        #original_struct_vis struct #optional_name {
+        #original_struct_vis struct #derived_struct_name {
             #my_fields
         }
     };
 
     let impl_optional = quote! {
-        impl std::convert::From<#optional_name> for #original_struct_name {
-             fn from(c: #optional_name) -> Self {
+        impl std::convert::From<#derived_struct_name> for #original_struct_name {
+             fn from(c: #derived_struct_name) -> Self {
                 Self {
                     #my_impl
                 }
@@ -99,7 +99,7 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     };
 
     let impl_trait = quote! {
-        impl Optional for #optional_name {}
+        impl Optional for #derived_struct_name {}
     };
 
     let tokens = quote! {
