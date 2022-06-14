@@ -36,10 +36,14 @@ where
     labels.insert(APP_VERSION_LABEL.to_string(), app_version.to_string());
     labels.insert(
         APP_MANAGED_BY_LABEL.to_string(),
-        format!("{}-operator", app_name),
+        get_app_managed_by_value(app_name),
     );
 
     labels
+}
+
+pub fn get_app_managed_by_value(app_name: &str) -> String {
+    format!("{}-operator", app_name)
 }
 
 /// The labels required to match against objects of a certain role, assuming that those objects
