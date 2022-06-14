@@ -85,6 +85,8 @@ use std::{
     fmt::{Debug, Display},
 };
 
+use crate::config::{merge::Merge, optional::Optional};
+use crate::error::{Error, OperatorResult};
 use crate::product_config_utils::Configuration;
 use derivative::Derivative;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
@@ -126,6 +128,25 @@ pub struct Role<T: Sized> {
     #[serde(flatten)]
     pub config: CommonConfiguration<T>,
     pub role_groups: HashMap<String, RoleGroup<T>>,
+}
+
+impl<T: Clone + Merge + Optional + 'static> Role<T> {
+    pub fn merge_config_by_rolegroup<C: From<T>>(&mut self, role_group: &str) -> OperatorResult<C> {
+        let mut role_config = &mut self.config.config;
+        let mut group_config = &mut self
+            .role_groups
+            .get_mut(role_group)
+            .ok_or(Error::MissingRoleGroup {
+                role: "".to_string(),
+                role_group: role_group.to_string(),
+            })?
+            .config
+            .config;
+
+        group_config.merge(role_config);
+
+        return Ok(group_config.clone().into());
+    }
 }
 
 impl<T: Configuration + 'static> Role<T> {
