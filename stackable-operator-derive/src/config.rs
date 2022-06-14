@@ -30,13 +30,14 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 
     let fields = match data {
         Data::Struct(fields) => fields.fields,
-        // TODO: error?
         _ => {
-            vec![]
+            return syn::Error::new_spanned(&ident, r#"Enums/Unions can not #[derive(Config)]"#)
+                .to_compile_error()
+                .into()
         }
     };
 
-    let original_struct_name = ident;
+    let original_struct_name = &ident;
     let original_struct_vis = vis;
 
     let mergable_name = Ident::new(
@@ -57,9 +58,14 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
         });
 
         let unwrapper = match (&field.default_value, &field.default_impl) {
-            (Some(_), Some(_)) => panic!("cannot use default_value and default_impl together!"),
+            (Some(_), Some(_)) =>
+            return syn::Error::new_spanned(
+                &ident,
+                r#"The #[config(default_value = ...)] and #[config(default_impl = ...)] attributes are mutually exclusive"#)
+            .to_compile_error()
+            .into(),
             (Some(val), _) => {
-                let value = Ident::new(&format!("{}", val), Span::call_site());
+                let value = Ident::new(val, Span::call_site());
                 quote! { unwrap_or(#value) }
             }
             (_, Some(path)) => {
