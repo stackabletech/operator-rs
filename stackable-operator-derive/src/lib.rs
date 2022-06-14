@@ -80,7 +80,7 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///     #[config(default = "DEFAULT_PORT")]
 ///     port: u16,
 /// }
-/// // Expands to roughly the following:
+/// // Expands to (roughly) the following:
 /// #[derive(Merge)]
 /// struct MergableFooConfig {
 ///     port: Option<u16>,

@@ -78,6 +78,7 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 
     // Concat output
     let struct_mergable = quote! {
+        #[derive(Merge)]
         #original_struct_vis struct #mergable_name {
             #my_fields
         }
