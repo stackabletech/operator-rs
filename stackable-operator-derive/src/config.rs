@@ -3,7 +3,7 @@ use proc_macro2::{Ident, Span};
 use quote::{quote, ToTokens};
 use syn::{parse_macro_input, Path, Visibility};
 
-#[derive(Debug, FromDeriveInput)]
+#[derive(FromDeriveInput)]
 #[darling(attributes(config), supports(struct_named))]
 struct ConfigReceiver {
     ident: syn::Ident,
@@ -11,7 +11,7 @@ struct ConfigReceiver {
     data: Data<(), ConfigFieldReceiver>,
 }
 
-#[derive(Debug, FromField)]
+#[derive(FromField)]
 #[darling(attributes(config))]
 struct ConfigFieldReceiver {
     ident: Option<syn::Ident>,

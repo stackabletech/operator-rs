@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use stackable_operator::config::config::Config;
-    use stackable_operator::config::merge::Merge;
+    use stackable_operator::config::merge::{Atomic, Merge};
 
     const PORT: u16 = 22222;
     const DEFAULT_PORT: u16 = 11111;
@@ -67,5 +67,73 @@ mod tests {
         }
         .into();
         assert_eq!(config.vec.as_ref(), vec![BAR]);
+    }
+
+    #[derive(Clone)]
+    pub struct FooSubStruct {
+        port: u16,
+    }
+
+    impl Default for FooSubStruct {
+        fn default() -> Self {
+            FooSubStruct { port: DEFAULT_PORT }
+        }
+    }
+
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum FooSubEnum {
+        Complex(String),
+    }
+
+    impl Default for FooSubEnum {
+        fn default() -> Self {
+            FooSubEnum::Complex(BAR.to_string())
+        }
+    }
+
+    impl Atomic for FooSubStruct {}
+    impl Atomic for FooSubEnum {}
+
+    #[derive(Config)]
+    pub struct FooConfigComplex {
+        sub_struct: FooSubStruct,
+        sub_enum: FooSubEnum,
+    }
+
+    #[test]
+    fn test_derive_config_complex() {
+        let config: FooConfigComplex = MergableFooConfigComplex {
+            sub_struct: Some(FooSubStruct { port: DEFAULT_PORT }),
+            sub_enum: Some(FooSubEnum::Complex(FOO.to_string())),
+        }
+        .into();
+        assert_eq!(config.sub_struct.port, DEFAULT_PORT);
+        assert_eq!(config.sub_enum, FooSubEnum::Complex(FOO.to_string()));
+    }
+
+    #[derive(Config)]
+    pub struct FooConfigComplexDefaultImpl {
+        #[config(default_impl = "FooSubStruct::default")]
+        sub_struct: FooSubStruct,
+        sub_enum: FooSubEnum,
+    }
+
+    #[test]
+    fn test_derive_config_complex_default_value() {
+        let config: FooConfigComplexDefaultImpl = MergableFooConfigComplexDefaultImpl {
+            sub_struct: None,
+            sub_enum: None,
+        }
+        .into();
+        assert_eq!(config.sub_struct.port, DEFAULT_PORT);
+        assert_eq!(config.sub_enum, FooSubEnum::Complex(BAR.to_string()));
+
+        let config: FooConfigComplexDefaultImpl = MergableFooConfigComplexDefaultImpl {
+            sub_struct: Some(FooSubStruct { port: 22222 }),
+            sub_enum: Some(FooSubEnum::Complex(FOO.to_string())),
+        }
+        .into();
+        assert_eq!(config.sub_struct.port, 22222);
+        assert_eq!(config.sub_enum, FooSubEnum::Complex(FOO.to_string()));
     }
 }
