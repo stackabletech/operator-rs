@@ -1,10 +1,10 @@
 use darling::{ast::Data, FromDeriveInput, FromField};
 use proc_macro2::{Ident, Span};
-use quote::quote;
-use syn::{parse_macro_input, Visibility};
+use quote::{quote, ToTokens};
+use syn::{parse_macro_input, Path, Visibility};
 
 #[derive(Debug, FromDeriveInput)]
-#[darling(attributes(config), supports(struct_any))]
+#[darling(attributes(config), supports(struct_named))]
 struct ConfigReceiver {
     ident: syn::Ident,
     vis: Visibility,
@@ -18,7 +18,7 @@ struct ConfigFieldReceiver {
     ty: syn::Type,
     vis: Visibility,
     default_value: Option<String>,
-    default_impl: Option<String>,
+    default_impl: Option<Path>,
 }
 
 pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -35,8 +35,6 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             vec![]
         }
     };
-
-    println!("fields: {:?}", fields);
 
     let original_struct_name = ident;
     let original_struct_vis = vis;
@@ -64,11 +62,11 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
                 let value = Ident::new(&format!("{}", val), Span::call_site());
                 quote! { unwrap_or(#value) }
             }
-            (_, Some(imp)) => {
-                let method = Ident::new(&format!("{}", imp), Span::call_site());
+            (_, Some(path)) => {
+                let method = path.to_token_stream();
                 quote! { unwrap_or_else(|| #method()) }
             }
-            _ => quote! { unwrap_or_default()},
+            (None, None) => quote! { unwrap_or_default() },
         };
 
         my_impl.extend(quote! {
