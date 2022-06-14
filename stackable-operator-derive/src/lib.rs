@@ -1,5 +1,5 @@
-mod config;
 mod merge;
+mod optional;
 
 /// Derives [`Merge`](trait.Merge.html) for a given struct or enum, by merging each field individually.
 ///
@@ -51,49 +51,55 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     merge::derive(input)
 }
 
-/// Derives a [`Config`](trait.Config.html) trait for a given struct. The [`Config`] trait expands to
-/// a copy of the original struct with all fields transformed to Options. Furthermore an implementation
-/// to retrieve the back the derived struct is generated.
+/// Derives a [`Optional`](trait.Optional.html) trait for a given struct. The [`Optional`] trait
+/// expands to a copy of the original struct with all fields transformed to Options and the name
+/// prefixed with `Optional`. A defined struct called `FooConfig` would expand to a struct called
+/// `OptionalFooConfig`. Default values or methods can be provided for each field.
 ///
-/// The generated struct is intended to be used in the operators CRD (e.g. FooConfig) as well as
-/// in the merging process of role configs and role group configs.
+/// Furthermore an implementation for `From<OptionalFooConfig>` is generated for `FooConfig` to
+/// retrieve back the original `FooConfig` struct.
+///
+/// The generated struct is intended to be used in the operators CRD (e.g. `OptionalFooConfig`)
+/// as well as in the merging process of role configs and role group configs.
+///
+/// The generated struct `OptionalFooConfig` derives the `Merge` trait.
 ///
 /// # Supported field attributes
 ///
-/// ## `#[config(default_value = "...")]`
+/// ## `#[optional(default_value = "...")]`
 ///
 /// This attribute can be used to provide a default value to fall back on if the optional value in
 /// the generated struct is not set
 ///
-/// ## `#[config(default_impl = "...")]`
+/// ## `#[optional(default_impl = "...")]`
 ///
 /// This attribute can be used to provide a default implementation to fall back on if the optional
 /// value in the generated struct is not set
 ///
 /// # Example
 /// ```
-/// # use stackable_operator::config::config::Config;
+/// # use stackable_operator::config::optional::Optional;
 /// const DEFAULT_PORT: u16 = 11111;
 /// // For example, this:
-/// #[derive(Config)]
+/// #[derive(Optional)]
 /// struct FooConfig {
-///     #[config(default = "DEFAULT_PORT")]
+///     #[optional(default = "DEFAULT_PORT")]
 ///     port: u16,
 /// }
 /// // Expands to (roughly) the following:
 /// #[derive(Merge)]
-/// struct MergableFooConfig {
+/// struct OptionalFooConfig {
 ///     port: Option<u16>,
 /// }
-/// impl From<MergableFooConfig> for FooConfig {
-///    fn from(c: MergableFooConfig) -> Self {
+/// impl From<OptionalFooConfig> for FooConfig {
+///    fn from(c: OptionalFooConfig) -> Self {
 ///        Self {
 ///            port: c.port.unwrap_or(DEFAULT_PORT),
 ///        }
 ///    }
 ///}
 /// ```
-#[proc_macro_derive(Config, attributes(config))]
-pub fn derive_config(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    config::derive(input)
+#[proc_macro_derive(Optional, attributes(optional))]
+pub fn derive_optional(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    optional::derive(input)
 }

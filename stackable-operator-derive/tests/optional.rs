@@ -1,33 +1,33 @@
 #[cfg(test)]
 mod tests {
-    use stackable_operator::config::config::Config;
     use stackable_operator::config::merge::{Atomic, Merge};
+    use stackable_operator::config::optional::Optional;
 
     const PORT: u16 = 22222;
     const DEFAULT_PORT: u16 = 11111;
     const FOO: &str = "foo";
     const BAR: &str = "bar";
 
-    #[derive(Config)]
+    #[derive(Optional)]
     pub struct FooConfigAtomicDefaultValue {
-        #[config(default_value = "DEFAULT_PORT")]
+        #[optional(default_value = "DEFAULT_PORT")]
         pub port: u16,
     }
 
     #[test]
     fn test_derive_config_atomic_default_value() {
         let config: FooConfigAtomicDefaultValue =
-            MergableFooConfigAtomicDefaultValue { port: None }.into();
+            OptionalFooConfigAtomicDefaultValue { port: None }.into();
         assert_eq!(config.port, DEFAULT_PORT);
 
         let config: FooConfigAtomicDefaultValue =
-            MergableFooConfigAtomicDefaultValue { port: Some(PORT) }.into();
+            OptionalFooConfigAtomicDefaultValue { port: Some(PORT) }.into();
         assert_eq!(config.port, PORT);
     }
 
-    #[derive(Config)]
+    #[derive(Optional)]
     pub struct FooConfigAtomicDefaultImpl {
-        #[config(default_impl = "FooConfigAtomicDefaultImpl::default_impl")]
+        #[optional(default_impl = "FooConfigAtomicDefaultImpl::default_impl")]
         pub vec: Vec<String>,
     }
 
@@ -40,18 +40,18 @@ mod tests {
     #[test]
     fn test_derive_config_atomic_default_impl() {
         let config: FooConfigAtomicDefaultImpl =
-            MergableFooConfigAtomicDefaultImpl { vec: None }.into();
+            OptionalFooConfigAtomicDefaultImpl { vec: None }.into();
         // FOO from FooConfigAtomicDefaultImpl::default_impl
         assert_eq!(config.vec.as_ref(), vec![FOO]);
 
-        let config: FooConfigAtomicDefaultImpl = MergableFooConfigAtomicDefaultImpl {
+        let config: FooConfigAtomicDefaultImpl = OptionalFooConfigAtomicDefaultImpl {
             vec: Some(vec![BAR.to_string()]),
         }
         .into();
         assert_eq!(config.vec.as_ref(), vec![BAR]);
     }
 
-    #[derive(Config)]
+    #[derive(Optional)]
     pub struct FooConfigAtomicNoDefault {
         pub vec: Vec<String>,
     }
@@ -59,10 +59,10 @@ mod tests {
     #[test]
     fn test_derive_config_atomic_no_default() {
         let config: FooConfigAtomicNoDefault =
-            MergableFooConfigAtomicNoDefault { vec: None }.into();
+            OptionalFooConfigAtomicNoDefault { vec: None }.into();
         assert_eq!(config.vec, Vec::<String>::new());
 
-        let config: FooConfigAtomicNoDefault = MergableFooConfigAtomicNoDefault {
+        let config: FooConfigAtomicNoDefault = OptionalFooConfigAtomicNoDefault {
             vec: Some(vec![BAR.to_string()]),
         }
         .into();
@@ -94,7 +94,7 @@ mod tests {
     impl Atomic for FooSubStruct {}
     impl Atomic for FooSubEnum {}
 
-    #[derive(Config)]
+    #[derive(Optional)]
     pub struct FooConfigComplex {
         sub_struct: FooSubStruct,
         sub_enum: FooSubEnum,
@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn test_derive_config_complex() {
-        let config: FooConfigComplex = MergableFooConfigComplex {
+        let config: FooConfigComplex = OptionalFooConfigComplex {
             sub_struct: Some(FooSubStruct { port: DEFAULT_PORT }),
             sub_enum: Some(FooSubEnum::Complex(FOO.to_string())),
         }
@@ -111,16 +111,16 @@ mod tests {
         assert_eq!(config.sub_enum, FooSubEnum::Complex(FOO.to_string()));
     }
 
-    #[derive(Config)]
+    #[derive(Optional)]
     pub struct FooConfigComplexDefaultImpl {
-        #[config(default_impl = "FooSubStruct::default")]
+        #[optional(default_impl = "FooSubStruct::default")]
         sub_struct: FooSubStruct,
         sub_enum: FooSubEnum,
     }
 
     #[test]
     fn test_derive_config_complex_default_value() {
-        let config: FooConfigComplexDefaultImpl = MergableFooConfigComplexDefaultImpl {
+        let config: FooConfigComplexDefaultImpl = OptionalFooConfigComplexDefaultImpl {
             sub_struct: None,
             sub_enum: None,
         }
@@ -128,7 +128,7 @@ mod tests {
         assert_eq!(config.sub_struct.port, DEFAULT_PORT);
         assert_eq!(config.sub_enum, FooSubEnum::Complex(BAR.to_string()));
 
-        let config: FooConfigComplexDefaultImpl = MergableFooConfigComplexDefaultImpl {
+        let config: FooConfigComplexDefaultImpl = OptionalFooConfigComplexDefaultImpl {
             sub_struct: Some(FooSubStruct { port: 22222 }),
             sub_enum: Some(FooSubEnum::Complex(FOO.to_string())),
         }

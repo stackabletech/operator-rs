@@ -4,16 +4,16 @@ use quote::{quote, ToTokens};
 use syn::{parse_macro_input, Path, Visibility};
 
 #[derive(FromDeriveInput)]
-#[darling(attributes(config), supports(struct_named))]
-struct ConfigReceiver {
+#[darling(attributes(optional), supports(struct_named))]
+struct OptionalDeriveInput {
     ident: syn::Ident,
     vis: Visibility,
-    data: Data<(), ConfigFieldReceiver>,
+    data: Data<(), OptionalDeriveField>,
 }
 
 #[derive(FromField)]
-#[darling(attributes(config))]
-struct ConfigFieldReceiver {
+#[darling(attributes(optional))]
+struct OptionalDeriveField {
     ident: Option<syn::Ident>,
     ty: syn::Type,
     vis: Visibility,
@@ -22,8 +22,8 @@ struct ConfigFieldReceiver {
 }
 
 pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let ConfigReceiver { ident, vis, data } =
-        match ConfigReceiver::from_derive_input(&parse_macro_input!(input)) {
+    let OptionalDeriveInput { ident, vis, data } =
+        match OptionalDeriveInput::from_derive_input(&parse_macro_input!(input)) {
             Ok(input) => input,
             Err(err) => return err.write_errors().into(),
         };
@@ -40,8 +40,8 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let original_struct_name = &ident;
     let original_struct_vis = vis;
 
-    let mergable_name = Ident::new(
-        &format!("Mergable{}", original_struct_name.to_string()),
+    let optional_name = Ident::new(
+        &format!("Optional{}", original_struct_name.to_string()),
         Span::call_site(),
     );
 
@@ -81,16 +81,16 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     }
 
     // Concat output
-    let struct_mergable = quote! {
+    let struct_optional = quote! {
         #[derive(Merge)]
-        #original_struct_vis struct #mergable_name {
+        #original_struct_vis struct #optional_name {
             #my_fields
         }
     };
 
-    let impl_mergable = quote! {
-        impl std::convert::From<#mergable_name> for #original_struct_name {
-             fn from(c: #mergable_name) -> Self {
+    let impl_optional = quote! {
+        impl std::convert::From<#optional_name> for #original_struct_name {
+             fn from(c: #optional_name) -> Self {
                 Self {
                     #my_impl
                 }
@@ -99,8 +99,8 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     };
 
     let tokens = quote! {
-        #struct_mergable
-        #impl_mergable
+        #struct_optional
+        #impl_optional
     };
 
     eprintln!("TOKENS: {}", tokens);
