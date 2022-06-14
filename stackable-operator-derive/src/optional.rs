@@ -17,7 +17,7 @@ struct OptionalDeriveField {
     ident: Option<syn::Ident>,
     ty: syn::Type,
     vis: Visibility,
-    default_value: Option<String>,
+    default_value: Option<Path>,
     default_impl: Option<Path>,
 }
 
@@ -64,12 +64,12 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
                 r#"The #[config(default_value = ...)] and #[config(default_impl = ...)] attributes are mutually exclusive"#)
             .to_compile_error()
             .into(),
-            (Some(val), _) => {
-                let value = Ident::new(val, Span::call_site());
+            (Some(value), _) => {
+                let value = value.to_token_stream();
                 quote! { unwrap_or(#value) }
             }
-            (_, Some(path)) => {
-                let method = path.to_token_stream();
+            (_, Some(method)) => {
+                let method = method.to_token_stream();
                 quote! { unwrap_or_else(|| #method()) }
             }
             (None, None) => quote! { unwrap_or_default() },
@@ -98,9 +98,14 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
          }
     };
 
+    let impl_trait = quote! {
+        impl Optional for #optional_name {}
+    };
+
     let tokens = quote! {
         #struct_optional
         #impl_optional
+        #impl_trait
     };
 
     eprintln!("TOKENS: {}", tokens);

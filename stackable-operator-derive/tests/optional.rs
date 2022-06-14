@@ -3,8 +3,8 @@ mod tests {
     use stackable_operator::config::merge::{Atomic, Merge};
     use stackable_operator::config::optional::Optional;
 
-    const PORT: u16 = 22222;
     const DEFAULT_PORT: u16 = 11111;
+    const PORT: u16 = 22222;
     const FOO: &str = "foo";
     const BAR: &str = "bar";
 
@@ -129,11 +129,11 @@ mod tests {
         assert_eq!(config.sub_enum, FooSubEnum::Complex(BAR.to_string()));
 
         let config: FooConfigComplexDefaultImpl = OptionalFooConfigComplexDefaultImpl {
-            sub_struct: Some(FooSubStruct { port: 22222 }),
+            sub_struct: Some(FooSubStruct { port: PORT }),
             sub_enum: Some(FooSubEnum::Complex(FOO.to_string())),
         }
         .into();
-        assert_eq!(config.sub_struct.port, 22222);
+        assert_eq!(config.sub_struct.port, PORT);
         assert_eq!(config.sub_enum, FooSubEnum::Complex(FOO.to_string()));
     }
 }

@@ -51,7 +51,7 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     merge::derive(input)
 }
 
-/// Derives a [`Optional`](trait.Optional.html) trait for a given struct. The [`Optional`] trait
+/// Derives an [`Optional`](trait.Optional.html) trait for a given struct. The [`Optional`] trait
 /// expands to a copy of the original struct with all fields transformed to Options and the name
 /// prefixed with `Optional`. A defined struct called `FooConfig` would expand to a struct called
 /// `OptionalFooConfig`. Default values or methods can be provided for each field.
