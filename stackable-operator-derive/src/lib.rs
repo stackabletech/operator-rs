@@ -83,7 +83,7 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// // For example, this:
 /// #[derive(Optional)]
 /// struct FooConfig {
-///     #[optional(default = "DEFAULT_PORT")]
+///     #[optional(default_value = "DEFAULT_PORT")]
 ///     port: u16,
 /// }
 /// // Expands to (roughly) the following:

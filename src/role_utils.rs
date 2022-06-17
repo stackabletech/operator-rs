@@ -80,12 +80,7 @@
 //!
 //! Each resource can have more operator specific labels.
 
-use std::{
-    collections::{BTreeMap, HashMap},
-    fmt::{Debug, Display},
-};
-
-use crate::config::{merge::Merge, optional::Optional};
+use crate::config::merge::Merge;
 use crate::error::{Error, OperatorResult};
 use crate::product_config_utils::Configuration;
 use derivative::Derivative;
@@ -93,6 +88,10 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use kube::{runtime::reflector::ObjectRef, Resource};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::{Debug, Display},
+};
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(
@@ -130,22 +129,106 @@ pub struct Role<T: Sized> {
     pub role_groups: HashMap<String, RoleGroup<T>>,
 }
 
-impl<T: Clone + Merge + Optional + 'static> Role<T> {
-    pub fn merge_config_by_rolegroup<C: From<T>>(&mut self, role_group: &str) -> OperatorResult<C> {
-        let mut role_config = &mut self.config.config;
-        let mut group_config = &mut self
+impl<T: Clone + Merge> Role<T> {
+    pub fn convert_and_merge<C: Configuration + From<T>>(
+        role_name: &str,
+        optional_role: &Role<T>,
+    ) -> OperatorResult<Role<C>> {
+        let mut merged_groups: HashMap<String, RoleGroup<C>> = HashMap::new();
+        for (role_group_name, role_group) in &optional_role.role_groups {
+            merged_groups.insert(
+                role_group_name.clone(),
+                RoleGroup {
+                    replicas: role_group.replicas,
+                    selector: role_group.selector.clone(),
+                    config: optional_role.merge_common_config(role_name, &role_group_name)?,
+                },
+            );
+        }
+
+        Ok(Role {
+            config: CommonConfiguration {
+                config: optional_role.config.config.clone().into(),
+                config_overrides: optional_role.config.config_overrides.clone(),
+                env_overrides: optional_role.config.env_overrides.clone(),
+                cli_overrides: optional_role.config.cli_overrides.clone(),
+            },
+            role_groups: merged_groups,
+        })
+    }
+
+    pub fn merge_common_config<C: Configuration + From<T>>(
+        &self,
+        role: &str,
+        role_group: &str,
+    ) -> OperatorResult<CommonConfiguration<C>> {
+        let role_config = &self.config;
+        let group_config = &self
             .role_groups
-            .get_mut(role_group)
+            .get(role_group)
             .ok_or(Error::MissingRoleGroup {
-                role: "".to_string(),
+                role: role.to_string(),
                 role_group: role_group.to_string(),
             })?
-            .config
             .config;
 
-        group_config.merge(role_config);
+        Ok(CommonConfiguration {
+            config: Self::merge_config(&role_config.config, &group_config.config).into(),
+            config_overrides: Self::merge_config_file_overrides(role_config, group_config),
+            env_overrides: Self::merge_env_overrides(role_config, group_config),
+            cli_overrides: Self::merge_cli_overrides(role_config, group_config),
+        })
+    }
 
-        return Ok(group_config.clone().into());
+    fn merge_config_file_overrides(
+        role_config: &CommonConfiguration<T>,
+        role_group_config: &CommonConfiguration<T>,
+    ) -> HashMap<String, HashMap<String, String>> {
+        let mut merge_result: HashMap<String, HashMap<String, String>> = HashMap::new();
+
+        if !role_config.config_overrides.is_empty() {
+            for (file_name, role_config_overrides) in &role_config.config_overrides {
+                if let Some(role_group_config_overrides) =
+                    role_group_config.config_overrides.get(file_name)
+                {
+                    // file exists in role config and role group config
+                    let mut merged = role_config_overrides.clone();
+                    merged.extend(role_group_config_overrides.clone());
+                    merge_result.insert(file_name.clone(), merged);
+                } else {
+                    // only role has the specified file
+                    merge_result.insert(file_name.clone(), role_config_overrides.clone());
+                }
+            }
+        } else {
+            merge_result = role_group_config.config_overrides.clone();
+        }
+
+        merge_result
+    }
+
+    fn merge_env_overrides(
+        role_config: &CommonConfiguration<T>,
+        role_group_config: &CommonConfiguration<T>,
+    ) -> HashMap<String, String> {
+        let mut merge_result = role_config.env_overrides.clone();
+        merge_result.extend(role_group_config.env_overrides.clone());
+        merge_result
+    }
+
+    fn merge_cli_overrides(
+        role_config: &CommonConfiguration<T>,
+        role_group_config: &CommonConfiguration<T>,
+    ) -> BTreeMap<String, String> {
+        let mut merge_result = role_config.cli_overrides.clone();
+        merge_result.extend(role_group_config.cli_overrides.clone());
+        merge_result
+    }
+
+    fn merge_config(role_config: &T, role_group_config: &T) -> T {
+        let mut merge_result = role_group_config.clone();
+        merge_result.merge(role_config);
+        merge_result
     }
 }
 

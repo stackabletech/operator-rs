@@ -82,7 +82,8 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 
     // Concat output
     let struct_optional = quote! {
-        #[derive(Merge)]
+        #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Merge, PartialEq, Serialize)]
+        #[serde(rename_all = "camelCase")]
         #original_struct_vis struct #derived_struct_name {
             #my_fields
         }

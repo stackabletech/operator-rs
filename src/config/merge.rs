@@ -4,6 +4,7 @@ use std::{
     hash::Hash,
 };
 
+use crate::commons::resources::Resources;
 pub use stackable_operator_derive::Merge;
 
 /// A type that can be merged with itself
@@ -135,6 +136,7 @@ impl Atomic for Quantity {}
 impl<'a> Atomic for &'a str {}
 impl Atomic for LabelSelector {}
 impl<T: Clone> Atomic for Vec<T> {}
+impl<T: Clone + Default + Merge> Atomic for Resources<T> {}
 
 impl<T: Atomic> Merge for Option<T> {
     fn merge(&mut self, defaults: &Self) {
