@@ -141,7 +141,7 @@ impl<T: Clone + Merge> Role<T> {
                 RoleGroup {
                     replicas: role_group.replicas,
                     selector: role_group.selector.clone(),
-                    config: optional_role.merge_common_config(role_name, &role_group_name)?,
+                    config: optional_role.merge_common_config(role_name, role_group_name)?,
                 },
             );
         }
@@ -157,7 +157,7 @@ impl<T: Clone + Merge> Role<T> {
         })
     }
 
-    pub fn merge_common_config<C: Configuration + From<T>>(
+    fn merge_common_config<C: Configuration + From<T>>(
         &self,
         role: &str,
         role_group: &str,
@@ -233,6 +233,21 @@ impl<T: Clone + Merge> Role<T> {
 }
 
 impl<T: Configuration + 'static> Role<T> {
+    pub fn role_group_config(
+        &self,
+        role: &str,
+        role_group: &str,
+    ) -> OperatorResult<&CommonConfiguration<T>> {
+        Ok(&self
+            .role_groups
+            .get(role_group)
+            .ok_or(Error::MissingRoleGroup {
+                role: role.to_string(),
+                role_group: role_group.to_string(),
+            })?
+            .config)
+    }
+
     /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
     /// and used in [`Role`] into a Box of a dynamically dispatched
     /// [`crate::product_config_utils::Configuration`] Trait. This is required to use the generic

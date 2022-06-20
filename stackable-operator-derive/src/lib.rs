@@ -98,7 +98,6 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///        }
 ///    }
 /// }
-/// impl Optional for OptionalFooConfig {}
 /// ```
 #[proc_macro_derive(Optional, attributes(optional))]
 pub fn derive_optional(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

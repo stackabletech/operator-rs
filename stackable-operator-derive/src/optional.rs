@@ -41,7 +41,7 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let original_struct_vis = vis;
 
     let derived_struct_name = Ident::new(
-        &format!("Optional{}", original_struct_name.to_string()),
+        &format!("Optional{}", original_struct_name),
         Span::call_site(),
     );
 
@@ -80,8 +80,8 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
         });
     }
 
-    // Concat output
     let struct_optional = quote! {
+        // TODO: we should use the derived macros from the original struct and not just hardcode
         #[derive(Clone, Debug, Default, Deserialize, JsonSchema, Merge, PartialEq, Serialize)]
         #[serde(rename_all = "camelCase")]
         #original_struct_vis struct #derived_struct_name {
@@ -108,8 +108,6 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
         #impl_optional
         #impl_trait
     };
-
-    eprintln!("TOKENS: {}", tokens);
 
     tokens.into()
 }

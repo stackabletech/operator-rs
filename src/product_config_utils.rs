@@ -362,6 +362,7 @@ where
         let role_group_properties =
             parse_role_config(resource, role_name, &role_group.config, property_kinds)?;
 
+        // TODO: this is obsolete due to the merging
         // ... and merge them with the role properties.
         let mut role_properties_copy = role_properties.clone();
         for (property_kind, properties) in role_group_properties {
