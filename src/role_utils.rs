@@ -95,18 +95,17 @@ use std::{
     fmt::{Debug, Display},
 };
 
+// bound(deserialize = "T: Default + Deserialize<'de>")
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[serde(
-    rename_all = "camelCase",
-    bound(deserialize = "T: Default + Deserialize<'de>")
-)]
-pub struct CommonConfiguration<T: Sized> {
+#[serde(rename_all = "camelCase")]
+pub struct CommonConfiguration<O: Clone + Default + Merge, S: Configuration + From<O>> {
     #[serde(default)]
     // We can't depend on T being `Default`, since that trait is not object-safe
     // We only need to generate schemas for fully specified types, but schemars_derive
     // does not support specifying custom bounds.
     #[schemars(default = "config_schema_default")]
-    pub config: T,
+    #[serde(flatten)]
+    pub config: Config<O, S>,
     #[serde(default)]
     pub config_overrides: HashMap<String, HashMap<String, String>>,
     #[serde(default)]
@@ -123,37 +122,43 @@ fn config_schema_default() -> serde_json::Value {
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum Config<O: Clone + Default + Merge, S: Configuration + From<O>> {
-    Optional(CommonConfiguration<O>),
+    Optional(O),
     #[serde(skip)]
-    Standard(CommonConfiguration<S>),
+    Standard(S),
 }
 
 impl<O: Clone + Default + Merge, S: Configuration + From<O>> Default for Config<O, S> {
     fn default() -> Self {
-        Config::Optional(CommonConfiguration::default())
+        Config::Optional(O::default())
     }
 }
 
 impl<O: Clone + Default + Merge, S: Clone + Configuration + From<O>> Config<O, S> {
     pub fn to_standard(&self) -> Self {
         match &self {
-            Config::Optional(opt) => Config::Standard(CommonConfiguration::<S> {
-                config: opt.config.clone().into(),
-                config_overrides: opt.config_overrides.clone(),
-                env_overrides: opt.env_overrides.clone(),
-                cli_overrides: opt.cli_overrides.clone(),
-            }),
-            Config::Standard(std) => Config::Standard(CommonConfiguration::<S> {
-                config: std.config.clone(),
-                config_overrides: std.config_overrides.clone(),
-                env_overrides: std.env_overrides.clone(),
-                cli_overrides: std.cli_overrides.clone(),
-            }),
+            Config::Optional(opt) => Config::Standard(opt.clone().into()),
+            Config::Standard(std) => Config::Standard(std.clone()),
         }
     }
 }
 
-impl<O: Clone + Merge> Merge for CommonConfiguration<O> {
+impl<O: Clone + Default + Merge, S: Clone + Configuration + From<O>> CommonConfiguration<O, S> {
+    pub fn to_standard(&self) -> Self {
+        Self {
+            config: match &self.config {
+                Config::Optional(opt) => Config::Standard(opt.clone().into()),
+                Config::Standard(std) => Config::Standard(std.clone()),
+            },
+            config_overrides: self.config_overrides.clone(),
+            env_overrides: self.env_overrides.clone(),
+            cli_overrides: self.cli_overrides.clone(),
+        }
+    }
+}
+
+impl<O: Clone + Default + Merge, S: Clone + Configuration + From<O>> Merge
+    for CommonConfiguration<O, S>
+{
     fn merge(&mut self, defaults: &Self) {
         // merge configs
         self.config.merge(&defaults.config);
@@ -208,16 +213,16 @@ impl<O: Clone + Default + Merge, S: Configuration + From<O>> Merge for Config<O,
     rename_all = "camelCase",
     bound(deserialize = "T: Default + Deserialize<'de>")
 )]
-pub struct Role<O: Clone + Default + Merge + Sized, S: Clone + Configuration + From<O>> {
+pub struct Role<O: Clone + Default + Merge + Sized, S: Clone + Configuration + Default + From<O>> {
     #[serde(flatten)]
-    pub config: Config<O, S>,
+    pub config: CommonConfiguration<O, S>,
     pub role_groups: HashMap<String, RoleGroup<O, S>>,
 }
 
 impl<'de, O, S> Deserialize<'de> for Role<O, S>
 where
     O: Clone + Debug + Default + Deserialize<'de> + Merge,
-    S: Clone + Debug + Configuration + Deserialize<'de> + From<O>,
+    S: Clone + Debug + Configuration + Default + Deserialize<'de> + From<O>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -234,7 +239,7 @@ where
         impl<'de, O, S> Visitor<'de> for RoleVisitor<O, S>
         where
             O: Clone + Debug + Default + Deserialize<'de> + Merge,
-            S: Clone + Configuration + Debug + Deserialize<'de> + From<O>,
+            S: Clone + Configuration + Debug + Default + Deserialize<'de> + From<O>,
         {
             type Value = Role<O, S>;
 
@@ -246,7 +251,7 @@ where
             where
                 M: MapAccess<'de>,
             {
-                let mut config: Option<Config<O, S>> = None;
+                let mut config: Option<CommonConfiguration<O, S>> = None;
                 let mut role_groups: Option<HashMap<String, RoleGroup<O, S>>> = None;
 
                 while let Some(key) = access.next_key::<String>()? {
@@ -298,6 +303,8 @@ where
                             config: merged_config.to_standard(),
                         },
                     );
+
+                    println!("merged_role_groups: {:#?}", merged_groups);
                 }
 
                 Ok(Role {
@@ -320,7 +327,7 @@ where
 }
 
 /*
-impl<O: Clone + Merge, S: Clone + Configuration + From<O> + 'static> Role<O, S>
+impl<O: Default, S: Configuration + Default + From<O> + 'static> Role<O, S>
 where
     Box<(dyn Configuration<Configurable = <S as Configuration>::Configurable> + 'static)>: From<O>,
 {
@@ -331,13 +338,13 @@ where
     /// have different structs implementing Configuration.
     pub fn erase(self) -> Role<O, Box<dyn Configuration<Configurable = S::Configurable>>> {
         Role {
-            config: Config::Standard(CommonConfiguration {
-                config: Box::new(self.config.config)
-                    as Box<dyn Configuration<Configurable = S::Configurable>>,
+            config: CommonConfiguration {
+                config: Config::Standard(Box::new(self.config.config)
+                    as Box<dyn Configuration<Configurable = S::Configurable>>),
                 config_overrides: self.config.config_overrides,
                 env_overrides: self.config.env_overrides,
                 cli_overrides: self.config.cli_overrides,
-            }),
+            },
             role_groups: self
                 .role_groups
                 .into_iter()
@@ -345,13 +352,15 @@ where
                     (
                         name,
                         RoleGroup {
-                            config: Config::Standard(CommonConfiguration {
-                                config: Box::new(group.config.config)
-                                    as Box<dyn Configuration<Configurable = S::Configurable>>,
+                            config: CommonConfiguration {
+                                config: Config::Standard(
+                                    group.config.config
+                                        as Box<dyn Configuration<Configurable = S::Configurable>>,
+                                ),
                                 config_overrides: group.config.config_overrides,
                                 env_overrides: group.config.env_overrides,
                                 cli_overrides: group.config.cli_overrides,
-                            }),
+                            },
                             replicas: group.replicas,
                             selector: group.selector,
                         },
@@ -365,9 +374,12 @@ where
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RoleGroup<O: Clone + Default + Merge + Sized, S: Sized + Configuration + From<O>> {
+pub struct RoleGroup<
+    O: Clone + Default + Merge + Sized,
+    S: Default + Sized + Configuration + From<O>,
+> {
     #[serde(flatten)]
-    pub config: Config<O, S>,
+    pub config: CommonConfiguration<O, S>,
     pub replicas: Option<u16>,
     pub selector: Option<LabelSelector>,
 }
@@ -460,15 +472,19 @@ mod tests {
         let role: Role<OptTest, Test> = serde_yaml::from_str(
             r#"
 config:
-  config:
-    port: 11111
+  port: 11111
+  envOverrides: 
+    port: "44444"  
 roleGroups:
   default:
-    config: {}
+    config: 
+      port: 12345
+    envOverrides: 
+      port: "55555" 
     "#,
         )
         .unwrap();
 
-        eprintln!("{:?}", role);
+        eprintln!("{:#?}", role);
     }
 }
