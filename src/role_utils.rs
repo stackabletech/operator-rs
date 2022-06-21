@@ -81,13 +81,15 @@
 //! Each resource can have more operator specific labels.
 
 use crate::config::merge::Merge;
-use crate::error::{Error, OperatorResult};
 use crate::product_config_utils::Configuration;
 use derivative::Derivative;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use kube::{runtime::reflector::ObjectRef, Resource};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::de::{Error, MapAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize};
+use std::fmt::Formatter;
+use std::marker::PhantomData;
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::{Debug, Display},
@@ -119,149 +121,223 @@ fn config_schema_default() -> serde_json::Value {
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(untagged)]
+pub enum Config<O: Clone + Default + Merge, S: Configuration + From<O>> {
+    Optional(CommonConfiguration<O>),
+    #[serde(skip)]
+    Standard(CommonConfiguration<S>),
+}
+
+impl<O: Clone + Default + Merge, S: Configuration + From<O>> Default for Config<O, S> {
+    fn default() -> Self {
+        Config::Optional(CommonConfiguration::default())
+    }
+}
+
+impl<O: Clone + Default + Merge, S: Clone + Configuration + From<O>> Config<O, S> {
+    pub fn to_standard(&self) -> Self {
+        match &self {
+            Config::Optional(opt) => Config::Standard(CommonConfiguration::<S> {
+                config: opt.config.clone().into(),
+                config_overrides: opt.config_overrides.clone(),
+                env_overrides: opt.env_overrides.clone(),
+                cli_overrides: opt.cli_overrides.clone(),
+            }),
+            Config::Standard(std) => Config::Standard(CommonConfiguration::<S> {
+                config: std.config.clone(),
+                config_overrides: std.config_overrides.clone(),
+                env_overrides: std.env_overrides.clone(),
+                cli_overrides: std.cli_overrides.clone(),
+            }),
+        }
+    }
+}
+
+impl<O: Clone + Merge> Merge for CommonConfiguration<O> {
+    fn merge(&mut self, defaults: &Self) {
+        // merge configs
+        self.config.merge(&defaults.config);
+        // merge overrides
+        // file
+        let mut merged_config_overrides: HashMap<String, HashMap<String, String>> = HashMap::new();
+
+        if !defaults.config_overrides.is_empty() {
+            for (file_name, default_overrides) in &defaults.config_overrides {
+                if let Some(self_config_overrides) = self.config_overrides.get(file_name) {
+                    // file exists in role config and role group config
+                    let mut merged = default_overrides.clone();
+                    merged.extend(self_config_overrides.clone());
+                    merged_config_overrides.insert(file_name.clone(), merged);
+                } else {
+                    // only role has the specified file
+                    merged_config_overrides.insert(file_name.clone(), default_overrides.clone());
+                }
+            }
+        } else {
+            merged_config_overrides = self.config_overrides.clone();
+        }
+
+        self.config_overrides = merged_config_overrides;
+        // env
+        let mut default_env_overrides = defaults.env_overrides.clone();
+        default_env_overrides.extend(self.env_overrides.clone());
+        self.env_overrides = default_env_overrides;
+        // cli
+        let mut default_cli_overrides = defaults.cli_overrides.clone();
+        default_cli_overrides.extend(self.cli_overrides.clone());
+        self.cli_overrides = default_cli_overrides;
+    }
+}
+
+impl<O: Clone + Default + Merge, S: Configuration + From<O>> Merge for Config<O, S> {
+    fn merge(&mut self, defaults: &Self) {
+        match (self, defaults) {
+            (Self::Optional(self_opt), Self::Optional(default_opt)) => {
+                self_opt.merge(default_opt);
+            }
+            (_, _) => {
+                // TODO: panic?
+                panic!("Can not merge non optional config structs!")
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, JsonSchema, PartialEq, Serialize)]
 #[serde(
     rename_all = "camelCase",
     bound(deserialize = "T: Default + Deserialize<'de>")
 )]
-pub struct Role<T: Sized> {
+pub struct Role<O: Clone + Default + Merge + Sized, S: Clone + Configuration + From<O>> {
     #[serde(flatten)]
-    pub config: CommonConfiguration<T>,
-    pub role_groups: HashMap<String, RoleGroup<T>>,
+    pub config: Config<O, S>,
+    pub role_groups: HashMap<String, RoleGroup<O, S>>,
 }
 
-impl<T: Clone + Merge> Role<T> {
-    pub fn convert_and_merge<C: Configuration + From<T>>(
-        role_name: &str,
-        optional_role: &Role<T>,
-    ) -> OperatorResult<Role<C>> {
-        let mut merged_groups: HashMap<String, RoleGroup<C>> = HashMap::new();
-        for (role_group_name, role_group) in &optional_role.role_groups {
-            merged_groups.insert(
-                role_group_name.clone(),
-                RoleGroup {
-                    replicas: role_group.replicas,
-                    selector: role_group.selector.clone(),
-                    config: optional_role.merge_common_config(role_name, role_group_name)?,
-                },
-            );
+impl<'de, O, S> Deserialize<'de> for Role<O, S>
+where
+    O: Clone + Debug + Default + Deserialize<'de> + Merge,
+    S: Clone + Debug + Configuration + Deserialize<'de> + From<O>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        const CONFIG_FIELD: &str = "config";
+        const ROLE_GROUP_FIELD: &str = "roleGroups";
+
+        struct RoleVisitor<O, S> {
+            o: PhantomData<O>,
+            s: PhantomData<S>,
         }
 
-        Ok(Role {
-            config: CommonConfiguration {
-                config: optional_role.config.config.clone().into(),
-                config_overrides: optional_role.config.config_overrides.clone(),
-                env_overrides: optional_role.config.env_overrides.clone(),
-                cli_overrides: optional_role.config.cli_overrides.clone(),
-            },
-            role_groups: merged_groups,
-        })
-    }
+        impl<'de, O, S> Visitor<'de> for RoleVisitor<O, S>
+        where
+            O: Clone + Debug + Default + Deserialize<'de> + Merge,
+            S: Clone + Configuration + Debug + Deserialize<'de> + From<O>,
+        {
+            type Value = Role<O, S>;
 
-    fn merge_common_config<C: Configuration + From<T>>(
-        &self,
-        role: &str,
-        role_group: &str,
-    ) -> OperatorResult<CommonConfiguration<C>> {
-        let role_config = &self.config;
-        let group_config = &self
-            .role_groups
-            .get(role_group)
-            .ok_or(Error::MissingRoleGroup {
-                role: role.to_string(),
-                role_group: role_group.to_string(),
-            })?
-            .config;
-
-        Ok(CommonConfiguration {
-            config: Self::merge_config(&role_config.config, &group_config.config).into(),
-            config_overrides: Self::merge_config_file_overrides(role_config, group_config),
-            env_overrides: Self::merge_env_overrides(role_config, group_config),
-            cli_overrides: Self::merge_cli_overrides(role_config, group_config),
-        })
-    }
-
-    fn merge_config_file_overrides(
-        role_config: &CommonConfiguration<T>,
-        role_group_config: &CommonConfiguration<T>,
-    ) -> HashMap<String, HashMap<String, String>> {
-        let mut merge_result: HashMap<String, HashMap<String, String>> = HashMap::new();
-
-        if !role_config.config_overrides.is_empty() {
-            for (file_name, role_config_overrides) in &role_config.config_overrides {
-                if let Some(role_group_config_overrides) =
-                    role_group_config.config_overrides.get(file_name)
-                {
-                    // file exists in role config and role group config
-                    let mut merged = role_config_overrides.clone();
-                    merged.extend(role_group_config_overrides.clone());
-                    merge_result.insert(file_name.clone(), merged);
-                } else {
-                    // only role has the specified file
-                    merge_result.insert(file_name.clone(), role_config_overrides.clone());
-                }
+            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+                todo!()
             }
-        } else {
-            merge_result = role_group_config.config_overrides.clone();
+
+            fn visit_map<M>(self, mut access: M) -> Result<Role<O, S>, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
+                let mut config: Option<Config<O, S>> = None;
+                let mut role_groups: Option<HashMap<String, RoleGroup<O, S>>> = None;
+
+                while let Some(key) = access.next_key::<String>()? {
+                    match key.as_ref() {
+                        CONFIG_FIELD => {
+                            if config.is_some() {
+                                return Err(<M::Error as Error>::duplicate_field(CONFIG_FIELD));
+                            }
+                            config = Some(access.next_value()?);
+                        }
+                        ROLE_GROUP_FIELD => {
+                            if role_groups.is_some() {
+                                return Err(<M::Error as Error>::duplicate_field(ROLE_GROUP_FIELD));
+                            }
+                            role_groups = Some(access.next_value()?);
+                        }
+                        name => {
+                            return Err(<M::Error as Error>::unknown_field(
+                                name,
+                                &[CONFIG_FIELD, ROLE_GROUP_FIELD],
+                            ));
+                        }
+                    }
+                }
+
+                let config = match config {
+                    Some(config) => config,
+                    None => return Err(<M::Error as Error>::missing_field(CONFIG_FIELD)),
+                };
+                let role_groups = match role_groups {
+                    Some(role_groups) => role_groups,
+                    None => return Err(<M::Error as Error>::missing_field(ROLE_GROUP_FIELD)),
+                };
+
+                // merging....
+                let mut merged_groups: HashMap<String, RoleGroup<O, S>> = HashMap::new();
+
+                for (role_group_name, mut role_group) in &role_groups {
+                    let mut merged_config = role_group.config.clone();
+                    println!("role: {:#?}", config);
+                    println!("role_group: {:#?}", merged_config);
+                    merged_config.merge(&config);
+                    println!("role_group_merged: {:#?}", merged_config);
+                    merged_groups.insert(
+                        role_group_name.clone(),
+                        RoleGroup {
+                            replicas: role_group.replicas,
+                            selector: role_group.selector.clone(),
+                            config: merged_config.to_standard(),
+                        },
+                    );
+                }
+
+                Ok(Role {
+                    config: config.to_standard(),
+                    role_groups: merged_groups,
+                })
+            }
         }
 
-        merge_result
-    }
-
-    fn merge_env_overrides(
-        role_config: &CommonConfiguration<T>,
-        role_group_config: &CommonConfiguration<T>,
-    ) -> HashMap<String, String> {
-        let mut merge_result = role_config.env_overrides.clone();
-        merge_result.extend(role_group_config.env_overrides.clone());
-        merge_result
-    }
-
-    fn merge_cli_overrides(
-        role_config: &CommonConfiguration<T>,
-        role_group_config: &CommonConfiguration<T>,
-    ) -> BTreeMap<String, String> {
-        let mut merge_result = role_config.cli_overrides.clone();
-        merge_result.extend(role_group_config.cli_overrides.clone());
-        merge_result
-    }
-
-    fn merge_config(role_config: &T, role_group_config: &T) -> T {
-        let mut merge_result = role_group_config.clone();
-        merge_result.merge(role_config);
-        merge_result
+        const FIELDS: &'static [&'static str] = &[CONFIG_FIELD, ROLE_GROUP_FIELD];
+        deserializer.deserialize_struct(
+            "Role",
+            FIELDS,
+            RoleVisitor {
+                o: PhantomData::default(),
+                s: PhantomData::default(),
+            },
+        )
     }
 }
 
-impl<T: Configuration + 'static> Role<T> {
-    pub fn role_group_config(
-        &self,
-        role: &str,
-        role_group: &str,
-    ) -> OperatorResult<&CommonConfiguration<T>> {
-        Ok(&self
-            .role_groups
-            .get(role_group)
-            .ok_or(Error::MissingRoleGroup {
-                role: role.to_string(),
-                role_group: role_group.to_string(),
-            })?
-            .config)
-    }
-
+/*
+impl<O: Clone + Merge, S: Clone + Configuration + From<O> + 'static> Role<O, S>
+where
+    Box<(dyn Configuration<Configurable = <S as Configuration>::Configurable> + 'static)>: From<O>,
+{
     /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
     /// and used in [`Role`] into a Box of a dynamically dispatched
     /// [`crate::product_config_utils::Configuration`] Trait. This is required to use the generic
     /// [`Role`] with more than a single generic struct. For example different roles most likely
     /// have different structs implementing Configuration.
-    pub fn erase(self) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>> {
+    pub fn erase(self) -> Role<O, Box<dyn Configuration<Configurable = S::Configurable>>> {
         Role {
-            config: CommonConfiguration {
+            config: Config::Standard(CommonConfiguration {
                 config: Box::new(self.config.config)
-                    as Box<dyn Configuration<Configurable = T::Configurable>>,
+                    as Box<dyn Configuration<Configurable = S::Configurable>>,
                 config_overrides: self.config.config_overrides,
                 env_overrides: self.config.env_overrides,
                 cli_overrides: self.config.cli_overrides,
-            },
+            }),
             role_groups: self
                 .role_groups
                 .into_iter()
@@ -269,13 +345,13 @@ impl<T: Configuration + 'static> Role<T> {
                     (
                         name,
                         RoleGroup {
-                            config: CommonConfiguration {
+                            config: Config::Standard(CommonConfiguration {
                                 config: Box::new(group.config.config)
-                                    as Box<dyn Configuration<Configurable = T::Configurable>>,
+                                    as Box<dyn Configuration<Configurable = S::Configurable>>,
                                 config_overrides: group.config.config_overrides,
                                 env_overrides: group.config.env_overrides,
                                 cli_overrides: group.config.cli_overrides,
-                            },
+                            }),
                             replicas: group.replicas,
                             selector: group.selector,
                         },
@@ -285,15 +361,13 @@ impl<T: Configuration + 'static> Role<T> {
         }
     }
 }
+*/
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[serde(
-    rename_all = "camelCase",
-    bound(deserialize = "T: Default + Deserialize<'de>")
-)]
-pub struct RoleGroup<T> {
+#[serde(rename_all = "camelCase")]
+pub struct RoleGroup<O: Clone + Default + Merge + Sized, S: Sized + Configuration + From<O>> {
     #[serde(flatten)]
-    pub config: CommonConfiguration<T>,
+    pub config: Config<O, S>,
     pub replicas: Option<u16>,
     pub selector: Option<LabelSelector>,
 }
@@ -322,5 +396,79 @@ impl<K: Resource> Display for RoleGroupRef<K> {
             "role group {}/{} of {}",
             self.role, self.role_group, self.cluster
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::product_config_utils::ConfigResult;
+
+    #[derive(Clone, Deserialize, Default, Debug, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Test {
+        port: u16,
+    }
+
+    impl Configuration for Test {
+        type Configurable = ();
+
+        fn compute_env(
+            &self,
+            resource: &Self::Configurable,
+            role_name: &str,
+        ) -> ConfigResult<BTreeMap<String, Option<String>>> {
+            todo!()
+        }
+
+        fn compute_cli(
+            &self,
+            resource: &Self::Configurable,
+            role_name: &str,
+        ) -> ConfigResult<BTreeMap<String, Option<String>>> {
+            todo!()
+        }
+
+        fn compute_files(
+            &self,
+            resource: &Self::Configurable,
+            role_name: &str,
+            file: &str,
+        ) -> ConfigResult<BTreeMap<String, Option<String>>> {
+            todo!()
+        }
+    }
+
+    #[derive(Clone, Deserialize, Default, Debug, Merge, JsonSchema, PartialEq, Serialize)]
+    #[merge(path_overrides(merge = "crate::config::merge"))]
+    #[serde(rename_all = "camelCase")]
+    pub struct OptTest {
+        port: Option<u16>,
+    }
+
+    const DEFAULT_PORT: u16 = 33333;
+    impl From<OptTest> for Test {
+        fn from(opt: OptTest) -> Self {
+            Self {
+                port: opt.port.unwrap_or(DEFAULT_PORT),
+            }
+        }
+    }
+
+    #[test]
+    fn test() {
+        let role: Role<OptTest, Test> = serde_yaml::from_str(
+            r#"
+config:
+  config:
+    port: 11111
+roleGroups:
+  default:
+    config: {}
+    "#,
+        )
+        .unwrap();
+
+        eprintln!("{:?}", role);
     }
 }

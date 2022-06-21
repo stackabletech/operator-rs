@@ -108,13 +108,15 @@ pub type RoleGroupConfigByPropertyKind =
 pub type ValidatedRoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, String>>>>;
 
+/*
+
 /// Extracts the config properties keyed by PropertyKindName (files, cli, env) for a role and
 /// role group.
 ///
 /// # Arguments
 /// - `role`        - The role name.
 /// - `group`       - The role group name.
-/// - `role_config` - The validated product configuration for each role and group.  
+/// - `role_config` - The validated product configuration for each role and group.
 pub fn config_for_role_and_group<'a>(
     role: &str,
     group: &str,
@@ -169,7 +171,7 @@ where
 }
 
 /// Validates a product configuration for all roles and role_groups. Requires a valid product config
-/// and [`RoleConfigByPropertyKind`] which can be obtained via `transform_all_roles_to_config`.  
+/// and [`RoleConfigByPropertyKind`] which can be obtained via `transform_all_roles_to_config`.
 ///
 /// # Arguments
 /// - `version`            - The version of the product to be configured.
@@ -212,7 +214,7 @@ pub fn validate_all_roles_and_groups_config(
 
 /// Calculates and validates a product configuration for a role and group. Requires a valid
 /// product config and existing [`RoleConfigByPropertyKind`] that can be obtained via
-/// `transform_all_roles_to_config`.  
+/// `transform_all_roles_to_config`.
 ///
 /// # Arguments
 /// - `role`               - The name of the role
@@ -1227,7 +1229,7 @@ mod tests {
             spec:
               units: []
             properties:
-              - property: 
+              - property:
                   propertyNames:
                     - name: \"{}\"
                       kind:
@@ -1243,7 +1245,7 @@ mod tests {
                     - name: \"{}\"
                       required: true
                   asOfVersion: \"0.0.0\"
-              - property: 
+              - property:
                   propertyNames:
                     - name: \"{}\"
                       kind:
@@ -1322,3 +1324,5 @@ mod tests {
         assert!(config_for_role_and_wrong_group.is_err());
     }
 }
+
+*/
