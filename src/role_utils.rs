@@ -100,10 +100,6 @@ use std::{
 #[serde(rename_all = "camelCase")]
 pub struct CommonConfiguration<O: Clone + Default + Merge, S: Configuration + From<O>> {
     #[serde(default)]
-    // We can't depend on T being `Default`, since that trait is not object-safe
-    // We only need to generate schemas for fully specified types, but schemars_derive
-    // does not support specifying custom bounds.
-    #[schemars(default = "config_schema_default")]
     #[serde(flatten)]
     pub config: Config<O, S>,
     #[serde(default)]
@@ -113,10 +109,6 @@ pub struct CommonConfiguration<O: Clone + Default + Merge, S: Configuration + Fr
     // BTreeMap to keep some order with the cli arguments.
     #[serde(default)]
     pub cli_overrides: BTreeMap<String, String>,
-}
-
-fn config_schema_default() -> serde_json::Value {
-    serde_json::json!({})
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -134,24 +126,21 @@ impl<O: Clone + Default + Merge, S: Configuration + From<O>> Default for Config<
 }
 
 impl<O: Clone + Default + Merge, S: Clone + Configuration + From<O>> Config<O, S> {
-    pub fn to_standard(&self) -> Self {
-        match &self {
-            Config::Optional(opt) => Config::Standard(opt.clone().into()),
-            Config::Standard(std) => Config::Standard(std.clone()),
+    pub fn to_standard(self) -> Self {
+        match self {
+            Config::Optional(opt) => Config::Standard(opt.into()),
+            Config::Standard(std) => Config::Standard(std),
         }
     }
 }
 
 impl<O: Clone + Default + Merge, S: Clone + Configuration + From<O>> CommonConfiguration<O, S> {
-    pub fn to_standard(&self) -> Self {
+    pub fn to_standard(self) -> Self {
         Self {
-            config: match &self.config {
-                Config::Optional(opt) => Config::Standard(opt.clone().into()),
-                Config::Standard(std) => Config::Standard(std.clone()),
-            },
-            config_overrides: self.config_overrides.clone(),
-            env_overrides: self.env_overrides.clone(),
-            cli_overrides: self.cli_overrides.clone(),
+            config: self.config.to_standard(),
+            config_overrides: self.config_overrides,
+            env_overrides: self.env_overrides,
+            cli_overrides: self.cli_overrides,
         }
     }
 }
@@ -229,7 +218,17 @@ where
         D: Deserializer<'de>,
     {
         const CONFIG_FIELD: &str = "config";
+        const CONFIG_OVERRIDES_FIELD: &str = "configOverrides";
+        const ENV_OVERRIDES_FIELD: &str = "envOverrides";
+        const CLI_OVERRIDES_FIELD: &str = "cliOverrides";
         const ROLE_GROUP_FIELD: &str = "roleGroups";
+        const FIELDS: &'static [&'static str] = &[
+            CONFIG_FIELD,
+            CONFIG_OVERRIDES_FIELD,
+            ENV_OVERRIDES_FIELD,
+            CLI_OVERRIDES_FIELD,
+            ROLE_GROUP_FIELD,
+        ];
 
         struct RoleVisitor<O, S> {
             o: PhantomData<O>,
@@ -244,14 +243,17 @@ where
             type Value = Role<O, S>;
 
             fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-                todo!()
+                formatter.write_str("A Role<O,S> type from stackable_operator::role_utils !")
             }
 
             fn visit_map<M>(self, mut access: M) -> Result<Role<O, S>, M::Error>
             where
                 M: MapAccess<'de>,
             {
-                let mut config: Option<CommonConfiguration<O, S>> = None;
+                let mut config: Option<Config<O, S>> = None;
+                let mut config_overrides: Option<HashMap<String, HashMap<String, String>>> = None;
+                let mut env_overrides: Option<HashMap<String, String>> = None;
+                let mut cli_overrides: Option<BTreeMap<String, String>> = None;
                 let mut role_groups: Option<HashMap<String, RoleGroup<O, S>>> = None;
 
                 while let Some(key) = access.next_key::<String>()? {
@@ -262,6 +264,30 @@ where
                             }
                             config = Some(access.next_value()?);
                         }
+                        CONFIG_OVERRIDES_FIELD => {
+                            if config_overrides.is_some() {
+                                return Err(<M::Error as Error>::duplicate_field(
+                                    CONFIG_OVERRIDES_FIELD,
+                                ));
+                            }
+                            config_overrides = Some(access.next_value()?);
+                        }
+                        ENV_OVERRIDES_FIELD => {
+                            if env_overrides.is_some() {
+                                return Err(<M::Error as Error>::duplicate_field(
+                                    ENV_OVERRIDES_FIELD,
+                                ));
+                            }
+                            env_overrides = Some(access.next_value()?);
+                        }
+                        CLI_OVERRIDES_FIELD => {
+                            if cli_overrides.is_some() {
+                                return Err(<M::Error as Error>::duplicate_field(
+                                    CLI_OVERRIDES_FIELD,
+                                ));
+                            }
+                            cli_overrides = Some(access.next_value()?);
+                        }
                         ROLE_GROUP_FIELD => {
                             if role_groups.is_some() {
                                 return Err(<M::Error as Error>::duplicate_field(ROLE_GROUP_FIELD));
@@ -269,10 +295,7 @@ where
                             role_groups = Some(access.next_value()?);
                         }
                         name => {
-                            return Err(<M::Error as Error>::unknown_field(
-                                name,
-                                &[CONFIG_FIELD, ROLE_GROUP_FIELD],
-                            ));
+                            return Err(<M::Error as Error>::unknown_field(name, FIELDS));
                         }
                     }
                 }
@@ -281,19 +304,29 @@ where
                     Some(config) => config,
                     None => return Err(<M::Error as Error>::missing_field(CONFIG_FIELD)),
                 };
+                let config_overrides = config_overrides.unwrap_or_default();
+                let env_overrides = env_overrides.unwrap_or_default();
+                let cli_overrides = cli_overrides.unwrap_or_default();
                 let role_groups = match role_groups {
                     Some(role_groups) => role_groups,
                     None => return Err(<M::Error as Error>::missing_field(ROLE_GROUP_FIELD)),
                 };
 
+                let role_common_config = CommonConfiguration {
+                    config,
+                    config_overrides,
+                    env_overrides,
+                    cli_overrides,
+                };
+
                 // merging....
                 let mut merged_groups: HashMap<String, RoleGroup<O, S>> = HashMap::new();
 
-                for (role_group_name, mut role_group) in &role_groups {
+                for (role_group_name, role_group) in &role_groups {
                     let mut merged_config = role_group.config.clone();
-                    println!("role: {:#?}", config);
+                    println!("role: {:#?}", role_common_config);
                     println!("role_group: {:#?}", merged_config);
-                    merged_config.merge(&config);
+                    merged_config.merge(&role_common_config);
                     println!("role_group_merged: {:#?}", merged_config);
                     merged_groups.insert(
                         role_group_name.clone(),
@@ -308,13 +341,12 @@ where
                 }
 
                 Ok(Role {
-                    config: config.to_standard(),
+                    config: role_common_config.to_standard(),
                     role_groups: merged_groups,
                 })
             }
         }
 
-        const FIELDS: &'static [&'static str] = &[CONFIG_FIELD, ROLE_GROUP_FIELD];
         deserializer.deserialize_struct(
             "Role",
             FIELDS,
@@ -427,25 +459,25 @@ mod tests {
 
         fn compute_env(
             &self,
-            resource: &Self::Configurable,
-            role_name: &str,
+            _resource: &Self::Configurable,
+            _role_name: &str,
         ) -> ConfigResult<BTreeMap<String, Option<String>>> {
             todo!()
         }
 
         fn compute_cli(
             &self,
-            resource: &Self::Configurable,
-            role_name: &str,
+            _resource: &Self::Configurable,
+            _role_name: &str,
         ) -> ConfigResult<BTreeMap<String, Option<String>>> {
             todo!()
         }
 
         fn compute_files(
             &self,
-            resource: &Self::Configurable,
-            role_name: &str,
-            file: &str,
+            _resource: &Self::Configurable,
+            _role_name: &str,
+            _file: &str,
         ) -> ConfigResult<BTreeMap<String, Option<String>>> {
             todo!()
         }
@@ -473,8 +505,8 @@ mod tests {
             r#"
 config:
   port: 11111
-  envOverrides: 
-    port: "44444"  
+envOverrides: 
+  port: "44444"  
 roleGroups:
   default:
     config: 
