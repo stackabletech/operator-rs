@@ -132,6 +132,13 @@ impl<O: Clone + Default + Merge, S: Clone + Configuration + From<O>> Config<O, S
             Config::Standard(std) => Config::Standard(std),
         }
     }
+
+    pub fn get(&self) -> S {
+        match self.clone() {
+            Config::Optional(opt) => opt.into(),
+            Config::Standard(std) => std,
+        }
+    }
 }
 
 impl<O: Clone + Default + Merge, S: Clone + Configuration + From<O>> CommonConfiguration<O, S> {
@@ -324,10 +331,7 @@ where
 
                 for (role_group_name, role_group) in &role_groups {
                     let mut merged_config = role_group.config.clone();
-                    println!("role: {:#?}", role_common_config);
-                    println!("role_group: {:#?}", merged_config);
                     merged_config.merge(&role_common_config);
-                    println!("role_group_merged: {:#?}", merged_config);
                     merged_groups.insert(
                         role_group_name.clone(),
                         RoleGroup {
@@ -336,8 +340,6 @@ where
                             config: merged_config.to_standard(),
                         },
                     );
-
-                    println!("merged_role_groups: {:#?}", merged_groups);
                 }
 
                 Ok(Role {
@@ -358,10 +360,10 @@ where
     }
 }
 
-/*
-impl<O: Default, S: Configuration + Default + From<O> + 'static> Role<O, S>
+impl<O: Clone + Default + Merge, S: Clone + Configuration + Default + From<O> + 'static> Role<O, S>
 where
-    Box<(dyn Configuration<Configurable = <S as Configuration>::Configurable> + 'static)>: From<O>,
+    Box<(dyn Configuration<Configurable = <S as Configuration>::Configurable> + 'static)>:
+        Clone + Configuration + Default + From<O>,
 {
     /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
     /// and used in [`Role`] into a Box of a dynamically dispatched
@@ -371,7 +373,7 @@ where
     pub fn erase(self) -> Role<O, Box<dyn Configuration<Configurable = S::Configurable>>> {
         Role {
             config: CommonConfiguration {
-                config: Config::Standard(Box::new(self.config.config)
+                config: Config::Standard(Box::new(self.config.config.get())
                     as Box<dyn Configuration<Configurable = S::Configurable>>),
                 config_overrides: self.config.config_overrides,
                 env_overrides: self.config.env_overrides,
@@ -385,10 +387,8 @@ where
                         name,
                         RoleGroup {
                             config: CommonConfiguration {
-                                config: Config::Standard(
-                                    group.config.config
-                                        as Box<dyn Configuration<Configurable = S::Configurable>>,
-                                ),
+                                config: Config::Standard(Box::new(group.config.config.get())
+                                    as Box<dyn Configuration<Configurable = S::Configurable>>),
                                 config_overrides: group.config.config_overrides,
                                 env_overrides: group.config.env_overrides,
                                 cli_overrides: group.config.cli_overrides,
@@ -402,7 +402,6 @@ where
         }
     }
 }
-*/
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
