@@ -151,13 +151,13 @@ pub fn config_for_role_and_group<'a>(
 /// - `resource`  - Not used directly. It's passed on to the `Configuration::compute_*` calls.
 /// - `roles`     - A map keyed by role names. The value is a tuple of a vector of `PropertyNameKind`
 ///                 like (Cli, Env or Files) and [`crate::role_utils::Role`] with a boxed [`Configuration`].
-pub fn transform_all_roles_to_config<O, S>(
+pub fn transform_all_roles_to_config<M, S>(
     resource: &S::Configurable,
-    roles: HashMap<String, (Vec<PropertyNameKind>, Role<O, S>)>,
+    roles: HashMap<String, (Vec<PropertyNameKind>, Role<M, S>)>,
 ) -> ConfigResult<RoleConfigByPropertyKind>
 where
-    O: Clone + Default + Merge,
-    S: Clone + Default + Configuration + From<O>,
+    M: Clone + Default + Merge,
+    S: Clone + Default + Configuration + From<M>,
 {
     let mut result = HashMap::new();
 
@@ -345,15 +345,15 @@ fn process_validation_result(
 /// - `role_name`      - The name of the role.
 /// - `role`           - The role for which to transform the configuration parameters.
 /// - `property_kinds` - Used as "buckets" to partition the configuration properties by.
-fn transform_role_to_config<O, S>(
+fn transform_role_to_config<M, S>(
     resource: &S::Configurable,
     role_name: &str,
-    role: &Role<O, S>,
+    role: &Role<M, S>,
     property_kinds: &[PropertyNameKind],
 ) -> ConfigResult<RoleGroupConfigByPropertyKind>
 where
-    O: Clone + Default + Merge,
-    S: Clone + Default + Configuration + From<O>,
+    M: Clone + Default + Merge,
+    S: Clone + Default + Configuration + From<M>,
 {
     let mut result = HashMap::new();
 
@@ -391,15 +391,15 @@ where
 /// - `role_name`      - Not used directly but passed on to the `Configuration::compute_*` calls.
 /// - `config`         - The configuration properties to partition.
 /// - `property_kinds` - The "buckets" used to partition the configuration properties.
-fn parse_role_config<O, S>(
+fn parse_role_config<M, S>(
     resource: &<S as Configuration>::Configurable,
     role_name: &str,
-    config: &CommonConfiguration<O, S>,
+    config: &CommonConfiguration<M, S>,
     property_kinds: &[PropertyNameKind],
 ) -> ConfigResult<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
-    O: Clone + Default + Merge,
-    S: Clone + Default + Configuration + From<O>,
+    M: Clone + Default + Merge,
+    S: Clone + Default + Configuration + From<M>,
 {
     let mut result = HashMap::new();
 
@@ -423,14 +423,14 @@ where
     Ok(result)
 }
 
-fn parse_cli_properties<O, S>(
+fn parse_cli_properties<M, S>(
     resource: &<S as Configuration>::Configurable,
     role_name: &str,
-    config: &CommonConfiguration<O, S>,
+    config: &CommonConfiguration<M, S>,
 ) -> ConfigResult<BTreeMap<String, Option<String>>>
 where
-    O: Clone + Default + Merge,
-    S: Clone + Default + Configuration + From<O>,
+    M: Clone + Default + Merge,
+    S: Clone + Default + Configuration + From<M>,
 {
     // Properties from the role have the lowest priority, so they are computed and added first...
     let mut final_properties = config.config.get().compute_cli(resource, role_name)?;
@@ -443,14 +443,14 @@ where
     Ok(final_properties)
 }
 
-fn parse_env_properties<O, S>(
+fn parse_env_properties<M, S>(
     resource: &<S as Configuration>::Configurable,
     role_name: &str,
-    config: &CommonConfiguration<O, S>,
+    config: &CommonConfiguration<M, S>,
 ) -> ConfigResult<BTreeMap<String, Option<String>>>
 where
-    O: Clone + Default + Merge,
-    S: Clone + Default + Configuration + From<O>,
+    M: Clone + Default + Merge,
+    S: Clone + Default + Configuration + From<M>,
 {
     // Properties from the role have the lowest priority, so they are computed and added first...
     let mut final_properties = config.config.get().compute_env(resource, role_name)?;
@@ -463,15 +463,15 @@ where
     Ok(final_properties)
 }
 
-fn parse_file_properties<O, S>(
+fn parse_file_properties<M, S>(
     resource: &<S as Configuration>::Configurable,
     role_name: &str,
-    config: &CommonConfiguration<O, S>,
+    config: &CommonConfiguration<M, S>,
     file: &str,
 ) -> ConfigResult<BTreeMap<String, Option<String>>>
 where
-    O: Clone + Default + Merge,
-    S: Clone + Default + Configuration + From<O>,
+    M: Clone + Default + Merge,
+    S: Clone + Default + Configuration + From<M>,
 {
     // Properties from the role have the lowest priority, so they are computed and added first...
     let mut final_properties = config
@@ -489,7 +489,7 @@ where
 
     Ok(final_properties)
 }
-
+/*
 #[cfg(test)]
 mod tests {
     macro_rules! collection {
@@ -1332,3 +1332,4 @@ mod tests {
         assert!(config_for_role_and_wrong_group.is_err());
     }
 }
+*/
