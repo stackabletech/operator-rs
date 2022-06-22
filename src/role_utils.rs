@@ -95,11 +95,35 @@ use std::{
     fmt::{Debug, Display},
 };
 
+#[derive(Clone, Debug, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Role<O, M>
+where
+    O: Clone + Default + Merge,
+    M: Configuration + Default + From<O>,
+{
+    #[serde(flatten)]
+    pub config: CommonConfiguration<O, M>,
+    pub role_groups: HashMap<String, RoleGroup<O, M>>,
+}
+
+#[derive(Clone, Debug, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoleGroup<O, M>
+where
+    O: Clone + Default + Merge,
+    M: Configuration + Default + From<O>,
+{
+    #[serde(flatten)]
+    pub config: CommonConfiguration<O, M>,
+    pub replicas: Option<u16>,
+    pub selector: Option<LabelSelector>,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommonConfiguration<O: Clone + Default + Merge, M: Configuration + From<O>> {
-    #[serde(default)]
-    #[serde(flatten)]
+    #[serde(flatten, default)]
     pub config: Config<O, M>,
     #[serde(default)]
     pub config_overrides: HashMap<String, HashMap<String, String>>,
@@ -141,7 +165,7 @@ where
     O: Clone + Default + Merge,
     M: Clone + Configuration + From<O>,
 {
-    pub fn to_standard(self) -> Self {
+    pub fn merged(self) -> Self {
         match self {
             Config::Optional(optional) => Config::Merged(optional.into()),
             Config::Merged(merged) => Config::Merged(merged),
@@ -161,9 +185,9 @@ where
     O: Clone + Default + Merge,
     M: Clone + Configuration + From<O>,
 {
-    pub fn to_standard(self) -> Self {
+    pub fn merged(self) -> Self {
         Self {
-            config: self.config.to_standard(),
+            config: self.config.merged(),
             config_overrides: self.config_overrides,
             env_overrides: self.env_overrides,
             cli_overrides: self.cli_overrides,
@@ -223,25 +247,10 @@ where
             }
             (_, _) => {
                 // TODO: panic?
-                panic!("Can not merge non optional config structs!")
+                panic!("Can not merge non-optional config structs!")
             }
         }
     }
-}
-
-#[derive(Clone, Debug, JsonSchema, PartialEq, Serialize)]
-#[serde(
-    rename_all = "camelCase",
-    bound(deserialize = "T: Default + Deserialize<'de>")
-)]
-pub struct Role<O, M>
-where
-    O: Clone + Default + Merge,
-    M: Configuration + Default + From<O>,
-{
-    #[serde(flatten)]
-    pub config: CommonConfiguration<O, M>,
-    pub role_groups: HashMap<String, RoleGroup<O, M>>,
 }
 
 // Custom deserializer to merge role and role_group configs as well as the
@@ -249,7 +258,7 @@ where
 impl<'de, O, M> Deserialize<'de> for Role<O, M>
 where
     O: Clone + Debug + Default + Deserialize<'de> + Merge,
-    M: Clone + Debug + Configuration + Default + Deserialize<'de> + From<O>,
+    M: Clone + Configuration + Debug + Default + Deserialize<'de> + From<O>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -338,13 +347,6 @@ where
                     }
                 }
 
-                // TODO: Do we want to enforce the config field?
-                // let config = match config {
-                //     Some(config) => config,
-                //     None => return Err(<V::Error as Error>::missing_field(CONFIG_FIELD)),
-                // };
-                let config = config.unwrap_or_default();
-
                 let config_overrides = config_overrides.unwrap_or_default();
                 let env_overrides = env_overrides.unwrap_or_default();
                 let cli_overrides = cli_overrides.unwrap_or_default();
@@ -354,7 +356,7 @@ where
                 };
 
                 let role_common_config = CommonConfiguration {
-                    config: Config::Optional(config),
+                    config: Config::Optional(config.unwrap_or_default()),
                     config_overrides,
                     env_overrides,
                     cli_overrides,
@@ -364,20 +366,20 @@ where
                 let mut merged_groups: HashMap<String, RoleGroup<O, M>> = HashMap::new();
 
                 for (role_group_name, role_group) in &role_groups {
-                    let mut merged_config = role_group.config.clone();
-                    merged_config.merge(&role_common_config);
+                    let mut role_config = role_group.config.clone();
+                    role_config.merge(&role_common_config);
                     merged_groups.insert(
                         role_group_name.clone(),
                         RoleGroup {
                             replicas: role_group.replicas,
                             selector: role_group.selector.clone(),
-                            config: merged_config.to_standard(),
+                            config: role_config.merged(),
                         },
                     );
                 }
 
                 Ok(Role {
-                    config: role_common_config.to_standard(),
+                    config: role_common_config.merged(),
                     role_groups: merged_groups,
                 })
             }
@@ -439,16 +441,131 @@ where
     }
 }
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RoleGroup<
-    O: Clone + Default + Merge + Sized,
-    M: Default + Sized + Configuration + From<O>,
-> {
-    #[serde(flatten)]
-    pub config: CommonConfiguration<O, M>,
-    pub replicas: Option<u16>,
-    pub selector: Option<LabelSelector>,
+// Custom deserializer for role_group
+impl<'de, O, M> Deserialize<'de> for RoleGroup<O, M>
+where
+    O: Clone + Debug + Default + Deserialize<'de> + Merge,
+    M: Clone + Configuration + Debug + Default + Deserialize<'de> + From<O>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        const CONFIG_FIELD: &str = "config";
+        const CONFIG_OVERRIDES_FIELD: &str = "configOverrides";
+        const ENV_OVERRIDES_FIELD: &str = "envOverrides";
+        const CLI_OVERRIDES_FIELD: &str = "cliOverrides";
+        const REPLICAS_FIELD: &str = "replicas";
+        const SELECTOR_FIELD: &str = "selector";
+
+        const FIELDS: &[&str] = &[
+            CONFIG_FIELD,
+            CONFIG_OVERRIDES_FIELD,
+            ENV_OVERRIDES_FIELD,
+            CLI_OVERRIDES_FIELD,
+            REPLICAS_FIELD,
+            SELECTOR_FIELD,
+        ];
+
+        struct RoleGroupVisitor<O, M> {
+            c: PhantomData<O>,
+            m: PhantomData<M>,
+        }
+
+        impl<'de, O, M> Visitor<'de> for RoleGroupVisitor<O, M>
+        where
+            O: Clone + Debug + Default + Deserialize<'de> + Merge,
+            M: Clone + Configuration + Debug + Default + Deserialize<'de> + From<O>,
+        {
+            type Value = RoleGroup<O, M>;
+
+            fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+                formatter.write_str("A RoleGroup<O,S> type from stackable_operator::role_utils !")
+            }
+
+            fn visit_map<V>(self, mut access: V) -> Result<RoleGroup<O, M>, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                let mut config: Option<O> = None;
+                let mut config_overrides: Option<HashMap<String, HashMap<String, String>>> = None;
+                let mut env_overrides: Option<HashMap<String, String>> = None;
+                let mut cli_overrides: Option<BTreeMap<String, String>> = None;
+                let mut replicas: Option<u16> = None;
+                let mut selector: Option<LabelSelector> = None;
+
+                while let Some(key) = access.next_key::<String>()? {
+                    match key.as_ref() {
+                        CONFIG_FIELD => {
+                            if config.is_some() {
+                                return Err(<V::Error as Error>::duplicate_field(CONFIG_FIELD));
+                            }
+                            config = Some(access.next_value()?);
+                        }
+                        CONFIG_OVERRIDES_FIELD => {
+                            if config_overrides.is_some() {
+                                return Err(<V::Error as Error>::duplicate_field(
+                                    CONFIG_OVERRIDES_FIELD,
+                                ));
+                            }
+                            config_overrides = Some(access.next_value()?);
+                        }
+                        ENV_OVERRIDES_FIELD => {
+                            if env_overrides.is_some() {
+                                return Err(<V::Error as Error>::duplicate_field(
+                                    ENV_OVERRIDES_FIELD,
+                                ));
+                            }
+                            env_overrides = Some(access.next_value()?);
+                        }
+                        CLI_OVERRIDES_FIELD => {
+                            if cli_overrides.is_some() {
+                                return Err(<V::Error as Error>::duplicate_field(
+                                    CLI_OVERRIDES_FIELD,
+                                ));
+                            }
+                            cli_overrides = Some(access.next_value()?);
+                        }
+                        REPLICAS_FIELD => {
+                            if replicas.is_some() {
+                                return Err(<V::Error as Error>::duplicate_field(REPLICAS_FIELD));
+                            }
+                            replicas = Some(access.next_value()?);
+                        }
+                        SELECTOR_FIELD => {
+                            if selector.is_some() {
+                                return Err(<V::Error as Error>::duplicate_field(SELECTOR_FIELD));
+                            }
+                            selector = Some(access.next_value()?);
+                        }
+                        name => {
+                            return Err(<V::Error as Error>::unknown_field(name, FIELDS));
+                        }
+                    }
+                }
+
+                Ok(RoleGroup {
+                    config: CommonConfiguration {
+                        config: Config::Optional(config.unwrap_or_default()),
+                        config_overrides: config_overrides.unwrap_or_default(),
+                        env_overrides: env_overrides.unwrap_or_default(),
+                        cli_overrides: cli_overrides.unwrap_or_default(),
+                    },
+                    replicas,
+                    selector,
+                })
+            }
+        }
+
+        deserializer.deserialize_struct(
+            "RoleGroup",
+            FIELDS,
+            RoleGroupVisitor {
+                c: PhantomData::default(),
+                m: PhantomData::default(),
+            },
+        )
+    }
 }
 
 /// A reference to a named role group of a given cluster object
@@ -526,6 +643,7 @@ mod tests {
     pub struct OptionalFooConfig {
         value: Option<String>,
     }
+
     // The From<OptionalFooConfig> is derived by the Optional macro
     impl From<OptionalFooConfig> for FooConfig {
         fn from(opt: OptionalFooConfig) -> Self {
@@ -546,7 +664,6 @@ mod tests {
               value1: "role_env_override_value1"   
             roleGroups:
               default:
-                config: {}
                 envOverrides: 
                   value: "group_env_override_value"
                 "#,

@@ -489,7 +489,7 @@ where
 
     Ok(final_properties)
 }
-/*
+
 #[cfg(test)]
 mod tests {
     macro_rules! collection {
@@ -504,7 +504,7 @@ mod tests {
     }
 
     use super::*;
-    use crate::role_utils::{Role, RoleGroup};
+    use crate::role_utils::{Config, Role, RoleGroup};
     use rstest::*;
     use std::collections::HashMap;
     use std::str::FromStr;
@@ -515,26 +515,49 @@ mod tests {
     const ROLE_ENV: &str = "role_env";
     const ROLE_CLI: &str = "role_cli";
 
-    const GROUP_CONFIG: &str = "group_config";
-    const GROUP_ENV: &str = "group_env";
-    const GROUP_CLI: &str = "group_cli";
-
     const ROLE_CONF_OVERRIDE: &str = "role_conf_override";
     const ROLE_ENV_OVERRIDE: &str = "role_env_override";
     const ROLE_CLI_OVERRIDE: &str = "role_cli_override";
+
+    const GROUP_CONFIG: &str = "group_config";
+    const GROUP_ENV: &str = "group_env";
+    const GROUP_CLI: &str = "group_cli";
 
     const GROUP_CONF_OVERRIDE: &str = "group_conf_override";
     const GROUP_ENV_OVERRIDE: &str = "group_env_override";
     const GROUP_CLI_OVERRIDE: &str = "group_cli_override";
 
+    const CONF_DEFAULT: &str = "conf_default";
+    const ENV_DEFAULT: &str = "env_default";
+    const CLI_DEFAULT: &str = "cli_default";
+
     #[derive(Clone, Default, Debug, PartialEq)]
-    struct TestConfig {
+    struct FooConfig {
+        pub conf: String,
+        pub env: String,
+        pub cli: String,
+    }
+
+    #[derive(Clone, Default, Debug, Merge, PartialEq)]
+    #[merge(path_overrides(merge = "crate::config::merge"))]
+    struct OptionalFooConfig {
         pub conf: Option<String>,
         pub env: Option<String>,
         pub cli: Option<String>,
     }
 
-    impl Configuration for TestConfig {
+    // The From<OptionalFooConfig> is derived by the Optional macro
+    impl From<OptionalFooConfig> for FooConfig {
+        fn from(opt: OptionalFooConfig) -> Self {
+            Self {
+                conf: opt.conf.unwrap_or(CONF_DEFAULT.to_string()),
+                env: opt.env.unwrap_or(ENV_DEFAULT.to_string()),
+                cli: opt.cli.unwrap_or(CLI_DEFAULT.to_string()),
+            }
+        }
+    }
+
+    impl Configuration for FooConfig {
         type Configurable = String;
 
         fn compute_env(
@@ -543,9 +566,7 @@ mod tests {
             _role_name: &str,
         ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
             let mut result = BTreeMap::new();
-            if let Some(env) = &self.env {
-                result.insert("env".to_string(), Some(env.to_string()));
-            }
+            result.insert("env".to_string(), Some(self.env.to_string()));
             Ok(result)
         }
 
@@ -555,9 +576,7 @@ mod tests {
             _role_name: &str,
         ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
             let mut result = BTreeMap::new();
-            if let Some(cli) = &self.cli {
-                result.insert("cli".to_string(), Some(cli.to_string()));
-            }
+            result.insert("cli".to_string(), Some(self.cli.to_string()));
             Ok(result)
         }
 
@@ -568,27 +587,29 @@ mod tests {
             _file: &str,
         ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
             let mut result = BTreeMap::new();
-            if let Some(conf) = &self.conf {
-                result.insert("file".to_string(), Some(conf.to_string()));
-            }
+            result.insert("conf".to_string(), Some(self.conf.to_string()));
             Ok(result)
         }
     }
 
-    fn build_test_config(conf: &str, env: &str, cli: &str) -> Option<Box<TestConfig>> {
-        Some(Box::new(TestConfig {
-            conf: Some(conf.to_string()),
-            env: Some(env.to_string()),
-            cli: Some(cli.to_string()),
+    fn build_test_config(
+        conf: &str,
+        env: &str,
+        cli: &str,
+    ) -> Option<Config<OptionalFooConfig, FooConfig>> {
+        Some(Config::Merged(FooConfig {
+            conf: conf.to_string(),
+            env: env.to_string(),
+            cli: cli.to_string(),
         }))
     }
 
     fn build_common_config(
-        test_config: Option<Box<TestConfig>>,
+        test_config: Option<Config<OptionalFooConfig, FooConfig>>,
         config_overrides: Option<HashMap<String, HashMap<String, String>>>,
         env_overrides: Option<HashMap<String, String>>,
         cli_overrides: Option<BTreeMap<String, String>>,
-    ) -> CommonConfiguration<Box<TestConfig>> {
+    ) -> CommonConfiguration<OptionalFooConfig, FooConfig> {
         CommonConfiguration {
             config: test_config.unwrap_or_default(),
             config_overrides: config_overrides.unwrap_or_default(),
@@ -619,7 +640,7 @@ mod tests {
         group_config: bool,
         role_overrides: bool,
         group_overrides: bool,
-    ) -> Role<Box<TestConfig>> {
+    ) -> Role<OptionalFooConfig, FooConfig> {
         let role_group = ROLE_GROUP.to_string();
         let file_name = "foo.conf";
 
@@ -906,7 +927,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => Some(ROLE_ENV.to_string()),
+                    "env".to_string() => Some(ENV_DEFAULT.to_string()),
                     ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
                     GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
@@ -917,7 +938,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => Some(ROLE_ENV.to_string()),
+                    "env".to_string() => Some(ENV_DEFAULT.to_string()),
                     ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
                 }
             }
@@ -927,7 +948,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => Some(ROLE_ENV.to_string()),
+                    "env".to_string() => Some(ENV_DEFAULT.to_string()),
                     GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
@@ -937,7 +958,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
-                    "env".to_string() => Some(ROLE_ENV.to_string()),
+                    "env".to_string() => Some(ENV_DEFAULT.to_string()),
                 }
             }
         }
@@ -986,6 +1007,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
+                    "env".to_string() => Some(ENV_DEFAULT.to_string()),
                     ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
                     GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
@@ -996,6 +1018,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
+                    "env".to_string() => Some(ENV_DEFAULT.to_string()),
                     ROLE_ENV_OVERRIDE.to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
                 }
             }
@@ -1005,6 +1028,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
+                    "env".to_string() => Some(ENV_DEFAULT.to_string()),
                     GROUP_ENV_OVERRIDE.to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
                 }
             }
@@ -1014,6 +1038,7 @@ mod tests {
         collection ! {
             ROLE_GROUP.to_string() => collection ! {
                 PropertyNameKind::Env => collection ! {
+                    "env".to_string() => Some(ENV_DEFAULT.to_string()),
                 }
             }
         }
@@ -1046,7 +1071,7 @@ mod tests {
             config: build_common_config(
                 build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
                 // should override
-                build_config_override(file_name, "file"),
+                build_config_override(file_name, "conf"),
                 None,
                 // should override
                 build_cli_override("cli"),
@@ -1056,7 +1081,7 @@ mod tests {
                 config: build_common_config(
                     build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
                     // should override
-                    build_config_override(file_name, "file"),
+                    build_config_override(file_name, "conf"),
                     build_env_override(GROUP_ENV_OVERRIDE),
                     None),
                     selector: None,
@@ -1068,7 +1093,7 @@ mod tests {
             collection!{
                 PropertyNameKind::File(file_name.to_string()) =>
                     collection!(
-                        "file".to_string() => Some("file".to_string())
+                        "conf".to_string() => Some("conf".to_string())
                     ),
                 PropertyNameKind::Env =>
                     collection!(
@@ -1102,7 +1127,7 @@ mod tests {
         let role_group_2 = "role_group_2";
         let file_name = "foo.bar";
 
-        let roles: HashMap<String, (Vec<PropertyNameKind>, Role<Box<TestConfig>>)> = collection! {
+        let roles: HashMap<String, (Vec<PropertyNameKind>, Role<OptionalFooConfig, FooConfig>)> = collection! {
             role_1.to_string() => (vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env], Role {
             config: build_common_config(
                 build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
@@ -1158,7 +1183,7 @@ mod tests {
                     "env".to_string() => Some(GROUP_ENV.to_string())
                 },
                 PropertyNameKind::File(file_name.to_string()) => collection! {
-                    "file".to_string() => Some(GROUP_CONFIG.to_string())
+                    "conf".to_string() => Some(GROUP_CONFIG.to_string())
                 }
             },
             role_group_2.to_string() => collection! {
@@ -1166,7 +1191,7 @@ mod tests {
                     "env".to_string() => Some(GROUP_ENV.to_string())
                 },
                 PropertyNameKind::File(file_name.to_string()) => collection! {
-                    "file".to_string() => Some(GROUP_CONFIG.to_string())
+                    "conf".to_string() => Some(GROUP_CONFIG.to_string())
                 }
             }
         },
@@ -1196,7 +1221,7 @@ mod tests {
         let pc_bad_version = "pc_bad_version";
         let pc_bad_version_value = "pc_bad_version_value";
 
-        let roles: HashMap<String, (Vec<PropertyNameKind>, Role<Box<TestConfig>>)> = collection! {
+        let roles: HashMap<String, (Vec<PropertyNameKind>, Role<OptionalFooConfig, FooConfig>)> = collection! {
             role_1.to_string() => (vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env], Role {
                 config: CommonConfiguration::default(),
                 role_groups: collection! {
@@ -1294,7 +1319,7 @@ mod tests {
             role_1.to_string() => collection! {
               role_group_1.to_string() => collection! {
                 PropertyNameKind::File(file_name.to_string()) => collection! {
-                      "file".to_string() => GROUP_CONFIG.to_string(),
+                      "conf".to_string() => GROUP_CONFIG.to_string(),
                       pc_name.to_string() => pc_value.to_string()
                 },
                 PropertyNameKind::Env => collection! {
@@ -1305,7 +1330,7 @@ mod tests {
             role_2.to_string() => collection! {
               role_group_2.to_string() => collection! {
                 PropertyNameKind::File(file_name.to_string()) => collection! {
-                      "file".to_string() => GROUP_CONFIG.to_string(),
+                      "conf".to_string() => GROUP_CONFIG.to_string(),
                       pc_name.to_string() => pc_value.to_string()
                 },
               }
@@ -1332,4 +1357,3 @@ mod tests {
         assert!(config_for_role_and_wrong_group.is_err());
     }
 }
-*/
