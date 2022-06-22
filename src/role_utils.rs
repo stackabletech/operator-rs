@@ -244,6 +244,8 @@ where
     pub role_groups: HashMap<String, RoleGroup<O, M>>,
 }
 
+// Custom deserializer to merge role and role_group configs as well as the
+// config|env|cli_overrides fields.
 impl<'de, O, M> Deserialize<'de> for Role<O, M>
 where
     O: Clone + Debug + Default + Deserialize<'de> + Merge,
@@ -258,7 +260,7 @@ where
         const ENV_OVERRIDES_FIELD: &str = "envOverrides";
         const CLI_OVERRIDES_FIELD: &str = "cliOverrides";
         const ROLE_GROUP_FIELD: &str = "roleGroups";
-        const FIELDS: &'static [&'static str] = &[
+        const FIELDS: &[&str] = &[
             CONFIG_FIELD,
             CONFIG_OVERRIDES_FIELD,
             ENV_OVERRIDES_FIELD,
@@ -286,7 +288,7 @@ where
             where
                 V: MapAccess<'de>,
             {
-                let mut config: Option<Config<O, M>> = None;
+                let mut config: Option<O> = None;
                 let mut config_overrides: Option<HashMap<String, HashMap<String, String>>> = None;
                 let mut env_overrides: Option<HashMap<String, String>> = None;
                 let mut cli_overrides: Option<BTreeMap<String, String>> = None;
@@ -336,10 +338,13 @@ where
                     }
                 }
 
-                let config = match config {
-                    Some(config) => config,
-                    None => return Err(<V::Error as Error>::missing_field(CONFIG_FIELD)),
-                };
+                // TODO: Do we want to enforce the config field?
+                // let config = match config {
+                //     Some(config) => config,
+                //     None => return Err(<V::Error as Error>::missing_field(CONFIG_FIELD)),
+                // };
+                let config = config.unwrap_or_default();
+
                 let config_overrides = config_overrides.unwrap_or_default();
                 let env_overrides = env_overrides.unwrap_or_default();
                 let cli_overrides = cli_overrides.unwrap_or_default();
@@ -349,7 +354,7 @@ where
                 };
 
                 let role_common_config = CommonConfiguration {
-                    config,
+                    config: Config::Optional(config),
                     config_overrides,
                     env_overrides,
                     cli_overrides,
@@ -478,13 +483,7 @@ mod tests {
     use super::*;
     use crate::product_config_utils::ConfigResult;
 
-    #[derive(Clone, Deserialize, Default, Debug, JsonSchema, PartialEq, Serialize)]
-    #[serde(rename_all = "camelCase")]
-    pub struct Test {
-        port: u16,
-    }
-
-    impl Configuration for Test {
+    impl Configuration for FooConfig {
         type Configurable = ();
 
         fn compute_env(
@@ -513,41 +512,85 @@ mod tests {
         }
     }
 
+    // Our FooConfig with no optional parameters
+    #[derive(Clone, Deserialize, Default, Debug, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct FooConfig {
+        value: String,
+    }
+
+    // The OptionalFooConfig (normally created by the Optional derive)
     #[derive(Clone, Deserialize, Default, Debug, Merge, JsonSchema, PartialEq, Serialize)]
     #[merge(path_overrides(merge = "crate::config::merge"))]
     #[serde(rename_all = "camelCase")]
-    pub struct OptTest {
-        port: Option<u16>,
+    pub struct OptionalFooConfig {
+        value: Option<String>,
     }
-
-    const DEFAULT_PORT: u16 = 33333;
-    impl From<OptTest> for Test {
-        fn from(opt: OptTest) -> Self {
+    // The From<OptionalFooConfig> is derived by the Optional macro
+    impl From<OptionalFooConfig> for FooConfig {
+        fn from(opt: OptionalFooConfig) -> Self {
             Self {
-                port: opt.port.unwrap_or(DEFAULT_PORT),
+                value: opt.value.unwrap_or("default_value".to_string()),
             }
         }
     }
 
     #[test]
-    fn test() {
-        let role: Role<OptTest, Test> = serde_yaml::from_str(
+    fn test_role_value_merged_with_group_value() {
+        let role: Role<OptionalFooConfig, FooConfig> = serde_yaml::from_str(
             r#"
-config:
-  config:
-    port: 11111
-envOverrides: 
-  port: "44444"
-  porta: "44488"   
-roleGroups:
-  default:
-    config: {}
-    envOverrides: 
-      port: "55555" 
-    "#,
+            config:
+              value: role_value
+            envOverrides: 
+              value: "role_env_override_value"
+              value1: "role_env_override_value1"   
+            roleGroups:
+              default:
+                config: {}
+                envOverrides: 
+                  value: "group_env_override_value"
+                "#,
         )
         .unwrap();
 
         eprintln!("{:#?}", role);
+
+        assert_eq!(role.config.config.get().value, "role_value".to_string());
+        let role_group = role.role_groups.get("default").unwrap();
+        // expect the role_group value to be merged with the role value
+        assert_eq!(
+            role_group.config.config.get().value,
+            "role_value".to_string()
+        );
+        assert_eq!(
+            role_group.config.env_overrides.get("value"),
+            Some(&"group_env_override_value".to_string())
+        );
+        assert_eq!(
+            role_group.config.env_overrides.get("value1").as_deref(),
+            Some(&"role_env_override_value1".to_string())
+        );
+    }
+
+    #[test]
+    fn test_role_and_group_default_value() {
+        let role: Role<OptionalFooConfig, FooConfig> = serde_yaml::from_str(
+            r#"
+            roleGroups:
+              default:
+                config: {}
+                "#,
+        )
+        .unwrap();
+
+        eprintln!("{:#?}", role);
+
+        assert_eq!(role.config.config.get().value, "default_value".to_string());
+        let role_group = role.role_groups.get("default").unwrap();
+        // expect the role_group value to be merged with the role value
+        assert_eq!(
+            role_group.config.config.get().value,
+            "default_value".to_string()
+        );
     }
 }
