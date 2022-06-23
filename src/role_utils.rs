@@ -600,6 +600,8 @@ mod tests {
     use super::*;
     use crate::product_config_utils::ConfigResult;
 
+    const DEFAULT_VALUE: &str = "default_value";
+
     impl Configuration for FooConfig {
         type Configurable = ();
 
@@ -648,7 +650,7 @@ mod tests {
     impl From<OptionalFooConfig> for FooConfig {
         fn from(opt: OptionalFooConfig) -> Self {
             Self {
-                value: opt.value.unwrap_or("default_value".to_string()),
+                value: opt.value.unwrap_or(DEFAULT_VALUE.to_string()),
             }
         }
     }
@@ -702,7 +704,7 @@ mod tests {
 
         eprintln!("{:#?}", role);
 
-        assert_eq!(role.config.config.get().value, "default_value".to_string());
+        assert_eq!(role.config.config.get().value, DEFAULT_VALUE.to_string());
         let role_group = role.role_groups.get("default").unwrap();
         // expect the role_group value to be merged with the role value
         assert_eq!(
