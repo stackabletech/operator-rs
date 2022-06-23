@@ -99,14 +99,9 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
          }
     };
 
-    let impl_trait = quote! {
-        impl Optional for #derived_struct_name {}
-    };
-
     let tokens = quote! {
         #struct_optional
         #impl_optional
-        #impl_trait
     };
 
     tokens.into()
