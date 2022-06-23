@@ -99,6 +99,8 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///    }
 /// }
 /// ```
+/// The OptionalFooConfig and FooConfig should be used in the role_utils::Role<O,M> struct like
+/// role_utils::Role<OptionalFooConfig, FooConfig> ...
 #[proc_macro_derive(Optional, attributes(optional))]
 pub fn derive_optional(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     optional::derive(input)
