@@ -550,9 +550,9 @@ mod tests {
     impl From<OptionalFooConfig> for FooConfig {
         fn from(opt: OptionalFooConfig) -> Self {
             Self {
-                conf: opt.conf.unwrap_or(CONF_DEFAULT.to_string()),
-                env: opt.env.unwrap_or(ENV_DEFAULT.to_string()),
-                cli: opt.cli.unwrap_or(CLI_DEFAULT.to_string()),
+                conf: opt.conf.unwrap_or_else(|| CONF_DEFAULT.to_string()),
+                env: opt.env.unwrap_or_else(|| ENV_DEFAULT.to_string()),
+                cli: opt.cli.unwrap_or_else(|| CLI_DEFAULT.to_string()),
             }
         }
     }

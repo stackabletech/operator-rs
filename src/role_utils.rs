@@ -95,6 +95,60 @@ use std::{
     fmt::{Debug, Display},
 };
 
+/// The [`Role`] is parameterized with two configuration structs that are passed to the
+/// [`CommonConfiguration`] and [`RoleGroup`].
+///
+/// The first parameter should be derived via [`crate::config::optional::Optional`]
+/// from the second parameter.
+///
+/// # Example
+///
+/// ```no_compile
+/// # use stackable_operator::config::optional::Optional;
+/// use stackable_operator::role_utils::Role;
+/// const DEFAULT_PORT: u16 = 11111;
+/// #[derive(Optional)]
+/// struct FooConfig {
+///     #[optional(default_value = "DEFAULT_PORT")]
+///     port: u16,
+/// }
+/// // This will roughly create an `OptionalFooConfig` with all fields optional and the Merge derive.
+/// #[derive(Merge)]
+/// struct OptionalFooConfig {
+///     port: Option<u16>,
+/// }
+/// // Additionally a From implementation will be derived:
+/// impl From<OptionalFooConfig> for FooConfig {
+///     fn from(optional: OptionalFooConfig) -> Self {
+///        Self {
+///            port: c.port.unwrap_or(DEFAULT_PORT),
+///        }
+///    }
+/// }
+/// // This should then be used in the FooClusterSpec like this:
+/// #[derive(Clone, CustomResource, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+/// #[kube(
+///     group = "foo.stackable.tech",
+///     version = "v1alpha1",
+///     kind = "FooCluster",
+///     plural = "fooclusters",
+///     shortname = "foo",
+///     namespaced,
+///     crates(
+///         kube_core = "stackable_operator::kube::core",
+///         k8s_openapi = "stackable_operator::k8s_openapi",
+///         schemars = "stackable_operator::schemars"
+///     )
+/// )]
+/// #[serde(rename_all = "camelCase")]
+/// pub struct FooClusterSpec {
+///    #[serde(default, skip_serializing_if = "Option::is_none")]
+///     pub foo_server: Option<Role<OptionalFooConfig, FooConfig>>,
+/// }
+/// ```
+/// During deserialization, the [`CommonConfiguration`] of the [`Role`] and the [`RoleGroup`] as
+/// well as all (config|env|cli)_overrides are merged.
+///
 #[derive(Clone, Debug, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Role<O, M>
@@ -107,6 +161,9 @@ where
     pub role_groups: HashMap<String, RoleGroup<O, M>>,
 }
 
+/// The [`RoleGroup`] is parameterized the same way as [`Role`], offers a [`CommonConfiguration`]
+/// as well es `replicas` to specifiy the amount of desired pods and `selector` to speficy where
+/// pods might be scheduled.
 #[derive(Clone, Debug, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RoleGroup<O, M>
@@ -120,6 +177,8 @@ where
     pub selector: Option<LabelSelector>,
 }
 
+/// The [`CommonConfiguration`] is used in the [`Role`] and the [`RoleGroup`] to configure
+/// product specific properties as well as overrides for files, env variables and cli arguments.
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommonConfiguration<O: Clone + Default + Merge, M: Configuration + From<O>> {
@@ -134,6 +193,9 @@ pub struct CommonConfiguration<O: Clone + Default + Merge, M: Configuration + Fr
     pub cli_overrides: BTreeMap<String, String>,
 }
 
+/// The [`Config`] enum is required to expose the mergeable config struct derived via
+/// [`crate::config::optional::Optional`] in the CRD. During deserialization, the optional
+/// structs are merged and operators get access to the non-optional and merged (M) struct.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 // We would like to have untagged but that is currently not supported, see:
 // - https://github.com/GREsau/schemars/issues/84
@@ -650,7 +712,7 @@ mod tests {
     impl From<OptionalFooConfig> for FooConfig {
         fn from(opt: OptionalFooConfig) -> Self {
             Self {
-                value: opt.value.unwrap_or(DEFAULT_VALUE.to_string()),
+                value: opt.value.unwrap_or_else(|| DEFAULT_VALUE.to_string()),
             }
         }
     }
@@ -686,7 +748,7 @@ mod tests {
             Some(&"group_env_override_value".to_string())
         );
         assert_eq!(
-            role_group.config.env_overrides.get("value1").as_deref(),
+            role_group.config.env_overrides.get("value1"),
             Some(&"role_env_override_value1".to_string())
         );
     }
@@ -709,7 +771,7 @@ mod tests {
         // expect the role_group value to be merged with the role value
         assert_eq!(
             role_group.config.config.get().value,
-            "default_value".to_string()
+            DEFAULT_VALUE.to_string()
         );
     }
 }
