@@ -1,3 +1,5 @@
+//! A structure containing the cluster resources.
+
 use std::{
     collections::HashSet,
     fmt::{self, Debug, Display, Formatter},
@@ -19,6 +21,88 @@ use crate::{
 use serde::{de::DeserializeOwned, Serialize};
 use tracing::info;
 
+/// A structure containing the cluster resources.
+///
+/// The cluster resources can be updated which means that changed resources are patched and
+/// orphaned ones are deleted. A cluster resource becomes orphaned if a role or role group is
+/// removed from a cluster specification.
+///
+/// # Examples
+///
+/// ```
+/// use k8s_openapi::api::apps::v1::StatefulSet;
+/// use k8s_openapi::api::core::v1::{ConfigMap, Service};
+/// use kube::CustomResource;
+/// use kube::core::{Resource, CustomResourceExt};
+/// use kube::runtime::controller::Action;
+/// use schemars::JsonSchema;
+/// use serde::{Deserialize, Serialize};
+/// use stackable_operator::client::Client;
+/// use stackable_operator::cluster_resources::ClusterResources;
+/// use stackable_operator::product_config_utils::ValidatedRoleConfigByPropertyKind;
+/// use stackable_operator::role_utils::Role;
+/// use std::sync::Arc;
+///
+/// const APP_NAME: &str = "app";
+/// const FIELD_MANAGER_SCOPE: &str = "appcluster";
+///
+/// #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, Serialize)]
+/// #[kube(
+///     group = "app.stackable.tech",
+///     version = "v1",
+///     kind = "AppCluster",
+///     plural = "AppClusters",
+///     namespaced,
+/// )]
+/// struct AppClusterSpec {}
+///
+/// enum Error {
+///     UpdateClusterResources {
+///         source: stackable_operator::error::Error,
+///     },
+/// };
+///
+/// async fn reconcile(app: Arc<AppCluster>, client: Arc<Client>) -> Result<Action, Error> {
+///     let validated_config = ValidatedRoleConfigByPropertyKind::default();
+///
+///     let mut cluster_services = Vec::new();
+///     let mut cluster_configmaps = Vec::new();
+///     let mut cluster_statefulsets = Vec::new();
+///
+///     let role_service = Service::default();
+///     cluster_services.push(role_service);
+///
+///     let discovery_configmap = ConfigMap::default();
+///     cluster_configmaps.push(discovery_configmap);
+///
+///     for (role_name, group_config) in validated_config.iter() {
+///         for (rolegroup_name, rolegroup_config) in group_config.iter() {
+///             let rolegroup_service = Service::default();
+///             cluster_services.push(rolegroup_service);
+///
+///             let rolegroup_configmap = ConfigMap::default();
+///             cluster_configmaps.push(rolegroup_configmap);
+///
+///             let rolegroup_statefulset = StatefulSet::default();
+///             cluster_statefulsets.push(rolegroup_statefulset);
+///         }
+///     }
+///
+///     ClusterResources::new(
+///         APP_NAME,
+///         FIELD_MANAGER_SCOPE,
+///         &app.object_ref(&()),
+///         &cluster_services,
+///         &cluster_configmaps,
+///         &cluster_statefulsets,
+///     )
+///     .update(&client)
+///     .await
+///     .map_err(|source| Error::UpdateClusterResources { source })?;
+///
+///     Ok(Action::await_change())
+/// }
+/// ```
 pub struct ClusterResources {
     namespace: String,
     app_instance: String,
@@ -31,6 +115,22 @@ pub struct ClusterResources {
 }
 
 impl ClusterResources {
+    /// Constructs new `ClusterResources`.
+    ///
+    /// # Arguments
+    ///
+    /// * `app_name` - The lower-case application name used in the resource labels, e.g.
+    ///   "zookeeper"
+    /// * `field_manager_scope` - The field manager scope used for patching the resources, e.g.
+    ///   "zookeepercluster"
+    /// * `cluster` - A reference to the cluster containing the name and namespace of the cluster
+    /// * `services` - All services the cluster consists of; Deployed services which are not
+    ///    included in this list, are considered orphaned and deleted when `update` is called.
+    /// * `configmaps` - All config maps the cluster consists of; Deployed config maps which are
+    ///    not included in this list, are considered orphaned and deleted when `update` is called.
+    /// * `statefulsets` - All stateful sets the cluster consists of; Deployed stateful sets which
+    ///    are not included in this list, are considered orphaned and deleted when `update` is
+    ///    called.
     pub fn new(
         app_name: &str,
         field_manager_scope: &str,
@@ -59,6 +159,20 @@ impl ClusterResources {
         }
     }
 
+    /// Updates the cluster according to the resources given in this structure.
+    ///
+    /// The given resources are patched and all orphaned resources, i.e. resources which are
+    /// labelled as if they belong to this cluster instance but are not contained in the given
+    /// resources, are deleted.
+    ///
+    /// The following resource labels are compared:
+    /// * `app.kubernetes.io/instance`
+    /// * `app.kubernetes.io/managed-by`
+    /// * `app.kubernetes.io/name`
+    ///
+    /// # Arguments
+    ///
+    /// * `client` - The client which is used to access Kubernetes
     pub async fn update(&self, client: &Client) -> OperatorResult<()> {
         self.patch_resources(client, &self.configmaps).await?;
         self.patch_resources(client, &self.statefulsets).await?;
@@ -74,6 +188,11 @@ impl ClusterResources {
         Ok(())
     }
 
+    /// Patches the given resources.
+    ///
+    /// # Arguments
+    ///
+    /// * `client` - The client which is used to access Kubernetes
     async fn patch_resources<T>(&self, client: &Client, resources: &[T]) -> OperatorResult<()>
     where
         T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Serialize,
@@ -87,6 +206,13 @@ impl ClusterResources {
         Ok(())
     }
 
+    /// Deletes all deployed resources which are labelled as if they belong to this cluster
+    /// instance but are not contained in the given list.
+    ///
+    /// # Arguments
+    ///
+    /// * `client` - The client which is used to access Kubernetes
+    /// * `desired_resources` - The resources to keep
     async fn delete_orphaned_resources<T>(
         &self,
         client: &Client,
@@ -95,13 +221,13 @@ impl ClusterResources {
     where
         T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
     {
-        let actual_cluster_resources = self.list_actual_cluster_resources::<T>(client).await?;
+        let deployed_cluster_resources = self.list_deployed_cluster_resources::<T>(client).await?;
 
         let desired_resource_id_set: ResourceIdSet = desired_resources.into();
 
-        let orphaned_resources = actual_cluster_resources
+        let orphaned_resources = deployed_cluster_resources
             .into_iter()
-            .filter(|actual_resource| !desired_resource_id_set.contains(actual_resource))
+            .filter(|deployed_resource| !desired_resource_id_set.contains(deployed_resource))
             .collect::<Vec<_>>();
 
         if !orphaned_resources.is_empty() {
@@ -118,7 +244,13 @@ impl ClusterResources {
         Ok(())
     }
 
-    async fn list_actual_cluster_resources<T>(&self, client: &Client) -> OperatorResult<Vec<T>>
+    /// Lists the deployed resources with instance, name, and managed-by labels equal to this
+    /// cluster instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `client` - The client which is used to access Kubernetes
+    async fn list_deployed_cluster_resources<T>(&self, client: &Client) -> OperatorResult<Vec<T>>
     where
         T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
     {
@@ -149,6 +281,7 @@ impl ClusterResources {
     }
 }
 
+/// Set of resource IDs
 struct ResourceIdSet(HashSet<ResourceId>);
 
 impl<T> From<&[T]> for ResourceIdSet
@@ -161,7 +294,7 @@ where
 }
 
 impl Display for ResourceIdSet {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let mut resource_id_strings = self.0.iter().map(ResourceId::to_string).collect::<Vec<_>>();
         resource_id_strings.sort();
         write!(f, "{}", resource_id_strings.join(", "))
@@ -169,11 +302,16 @@ impl Display for ResourceIdSet {
 }
 
 impl ResourceIdSet {
-    fn contains<T: Resource<DynamicType = ()>>(&self, resource: &T) -> bool {
+    /// Returns true if the set contains the given resource, false otherwise.
+    fn contains<T>(&self, resource: &T) -> bool
+    where
+        T: Resource<DynamicType = ()>,
+    {
         self.0.contains(&resource.into())
     }
 }
 
+/// A resource ID solely consisting of namespace and name.
 #[derive(Debug, Eq, Hash, PartialEq)]
 struct ResourceId {
     namespace: Option<String>,
@@ -193,7 +331,7 @@ where
 }
 
 impl Display for ResourceId {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}", self.name)?;
         if let Some(namespace) = &self.namespace {
             write!(f, ".{}", namespace)?;
