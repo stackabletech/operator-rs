@@ -428,14 +428,14 @@ where
                 let mut merged_groups: HashMap<String, RoleGroup<O, M>> = HashMap::new();
 
                 for (role_group_name, role_group) in &role_groups {
-                    let mut role_config = role_group.config.clone();
-                    role_config.merge(&role_common_config);
+                    let mut role_group_config = role_group.config.clone();
+                    role_group_config.merge(&role_common_config);
                     merged_groups.insert(
                         role_group_name.clone(),
                         RoleGroup {
                             replicas: role_group.replicas,
                             selector: role_group.selector.clone(),
-                            config: role_config.merged(),
+                            config: role_group_config.merged(),
                         },
                     );
                 }

@@ -53,10 +53,16 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
         let name = field.ident.as_ref().expect("Unreachable");
         let ty = &field.ty;
 
-        my_fields.extend(quote! {
-            #vis #name: Option<#ty>,
-        });
-
+        // TODO: This is to identify complex structs (should probably be another attribute - just for testing)
+        if let Some(_) = &field.default_impl {
+            my_fields.extend(quote! {
+                #vis #name: Complex<#ty>,
+            });
+        } else {
+            my_fields.extend(quote! {
+                #vis #name: Option<#ty>,
+            });
+        }
         let unwrapper = match (&field.default_value, &field.default_impl) {
             (Some(_), Some(_)) =>
             return syn::Error::new_spanned(
@@ -70,7 +76,7 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             }
             (_, Some(method)) => {
                 let method = method.to_token_stream();
-                quote! { unwrap_or_else(|| #method()) }
+                quote! { get().unwrap_or_else(|| #method()) }
             }
             (None, None) => quote! { unwrap_or_default() },
         };
@@ -103,6 +109,8 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
         #struct_optional
         #impl_optional
     };
+
+    eprintln!("Token: {}", tokens);
 
     tokens.into()
 }
