@@ -54,7 +54,7 @@ pub(crate) fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
         let ty = &field.ty;
 
         // TODO: This is to identify complex structs (should probably be another attribute - just for testing)
-        if &field.default_impl.is_some() {
+        if field.default_impl.is_some() {
             my_fields.extend(quote! {
                 #vis #name: Complex<#ty>,
             });
