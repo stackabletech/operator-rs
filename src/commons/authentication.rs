@@ -1,8 +1,12 @@
+use kube::CustomResource;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
-use crate::commons::{ldap::LdapAuthenticationProvider, tls::TlsAuthenticationProvider};
-use kube::CustomResource;
+use crate::{
+    client::Client,
+    commons::{ldap::LdapAuthenticationProvider, tls::TlsAuthenticationProvider},
+    error::Error,
+};
 use schemars::JsonSchema;
 
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -43,5 +47,16 @@ mod test {
             client_cert_secret_class: None,
         });
         assert_eq!("Tls", tls_provider.to_string())
+    }
+}
+
+impl AuthenticationClass {
+    pub async fn resolve(
+        client: &Client,
+        authentication_class_name: &str,
+    ) -> Result<AuthenticationClass, Error> {
+        client
+            .get::<AuthenticationClass>(authentication_class_name, None) // AuthenticationClass has ClusterScope
+            .await
     }
 }
