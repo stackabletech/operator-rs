@@ -6,6 +6,8 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, parse_quote, Generics, Index, Path, WherePredicate};
 
+mod fragment;
+
 #[derive(FromMeta)]
 struct PathOverrides {
     #[darling(default = "PathOverrides::default_merge")]
@@ -223,4 +225,9 @@ fn prefix_ident(ident: Result<&Ident, usize>, prefix: &Ident) -> Ident {
         Ok(ident) => format_ident!("{prefix}_{ident}"),
         Err(index) => format_ident!("{prefix}_{index}"),
     }
+}
+
+#[proc_macro_derive(Fragment, attributes(fragment))]
+pub fn derive_fragment(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    fragment::derive(parse_macro_input!(input)).into()
 }

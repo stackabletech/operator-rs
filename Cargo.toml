@@ -35,6 +35,7 @@ tracing-opentelemetry = "0.17.3"
 opentelemetry = { version = "0.17.0", features = ["rt-tokio"] }
 opentelemetry-jaeger = { version = "0.16.0", features = ["rt-tokio"] }
 stackable-operator-derive = { path = "stackable-operator-derive" }
+snafu = "0.7.1"
 
 [dev-dependencies]
 rstest = "0.15.0"
