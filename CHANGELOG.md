@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `AuthenticationClass::resolve` helper function ([#432]).
+
+[#432]: https://github.com/stackabletech/operator-rs/pull/408
+
 ## [0.22.0] - 2022-07-05
 
 ### Added

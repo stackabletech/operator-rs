@@ -1,13 +1,12 @@
-use kube::CustomResource;
-use serde::{Deserialize, Serialize};
-use strum::Display;
-
 use crate::{
     client::Client,
     commons::{ldap::LdapAuthenticationProvider, tls::TlsAuthenticationProvider},
     error::Error,
 };
+use kube::CustomResource;
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use strum::Display;
 
 #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[kube(
