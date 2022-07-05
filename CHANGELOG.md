@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.22.0] - 2022-07-05
+
 ### Added
 
 - `startup_probe` added to `ContainerBuilder` ([#430]).
