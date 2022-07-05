@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.22.0] - 2022-07-05
+
+### Added
+
+- `startup_probe` added to `ContainerBuilder` ([#430]).
+
 ### Changed
 
 - BREAKING: Bump to k8s 1.24 and kube 0.73.1 ([#408]).
@@ -14,6 +20,7 @@ All notable changes to this project will be documented in this file.
 
 [#408]: https://github.com/stackabletech/operator-rs/pull/408
 [#412]: https://github.com/stackabletech/operator-rs/pull/412
+[#430]: https://github.com/stackabletech/operator-rs/pull/430
 
 ## [0.21.1] - 2022-05-22
 
