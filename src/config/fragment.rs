@@ -105,7 +105,7 @@ pub fn validate<T: FromFragment>(fragment: T::Fragment) -> Result<T, ValidationE
 
 #[cfg(test)]
 mod tests {
-    use super::{validate, Fragment};
+    use super::{validate, Fragment, FromFragment};
 
     #[derive(Fragment, Debug, PartialEq, Eq)]
     #[fragment(path_overrides(fragment = "super"))]
@@ -128,6 +128,13 @@ mod tests {
     struct Nested {
         required: WithFields,
         optional: Option<WithFields>,
+    }
+
+    #[derive(Fragment, Debug, PartialEq, Eq)]
+    #[fragment(path_overrides(fragment = "super"))]
+    struct GenericNested<T: FromFragment> {
+        required: T,
+        optional: Option<T>,
     }
 
     #[test]

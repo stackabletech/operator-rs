@@ -1,7 +1,7 @@
 use darling::{ast::Data, FromDeriveInput, FromField, FromMeta, FromVariant};
 use proc_macro2::{Ident, TokenStream, TokenTree};
 use quote::{format_ident, quote};
-use syn::{parse_quote, Attribute, DeriveInput, Expr, GenericArgument, Path, Type};
+use syn::{parse_quote, Attribute, DeriveInput, Expr, GenericArgument, Generics, Path, Type};
 
 #[derive(FromMeta)]
 struct PathOverrides {
@@ -39,6 +39,7 @@ impl PathOverrides {
 #[darling(attributes(fragment), forward_attrs(fragment_attrs))]
 pub struct FragmentInput {
     ident: Ident,
+    generics: Generics,
     data: Data<FragmentVariant, FragmentField>,
     attrs: Vec<Attribute>,
     #[darling(default)]
@@ -143,6 +144,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         ident,
         data,
         attrs,
+        generics,
         path_overrides:
             PathOverrides {
                 fragment: fragment_mod,
@@ -226,25 +228,41 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         )
         .collect::<TokenStream>();
 
+    let fragment_field_defaults = fields
+        .iter()
+        .map(|FragmentField { ident, .. }| quote! { #ident: None, })
+        .collect::<TokenStream>();
+
     let attrs = extract_forwarded_attrs(&attrs);
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     quote! {
-        #[derive(#default_mod::Default)]
         #attrs
-        struct #fragment_ident {
+        struct #fragment_ident #impl_generics #where_clause {
             #fragment_fields
         }
 
-        impl #fragment_mod::FromFragment for #ident {
-            type Fragment = #fragment_ident;
+        impl #impl_generics #default_mod::Default for #fragment_ident #ty_generics #where_clause {
+            fn default() -> Self {
+                Self {
+                    #fragment_field_defaults
+                }
+            }
+        }
 
-            fn from_fragment(fragment: #fragment_ident, validator: #fragment_mod::Validator) -> #result_mod::Result<Self, #fragment_mod::ValidationError> {
+        impl #impl_generics #fragment_mod::FromFragment for #ident #ty_generics #where_clause {
+            type Fragment = #fragment_ident #ty_generics;
+
+            fn from_fragment(
+                fragment: <Self as #fragment_mod::FromFragment>::Fragment,
+                validator: #fragment_mod::Validator,
+            ) -> #result_mod::Result<Self, #fragment_mod::ValidationError> {
                 #result_mod::Result::Ok(Self {
                     #from_fragment_fields
                 })
             }
 
-            fn default_fragment() -> Option<#fragment_ident> {
-                Some(#fragment_ident::default())
+            fn default_fragment() -> Option<<Self as #fragment_mod::FromFragment>::Fragment> {
+                Some(<Self as #fragment_mod::FromFragment>::Fragment::default())
             }
         }
     }
