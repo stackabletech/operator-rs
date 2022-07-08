@@ -1,7 +1,39 @@
 use darling::{ast::Data, FromDeriveInput, FromField, FromMeta, FromVariant};
 use proc_macro2::{Ident, TokenStream, TokenTree};
 use quote::{format_ident, quote};
-use syn::{Attribute, DeriveInput, Expr, GenericArgument, Type};
+use syn::{parse_quote, Attribute, DeriveInput, Expr, GenericArgument, Path, Type};
+
+#[derive(FromMeta)]
+struct PathOverrides {
+    #[darling(default = "PathOverrides::default_fragment")]
+    fragment: Path,
+    #[darling(default = "PathOverrides::default_default")]
+    default: Path,
+    #[darling(default = "PathOverrides::default_result")]
+    result: Path,
+}
+impl std::default::Default for PathOverrides {
+    fn default() -> Self {
+        Self {
+            fragment: Self::default_fragment(),
+            default: Self::default_default(),
+            result: Self::default_result(),
+        }
+    }
+}
+impl PathOverrides {
+    fn default_fragment() -> Path {
+        parse_quote!(::stackable_operator::config::fragment)
+    }
+
+    fn default_default() -> Path {
+        parse_quote!(::core::default)
+    }
+
+    fn default_result() -> Path {
+        parse_quote!(::core::result)
+    }
+}
 
 #[derive(FromDeriveInput)]
 #[darling(attributes(fragment), forward_attrs(fragment_attrs))]
@@ -9,6 +41,8 @@ pub struct FragmentInput {
     ident: Ident,
     data: Data<FragmentVariant, FragmentField>,
     attrs: Vec<Attribute>,
+    #[darling(default)]
+    path_overrides: PathOverrides,
 }
 
 fn split_by_comma(tokens: TokenStream) -> Vec<TokenStream> {
@@ -105,7 +139,17 @@ fn extract_inner_option_type(ty: &Type) -> Option<&Type> {
 }
 
 pub fn derive(input: DeriveInput) -> TokenStream {
-    let FragmentInput { ident, data, attrs } = match FragmentInput::from_derive_input(&input) {
+    let FragmentInput {
+        ident,
+        data,
+        attrs,
+        path_overrides:
+            PathOverrides {
+                fragment: fragment_mod,
+                default: default_mod,
+                result: result_mod,
+            },
+    } = match FragmentInput::from_derive_input(&input) {
         Ok(input) => input,
         Err(err) => return err.write_errors(),
     };
@@ -126,7 +170,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
              }| {
                 let ty = extract_inner_option_type(ty).unwrap_or(ty);
                 let attrs = extract_forwarded_attrs(attrs);
-                quote! { #attrs #ident: Option<<#ty as FromFragment>::Fragment>, }
+                quote! { #attrs #ident: Option<<#ty as #fragment_mod::FromFragment>::Fragment>, }
             },
         )
         .collect::<TokenStream>();
@@ -151,7 +195,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 };
                 let default_fragment_value = match default {
                     Default::Expr(default) => quote! { Some(#default) },
-                    Default::FromDefaultTrait => quote! { Some(Default::default()) },
+                    Default::FromDefaultTrait => quote! { Some(#default_mod::Default::default()) },
                     Default::None => quote! { None },
                 };
                 let mut fragment_value =
@@ -166,7 +210,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 };
                 let value = quote! {
                     if let Some(value) = #fragment_value {
-                        let value = FromFragment::from_fragment(value, validator)?;
+                        let value = #fragment_mod::FromFragment::from_fragment(value, validator)?;
                         #wrapped_value
                     } else {
                         #default_value
@@ -184,22 +228,22 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 
     let attrs = extract_forwarded_attrs(&attrs);
     quote! {
-        #[derive(Default)]
+        #[derive(#default_mod::Default)]
         #attrs
         struct #fragment_ident {
             #fragment_fields
         }
 
-        impl FromFragment for #ident {
+        impl #fragment_mod::FromFragment for #ident {
             type Fragment = #fragment_ident;
 
-            fn from_fragment(fragment: Self::Fragment, validator: Validator) -> Result<Self, ValidationError> {
-                Ok(Self {
+            fn from_fragment(fragment: #fragment_ident, validator: #fragment_mod::Validator) -> #result_mod::Result<Self, #fragment_mod::ValidationError> {
+                #result_mod::Result::Ok(Self {
                     #from_fragment_fields
                 })
             }
 
-            fn default_fragment() -> Option<Self::Fragment> {
+            fn default_fragment() -> Option<#fragment_ident> {
                 Some(#fragment_ident::default())
             }
         }

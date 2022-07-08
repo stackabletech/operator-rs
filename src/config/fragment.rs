@@ -105,13 +105,15 @@ pub fn validate<T: FromFragment>(fragment: T::Fragment) -> Result<T, ValidationE
 
 #[cfg(test)]
 mod tests {
-    use super::{validate, Fragment, FromFragment, ValidationError, Validator};
+    use super::{validate, Fragment};
 
     #[derive(Fragment, Debug, PartialEq, Eq)]
+    #[fragment(path_overrides(fragment = "super"))]
     #[fragment_attrs(derive(Debug))]
     struct Empty {}
 
     #[derive(Fragment, Debug, PartialEq, Eq)]
+    #[fragment(path_overrides(fragment = "super"))]
     struct WithFields {
         name: String,
         #[fragment(default = "1")]
@@ -122,6 +124,7 @@ mod tests {
     }
 
     #[derive(Fragment, Debug, PartialEq, Eq)]
+    #[fragment(path_overrides(fragment = "super"))]
     struct Nested {
         required: WithFields,
         optional: Option<WithFields>,
