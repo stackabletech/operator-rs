@@ -227,7 +227,7 @@ fn prefix_ident(ident: Result<&Ident, usize>, prefix: &Ident) -> Ident {
     }
 }
 
-#[proc_macro_derive(Fragment, attributes(fragment))]
+#[proc_macro_derive(Fragment, attributes(fragment, fragment_attrs))]
 pub fn derive_fragment(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     fragment::derive(parse_macro_input!(input)).into()
 }

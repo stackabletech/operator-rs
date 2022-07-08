@@ -1,24 +1,55 @@
 use darling::{ast::Data, FromDeriveInput, FromField, FromMeta, FromVariant};
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident, TokenStream, TokenTree};
 use quote::{format_ident, quote};
-use syn::{DeriveInput, Expr, GenericArgument, Type};
+use syn::{Attribute, DeriveInput, Expr, GenericArgument, Type};
 
 #[derive(FromDeriveInput)]
-#[darling(attributes(fragment))]
+#[darling(attributes(fragment), forward_attrs(fragment_attrs))]
 pub struct FragmentInput {
     ident: Ident,
     data: Data<FragmentVariant, FragmentField>,
+    attrs: Vec<Attribute>,
+}
+
+fn split_by_comma(tokens: TokenStream) -> Vec<TokenStream> {
+    let mut iter = tokens.into_iter().fuse().peekable();
+    let mut groups = Vec::new();
+    while iter.peek().is_some() {
+        groups.push(
+            iter.by_ref()
+                .take_while(
+                    |token| !matches!(token, TokenTree::Punct(punct) if punct.as_char() == ','),
+                )
+                .collect(),
+        );
+    }
+    groups
+}
+
+fn extract_forwarded_attrs(attrs: &[Attribute]) -> TokenStream {
+    attrs
+        .iter()
+        .filter(|attr| attr.path.is_ident("fragment_attrs"))
+        .flat_map(|Attribute { tokens, .. }| match only(tokens.clone()) {
+            Some(TokenTree::Group(group)) => split_by_comma(group.stream()),
+            _ => todo!(),
+        })
+        .flat_map(|attr| {
+            quote! { #[#attr] }
+        })
+        .collect()
 }
 
 #[derive(FromVariant)]
 struct FragmentVariant {}
 
 #[derive(FromField)]
-#[darling(attributes(fragment))]
+#[darling(attributes(fragment), forward_attrs(fragment_attrs))]
 struct FragmentField {
     ident: Option<Ident>,
     ty: Type,
     default: Default,
+    attrs: Vec<Attribute>,
 }
 
 enum Default {
@@ -74,7 +105,7 @@ fn extract_inner_option_type(ty: &Type) -> Option<&Type> {
 }
 
 pub fn derive(input: DeriveInput) -> TokenStream {
-    let FragmentInput { ident, data } = match FragmentInput::from_derive_input(&input) {
+    let FragmentInput { ident, data, attrs } = match FragmentInput::from_derive_input(&input) {
         Ok(input) => input,
         Err(err) => return err.write_errors(),
     };
@@ -91,58 +122,70 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                  ident,
                  ty,
                  default: _,
+                 attrs,
              }| {
                 let ty = extract_inner_option_type(ty).unwrap_or(ty);
-                quote! { #ident: Option<<#ty as FromFragment>::Fragment>, }
+                let attrs = extract_forwarded_attrs(attrs);
+                quote! { #attrs #ident: Option<<#ty as FromFragment>::Fragment>, }
             },
         )
         .collect::<TokenStream>();
 
     let from_fragment_fields = fields
         .iter()
-        .map(|FragmentField { ident, ty, default }| {
-            let ident_name = ident.as_ref().map(ToString::to_string);
-            let inner_option_ty = extract_inner_option_type(ty);
-            let is_option_wrapped = inner_option_ty.is_some();
-            let ty = inner_option_ty.unwrap_or(ty);
-            let wrapped_value = if is_option_wrapped {
-                quote! { Some(value) }
-            } else {
-                quote! { value }
-            };
-            let default_fragment_value = match default {
-                Default::Expr(default) => quote! { Some(#default) },
-                Default::FromDefaultTrait => quote! { Some(Default::default()) },
-                Default::None => quote! { None },
-            };
-            let mut fragment_value = quote! { fragment.#ident.or_else(|| #default_fragment_value) };
-            if !is_option_wrapped {
-                fragment_value = quote! { #fragment_value.or_else(#ty::default_fragment) };
-            }
-            let default_value = if is_option_wrapped {
-                quote! { None }
-            } else {
-                quote! { return Err(validator.error_required()) }
-            };
-            let value = quote! {
-                if let Some(value) = #fragment_value {
-                    let value = FromFragment::from_fragment(value, validator)?;
-                    #wrapped_value
+        .map(
+            |FragmentField {
+                 ident,
+                 ty,
+                 default,
+                 attrs: _,
+             }| {
+                let ident_name = ident.as_ref().map(ToString::to_string);
+                let inner_option_ty = extract_inner_option_type(ty);
+                let is_option_wrapped = inner_option_ty.is_some();
+                let ty = inner_option_ty.unwrap_or(ty);
+                let wrapped_value = if is_option_wrapped {
+                    quote! { Some(value) }
                 } else {
-                    #default_value
+                    quote! { value }
+                };
+                let default_fragment_value = match default {
+                    Default::Expr(default) => quote! { Some(#default) },
+                    Default::FromDefaultTrait => quote! { Some(Default::default()) },
+                    Default::None => quote! { None },
+                };
+                let mut fragment_value =
+                    quote! { fragment.#ident.or_else(|| #default_fragment_value) };
+                if !is_option_wrapped {
+                    fragment_value = quote! { #fragment_value.or_else(#ty::default_fragment) };
                 }
-            };
-            quote! {
-                #ident: {
-                    let validator = validator.field(#ident_name);
-                    #value
-                },
-            }
-        })
+                let default_value = if is_option_wrapped {
+                    quote! { None }
+                } else {
+                    quote! { return Err(validator.error_required()) }
+                };
+                let value = quote! {
+                    if let Some(value) = #fragment_value {
+                        let value = FromFragment::from_fragment(value, validator)?;
+                        #wrapped_value
+                    } else {
+                        #default_value
+                    }
+                };
+                quote! {
+                    #ident: {
+                        let validator = validator.field(#ident_name);
+                        #value
+                    },
+                }
+            },
+        )
         .collect::<TokenStream>();
 
+    let attrs = extract_forwarded_attrs(&attrs);
     quote! {
         #[derive(Default)]
+        #attrs
         struct #fragment_ident {
             #fragment_fields
         }

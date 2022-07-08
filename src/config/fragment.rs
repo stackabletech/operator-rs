@@ -108,6 +108,7 @@ mod tests {
     use super::{validate, Fragment, FromFragment, ValidationError, Validator};
 
     #[derive(Fragment, Debug, PartialEq, Eq)]
+    #[fragment_attrs(derive(Debug))]
     struct Empty {}
 
     #[derive(Fragment, Debug, PartialEq, Eq)]
