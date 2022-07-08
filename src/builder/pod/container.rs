@@ -20,6 +20,7 @@ pub struct ContainerBuilder {
     volume_mounts: Option<Vec<VolumeMount>>,
     readiness_probe: Option<Probe>,
     liveness_probe: Option<Probe>,
+    startup_probe: Option<Probe>,
     security_context: Option<SecurityContext>,
 }
 
@@ -197,6 +198,11 @@ impl ContainerBuilder {
         self
     }
 
+    pub fn startup_probe(&mut self, probe: Probe) -> &mut Self {
+        self.startup_probe = Some(probe);
+        self
+    }
+
     pub fn security_context(&mut self, context: SecurityContext) -> &mut Self {
         self.security_context = Some(context);
         self
@@ -215,6 +221,7 @@ impl ContainerBuilder {
             volume_mounts: self.volume_mounts.clone(),
             readiness_probe: self.readiness_probe.clone(),
             liveness_probe: self.liveness_probe.clone(),
+            startup_probe: self.startup_probe.clone(),
             security_context: self.security_context.clone(),
             ..Container::default()
         }
