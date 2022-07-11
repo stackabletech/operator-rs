@@ -68,18 +68,37 @@ enum ValidationProblem {
     FieldRequired,
 }
 
+pub trait Optional: Sized {
+    type Value;
+
+    fn or_else(self, f: impl FnOnce() -> Option<Self::Value>) -> Self;
+    fn none() -> Self;
+}
+impl<T> Optional for Option<T> {
+    type Value = T;
+
+    fn or_else(self, f: impl FnOnce() -> Option<Self::Value>) -> Self {
+        Option::or_else(self, f)
+    }
+    fn none() -> Self {
+        None
+    }
+}
+
 pub trait FromFragment: Sized {
     type Fragment;
+    type OptionalFragment: Optional;
 
     fn from_fragment(
         fragment: Self::Fragment,
         validator: Validator,
     ) -> Result<Self, ValidationError>;
 
-    fn default_fragment() -> Option<Self::Fragment>;
+    fn or_default_fragment(opt: Self::OptionalFragment) -> Option<Self::Fragment>;
 }
 impl<T: Atomic> FromFragment for T {
     type Fragment = T;
+    type OptionalFragment = Option<T>;
 
     fn from_fragment(
         fragment: Self::Fragment,
@@ -88,8 +107,27 @@ impl<T: Atomic> FromFragment for T {
         Ok(fragment)
     }
 
-    fn default_fragment() -> Option<Self::Fragment> {
-        None
+    fn or_default_fragment(opt: Self::OptionalFragment) -> Option<Self::Fragment> {
+        opt
+    }
+}
+impl<T: FromFragment> FromFragment for Option<T> {
+    type Fragment = Option<T::Fragment>;
+    type OptionalFragment = Option<T::Fragment>;
+
+    fn from_fragment(
+        fragment: Self::Fragment,
+        validator: Validator,
+    ) -> Result<Self, ValidationError> {
+        if let Some(fragment) = fragment {
+            T::from_fragment(fragment, validator).map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn or_default_fragment(opt: Self::OptionalFragment) -> Option<Self::Fragment> {
+        Some(opt)
     }
 }
 
@@ -105,7 +143,7 @@ pub fn validate<T: FromFragment>(fragment: T::Fragment) -> Result<T, ValidationE
 
 #[cfg(test)]
 mod tests {
-    use super::{validate, Fragment, FromFragment};
+    use super::{validate, Fragment};
 
     #[derive(Fragment, Debug, PartialEq, Eq)]
     #[fragment(path_overrides(fragment = "super"))]
@@ -132,7 +170,7 @@ mod tests {
 
     #[derive(Fragment, Debug, PartialEq, Eq)]
     #[fragment(path_overrides(fragment = "super"))]
-    struct GenericNested<T: FromFragment> {
+    struct GenericNested<T: super::FromFragment> {
         required: T,
         optional: Option<T>,
     }

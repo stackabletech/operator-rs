@@ -1,10 +1,7 @@
 use darling::{ast::Data, FromDeriveInput, FromField, FromMeta, FromVariant};
 use proc_macro2::{Ident, TokenStream, TokenTree};
 use quote::{format_ident, quote};
-use syn::{
-    parse_quote, Attribute, DeriveInput, Expr, GenericArgument, Generics, Path, Type,
-    WherePredicate,
-};
+use syn::{parse_quote, Attribute, DeriveInput, Expr, Generics, Path, Type, WherePredicate};
 
 #[derive(FromMeta)]
 struct PathOverrides {
@@ -14,6 +11,8 @@ struct PathOverrides {
     default: Path,
     #[darling(default = "PathOverrides::default_result")]
     result: Path,
+    #[darling(default = "PathOverrides::default_option")]
+    option: Path,
 }
 impl std::default::Default for PathOverrides {
     fn default() -> Self {
@@ -21,6 +20,7 @@ impl std::default::Default for PathOverrides {
             fragment: Self::default_fragment(),
             default: Self::default_default(),
             result: Self::default_result(),
+            option: Self::default_option(),
         }
     }
 }
@@ -35,6 +35,10 @@ impl PathOverrides {
 
     fn default_result() -> Path {
         parse_quote!(::core::result)
+    }
+
+    fn default_option() -> Path {
+        parse_quote!(::core::option)
     }
 }
 
@@ -121,29 +125,6 @@ fn only<I: IntoIterator>(iter: I) -> Option<I::Item> {
     }
 }
 
-fn extract_inner_option_type(ty: &Type) -> Option<&Type> {
-    let path = if let Type::Path(path) = ty {
-        path
-    } else {
-        return None;
-    };
-    let seg = only(&path.path.segments)?;
-    if seg.ident != "Option" {
-        return None;
-    }
-    let args = if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
-        args
-    } else {
-        return None;
-    };
-    let arg = only(&args.args)?;
-    if let GenericArgument::Type(arg_ty) = arg {
-        Some(arg_ty)
-    } else {
-        None
-    }
-}
-
 pub fn derive(input: DeriveInput) -> TokenStream {
     let FragmentInput {
         ident,
@@ -156,6 +137,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 fragment: fragment_mod,
                 default: default_mod,
                 result: result_mod,
+                option: option_mod,
             },
     } = match FragmentInput::from_derive_input(&input) {
         Ok(input) => input,
@@ -176,9 +158,8 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                  default: _,
                  attrs,
              }| {
-                let ty = extract_inner_option_type(ty).unwrap_or(ty);
                 let attrs = extract_forwarded_attrs(attrs);
-                quote! { #attrs #ident: Option<<#ty as #fragment_mod::FromFragment>::Fragment>, }
+                quote! { #attrs #ident: <#ty as #fragment_mod::FromFragment>::OptionalFragment, }
             },
         )
         .collect::<TokenStream>();
@@ -193,41 +174,25 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                  attrs: _,
              }| {
                 let ident_name = ident.as_ref().map(ToString::to_string);
-                let inner_option_ty = extract_inner_option_type(ty);
-                let is_option_wrapped = inner_option_ty.is_some();
-                let ty = inner_option_ty.unwrap_or(ty);
-                let wrapped_value = if is_option_wrapped {
-                    quote! { Some(value) }
-                } else {
-                    quote! { value }
-                };
                 let default_fragment_value = match default {
                     Default::Expr(default) => quote! { Some(#default) },
                     Default::FromDefaultTrait => quote! { Some(#default_mod::Default::default()) },
                     Default::None => quote! { None },
                 };
-                let mut fragment_value =
-                    quote! { fragment.#ident.or_else(|| #default_fragment_value) };
-                if !is_option_wrapped {
-                    fragment_value = quote! { #fragment_value.or_else(<#ty>::default_fragment) };
-                }
-                let default_value = if is_option_wrapped {
-                    quote! { None }
-                } else {
-                    quote! { return Err(validator.error_required()) }
-                };
-                let value = quote! {
-                    if let Some(value) = #fragment_value {
-                        let value = #fragment_mod::FromFragment::from_fragment(value, validator)?;
-                        #wrapped_value
-                    } else {
-                        #default_value
-                    }
-                };
                 quote! {
                     #ident: {
                         let validator = validator.field(#ident_name);
-                        #value
+                        let fragment_value = <#ty>::or_default_fragment(
+                            #fragment_mod::Optional::or_else(
+                                fragment.#ident,
+                                || #default_fragment_value,
+                            )
+                        );
+                        if let #option_mod::Option::Some(value) = fragment_value {
+                            #fragment_mod::FromFragment::from_fragment(value, validator)?
+                        } else {
+                            return Err(validator.error_required())
+                        }
                     },
                 }
             },
@@ -236,7 +201,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 
     let fragment_field_defaults = fields
         .iter()
-        .map(|FragmentField { ident, .. }| quote! { #ident: None, })
+        .map(|FragmentField { ident, .. }| quote! { #ident: #fragment_mod::Optional::none(), })
         .collect::<TokenStream>();
 
     let attrs = extract_forwarded_attrs(&attrs);
@@ -261,9 +226,10 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 
         impl #impl_generics #fragment_mod::FromFragment for #ident #ty_generics #where_clause {
             type Fragment = #fragment_ident #ty_generics;
+            type OptionalFragment = Option<#fragment_ident #ty_generics>;
 
             fn from_fragment(
-                fragment: <Self as #fragment_mod::FromFragment>::Fragment,
+                fragment: Self::Fragment,
                 validator: #fragment_mod::Validator,
             ) -> #result_mod::Result<Self, #fragment_mod::ValidationError> {
                 #result_mod::Result::Ok(Self {
@@ -271,8 +237,8 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 })
             }
 
-            fn default_fragment() -> Option<<Self as #fragment_mod::FromFragment>::Fragment> {
-                Some(<Self as #fragment_mod::FromFragment>::Fragment::default())
+            fn or_default_fragment(opt: Self::OptionalFragment) -> Option<Self::Fragment> {
+                Some(opt.unwrap_or_else(|| Self::Fragment::default()))
             }
         }
     }
