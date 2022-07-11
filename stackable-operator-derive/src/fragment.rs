@@ -1,7 +1,10 @@
 use darling::{ast::Data, FromDeriveInput, FromField, FromMeta, FromVariant};
 use proc_macro2::{Ident, TokenStream, TokenTree};
 use quote::{format_ident, quote};
-use syn::{parse_quote, Attribute, DeriveInput, Expr, GenericArgument, Generics, Path, Type};
+use syn::{
+    parse_quote, Attribute, DeriveInput, Expr, GenericArgument, Generics, Path, Type,
+    WherePredicate,
+};
 
 #[derive(FromMeta)]
 struct PathOverrides {
@@ -44,6 +47,8 @@ pub struct FragmentInput {
     attrs: Vec<Attribute>,
     #[darling(default)]
     path_overrides: PathOverrides,
+    #[darling(default)]
+    bounds: Option<Vec<WherePredicate>>,
 }
 
 fn split_by_comma(tokens: TokenStream) -> Vec<TokenStream> {
@@ -144,7 +149,8 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         ident,
         data,
         attrs,
-        generics,
+        mut generics,
+        bounds,
         path_overrides:
             PathOverrides {
                 fragment: fragment_mod,
@@ -234,10 +240,14 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         .collect::<TokenStream>();
 
     let attrs = extract_forwarded_attrs(&attrs);
+    if let Some(bounds) = bounds {
+        let where_clause = generics.make_where_clause();
+        where_clause.predicates.extend(bounds);
+    }
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     quote! {
         #attrs
-        struct #fragment_ident #impl_generics #where_clause {
+        pub struct #fragment_ident #impl_generics #where_clause {
             #fragment_fields
         }
 
