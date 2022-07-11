@@ -203,7 +203,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 let mut fragment_value =
                     quote! { fragment.#ident.or_else(|| #default_fragment_value) };
                 if !is_option_wrapped {
-                    fragment_value = quote! { #fragment_value.or_else(#ty::default_fragment) };
+                    fragment_value = quote! { #fragment_value.or_else(<#ty>::default_fragment) };
                 }
                 let default_value = if is_option_wrapped {
                     quote! { None }
