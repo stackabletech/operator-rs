@@ -59,7 +59,8 @@
 //!     shared_storage: PvcConfig,
 //! }
 
-use crate::config::merge::Merge;
+use crate::config::fragment::FromFragment;
+use crate::config::{fragment::Fragment, merge::Merge};
 use k8s_openapi::api::core::v1::{
     PersistentVolumeClaim, PersistentVolumeClaimSpec, ResourceRequirements,
 };
@@ -71,13 +72,20 @@ use std::collections::BTreeMap;
 
 // This struct allows specifying memory and cpu limits as well as generically adding storage
 // settings.
-#[derive(Clone, Debug, Deserialize, Default, Merge, JsonSchema, PartialEq, Serialize)]
-#[merge(path_overrides(merge = "crate::config::merge"))]
+#[derive(Clone, Debug, Deserialize, Default, Merge, Fragment, JsonSchema, PartialEq, Serialize)]
+#[merge(
+    bounds = "T: Merge, K: Merge",
+    path_overrides(merge = "crate::config::merge")
+)]
+#[fragment(
+    bounds = "T: FromFragment, K: FromFragment",
+    path_overrides(fragment = "crate::config::fragment")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Resources<T, K = NoRuntimeLimits>
 where
-    T: Clone + Default + Merge,
-    K: Clone + Default + Merge,
+    T: Clone + Default,
+    K: Clone + Default,
 {
     #[serde(default)]
     pub memory: MemoryLimits<K>,
@@ -89,12 +97,16 @@ where
 
 // Defines memory limits to be set on the pods
 // Is generic to enable adding custom configuration for specific runtimes or products
-#[derive(Clone, Debug, Deserialize, Default, Merge, JsonSchema, PartialEq, Serialize)]
-#[merge(path_overrides(merge = "crate::config::merge"))]
+#[derive(Clone, Debug, Deserialize, Default, Merge, Fragment, JsonSchema, PartialEq, Serialize)]
+#[merge(bounds = "T: Merge", path_overrides(merge = "crate::config::merge"))]
+#[fragment(
+    bounds = "T: FromFragment",
+    path_overrides(fragment = "crate::config::fragment")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct MemoryLimits<T>
 where
-    T: Clone + Default + Merge,
+    T: Clone + Default,
 {
     // The maximum amount of memory that should be available
     // Should in most cases be mapped to resources.limits.memory
@@ -105,16 +117,18 @@ where
 }
 
 // Default struct to allow operators not specifying `runtime_limits` when using [`MemoryLimits`]
-#[derive(Clone, Debug, Default, Deserialize, Merge, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Merge, Fragment, JsonSchema, PartialEq, Serialize)]
 #[merge(path_overrides(merge = "crate::config::merge"))]
+#[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[serde(rename_all = "camelCase")]
 pub struct NoRuntimeLimits {}
 
 // Definition of Java Heap settings
 // `min` is optional and should usually be defaulted to the same value as `max` by the implementing
 // code
-#[derive(Clone, Debug, Default, Deserialize, Merge, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Merge, Fragment, JsonSchema, PartialEq, Serialize)]
 #[merge(path_overrides(merge = "crate::config::merge"))]
+#[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[serde(rename_all = "camelCase")]
 pub struct JvmHeapLimits {
     pub max: Option<Quantity>,
@@ -124,8 +138,9 @@ pub struct JvmHeapLimits {
 
 // Cpu limits
 // These should usually be forwarded to resources.limits.cpu
-#[derive(Clone, Debug, Default, Deserialize, Merge, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Merge, Fragment, JsonSchema, PartialEq, Serialize)]
 #[merge(path_overrides(merge = "crate::config::merge"))]
+#[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[serde(rename_all = "camelCase")]
 pub struct CpuLimits {
     pub min: Option<Quantity>,
@@ -133,8 +148,9 @@ pub struct CpuLimits {
 }
 
 // Struct that exposes the values for a PVC which the user should be able to influence
-#[derive(Clone, Debug, Default, Deserialize, Merge, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Merge, Fragment, JsonSchema, PartialEq, Serialize)]
 #[merge(path_overrides(merge = "crate::config::merge"))]
+#[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[serde(rename_all = "camelCase")]
 pub struct PvcConfig {
     pub capacity: Option<Quantity>,
