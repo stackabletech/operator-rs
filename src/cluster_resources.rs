@@ -1,13 +1,13 @@
 //! A structure containing the cluster resources.
 
 use std::{
-    collections::HashSet,
+    collections::{hash_map::Values, BTreeMap, HashMap},
     fmt::{self, Debug, Display, Formatter},
 };
 
 use crate::{
     client::Client,
-    error::OperatorResult,
+    error::{Error, OperatorResult},
     k8s_openapi::{
         api::{
             apps::v1::StatefulSet,
@@ -57,6 +57,9 @@ use tracing::info;
 /// struct AppClusterSpec {}
 ///
 /// enum Error {
+///     CreateClusterResources {
+///         source: stackable_operator::error::Error,
+///     },
 ///     UpdateClusterResources {
 ///         source: stackable_operator::error::Error,
 ///     },
@@ -73,7 +76,7 @@ use tracing::info;
 ///     cluster_services.push(role_service);
 ///
 ///     let discovery_configmap = ConfigMap::default();
-///     cluster_configmaps.push(discovery_configmap);
+///     cluster_configmaps.push(discovery_configmap.clone());
 ///
 ///     for (role_name, group_config) in validated_config.iter() {
 ///         for (rolegroup_name, rolegroup_config) in group_config.iter() {
@@ -88,7 +91,7 @@ use tracing::info;
 ///         }
 ///     }
 ///
-///     ClusterResources::new(
+///     let mut cluster_resources = ClusterResources::new(
 ///         APP_NAME,
 ///         FIELD_MANAGER_SCOPE,
 ///         &app.object_ref(&()),
@@ -96,22 +99,31 @@ use tracing::info;
 ///         &cluster_configmaps,
 ///         &cluster_statefulsets,
 ///     )
-///     .update(&client)
-///     .await
-///     .map_err(|source| Error::UpdateClusterResources { source })?;
+///     .map_err(|source| Error::CreateClusterResources { source })?;
+///
+///     cluster_resources
+///         .update(&client)
+///         .await
+///         .map_err(|source| Error::UpdateClusterResources { source })?;
+///
+///     // Updated resources can be retrieved, e.g. to create a discovery hash.
+///     let updated_discovery_map = cluster_resources
+///         .get_configmap(&discovery_configmap)
+///         .unwrap();
 ///
 ///     Ok(Action::await_change())
 /// }
 /// ```
+#[derive(Debug, Eq, PartialEq)]
 pub struct ClusterResources {
     namespace: String,
     app_instance: String,
     app_name: String,
     app_managed_by: String,
     field_manager_scope: String,
-    services: Vec<Service>,
-    configmaps: Vec<ConfigMap>,
-    statefulsets: Vec<StatefulSet>,
+    services: ResourceSet<Service>,
+    configmaps: ResourceSet<ConfigMap>,
+    statefulsets: ResourceSet<StatefulSet>,
 }
 
 impl ClusterResources {
@@ -131,6 +143,18 @@ impl ClusterResources {
     /// * `statefulsets` - All stateful sets the cluster consists of; Deployed stateful sets which
     ///    are not included in this list, are considered orphaned and deleted when `update` is
     ///    called.
+    ///
+    /// # Errors
+    ///
+    /// If `cluster` does not contain a namespace and a name then an `Error::MissingObjectKey` is
+    /// returned.
+    ///
+    /// If the labels of the given resources are not set properly then an `Error::MissingLabel` or
+    /// `Error::UnexpectedLabelContent` is returned. The expected labels are:
+    /// * `app.kubernetes.io/instance = <cluster.name>`
+    /// * `app.kubernetes.io/managed-by = <app_name>-operator`
+    /// * `app.kubernetes.io/name = <app_name>`
+    ///
     pub fn new(
         app_name: &str,
         field_manager_scope: &str,
@@ -138,25 +162,91 @@ impl ClusterResources {
         services: &[Service],
         configmaps: &[ConfigMap],
         statefulsets: &[StatefulSet],
-    ) -> Self {
-        ClusterResources {
-            namespace: cluster
-                .namespace
-                .as_ref()
-                .expect("Cluster namespace expected")
-                .to_owned(),
-            app_instance: cluster
-                .name
-                .as_ref()
-                .expect("Cluster name expected")
-                .to_owned(),
+    ) -> OperatorResult<Self> {
+        let namespace = cluster
+            .namespace
+            .to_owned()
+            .ok_or(Error::MissingObjectKey { key: "namespace" })?;
+        let app_instance = cluster
+            .name
+            .to_owned()
+            .ok_or(Error::MissingObjectKey { key: "name" })?;
+        let app_managed_by = labels::get_app_managed_by_value(app_name);
+
+        let check_labels = |labels| -> OperatorResult<()> {
+            ClusterResources::check_label(labels, APP_INSTANCE_LABEL, &app_instance)?;
+            ClusterResources::check_label(labels, APP_MANAGED_BY_LABEL, &app_managed_by)?;
+            ClusterResources::check_label(labels, APP_NAME_LABEL, app_name)?;
+            Ok(())
+        };
+
+        services
+            .iter()
+            .map(ResourceExt::labels)
+            .try_for_each(check_labels)?;
+        configmaps
+            .iter()
+            .map(ResourceExt::labels)
+            .try_for_each(check_labels)?;
+        statefulsets
+            .iter()
+            .map(ResourceExt::labels)
+            .try_for_each(check_labels)?;
+
+        Ok(ClusterResources {
+            namespace,
+            app_instance,
             app_name: app_name.into(),
-            app_managed_by: labels::get_app_managed_by_value(app_name),
+            app_managed_by,
             field_manager_scope: field_manager_scope.into(),
             services: services.into(),
             configmaps: configmaps.into(),
             statefulsets: statefulsets.into(),
+        })
+    }
+
+    /// Checks that the given `labels` contain the given `label` with the given `expected_content`.
+    ///
+    /// # Errors
+    ///
+    /// If `labels` does not contain `label` then an `Error::MissingLabel` is returned.
+    ///
+    /// If `labels` contains the given `label` but not with the `expected_content` then an
+    /// `Error::UnexpectedLabelContent` is returned
+    ///
+    fn check_label(
+        labels: &BTreeMap<String, String>,
+        label: &'static str,
+        expected_content: &str,
+    ) -> OperatorResult<()> {
+        if let Some(actual_content) = labels.get(label) {
+            if expected_content == actual_content {
+                Ok(())
+            } else {
+                Err(Error::UnexpectedLabelContent {
+                    label,
+                    expected_content: expected_content.into(),
+                    actual_content: actual_content.into(),
+                })
+            }
+        } else {
+            Err(Error::MissingLabel { label })
         }
+    }
+
+    /// Returns the updated version of the given service.
+    pub fn get_service(&self, service: &Service) -> Option<Service> {
+        self.services.get(service)
+    }
+
+    /// Returns the updated version of the given config map.
+    pub fn get_configmap(&self, configmap: &ConfigMap) -> Option<ConfigMap> {
+        self.configmaps.get(configmap)
+    }
+
+    /// Returns the updated version of the given stateful set.
+    pub fn get_statefulset(&self, statefulset: &StatefulSet) -> Option<StatefulSet> {
+        self.statefulsets.get(statefulset)
     }
 
     /// Updates the cluster according to the resources given in this structure.
@@ -173,10 +263,22 @@ impl ClusterResources {
     /// # Arguments
     ///
     /// * `client` - The client which is used to access Kubernetes
-    pub async fn update(&self, client: &Client) -> OperatorResult<()> {
-        self.patch_resources(client, &self.configmaps).await?;
-        self.patch_resources(client, &self.statefulsets).await?;
-        self.patch_resources(client, &self.services).await?;
+    pub async fn update(&mut self, client: &Client) -> OperatorResult<()> {
+        self.configmaps = self
+            .patch_resources(client, &self.configmaps)
+            .await?
+            .as_slice()
+            .into();
+        self.statefulsets = self
+            .patch_resources(client, &self.statefulsets)
+            .await?
+            .as_slice()
+            .into();
+        self.services = self
+            .patch_resources(client, &self.services)
+            .await?
+            .as_slice()
+            .into();
 
         self.delete_orphaned_resources(client, &self.services)
             .await?;
@@ -193,17 +295,24 @@ impl ClusterResources {
     /// # Arguments
     ///
     /// * `client` - The client which is used to access Kubernetes
-    async fn patch_resources<T>(&self, client: &Client, resources: &[T]) -> OperatorResult<()>
+    async fn patch_resources<T>(
+        &self,
+        client: &Client,
+        resources: &ResourceSet<T>,
+    ) -> OperatorResult<Vec<T>>
     where
         T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Serialize,
     {
-        for resource in resources {
-            client
+        let mut patched_resources = Vec::new();
+
+        for resource in resources.iter() {
+            let patched_resource = client
                 .apply_patch(&self.field_manager_scope, resource, resource)
                 .await?;
+            patched_resources.push(patched_resource);
         }
 
-        Ok(())
+        Ok(patched_resources)
     }
 
     /// Deletes all deployed resources which are labelled as if they belong to this cluster
@@ -216,27 +325,22 @@ impl ClusterResources {
     async fn delete_orphaned_resources<T>(
         &self,
         client: &Client,
-        desired_resources: &[T],
+        desired_resources: &ResourceSet<T>,
     ) -> OperatorResult<()>
     where
         T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
     {
         let deployed_cluster_resources = self.list_deployed_cluster_resources::<T>(client).await?;
 
-        let desired_resource_id_set: ResourceIdSet = desired_resources.into();
-
-        let orphaned_resources = deployed_cluster_resources
-            .into_iter()
-            .filter(|deployed_resource| !desired_resource_id_set.contains(deployed_resource))
-            .collect::<Vec<_>>();
+        let orphaned_resources = deployed_cluster_resources.subtract(desired_resources);
 
         if !orphaned_resources.is_empty() {
             info!(
                 "Deleting orphaned {}: {}",
                 T::plural(&()),
-                ResourceIdSet::from(orphaned_resources.as_ref())
+                orphaned_resources
             );
-            for resource in &orphaned_resources {
+            for resource in orphaned_resources.iter() {
                 client.delete(resource).await?;
             }
         }
@@ -250,7 +354,10 @@ impl ClusterResources {
     /// # Arguments
     ///
     /// * `client` - The client which is used to access Kubernetes
-    async fn list_deployed_cluster_resources<T>(&self, client: &Client) -> OperatorResult<Vec<T>>
+    async fn list_deployed_cluster_resources<T>(
+        &self,
+        client: &Client,
+    ) -> OperatorResult<ResourceSet<T>>
     where
         T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
     {
@@ -275,39 +382,82 @@ impl ClusterResources {
             ..Default::default()
         };
 
-        client
-            .list_with_label_selector(Some(&self.namespace), &label_selector)
-            .await
+        let resources = client
+            .list_with_label_selector::<T>(Some(&self.namespace), &label_selector)
+            .await?;
+
+        Ok(resources.as_slice().into())
     }
 }
 
 /// Set of resource IDs
-struct ResourceIdSet(HashSet<ResourceId>);
+#[derive(Debug)]
+struct ResourceSet<T>(HashMap<ResourceId, T>);
 
-impl<T> From<&[T]> for ResourceIdSet
-where
-    T: Resource<DynamicType = ()>,
-{
-    fn from(resources: &[T]) -> Self {
-        Self(resources.iter().map(ResourceId::from).collect())
+impl<T> Eq for ResourceSet<T> {}
+
+impl<T> PartialEq for ResourceSet<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.keys().eq(other.0.keys())
     }
 }
 
-impl Display for ResourceIdSet {
+impl<T> From<&[T]> for ResourceSet<T>
+where
+    T: Clone + Resource<DynamicType = ()>,
+{
+    fn from(resources: &[T]) -> Self {
+        Self(
+            resources
+                .iter()
+                .map(|r| (ResourceId::from(r), r.to_owned()))
+                .collect(),
+        )
+    }
+}
+
+impl<T> Display for ResourceSet<T> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let mut resource_id_strings = self.0.iter().map(ResourceId::to_string).collect::<Vec<_>>();
+        let mut resource_id_strings = self.0.keys().map(ResourceId::to_string).collect::<Vec<_>>();
         resource_id_strings.sort();
         write!(f, "{}", resource_id_strings.join(", "))
     }
 }
 
-impl ResourceIdSet {
+impl<T> ResourceSet<T>
+where
+    T: Clone + Resource<DynamicType = ()>,
+{
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// Returns true if the set contains the given resource, false otherwise.
-    fn contains<T>(&self, resource: &T) -> bool
-    where
-        T: Resource<DynamicType = ()>,
-    {
-        self.0.contains(&resource.into())
+    fn contains(&self, resource: &T) -> bool {
+        self.0.contains_key(&resource.into())
+    }
+
+    /// Returns the resource with the same resource ID as the given one.
+    fn get(&self, resource: &T) -> Option<T> {
+        self.0.get(&ResourceId::from(resource)).cloned()
+    }
+
+    /// Returns the difference of this resource set and the given one.
+    ///
+    /// The resources are compared by their resource ID. The result contains the resources from
+    /// this set.
+    fn subtract(&self, other: &ResourceSet<T>) -> ResourceSet<T> {
+        self.iter()
+            .filter(|resource| !other.contains(resource))
+            .cloned()
+            .collect::<Vec<_>>()
+            .as_slice()
+            .into()
+    }
+
+    /// Returns an iterator over the resources contained in this set.
+    fn iter(&self) -> Values<'_, ResourceId, T> {
+        self.0.values()
     }
 }
 
@@ -342,57 +492,291 @@ impl Display for ResourceId {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use k8s_openapi::api::core::v1::{Node, Pod};
     use kube::core::ObjectMeta;
 
-    #[test]
-    fn check_content_of_resourceidset() {
-        let resource1 = create_namespaced_resource("namespace", "resource1");
-        let resource2 = create_namespaced_resource("namespace", "resource2");
-        let resource3 = create_namespaced_resource("namespace", "resource3");
+    mod cluster_resources_tests {
+        use super::super::*;
+        use kube::core::ObjectMeta;
 
-        let resource_id_set =
-            ResourceIdSet::from(vec![resource1.to_owned(), resource2.to_owned()].as_ref());
+        #[test]
+        fn cluster_resources_can_be_created_from_valid_parameters() {
+            let cluster = ObjectReference {
+                name: Some("appcluster".into()),
+                namespace: Some("default".into()),
+                ..Default::default()
+            };
 
-        assert!(resource_id_set.contains(&resource1));
-        assert!(resource_id_set.contains(&resource2));
-        assert!(!resource_id_set.contains(&resource3));
+            let metadata_template = ObjectMeta {
+                labels: Some(
+                    [
+                        ("app.kubernetes.io/instance".into(), "appcluster".into()),
+                        ("app.kubernetes.io/name".into(), "app".into()),
+                        ("app.kubernetes.io/managed-by".into(), "app-operator".into()),
+                    ]
+                    .into(),
+                ),
+                ..Default::default()
+            };
+            let service = Service {
+                metadata: ObjectMeta {
+                    name: Some("service".into()),
+                    ..metadata_template.to_owned()
+                },
+                ..Default::default()
+            };
+            let configmap = ConfigMap {
+                metadata: ObjectMeta {
+                    name: Some("configmap".into()),
+                    ..metadata_template.to_owned()
+                },
+                ..Default::default()
+            };
+            let statefulset = StatefulSet {
+                metadata: ObjectMeta {
+                    name: Some("statefulset".into()),
+                    ..metadata_template
+                },
+                ..Default::default()
+            };
+
+            let cluster_resources = ClusterResources::new(
+                "app",
+                "appcluster_scope",
+                &cluster,
+                &[service.to_owned()],
+                &[configmap.to_owned()],
+                &[statefulset.to_owned()],
+            )
+            .expect("no error");
+
+            assert_eq!(
+                ClusterResources {
+                    namespace: "default".into(),
+                    app_instance: "appcluster".into(),
+                    app_name: "app".into(),
+                    app_managed_by: "app-operator".into(),
+                    field_manager_scope: "appcluster_scope".into(),
+                    services: [service].as_ref().into(),
+                    configmaps: [configmap].as_ref().into(),
+                    statefulsets: [statefulset].as_ref().into(),
+                },
+                cluster_resources
+            );
+        }
+
+        #[test]
+        fn error_is_returned_when_label_is_missing() {
+            let cluster = ObjectReference {
+                name: Some("appcluster".into()),
+                namespace: Some("default".into()),
+                ..Default::default()
+            };
+
+            let service = Service {
+                metadata: ObjectMeta {
+                    name: Some("service".into()),
+                    labels: Some(
+                        [
+                            ("app.kubernetes.io/name".into(), "app".into()),
+                            ("app.kubernetes.io/managed-by".into(), "app-operator".into()),
+                        ]
+                        .into(),
+                    ),
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+
+            let result =
+                ClusterResources::new("app", "appcluster_scope", &cluster, &[service], &[], &[]);
+
+            match result {
+                Err(Error::MissingLabel { label }) => {
+                    assert_eq!("app.kubernetes.io/instance", label);
+                }
+                _ => panic!("Error::MissingLabel expected"),
+            }
+        }
+
+        #[test]
+        fn error_is_returned_when_label_content_is_wrong() {
+            let cluster = ObjectReference {
+                name: Some("appcluster".into()),
+                namespace: Some("default".into()),
+                ..Default::default()
+            };
+
+            let service = Service {
+                metadata: ObjectMeta {
+                    name: Some("service".into()),
+                    labels: Some(
+                        [
+                            ("app.kubernetes.io/instance".into(), "anothercluster".into()),
+                            ("app.kubernetes.io/name".into(), "app".into()),
+                            ("app.kubernetes.io/managed-by".into(), "app-operator".into()),
+                        ]
+                        .into(),
+                    ),
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+
+            let result =
+                ClusterResources::new("app", "appcluster_scope", &cluster, &[service], &[], &[]);
+
+            match result {
+                Err(Error::UnexpectedLabelContent {
+                    label,
+                    expected_content,
+                    actual_content,
+                }) => {
+                    assert_eq!("app.kubernetes.io/instance", label);
+                    assert_eq!("appcluster", expected_content);
+                    assert_eq!("anothercluster", actual_content);
+                }
+                _ => panic!("Error::UnexpectedLabelContent expected"),
+            }
+        }
     }
 
-    #[test]
-    fn display_resourceidset() {
-        let resource1 = create_namespaced_resource("namespace", "resource1");
-        let resource2 = create_namespaced_resource("namespace", "resource2");
+    mod resourceset_tests {
+        use super::super::*;
+        use super::*;
+        use k8s_openapi::api::core::v1::{Pod, PodStatus};
 
-        let resource_id_set1 = ResourceIdSet::from(Vec::<Pod>::new().as_ref());
-        let resource_id_set2 = ResourceIdSet::from(vec![resource1.to_owned()].as_ref());
-        let resource_id_set3 = ResourceIdSet::from(vec![resource1, resource2].as_ref());
+        #[test]
+        fn resourceset_are_equal_up_to_the_resource_ids() {
+            let resource1a = Pod {
+                status: None,
+                ..create_namespaced_resource("namespace", "resource1")
+            };
+            let resource1b = Pod {
+                status: Some(PodStatus::default()),
+                ..create_namespaced_resource("namespace", "resource1")
+            };
+            let resource2 = create_namespaced_resource("namespace", "resource2");
 
-        assert_eq!("", resource_id_set1.to_string());
-        assert_eq!("resource1.namespace", resource_id_set2.to_string());
-        assert_eq!(
-            "resource1.namespace, resource2.namespace",
-            resource_id_set3.to_string()
-        );
+            let resourceset1a = ResourceSet::from([resource1a].as_ref());
+            let resourceset1b = ResourceSet::from([resource1b].as_ref());
+            let resourceset2 = ResourceSet::from([resource2].as_ref());
+
+            assert_eq!(resourceset1a, resourceset1b);
+            assert_ne!(resourceset1a, resourceset2);
+        }
+
+        #[test]
+        fn resourceset_can_be_displayed() {
+            let resource1 = create_namespaced_resource("namespace", "resource1");
+            let resource2 = create_namespaced_resource("namespace", "resource2");
+
+            let resourceset1 = ResourceSet::from(Vec::<Pod>::new().as_ref());
+            let resourceset2 = ResourceSet::from([resource1.to_owned()].as_ref());
+            let resourceset3 = ResourceSet::from([resource1, resource2].as_ref());
+
+            assert_eq!("", resourceset1.to_string());
+            assert_eq!("resource1.namespace", resourceset2.to_string());
+            assert_eq!(
+                "resource1.namespace, resource2.namespace",
+                resourceset3.to_string()
+            );
+        }
+
+        #[test]
+        fn resourceset_can_be_checked_for_emptiness() {
+            let resource1 = create_namespaced_resource("namespace", "resource1");
+
+            let resourceset1 = ResourceSet::from(Vec::<Pod>::new().as_ref());
+            let resourceset2 = ResourceSet::from([resource1].as_ref());
+
+            assert!(resourceset1.is_empty());
+            assert!(!resourceset2.is_empty());
+        }
+
+        #[test]
+        fn resourceset_contains_expected_resources() {
+            let resource1 = create_namespaced_resource("namespace", "resource1");
+            let resource2 = create_namespaced_resource("namespace", "resource2");
+            let resource3 = create_namespaced_resource("namespace", "resource3");
+
+            let resourceset =
+                ResourceSet::from([resource1.to_owned(), resource2.to_owned()].as_ref());
+
+            assert!(resourceset.contains(&resource1));
+            assert!(resourceset.contains(&resource2));
+            assert!(!resourceset.contains(&resource3));
+        }
+
+        #[test]
+        fn resource_can_be_retrieved_from_resourceset() {
+            let resource1a = Pod {
+                status: None,
+                ..create_namespaced_resource("namespace", "resource1")
+            };
+            let resource1b = Pod {
+                status: Some(PodStatus::default()),
+                ..create_namespaced_resource("namespace", "resource1")
+            };
+
+            let resourceset = ResourceSet::from([resource1a.to_owned()].as_ref());
+
+            let resource_from_resourceset = resourceset.get(&resource1b);
+
+            assert_eq!(Some(resource1a), resource_from_resourceset);
+        }
+
+        #[test]
+        fn set_difference_of_two_resourcesets_can_be_built() {
+            let resource1 = create_namespaced_resource("namespace", "resource1");
+            let resource2 = create_namespaced_resource("namespace", "resource2");
+            let resource3 = create_namespaced_resource("namespace", "resource3");
+
+            let resourceset1 =
+                ResourceSet::from([resource1.to_owned(), resource2.to_owned()].as_ref());
+            let resourceset2 =
+                ResourceSet::from([resource2.to_owned(), resource3.to_owned()].as_ref());
+
+            let set_difference = resourceset1.subtract(&resourceset2);
+
+            assert!(set_difference.contains(&resource1));
+            assert!(!set_difference.contains(&resource2));
+            assert!(!set_difference.contains(&resource3));
+        }
+
+        #[test]
+        fn resourcesets_are_iterable() {
+            let resource = create_namespaced_resource("namespace", "resource");
+
+            let resourceset = ResourceSet::from([resource.to_owned()].as_ref());
+
+            let next_resource = resourceset.iter().next();
+
+            assert_eq!(Some(&resource), next_resource);
+        }
     }
 
-    #[test]
-    fn display_namespaced_resourceid() {
-        let resource = create_namespaced_resource("namespace", "name");
+    mod resourceid_tests {
+        use super::super::*;
+        use super::*;
 
-        let resource_id = ResourceId::from(&resource);
+        #[test]
+        fn display_namespaced_resourceid() {
+            let resource = create_namespaced_resource("namespace", "name");
 
-        assert_eq!("name.namespace", resource_id.to_string());
-    }
+            let resource_id = ResourceId::from(&resource);
 
-    #[test]
-    fn display_non_namespaced_resourceid() {
-        let resource = create_non_namespaced_resource("name");
+            assert_eq!("name.namespace", resource_id.to_string());
+        }
 
-        let resource_id = ResourceId::from(&resource);
+        #[test]
+        fn display_non_namespaced_resourceid() {
+            let resource = create_non_namespaced_resource("name");
 
-        assert_eq!("name", resource_id.to_string());
+            let resource_id = ResourceId::from(&resource);
+
+            assert_eq!("name", resource_id.to_string());
+        }
     }
 
     fn create_namespaced_resource(namespace: &str, name: &str) -> Pod {
