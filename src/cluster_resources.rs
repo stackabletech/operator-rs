@@ -23,9 +23,9 @@ use tracing::info;
 
 /// A structure containing the cluster resources.
 ///
-/// The cluster resources can be updated which means that changed resources are patched and
-/// orphaned ones are deleted. A cluster resource becomes orphaned if a role or role group is
-/// removed from a cluster specification.
+/// Cluster resources can be added and on finalizing, orphaned resources are deleted. A cluster
+/// resource becomes orphaned for instance if a role or role group is removed from a cluster
+/// specification.
 ///
 /// # Examples
 ///
@@ -60,7 +60,10 @@ use tracing::info;
 ///     CreateClusterResources {
 ///         source: stackable_operator::error::Error,
 ///     },
-///     UpdateClusterResources {
+///     AddClusterResource {
+///         source: stackable_operator::error::Error,
+///     },
+///     FinalizeClusterResources {
 ///         source: stackable_operator::error::Error,
 ///     },
 /// };
@@ -68,48 +71,48 @@ use tracing::info;
 /// async fn reconcile(app: Arc<AppCluster>, client: Arc<Client>) -> Result<Action, Error> {
 ///     let validated_config = ValidatedRoleConfigByPropertyKind::default();
 ///
-///     let mut cluster_services = Vec::new();
-///     let mut cluster_configmaps = Vec::new();
-///     let mut cluster_statefulsets = Vec::new();
-///
-///     let role_service = Service::default();
-///     cluster_services.push(role_service);
-///
-///     let discovery_configmap = ConfigMap::default();
-///     cluster_configmaps.push(discovery_configmap.clone());
-///
-///     for (role_name, group_config) in validated_config.iter() {
-///         for (rolegroup_name, rolegroup_config) in group_config.iter() {
-///             let rolegroup_service = Service::default();
-///             cluster_services.push(rolegroup_service);
-///
-///             let rolegroup_configmap = ConfigMap::default();
-///             cluster_configmaps.push(rolegroup_configmap);
-///
-///             let rolegroup_statefulset = StatefulSet::default();
-///             cluster_statefulsets.push(rolegroup_statefulset);
-///         }
-///     }
-///
 ///     let mut cluster_resources = ClusterResources::new(
 ///         APP_NAME,
 ///         FIELD_MANAGER_SCOPE,
 ///         &app.object_ref(&()),
-///         &cluster_services,
-///         &cluster_configmaps,
-///         &cluster_statefulsets,
 ///     )
 ///     .map_err(|source| Error::CreateClusterResources { source })?;
 ///
-///     cluster_resources
-///         .update(&client)
-///         .await
-///         .map_err(|source| Error::UpdateClusterResources { source })?;
+///     let role_service = Service::default();
+///     let patched_role_service =
+///         cluster_resources.add_service(&client, &role_service)
+///             .await
+///             .map_err(|source| Error::AddClusterResource { source })?;
 ///
-///     // Updated resources can be retrieved, e.g. to create a discovery hash.
-///     let updated_discovery_map = cluster_resources
-///         .get_configmap(&discovery_configmap)
-///         .unwrap();
+///     for (role_name, group_config) in validated_config.iter() {
+///         for (rolegroup_name, rolegroup_config) in group_config.iter() {
+///             let rolegroup_service = Service::default();
+///             cluster_resources.add_service(&client, &rolegroup_service)
+///                 .await
+///                 .map_err(|source| Error::AddClusterResource { source })?;
+///
+///             let rolegroup_configmap = ConfigMap::default();
+///             cluster_resources.add_configmap(&client, &rolegroup_configmap)
+///                 .await
+///                 .map_err(|source| Error::AddClusterResource { source })?;
+///
+///             let rolegroup_statefulset = StatefulSet::default();
+///             cluster_resources.add_statefulset(&client, &rolegroup_statefulset)
+///                 .await
+///                 .map_err(|source| Error::AddClusterResource { source })?;
+///         }
+///     }
+///
+///     let discovery_configmap = ConfigMap::default();
+///     let patched_discovery_configmap =
+///         cluster_resources.add_configmap(&client, &discovery_configmap)
+///             .await
+///             .map_err(|source| Error::AddClusterResource { source })?;
+///
+///     cluster_resources
+///         .finalize(&client)
+///         .await
+///         .map_err(|source| Error::FinalizeClusterResources { source })?;
 ///
 ///     Ok(Action::await_change())
 /// }
@@ -136,32 +139,15 @@ impl ClusterResources {
     /// * `field_manager_scope` - The field manager scope used for patching the resources, e.g.
     ///   "zookeepercluster"
     /// * `cluster` - A reference to the cluster containing the name and namespace of the cluster
-    /// * `services` - All services the cluster consists of; Deployed services which are not
-    ///    included in this list, are considered orphaned and deleted when `update` is called.
-    /// * `configmaps` - All config maps the cluster consists of; Deployed config maps which are
-    ///    not included in this list, are considered orphaned and deleted when `update` is called.
-    /// * `statefulsets` - All stateful sets the cluster consists of; Deployed stateful sets which
-    ///    are not included in this list, are considered orphaned and deleted when `update` is
-    ///    called.
     ///
     /// # Errors
     ///
     /// If `cluster` does not contain a namespace and a name then an `Error::MissingObjectKey` is
     /// returned.
-    ///
-    /// If the labels of the given resources are not set properly then an `Error::MissingLabel` or
-    /// `Error::UnexpectedLabelContent` is returned. The expected labels are:
-    /// * `app.kubernetes.io/instance = <cluster.name>`
-    /// * `app.kubernetes.io/managed-by = <app_name>-operator`
-    /// * `app.kubernetes.io/name = <app_name>`
-    ///
     pub fn new(
         app_name: &str,
         field_manager_scope: &str,
         cluster: &ObjectReference,
-        services: &[Service],
-        configmaps: &[ConfigMap],
-        statefulsets: &[StatefulSet],
     ) -> OperatorResult<Self> {
         let namespace = cluster
             .namespace
@@ -173,39 +159,119 @@ impl ClusterResources {
             .ok_or(Error::MissingObjectKey { key: "name" })?;
         let app_managed_by = labels::get_app_managed_by_value(app_name);
 
-        let check_labels = |labels| -> OperatorResult<()> {
-            ClusterResources::check_label(labels, APP_INSTANCE_LABEL, &app_instance)?;
-            ClusterResources::check_label(labels, APP_MANAGED_BY_LABEL, &app_managed_by)?;
-            ClusterResources::check_label(labels, APP_NAME_LABEL, app_name)?;
-            Ok(())
-        };
-
-        services
-            .iter()
-            .map(ResourceExt::labels)
-            .try_for_each(check_labels)?;
-        configmaps
-            .iter()
-            .map(ResourceExt::labels)
-            .try_for_each(check_labels)?;
-        statefulsets
-            .iter()
-            .map(ResourceExt::labels)
-            .try_for_each(check_labels)?;
-
         Ok(ClusterResources {
             namespace,
             app_instance,
             app_name: app_name.into(),
             app_managed_by,
             field_manager_scope: field_manager_scope.into(),
-            services: services.into(),
-            configmaps: configmaps.into(),
-            statefulsets: statefulsets.into(),
+            services: Default::default(),
+            configmaps: Default::default(),
+            statefulsets: Default::default(),
         })
     }
 
+    /// Adds a service to the cluster resources.
+    ///
+    /// The service will be patched and the patched resource will be returned.
+    ///
+    /// # Arguments
+    ///
+    /// * `client` - The client which is used to access Kubernetes
+    /// * `service` - A service to add to the cluster
+    ///
+    /// # Errors
+    ///
+    /// If the labels of the given service are not set properly then an `Error::MissingLabel` or
+    /// `Error::UnexpectedLabelContent` is returned. The expected labels are:
+    /// * `app.kubernetes.io/instance = <cluster.name>`
+    /// * `app.kubernetes.io/managed-by = <app_name>-operator`
+    /// * `app.kubernetes.io/name = <app_name>`
+    pub async fn add_service(
+        &mut self,
+        client: &Client,
+        service: &Service,
+    ) -> OperatorResult<Service> {
+        self.check_labels(service.labels())?;
+
+        let patched_service = self.patch_resource(client, service).await?;
+        self.services.insert(&patched_service);
+
+        Ok(patched_service)
+    }
+
+    /// Adds a config map to the cluster resources.
+    ///
+    /// The config map will be patched and the patched resource will be returned.
+    ///
+    /// # Arguments
+    ///
+    /// * `client` - The client which is used to access Kubernetes
+    /// * `configmap` - A config map to add to the cluster
+    ///
+    /// # Errors
+    ///
+    /// If the labels of the given config map are not set properly then an `Error::MissingLabel` or
+    /// `Error::UnexpectedLabelContent` is returned. The expected labels are:
+    /// * `app.kubernetes.io/instance = <cluster.name>`
+    /// * `app.kubernetes.io/managed-by = <app_name>-operator`
+    /// * `app.kubernetes.io/name = <app_name>`
+    pub async fn add_configmap(
+        &mut self,
+        client: &Client,
+        configmap: &ConfigMap,
+    ) -> OperatorResult<ConfigMap> {
+        self.check_labels(configmap.labels())?;
+
+        let patched_configmap = self.patch_resource(client, configmap).await?;
+        self.configmaps.insert(&patched_configmap);
+
+        Ok(patched_configmap)
+    }
+
+    /// Adds a stateful set to the cluster resources.
+    ///
+    /// The stateful set will be patched and the patched resource will be returned.
+    ///
+    /// # Arguments
+    ///
+    /// * `client` - The client which is used to access Kubernetes
+    /// * `statefulset` - A stateful set to add to the cluster
+    ///
+    /// # Errors
+    ///
+    /// If the labels of the given stateful set are not set properly then an `Error::MissingLabel`
+    /// or `Error::UnexpectedLabelContent` is returned. The expected labels are:
+    /// * `app.kubernetes.io/instance = <cluster.name>`
+    /// * `app.kubernetes.io/managed-by = <app_name>-operator`
+    /// * `app.kubernetes.io/name = <app_name>`
+    pub async fn add_statefulset(
+        &mut self,
+        client: &Client,
+        statefulset: &StatefulSet,
+    ) -> OperatorResult<StatefulSet> {
+        self.check_labels(statefulset.labels())?;
+
+        let patched_statefulset = self.patch_resource(client, statefulset).await?;
+        self.statefulsets.insert(&patched_statefulset);
+
+        Ok(patched_statefulset)
+    }
+
+    fn check_labels(&self, labels: &BTreeMap<String, String>) -> OperatorResult<()> {
+        ClusterResources::check_label(labels, APP_INSTANCE_LABEL, &self.app_instance)?;
+        ClusterResources::check_label(labels, APP_MANAGED_BY_LABEL, &self.app_managed_by)?;
+        ClusterResources::check_label(labels, APP_NAME_LABEL, &self.app_name)?;
+        Ok(())
+    }
+
     /// Checks that the given `labels` contain the given `label` with the given `expected_content`.
+    ///
+    /// # Arguments
+    ///
+    /// * `labels` - The labels to check
+    /// * `label` - The expected label
+    /// * `expected_content` - The expected content of the label
     ///
     /// # Errors
     ///
@@ -213,7 +279,6 @@ impl ClusterResources {
     ///
     /// If `labels` contains the given `label` but not with the `expected_content` then an
     /// `Error::UnexpectedLabelContent` is returned
-    ///
     fn check_label(
         labels: &BTreeMap<String, String>,
         label: &'static str,
@@ -234,26 +299,27 @@ impl ClusterResources {
         }
     }
 
-    /// Returns the updated version of the given service.
-    pub fn get_service(&self, service: &Service) -> Option<Service> {
-        self.services.get(service)
-    }
-
-    /// Returns the updated version of the given config map.
-    pub fn get_configmap(&self, configmap: &ConfigMap) -> Option<ConfigMap> {
-        self.configmaps.get(configmap)
-    }
-
-    /// Returns the updated version of the given stateful set.
-    pub fn get_statefulset(&self, statefulset: &StatefulSet) -> Option<StatefulSet> {
-        self.statefulsets.get(statefulset)
-    }
-
-    /// Updates the cluster according to the resources given in this structure.
+    /// Patches the given resource.
     ///
-    /// The given resources are patched and all orphaned resources, i.e. resources which are
-    /// labelled as if they belong to this cluster instance but are not contained in the given
-    /// resources, are deleted.
+    /// # Arguments
+    ///
+    /// * `client` - The client which is used to access Kubernetes
+    /// * `resource` - The resource to patch
+    async fn patch_resource<T>(&self, client: &Client, resource: &T) -> OperatorResult<T>
+    where
+        T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Serialize,
+    {
+        let patched_resource = client
+            .apply_patch(&self.field_manager_scope, resource, resource)
+            .await?;
+
+        Ok(patched_resource)
+    }
+
+    /// Finalizes the cluster creation.
+    ///
+    /// All orphaned resources, i.e. resources which are labelled as if they belong to this cluster
+    /// instance but were not added to the cluster resources, are deleted.
     ///
     /// The following resource labels are compared:
     /// * `app.kubernetes.io/instance`
@@ -263,23 +329,7 @@ impl ClusterResources {
     /// # Arguments
     ///
     /// * `client` - The client which is used to access Kubernetes
-    pub async fn update(&mut self, client: &Client) -> OperatorResult<()> {
-        self.configmaps = self
-            .patch_resources(client, &self.configmaps)
-            .await?
-            .as_slice()
-            .into();
-        self.statefulsets = self
-            .patch_resources(client, &self.statefulsets)
-            .await?
-            .as_slice()
-            .into();
-        self.services = self
-            .patch_resources(client, &self.services)
-            .await?
-            .as_slice()
-            .into();
-
+    pub async fn finalize(self, client: &Client) -> OperatorResult<()> {
         self.delete_orphaned_resources(client, &self.services)
             .await?;
         self.delete_orphaned_resources(client, &self.statefulsets)
@@ -288,31 +338,6 @@ impl ClusterResources {
             .await?;
 
         Ok(())
-    }
-
-    /// Patches the given resources.
-    ///
-    /// # Arguments
-    ///
-    /// * `client` - The client which is used to access Kubernetes
-    async fn patch_resources<T>(
-        &self,
-        client: &Client,
-        resources: &ResourceSet<T>,
-    ) -> OperatorResult<Vec<T>>
-    where
-        T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Serialize,
-    {
-        let mut patched_resources = Vec::new();
-
-        for resource in resources.iter() {
-            let patched_resource = client
-                .apply_patch(&self.field_manager_scope, resource, resource)
-                .await?;
-            patched_resources.push(patched_resource);
-        }
-
-        Ok(patched_resources)
     }
 
     /// Deletes all deployed resources which are labelled as if they belong to this cluster
@@ -390,8 +415,10 @@ impl ClusterResources {
     }
 }
 
-/// Set of resource IDs
-#[derive(Debug)]
+/// Set of resources
+///
+/// Resources are seen as equal if their resource IDs are identical.
+#[derive(Debug, Default)]
 struct ResourceSet<T>(HashMap<ResourceId, T>);
 
 impl<T> Eq for ResourceSet<T> {}
@@ -428,6 +455,7 @@ impl<T> ResourceSet<T>
 where
     T: Clone + Resource<DynamicType = ()>,
 {
+    /// Returns true if the resource set is empty, false otherwise.
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -437,9 +465,11 @@ where
         self.0.contains_key(&resource.into())
     }
 
-    /// Returns the resource with the same resource ID as the given one.
-    fn get(&self, resource: &T) -> Option<T> {
-        self.0.get(&ResourceId::from(resource)).cloned()
+    /// Inserts the given resource into the resource set.
+    ///
+    /// The resource is updated if it is already contained in the set.
+    fn insert(&mut self, resource: &T) {
+        self.0.insert(resource.into(), resource.to_owned());
     }
 
     /// Returns the difference of this resource set and the given one.
@@ -497,7 +527,6 @@ mod tests {
 
     mod cluster_resources_tests {
         use super::super::*;
-        use kube::core::ObjectMeta;
 
         #[test]
         fn cluster_resources_can_be_created_from_valid_parameters() {
@@ -507,137 +536,9 @@ mod tests {
                 ..Default::default()
             };
 
-            let metadata_template = ObjectMeta {
-                labels: Some(
-                    [
-                        ("app.kubernetes.io/instance".into(), "appcluster".into()),
-                        ("app.kubernetes.io/name".into(), "app".into()),
-                        ("app.kubernetes.io/managed-by".into(), "app-operator".into()),
-                    ]
-                    .into(),
-                ),
-                ..Default::default()
-            };
-            let service = Service {
-                metadata: ObjectMeta {
-                    name: Some("service".into()),
-                    ..metadata_template.to_owned()
-                },
-                ..Default::default()
-            };
-            let configmap = ConfigMap {
-                metadata: ObjectMeta {
-                    name: Some("configmap".into()),
-                    ..metadata_template.to_owned()
-                },
-                ..Default::default()
-            };
-            let statefulset = StatefulSet {
-                metadata: ObjectMeta {
-                    name: Some("statefulset".into()),
-                    ..metadata_template
-                },
-                ..Default::default()
-            };
+            let result = ClusterResources::new("app", "appcluster_scope", &cluster);
 
-            let cluster_resources = ClusterResources::new(
-                "app",
-                "appcluster_scope",
-                &cluster,
-                &[service.to_owned()],
-                &[configmap.to_owned()],
-                &[statefulset.to_owned()],
-            )
-            .expect("no error");
-
-            assert_eq!(
-                ClusterResources {
-                    namespace: "default".into(),
-                    app_instance: "appcluster".into(),
-                    app_name: "app".into(),
-                    app_managed_by: "app-operator".into(),
-                    field_manager_scope: "appcluster_scope".into(),
-                    services: [service].as_ref().into(),
-                    configmaps: [configmap].as_ref().into(),
-                    statefulsets: [statefulset].as_ref().into(),
-                },
-                cluster_resources
-            );
-        }
-
-        #[test]
-        fn error_is_returned_when_label_is_missing() {
-            let cluster = ObjectReference {
-                name: Some("appcluster".into()),
-                namespace: Some("default".into()),
-                ..Default::default()
-            };
-
-            let service = Service {
-                metadata: ObjectMeta {
-                    name: Some("service".into()),
-                    labels: Some(
-                        [
-                            ("app.kubernetes.io/name".into(), "app".into()),
-                            ("app.kubernetes.io/managed-by".into(), "app-operator".into()),
-                        ]
-                        .into(),
-                    ),
-                    ..Default::default()
-                },
-                ..Default::default()
-            };
-
-            let result =
-                ClusterResources::new("app", "appcluster_scope", &cluster, &[service], &[], &[]);
-
-            match result {
-                Err(Error::MissingLabel { label }) => {
-                    assert_eq!("app.kubernetes.io/instance", label);
-                }
-                _ => panic!("Error::MissingLabel expected"),
-            }
-        }
-
-        #[test]
-        fn error_is_returned_when_label_content_is_wrong() {
-            let cluster = ObjectReference {
-                name: Some("appcluster".into()),
-                namespace: Some("default".into()),
-                ..Default::default()
-            };
-
-            let service = Service {
-                metadata: ObjectMeta {
-                    name: Some("service".into()),
-                    labels: Some(
-                        [
-                            ("app.kubernetes.io/instance".into(), "anothercluster".into()),
-                            ("app.kubernetes.io/name".into(), "app".into()),
-                            ("app.kubernetes.io/managed-by".into(), "app-operator".into()),
-                        ]
-                        .into(),
-                    ),
-                    ..Default::default()
-                },
-                ..Default::default()
-            };
-
-            let result =
-                ClusterResources::new("app", "appcluster_scope", &cluster, &[service], &[], &[]);
-
-            match result {
-                Err(Error::UnexpectedLabelContent {
-                    label,
-                    expected_content,
-                    actual_content,
-                }) => {
-                    assert_eq!("app.kubernetes.io/instance", label);
-                    assert_eq!("appcluster", expected_content);
-                    assert_eq!("anothercluster", actual_content);
-                }
-                _ => panic!("Error::UnexpectedLabelContent expected"),
-            }
+            assert!(result.is_ok());
         }
     }
 
@@ -706,24 +607,6 @@ mod tests {
             assert!(resourceset.contains(&resource1));
             assert!(resourceset.contains(&resource2));
             assert!(!resourceset.contains(&resource3));
-        }
-
-        #[test]
-        fn resource_can_be_retrieved_from_resourceset() {
-            let resource1a = Pod {
-                status: None,
-                ..create_namespaced_resource("namespace", "resource1")
-            };
-            let resource1b = Pod {
-                status: Some(PodStatus::default()),
-                ..create_namespaced_resource("namespace", "resource1")
-            };
-
-            let resourceset = ResourceSet::from([resource1a.to_owned()].as_ref());
-
-            let resource_from_resourceset = resourceset.get(&resource1b);
-
-            assert_eq!(Some(resource1a), resource_from_resourceset);
         }
 
         #[test]
