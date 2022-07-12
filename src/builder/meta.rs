@@ -153,6 +153,7 @@ impl ObjectMetaBuilder {
         resource: &T,
         app_name: &str,
         app_version: &str,
+        app_managed_by: &str,
         app_component: &str,
         role_name: &str,
     ) -> &mut Self {
@@ -160,6 +161,7 @@ impl ObjectMetaBuilder {
             resource,
             app_name,
             app_version,
+            app_managed_by,
             app_component,
             role_name,
         );
@@ -330,7 +332,7 @@ mod tests {
             .namespace("bar")
             .ownerreference_from_resource(&pod, Some(true), Some(false))
             .unwrap()
-            .with_recommended_labels(&pod, "test_app", "1.0", "component", "role")
+            .with_recommended_labels(&pod, "test_app", "1.0", "app-operator", "component", "role")
             .with_annotation("foo", "bar")
             .build();
 

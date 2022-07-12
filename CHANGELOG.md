@@ -7,8 +7,16 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add `AuthenticationClass::resolve` helper function ([#432]).
+- Cluster resources can be added to a struct which determines the orphaned
+  resources and deletes them ([#436]).
+
+### Changed
+
+- BREAKING: The `managed_by` label must be passed explicitly to the
+  `ObjectMetaBuilder::with_recommended_labels` function ([#436]).
 
 [#432]: https://github.com/stackabletech/operator-rs/pull/432
+[#436]: https://github.com/stackabletech/operator-rs/pull/436
 
 ## [0.22.0] - 2022-07-05
 

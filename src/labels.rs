@@ -23,6 +23,7 @@ pub fn get_recommended_labels<T>(
     resource: &T,
     app_name: &str,
     app_version: &str,
+    app_managed_by: &str,
     app_role: &str,
     app_role_group: &str,
 ) -> BTreeMap<String, String>
@@ -34,16 +35,9 @@ where
     // TODO: Add operator version label
     // TODO: part-of is empty for now, decide on how this can be used in a proper fashion
     labels.insert(APP_VERSION_LABEL.to_string(), app_version.to_string());
-    labels.insert(
-        APP_MANAGED_BY_LABEL.to_string(),
-        get_app_managed_by_value(app_name),
-    );
+    labels.insert(APP_MANAGED_BY_LABEL.to_string(), app_managed_by.to_string());
 
     labels
-}
-
-pub fn get_app_managed_by_value(app_name: &str) -> String {
-    format!("{}-operator", app_name)
 }
 
 /// The labels required to match against objects of a certain role, assuming that those objects

@@ -16,7 +16,7 @@ use crate::{
         apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
     },
     kube::{Resource, ResourceExt},
-    labels::{self, APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
+    labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
 };
 use serde::{de::DeserializeOwned, Serialize};
 use tracing::info;
@@ -122,8 +122,7 @@ pub struct ClusterResources {
     namespace: String,
     app_instance: String,
     app_name: String,
-    app_managed_by: String,
-    field_manager_scope: String,
+    manager: String,
     services: ResourceSet<Service>,
     configmaps: ResourceSet<ConfigMap>,
     statefulsets: ResourceSet<StatefulSet>,
@@ -136,19 +135,19 @@ impl ClusterResources {
     ///
     /// * `app_name` - The lower-case application name used in the resource labels, e.g.
     ///   "zookeeper"
-    /// * `field_manager_scope` - The field manager scope used for patching the resources, e.g.
-    ///   "zookeepercluster"
+    /// * `manager` - The manager of these cluster resources, e.g.
+    ///   "zookeeper-operator_zk-controller". The added resources must contain the content of this
+    ///   field in the `app.kubernetes.io/managed-by` label. It must be different for each
+    ///   controller in the operator, otherwise resources created by another controller are detected
+    ///   as orphaned in this cluster and are deleted. This value is also used for the field manager
+    ///   scope when applying resources.
     /// * `cluster` - A reference to the cluster containing the name and namespace of the cluster
     ///
     /// # Errors
     ///
     /// If `cluster` does not contain a namespace and a name then an `Error::MissingObjectKey` is
     /// returned.
-    pub fn new(
-        app_name: &str,
-        field_manager_scope: &str,
-        cluster: &ObjectReference,
-    ) -> OperatorResult<Self> {
+    pub fn new(app_name: &str, manager: &str, cluster: &ObjectReference) -> OperatorResult<Self> {
         let namespace = cluster
             .namespace
             .to_owned()
@@ -157,14 +156,12 @@ impl ClusterResources {
             .name
             .to_owned()
             .ok_or(Error::MissingObjectKey { key: "name" })?;
-        let app_managed_by = labels::get_app_managed_by_value(app_name);
 
         Ok(ClusterResources {
             namespace,
             app_instance,
             app_name: app_name.into(),
-            app_managed_by,
-            field_manager_scope: field_manager_scope.into(),
+            manager: manager.into(),
             services: Default::default(),
             configmaps: Default::default(),
             statefulsets: Default::default(),
@@ -260,7 +257,7 @@ impl ClusterResources {
 
     fn check_labels(&self, labels: &BTreeMap<String, String>) -> OperatorResult<()> {
         ClusterResources::check_label(labels, APP_INSTANCE_LABEL, &self.app_instance)?;
-        ClusterResources::check_label(labels, APP_MANAGED_BY_LABEL, &self.app_managed_by)?;
+        ClusterResources::check_label(labels, APP_MANAGED_BY_LABEL, &self.manager)?;
         ClusterResources::check_label(labels, APP_NAME_LABEL, &self.app_name)?;
         Ok(())
     }
@@ -310,7 +307,7 @@ impl ClusterResources {
         T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Serialize,
     {
         let patched_resource = client
-            .apply_patch(&self.field_manager_scope, resource, resource)
+            .apply_patch(&self.manager, resource, resource)
             .await?;
 
         Ok(patched_resource)
@@ -401,7 +398,7 @@ impl ClusterResources {
                 LabelSelectorRequirement {
                     key: APP_MANAGED_BY_LABEL.into(),
                     operator: "In".into(),
-                    values: Some(vec![self.app_managed_by.to_owned()]),
+                    values: Some(vec![self.manager.to_owned()]),
                 },
             ]),
             ..Default::default()
