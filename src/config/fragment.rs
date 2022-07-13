@@ -68,70 +68,43 @@ enum ValidationProblem {
     FieldRequired,
 }
 
-pub trait Optional: Sized {
-    type Value;
-
-    fn or_else(self, f: impl FnOnce() -> Option<Self::Value>) -> Self;
-    fn none() -> Self;
-}
-impl<T> Optional for Option<T> {
-    type Value = T;
-
-    fn or_else(self, f: impl FnOnce() -> Option<Self::Value>) -> Self {
-        Option::or_else(self, f)
-    }
-    fn none() -> Self {
-        None
-    }
-}
-
 pub trait FromFragment: Sized {
-    type Fragment;
-    type OptionalFragment: Optional;
+    type RequiredFragment: Into<Self::OptionalFragment>;
+    type OptionalFragment;
 
     fn from_fragment(
-        fragment: Self::Fragment,
+        fragment: Self::OptionalFragment,
         validator: Validator,
     ) -> Result<Self, ValidationError>;
-
-    fn or_default_fragment(opt: Self::OptionalFragment) -> Option<Self::Fragment>;
 }
 impl<T: Atomic> FromFragment for T {
-    type Fragment = T;
+    type RequiredFragment = T;
     type OptionalFragment = Option<T>;
 
     fn from_fragment(
-        fragment: Self::Fragment,
-        _validator: Validator,
+        fragment: Self::OptionalFragment,
+        validator: Validator,
     ) -> Result<Self, ValidationError> {
-        Ok(fragment)
-    }
-
-    fn or_default_fragment(opt: Self::OptionalFragment) -> Option<Self::Fragment> {
-        opt
+        fragment.ok_or_else(|| validator.error_required())
     }
 }
 impl<T: FromFragment> FromFragment for Option<T> {
-    type Fragment = Option<T::Fragment>;
-    type OptionalFragment = Option<T::Fragment>;
+    type RequiredFragment = Option<T::RequiredFragment>;
+    type OptionalFragment = Option<T::RequiredFragment>;
 
     fn from_fragment(
-        fragment: Self::Fragment,
+        fragment: Self::OptionalFragment,
         validator: Validator,
     ) -> Result<Self, ValidationError> {
         if let Some(fragment) = fragment {
-            T::from_fragment(fragment, validator).map(Some)
+            T::from_fragment(fragment.into(), validator).map(Some)
         } else {
             Ok(None)
         }
     }
-
-    fn or_default_fragment(opt: Self::OptionalFragment) -> Option<Self::Fragment> {
-        Some(opt)
-    }
 }
 
-pub fn validate<T: FromFragment>(fragment: T::Fragment) -> Result<T, ValidationError> {
+pub fn validate<T: FromFragment>(fragment: T::OptionalFragment) -> Result<T, ValidationError> {
     T::from_fragment(
         fragment,
         Validator {
@@ -152,11 +125,10 @@ mod tests {
 
     #[derive(Fragment, Debug, PartialEq, Eq)]
     #[fragment(path_overrides(fragment = "super"))]
+    #[fragment_attrs(derive(Default))]
     struct WithFields {
         name: String,
-        #[fragment(default = "1")]
         replicas: u8,
-        #[fragment(default)]
         overhead: u8,
         tag: Option<String>,
     }
@@ -197,21 +169,6 @@ mod tests {
                 tag: Some("bar".to_string()),
             }
         );
-        assert_eq!(
-            validate::<WithFields>(WithFieldsFragment {
-                name: Some("foo".to_string()),
-                replicas: None,
-                overhead: None,
-                tag: None,
-            })
-            .unwrap(),
-            WithFields {
-                name: "foo".to_string(),
-                replicas: 1,
-                overhead: 0,
-                tag: None,
-            }
-        );
 
         let err = validate::<WithFields>(WithFieldsFragment {
             name: None,
@@ -225,9 +182,8 @@ mod tests {
 
     #[test]
     fn validate_nested() {
-        // required complex fields should automatically be defaulted (so that the "leaf" fields are validated immediately)
         let err = validate::<Nested>(NestedFragment {
-            required: None,
+            required: WithFieldsFragment::default(),
             optional: None,
         })
         .unwrap_err();
@@ -235,10 +191,12 @@ mod tests {
 
         // optional complex fields should still be treated as optional if not provided
         let nested = validate::<Nested>(NestedFragment {
-            required: Some(WithFieldsFragment {
+            required: WithFieldsFragment {
                 name: Some("name".to_string()),
+                replicas: Some(2),
+                overhead: Some(3),
                 ..Default::default()
-            }),
+            },
             optional: None,
         })
         .unwrap();

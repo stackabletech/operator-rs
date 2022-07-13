@@ -59,8 +59,10 @@
 //!     shared_storage: PvcConfig,
 //! }
 
-use crate::config::fragment::FromFragment;
-use crate::config::{fragment::Fragment, merge::Merge};
+use crate::config::{
+    fragment::{Fragment, FromFragment},
+    merge::Merge,
+};
 use k8s_openapi::api::core::v1::{
     PersistentVolumeClaim, PersistentVolumeClaimSpec, ResourceRequirements,
 };

@@ -7,20 +7,14 @@ use syn::{parse_quote, Attribute, DeriveInput, Expr, Generics, Path, Type, Where
 struct PathOverrides {
     #[darling(default = "PathOverrides::default_fragment")]
     fragment: Path,
-    #[darling(default = "PathOverrides::default_default")]
-    default: Path,
     #[darling(default = "PathOverrides::default_result")]
     result: Path,
-    #[darling(default = "PathOverrides::default_option")]
-    option: Path,
 }
 impl std::default::Default for PathOverrides {
     fn default() -> Self {
         Self {
             fragment: Self::default_fragment(),
-            default: Self::default_default(),
             result: Self::default_result(),
-            option: Self::default_option(),
         }
     }
 }
@@ -29,16 +23,8 @@ impl PathOverrides {
         parse_quote!(::stackable_operator::config::fragment)
     }
 
-    fn default_default() -> Path {
-        parse_quote!(::core::default)
-    }
-
     fn default_result() -> Path {
         parse_quote!(::core::result)
-    }
-
-    fn default_option() -> Path {
-        parse_quote!(::core::option)
     }
 }
 
@@ -92,7 +78,6 @@ struct FragmentVariant {}
 struct FragmentField {
     ident: Option<Ident>,
     ty: Type,
-    default: Default,
     attrs: Vec<Attribute>,
 }
 
@@ -135,9 +120,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         path_overrides:
             PathOverrides {
                 fragment: fragment_mod,
-                default: default_mod,
                 result: result_mod,
-                option: option_mod,
             },
     } = match FragmentInput::from_derive_input(&input) {
         Ok(input) => input,
@@ -151,17 +134,10 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     let fragment_ident = format_ident!("{ident}Fragment");
     let fragment_fields = fields
         .iter()
-        .map(
-            |FragmentField {
-                 ident,
-                 ty,
-                 default: _,
-                 attrs,
-             }| {
-                let attrs = extract_forwarded_attrs(attrs);
-                quote! { #attrs #ident: <#ty as #fragment_mod::FromFragment>::OptionalFragment, }
-            },
-        )
+        .map(|FragmentField { ident, ty, attrs }| {
+            let attrs = extract_forwarded_attrs(attrs);
+            quote! { #attrs #ident: <#ty as #fragment_mod::FromFragment>::OptionalFragment, }
+        })
         .collect::<TokenStream>();
 
     let from_fragment_fields = fields
@@ -169,39 +145,18 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         .map(
             |FragmentField {
                  ident,
-                 ty,
-                 default,
+                 ty: _,
                  attrs: _,
              }| {
                 let ident_name = ident.as_ref().map(ToString::to_string);
-                let default_fragment_value = match default {
-                    Default::Expr(default) => quote! { Some(#default) },
-                    Default::FromDefaultTrait => quote! { Some(#default_mod::Default::default()) },
-                    Default::None => quote! { None },
-                };
                 quote! {
                     #ident: {
                         let validator = validator.field(#ident_name);
-                        let fragment_value = <#ty>::or_default_fragment(
-                            #fragment_mod::Optional::or_else(
-                                fragment.#ident,
-                                || #default_fragment_value,
-                            )
-                        );
-                        if let #option_mod::Option::Some(value) = fragment_value {
-                            #fragment_mod::FromFragment::from_fragment(value, validator)?
-                        } else {
-                            return Err(validator.error_required())
-                        }
+                        #fragment_mod::FromFragment::from_fragment(fragment.#ident, validator)?
                     },
                 }
             },
         )
-        .collect::<TokenStream>();
-
-    let fragment_field_defaults = fields
-        .iter()
-        .map(|FragmentField { ident, .. }| quote! { #ident: #fragment_mod::Optional::none(), })
         .collect::<TokenStream>();
 
     let attrs = extract_forwarded_attrs(&attrs);
@@ -216,29 +171,17 @@ pub fn derive(input: DeriveInput) -> TokenStream {
             #fragment_fields
         }
 
-        impl #impl_generics #default_mod::Default for #fragment_ident #ty_generics #where_clause {
-            fn default() -> Self {
-                Self {
-                    #fragment_field_defaults
-                }
-            }
-        }
-
         impl #impl_generics #fragment_mod::FromFragment for #ident #ty_generics #where_clause {
-            type Fragment = #fragment_ident #ty_generics;
-            type OptionalFragment = Option<#fragment_ident #ty_generics>;
+            type RequiredFragment = #fragment_ident #ty_generics;
+            type OptionalFragment = #fragment_ident #ty_generics;
 
             fn from_fragment(
-                fragment: Self::Fragment,
+                fragment: Self::OptionalFragment,
                 validator: #fragment_mod::Validator,
             ) -> #result_mod::Result<Self, #fragment_mod::ValidationError> {
                 #result_mod::Result::Ok(Self {
                     #from_fragment_fields
                 })
-            }
-
-            fn or_default_fragment(opt: Self::OptionalFragment) -> Option<Self::Fragment> {
-                Some(opt.unwrap_or_else(|| Self::Fragment::default()))
             }
         }
     }
