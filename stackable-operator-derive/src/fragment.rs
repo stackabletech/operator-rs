@@ -136,7 +136,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         .iter()
         .map(|FragmentField { ident, ty, attrs }| {
             let attrs = extract_forwarded_attrs(attrs);
-            quote! { #attrs #ident: <#ty as #fragment_mod::FromFragment>::OptionalFragment, }
+            quote! { #attrs #ident: <#ty as #fragment_mod::FromFragment>::Fragment, }
         })
         .collect::<TokenStream>();
 
@@ -172,11 +172,11 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         }
 
         impl #impl_generics #fragment_mod::FromFragment for #ident #ty_generics #where_clause {
+            type Fragment = #fragment_ident #ty_generics;
             type RequiredFragment = #fragment_ident #ty_generics;
-            type OptionalFragment = #fragment_ident #ty_generics;
 
             fn from_fragment(
-                fragment: Self::OptionalFragment,
+                fragment: Self::Fragment,
                 validator: #fragment_mod::Validator,
             ) -> #result_mod::Result<Self, #fragment_mod::ValidationError> {
                 #result_mod::Result::Ok(Self {

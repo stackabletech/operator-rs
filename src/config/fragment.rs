@@ -69,31 +69,31 @@ enum ValidationProblem {
 }
 
 pub trait FromFragment: Sized {
-    type RequiredFragment: Into<Self::OptionalFragment>;
-    type OptionalFragment;
+    type Fragment;
+    type RequiredFragment: Into<Self::Fragment>;
 
     fn from_fragment(
-        fragment: Self::OptionalFragment,
+        fragment: Self::Fragment,
         validator: Validator,
     ) -> Result<Self, ValidationError>;
 }
 impl<T: Atomic> FromFragment for T {
+    type Fragment = Option<T>;
     type RequiredFragment = T;
-    type OptionalFragment = Option<T>;
 
     fn from_fragment(
-        fragment: Self::OptionalFragment,
+        fragment: Self::Fragment,
         validator: Validator,
     ) -> Result<Self, ValidationError> {
         fragment.ok_or_else(|| validator.error_required())
     }
 }
 impl<T: FromFragment> FromFragment for Option<T> {
+    type Fragment = Option<T::RequiredFragment>;
     type RequiredFragment = Option<T::RequiredFragment>;
-    type OptionalFragment = Option<T::RequiredFragment>;
 
     fn from_fragment(
-        fragment: Self::OptionalFragment,
+        fragment: Self::Fragment,
         validator: Validator,
     ) -> Result<Self, ValidationError> {
         if let Some(fragment) = fragment {
@@ -104,7 +104,7 @@ impl<T: FromFragment> FromFragment for Option<T> {
     }
 }
 
-pub fn validate<T: FromFragment>(fragment: T::OptionalFragment) -> Result<T, ValidationError> {
+pub fn validate<T: FromFragment>(fragment: T::Fragment) -> Result<T, ValidationError> {
     T::from_fragment(
         fragment,
         Validator {
