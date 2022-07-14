@@ -167,7 +167,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     quote! {
         #attrs
-        pub struct #fragment_ident #impl_generics #where_clause {
+        pub struct #fragment_ident #generics #where_clause {
             #fragment_fields
         }
 
