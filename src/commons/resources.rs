@@ -74,38 +74,63 @@ use std::collections::BTreeMap;
 
 // This struct allows specifying memory and cpu limits as well as generically adding storage
 // settings.
-#[derive(Clone, Debug, Deserialize, Default, Merge, Fragment, JsonSchema, PartialEq, Serialize)]
-#[merge(
-    bounds = "T: Merge, K: Merge",
-    path_overrides(merge = "crate::config::merge")
-)]
+#[derive(Clone, Debug, Default, Fragment, PartialEq)]
 #[fragment(
-    bounds = "T: FromFragment, K: FromFragment",
+    bounds = "T: FromFragment, K: FromFragment, T::Fragment: Default, K::Fragment: Default",
     path_overrides(fragment = "crate::config::fragment")
 )]
-#[serde(rename_all = "camelCase")]
+#[fragment_attrs(
+    derive(Merge, Serialize, Deserialize, JsonSchema),
+    merge(
+        bounds = "T::Fragment: Merge, K::Fragment: Merge",
+        path_overrides(merge = "crate::config::merge")
+    ),
+    serde(
+        bound(
+            serialize = "T::Fragment: Serialize, K::Fragment: Serialize",
+            deserialize = "T::Fragment: Deserialize<'de>, K::Fragment: Deserialize<'de>",
+        ),
+        rename_all = "camelCase",
+    ),
+    schemars(
+        bound = "T: JsonSchema, K: JsonSchema, T::Fragment: JsonSchema, K::Fragment: JsonSchema"
+    )
+)]
 pub struct Resources<T, K = NoRuntimeLimits>
 where
     T: Clone + Default,
     K: Clone + Default,
 {
-    #[serde(default)]
+    #[fragment_attrs(serde(default))]
     pub memory: MemoryLimits<K>,
-    #[serde(default)]
+    #[fragment_attrs(serde(default))]
     pub cpu: CpuLimits,
-    #[serde(default)]
+    #[fragment_attrs(serde(default))]
     pub storage: T,
 }
 
 // Defines memory limits to be set on the pods
 // Is generic to enable adding custom configuration for specific runtimes or products
-#[derive(Clone, Debug, Deserialize, Default, Merge, Fragment, JsonSchema, PartialEq, Serialize)]
-#[merge(bounds = "T: Merge", path_overrides(merge = "crate::config::merge"))]
+#[derive(Clone, Debug, Default, Fragment, PartialEq)]
 #[fragment(
-    bounds = "T: FromFragment",
+    bounds = "T: FromFragment, T::Fragment: Default",
     path_overrides(fragment = "crate::config::fragment")
 )]
-#[serde(rename_all = "camelCase")]
+#[fragment_attrs(
+    derive(Merge, Serialize, Deserialize, JsonSchema, Default),
+    merge(
+        bounds = "T::Fragment: Merge",
+        path_overrides(merge = "crate::config::merge")
+    ),
+    serde(
+        bound(
+            serialize = "T::Fragment: Serialize",
+            deserialize = "T::Fragment: Deserialize<'de>",
+        ),
+        rename_all = "camelCase",
+    ),
+    schemars(bound = "T: JsonSchema, T::Fragment: JsonSchema")
+)]
 pub struct MemoryLimits<T>
 where
     T: Clone + Default,
@@ -114,51 +139,63 @@ where
     // Should in most cases be mapped to resources.limits.memory
     pub limit: Option<Quantity>,
     // Additional options that may be required
-    #[serde(default)]
+    #[fragment_attrs(serde(default))]
     pub runtime_limits: T,
 }
 
 // Default struct to allow operators not specifying `runtime_limits` when using [`MemoryLimits`]
-#[derive(Clone, Debug, Default, Deserialize, Merge, Fragment, JsonSchema, PartialEq, Serialize)]
-#[merge(path_overrides(merge = "crate::config::merge"))]
+#[derive(Clone, Debug, Default, Fragment, PartialEq, JsonSchema)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
-#[serde(rename_all = "camelCase")]
+#[fragment_attrs(
+    derive(Merge, Serialize, Deserialize, JsonSchema, Default),
+    merge(path_overrides(merge = "crate::config::merge")),
+    serde(rename_all = "camelCase")
+)]
 pub struct NoRuntimeLimits {}
 
 // Definition of Java Heap settings
 // `min` is optional and should usually be defaulted to the same value as `max` by the implementing
 // code
-#[derive(Clone, Debug, Default, Deserialize, Merge, Fragment, JsonSchema, PartialEq, Serialize)]
-#[merge(path_overrides(merge = "crate::config::merge"))]
+#[derive(Clone, Debug, Default, Fragment, PartialEq, JsonSchema)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
-#[serde(rename_all = "camelCase")]
+#[fragment_attrs(
+    derive(Merge, Serialize, Deserialize, JsonSchema, Default),
+    merge(path_overrides(merge = "crate::config::merge")),
+    serde(rename_all = "camelCase")
+)]
 pub struct JvmHeapLimits {
     pub max: Option<Quantity>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[fragment_attrs(serde(default, skip_serializing_if = "Option::is_none"))]
     pub min: Option<Quantity>,
 }
 
 // Cpu limits
 // These should usually be forwarded to resources.limits.cpu
-#[derive(Clone, Debug, Default, Deserialize, Merge, Fragment, JsonSchema, PartialEq, Serialize)]
-#[merge(path_overrides(merge = "crate::config::merge"))]
+#[derive(Clone, Debug, Default, Fragment, PartialEq)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
-#[serde(rename_all = "camelCase")]
+#[fragment_attrs(
+    derive(Merge, Serialize, Deserialize, JsonSchema, Default),
+    merge(path_overrides(merge = "crate::config::merge")),
+    serde(rename_all = "camelCase")
+)]
 pub struct CpuLimits {
     pub min: Option<Quantity>,
     pub max: Option<Quantity>,
 }
 
 // Struct that exposes the values for a PVC which the user should be able to influence
-#[derive(Clone, Debug, Default, Deserialize, Merge, Fragment, JsonSchema, PartialEq, Serialize)]
-#[merge(path_overrides(merge = "crate::config::merge"))]
+#[derive(Clone, Debug, Default, Fragment, PartialEq)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
-#[serde(rename_all = "camelCase")]
+#[fragment_attrs(
+    derive(Merge, Serialize, Deserialize, JsonSchema, Default),
+    merge(path_overrides(merge = "crate::config::merge")),
+    serde(rename_all = "camelCase")
+)]
 pub struct PvcConfig {
     pub capacity: Option<Quantity>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[fragment_attrs(serde(default, skip_serializing_if = "Option::is_none"))]
     pub storage_class: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[fragment_attrs(serde(default, skip_serializing_if = "Option::is_none"))]
     pub selectors: Option<LabelSelector>,
 }
 
@@ -196,8 +233,8 @@ impl PvcConfig {
 #[allow(clippy::from_over_into)]
 impl<T, K> Into<ResourceRequirements> for Resources<T, K>
 where
-    T: Clone + Merge + Default,
-    K: Clone + Merge + Default,
+    T: Clone + Default,
+    K: Clone + Default,
 {
     fn into(self) -> ResourceRequirements {
         let mut limits = BTreeMap::new();
@@ -231,14 +268,21 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::commons::resources::{PvcConfig, Resources};
-    use crate::config::merge::Merge;
+    use crate::commons::resources::{PvcConfig, PvcConfigFragment, Resources, ResourcesFragment};
+    use crate::config::{
+        fragment::{self, Fragment},
+        merge::Merge,
+    };
     use k8s_openapi::api::core::v1::{PersistentVolumeClaim, ResourceRequirements};
     use rstest::rstest;
     use serde::{Deserialize, Serialize};
 
-    #[derive(Clone, Debug, Default, Merge, Serialize, Deserialize)]
-    #[merge(path_overrides(merge = "crate::config::merge"))]
+    #[derive(Clone, Debug, Default, Fragment)]
+    #[fragment(path_overrides(fragment = "crate::config::fragment"))]
+    #[fragment_attrs(
+        derive(Serialize, Deserialize, Merge, Default),
+        merge(path_overrides(merge = "crate::config::merge"))
+    )]
     struct TestStorageConfig {}
 
     #[rstest]
@@ -338,7 +382,10 @@ mod tests {
         #[case] input: String,
         #[case] expected: String,
     ) {
-        let input_pvcconfig: PvcConfig = serde_yaml::from_str(&input).expect("illegal test input");
+        let input_pvcconfig_fragment: PvcConfigFragment =
+            serde_yaml::from_str(&input).expect("illegal test input");
+        let input_pvcconfig = fragment::validate::<PvcConfig>(input_pvcconfig_fragment)
+            .expect("test input failed validation");
 
         let result = input_pvcconfig.build_pvc(&name, access_modes);
 
@@ -386,8 +433,10 @@ mod tests {
             cpu: 1000"#
     )]
     fn test_into_resourcelimits(#[case] input: String, #[case] expected: String) {
-        let input_resources: Resources<TestStorageConfig> =
+        let input_resources_fragment: ResourcesFragment<TestStorageConfig> =
             serde_yaml::from_str(&input).expect("illegal test input");
+        let input_resources: Resources<TestStorageConfig> =
+            fragment::validate(input_resources_fragment).expect("test input failed validation");
 
         let result: ResourceRequirements = input_resources.into();
         let expected_requirements: ResourceRequirements =

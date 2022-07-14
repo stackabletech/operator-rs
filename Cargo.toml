@@ -49,3 +49,8 @@ rustls-tls = ["kube/rustls-tls"]
 
 [workspace]
 members = ["stackable-operator-derive"]
+
+[patch.crates-io]
+# requires https://github.com/GREsau/schemars/pull/162
+#schemars_derive = { path = "../schemars/schemars_derive" }
+schemars_derive = { git = "https://github.com/stackabletech/schemars.git", branch = "feature/custom-bound" }
