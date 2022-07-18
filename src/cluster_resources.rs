@@ -10,7 +10,7 @@ use crate::{
     error::{Error, OperatorResult},
     k8s_openapi::{
         api::{
-            apps::v1::StatefulSet,
+            apps::v1::{DaemonSet, StatefulSet},
             core::v1::{ConfigMap, ObjectReference, Service},
         },
         apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
@@ -238,6 +238,7 @@ impl ClusterResources {
     ///
     /// The following resource types are considered:
     /// * `ConfigMap`
+    /// * `DaemonSet`
     /// * `Service`
     /// * `StatefulSet`
     ///
@@ -253,6 +254,7 @@ impl ClusterResources {
         self.delete_orphaned_resources::<Service>(client).await?;
         self.delete_orphaned_resources::<StatefulSet>(client)
             .await?;
+        self.delete_orphaned_resources::<DaemonSet>(client).await?;
         self.delete_orphaned_resources::<ConfigMap>(client).await?;
 
         Ok(())
