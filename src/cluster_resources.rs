@@ -21,6 +21,17 @@ use crate::{
 use serde::{de::DeserializeOwned, Serialize};
 use tracing::info;
 
+/// A cluster resource handled by `ClusterResources`.
+pub trait ClusterResource:
+    Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Serialize
+{
+}
+
+impl ClusterResource for ConfigMap {}
+impl ClusterResource for DaemonSet {}
+impl ClusterResource for Service {}
+impl ClusterResource for StatefulSet {}
+
 /// A structure containing the cluster resources.
 ///
 /// Cluster resources can be added and on finalizing, orphaned resources are deleted. A cluster
@@ -180,10 +191,11 @@ impl ClusterResources {
     /// * `app.kubernetes.io/instance = <cluster.name>`
     /// * `app.kubernetes.io/managed-by = <app_name>-operator`
     /// * `app.kubernetes.io/name = <app_name>`
-    pub async fn add<T>(&mut self, client: &Client, resource: &T) -> OperatorResult<T>
-    where
-        T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Serialize,
-    {
+    pub async fn add<T: ClusterResource>(
+        &mut self,
+        client: &Client,
+        resource: &T,
+    ) -> OperatorResult<T> {
         ClusterResources::check_label(resource.labels(), APP_INSTANCE_LABEL, &self.app_instance)?;
         ClusterResources::check_label(resource.labels(), APP_MANAGED_BY_LABEL, &self.manager)?;
         ClusterResources::check_label(resource.labels(), APP_NAME_LABEL, &self.app_name)?;
@@ -236,12 +248,6 @@ impl ClusterResources {
     /// All orphaned resources, i.e. resources which are labelled as if they belong to this cluster
     /// instance but were not added to the cluster resources, are deleted.
     ///
-    /// The following resource types are considered:
-    /// * `ConfigMap`
-    /// * `DaemonSet`
-    /// * `Service`
-    /// * `StatefulSet`
-    ///
     /// The following resource labels are compared:
     /// * `app.kubernetes.io/instance`
     /// * `app.kubernetes.io/managed-by`
@@ -266,10 +272,10 @@ impl ClusterResources {
     /// # Arguments
     ///
     /// * `client` - The client which is used to access Kubernetes
-    async fn delete_orphaned_resources<T>(&self, client: &Client) -> OperatorResult<()>
-    where
-        T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
-    {
+    async fn delete_orphaned_resources<T: ClusterResource>(
+        &self,
+        client: &Client,
+    ) -> OperatorResult<()> {
         let deployed_cluster_resources = self.list_deployed_cluster_resources::<T>(client).await?;
 
         let orphaned_resources = deployed_cluster_resources
@@ -293,10 +299,7 @@ impl ClusterResources {
 
     /// Creates a string containing the names and if present namespaces of the given resources
     /// sorted by name and separated with commas.
-    fn print_resources<T>(resources: &[T]) -> String
-    where
-        T: Resource<DynamicType = ()>,
-    {
+    fn print_resources<T: ClusterResource>(resources: &[T]) -> String {
         let mut output = resources
             .iter()
             .map(ClusterResources::print_resource)
@@ -306,10 +309,7 @@ impl ClusterResources {
     }
 
     /// Creates a string containing the name and if present namespace of the given resource.
-    fn print_resource<T>(resource: &T) -> String
-    where
-        T: Resource<DynamicType = ()>,
-    {
+    fn print_resource<T: ClusterResource>(resource: &T) -> String {
         if let Some(namespace) = resource.namespace() {
             format!("{name}.{namespace}", name = resource.name())
         } else {
@@ -323,10 +323,10 @@ impl ClusterResources {
     /// # Arguments
     ///
     /// * `client` - The client which is used to access Kubernetes
-    async fn list_deployed_cluster_resources<T>(&self, client: &Client) -> OperatorResult<Vec<T>>
-    where
-        T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
-    {
+    async fn list_deployed_cluster_resources<T: ClusterResource>(
+        &self,
+        client: &Client,
+    ) -> OperatorResult<Vec<T>> {
         let label_selector = LabelSelector {
             match_expressions: Some(vec![
                 LabelSelectorRequirement {
@@ -364,10 +364,7 @@ struct ResourceId {
     name: String,
 }
 
-impl<T> From<&T> for ResourceId
-where
-    T: Resource<DynamicType = ()>,
-{
+impl<T: ClusterResource> From<&T> for ResourceId {
     fn from(resource: &T) -> Self {
         Self {
             kind: T::kind(&()).into(),
