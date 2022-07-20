@@ -18,8 +18,9 @@ use crate::{
     kube::{Resource, ResourceExt},
     labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
 };
+use kube::core::ErrorResponse;
 use serde::{de::DeserializeOwned, Serialize};
-use tracing::info;
+use tracing::{debug, info};
 
 /// A cluster resource handled by `ClusterResources`.
 pub trait ClusterResource:
@@ -269,6 +270,10 @@ impl ClusterResources {
     /// Deletes all deployed resources which are labelled as if they belong to this cluster
     /// instance but are not contained in the given list.
     ///
+    /// If it is forbidden to list the resources of the given kind then it is assumed that the
+    /// caller is not in charge of these resources, the deletion is skipped, and no error is
+    /// returned.
+    ///
     /// # Arguments
     ///
     /// * `client` - The client which is used to access Kubernetes
@@ -276,25 +281,38 @@ impl ClusterResources {
         &self,
         client: &Client,
     ) -> OperatorResult<()> {
-        let deployed_cluster_resources = self.list_deployed_cluster_resources::<T>(client).await?;
+        match self.list_deployed_cluster_resources::<T>(client).await {
+            Ok(deployed_cluster_resources) => {
+                let orphaned_resources = deployed_cluster_resources
+                    .into_iter()
+                    .filter(|r| !self.resources.contains(&r.into()))
+                    .collect::<Vec<_>>();
 
-        let orphaned_resources = deployed_cluster_resources
-            .into_iter()
-            .filter(|r| !self.resources.contains(&r.into()))
-            .collect::<Vec<_>>();
+                if !orphaned_resources.is_empty() {
+                    info!(
+                        "Deleting orphaned {}: {}",
+                        T::plural(&()),
+                        ClusterResources::print_resources(&orphaned_resources),
+                    );
+                    for resource in orphaned_resources.iter() {
+                        client.delete(resource).await?;
+                    }
+                }
 
-        if !orphaned_resources.is_empty() {
-            info!(
-                "Deleting orphaned {}: {}",
-                T::plural(&()),
-                ClusterResources::print_resources(&orphaned_resources),
-            );
-            for resource in orphaned_resources.iter() {
-                client.delete(resource).await?;
+                Ok(())
             }
+            Err(Error::KubeError {
+                source: kube::Error::Api(ErrorResponse { code: 403, .. }),
+            }) => {
+                debug!(
+                    "Skipping deletion of orphaned {} because the operator is not allowed to list \
+                      them and is therefore probably not in charge of them.",
+                    T::plural(&())
+                );
+                Ok(())
+            }
+            Err(error) => Err(error),
         }
-
-        Ok(())
     }
 
     /// Creates a string containing the names and if present namespaces of the given resources
