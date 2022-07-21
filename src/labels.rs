@@ -62,7 +62,7 @@ pub fn role_selector_labels<T: Resource>(
     app_name: &str,
     app_role: &str,
 ) -> BTreeMap<String, String> {
-    let mut labels = build_common_labels_for_all_managed_resources(app_name, &resource.name());
+    let mut labels = build_common_labels_for_all_managed_resources(app_name, &resource.name_any());
     labels.insert(APP_COMPONENT_LABEL.to_string(), app_role.to_string());
     labels
 }
