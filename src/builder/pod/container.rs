@@ -4,6 +4,8 @@ use k8s_openapi::api::core::v1::{
 };
 use std::fmt;
 
+use crate::{error::Error, validation::is_rfc_1035_label};
+
 /// A builder to build [`Container`] objects.
 ///
 /// This will automatically create the necessary volumes and mounts for each `ConfigMap` which is added.
@@ -25,11 +27,12 @@ pub struct ContainerBuilder {
 }
 
 impl ContainerBuilder {
-    pub fn new(name: &str) -> Self {
-        ContainerBuilder {
+    pub fn new(name: &str) -> Result<Self, Error> {
+        Self::validate_container_name(name)?;
+        Ok(ContainerBuilder {
             name: name.to_string(),
             ..ContainerBuilder::default()
-        }
+        })
     }
 
     pub fn image(&mut self, image: impl Into<String>) -> &mut Self {
@@ -226,6 +229,20 @@ impl ContainerBuilder {
             ..Container::default()
         }
     }
+
+    /// Validates a container name is according to the [RFC 1035](https://www.ietf.org/rfc/rfc1035.txt) standards.
+    /// Returns [Ok] if the name is according to the standard, and [Err] if not.
+    fn validate_container_name(name: &str) -> Result<(), Error> {
+        let validation_result = is_rfc_1035_label(name);
+
+        match validation_result {
+            Ok(_) => Ok(()),
+            Err(err) => Err(Error::InvalidContainerName {
+                container_name: name.to_owned(),
+                violation: err.join(","),
+            }),
+        }
+    }
 }
 
 /// A builder to build [`ContainerPort`] objects.
@@ -333,6 +350,7 @@ mod tests {
         };
 
         let container = ContainerBuilder::new("testcontainer")
+            .expect("ContainerBuilder not created")
             .add_env_var("foo", "bar")
             .add_env_var_from_config_map("envFromConfigMap", "my-configmap", "my-key")
             .add_env_var_from_secret("envFromSecret", "my-secret", "my-key")
@@ -403,5 +421,90 @@ mod tests {
             "metadata.labels['some-label-name']",
             FieldPathEnvVar::Labels("some-label-name".to_string()).to_string()
         );
+    }
+
+    #[test]
+    fn test_container_name_max_len() {
+        let long_container_name =
+            "lengthexceededlengthexceededlengthexceededlengthexceededlengthex";
+        assert_eq!(long_container_name.len(), 64); // 63 characters is the limit for container names
+        let result = ContainerBuilder::new(long_container_name);
+        match result {
+            Ok(_) => {
+                panic!("Container name exceeding 63 characters should cause an error");
+            }
+            Err(error) => match error {
+                crate::error::Error::InvalidContainerName {
+                    container_name,
+                    violation,
+                } => {
+                    assert_eq!(container_name.as_str(), long_container_name);
+                    assert_eq!(violation.as_str(), "must be no more than 63 characters")
+                }
+                _ => {
+                    panic!("InvalidContainerName error expected")
+                }
+            },
+        }
+        // One characters shorter name is valid
+        let max_len_container_name: String = long_container_name.chars().skip(1).collect();
+        assert_eq!(max_len_container_name.len(), 63);
+        assert!(ContainerBuilder::new(&max_len_container_name).is_ok())
+    }
+
+    #[test]
+    fn test_container_name_alphabet_only() {
+        ContainerBuilder::new("okname").unwrap();
+    }
+
+    #[test]
+    fn test_container_name_hyphen() {
+        assert!(ContainerBuilder::new("name-with-hyphen").is_ok());
+        assert_container_builder_err(
+            ContainerBuilder::new("ends-with-hyphen-"),
+            "regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?')",
+        );
+        assert_container_builder_err(
+            ContainerBuilder::new("-starts-with-hyphen"),
+            "regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?')",
+        );
+    }
+
+    #[test]
+    fn test_container_name_contains_number() {
+        assert!(ContainerBuilder::new("name-0-name").is_ok());
+    }
+
+    #[test]
+    fn test_container_name_contains_underscore() {
+        assert!(ContainerBuilder::new("name_name").is_err());
+        assert_container_builder_err(
+            ContainerBuilder::new("name_name"),
+            "regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?')",
+        );
+    }
+
+    /// Panics if given container builder constructor result is not [Err] with error message
+    /// containing expected violation.
+    fn assert_container_builder_err(
+        result: Result<ContainerBuilder, Error>,
+        expected_err_contains: &str,
+    ) {
+        match result {
+            Ok(_) => {
+                panic!("Container name exceeding 63 characters should cause an error");
+            }
+            Err(error) => match error {
+                crate::error::Error::InvalidContainerName {
+                    container_name: _,
+                    violation,
+                } => {
+                    assert!(violation.contains(expected_err_contains));
+                }
+                _ => {
+                    panic!("InvalidContainerName error expected");
+                }
+            },
+        }
     }
 }

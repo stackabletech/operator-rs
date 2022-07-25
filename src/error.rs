@@ -85,6 +85,14 @@ pub enum Error {
 
     #[error("Cannot convert quantity [{value}] to Java heap value with unit [{target_unit}].")]
     CannotConvertToJavaHeapValue { value: String, target_unit: String },
+    #[error("Conversion error: [message]")]
+    ConversionError { message: String },
+
+    #[error("Given container name: '{container_name}'. Reason: {violation}")]
+    InvalidContainerName {
+        container_name: String,
+        violation: String,
+    },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
