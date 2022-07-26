@@ -22,7 +22,12 @@ use kube::core::ErrorResponse;
 use serde::{de::DeserializeOwned, Serialize};
 use tracing::{debug, info};
 
-/// A cluster resource handled by `ClusterResources`.
+/// A cluster resource handled by [`ClusterResources`].
+///
+/// This trait is used in the function signatures of [`ClusterResources`] and restricts the
+/// possible kinds of resources. [`ClusterResources::finalize`] iterates over all implementations
+/// and removes the orphaned resources. Therefore if a new implementation is added, it must be
+/// added to [`ClusterResources::finalize`] as well.
 pub trait ClusterResource:
     Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Serialize
 {
@@ -246,8 +251,9 @@ impl ClusterResources {
 
     /// Finalizes the cluster creation.
     ///
-    /// All orphaned resources, i.e. resources which are labelled as if they belong to this cluster
-    /// instance but were not added to the cluster resources, are deleted.
+    /// The orphaned resources of all kinds of resources which implement the [`ClusterResource`]
+    /// trait, are deleted. A resource is seen as orphaned if it is labelled as if it belongs to
+    /// this cluster instance but was not added to the cluster resources before.
     ///
     /// The following resource labels are compared:
     /// * `app.kubernetes.io/instance`
