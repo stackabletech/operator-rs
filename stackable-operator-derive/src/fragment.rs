@@ -1,7 +1,9 @@
 use darling::{ast::Data, FromDeriveInput, FromField, FromMeta, FromVariant};
 use proc_macro2::{Ident, TokenStream, TokenTree};
 use quote::{format_ident, quote};
-use syn::{parse_quote, Attribute, DeriveInput, Expr, Generics, Path, Type, WherePredicate};
+use syn::{
+    parse_quote, Attribute, DeriveInput, Expr, Generics, Path, Type, Visibility, WherePredicate,
+};
 
 #[derive(FromMeta)]
 struct PathOverrides {
@@ -76,6 +78,7 @@ struct FragmentVariant {}
 #[derive(FromField)]
 #[darling(attributes(fragment), forward_attrs(fragment_attrs))]
 struct FragmentField {
+    vis: Visibility,
     ident: Option<Ident>,
     ty: Type,
     attrs: Vec<Attribute>,
@@ -134,16 +137,24 @@ pub fn derive(input: DeriveInput) -> TokenStream {
     let fragment_ident = format_ident!("{ident}Fragment");
     let fragment_fields = fields
         .iter()
-        .map(|FragmentField { ident, ty, attrs }| {
-            let attrs = extract_forwarded_attrs(attrs);
-            quote! { #attrs #ident: <#ty as #fragment_mod::FromFragment>::Fragment, }
-        })
+        .map(
+            |FragmentField {
+                 vis,
+                 ident,
+                 ty,
+                 attrs,
+             }| {
+                let attrs = extract_forwarded_attrs(attrs);
+                quote! { #attrs #vis #ident: <#ty as #fragment_mod::FromFragment>::Fragment, }
+            },
+        )
         .collect::<TokenStream>();
 
     let from_fragment_fields = fields
         .iter()
         .map(
             |FragmentField {
+                 vis: _,
                  ident,
                  ty: _,
                  attrs: _,
@@ -151,7 +162,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                 let ident_name = ident.as_ref().map(ToString::to_string);
                 quote! {
                     #ident: {
-                        let validator = validator.field(#ident_name);
+                        let validator = validator.field(&#ident_name);
                         #fragment_mod::FromFragment::from_fragment(fragment.#ident, validator)?
                     },
                 }

@@ -63,6 +63,7 @@ use crate::config::{
     fragment::{Fragment, FromFragment},
     merge::Merge,
 };
+use derivative::Derivative;
 use k8s_openapi::api::core::v1::{
     PersistentVolumeClaim, PersistentVolumeClaimSpec, ResourceRequirements,
 };
@@ -70,17 +71,23 @@ use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{LabelSelector, ObjectMeta};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Debug};
 
 // This struct allows specifying memory and cpu limits as well as generically adding storage
 // settings.
-#[derive(Clone, Debug, Default, Fragment, PartialEq)]
+#[derive(Clone, Debug, Default, Fragment, PartialEq, JsonSchema)]
 #[fragment(
-    bounds = "T: FromFragment, K: FromFragment, T::Fragment: Default, K::Fragment: Default",
+    bounds = "T: FromFragment, K: FromFragment",
     path_overrides(fragment = "crate::config::fragment")
 )]
 #[fragment_attrs(
-    derive(Merge, Serialize, Deserialize, JsonSchema),
+    derive(Merge, Serialize, Deserialize, JsonSchema, Derivative),
+    derivative(
+        Default(bound = "T::Fragment: Default, K::Fragment: Default"),
+        Debug(bound = "T::Fragment: Debug, K::Fragment: Debug"),
+        Clone(bound = "T::Fragment: Clone, K::Fragment: Clone"),
+        PartialEq(bound = "T::Fragment: PartialEq, K::Fragment: PartialEq")
+    ),
     merge(
         bounds = "T::Fragment: Merge, K::Fragment: Merge",
         path_overrides(merge = "crate::config::merge")
@@ -88,12 +95,12 @@ use std::collections::BTreeMap;
     serde(
         bound(
             serialize = "T::Fragment: Serialize, K::Fragment: Serialize",
-            deserialize = "T::Fragment: Deserialize<'de>, K::Fragment: Deserialize<'de>",
+            deserialize = "T::Fragment: Deserialize<'de> + Default, K::Fragment: Deserialize<'de> + Default",
         ),
         rename_all = "camelCase",
     ),
     schemars(
-        bound = "T: JsonSchema, K: JsonSchema, T::Fragment: JsonSchema, K::Fragment: JsonSchema"
+        bound = "T: JsonSchema, K: JsonSchema, T::Fragment: JsonSchema + Default, K::Fragment: JsonSchema + Default"
     )
 )]
 pub struct Resources<T, K = NoRuntimeLimits>
@@ -111,13 +118,19 @@ where
 
 // Defines memory limits to be set on the pods
 // Is generic to enable adding custom configuration for specific runtimes or products
-#[derive(Clone, Debug, Default, Fragment, PartialEq)]
+#[derive(Clone, Debug, Default, Fragment, PartialEq, JsonSchema)]
 #[fragment(
-    bounds = "T: FromFragment, T::Fragment: Default",
+    bounds = "T: FromFragment",
     path_overrides(fragment = "crate::config::fragment")
 )]
 #[fragment_attrs(
-    derive(Merge, Serialize, Deserialize, JsonSchema, Default),
+    derive(Merge, Serialize, Deserialize, JsonSchema, Derivative),
+    derivative(
+        Default(bound = "T::Fragment: Default"),
+        Debug(bound = "T::Fragment: Debug"),
+        Clone(bound = "T::Fragment: Clone"),
+        PartialEq(bound = "T::Fragment: PartialEq")
+    ),
     merge(
         bounds = "T::Fragment: Merge",
         path_overrides(merge = "crate::config::merge")
@@ -125,11 +138,11 @@ where
     serde(
         bound(
             serialize = "T::Fragment: Serialize",
-            deserialize = "T::Fragment: Deserialize<'de>",
+            deserialize = "T::Fragment: Deserialize<'de> + Default",
         ),
         rename_all = "camelCase",
     ),
-    schemars(bound = "T: JsonSchema, T::Fragment: JsonSchema")
+    schemars(bound = "T: JsonSchema, T::Fragment: JsonSchema + Default")
 )]
 pub struct MemoryLimits<T>
 where
@@ -147,7 +160,16 @@ where
 #[derive(Clone, Debug, Default, Fragment, PartialEq, JsonSchema)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
-    derive(Merge, Serialize, Deserialize, JsonSchema, Default),
+    derive(
+        Merge,
+        Serialize,
+        Deserialize,
+        JsonSchema,
+        Default,
+        Debug,
+        Clone,
+        PartialEq
+    ),
     merge(path_overrides(merge = "crate::config::merge")),
     serde(rename_all = "camelCase")
 )]
@@ -159,7 +181,16 @@ pub struct NoRuntimeLimits {}
 #[derive(Clone, Debug, Default, Fragment, PartialEq, JsonSchema)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
-    derive(Merge, Serialize, Deserialize, JsonSchema, Default),
+    derive(
+        Merge,
+        Serialize,
+        Deserialize,
+        JsonSchema,
+        Default,
+        Debug,
+        Clone,
+        PartialEq
+    ),
     merge(path_overrides(merge = "crate::config::merge")),
     serde(rename_all = "camelCase")
 )]
@@ -171,10 +202,19 @@ pub struct JvmHeapLimits {
 
 // Cpu limits
 // These should usually be forwarded to resources.limits.cpu
-#[derive(Clone, Debug, Default, Fragment, PartialEq)]
+#[derive(Clone, Debug, Default, Fragment, PartialEq, JsonSchema)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
-    derive(Merge, Serialize, Deserialize, JsonSchema, Default),
+    derive(
+        Merge,
+        Serialize,
+        Deserialize,
+        JsonSchema,
+        Default,
+        Debug,
+        Clone,
+        PartialEq
+    ),
     merge(path_overrides(merge = "crate::config::merge")),
     serde(rename_all = "camelCase")
 )]
@@ -184,10 +224,19 @@ pub struct CpuLimits {
 }
 
 // Struct that exposes the values for a PVC which the user should be able to influence
-#[derive(Clone, Debug, Default, Fragment, PartialEq)]
+#[derive(Clone, Debug, Default, Fragment, PartialEq, JsonSchema)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
-    derive(Merge, Serialize, Deserialize, JsonSchema, Default),
+    derive(
+        Merge,
+        Serialize,
+        Deserialize,
+        JsonSchema,
+        Default,
+        Debug,
+        Clone,
+        PartialEq
+    ),
     merge(path_overrides(merge = "crate::config::merge")),
     serde(rename_all = "camelCase")
 )]

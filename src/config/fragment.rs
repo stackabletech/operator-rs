@@ -1,4 +1,8 @@
-use std::fmt::{Display, Write};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::{Display, Write},
+    hash::Hash,
+};
 
 pub use stackable_operator_derive::Fragment;
 
@@ -7,12 +11,12 @@ use super::merge::Atomic;
 use snafu::Snafu;
 
 pub struct Validator<'a> {
-    ident: Option<&'a str>,
+    ident: Option<&'a dyn Display>,
     parent: Option<&'a Validator<'a>>,
 }
 
 impl<'a> Validator<'a> {
-    pub fn field<'b>(&'b self, ident: &'b str) -> Validator<'b> {
+    pub fn field<'b>(&'b self, ident: &'b dyn Display) -> Validator<'b> {
         Validator {
             ident: Some(ident),
             parent: Some(self),
@@ -86,6 +90,48 @@ impl<T: Atomic> FromFragment for T {
         validator: Validator,
     ) -> Result<Self, ValidationError> {
         fragment.ok_or_else(|| validator.error_required())
+    }
+}
+impl<K, V: FromFragment> FromFragment for HashMap<K, V>
+where
+    K: Eq + Hash + Display,
+{
+    type Fragment = HashMap<K, V::RequiredFragment>;
+    type RequiredFragment = HashMap<K, V::RequiredFragment>;
+
+    fn from_fragment(
+        fragment: Self::Fragment,
+        validator: Validator,
+    ) -> Result<Self, ValidationError> {
+        fragment
+            .into_iter()
+            .map(|(k, v)| {
+                let validator = validator.field(&k);
+                let v = V::from_fragment(v.into(), validator)?;
+                Ok((k, v))
+            })
+            .collect()
+    }
+}
+impl<K, V: FromFragment> FromFragment for BTreeMap<K, V>
+where
+    K: Eq + Ord + Display,
+{
+    type Fragment = BTreeMap<K, V::RequiredFragment>;
+    type RequiredFragment = BTreeMap<K, V::RequiredFragment>;
+
+    fn from_fragment(
+        fragment: Self::Fragment,
+        validator: Validator,
+    ) -> Result<Self, ValidationError> {
+        fragment
+            .into_iter()
+            .map(|(k, v)| {
+                let validator = validator.field(&k);
+                let v = V::from_fragment(v.into(), validator)?;
+                Ok((k, v))
+            })
+            .collect()
     }
 }
 impl<T: FromFragment> FromFragment for Option<T> {
