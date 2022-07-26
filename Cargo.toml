@@ -9,8 +9,8 @@ repository = "https://github.com/stackabletech/operator-rs"
 
 [dependencies]
 chrono = { version = "0.4.19", default-features = false }
-clap = { version = "3.2.7", features = ["derive", "cargo", "env"] }
-const_format = "0.2.25"
+clap = { version = "3.2.15", features = ["derive", "cargo", "env"] }
+const_format = "0.2.26"
 either = "1.7.0"
 futures = "0.3.21"
 json-patch = "0.2.6"
@@ -21,17 +21,17 @@ product-config = { git = "https://github.com/stackabletech/product-config.git", 
 rand = "0.8.5"
 regex = "1.6.0"
 schemars = "0.8.10"
-serde = { version = "1.0.137", features = ["derive"] }
+serde = { version = "1.0.140", features = ["derive"] }
 serde_json = "1.0.82"
-serde_yaml = "0.8.24"
+serde_yaml = "0.8.26"
 strum = { version = "0.24.1", features = ["derive"] }
 thiserror = "1.0.31"
-tokio = { version = "1.20.0", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.20.1", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.35"
-tracing-subscriber = { version = "0.3.12", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.15", features = ["env-filter"] }
 backoff = "0.4.0"
 derivative = "2.2.0"
-tracing-opentelemetry = "0.17.3"
+tracing-opentelemetry = "0.17.4"
 opentelemetry = { version = "0.17.0", features = ["rt-tokio"] }
 opentelemetry-jaeger = { version = "0.16.0", features = ["rt-tokio"] }
 stackable-operator-derive = { path = "stackable-operator-derive" }
