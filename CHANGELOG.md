@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.23.0] - 2022-07-26
+
 ### Added
 
 - Add `AuthenticationClass::resolve` helper function ([#432]).
