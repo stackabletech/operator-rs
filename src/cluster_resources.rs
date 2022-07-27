@@ -136,11 +136,16 @@ impl ClusterResource for StatefulSet {}
 /// ```
 #[derive(Debug, Eq, PartialEq)]
 pub struct ClusterResources {
+    /// The namespace of the cluster
     namespace: String,
+    /// The name of the cluster
     app_instance: String,
+    /// The name of the application
     app_name: String,
+    /// The manager of the cluster resources, e.g. the controller
     manager: String,
-    resources: HashSet<ResourceId>,
+    /// The unique IDs of the cluster resources
+    resource_ids: HashSet<String>,
 }
 
 impl ClusterResources {
@@ -177,7 +182,7 @@ impl ClusterResources {
             app_instance,
             app_name: app_name.into(),
             manager: manager.into(),
-            resources: Default::default(),
+            resource_ids: Default::default(),
         })
     }
 
@@ -197,6 +202,9 @@ impl ClusterResources {
     /// * `app.kubernetes.io/instance = <cluster.name>`
     /// * `app.kubernetes.io/managed-by = <app_name>-operator`
     /// * `app.kubernetes.io/name = <app_name>`
+    ///
+    /// If the patched resource does not contain a UID then an `Error::MissingObjectKey` is
+    /// returned.
     pub async fn add<T: ClusterResource>(
         &mut self,
         client: &Client,
@@ -210,7 +218,11 @@ impl ClusterResources {
             .apply_patch(&self.manager, resource, resource)
             .await?;
 
-        self.resources.insert((&patched_resource).into());
+        let resource_id = patched_resource.uid().ok_or(Error::MissingObjectKey {
+            key: "metadata/uid",
+        })?;
+
+        self.resource_ids.insert(resource_id);
 
         Ok(patched_resource)
     }
@@ -283,16 +295,27 @@ impl ClusterResources {
     /// # Arguments
     ///
     /// * `client` - The client which is used to access Kubernetes
+    ///
+    /// # Errors
+    ///
+    /// If a deployed resource does not contain a UID then an `Error::MissingObjectKey` is
+    /// returned.
     async fn delete_orphaned_resources<T: ClusterResource>(
         &self,
         client: &Client,
     ) -> OperatorResult<()> {
         match self.list_deployed_cluster_resources::<T>(client).await {
             Ok(deployed_cluster_resources) => {
-                let orphaned_resources = deployed_cluster_resources
-                    .into_iter()
-                    .filter(|r| !self.resources.contains(&r.into()))
-                    .collect::<Vec<_>>();
+                let mut orphaned_resources = Vec::new();
+
+                for resource in deployed_cluster_resources {
+                    let resource_id = resource.uid().ok_or(Error::MissingObjectKey {
+                        key: "metadata/uid",
+                    })?;
+                    if !self.resource_ids.contains(&resource_id) {
+                        orphaned_resources.push(resource);
+                    }
+                }
 
                 if !orphaned_resources.is_empty() {
                     info!(
@@ -377,23 +400,5 @@ impl ClusterResources {
             .await?;
 
         Ok(resources)
-    }
-}
-
-/// A resource ID consisting of kind, optional namespace, and name.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-struct ResourceId {
-    kind: String,
-    namespace: Option<String>,
-    name: String,
-}
-
-impl<T: ClusterResource> From<&T> for ResourceId {
-    fn from(resource: &T) -> Self {
-        Self {
-            kind: T::kind(&()).into(),
-            namespace: resource.namespace(),
-            name: resource.name_any(),
-        }
     }
 }
