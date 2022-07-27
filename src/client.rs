@@ -221,7 +221,7 @@ impl Client {
     {
         Ok(self
             .get_api(resource.namespace().as_deref())
-            .patch(&resource.name(), patch_params, &patch)
+            .patch(&resource.name_any(), patch_params, &patch)
             .await?)
     }
 
@@ -316,7 +316,7 @@ impl Client {
     {
         let api = self.get_api(resource.namespace().as_deref());
         Ok(api
-            .patch_status(&resource.name(), patch_params, &patch)
+            .patch_status(&resource.name_any(), patch_params, &patch)
             .await?)
     }
 
@@ -331,7 +331,7 @@ impl Client {
     {
         Ok(self
             .get_api(resource.namespace().as_deref())
-            .replace(&resource.name(), &self.post_params, resource)
+            .replace(&resource.name_any(), &self.post_params, resource)
             .await?)
     }
 
@@ -348,7 +348,9 @@ impl Client {
         <T as Resource>::DynamicType: Default,
     {
         let api: Api<T> = self.get_api(resource.namespace().as_deref());
-        Ok(api.delete(&resource.name(), &self.delete_params).await?)
+        Ok(api
+            .delete(&resource.name_any(), &self.delete_params)
+            .await?)
     }
 
     /// This deletes a resource _if it is not deleted already_ and waits until the deletion is
@@ -372,7 +374,7 @@ impl Client {
 
         loop {
             if !self
-                .exists::<T>(&resource.name(), resource.namespace().as_deref())
+                .exists::<T>(&resource.name_any(), resource.namespace().as_deref())
                 .await?
             {
                 return Ok(());
@@ -555,11 +557,11 @@ mod tests {
             match result {
                 Ok(event) => match event {
                     Event::Applied(pod) => {
-                        assert_eq!("test-wait-created-busybox", pod.name());
+                        assert_eq!("test-wait-created-busybox", pod.name_any());
                     }
                     Event::Restarted(pods) => {
                         assert_eq!(1, pods.len());
-                        assert_eq!("test-wait-created-busybox", &pods[0].name());
+                        assert_eq!("test-wait-created-busybox", &pods[0].name_any());
                         break;
                     }
                     Event::Deleted(_) => {

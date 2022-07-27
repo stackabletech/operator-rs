@@ -58,7 +58,7 @@ impl EventBuilder {
         };
 
         EventBuilder {
-            name: resource.name(),
+            name: resource.name_any(),
             involved_object,
             ..EventBuilder::default()
         }

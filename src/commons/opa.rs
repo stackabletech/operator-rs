@@ -102,7 +102,7 @@ impl OpaConfig {
     {
         let package_name = match &self.package {
             Some(p) => p.to_string(),
-            None => resource.name(),
+            None => resource.name_any(),
         };
 
         let mut document_url = format!("{}/{}", api_version.get_data_api(), package_name);

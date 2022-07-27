@@ -335,9 +335,9 @@ impl ClusterResources {
     /// Creates a string containing the name and if present namespace of the given resource.
     fn print_resource<T: ClusterResource>(resource: &T) -> String {
         if let Some(namespace) = resource.namespace() {
-            format!("{name}.{namespace}", name = resource.name())
+            format!("{name}.{namespace}", name = resource.name_any())
         } else {
-            resource.name()
+            resource.name_any()
         }
     }
 
@@ -393,7 +393,7 @@ impl<T: ClusterResource> From<&T> for ResourceId {
         Self {
             kind: T::kind(&()).into(),
             namespace: resource.namespace(),
-            name: resource.name(),
+            name: resource.name_any(),
         }
     }
 }

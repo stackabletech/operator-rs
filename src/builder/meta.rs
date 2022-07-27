@@ -28,7 +28,7 @@ impl ObjectMetaBuilder {
 
     /// This sets the name and namespace from a given resource
     pub fn name_and_namespace<T: Resource>(&mut self, resource: &T) -> &mut Self {
-        self.name = Some(resource.name());
+        self.name = Some(resource.name_any());
         self.namespace = resource.namespace();
         self
     }
@@ -285,7 +285,7 @@ impl OwnerReferenceBuilder {
     ) -> &mut Self {
         self.api_version(T::api_version(&()))
             .kind(T::kind(&()))
-            .name(resource.name())
+            .name(resource.name_any())
             .uid_opt(resource.meta().uid.clone());
         self
     }
