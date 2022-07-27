@@ -88,7 +88,7 @@ pub enum Error {
     #[error("Conversion error: [message]")]
     ConversionError { message: String },
 
-    #[error("Given container name: '{container_name}'. Reason: {violation}")]
+    #[error("container name {container_name:?} is invalid: {violation}")]
     InvalidContainerName {
         container_name: String,
         violation: String,
