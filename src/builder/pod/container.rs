@@ -4,7 +4,7 @@ use k8s_openapi::api::core::v1::{
 };
 use std::fmt;
 
-use crate::{error::Error, validation::is_rfc_1035_label};
+use crate::{error::Error, validation::is_rfc_1123_label};
 
 /// A builder to build [`Container`] objects.
 ///
@@ -230,10 +230,10 @@ impl ContainerBuilder {
         }
     }
 
-    /// Validates a container name is according to the [RFC 1035](https://www.ietf.org/rfc/rfc1035.txt) standards.
+    /// Validates a container name is according to the [RFC 1123](https://www.ietf.org/rfc/rfc1123.txt) standard.
     /// Returns [Ok] if the name is according to the standard, and [Err] if not.
     fn validate_container_name(name: &str) -> Result<(), Error> {
-        let validation_result = is_rfc_1035_label(name);
+        let validation_result = is_rfc_1123_label(name);
 
         match validation_result {
             Ok(_) => Ok(()),
@@ -462,17 +462,17 @@ mod tests {
         assert!(ContainerBuilder::new("name-with-hyphen").is_ok());
         assert_container_builder_err(
             ContainerBuilder::new("ends-with-hyphen-"),
-            "regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?')",
+            "regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?",
         );
         assert_container_builder_err(
             ContainerBuilder::new("-starts-with-hyphen"),
-            "regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?')",
+            "regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?",
         );
     }
 
     #[test]
     fn test_container_name_contains_number() {
-        assert!(ContainerBuilder::new("name-0-name").is_ok());
+        assert!(ContainerBuilder::new("1name-0-name1").is_ok());
     }
 
     #[test]
@@ -480,7 +480,7 @@ mod tests {
         assert!(ContainerBuilder::new("name_name").is_err());
         assert_container_builder_err(
             ContainerBuilder::new("name_name"),
-            "regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?')",
+            "(e.g. 'example-label',  or '1-label-1', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')",
         );
     }
 
@@ -499,6 +499,7 @@ mod tests {
                     container_name: _,
                     violation,
                 } => {
+                    println!("{violation}");
                     assert!(violation.contains(expected_err_contains));
                 }
                 _ => {

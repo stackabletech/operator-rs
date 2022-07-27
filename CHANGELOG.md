@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING:kube `0.73.1` -> `0.74.0` ([#440]). Deprecate `ResourceExt::name` in favour of safe `name_*` alternatives. [kube-#945]
-- `ContainerBuilder::new` validates container name to be RFC 1035-compliant([#292]).
+- `ContainerBuilder::new` validates container name to be RFC 1123-compliant([#292]).
 
 [#432]: https://github.com/stackabletech/operator-rs/pull/432
 [#440]: https://github.com/stackabletech/operator-rs/pull/440
