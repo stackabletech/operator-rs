@@ -85,8 +85,6 @@ pub enum Error {
 
     #[error("Cannot convert quantity [{value}] to Java heap value with unit [{target_unit}].")]
     CannotConvertToJavaHeapValue { value: String, target_unit: String },
-    #[error("Conversion error: [message]")]
-    ConversionError { message: String },
 
     #[error("container name {container_name:?} is invalid: {violation}")]
     InvalidContainerName {
