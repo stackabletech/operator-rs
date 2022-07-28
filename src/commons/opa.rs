@@ -48,9 +48,16 @@ use crate::error;
 use crate::error::OperatorResult;
 use k8s_openapi::api::core::v1::ConfigMap;
 use kube::ResourceExt;
+use lazy_static::lazy_static;
+use regex::Regex;
 use schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
 
+lazy_static! {
+    static ref DOT_REGEX: Regex = Regex::new("\\.").unwrap();
+    /// To remove leading slashes from OPA package name (if present)
+    static ref LEADING_SLASH_REGEX: Regex = Regex::new("(/*)(.*)").unwrap();
+}
 /// Indicates the OPA API version. This is required to choose the correct
 /// path when constructing the OPA urls to query.
 pub enum OpaApiVersion {
@@ -101,7 +108,7 @@ impl OpaConfig {
         T: ResourceExt,
     {
         let package_name = match &self.package {
-            Some(p) => p.to_string(),
+            Some(p) => Self::sanitize_opa_package_name(p),
             None => resource.name_any(),
         };
 
@@ -212,6 +219,17 @@ impl OpaConfig {
                 configmap_name: self.config_map_name.clone(),
             })
     }
+
+    /// Removes leading slashes from OPA package name. Dots are converted to forward slashes.
+    ///
+    /// # Arguments
+    /// * `package_name`    - Package name to sanitize
+    fn sanitize_opa_package_name(package_name: &str) -> String {
+        // Package names starting with one or more slashes cause the resulting URL to be invalid, hence removed.
+        let no_leading_slashes = LEADING_SLASH_REGEX.replace_all(package_name, "$2");
+        // All dots must be replaced with forward slashes in order for the URL to be a valid resource
+        DOT_REGEX.replace_all(&no_leading_slashes, "/").to_string()
+    }
 }
 
 #[cfg(test)]
@@ -315,5 +333,41 @@ mod tests {
             config_map_name: "opa".to_string(),
             package: package.map(|p| p.to_string()),
         }
+    }
+
+    #[test]
+    fn test_opa_package_name_sanitizer() {
+        // No sanitization needed
+        assert_eq!(
+            OpaConfig::sanitize_opa_package_name("kafka/authz"),
+            "kafka/authz"
+        );
+
+        // Remove single leading slash and convert dot to slash
+        assert_eq!(
+            OpaConfig::sanitize_opa_package_name("/kafka.authz"),
+            "kafka/authz"
+        );
+
+        // Remove multiple leading slashes and convert dot
+        assert_eq!(
+            OpaConfig::sanitize_opa_package_name("////kafka.authz"),
+            "kafka/authz"
+        );
+    }
+
+    #[test]
+    fn test_opa_document_url_sanitization() {
+        let opa_config = OpaConfig {
+            config_map_name: "simple-opa".to_owned(),
+            package: Some("///kafka.authz".to_owned()),
+        };
+
+        let document_url = opa_config.document_url(
+            &k8s_openapi::api::core::v1::Pod::default(),
+            None,
+            OpaApiVersion::V1,
+        );
+        assert_eq!(document_url, "v1/data/kafka/authz")
     }
 }
