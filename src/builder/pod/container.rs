@@ -239,7 +239,7 @@ impl ContainerBuilder {
             Ok(_) => Ok(()),
             Err(err) => Err(Error::InvalidContainerName {
                 container_name: name.to_owned(),
-                violation: err.join(","),
+                violation: err.join(", "),
             }),
         }
     }
