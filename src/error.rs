@@ -27,15 +27,6 @@ pub enum Error {
     #[error("RoleGroup [{role_group}] for Role [{role}] is missing. This may happen after custom resource changes. Will requeue.")]
     MissingRoleGroup { role: String, role_group: String },
 
-    #[error("Environment variable error: {source}")]
-    EnvironmentVariableError {
-        #[from]
-        source: std::env::VarError,
-    },
-
-    #[error("Invalid name for resource: {errors:?}")]
-    InvalidName { errors: Vec<String> },
-
     #[error(
         "A required File is missing. Not found in any of the following locations: {search_path:?}"
     )]
