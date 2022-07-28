@@ -17,9 +17,12 @@ const RFC_1123_LABEL_FMT: &str = "[a-z0-9]([-a-z0-9]*[a-z0-9])?";
 const RFC_1123_SUBDOMAIN_FMT: &str =
     concatcp!(RFC_1123_LABEL_FMT, "(\\.", RFC_1123_LABEL_FMT, ")*");
 const RFC_1123_SUBDOMAIN_ERROR_MSG: &str = "a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
+const RFC_1123_LABEL_ERROR_MSG: &str = "a lowercase RFC 1123 label must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
 
 // This is a subdomain's max length in DNS (RFC 1123)
 const RFC_1123_SUBDOMAIN_MAX_LENGTH: usize = 253;
+// Minimal length reuquired by RFC 1123 is 63. Up to 255 allowed, unsupported by k8s.
+const RFC_1123_LABEL_MAX_LENGTH: usize = 63;
 
 const RFC_1035_LABEL_FMT: &str = "[a-z]([-a-z0-9]*[a-z0-9])?";
 const RFC_1035_LABEL_ERR_MSG: &str = "a DNS-1035 label must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character";
@@ -29,6 +32,8 @@ const RFC_1035_LABEL_MAX_LENGTH: usize = 63;
 
 lazy_static! {
     static ref RFC_1123_SUBDOMAIN_REGEX: Regex =
+        Regex::new(&format!("^{}$", RFC_1123_SUBDOMAIN_FMT)).unwrap();
+    static ref RFC_1123_LABEL_REGEX: Regex =
         Regex::new(&format!("^{}$", RFC_1123_SUBDOMAIN_FMT)).unwrap();
     static ref RFC_1035_LABEL_REGEX: Regex =
         Regex::new(&format!("^{}$", RFC_1035_LABEL_FMT)).unwrap();
@@ -80,6 +85,30 @@ pub fn is_rfc_1123_subdomain(value: &str) -> Result<(), Vec<String>> {
             RFC_1123_SUBDOMAIN_ERROR_MSG,
             RFC_1123_SUBDOMAIN_FMT,
             &["example.com"],
+        ))
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+/// Tests for a string that conforms to the definition of a label in DNS (RFC 1123).
+/// Maximum label length supported by k8s is 63 characters (minimum required).
+pub fn is_rfc_1123_label(value: &str) -> Result<(), Vec<String>> {
+    let mut errors = vec![];
+    if value.len() > RFC_1123_LABEL_MAX_LENGTH {
+        errors.push(max_len_error(RFC_1123_LABEL_MAX_LENGTH))
+    }
+
+    // Regex is identical to RFC 1123 subdomain
+    if !RFC_1123_SUBDOMAIN_REGEX.is_match(value) {
+        errors.push(regex_error(
+            RFC_1123_LABEL_ERROR_MSG,
+            RFC_1123_SUBDOMAIN_FMT,
+            &["example-label", "1-label-1"],
         ))
     }
 
