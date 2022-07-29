@@ -1,3 +1,6 @@
+/// Fragments are unvalidated parts of a product configuration, and which may be validated at a later step.
+///
+/// They are typically derived using the [`Fragment`] macro, and validated using [`validate`].
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::{Display, Write},
@@ -10,12 +13,16 @@ use super::merge::Atomic;
 
 use snafu::Snafu;
 
+/// Contains context used for generating validation errors
+///
+/// Constructed internally in [`validate`]
 pub struct Validator<'a> {
     ident: Option<&'a dyn Display>,
     parent: Option<&'a Validator<'a>>,
 }
 
 impl<'a> Validator<'a> {
+    /// Creates a `Validator` for a subfield of the current object
     pub fn field<'b>(&'b self, ident: &'b dyn Display) -> Validator<'b> {
         Validator {
             ident: Some(ident),
@@ -38,6 +45,7 @@ impl<'a> Validator<'a> {
         }
     }
 
+    /// Returns an error indicating that the `Validator` refers to a required field that is currently not provided
     pub fn error_required(self) -> ValidationError {
         self.error_problem(ValidationProblem::FieldRequired)
     }
@@ -61,21 +69,48 @@ impl Display for FieldPath {
 
 #[derive(Debug, Snafu)]
 #[snafu(display("failed to validate {path}"))]
+/// An error that occurred when validating an object.
+///
+/// It is constructed by calling one of the `error_*` methods on [`Validator`], such as [`Validator::error_required`].
 pub struct ValidationError {
     path: FieldPath,
     #[snafu(source)]
     problem: ValidationProblem,
 }
+/// A problem that was discovered during validation, with no additional context.
 #[derive(Debug, Snafu)]
 enum ValidationProblem {
     #[snafu(display("field is required"))]
     FieldRequired,
 }
 
+/// A type that can be constructed by validating a "fragment" type.
+///
+/// This is intended to be used together with [`Merge`], such that fragments are deserialized from multiple sources
+/// (for example: the [`RoleGroup`] and [`Role`] levels of a ProductCluster object), and then validated into the type implementing
+/// `FromFragment`.
+///
+/// It is recommended to use [`RoleGroup::validate_config`] to both merge and validate product [`RoleGroup`] configurations. For other use cases,
+/// [`validate`] can be used on the already-merged configuration.
+///
+/// This will typically be derived using the [`Fragment`] macro, rather than implemented manually.
 pub trait FromFragment: Sized {
+    /// The fragment type of `Self`.
+    ///
+    /// For [`Atomic`] types this should be [`Option`](`Option<Self>`).
+    ///
+    /// For complex structs, this should be a variant of `Self` where each field is replaced by its respective `Fragment` type. This can be derived using
+    /// [`Fragment`].
     type Fragment;
+    /// A variant of [`Self::Fragment`] that assumes that a value is present.
+    ///
+    /// For [`Atomic`]`s this will typically be `Self`. For complex structs this will typically be [`Self::Fragment`].
     type RequiredFragment: Into<Self::Fragment>;
 
+    /// Try to validate a [`Self::Fragment`] into `Self`.
+    ///
+    /// `validator` contains additional error reporting context, such as the path to the field from the root fragment. It is created by
+    /// [`validate`].
     fn from_fragment(
         fragment: Self::Fragment,
         validator: Validator,
@@ -150,6 +185,7 @@ impl<T: FromFragment> FromFragment for Option<T> {
     }
 }
 
+/// Tries to builds a `T` from `fragment`, if the object is valid.
 pub fn validate<T: FromFragment>(fragment: T::Fragment) -> Result<T, ValidationError> {
     T::from_fragment(
         fragment,
