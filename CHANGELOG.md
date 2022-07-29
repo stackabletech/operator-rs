@@ -8,7 +8,13 @@ All notable changes to this project will be documented in this file.
 
 - Add `AuthenticationClass::resolve` helper function ([#432]).
 
+### Changed
+
+- BREAKING:kube `0.73.1` -> `0.74.0` ([#440]). Deprecate `ResourceExt::name` in favour of safe `name_*` alternatives. [kube-#945]
+
 [#432]: https://github.com/stackabletech/operator-rs/pull/432
+[#440]: https://github.com/stackabletech/operator-rs/pull/440
+[kube-#945]: https://github.com/kube-rs/kube-rs/pull/945
 
 ## [0.22.0] - 2022-07-05
 
