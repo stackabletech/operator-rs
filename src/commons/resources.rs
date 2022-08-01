@@ -20,44 +20,53 @@
 //!
 //! # Example
 //!
-//! ```ignore
+//! ```
+//! use stackable_operator::config::fragment::Fragment;
 //! use stackable_operator::role_utils::Role;
-//! use stackable_operator::resources::{Resources, PvcConfig, JvmHeapLimits};
+//! use stackable_operator::commons::resources::{Resources, PvcConfig, JvmHeapLimits};
 //! use schemars::JsonSchema;
 //! use serde::{Deserialize, Serialize};
 //! use kube::CustomResource;
 //!
-//! #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+//! #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, Serialize)]
 //! #[kube(
-//! group = "product.stackable.tech",
-//! version = "v1alpha1",
-//! kind = "ProductCluster",
-//! shortname = "product",
-//! namespaced,
-//! crates(
-//! kube_core = "stackable_operator::kube::core",
-//! k8s_openapi = "stackable_operator::k8s_openapi",
-//! schemars = "stackable_operator::schemars"
-//! )
+//!     group = "product.stackable.tech",
+//!     version = "v1alpha1",
+//!     kind = "ProductCluster",
+//!     shortname = "product",
+//!     namespaced,
+//!     crates(
+//!         kube_core = "stackable_operator::kube::core",
+//!         k8s_openapi = "stackable_operator::k8s_openapi",
+//!         schemars = "stackable_operator::schemars"
+//!     )
 //! )]
-//! #[kube()]
 //! #[serde(rename_all = "camelCase")]
 //! pub struct ProductSpec {
 //!     #[serde(default, skip_serializing_if = "Option::is_none")]
-//!     pub nodes: Option<Role<ProductConfig>>,
+//!     pub nodes: Option<Role<ProductConfigFragment>>,
 //! }
 //!
-//! #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
-//! #[serde(rename_all = "camelCase")]
+//! #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]
+//! #[fragment_attrs(
+//!     derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema),
+//!     serde(rename_all = "camelCase"),
+//! )]
 //! pub struct ProductConfig {
-//!     resources: Option<Resources<ProductStorageConfig, JvmHeapLimits>>,
+//!     resources: Resources<ProductStorageConfig, JvmHeapLimits>,
 //! }
 //!
+//! #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]
+//! #[fragment_attrs(
+//!     derive(Clone, Debug, Default, Serialize, Deserialize, JsonSchema),
+//!     serde(rename_all = "camelCase"),
+//! )]
 //! pub struct ProductStorageConfig {
 //!     data_storage: PvcConfig,
 //!     metadata_storage: PvcConfig,
 //!     shared_storage: PvcConfig,
 //! }
+//! ```
 
 use crate::config::{
     fragment::{Fragment, FromFragment},
@@ -103,11 +112,7 @@ use std::{collections::BTreeMap, fmt::Debug};
         bound = "T: JsonSchema, K: JsonSchema, T::Fragment: JsonSchema + Default, K::Fragment: JsonSchema + Default"
     )
 )]
-pub struct Resources<T, K = NoRuntimeLimits>
-where
-    T: Clone + Default,
-    K: Clone + Default,
-{
+pub struct Resources<T, K = NoRuntimeLimits> {
     #[fragment_attrs(serde(default))]
     pub memory: MemoryLimits<K>,
     #[fragment_attrs(serde(default))]
@@ -144,10 +149,7 @@ where
     ),
     schemars(bound = "T: JsonSchema, T::Fragment: JsonSchema + Default")
 )]
-pub struct MemoryLimits<T>
-where
-    T: Clone + Default,
-{
+pub struct MemoryLimits<T> {
     // The maximum amount of memory that should be available
     // Should in most cases be mapped to resources.limits.memory
     pub limit: Option<Quantity>,
