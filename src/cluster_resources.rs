@@ -275,14 +275,12 @@ impl ClusterResources {
     ///
     /// * `client` - The client which is used to access Kubernetes
     pub async fn delete_orphaned_resources(self, client: &Client) -> OperatorResult<()> {
-        self.delete_orphaned_resources_of_kind::<Service>(client)
-            .await?;
-        self.delete_orphaned_resources_of_kind::<StatefulSet>(client)
-            .await?;
-        self.delete_orphaned_resources_of_kind::<DaemonSet>(client)
-            .await?;
-        self.delete_orphaned_resources_of_kind::<ConfigMap>(client)
-            .await?;
+        tokio::try_join!(
+            self.delete_orphaned_resources_of_kind::<Service>(client),
+            self.delete_orphaned_resources_of_kind::<StatefulSet>(client),
+            self.delete_orphaned_resources_of_kind::<DaemonSet>(client),
+            self.delete_orphaned_resources_of_kind::<ConfigMap>(client),
+        )?;
 
         Ok(())
     }
