@@ -25,9 +25,9 @@ use tracing::{debug, info};
 /// A cluster resource handled by [`ClusterResources`].
 ///
 /// This trait is used in the function signatures of [`ClusterResources`] and restricts the
-/// possible kinds of resources. [`ClusterResources::finalize`] iterates over all implementations
-/// and removes the orphaned resources. Therefore if a new implementation is added, it must be
-/// added to [`ClusterResources::finalize`] as well.
+/// possible kinds of resources. [`ClusterResources::delete_orphaned_resources`] iterates over all
+/// implementations and removes the orphaned resources. Therefore if a new implementation is added,
+/// it must be added to [`ClusterResources::delete_orphaned_resources`] as well.
 pub trait ClusterResource:
     Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Serialize
 {
@@ -40,9 +40,8 @@ impl ClusterResource for StatefulSet {}
 
 /// A structure containing the cluster resources.
 ///
-/// Cluster resources can be added and on finalizing, orphaned resources are deleted. A cluster
-/// resource becomes orphaned for instance if a role or role group is removed from a cluster
-/// specification.
+/// Cluster resources can be added and orphaned resources are deleted. A cluster resource becomes
+/// orphaned for instance if a role or role group is removed from a cluster specification.
 ///
 /// # Examples
 ///
@@ -80,7 +79,7 @@ impl ClusterResource for StatefulSet {}
 ///     AddClusterResource {
 ///         source: stackable_operator::error::Error,
 ///     },
-///     FinalizeClusterResources {
+///     DeleteOrphanedClusterResources {
 ///         source: stackable_operator::error::Error,
 ///     },
 /// };
@@ -127,9 +126,9 @@ impl ClusterResource for StatefulSet {}
 ///             .map_err(|source| Error::AddClusterResource { source })?;
 ///
 ///     cluster_resources
-///         .finalize(&client)
+///         .delete_orphaned_resources(&client)
 ///         .await
-///         .map_err(|source| Error::FinalizeClusterResources { source })?;
+///         .map_err(|source| Error::DeleteOrphanedClusterResources { source })?;
 ///
 ///     Ok(Action::await_change())
 /// }
@@ -261,7 +260,7 @@ impl ClusterResources {
         }
     }
 
-    /// Finalizes the cluster creation.
+    /// Finalizes the cluster creation and deletes all orphaned resources.
     ///
     /// The orphaned resources of all kinds of resources which implement the [`ClusterResource`]
     /// trait, are deleted. A resource is seen as orphaned if it is labelled as if it belongs to
@@ -275,18 +274,21 @@ impl ClusterResources {
     /// # Arguments
     ///
     /// * `client` - The client which is used to access Kubernetes
-    pub async fn finalize(self, client: &Client) -> OperatorResult<()> {
-        self.delete_orphaned_resources::<Service>(client).await?;
-        self.delete_orphaned_resources::<StatefulSet>(client)
+    pub async fn delete_orphaned_resources(self, client: &Client) -> OperatorResult<()> {
+        self.delete_orphaned_resources_of_kind::<Service>(client)
             .await?;
-        self.delete_orphaned_resources::<DaemonSet>(client).await?;
-        self.delete_orphaned_resources::<ConfigMap>(client).await?;
+        self.delete_orphaned_resources_of_kind::<StatefulSet>(client)
+            .await?;
+        self.delete_orphaned_resources_of_kind::<DaemonSet>(client)
+            .await?;
+        self.delete_orphaned_resources_of_kind::<ConfigMap>(client)
+            .await?;
 
         Ok(())
     }
 
-    /// Deletes all deployed resources which are labelled as if they belong to this cluster
-    /// instance but are not contained in the given list.
+    /// Deletes all deployed resources of the given kind which are labelled as if they belong to
+    /// this cluster instance but are not contained in the given list.
     ///
     /// If it is forbidden to list the resources of the given kind then it is assumed that the
     /// caller is not in charge of these resources, the deletion is skipped, and no error is
@@ -300,7 +302,7 @@ impl ClusterResources {
     ///
     /// If a deployed resource does not contain a UID then an `Error::MissingObjectKey` is
     /// returned.
-    async fn delete_orphaned_resources<T: ClusterResource>(
+    async fn delete_orphaned_resources_of_kind<T: ClusterResource>(
         &self,
         client: &Client,
     ) -> OperatorResult<()> {
