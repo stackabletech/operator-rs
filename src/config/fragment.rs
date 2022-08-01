@@ -1,17 +1,23 @@
-/// Fragments are unvalidated parts of a product configuration, and which may be validated at a later step.
-///
-/// They are typically derived using the [`Fragment`] macro, and validated using [`validate`].
+//! Fragments are partially validated parts of a product configuration. For example, mandatory values may be missing.
+//! Fragments may be [`validate`]d and turned into their ["full"](`FromFragment`) type.
+//!
+//! Fragment types are typically generated using the [`#[derive(Fragment)]`](`derive@Fragment`) macro.
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::{Display, Write},
     hash::Hash,
 };
 
-pub use stackable_operator_derive::Fragment;
-
 use super::merge::Atomic;
 
+#[cfg(doc)]
+use super::merge::Merge;
+#[cfg(doc)]
+use crate::role_utils::{Role, RoleGroup};
+
 use snafu::Snafu;
+
+pub use stackable_operator_derive::Fragment;
 
 /// Contains context used for generating validation errors
 ///
@@ -104,7 +110,7 @@ pub trait FromFragment: Sized {
     type Fragment;
     /// A variant of [`Self::Fragment`] that assumes that a value is present.
     ///
-    /// For [`Atomic`]`s this will typically be `Self`. For complex structs this will typically be [`Self::Fragment`].
+    /// For [`Atomic`]s this will typically be `Self`. For complex structs this will typically be [`Self::Fragment`].
     type RequiredFragment: Into<Self::Fragment>;
 
     /// Try to validate a [`Self::Fragment`] into `Self`.
@@ -185,7 +191,9 @@ impl<T: FromFragment> FromFragment for Option<T> {
     }
 }
 
-/// Tries to builds a `T` from `fragment`, if the object is valid.
+/// Validates a [`Fragment`](`FromFragment::Fragment`), and turns it into its corresponding [`FromFragment`] type if successful.
+///
+/// When validating a [`RoleGroup`]'s configuration, consider using [`RoleGroup::validate_config`] instead.
 pub fn validate<T: FromFragment>(fragment: T::Fragment) -> Result<T, ValidationError> {
     T::from_fragment(
         fragment,
