@@ -7,13 +7,18 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add `AuthenticationClass::resolve` helper function ([#432]).
+- Added new Fragment (partial configuration) machinery ([#445]).
 
 ### Changed
 
 - BREAKING:kube `0.73.1` -> `0.74.0` ([#440]). Deprecate `ResourceExt::name` in favour of safe `name_*` alternatives. [kube-#945]
+- BREAKING: Renamed `#[merge(bounds)]` to `#[merge(bound)]` ([#445]).
+- BREAKING: Added `Fragment` variants of most types in `stackable_operator::commons::resources` ([#445]).
+  - serde impls have been moved to `FooFragment` variants, consumers that are not ready to use the full fragment machinery should switch to using these fragment variants.
 
 [#432]: https://github.com/stackabletech/operator-rs/pull/432
 [#440]: https://github.com/stackabletech/operator-rs/pull/440
+[#445]: https://github.com/stackabletech/operator-rs/pull/445
 [kube-#945]: https://github.com/kube-rs/kube-rs/pull/945
 
 ## [0.22.0] - 2022-07-05
