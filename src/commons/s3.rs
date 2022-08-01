@@ -220,6 +220,7 @@ impl Default for S3AccessStyle {
 mod test {
     use crate::commons::s3::{S3AccessStyle, S3ConnectionDef};
     use crate::commons::s3::{S3BucketSpec, S3ConnectionSpec};
+    use crate::yaml;
 
     #[test]
     fn test_ser_inline() {
@@ -235,14 +236,13 @@ mod test {
         };
 
         assert_eq!(
-            serde_yaml::to_string(&bucket).unwrap(),
+            yaml::to_string(&bucket).unwrap(),
             "---
 bucketName: test-bucket-name
-connection:
-  inline:
-    host: host
-    port: 8080
-    accessStyle: VirtualHosted
+connection: !inline
+  host: host
+  port: 8080
+  accessStyle: VirtualHosted
 "
             .to_owned()
         )

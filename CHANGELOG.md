@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add wrapper for `serde_yaml` which adheres to the YAML specification.
+  Operators should use the `yaml` module instead of `serde_yaml` ([#448]).
+
+### Changed
+
+- serde\_yaml 0.8.26 -> 0.9 ([#448])
+
+[#448]: https://github.com/stackabletech/operator-rs/pull/448
+
 ## [0.23.0] - 2022-07-26
 
 ### Added

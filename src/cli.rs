@@ -16,6 +16,7 @@
 //! use serde::{Deserialize, Serialize};
 //! use stackable_operator::cli;
 //! use stackable_operator::error::OperatorResult;
+//! use stackable_operator::yaml;
 //!
 //! #[derive(Clone, CustomResource, Debug, JsonSchema, Serialize, Deserialize)]
 //! #[kube(
@@ -57,8 +58,8 @@
 //! match opts.command {
 //!     cli::Command::Crd => println!(
 //!         "{}{}",
-//!         serde_yaml::to_string(&FooCluster::crd())?,
-//!         serde_yaml::to_string(&BarCluster::crd())?,
+//!         yaml::to_string(&FooCluster::crd())?,
+//!         yaml::to_string(&BarCluster::crd())?,
 //!     ),
 //!     cli::Command::Run { .. } => {
 //!         // Run the operator

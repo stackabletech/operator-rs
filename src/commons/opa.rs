@@ -10,6 +10,7 @@
 //! use stackable_operator::kube::CustomResource;
 //! use stackable_operator::commons::opa::{OpaApiVersion, OpaConfig};
 //! use stackable_operator::schemars::{self, JsonSchema};
+//! use stackable_operator::yaml;
 //!
 //! #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 //! #[kube(
@@ -25,7 +26,7 @@
 //!     opa: Option<OpaConfig>    
 //! }
 //!
-//! let cluster: TestCluster = serde_yaml::from_str(
+//! let cluster: TestCluster = yaml::from_str(
 //!     "
 //!     apiVersion: test.stackable.tech/v1alpha1
 //!     kind: TestCluster
@@ -234,6 +235,8 @@ impl OpaConfig {
 
 #[cfg(test)]
 mod tests {
+    use crate::yaml;
+
     use super::*;
     use kube::CustomResource;
     use schemars::{self, JsonSchema};
@@ -314,7 +317,7 @@ mod tests {
     }
 
     fn build_test_cluster() -> TestCluster {
-        serde_yaml::from_str(&format!(
+        yaml::from_str(&format!(
             "
             apiVersion: test/v1
             kind: TestCluster

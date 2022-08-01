@@ -5,6 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, OperatorResult};
+use crate::yaml;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -76,7 +77,7 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
     where
         W: Write,
     {
-        let schema = serde_yaml::to_string(&Self::crd())?;
+        let schema = yaml::to_string(&Self::crd())?;
         writer.write_all(schema.as_bytes())?;
         Ok(())
     }

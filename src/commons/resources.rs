@@ -215,6 +215,7 @@ where
 mod tests {
     use crate::commons::resources::{PvcConfig, Resources};
     use crate::config::merge::Merge;
+    use crate::yaml;
     use k8s_openapi::api::core::v1::{PersistentVolumeClaim, ResourceRequirements};
     use rstest::rstest;
     use serde::{Deserialize, Serialize};
@@ -320,12 +321,12 @@ mod tests {
         #[case] input: String,
         #[case] expected: String,
     ) {
-        let input_pvcconfig: PvcConfig = serde_yaml::from_str(&input).expect("illegal test input");
+        let input_pvcconfig: PvcConfig = yaml::from_str(&input).expect("illegal test input");
 
         let result = input_pvcconfig.build_pvc(&name, access_modes);
 
         let expected_volumeclaim: PersistentVolumeClaim =
-            serde_yaml::from_str(&expected).expect("illegal expected output");
+            yaml::from_str(&expected).expect("illegal expected output");
 
         assert_eq!(result, expected_volumeclaim);
     }
@@ -369,11 +370,11 @@ mod tests {
     )]
     fn test_into_resourcelimits(#[case] input: String, #[case] expected: String) {
         let input_resources: Resources<TestStorageConfig> =
-            serde_yaml::from_str(&input).expect("illegal test input");
+            yaml::from_str(&input).expect("illegal test input");
 
         let result: ResourceRequirements = input_resources.into();
         let expected_requirements: ResourceRequirements =
-            serde_yaml::from_str(&expected).expect("illegal expected output");
+            yaml::from_str(&expected).expect("illegal expected output");
 
         assert_eq!(result, expected_requirements);
     }

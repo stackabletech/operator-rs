@@ -1,4 +1,4 @@
-use crate::product_config_utils;
+use crate::{product_config_utils, yaml};
 use std::path::PathBuf;
 
 #[derive(Debug, thiserror::Error)]
@@ -6,7 +6,7 @@ pub enum Error {
     #[error("Failed to serialize YAML: {source}")]
     YamlSerializationError {
         #[from]
-        source: serde_yaml::Error,
+        source: yaml::Error,
     },
 
     #[error("Kubernetes reported error: {source}")]
