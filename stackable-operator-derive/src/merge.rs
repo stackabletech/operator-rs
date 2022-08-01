@@ -33,7 +33,7 @@ struct MergeInput {
     #[darling(default)]
     path_overrides: PathOverrides,
     #[darling(default)]
-    bounds: Option<Vec<WherePredicate>>,
+    bound: Option<Vec<WherePredicate>>,
 }
 
 #[derive(FromField)]
@@ -59,7 +59,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         mut generics,
         data,
         path_overrides: PathOverrides { merge: merge_mod },
-        bounds,
+        bound,
     } = match MergeInput::from_derive_input(&input) {
         Ok(input) => input,
         Err(err) => return err.write_errors(),
@@ -118,9 +118,9 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         )
         .collect::<TokenStream>();
 
-    if let Some(bounds) = bounds {
+    if let Some(bound) = bound {
         let where_clause = generics.make_where_clause();
-        where_clause.predicates.extend(bounds);
+        where_clause.predicates.extend(bound);
     }
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     let ty_toks = match ty {

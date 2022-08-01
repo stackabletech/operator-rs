@@ -40,7 +40,7 @@ pub struct FragmentInput {
     #[darling(default)]
     path_overrides: PathOverrides,
     #[darling(default)]
-    bounds: Option<Vec<WherePredicate>>,
+    bound: Option<Vec<WherePredicate>>,
 }
 
 fn split_by_comma(tokens: TokenStream) -> Vec<TokenStream> {
@@ -119,7 +119,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         data,
         attrs,
         mut generics,
-        bounds,
+        bound,
         path_overrides:
             PathOverrides {
                 fragment: fragment_mod,
@@ -171,9 +171,9 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         .collect::<TokenStream>();
 
     let attrs = extract_forwarded_attrs(&attrs);
-    if let Some(bounds) = bounds {
+    if let Some(bound) = bound {
         let where_clause = generics.make_where_clause();
-        where_clause.predicates.extend(bounds);
+        where_clause.predicates.extend(bound);
     }
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     quote! {

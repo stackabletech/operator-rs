@@ -9,7 +9,7 @@ mod merge;
 ///
 /// # Supported attributes
 ///
-/// ## `#[merge(bounds = "...")]`
+/// ## `#[merge(bound = "...")]`
 ///
 /// This attribute can be used to specify additional `where` clauses on the derived trait implementation.
 /// Bounds specified on the struct itself are automatically inherited for the generated implementation, and
@@ -20,7 +20,7 @@ mod merge;
 /// ```
 /// # use stackable_operator::config::merge::Merge;
 /// #[derive(Merge)]
-/// #[merge(bounds = "T: Merge")]
+/// #[merge(bound = "T: Merge")]
 /// struct Wrapper<T> where T: Clone {
 ///     inner: T,
 /// }
@@ -36,7 +36,7 @@ mod merge;
 /// impl<T> Merge for Wrapper<T>
 /// where
 ///     T: Clone, // this clause was inherited from the struct
-///     T: Merge, // this clause was specified using #[merge(bounds)]
+///     T: Merge, // this clause was specified using #[merge(bound)]
 /// {
 ///     fn merge(&mut self, defaults: &Self) {
 ///         self.inner.merge(&defaults.inner);
@@ -90,7 +90,7 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// This can be specified on both the struct itself and the field, and will be forwarded to the corresponding location on the generated fragment.
 ///
-/// ## `#[fragment(bounds = "...")]`
+/// ## `#[fragment(bound = "...")]`
 ///
 /// This attribute can be used to specify additional `where` clauses on the derived fragment and trait implementation. Bounds specified on the struct itself
 /// are automatically inherited for the generated implementation, and do not need to be repeated here.
@@ -107,7 +107,7 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// ## Fragment macro bounds
 ///
 /// The `Fragment` macro does not automatically insert any type bounds, they must be spcified manually. Typically, this means adding the attribute
-/// `#[fragment(bounds = "T: FromFragment")]` to the type.
+/// `#[fragment(bound = "T: FromFragment")]` to the type.
 ///
 /// ## Interactions with other derive macros
 ///

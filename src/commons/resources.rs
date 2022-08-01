@@ -77,7 +77,7 @@ use std::{collections::BTreeMap, fmt::Debug};
 // settings.
 #[derive(Clone, Debug, Default, Fragment, PartialEq, JsonSchema)]
 #[fragment(
-    bounds = "T: FromFragment, K: FromFragment",
+    bound = "T: FromFragment, K: FromFragment",
     path_overrides(fragment = "crate::config::fragment")
 )]
 #[fragment_attrs(
@@ -89,7 +89,7 @@ use std::{collections::BTreeMap, fmt::Debug};
         PartialEq(bound = "T::Fragment: PartialEq, K::Fragment: PartialEq")
     ),
     merge(
-        bounds = "T::Fragment: Merge, K::Fragment: Merge",
+        bound = "T::Fragment: Merge, K::Fragment: Merge",
         path_overrides(merge = "crate::config::merge")
     ),
     serde(
@@ -120,7 +120,7 @@ where
 // Is generic to enable adding custom configuration for specific runtimes or products
 #[derive(Clone, Debug, Default, Fragment, PartialEq, JsonSchema)]
 #[fragment(
-    bounds = "T: FromFragment",
+    bound = "T: FromFragment",
     path_overrides(fragment = "crate::config::fragment")
 )]
 #[fragment_attrs(
@@ -132,7 +132,7 @@ where
         PartialEq(bound = "T::Fragment: PartialEq")
     ),
     merge(
-        bounds = "T::Fragment: Merge",
+        bound = "T::Fragment: Merge",
         path_overrides(merge = "crate::config::merge")
     ),
     serde(
