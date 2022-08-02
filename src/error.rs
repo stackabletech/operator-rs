@@ -18,6 +18,20 @@ pub enum Error {
     #[error("Object is missing key: {key}")]
     MissingObjectKey { key: &'static str },
 
+    #[error("Label is missing: {label}")]
+    MissingLabel { label: &'static str },
+
+    #[error(
+        "Label contains unexpected content. \
+            Expected: {label}={expected_content}, \
+            actual: {label}={actual_content}"
+    )]
+    UnexpectedLabelContent {
+        label: &'static str,
+        expected_content: String,
+        actual_content: String,
+    },
+
     #[error("LabelSelector is invalid: {message}")]
     InvalidLabelSelector { message: String },
 
