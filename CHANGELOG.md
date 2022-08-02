@@ -13,8 +13,10 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: The `managed_by` label must be passed explicitly to the
   `ObjectMetaBuilder::with_recommended_labels` function ([#436]).
+- Objects are now streamed rather than polled when waiting for them to be deleted ([#452]).
 
 [#436]: https://github.com/stackabletech/operator-rs/pull/436
+[#452]: https://github.com/stackabletech/operator-rs/pull/452
 
 ## [0.23.0] - 2022-07-26
 
