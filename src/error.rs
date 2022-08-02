@@ -9,6 +9,9 @@ pub enum Error {
         source: serde_yaml::Error,
     },
 
+    #[error("Failed to process YAML document: {message}")]
+    UnsupportedYamlDocumentError { message: String },
+
     #[error("Kubernetes reported error: {source}")]
     KubeError {
         #[from]
