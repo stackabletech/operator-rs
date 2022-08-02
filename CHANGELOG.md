@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Cluster resources can be added to a struct which determines the orphaned
   resources and deletes them ([#436]).
+- Added `Client::get_opt` for trying to get an object that may not exist ([#451]).
 
 ### Changed
 
@@ -15,6 +16,7 @@ All notable changes to this project will be documented in this file.
   `ObjectMetaBuilder::with_recommended_labels` function ([#436]).
 
 [#436]: https://github.com/stackabletech/operator-rs/pull/436
+[#451]: https://github.com/stackabletech/operator-rs/pull/451
 
 ## [0.23.0] - 2022-07-26
 
