@@ -8,32 +8,32 @@ All notable changes to this project will be documented in this file.
 
 - Cluster resources can be added to a struct which determines the orphaned
   resources and deletes them ([#436]).
+- Added new Fragment (partial configuration) machinery ([#445]).
 
 ### Changed
 
 - BREAKING: The `managed_by` label must be passed explicitly to the
   `ObjectMetaBuilder::with_recommended_labels` function ([#436]).
+- BREAKING: Renamed `#[merge(bounds)]` to `#[merge(bound)]` ([#445]).
+- BREAKING: Added `Fragment` variants of most types in `stackable_operator::commons::resources` ([#445]).
+  - serde impls have been moved to `FooFragment` variants, consumers that are not ready to use the full fragment machinery should switch to using these fragment variants.
 
 [#436]: https://github.com/stackabletech/operator-rs/pull/436
+[#445]: https://github.com/stackabletech/operator-rs/pull/445
 
 ## [0.23.0] - 2022-07-26
 
 ### Added
 
 - Add `AuthenticationClass::resolve` helper function ([#432]).
-- Added new Fragment (partial configuration) machinery ([#445]).
 
 ### Changed
 
 - BREAKING:kube `0.73.1` -> `0.74.0` ([#440]). Deprecate `ResourceExt::name` in favour of safe `name_*` alternatives. [kube-#945]
 - `ContainerBuilder::new` validates container name to be RFC 1123-compliant ([#447]).
-- BREAKING: Renamed `#[merge(bounds)]` to `#[merge(bound)]` ([#445]).
-- BREAKING: Added `Fragment` variants of most types in `stackable_operator::commons::resources` ([#445]).
-  - serde impls have been moved to `FooFragment` variants, consumers that are not ready to use the full fragment machinery should switch to using these fragment variants.
 
 [#432]: https://github.com/stackabletech/operator-rs/pull/432
 [#440]: https://github.com/stackabletech/operator-rs/pull/440
-[#445]: https://github.com/stackabletech/operator-rs/pull/445
 [#447]: https://github.com/stackabletech/operator-rs/pull/447
 [kube-#945]: https://github.com/kube-rs/kube-rs/pull/945
 
