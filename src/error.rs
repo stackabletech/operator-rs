@@ -18,6 +18,20 @@ pub enum Error {
     #[error("Object is missing key: {key}")]
     MissingObjectKey { key: &'static str },
 
+    #[error("Label is missing: {label}")]
+    MissingLabel { label: &'static str },
+
+    #[error(
+        "Label contains unexpected content. \
+            Expected: {label}={expected_content}, \
+            actual: {label}={actual_content}"
+    )]
+    UnexpectedLabelContent {
+        label: &'static str,
+        expected_content: String,
+        actual_content: String,
+    },
+
     #[error("LabelSelector is invalid: {message}")]
     InvalidLabelSelector { message: String },
 
@@ -26,15 +40,6 @@ pub enum Error {
 
     #[error("RoleGroup [{role_group}] for Role [{role}] is missing. This may happen after custom resource changes. Will requeue.")]
     MissingRoleGroup { role: String, role_group: String },
-
-    #[error("Environment variable error: {source}")]
-    EnvironmentVariableError {
-        #[from]
-        source: std::env::VarError,
-    },
-
-    #[error("Invalid name for resource: {errors:?}")]
-    InvalidName { errors: Vec<String> },
 
     #[error(
         "A required File is missing. Not found in any of the following locations: {search_path:?}"
@@ -85,6 +90,12 @@ pub enum Error {
 
     #[error("Cannot convert quantity [{value}] to Java heap value with unit [{target_unit}].")]
     CannotConvertToJavaHeapValue { value: String, target_unit: String },
+
+    #[error("container name {container_name:?} is invalid: {violation}")]
+    InvalidContainerName {
+        container_name: String,
+        violation: String,
+    },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;

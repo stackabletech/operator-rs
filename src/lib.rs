@@ -1,6 +1,7 @@
 pub mod builder;
 pub mod cli;
 pub mod client;
+pub mod cluster_resources;
 pub mod commons;
 pub mod config;
 pub mod crd;

@@ -270,13 +270,15 @@ mod tests {
     #[test]
     fn test_pod_builder() {
         let container = ContainerBuilder::new("containername")
+            .expect("ContainerBuilder not created")
             .image("stackable/zookeeper:2.4.14")
             .command(vec!["zk-server-start.sh".to_string()])
             .args(vec!["stackable/conf/zk.properties".to_string()])
             .add_volume_mount("zk-worker-1", "conf/")
             .build();
 
-        let init_container = ContainerBuilder::new("init_containername")
+        let init_container = ContainerBuilder::new("init-containername")
+            .expect("ContainerBuilder not created")
             .image("stackable/zookeeper:2.4.14")
             .command(vec!["wrapper.sh".to_string()])
             .args(vec!["12345".to_string()])
@@ -326,7 +328,7 @@ mod tests {
                 .init_containers
                 .as_ref()
                 .and_then(|containers| containers.get(0).as_ref().map(|c| c.name.clone())),
-            Some("init_containername".to_string())
+            Some("init-containername".to_string())
         );
 
         assert_eq!(
@@ -348,6 +350,7 @@ mod tests {
     #[test]
     fn test_pod_builder_image_pull_secrets() {
         let container = ContainerBuilder::new("container")
+            .expect("ContainerBuilder not created")
             .image("private-comapany/product:2.4.14")
             .build();
 
