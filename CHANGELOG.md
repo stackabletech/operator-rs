@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.24.0] - 2022-08-04
+
 ### Added
 
 - Cluster resources can be added to a struct which determines the orphaned
