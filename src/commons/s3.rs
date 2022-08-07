@@ -233,16 +233,13 @@ mod test {
                 tls: None,
             })),
         };
-
         assert_eq!(
             serde_yaml::to_string(&bucket).unwrap(),
-            "---
-bucketName: test-bucket-name
-connection:
-  inline:
-    host: host
-    port: 8080
-    accessStyle: VirtualHosted
+            "bucketName: test-bucket-name
+connection: !inline
+  host: host
+  port: 8080
+  accessStyle: VirtualHosted
 "
             .to_owned()
         )
