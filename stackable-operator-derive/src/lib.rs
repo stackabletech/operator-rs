@@ -106,7 +106,7 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// ## Fragment macro bounds
 ///
-/// The `Fragment` macro does not automatically insert any type bounds, they must be spcified manually. Typically, this means adding the attribute
+/// The `Fragment` macro does not automatically insert any type bounds, they must be specified manually. Typically, this means adding the attribute
 /// `#[fragment(bound = "T: FromFragment")]` to the type.
 ///
 /// ## Interactions with other derive macros
