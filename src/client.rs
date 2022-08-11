@@ -370,7 +370,9 @@ impl Client {
                 .meta()
                 .name
                 .as_deref()
-                .ok_or(Error::MissingObjectName)?,
+                .ok_or(Error::MissingObjectKey {
+                    key: "metadata.name",
+                })?,
             &self.delete_params,
         )
         .await?)

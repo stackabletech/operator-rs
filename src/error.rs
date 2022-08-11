@@ -24,9 +24,6 @@ pub enum Error {
     #[error("Object is missing key: {key}")]
     MissingObjectKey { key: &'static str },
 
-    #[error("Object has no name")]
-    MissingObjectName,
-
     #[error("Label is missing: {label}")]
     MissingLabel { label: &'static str },
 
