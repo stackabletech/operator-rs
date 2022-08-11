@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Objects are now streamed rather than polled when waiting for them to be deleted ([#452]).
+
+[#452]: https://github.com/stackabletech/operator-rs/pull/452
+
 ## [0.24.0] - 2022-08-04
 
 ### Added
