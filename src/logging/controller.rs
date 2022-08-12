@@ -75,7 +75,7 @@ fn report_controller_error<ReconcileErr, QueueErr>(
 {
     tracing::error!(
         controller.name = controller_name,
-        error = &*error as &dyn std::error::Error,
+        error = error as &dyn std::error::Error,
         "Failed to reconcile object",
     );
     publish_controller_error_as_k8s_event(client, controller_name, error);

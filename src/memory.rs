@@ -13,7 +13,7 @@ use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use crate::error::{Error, OperatorResult};
 use std::{ops::Mul, str::FromStr};
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd)]
 pub enum BinaryMultiple {
     Kibi,
     Mebi,
