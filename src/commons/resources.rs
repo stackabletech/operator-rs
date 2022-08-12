@@ -105,7 +105,7 @@ where
 }
 
 // Default struct to allow operators not specifying `runtime_limits` when using [`MemoryLimits`]
-#[derive(Clone, Debug, Default, Deserialize, Merge, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Merge, JsonSchema, PartialEq, Serialize)]
 #[merge(path_overrides(merge = "crate::config::merge"))]
 #[serde(rename_all = "camelCase")]
 pub struct NoRuntimeLimits {}
