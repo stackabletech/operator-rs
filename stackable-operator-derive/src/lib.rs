@@ -133,6 +133,10 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///     deserialize = "T::Fragment: Deserialize<'de>",
 /// ))]
 /// ```
+///
+/// # Enums
+///
+/// Enums are not currently supported.
 #[proc_macro_derive(Fragment, attributes(fragment, fragment_attrs))]
 pub fn derive_fragment(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     fragment::derive(parse_macro_input!(input)).into()

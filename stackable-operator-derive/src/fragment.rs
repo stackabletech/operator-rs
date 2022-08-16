@@ -130,7 +130,11 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         Err(err) => return err.write_errors(),
     };
     let fields = match data {
-        Data::Enum(_) => todo!(),
+        Data::Enum(_) => {
+            return quote! {
+                compile_error!("`#[derive(Fragment)]` does not currently support enums");
+            }
+        }
         Data::Struct(fields) => fields.fields,
     };
 
