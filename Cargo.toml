@@ -23,7 +23,7 @@ regex = "1.6.0"
 schemars = "0.8.10"
 serde = { version = "1.0.140", features = ["derive"] }
 serde_json = "1.0.82"
-serde_yaml = "0.8.26"
+serde_yaml = "0.9.10"
 strum = { version = "0.24.1", features = ["derive"] }
 thiserror = "1.0.31"
 tokio = { version = "1.20.1", features = ["macros", "rt-multi-thread"] }
@@ -38,7 +38,7 @@ stackable-operator-derive = { path = "stackable-operator-derive" }
 [dev-dependencies]
 rstest = "0.15.0"
 tempfile = "3.3.0"
-serde_yaml = "0.8"
+serde_yaml = "0.9"
 
 [features]
 default = ["native-tls"]
