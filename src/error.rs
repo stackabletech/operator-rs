@@ -15,6 +15,12 @@ pub enum Error {
         source: kube::Error,
     },
 
+    #[error("Kubernetes failed to delete object: {source}")]
+    KubeDeleteError {
+        #[from]
+        source: kube::runtime::wait::delete::Error,
+    },
+
     #[error("Object is missing key: {key}")]
     MissingObjectKey { key: &'static str },
 

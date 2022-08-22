@@ -4,14 +4,14 @@ description = "Stackable Operator Framework"
 edition = "2021"
 license = "Apache-2.0"
 name = "stackable-operator"
-version = "0.23.0"
+version = "0.24.0"
 repository = "https://github.com/stackabletech/operator-rs"
 
 [dependencies]
 chrono = { version = "0.4.19", default-features = false }
 clap = { version = "3.2.15", features = ["derive", "cargo", "env"] }
 const_format = "0.2.26"
-either = "1.7.0"
+either = "1.8.0"
 futures = "0.3.21"
 json-patch = "0.2.6"
 k8s-openapi = { version = "0.15.0", default-features = false, features = ["schemars", "v1_24"] }
@@ -29,7 +29,6 @@ thiserror = "1.0.31"
 tokio = { version = "1.20.1", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.35"
 tracing-subscriber = { version = "0.3.15", features = ["env-filter"] }
-backoff = "0.4.0"
 derivative = "2.2.0"
 tracing-opentelemetry = "0.17.4"
 opentelemetry = { version = "0.17.0", features = ["rt-tokio"] }
