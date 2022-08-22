@@ -222,6 +222,8 @@ impl Default for S3AccessStyle {
 
 #[cfg(test)]
 mod test {
+    use std::str;
+
     use crate::commons::s3::{S3AccessStyle, S3ConnectionDef};
     use crate::commons::s3::{S3BucketSpec, S3ConnectionSpec};
     use crate::yaml;
@@ -239,16 +241,19 @@ mod test {
             })),
         };
 
-        assert_eq!(
-            yaml::to_explicit_document_string(&bucket).unwrap(),
-            "---
+        let mut buf = Vec::new();
+        yaml::serialize_to_explicit_document(&mut buf, &bucket).expect("serializable value");
+        let actual_yaml = str::from_utf8(&buf).expect("UTF-8 encoded document");
+
+        let expected_yaml = "---
 bucketName: test-bucket-name
-connection: !inline
-  host: host
-  port: 8080
-  accessStyle: VirtualHosted
-"
-            .to_owned()
-        )
+connection:
+  inline:
+    host: host
+    port: 8080
+    accessStyle: VirtualHosted
+";
+
+        assert_eq!(expected_yaml, actual_yaml)
     }
 }

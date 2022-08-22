@@ -79,9 +79,7 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
     where
         W: Write,
     {
-        let schema = yaml::to_explicit_document_string(&Self::crd())?;
-        writer.write_all(schema.as_bytes())?;
-        Ok(())
+        yaml::serialize_to_explicit_document(&mut writer, &Self::crd())
     }
 
     /// Generates a YAML CustomResourceDefinition and writes it to the specified file.
@@ -100,7 +98,7 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
         Self::generate_yaml_schema(writer)
     }
 
-    // Returns the YAML schema of this CustomResourceDefinition as a string.
+    /// Returns the YAML schema of this CustomResourceDefinition as a string.
     ///
     /// The written YAML string is an explicit document with leading dashes (`---`).
     fn yaml_schema() -> OperatorResult<String> {

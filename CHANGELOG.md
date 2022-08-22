@@ -14,7 +14,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Objects are now streamed rather than polled when waiting for them to be deleted ([#452]).
-- serde\_yaml 0.8.26 -> 0.9 ([#450])
+- serde\_yaml 0.8.26 -> 0.9.9 ([#450])
 
 [#450]: https://github.com/stackabletech/operator-rs/pull/450
 [#452]: https://github.com/stackabletech/operator-rs/pull/452
