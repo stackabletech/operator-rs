@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.25.0] - 2022-08-23
+
 ### Added
 
 - YAML module added with a function to serialize a data structure as an
