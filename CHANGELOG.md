@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- listener-operator CRDs ([#469]).
+
+[#469]: https://github.com/stackabletech/operator-rs/pull/469
+
 ## [0.25.0] - 2022-08-23
 
 ### Added
