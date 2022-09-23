@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.25.1] - 2022-09-23
+
 ### Added
 
 - listener-operator CRDs ([#469]).
