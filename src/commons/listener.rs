@@ -57,8 +57,14 @@ pub struct ListenerSpec {
     /// Ports that should be exposed.
     pub ports: Option<Vec<ListenerPort>>,
     /// Whether incoming traffic should also be directed to `Pod`s that are not `Ready`.
-    #[serde(default)]
-    pub publish_not_ready_addresses: bool,
+    #[schemars(default = "Self::default_publish_not_ready_addresses")]
+    pub publish_not_ready_addresses: Option<bool>,
+}
+
+impl ListenerSpec {
+    fn default_publish_not_ready_addresses() -> Option<bool> {
+        Some(true)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
