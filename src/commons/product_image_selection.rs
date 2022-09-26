@@ -47,11 +47,11 @@ pub struct ResolvedProductImage {
 }
 
 impl ProductImageSelection {
-    pub fn resolve(self, image_base_name: &str) -> ResolvedProductImage {
+    pub fn resolve(&self, image_base_name: &str) -> ResolvedProductImage {
         match self {
             ProductImageSelection::Custom(custom) => ResolvedProductImage {
-                image: custom.custom,
-                product_version: custom.product_version,
+                image: custom.custom.to_string(),
+                product_version: custom.product_version.to_string(),
             },
             ProductImageSelection::StackableVersion(stackable_version) => {
                 let repo = stackable_version
@@ -65,7 +65,7 @@ impl ProductImageSelection {
                 );
                 ResolvedProductImage {
                     image,
-                    product_version: stackable_version.product_version,
+                    product_version: stackable_version.product_version.to_string(),
                 }
             }
             ProductImageSelection::Stackable(stackable) => {
@@ -78,7 +78,7 @@ impl ProductImageSelection {
                 );
                 ResolvedProductImage {
                     image,
-                    product_version: stackable.product_version,
+                    product_version: stackable.product_version.to_string(),
                 }
             }
         }
