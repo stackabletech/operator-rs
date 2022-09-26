@@ -18,25 +18,44 @@ pub enum ProductImageSelection {
     Stackable(ProductImageStackable),
 }
 
+impl Default for ProductImageSelection {
+    fn default() -> Self {
+        Self::Stackable(ProductImageStackable {
+            product_version: "auto".to_string(),
+            repo: None,
+        })
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductImageCustom {
+    /// Overwrite the docker image.
+    /// Specify the full docker image name, e.g. `docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0`
     custom: String,
+    /// Version of the product, e.g. `1.4.1`.
     product_version: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductImageStackableVersion {
+    /// Version of the product, e.g. `1.4.1`.
     product_version: String,
+    /// Stackable version of the product, e.g. 2.1.0
     stackable_version: String,
+    /// Name of the docker repo, e.g. `docker.stackable.tech/stackable`
     repo: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductImageStackable {
+    /// Version of the product, e.g. `1.4.1`.
+    // Note that this is not an Option<String>, as in this case no attribute is needed for this enum variant and this enum variant will match *any* arbitrary input,
+    // thus making the validation useless
     product_version: String,
+    /// Name of the docker repo, e.g. `docker.stackable.tech/stackable`
     repo: Option<String>,
 }
 
@@ -69,16 +88,19 @@ impl ProductImageSelection {
                 }
             }
             ProductImageSelection::Stackable(stackable) => {
+                let product_version = match stackable.product_version.as_str() {
+                    "auto" => "TODO".to_string(),
+                    product_version => product_version.to_string(),
+                };
                 let stackable_version = "TODO";
                 let repo = stackable.repo.as_deref().unwrap_or(STACKABLE_DOCKER_REPO);
 
                 let image = format!(
-                    "{repo}/{image_base_name}:{product_version}-stackable{stackable_version}",
-                    product_version = stackable.product_version,
+                    "{repo}/{image_base_name}:{product_version}-stackable{stackable_version}"
                 );
                 ResolvedProductImage {
                     image,
-                    product_version: stackable.product_version.to_string(),
+                    product_version,
                 }
             }
         }
@@ -136,6 +158,16 @@ mod tests {
             product_version: "1.4.1".to_string(),
         }
     )]
+    #[case::default(
+        "superset",
+        r#"
+        productVersion: auto
+        "#,
+        ResolvedProductImage {
+            image: "docker.stackable.tech/stackable/superset:TODO-stackableTODO".to_string(),
+            product_version: "TODO".to_string(),
+        }
+    )]
     #[case::stackable_with_repo(
         "superset",
         r#"
@@ -176,7 +208,7 @@ mod tests {
         #[case] input: String,
         #[case] expected: ResolvedProductImage,
     ) {
-        let product_image:ProductImageSelection =
+        let product_image: ProductImageSelection =
             serde_yaml::from_str(&input).expect("Illegal test input");
         let product_image = product_image.resolve(&product_image_base_name);
 
@@ -184,10 +216,6 @@ mod tests {
     }
 
     #[rstest]
-    #[case::empty(
-        "{}",
-        "data did not match any variant of untagged enum ProductImageSelection"
-    )]
     #[case::custom(
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
@@ -200,10 +228,11 @@ mod tests {
         "#,
         "data did not match any variant of untagged enum ProductImageSelection"
     )]
-    fn test_invalid_image(
-        #[case] input: String,
-        #[case] expected: String,
-    ) {
+    #[case::empty(
+        "{}",
+        "data did not match any variant of untagged enum ProductImageSelection"
+    )]
+    fn test_invalid_image(#[case] input: String, #[case] expected: String) {
         let err = serde_yaml::from_str::<ProductImageSelection>(&input).expect_err("Must be error");
 
         assert_eq!(err.to_string(), expected);
