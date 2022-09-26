@@ -46,3 +46,7 @@ rustls-tls = ["kube/rustls-tls"]
 
 [workspace]
 members = ["stackable-operator-derive"]
+
+[patch.crates-io]
+# Add https://github.com/kube-rs/kube/pull/1028
+kube = { git = "https://github.com/sbernauer/kube.git", branch = "release-0.74.0" }
