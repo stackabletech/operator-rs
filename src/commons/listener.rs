@@ -7,7 +7,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[cfg(doc)]
-use k8s_openapi::api::core::v1::{Node, Pod, Service};
+use k8s_openapi::api::core::v1::{Node, Pod, Service, Volume};
 
 /// Defines a policy for how [`Listener`]s should be exposed.
 #[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -38,6 +38,7 @@ pub enum ServiceType {
 /// Essentially a Stackable extension of a Kubernetes [`Service`]. Compared to [`Service`], [`Listener`] changes two things:
 /// 1. It uses a cluster-level policy object ([`ListenerClass`]) to define how exactly the exposure works
 /// 2. It has a consistent API for reading back the exposed address(es) of the service
+/// 3. The [`Pod`] must mount a [`Volume`] referring to the `Listener`, which also allows us to control stickiness
 #[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, Default)]
 #[kube(
     group = "listeners.stackable.tech",
@@ -50,10 +51,20 @@ pub enum ServiceType {
 pub struct ListenerSpec {
     /// The name of the [`ListenerClass`].
     pub class_name: Option<String>,
-    /// Labels that the [`Pod`]s must share in order to be exposed.
-    pub pod_selector: Option<BTreeMap<String, String>>,
+    /// Extra labels that the [`Pod`]s must match in order to be exposed. They must _also_ still have a `Volume` referring to the listener.
+    #[serde(default)]
+    pub extra_pod_selector_labels: BTreeMap<String, String>,
     /// Ports that should be exposed.
     pub ports: Option<Vec<ListenerPort>>,
+    /// Whether incoming traffic should also be directed to `Pod`s that are not `Ready`.
+    #[schemars(default = "Self::default_publish_not_ready_addresses")]
+    pub publish_not_ready_addresses: Option<bool>,
+}
+
+impl ListenerSpec {
+    fn default_publish_not_ready_addresses() -> Option<bool> {
+        Some(true)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
