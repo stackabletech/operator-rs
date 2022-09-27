@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+This is a rerelease of 0.25.1 which some last-minute incompatible API changes to the additions that would have been released in 0.25.1.
+
+### Changed
+
+- Use Volume as the primary mechanism for directing Listener traffic, rather than labels ([#474]).
+
+[#474]: https://github.com/stackabletech/operator-rs/pull/474
+
 ## ~~[0.25.1] - 2022-09-23~~ YANKED
 
 ### Added
