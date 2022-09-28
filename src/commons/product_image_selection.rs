@@ -290,4 +290,89 @@ mod tests {
 
         assert_eq!(err.to_string(), expected);
     }
+
+    #[rstest]
+    #[case::default(
+        "superset",
+        r#"
+        custom: my.corp/myteam/stackable/superset:latest-and-greatest
+        productVersion: 1.4.1
+        "#,
+        "my.corp/myteam/stackable/superset:latest-and-greatest",
+        PullPolicy::IfNotPresent
+    )]
+    #[case::always(
+        "superset",
+        r#"
+        custom: my.corp/myteam/stackable/superset:latest-and-greatest
+        productVersion: 1.4.1
+        pullPolicy: Always
+        "#,
+        "my.corp/myteam/stackable/superset:latest-and-greatest",
+        PullPolicy::Always
+    )]
+    #[case::if_not_present(
+        "superset",
+        r#"
+        custom: my.corp/myteam/stackable/superset:latest-and-greatest
+        productVersion: 1.4.1
+        pullPolicy: IfNotPresent
+        "#,
+        "my.corp/myteam/stackable/superset:latest-and-greatest",
+        PullPolicy::IfNotPresent
+    )]
+    #[case::never(
+        "superset",
+        r#"
+        custom: my.corp/myteam/stackable/superset:latest-and-greatest
+        productVersion: 1.4.1
+        pullPolicy: Never
+        "#,
+        "my.corp/myteam/stackable/superset:latest-and-greatest",
+        PullPolicy::Never
+    )]
+    fn test_container_attributes(
+        #[case] product_image_base_name: String,
+        #[case] input: String,
+        #[case] expected_image: String,
+        #[case] expected_pull_policy: PullPolicy,
+    ) {
+        let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
+        let mut container = Container::default();
+        product_image.add_product_image_to_container(&product_image_base_name, &mut container);
+
+        assert_eq!(container.image, Some(expected_image));
+        assert_eq!(
+            container.image_pull_policy,
+            Some(expected_pull_policy.as_ref().to_string())
+        );
+    }
+
+    #[rstest]
+    #[case::default(
+        r#"
+        custom: my.corp/myteam/stackable/superset:latest-and-greatest
+        productVersion: 1.4.1
+        "#,
+        None
+    )]
+    #[case::default(
+        r#"
+        custom: my.corp/myteam/stackable/superset:latest-and-greatest
+        productVersion: 1.4.1
+        pullSecrets:
+        - name: myPullSecrets1
+        - name: myPullSecrets2
+        "#,
+        Some(vec![LocalObjectReference{name: Some("myPullSecrets1".to_string())}, LocalObjectReference{name: Some("myPullSecrets2".to_string())}]),
+    )]
+    fn test_image_pull_secrets(
+        #[case] input: String,
+        #[case] expected: Option<Vec<LocalObjectReference>>,
+    ) {
+        let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
+        let mut pod_spec = PodSpec::default();
+        product_image.add_image_pull_secrets_to_pod(&mut pod_spec);
+        assert_eq!(pod_spec.image_pull_secrets, expected);
+    }
 }
