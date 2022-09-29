@@ -28,6 +28,16 @@ pub enum Error {
     MissingLabel { label: &'static str },
 
     #[error(
+        "Resource contains an unexpected namespace. \
+            Expected: {expected_namespace}, \
+            actual: {actual_namespace}"
+    )]
+    UnexpectedNamespace {
+        expected_namespace: String,
+        actual_namespace: String,
+    },
+
+    #[error(
         "Label contains unexpected content. \
             Expected: {label}={expected_content}, \
             actual: {label}={actual_content}"

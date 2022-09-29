@@ -8,6 +8,21 @@ All notable changes to this project will be documented in this file.
 
 - Extended `ClusterResource` with `Secret`, `ServiceAccount` and `RoleBinding` ([#485]).
 
+### Changed
+
+- BREAKING: Kubernetes client separated into a client part and an API part. This
+  follows now the same pattern as in kube-rs and was necessary because kube-rs
+  0.75.0 constrains the Resource trait by a scope (see
+  "https://github.com/kube-rs/kube/pull/956"). For instance,
+  `client.get::<ConfigMap>(configmap_name, namespace)` must be migrated to
+  `client.get_namespaced_api::<ConfigMap>(namespace).get(configmap_name)`
+  ([#481]).
+- Check added that `ClusterResources` are in the namespace of the
+  cluster ([#481]).
+- k8s-openapi 0.15.0 -> 0.16.0 ([#481])
+- kube-rs 0.74.0 -> 0.75.0 ([#481])
+
+[#481]: https://github.com/stackabletech/operator-rs/pull/481
 [#485]: https://github.com/stackabletech/operator-rs/pull/485
 
 ## [0.25.2] - 2022-09-27

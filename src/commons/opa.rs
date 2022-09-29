@@ -211,7 +211,8 @@ impl OpaConfig {
         namespace: Option<&str>,
     ) -> OperatorResult<String> {
         client
-            .get::<ConfigMap>(&self.config_map_name, namespace)
+            .get_namespaced_api_opt::<ConfigMap>(namespace)
+            .get(&self.config_map_name)
             .await?
             .data
             .and_then(|mut data| data.remove("OPA"))

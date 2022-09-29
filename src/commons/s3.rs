@@ -44,7 +44,8 @@ impl S3BucketSpec {
         namespace: Option<&str>,
     ) -> OperatorResult<S3BucketSpec> {
         client
-            .get::<S3Bucket>(resource_name, namespace)
+            .get_namespaced_api_opt::<S3Bucket>(namespace)
+            .get(resource_name)
             .await
             .map(|crd| crd.spec)
             .map_err(|_source| error::Error::MissingS3Bucket {
@@ -184,7 +185,8 @@ impl S3ConnectionSpec {
         namespace: Option<&str>,
     ) -> OperatorResult<S3ConnectionSpec> {
         client
-            .get::<S3Connection>(resource_name, namespace)
+            .get_namespaced_api_opt::<S3Connection>(namespace)
+            .get(resource_name)
             .await
             .map(|conn| conn.spec)
             .map_err(|_source| error::Error::MissingS3Connection {

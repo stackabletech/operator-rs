@@ -14,6 +14,7 @@ use crate::{
             core::v1::{ConfigMap, ObjectReference, Service},
         },
         apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
+        NamespaceResourceScope,
     },
     kube::{Resource, ResourceExt},
     labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
@@ -30,7 +31,11 @@ use tracing::{debug, info};
 /// implementations and removes the orphaned resources. Therefore if a new implementation is added,
 /// it must be added to [`ClusterResources::delete_orphaned_resources`] as well.
 pub trait ClusterResource:
-    Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Serialize
+    Clone
+    + Debug
+    + DeserializeOwned
+    + Resource<DynamicType = (), Scope = NamespaceResourceScope>
+    + Serialize
 {
 }
 
@@ -200,6 +205,9 @@ impl ClusterResources {
     ///
     /// # Errors
     ///
+    /// If the namespace of the resource differs from the cluster namespace then an
+    /// `Error::UnexpectedNamespace` is returned.
+    ///
     /// If the labels of the given resource are not set properly then an `Error::MissingLabel` or
     /// `Error::UnexpectedLabelContent` is returned. The expected labels are:
     /// * `app.kubernetes.io/instance = <cluster.name>`
@@ -213,11 +221,14 @@ impl ClusterResources {
         client: &Client,
         resource: &T,
     ) -> OperatorResult<T> {
+        self.check_namespace(resource)?;
+
         ClusterResources::check_label(resource.labels(), APP_INSTANCE_LABEL, &self.app_instance)?;
         ClusterResources::check_label(resource.labels(), APP_MANAGED_BY_LABEL, &self.manager)?;
         ClusterResources::check_label(resource.labels(), APP_NAME_LABEL, &self.app_name)?;
 
         let patched_resource = client
+            .get_namespaced_api(&self.namespace)
             .apply_patch(&self.manager, resource, resource)
             .await?;
 
@@ -228,6 +239,23 @@ impl ClusterResources {
         self.resource_ids.insert(resource_id);
 
         Ok(patched_resource)
+    }
+
+    /// Checks that the given resource is in the cluster namespace.
+    ///
+    /// # Errors
+    ///
+    /// If the namespace of the resource differs from the cluster namespace then an
+    /// `Error::UnexpectedNamespace` is returned.
+    fn check_namespace<T: ClusterResource>(&self, resource: &T) -> OperatorResult<()> {
+        if resource.namespace().as_deref() == Some(&self.namespace) {
+            Ok(())
+        } else {
+            Err(Error::UnexpectedNamespace {
+                expected_namespace: self.namespace.to_owned(),
+                actual_namespace: resource.namespace().unwrap_or_default(),
+            })
+        }
     }
 
     /// Checks that the given `labels` contain the given `label` with the given `expected_content`.
@@ -330,8 +358,9 @@ impl ClusterResources {
                         T::plural(&()),
                         ClusterResources::print_resources(&orphaned_resources),
                     );
+                    let api = client.get_namespaced_api(&self.namespace);
                     for resource in orphaned_resources.iter() {
-                        client.delete(resource).await?;
+                        api.delete(resource).await?;
                     }
                 }
 
@@ -403,7 +432,8 @@ impl ClusterResources {
         };
 
         let resources = client
-            .list_with_label_selector::<T>(Some(&self.namespace), &label_selector)
+            .get_namespaced_api::<T>(&self.namespace)
+            .list_with_label_selector(&label_selector)
             .await?;
 
         Ok(resources)

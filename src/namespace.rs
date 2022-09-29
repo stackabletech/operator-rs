@@ -1,5 +1,6 @@
 //! This module provides helpers and constants to deal with namespaces
 use crate::client::Client;
+use k8s_openapi::NamespaceResourceScope;
 use kube::{Api, Resource};
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -23,11 +24,12 @@ impl WatchNamespace {
     /// depending on which variant we are.
     pub fn get_api<T>(&self, client: &Client) -> Api<T>
     where
-        T: Resource<DynamicType = ()>,
+        T: Resource<DynamicType = (), Scope = NamespaceResourceScope>,
     {
-        match self {
+        let api = match self {
             WatchNamespace::All => client.get_all_api(),
             WatchNamespace::One(namespace) => client.get_namespaced_api(namespace),
-        }
+        };
+        api.as_kube_api()
     }
 }
