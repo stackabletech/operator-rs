@@ -1,4 +1,4 @@
-use k8s_openapi::api::core::v1::{Container, LocalObjectReference, PodSpec};
+use k8s_openapi::api::core::v1::LocalObjectReference;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum::AsRefStr;
@@ -9,14 +9,14 @@ pub const STACKABLE_DOCKER_REPO: &str = "docker.stackable.tech/stackable";
 #[serde(rename_all = "camelCase")]
 pub struct ProductImage {
     #[serde(flatten)]
-    pub image_selection: ProductImageSelection,
+    image_selection: ProductImageSelection,
 
     #[serde(default)]
     /// [Pull policy](https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy) used when pulling the Images
-    pub pull_policy: PullPolicy,
+    pull_policy: PullPolicy,
 
     /// [Image pull secrets](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod) to pull images from a private registry
-    pub pull_secrets: Option<Vec<LocalObjectReference>>,
+    pull_secrets: Option<Vec<LocalObjectReference>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -48,20 +48,20 @@ impl Default for ProductImageSelection {
 pub struct ProductImageCustom {
     /// Overwrite the docker image.
     /// Specify the full docker image name, e.g. `docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0`
-    pub custom: String,
+    custom: String,
     /// Version of the product, e.g. `1.4.1`.
-    pub product_version: String,
+    product_version: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductImageStackableVersion {
     /// Version of the product, e.g. `1.4.1`.
-    pub product_version: String,
+    product_version: String,
     /// Stackable version of the product, e.g. 2.1.0
-    pub stackable_version: String,
+    stackable_version: String,
     /// Name of the docker repo, e.g. `docker.stackable.tech/stackable`
-    pub repo: Option<String>,
+    repo: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -70,9 +70,9 @@ pub struct ProductImageStackable {
     /// Version of the product, e.g. `1.4.1`.
     // Note that this is not an Option<String>, as in this case no attribute is needed for this enum variant and this enum variant will match *any* arbitrary input,
     // thus making the validation useless
-    pub product_version: String,
+    product_version: String,
     /// Name of the docker repo, e.g. `docker.stackable.tech/stackable`
-    pub repo: Option<String>,
+    repo: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -97,23 +97,16 @@ impl Default for PullPolicy {
 }
 
 impl ProductImage {
-    /// Appends the specified image pull secrets to pull secrets of the [PodSpec]
-    pub fn add_image_pull_secrets_to_pod(&self, pod_spec: &mut PodSpec) {
-        if let Some(pull_secrets) = &self.pull_secrets {
-            pod_spec
-                .image_pull_secrets
-                .get_or_insert(Vec::new())
-                .extend_from_slice(pull_secrets);
-        }
+    pub fn pull_secrets(&self) -> &Option<Vec<LocalObjectReference>> {
+        &self.pull_secrets
     }
 
-    /// Sets the following attributes on a [Container]
-    /// * Image to the selected product image
-    /// * Image pull policy to the selected image pull policy
-    pub fn add_product_image_to_container(&self, image_base_name: &str, container: &mut Container) {
-        let resolved_product_image = self.image_selection.resolve(image_base_name);
-        container.image = Some(resolved_product_image.image);
-        container.image_pull_policy = Some(self.pull_policy.as_ref().to_string());
+    pub fn image(&self, image_base_name: &str) -> String {
+        self.image_selection.resolve(image_base_name).image
+    }
+
+    pub fn image_pull_policy(&self) -> String {
+        self.pull_policy.as_ref().to_string()
     }
 }
 
@@ -299,7 +292,8 @@ mod tests {
         productVersion: 1.4.1
         "#,
         "my.corp/myteam/stackable/superset:latest-and-greatest",
-        PullPolicy::IfNotPresent
+        "IfNotPresent",
+        None
     )]
     #[case::always(
         "superset",
@@ -309,7 +303,8 @@ mod tests {
         pullPolicy: Always
         "#,
         "my.corp/myteam/stackable/superset:latest-and-greatest",
-        PullPolicy::Always
+        "Always",
+        None
     )]
     #[case::if_not_present(
         "superset",
@@ -319,7 +314,8 @@ mod tests {
         pullPolicy: IfNotPresent
         "#,
         "my.corp/myteam/stackable/superset:latest-and-greatest",
-        PullPolicy::IfNotPresent
+        "IfNotPresent",
+        None
     )]
     #[case::never(
         "superset",
@@ -329,50 +325,37 @@ mod tests {
         pullPolicy: Never
         "#,
         "my.corp/myteam/stackable/superset:latest-and-greatest",
-        PullPolicy::Never
+        "Never",
+        None
+    )]
+    #[case::never(
+        "superset",
+        r#"
+        custom: my.corp/myteam/stackable/superset:latest-and-greatest
+        productVersion: 1.4.1
+        pullPolicy: Never
+        pullSecrets:
+        - name: myPullSecrets1
+        - name: myPullSecrets2
+        "#,
+        "my.corp/myteam/stackable/superset:latest-and-greatest",
+        "Never",
+        Some(vec![LocalObjectReference{name: Some("myPullSecrets1".to_string())}, LocalObjectReference{name: Some("myPullSecrets2".to_string())}]),
     )]
     fn test_container_attributes(
         #[case] product_image_base_name: String,
         #[case] input: String,
         #[case] expected_image: String,
-        #[case] expected_pull_policy: PullPolicy,
+        #[case] expected_pull_policy: String,
+        #[case] expected_pull_secrets: Option<Vec<LocalObjectReference>>,
     ) {
         let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
-        let mut container = Container::default();
-        product_image.add_product_image_to_container(&product_image_base_name, &mut container);
 
-        assert_eq!(container.image, Some(expected_image));
         assert_eq!(
-            container.image_pull_policy,
-            Some(expected_pull_policy.as_ref().to_string())
+            product_image.image(&product_image_base_name),
+            expected_image
         );
-    }
-
-    #[rstest]
-    #[case::default(
-        r#"
-        custom: my.corp/myteam/stackable/superset:latest-and-greatest
-        productVersion: 1.4.1
-        "#,
-        None
-    )]
-    #[case::default(
-        r#"
-        custom: my.corp/myteam/stackable/superset:latest-and-greatest
-        productVersion: 1.4.1
-        pullSecrets:
-        - name: myPullSecrets1
-        - name: myPullSecrets2
-        "#,
-        Some(vec![LocalObjectReference{name: Some("myPullSecrets1".to_string())}, LocalObjectReference{name: Some("myPullSecrets2".to_string())}]),
-    )]
-    fn test_image_pull_secrets(
-        #[case] input: String,
-        #[case] expected: Option<Vec<LocalObjectReference>>,
-    ) {
-        let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
-        let mut pod_spec = PodSpec::default();
-        product_image.add_image_pull_secrets_to_pod(&mut pod_spec);
-        assert_eq!(pod_spec.image_pull_secrets, expected);
+        assert_eq!(product_image.image_pull_policy(), expected_pull_policy);
+        assert_eq!(product_image.pull_secrets(), &expected_pull_secrets);
     }
 }

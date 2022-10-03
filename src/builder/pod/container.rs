@@ -4,7 +4,9 @@ use k8s_openapi::api::core::v1::{
 };
 use std::fmt;
 
-use crate::{error::Error, validation::is_rfc_1123_label};
+use crate::{
+    commons::product_image_selection::ProductImage, error::Error, validation::is_rfc_1123_label,
+};
 
 /// A builder to build [`Container`] objects.
 ///
@@ -42,6 +44,16 @@ impl ContainerBuilder {
 
     pub fn image_pull_policy(&mut self, image_pull_policy: impl Into<String>) -> &mut Self {
         self.image_pull_policy = Some(image_pull_policy.into());
+        self
+    }
+
+    pub fn image_from_product_image(
+        &mut self,
+        product_image: &ProductImage,
+        image_base_name: &str,
+    ) -> &mut Self {
+        self.image = Some(product_image.image(image_base_name));
+        self.image_pull_policy = Some(product_image.image_pull_policy());
         self
     }
 
