@@ -3,7 +3,7 @@ pub mod security;
 pub mod volume;
 
 use crate::builder::meta::ObjectMetaBuilder;
-use crate::commons::product_image_selection::ProductImage;
+use crate::commons::product_image_selection::ResolvedProductImage;
 use crate::error::{Error, OperatorResult};
 
 use k8s_openapi::{
@@ -159,9 +159,9 @@ impl PodBuilder {
 
     pub fn image_pull_secrets_from_product_image(
         &mut self,
-        product_image: &ProductImage,
+        product_image: &ResolvedProductImage,
     ) -> &mut Self {
-        if let Some(pull_secrets) = &product_image.pull_secrets() {
+        if let Some(pull_secrets) = &product_image.pull_secrets {
             self.image_pull_secrets
                 .get_or_insert_with(Vec::new)
                 .extend_from_slice(pull_secrets);
