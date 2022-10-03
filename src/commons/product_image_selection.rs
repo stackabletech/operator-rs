@@ -75,7 +75,7 @@ pub struct ProductImageStackable {
     repo: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, JsonSchema)]
 pub struct ResolvedProductImage {
     pub product_version: String,
     pub image: String,
