@@ -166,210 +166,198 @@ impl ProductImage {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     use rstest::rstest;
+    use rstest::rstest;
 
-//     #[rstest]
-//     #[case::stackable_version_without_repo(
-//         "superset",
-//         r#"
-//         productVersion: 1.4.1
-//         stackableVersion: 2.1.0
-//         "#,
-//         ResolvedProductImage {
-//             image: "docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0".to_string(),
-//             product_version: "1.4.1".to_string(),
-//         }
-//     )]
-//     #[case::stackable_version_with_repo(
-//         "trino",
-//         r#"
-//         productVersion: 1.4.1
-//         stackableVersion: 2.1.0
-//         repo: my.corp/myteam/stackable
-//         "#,
-//         ResolvedProductImage {
-//             image: "my.corp/myteam/stackable/trino:1.4.1-stackable2.1.0".to_string(),
-//             product_version: "1.4.1".to_string(),
-//         }
-//     )]
-//     #[case::custom(
-//         "superset",
-//         r#"
-//         custom: my.corp/myteam/stackable/superset:latest-and-greatest
-//         productVersion: 1.4.1
-//         "#,
-//         ResolvedProductImage {
-//             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
-//             product_version: "1.4.1".to_string(),
-//         }
-//     )]
-//     #[case::stackable_without_repo(
-//         "superset",
-//         r#"
-//         productVersion: 1.4.1
-//         "#,
-//         ResolvedProductImage {
-//             image: "docker.stackable.tech/stackable/superset:1.4.1-stackableTODO".to_string(),
-//             product_version: "1.4.1".to_string(),
-//         }
-//     )]
-//     #[case::default(
-//         "superset",
-//         r#"
-//         productVersion: auto
-//         "#,
-//         ResolvedProductImage {
-//             image: "docker.stackable.tech/stackable/superset:TODO-stackableTODO".to_string(),
-//             product_version: "TODO".to_string(),
-//         }
-//     )]
-//     #[case::stackable_with_repo(
-//         "superset",
-//         r#"
-//         productVersion: 1.4.1
-//         repo: my.corp/myteam/stackable
-//         "#,
-//         ResolvedProductImage {
-//             image: "my.corp/myteam/stackable/superset:1.4.1-stackableTODO".to_string(),
-//             product_version: "1.4.1".to_string(),
-//         }
-//     )]
-//     #[case::custom_takes_precedence(
-//         "superset",
-//         r#"
-//         custom: my.corp/myteam/stackable/superset:latest-and-greatest
-//         productVersion: 1.4.1
-//         stackableVersion: not-used
-//         "#,
-//         ResolvedProductImage {
-//             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
-//             product_version: "1.4.1".to_string(),
-//         }
-//     )]
-//     #[case::custom_takes_precedence(
-//         "superset",
-//         r#"
-//         custom: my.corp/myteam/stackable/superset:latest-and-greatest
-//         productVersion: 1.4.1
-//         repo: not-used
-//         "#,
-//         ResolvedProductImage {
-//             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
-//             product_version: "1.4.1".to_string(),
-//         }
-//     )]
-//     fn test_correct_resolved_image(
-//         #[case] product_image_base_name: String,
-//         #[case] input: String,
-//         #[case] expected: ResolvedProductImage,
-//     ) {
-//         let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
-//         let product_image = product_image
-//             .image_selection
-//             .resolve(&product_image_base_name);
+    #[rstest]
+    #[case::stackable_version_without_repo(
+        "superset",
+        r#"
+        productVersion: 1.4.1
+        stackableVersion: 2.1.0
+        "#,
+        ResolvedProductImage {
+            image: "docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::stackable_version_with_repo(
+        "trino",
+        r#"
+        productVersion: 1.4.1
+        stackableVersion: 2.1.0
+        repo: my.corp/myteam/stackable
+        "#,
+        ResolvedProductImage {
+            image: "my.corp/myteam/stackable/trino:1.4.1-stackable2.1.0".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::custom(
+        "superset",
+        r#"
+        custom: my.corp/myteam/stackable/superset:latest-and-greatest
+        productVersion: 1.4.1
+        "#,
+        ResolvedProductImage {
+            image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::stackable_without_repo(
+        "superset",
+        r#"
+        productVersion: 1.4.1
+        "#,
+        ResolvedProductImage {
+            image: "docker.stackable.tech/stackable/superset:1.4.1-stackableTODO".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::default(
+        "superset",
+        r#"
+        productVersion: auto
+        "#,
+        ResolvedProductImage {
+            image: "docker.stackable.tech/stackable/superset:TODO-stackableTODO".to_string(),
+            product_version: "TODO".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::stackable_with_repo(
+        "superset",
+        r#"
+        productVersion: 1.4.1
+        repo: my.corp/myteam/stackable
+        "#,
+        ResolvedProductImage {
+            image: "my.corp/myteam/stackable/superset:1.4.1-stackableTODO".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::custom_takes_precedence(
+        "superset",
+        r#"
+        custom: my.corp/myteam/stackable/superset:latest-and-greatest
+        productVersion: 1.4.1
+        stackableVersion: not-used
+        "#,
+        ResolvedProductImage {
+            image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::pull_policy_if_not_present(
+        "superset",
+        r#"
+        custom: my.corp/myteam/stackable/superset:latest-and-greatest
+        productVersion: 1.4.1
+        repo: not-used
+        pullPolicy: IfNotPresent
+        "#,
+        ResolvedProductImage {
+            image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::pull_policy_always(
+        "superset",
+        r#"
+        custom: my.corp/myteam/stackable/superset:latest-and-greatest
+        productVersion: 1.4.1
+        repo: not-used
+        pullPolicy: Always
+        "#,
+        ResolvedProductImage {
+            image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::pull_policy_never(
+        "superset",
+        r#"
+        custom: my.corp/myteam/stackable/superset:latest-and-greatest
+        productVersion: 1.4.1
+        repo: not-used
+        pullPolicy: Never
+        "#,
+        ResolvedProductImage {
+            image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Never".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::pull_secrets(
+        "superset",
+        r#"
+        custom: my.corp/myteam/stackable/superset:latest-and-greatest
+        productVersion: 1.4.1
+        repo: not-used
+        pullPolicy: Always
+        pullSecrets:
+        - name: myPullSecrets1
+        - name: myPullSecrets2
+        "#,
+        ResolvedProductImage {
+            image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: Some(vec![LocalObjectReference{name: Some("myPullSecrets1".to_string())}, LocalObjectReference{name: Some("myPullSecrets2".to_string())}]),
+        }
+    )]
+    fn test_correct_resolved_image(
+        #[case] image_base_name: String,
+        #[case] input: String,
+        #[case] expected: ResolvedProductImage,
+    ) {
+        let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
+        let resolved_product_image = product_image.resolve(&image_base_name);
 
-//         assert_eq!(product_image, expected);
-//     }
+        assert_eq!(resolved_product_image, expected);
+    }
 
-//     #[rstest]
-//     #[case::custom(
-//         r#"
-//         custom: my.corp/myteam/stackable/superset:latest-and-greatest
-//         "#,
-//         "data did not match any variant of untagged enum ProductImageSelection at line 2 column 9"
-//     )]
-//     #[case::stackable_version(
-//         r#"
-//         stackableVersion: 2.1.0
-//         "#,
-//         "data did not match any variant of untagged enum ProductImageSelection at line 2 column 9"
-//     )]
-//     #[case::empty(
-//         "{}",
-//         "data did not match any variant of untagged enum ProductImageSelection"
-//     )]
-//     fn test_invalid_image(#[case] input: String, #[case] expected: String) {
-//         let err = serde_yaml::from_str::<ProductImage>(&input).expect_err("Must be error");
+    #[rstest]
+    #[case::custom(
+        r#"
+        custom: my.corp/myteam/stackable/superset:latest-and-greatest
+        "#,
+        "data did not match any variant of untagged enum ProductImageSelection at line 2 column 9"
+    )]
+    #[case::stackable_version(
+        r#"
+        stackableVersion: 2.1.0
+        "#,
+        "data did not match any variant of untagged enum ProductImageSelection at line 2 column 9"
+    )]
+    #[case::empty(
+        "{}",
+        "data did not match any variant of untagged enum ProductImageSelection"
+    )]
+    fn test_invalid_image(#[case] input: String, #[case] expected: String) {
+        let err = serde_yaml::from_str::<ProductImage>(&input).expect_err("Must be error");
 
-//         assert_eq!(err.to_string(), expected);
-//     }
-
-//     #[rstest]
-//     #[case::default(
-//         "superset",
-//         r#"
-//         custom: my.corp/myteam/stackable/superset:latest-and-greatest
-//         productVersion: 1.4.1
-//         "#,
-//         "my.corp/myteam/stackable/superset:latest-and-greatest",
-//         "IfNotPresent",
-//         None
-//     )]
-//     #[case::always(
-//         "superset",
-//         r#"
-//         custom: my.corp/myteam/stackable/superset:latest-and-greatest
-//         productVersion: 1.4.1
-//         pullPolicy: Always
-//         "#,
-//         "my.corp/myteam/stackable/superset:latest-and-greatest",
-//         "Always",
-//         None
-//     )]
-//     #[case::if_not_present(
-//         "superset",
-//         r#"
-//         custom: my.corp/myteam/stackable/superset:latest-and-greatest
-//         productVersion: 1.4.1
-//         pullPolicy: IfNotPresent
-//         "#,
-//         "my.corp/myteam/stackable/superset:latest-and-greatest",
-//         "IfNotPresent",
-//         None
-//     )]
-//     #[case::never(
-//         "superset",
-//         r#"
-//         custom: my.corp/myteam/stackable/superset:latest-and-greatest
-//         productVersion: 1.4.1
-//         pullPolicy: Never
-//         "#,
-//         "my.corp/myteam/stackable/superset:latest-and-greatest",
-//         "Never",
-//         None
-//     )]
-//     #[case::never(
-//         "superset",
-//         r#"
-//         custom: my.corp/myteam/stackable/superset:latest-and-greatest
-//         productVersion: 1.4.1
-//         pullPolicy: Never
-//         pullSecrets:
-//         - name: myPullSecrets1
-//         - name: myPullSecrets2
-//         "#,
-//         "my.corp/myteam/stackable/superset:latest-and-greatest",
-//         "Never",
-//         Some(vec![LocalObjectReference{name: Some("myPullSecrets1".to_string())}, LocalObjectReference{name: Some("myPullSecrets2".to_string())}]),
-//     )]
-//     fn test_container_attributes(
-//         #[case] product_image_base_name: String,
-//         #[case] input: String,
-//         #[case] expected_image: String,
-//         #[case] expected_pull_policy: String,
-//         #[case] expected_pull_secrets: Option<Vec<LocalObjectReference>>,
-//     ) {
-//         let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
-
-//         assert_eq!(
-//             product_image.image(&product_image_base_name),
-//             expected_image
-//         );
-//         assert_eq!(product_image.image_pull_policy(), expected_pull_policy);
-//         assert_eq!(product_image.pull_secrets(), &expected_pull_secrets);
-//     }
-// }
+        assert_eq!(err.to_string(), expected);
+    }
+}
