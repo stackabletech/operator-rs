@@ -99,23 +99,6 @@ impl Default for PullPolicy {
 }
 
 impl ProductImage {
-    // pub fn product_version(&self, image_base_name: &str) -> String {
-    //     self.image_selection
-    //         .resolve(image_base_name)
-    //         .product_version
-    // }
-
-    // pub fn image(&self, image_base_name: &str) -> String {
-    //     self.image_selection.resolve(image_base_name).image
-    // }
-
-    // pub fn image_pull_policy(&self) -> String {
-    //     self.pull_policy.as_ref().to_string()
-    // }
-    // pub fn pull_secrets(&self) -> &Option<Vec<LocalObjectReference>> {
-    //     &self.pull_secrets
-    // }
-
     pub fn resolve(&self, image_base_name: &str) -> ResolvedProductImage {
         let image_pull_policy = self.pull_policy.as_ref().to_string();
         let pull_secrets = self.pull_secrets.clone();
