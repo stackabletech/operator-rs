@@ -48,6 +48,9 @@ impl ContainerBuilder {
         self
     }
 
+    /// Adds the following container attributes from a [ResolvedProductImage]:
+    /// * image
+    /// * image_pull_policy
     pub fn image_from_product_image(&mut self, product_image: &ResolvedProductImage) -> &mut Self {
         self.image = Some(product_image.image.clone());
         self.image_pull_policy = Some(product_image.image_pull_policy.clone());
