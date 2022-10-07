@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Extended `ClusterResource` with `Secret`, `ServiceAccount` and `RoleBinding` ([#485]).
+
+[#485]: https://github.com/stackabletech/operator-rs/pull/485
+
 ## [0.25.2] - 2022-09-27
 
 This is a rerelease of 0.25.1 which some last-minute incompatible API changes to the additions that would have been released in 0.25.1.
