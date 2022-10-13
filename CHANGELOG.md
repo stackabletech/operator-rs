@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.25.3] - 2022-10-13
+
 ### Added
 
 - Extended `ClusterResource` with `Secret`, `ServiceAccount` and `RoleBinding` ([#485]).
