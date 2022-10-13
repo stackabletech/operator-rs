@@ -159,7 +159,7 @@ pub struct MemoryLimits<T> {
 }
 
 // Default struct to allow operators not specifying `runtime_limits` when using [`MemoryLimits`]
-#[derive(Clone, Debug, Default, Fragment, PartialEq, JsonSchema)]
+#[derive(Clone, Debug, Default, Eq, Fragment, PartialEq, JsonSchema)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
     derive(
