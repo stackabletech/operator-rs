@@ -11,10 +11,10 @@
 //! ```no_run
 //! // Handle CLI arguments
 //! use clap::{crate_version, Parser};
-//! use kube::{CustomResource, CustomResourceExt};
+//! use kube::CustomResource;
 //! use schemars::JsonSchema;
 //! use serde::{Deserialize, Serialize};
-//! use stackable_operator::cli;
+//! use stackable_operator::{CustomResourceExt, cli};
 //! use stackable_operator::error::OperatorResult;
 //!
 //! #[derive(Clone, CustomResource, Debug, JsonSchema, Serialize, Deserialize)]
@@ -55,11 +55,10 @@
 //! let opts = Opts::from_args();
 //!
 //! match opts.command {
-//!     cli::Command::Crd => println!(
-//!         "{}{}",
-//!         serde_yaml::to_string(&FooCluster::crd())?,
-//!         serde_yaml::to_string(&BarCluster::crd())?,
-//!     ),
+//!     cli::Command::Crd => {
+//!         FooCluster::print_yaml_schema()?;
+//!         BarCluster::print_yaml_schema()?;
+//!     },
 //!     cli::Command::Run { .. } => {
 //!         // Run the operator
 //!     }

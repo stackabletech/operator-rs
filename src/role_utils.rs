@@ -98,7 +98,7 @@ use kube::{runtime::reflector::ObjectRef, Resource};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(
     rename_all = "camelCase",
     bound(deserialize = "T: Default + Deserialize<'de>")

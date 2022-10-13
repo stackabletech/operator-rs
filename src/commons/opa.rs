@@ -73,7 +73,7 @@ impl OpaApiVersion {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpaConfig {
     pub config_map_name: String,
@@ -307,7 +307,7 @@ mod tests {
         );
     }
 
-    #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+    #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
     #[kube(group = "test", version = "v1", kind = "TestCluster", namespaced)]
     pub struct ClusterSpec {
         test: u8,

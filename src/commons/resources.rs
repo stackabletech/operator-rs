@@ -163,14 +163,15 @@ pub struct MemoryLimits<T> {
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
     derive(
-        Merge,
-        Serialize,
-        Deserialize,
-        JsonSchema,
-        Default,
-        Debug,
         Clone,
-        PartialEq
+        Debug,
+        Default,
+        Deserialize,
+        Eq,
+        JsonSchema,
+        Merge,
+        PartialEq,
+        Serialize
     ),
     merge(path_overrides(merge = "crate::config::merge")),
     serde(rename_all = "camelCase")

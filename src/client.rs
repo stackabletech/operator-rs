@@ -1,22 +1,20 @@
 use crate::error::{Error, OperatorResult};
 use crate::label_selector;
 
-use backoff::backoff::Backoff;
-use backoff::ExponentialBackoff;
 use either::Either;
 use futures::StreamExt;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use kube::api::{DeleteParams, ListParams, Patch, PatchParams, PostParams, Resource, ResourceExt};
 use kube::client::Client as KubeClient;
 use kube::core::Status;
-use kube::error::ErrorResponse;
+use kube::runtime::wait::delete::delete_and_finalize;
 use kube::runtime::WatchStreamExt;
 use kube::{Api, Config};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::convert::TryFrom;
 use std::fmt::{Debug, Display};
-use tracing::{error, info, trace};
+use tracing::trace;
 
 /// This `Client` can be used to access Kubernetes.
 /// It wraps an underlying [kube::client::Client] and provides some common functionality.
@@ -78,12 +76,26 @@ impl Client {
         Ok(self.get_api(namespace).get(resource_name).await?)
     }
 
+    /// Retrieves a single instance of the requested resource type with the given name, if it exists.
+    pub async fn get_opt<T>(
+        &self,
+        resource_name: &str,
+        namespace: Option<&str>,
+    ) -> OperatorResult<Option<T>>
+    where
+        T: Clone + Debug + DeserializeOwned + Resource,
+        <T as Resource>::DynamicType: Default,
+    {
+        Ok(self.get_api(namespace).get_opt(resource_name).await?)
+    }
+
     /// Returns Ok(true) if the resource has been registered in Kubernetes, Ok(false) if it could
     /// not be found and Error in any other case (e.g. connection to Kubernetes failed in some way).
     /// Kubernetes does not offer a pure exists check. Therefore we currently use the get() method
     /// and ignore the (in case of existing) returned resource. We should replace this with a pure
     /// exists method as soon as it becomes available (e.g. only returning Ok/Success) to reduce
     /// network traffic.
+    #[deprecated(since = "0.24.0", note = "Replaced by `get_opt`")]
     pub async fn exists<T>(
         &self,
         resource_name: &str,
@@ -93,14 +105,9 @@ impl Client {
         T: Clone + Debug + DeserializeOwned + Resource,
         <T as Resource>::DynamicType: Default,
     {
-        let resource: OperatorResult<T> = self.get(resource_name, namespace).await;
-        match resource {
-            Ok(_) => Ok(true),
-            Err(Error::KubeError {
-                source: kube::error::Error::Api(ErrorResponse { reason, .. }),
-            }) if reason == "NotFound" => Ok(false),
-            Err(err) => Err(err),
-        }
+        self.get_opt::<T>(resource_name, namespace)
+            .await
+            .map(|obj| obj.is_some())
     }
 
     /// Retrieves all instances of the requested resource type.
@@ -362,44 +369,21 @@ impl Client {
     /// from Kubernetes
     pub async fn ensure_deleted<T>(&self, resource: T) -> OperatorResult<()>
     where
-        T: Clone + Debug + DeserializeOwned + Resource,
+        T: Clone + Debug + DeserializeOwned + Resource + Send + 'static,
         <T as Resource>::DynamicType: Default,
     {
-        let mut backoff_strategy = ExponentialBackoff {
-            max_elapsed_time: None,
-            ..ExponentialBackoff::default()
-        };
-
-        self.delete(&resource).await?;
-
-        loop {
-            if !self
-                .exists::<T>(&resource.name_any(), resource.namespace().as_deref())
-                .await?
-            {
-                return Ok(());
-            }
-
-            // When backoff returns `None` the timeout has expired
-            match backoff_strategy.next_backoff() {
-                Some(backoff) => {
-                    info!(
-                        "Waiting [{}] seconds before trying again..",
-                        backoff.as_secs()
-                    );
-                    tokio::time::sleep(backoff).await;
-                }
-                None => {
-                    // We offer no way of specifying a timeout, so this shouldn't happen,
-                    // if it does we'll log an error for now and continue iterating and wait for
-                    // the last interval we saw
-                    error!(
-                        "Waiting for deletion timed out, but no timeout was specified, this is an error and should not happen!"
-                    );
-                    tokio::time::sleep(backoff_strategy.current_interval).await;
-                }
-            }
-        }
+        Ok(delete_and_finalize(
+            self.get_api::<T>(resource.namespace().as_deref()),
+            resource
+                .meta()
+                .name
+                .as_deref()
+                .ok_or(Error::MissingObjectKey {
+                    key: "metadata.name",
+                })?,
+            &self.delete_params,
+        )
+        .await?)
     }
 
     /// Returns an [kube::Api] object which is either namespaced or not depending on whether

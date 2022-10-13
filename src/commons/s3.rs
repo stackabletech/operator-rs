@@ -13,7 +13,9 @@ use serde::{Deserialize, Serialize};
 
 /// S3 bucket specification containing only the bucket name and an inlined or
 /// referenced connection specification.
-#[derive(Clone, CustomResource, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, CustomResource, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize,
+)]
 #[kube(
     group = "s3.stackable.tech",
     version = "v1alpha1",
@@ -85,7 +87,7 @@ impl InlinedS3BucketSpec {
 }
 
 /// Operators are expected to define fields for this type in order to work with S3 buckets.
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum S3BucketDef {
     Inline(S3BucketSpec),
@@ -112,7 +114,7 @@ impl S3BucketDef {
 }
 
 /// Operators are expected to define fields for this type in order to work with S3 connections.
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum S3ConnectionDef {
     Inline(S3ConnectionSpec),
@@ -136,7 +138,9 @@ impl S3ConnectionDef {
 }
 
 /// S3 connection definition as CRD.
-#[derive(CustomResource, Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    CustomResource, Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize,
+)]
 #[kube(
     group = "s3.stackable.tech",
     version = "v1alpha1",
@@ -201,7 +205,7 @@ impl S3ConnectionSpec {
     }
 }
 
-#[derive(strum::Display, Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(strum::Display, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[strum(serialize_all = "PascalCase")]
 pub enum S3AccessStyle {
     /// Use path-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access>
@@ -218,8 +222,11 @@ impl Default for S3AccessStyle {
 
 #[cfg(test)]
 mod test {
+    use std::str;
+
     use crate::commons::s3::{S3AccessStyle, S3ConnectionDef};
     use crate::commons::s3::{S3BucketSpec, S3ConnectionSpec};
+    use crate::yaml;
 
     #[test]
     fn test_ser_inline() {
@@ -234,17 +241,19 @@ mod test {
             })),
         };
 
-        assert_eq!(
-            serde_yaml::to_string(&bucket).unwrap(),
-            "---
+        let mut buf = Vec::new();
+        yaml::serialize_to_explicit_document(&mut buf, &bucket).expect("serializable value");
+        let actual_yaml = str::from_utf8(&buf).expect("UTF-8 encoded document");
+
+        let expected_yaml = "---
 bucketName: test-bucket-name
 connection:
   inline:
     host: host
     port: 8080
     accessStyle: VirtualHosted
-"
-            .to_owned()
-        )
+";
+
+        assert_eq!(expected_yaml, actual_yaml)
     }
 }

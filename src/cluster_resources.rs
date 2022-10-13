@@ -18,6 +18,7 @@ use crate::{
     kube::{Resource, ResourceExt},
     labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
 };
+use k8s_openapi::api::{core::v1::Secret, core::v1::ServiceAccount, rbac::v1::RoleBinding};
 use kube::core::ErrorResponse;
 use serde::{de::DeserializeOwned, Serialize};
 use tracing::{debug, info};
@@ -37,6 +38,9 @@ impl ClusterResource for ConfigMap {}
 impl ClusterResource for DaemonSet {}
 impl ClusterResource for Service {}
 impl ClusterResource for StatefulSet {}
+impl ClusterResource for ServiceAccount {}
+impl ClusterResource for RoleBinding {}
+impl ClusterResource for Secret {}
 
 /// A structure containing the cluster resources.
 ///
@@ -280,6 +284,9 @@ impl ClusterResources {
             self.delete_orphaned_resources_of_kind::<StatefulSet>(client),
             self.delete_orphaned_resources_of_kind::<DaemonSet>(client),
             self.delete_orphaned_resources_of_kind::<ConfigMap>(client),
+            self.delete_orphaned_resources_of_kind::<ServiceAccount>(client),
+            self.delete_orphaned_resources_of_kind::<RoleBinding>(client),
+            self.delete_orphaned_resources_of_kind::<Secret>(client),
         )?;
 
         Ok(())

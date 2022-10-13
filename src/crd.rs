@@ -5,6 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, OperatorResult};
+use crate::yaml;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -72,28 +73,34 @@ pub trait HasApplication {
 /// (e.g. creation) of `CustomResourceDefinition`s in Kubernetes.
 pub trait CustomResourceExt: kube::CustomResourceExt {
     /// Generates a YAML CustomResourceDefinition and writes it to a `Write`.
+    ///
+    /// The generated YAML string is an explicit document with leading dashes (`---`).
     fn generate_yaml_schema<W>(mut writer: W) -> OperatorResult<()>
     where
         W: Write,
     {
-        let schema = serde_yaml::to_string(&Self::crd())?;
-        writer.write_all(schema.as_bytes())?;
-        Ok(())
+        yaml::serialize_to_explicit_document(&mut writer, &Self::crd())
     }
 
     /// Generates a YAML CustomResourceDefinition and writes it to the specified file.
+    ///
+    /// The written YAML string is an explicit document with leading dashes (`---`).
     fn write_yaml_schema<P: AsRef<Path>>(path: P) -> OperatorResult<()> {
         let writer = File::create(path)?;
         Self::generate_yaml_schema(writer)
     }
 
     /// Generates a YAML CustomResourceDefinition and prints it to stdout.
+    ///
+    /// The printed YAML string is an explicit document with leading dashes (`---`).
     fn print_yaml_schema() -> OperatorResult<()> {
         let writer = std::io::stdout();
         Self::generate_yaml_schema(writer)
     }
 
-    // Returns the YAML schema of this CustomResourceDefinition as a string.
+    /// Returns the YAML schema of this CustomResourceDefinition as a string.
+    ///
+    /// The written YAML string is an explicit document with leading dashes (`---`).
     fn yaml_schema() -> OperatorResult<String> {
         let mut writer = Vec::new();
         Self::generate_yaml_schema(&mut writer)?;
