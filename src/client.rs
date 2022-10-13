@@ -4,6 +4,7 @@ use crate::label_selector;
 use either::Either;
 use futures::StreamExt;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
+use k8s_openapi::{ClusterResourceScope, NamespaceResourceScope};
 use kube::api::{DeleteParams, ListParams, Patch, PatchParams, PostParams, Resource, ResourceExt};
 use kube::client::Client as KubeClient;
 use kube::core::Status;
@@ -68,9 +69,9 @@ impl Client {
     }
 
     /// Retrieves a single instance of the requested resource type with the given name.
-    pub async fn get<T>(&self, resource_name: &str, namespace: Option<&str>) -> OperatorResult<T>
+    pub async fn get<T>(&self, resource_name: &str, namespace: &T::Namespace) -> OperatorResult<T>
     where
-        T: Clone + Debug + DeserializeOwned + Resource,
+        T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
         Ok(self.get_api(namespace).get(resource_name).await?)
@@ -80,10 +81,10 @@ impl Client {
     pub async fn get_opt<T>(
         &self,
         resource_name: &str,
-        namespace: Option<&str>,
+        namespace: &T::Namespace,
     ) -> OperatorResult<Option<T>>
     where
-        T: Clone + Debug + DeserializeOwned + Resource,
+        T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
         Ok(self.get_api(namespace).get_opt(resource_name).await?)
@@ -99,10 +100,10 @@ impl Client {
     pub async fn exists<T>(
         &self,
         resource_name: &str,
-        namespace: Option<&str>,
+        namespace: &T::Namespace,
     ) -> OperatorResult<bool>
     where
-        T: Clone + Debug + DeserializeOwned + Resource,
+        T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
         self.get_opt::<T>(resource_name, namespace)
@@ -115,11 +116,11 @@ impl Client {
     /// The `list_params` parameter can be used to pass in a `label_selector` or a `field_selector`.
     pub async fn list<T>(
         &self,
-        namespace: Option<&str>,
+        namespace: &T::Namespace,
         list_params: &ListParams,
     ) -> OperatorResult<Vec<T>>
     where
-        T: Clone + Debug + DeserializeOwned + Resource,
+        T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
         Ok(self.get_api(namespace).list(list_params).await?.items)
@@ -135,11 +136,11 @@ impl Client {
     /// - `selector` - A reference to a `LabelSelector` to filter out pods
     pub async fn list_with_label_selector<T>(
         &self,
-        namespace: Option<&str>,
+        namespace: &T::Namespace,
         selector: &LabelSelector,
     ) -> OperatorResult<Vec<T>>
     where
-        T: Clone + Debug + DeserializeOwned + Resource,
+        T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
         let selector_string = label_selector::convert_label_selector_to_query_string(selector)?;
@@ -154,11 +155,11 @@ impl Client {
     /// Creates a new resource.
     pub async fn create<T>(&self, resource: &T) -> OperatorResult<T>
     where
-        T: Clone + Debug + DeserializeOwned + Resource + Serialize,
+        T: Clone + Debug + DeserializeOwned + Resource + Serialize + GetApi,
         <T as Resource>::DynamicType: Default,
     {
         Ok(self
-            .get_api(resource.namespace().as_deref())
+            .get_api(resource.get_namespace())
             .create(&self.post_params, resource)
             .await?)
     }
@@ -168,7 +169,7 @@ impl Client {
     /// This will fail for objects that do not exist yet.
     pub async fn merge_patch<T, P>(&self, resource: &T, patch: P) -> OperatorResult<T>
     where
-        T: Clone + Debug + DeserializeOwned + Resource,
+        T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
         P: Debug + Serialize,
     {
@@ -188,7 +189,7 @@ impl Client {
         patch: P,
     ) -> OperatorResult<T>
     where
-        T: Clone + Debug + DeserializeOwned + Resource,
+        T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
         P: Debug + Serialize,
     {
@@ -203,7 +204,7 @@ impl Client {
     /// Patches a resource using the `JSON` patch strategy described in [JavaScript Object Notation (JSON) Patch](https://tools.ietf.org/html/rfc6902).
     pub async fn json_patch<T>(&self, resource: &T, patch: json_patch::Patch) -> OperatorResult<T>
     where
-        T: Clone + Debug + DeserializeOwned + Resource,
+        T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
         // The `()` type is not used. I need to provide _some_ type just to get it to compile.
@@ -222,12 +223,12 @@ impl Client {
         patch_params: &PatchParams,
     ) -> OperatorResult<T>
     where
-        T: Clone + Debug + DeserializeOwned + Resource,
+        T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
         P: Debug + Serialize,
     {
         Ok(self
-            .get_api(resource.namespace().as_deref())
+            .get_api(resource.get_namespace())
             .patch(&resource.name_any(), patch_params, &patch)
             .await?)
     }
@@ -241,7 +242,7 @@ impl Client {
         status: &S,
     ) -> OperatorResult<T>
     where
-        T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()>,
+        T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + GetApi,
         <T as Resource>::DynamicType: Default,
         S: Debug + Serialize,
     {
@@ -268,7 +269,7 @@ impl Client {
     /// The subresource status must be defined beforehand in the Crd.
     pub async fn merge_patch_status<T, S>(&self, resource: &T, status: &S) -> OperatorResult<T>
     where
-        T: DeserializeOwned + Resource,
+        T: DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
         S: Debug + Serialize,
     {
@@ -287,7 +288,7 @@ impl Client {
         patch: json_patch::Patch,
     ) -> OperatorResult<T>
     where
-        T: Clone + Debug + DeserializeOwned + Resource,
+        T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
         // The `()` type is not used. I need to provide _some_ type just to get it to compile.
@@ -317,11 +318,11 @@ impl Client {
         patch_params: &PatchParams,
     ) -> OperatorResult<T>
     where
-        T: DeserializeOwned + Resource,
+        T: DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
         S: Debug + Serialize,
     {
-        let api = self.get_api(resource.namespace().as_deref());
+        let api = self.get_api(resource.get_namespace());
         Ok(api
             .patch_status(&resource.name_any(), patch_params, &patch)
             .await?)
@@ -333,11 +334,11 @@ impl Client {
     /// a `update` will always replace the full object.
     pub async fn update<T>(&self, resource: &T) -> OperatorResult<T>
     where
-        T: Clone + Debug + DeserializeOwned + Resource + Serialize,
+        T: Clone + Debug + DeserializeOwned + Resource + Serialize + GetApi,
         <T as Resource>::DynamicType: Default,
     {
         Ok(self
-            .get_api(resource.namespace().as_deref())
+            .get_api(resource.get_namespace())
             .replace(&resource.name_any(), &self.post_params, resource)
             .await?)
     }
@@ -351,10 +352,10 @@ impl Client {
     /// Some `delete` endpoints return the object and others return a `Status` object.
     pub async fn delete<T>(&self, resource: &T) -> OperatorResult<Either<T, Status>>
     where
-        T: Clone + Debug + DeserializeOwned + Resource,
+        T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
-        let api: Api<T> = self.get_api(resource.namespace().as_deref());
+        let api: Api<T> = self.get_api(resource.get_namespace());
         Ok(api
             .delete(&resource.name_any(), &self.delete_params)
             .await?)
@@ -369,11 +370,11 @@ impl Client {
     /// from Kubernetes
     pub async fn ensure_deleted<T>(&self, resource: T) -> OperatorResult<()>
     where
-        T: Clone + Debug + DeserializeOwned + Resource + Send + 'static,
+        T: Clone + Debug + DeserializeOwned + Resource + GetApi + Send + 'static,
         <T as Resource>::DynamicType: Default,
     {
         Ok(delete_and_finalize(
-            self.get_api::<T>(resource.namespace().as_deref()),
+            self.get_api::<T>(resource.get_namespace()),
             resource
                 .meta()
                 .name
@@ -388,15 +389,12 @@ impl Client {
 
     /// Returns an [kube::Api] object which is either namespaced or not depending on whether
     /// or not a namespace string is passed in.
-    pub fn get_api<T>(&self, namespace: Option<&str>) -> Api<T>
+    pub fn get_api<T>(&self, namespace: &T::Namespace) -> Api<T>
     where
-        T: Resource,
+        T: Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
-        match namespace {
-            None => self.get_all_api(),
-            Some(namespace) => self.get_namespaced_api(namespace),
-        }
+        T::get_api(self.client.clone(), namespace)
     }
 
     pub fn get_all_api<T>(&self) -> Api<T>
@@ -407,12 +405,13 @@ impl Client {
         Api::all(self.client.clone())
     }
 
+    #[deprecated(note = "Use Api::get_api instead", since = "0.26.0")]
     pub fn get_namespaced_api<T>(&self, namespace: &str) -> Api<T>
     where
-        T: Resource,
+        T: Resource<Scope = NamespaceResourceScope>,
         <T as Resource>::DynamicType: Default,
     {
-        Api::namespaced(self.client.clone(), namespace)
+        self.get_api(namespace)
     }
 
     /// Waits indefinitely until resources matching given `ListParams` are created in Kubernetes.
@@ -448,9 +447,9 @@ impl Client {
     /// }
     /// ```
     ///
-    pub async fn wait_created<T>(&self, namespace: Option<&str>, lp: ListParams)
+    pub async fn wait_created<T>(&self, namespace: &T::Namespace, lp: ListParams)
     where
-        T: Resource + Clone + Debug + DeserializeOwned + Send + 'static,
+        T: Resource + GetApi + Clone + Debug + DeserializeOwned + Send + 'static,
         <T as Resource>::DynamicType: Default,
     {
         let api: Api<T> = self.get_api(namespace);
@@ -460,6 +459,97 @@ impl Client {
             .skip_while(|res| std::future::ready(res.is_err()))
             .next()
             .await;
+    }
+}
+
+/// Helper trait for getting [`kube::Api`] instances for a Kubernetes resource's scope
+///
+/// Not intended to be implemented manually, it is blanket-implemented for all types that implement [`Resource`]
+/// for either the [namespace](`NamespaceResourceScope`) or [cluster](`ClusterResourceScope`) scopes.
+pub trait GetApi: Resource + Sized {
+    /// The namespace type for `Self`'s scope.
+    ///
+    /// This will be [`str`] for namespaced resource, and [`()`] for cluster-scoped resources.
+    type Namespace: ?Sized;
+    /// Get a [`kube::Api`] for `Self`'s native scope..
+    fn get_api(client: kube::Client, ns: &Self::Namespace) -> kube::Api<Self>
+    where
+        Self::DynamicType: Default;
+    /// Get the namespace of `Self`.
+    fn get_namespace(&self) -> &Self::Namespace;
+    /// Coerce a string namespace into `Self::Namespace`.
+    fn namespace_from_str(ns: &str) -> &Self::Namespace;
+}
+
+impl<K> GetApi for K
+where
+    K: Resource,
+    (K, K::Scope): GetApiImpl<Resource = K>,
+{
+    type Namespace = <(K, K::Scope) as GetApiImpl>::Namespace;
+    fn get_api(client: kube::Client, ns: &Self::Namespace) -> kube::Api<Self>
+    where
+        Self::DynamicType: Default,
+    {
+        <(K, K::Scope) as GetApiImpl>::get_api(client, ns)
+    }
+    fn get_namespace(&self) -> &Self::Namespace {
+        <(K, K::Scope) as GetApiImpl>::get_namespace(self)
+    }
+    fn namespace_from_str(ns: &str) -> &Self::Namespace {
+        <(K, K::Scope) as GetApiImpl>::namespace_from_str(ns)
+    }
+}
+
+#[doc(hidden)]
+// Workaround for https://github.com/rust-lang/rust/issues/20400
+pub trait GetApiImpl {
+    type Resource: Resource;
+    type Namespace: ?Sized;
+    fn get_api(client: kube::Client, ns: &Self::Namespace) -> kube::Api<Self::Resource>
+    where
+        <Self::Resource as Resource>::DynamicType: Default;
+    fn get_namespace(res: &Self::Resource) -> &Self::Namespace;
+    fn namespace_from_str(ns: &str) -> &Self::Namespace;
+}
+
+impl<K> GetApiImpl for (K, NamespaceResourceScope)
+where
+    K: Resource<Scope = NamespaceResourceScope>,
+{
+    type Resource = K;
+    type Namespace = str;
+    fn get_api(client: kube::Client, ns: &Self::Namespace) -> kube::Api<K>
+    where
+        <Self::Resource as Resource>::DynamicType: Default,
+    {
+        Api::namespaced(client, ns)
+    }
+    fn get_namespace(res: &Self::Resource) -> &Self::Namespace {
+        res.meta().namespace.as_deref().unwrap_or_default()
+    }
+    fn namespace_from_str(ns: &str) -> &Self::Namespace {
+        ns
+    }
+}
+
+impl<K> GetApiImpl for (K, ClusterResourceScope)
+where
+    K: Resource<Scope = ClusterResourceScope>,
+{
+    type Resource = K;
+    type Namespace = ();
+    fn get_api(client: kube::Client, (): &Self::Namespace) -> kube::Api<K>
+    where
+        <Self::Resource as Resource>::DynamicType: Default,
+    {
+        Api::all(client)
+    }
+    fn get_namespace(_res: &Self::Resource) -> &Self::Namespace {
+        &()
+    }
+    fn namespace_from_str(_ns: &str) -> &Self::Namespace {
+        &()
     }
 }
 
@@ -512,7 +602,7 @@ mod tests {
             }),
             ..Pod::default()
         };
-        let api = client.get_api(Some(&client.default_namespace));
+        let api = client.get_api::<Pod>(&client.default_namespace);
         let created_pod = api
             .create(&PostParams::default(), &pod_to_wait_for)
             .await
@@ -529,7 +619,7 @@ mod tests {
         // Timeout is not acceptable
         tokio::time::timeout(
             Duration::from_secs(30), // Busybox is ~5MB and sub 1 sec to start.
-            client.wait_created::<Pod>(Some(&client.default_namespace), lp.clone()),
+            client.wait_created::<Pod>(&client.default_namespace, lp.clone()),
         )
         .await
         .expect("The tested wait_created function timed out.");
@@ -576,7 +666,7 @@ mod tests {
         // There is no such pod, therefore the `wait_created` function call times out.
         let wait_created_result: Result<(), Elapsed> = tokio::time::timeout(
             Duration::from_secs(1),
-            client.wait_created::<Pod>(Some(&client.default_namespace), lp.clone()),
+            client.wait_created::<Pod>(&client.default_namespace, lp.clone()),
         )
         .await;
 
@@ -597,7 +687,7 @@ mod tests {
             ..LabelSelector::default()
         };
         let no_pods: Vec<Pod> = client
-            .list_with_label_selector(Some(&client.default_namespace), &label_selector)
+            .list_with_label_selector::<Pod>(&client.default_namespace, &label_selector)
             .await
             .expect("Expected LabelSelector to return a result with zero pods.");
         assert!(no_pods.is_empty());
@@ -621,14 +711,14 @@ mod tests {
             }),
             ..Pod::default()
         };
-        let api = client.get_api(Some(&client.default_namespace));
+        let api = client.get_api::<Pod>(&client.default_namespace);
         let created_pod = api
             .create(&PostParams::default(), &pod_to_wait_for)
             .await
             .expect("Test pod not created.");
 
         let one_pod: Vec<Pod> = client
-            .list_with_label_selector(Some(&client.default_namespace), &label_selector)
+            .list_with_label_selector::<Pod>(&client.default_namespace, &label_selector)
             .await
             .expect("Expected LabelSelector to return a result with zero pods.");
 
