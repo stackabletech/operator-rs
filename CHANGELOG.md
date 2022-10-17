@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added new Fragment (partial configuration) machinery ([#445]).
+
 ### Changed
 
 - kube-rs: 0.74.0 -> 0.75.0 ([#490]).
@@ -12,6 +16,7 @@ All notable changes to this project will be documented in this file.
 - BREAKING: `ClusterResources` and `with_recommended_labels` now take separate arguments for the operator and controller names ([#492]).
   - When upgrading, please use FQDN-style names for the operators (`{operator}.stackable.tech`).
 
+[#445]: https://github.com/stackabletech/operator-rs/pull/445
 [#490]: https://github.com/stackabletech/operator-rs/pull/490
 [#492]: https://github.com/stackabletech/operator-rs/pull/492
 
@@ -20,10 +25,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Extended `ClusterResource` with `Secret`, `ServiceAccount` and `RoleBinding` ([#485]).
-- Added new Fragment (partial configuration) machinery ([#445]).
 
 [#485]: https://github.com/stackabletech/operator-rs/pull/485
-[#445]: https://github.com/stackabletech/operator-rs/pull/445
 
 ## [0.25.2] - 2022-09-27
 
