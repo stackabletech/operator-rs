@@ -339,7 +339,7 @@ mod tests {
                 "test_app",
                 "1.0",
                 "app.stackable.tech",
-                "appclusters",
+                "appcluster",
                 "component",
                 "role",
             )

@@ -49,7 +49,7 @@ pub fn print_startup_string(
 /// Returns the fully qualified controller name, which should be used when a single controller needs to be referred to uniquely.
 ///
 /// `operator` should be a FQDN-style operator name (for example: `zookeeper.stackable.tech`).
-/// `controller` should typically be the lower-case plural version of the primary resource that the
+/// `controller` should typically be the lower-case version of the primary resource that the
 /// controller manages (for example: `zookeeperclusters`).
 pub(crate) fn format_full_controller_name(operator: &str, controller: &str) -> String {
     format!("{operator}/{controller}")

@@ -66,7 +66,7 @@ impl ClusterResource for Secret {}
 ///
 /// const APP_NAME: &str = "app";
 /// const OPERATOR_NAME: &str = "app.stackable.tech";
-/// const CONTROLLER_NAME: &str = "appclusters";
+/// const CONTROLLER_NAME: &str = "appcluster";
 ///
 /// #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, Serialize)]
 /// #[kube(
@@ -162,8 +162,8 @@ impl ClusterResources {
     /// * `app_name` - The lower-case application name used in the resource labels, e.g.
     ///   "zookeeper"
     /// * `operator_name` - The FQDN-style name of the operator, such as ""zookeeper.stackable.tech""
-    /// * `controller_name` - The name of the lower-case plural name of the primary resource that
-    ///   the controller manages, such as "zookeeperclusters"
+    /// * `controller_name` - The name of the lower-case name of the primary resource that
+    ///   the controller manages, such as "zookeepercluster"
     /// * `cluster` - A reference to the cluster containing the name and namespace of the cluster
     ///
     /// The combination of (`operator_name`, `controller_name`) must be unique for each controller in the cluster,
