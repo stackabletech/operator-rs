@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: `ClusterResources` and `with_recommended_labels` now take separate arguments for the operator and controller names ([#492]).
+  - When upgrading, please use FQDN-style names for the operators (`{operator}.stackable.tech`).
+
+[#492]: https://github.com/stackabletech/operator-rs/pull/492
+
 ## [0.25.3] - 2022-10-13
 
 ### Added
