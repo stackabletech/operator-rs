@@ -411,7 +411,7 @@ impl ClusterResources {
         };
 
         let resources = client
-            .list_with_label_selector::<T>(&*self.namespace, &label_selector)
+            .list_with_label_selector::<T>(&self.namespace, &label_selector)
             .await?;
 
         Ok(resources)
