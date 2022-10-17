@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- kube-rs: 0.74.0 -> 0.75.0 ([#490]).
+- `Client` methods now take the namespace as a `&str` (for namespaced resources) or `&()` (for cluster-scoped resources),
+  rather than always taking an `Option<&str>` ([#490]).
+
+[#490]: https://github.com/stackabletech/operator-rs/pull/490
+
 ## [0.25.3] - 2022-10-13
 
 ### Added
