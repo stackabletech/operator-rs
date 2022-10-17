@@ -477,8 +477,6 @@ pub trait GetApi: Resource + Sized {
         Self::DynamicType: Default;
     /// Get the namespace of `Self`.
     fn get_namespace(&self) -> &Self::Namespace;
-    /// Coerce a string namespace into `Self::Namespace`.
-    fn namespace_from_str(ns: &str) -> &Self::Namespace;
 }
 
 impl<K> GetApi for K
@@ -496,9 +494,6 @@ where
     fn get_namespace(&self) -> &Self::Namespace {
         <(K, K::Scope) as GetApiImpl>::get_namespace(self)
     }
-    fn namespace_from_str(ns: &str) -> &Self::Namespace {
-        <(K, K::Scope) as GetApiImpl>::namespace_from_str(ns)
-    }
 }
 
 #[doc(hidden)]
@@ -510,7 +505,6 @@ pub trait GetApiImpl {
     where
         <Self::Resource as Resource>::DynamicType: Default;
     fn get_namespace(res: &Self::Resource) -> &Self::Namespace;
-    fn namespace_from_str(ns: &str) -> &Self::Namespace;
 }
 
 impl<K> GetApiImpl for (K, NamespaceResourceScope)
@@ -528,9 +522,6 @@ where
     fn get_namespace(res: &Self::Resource) -> &Self::Namespace {
         res.meta().namespace.as_deref().unwrap_or_default()
     }
-    fn namespace_from_str(ns: &str) -> &Self::Namespace {
-        ns
-    }
 }
 
 impl<K> GetApiImpl for (K, ClusterResourceScope)
@@ -546,9 +537,6 @@ where
         Api::all(client)
     }
     fn get_namespace(_res: &Self::Resource) -> &Self::Namespace {
-        &()
-    }
-    fn namespace_from_str(_ns: &str) -> &Self::Namespace {
         &()
     }
 }
