@@ -441,7 +441,7 @@ impl Client {
     /// // Will time out in 1 second unless the nonexistent-pod actually exists
     ///  let wait_created_result: Result<(), Elapsed> = tokio::time::timeout(
     ///          Duration::from_secs(1),
-    ///          client.wait_created::<Pod>(Some(&client.default_namespace), lp.clone()),
+    ///          client.wait_created::<Pod>(&client.default_namespace, lp.clone()),
     ///      )
     ///      .await;
     /// }
