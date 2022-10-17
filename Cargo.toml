@@ -31,7 +31,7 @@ tracing = "0.1.36"
 tracing-subscriber = { version = "0.3.15", features = ["env-filter"] }
 derivative = "2.2.0"
 tracing-opentelemetry = "0.17.4"
-opentelemetry = { version = "0.17.0", features = ["rt-tokio"] }
+opentelemetry = { version = "0.18.0", features = ["rt-tokio"] }
 opentelemetry-jaeger = { version = "0.16.0", features = ["rt-tokio"] }
 stackable-operator-derive = { path = "stackable-operator-derive" }
 snafu = "0.7.1"
