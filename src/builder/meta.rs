@@ -153,17 +153,19 @@ impl ObjectMetaBuilder {
         resource: &T,
         app_name: &str,
         app_version: &str,
-        app_managed_by: &str,
-        app_component: &str,
-        role_name: &str,
+        operator_name: &str,
+        controller_name: &str,
+        app_role: &str,
+        app_role_group: &str,
     ) -> &mut Self {
         let recommended_labels = labels::get_recommended_labels(
             resource,
             app_name,
             app_version,
-            app_managed_by,
-            app_component,
-            role_name,
+            operator_name,
+            controller_name,
+            app_role,
+            app_role_group,
         );
         self.labels
             .get_or_insert_with(BTreeMap::new)

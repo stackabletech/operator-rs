@@ -2,6 +2,8 @@ use const_format::concatcp;
 use kube::api::{Resource, ResourceExt};
 use std::collections::BTreeMap;
 
+use crate::utils::format_full_controller_name;
+
 const APP_KUBERNETES_LABEL_BASE: &str = "app.kubernetes.io/";
 
 /// The name of the application e.g. "mysql"
@@ -23,7 +25,8 @@ pub fn get_recommended_labels<T>(
     resource: &T,
     app_name: &str,
     app_version: &str,
-    app_managed_by: &str,
+    operator_name: &str,
+    controller_name: &str,
     app_role: &str,
     app_role_group: &str,
 ) -> BTreeMap<String, String>
@@ -35,7 +38,10 @@ where
     // TODO: Add operator version label
     // TODO: part-of is empty for now, decide on how this can be used in a proper fashion
     labels.insert(APP_VERSION_LABEL.to_string(), app_version.to_string());
-    labels.insert(APP_MANAGED_BY_LABEL.to_string(), app_managed_by.to_string());
+    labels.insert(
+        APP_MANAGED_BY_LABEL.to_string(),
+        format_full_controller_name(operator_name, controller_name),
+    );
 
     labels
 }
