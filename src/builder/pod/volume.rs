@@ -13,6 +13,7 @@ use k8s_openapi::{
 use std::collections::BTreeMap;
 
 use crate::builder::ObjectMetaBuilder;
+use crate::commons::listener;
 
 /// A builder to build [`Volume`] objects.
 /// May only contain one `volume_source` at a time.
@@ -339,6 +340,66 @@ enum SecretOperatorVolumeScope {
     Service { name: String },
 }
 
+/// Reference to a listener class or listener name
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ListenerReference {
+    ListenerClass(String),
+    ListenerName(String),
+}
+
+impl ListenerReference {
+    /// Return the key and value for a Kubernetes object annotation
+    fn to_annotation(&self) -> (String, String) {
+        match self {
+            ListenerReference::ListenerClass(value) => (
+                "listeners.stackable.tech/listener-class".into(),
+                value.into(),
+            ),
+            ListenerReference::ListenerName(value) => (
+                "listeners.stackable.tech/listener-name".into(),
+                value.into(),
+            ),
+        }
+    }
+}
+
+/// Builder for an [`EphemeralVolumeSource`] containing the listener configuration
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ListenerOperatorVolumeSourceBuilder {
+    listener_reference: ListenerReference,
+}
+
+impl ListenerOperatorVolumeSourceBuilder {
+    /// Create a builder for the given listener class or listener name
+    pub fn new(listener_reference: &ListenerReference) -> Self {
+        Self {
+            listener_reference: listener_reference.to_owned(),
+        }
+    }
+
+    /// Build an [`EphemeralVolumeSource`] from the builder
+    pub fn build(&self) -> EphemeralVolumeSource {
+        EphemeralVolumeSource {
+            volume_claim_template: Some(PersistentVolumeClaimTemplate {
+                metadata: Some(
+                    ObjectMetaBuilder::new()
+                        .annotations([self.listener_reference.to_annotation()].into())
+                        .build(),
+                ),
+                spec: PersistentVolumeClaimSpec {
+                    storage_class_name: Some("listeners.stackable.tech".to_string()),
+                    resources: Some(ResourceRequirements {
+                        requests: Some([("storage".to_string(), Quantity("1".to_string()))].into()),
+                        ..ResourceRequirements::default()
+                    }),
+                    access_modes: Some(vec!["ReadWriteMany".to_string()]),
+                    ..PersistentVolumeClaimSpec::default()
+                },
+            }),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -398,5 +459,48 @@ mod tests {
         assert_eq!(vm.read_only, Some(true));
         assert_eq!(vm.sub_path, Some("sub_path".to_string()));
         assert_eq!(vm.sub_path_expr, Some("sub_path_expr".to_string()));
+    }
+
+    #[test]
+    fn test_listener_operator_volume_source_builder() {
+        let builder = ListenerOperatorVolumeSourceBuilder::new(&ListenerReference::ListenerClass(
+            "public".into(),
+        ));
+
+        let volume_source = builder.build();
+
+        let volume_claim_template = volume_source.volume_claim_template;
+        let annotations = volume_claim_template
+            .as_ref()
+            .and_then(|template| template.metadata.as_ref())
+            .and_then(|metadata| metadata.annotations.as_ref())
+            .cloned()
+            .unwrap_or_default();
+        let spec = volume_claim_template.unwrap_or_default().spec;
+        let access_modes = spec.access_modes.unwrap_or_default();
+        let requests = spec
+            .resources
+            .and_then(|resources| resources.requests)
+            .unwrap_or_default();
+
+        assert_eq!(1, annotations.len());
+        assert_eq!(
+            Some((
+                &"listeners.stackable.tech/listener-class".to_string(),
+                &"public".to_string()
+            )),
+            annotations.iter().next()
+        );
+        assert_eq!(
+            Some("listeners.stackable.tech".to_string()),
+            spec.storage_class_name
+        );
+        assert_eq!(1, access_modes.len());
+        assert_eq!(Some(&"ReadWriteMany".to_string()), access_modes.first());
+        assert_eq!(1, requests.len());
+        assert_eq!(
+            Some((&"storage".to_string(), &Quantity("1".into()))),
+            requests.iter().next()
+        );
     }
 }
