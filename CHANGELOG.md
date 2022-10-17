@@ -9,8 +9,10 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Extended `ClusterResource` with `Secret`, `ServiceAccount` and `RoleBinding` ([#485]).
+- Added new Fragment (partial configuration) machinery ([#445]).
 
 [#485]: https://github.com/stackabletech/operator-rs/pull/485
+[#445]: https://github.com/stackabletech/operator-rs/pull/445
 
 ## [0.25.2] - 2022-09-27
 
@@ -59,6 +61,9 @@ This is a rerelease of 0.25.1 which some last-minute incompatible API changes to
 
 - BREAKING: The `managed_by` label must be passed explicitly to the
   `ObjectMetaBuilder::with_recommended_labels` function ([#436]).
+- BREAKING: Renamed `#[merge(bounds)]` to `#[merge(bound)]` ([#445]).
+- BREAKING: Added `Fragment` variants of most types in `stackable_operator::commons::resources` ([#445]).
+  - serde impls have been moved to `FooFragment` variants, consumers that are not ready to use the full fragment machinery should switch to using these fragment variants.
 
 [#436]: https://github.com/stackabletech/operator-rs/pull/436
 [#451]: https://github.com/stackabletech/operator-rs/pull/451
