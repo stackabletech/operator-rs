@@ -41,7 +41,7 @@ impl S3BucketSpec {
     pub async fn get(
         resource_name: &str,
         client: &Client,
-        namespace: Option<&str>,
+        namespace: &str,
     ) -> OperatorResult<S3BucketSpec> {
         client
             .get::<S3Bucket>(resource_name, namespace)
@@ -56,7 +56,7 @@ impl S3BucketSpec {
     pub async fn inlined(
         &self,
         client: &Client,
-        namespace: Option<&str>,
+        namespace: &str,
     ) -> OperatorResult<InlinedS3BucketSpec> {
         match self.connection.as_ref() {
             Some(connection_def) => Ok(InlinedS3BucketSpec {
@@ -99,7 +99,7 @@ impl S3BucketDef {
     pub async fn resolve(
         &self,
         client: &Client,
-        namespace: Option<&str>,
+        namespace: &str,
     ) -> OperatorResult<InlinedS3BucketSpec> {
         match self {
             S3BucketDef::Inline(s3_bucket) => s3_bucket.inlined(client, namespace).await,
@@ -126,7 +126,7 @@ impl S3ConnectionDef {
     pub async fn resolve(
         &self,
         client: &Client,
-        namespace: Option<&str>,
+        namespace: &str,
     ) -> OperatorResult<S3ConnectionSpec> {
         match self {
             S3ConnectionDef::Inline(s3_connection_spec) => Ok(s3_connection_spec.clone()),
@@ -181,7 +181,7 @@ impl S3ConnectionSpec {
     pub async fn get(
         resource_name: &str,
         client: &Client,
-        namespace: Option<&str>,
+        namespace: &str,
     ) -> OperatorResult<S3ConnectionSpec> {
         client
             .get::<S3Connection>(resource_name, namespace)

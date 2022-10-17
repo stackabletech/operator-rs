@@ -14,13 +14,13 @@ const_format = "0.2.26"
 either = "1.8.0"
 futures = "0.3.23"
 json-patch = "0.2.6"
-k8s-openapi = { version = "0.15.0", default-features = false, features = ["schemars", "v1_24"] }
-kube = { version = "0.74.0", features = ["jsonpatch", "runtime", "derive"] }
+k8s-openapi = { version = "0.16.0", default-features = false, features = ["schemars", "v1_24"] }
+kube = { version = "0.75.0", features = ["jsonpatch", "runtime", "derive"] }
 lazy_static = "1.4.0"
 product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.4.0" }
 rand = "0.8.5"
 regex = "1.6.0"
-schemars = "0.8.10"
+schemars = "0.8.11"
 serde = { version = "1.0.144", features = ["derive"] }
 serde_json = "1.0.85"
 serde_yaml = "0.9.10"
@@ -34,6 +34,7 @@ tracing-opentelemetry = "0.17.4"
 opentelemetry = { version = "0.17.0", features = ["rt-tokio"] }
 opentelemetry-jaeger = { version = "0.16.0", features = ["rt-tokio"] }
 stackable-operator-derive = { path = "stackable-operator-derive" }
+snafu = "0.7.1"
 
 [dev-dependencies]
 rstest = "0.15.0"
