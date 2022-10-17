@@ -4,12 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added new Fragment (partial configuration) machinery ([#445]).
+
 ### Changed
 
 - kube-rs: 0.74.0 -> 0.75.0 ([#490]).
 - BREAKING: `Client` methods now take the namespace as a `&str` (for namespaced resources) or
   `&()` (for cluster-scoped resources), rather than always taking an `Option<&str>` ([#490]).
 
+[#445]: https://github.com/stackabletech/operator-rs/pull/445
 [#490]: https://github.com/stackabletech/operator-rs/pull/490
 
 ## [0.25.3] - 2022-10-13
@@ -17,10 +22,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Extended `ClusterResource` with `Secret`, `ServiceAccount` and `RoleBinding` ([#485]).
-- Added new Fragment (partial configuration) machinery ([#445]).
 
 [#485]: https://github.com/stackabletech/operator-rs/pull/485
-[#445]: https://github.com/stackabletech/operator-rs/pull/445
 
 ## [0.25.2] - 2022-09-27
 
