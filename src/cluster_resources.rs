@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    client::Client,
+    client::{Client, GetApi},
     error::{Error, OperatorResult},
     k8s_openapi::{
         api::{
@@ -18,7 +18,10 @@ use crate::{
     kube::{Resource, ResourceExt},
     labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
 };
-use k8s_openapi::api::{core::v1::Secret, core::v1::ServiceAccount, rbac::v1::RoleBinding};
+use k8s_openapi::{
+    api::{core::v1::Secret, core::v1::ServiceAccount, rbac::v1::RoleBinding},
+    NamespaceResourceScope,
+};
 use kube::core::ErrorResponse;
 use serde::{de::DeserializeOwned, Serialize};
 use tracing::{debug, info};
@@ -30,7 +33,12 @@ use tracing::{debug, info};
 /// implementations and removes the orphaned resources. Therefore if a new implementation is added,
 /// it must be added to [`ClusterResources::delete_orphaned_resources`] as well.
 pub trait ClusterResource:
-    Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Serialize
+    Clone
+    + Debug
+    + DeserializeOwned
+    + Resource<DynamicType = (), Scope = NamespaceResourceScope>
+    + GetApi<Namespace = str>
+    + Serialize
 {
 }
 
@@ -403,7 +411,7 @@ impl ClusterResources {
         };
 
         let resources = client
-            .list_with_label_selector::<T>(Some(&self.namespace), &label_selector)
+            .list_with_label_selector::<T>(&self.namespace, &label_selector)
             .await?;
 
         Ok(resources)

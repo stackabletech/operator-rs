@@ -55,7 +55,7 @@ impl AuthenticationClass {
         authentication_class_name: &str,
     ) -> Result<AuthenticationClass, Error> {
         client
-            .get::<AuthenticationClass>(authentication_class_name, None) // AuthenticationClass has ClusterScope
+            .get::<AuthenticationClass>(authentication_class_name, &()) // AuthenticationClass has ClusterScope
             .await
     }
 }

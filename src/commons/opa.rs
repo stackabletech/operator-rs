@@ -43,11 +43,11 @@
 //! assert_eq!(opa_config.document_url(&cluster, Some("allow"), OpaApiVersion::V1), "v1/data/test/allow".to_string());
 //! assert_eq!(opa_config.full_document_url(&cluster, "http://localhost:8081", None, OpaApiVersion::V1), "http://localhost:8081/v1/data/test".to_string());
 //! ```
-use crate::client::Client;
+use crate::client::{Client, GetApi};
 use crate::error;
 use crate::error::OperatorResult;
-use k8s_openapi::api::core::v1::ConfigMap;
-use kube::ResourceExt;
+use k8s_openapi::{api::core::v1::ConfigMap, NamespaceResourceScope};
+use kube::{Resource, ResourceExt};
 use lazy_static::lazy_static;
 use regex::Regex;
 use schemars::{self, JsonSchema};
@@ -190,10 +190,10 @@ impl OpaConfig {
         api_version: OpaApiVersion,
     ) -> OperatorResult<String>
     where
-        T: ResourceExt,
+        T: Resource<Scope = NamespaceResourceScope>,
     {
         let opa_base_url = self
-            .base_url_from_config_map(client, resource.namespace().as_deref())
+            .base_url_from_config_map(client, resource.get_namespace())
             .await?;
 
         Ok(self.full_document_url(resource, &opa_base_url, rule, api_version))
@@ -208,7 +208,7 @@ impl OpaConfig {
     async fn base_url_from_config_map(
         &self,
         client: &Client,
-        namespace: Option<&str>,
+        namespace: &str,
     ) -> OperatorResult<String> {
         client
             .get::<ConfigMap>(&self.config_map_name, namespace)
