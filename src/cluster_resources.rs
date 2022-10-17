@@ -65,7 +65,8 @@ impl ClusterResource for Secret {}
 /// use std::sync::Arc;
 ///
 /// const APP_NAME: &str = "app";
-/// const FIELD_MANAGER_SCOPE: &str = "appcluster";
+/// const OPERATOR_NAME: &str = "app.stackable.tech";
+/// const CONTROLLER_NAME: &str = "appclusters";
 ///
 /// #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, Serialize)]
 /// #[kube(
@@ -94,7 +95,8 @@ impl ClusterResource for Secret {}
 ///
 ///     let mut cluster_resources = ClusterResources::new(
 ///         APP_NAME,
-///         FIELD_MANAGER_SCOPE,
+///         OPERATOR_NAME,
+///         CONTROLLER_NAME,
 ///         &app.object_ref(&()),
 ///     )
 ///     .map_err(|source| Error::CreateClusterResources { source })?;

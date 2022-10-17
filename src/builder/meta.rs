@@ -334,7 +334,15 @@ mod tests {
             .namespace("bar")
             .ownerreference_from_resource(&pod, Some(true), Some(false))
             .unwrap()
-            .with_recommended_labels(&pod, "test_app", "1.0", "app-operator", "component", "role")
+            .with_recommended_labels(
+                &pod,
+                "test_app",
+                "1.0",
+                "app.stackable.tech",
+                "appclusters",
+                "component",
+                "role",
+            )
             .with_annotation("foo", "bar")
             .build();
 
