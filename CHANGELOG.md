@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added new Fragment (partial configuration) machinery ([#445]).
+
+### Changed
+
+- kube-rs: 0.74.0 -> 0.75.0 ([#490]).
+- BREAKING: `Client` methods now take the namespace as a `&str` (for namespaced resources) or
+  `&()` (for cluster-scoped resources), rather than always taking an `Option<&str>` ([#490]).
+
+[#445]: https://github.com/stackabletech/operator-rs/pull/445
+[#490]: https://github.com/stackabletech/operator-rs/pull/490
+
+## [0.25.3] - 2022-10-13
+
+### Added
+
+- Extended `ClusterResource` with `Secret`, `ServiceAccount` and `RoleBinding` ([#485]).
+
+[#485]: https://github.com/stackabletech/operator-rs/pull/485
+
+## [0.25.2] - 2022-09-27
+
+This is a rerelease of 0.25.1 which some last-minute incompatible API changes to the additions that would have been released in 0.25.1.
+
+### Changed
+
+- Use Volume as the primary mechanism for directing Listener traffic, rather than labels ([#474]).
+
+[#474]: https://github.com/stackabletech/operator-rs/pull/474
+
 ## ~~[0.25.1] - 2022-09-23~~ YANKED
 
 ### Added
@@ -41,6 +72,9 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: The `managed_by` label must be passed explicitly to the
   `ObjectMetaBuilder::with_recommended_labels` function ([#436]).
+- BREAKING: Renamed `#[merge(bounds)]` to `#[merge(bound)]` ([#445]).
+- BREAKING: Added `Fragment` variants of most types in `stackable_operator::commons::resources` ([#445]).
+  - serde impls have been moved to `FooFragment` variants, consumers that are not ready to use the full fragment machinery should switch to using these fragment variants.
 
 [#436]: https://github.com/stackabletech/operator-rs/pull/436
 [#451]: https://github.com/stackabletech/operator-rs/pull/451

@@ -6,6 +6,7 @@ pub mod commons;
 pub mod config;
 pub mod crd;
 pub mod error;
+pub mod iter;
 pub mod label_selector;
 pub mod labels;
 pub mod logging;

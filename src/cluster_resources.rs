@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    client::Client,
+    client::{Client, GetApi},
     error::{Error, OperatorResult},
     k8s_openapi::{
         api::{
@@ -17,6 +17,10 @@ use crate::{
     },
     kube::{Resource, ResourceExt},
     labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
+};
+use k8s_openapi::{
+    api::{core::v1::Secret, core::v1::ServiceAccount, rbac::v1::RoleBinding},
+    NamespaceResourceScope,
 };
 use kube::core::ErrorResponse;
 use serde::{de::DeserializeOwned, Serialize};
@@ -29,7 +33,12 @@ use tracing::{debug, info};
 /// implementations and removes the orphaned resources. Therefore if a new implementation is added,
 /// it must be added to [`ClusterResources::delete_orphaned_resources`] as well.
 pub trait ClusterResource:
-    Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + Serialize
+    Clone
+    + Debug
+    + DeserializeOwned
+    + Resource<DynamicType = (), Scope = NamespaceResourceScope>
+    + GetApi<Namespace = str>
+    + Serialize
 {
 }
 
@@ -37,6 +46,9 @@ impl ClusterResource for ConfigMap {}
 impl ClusterResource for DaemonSet {}
 impl ClusterResource for Service {}
 impl ClusterResource for StatefulSet {}
+impl ClusterResource for ServiceAccount {}
+impl ClusterResource for RoleBinding {}
+impl ClusterResource for Secret {}
 
 /// A structure containing the cluster resources.
 ///
@@ -280,6 +292,9 @@ impl ClusterResources {
             self.delete_orphaned_resources_of_kind::<StatefulSet>(client),
             self.delete_orphaned_resources_of_kind::<DaemonSet>(client),
             self.delete_orphaned_resources_of_kind::<ConfigMap>(client),
+            self.delete_orphaned_resources_of_kind::<ServiceAccount>(client),
+            self.delete_orphaned_resources_of_kind::<RoleBinding>(client),
+            self.delete_orphaned_resources_of_kind::<Secret>(client),
         )?;
 
         Ok(())
@@ -396,7 +411,7 @@ impl ClusterResources {
         };
 
         let resources = client
-            .list_with_label_selector::<T>(Some(&self.namespace), &label_selector)
+            .list_with_label_selector::<T>(&self.namespace, &label_selector)
             .await?;
 
         Ok(resources)

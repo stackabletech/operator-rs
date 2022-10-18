@@ -261,7 +261,7 @@ mod tests {
     #[test]
     fn merge_derived_struct_with_generics() {
         #[derive(Merge, PartialEq, Eq, Debug)]
-        #[merge(bounds = "B: Merge", path_overrides(merge = "super"))]
+        #[merge(bound = "B: Merge", path_overrides(merge = "super"))]
         struct Mergeable<'a, B, const C: u8> {
             one: Option<&'a str>,
             two: B,
