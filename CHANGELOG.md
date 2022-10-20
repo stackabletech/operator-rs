@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.26.0] - 2022-10-20
+
 ### Added
 
 - Added new Fragment (partial configuration) machinery ([#445]).
