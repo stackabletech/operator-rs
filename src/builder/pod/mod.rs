@@ -8,7 +8,7 @@ use crate::error::{Error, OperatorResult};
 use k8s_openapi::{
     api::core::v1::{
         Affinity, Container, LocalObjectReference, NodeAffinity, NodeSelector,
-        NodeSelectorRequirement, NodeSelectorTerm, Pod, PodAffinity, PodCondition,
+        NodeSelectorRequirement, NodeSelectorTerm, Pod, PodAffinity, PodAntiAffinity, PodCondition,
         PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec, Toleration, Volume,
     },
     apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement, ObjectMeta},
@@ -26,6 +26,7 @@ pub struct PodBuilder {
     node_name: Option<String>,
     node_selector: Option<LabelSelector>,
     pod_affinity: Option<PodAffinity>,
+    pod_anti_affinity: Option<PodAntiAffinity>,
     status: Option<PodStatus>,
     security_context: Option<PodSecurityContext>,
     tolerations: Option<Vec<Toleration>>,
@@ -81,6 +82,11 @@ impl PodBuilder {
 
     pub fn pod_affinity(&mut self, affinity: PodAffinity) -> &mut Self {
         self.pod_affinity = Some(affinity);
+        self
+    }
+
+    pub fn pod_anti_affinity(&mut self, anti_affinity: PodAntiAffinity) -> &mut Self {
+        self.pod_anti_affinity = Some(anti_affinity);
         self
     }
 
@@ -210,6 +216,7 @@ impl PodBuilder {
                 .map(|node_affinity| Affinity {
                     node_affinity: Some(node_affinity),
                     pod_affinity: self.pod_affinity.clone(),
+                    pod_anti_affinity: self.pod_anti_affinity.clone(),
                     ..Affinity::default()
                 })
                 .or_else(|| {
