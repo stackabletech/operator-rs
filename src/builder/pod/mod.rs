@@ -90,8 +90,23 @@ impl PodBuilder {
         self
     }
 
+    pub fn maybe_pod_affinity(&mut self, affinity: Option<PodAffinity>) -> &mut Self {
+        self.pod_affinity = affinity;
+        self
+    }
+
+    pub fn maybe_pod_anti_affinity(&mut self, anti_affinity: Option<PodAntiAffinity>) -> &mut Self {
+        self.pod_anti_affinity = anti_affinity;
+        self
+    }
+
     pub fn node_selector(&mut self, node_selector: LabelSelector) -> &mut Self {
         self.node_selector = Some(node_selector);
+        self
+    }
+
+    pub fn maybe_node_selector(&mut self, node_selector: Option<LabelSelector>) -> &mut Self {
+        self.node_selector = node_selector;
         self
     }
 
@@ -222,6 +237,7 @@ impl PodBuilder {
                 .or_else(|| {
                     Some(Affinity {
                         pod_affinity: self.pod_affinity.clone(),
+                        pod_anti_affinity: self.pod_anti_affinity.clone(),
                         ..Affinity::default()
                     })
                 }),
