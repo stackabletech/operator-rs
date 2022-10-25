@@ -13,7 +13,6 @@ use k8s_openapi::{
 use std::collections::BTreeMap;
 
 use crate::builder::ObjectMetaBuilder;
-use crate::commons::listener;
 
 /// A builder to build [`Volume`] objects.
 /// May only contain one `volume_source` at a time.
