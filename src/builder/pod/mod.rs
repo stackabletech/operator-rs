@@ -155,8 +155,15 @@ impl PodBuilder {
     ///
     /// ```
     /// # use stackable_operator::builder::PodBuilder;
+    /// # use stackable_operator::builder::ContainerBuilder;
     /// let pod = PodBuilder::new()
     ///     .metadata_default()
+    ///     .add_container(
+    ///         ContainerBuilder::new("container")
+    ///             .unwrap()
+    ///             .add_volume_mount("listener", "/path/to/volume")
+    ///             .build(),
+    ///     )
     ///     .add_listener_volume_by_listener_class("listener", "nodeport")
     ///     .build()
     ///     .unwrap();
@@ -167,7 +174,11 @@ impl PodBuilder {
     /// metadata: {}
     /// spec:
     ///   affinity: {}
-    ///   containers: []
+    ///   containers:
+    ///   - name: container
+    ///     volumeMounts:
+    ///     - mountPath: /path/to/volume
+    ///       name: listener
     ///   enableServiceLinks: false
     ///   volumes:
     ///   - ephemeral:
@@ -210,8 +221,15 @@ impl PodBuilder {
     ///
     /// ```
     /// # use stackable_operator::builder::PodBuilder;
+    /// # use stackable_operator::builder::ContainerBuilder;
     /// let pod = PodBuilder::new()
     ///     .metadata_default()
+    ///     .add_container(
+    ///         ContainerBuilder::new("container")
+    ///             .unwrap()
+    ///             .add_volume_mount("listener", "/path/to/volume")
+    ///             .build(),
+    ///     )
     ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener")
     ///     .build()
     ///     .unwrap();
@@ -222,7 +240,11 @@ impl PodBuilder {
     /// metadata: {}
     /// spec:
     ///   affinity: {}
-    ///   containers: []
+    ///   containers:
+    ///   - name: container
+    ///     volumeMounts:
+    ///     - mountPath: /path/to/volume
+    ///       name: listener
     ///   enableServiceLinks: false
     ///   volumes:
     ///   - ephemeral:
