@@ -363,6 +363,31 @@ impl ListenerReference {
 }
 
 /// Builder for an [`EphemeralVolumeSource`] containing the listener configuration
+///
+/// # Example
+///
+/// ```
+/// # use k8s_openapi::api::core::v1::Volume;
+/// # use stackable_operator::builder::ListenerReference;
+/// # use stackable_operator::builder::ListenerOperatorVolumeSourceBuilder;
+/// # use stackable_operator::builder::PodBuilder;
+/// let mut pod_builder = PodBuilder::new();
+///
+/// let volume_source = ListenerOperatorVolumeSourceBuilder::new(
+///         &ListenerReference::ListenerClass("nodeport".into()),
+///     )
+///     .build();
+/// pod_builder
+///     .add_volume(Volume {
+///         name: "listener".to_string(),
+///         ephemeral: Some(volume_source),
+///         ..Volume::default()
+///     });
+///
+/// // There is also a shortcut for the code above:
+/// pod_builder
+///     .add_listener_volume_by_listener_class("listener", "nodeport");
+/// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ListenerOperatorVolumeSourceBuilder {
     listener_reference: ListenerReference,
