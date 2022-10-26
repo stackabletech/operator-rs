@@ -150,6 +150,41 @@ impl PodBuilder {
 
     /// Add a [`Volume`] for the storage class `listeners.stackable.tech` with the given listener
     /// class.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use stackable_operator::builder::PodBuilder;
+    /// let pod = PodBuilder::new()
+    ///     .metadata_default()
+    ///     .add_listener_volume_by_listener_class("listener", "nodeport")
+    ///     .build()
+    ///     .unwrap();
+    ///
+    /// assert_eq!("\
+    /// apiVersion: v1
+    /// kind: Pod
+    /// metadata: {}
+    /// spec:
+    ///   affinity: {}
+    ///   containers: []
+    ///   enableServiceLinks: false
+    ///   volumes:
+    ///   - ephemeral:
+    ///       volumeClaimTemplate:
+    ///         metadata:
+    ///           annotations:
+    ///             listeners.stackable.tech/listener-class: nodeport
+    ///         spec:
+    ///           accessModes:
+    ///           - ReadWriteMany
+    ///           resources:
+    ///             requests:
+    ///               storage: '1'
+    ///           storageClassName: listeners.stackable.tech
+    ///     name: listener
+    /// ", serde_yaml::to_string(&pod).unwrap())
+    /// ```
     pub fn add_listener_volume_by_listener_class(
         &mut self,
         volume_name: &str,
@@ -170,6 +205,41 @@ impl PodBuilder {
 
     /// Add a [`Volume`] for the storage class `listeners.stackable.tech` with the given listener
     /// name.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use stackable_operator::builder::PodBuilder;
+    /// let pod = PodBuilder::new()
+    ///     .metadata_default()
+    ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener")
+    ///     .build()
+    ///     .unwrap();
+    ///
+    /// assert_eq!("\
+    /// apiVersion: v1
+    /// kind: Pod
+    /// metadata: {}
+    /// spec:
+    ///   affinity: {}
+    ///   containers: []
+    ///   enableServiceLinks: false
+    ///   volumes:
+    ///   - ephemeral:
+    ///       volumeClaimTemplate:
+    ///         metadata:
+    ///           annotations:
+    ///             listeners.stackable.tech/listener-name: preprovisioned-listener
+    ///         spec:
+    ///           accessModes:
+    ///           - ReadWriteMany
+    ///           resources:
+    ///             requests:
+    ///               storage: '1'
+    ///           storageClassName: listeners.stackable.tech
+    ///     name: listener
+    /// ", serde_yaml::to_string(&pod).unwrap())
+    /// ```
     pub fn add_listener_volume_by_listener_name(
         &mut self,
         volume_name: &str,
