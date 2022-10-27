@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Builder for `EphemeralVolumeSource`s added which are used by the listener-operator ([#496]).
+
+[#496]: https://github.com/stackabletech/operator-rs/pull/496
+
 ## [0.26.0] - 2022-10-20
 
 ### Added
