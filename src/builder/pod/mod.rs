@@ -157,8 +157,7 @@ impl PodBuilder {
         self
     }
 
-    /// Adds the following pod attributes from a [ResolvedProductImage]:
-    /// * image_pull_secrets
+    /// Extend the pod's image_pull_secrets field with the pull secrets from a given [ResolvedProductImage]
     pub fn image_pull_secrets_from_product_image(
         &mut self,
         product_image: &ResolvedProductImage,
