@@ -40,10 +40,5 @@ snafu = "0.7.1"
 rstest = "0.15.0"
 tempfile = "3.3.0"
 
-[features]
-#default = ["native-tls"]
-#native-tls = ["kube/native-tls"]
-#rustls-tls = ["kube/rustls-tls"]
-
 [workspace]
 members = ["stackable-operator-derive"]
