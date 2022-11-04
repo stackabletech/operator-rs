@@ -68,7 +68,7 @@ pub struct ProductImageStackableVersion {
 #[serde(rename_all = "camelCase")]
 pub struct ProductImageStackable {
     /// Version of the product, e.g. `1.4.1`.
-    /// Set it to `auto` to let the operator automatically pick the recommended product version he is compatible with.
+    // Set it to `auto` to let the operator automatically pick the recommended product version he is compatible with.
     // Note that this is not an Option<String>, as in this case no attribute is needed for this enum variant and this enum variant will match *any* arbitrary input,
     // thus making the validation useless
     product_version: String,
