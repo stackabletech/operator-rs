@@ -7,8 +7,10 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Builder for `EphemeralVolumeSource`s added which are used by the listener-operator ([#496]).
+- Exposed parser for Kubernetes `Quantity` values ([#499]).
 
 [#496]: https://github.com/stackabletech/operator-rs/pull/496
+[#499]: https://github.com/stackabletech/operator-rs/pull/499
 
 ## [0.26.0] - 2022-10-20
 
