@@ -34,15 +34,6 @@ pub enum ProductImageSelection {
     Stackable(ProductImageStackable),
 }
 
-impl Default for ProductImageSelection {
-    fn default() -> Self {
-        Self::Stackable(ProductImageStackable {
-            product_version: "auto".to_string(),
-            repo: None,
-        })
-    }
-}
-
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductImageCustom {
