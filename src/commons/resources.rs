@@ -283,11 +283,7 @@ impl PvcConfig {
 
 // Since we don't own ResourceRequirement we implement Into instead of From
 #[allow(clippy::from_over_into)]
-impl<T, K> Into<ResourceRequirements> for Resources<T, K>
-where
-    T: Clone + Default,
-    K: Clone + Default,
-{
+impl<T, K> Into<ResourceRequirements> for Resources<T, K> {
     fn into(self) -> ResourceRequirements {
         let mut limits = BTreeMap::new();
         let mut requests = BTreeMap::new();
