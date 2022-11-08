@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.26.1] - 2022-11-08
+
 ### Added
 
 - Builder for `EphemeralVolumeSource`s added which are used by the listener-operator ([#496]).
