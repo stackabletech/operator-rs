@@ -2,6 +2,9 @@ use const_format::concatcp;
 use kube::api::{Resource, ResourceExt};
 use std::collections::BTreeMap;
 
+#[cfg(doc)]
+use crate::builder::ObjectMetaBuilder;
+
 const APP_KUBERNETES_LABEL_BASE: &str = "app.kubernetes.io/";
 
 /// The name of the application e.g. "mysql"
