@@ -32,8 +32,8 @@ pub struct ObjectLabels<'a, T> {
     pub app_name: &'a str,
     /// The version of the app being managed (not of the operator)
     ///
-    /// This version should include the Stackable version, such as `0.1.0-stackable0.1.0`. However, this is pure
-    /// documentation and should not be parsed.
+    /// This version should include the Stackable version, such as `0.1.0-stackable0.1.0`. In the case of custom product images,
+    /// the tag should be appended, such as `<productversion>-<tag>`. However, this is pure documentation and should not be parsed.
     pub app_version: &'a str,
     /// The name of the operator and controller managing the object
     pub managed_by: &'a str,
