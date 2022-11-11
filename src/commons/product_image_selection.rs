@@ -3,6 +3,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum::AsRefStr;
 
+#[cfg(doc)]
+use crate::labels::get_recommended_labels;
+
 pub const STACKABLE_DOCKER_REPO: &str = "docker.stackable.tech/stackable";
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -52,9 +55,15 @@ pub struct ProductImageStackableVersion {
 
 #[derive(Clone, Debug, PartialEq, JsonSchema)]
 pub struct ResolvedProductImage {
+    /// Version of the product, e.g. `1.4.1`.
     pub product_version: String,
+    /// App version as it should be used into [`get_recommended_labels`]
+    pub app_version_label: String,
+    /// Image to be used for the product image e.g. `docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0`
     pub image: String,
+    /// Image pull policy for the containers using the product image
     pub image_pull_policy: String,
+    /// Image pull secrets for the containers using the product image
     pub pull_secrets: Option<Vec<LocalObjectReference>>,
 }
 
@@ -79,12 +88,20 @@ impl ProductImage {
         let pull_secrets = self.pull_secrets.clone();
 
         match &self.image_selection {
-            ProductImageSelection::Custom(custom) => ResolvedProductImage {
-                product_version: custom.product_version.to_string(),
-                image: custom.custom.to_string(),
-                image_pull_policy,
-                pull_secrets,
-            },
+            ProductImageSelection::Custom(custom) => {
+                let custom_image_tag = custom
+                    .custom
+                    .split_once(':')
+                    .map_or("latest", |splits| splits.1);
+                let app_version_label = format!("{}-{}", custom.product_version, custom_image_tag);
+                ResolvedProductImage {
+                    product_version: custom.product_version.to_string(),
+                    app_version_label,
+                    image: custom.custom.to_string(),
+                    image_pull_policy,
+                    pull_secrets,
+                }
+            }
             ProductImageSelection::StackableVersion(stackable_version) => {
                 let repo = stackable_version
                     .repo
@@ -95,8 +112,14 @@ impl ProductImage {
                     product_version = stackable_version.product_version,
                     stackable_version = stackable_version.stackable_version,
                 );
+                let app_version_label = format!(
+                    "{product_version}-stackable{stackable_version}",
+                    product_version = stackable_version.product_version,
+                    stackable_version = stackable_version.stackable_version,
+                );
                 ResolvedProductImage {
                     product_version: stackable_version.product_version.to_string(),
+                    app_version_label,
                     image,
                     image_pull_policy,
                     pull_secrets,
@@ -121,6 +144,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0".to_string(),
+            app_version_label: "1.4.1-stackable2.1.0".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
@@ -135,12 +159,27 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/trino:1.4.1-stackable2.1.0".to_string(),
+            app_version_label: "1.4.1-stackable2.1.0".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
         }
     )]
-    #[case::custom(
+    #[case::custom_without_tag(
+        "superset",
+        r#"
+        custom: my.corp/myteam/stackable/superset
+        productVersion: 1.4.1
+        "#,
+        ResolvedProductImage {
+            image: "my.corp/myteam/stackable/superset".to_string(),
+            app_version_label: "1.4.1-latest".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::custom_with_tag(
         "superset",
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
@@ -148,6 +187,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
+            app_version_label: "1.4.1-latest-and-greatest".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
@@ -162,6 +202,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
+            app_version_label: "1.4.1-latest-and-greatest".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
@@ -176,6 +217,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
+            app_version_label: "1.4.1-latest-and-greatest".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
@@ -190,6 +232,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
+            app_version_label: "1.4.1-latest-and-greatest".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
@@ -204,6 +247,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
+            app_version_label: "1.4.1-latest-and-greatest".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Never".to_string(),
             pull_secrets: None,
@@ -221,6 +265,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
+            app_version_label: "1.4.1-latest-and-greatest".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: Some(vec![LocalObjectReference{name: Some("myPullSecrets1".to_string())}, LocalObjectReference{name: Some("myPullSecrets2".to_string())}]),
