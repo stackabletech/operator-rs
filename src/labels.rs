@@ -35,8 +35,7 @@ pub struct ObjectLabels<'a, T> {
     pub app_name: &'a str,
     /// The version of the app being managed (not of the operator).
     ///
-    /// If setting this label on a Stackable product please use the provided `app_version_label` attribute of the
-    /// [`ResolvedProductImage`] struct
+    /// If setting this label on a Stackable product then please use [`ResolvedProductImage::app_version_label`]
     ///
     /// This version should include the Stackable version, such as `3.0.0-stackable0.1.0`.
     /// If the Stackable version is not known, then the product version should be used together with a suffix (if possible).
