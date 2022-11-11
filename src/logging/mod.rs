@@ -35,7 +35,7 @@ pub fn initialize_logging(env: &str, app_name: &str, tracing_target: TracingTarg
     match tracing_target {
         TracingTarget::None => registry.init(),
         TracingTarget::Jaeger => {
-            let jaeger = opentelemetry_jaeger::new_pipeline()
+            let jaeger = opentelemetry_jaeger::new_agent_pipeline()
                 .with_service_name(app_name)
                 .install_batch(opentelemetry::runtime::Tokio)
                 .expect("Failed to initialize Jaeger pipeline");
