@@ -57,7 +57,7 @@ pub struct ProductImageStackableVersion {
 pub struct ResolvedProductImage {
     /// Version of the product, e.g. `1.4.1`.
     pub product_version: String,
-    /// App version as it should be used into [`get_recommended_labels`]
+    /// App version as formatted for [`get_recommended_labels`]
     pub app_version_label: String,
     /// Image to be used for the product image e.g. `docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0`
     pub image: String,
