@@ -10,9 +10,11 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- BREAKING: `get_recommended_labels` and `with_recommended_labels` now takes a struct of named arguments ([#501]).
 - Bump kube to `0.76.0` ([#476]).
 
 [#476]: https://github.com/stackabletech/operator-rs/pull/476
+[#501]: https://github.com/stackabletech/operator-rs/pull/501
 
 ## [0.26.1] - 2022-11-08
 
