@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added product image selection struct ([#476]).
+
+### Changed
+
+- Bump kube to `0.76.0` ([#476]).
+
+[#476]: https://github.com/stackabletech/operator-rs/pull/476
+
 ## [0.26.1] - 2022-11-08
 
 ### Added
