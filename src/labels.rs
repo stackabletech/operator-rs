@@ -42,6 +42,7 @@ pub struct ObjectLabels<'a, T> {
     /// If the Stackable version is not known, the product version should be used together with a suffix (if possible).
     /// In the case of custom product images provided by the user, only the product version is known,
     /// `3.0.0-<tag-of-custom-image>` should be used.
+    ///
     /// However, this is pure documentation and should not be parsed.
     pub app_version: &'a str,
     /// The DNS-style name of the operator managing the object (such as `zookeeper.stackable.tech`)
