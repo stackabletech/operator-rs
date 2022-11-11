@@ -4,7 +4,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilte
 pub mod controller;
 mod k8s_events;
 
-#[derive(Debug, Clone, clap::ArgEnum, PartialEq, Eq)]
+#[derive(Debug, Clone, clap::ValueEnum, PartialEq, Eq)]
 pub enum TracingTarget {
     None,
     Jaeger,
