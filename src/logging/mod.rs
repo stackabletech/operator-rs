@@ -4,7 +4,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilte
 pub mod controller;
 mod k8s_events;
 
-#[derive(Debug, Clone, clap::ArgEnum, PartialEq, Eq)]
+#[derive(Debug, Clone, clap::ValueEnum, PartialEq, Eq)]
 pub enum TracingTarget {
     None,
     Jaeger,
@@ -35,7 +35,7 @@ pub fn initialize_logging(env: &str, app_name: &str, tracing_target: TracingTarg
     match tracing_target {
         TracingTarget::None => registry.init(),
         TracingTarget::Jaeger => {
-            let jaeger = opentelemetry_jaeger::new_pipeline()
+            let jaeger = opentelemetry_jaeger::new_agent_pipeline()
                 .with_service_name(app_name)
                 .install_batch(opentelemetry::runtime::Tokio)
                 .expect("Failed to initialize Jaeger pipeline");

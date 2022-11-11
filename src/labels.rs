@@ -1,3 +1,4 @@
+use crate::utils::format_full_controller_name;
 use const_format::concatcp;
 use kube::api::{Resource, ResourceExt};
 use std::collections::BTreeMap;
@@ -43,8 +44,10 @@ pub struct ObjectLabels<'a, T> {
     /// `3.0.0-<tag-of-custom-image>` should be used.
     /// However, this is pure documentation and should not be parsed.
     pub app_version: &'a str,
-    /// The name of the operator and controller managing the object
-    pub managed_by: &'a str,
+    /// The DNS-style name of the operator managing the object (such as `zookeeper.stackable.tech`)
+    pub operator_name: &'a str,
+    /// The name of the controller inside of the operator managing the object (such as `zookeepercluster`)
+    pub controller_name: &'a str,
     /// The role that this object belongs to
     pub role: &'a str,
     /// The role group that this object belongs to
@@ -57,7 +60,8 @@ pub fn get_recommended_labels<T>(
         owner,
         app_name,
         app_version,
-        managed_by,
+        operator_name,
+        controller_name,
         role,
         role_group,
     }: ObjectLabels<T>,
@@ -70,7 +74,10 @@ where
     // TODO: Add operator version label
     // TODO: part-of is empty for now, decide on how this can be used in a proper fashion
     labels.insert(APP_VERSION_LABEL.to_string(), app_version.to_string());
-    labels.insert(APP_MANAGED_BY_LABEL.to_string(), managed_by.to_string());
+    labels.insert(
+        APP_MANAGED_BY_LABEL.to_string(),
+        format_full_controller_name(operator_name, controller_name),
+    );
 
     labels
 }

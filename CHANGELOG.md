@@ -11,10 +11,18 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: `get_recommended_labels` and `with_recommended_labels` now takes a struct of named arguments ([#501]).
+- BREAKING: `get_recommended_labels` (and co) now takes the operator and controller names separately ([#492]).
+- BREAKING: `ClusterResources` now takes the operator and controller names separately ([#492]).
+  - When upgrading, please use FQDN-style names for the operators (`{operator}.stackable.tech`).
 - Bump kube to `0.76.0` ([#476]).
+- Bump opentelemetry crates ([#502]).
+- Bump clap to 4.0 ([#503]).
 
 [#476]: https://github.com/stackabletech/operator-rs/pull/476
+[#492]: https://github.com/stackabletech/operator-rs/pull/492
 [#501]: https://github.com/stackabletech/operator-rs/pull/501
+[#502]: https://github.com/stackabletech/operator-rs/pull/502
+[#503]: https://github.com/stackabletech/operator-rs/pull/503
 
 ## [0.26.1] - 2022-11-08
 

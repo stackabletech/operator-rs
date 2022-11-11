@@ -9,7 +9,7 @@ repository = "https://github.com/stackabletech/operator-rs"
 
 [dependencies]
 chrono = { version = "0.4.22", default-features = false }
-clap = { version = "3.2.23", features = ["derive", "cargo", "env"] }
+clap = { version = "4.0.22", features = ["derive", "cargo", "env"] }
 const_format = "0.2.30"
 either = "1.8.0"
 futures = "0.3.25"
@@ -30,9 +30,9 @@ tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 derivative = "2.2.0"
-tracing-opentelemetry = "0.17.4"
-opentelemetry = { version = "0.17.0", features = ["rt-tokio"] }
-opentelemetry-jaeger = { version = "0.16.0", features = ["rt-tokio"] }
+tracing-opentelemetry = "0.18.0"
+opentelemetry = { version = "0.18.0", features = ["rt-tokio"] }
+opentelemetry-jaeger = { version = "0.17.0", features = ["rt-tokio"] }
 stackable-operator-derive = { path = "stackable-operator-derive" }
 snafu = "0.7.3"
 

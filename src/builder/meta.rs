@@ -324,7 +324,8 @@ mod tests {
                 owner: &pod,
                 app_name: "test_app",
                 app_version: "1.0",
-                managed_by: "app-operator",
+                operator_name: "app.stackable.tech",
+                controller_name: "appcluster",
                 role: "role",
                 role_group: "rolegroup",
             })

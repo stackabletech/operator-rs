@@ -40,7 +40,7 @@
 //! }
 //!
 //! #[derive(clap::Parser)]
-//! #[clap(
+//! #[command(
 //!     name = "Foobar Operator",
 //!     author,
 //!     version,
@@ -52,7 +52,7 @@
 //! }
 //!
 //! # fn main() -> OperatorResult<()> {
-//! let opts = Opts::from_args();
+//! let opts = Opts::parse();
 //!
 //! match opts.command {
 //!     cli::Command::Crd => {
@@ -75,7 +75,7 @@
 //! use stackable_operator::error::OperatorResult;
 //!
 //! #[derive(clap::Parser)]
-//! #[clap(
+//! #[command(
 //!     name = "Foobar Operator",
 //!     author,
 //!     version,
@@ -87,7 +87,7 @@
 //! }
 //!
 //! # fn main() -> OperatorResult<()> {
-//! let opts = Opts::from_args();
+//! let opts = Opts::parse();
 //!
 //! match opts.command {
 //!     cli::Command::Crd => {
@@ -133,7 +133,7 @@ pub const AUTHOR: &str = "Stackable GmbH - info@stackable.de";
 #[derive(clap::Parser, Debug, PartialEq, Eq)]
 // The enum-level doccomment is intended for developers, not end users
 // so supress it from being included in --help
-#[clap(long_about = "")]
+#[command(long_about = "")]
 pub enum Command<Run: Args = ProductOperatorRun> {
     /// Print CRD objects
     Crd,
@@ -174,7 +174,7 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 /// # use stackable_operator::cli::{Command, ProductOperatorRun};
 /// #[derive(clap::Parser, Debug, PartialEq, Eq)]
 /// struct Run {
-///     #[clap(long)]
+///     #[arg(long)]
 ///     name: String,
 /// }
 /// use clap::Parser;
@@ -184,28 +184,21 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 /// }));
 /// ```
 #[derive(clap::Parser, Debug, PartialEq, Eq)]
-#[clap(long_about = "")]
+#[command(long_about = "")]
 pub struct ProductOperatorRun {
     /// Provides the path to a product-config file
-    #[clap(
-        long,
-        short = 'p',
-        value_name = "FILE",
-        default_value = "",
-        env,
-        parse(from_os_str)
-    )]
+    #[arg(long, short = 'p', value_name = "FILE", default_value = "", env)]
     pub product_config: ProductConfigPath,
     /// Provides a specific namespace to watch (instead of watching all namespaces)
-    #[clap(long, env, default_value = "", parse(from_str))]
+    #[arg(long, env, default_value = "")]
     pub watch_namespace: WatchNamespace,
     /// Tracing log collector system
-    #[clap(long, env, default_value_t, arg_enum)]
+    #[arg(long, env, default_value_t, value_enum)]
     pub tracing_target: TracingTarget,
 }
 
 /// A path to a [`ProductConfigManager`] spec file
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProductConfigPath {
     path: Option<PathBuf>,
 }
@@ -273,6 +266,12 @@ mod tests {
     const DEPLOY_FILE_PATH: &str = "deploy_config_spec_properties.yaml";
     const DEFAULT_FILE_PATH: &str = "default_file_path_properties.yaml";
     const WATCH_NAMESPACE: &str = "WATCH_NAMESPACE";
+
+    #[test]
+    fn verify_cli() {
+        use clap::CommandFactory;
+        ProductOperatorRun::command().debug_assert()
+    }
 
     #[rstest]
     #[case(
