@@ -40,7 +40,7 @@ pub struct ObjectLabels<'a, T> {
     ///
     /// This version should include the Stackable version, such as `3.0.0-stackable0.1.0`.
     /// If the Stackable version is not known, the product version should be used together with a suffix (if possible).
-    /// In the case of custom product images provided by the user, only the product version is known,
+    /// If a custom product image is provided by the user (in which case only the product version is known),
     /// `3.0.0-<tag-of-custom-image>` should be used.
     ///
     /// However, this is pure documentation and should not be parsed.
