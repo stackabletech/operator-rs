@@ -27,11 +27,6 @@ pub enum ProductImageSelection {
     // The variants will be tried from top to bottom
     Custom(ProductImageCustom),
     StackableVersion(ProductImageStackableVersion),
-    // The following enum variant is commented out for now, as the operators currently don't know which stackableVersions they are compatible with.
-    // In the future they should be able to automatically pick a fitting stackableVersion for them.
-    // The concept of the untagged enum was tested with all known upcoming variants to make sure we don't run into strange problems in the future.
-    // They code snippets are left for illustration and can be commented in as soon as the operators can pick the stackableVersions automatically.
-    Stackable(ProductImageStackable),
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -51,18 +46,6 @@ pub struct ProductImageStackableVersion {
     product_version: String,
     /// Stackable version of the product, e.g. 2.1.0
     stackable_version: String,
-    /// Name of the docker repo, e.g. `docker.stackable.tech/stackable`
-    repo: Option<String>,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProductImageStackable {
-    /// Version of the product, e.g. `1.4.1`.
-    // Set it to `auto` to let the operator automatically pick the recommended product version he is compatible with.
-    // Note that this is not an Option<String>, as in this case no attribute is needed for this enum variant and this enum variant will match *any* arbitrary input,
-    // thus making the validation useless
-    product_version: String,
     /// Name of the docker repo, e.g. `docker.stackable.tech/stackable`
     repo: Option<String>,
 }
@@ -119,24 +102,6 @@ impl ProductImage {
                     pull_secrets,
                 }
             }
-            ProductImageSelection::Stackable(stackable) => {
-                let product_version = match stackable.product_version.as_str() {
-                    "auto" => "TODO".to_string(),
-                    product_version => product_version.to_string(),
-                };
-                let stackable_version = "TODO";
-                let repo = stackable.repo.as_deref().unwrap_or(STACKABLE_DOCKER_REPO);
-
-                let image = format!(
-                    "{repo}/{image_base_name}:{product_version}-stackable{stackable_version}"
-                );
-                ResolvedProductImage {
-                    product_version,
-                    image,
-                    image_pull_policy,
-                    pull_secrets,
-                }
-            }
         }
     }
 }
@@ -188,43 +153,6 @@ mod tests {
             pull_secrets: None,
         }
     )]
-    #[case::stackable_without_repo(
-        "superset",
-        r#"
-        productVersion: 1.4.1
-        "#,
-        ResolvedProductImage {
-            image: "docker.stackable.tech/stackable/superset:1.4.1-stackableTODO".to_string(),
-            product_version: "1.4.1".to_string(),
-            image_pull_policy: "IfNotPresent".to_string(),
-            pull_secrets: None,
-        }
-    )]
-    #[case::default(
-        "superset",
-        r#"
-        productVersion: auto
-        "#,
-        ResolvedProductImage {
-            image: "docker.stackable.tech/stackable/superset:TODO-stackableTODO".to_string(),
-            product_version: "TODO".to_string(),
-            image_pull_policy: "IfNotPresent".to_string(),
-            pull_secrets: None,
-        }
-    )]
-    #[case::stackable_with_repo(
-        "superset",
-        r#"
-        productVersion: 1.4.1
-        repo: my.corp/myteam/stackable
-        "#,
-        ResolvedProductImage {
-            image: "my.corp/myteam/stackable/superset:1.4.1-stackableTODO".to_string(),
-            product_version: "1.4.1".to_string(),
-            image_pull_policy: "IfNotPresent".to_string(),
-            pull_secrets: None,
-        }
-    )]
     #[case::custom_takes_precedence(
         "superset",
         r#"
@@ -244,7 +172,6 @@ mod tests {
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
-        repo: not-used
         pullPolicy: IfNotPresent
         "#,
         ResolvedProductImage {
@@ -259,7 +186,6 @@ mod tests {
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
-        repo: not-used
         pullPolicy: Always
         "#,
         ResolvedProductImage {
@@ -274,7 +200,6 @@ mod tests {
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
-        repo: not-used
         pullPolicy: Never
         "#,
         ResolvedProductImage {
@@ -289,7 +214,6 @@ mod tests {
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
-        repo: not-used
         pullPolicy: Always
         pullSecrets:
         - name: myPullSecrets1
@@ -317,6 +241,12 @@ mod tests {
     #[case::custom(
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
+        "#,
+        "data did not match any variant of untagged enum ProductImageSelection at line 2 column 9"
+    )]
+    #[case::product_version(
+        r#"
+        productVersion: 1.4.1
         "#,
         "data did not match any variant of untagged enum ProductImageSelection at line 2 column 9"
     )]
