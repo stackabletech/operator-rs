@@ -67,11 +67,11 @@ impl FromStr for BinaryMultiple {
     }
 }
 
-/// Easily transform K8S memory resources to Java heap options.
+/// Parsed representation of a K8s memory/storage resource limit.
 #[derive(Clone, Copy, Debug, PartialEq)]
-struct Memory {
-    value: f32,
-    unit: BinaryMultiple,
+pub struct MemoryQuantity {
+    pub value: f32,
+    pub unit: BinaryMultiple,
 }
 
 /// Convert a (memory) [`Quantity`] to Java heap settings.
@@ -83,7 +83,7 @@ struct Memory {
 /// - the heap size has a non-zero value.
 /// Fails if it can't enforce the above restrictions.
 pub fn to_java_heap(q: &Quantity, factor: f32) -> OperatorResult<String> {
-    let scaled = (q.0.parse::<Memory>()? * factor).scale_for_java();
+    let scaled = (q.0.parse::<MemoryQuantity>()? * factor).scale_for_java();
     if scaled.value < 1.0 {
         Err(Error::CannotConvertToJavaHeap {
             value: q.0.to_owned(),
@@ -113,7 +113,7 @@ pub fn to_java_heap_value(
     factor: f32,
     target_unit: BinaryMultiple,
 ) -> OperatorResult<u32> {
-    let scaled = (q.0.parse::<Memory>()? * factor)
+    let scaled = (q.0.parse::<MemoryQuantity>()? * factor)
         .scale_for_java()
         .scale_to(target_unit);
 
@@ -127,7 +127,7 @@ pub fn to_java_heap_value(
     }
 }
 
-impl Memory {
+impl MemoryQuantity {
     /// Scales the unit to a value supported by Java and may even scale
     /// further down, in an attempt to avoid having zero sizes or losing too
     /// much precision.
@@ -152,7 +152,7 @@ impl Memory {
             (norm_value, norm_unit)
         };
 
-        Memory {
+        MemoryQuantity {
             value: scaled_value,
             unit: scaled_unit,
         }
@@ -160,31 +160,31 @@ impl Memory {
 
     /// Scale up or down to the desired `BinaryMultiple`. Returns a new `Memory` and does
     /// not change itself.
-    fn scale_to(&self, binary_multiple: BinaryMultiple) -> Self {
+    pub fn scale_to(&self, binary_multiple: BinaryMultiple) -> Self {
         let from_exponent: i32 = self.unit.exponential_scale_factor();
         let to_exponent: i32 = binary_multiple.exponential_scale_factor();
 
         let exponent_diff = from_exponent - to_exponent;
 
-        Memory {
+        MemoryQuantity {
             value: self.value * 1024f32.powi(exponent_diff),
             unit: binary_multiple,
         }
     }
 }
 
-impl Mul<f32> for Memory {
-    type Output = Memory;
+impl Mul<f32> for MemoryQuantity {
+    type Output = MemoryQuantity;
 
     fn mul(self, factor: f32) -> Self {
-        Memory {
+        MemoryQuantity {
             value: self.value * factor,
             unit: self.unit,
         }
     }
 }
 
-impl FromStr for Memory {
+impl FromStr for MemoryQuantity {
     type Err = Error;
 
     fn from_str(q: &str) -> OperatorResult<Self> {
@@ -194,7 +194,7 @@ impl FromStr for Memory {
                     value: q.to_owned(),
                 })?;
         let (value, unit) = q.split_at(start_of_unit);
-        Ok(Memory {
+        Ok(MemoryQuantity {
             value: value.parse::<f32>().map_err(|_| Error::InvalidQuantity {
                 value: q.to_owned(),
             })?,
@@ -203,10 +203,17 @@ impl FromStr for Memory {
     }
 }
 
-impl TryFrom<Quantity> for Memory {
+impl TryFrom<Quantity> for MemoryQuantity {
     type Error = Error;
 
     fn try_from(quantity: Quantity) -> OperatorResult<Self> {
+        Self::try_from(&quantity)
+    }
+}
+impl TryFrom<&Quantity> for MemoryQuantity {
+    type Error = Error;
+
+    fn try_from(quantity: &Quantity) -> OperatorResult<Self> {
         quantity.0.parse()
     }
 }
@@ -219,14 +226,14 @@ mod test {
     use rstest::rstest;
 
     #[rstest]
-    #[case("256Ki", Memory { value: 256f32, unit: BinaryMultiple::Kibi })]
-    #[case("8Mi", Memory { value: 8f32, unit: BinaryMultiple::Mebi })]
-    #[case("1.5Gi", Memory { value: 1.5f32, unit: BinaryMultiple::Gibi })]
-    #[case("0.8Ti", Memory { value: 0.8f32, unit: BinaryMultiple::Tebi })]
-    #[case("3.2Pi", Memory { value: 3.2f32, unit: BinaryMultiple::Pebi })]
-    #[case("0.2Ei", Memory { value: 0.2f32, unit: BinaryMultiple::Exbi })]
-    fn test_memory_parse(#[case] input: &str, #[case] output: Memory) {
-        let got = input.parse::<Memory>().unwrap();
+    #[case("256Ki", MemoryQuantity { value: 256f32, unit: BinaryMultiple::Kibi })]
+    #[case("8Mi", MemoryQuantity { value: 8f32, unit: BinaryMultiple::Mebi })]
+    #[case("1.5Gi", MemoryQuantity { value: 1.5f32, unit: BinaryMultiple::Gibi })]
+    #[case("0.8Ti", MemoryQuantity { value: 0.8f32, unit: BinaryMultiple::Tebi })]
+    #[case("3.2Pi", MemoryQuantity { value: 3.2f32, unit: BinaryMultiple::Pebi })]
+    #[case("0.2Ei", MemoryQuantity { value: 0.2f32, unit: BinaryMultiple::Exbi })]
+    fn test_memory_parse(#[case] input: &str, #[case] output: MemoryQuantity) {
+        let got = input.parse::<MemoryQuantity>().unwrap();
         assert_eq!(got, output);
     }
 
@@ -255,7 +262,7 @@ mod test {
         #[case] target_unit: BinaryMultiple,
         #[case] expected: f32,
     ) {
-        let memory = Memory { value, unit };
+        let memory = MemoryQuantity { value, unit };
         let scaled_memory = memory.scale_to(target_unit);
         assert_eq!(scaled_memory.value, expected);
     }

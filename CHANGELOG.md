@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: `get_recommended_labels` and `with_recommended_labels` now takes a struct of named arguments ([#501]).
+
+[#501]: https://github.com/stackabletech/operator-rs/pull/501
+
+## [0.26.1] - 2022-11-08
+
+### Added
+
+- Builder for `EphemeralVolumeSource`s added which are used by the listener-operator ([#496]).
+- Exposed parser for Kubernetes `Quantity` values ([#499]).
+
+[#496]: https://github.com/stackabletech/operator-rs/pull/496
+[#499]: https://github.com/stackabletech/operator-rs/pull/499
+
+## [0.26.0] - 2022-10-20
+
 ### Added
 
 - Added new Fragment (partial configuration) machinery ([#445]).

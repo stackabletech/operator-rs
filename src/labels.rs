@@ -1,8 +1,10 @@
+use crate::utils::format_full_controller_name;
 use const_format::concatcp;
 use kube::api::{Resource, ResourceExt};
 use std::collections::BTreeMap;
 
-use crate::utils::format_full_controller_name;
+#[cfg(doc)]
+use crate::builder::ObjectMetaBuilder;
 
 const APP_KUBERNETES_LABEL_BASE: &str = "app.kubernetes.io/";
 
@@ -20,20 +22,46 @@ pub const APP_PART_OF_LABEL: &str = concatcp!(APP_KUBERNETES_LABEL_BASE, "part-o
 pub const APP_MANAGED_BY_LABEL: &str = concatcp!(APP_KUBERNETES_LABEL_BASE, "managed-by");
 pub const APP_ROLE_GROUP_LABEL: &str = concatcp!(APP_KUBERNETES_LABEL_BASE, "role-group");
 
+/// Recommended labels to set on objects created by Stackable operators
+///
+/// See [`get_recommended_labels`] and [`ObjectMetaBuilder::with_recommended_labels`].
+#[derive(Debug, Clone, Copy)]
+pub struct ObjectLabels<'a, T> {
+    /// The name of the object that this object is being created on behalf of, such as a `ZookeeperCluster`
+    pub owner: &'a T,
+    /// The name of the app being managed, such as `zookeeper`
+    pub app_name: &'a str,
+    /// The version of the app being managed (not of the operator)
+    ///
+    /// This version should include the Stackable version, such as `0.1.0-stackable0.1.0`. In the case of custom product images,
+    /// the tag should be appended, such as `<productversion>-<tag>`. However, this is pure documentation and should not be parsed.
+    pub app_version: &'a str,
+    /// The DNS-style name of the operator managing the object (such as `zookeeper.stackable.tech`)
+    pub operator_name: &'a str,
+    /// The name of the controller inside of the operator managing the object (such as `zookeepercluster`)
+    pub controller_name: &'a str,
+    /// The role that this object belongs to
+    pub role: &'a str,
+    /// The role group that this object belongs to
+    pub role_group: &'a str,
+}
+
 /// Create kubernetes recommended labels
 pub fn get_recommended_labels<T>(
-    resource: &T,
-    app_name: &str,
-    app_version: &str,
-    operator_name: &str,
-    controller_name: &str,
-    app_role: &str,
-    app_role_group: &str,
+    ObjectLabels {
+        owner,
+        app_name,
+        app_version,
+        operator_name,
+        controller_name,
+        role,
+        role_group,
+    }: ObjectLabels<T>,
 ) -> BTreeMap<String, String>
 where
     T: Resource,
 {
-    let mut labels = role_group_selector_labels(resource, app_name, app_role, app_role_group);
+    let mut labels = role_group_selector_labels(owner, app_name, role, role_group);
 
     // TODO: Add operator version label
     // TODO: part-of is empty for now, decide on how this can be used in a proper fashion
@@ -49,36 +77,36 @@ where
 /// The labels required to match against objects of a certain role, assuming that those objects
 /// are defined using [`get_recommended_labels`]
 pub fn role_group_selector_labels<T: Resource>(
-    resource: &T,
+    owner: &T,
     app_name: &str,
-    app_role: &str,
-    app_role_group: &str,
+    role: &str,
+    role_group: &str,
 ) -> BTreeMap<String, String> {
-    let mut labels = role_selector_labels(resource, app_name, app_role);
-    labels.insert(APP_ROLE_GROUP_LABEL.to_string(), app_role_group.to_string());
+    let mut labels = role_selector_labels(owner, app_name, role);
+    labels.insert(APP_ROLE_GROUP_LABEL.to_string(), role_group.to_string());
     labels
 }
 
 /// The labels required to match against objects of a certain role group, assuming that those objects
 /// are defined using [`get_recommended_labels`]
 pub fn role_selector_labels<T: Resource>(
-    resource: &T,
+    owner: &T,
     app_name: &str,
-    app_role: &str,
+    role: &str,
 ) -> BTreeMap<String, String> {
-    let mut labels = build_common_labels_for_all_managed_resources(app_name, &resource.name_any());
-    labels.insert(APP_COMPONENT_LABEL.to_string(), app_role.to_string());
+    let mut labels = build_common_labels_for_all_managed_resources(app_name, &owner.name_any());
+    labels.insert(APP_COMPONENT_LABEL.to_string(), role.to_string());
     labels
 }
 
 /// The APP_NAME_LABEL (Spark, Kafka, ZooKeeper...) and APP_INSTANCES_LABEL (simple, test ...) are
-/// required to identify resources that belong to a certain Custom Resource.
+/// required to identify resources that belong to a certain owner object (such as a particular `ZookeeperCluster`).
 pub fn build_common_labels_for_all_managed_resources(
     app_name: &str,
-    app_instance: &str,
+    owner_name: &str,
 ) -> BTreeMap<String, String> {
     let mut labels = BTreeMap::new();
     labels.insert(APP_NAME_LABEL.to_string(), app_name.to_string());
-    labels.insert(APP_INSTANCE_LABEL.to_string(), app_instance.to_string());
+    labels.insert(APP_INSTANCE_LABEL.to_string(), owner_name.to_string());
     labels
 }
