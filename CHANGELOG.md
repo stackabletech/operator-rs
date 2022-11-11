@@ -10,9 +10,11 @@ All notable changes to this project will be documented in this file.
 - BREAKING: `get_recommended_labels` (and co) now takes the operator and controller names separately ([#492]).
 - BREAKING: `ClusterResources` now takes the operator and controller names separately ([#492]).
   - When upgrading, please use FQDN-style names for the operators (`{operator}.stackable.tech`).
+- Bump opentelemetry crates ([#502]).
 
 [#492]: https://github.com/stackabletech/operator-rs/pull/492
 [#501]: https://github.com/stackabletech/operator-rs/pull/501
+[#502]: https://github.com/stackabletech/operator-rs/pull/502
 
 ## [0.26.1] - 2022-11-08
 
