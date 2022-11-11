@@ -187,13 +187,7 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 #[command(long_about = "")]
 pub struct ProductOperatorRun {
     /// Provides the path to a product-config file
-    #[arg(
-        long,
-        short = 'p',
-        value_name = "FILE",
-        default_value = "",
-        env
-    )]
+    #[arg(long, short = 'p', value_name = "FILE", default_value = "", env)]
     pub product_config: ProductConfigPath,
     /// Provides a specific namespace to watch (instead of watching all namespaces)
     #[arg(long, env, default_value = "")]
