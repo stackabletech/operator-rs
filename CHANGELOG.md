@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: `get_recommended_labels` and `with_recommended_labels` now takes a struct of named arguments ([#501]).
+
+[#501]: https://github.com/stackabletech/operator-rs/pull/501
+
 ## [0.26.1] - 2022-11-08
 
 ### Added
