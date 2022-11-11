@@ -17,6 +17,7 @@ use crate::{
     },
     kube::{Resource, ResourceExt},
     labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
+    utils::format_full_controller_name,
 };
 use k8s_openapi::{
     api::{core::v1::Secret, core::v1::ServiceAccount, rbac::v1::RoleBinding},
@@ -72,7 +73,8 @@ impl ClusterResource for Secret {}
 /// use std::sync::Arc;
 ///
 /// const APP_NAME: &str = "app";
-/// const FIELD_MANAGER_SCOPE: &str = "appcluster";
+/// const OPERATOR_NAME: &str = "app.stackable.tech";
+/// const CONTROLLER_NAME: &str = "appcluster";
 ///
 /// #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, Serialize)]
 /// #[kube(
@@ -101,7 +103,8 @@ impl ClusterResource for Secret {}
 ///
 ///     let mut cluster_resources = ClusterResources::new(
 ///         APP_NAME,
-///         FIELD_MANAGER_SCOPE,
+///         OPERATOR_NAME,
+///         CONTROLLER_NAME,
 ///         &app.object_ref(&()),
 ///     )
 ///     .map_err(|source| Error::CreateClusterResources { source })?;
@@ -166,19 +169,24 @@ impl ClusterResources {
     ///
     /// * `app_name` - The lower-case application name used in the resource labels, e.g.
     ///   "zookeeper"
-    /// * `manager` - The manager of these cluster resources, e.g.
-    ///   "zookeeper-operator_zk-controller". The added resources must contain the content of this
-    ///   field in the `app.kubernetes.io/managed-by` label. It must be different for each
-    ///   controller in the operator, otherwise resources created by another controller are detected
-    ///   as orphaned in this cluster and are deleted. This value is also used for the field manager
-    ///   scope when applying resources.
+    /// * `operator_name` - The FQDN-style name of the operator, such as ""zookeeper.stackable.tech""
+    /// * `controller_name` - The name of the lower-case name of the primary resource that
+    ///   the controller manages, such as "zookeepercluster"
     /// * `cluster` - A reference to the cluster containing the name and namespace of the cluster
+    ///
+    /// The combination of (`operator_name`, `controller_name`) must be unique for each controller in the cluster,
+    /// otherwise resources created by another controller are detected as orphaned and deleted.
     ///
     /// # Errors
     ///
     /// If `cluster` does not contain a namespace and a name then an `Error::MissingObjectKey` is
     /// returned.
-    pub fn new(app_name: &str, manager: &str, cluster: &ObjectReference) -> OperatorResult<Self> {
+    pub fn new(
+        app_name: &str,
+        operator_name: &str,
+        controller_name: &str,
+        cluster: &ObjectReference,
+    ) -> OperatorResult<Self> {
         let namespace = cluster
             .namespace
             .to_owned()
@@ -192,7 +200,7 @@ impl ClusterResources {
             namespace,
             app_instance,
             app_name: app_name.into(),
-            manager: manager.into(),
+            manager: format_full_controller_name(operator_name, controller_name),
             resource_ids: Default::default(),
         })
     }
