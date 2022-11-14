@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.27.0] - 2022-11-14
+
 ### Added
 
 - Added product image selection struct ([#476]).
