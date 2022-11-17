@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Changed the separator character between operator and controller names ([#507]).
+
+[#507]: https://github.com/stackabletech/operator-rs/pull/507
+
 ## [0.27.0] - 2022-11-14
 
 ### Added
