@@ -50,7 +50,7 @@ pub fn print_startup_string(
 ///
 /// `operator` should be a FQDN-style operator name (for example: `zookeeper.stackable.tech`).
 /// `controller` should typically be the lower-case version of the primary resource that the
-/// controller manages (for example: `zookeeperclusters`).
+/// controller manages (for example: `zookeepercluster`).
 pub(crate) fn format_full_controller_name(operator: &str, controller: &str) -> String {
-    format!("{operator}/{controller}")
+    format!("{operator}_{controller}")
 }
