@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.27.1] - 2022-11-17
+
 ### Changed
 
 - Changed the separator character between operator and controller names ([#507]).
