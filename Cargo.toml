@@ -8,8 +8,8 @@ version = "0.27.1"
 repository = "https://github.com/stackabletech/operator-rs"
 
 [dependencies]
-chrono = { version = "0.4.22", default-features = false }
-clap = { version = "4.0.22", features = ["derive", "cargo", "env"] }
+chrono = { version = "0.4.23", default-features = false }
+clap = { version = "4.0.26", features = ["derive", "cargo", "env"] }
 const_format = "0.2.30"
 either = "1.8.0"
 futures = "0.3.25"
@@ -22,7 +22,7 @@ rand = "0.8.5"
 regex = "1.6.0"
 schemars = "0.8.11"
 serde = { version = "1.0.147", features = ["derive"] }
-serde_json = "1.0.87"
+serde_json = "1.0.89"
 serde_yaml = "0.9.14"
 strum = { version = "0.24.1", features = ["derive"] }
 thiserror = "1.0.37"
