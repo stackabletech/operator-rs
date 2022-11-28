@@ -9,6 +9,8 @@ use super::spec::{ContainerLogConfig, LogLevel};
 const STACKABLE_CONFIG_DIR: &str = "/stackable/config";
 const STACKABLE_LOG_DIR: &str = "/stackable/log";
 
+pub const VECTOR_CONFIG_FILE: &str = "vector.toml";
+
 pub fn capture_shell_output(
     log_dir: &str,
     container: &str,
@@ -291,7 +293,7 @@ pub fn vector_container(image: &str, config_volume_name: &str, log_volume_name: 
         .command(vec!["/stackable/vector/bin/vector".into()])
         .args(vec![
             "--config".into(),
-            format!("{STACKABLE_CONFIG_DIR}/vector.toml"),
+            format!("{STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE}"),
         ])
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
         .add_volume_mount(log_volume_name, STACKABLE_LOG_DIR)
