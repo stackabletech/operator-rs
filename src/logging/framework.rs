@@ -1,6 +1,13 @@
 use std::cmp;
 
+use k8s_openapi::api::core::v1::Container;
+
+use crate::builder::ContainerBuilder;
+
 use super::spec::{ContainerLogConfig, LogLevel};
+
+const STACKABLE_CONFIG_DIR: &str = "/stackable/config";
+const STACKABLE_LOG_DIR: &str = "/stackable/log";
 
 pub fn capture_shell_output(
     log_dir: &str,
@@ -173,7 +180,6 @@ pub fn create_logback_config(
 }
 
 pub fn create_vector_config(
-    log_dir: &str,
     vector_aggregator_address: &str,
     config: &ContainerLogConfig,
 ) -> String {
@@ -200,15 +206,15 @@ type = "internal_logs"
 
 [sources.files_stdout]
 type = "file"
-include = ["{log_dir}/*/*.stdout.log"]
+include = ["{STACKABLE_LOG_DIR}/*/*.stdout.log"]
 
 [sources.files_stderr]
 type = "file"
-include = ["{log_dir}/*/*.stderr.log"]
+include = ["{STACKABLE_LOG_DIR}/*/*.stderr.log"]
 
 [sources.files_log4j]
 type = "file"
-include = ["{log_dir}/*/*.log4j.xml"]
+include = ["{STACKABLE_LOG_DIR}/*/*.log4j.xml"]
 
 [sources.files_log4j.multiline]
 mode = "halt_with"
@@ -266,7 +272,7 @@ del(.source_type)
 inputs = ["processed_files_*"]
 type = "remap"
 source = '''
-. |= parse_regex!(.file, r'^{log_dir}/(?P<container>.*?)/(?P<file>.*?)$')
+. |= parse_regex!(.file, r'^{STACKABLE_LOG_DIR}/(?P<container>.*?)/(?P<file>.*?)$')
 del(.source_type)
 '''
 
@@ -276,4 +282,18 @@ type = "vector"
 address = "{vector_aggregator_address}"
 "#
     )
+}
+
+pub fn vector_container(image: &str, config_volume_name: &str, log_volume_name: &str) -> Container {
+    ContainerBuilder::new("vector")
+        .unwrap()
+        .image(image)
+        .command(vec!["/stackable/vector/bin/vector".into()])
+        .args(vec![
+            "--config".into(),
+            format!("{STACKABLE_CONFIG_DIR}/vector.toml"),
+        ])
+        .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
+        .add_volume_mount(log_volume_name, STACKABLE_LOG_DIR)
+        .build()
 }
