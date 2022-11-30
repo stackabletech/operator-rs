@@ -1,16 +1,29 @@
 use std::collections::BTreeMap;
 use std::fmt::Display;
 
-use crate::config::merge::Atomic;
+use crate::config::fragment::{self, FromFragment};
+use crate::config::merge::{self, Atomic};
 use crate::config::{fragment::Fragment, merge::Merge};
 
+use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Eq, Fragment, JsonSchema, PartialEq)]
+#[derive(Clone, Debug, Derivative, Eq, Fragment, JsonSchema, PartialEq)]
+#[derivative(Default(bound = ""))]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
-    derive(Clone, Debug, Deserialize, Merge, JsonSchema, PartialEq, Serialize),
+    derive(
+        Clone,
+        Debug,
+        Derivative,
+        Deserialize,
+        JsonSchema,
+        Merge,
+        PartialEq,
+        Serialize
+    ),
+    derivative(Default(bound = "")),
     merge(path_overrides(merge = "crate::config::merge")),
     serde(
         bound(serialize = "T: Serialize", deserialize = "T: Deserialize<'de>",),
@@ -26,26 +39,60 @@ where
     pub containers: BTreeMap<T, ContainerLogConfig>,
 }
 
-impl<T> Default for Logging<T>
-where
-    T: Clone + Display + Ord,
-{
-    fn default() -> Self {
-        Self {
-            enable_vector_agent: Default::default(),
-            containers: Default::default(),
-        }
-    }
+#[derive(Clone, Debug, Default, Eq, Fragment, JsonSchema, PartialEq)]
+#[fragment(path_overrides(fragment = "crate::config::fragment"))]
+#[fragment_attrs(
+    derive(
+        Clone,
+        Debug,
+        Default,
+        Deserialize,
+        JsonSchema,
+        Merge,
+        PartialEq,
+        Serialize
+    ),
+    merge(path_overrides(merge = "crate::config::merge")),
+    serde(rename_all = "camelCase")
+)]
+pub struct ContainerLogConfig {
+    #[fragment_attrs(serde(flatten))]
+    pub choice: Option<ContainerLogConfigChoice>,
 }
 
-impl<T> Default for LoggingFragment<T>
-where
-    T: Clone + Display + Ord,
-{
-    fn default() -> Self {
-        Self {
-            enable_vector_agent: Default::default(),
-            containers: Default::default(),
+#[derive(Clone, Debug, Derivative, Eq, JsonSchema, PartialEq)]
+#[derivative(Default)]
+pub enum ContainerLogConfigChoice {
+    Custom(CustomContainerLogConfig),
+    #[derivative(Default)]
+    Automatic(AutomaticContainerLogConfig),
+}
+
+#[derive(Clone, Debug, Derivative, Deserialize, JsonSchema, Merge, PartialEq, Serialize)]
+#[derivative(Default)]
+#[merge(path_overrides(merge = "crate::config::merge"))]
+#[serde(untagged)]
+pub enum ContainerLogConfigChoiceFragment {
+    Custom(CustomContainerLogConfigFragment),
+    #[derivative(Default)]
+    Automatic(AutomaticContainerLogConfigFragment),
+}
+
+impl FromFragment for ContainerLogConfigChoice {
+    type Fragment = ContainerLogConfigChoiceFragment;
+    type RequiredFragment = ContainerLogConfigChoiceFragment;
+
+    fn from_fragment(
+        fragment: Self::Fragment,
+        validator: fragment::Validator,
+    ) -> Result<Self, fragment::ValidationError> {
+        match fragment {
+            Self::Fragment::Custom(fragment) => Ok(Self::Custom(FromFragment::from_fragment(
+                fragment, validator,
+            )?)),
+            Self::Fragment::Automatic(fragment) => Ok(Self::Automatic(
+                FromFragment::from_fragment(fragment, validator)?,
+            )),
         }
     }
 }
@@ -58,15 +105,56 @@ where
         Debug,
         Default,
         Deserialize,
-        Merge,
         JsonSchema,
+        Merge,
         PartialEq,
         Serialize
     ),
     merge(path_overrides(merge = "crate::config::merge")),
     serde(rename_all = "camelCase")
 )]
-pub struct ContainerLogConfig {
+pub struct CustomContainerLogConfig {
+    pub custom: ConfigMapLogConfig,
+}
+
+#[derive(Clone, Debug, Default, Eq, Fragment, JsonSchema, PartialEq)]
+#[fragment(path_overrides(fragment = "crate::config::fragment"))]
+#[fragment_attrs(
+    derive(
+        Clone,
+        Debug,
+        Default,
+        Deserialize,
+        JsonSchema,
+        Merge,
+        PartialEq,
+        Serialize
+    ),
+    merge(path_overrides(merge = "crate::config::merge")),
+    serde(rename_all = "camelCase")
+)]
+pub struct ConfigMapLogConfig {
+    #[fragment_attrs(serde(default))]
+    pub config_map: String,
+}
+
+#[derive(Clone, Debug, Default, Eq, Fragment, JsonSchema, PartialEq)]
+#[fragment(path_overrides(fragment = "crate::config::fragment"))]
+#[fragment_attrs(
+    derive(
+        Clone,
+        Debug,
+        Default,
+        Deserialize,
+        JsonSchema,
+        Merge,
+        PartialEq,
+        Serialize
+    ),
+    merge(path_overrides(merge = "crate::config::merge")),
+    serde(rename_all = "camelCase")
+)]
+pub struct AutomaticContainerLogConfig {
     #[fragment_attrs(serde(default))]
     pub loggers: BTreeMap<String, LoggerConfig>,
     #[fragment_attrs(serde(default))]
@@ -75,7 +163,7 @@ pub struct ContainerLogConfig {
     pub file: AppenderConfig,
 }
 
-impl ContainerLogConfig {
+impl AutomaticContainerLogConfig {
     pub const ROOT_LOGGER: &'static str = "ROOT";
 
     pub fn root_log_level(&self) -> Option<LogLevel> {
@@ -93,9 +181,9 @@ impl ContainerLogConfig {
         Debug,
         Default,
         Deserialize,
-        Merge,
         JsonSchema,
         PartialEq,
+        Merge,
         Serialize
     ),
     merge(path_overrides(merge = "crate::config::merge")),
@@ -113,8 +201,8 @@ pub struct LoggerConfig {
         Debug,
         Default,
         Deserialize,
-        Merge,
         JsonSchema,
+        Merge,
         PartialEq,
         Serialize
     ),
@@ -127,22 +215,28 @@ pub struct AppenderConfig {
 }
 
 #[derive(
-    Clone, Copy, Debug, Deserialize, Eq, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Derivative,
+    Deserialize,
+    Eq,
+    JsonSchema,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
 )]
+#[derivative(Default)]
 pub enum LogLevel {
     TRACE,
     DEBUG,
+    #[derivative(Default)]
     INFO,
     WARN,
     ERROR,
     FATAL,
     NONE,
-}
-
-impl Default for LogLevel {
-    fn default() -> Self {
-        LogLevel::INFO
-    }
 }
 
 impl Atomic for LogLevel {}
@@ -176,18 +270,287 @@ where
 
 pub fn default_container_log_config() -> ContainerLogConfigFragment {
     ContainerLogConfigFragment {
-        loggers: [(
-            ContainerLogConfig::ROOT_LOGGER.into(),
-            LoggerConfigFragment {
-                level: Some(LogLevel::INFO),
+        choice: Some(ContainerLogConfigChoiceFragment::Automatic(
+            AutomaticContainerLogConfigFragment {
+                loggers: [(
+                    AutomaticContainerLogConfig::ROOT_LOGGER.into(),
+                    LoggerConfigFragment {
+                        level: Some(LogLevel::INFO),
+                    },
+                )]
+                .into(),
+                console: AppenderConfigFragment {
+                    level_threshold: Some(LogLevel::INFO),
+                },
+                file: AppenderConfigFragment {
+                    level_threshold: Some(LogLevel::INFO),
+                },
             },
-        )]
-        .into(),
-        console: AppenderConfigFragment {
-            level_threshold: Some(LogLevel::INFO),
-        },
-        file: AppenderConfigFragment {
-            level_threshold: Some(LogLevel::INFO),
-        },
+        )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use crate::config::{fragment, merge};
+
+    use super::{
+        AppenderConfig, AppenderConfigFragment, AutomaticContainerLogConfig,
+        AutomaticContainerLogConfigFragment, ConfigMapLogConfig, ConfigMapLogConfigFragment,
+        ContainerLogConfig, ContainerLogConfigChoice, ContainerLogConfigChoiceFragment,
+        ContainerLogConfigFragment, CustomContainerLogConfig, CustomContainerLogConfigFragment,
+        LogLevel,
+    };
+
+    #[test]
+    fn serialize_container_log_config() {
+        assert_eq!(
+            "{\"loggers\":{},\"console\":{\"levelThreshold\":\"INFO\"},\"file\":{\"levelThreshold\":\"WARN\"}}".to_string(),
+            serde_json::to_string(&ContainerLogConfigFragment {
+                choice: Some(ContainerLogConfigChoiceFragment::Automatic(
+                    AutomaticContainerLogConfigFragment {
+                        loggers: BTreeMap::new(),
+                        console: AppenderConfigFragment {
+                            level_threshold: Some(LogLevel::INFO),
+                        },
+                        file: AppenderConfigFragment {
+                            level_threshold: Some(LogLevel::WARN),
+                        },
+                    },
+                )),
+            })
+            .unwrap()
+        );
+
+        assert_eq!(
+            "{\"custom\":{\"configMap\":\"configMap\"}}".to_string(),
+            serde_json::to_string(&ContainerLogConfigFragment {
+                choice: Some(ContainerLogConfigChoiceFragment::Custom(
+                    CustomContainerLogConfigFragment {
+                        custom: ConfigMapLogConfigFragment {
+                            config_map: Some("configMap".into())
+                        }
+                    },
+                )),
+            })
+            .unwrap()
+        );
+    }
+
+    #[test]
+    fn deserialize_container_log_config() {
+        assert_eq!(
+            ContainerLogConfigFragment {
+                choice: Some(ContainerLogConfigChoiceFragment::Automatic(
+                    AutomaticContainerLogConfigFragment {
+                        loggers: BTreeMap::new(),
+                        console: AppenderConfigFragment {
+                            level_threshold: Some(LogLevel::INFO),
+                        },
+                        file: AppenderConfigFragment {
+                            level_threshold: Some(LogLevel::WARN),
+                        },
+                    },
+                )),
+            },
+            serde_json::from_str::<ContainerLogConfigFragment>(
+                "{\"loggers\":{},\"console\":{\"levelThreshold\":\"INFO\"},\"file\":{\"levelThreshold\":\"WARN\"}}"
+            )
+            .unwrap()
+        );
+
+        assert_eq!(
+            ContainerLogConfigFragment {
+                choice: Some(ContainerLogConfigChoiceFragment::Custom(
+                    CustomContainerLogConfigFragment {
+                        custom: ConfigMapLogConfigFragment {
+                            config_map: Some("configMap".into())
+                        }
+                    }
+                )),
+            },
+            serde_json::from_str::<ContainerLogConfigFragment>(
+                "{\"custom\":{\"configMap\":\"configMap\"}}"
+            )
+            .unwrap()
+        );
+
+        assert_eq!(
+            ContainerLogConfigFragment {
+                choice: Some(ContainerLogConfigChoiceFragment::Automatic(
+                    AutomaticContainerLogConfigFragment {
+                        loggers: BTreeMap::new(),
+                        console: AppenderConfigFragment {
+                            level_threshold: None,
+                        },
+                        file: AppenderConfigFragment {
+                            level_threshold: None,
+                        },
+                    },
+                )),
+            },
+            serde_json::from_str::<ContainerLogConfigFragment>("{}").unwrap()
+        );
+
+        assert_eq!(
+            ContainerLogConfigFragment {
+                choice: Some(ContainerLogConfigChoiceFragment::Custom(
+                    CustomContainerLogConfigFragment {
+                        custom: ConfigMapLogConfigFragment {
+                            config_map: Some("configMap".into())
+                        }
+                    }
+                )),
+            },
+            serde_json::from_str::<ContainerLogConfigFragment>(
+                "{\"custom\":{\"configMap\":\"configMap\"},\"loggers\":{},\"console\":{\"levelThreshold\":\"INFO\"},\"file\":{\"levelThreshold\":\"WARN\"}}"
+            )
+            .unwrap()
+        );
+    }
+
+    #[test]
+    fn merge_container_log_config() {
+        assert_eq!(
+            ContainerLogConfigFragment {
+                choice: Some(ContainerLogConfigChoiceFragment::Automatic(
+                    AutomaticContainerLogConfigFragment {
+                        loggers: BTreeMap::new(),
+                        console: AppenderConfigFragment {
+                            level_threshold: Some(LogLevel::INFO),
+                        },
+                        file: AppenderConfigFragment {
+                            level_threshold: Some(LogLevel::WARN),
+                        },
+                    },
+                )),
+            },
+            merge::merge(
+                ContainerLogConfigFragment {
+                    choice: Some(ContainerLogConfigChoiceFragment::Automatic(
+                        AutomaticContainerLogConfigFragment {
+                            loggers: BTreeMap::new(),
+                            console: AppenderConfigFragment {
+                                level_threshold: Some(LogLevel::INFO),
+                            },
+                            file: AppenderConfigFragment {
+                                level_threshold: Some(LogLevel::WARN),
+                            },
+                        },
+                    )),
+                },
+                &ContainerLogConfigFragment {
+                    choice: Some(ContainerLogConfigChoiceFragment::Custom(
+                        CustomContainerLogConfigFragment {
+                            custom: ConfigMapLogConfigFragment {
+                                config_map: Some("configMap".into())
+                            }
+                        },
+                    )),
+                }
+            )
+        );
+
+        assert_eq!(
+            ContainerLogConfigFragment {
+                choice: Some(ContainerLogConfigChoiceFragment::Automatic(
+                    AutomaticContainerLogConfigFragment {
+                        loggers: BTreeMap::new(),
+                        console: AppenderConfigFragment {
+                            level_threshold: Some(LogLevel::INFO),
+                        },
+                        file: AppenderConfigFragment {
+                            level_threshold: Some(LogLevel::WARN),
+                        },
+                    },
+                )),
+            },
+            merge::merge(
+                ContainerLogConfigFragment {
+                    choice: Some(ContainerLogConfigChoiceFragment::Automatic(
+                        AutomaticContainerLogConfigFragment {
+                            loggers: BTreeMap::new(),
+                            console: AppenderConfigFragment {
+                                level_threshold: None,
+                            },
+                            file: AppenderConfigFragment {
+                                level_threshold: Some(LogLevel::WARN),
+                            },
+                        },
+                    )),
+                },
+                &ContainerLogConfigFragment {
+                    choice: Some(ContainerLogConfigChoiceFragment::Automatic(
+                        AutomaticContainerLogConfigFragment {
+                            loggers: BTreeMap::new(),
+                            console: AppenderConfigFragment {
+                                level_threshold: Some(LogLevel::INFO),
+                            },
+                            file: AppenderConfigFragment {
+                                level_threshold: None,
+                            },
+                        },
+                    )),
+                }
+            )
+        );
+    }
+
+    #[test]
+    fn validate_automatic_container_log_config() {
+        assert_eq!(
+            ContainerLogConfig {
+                choice: Some(ContainerLogConfigChoice::Automatic(
+                    AutomaticContainerLogConfig {
+                        loggers: BTreeMap::new(),
+                        console: AppenderConfig {
+                            level_threshold: LogLevel::INFO
+                        },
+                        file: AppenderConfig {
+                            level_threshold: LogLevel::WARN
+                        },
+                    }
+                ))
+            },
+            fragment::validate::<ContainerLogConfig>(ContainerLogConfigFragment {
+                choice: Some(ContainerLogConfigChoiceFragment::Automatic(
+                    AutomaticContainerLogConfigFragment {
+                        loggers: BTreeMap::new(),
+                        console: AppenderConfigFragment {
+                            level_threshold: Some(LogLevel::INFO),
+                        },
+                        file: AppenderConfigFragment {
+                            level_threshold: Some(LogLevel::WARN),
+                        },
+                    },
+                )),
+            })
+            .unwrap()
+        );
+    }
+
+    #[test]
+    fn validate_custom_container_log_config() {
+        assert_eq!(
+            ContainerLogConfig {
+                choice: Some(ContainerLogConfigChoice::Custom(CustomContainerLogConfig {
+                    custom: ConfigMapLogConfig {
+                        config_map: "configMap".into()
+                    }
+                }))
+            },
+            fragment::validate::<ContainerLogConfig>(ContainerLogConfigFragment {
+                choice: Some(ContainerLogConfigChoiceFragment::Custom(
+                    CustomContainerLogConfigFragment {
+                        custom: ConfigMapLogConfigFragment {
+                            config_map: Some("configMap".into())
+                        }
+                    },
+                )),
+            })
+            .unwrap()
+        );
     }
 }

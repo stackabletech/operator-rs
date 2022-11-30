@@ -4,7 +4,7 @@ use k8s_openapi::api::core::v1::Container;
 
 use crate::builder::ContainerBuilder;
 
-use super::spec::{ContainerLogConfig, LogLevel};
+use super::spec::{AutomaticContainerLogConfig, LogLevel};
 
 const STACKABLE_CONFIG_DIR: &str = "/stackable/config";
 const STACKABLE_LOG_DIR: &str = "/stackable/log";
@@ -14,23 +14,11 @@ pub const VECTOR_CONFIG_FILE: &str = "vector.toml";
 pub fn capture_shell_output(
     log_dir: &str,
     container: &str,
-    log_config: Option<&ContainerLogConfig>,
+    log_config: &AutomaticContainerLogConfig,
 ) -> String {
-    let root_log_level = log_config
-        .and_then(|config| config.root_log_level())
-        .unwrap_or_default();
-    let console_log_level = cmp::max(
-        root_log_level,
-        log_config
-            .map(|config| config.console.level_threshold.to_owned())
-            .unwrap_or_default(),
-    );
-    let file_log_level = cmp::max(
-        root_log_level,
-        log_config
-            .map(|config| config.file.level_threshold.to_owned())
-            .unwrap_or_default(),
-    );
+    let root_log_level = log_config.root_log_level().unwrap_or_default();
+    let console_log_level = cmp::max(root_log_level, log_config.console.level_threshold);
+    let file_log_level = cmp::max(root_log_level, log_config.file.level_threshold);
 
     let log_file_dir = format!("{log_dir}/{container}");
 
@@ -71,14 +59,14 @@ pub fn create_log4j_config(
     log_dir: &str,
     log_file: &str,
     max_size_in_mb: i32,
-    config: &ContainerLogConfig,
+    config: &AutomaticContainerLogConfig,
 ) -> String {
     let number_of_archived_log_files = 1;
 
     let loggers = config
         .loggers
         .iter()
-        .filter(|(name, _)| name.as_str() != ContainerLogConfig::ROOT_LOGGER)
+        .filter(|(name, _)| name.as_str() != AutomaticContainerLogConfig::ROOT_LOGGER)
         .map(|(name, logger_config)| {
             format!(
                 "log4j.logger.{name}={level}\n",
@@ -118,14 +106,14 @@ pub fn create_logback_config(
     log_dir: &str,
     log_file: &str,
     max_size_in_mb: i32,
-    config: &ContainerLogConfig,
+    config: &AutomaticContainerLogConfig,
 ) -> String {
     let number_of_archived_log_files = 1;
 
     let loggers = config
         .loggers
         .iter()
-        .filter(|(name, _)| name.as_str() != ContainerLogConfig::ROOT_LOGGER)
+        .filter(|(name, _)| name.as_str() != AutomaticContainerLogConfig::ROOT_LOGGER)
         .map(|(name, logger_config)| {
             format!(
                 "  <logger name=\"{name}\" level=\"{level}\" />\n",
@@ -183,9 +171,11 @@ pub fn create_logback_config(
 
 pub fn create_vector_config(
     vector_aggregator_address: &str,
-    config: &ContainerLogConfig,
+    config: Option<&AutomaticContainerLogConfig>,
 ) -> String {
-    let vector_log_level = config.file.level_threshold.to_owned();
+    let vector_log_level = config
+        .map(|config| config.file.level_threshold)
+        .unwrap_or_default();
 
     let vector_log_level_filter_expression = match vector_log_level {
         LogLevel::TRACE => "true",
@@ -287,6 +277,7 @@ address = "{vector_aggregator_address}"
 }
 
 pub fn vector_container(image: &str, config_volume_name: &str, log_volume_name: &str) -> Container {
+    // TODO Increase verbosity if root log level is lower than INFO.
     ContainerBuilder::new("vector")
         .unwrap()
         .image(image)
