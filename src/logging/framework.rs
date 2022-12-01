@@ -2,7 +2,7 @@ use std::cmp;
 
 use k8s_openapi::api::core::v1::Container;
 
-use crate::builder::ContainerBuilder;
+use crate::{builder::ContainerBuilder, commons::product_image_selection::ResolvedProductImage};
 
 use super::spec::{AutomaticContainerLogConfig, LogLevel};
 
@@ -276,11 +276,15 @@ address = "{vector_aggregator_address}"
     )
 }
 
-pub fn vector_container(image: &str, config_volume_name: &str, log_volume_name: &str) -> Container {
+pub fn vector_container(
+    image: &ResolvedProductImage,
+    config_volume_name: &str,
+    log_volume_name: &str,
+) -> Container {
     // TODO Increase verbosity if root log level is lower than INFO.
     ContainerBuilder::new("vector")
         .unwrap()
-        .image(image)
+        .image_from_product_image(image)
         .command(vec!["/stackable/vector/bin/vector".into()])
         .args(vec![
             "--config".into(),
