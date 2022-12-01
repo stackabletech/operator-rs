@@ -16,9 +16,23 @@ pub fn capture_shell_output(
     container: &str,
     log_config: &AutomaticContainerLogConfig,
 ) -> String {
-    let root_log_level = log_config.root_log_level().unwrap_or_default();
-    let console_log_level = cmp::max(root_log_level, log_config.console.level_threshold);
-    let file_log_level = cmp::max(root_log_level, log_config.file.level_threshold);
+    let root_log_level = log_config.root_log_level();
+    let console_log_level = cmp::max(
+        root_log_level,
+        log_config
+            .console
+            .as_ref()
+            .and_then(|console| console.level_threshold)
+            .unwrap_or_default(),
+    );
+    let file_log_level = cmp::max(
+        root_log_level,
+        log_config
+            .file
+            .as_ref()
+            .and_then(|file| file.level_threshold)
+            .unwrap_or_default(),
+    );
 
     let log_file_dir = format!("{log_dir}/{container}");
 
@@ -93,12 +107,19 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 
 {loggers}"#,
         max_log_file_size_in_mb = max_size_in_mb / (1 + number_of_archived_log_files),
-        root_log_level = config
-            .root_log_level()
+        root_log_level = config.root_log_level().to_logback_literal(),
+        console_log_level_threshold = config
+            .console
+            .as_ref()
+            .and_then(|console| console.level_threshold)
             .unwrap_or_default()
             .to_logback_literal(),
-        console_log_level_threshold = config.console.level_threshold.to_logback_literal(),
-        file_log_level_threshold = config.file.level_threshold.to_logback_literal(),
+        file_log_level_threshold = config
+            .file
+            .as_ref()
+            .and_then(|file| file.level_threshold)
+            .unwrap_or_default()
+            .to_logback_literal(),
     )
 }
 
@@ -160,12 +181,19 @@ pub fn create_logback_config(
 </configuration>
 "#,
         max_log_file_size_in_mb = max_size_in_mb / (1 + number_of_archived_log_files),
-        root_log_level = config
-            .root_log_level()
+        root_log_level = config.root_log_level().to_logback_literal(),
+        console_log_level_threshold = config
+            .console
+            .as_ref()
+            .and_then(|console| console.level_threshold)
             .unwrap_or_default()
             .to_logback_literal(),
-        console_log_level_threshold = config.console.level_threshold.to_logback_literal(),
-        file_log_level_threshold = config.file.level_threshold.to_logback_literal(),
+        file_log_level_threshold = config
+            .file
+            .as_ref()
+            .and_then(|file| file.level_threshold)
+            .unwrap_or_default()
+            .to_logback_literal(),
     )
 }
 
@@ -174,7 +202,8 @@ pub fn create_vector_config(
     config: Option<&AutomaticContainerLogConfig>,
 ) -> String {
     let vector_log_level = config
-        .map(|config| config.file.level_threshold)
+        .and_then(|config| config.file.as_ref())
+        .and_then(|file| file.level_threshold)
         .unwrap_or_default();
 
     let vector_log_level_filter_expression = match vector_log_level {

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::fmt::Display;
 
 use crate::config::fragment::{self, FromFragment};
-use crate::config::merge::{self, Atomic};
+use crate::config::merge::Atomic;
 use crate::config::{fragment::Fragment, merge::Merge};
 
 use derivative::Derivative;
@@ -141,35 +141,44 @@ pub struct ConfigMapLogConfig {
 #[derive(Clone, Debug, Default, Eq, Fragment, JsonSchema, PartialEq)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
-    derive(
-        Clone,
-        Debug,
-        Default,
-        Deserialize,
-        JsonSchema,
-        Merge,
-        PartialEq,
-        Serialize
-    ),
-    merge(path_overrides(merge = "crate::config::merge")),
+    derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize),
     serde(rename_all = "camelCase")
 )]
 pub struct AutomaticContainerLogConfig {
     #[fragment_attrs(serde(default))]
     pub loggers: BTreeMap<String, LoggerConfig>,
-    #[fragment_attrs(serde(default))]
-    pub console: AppenderConfig,
-    #[fragment_attrs(serde(default))]
-    pub file: AppenderConfig,
+    pub console: Option<AppenderConfig>,
+    pub file: Option<AppenderConfig>,
+}
+
+impl Merge for AutomaticContainerLogConfigFragment {
+    fn merge(&mut self, defaults: &Self) {
+        self.loggers.merge(&defaults.loggers);
+        if let Some(console) = &mut self.console {
+            if let Some(defaults_console) = &defaults.console {
+                console.merge(defaults_console);
+            }
+        } else {
+            self.console = defaults.console.clone();
+        }
+        if let Some(file) = &mut self.file {
+            if let Some(defaults_file) = &defaults.file {
+                file.merge(defaults_file);
+            }
+        } else {
+            self.file = defaults.file.clone();
+        }
+    }
 }
 
 impl AutomaticContainerLogConfig {
     pub const ROOT_LOGGER: &'static str = "ROOT";
 
-    pub fn root_log_level(&self) -> Option<LogLevel> {
+    pub fn root_log_level(&self) -> LogLevel {
         self.loggers
             .get(Self::ROOT_LOGGER)
             .map(|root| root.level.to_owned())
+            .unwrap_or_default()
     }
 }
 
@@ -210,8 +219,7 @@ pub struct LoggerConfig {
     serde(rename_all = "camelCase")
 )]
 pub struct AppenderConfig {
-    #[fragment_attrs(serde(default))]
-    pub level_threshold: LogLevel,
+    pub level_threshold: Option<LogLevel>,
 }
 
 #[derive(
@@ -279,12 +287,12 @@ pub fn default_container_log_config() -> ContainerLogConfigFragment {
                     },
                 )]
                 .into(),
-                console: AppenderConfigFragment {
+                console: Some(AppenderConfigFragment {
                     level_threshold: Some(LogLevel::INFO),
-                },
-                file: AppenderConfigFragment {
+                }),
+                file: Some(AppenderConfigFragment {
                     level_threshold: Some(LogLevel::INFO),
-                },
+                }),
             },
         )),
     }
@@ -312,12 +320,12 @@ mod tests {
                 choice: Some(ContainerLogConfigChoiceFragment::Automatic(
                     AutomaticContainerLogConfigFragment {
                         loggers: BTreeMap::new(),
-                        console: AppenderConfigFragment {
+                        console: Some(AppenderConfigFragment {
                             level_threshold: Some(LogLevel::INFO),
-                        },
-                        file: AppenderConfigFragment {
+                        }),
+                        file: Some(AppenderConfigFragment {
                             level_threshold: Some(LogLevel::WARN),
-                        },
+                        }),
                     },
                 )),
             })
@@ -346,12 +354,12 @@ mod tests {
                 choice: Some(ContainerLogConfigChoiceFragment::Automatic(
                     AutomaticContainerLogConfigFragment {
                         loggers: BTreeMap::new(),
-                        console: AppenderConfigFragment {
+                        console: Some(AppenderConfigFragment {
                             level_threshold: Some(LogLevel::INFO),
-                        },
-                        file: AppenderConfigFragment {
+                        }),
+                        file: Some(AppenderConfigFragment {
                             level_threshold: Some(LogLevel::WARN),
-                        },
+                        }),
                     },
                 )),
             },
@@ -382,12 +390,8 @@ mod tests {
                 choice: Some(ContainerLogConfigChoiceFragment::Automatic(
                     AutomaticContainerLogConfigFragment {
                         loggers: BTreeMap::new(),
-                        console: AppenderConfigFragment {
-                            level_threshold: None,
-                        },
-                        file: AppenderConfigFragment {
-                            level_threshold: None,
-                        },
+                        console: None,
+                        file: None,
                     },
                 )),
             },
@@ -412,18 +416,126 @@ mod tests {
     }
 
     #[test]
+    fn merge_automatic_container_log_config_fragment() {
+        assert_eq!(
+            AutomaticContainerLogConfigFragment {
+                loggers: BTreeMap::new(),
+                console: None,
+                file: None,
+            },
+            merge::merge(
+                AutomaticContainerLogConfigFragment {
+                    loggers: BTreeMap::new(),
+                    console: None,
+                    file: None,
+                },
+                &AutomaticContainerLogConfigFragment {
+                    loggers: BTreeMap::new(),
+                    console: None,
+                    file: None,
+                }
+            )
+        );
+        assert_eq!(
+            AutomaticContainerLogConfigFragment {
+                loggers: BTreeMap::new(),
+                console: Some(AppenderConfigFragment {
+                    level_threshold: Some(LogLevel::INFO),
+                }),
+                file: Some(AppenderConfigFragment {
+                    level_threshold: Some(LogLevel::WARN),
+                }),
+            },
+            merge::merge(
+                AutomaticContainerLogConfigFragment {
+                    loggers: BTreeMap::new(),
+                    console: Some(AppenderConfigFragment {
+                        level_threshold: Some(LogLevel::INFO),
+                    }),
+                    file: Some(AppenderConfigFragment {
+                        level_threshold: Some(LogLevel::WARN),
+                    }),
+                },
+                &AutomaticContainerLogConfigFragment {
+                    loggers: BTreeMap::new(),
+                    console: None,
+                    file: None,
+                }
+            )
+        );
+        assert_eq!(
+            AutomaticContainerLogConfigFragment {
+                loggers: BTreeMap::new(),
+                console: Some(AppenderConfigFragment {
+                    level_threshold: Some(LogLevel::INFO),
+                }),
+                file: Some(AppenderConfigFragment {
+                    level_threshold: Some(LogLevel::WARN),
+                }),
+            },
+            merge::merge(
+                AutomaticContainerLogConfigFragment {
+                    loggers: BTreeMap::new(),
+                    console: None,
+                    file: None,
+                },
+                &AutomaticContainerLogConfigFragment {
+                    loggers: BTreeMap::new(),
+                    console: Some(AppenderConfigFragment {
+                        level_threshold: Some(LogLevel::INFO),
+                    }),
+                    file: Some(AppenderConfigFragment {
+                        level_threshold: Some(LogLevel::WARN),
+                    }),
+                }
+            )
+        );
+        assert_eq!(
+            AutomaticContainerLogConfigFragment {
+                loggers: BTreeMap::new(),
+                console: Some(AppenderConfigFragment {
+                    level_threshold: Some(LogLevel::INFO),
+                }),
+                file: Some(AppenderConfigFragment {
+                    level_threshold: Some(LogLevel::ERROR),
+                }),
+            },
+            merge::merge(
+                AutomaticContainerLogConfigFragment {
+                    loggers: BTreeMap::new(),
+                    console: Some(AppenderConfigFragment {
+                        level_threshold: None,
+                    }),
+                    file: Some(AppenderConfigFragment {
+                        level_threshold: Some(LogLevel::ERROR),
+                    }),
+                },
+                &AutomaticContainerLogConfigFragment {
+                    loggers: BTreeMap::new(),
+                    console: Some(AppenderConfigFragment {
+                        level_threshold: Some(LogLevel::INFO),
+                    }),
+                    file: Some(AppenderConfigFragment {
+                        level_threshold: Some(LogLevel::WARN),
+                    }),
+                }
+            )
+        );
+    }
+
+    #[test]
     fn merge_container_log_config() {
         assert_eq!(
             ContainerLogConfigFragment {
                 choice: Some(ContainerLogConfigChoiceFragment::Automatic(
                     AutomaticContainerLogConfigFragment {
                         loggers: BTreeMap::new(),
-                        console: AppenderConfigFragment {
+                        console: Some(AppenderConfigFragment {
                             level_threshold: Some(LogLevel::INFO),
-                        },
-                        file: AppenderConfigFragment {
+                        }),
+                        file: Some(AppenderConfigFragment {
                             level_threshold: Some(LogLevel::WARN),
-                        },
+                        }),
                     },
                 )),
             },
@@ -432,12 +544,12 @@ mod tests {
                     choice: Some(ContainerLogConfigChoiceFragment::Automatic(
                         AutomaticContainerLogConfigFragment {
                             loggers: BTreeMap::new(),
-                            console: AppenderConfigFragment {
+                            console: Some(AppenderConfigFragment {
                                 level_threshold: Some(LogLevel::INFO),
-                            },
-                            file: AppenderConfigFragment {
+                            }),
+                            file: Some(AppenderConfigFragment {
                                 level_threshold: Some(LogLevel::WARN),
-                            },
+                            }),
                         },
                     )),
                 },
@@ -458,12 +570,12 @@ mod tests {
                 choice: Some(ContainerLogConfigChoiceFragment::Automatic(
                     AutomaticContainerLogConfigFragment {
                         loggers: BTreeMap::new(),
-                        console: AppenderConfigFragment {
+                        console: Some(AppenderConfigFragment {
                             level_threshold: Some(LogLevel::INFO),
-                        },
-                        file: AppenderConfigFragment {
+                        }),
+                        file: Some(AppenderConfigFragment {
                             level_threshold: Some(LogLevel::WARN),
-                        },
+                        }),
                     },
                 )),
             },
@@ -472,12 +584,12 @@ mod tests {
                     choice: Some(ContainerLogConfigChoiceFragment::Automatic(
                         AutomaticContainerLogConfigFragment {
                             loggers: BTreeMap::new(),
-                            console: AppenderConfigFragment {
+                            console: Some(AppenderConfigFragment {
                                 level_threshold: None,
-                            },
-                            file: AppenderConfigFragment {
+                            }),
+                            file: Some(AppenderConfigFragment {
                                 level_threshold: Some(LogLevel::WARN),
-                            },
+                            }),
                         },
                     )),
                 },
@@ -485,12 +597,12 @@ mod tests {
                     choice: Some(ContainerLogConfigChoiceFragment::Automatic(
                         AutomaticContainerLogConfigFragment {
                             loggers: BTreeMap::new(),
-                            console: AppenderConfigFragment {
+                            console: Some(AppenderConfigFragment {
                                 level_threshold: Some(LogLevel::INFO),
-                            },
-                            file: AppenderConfigFragment {
+                            }),
+                            file: Some(AppenderConfigFragment {
                                 level_threshold: None,
-                            },
+                            }),
                         },
                     )),
                 }
@@ -505,12 +617,12 @@ mod tests {
                 choice: Some(ContainerLogConfigChoice::Automatic(
                     AutomaticContainerLogConfig {
                         loggers: BTreeMap::new(),
-                        console: AppenderConfig {
-                            level_threshold: LogLevel::INFO
-                        },
-                        file: AppenderConfig {
-                            level_threshold: LogLevel::WARN
-                        },
+                        console: Some(AppenderConfig {
+                            level_threshold: Some(LogLevel::INFO)
+                        }),
+                        file: Some(AppenderConfig {
+                            level_threshold: Some(LogLevel::WARN)
+                        }),
                     }
                 ))
             },
@@ -518,12 +630,12 @@ mod tests {
                 choice: Some(ContainerLogConfigChoiceFragment::Automatic(
                     AutomaticContainerLogConfigFragment {
                         loggers: BTreeMap::new(),
-                        console: AppenderConfigFragment {
+                        console: Some(AppenderConfigFragment {
                             level_threshold: Some(LogLevel::INFO),
-                        },
-                        file: AppenderConfigFragment {
+                        }),
+                        file: Some(AppenderConfigFragment {
                             level_threshold: Some(LogLevel::WARN),
-                        },
+                        }),
                     },
                 )),
             })
