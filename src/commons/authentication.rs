@@ -32,6 +32,23 @@ pub struct AuthenticationClassSpec {
 pub enum AuthenticationClassProvider {
     Ldap(LdapAuthenticationProvider),
     Tls(TlsAuthenticationProvider),
+    Static(StaticAuthenticationProvider),
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StaticAuthenticationProvider {
+    /// Secret providing the usernames and password.
+    /// The secret must contain an entry for every user, with the key being the username and the value the password in plain text.
+    /// It must be located in the same namespace as the product using it.
+    user_credentials_secret: UserCredentialsSecretRef,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserCredentialsSecretRef {
+    /// Name of the secret
+    name: String,
 }
 
 #[cfg(test)]
