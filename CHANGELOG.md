@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added `AuthenticationClass` provider static ([#514]).
+
+[#514]: https://github.com/stackabletech/operator-rs/pull/514
+
 ## [0.27.1] - 2022-11-17
 
 ### Changed
