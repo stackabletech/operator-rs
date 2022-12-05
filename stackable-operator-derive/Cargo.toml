@@ -14,7 +14,7 @@ proc-macro = true
 darling = "0.14.2"
 proc-macro2 = "1.0.47"
 quote = "1.0.21"
-syn = "1.0.103"
+syn = "1.0.105"
 
 [dev-dependencies]
 stackable-operator = { path = ".." }
