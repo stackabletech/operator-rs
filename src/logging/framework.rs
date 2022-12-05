@@ -311,11 +311,11 @@ pub fn vector_container(
     image: &ResolvedProductImage,
     config_volume_name: &str,
     log_volume_name: &str,
-    log_config: &ContainerLogConfig,
+    log_config: Option<&ContainerLogConfig>,
 ) -> Container {
-    let log_level = if let ContainerLogConfig {
+    let log_level = if let Some(ContainerLogConfig {
         choice: Some(ContainerLogConfigChoice::Automatic(automatic_log_config)),
-    } = log_config
+    }) = log_config
     {
         automatic_log_config.root_log_level()
     } else {
