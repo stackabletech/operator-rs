@@ -4,7 +4,9 @@ use k8s_openapi::api::core::v1::Container;
 
 use crate::{builder::ContainerBuilder, commons::product_image_selection::ResolvedProductImage};
 
-use super::spec::{AutomaticContainerLogConfig, LogLevel};
+use super::spec::{
+    AutomaticContainerLogConfig, ContainerLogConfig, ContainerLogConfigChoice, LogLevel,
+};
 
 const STACKABLE_CONFIG_DIR: &str = "/stackable/config";
 const STACKABLE_LOG_DIR: &str = "/stackable/log";
@@ -309,8 +311,17 @@ pub fn vector_container(
     image: &ResolvedProductImage,
     config_volume_name: &str,
     log_volume_name: &str,
+    log_config: &ContainerLogConfig,
 ) -> Container {
-    // TODO Increase verbosity if root log level is lower than INFO.
+    let log_level = if let ContainerLogConfig {
+        choice: Some(ContainerLogConfigChoice::Automatic(automatic_log_config)),
+    } = log_config
+    {
+        automatic_log_config.root_log_level()
+    } else {
+        LogLevel::INFO
+    };
+
     ContainerBuilder::new("vector")
         .unwrap()
         .image_from_product_image(image)
@@ -319,6 +330,7 @@ pub fn vector_container(
             "--config".into(),
             format!("{STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE}"),
         ])
+        .add_env_var("VECTOR_LOG", log_level.to_vector_literal())
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
         .add_volume_mount(log_volume_name, STACKABLE_LOG_DIR)
         .build()

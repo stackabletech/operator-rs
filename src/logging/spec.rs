@@ -250,6 +250,19 @@ pub enum LogLevel {
 impl Atomic for LogLevel {}
 
 impl LogLevel {
+    pub fn to_vector_literal(&self) -> String {
+        match self {
+            LogLevel::TRACE => "TRACE",
+            LogLevel::DEBUG => "DEBUG",
+            LogLevel::INFO => "INFO",
+            LogLevel::WARN => "WARN",
+            LogLevel::ERROR => "ERROR",
+            LogLevel::FATAL => "ERROR",
+            LogLevel::NONE => "ERROR",
+        }
+        .into()
+    }
+
     pub fn to_logback_literal(&self) -> String {
         match self {
             LogLevel::TRACE => "TRACE",
