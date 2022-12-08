@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.28.8] - 2022-12-08
+
 ### Added
 
 - Added `AuthenticationClass` provider static ([#514]).
