@@ -1,3 +1,5 @@
+//! Logging structure used within Custom Resource Definitions
+
 use std::collections::BTreeMap;
 use std::fmt::Display;
 
@@ -9,6 +11,7 @@ use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// Logging configuration
 #[derive(Clone, Debug, Derivative, Eq, Fragment, JsonSchema, PartialEq)]
 #[derivative(Default(bound = ""))]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
@@ -34,11 +37,14 @@ pub struct Logging<T>
 where
     T: Clone + Display + Ord,
 {
+    /// Wether or not to deploy a container with the Vector log agent
     pub enable_vector_agent: bool,
+    /// Log configuration per container
     #[fragment_attrs(serde(default))]
     pub containers: BTreeMap<T, ContainerLogConfig>,
 }
 
+/// Log configuration of the container
 #[derive(Clone, Debug, Default, Eq, Fragment, JsonSchema, PartialEq)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
@@ -56,25 +62,34 @@ where
     serde(rename_all = "camelCase")
 )]
 pub struct ContainerLogConfig {
+    /// Custom or automatic log configuration
     #[fragment_attrs(serde(flatten))]
     pub choice: Option<ContainerLogConfigChoice>,
 }
 
+/// Custom or automatic log configuration
+///
+/// The custom log configuration takes precedence over the automatic one.
 #[derive(Clone, Debug, Derivative, Eq, JsonSchema, PartialEq)]
 #[derivative(Default)]
 pub enum ContainerLogConfigChoice {
+    /// Custom log configuration provided in a ConfigMap
     Custom(CustomContainerLogConfig),
+    /// Automatic log configuration according to the given values
     #[derivative(Default)]
     Automatic(AutomaticContainerLogConfig),
 }
 
+/// Fragment derived from `ContainerLogConfigChoice`
 #[derive(Clone, Debug, Derivative, Deserialize, JsonSchema, Merge, PartialEq, Serialize)]
 #[derivative(Default)]
 #[merge(path_overrides(merge = "crate::config::merge"))]
 #[serde(untagged)]
 pub enum ContainerLogConfigChoiceFragment {
+    /// Custom log configuration provided in a ConfigMap
     Custom(CustomContainerLogConfigFragment),
     #[derivative(Default)]
+    /// Automatic log configuration according to the given values
     Automatic(AutomaticContainerLogConfigFragment),
 }
 
@@ -97,6 +112,7 @@ impl FromFragment for ContainerLogConfigChoice {
     }
 }
 
+/// Log configuration for a container provided in a ConfigMap
 #[derive(Clone, Debug, Default, Eq, Fragment, JsonSchema, PartialEq)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
@@ -117,6 +133,7 @@ pub struct CustomContainerLogConfig {
     pub custom: ConfigMapLogConfig,
 }
 
+/// Log configuration provided in a ConfigMap
 #[derive(Clone, Debug, Default, Eq, Fragment, JsonSchema, PartialEq)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
@@ -134,10 +151,12 @@ pub struct CustomContainerLogConfig {
     serde(rename_all = "camelCase")
 )]
 pub struct ConfigMapLogConfig {
+    /// ConfigMap containing the log configuration files
     #[fragment_attrs(serde(default))]
     pub config_map: String,
 }
 
+/// Generic log configuration
 #[derive(Clone, Debug, Default, Eq, Fragment, JsonSchema, PartialEq)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
@@ -145,9 +164,12 @@ pub struct ConfigMapLogConfig {
     serde(rename_all = "camelCase")
 )]
 pub struct AutomaticContainerLogConfig {
+    /// Configuration per logger
     #[fragment_attrs(serde(default))]
     pub loggers: BTreeMap<String, LoggerConfig>,
+    /// Configuration for the console appender
     pub console: Option<AppenderConfig>,
+    /// Configuration for the file appender
     pub file: Option<AppenderConfig>,
 }
 
@@ -172,8 +194,10 @@ impl Merge for AutomaticContainerLogConfigFragment {
 }
 
 impl AutomaticContainerLogConfig {
+    /// Name of the root logger
     pub const ROOT_LOGGER: &'static str = "ROOT";
 
+    /// Return the log level of the root logger
     pub fn root_log_level(&self) -> LogLevel {
         self.loggers
             .get(Self::ROOT_LOGGER)
@@ -182,6 +206,7 @@ impl AutomaticContainerLogConfig {
     }
 }
 
+/// Configuration of a logger
 #[derive(Clone, Debug, Default, Eq, Fragment, JsonSchema, PartialEq)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
@@ -199,9 +224,13 @@ impl AutomaticContainerLogConfig {
     serde(rename_all = "camelCase")
 )]
 pub struct LoggerConfig {
+    /// The log level threshold
+    ///
+    /// Log events with a lower log level are discarded.
     pub level: LogLevel,
 }
 
+/// Configuration of a log appender
 #[derive(Clone, Debug, Default, Eq, Fragment, JsonSchema, PartialEq)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
@@ -219,9 +248,13 @@ pub struct LoggerConfig {
     serde(rename_all = "camelCase")
 )]
 pub struct AppenderConfig {
+    /// The log level threshold
+    ///
+    /// Log events with a lower log level are discarded.
     pub level: Option<LogLevel>,
 }
 
+/// Log levels
 #[derive(
     Clone,
     Copy,
@@ -244,12 +277,14 @@ pub enum LogLevel {
     WARN,
     ERROR,
     FATAL,
+    /// Turn logging off
     NONE,
 }
 
 impl Atomic for LogLevel {}
 
 impl LogLevel {
+    /// Convert the log level to a string understood by Vector
     pub fn to_vector_literal(&self) -> String {
         match self {
             LogLevel::TRACE => "TRACE",
@@ -263,7 +298,22 @@ impl LogLevel {
         .into()
     }
 
+    /// Convert the log level to a string understood by logback
     pub fn to_logback_literal(&self) -> String {
+        match self {
+            LogLevel::TRACE => "TRACE",
+            LogLevel::DEBUG => "DEBUG",
+            LogLevel::INFO => "INFO",
+            LogLevel::WARN => "WARN",
+            LogLevel::ERROR => "ERROR",
+            LogLevel::FATAL => "FATAL",
+            LogLevel::NONE => "OFF",
+        }
+        .into()
+    }
+
+    /// Convert the log level to a string understood by log4j
+    pub fn to_log4j_literal(&self) -> String {
         match self {
             LogLevel::TRACE => "TRACE",
             LogLevel::DEBUG => "DEBUG",
@@ -277,6 +327,7 @@ impl LogLevel {
     }
 }
 
+/// Create the default logging configuration
 pub fn default_logging<T>() -> LoggingFragment<T>
 where
     T: Clone + Display + Ord + strum::IntoEnumIterator,
@@ -289,6 +340,7 @@ where
     }
 }
 
+/// Create the default logging configuration for a container
 pub fn default_container_log_config() -> ContainerLogConfigFragment {
     ContainerLogConfigFragment {
         choice: Some(ContainerLogConfigChoiceFragment::Automatic(
@@ -327,6 +379,7 @@ mod tests {
 
     #[test]
     fn serialize_container_log_config() {
+        // automatic configuration
         assert_eq!(
             "{\"loggers\":{},\"console\":{\"level\":\"INFO\"},\"file\":{\"level\":\"WARN\"}}"
                 .to_string(),
@@ -346,6 +399,7 @@ mod tests {
             .unwrap()
         );
 
+        // custom configuration
         assert_eq!(
             "{\"custom\":{\"configMap\":\"configMap\"}}".to_string(),
             serde_json::to_string(&ContainerLogConfigFragment {
@@ -363,6 +417,7 @@ mod tests {
 
     #[test]
     fn deserialize_container_log_config() {
+        // automatic configuration if only automatic configuration is given
         assert_eq!(
             ContainerLogConfigFragment {
                 choice: Some(ContainerLogConfigChoiceFragment::Automatic(
@@ -383,6 +438,7 @@ mod tests {
             .unwrap()
         );
 
+        // custom configuration if only custom configuration is given
         assert_eq!(
             ContainerLogConfigFragment {
                 choice: Some(ContainerLogConfigChoiceFragment::Custom(
@@ -399,6 +455,7 @@ mod tests {
             .unwrap()
         );
 
+        // automatic configuration if no configuration is given
         assert_eq!(
             ContainerLogConfigFragment {
                 choice: Some(ContainerLogConfigChoiceFragment::Automatic(
@@ -412,6 +469,7 @@ mod tests {
             serde_json::from_str::<ContainerLogConfigFragment>("{}").unwrap()
         );
 
+        // custom configuration if custom and automatic configurations are given
         assert_eq!(
             ContainerLogConfigFragment {
                 choice: Some(ContainerLogConfigChoiceFragment::Custom(
@@ -431,6 +489,7 @@ mod tests {
 
     #[test]
     fn merge_automatic_container_log_config_fragment() {
+        // no overriding log level + no default log level -> no log level
         assert_eq!(
             AutomaticContainerLogConfigFragment {
                 loggers: BTreeMap::new(),
@@ -450,6 +509,8 @@ mod tests {
                 }
             )
         );
+
+        // overriding log level + no default log level -> overriding log level
         assert_eq!(
             AutomaticContainerLogConfigFragment {
                 loggers: BTreeMap::new(),
@@ -477,6 +538,8 @@ mod tests {
                 }
             )
         );
+
+        // no overriding log level + default log level -> default log level
         assert_eq!(
             AutomaticContainerLogConfigFragment {
                 loggers: BTreeMap::new(),
@@ -504,6 +567,8 @@ mod tests {
                 }
             )
         );
+
+        // overriding log level + default log level -> overriding log level
         assert_eq!(
             AutomaticContainerLogConfigFragment {
                 loggers: BTreeMap::new(),
@@ -537,6 +602,7 @@ mod tests {
 
     #[test]
     fn merge_container_log_config() {
+        // overriding automatic config + default custom config -> overriding automatic config
         assert_eq!(
             ContainerLogConfigFragment {
                 choice: Some(ContainerLogConfigChoiceFragment::Automatic(
@@ -577,6 +643,7 @@ mod tests {
             )
         );
 
+        // overriding automatic config + default automatic config -> merged automatic config
         assert_eq!(
             ContainerLogConfigFragment {
                 choice: Some(ContainerLogConfigChoiceFragment::Automatic(

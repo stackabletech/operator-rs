@@ -1,3 +1,5 @@
+//! Log aggregation framework
+
 use std::cmp;
 
 use k8s_openapi::api::core::v1::Container;
@@ -8,11 +10,17 @@ use super::spec::{
     AutomaticContainerLogConfig, ContainerLogConfig, ContainerLogConfigChoice, LogLevel,
 };
 
+/// Config directory used in the Vector log agent container
 const STACKABLE_CONFIG_DIR: &str = "/stackable/config";
+/// Directory which contains a subdirectory for every container which themselves contain the
+/// corresponding log files
 const STACKABLE_LOG_DIR: &str = "/stackable/log";
 
+/// File name of the Vector config file
 pub const VECTOR_CONFIG_FILE: &str = "vector.toml";
 
+/// Create a Bash command which filters stdout and stderr according to the given log configuration
+/// and additionally stores the output in log files
 pub fn capture_shell_output(
     log_dir: &str,
     container: &str,
@@ -71,6 +79,7 @@ pub fn capture_shell_output(
     args.join(" && ")
 }
 
+/// Create the content of a log4j properties file according to the given log configuration
 pub fn create_log4j_config(
     log_dir: &str,
     log_file: &str,
@@ -87,7 +96,7 @@ pub fn create_log4j_config(
             format!(
                 "log4j.logger.{name}={level}\n",
                 name = name.escape_default(),
-                level = logger_config.level.to_logback_literal(),
+                level = logger_config.level.to_log4j_literal(),
             )
         })
         .collect::<String>();
@@ -109,22 +118,23 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 
 {loggers}"#,
         max_log_file_size_in_mb = max_size_in_mb / (1 + number_of_archived_log_files),
-        root_log_level = config.root_log_level().to_logback_literal(),
+        root_log_level = config.root_log_level().to_log4j_literal(),
         console_log_level = config
             .console
             .as_ref()
             .and_then(|console| console.level)
             .unwrap_or_default()
-            .to_logback_literal(),
+            .to_log4j_literal(),
         file_log_level = config
             .file
             .as_ref()
             .and_then(|file| file.level)
             .unwrap_or_default()
-            .to_logback_literal(),
+            .to_log4j_literal(),
     )
 }
 
+/// Create the content of a logback XML configuration file according to the given log configuration
 pub fn create_logback_config(
     log_dir: &str,
     log_file: &str,
@@ -199,6 +209,7 @@ pub fn create_logback_config(
     )
 }
 
+/// Create the content of a Vector configuration file according to the given log configuration
 pub fn create_vector_config(
     vector_aggregator_address: &str,
     config: Option<&AutomaticContainerLogConfig>,
@@ -307,6 +318,7 @@ address = "{vector_aggregator_address}"
     )
 }
 
+/// Create the specification of the Vector log agent container
 pub fn vector_container(
     image: &ResolvedProductImage,
     config_volume_name: &str,
