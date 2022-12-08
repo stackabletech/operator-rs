@@ -24,7 +24,7 @@ pub fn capture_shell_output(
         log_config
             .console
             .as_ref()
-            .and_then(|console| console.level_threshold)
+            .and_then(|console| console.level)
             .unwrap_or_default(),
     );
     let file_log_level = cmp::max(
@@ -32,7 +32,7 @@ pub fn capture_shell_output(
         log_config
             .file
             .as_ref()
-            .and_then(|file| file.level_threshold)
+            .and_then(|file| file.level)
             .unwrap_or_default(),
     );
 
@@ -96,12 +96,12 @@ pub fn create_log4j_config(
         r#"log4j.rootLogger={root_log_level}, CONSOLE, FILE
 
 log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender
-log4j.appender.CONSOLE.Threshold={console_log_level_threshold}
+log4j.appender.CONSOLE.Threshold={console_log_level}
 log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout
 log4j.appender.CONSOLE.layout.ConversionPattern=%d{{ISO8601}} [myid:%X{{myid}}] - %-5p [%t:%C{{1}}@%L] - %m%n
 
 log4j.appender.FILE=org.apache.log4j.RollingFileAppender
-log4j.appender.FILE.Threshold={file_log_level_threshold}
+log4j.appender.FILE.Threshold={file_log_level}
 log4j.appender.FILE.File={log_dir}/{log_file}
 log4j.appender.FILE.MaxFileSize={max_log_file_size_in_mb}MB
 log4j.appender.FILE.MaxBackupIndex={number_of_archived_log_files}
@@ -110,16 +110,16 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 {loggers}"#,
         max_log_file_size_in_mb = max_size_in_mb / (1 + number_of_archived_log_files),
         root_log_level = config.root_log_level().to_logback_literal(),
-        console_log_level_threshold = config
+        console_log_level = config
             .console
             .as_ref()
-            .and_then(|console| console.level_threshold)
+            .and_then(|console| console.level)
             .unwrap_or_default()
             .to_logback_literal(),
-        file_log_level_threshold = config
+        file_log_level = config
             .file
             .as_ref()
-            .and_then(|file| file.level_threshold)
+            .and_then(|file| file.level)
             .unwrap_or_default()
             .to_logback_literal(),
     )
@@ -153,7 +153,7 @@ pub fn create_logback_config(
       <pattern>%d{{ISO8601}} [myid:%X{{myid}}] - %-5p [%t:%C{{1}}@%L] - %m%n</pattern>
     </encoder>
     <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-      <level>{console_log_level_threshold}</level>
+      <level>{console_log_level}</level>
     </filter>
   </appender>
 
@@ -163,7 +163,7 @@ pub fn create_logback_config(
       <layout class="ch.qos.logback.classic.log4j.XMLLayout" />
     </encoder>
     <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-      <level>{file_log_level_threshold}</level>
+      <level>{file_log_level}</level>
     </filter>
     <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
       <minIndex>1</minIndex>
@@ -184,16 +184,16 @@ pub fn create_logback_config(
 "#,
         max_log_file_size_in_mb = max_size_in_mb / (1 + number_of_archived_log_files),
         root_log_level = config.root_log_level().to_logback_literal(),
-        console_log_level_threshold = config
+        console_log_level = config
             .console
             .as_ref()
-            .and_then(|console| console.level_threshold)
+            .and_then(|console| console.level)
             .unwrap_or_default()
             .to_logback_literal(),
-        file_log_level_threshold = config
+        file_log_level = config
             .file
             .as_ref()
-            .and_then(|file| file.level_threshold)
+            .and_then(|file| file.level)
             .unwrap_or_default()
             .to_logback_literal(),
     )
@@ -205,7 +205,7 @@ pub fn create_vector_config(
 ) -> String {
     let vector_log_level = config
         .and_then(|config| config.file.as_ref())
-        .and_then(|file| file.level_threshold)
+        .and_then(|file| file.level)
         .unwrap_or_default();
 
     let vector_log_level_filter_expression = match vector_log_level {

@@ -219,7 +219,7 @@ pub struct LoggerConfig {
     serde(rename_all = "camelCase")
 )]
 pub struct AppenderConfig {
-    pub level_threshold: Option<LogLevel>,
+    pub level: Option<LogLevel>,
 }
 
 #[derive(
@@ -301,10 +301,10 @@ pub fn default_container_log_config() -> ContainerLogConfigFragment {
                 )]
                 .into(),
                 console: Some(AppenderConfigFragment {
-                    level_threshold: Some(LogLevel::INFO),
+                    level: Some(LogLevel::INFO),
                 }),
                 file: Some(AppenderConfigFragment {
-                    level_threshold: Some(LogLevel::INFO),
+                    level: Some(LogLevel::INFO),
                 }),
             },
         )),
@@ -328,16 +328,17 @@ mod tests {
     #[test]
     fn serialize_container_log_config() {
         assert_eq!(
-            "{\"loggers\":{},\"console\":{\"levelThreshold\":\"INFO\"},\"file\":{\"levelThreshold\":\"WARN\"}}".to_string(),
+            "{\"loggers\":{},\"console\":{\"level\":\"INFO\"},\"file\":{\"level\":\"WARN\"}}"
+                .to_string(),
             serde_json::to_string(&ContainerLogConfigFragment {
                 choice: Some(ContainerLogConfigChoiceFragment::Automatic(
                     AutomaticContainerLogConfigFragment {
                         loggers: BTreeMap::new(),
                         console: Some(AppenderConfigFragment {
-                            level_threshold: Some(LogLevel::INFO),
+                            level: Some(LogLevel::INFO),
                         }),
                         file: Some(AppenderConfigFragment {
-                            level_threshold: Some(LogLevel::WARN),
+                            level: Some(LogLevel::WARN),
                         }),
                     },
                 )),
@@ -368,16 +369,16 @@ mod tests {
                     AutomaticContainerLogConfigFragment {
                         loggers: BTreeMap::new(),
                         console: Some(AppenderConfigFragment {
-                            level_threshold: Some(LogLevel::INFO),
+                            level: Some(LogLevel::INFO),
                         }),
                         file: Some(AppenderConfigFragment {
-                            level_threshold: Some(LogLevel::WARN),
+                            level: Some(LogLevel::WARN),
                         }),
                     },
                 )),
             },
             serde_json::from_str::<ContainerLogConfigFragment>(
-                "{\"loggers\":{},\"console\":{\"levelThreshold\":\"INFO\"},\"file\":{\"levelThreshold\":\"WARN\"}}"
+                "{\"loggers\":{},\"console\":{\"level\":\"INFO\"},\"file\":{\"level\":\"WARN\"}}"
             )
             .unwrap()
         );
@@ -422,7 +423,7 @@ mod tests {
                 )),
             },
             serde_json::from_str::<ContainerLogConfigFragment>(
-                "{\"custom\":{\"configMap\":\"configMap\"},\"loggers\":{},\"console\":{\"levelThreshold\":\"INFO\"},\"file\":{\"levelThreshold\":\"WARN\"}}"
+                "{\"custom\":{\"configMap\":\"configMap\"},\"loggers\":{},\"console\":{\"level\":\"INFO\"},\"file\":{\"level\":\"WARN\"}}"
             )
             .unwrap()
         );
@@ -453,20 +454,20 @@ mod tests {
             AutomaticContainerLogConfigFragment {
                 loggers: BTreeMap::new(),
                 console: Some(AppenderConfigFragment {
-                    level_threshold: Some(LogLevel::INFO),
+                    level: Some(LogLevel::INFO),
                 }),
                 file: Some(AppenderConfigFragment {
-                    level_threshold: Some(LogLevel::WARN),
+                    level: Some(LogLevel::WARN),
                 }),
             },
             merge::merge(
                 AutomaticContainerLogConfigFragment {
                     loggers: BTreeMap::new(),
                     console: Some(AppenderConfigFragment {
-                        level_threshold: Some(LogLevel::INFO),
+                        level: Some(LogLevel::INFO),
                     }),
                     file: Some(AppenderConfigFragment {
-                        level_threshold: Some(LogLevel::WARN),
+                        level: Some(LogLevel::WARN),
                     }),
                 },
                 &AutomaticContainerLogConfigFragment {
@@ -480,10 +481,10 @@ mod tests {
             AutomaticContainerLogConfigFragment {
                 loggers: BTreeMap::new(),
                 console: Some(AppenderConfigFragment {
-                    level_threshold: Some(LogLevel::INFO),
+                    level: Some(LogLevel::INFO),
                 }),
                 file: Some(AppenderConfigFragment {
-                    level_threshold: Some(LogLevel::WARN),
+                    level: Some(LogLevel::WARN),
                 }),
             },
             merge::merge(
@@ -495,10 +496,10 @@ mod tests {
                 &AutomaticContainerLogConfigFragment {
                     loggers: BTreeMap::new(),
                     console: Some(AppenderConfigFragment {
-                        level_threshold: Some(LogLevel::INFO),
+                        level: Some(LogLevel::INFO),
                     }),
                     file: Some(AppenderConfigFragment {
-                        level_threshold: Some(LogLevel::WARN),
+                        level: Some(LogLevel::WARN),
                     }),
                 }
             )
@@ -507,29 +508,27 @@ mod tests {
             AutomaticContainerLogConfigFragment {
                 loggers: BTreeMap::new(),
                 console: Some(AppenderConfigFragment {
-                    level_threshold: Some(LogLevel::INFO),
+                    level: Some(LogLevel::INFO),
                 }),
                 file: Some(AppenderConfigFragment {
-                    level_threshold: Some(LogLevel::ERROR),
+                    level: Some(LogLevel::ERROR),
                 }),
             },
             merge::merge(
                 AutomaticContainerLogConfigFragment {
                     loggers: BTreeMap::new(),
-                    console: Some(AppenderConfigFragment {
-                        level_threshold: None,
-                    }),
+                    console: Some(AppenderConfigFragment { level: None }),
                     file: Some(AppenderConfigFragment {
-                        level_threshold: Some(LogLevel::ERROR),
+                        level: Some(LogLevel::ERROR),
                     }),
                 },
                 &AutomaticContainerLogConfigFragment {
                     loggers: BTreeMap::new(),
                     console: Some(AppenderConfigFragment {
-                        level_threshold: Some(LogLevel::INFO),
+                        level: Some(LogLevel::INFO),
                     }),
                     file: Some(AppenderConfigFragment {
-                        level_threshold: Some(LogLevel::WARN),
+                        level: Some(LogLevel::WARN),
                     }),
                 }
             )
@@ -544,10 +543,10 @@ mod tests {
                     AutomaticContainerLogConfigFragment {
                         loggers: BTreeMap::new(),
                         console: Some(AppenderConfigFragment {
-                            level_threshold: Some(LogLevel::INFO),
+                            level: Some(LogLevel::INFO),
                         }),
                         file: Some(AppenderConfigFragment {
-                            level_threshold: Some(LogLevel::WARN),
+                            level: Some(LogLevel::WARN),
                         }),
                     },
                 )),
@@ -558,10 +557,10 @@ mod tests {
                         AutomaticContainerLogConfigFragment {
                             loggers: BTreeMap::new(),
                             console: Some(AppenderConfigFragment {
-                                level_threshold: Some(LogLevel::INFO),
+                                level: Some(LogLevel::INFO),
                             }),
                             file: Some(AppenderConfigFragment {
-                                level_threshold: Some(LogLevel::WARN),
+                                level: Some(LogLevel::WARN),
                             }),
                         },
                     )),
@@ -584,10 +583,10 @@ mod tests {
                     AutomaticContainerLogConfigFragment {
                         loggers: BTreeMap::new(),
                         console: Some(AppenderConfigFragment {
-                            level_threshold: Some(LogLevel::INFO),
+                            level: Some(LogLevel::INFO),
                         }),
                         file: Some(AppenderConfigFragment {
-                            level_threshold: Some(LogLevel::WARN),
+                            level: Some(LogLevel::WARN),
                         }),
                     },
                 )),
@@ -597,11 +596,9 @@ mod tests {
                     choice: Some(ContainerLogConfigChoiceFragment::Automatic(
                         AutomaticContainerLogConfigFragment {
                             loggers: BTreeMap::new(),
-                            console: Some(AppenderConfigFragment {
-                                level_threshold: None,
-                            }),
+                            console: Some(AppenderConfigFragment { level: None }),
                             file: Some(AppenderConfigFragment {
-                                level_threshold: Some(LogLevel::WARN),
+                                level: Some(LogLevel::WARN),
                             }),
                         },
                     )),
@@ -611,11 +608,9 @@ mod tests {
                         AutomaticContainerLogConfigFragment {
                             loggers: BTreeMap::new(),
                             console: Some(AppenderConfigFragment {
-                                level_threshold: Some(LogLevel::INFO),
+                                level: Some(LogLevel::INFO),
                             }),
-                            file: Some(AppenderConfigFragment {
-                                level_threshold: None,
-                            }),
+                            file: Some(AppenderConfigFragment { level: None }),
                         },
                     )),
                 }
@@ -631,10 +626,10 @@ mod tests {
                     AutomaticContainerLogConfig {
                         loggers: BTreeMap::new(),
                         console: Some(AppenderConfig {
-                            level_threshold: Some(LogLevel::INFO)
+                            level: Some(LogLevel::INFO)
                         }),
                         file: Some(AppenderConfig {
-                            level_threshold: Some(LogLevel::WARN)
+                            level: Some(LogLevel::WARN)
                         }),
                     }
                 ))
@@ -644,10 +639,10 @@ mod tests {
                     AutomaticContainerLogConfigFragment {
                         loggers: BTreeMap::new(),
                         console: Some(AppenderConfigFragment {
-                            level_threshold: Some(LogLevel::INFO),
+                            level: Some(LogLevel::INFO),
                         }),
                         file: Some(AppenderConfigFragment {
-                            level_threshold: Some(LogLevel::WARN),
+                            level: Some(LogLevel::WARN),
                         }),
                     },
                 )),
