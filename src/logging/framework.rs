@@ -21,6 +21,50 @@ pub const VECTOR_CONFIG_FILE: &str = "vector.toml";
 
 /// Create a Bash command which filters stdout and stderr according to the given log configuration
 /// and additionally stores the output in log files
+///
+/// # Example
+///
+/// ```
+/// use stackable_operator::{
+///     builder::ContainerBuilder,
+///     config::fragment,
+///     logging,
+///     logging::spec::{
+///         ContainerLogConfig, ContainerLogConfigChoice, Logging,
+///     },
+/// };
+/// # use stackable_operator::logging::spec::default_logging;
+/// # use strum::{Display, EnumIter};
+/// #
+/// # #[derive(Clone, Display, Eq, EnumIter, Ord, PartialEq, PartialOrd)]
+/// # pub enum Container {
+/// #     Init,
+/// # }
+/// #
+/// # let logging = fragment::validate::<Logging<Container>>(default_logging()).unwrap();
+///
+/// const STACKABLE_LOG_DIR: &str = "/stackable/log";
+///
+/// let mut args = Vec::new();
+///
+/// if let Some(ContainerLogConfig {
+///     choice: Some(ContainerLogConfigChoice::Automatic(log_config)),
+/// }) = logging.containers.get(&Container::Init)
+/// {
+///     args.push(logging::framework::capture_shell_output(
+///         STACKABLE_LOG_DIR,
+///         "init",
+///         &log_config,
+///     ));
+/// }
+/// args.push("echo Test".into());
+///
+/// let init_container = ContainerBuilder::new("init")
+///     .unwrap()
+///     .command(vec!["bash".to_string(), "-c".to_string()])
+///     .args(vec![args.join(" && ")])
+///     .build();
+/// ```
 pub fn capture_shell_output(
     log_dir: &str,
     container: &str,
@@ -80,6 +124,56 @@ pub fn capture_shell_output(
 }
 
 /// Create the content of a log4j properties file according to the given log configuration
+///
+/// # Example
+///
+/// ```
+/// use stackable_operator::{
+///     builder::{
+///         ConfigMapBuilder,
+///         meta::ObjectMetaBuilder,
+///     },
+///     config::fragment,
+///     logging,
+///     logging::spec::{
+///         ContainerLogConfig, ContainerLogConfigChoice, Logging,
+///     },
+/// };
+/// # use stackable_operator::logging::spec::default_logging;
+/// # use strum::{Display, EnumIter};
+/// #
+/// # #[derive(Clone, Display, Eq, EnumIter, Ord, PartialEq, PartialOrd)]
+/// # pub enum Container {
+/// #     MyProduct,
+/// # }
+/// #
+/// # let logging = fragment::validate::<Logging<Container>>(default_logging()).unwrap();
+///
+/// const STACKABLE_LOG_DIR: &str = "/stackable/log";
+/// const LOG4J_CONFIG_FILE: &str = "log4j.properties";
+/// const MY_PRODUCT_LOG_FILE: &str = "my-product.log4j.xml";
+/// const MAX_LOG_FILE_SIZE_IN_MB: i32 = 1000;
+///
+/// let mut cm_builder = ConfigMapBuilder::new();
+/// cm_builder.metadata(ObjectMetaBuilder::default().build());
+///
+/// if let Some(ContainerLogConfig {
+///     choice: Some(ContainerLogConfigChoice::Automatic(log_config)),
+/// }) = logging.containers.get(&Container::MyProduct)
+/// {
+///     cm_builder.add_data(
+///         LOG4J_CONFIG_FILE,
+///         logging::framework::create_log4j_config(
+///             &format!("{STACKABLE_LOG_DIR}/my-product"),
+///             MY_PRODUCT_LOG_FILE,
+///             MAX_LOG_FILE_SIZE_IN_MB,
+///             log_config,
+///         ),
+///     );
+/// }
+///
+/// cm_builder.build().unwrap();
+/// ```
 pub fn create_log4j_config(
     log_dir: &str,
     log_file: &str,
@@ -135,6 +229,58 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 }
 
 /// Create the content of a logback XML configuration file according to the given log configuration
+///
+/// # Example
+///
+/// ```
+/// use stackable_operator::{
+///     builder::{
+///         ConfigMapBuilder,
+///         meta::ObjectMetaBuilder,
+///     },
+///     logging,
+///     logging::spec::{
+///         ContainerLogConfig, ContainerLogConfigChoice, Logging,
+///     },
+/// };
+/// # use stackable_operator::{
+/// #     config::fragment,
+/// #     logging::spec::default_logging,
+/// # };
+/// # use strum::{Display, EnumIter};
+/// #
+/// # #[derive(Clone, Display, Eq, EnumIter, Ord, PartialEq, PartialOrd)]
+/// # pub enum Container {
+/// #     MyProduct,
+/// # }
+/// #
+/// # let logging = fragment::validate::<Logging<Container>>(default_logging()).unwrap();
+///
+/// const STACKABLE_LOG_DIR: &str = "/stackable/log";
+/// const LOGBACK_CONFIG_FILE: &str = "logback.xml";
+/// const MY_PRODUCT_LOG_FILE: &str = "my-product.log4j.xml";
+/// const MAX_LOG_FILE_SIZE_IN_MB: i32 = 1000;
+///
+/// let mut cm_builder = ConfigMapBuilder::new();
+/// cm_builder.metadata(ObjectMetaBuilder::default().build());
+///
+/// if let Some(ContainerLogConfig {
+///     choice: Some(ContainerLogConfigChoice::Automatic(log_config)),
+/// }) = logging.containers.get(&Container::MyProduct)
+/// {
+///     cm_builder.add_data(
+///         LOGBACK_CONFIG_FILE,
+///         logging::framework::create_logback_config(
+///             &format!("{STACKABLE_LOG_DIR}/my-product"),
+///             MY_PRODUCT_LOG_FILE,
+///             MAX_LOG_FILE_SIZE_IN_MB,
+///             log_config,
+///         ),
+///     );
+/// }
+///
+/// cm_builder.build().unwrap();
+/// ```
 pub fn create_logback_config(
     log_dir: &str,
     log_file: &str,
@@ -210,6 +356,58 @@ pub fn create_logback_config(
 }
 
 /// Create the content of a Vector configuration file according to the given log configuration
+///
+/// # Example
+///
+/// ```
+/// use stackable_operator::{
+///     builder::{
+///         ConfigMapBuilder,
+///         meta::ObjectMetaBuilder,
+///     },
+///     logging,
+///     logging::spec::{
+///         ContainerLogConfig, ContainerLogConfigChoice, Logging,
+///     },
+/// };
+/// # use stackable_operator::{
+/// #     config::fragment,
+/// #     logging::spec::default_logging,
+/// # };
+/// # use strum::{Display, EnumIter};
+/// #
+/// # #[derive(Clone, Display, Eq, EnumIter, Ord, PartialEq, PartialOrd)]
+/// # pub enum Container {
+/// #     Vector,
+/// # }
+/// #
+/// # let logging = fragment::validate::<Logging<Container>>(default_logging()).unwrap();
+/// # let vector_aggregator_address = "vector-aggregator:6000";
+///
+/// let mut cm_builder = ConfigMapBuilder::new();
+/// cm_builder.metadata(ObjectMetaBuilder::default().build());
+///
+/// let vector_log_config = if let Some(ContainerLogConfig {
+///     choice: Some(ContainerLogConfigChoice::Automatic(log_config)),
+/// }) = logging.containers.get(&Container::Vector)
+/// {
+///     Some(log_config)
+/// } else {
+///     None
+/// };
+///
+/// if logging.enable_vector_agent {
+///     cm_builder.add_data(
+///         logging::framework::VECTOR_CONFIG_FILE,
+///         logging::framework::create_vector_config(
+///             vector_aggregator_address,
+///             vector_log_config,
+///         ),
+///     );
+/// }
+///
+/// cm_builder.build().unwrap();
+/// ```
 pub fn create_vector_config(
     vector_aggregator_address: &str,
     config: Option<&AutomaticContainerLogConfig>,
@@ -319,6 +517,51 @@ address = "{vector_aggregator_address}"
 }
 
 /// Create the specification of the Vector log agent container
+///
+/// ```
+/// use stackable_operator::{
+///     builder::{
+///         meta::ObjectMetaBuilder,
+///         PodBuilder,
+///     },
+///     logging,
+/// };
+/// # use stackable_operator::{
+/// #     commons::product_image_selection::ResolvedProductImage,
+/// #     config::fragment,
+/// #     logging::spec::{default_logging, Logging},
+/// # };
+/// # use strum::{Display, EnumIter};
+/// #
+/// # #[derive(Clone, Display, Eq, EnumIter, Ord, PartialEq, PartialOrd)]
+/// # pub enum Container {
+/// #     Vector,
+/// # }
+/// #
+/// # let logging = fragment::validate::<Logging<Container>>(default_logging()).unwrap();
+///
+/// # let resolved_product_image = ResolvedProductImage {
+/// #     product_version: "1.0.0".into(),
+/// #     app_version_label: "1.0.0".into(),
+/// #     image: "docker.stackable.tech/stackable/my-product:1.0.0-stackable1.0.0".into(),
+/// #     image_pull_policy: "Always".into(),
+/// #     pull_secrets: None,
+/// # };
+///
+/// let mut pod_builder = PodBuilder::new();
+/// pod_builder.metadata(ObjectMetaBuilder::default().build());
+///
+/// if logging.enable_vector_agent {
+///     pod_builder.add_container(logging::framework::vector_container(
+///         &resolved_product_image,
+///         "config",
+///         "log",
+///         logging.containers.get(&Container::Vector),
+///     ));
+/// }
+///
+/// pod_builder.build().unwrap();
+/// ```
 pub fn vector_container(
     image: &ResolvedProductImage,
     config_volume_name: &str,

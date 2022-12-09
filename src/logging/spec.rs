@@ -12,6 +12,39 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Logging configuration
+///
+/// The type parameter `T` should be an enum listing all containers:
+///
+/// ```
+/// use serde::{Deserialize, Serialize};
+/// use stackable_operator::{
+///     logging,
+///     schemars::JsonSchema,
+/// };
+/// use strum::{Display, EnumIter};
+///
+/// #[derive(
+///     Clone,
+///     Debug,
+///     Deserialize,
+///     Display,
+///     Eq,
+///     EnumIter,
+///     JsonSchema,
+///     Ord,
+///     PartialEq,
+///     PartialOrd,
+///     Serialize,
+/// )]
+/// #[serde(rename_all = "camelCase")]
+/// pub enum Container {
+///     Init,
+///     Product,
+///     Vector,
+/// }
+///
+/// let logging = logging::spec::default_logging::<Container>();
+/// ```
 #[derive(Clone, Debug, Derivative, Eq, Fragment, JsonSchema, PartialEq)]
 #[derivative(Default(bound = ""))]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
