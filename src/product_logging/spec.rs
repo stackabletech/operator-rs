@@ -320,13 +320,13 @@ impl LogLevel {
     /// Convert the log level to a string understood by Vector
     pub fn to_vector_literal(&self) -> String {
         match self {
-            LogLevel::TRACE => "TRACE",
-            LogLevel::DEBUG => "DEBUG",
-            LogLevel::INFO => "INFO",
-            LogLevel::WARN => "WARN",
-            LogLevel::ERROR => "ERROR",
-            LogLevel::FATAL => "ERROR",
-            LogLevel::NONE => "ERROR",
+            LogLevel::TRACE => "trace",
+            LogLevel::DEBUG => "debug",
+            LogLevel::INFO => "info",
+            LogLevel::WARN => "warn",
+            LogLevel::ERROR => "error",
+            LogLevel::FATAL => "error",
+            LogLevel::NONE => "off",
         }
         .into()
     }
