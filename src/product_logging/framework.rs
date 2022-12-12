@@ -28,12 +28,12 @@ pub const VECTOR_CONFIG_FILE: &str = "vector.toml";
 /// use stackable_operator::{
 ///     builder::ContainerBuilder,
 ///     config::fragment,
-///     logging,
-///     logging::spec::{
+///     product_logging,
+///     product_logging::spec::{
 ///         ContainerLogConfig, ContainerLogConfigChoice, Logging,
 ///     },
 /// };
-/// # use stackable_operator::logging::spec::default_logging;
+/// # use stackable_operator::product_logging::spec::default_logging;
 /// # use strum::{Display, EnumIter};
 /// #
 /// # #[derive(Clone, Display, Eq, EnumIter, Ord, PartialEq, PartialOrd)]
@@ -51,7 +51,7 @@ pub const VECTOR_CONFIG_FILE: &str = "vector.toml";
 ///     choice: Some(ContainerLogConfigChoice::Automatic(log_config)),
 /// }) = logging.containers.get(&Container::Init)
 /// {
-///     args.push(logging::framework::capture_shell_output(
+///     args.push(product_logging::framework::capture_shell_output(
 ///         STACKABLE_LOG_DIR,
 ///         "init",
 ///         &log_config,
@@ -134,12 +134,12 @@ pub fn capture_shell_output(
 ///         meta::ObjectMetaBuilder,
 ///     },
 ///     config::fragment,
-///     logging,
-///     logging::spec::{
+///     product_logging,
+///     product_logging::spec::{
 ///         ContainerLogConfig, ContainerLogConfigChoice, Logging,
 ///     },
 /// };
-/// # use stackable_operator::logging::spec::default_logging;
+/// # use stackable_operator::product_logging::spec::default_logging;
 /// # use strum::{Display, EnumIter};
 /// #
 /// # #[derive(Clone, Display, Eq, EnumIter, Ord, PartialEq, PartialOrd)]
@@ -153,6 +153,7 @@ pub fn capture_shell_output(
 /// const LOG4J_CONFIG_FILE: &str = "log4j.properties";
 /// const MY_PRODUCT_LOG_FILE: &str = "my-product.log4j.xml";
 /// const MAX_LOG_FILE_SIZE_IN_MB: i32 = 1000;
+/// const CONSOLE_CONVERSION_PATTERN: &str = "%d{ISO8601} %-5p %m%n";
 ///
 /// let mut cm_builder = ConfigMapBuilder::new();
 /// cm_builder.metadata(ObjectMetaBuilder::default().build());
@@ -163,10 +164,11 @@ pub fn capture_shell_output(
 /// {
 ///     cm_builder.add_data(
 ///         LOG4J_CONFIG_FILE,
-///         logging::framework::create_log4j_config(
+///         product_logging::framework::create_log4j_config(
 ///             &format!("{STACKABLE_LOG_DIR}/my-product"),
 ///             MY_PRODUCT_LOG_FILE,
 ///             MAX_LOG_FILE_SIZE_IN_MB,
+///             CONSOLE_CONVERSION_PATTERN,
 ///             log_config,
 ///         ),
 ///     );
@@ -178,6 +180,7 @@ pub fn create_log4j_config(
     log_dir: &str,
     log_file: &str,
     max_size_in_mb: i32,
+    console_conversion_pattern: &str,
     config: &AutomaticContainerLogConfig,
 ) -> String {
     let number_of_archived_log_files = 1;
@@ -201,7 +204,7 @@ pub fn create_log4j_config(
 log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender
 log4j.appender.CONSOLE.Threshold={console_log_level}
 log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout
-log4j.appender.CONSOLE.layout.ConversionPattern=%d{{ISO8601}} [myid:%X{{myid}}] - %-5p [%t:%C{{1}}@%L] - %m%n
+log4j.appender.CONSOLE.layout.ConversionPattern={console_conversion_pattern}
 
 log4j.appender.FILE=org.apache.log4j.RollingFileAppender
 log4j.appender.FILE.Threshold={file_log_level}
@@ -238,14 +241,14 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 ///         ConfigMapBuilder,
 ///         meta::ObjectMetaBuilder,
 ///     },
-///     logging,
-///     logging::spec::{
+///     product_logging,
+///     product_logging::spec::{
 ///         ContainerLogConfig, ContainerLogConfigChoice, Logging,
 ///     },
 /// };
 /// # use stackable_operator::{
 /// #     config::fragment,
-/// #     logging::spec::default_logging,
+/// #     product_logging::spec::default_logging,
 /// # };
 /// # use strum::{Display, EnumIter};
 /// #
@@ -260,6 +263,7 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 /// const LOGBACK_CONFIG_FILE: &str = "logback.xml";
 /// const MY_PRODUCT_LOG_FILE: &str = "my-product.log4j.xml";
 /// const MAX_LOG_FILE_SIZE_IN_MB: i32 = 1000;
+/// const CONSOLE_CONVERSION_PATTERN: &str = "%d{ISO8601} %-5p %m%n";
 ///
 /// let mut cm_builder = ConfigMapBuilder::new();
 /// cm_builder.metadata(ObjectMetaBuilder::default().build());
@@ -270,10 +274,11 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 /// {
 ///     cm_builder.add_data(
 ///         LOGBACK_CONFIG_FILE,
-///         logging::framework::create_logback_config(
+///         product_logging::framework::create_logback_config(
 ///             &format!("{STACKABLE_LOG_DIR}/my-product"),
 ///             MY_PRODUCT_LOG_FILE,
 ///             MAX_LOG_FILE_SIZE_IN_MB,
+///             CONSOLE_CONVERSION_PATTERN,
 ///             log_config,
 ///         ),
 ///     );
@@ -285,6 +290,7 @@ pub fn create_logback_config(
     log_dir: &str,
     log_file: &str,
     max_size_in_mb: i32,
+    console_conversion_pattern: &str,
     config: &AutomaticContainerLogConfig,
 ) -> String {
     let number_of_archived_log_files = 1;
@@ -306,7 +312,7 @@ pub fn create_logback_config(
         r#"<configuration>
   <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
-      <pattern>%d{{ISO8601}} [myid:%X{{myid}}] - %-5p [%t:%C{{1}}@%L] - %m%n</pattern>
+      <pattern>{console_conversion_pattern}</pattern>
     </encoder>
     <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
       <level>{console_log_level}</level>
@@ -365,14 +371,14 @@ pub fn create_logback_config(
 ///         ConfigMapBuilder,
 ///         meta::ObjectMetaBuilder,
 ///     },
-///     logging,
-///     logging::spec::{
+///     product_logging,
+///     product_logging::spec::{
 ///         ContainerLogConfig, ContainerLogConfigChoice, Logging,
 ///     },
 /// };
 /// # use stackable_operator::{
 /// #     config::fragment,
-/// #     logging::spec::default_logging,
+/// #     product_logging::spec::default_logging,
 /// # };
 /// # use strum::{Display, EnumIter};
 /// #
@@ -398,8 +404,8 @@ pub fn create_logback_config(
 ///
 /// if logging.enable_vector_agent {
 ///     cm_builder.add_data(
-///         logging::framework::VECTOR_CONFIG_FILE,
-///         logging::framework::create_vector_config(
+///         product_logging::framework::VECTOR_CONFIG_FILE,
+///         product_logging::framework::create_vector_config(
 ///             vector_aggregator_address,
 ///             vector_log_config,
 ///         ),
@@ -524,12 +530,12 @@ address = "{vector_aggregator_address}"
 ///         meta::ObjectMetaBuilder,
 ///         PodBuilder,
 ///     },
-///     logging,
+///     product_logging,
 /// };
 /// # use stackable_operator::{
 /// #     commons::product_image_selection::ResolvedProductImage,
 /// #     config::fragment,
-/// #     logging::spec::{default_logging, Logging},
+/// #     product_logging::spec::{default_logging, Logging},
 /// # };
 /// # use strum::{Display, EnumIter};
 /// #
@@ -552,7 +558,7 @@ address = "{vector_aggregator_address}"
 /// pod_builder.metadata(ObjectMetaBuilder::default().build());
 ///
 /// if logging.enable_vector_agent {
-///     pod_builder.add_container(logging::framework::vector_container(
+///     pod_builder.add_container(product_logging::framework::vector_container(
 ///         &resolved_product_image,
 ///         "config",
 ///         "log",

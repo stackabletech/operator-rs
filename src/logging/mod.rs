@@ -2,9 +2,7 @@ use tracing;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
 
 pub mod controller;
-pub mod framework;
 mod k8s_events;
-pub mod spec;
 
 #[derive(Debug, Clone, clap::ValueEnum, PartialEq, Eq)]
 pub enum TracingTarget {

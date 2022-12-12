@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 /// ```
 /// use serde::{Deserialize, Serialize};
 /// use stackable_operator::{
-///     logging,
+///     product_logging,
 ///     schemars::JsonSchema,
 /// };
 /// use strum::{Display, EnumIter};
@@ -43,7 +43,7 @@ use serde::{Deserialize, Serialize};
 ///     Vector,
 /// }
 ///
-/// let logging = logging::spec::default_logging::<Container>();
+/// let logging = product_logging::spec::default_logging::<Container>();
 /// ```
 #[derive(Clone, Debug, Derivative, Eq, Fragment, JsonSchema, PartialEq)]
 #[derivative(Default(bound = ""))]
