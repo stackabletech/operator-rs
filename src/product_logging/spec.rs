@@ -339,7 +339,7 @@ impl LogLevel {
             LogLevel::INFO => "INFO",
             LogLevel::WARN => "WARN",
             LogLevel::ERROR => "ERROR",
-            LogLevel::FATAL => "FATAL",
+            LogLevel::FATAL => "ERROR",
             LogLevel::NONE => "OFF",
         }
         .into()
