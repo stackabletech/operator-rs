@@ -125,6 +125,16 @@ pub fn capture_shell_output(
 
 /// Create the content of a log4j properties file according to the given log configuration
 ///
+/// # Arguments
+///
+/// * `log_dir` - Directory where the log files are stored
+/// * `log_file` - Name of the active log file; When the file is rolled over then a number is
+///       appended.
+/// * `max_size_in_mb` - Maximum size of all log files in MB; This values can be slightly exceeded.
+///       The value is set to 2 if the given value is lower.
+/// * `console_conversion_pattern` - Logback conversion pattern for the console appender
+/// * `config` - The logging configuration for the container
+///
 /// # Example
 ///
 /// ```
@@ -152,7 +162,7 @@ pub fn capture_shell_output(
 /// const STACKABLE_LOG_DIR: &str = "/stackable/log";
 /// const LOG4J_CONFIG_FILE: &str = "log4j.properties";
 /// const MY_PRODUCT_LOG_FILE: &str = "my-product.log4j.xml";
-/// const MAX_LOG_FILE_SIZE_IN_MB: i32 = 1000;
+/// const MAX_LOG_FILE_SIZE_IN_MB: u32 = 10;
 /// const CONSOLE_CONVERSION_PATTERN: &str = "%d{ISO8601} %-5p %m%n";
 ///
 /// let mut cm_builder = ConfigMapBuilder::new();
@@ -179,7 +189,7 @@ pub fn capture_shell_output(
 pub fn create_log4j_config(
     log_dir: &str,
     log_file: &str,
-    max_size_in_mb: i32,
+    max_size_in_mb: u32,
     console_conversion_pattern: &str,
     config: &AutomaticContainerLogConfig,
 ) -> String {
@@ -214,7 +224,7 @@ log4j.appender.FILE.MaxBackupIndex={number_of_archived_log_files}
 log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 
 {loggers}"#,
-        max_log_file_size_in_mb = max_size_in_mb / (1 + number_of_archived_log_files),
+        max_log_file_size_in_mb = cmp::max(1, max_size_in_mb / (1 + number_of_archived_log_files)),
         root_log_level = config.root_log_level().to_log4j_literal(),
         console_log_level = config
             .console
@@ -232,6 +242,16 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 }
 
 /// Create the content of a logback XML configuration file according to the given log configuration
+///
+/// # Arguments
+///
+/// * `log_dir` - Directory where the log files are stored
+/// * `log_file` - Name of the active log file; When the file is rolled over then a number is
+///       appended.
+/// * `max_size_in_mb` - Maximum size of all log files in MB; This values can be slightly exceeded.
+///       The value is set to 2 if the given value is lower.
+/// * `console_conversion_pattern` - Logback conversion pattern for the console appender
+/// * `config` - The logging configuration for the container
 ///
 /// # Example
 ///
@@ -262,7 +282,7 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 /// const STACKABLE_LOG_DIR: &str = "/stackable/log";
 /// const LOGBACK_CONFIG_FILE: &str = "logback.xml";
 /// const MY_PRODUCT_LOG_FILE: &str = "my-product.log4j.xml";
-/// const MAX_LOG_FILE_SIZE_IN_MB: i32 = 1000;
+/// const MAX_LOG_FILE_SIZE_IN_MB: u32 = 10;
 /// const CONSOLE_CONVERSION_PATTERN: &str = "%d{ISO8601} %-5p %m%n";
 ///
 /// let mut cm_builder = ConfigMapBuilder::new();
@@ -289,7 +309,7 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 pub fn create_logback_config(
     log_dir: &str,
     log_file: &str,
-    max_size_in_mb: i32,
+    max_size_in_mb: u32,
     console_conversion_pattern: &str,
     config: &AutomaticContainerLogConfig,
 ) -> String {
@@ -344,7 +364,7 @@ pub fn create_logback_config(
   </root>
 </configuration>
 "#,
-        max_log_file_size_in_mb = max_size_in_mb / (1 + number_of_archived_log_files),
+        max_log_file_size_in_mb = cmp::max(1, max_size_in_mb / (1 + number_of_archived_log_files)),
         root_log_level = config.root_log_level().to_logback_literal(),
         console_log_level = config
             .console
