@@ -130,7 +130,7 @@ pub fn capture_shell_output(
 /// * `log_dir` - Directory where the log files are stored
 /// * `log_file` - Name of the active log file; When the file is rolled over then a number is
 ///       appended.
-/// * `max_size_in_mb` - Maximum size of all log files in MB; This values can be slightly exceeded.
+/// * `max_size_in_mib` - Maximum size of all log files in MiB; This value can be slightly exceeded.
 ///       The value is set to 2 if the given value is lower.
 /// * `console_conversion_pattern` - Logback conversion pattern for the console appender
 /// * `config` - The logging configuration for the container
@@ -162,7 +162,7 @@ pub fn capture_shell_output(
 /// const STACKABLE_LOG_DIR: &str = "/stackable/log";
 /// const LOG4J_CONFIG_FILE: &str = "log4j.properties";
 /// const MY_PRODUCT_LOG_FILE: &str = "my-product.log4j.xml";
-/// const MAX_LOG_FILE_SIZE_IN_MB: u32 = 10;
+/// const MAX_LOG_FILE_SIZE_IN_MIB: u32 = 10;
 /// const CONSOLE_CONVERSION_PATTERN: &str = "%d{ISO8601} %-5p %m%n";
 ///
 /// let mut cm_builder = ConfigMapBuilder::new();
@@ -177,7 +177,7 @@ pub fn capture_shell_output(
 ///         product_logging::framework::create_log4j_config(
 ///             &format!("{STACKABLE_LOG_DIR}/my-product"),
 ///             MY_PRODUCT_LOG_FILE,
-///             MAX_LOG_FILE_SIZE_IN_MB,
+///             MAX_LOG_FILE_SIZE_IN_MIB,
 ///             CONSOLE_CONVERSION_PATTERN,
 ///             log_config,
 ///         ),
@@ -248,7 +248,7 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 /// * `log_dir` - Directory where the log files are stored
 /// * `log_file` - Name of the active log file; When the file is rolled over then a number is
 ///       appended.
-/// * `max_size_in_mb` - Maximum size of all log files in MB; This values can be slightly exceeded.
+/// * `max_size_in_mib` - Maximum size of all log files in MiB; This value can be slightly exceeded.
 ///       The value is set to 2 if the given value is lower.
 /// * `console_conversion_pattern` - Logback conversion pattern for the console appender
 /// * `config` - The logging configuration for the container
@@ -282,7 +282,7 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 /// const STACKABLE_LOG_DIR: &str = "/stackable/log";
 /// const LOGBACK_CONFIG_FILE: &str = "logback.xml";
 /// const MY_PRODUCT_LOG_FILE: &str = "my-product.log4j.xml";
-/// const MAX_LOG_FILE_SIZE_IN_MB: u32 = 10;
+/// const MAX_LOG_FILE_SIZE_IN_MIB: u32 = 10;
 /// const CONSOLE_CONVERSION_PATTERN: &str = "%d{ISO8601} %-5p %m%n";
 ///
 /// let mut cm_builder = ConfigMapBuilder::new();
@@ -297,7 +297,7 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 ///         product_logging::framework::create_logback_config(
 ///             &format!("{STACKABLE_LOG_DIR}/my-product"),
 ///             MY_PRODUCT_LOG_FILE,
-///             MAX_LOG_FILE_SIZE_IN_MB,
+///             MAX_LOG_FILE_SIZE_IN_MIB,
 ///             CONSOLE_CONVERSION_PATTERN,
 ///             log_config,
 ///         ),
