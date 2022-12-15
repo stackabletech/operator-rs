@@ -131,8 +131,9 @@ pub fn capture_shell_output(
 /// * `log_dir` - Directory where the log files are stored
 /// * `log_file` - Name of the active log file; When the file is rolled over then a number is
 ///       appended.
-/// * `max_size_in_mib` - Maximum size of all log files in MiB; This value can be slightly exceeded.
-///       The value is set to 2 if the given value is lower.
+/// * `max_size_in_mib` - Maximum size of all log files in MiB; This value can be slightly
+///       exceeded. The value is set to 2 if the given value is lower (1 MiB for the active log
+///       file and 1 MiB for the archived one).
 /// * `console_conversion_pattern` - Logback conversion pattern for the console appender
 /// * `config` - The logging configuration for the container
 ///
@@ -249,8 +250,9 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 /// * `log_dir` - Directory where the log files are stored
 /// * `log_file` - Name of the active log file; When the file is rolled over then a number is
 ///       appended.
-/// * `max_size_in_mib` - Maximum size of all log files in MiB; This value can be slightly exceeded.
-///       The value is set to 2 if the given value is lower.
+/// * `max_size_in_mib` - Maximum size of all log files in MiB; This value can be slightly
+///       exceeded. The value is set to 2 if the given value is lower (1 MiB for the active log
+///       file and 1 MiB for the archived one).
 /// * `console_conversion_pattern` - Logback conversion pattern for the console appender
 /// * `config` - The logging configuration for the container
 ///
