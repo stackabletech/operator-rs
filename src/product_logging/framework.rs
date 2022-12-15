@@ -2,9 +2,10 @@
 
 use std::cmp;
 
-use k8s_openapi::api::core::v1::Container;
-
-use crate::{builder::ContainerBuilder, commons::product_image_selection::ResolvedProductImage};
+use crate::{
+    builder::ContainerBuilder, commons::product_image_selection::ResolvedProductImage,
+    k8s_openapi::api::core::v1::Container, kube::Resource, role_utils::RoleGroupRef,
+};
 
 use super::spec::{
     AutomaticContainerLogConfig, ContainerLogConfig, ContainerLogConfigChoice, LogLevel,
@@ -398,7 +399,10 @@ pub fn create_logback_config(
 /// };
 /// # use stackable_operator::{
 /// #     config::fragment,
+/// #     k8s_openapi::api::core::v1::Pod,
+/// #     kube::runtime::reflector::ObjectRef,
 /// #     product_logging::spec::default_logging,
+/// #     role_utils::RoleGroupRef,
 /// # };
 /// # use strum::{Display, EnumIter};
 /// #
@@ -409,6 +413,11 @@ pub fn create_logback_config(
 /// #
 /// # let logging = fragment::validate::<Logging<Container>>(default_logging()).unwrap();
 /// # let vector_aggregator_address = "vector-aggregator:6000";
+/// # let role_group = RoleGroupRef {
+/// #     cluster: ObjectRef::<Pod>::new("test-cluster"),
+/// #     role: "role".into(),
+/// #     role_group: "role-group".into(),
+/// # };
 ///
 /// let mut cm_builder = ConfigMapBuilder::new();
 /// cm_builder.metadata(ObjectMetaBuilder::default().build());
@@ -426,6 +435,7 @@ pub fn create_logback_config(
 ///     cm_builder.add_data(
 ///         product_logging::framework::VECTOR_CONFIG_FILE,
 ///         product_logging::framework::create_vector_config(
+///             &role_group,
 ///             vector_aggregator_address,
 ///             vector_log_config,
 ///         ),
@@ -434,10 +444,14 @@ pub fn create_logback_config(
 ///
 /// cm_builder.build().unwrap();
 /// ```
-pub fn create_vector_config(
+pub fn create_vector_config<T>(
+    role_group: &RoleGroupRef<T>,
     vector_aggregator_address: &str,
     config: Option<&AutomaticContainerLogConfig>,
-) -> String {
+) -> String
+where
+    T: Resource,
+{
     let vector_log_level = config
         .and_then(|config| config.file.as_ref())
         .and_then(|file| file.level)
@@ -508,6 +522,14 @@ parsed_event = parse_xml!(wrapped_xml_event).root.event
 .message = parsed_event.message
 '''
 
+[transforms.extended_logs_files]
+inputs = ["processed_files_*"]
+type = "remap"
+source = '''
+. |= parse_regex!(.file, r'^{STACKABLE_LOG_DIR}/(?P<container>.*?)/(?P<file>.*?)$')
+del(.source_type)
+'''
+
 [transforms.filtered_logs_vector]
 inputs = ["vector"]
 type = "filter"
@@ -526,19 +548,25 @@ del(.pid)
 del(.source_type)
 '''
 
-[transforms.extended_logs_files]
-inputs = ["processed_files_*"]
+[transforms.extended_logs]
+inputs = ["extended_logs_*"]
 type = "remap"
 source = '''
-. |= parse_regex!(.file, r'^{STACKABLE_LOG_DIR}/(?P<container>.*?)/(?P<file>.*?)$')
-del(.source_type)
+.namespace = "{namespace}"
+.cluster = "{cluster_name}"
+.role = "{role_name}"
+.roleGroup = "{role_group_name}"
 '''
 
 [sinks.aggregator]
-inputs = ["extended_logs_*"]
+inputs = ["extended_logs"]
 type = "vector"
 address = "{vector_aggregator_address}"
-"#
+"#,
+        namespace = role_group.cluster.namespace.clone().unwrap_or_default(),
+        cluster_name = role_group.cluster.name,
+        role_name = role_group.role,
+        role_group_name = role_group.role_group
     )
 }
 

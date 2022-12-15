@@ -3,9 +3,11 @@
 use std::collections::BTreeMap;
 use std::fmt::Display;
 
-use crate::config::fragment::{self, FromFragment};
-use crate::config::merge::Atomic;
-use crate::config::{fragment::Fragment, merge::Merge};
+use crate::config::{
+    fragment::{self, Fragment, FromFragment},
+    merge::Atomic,
+    merge::Merge,
+};
 
 use derivative::Derivative;
 use schemars::JsonSchema;
