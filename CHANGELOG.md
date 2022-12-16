@@ -4,13 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.29.0] - 2022-12-16
+
 ### Added
 
 - Modules for log aggregation added ([#517]).
 
 [#517]: https://github.com/stackabletech/operator-rs/pull/517
 
-## [0.28.8] - 2022-12-08
+## [0.28.0] - 2022-12-08
 
 ### Added
 
