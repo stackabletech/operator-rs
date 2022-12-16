@@ -14,6 +14,7 @@ pub mod memory;
 pub mod namespace;
 pub mod pod_utils;
 pub mod product_config_utils;
+pub mod product_logging;
 pub mod role_utils;
 pub mod utils;
 pub mod validation;

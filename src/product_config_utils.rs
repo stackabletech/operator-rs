@@ -92,19 +92,16 @@ impl<T: Configuration + ?Sized> Configuration for Box<T> {
 }
 
 /// Type to sort config properties via kind (files, env, cli), via groups and via roles.
-/// HashMap<Role, HashMap<RoleGroup, HashMap<PropertyNameKind, BTreeMap<PropertyName, PropertyValue>>>>
 pub type RoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>>;
 
 /// Type to sort config properties via kind (files, env, cli) and via groups.
-/// HashMap<RoleGroup, HashMap<PropertyNameKind, BTreeMap<PropertyName, PropertyValue>>>
 pub type RoleGroupConfigByPropertyKind =
     HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>;
 
 /// Type to sort config properties via kind (files, env, cli), via groups and via roles. This
 /// is the validated output to be used in other operators. The difference to [`RoleConfigByPropertyKind`]
 /// is that the properties BTreeMap does not contain any options.
-/// /// HashMap<Role, HashMap<RoleGroup, HashMap<PropertyNameKind, BTreeMap<PropertyName, Option<PropertyValue>>>>>
 pub type ValidatedRoleConfigByPropertyKind =
     HashMap<String, HashMap<String, HashMap<PropertyNameKind, BTreeMap<String, String>>>>;
 
