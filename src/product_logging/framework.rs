@@ -191,7 +191,7 @@ pub fn capture_shell_output(
 pub fn create_log4j_config(
     log_dir: &str,
     log_file: &str,
-    max_size_in_mb: u32,
+    max_size_in_mib: u32,
     console_conversion_pattern: &str,
     config: &AutomaticContainerLogConfig,
 ) -> String {
@@ -221,12 +221,13 @@ log4j.appender.CONSOLE.layout.ConversionPattern={console_conversion_pattern}
 log4j.appender.FILE=org.apache.log4j.RollingFileAppender
 log4j.appender.FILE.Threshold={file_log_level}
 log4j.appender.FILE.File={log_dir}/{log_file}
-log4j.appender.FILE.MaxFileSize={max_log_file_size_in_mb}MB
+log4j.appender.FILE.MaxFileSize={max_log_file_size_in_mib}MB
 log4j.appender.FILE.MaxBackupIndex={number_of_archived_log_files}
 log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 
 {loggers}"#,
-        max_log_file_size_in_mb = cmp::max(1, max_size_in_mb / (1 + number_of_archived_log_files)),
+        max_log_file_size_in_mib =
+            cmp::max(1, max_size_in_mib / (1 + number_of_archived_log_files)),
         root_log_level = config.root_log_level().to_log4j_literal(),
         console_log_level = config
             .console
@@ -312,7 +313,7 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 pub fn create_logback_config(
     log_dir: &str,
     log_file: &str,
-    max_size_in_mb: u32,
+    max_size_in_mib: u32,
     console_conversion_pattern: &str,
     config: &AutomaticContainerLogConfig,
 ) -> String {
@@ -356,7 +357,7 @@ pub fn create_logback_config(
       <FileNamePattern>{log_dir}/{log_file}.%i</FileNamePattern>
     </rollingPolicy>
     <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-      <MaxFileSize>{max_log_file_size_in_mb}MB</MaxFileSize>
+      <MaxFileSize>{max_log_file_size_in_mib}MB</MaxFileSize>
     </triggeringPolicy>
   </appender>
 
@@ -367,7 +368,8 @@ pub fn create_logback_config(
   </root>
 </configuration>
 "#,
-        max_log_file_size_in_mb = cmp::max(1, max_size_in_mb / (1 + number_of_archived_log_files)),
+        max_log_file_size_in_mib =
+            cmp::max(1, max_size_in_mib / (1 + number_of_archived_log_files)),
         root_log_level = config.root_log_level().to_logback_literal(),
         console_log_level = config
             .console
