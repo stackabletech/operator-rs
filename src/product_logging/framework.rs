@@ -523,7 +523,10 @@ parsed_event = parse_xml!(wrapped_xml_event).root.event
 .timestamp = to_timestamp!(to_float!(parsed_event.@timestamp) / 1000)
 .logger = parsed_event.@logger
 .level = parsed_event.@level
-.message = parsed_event.message
+.message = join!(
+    filter([parsed_event.message, parsed_event.throwable]) -> |_index, value| {{
+        !is_nullish(value)
+    }}, "\n")
 '''
 
 [transforms.extended_logs_files]
