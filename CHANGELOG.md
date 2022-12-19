@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.30.0] - 2022-12-19
+
 ### Added
 
 - Extended the `PodBuilder` with `pod_affinity`, `pod_anti_affinity`, `node_selector` and their `*_opt` variants ([#520])
