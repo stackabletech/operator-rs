@@ -509,26 +509,26 @@ mod tests {
     }
 
     #[rstest]
-    fn test_pod_builder(pod_affinity: PodAffinity) {
-        let container = ContainerBuilder::new("containername")
-            .expect("ContainerBuilder not created")
-            .image("stackable/zookeeper:2.4.14")
-            .command(vec!["zk-server-start.sh".to_string()])
-            .args(vec!["stackable/conf/zk.properties".to_string()])
-            .add_volume_mount("zk-worker-1", "conf/")
-            .build();
+    fn test_pod_builder_pod_name() {
+        let pod = PodBuilder::new()
+        .metadata_builder(|builder| builder.name("foo"))
+        .build()
+        .unwrap();
 
+    assert_eq!(pod.metadata.name.unwrap(), "foo");
+    }
+
+    #[rstest]
+    fn test_pod_builder(pod_affinity: PodAffinity, dummy_container: Container) {
         let init_container = ContainerBuilder::new("init-containername")
             .expect("ContainerBuilder not created")
             .image("stackable/zookeeper:2.4.14")
-            .command(vec!["wrapper.sh".to_string()])
-            .args(vec!["12345".to_string()])
             .build();
 
         let pod = PodBuilder::new()
             .pod_affinity(pod_affinity.clone())
             .metadata(ObjectMetaBuilder::new().name("testpod").build())
-            .add_container(container)
+            .add_container(dummy_container)
             .add_init_container(init_container)
             .node_name("worker-1.stackable.demo")
             .add_volume(
@@ -563,13 +563,6 @@ mod tests {
                 .and_then(|volume| volume.config_map.as_ref()?.name.clone())),
             Some("configmap".to_string())
         );
-
-        let pod = PodBuilder::new()
-            .metadata_builder(|builder| builder.name("foo"))
-            .build()
-            .unwrap();
-
-        assert_eq!(pod.metadata.name.unwrap(), "foo");
     }
 
     #[rstest]
