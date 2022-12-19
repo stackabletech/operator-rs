@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.30.1] - 2022-12-19
+
 ### Removed
 
 - Removed `affinity` property from the RoleGroup that was added in [#520] but not intended to be there ([#552]).
