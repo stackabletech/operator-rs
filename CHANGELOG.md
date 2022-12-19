@@ -4,9 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Changed
+### Removed
 
-- Removed `affinity` property from the RoleGroup that was added in [#520] but not intended to be there. ([#552])
+- Removed `affinity` property from the RoleGroup that was added in [#520] but not intended to be there ([#552]).
 
 [#552]: https://github.com/stackabletech/operator-rs/pull/522
 
