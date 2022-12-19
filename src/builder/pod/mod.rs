@@ -511,11 +511,11 @@ mod tests {
     #[rstest]
     fn test_pod_builder_pod_name() {
         let pod = PodBuilder::new()
-        .metadata_builder(|builder| builder.name("foo"))
-        .build()
-        .unwrap();
+            .metadata_builder(|builder| builder.name("foo"))
+            .build()
+            .unwrap();
 
-    assert_eq!(pod.metadata.name.unwrap(), "foo");
+        assert_eq!(pod.metadata.name.unwrap(), "foo");
     }
 
     #[rstest]
