@@ -373,19 +373,11 @@ impl PodBuilder {
             init_containers: self.init_containers.clone(),
             node_name: self.node_name.clone(),
             node_selector: node_selector_labels,
-            affinity: node_affinity
-                .map(|node_affinity| Affinity {
-                    node_affinity: Some(node_affinity),
-                    pod_affinity: self.pod_affinity.clone(),
-                    pod_anti_affinity: self.pod_anti_affinity.clone(),
-                })
-                .or_else(|| {
-                    Some(Affinity {
-                        pod_affinity: self.pod_affinity.clone(),
-                        pod_anti_affinity: self.pod_anti_affinity.clone(),
-                        ..Affinity::default()
-                    })
-                }),
+            affinity: Some(Affinity {
+                node_affinity: node_affinity,
+                pod_affinity: self.pod_affinity.clone(),
+                pod_anti_affinity: self.pod_anti_affinity.clone(),
+            }),
             security_context: self.security_context.clone(),
             tolerations: self.tolerations.clone(),
             volumes: self.volumes.clone(),
