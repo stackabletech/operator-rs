@@ -442,7 +442,7 @@ mod tests {
     fn dummy_container() -> Container {
         ContainerBuilder::new("container")
             .expect("ContainerBuilder not created")
-            .image("private-comapany/product:2.4.14")
+            .image("private-company/product:2.4.14")
             .build()
     }
 
