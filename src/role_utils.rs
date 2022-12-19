@@ -93,6 +93,7 @@ use crate::{
     product_config_utils::Configuration,
 };
 use derivative::Derivative;
+use k8s_openapi::api::core::v1::Affinity;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 use kube::{runtime::reflector::ObjectRef, Resource};
 use schemars::JsonSchema;
@@ -165,6 +166,7 @@ impl<T: Configuration + 'static> Role<T> {
                             },
                             replicas: group.replicas,
                             selector: group.selector,
+                            affinity: group.affinity,
                         },
                     )
                 })
@@ -183,6 +185,7 @@ pub struct RoleGroup<T> {
     pub config: CommonConfiguration<T>,
     pub replicas: Option<u16>,
     pub selector: Option<LabelSelector>,
+    pub affinity: Option<Affinity>,
 }
 
 impl<T> RoleGroup<T> {

@@ -625,6 +625,7 @@ mod tests {
                         build_env_override(GROUP_ENV_OVERRIDE),
                         build_cli_override(GROUP_CLI_OVERRIDE)),
                         selector: None,
+                        affinity: None,
                 }},
             },
             (true, true, true, false) => Role {
@@ -639,6 +640,7 @@ mod tests {
                     config: build_common_config(
                         build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI), None, None, None),
                     selector: None,
+                    affinity: None,
                 }},
             },
             (true, true, false, true) => Role {
@@ -656,6 +658,7 @@ mod tests {
                         build_env_override(GROUP_ENV_OVERRIDE),
                         build_cli_override(GROUP_CLI_OVERRIDE)),
                         selector: None,
+                        affinity: None,
                 }},
             },
             (true, true, false, false) => Role {
@@ -673,6 +676,7 @@ mod tests {
                         None,
                         None),
                         selector: None,
+                        affinity: None,
                 }},
             },
             (true, false, true, true) => Role {
@@ -690,6 +694,7 @@ mod tests {
                         build_env_override(GROUP_ENV_OVERRIDE),
                         build_cli_override(GROUP_CLI_OVERRIDE)),
                         selector: None,
+                        affinity: None,
                 }},
             },
             (true, false, true, false) => Role {
@@ -703,6 +708,7 @@ mod tests {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
                     selector: None,
+                    affinity: None,
                 }},
             },
             (true, false, false, true) => Role {
@@ -721,6 +727,7 @@ mod tests {
                         build_cli_override(GROUP_CLI_OVERRIDE)
                     ),
                     selector: None,
+                    affinity: None,
                 }},
             },
             (true, false, false, false) => Role {
@@ -734,6 +741,7 @@ mod tests {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
                     selector: None,
+                    affinity: None,
                 }},
             },
             (false, true, true, true) => Role {
@@ -751,6 +759,7 @@ mod tests {
                         build_env_override(GROUP_ENV_OVERRIDE),
                         build_cli_override(GROUP_CLI_OVERRIDE)),
                         selector: None,
+                        affinity: None,
                 }},
             },
             (false, true, true, false) => Role {
@@ -768,6 +777,7 @@ mod tests {
                         None,
                         None),
                         selector: None,
+                        affinity: None,
                 }},
             },
             (false, true, false, true) => Role {
@@ -780,6 +790,7 @@ mod tests {
                         build_env_override(GROUP_ENV_OVERRIDE),
                         build_cli_override(GROUP_CLI_OVERRIDE)),
                         selector: None,
+                        affinity: None,
                 }},
             },
             (false, true, false, false) => Role {
@@ -792,6 +803,7 @@ mod tests {
                         None,
                         None),
                         selector: None,
+                        affinity: None,
                 }},
             },
             (false, false, true, true) => Role {
@@ -809,6 +821,7 @@ mod tests {
                         build_env_override(GROUP_ENV_OVERRIDE),
                         build_cli_override(GROUP_CLI_OVERRIDE)),
                         selector: None,
+                        affinity: None,
                 }},
             },
             (false, false, true, false) => Role {
@@ -822,6 +835,7 @@ mod tests {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
                     selector: None,
+                    affinity: None,
                 }},
             },
             (false, false, false, true) => Role {
@@ -834,6 +848,7 @@ mod tests {
                         build_env_override(GROUP_ENV_OVERRIDE),
                         build_cli_override(GROUP_CLI_OVERRIDE)),
                         selector: None,
+                        affinity: None,
                 }},
             },
             (false, false, false, false) => Role {
@@ -842,6 +857,7 @@ mod tests {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
                     selector: None,
+                    affinity: None,
                 }},
             },
         }
@@ -1045,7 +1061,8 @@ mod tests {
                     build_config_override(file_name, "file"),
                     build_env_override(GROUP_ENV_OVERRIDE),
                     None),
-                    selector: None,
+                selector: None,
+                affinity: None,
             }},
         };
 
@@ -1105,6 +1122,7 @@ mod tests {
                     None
                 ),
                 selector: None,
+                affinity: None,
             },
             role_group_2.to_string() => RoleGroup {
                 replicas: Some(1),
@@ -1115,6 +1133,7 @@ mod tests {
                     None
                 ),
                 selector: None,
+                affinity: None,
             }}
         }),
             role_2.to_string() => (vec![PropertyNameKind::Cli], Role {
@@ -1133,6 +1152,7 @@ mod tests {
                     None
                 ),
                 selector: None,
+                affinity: None,
             }},
         })
         };
@@ -1195,6 +1215,7 @@ mod tests {
                             None
                         ),
                         selector: None,
+                        affinity: None,
                     }}
             }
             ),
@@ -1210,6 +1231,7 @@ mod tests {
                             None
                         ),
                         selector: None,
+                        affinity: None,
                     }}
             }
             ),
