@@ -780,6 +780,7 @@ mod tests {
                         None,
                         None),
                         selector: None,
+                        affinity: None,
                 }},
             },
             (false, true, false, true) => Role {
@@ -1063,7 +1064,8 @@ mod tests {
                     build_config_override(file_name, "file"),
                     build_env_override(GROUP_ENV_OVERRIDE),
                     None),
-                    selector: None,
+                selector: None,
+                affinity: None,
             }},
         };
 
@@ -1123,6 +1125,7 @@ mod tests {
                     None
                 ),
                 selector: None,
+                affinity: None,
             },
             role_group_2.to_string() => RoleGroup {
                 replicas: Some(1),
@@ -1133,6 +1136,7 @@ mod tests {
                     None
                 ),
                 selector: None,
+                affinity: None,
             }}
         }),
             role_2.to_string() => (vec![PropertyNameKind::Cli], Role {
@@ -1151,6 +1155,7 @@ mod tests {
                     None
                 ),
                 selector: None,
+                affinity: None,
             }},
         })
         };
@@ -1213,6 +1218,7 @@ mod tests {
                             None
                         ),
                         selector: None,
+                        affinity: None,
                     }}
             }
             ),
@@ -1228,6 +1234,7 @@ mod tests {
                             None
                         ),
                         selector: None,
+                        affinity: None,
                     }}
             }
             ),
