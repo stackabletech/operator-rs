@@ -3,8 +3,10 @@ pub mod security;
 pub mod volume;
 
 use crate::builder::meta::ObjectMetaBuilder;
+use crate::commons::product_image_selection::ResolvedProductImage;
 use crate::error::{Error, OperatorResult};
 
+use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference};
 use k8s_openapi::{
     api::core::v1::{
         Affinity, Container, LocalObjectReference, NodeAffinity, NodeSelector,
@@ -166,6 +168,138 @@ impl PodBuilder {
         self
     }
 
+    /// Add a [`Volume`] for the storage class `listeners.stackable.tech` with the given listener
+    /// class.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use stackable_operator::builder::PodBuilder;
+    /// # use stackable_operator::builder::ContainerBuilder;
+    /// let pod = PodBuilder::new()
+    ///     .metadata_default()
+    ///     .add_container(
+    ///         ContainerBuilder::new("container")
+    ///             .unwrap()
+    ///             .add_volume_mount("listener", "/path/to/volume")
+    ///             .build(),
+    ///     )
+    ///     .add_listener_volume_by_listener_class("listener", "nodeport")
+    ///     .build()
+    ///     .unwrap();
+    ///
+    /// assert_eq!("\
+    /// apiVersion: v1
+    /// kind: Pod
+    /// metadata: {}
+    /// spec:
+    ///   affinity: {}
+    ///   containers:
+    ///   - name: container
+    ///     volumeMounts:
+    ///     - mountPath: /path/to/volume
+    ///       name: listener
+    ///   enableServiceLinks: false
+    ///   volumes:
+    ///   - ephemeral:
+    ///       volumeClaimTemplate:
+    ///         metadata:
+    ///           annotations:
+    ///             listeners.stackable.tech/listener-class: nodeport
+    ///         spec:
+    ///           accessModes:
+    ///           - ReadWriteMany
+    ///           resources:
+    ///             requests:
+    ///               storage: '1'
+    ///           storageClassName: listeners.stackable.tech
+    ///     name: listener
+    /// ", serde_yaml::to_string(&pod).unwrap())
+    /// ```
+    pub fn add_listener_volume_by_listener_class(
+        &mut self,
+        volume_name: &str,
+        listener_class: &str,
+    ) -> &mut Self {
+        self.add_volume(Volume {
+            name: volume_name.into(),
+            ephemeral: Some(
+                ListenerOperatorVolumeSourceBuilder::new(&ListenerReference::ListenerClass(
+                    listener_class.into(),
+                ))
+                .build(),
+            ),
+            ..Volume::default()
+        });
+        self
+    }
+
+    /// Add a [`Volume`] for the storage class `listeners.stackable.tech` with the given listener
+    /// name.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use stackable_operator::builder::PodBuilder;
+    /// # use stackable_operator::builder::ContainerBuilder;
+    /// let pod = PodBuilder::new()
+    ///     .metadata_default()
+    ///     .add_container(
+    ///         ContainerBuilder::new("container")
+    ///             .unwrap()
+    ///             .add_volume_mount("listener", "/path/to/volume")
+    ///             .build(),
+    ///     )
+    ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener")
+    ///     .build()
+    ///     .unwrap();
+    ///
+    /// assert_eq!("\
+    /// apiVersion: v1
+    /// kind: Pod
+    /// metadata: {}
+    /// spec:
+    ///   affinity: {}
+    ///   containers:
+    ///   - name: container
+    ///     volumeMounts:
+    ///     - mountPath: /path/to/volume
+    ///       name: listener
+    ///   enableServiceLinks: false
+    ///   volumes:
+    ///   - ephemeral:
+    ///       volumeClaimTemplate:
+    ///         metadata:
+    ///           annotations:
+    ///             listeners.stackable.tech/listener-name: preprovisioned-listener
+    ///         spec:
+    ///           accessModes:
+    ///           - ReadWriteMany
+    ///           resources:
+    ///             requests:
+    ///               storage: '1'
+    ///           storageClassName: listeners.stackable.tech
+    ///     name: listener
+    /// ", serde_yaml::to_string(&pod).unwrap())
+    /// ```
+    pub fn add_listener_volume_by_listener_name(
+        &mut self,
+        volume_name: &str,
+        listener_name: &str,
+    ) -> &mut Self {
+        self.add_volume(Volume {
+            name: volume_name.into(),
+            ephemeral: Some(
+                ListenerOperatorVolumeSourceBuilder::new(&ListenerReference::ListenerName(
+                    listener_name.into(),
+                ))
+                .build(),
+            ),
+            ..Volume::default()
+        });
+        self
+    }
+
     pub fn image_pull_secrets(
         &mut self,
         secrets: impl IntoIterator<Item = String> + Iterator<Item = String>,
@@ -173,6 +307,19 @@ impl PodBuilder {
         self.image_pull_secrets
             .get_or_insert_with(Vec::new)
             .extend(secrets.map(|s| LocalObjectReference { name: Some(s) }));
+        self
+    }
+
+    /// Extend the pod's image_pull_secrets field with the pull secrets from a given [ResolvedProductImage]
+    pub fn image_pull_secrets_from_product_image(
+        &mut self,
+        product_image: &ResolvedProductImage,
+    ) -> &mut Self {
+        if let Some(pull_secrets) = &product_image.pull_secrets {
+            self.image_pull_secrets
+                .get_or_insert_with(Vec::new)
+                .extend_from_slice(pull_secrets);
+        }
         self
     }
 
@@ -485,7 +632,7 @@ mod tests {
     }
 
     /// Test if setting a node selector generates the correct node selector labels and node affinity on the Pod,
-    /// while keeping the manually set Pod affinities. Since they are mangled together, it makes sense to make sure that 
+    /// while keeping the manually set Pod affinities. Since they are mangled together, it makes sense to make sure that
     /// one is not replacing the other
     #[rstest]
     fn test_pod_builder_node_selector_and_affinity(

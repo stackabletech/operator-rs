@@ -10,6 +10,77 @@ All notable changes to this project will be documented in this file.
 
 [#520]: https://github.com/stackabletech/operator-rs/pull/520
 
+## [0.29.0] - 2022-12-16
+
+### Added
+
+- Modules for log aggregation added ([#517]).
+
+[#517]: https://github.com/stackabletech/operator-rs/pull/517
+
+## [0.28.0] - 2022-12-08
+
+### Added
+
+- Added `AuthenticationClass` provider static ([#514]).
+
+[#514]: https://github.com/stackabletech/operator-rs/pull/514
+
+## [0.27.1] - 2022-11-17
+
+### Changed
+
+- Changed the separator character between operator and controller names ([#507]).
+
+[#507]: https://github.com/stackabletech/operator-rs/pull/507
+
+## [0.27.0] - 2022-11-14
+
+### Added
+
+- Added product image selection struct ([#476]).
+
+### Changed
+
+- BREAKING: `get_recommended_labels` and `with_recommended_labels` now takes a struct of named arguments ([#501]).
+- BREAKING: `get_recommended_labels` (and co) now takes the operator and controller names separately ([#492]).
+- BREAKING: `ClusterResources` now takes the operator and controller names separately ([#492]).
+  - When upgrading, please use FQDN-style names for the operators (`{operator}.stackable.tech`).
+- Bump kube to `0.76.0` ([#476]).
+- Bump opentelemetry crates ([#502]).
+- Bump clap to 4.0 ([#503]).
+
+[#476]: https://github.com/stackabletech/operator-rs/pull/476
+[#492]: https://github.com/stackabletech/operator-rs/pull/492
+[#501]: https://github.com/stackabletech/operator-rs/pull/501
+[#502]: https://github.com/stackabletech/operator-rs/pull/502
+[#503]: https://github.com/stackabletech/operator-rs/pull/503
+
+## [0.26.1] - 2022-11-08
+
+### Added
+
+- Builder for `EphemeralVolumeSource`s added which are used by the listener-operator ([#496]).
+- Exposed parser for Kubernetes `Quantity` values ([#499]).
+
+[#496]: https://github.com/stackabletech/operator-rs/pull/496
+[#499]: https://github.com/stackabletech/operator-rs/pull/499
+
+## [0.26.0] - 2022-10-20
+
+### Added
+
+- Added new Fragment (partial configuration) machinery ([#445]).
+
+### Changed
+
+- kube-rs: 0.74.0 -> 0.75.0 ([#490]).
+- BREAKING: `Client` methods now take the namespace as a `&str` (for namespaced resources) or
+  `&()` (for cluster-scoped resources), rather than always taking an `Option<&str>` ([#490]).
+
+[#445]: https://github.com/stackabletech/operator-rs/pull/445
+[#490]: https://github.com/stackabletech/operator-rs/pull/490
+
 ## [0.25.3] - 2022-10-13
 
 ### Added
@@ -65,6 +136,9 @@ This is a rerelease of 0.25.1 which some last-minute incompatible API changes to
 
 - BREAKING: The `managed_by` label must be passed explicitly to the
   `ObjectMetaBuilder::with_recommended_labels` function ([#436]).
+- BREAKING: Renamed `#[merge(bounds)]` to `#[merge(bound)]` ([#445]).
+- BREAKING: Added `Fragment` variants of most types in `stackable_operator::commons::resources` ([#445]).
+  - serde impls have been moved to `FooFragment` variants, consumers that are not ready to use the full fragment machinery should switch to using these fragment variants.
 
 [#436]: https://github.com/stackabletech/operator-rs/pull/436
 [#451]: https://github.com/stackabletech/operator-rs/pull/451

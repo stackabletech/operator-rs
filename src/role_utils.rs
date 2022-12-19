@@ -85,7 +85,13 @@ use std::{
     fmt::{Debug, Display},
 };
 
-use crate::product_config_utils::Configuration;
+use crate::{
+    config::{
+        fragment::{self, FromFragment},
+        merge::Merge,
+    },
+    product_config_utils::Configuration,
+};
 use derivative::Derivative;
 use k8s_openapi::api::core::v1::Affinity;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
@@ -98,7 +104,7 @@ use serde::{Deserialize, Serialize};
     rename_all = "camelCase",
     bound(deserialize = "T: Default + Deserialize<'de>")
 )]
-pub struct CommonConfiguration<T: Sized> {
+pub struct CommonConfiguration<T> {
     #[serde(default)]
     // We can't depend on T being `Default`, since that trait is not object-safe
     // We only need to generate schemas for fully specified types, but schemars_derive
@@ -123,7 +129,7 @@ fn config_schema_default() -> serde_json::Value {
     rename_all = "camelCase",
     bound(deserialize = "T: Default + Deserialize<'de>")
 )]
-pub struct Role<T: Sized> {
+pub struct Role<T> {
     #[serde(flatten)]
     pub config: CommonConfiguration<T>,
     pub role_groups: HashMap<String, RoleGroup<T>>,
@@ -180,6 +186,24 @@ pub struct RoleGroup<T> {
     pub replicas: Option<u16>,
     pub selector: Option<LabelSelector>,
     pub affinity: Option<Affinity>,
+}
+
+impl<T> RoleGroup<T> {
+    pub fn validate_config<C>(
+        &self,
+        role: &Role<T>,
+        default_config: &T,
+    ) -> Result<C, fragment::ValidationError>
+    where
+        C: FromFragment<Fragment = T>,
+        T: Merge + Clone,
+    {
+        let mut role_config = role.config.config.clone();
+        role_config.merge(default_config);
+        let mut rolegroup_config = self.config.config.clone();
+        rolegroup_config.merge(&role_config);
+        fragment::validate(rolegroup_config)
+    }
 }
 
 /// A reference to a named role group of a given cluster object

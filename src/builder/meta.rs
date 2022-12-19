@@ -1,5 +1,5 @@
 use crate::error::{Error, OperatorResult};
-use crate::labels;
+use crate::labels::{self, ObjectLabels};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
 use kube::{Resource, ResourceExt};
 use std::collections::BTreeMap;
@@ -150,21 +150,9 @@ impl ObjectMetaBuilder {
     /// flexibility if needed.
     pub fn with_recommended_labels<T: Resource>(
         &mut self,
-        resource: &T,
-        app_name: &str,
-        app_version: &str,
-        app_managed_by: &str,
-        app_component: &str,
-        role_name: &str,
+        object_labels: ObjectLabels<T>,
     ) -> &mut Self {
-        let recommended_labels = labels::get_recommended_labels(
-            resource,
-            app_name,
-            app_version,
-            app_managed_by,
-            app_component,
-            role_name,
-        );
+        let recommended_labels = labels::get_recommended_labels(object_labels);
         self.labels
             .get_or_insert_with(BTreeMap::new)
             .extend(recommended_labels);
@@ -332,7 +320,15 @@ mod tests {
             .namespace("bar")
             .ownerreference_from_resource(&pod, Some(true), Some(false))
             .unwrap()
-            .with_recommended_labels(&pod, "test_app", "1.0", "app-operator", "component", "role")
+            .with_recommended_labels(ObjectLabels {
+                owner: &pod,
+                app_name: "test_app",
+                app_version: "1.0",
+                operator_name: "app.stackable.tech",
+                controller_name: "appcluster",
+                role: "role",
+                role_group: "rolegroup",
+            })
             .with_annotation("foo", "bar")
             .build();
 
