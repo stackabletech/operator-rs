@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Extended the `PodBuilder` with `pod_affinity`, `pod_anti_affinity`, `node_selector` and their `*_opt` variants ([#520])
+
+[#520]: https://github.com/stackabletech/operator-rs/pull/520
+
 ## [0.25.3] - 2022-10-13
 
 ### Added
