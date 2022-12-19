@@ -378,7 +378,6 @@ impl PodBuilder {
                     node_affinity: Some(node_affinity),
                     pod_affinity: self.pod_affinity.clone(),
                     pod_anti_affinity: self.pod_anti_affinity.clone(),
-                    ..Affinity::default()
                 })
                 .or_else(|| {
                     Some(Affinity {
