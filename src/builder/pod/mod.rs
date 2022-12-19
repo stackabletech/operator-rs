@@ -374,7 +374,7 @@ impl PodBuilder {
             node_name: self.node_name.clone(),
             node_selector: node_selector_labels,
             affinity: Some(Affinity {
-                node_affinity: node_affinity,
+                node_affinity,
                 pod_affinity: self.pod_affinity.clone(),
                 pod_anti_affinity: self.pod_anti_affinity.clone(),
             }),
