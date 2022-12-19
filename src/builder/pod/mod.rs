@@ -15,8 +15,7 @@ use k8s_openapi::{
 };
 use std::collections::BTreeMap;
 
-/// A builder to build [`Pod`] objects.
-///
+/// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
 #[derive(Clone, Default)]
 pub struct PodBuilder {
     containers: Vec<Container>,
@@ -90,12 +89,12 @@ impl PodBuilder {
         self
     }
 
-    pub fn maybe_pod_affinity(&mut self, affinity: Option<PodAffinity>) -> &mut Self {
+    pub fn pod_affinity_opt(&mut self, affinity: Option<PodAffinity>) -> &mut Self {
         self.pod_affinity = affinity;
         self
     }
 
-    pub fn maybe_pod_anti_affinity(&mut self, anti_affinity: Option<PodAntiAffinity>) -> &mut Self {
+    pub fn pod_anti_affinity_opt(&mut self, anti_affinity: Option<PodAntiAffinity>) -> &mut Self {
         self.pod_anti_affinity = anti_affinity;
         self
     }
@@ -105,7 +104,7 @@ impl PodBuilder {
         self
     }
 
-    pub fn maybe_node_selector(&mut self, node_selector: Option<LabelSelector>) -> &mut Self {
+    pub fn node_selector_opt(&mut self, node_selector: Option<LabelSelector>) -> &mut Self {
         self.node_selector = node_selector;
         self
     }
