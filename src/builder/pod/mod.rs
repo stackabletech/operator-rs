@@ -86,13 +86,13 @@ impl PodBuilder {
         self
     }
 
-    pub fn pod_anti_affinity(&mut self, anti_affinity: PodAntiAffinity) -> &mut Self {
-        self.pod_anti_affinity = Some(anti_affinity);
+    pub fn pod_affinity_opt(&mut self, affinity: Option<PodAffinity>) -> &mut Self {
+        self.pod_affinity = affinity;
         self
     }
 
-    pub fn pod_affinity_opt(&mut self, affinity: Option<PodAffinity>) -> &mut Self {
-        self.pod_affinity = affinity;
+    pub fn pod_anti_affinity(&mut self, anti_affinity: PodAntiAffinity) -> &mut Self {
+        self.pod_anti_affinity = Some(anti_affinity);
         self
     }
 
