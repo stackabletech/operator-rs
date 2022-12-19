@@ -36,7 +36,7 @@ opentelemetry-jaeger = { version = "0.16.0", features = ["rt-tokio"] }
 stackable-operator-derive = { path = "stackable-operator-derive" }
 
 [dev-dependencies]
-rstest = "0.15.0"
+rstest = "0.16.0"
 tempfile = "3.3.0"
 
 [features]

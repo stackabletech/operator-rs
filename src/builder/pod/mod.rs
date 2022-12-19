@@ -280,14 +280,72 @@ impl PodBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::builder::{
-        meta::ObjectMetaBuilder,
-        pod::{container::ContainerBuilder, volume::VolumeBuilder, PodBuilder},
+    use super::*;
+    use crate::{
+        builder::{
+            meta::ObjectMetaBuilder,
+            pod::{container::ContainerBuilder, volume::VolumeBuilder},
+        },
     };
     use k8s_openapi::{
         api::core::v1::{LocalObjectReference, PodAffinity, PodAffinityTerm},
         apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
     };
+    use rstest::*;
+
+    // A fixture for a simple container with a name and image
+    #[fixture]
+    fn dummy_container() -> Container {
+        ContainerBuilder::new("container")
+            .expect("ContainerBuilder not created")
+            .image("private-comapany/product:2.4.14")
+            .build()
+    }
+
+    /// A [`PodBuilder`] that already contains the minum setup to build a Pod (name and container).
+    #[fixture]
+    fn pod_builder_with_name_and_container(dummy_container: Container) -> PodBuilder {
+        let mut builder = PodBuilder::new();
+        builder
+            .metadata(ObjectMetaBuilder::new().name("testpod").build())
+            .add_container(dummy_container);
+        builder
+    }
+
+    // A fixture for a node selector to use on a Pod, and the resulting node selector labels and affinity.
+    #[fixture]
+    fn node_selector1() -> (
+        LabelSelector,
+        Option<BTreeMap<String, String>>,
+        Option<Affinity>,
+    ) {
+        let labels = BTreeMap::from([("key".to_owned(), "value".to_owned())]);
+        let label_selector = LabelSelector {
+            match_expressions: Some(vec![LabelSelectorRequirement {
+                key: "security".to_owned(),
+                operator: "In".to_owned(),
+                values: Some(vec!["S1".to_owned(), "S2".to_owned()]),
+            }]),
+            match_labels: Some(labels.clone()),
+        };
+        let affinity = Some(Affinity {
+            node_affinity: Some(NodeAffinity {
+                required_during_scheduling_ignored_during_execution: Some(NodeSelector {
+                    node_selector_terms: vec![NodeSelectorTerm {
+                        match_expressions: Some(vec![NodeSelectorRequirement {
+                            key: "security".to_owned(),
+                            operator: "In".to_owned(),
+                            values: Some(vec!["S1".to_owned(), "S2".to_owned()]),
+                        }]),
+                        ..Default::default()
+                    }],
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+        (label_selector, Some(labels), affinity)
+    }
 
     #[test]
     fn test_pod_builder() {
@@ -369,16 +427,9 @@ mod tests {
         assert_eq!(pod.metadata.name.unwrap(), "foo");
     }
 
-    #[test]
-    fn test_pod_builder_image_pull_secrets() {
-        let container = ContainerBuilder::new("container")
-            .expect("ContainerBuilder not created")
-            .image("private-comapany/product:2.4.14")
-            .build();
-
-        let pod = PodBuilder::new()
-            .metadata(ObjectMetaBuilder::new().name("testpod").build())
-            .add_container(container)
+    #[rstest]
+    fn test_pod_builder_image_pull_secrets(mut pod_builder_with_name_and_container: PodBuilder) {
+        let pod = pod_builder_with_name_and_container
             .image_pull_secrets(vec!["company-registry-secret".to_string()].into_iter())
             .build()
             .unwrap();
@@ -389,5 +440,47 @@ mod tests {
                 name: Some("company-registry-secret".to_string())
             }]
         );
+    }
+
+    #[rstest]
+    fn test_pod_builder_node_selector(
+        mut pod_builder_with_name_and_container: PodBuilder,
+        node_selector1: (
+            LabelSelector,
+            Option<BTreeMap<String, String>>,
+            Option<Affinity>,
+        ),
+    ) {
+        let (node_selector, expected_labels, expected_affinity) = node_selector1;
+        let pod = pod_builder_with_name_and_container
+            .node_selector_opt(Some(node_selector))
+            .build()
+            .unwrap();
+
+        // asserts
+        let spec = pod.spec.unwrap();
+        assert_eq!(spec.node_selector, expected_labels);
+        assert_eq!(spec.affinity, expected_affinity);
+    }
+
+    #[rstest]
+    fn test_pod_builder_node_selector_opt(
+        mut pod_builder_with_name_and_container: PodBuilder,
+        node_selector1: (
+            LabelSelector,
+            Option<BTreeMap<String, String>>,
+            Option<Affinity>,
+        ),
+    ) {
+        let (node_selector, expected_labels, expected_affinity) = node_selector1;
+        let pod = pod_builder_with_name_and_container
+            .node_selector(node_selector)
+            .build()
+            .unwrap();
+
+        // asserts
+        let spec = pod.spec.unwrap();
+        assert_eq!(spec.node_selector, expected_labels);
+        assert_eq!(spec.affinity, expected_affinity);
     }
 }
