@@ -368,7 +368,7 @@ where
     T: Clone + Display + Ord + strum::IntoEnumIterator,
 {
     LoggingFragment {
-        enable_vector_agent: Some(true),
+        enable_vector_agent: Some(false),
         containers: T::iter()
             .map(|container| (container, default_container_log_config()))
             .collect(),

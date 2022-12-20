@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Disable Vector agent by default ([#526]).
+
+[#526]: https://github.com/stackabletech/operator-rs/pull/526
+
 ## [0.30.1] - 2022-12-19
 
 ### Removed
