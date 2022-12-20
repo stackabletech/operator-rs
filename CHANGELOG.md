@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.30.2] - 2022-12-20
+
 ### Changed
 
 - Disable Vector agent by default ([#526]).
