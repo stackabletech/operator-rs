@@ -15,7 +15,7 @@ either = "1.8.0"
 futures = "0.3.25"
 json-patch = "0.2.6"
 k8s-openapi = { version = "0.16.0", default-features = false, features = ["schemars", "v1_24"] }
-kube = { version = "0.76.0", features = ["jsonpatch", "runtime", "derive"] }
+kube = { version = "0.78.0", features = ["jsonpatch", "runtime", "derive"] }
 lazy_static = "1.4.0"
 product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.4.0" }
 rand = "0.8.5"
