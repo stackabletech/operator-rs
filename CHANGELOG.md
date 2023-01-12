@@ -9,8 +9,10 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Disable Vector agent by default ([#526]).
+- Bump kube to 0.78.0 and k8s-openapi to 0.17.0. Bump k8s version from 1.24 to 1.26 ([#533]).
 
 [#526]: https://github.com/stackabletech/operator-rs/pull/526
+[#533]: https://github.com/stackabletech/operator-rs/pull/533
 
 ## [0.30.1] - 2022-12-19
 
