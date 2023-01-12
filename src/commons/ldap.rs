@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::tls::{CaCert, TlsServerVerification, TlsVerification};
 
-const SECRET_BASE_PATH: &str = "/stackable/secrets";
+pub const SECRET_BASE_PATH: &str = "/stackable/secrets";
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -40,8 +40,8 @@ impl LdapAuthenticationProvider {
 
     /// This functions adds
     ///
-    /// * The needed volumes to the Pod
-    /// * The needed volume_mounts to all the Containers in the list (e.g. init + main container)
+    /// * The needed volumes to the PodBuilder
+    /// * The needed volume_mounts to all the ContainerBuilder in the list (e.g. init + main container)
     ///
     /// This function will handle
     ///
@@ -58,16 +58,10 @@ impl LdapAuthenticationProvider {
 
             pod_builder.add_volume(bind_credentials.to_volume(&volume_name));
             for cb in container_builders.iter_mut() {
-                cb.add_volume_mount(&volume_name, format!("{SECRET_BASE_PATH}{secret_class}"));
+                cb.add_volume_mount(&volume_name, format!("{SECRET_BASE_PATH}/{secret_class}"));
             }
         }
-        if let Some(Tls {
-            verification:
-                TlsVerification::Server(TlsServerVerification {
-                    ca_cert: CaCert::SecretClass(secret_class),
-                }),
-        }) = &self.tls
-        {
+        if let Some(secret_class) = self.tls_ca_cert_secret_class() {
             let volume_name = format!("{secret_class}-ca-cert");
             let volume = SecretClassVolume {
                 secret_class: secret_class.to_string(),
@@ -77,7 +71,7 @@ impl LdapAuthenticationProvider {
 
             pod_builder.add_volume(volume);
             for cb in container_builders.iter_mut() {
-                cb.add_volume_mount(&volume_name, format!("{SECRET_BASE_PATH}{secret_class}"));
+                cb.add_volume_mount(&volume_name, format!("{SECRET_BASE_PATH}/{secret_class}"));
             }
         }
     }
@@ -87,14 +81,20 @@ impl LdapAuthenticationProvider {
         self.bind_credentials.as_ref().map(|bind_credentials| {
             let secret_class = &bind_credentials.secret_class;
             (
-                format!("{SECRET_BASE_PATH}{secret_class}/user"),
-                format!("{SECRET_BASE_PATH}{secret_class}/password"),
+                format!("{SECRET_BASE_PATH}/{secret_class}/user"),
+                format!("{SECRET_BASE_PATH}/{secret_class}/password"),
             )
         })
     }
 
     /// Returns the path of the ca.crt that should be used to verify the LDAP server certificate
     pub fn tls_ca_cert_mount_path(&self) -> Option<String> {
+        self.tls_ca_cert_secret_class()
+            .map(|secret_class| format!("{SECRET_BASE_PATH}/{secret_class}/ca.crt"))
+    }
+
+    /// Extracts the secret class that provides the ca used to verify the LDAP server certificate
+    fn tls_ca_cert_secret_class(&self) -> Option<String> {
         if let Some(Tls {
             verification:
                 TlsVerification::Server(TlsServerVerification {
@@ -102,7 +102,7 @@ impl LdapAuthenticationProvider {
                 }),
         }) = &self.tls
         {
-            Some(format!("{SECRET_BASE_PATH}{secret_class}/ca.crt"))
+            Some(secret_class.to_string())
         } else {
             None
         }
