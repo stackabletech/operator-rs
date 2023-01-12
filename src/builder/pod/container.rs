@@ -359,7 +359,7 @@ mod tests {
                 ]
                 .into(),
             ),
-            claims: None,
+            ..ResourceRequirements::default()
         };
 
         let container = ContainerBuilder::new("testcontainer")
