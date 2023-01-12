@@ -50,16 +50,15 @@ impl LdapAuthenticationProvider {
     pub fn add_volumes_and_mounts(
         &self,
         pod_builder: &mut PodBuilder,
-        container_builders: &mut [ContainerBuilder],
+        container_builders: Vec<&mut ContainerBuilder>,
     ) {
+        let mut mounts: Vec<(String, String)> = Vec::new();
         if let Some(bind_credentials) = &self.bind_credentials {
-            let secret_class = &bind_credentials.secret_class;
+            let secret_class = bind_credentials.secret_class.to_owned();
             let volume_name = format!("{secret_class}-bind-credentials");
 
             pod_builder.add_volume(bind_credentials.to_volume(&volume_name));
-            for cb in container_builders.iter_mut() {
-                cb.add_volume_mount(&volume_name, format!("{SECRET_BASE_PATH}/{secret_class}"));
-            }
+            mounts.push((volume_name, secret_class));
         }
         if let Some(secret_class) = self.tls_ca_cert_secret_class() {
             let volume_name = format!("{secret_class}-ca-cert");
@@ -70,8 +69,11 @@ impl LdapAuthenticationProvider {
             .to_volume(&volume_name);
 
             pod_builder.add_volume(volume);
-            for cb in container_builders.iter_mut() {
-                cb.add_volume_mount(&volume_name, format!("{SECRET_BASE_PATH}/{secret_class}"));
+            mounts.push((volume_name, secret_class));
+        }
+        for cb in container_builders {
+            for (mount, secret_class) in mounts.iter() {
+                cb.add_volume_mount(mount, format!("{SECRET_BASE_PATH}/{secret_class}"));
             }
         }
     }
