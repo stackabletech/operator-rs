@@ -89,6 +89,11 @@ impl LdapAuthenticationProvider {
         })
     }
 
+    /// Whether TLS should be used
+    pub fn use_tls(&self) -> bool {
+        self.tls.is_some()
+    }
+
     /// Returns the path of the ca.crt that should be used to verify the LDAP server certificate
     pub fn tls_ca_cert_mount_path(&self) -> Option<String> {
         self.tls_ca_cert_secret_class()
