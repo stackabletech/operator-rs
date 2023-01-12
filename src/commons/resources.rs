@@ -310,6 +310,10 @@ impl<T, K> Into<ResourceRequirements> for Resources<T, K> {
             } else {
                 Some(requests)
             },
+            // Dynamic resource allocation by using resourceClaims was added as *alpha* feature in Kubernetes 1.26.
+            // We might want to support it after a while, but currently all the customers would need to active
+            // the `DynamicResourceAllocation` feature gate.
+            claims: None,
         }
     }
 }

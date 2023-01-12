@@ -359,6 +359,7 @@ mod tests {
                 ]
                 .into(),
             ),
+            claims: None,
         };
 
         let container = ContainerBuilder::new("testcontainer")
