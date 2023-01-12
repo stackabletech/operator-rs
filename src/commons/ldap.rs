@@ -1,7 +1,12 @@
-use crate::commons::secret_class::SecretClassVolume;
+use crate::builder::ContainerBuilder;
 use crate::commons::tls::Tls;
+use crate::{builder::PodBuilder, commons::secret_class::SecretClassVolume};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+use super::tls::{CaCert, TlsServerVerification, TlsVerification};
+
+const SECRET_BASE_PATH: &str = "/stackable/secrets";
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -30,6 +35,76 @@ impl LdapAuthenticationProvider {
         match self.tls {
             None => 389,
             Some(_) => 636,
+        }
+    }
+
+    /// This functions adds
+    ///
+    /// * The needed volumes to the Pod
+    /// * The needed volume_mounts to all the Containers in the list (e.g. init + main container)
+    ///
+    /// This function will handle
+    ///
+    /// * Bind credentials needed to connect to LDAP server
+    /// * Tls secret class used to verify the cert of the LDAP server
+    pub fn add_volumes_and_mounts(
+        &self,
+        pod_builder: &mut PodBuilder,
+        container_builders: &mut [ContainerBuilder],
+    ) {
+        if let Some(bind_credentials) = &self.bind_credentials {
+            let secret_class = &bind_credentials.secret_class;
+            let volume_name = format!("{secret_class}-bind-credentials");
+
+            pod_builder.add_volume(bind_credentials.to_volume(&volume_name));
+            for cb in container_builders.iter_mut() {
+                cb.add_volume_mount(&volume_name, format!("{SECRET_BASE_PATH}{secret_class}"));
+            }
+        }
+        if let Some(Tls {
+            verification:
+                TlsVerification::Server(TlsServerVerification {
+                    ca_cert: CaCert::SecretClass(secret_class),
+                }),
+        }) = &self.tls
+        {
+            let volume_name = format!("{secret_class}-ca-cert");
+            let volume = SecretClassVolume {
+                secret_class: secret_class.to_string(),
+                scope: None,
+            }
+            .to_volume(&volume_name);
+
+            pod_builder.add_volume(volume);
+            for cb in container_builders.iter_mut() {
+                cb.add_volume_mount(&volume_name, format!("{SECRET_BASE_PATH}{secret_class}"));
+            }
+        }
+    }
+
+    /// Returns the path of the files containing bind user and password
+    pub fn bind_credentials_mount_paths(&self) -> Option<(String, String)> {
+        self.bind_credentials.as_ref().map(|bind_credentials| {
+            let secret_class = &bind_credentials.secret_class;
+            (
+                format!("{SECRET_BASE_PATH}{secret_class}/user"),
+                format!("{SECRET_BASE_PATH}{secret_class}/password"),
+            )
+        })
+    }
+
+    /// Returns the path of the ca.crt that should be used to verify the LDAP server certificate
+    pub fn tls_ca_cert_mount_path(&self) -> Option<String> {
+        if let Some(Tls {
+            verification:
+                TlsVerification::Server(TlsServerVerification {
+                    ca_cert: CaCert::SecretClass(secret_class),
+                }),
+        }) = &self.tls
+        {
+            Some(format!("{SECRET_BASE_PATH}{secret_class}/ca.crt"))
+        } else {
+            None
         }
     }
 }
