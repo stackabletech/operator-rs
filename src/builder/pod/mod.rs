@@ -163,10 +163,10 @@ impl PodBuilder {
         self
     }
 
-    /// Utility function to add the common case of adding an empty dir Volume
-    /// with the given name and no medium and no quantity
-    pub fn add_empty_dir_volume(&mut self, name: impl Into<String>) {
-        self.volumes.get_or_insert_with(Vec::new).push(
+    /// Utility function for the common case of adding an empty dir Volume
+    /// with the given name and no medium and no quantity.
+    pub fn add_volume_with_empty_dir(&mut self, name: impl Into<String>) -> &mut Self {
+        self.add_volume(
             VolumeBuilder::new(name)
                 .with_empty_dir(None::<String>, None)
                 .build(),
