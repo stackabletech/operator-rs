@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.31.0] - 2023-01-16
+
 ### Added
 
 - Extended the `LdapAuthenticationProvider` with functionality to build add Volumes and Mounts to PodBuilder and ContainerBuilder ([#535]).
