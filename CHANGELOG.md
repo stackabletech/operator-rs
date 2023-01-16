@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Extended the `LdapAuthenticationProvider` with functionality to build add Volumes and Mounts to PodBuilder and ContainerBuilder ([#535])
+
+[#535]: https://github.com/stackabletech/operator-rs/pull/535
+
 ## [0.30.2] - 2022-12-20
 
 ### Changed
