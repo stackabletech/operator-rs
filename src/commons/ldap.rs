@@ -106,7 +106,7 @@ impl LdapAuthenticationProvider {
     }
 
     /// Returns the path of the ca.crt that should be used to verify the LDAP server certificate
-    /// if TLS verification with a CA cert is configured.
+    /// if TLS verification with a CA cert from a SecretClass is configured.
     pub fn tls_ca_cert_mount_path(&self) -> Option<String> {
         self.tls_ca_cert_secret_class()
             .map(|secret_class| format!("{SECRET_BASE_PATH}/{secret_class}/ca.crt"))
