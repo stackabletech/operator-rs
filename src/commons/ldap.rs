@@ -96,7 +96,7 @@ impl LdapAuthenticationProvider {
     }
 
     /// Whether TLS verification is configured
-    /// Returns false if TLS itsel isn't configured
+    /// Returns false if TLS itself isn't configured
     pub fn use_tls_verification(&self) -> bool {
         if let Some(tls) = &self.tls {
             tls.verification != TlsVerification::None {}
