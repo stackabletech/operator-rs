@@ -6,9 +6,11 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Extended the `LdapAuthenticationProvider` with functionality to build add Volumes and Mounts to PodBuilder and ContainerBuilder ([#535])
+- Extended the `LdapAuthenticationProvider` with functionality to build add Volumes and Mounts to PodBuilder and ContainerBuilder ([#535]).
+- extended the `PodBuilder` with `add_volume_with_empty_dir` utility function ([#536]).
 
 [#535]: https://github.com/stackabletech/operator-rs/pull/535
+[#536]: https://github.com/stackabletech/operator-rs/pull/536
 
 ## [0.30.2] - 2022-12-20
 
@@ -32,7 +34,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Extended the `PodBuilder` with `pod_affinity`, `pod_anti_affinity`, `node_selector` and their `*_opt` variants ([#520])
+- Extended the `PodBuilder` with `pod_affinity`, `pod_anti_affinity`, `node_selector` and their `*_opt` variants ([#520]).
 
 [#520]: https://github.com/stackabletech/operator-rs/pull/520
 
