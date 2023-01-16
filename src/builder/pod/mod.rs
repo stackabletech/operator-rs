@@ -6,7 +6,7 @@ use crate::builder::meta::ObjectMetaBuilder;
 use crate::commons::product_image_selection::ResolvedProductImage;
 use crate::error::{Error, OperatorResult};
 
-use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference};
+use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
 use k8s_openapi::{
     api::core::v1::{
         Affinity, Container, LocalObjectReference, NodeAffinity, NodeSelector,
@@ -161,6 +161,16 @@ impl PodBuilder {
     pub fn add_volume(&mut self, volume: Volume) -> &mut Self {
         self.volumes.get_or_insert_with(Vec::new).push(volume);
         self
+    }
+
+    /// Utility function to add the common case of adding an empty dir Volume
+    /// with the given name and no medium and no quantity
+    pub fn add_empty_dir_volume(&mut self, name: impl Into<String>) {
+        self.volumes.get_or_insert_with(Vec::new).push(
+            VolumeBuilder::new(name)
+                .with_empty_dir(None::<String>, None)
+                .build(),
+        )
     }
 
     pub fn add_volumes(&mut self, volumes: Vec<Volume>) -> &mut Self {
