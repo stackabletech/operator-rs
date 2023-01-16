@@ -163,7 +163,7 @@ impl PodBuilder {
         self
     }
 
-    /// Utility function for the common case of adding an empty dir Volume
+    /// Utility function for the common case of adding an emptyDir Volume
     /// with the given name and no medium and no quantity.
     pub fn add_volume_with_empty_dir(&mut self, name: impl Into<String>) -> &mut Self {
         self.add_volume(
