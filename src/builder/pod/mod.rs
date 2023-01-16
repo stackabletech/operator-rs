@@ -7,6 +7,7 @@ use crate::commons::product_image_selection::ResolvedProductImage;
 use crate::error::{Error, OperatorResult};
 
 use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
+use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::{
     api::core::v1::{
         Affinity, Container, LocalObjectReference, NodeAffinity, NodeSelector,
@@ -165,10 +166,14 @@ impl PodBuilder {
 
     /// Utility function for the common case of adding an emptyDir Volume
     /// with the given name and no medium and no quantity.
-    pub fn add_empty_dir_volume(&mut self, name: impl Into<String>) -> &mut Self {
+    pub fn add_empty_dir_volume(
+        &mut self,
+        name: impl Into<String>,
+        quantity: Option<Quantity>,
+    ) -> &mut Self {
         self.add_volume(
             VolumeBuilder::new(name)
-                .with_empty_dir(None::<String>, None)
+                .with_empty_dir(None::<String>, quantity)
                 .build(),
         )
     }
