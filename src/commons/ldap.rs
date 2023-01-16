@@ -78,7 +78,8 @@ impl LdapAuthenticationProvider {
         }
     }
 
-    /// Returns the path of the files containing bind user and password
+    /// Returns the path of the files containing bind user and password.
+    /// This will be None if there are no credentials for this LDAP connection.
     pub fn bind_credentials_mount_paths(&self) -> Option<(String, String)> {
         self.bind_credentials.as_ref().map(|bind_credentials| {
             let secret_class = &bind_credentials.secret_class;
@@ -94,13 +95,15 @@ impl LdapAuthenticationProvider {
         self.tls.is_some()
     }
 
-    /// Returns the path of the ca.crt that should be used to verify the LDAP server certificate
+    /// Returns the path of the ca.crt that should be used to verify the LDAP server certificate.
+    /// This will be None if TLS is disabled or TLS verification is disabled.
     pub fn tls_ca_cert_mount_path(&self) -> Option<String> {
         self.tls_ca_cert_secret_class()
             .map(|secret_class| format!("{SECRET_BASE_PATH}/{secret_class}/ca.crt"))
     }
 
-    /// Extracts the secret class that provides the ca used to verify the LDAP server certificate
+    /// Extracts the secret class that provides the CA used to verify the LDAP server certificate.
+    /// This will be None if TLS is disabled or TLS verification is disabled.
     fn tls_ca_cert_secret_class(&self) -> Option<String> {
         if let Some(Tls {
             verification:
@@ -109,7 +112,7 @@ impl LdapAuthenticationProvider {
                 }),
         }) = &self.tls
         {
-            Some(secret_class.to_string())
+            Some(secret_class.to_owned())
         } else {
             None
         }
