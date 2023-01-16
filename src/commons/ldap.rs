@@ -90,20 +90,29 @@ impl LdapAuthenticationProvider {
         })
     }
 
-    /// Whether TLS should be used
+    /// Whether TLS is configured
     pub fn use_tls(&self) -> bool {
         self.tls.is_some()
     }
 
-    /// Returns the path of the ca.crt that should be used to verify the LDAP server certificate.
-    /// This will be None if TLS is disabled or TLS verification is disabled.
+    /// Whether TLS verification is configured
+    /// Returns false if TLS itsel isn't configured
+    pub fn use_tls_verification(&self) -> bool {
+        if let Some(tls) = &self.tls {
+            tls.verification != TlsVerification::None {  }
+        } else {
+            false
+        }
+    }
+
+    /// Returns the path of the ca.crt that should be used to verify the LDAP server certificate
+    /// if TLS verification with a CA cert is configured.
     pub fn tls_ca_cert_mount_path(&self) -> Option<String> {
         self.tls_ca_cert_secret_class()
             .map(|secret_class| format!("{SECRET_BASE_PATH}/{secret_class}/ca.crt"))
     }
 
     /// Extracts the secret class that provides the CA used to verify the LDAP server certificate.
-    /// This will be None if TLS is disabled or TLS verification is disabled.
     fn tls_ca_cert_secret_class(&self) -> Option<String> {
         if let Some(Tls {
             verification:
