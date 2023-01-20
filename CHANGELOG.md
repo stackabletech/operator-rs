@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Processing of Python log files added to the Vector agent configuration ([#539]).
+
+[#539]: https://github.com/stackabletech/operator-rs/pull/539
+
 ## [0.32.1] - 2023-01-24
 
 ### Fixed

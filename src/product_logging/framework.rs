@@ -648,6 +648,10 @@ type = "file"
 include = ["{STACKABLE_LOG_DIR}/*/*.log4j2.xml"]
 line_delimiter = "\r\n"
 
+[sources.files_py]
+type = "file"
+include = ["{STACKABLE_LOG_DIR}/*/*.py.json"]
+
 [transforms.processed_files_stdout]
 inputs = ["files_stdout"]
 type = "remap"
@@ -756,6 +760,27 @@ if thrown != null {{
     }}
 }}
 .message = join!(compact([parsed_event.Message, exception]), "\n")
+'''
+
+[transforms.processed_files_py]
+inputs = ["files_py"]
+type = "remap"
+source = '''
+parsed_event = parse_json!(.message)
+.timestamp = parse_timestamp!(parsed_event.asctime, "%F %T,%3f")
+.logger = parsed_event.name
+if parsed_event.levelname == "DEBUG" {{
+  .level = "DEBUG"
+}} else if parsed_event.levelname == "INFO" {{
+  .level = "INFO"
+}} else if parsed_event.levelname == "WARNING" {{
+  .level = "WARN"
+}} else if parsed_event.levelname == "ERROR" {{
+  .level = "ERROR"
+}} else if parsed_event.levelname == "CRITICAL" {{
+  .level = "FATAL"
+}}
+.message = parsed_event.message
 '''
 
 [transforms.extended_logs_files]
