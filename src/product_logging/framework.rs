@@ -359,8 +359,8 @@ appender.CONSOLE.filter.threshold.level = {console_log_level}
 
 appender.FILE.type = RollingFile
 appender.FILE.name = FILE
-appender.FILE.fileName= {log_dir}/{log_file}
-appender.FILE.filePattern= {log_dir}/{log_file}.%i
+appender.FILE.fileName = {log_dir}/{log_file}
+appender.FILE.filePattern = {log_dir}/{log_file}.%i
 appender.FILE.layout.type = XMLLayout
 appender.FILE.policies.type = Policies
 appender.FILE.policies.size.type = SizeBasedTriggeringPolicy
