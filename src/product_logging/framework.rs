@@ -317,16 +317,18 @@ pub fn create_log4j_2_config(
 ) -> String {
     let number_of_archived_log_files = 1;
 
-    let logger_names = format!(
-        "loggers = {}",
-        config
-            .loggers
-            .iter()
-            .filter(|(name, _)| name.as_str() != AutomaticContainerLogConfig::ROOT_LOGGER)
-            .map(|(name, _)| name.escape_default().to_string())
-            .collect::<Vec<String>>()
-            .join(", ")
-    );
+    let logger_names = config
+        .loggers
+        .iter()
+        .filter(|(name, _)| name.as_str() != AutomaticContainerLogConfig::ROOT_LOGGER)
+        .map(|(name, _)| name.escape_default().to_string())
+        .collect::<Vec<String>>()
+        .join(", ");
+    let loggers = if logger_names.is_empty() {
+        "".to_string()
+    } else {
+        format!("loggers = {}", logger_names)
+    };
     let logger_configs = config
         .loggers
         .iter()
@@ -367,8 +369,7 @@ appender.FILE.strategy.type = DefaultRolloverStrategy
 appender.FILE.strategy.max = {number_of_archived_log_files}
 appender.FILE.filter.threshold.type = ThresholdFilter
 appender.FILE.filter.threshold.level = {file_log_level}
-
-{logger_names}
+{loggers}
 {logger_configs}
 rootLogger.level={root_log_level}
 rootLogger.appenderRefs = root
