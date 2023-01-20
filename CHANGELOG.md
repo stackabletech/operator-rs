@@ -10,9 +10,11 @@ All notable changes to this project will be documented in this file.
 
 - Extended the `LdapAuthenticationProvider` with functionality to build add Volumes and Mounts to PodBuilder and ContainerBuilder ([#535]).
 - Extended the `PodBuilder` with `add_volume_with_empty_dir` utility function ([#536]).
+- Added method to create log4j2 config properties to product logging ([#540]).
 
 [#535]: https://github.com/stackabletech/operator-rs/pull/535
 [#536]: https://github.com/stackabletech/operator-rs/pull/536
+[#540]: https://github.com/stackabletech/operator-rs/pull/540
 
 ## [0.30.2] - 2022-12-20
 
