@@ -244,6 +244,153 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
     )
 }
 
+/// Create the content of a log4j2 properties file according to the given log configuration
+///
+/// # Arguments
+///
+/// * `log_dir` - Directory where the log files are stored
+/// * `log_file` - Name of the active log file; When the file is rolled over then a number is
+///       appended.
+/// * `max_size_in_mib` - Maximum size of all log files in MiB; This value can be slightly
+///       exceeded. The value is set to 2 if the given value is lower (1 MiB for the active log
+///       file and 1 MiB for the archived one).
+/// * `console_conversion_pattern` - Logback conversion pattern for the console appender
+/// * `config` - The logging configuration for the container
+///
+/// # Example
+///
+/// ```
+/// use stackable_operator::{
+///     builder::{
+///         ConfigMapBuilder,
+///         meta::ObjectMetaBuilder,
+///     },
+///     config::fragment,
+///     product_logging,
+///     product_logging::spec::{
+///         ContainerLogConfig, ContainerLogConfigChoice, Logging,
+///     },
+/// };
+/// # use stackable_operator::product_logging::spec::default_logging;
+/// # use strum::{Display, EnumIter};
+/// #
+/// # #[derive(Clone, Display, Eq, EnumIter, Ord, PartialEq, PartialOrd)]
+/// # pub enum Container {
+/// #     MyProduct,
+/// # }
+/// #
+/// # let logging = fragment::validate::<Logging<Container>>(default_logging()).unwrap();
+///
+/// const STACKABLE_LOG_DIR: &str = "/stackable/log";
+/// const LOG4J_CONFIG_FILE: &str = "log4j2.properties";
+/// const MY_PRODUCT_LOG_FILE: &str = "my-product.log4j2.xml";
+/// const MAX_LOG_FILE_SIZE_IN_MIB: u32 = 10;
+/// const CONSOLE_CONVERSION_PATTERN: &str = "%d{ISO8601} %-5p %m%n";
+///
+/// let mut cm_builder = ConfigMapBuilder::new();
+/// cm_builder.metadata(ObjectMetaBuilder::default().build());
+///
+/// if let Some(ContainerLogConfig {
+///     choice: Some(ContainerLogConfigChoice::Automatic(log_config)),
+/// }) = logging.containers.get(&Container::MyProduct)
+/// {
+///     cm_builder.add_data(
+///         LOG4J_CONFIG_FILE,
+///         product_logging::framework::create_log4j_2_config(
+///             &format!("{STACKABLE_LOG_DIR}/my-product"),
+///             MY_PRODUCT_LOG_FILE,
+///             MAX_LOG_FILE_SIZE_IN_MIB,
+///             CONSOLE_CONVERSION_PATTERN,
+///             log_config,
+///         ),
+///     );
+/// }
+///
+/// cm_builder.build().unwrap();
+/// ```
+pub fn create_log4j_2_config(
+    log_dir: &str,
+    log_file: &str,
+    max_size_in_mib: u32,
+    console_conversion_pattern: &str,
+    config: &AutomaticContainerLogConfig,
+) -> String {
+    let number_of_archived_log_files = 1;
+
+    let logger_names = format!(
+        "loggers = {}",
+        config
+            .loggers
+            .iter()
+            .filter(|(name, _)| name.as_str() != AutomaticContainerLogConfig::ROOT_LOGGER)
+            .map(|(name, _)| name.escape_default().to_string())
+            .collect::<Vec<String>>()
+            .join(", ")
+    );
+    let logger_configs = config
+        .loggers
+        .iter()
+        .filter(|(name, _)| name.as_str() != AutomaticContainerLogConfig::ROOT_LOGGER)
+        .map(|(name, logger_config)| {
+            format!(
+                "logger.{name}.name = {name}\nlogger.{name}.level = {level}\n",
+                name = name.escape_default(),
+                level = logger_config.level.to_log4j_literal(),
+            )
+        })
+        .collect::<String>();
+
+    format!(
+        r#"
+status = warn
+name = stackable-log4j2-configuration        
+        
+appenders = FILE, CONSOLE
+
+appender.CONSOLE.type = Console
+appender.CONSOLE.name = CONSOLE
+appender.CONSOLE.target = SYSTEM_ERR
+appender.CONSOLE.layout.type = PatternLayout
+appender.CONSOLE.layout.pattern = {console_conversion_pattern}
+appender.CONSOLE.filter.threshold.type = ThresholdFilter
+appender.CONSOLE.filter.threshold.level = {console_log_level}
+
+appender.FILE.type = RollingFile
+appender.FILE.name = FILE
+appender.FILE.fileName= {log_dir}/{log_file}
+appender.FILE.filePattern= {log_dir}/{log_file}.%i
+appender.FILE.layout.type = XMLLayout
+appender.FILE.policies.type = Policies
+appender.FILE.policies.size.type = SizeBasedTriggeringPolicy
+appender.FILE.policies.size.size = {max_log_file_size_in_mib}MB
+appender.FILE.strategy.type = DefaultRolloverStrategy
+appender.FILE.strategy.max = {number_of_archived_log_files}
+appender.FILE.filter.threshold.type = ThresholdFilter
+appender.FILE.filter.threshold.level = {file_log_level}
+
+{logger_names}
+{logger_configs}
+rootLogger.level={root_log_level}
+rootLogger.appenderRefs = root
+rootLogger.appenderRef.root.ref = FILE"#,
+        max_log_file_size_in_mib =
+            cmp::max(1, max_size_in_mib / (1 + number_of_archived_log_files)),
+        root_log_level = config.root_log_level().to_log4j_2_literal(),
+        console_log_level = config
+            .console
+            .as_ref()
+            .and_then(|console| console.level)
+            .unwrap_or_default()
+            .to_log4j_2_literal(),
+        file_log_level = config
+            .file
+            .as_ref()
+            .and_then(|file| file.level)
+            .unwrap_or_default()
+            .to_log4j_2_literal(),
+    )
+}
+
 /// Create the content of a logback XML configuration file according to the given log configuration
 ///
 /// # Arguments
@@ -650,4 +797,62 @@ pub fn vector_container(
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
         .add_volume_mount(log_volume_name, STACKABLE_LOG_DIR)
         .build()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::product_logging::spec::{AppenderConfig, LoggerConfig};
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn test_create_log4j_2_config() {
+        let log_config = AutomaticContainerLogConfig {
+            loggers: vec![
+                (
+                    "ROOT".to_string(),
+                    LoggerConfig {
+                        level: LogLevel::INFO,
+                    },
+                ),
+                (
+                    "test".to_string(),
+                    LoggerConfig {
+                        level: LogLevel::INFO,
+                    },
+                ),
+                (
+                    "test_2".to_string(),
+                    LoggerConfig {
+                        level: LogLevel::DEBUG,
+                    },
+                ),
+            ]
+            .into_iter()
+            .collect::<BTreeMap<String, LoggerConfig>>(),
+            console: Some(AppenderConfig {
+                level: Some(LogLevel::TRACE),
+            }),
+            file: Some(AppenderConfig {
+                level: Some(LogLevel::ERROR),
+            }),
+        };
+
+        let log4j2_properties = create_log4j_2_config(
+            &format!("{STACKABLE_LOG_DIR}/my-product"),
+            "my-product.log4j2.xml",
+            10,
+            "%d{ISO8601} %-5p %m%n",
+            &log_config,
+        );
+
+        // TODO: more tests
+        assert!(log4j2_properties.contains("appenders = FILE, CONSOLE"));
+        assert!(log4j2_properties.contains("appender.CONSOLE.filter.threshold.level = TRACE"));
+        assert!(log4j2_properties.contains("appender.FILE.type = RollingFile"));
+        assert!(log4j2_properties.contains("appender.FILE.filter.threshold.level = ERROR"));
+        assert!(log4j2_properties.contains("loggers = test, test_2"));
+        assert!(log4j2_properties.contains("logger.test.level = INFO"));
+        assert!(log4j2_properties.contains("logger.test_2.level = DEBUG"));
+    }
 }
