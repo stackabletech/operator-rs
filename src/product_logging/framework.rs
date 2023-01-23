@@ -809,6 +809,40 @@ mod tests {
     #[test]
     fn test_create_log4j_2_config() {
         let log_config = AutomaticContainerLogConfig {
+            loggers: vec![(
+                "ROOT".to_string(),
+                LoggerConfig {
+                    level: LogLevel::INFO,
+                },
+            )]
+            .into_iter()
+            .collect::<BTreeMap<String, LoggerConfig>>(),
+            console: Some(AppenderConfig {
+                level: Some(LogLevel::TRACE),
+            }),
+            file: Some(AppenderConfig {
+                level: Some(LogLevel::ERROR),
+            }),
+        };
+
+        let log4j2_properties = create_log4j_2_config(
+            &format!("{STACKABLE_LOG_DIR}/my-product"),
+            "my-product.log4j2.xml",
+            10,
+            "%d{ISO8601} %-5p %m%n",
+            &log_config,
+        );
+
+        assert!(log4j2_properties.contains("appenders = FILE, CONSOLE"));
+        assert!(log4j2_properties.contains("appender.CONSOLE.filter.threshold.level = TRACE"));
+        assert!(log4j2_properties.contains("appender.FILE.type = RollingFile"));
+        assert!(log4j2_properties.contains("appender.FILE.filter.threshold.level = ERROR"));
+        assert!(!log4j2_properties.contains("loggers ="));
+    }
+
+    #[test]
+    fn test_create_log4j_2_config_with_additional_loggers() {
+        let log_config = AutomaticContainerLogConfig {
             loggers: vec![
                 (
                     "ROOT".to_string(),
@@ -847,7 +881,6 @@ mod tests {
             &log_config,
         );
 
-        // TODO: more tests
         assert!(log4j2_properties.contains("appenders = FILE, CONSOLE"));
         assert!(log4j2_properties.contains("appender.CONSOLE.filter.threshold.level = TRACE"));
         assert!(log4j2_properties.contains("appender.FILE.type = RollingFile"));
