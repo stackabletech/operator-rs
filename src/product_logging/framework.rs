@@ -369,8 +369,9 @@ appender.FILE.filter.threshold.level = {file_log_level}
 {loggers}
 {logger_configs}
 rootLogger.level={root_log_level}
-rootLogger.appenderRefs = root
-rootLogger.appenderRef.root.ref = FILE"#,
+rootLogger.appenderRefs = CONSOLE, FILE
+rootLogger.appenderRef.CONSOLE.ref = CONSOLE
+rootLogger.appenderRef.FILE.ref = FILE"#,
         max_log_file_size_in_mib =
             cmp::max(1, max_size_in_mib / (1 + number_of_archived_log_files)),
         root_log_level = config.root_log_level().to_log4j2_literal(),
