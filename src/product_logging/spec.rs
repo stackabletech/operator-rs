@@ -360,6 +360,11 @@ impl LogLevel {
         }
         .into()
     }
+
+    /// Convert the log level to a string understood by log4j2
+    pub fn to_log4j2_literal(&self) -> String {
+        self.to_log4j_literal()
+    }
 }
 
 /// Create the default logging configuration

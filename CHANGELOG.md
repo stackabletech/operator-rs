@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added method to create log4j2 config properties to product logging ([#540]).
+
+[#540]: https://github.com/stackabletech/operator-rs/pull/540
+
 ## [0.31.0] - 2023-01-16
 
 ### Added
