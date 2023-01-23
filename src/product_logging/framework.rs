@@ -643,6 +643,11 @@ start_pattern = "^<log4j:event"
 condition_pattern = "</log4j:event>\r$"
 timeout_ms = 10000
 
+[sources.files_log4j2]
+type = "file"
+include = ["{STACKABLE_LOG_DIR}/*/*.log4j2.xml"]
+line_delimiter = "\r\n"
+
 [transforms.processed_files_stdout]
 inputs = ["files_stdout"]
 type = "remap"
@@ -672,6 +677,65 @@ parsed_event = parse_xml!(wrapped_xml_event).root.event
     filter([parsed_event.message, parsed_event.throwable]) -> |_index, value| {{
         !is_nullish(value)
     }}, "\n")
+'''
+
+[transforms.processed_files_log4j2]
+inputs = ["files_log4j2"]
+type = "remap"
+source = '''
+parsed_event = parse_xml!(.message).Event
+instant = parsed_event.Instant
+thrown = parsed_event.Thrown
+epoch_nanoseconds = string!(instant.@epochSecond) + string!(instant.@nanoOfSecond)
+.timestamp = to_timestamp!(to_int!(epoch_nanoseconds), "nanoseconds")
+.logger = parsed_event.@loggerName
+.level = parsed_event.@level
+exception = null
+if thrown != null {{
+    exception = "Exception"
+    thread = string(parsed_event.@thread) ?? null
+    if thread != null {{
+        exception = exception + " in thread \"" + thread + "\""
+    }}
+    thrown_name = string(thrown.@name) ?? null
+    if thrown_name != null {{
+        exception = exception + " " + thrown_name
+    }}
+    message = string(thrown.@localizedMessage) ?? string(thrown.@message) ?? null
+    if message != null {{
+        exception = exception + ": " + message
+    }}
+    stacktrace_items = array(thrown.ExtendedStackTrace.ExtendedStackTraceItem) ?? []
+    stacktrace = ""
+    for_each(stacktrace_items) -> |_index, value| {{
+        stacktrace = stacktrace + "        "
+        class = to_string(value.@class) ?? null
+        method = to_string(value.@method) ?? null
+        if class != null && method != null {{
+            stacktrace = stacktrace + "at " + class + "." + method
+        }}
+        file = to_string(value.@file) ?? null
+        line = to_string(value.@line) ?? null
+        if file != null && line != null {{
+            stacktrace = stacktrace + "(" + file + ":" + line + ")"
+        }}
+        exact = to_bool(value.@exact) ?? false
+        location = to_string(value.@location) ?? null
+        version = to_string(value.@version) ?? null
+        if location != null && version != null {{
+            stacktrace = stacktrace + " "
+            if !exact {{
+                stacktrace = stacktrace + "~"
+            }}
+            stacktrace = stacktrace + "[" + location + ":" + version + "]"
+        }}
+        stacktrace = stacktrace + "\n"
+    }}
+    if stacktrace != "" {{
+        exception = exception + "\n" + stacktrace
+    }}
+}}
+.message = join!(compact([parsed_event.Message, exception]), "\n")
 '''
 
 [transforms.extended_logs_files]
