@@ -254,7 +254,7 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 /// * `max_size_in_mib` - Maximum size of all log files in MiB; This value can be slightly
 ///       exceeded. The value is set to 2 if the given value is lower (1 MiB for the active log
 ///       file and 1 MiB for the archived one).
-/// * `console_conversion_pattern` - Log4J2 conversion pattern for the console appender
+/// * `console_conversion_pattern` - Log4j2 conversion pattern for the console appender
 /// * `config` - The logging configuration for the container
 ///
 /// # Example
@@ -296,7 +296,7 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 /// {
 ///     cm_builder.add_data(
 ///         LOG4J2_CONFIG_FILE,
-///         product_logging::framework::create_log4j_2_config(
+///         product_logging::framework::create_log4j2_config(
 ///             &format!("{STACKABLE_LOG_DIR}/my-product"),
 ///             MY_PRODUCT_LOG_FILE,
 ///             MAX_LOG_FILE_SIZE_IN_MIB,
@@ -308,7 +308,7 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 ///
 /// cm_builder.build().unwrap();
 /// ```
-pub fn create_log4j_2_config(
+pub fn create_log4j2_config(
     log_dir: &str,
     log_file: &str,
     max_size_in_mib: u32,
@@ -344,9 +344,6 @@ pub fn create_log4j_2_config(
 
     format!(
         r#"
-status = warn
-name = stackable-log4j2-configuration        
-        
 appenders = FILE, CONSOLE
 
 appender.CONSOLE.type = Console
@@ -376,19 +373,19 @@ rootLogger.appenderRefs = root
 rootLogger.appenderRef.root.ref = FILE"#,
         max_log_file_size_in_mib =
             cmp::max(1, max_size_in_mib / (1 + number_of_archived_log_files)),
-        root_log_level = config.root_log_level().to_log4j_2_literal(),
+        root_log_level = config.root_log_level().to_log4j2_literal(),
         console_log_level = config
             .console
             .as_ref()
             .and_then(|console| console.level)
             .unwrap_or_default()
-            .to_log4j_2_literal(),
+            .to_log4j2_literal(),
         file_log_level = config
             .file
             .as_ref()
             .and_then(|file| file.level)
             .unwrap_or_default()
-            .to_log4j_2_literal(),
+            .to_log4j2_literal(),
     )
 }
 
@@ -807,7 +804,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     #[test]
-    fn test_create_log4j_2_config() {
+    fn test_create_log4j2_config() {
         let log_config = AutomaticContainerLogConfig {
             loggers: vec![(
                 "ROOT".to_string(),
@@ -825,7 +822,7 @@ mod tests {
             }),
         };
 
-        let log4j2_properties = create_log4j_2_config(
+        let log4j2_properties = create_log4j2_config(
             &format!("{STACKABLE_LOG_DIR}/my-product"),
             "my-product.log4j2.xml",
             10,
@@ -841,7 +838,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_log4j_2_config_with_additional_loggers() {
+    fn test_create_log4j2_config_with_additional_loggers() {
         let log_config = AutomaticContainerLogConfig {
             loggers: vec![
                 (
@@ -873,7 +870,7 @@ mod tests {
             }),
         };
 
-        let log4j2_properties = create_log4j_2_config(
+        let log4j2_properties = create_log4j2_config(
             &format!("{STACKABLE_LOG_DIR}/my-product"),
             "my-product.log4j2.xml",
             10,
