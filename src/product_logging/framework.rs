@@ -343,8 +343,7 @@ pub fn create_log4j2_config(
         .collect::<String>();
 
     format!(
-        r#"
-appenders = FILE, CONSOLE
+        r#"appenders = FILE, CONSOLE
 
 appender.CONSOLE.type = Console
 appender.CONSOLE.name = CONSOLE
