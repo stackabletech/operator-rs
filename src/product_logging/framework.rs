@@ -254,7 +254,7 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 /// * `max_size_in_mib` - Maximum size of all log files in MiB; This value can be slightly
 ///       exceeded. The value is set to 2 if the given value is lower (1 MiB for the active log
 ///       file and 1 MiB for the archived one).
-/// * `console_conversion_pattern` - Logback conversion pattern for the console appender
+/// * `console_conversion_pattern` - Log4J2 conversion pattern for the console appender
 /// * `config` - The logging configuration for the container
 ///
 /// # Example
@@ -282,7 +282,7 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 /// # let logging = fragment::validate::<Logging<Container>>(default_logging()).unwrap();
 ///
 /// const STACKABLE_LOG_DIR: &str = "/stackable/log";
-/// const LOG4J_CONFIG_FILE: &str = "log4j2.properties";
+/// const LOG4J2_CONFIG_FILE: &str = "log4j2.properties";
 /// const MY_PRODUCT_LOG_FILE: &str = "my-product.log4j2.xml";
 /// const MAX_LOG_FILE_SIZE_IN_MIB: u32 = 10;
 /// const CONSOLE_CONVERSION_PATTERN: &str = "%d{ISO8601} %-5p %m%n";
@@ -295,7 +295,7 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 /// }) = logging.containers.get(&Container::MyProduct)
 /// {
 ///     cm_builder.add_data(
-///         LOG4J_CONFIG_FILE,
+///         LOG4J2_CONFIG_FILE,
 ///         product_logging::framework::create_log4j_2_config(
 ///             &format!("{STACKABLE_LOG_DIR}/my-product"),
 ///             MY_PRODUCT_LOG_FILE,
