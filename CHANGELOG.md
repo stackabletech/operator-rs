@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.32.0] - 2023-01-24
+
 ### Added
 
 - Added method to create log4j2 config properties to product logging ([#540]).
