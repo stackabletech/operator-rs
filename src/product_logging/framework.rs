@@ -684,24 +684,44 @@ inputs = ["files_log4j2"]
 type = "remap"
 source = '''
 parsed_event = parse_xml!(.message).Event
+
+.timestamp = null
 instant = parsed_event.Instant
-thrown = parsed_event.Thrown
-epoch_nanoseconds = string!(instant.@epochSecond) + string!(instant.@nanoOfSecond)
-.timestamp = to_timestamp!(to_int!(epoch_nanoseconds), "nanoseconds")
+if instant != null {{
+    epoch_nanoseconds = to_int(instant.@epochSecond) * 1_000_000_000 + to_int(instant.@nanoOfSecond) ?? null
+    if epoch_nanoseconds != null {{
+        .timestamp = to_timestamp(epoch_nanoseconds, "nanoseconds") ?? null
+    }}
+}}
+if .timestamp == null && parsed_event.@timeMillis != null {{
+    epoch_milliseconds = to_int(parsed_event.@timeMillis) ?? null
+    if epoch_milliseconds != null {{
+        .timestamp = to_timestamp(epoch_milliseconds, "milliseconds") ?? null
+    }}
+}}
+if .timestamp == null {{
+    .timestamp = now()
+}}
+
 .logger = parsed_event.@loggerName
+
 .level = parsed_event.@level
+
 exception = null
+thrown = parsed_event.Thrown
 if thrown != null {{
     exception = "Exception"
-    thread = string(parsed_event.@thread) ?? null
+    thread = to_string(parsed_event.@thread) ?? null
     if thread != null {{
         exception = exception + " in thread \"" + thread + "\""
     }}
-    thrown_name = string(thrown.@name) ?? null
+    thrown_name = to_string(thrown.@name) ?? null
     if thrown_name != null {{
         exception = exception + " " + thrown_name
     }}
-    message = string(thrown.@localizedMessage) ?? string(thrown.@message) ?? null
+    message = to_string(thrown.@localizedMessage) ??
+        to_string(thrown.@message) ??
+        null
     if message != null {{
         exception = exception + ": " + message
     }}
