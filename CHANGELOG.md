@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.32.1] - 2023-01-24
+
 ### Fixed
 
 - Parsing of timestamps in log4j2 log events made fail-safe ([#542]).
