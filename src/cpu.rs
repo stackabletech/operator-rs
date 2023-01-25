@@ -37,7 +37,7 @@ impl FromStr for CpuQuantity {
             let cpu_millis: usize = value.parse().map_err(|_| Error::InvalidCpuQuantity {
                 value: q.to_owned(),
             })?;
-            return Ok(CpuQuantity { millis: cpu_millis });
+            Ok(CpuQuantity { millis: cpu_millis })
         } else {
             let cpus = q.parse::<f32>().map_err(|_| Error::InvalidCpuQuantity {
                 value: q.to_owned(),
@@ -48,9 +48,9 @@ impl FromStr for CpuQuantity {
                     value: q.to_owned(),
                 });
             }
-            return Ok(CpuQuantity {
+            Ok(CpuQuantity {
                 millis: millis_float as usize,
-            });
+            })
         }
     }
 }
