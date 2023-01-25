@@ -271,9 +271,7 @@ impl PartialEq for MemoryQuantity {
     }
 }
 
-impl Eq for MemoryQuantity { }
-
-
+impl Eq for MemoryQuantity {}
 
 impl FromStr for MemoryQuantity {
     type Err = Error;
