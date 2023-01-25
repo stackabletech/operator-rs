@@ -85,11 +85,17 @@ pub enum Error {
     #[error("Invalid quantity [{value}]")]
     InvalidQuantity { value: String },
 
+    #[error("Invalid quantity [{value}]")]
+    InvalidCpuQuantity { value: String },
+
     #[error("Invalid quantity unit [{value}]")]
     InvalidQuantityUnit { value: String },
 
     #[error("No quantity unit provided for [{value}]")]
     NoQuantityUnit { value: String },
+
+    #[error("Unsupported Precision [{value}]")]
+    UnsupportedQuantityPrecision { value: String },
 
     #[error("Cannot convert quantity [{value}] to Java heap.")]
     CannotConvertToJavaHeap { value: String },
