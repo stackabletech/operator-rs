@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+
 use crate::error::{Error, OperatorResult};
 
 /// A wrapper around a Quantity, to make working with CPU quantities easier.
@@ -50,6 +52,22 @@ impl FromStr for CpuQuantity {
                 millis: millis_float as usize,
             });
         }
+    }
+}
+
+impl TryFrom<&Quantity> for CpuQuantity {
+    type Error = Error;
+
+    fn try_from(q: &Quantity) -> Result<Self, Self::Error> {
+        Self::from_str(&q.0)
+    }
+}
+
+impl TryFrom<Quantity> for CpuQuantity {
+    type Error = Error;
+
+    fn try_from(q: Quantity) -> Result<Self, Self::Error> {
+        Self::try_from(&q)
     }
 }
 
