@@ -8,7 +8,7 @@ use crate::error::{Error, OperatorResult};
 /// Supports conversion from quantities.
 ///
 /// A CPU Quantity cannot have a precision finer than 'm' (millis), so we use that as
-/// our internal representation (see: 
+/// our internal representation (see:
 /// `<https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-cpu>`).
 pub struct CpuQuantity {
     millis: usize,
