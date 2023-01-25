@@ -75,7 +75,7 @@ impl FromStr for BinaryMultiple {
 }
 
 /// Parsed representation of a K8s memory/storage resource limit.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub struct MemoryQuantity {
     pub value: f32,
     pub unit: BinaryMultiple,
@@ -252,6 +252,28 @@ impl PartialOrd for MemoryQuantity {
         this_val.partial_cmp(&other_val)
     }
 }
+
+impl Ord for MemoryQuantity {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        let this_val = self.scale_to(BinaryMultiple::get_smallest()).value;
+        let other_val = other.scale_to(BinaryMultiple::get_smallest()).value;
+        // Note: We just assume that our values are always not NaN, so we are actually Ord.
+        // A MemoryQuantity with NaN is not permissible.
+        this_val.partial_cmp(&other_val).unwrap()
+    }
+}
+
+impl PartialEq for MemoryQuantity {
+    fn eq(&self, other: &Self) -> bool {
+        let this_val = self.scale_to(BinaryMultiple::get_smallest()).value;
+        let other_val = other.scale_to(BinaryMultiple::get_smallest()).value;
+        this_val == other_val
+    }
+}
+
+impl Eq for MemoryQuantity { }
+
+
 
 impl FromStr for MemoryQuantity {
     type Err = Error;
