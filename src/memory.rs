@@ -11,7 +11,10 @@
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 
 use crate::error::{Error, OperatorResult};
-use std::{ops::{Mul, Sub}, str::FromStr};
+use std::{
+    ops::{Add, Mul, Sub},
+    str::FromStr,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd)]
 pub enum BinaryMultiple {
@@ -191,18 +194,40 @@ impl Sub<MemoryQuantity> for MemoryQuantity {
         if rhs.unit == self.unit {
             MemoryQuantity {
                 value: self.value - rhs.value,
-                unit: self.unit
+                unit: self.unit,
             }
         } else if rhs.unit < self.unit {
             MemoryQuantity {
                 value: self.scale_to(rhs.unit).value - rhs.value,
-                unit: rhs.unit
+                unit: rhs.unit,
             }
-
         } else {
             MemoryQuantity {
                 value: self.value - rhs.scale_to(self.unit).value,
-                unit: self.unit
+                unit: self.unit,
+            }
+        }
+    }
+}
+
+impl Add<MemoryQuantity> for MemoryQuantity {
+    type Output = MemoryQuantity;
+
+    fn add(self, rhs: MemoryQuantity) -> Self::Output {
+        if rhs.unit == self.unit {
+            MemoryQuantity {
+                value: self.value + rhs.value,
+                unit: self.unit,
+            }
+        } else if rhs.unit < self.unit {
+            MemoryQuantity {
+                value: self.scale_to(rhs.unit).value + rhs.value,
+                unit: rhs.unit,
+            }
+        } else {
+            MemoryQuantity {
+                value: self.value + rhs.scale_to(self.unit).value,
+                unit: self.unit,
             }
         }
     }
@@ -336,15 +361,24 @@ mod test {
     #[case("1Mi", "512Ki", "512Ki")]
     #[case("2Mi", "512Ki", "1536Ki")]
     #[case("2048Ki", "1Mi", "1024Ki")]
-    pub fn test_subtraction(
-        #[case] lhs: &str,
-        #[case] rhs: &str,
-        #[case] res: &str
-    ) {
+    pub fn test_subtraction(#[case] lhs: &str, #[case] rhs: &str, #[case] res: &str) {
         let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
         let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
         let expected = MemoryQuantity::try_from(Quantity(res.to_owned())).unwrap();
         let actual = lhs - rhs;
+        assert_eq!(expected, actual)
+    }
+
+    #[rstest]
+    #[case("1000Ki", "500Ki", "1500Ki")]
+    #[case("1Mi", "512Ki", "1536Ki")]
+    #[case("2Mi", "512Ki", "2560Ki")]
+    #[case("2048Ki", "1Mi", "3072Ki")]
+    pub fn test_addition(#[case] lhs: &str, #[case] rhs: &str, #[case] res: &str) {
+        let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
+        let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
+        let expected = MemoryQuantity::try_from(Quantity(res.to_owned())).unwrap();
+        let actual = lhs + rhs;
         assert_eq!(expected, actual)
     }
 }
