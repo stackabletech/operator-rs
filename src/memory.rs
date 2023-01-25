@@ -12,7 +12,7 @@ use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 
 use crate::error::{Error, OperatorResult};
 use std::{
-    ops::{Add, Mul, Sub},
+    ops::{Add, Mul, Sub, Div},
     str::FromStr,
 };
 
@@ -188,6 +188,14 @@ impl Mul<f32> for MemoryQuantity {
             value: self.value * factor,
             unit: self.unit,
         }
+    }
+}
+
+impl Div<f32> for MemoryQuantity {
+    type Output = Self;
+
+    fn div(self, rhs: f32) -> Self::Output {
+        self * (1. / rhs)
     }
 }
 
