@@ -50,6 +50,10 @@ impl BinaryMultiple {
             BinaryMultiple::Exbi => 6,
         }
     }
+
+    pub fn get_smallest() -> Self {
+        Self::Kibi
+    }
 }
 
 impl FromStr for BinaryMultiple {
@@ -233,6 +237,14 @@ impl Add<MemoryQuantity> for MemoryQuantity {
     }
 }
 
+impl PartialOrd for MemoryQuantity {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        let this_val = self.scale_to(BinaryMultiple::get_smallest()).value;
+        let other_val = other.scale_to(BinaryMultiple::get_smallest()).value;
+        this_val.partial_cmp(&other_val)
+    }
+}
+
 impl FromStr for MemoryQuantity {
     type Err = Error;
 
@@ -380,5 +392,19 @@ mod test {
         let expected = MemoryQuantity::try_from(Quantity(res.to_owned())).unwrap();
         let actual = lhs + rhs;
         assert_eq!(expected, actual)
+    }
+
+    #[rstest]
+    #[case("100Ki", "100Ki", false)]
+    #[case("100Ki", "100Ki", false)]
+    #[case("100Ki", "100Ki", false)]
+    #[case("101Ki", "100Ki", true)]
+    #[case("100Ki", "101Ki", false)]
+    #[case("1Mi", "100Ki", true)]
+    #[case("2000Ki", "1Mi", true)]
+    pub fn test_comparison(#[case] lhs: &str, #[case] rhs: &str, #[case] res: bool) {
+        let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
+        let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
+        assert_eq!(lhs > rhs, res)
     }
 }
