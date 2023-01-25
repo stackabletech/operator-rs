@@ -11,7 +11,7 @@
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 
 use crate::error::{Error, OperatorResult};
-use std::{ops::Mul, str::FromStr};
+use std::{ops::{Mul, Sub}, str::FromStr};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd)]
 pub enum BinaryMultiple {
@@ -184,6 +184,30 @@ impl Mul<f32> for MemoryQuantity {
     }
 }
 
+impl Sub<MemoryQuantity> for MemoryQuantity {
+    type Output = MemoryQuantity;
+
+    fn sub(self, rhs: MemoryQuantity) -> Self::Output {
+        if rhs.unit == self.unit {
+            MemoryQuantity {
+                value: self.value - rhs.value,
+                unit: self.unit
+            }
+        } else if rhs.unit < self.unit {
+            MemoryQuantity {
+                value: self.scale_to(rhs.unit).value - rhs.value,
+                unit: rhs.unit
+            }
+
+        } else {
+            MemoryQuantity {
+                value: self.value - rhs.scale_to(self.unit).value,
+                unit: self.unit
+            }
+        }
+    }
+}
+
 impl FromStr for MemoryQuantity {
     type Err = Error;
 
@@ -305,5 +329,22 @@ mod test {
         #[case] target_unit: BinaryMultiple,
     ) {
         assert!(to_java_heap_value(&Quantity(q.to_owned()), factor, target_unit).is_err());
+    }
+
+    #[rstest]
+    #[case("1000Ki", "500Ki", "500Ki")]
+    #[case("1Mi", "512Ki", "512Ki")]
+    #[case("2Mi", "512Ki", "1536Ki")]
+    #[case("2048Ki", "1Mi", "1024Ki")]
+    pub fn test_subtraction(
+        #[case] lhs: &str,
+        #[case] rhs: &str,
+        #[case] res: &str
+    ) {
+        let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
+        let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
+        let expected = MemoryQuantity::try_from(Quantity(res.to_owned())).unwrap();
+        let actual = lhs - rhs;
+        assert_eq!(expected, actual)
     }
 }
