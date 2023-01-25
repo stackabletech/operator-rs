@@ -12,7 +12,7 @@ use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 
 use crate::error::{Error, OperatorResult};
 use std::{
-    ops::{Add, Mul, Sub, Div},
+    ops::{Add, Div, Mul, Sub},
     str::FromStr,
 };
 
