@@ -153,9 +153,9 @@ impl MemoryQuantity {
     /// Leaves the quantity unchanged otherwise.
     fn scale_to_at_most_gb(&self) -> Self {
         match self.unit {
-            BinaryMultiple::Kibi => self.clone(),
-            BinaryMultiple::Mebi => self.clone(),
-            BinaryMultiple::Gibi => self.clone(),
+            BinaryMultiple::Kibi => *self,
+            BinaryMultiple::Mebi => *self,
+            BinaryMultiple::Gibi => *self,
             BinaryMultiple::Tebi => self.scale_to(BinaryMultiple::Gibi),
             BinaryMultiple::Pebi => self.scale_to(BinaryMultiple::Gibi),
             BinaryMultiple::Exbi => self.scale_to(BinaryMultiple::Gibi),
@@ -189,7 +189,7 @@ impl MemoryQuantity {
         if self.value < 1. {
             self.scale_down_unit()?.ensure_no_zero()
         } else {
-            Ok(self.clone())
+            Ok(*self)
         }
     }
 
