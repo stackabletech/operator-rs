@@ -149,6 +149,8 @@ impl MemoryQuantity {
         }
     }
 
+    /// Scales down the unit to GB if it is TB or bigger.
+    /// Leaves the quantity unchanged otherwise.
     fn scale_to_at_most_gb(&self) -> Self {
         match self.unit {
             BinaryMultiple::Kibi => self.clone(),
@@ -160,6 +162,7 @@ impl MemoryQuantity {
         }
     }
 
+    /// Scale down the unit by one order of magnitude, i.e. GB to MB.
     fn scale_down_unit(&self) -> OperatorResult<Self> {
         match self.unit {
             BinaryMultiple::Kibi => Err(Error::CannotScaleDownMemoryUnit),
@@ -171,6 +174,7 @@ impl MemoryQuantity {
         }
     }
 
+    /// Floors the value of this MemoryQuantity.
     pub fn floor(&self) -> Self {
         Self {
             value: self.value.floor(),
@@ -178,6 +182,9 @@ impl MemoryQuantity {
         }
     }
 
+    /// If the MemoryQuantity value is smaller than 1 (starts with a zero), convert it to a smaller
+    /// unit until the non fractional part of the value is not zero anymore.
+    /// This can fail if the quantity is smaller than 1kB.
     fn ensure_no_zero(&self) -> OperatorResult<Self> {
         if self.value < 1. {
             self.scale_down_unit()?.ensure_no_zero()
@@ -186,6 +193,10 @@ impl MemoryQuantity {
         }
     }
 
+    /// Ensure that the value of this MemoryQuantity is a natural number (not a float).
+    /// This is done by picking smaller units until the fractional part is smaller than the tolerated
+    /// rounding loss, and then rounding down.
+    /// This can fail if the tolerated rounding loss is less than 1kB.
     fn ensure_integer(&self, tolerated_rounding_loss: MemoryQuantity) -> OperatorResult<Self> {
         let fraction_memory = MemoryQuantity {
             value: self.value.fract(),
@@ -199,6 +210,11 @@ impl MemoryQuantity {
         }
     }
 
+    /// Returns a value like '1355m' or '2g'. Always returns natural numbers with either 'k', 'm' or 'g',
+    /// even if the values is multiple Terabytes or more.
+    /// The original quantity may be rounded down to achive a compact, natural number representation.
+    /// This rounding may cause the quantity to shrink by up to 20MB.
+    /// Useful to set memory quantities as JVM paramters.
     pub fn format_for_java(&self) -> OperatorResult<String> {
         let m = self
             .scale_to_at_most_gb() // Java Heap only supports specifying kb, mb or gb
