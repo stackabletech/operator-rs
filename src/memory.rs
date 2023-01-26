@@ -74,13 +74,6 @@ impl FromStr for BinaryMultiple {
     }
 }
 
-/// Parsed representation of a K8s memory/storage resource limit.
-#[derive(Clone, Copy, Debug)]
-pub struct MemoryQuantity {
-    pub value: f32,
-    pub unit: BinaryMultiple,
-}
-
 /// Convert a (memory) [`Quantity`] to Java heap settings.
 /// Quantities are usually passed on to container resources while Java heap
 /// sizes need to be scaled accordingly.
@@ -134,7 +127,86 @@ pub fn to_java_heap_value(
     }
 }
 
+/// Parsed representation of a K8s memory/storage resource limit.
+#[derive(Clone, Copy, Debug)]
+pub struct MemoryQuantity {
+    pub value: f32,
+    pub unit: BinaryMultiple,
+}
+
 impl MemoryQuantity {
+    pub fn from_gibi(gibi: f32) -> Self {
+        Self {
+            value: gibi,
+            unit: BinaryMultiple::Gibi,
+        }
+    }
+
+    pub fn from_mebi(mebi: f32) -> Self {
+        Self {
+            value: mebi,
+            unit: BinaryMultiple::Mebi,
+        }
+    }
+
+    fn scale_to_at_most_gb(&self) -> Self {
+        match self.unit {
+            BinaryMultiple::Kibi => self.clone(),
+            BinaryMultiple::Mebi => self.clone(),
+            BinaryMultiple::Gibi => self.clone(),
+            BinaryMultiple::Tebi => self.scale_to(BinaryMultiple::Gibi),
+            BinaryMultiple::Pebi => self.scale_to(BinaryMultiple::Gibi),
+            BinaryMultiple::Exbi => self.scale_to(BinaryMultiple::Gibi),
+        }
+    }
+
+    fn scale_down_unit(&self) -> OperatorResult<Self> {
+        match self.unit {
+            BinaryMultiple::Kibi => Err(Error::CannotScaleDownMemoryUnit),
+            BinaryMultiple::Mebi => Ok(self.scale_to(BinaryMultiple::Kibi)),
+            BinaryMultiple::Gibi => Ok(self.scale_to(BinaryMultiple::Mebi)),
+            BinaryMultiple::Tebi => Ok(self.scale_to(BinaryMultiple::Gibi)),
+            BinaryMultiple::Pebi => Ok(self.scale_to(BinaryMultiple::Tebi)),
+            BinaryMultiple::Exbi => Ok(self.scale_to(BinaryMultiple::Pebi)),
+        }
+    }
+
+    pub fn floor(&self) -> Self {
+        Self {
+            value: self.value.floor(),
+            unit: self.unit,
+        }
+    }
+
+    fn ensure_no_zero(&self) -> OperatorResult<Self> {
+        if self.value < 1. {
+            self.scale_down_unit()?.ensure_no_zero()
+        } else {
+            Ok(self.clone())
+        }
+    }
+
+    fn ensure_integer(&self, tolerated_rounding_loss: MemoryQuantity) -> OperatorResult<Self> {
+        let fraction_memory = MemoryQuantity {
+            value: self.value.fract(),
+            unit: self.unit,
+        };
+        if fraction_memory < tolerated_rounding_loss {
+            Ok(self.floor())
+        } else {
+            self.scale_down_unit()?
+                .ensure_integer(tolerated_rounding_loss)
+        }
+    }
+
+    pub fn format_for_java(&self) -> OperatorResult<String> {
+        let m = self
+            .scale_to_at_most_gb() // Java Heap only supports specifying kb, mb or gb
+            .ensure_no_zero()? // We don't want 0.9 or 0.2
+            .ensure_integer(MemoryQuantity::from_mebi(20.))?; // Java only accepts integers not floats
+        Ok(format!("{}{}", m.value, m.unit.to_java_memory_unit()))
+    }
+
     /// Scales the unit to a value supported by Java and may even scale
     /// further down, in an attempt to avoid having zero sizes or losing too
     /// much precision.
@@ -334,6 +406,18 @@ mod test {
     #[case("2Gi", 0.8, "-Xmx1638m")]
     pub fn test_to_java_heap(#[case] q: &str, #[case] factor: f32, #[case] heap: &str) {
         assert_eq!(heap, to_java_heap(&Quantity(q.to_owned()), factor).unwrap());
+    }
+
+    #[rstest]
+    #[case("256Ki", "256k")]
+    #[case("1.6Mi", "1m")]
+    #[case("1.2Gi", "1228m")]
+    #[case("1.6Gi", "1638m")]
+    #[case("1Gi", "1g")]
+    pub fn test_format_java(#[case] q: String, #[case] expected: String) {
+        let m = MemoryQuantity::try_from(Quantity(q)).unwrap();
+        let actual = m.format_for_java().unwrap();
+        assert_eq!(expected, actual);
     }
 
     #[rstest]

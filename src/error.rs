@@ -97,6 +97,9 @@ pub enum Error {
     #[error("Unsupported Precision [{value}]")]
     UnsupportedQuantityPrecision { value: String },
 
+    #[error("Cannot scale down from kilobytes.")]
+    CannotScaleDownMemoryUnit,
+
     #[error("Cannot convert quantity [{value}] to Java heap.")]
     CannotConvertToJavaHeap { value: String },
 
