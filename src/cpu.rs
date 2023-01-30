@@ -42,7 +42,7 @@ impl FromStr for CpuQuantity {
         if let Some(start_of_unit) = start_of_unit {
             let (value, unit) = q.split_at(start_of_unit);
             if unit != "m" {
-                return Err(Error::UnsupportedQuantityPrecision {
+                return Err(Error::UnsupportedCpuQuantityPrecision {
                     value: q.to_owned(),
                 });
             }
@@ -56,7 +56,7 @@ impl FromStr for CpuQuantity {
             })?;
             let millis_float = cpus * 1000.;
             if millis_float != millis_float.round() {
-                return Err(Error::UnsupportedQuantityPrecision {
+                return Err(Error::UnsupportedCpuQuantityPrecision {
                     value: q.to_owned(),
                 });
             }

@@ -94,8 +94,8 @@ pub enum Error {
     #[error("No quantity unit provided for [{value}]")]
     NoQuantityUnit { value: String },
 
-    #[error("Unsupported Precision [{value}]")]
-    UnsupportedQuantityPrecision { value: String },
+    #[error("Unsupported Precision [{value}]. CPU quantities can only be given without a unit or with 'm")]
+    UnsupportedCpuQuantityPrecision { value: String },
 
     #[error("Cannot scale down from kilobytes.")]
     CannotScaleDownMemoryUnit,

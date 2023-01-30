@@ -321,7 +321,7 @@ impl Ord for MemoryQuantity {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         // Note: We just assume that our values are always not NaN, so we are actually Ord.
         // A MemoryQuantity with NaN is not permissible.
-        self.partial_cmp(&other).unwrap()
+        self.partial_cmp(other).unwrap()
     }
 }
 
@@ -508,5 +508,16 @@ mod test {
         let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
         let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
         assert_eq!(lhs > rhs, res)
+    }
+
+    #[rstest]
+    #[case("100Ki", "100Ki", true)]
+    #[case("100Ki", "200Ki", false)]
+    #[case("1Mi", "1024Ki", true)]
+    #[case("1024Ki", "1Mi", true)]
+    pub fn test_eq(#[case] lhs: &str, #[case] rhs: &str, #[case] res: bool) {
+        let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
+        let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
+        assert_eq!(lhs == rhs, res)
     }
 }
