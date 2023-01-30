@@ -317,14 +317,6 @@ impl PartialOrd for MemoryQuantity {
     }
 }
 
-impl Ord for MemoryQuantity {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        // Note: We just assume that our values are always not NaN, so we are actually Ord.
-        // A MemoryQuantity with NaN is not permissible.
-        self.partial_cmp(other).unwrap()
-    }
-}
-
 impl PartialEq for MemoryQuantity {
     fn eq(&self, other: &Self) -> bool {
         let this_val = self.scale_to(BinaryMultiple::get_smallest()).value;
