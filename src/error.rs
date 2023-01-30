@@ -94,7 +94,7 @@ pub enum Error {
     #[error("No quantity unit provided for [{value}]")]
     NoQuantityUnit { value: String },
 
-    #[error("Unsupported Precision [{value}]. CPU quantities can only be given without a unit or with 'm")]
+    #[error("Unsupported Precision [{value}]. Kubernetes doesn't allow you to specify CPU resources with a precision finer than 1m. Because of this, it's useful to specify CPU units less than 1.0 or 1000m using the milliCPU form; for example, 5m rather than 0.005")]
     UnsupportedCpuQuantityPrecision { value: String },
 
     #[error("Cannot scale down from kilobytes.")]
