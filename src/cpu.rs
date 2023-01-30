@@ -60,9 +60,7 @@ impl FromStr for CpuQuantity {
                     value: q.to_owned(),
                 });
             }
-            Ok(CpuQuantity {
-                millis: millis_float as usize,
-            })
+            Ok(Self::from_millis(millis_float as usize))
         }
     }
 }
