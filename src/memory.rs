@@ -319,11 +319,9 @@ impl PartialOrd for MemoryQuantity {
 
 impl Ord for MemoryQuantity {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        let this_val = self.scale_to(BinaryMultiple::get_smallest()).value;
-        let other_val = other.scale_to(BinaryMultiple::get_smallest()).value;
         // Note: We just assume that our values are always not NaN, so we are actually Ord.
         // A MemoryQuantity with NaN is not permissible.
-        this_val.partial_cmp(&other_val).unwrap()
+        self.partial_cmp(&other).unwrap()
     }
 }
 
