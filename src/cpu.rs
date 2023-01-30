@@ -91,6 +91,9 @@ mod test {
     #[case("1000m", 1000)]
     #[case("500m", 500)]
     #[case("2.5", 2500)]
+    #[case("0.2", 200)]
+    #[case("0.02", 20)]
+    #[case("0.002", 2)]
     fn test_from_str(#[case] s: &str, #[case] millis: usize) {
         let result = CpuQuantity::from_str(s).unwrap();
         assert_eq!(millis, result.as_milli_cpus())
@@ -100,6 +103,7 @@ mod test {
     #[case("1.11111")]
     #[case("1000.1m")]
     #[case("500k")]
+    #[case("0.0002")]
     fn test_from_str_err(#[case] s: &str) {
         let result = CpuQuantity::from_str(s);
         assert!(result.is_err());
