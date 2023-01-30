@@ -4,11 +4,11 @@ use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 
 use crate::error::{Error, OperatorResult};
 
-/// A wrapper around a [`Quantity`], to make working with CPU quantities easier.
-/// Supports conversion from quantities.
+/// A representation of CPU quantities with milli precision.
+/// Supports conversion from [`Quantity`].
 ///
-/// A CPU Quantity cannot have a precision finer than 'm' (millis), so we use that as
-/// our internal representation (see:
+/// A CPU quantity cannot have a precision finer than 'm' (millis) in Kubernetes.
+/// So we use that as our internal representation (see:
 /// `<https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-cpu>`).
 pub struct CpuQuantity {
     millis: usize,
