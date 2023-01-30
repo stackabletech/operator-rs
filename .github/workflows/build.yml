@@ -16,6 +16,7 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
+  RUST_TOOLCHAIN_VERSION: "1.65.0"
   RUSTFLAGS: "-D warnings"
   RUSTDOCFLAGS: "-D warnings"
   RUST_LOG: "info"
@@ -32,7 +33,7 @@ jobs:
       - uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # renovate: tag=v1.0.7
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: ${{ env.RUST_TOOLCHAIN_VERSION }}
           override: true
       - uses: Swatinem/rust-cache@359a70e43a0bb8a13953b04a90f76428b4959bb6 # v2.2.0
         with:
@@ -72,7 +73,7 @@ jobs:
       - uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # renovate: tag=v1.0.7
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: ${{ env.RUST_TOOLCHAIN_VERSION }}
           components: rustfmt
           override: true
       - uses: actions-rs/cargo@844f36862e911db73fe0815f00a4a2602c279505 # renovate: tag=v1.0.3
@@ -88,7 +89,7 @@ jobs:
       - uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # renovate: tag=v1.0.7
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: ${{ env.RUST_TOOLCHAIN_VERSION }}
           components: clippy
           override: true
       - uses: Swatinem/rust-cache@359a70e43a0bb8a13953b04a90f76428b4959bb6 # v2.2.0
@@ -116,7 +117,7 @@ jobs:
       - uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # renovate: tag=v1.0.7
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: ${{ env.RUST_TOOLCHAIN_VERSION }}
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@359a70e43a0bb8a13953b04a90f76428b4959bb6 # v2.2.0
@@ -140,7 +141,7 @@ jobs:
       - uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # renovate: tag=v1.0.7
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: ${{ env.RUST_TOOLCHAIN_VERSION }}
           override: true
       - uses: Swatinem/rust-cache@359a70e43a0bb8a13953b04a90f76428b4959bb6 # v2.2.0
         with:
