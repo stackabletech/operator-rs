@@ -82,7 +82,9 @@ impl FromStr for BinaryMultiple {
 ///   supports up to Gibibytes while K8S quantities can be expressed in Exbibytes.
 /// - the heap size has a non-zero value.
 /// Fails if it can't enforce the above restrictions.
-#[deprecated(note="use \"-Xmx\" + MemoryQuantity::try_from(quantity).scale_to(unit).format_for_java()")]
+#[deprecated(
+    note = "use \"-Xmx\" + MemoryQuantity::try_from(quantity).scale_to(unit).format_for_java()"
+)]
 pub fn to_java_heap(q: &Quantity, factor: f32) -> OperatorResult<String> {
     let scaled = (q.0.parse::<MemoryQuantity>()? * factor).scale_for_java();
     if scaled.value < 1.0 {
@@ -109,7 +111,7 @@ pub fn to_java_heap(q: &Quantity, factor: f32) -> OperatorResult<String> {
 ///   supports up to Gibibytes while K8S quantities can be expressed in Exbibytes.
 /// - the heap size has a non-zero value.
 /// Fails if it can't enforce the above restrictions.
-#[deprecated(note="use (MemoryQuantity::try_from(quantity).scale_to(target_unit) * factor)")]
+#[deprecated(note = "use (MemoryQuantity::try_from(quantity).scale_to(target_unit) * factor)")]
 pub fn to_java_heap_value(
     q: &Quantity,
     factor: f32,
