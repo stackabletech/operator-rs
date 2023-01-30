@@ -291,21 +291,9 @@ impl Sub<MemoryQuantity> for MemoryQuantity {
     type Output = MemoryQuantity;
 
     fn sub(self, rhs: MemoryQuantity) -> Self::Output {
-        if rhs.unit == self.unit {
-            MemoryQuantity {
-                value: self.value - rhs.value,
-                unit: self.unit,
-            }
-        } else if rhs.unit < self.unit {
-            MemoryQuantity {
-                value: self.scale_to(rhs.unit).value - rhs.value,
-                unit: rhs.unit,
-            }
-        } else {
-            MemoryQuantity {
-                value: self.value - rhs.scale_to(self.unit).value,
-                unit: self.unit,
-            }
+        MemoryQuantity {
+            value: self.value - rhs.scale_to(self.unit).value,
+            unit: self.unit,
         }
     }
 }
@@ -314,21 +302,9 @@ impl Add<MemoryQuantity> for MemoryQuantity {
     type Output = MemoryQuantity;
 
     fn add(self, rhs: MemoryQuantity) -> Self::Output {
-        if rhs.unit == self.unit {
-            MemoryQuantity {
-                value: self.value + rhs.value,
-                unit: self.unit,
-            }
-        } else if rhs.unit < self.unit {
-            MemoryQuantity {
-                value: self.scale_to(rhs.unit).value + rhs.value,
-                unit: rhs.unit,
-            }
-        } else {
-            MemoryQuantity {
-                value: self.value + rhs.scale_to(self.unit).value,
-                unit: self.unit,
-            }
+        MemoryQuantity {
+            value: self.value + rhs.scale_to(self.unit).value,
+            unit: self.unit,
         }
     }
 }
