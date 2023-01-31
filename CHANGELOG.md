@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- [BREAKING]: For all products using logback. Added additional optional parameter to `create_logback_config()` to supply custom configurations not covered via the standard log configuration ([#546]).
+
+[#546]: https://github.com/stackabletech/operator-rs/pull/546
+
 ## [0.32.1] - 2023-01-24
 
 ### Fixed
