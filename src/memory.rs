@@ -391,7 +391,9 @@ mod test {
     #[case("1.5Gi", 0.8, "-Xmx1229m")]
     #[case("2Gi", 0.8, "-Xmx1638m")]
     pub fn test_to_java_heap(#[case] q: &str, #[case] factor: f32, #[case] heap: &str) {
-        assert_eq!(heap, to_java_heap(&Quantity(q.to_owned()), factor).unwrap());
+        #[allow(deprecated)] // allow use of the deprecated 'to_java_heap' function to test it
+        let actual = to_java_heap(&Quantity(q.to_owned()), factor).unwrap();
+        assert_eq!(heap, actual);
     }
 
     #[rstest]
