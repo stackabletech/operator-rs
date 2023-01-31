@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- New `CpuQuantity` struct to represent CPU quantities ([#544]).
+- Implemented `Add`, `Sub`, `Div`, `PartialOrd` and more for `MemoryQuantity` ([#544]).
+
+### Changed
+
+- Deprecated `to_java_heap` and `to_java_heap_value` ([#544]).
+
+[#544]: https://github.com/stackabletech/operator-rs/pull/544
+
 ## [0.32.1] - 2023-01-24
 
 ### Fixed
