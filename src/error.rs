@@ -85,7 +85,7 @@ pub enum Error {
     #[error("Invalid quantity [{value}]")]
     InvalidQuantity { value: String },
 
-    #[error("Invalid quantity [{value}]")]
+    #[error("Invalid cpu quantity [{value}]")]
     InvalidCpuQuantity { value: String },
 
     #[error("Invalid quantity unit [{value}]")]
