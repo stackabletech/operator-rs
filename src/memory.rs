@@ -447,10 +447,9 @@ mod test {
         #[case] target_unit: BinaryMultiple,
         #[case] heap: u32,
     ) {
-        assert_eq!(
-            to_java_heap_value(&Quantity(q.to_owned()), factor, target_unit).unwrap(),
-            heap
-        );
+        #[allow(deprecated)] // allow use of the deprecated 'to_java_heap' function to test it
+        let actual = to_java_heap_value(&Quantity(q.to_owned()), factor, target_unit).unwrap();
+        assert_eq!(actual, heap);
     }
 
     #[rstest]
@@ -465,7 +464,9 @@ mod test {
         #[case] factor: f32,
         #[case] target_unit: BinaryMultiple,
     ) {
-        assert!(to_java_heap_value(&Quantity(q.to_owned()), factor, target_unit).is_err());
+        #[allow(deprecated)] // allow use of the deprecated 'to_java_heap' function to test it
+        let result = to_java_heap_value(&Quantity(q.to_owned()), factor, target_unit);
+        assert!(result.is_err());
     }
 
     #[rstest]
