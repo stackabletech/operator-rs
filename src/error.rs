@@ -85,11 +85,20 @@ pub enum Error {
     #[error("Invalid quantity [{value}]")]
     InvalidQuantity { value: String },
 
+    #[error("Invalid cpu quantity [{value}]")]
+    InvalidCpuQuantity { value: String },
+
     #[error("Invalid quantity unit [{value}]")]
     InvalidQuantityUnit { value: String },
 
     #[error("No quantity unit provided for [{value}]")]
     NoQuantityUnit { value: String },
+
+    #[error("Unsupported Precision [{value}]. Kubernetes doesn't allow you to specify CPU resources with a precision finer than 1m. Because of this, it's useful to specify CPU units less than 1.0 or 1000m using the milliCPU form; for example, 5m rather than 0.005")]
+    UnsupportedCpuQuantityPrecision { value: String },
+
+    #[error("Cannot scale down from kilobytes.")]
+    CannotScaleDownMemoryUnit,
 
     #[error("Cannot convert quantity [{value}] to Java heap.")]
     CannotConvertToJavaHeap { value: String },
