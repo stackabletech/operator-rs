@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.33.0] - 2023-02-01
+
 ### Added
 
 - New `CpuQuantity` struct to represent CPU quantities ([#544]).
