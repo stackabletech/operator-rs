@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Processing of Python log files added to the Vector agent configuration ([#539]).
+- Command added to shutdown Vector, e.g. after a job is finished ([#539]).
 
 [#539]: https://github.com/stackabletech/operator-rs/pull/539
 

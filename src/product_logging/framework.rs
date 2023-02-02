@@ -13,9 +13,13 @@ use super::spec::{
 
 /// Config directory used in the Vector log agent container
 const STACKABLE_CONFIG_DIR: &str = "/stackable/config";
-/// Directory which contains a subdirectory for every container which themselves contain the
-/// corresponding log files
+/// Directory in the Vector container which contains a subdirectory for every container which
+/// themselves contain the corresponding log files
 const STACKABLE_LOG_DIR: &str = "/stackable/log";
+/// Subdirectory of the log directory containing files to control the Vector instance
+const VECTOR_LOG_DIR: &str = "_vector";
+/// File to signal that Vector should be gracefully shut down
+const SHUTDOWN_FILE: &str = "shutdown";
 
 /// File name of the Vector config file
 pub const VECTOR_CONFIG_FILE: &str = "vector.toml";
@@ -327,7 +331,7 @@ pub fn create_log4j2_config(
     let loggers = if logger_names.is_empty() {
         "".to_string()
     } else {
-        format!("loggers = {}", logger_names)
+        format!("loggers = {logger_names}")
     };
     let logger_configs = config
         .loggers
@@ -895,15 +899,52 @@ pub fn vector_container(
     ContainerBuilder::new("vector")
         .unwrap()
         .image_from_product_image(image)
-        .command(vec!["/stackable/vector/bin/vector".into()])
+        .command(vec!["bash".into(), "-c".into()])
         .args(vec![
-            "--config".into(),
-            format!("{STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE}"),
+            format!("\
+/stackable/vector/bin/vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$! && \
+if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then \
+mkdir -p {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR} && \
+inotifywait -qq --event create {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}; \
+fi && \
+kill $vector_pid"),
         ])
         .add_env_var("VECTOR_LOG", log_level.to_vector_literal())
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
         .add_volume_mount(log_volume_name, STACKABLE_LOG_DIR)
         .build()
+}
+
+/// Command to shut down the Vector instance
+///
+/// # Example
+///
+/// ```
+/// use stackable_operator::{
+///     builder::ContainerBuilder,
+///     product_logging,
+/// };
+///
+/// const STACKABLE_LOG_DIR: &str = "/stackable/log";
+///
+/// let args = vec![
+///     "echo Perform initialization tasks ...".into(),
+///     product_logging::framework::shutdown_vector_command(STACKABLE_LOG_DIR),
+/// ];
+///
+/// let container = ContainerBuilder::new("init")
+///     .unwrap()
+///     .image("docker.stackable.tech/stackable/my-product:1.0.0-stackable1.0.0")
+///     .command(vec!["bash".to_string(), "-c".to_string()])
+///     .args(vec![args.join(" && ")])
+///     .add_volume_mount("log", STACKABLE_LOG_DIR)
+///     .build();
+/// ```
+pub fn shutdown_vector_command(stackable_log_dir: &str) -> String {
+    format!(
+        "mkdir -p {stackable_log_dir}/{VECTOR_LOG_DIR} && \
+touch {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}"
+    )
 }
 
 #[cfg(test)]
