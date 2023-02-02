@@ -405,6 +405,9 @@ rootLogger.appenderRef.FILE.ref = FILE"#,
 ///       file and 1 MiB for the archived one).
 /// * `console_conversion_pattern` - Logback conversion pattern for the console appender
 /// * `config` - The logging configuration for the container
+/// * `additional_config` - Optional unstructured parameter to add special cases that are not
+///       covered in the logging configuration. Must adhere to the inner logback XML schema as
+///       shown in the example below. It is not parsed or checked and added as is to the `logback.xml`.  
 ///
 /// # Example
 ///
@@ -437,6 +440,7 @@ rootLogger.appenderRef.FILE.ref = FILE"#,
 /// const MY_PRODUCT_LOG_FILE: &str = "my-product.log4j.xml";
 /// const MAX_LOG_FILE_SIZE_IN_MIB: u32 = 10;
 /// const CONSOLE_CONVERSION_PATTERN: &str = "%d{ISO8601} %-5p %m%n";
+/// const ADDITIONAL_CONFIG: &str = "  <logger name=\"foo.logger\" level=\"INFO\" additivity=\"false\"></logger>";
 ///
 /// let mut cm_builder = ConfigMapBuilder::new();
 /// cm_builder.metadata(ObjectMetaBuilder::default().build());
@@ -453,6 +457,7 @@ rootLogger.appenderRef.FILE.ref = FILE"#,
 ///             MAX_LOG_FILE_SIZE_IN_MIB,
 ///             CONSOLE_CONVERSION_PATTERN,
 ///             log_config,
+///             Some(ADDITIONAL_CONFIG)
 ///         ),
 ///     );
 /// }
@@ -465,6 +470,7 @@ pub fn create_logback_config(
     max_size_in_mib: u32,
     console_conversion_pattern: &str,
     config: &AutomaticContainerLogConfig,
+    additional_config: Option<&str>,
 ) -> String {
     let number_of_archived_log_files = 1;
 
@@ -511,6 +517,7 @@ pub fn create_logback_config(
   </appender>
 
 {loggers}
+{additional_config}
   <root level="{root_log_level}">
     <appender-ref ref="CONSOLE" />
     <appender-ref ref="FILE" />
@@ -532,6 +539,7 @@ pub fn create_logback_config(
             .and_then(|file| file.level)
             .unwrap_or_default()
             .to_logback_literal(),
+        additional_config = additional_config.unwrap_or("")
     )
 }
 

@@ -11,7 +11,10 @@
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 
 use crate::error::{Error, OperatorResult};
-use std::{ops::Mul, str::FromStr};
+use std::{
+    ops::{Add, Div, Mul, Sub},
+    str::FromStr,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd)]
 pub enum BinaryMultiple {
@@ -47,6 +50,10 @@ impl BinaryMultiple {
             BinaryMultiple::Exbi => 6,
         }
     }
+
+    pub fn get_smallest() -> Self {
+        Self::Kibi
+    }
 }
 
 impl FromStr for BinaryMultiple {
@@ -67,13 +74,6 @@ impl FromStr for BinaryMultiple {
     }
 }
 
-/// Parsed representation of a K8s memory/storage resource limit.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MemoryQuantity {
-    pub value: f32,
-    pub unit: BinaryMultiple,
-}
-
 /// Convert a (memory) [`Quantity`] to Java heap settings.
 /// Quantities are usually passed on to container resources while Java heap
 /// sizes need to be scaled accordingly.
@@ -82,6 +82,10 @@ pub struct MemoryQuantity {
 ///   supports up to Gibibytes while K8S quantities can be expressed in Exbibytes.
 /// - the heap size has a non-zero value.
 /// Fails if it can't enforce the above restrictions.
+#[deprecated(
+    since = "0.33.0",
+    note = "use \"-Xmx\" + MemoryQuantity::try_from(quantity).scale_to(unit).format_for_java()"
+)]
 pub fn to_java_heap(q: &Quantity, factor: f32) -> OperatorResult<String> {
     let scaled = (q.0.parse::<MemoryQuantity>()? * factor).scale_for_java();
     if scaled.value < 1.0 {
@@ -108,6 +112,10 @@ pub fn to_java_heap(q: &Quantity, factor: f32) -> OperatorResult<String> {
 ///   supports up to Gibibytes while K8S quantities can be expressed in Exbibytes.
 /// - the heap size has a non-zero value.
 /// Fails if it can't enforce the above restrictions.
+#[deprecated(
+    since = "0.33.0",
+    note = "use (MemoryQuantity::try_from(quantity).scale_to(target_unit) * factor)"
+)]
 pub fn to_java_heap_value(
     q: &Quantity,
     factor: f32,
@@ -127,7 +135,102 @@ pub fn to_java_heap_value(
     }
 }
 
+/// Parsed representation of a K8s memory/storage resource limit.
+#[derive(Clone, Copy, Debug)]
+pub struct MemoryQuantity {
+    pub value: f32,
+    pub unit: BinaryMultiple,
+}
+
 impl MemoryQuantity {
+    pub fn from_gibi(gibi: f32) -> Self {
+        Self {
+            value: gibi,
+            unit: BinaryMultiple::Gibi,
+        }
+    }
+
+    pub fn from_mebi(mebi: f32) -> Self {
+        Self {
+            value: mebi,
+            unit: BinaryMultiple::Mebi,
+        }
+    }
+
+    /// Scales down the unit to GB if it is TB or bigger.
+    /// Leaves the quantity unchanged otherwise.
+    fn scale_to_at_most_gb(&self) -> Self {
+        match self.unit {
+            BinaryMultiple::Kibi => *self,
+            BinaryMultiple::Mebi => *self,
+            BinaryMultiple::Gibi => *self,
+            BinaryMultiple::Tebi => self.scale_to(BinaryMultiple::Gibi),
+            BinaryMultiple::Pebi => self.scale_to(BinaryMultiple::Gibi),
+            BinaryMultiple::Exbi => self.scale_to(BinaryMultiple::Gibi),
+        }
+    }
+
+    /// Scale down the unit by one order of magnitude, i.e. GB to MB.
+    fn scale_down_unit(&self) -> OperatorResult<Self> {
+        match self.unit {
+            BinaryMultiple::Kibi => Err(Error::CannotScaleDownMemoryUnit),
+            BinaryMultiple::Mebi => Ok(self.scale_to(BinaryMultiple::Kibi)),
+            BinaryMultiple::Gibi => Ok(self.scale_to(BinaryMultiple::Mebi)),
+            BinaryMultiple::Tebi => Ok(self.scale_to(BinaryMultiple::Gibi)),
+            BinaryMultiple::Pebi => Ok(self.scale_to(BinaryMultiple::Tebi)),
+            BinaryMultiple::Exbi => Ok(self.scale_to(BinaryMultiple::Pebi)),
+        }
+    }
+
+    /// Floors the value of this MemoryQuantity.
+    pub fn floor(&self) -> Self {
+        Self {
+            value: self.value.floor(),
+            unit: self.unit,
+        }
+    }
+
+    /// If the MemoryQuantity value is smaller than 1 (starts with a zero), convert it to a smaller
+    /// unit until the non fractional part of the value is not zero anymore.
+    /// This can fail if the quantity is smaller than 1kB.
+    fn ensure_no_zero(&self) -> OperatorResult<Self> {
+        if self.value < 1. {
+            self.scale_down_unit()?.ensure_no_zero()
+        } else {
+            Ok(*self)
+        }
+    }
+
+    /// Ensure that the value of this MemoryQuantity is a natural number (not a float).
+    /// This is done by picking smaller units until the fractional part is smaller than the tolerated
+    /// rounding loss, and then rounding down.
+    /// This can fail if the tolerated rounding loss is less than 1kB.
+    fn ensure_integer(&self, tolerated_rounding_loss: MemoryQuantity) -> OperatorResult<Self> {
+        let fraction_memory = MemoryQuantity {
+            value: self.value.fract(),
+            unit: self.unit,
+        };
+        if fraction_memory < tolerated_rounding_loss {
+            Ok(self.floor())
+        } else {
+            self.scale_down_unit()?
+                .ensure_integer(tolerated_rounding_loss)
+        }
+    }
+
+    /// Returns a value like '1355m' or '2g'. Always returns natural numbers with either 'k', 'm' or 'g',
+    /// even if the values is multiple Terabytes or more.
+    /// The original quantity may be rounded down to achive a compact, natural number representation.
+    /// This rounding may cause the quantity to shrink by up to 20MB.
+    /// Useful to set memory quantities as JVM paramters.
+    pub fn format_for_java(&self) -> OperatorResult<String> {
+        let m = self
+            .scale_to_at_most_gb() // Java Heap only supports specifying kb, mb or gb
+            .ensure_no_zero()? // We don't want 0.9 or 0.2
+            .ensure_integer(MemoryQuantity::from_mebi(20.))?; // Java only accepts integers not floats
+        Ok(format!("{}{}", m.value, m.unit.to_java_memory_unit()))
+    }
+
     /// Scales the unit to a value supported by Java and may even scale
     /// further down, in an attempt to avoid having zero sizes or losing too
     /// much precision.
@@ -183,6 +286,54 @@ impl Mul<f32> for MemoryQuantity {
         }
     }
 }
+
+impl Div<f32> for MemoryQuantity {
+    type Output = Self;
+
+    fn div(self, rhs: f32) -> Self::Output {
+        self * (1. / rhs)
+    }
+}
+
+impl Sub<MemoryQuantity> for MemoryQuantity {
+    type Output = MemoryQuantity;
+
+    fn sub(self, rhs: MemoryQuantity) -> Self::Output {
+        MemoryQuantity {
+            value: self.value - rhs.scale_to(self.unit).value,
+            unit: self.unit,
+        }
+    }
+}
+
+impl Add<MemoryQuantity> for MemoryQuantity {
+    type Output = MemoryQuantity;
+
+    fn add(self, rhs: MemoryQuantity) -> Self::Output {
+        MemoryQuantity {
+            value: self.value + rhs.scale_to(self.unit).value,
+            unit: self.unit,
+        }
+    }
+}
+
+impl PartialOrd for MemoryQuantity {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        let this_val = self.scale_to(BinaryMultiple::get_smallest()).value;
+        let other_val = other.scale_to(BinaryMultiple::get_smallest()).value;
+        this_val.partial_cmp(&other_val)
+    }
+}
+
+impl PartialEq for MemoryQuantity {
+    fn eq(&self, other: &Self) -> bool {
+        let this_val = self.scale_to(BinaryMultiple::get_smallest()).value;
+        let other_val = other.scale_to(BinaryMultiple::get_smallest()).value;
+        this_val == other_val
+    }
+}
+
+impl Eq for MemoryQuantity {}
 
 impl FromStr for MemoryQuantity {
     type Err = Error;
@@ -244,7 +395,21 @@ mod test {
     #[case("1.5Gi", 0.8, "-Xmx1229m")]
     #[case("2Gi", 0.8, "-Xmx1638m")]
     pub fn test_to_java_heap(#[case] q: &str, #[case] factor: f32, #[case] heap: &str) {
-        assert_eq!(heap, to_java_heap(&Quantity(q.to_owned()), factor).unwrap());
+        #[allow(deprecated)] // allow use of the deprecated 'to_java_heap' function to test it
+        let actual = to_java_heap(&Quantity(q.to_owned()), factor).unwrap();
+        assert_eq!(heap, actual);
+    }
+
+    #[rstest]
+    #[case("256Ki", "256k")]
+    #[case("1.6Mi", "1m")]
+    #[case("1.2Gi", "1228m")]
+    #[case("1.6Gi", "1638m")]
+    #[case("1Gi", "1g")]
+    pub fn test_format_java(#[case] q: String, #[case] expected: String) {
+        let m = MemoryQuantity::try_from(Quantity(q)).unwrap();
+        let actual = m.format_for_java().unwrap();
+        assert_eq!(expected, actual);
     }
 
     #[rstest]
@@ -286,10 +451,9 @@ mod test {
         #[case] target_unit: BinaryMultiple,
         #[case] heap: u32,
     ) {
-        assert_eq!(
-            to_java_heap_value(&Quantity(q.to_owned()), factor, target_unit).unwrap(),
-            heap
-        );
+        #[allow(deprecated)] // allow use of the deprecated 'to_java_heap' function to test it
+        let actual = to_java_heap_value(&Quantity(q.to_owned()), factor, target_unit).unwrap();
+        assert_eq!(actual, heap);
     }
 
     #[rstest]
@@ -304,6 +468,59 @@ mod test {
         #[case] factor: f32,
         #[case] target_unit: BinaryMultiple,
     ) {
-        assert!(to_java_heap_value(&Quantity(q.to_owned()), factor, target_unit).is_err());
+        #[allow(deprecated)] // allow use of the deprecated 'to_java_heap' function to test it
+        let result = to_java_heap_value(&Quantity(q.to_owned()), factor, target_unit);
+        assert!(result.is_err());
+    }
+
+    #[rstest]
+    #[case("1000Ki", "500Ki", "500Ki")]
+    #[case("1Mi", "512Ki", "512Ki")]
+    #[case("2Mi", "512Ki", "1536Ki")]
+    #[case("2048Ki", "1Mi", "1024Ki")]
+    pub fn test_subtraction(#[case] lhs: &str, #[case] rhs: &str, #[case] res: &str) {
+        let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
+        let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
+        let expected = MemoryQuantity::try_from(Quantity(res.to_owned())).unwrap();
+        let actual = lhs - rhs;
+        assert_eq!(expected, actual)
+    }
+
+    #[rstest]
+    #[case("1000Ki", "500Ki", "1500Ki")]
+    #[case("1Mi", "512Ki", "1536Ki")]
+    #[case("2Mi", "512Ki", "2560Ki")]
+    #[case("2048Ki", "1Mi", "3072Ki")]
+    pub fn test_addition(#[case] lhs: &str, #[case] rhs: &str, #[case] res: &str) {
+        let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
+        let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
+        let expected = MemoryQuantity::try_from(Quantity(res.to_owned())).unwrap();
+        let actual = lhs + rhs;
+        assert_eq!(expected, actual)
+    }
+
+    #[rstest]
+    #[case("100Ki", "100Ki", false)]
+    #[case("100Ki", "100Ki", false)]
+    #[case("100Ki", "100Ki", false)]
+    #[case("101Ki", "100Ki", true)]
+    #[case("100Ki", "101Ki", false)]
+    #[case("1Mi", "100Ki", true)]
+    #[case("2000Ki", "1Mi", true)]
+    pub fn test_comparison(#[case] lhs: &str, #[case] rhs: &str, #[case] res: bool) {
+        let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
+        let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
+        assert_eq!(lhs > rhs, res)
+    }
+
+    #[rstest]
+    #[case("100Ki", "100Ki", true)]
+    #[case("100Ki", "200Ki", false)]
+    #[case("1Mi", "1024Ki", true)]
+    #[case("1024Ki", "1Mi", true)]
+    pub fn test_eq(#[case] lhs: &str, #[case] rhs: &str, #[case] res: bool) {
+        let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
+        let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
+        assert_eq!(lhs == rhs, res)
     }
 }

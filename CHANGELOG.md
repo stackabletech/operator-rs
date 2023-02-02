@@ -11,6 +11,21 @@ All notable changes to this project will be documented in this file.
 
 [#539]: https://github.com/stackabletech/operator-rs/pull/539
 
+## [0.33.0] - 2023-02-01
+
+### Added
+
+- New `CpuQuantity` struct to represent CPU quantities ([#544]).
+- Implemented `Add`, `Sub`, `Div`, `PartialOrd` and more for `MemoryQuantity` ([#544]).
+
+### Changed
+
+- Deprecated `to_java_heap` and `to_java_heap_value` ([#544]).
+- [BREAKING]: For all products using logback. Added additional optional parameter to `create_logback_config()` to supply custom configurations not covered via the standard log configuration ([#546]).
+
+[#544]: https://github.com/stackabletech/operator-rs/pull/544
+[#546]: https://github.com/stackabletech/operator-rs/pull/546
+
 ## [0.32.1] - 2023-01-24
 
 ### Fixed
