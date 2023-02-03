@@ -9,7 +9,7 @@ repository = "https://github.com/stackabletech/operator-rs"
 
 [dependencies]
 chrono = { version = "0.4.23", default-features = false }
-clap = { version = "4.0.32", features = ["derive", "cargo", "env"] }
+clap = { version = "4.1.4", features = ["derive", "cargo", "env"] }
 const_format = "0.2.30"
 either = "1.8.1"
 futures = "0.3.26"
