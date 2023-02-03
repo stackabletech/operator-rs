@@ -365,6 +365,20 @@ impl LogLevel {
     pub fn to_log4j2_literal(&self) -> String {
         self.to_log4j_literal()
     }
+
+    /// Convert the log level to a Python expression
+    pub fn to_python_expression(&self) -> String {
+        match self {
+            LogLevel::TRACE => "logging.DEBUG",
+            LogLevel::DEBUG => "logging.DEBUG",
+            LogLevel::INFO => "logging.INFO",
+            LogLevel::WARN => "logging.WARNING",
+            LogLevel::ERROR => "logging.ERROR",
+            LogLevel::FATAL => "logging.CRITICAL",
+            LogLevel::NONE => "logging.CRITICAL + 1",
+        }
+        .into()
+    }
 }
 
 /// Create the default logging configuration
