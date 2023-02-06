@@ -4,12 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.34.0] - 2023-02-06
+
 ### Added
 
 - Processing of Python log files added to the Vector agent configuration ([#539]).
 - Command added to shutdown Vector, e.g. after a job is finished ([#539]).
 
+### Changed
+
+- clap: 4.0.32 -> 4.1.4 ([#549]).
+- tokio: 1.24.1 -> 1.25.0 ([#550]).
+
 [#539]: https://github.com/stackabletech/operator-rs/pull/539
+[#549]: https://github.com/stackabletech/operator-rs/pull/549
+[#550]: https://github.com/stackabletech/operator-rs/pull/550
 
 ## [0.33.0] - 2023-02-01
 
