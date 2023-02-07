@@ -141,3 +141,44 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 pub fn derive_fragment(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     fragment::derive(parse_macro_input!(input)).into()
 }
+
+use proc_macro::TokenStream;
+use quote::quote;
+
+#[proc_macro]
+pub fn handle_common_flags(_input: TokenStream) -> TokenStream {
+    quote! {
+        {
+             // Check if the CRD has the annotation to pause reconciliation set to true and abort
+            if hdfs.spec.common.reconciliation_paused() {
+                tracing::info!("Reconciliation for this cluster has been paused, aborting ..");
+            return Ok(Action::await_change());
+            };
+
+            // Check if the CRD has the annotation to signify that the cluster is stopped
+
+            let client = &ctx.client;
+            if hdfs.spec.common.stopped() {
+                tracing::info!("Cluster has stopped annotation..");
+                let cluster_resources = ClusterResources::new(
+                    APP_NAME,
+                    OPERATOR_NAME,
+                    RESOURCE_MANAGER_HDFS_CONTROLLER,
+                    &hdfs.object_ref(&()),
+                ).context(CreateClusterResourcesSnafu)?;
+
+            if cluster_resources
+                .stop_deployed_cluster_resources(&client)
+                .await
+                .context(StopClusterResourcesSnafu)?
+            {
+                tracing::info!("Stopped all cluster resources.")
+            } else {
+                tracing::info!("Cluster already fully stopped, not doing anything.")
+            }
+                return Ok(Action::await_change());
+            }
+        }
+    }
+    .into()
+}

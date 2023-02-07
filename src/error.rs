@@ -14,13 +14,13 @@ pub enum Error {
         #[from]
         source: kube::Error,
     },
-
     #[error("Kubernetes failed to delete object: {source}")]
     KubeDeleteError {
         #[from]
         source: kube::runtime::wait::delete::Error,
     },
-
+    #[error("Aborted reconciliation due to: {message}")]
+    ReconciliationAborted { message: String },
     #[error("Object is missing key: {key}")]
     MissingObjectKey { key: &'static str },
 

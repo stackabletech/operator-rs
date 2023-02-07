@@ -5,12 +5,14 @@ use std::{
     fmt::Debug,
 };
 
+use crate::builder::ObjectMetaBuilder;
 use crate::{
     client::{Client, GetApi},
     error::{Error, OperatorResult},
     k8s_openapi::{
         api::{
             apps::v1::{DaemonSet, StatefulSet},
+            autoscaling::v1::{Scale, ScaleSpec},
             core::v1::{ConfigMap, ObjectReference, Service},
         },
         apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
@@ -23,7 +25,9 @@ use k8s_openapi::{
     api::{core::v1::Secret, core::v1::ServiceAccount, rbac::v1::RoleBinding},
     NamespaceResourceScope,
 };
+use kube::api::PostParams;
 use kube::core::ErrorResponse;
+use kube::Api;
 use serde::{de::DeserializeOwned, Serialize};
 use tracing::{debug, info};
 
@@ -423,5 +427,37 @@ impl ClusterResources {
             .await?;
 
         Ok(resources)
+    }
+
+    pub async fn stop_deployed_cluster_resources(&self, client: &Client) -> OperatorResult<bool> {
+        let statefulsets: Vec<StatefulSet> = self.list_deployed_cluster_resources(client).await?;
+        tracing::info!(
+            "found {} statefulsets: {:?}",
+            statefulsets.len(),
+            statefulsets
+        );
+        for set in statefulsets {
+            tracing::info!(
+                "scaling statefulset {} to 0 replicas by patching",
+                &set.metadata.name.clone().unwrap(),
+            );
+            let api: Api<StatefulSet> = client.get_api(set.get_namespace());
+            tracing::info!(
+                "current scale: {:?}",
+                api.get_scale(&set.meta().name.as_ref().unwrap()).await?
+            );
+            let zero_scale = Scale {
+                metadata: ObjectMetaBuilder::new().name_and_namespace(&set).build(),
+                spec: Some(ScaleSpec { replicas: Some(0) }),
+                ..Default::default()
+            };
+            api.replace_scale(
+                &set.meta().name.as_ref().unwrap(),
+                &PostParams::default(),
+                serde_json::to_vec(&zero_scale).unwrap(),
+            )
+            .await?;
+        }
+        return Ok(false);
     }
 }
