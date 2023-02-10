@@ -664,6 +664,10 @@ line_delimiter = "\r\n"
 type = "file"
 include = ["{STACKABLE_LOG_DIR}/*/*.py.json"]
 
+[sources.files_airlift]
+type = "file"
+include = ["{STACKABLE_LOG_DIR}/*/*.airlift.json"]
+
 [transforms.processed_files_stdout]
 inputs = ["files_stdout"]
 type = "remap"
@@ -793,6 +797,18 @@ if parsed_event.levelname == "DEBUG" {{
   .level = "FATAL"
 }}
 .message = parsed_event.message
+'''
+
+[transforms.processed_files_airlift]
+inputs = ["files_airlift"]
+type = "remap"
+source = '''
+parsed_event = parse_json!(string!(.message))
+.message = join!(compact([parsed_event.message, parsed_event.stackTrace]), "\n")
+.timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+.logger = parsed_event.logger
+.level = parsed_event.level
+.thread = parsed_event.thread
 '''
 
 [transforms.extended_logs_files]
