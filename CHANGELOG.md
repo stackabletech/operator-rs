@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.35.0] - 2023-02-13
+
 ### Added
 
 - Added airlift json source and airlift json transform to vector.toml ([#553]).
