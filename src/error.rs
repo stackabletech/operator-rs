@@ -55,7 +55,7 @@ pub enum Error {
     #[error("Failed to load ProductConfig: {source}")]
     ProductConfigLoadError {
         #[source]
-        source: product_config::error::Error,
+        source: Box<product_config::error::Error>,
     },
 
     #[error("ProductConfig Framework reported error: {source}")]

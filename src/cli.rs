@@ -224,7 +224,9 @@ impl ProductConfigPath {
             self.path.as_deref(),
             default_search_paths,
         )?)
-        .map_err(|source| error::Error::ProductConfigLoadError { source })
+        .map_err(|source| error::Error::ProductConfigLoadError {
+            source: source.into(),
+        })
     }
 }
 
