@@ -319,11 +319,10 @@ mod tests {
             apiVersion: test/v1
             kind: TestCluster
             metadata:
-              name: {}
+              name: {CLUSTER_NAME}
             spec:
               test: 100
-            ",
-            CLUSTER_NAME
+            "
         ))
         .unwrap()
     }

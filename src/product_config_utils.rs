@@ -1225,44 +1225,35 @@ mod tests {
             properties:
               - property: 
                   propertyNames:
-                    - name: \"{}\"
+                    - name: \"{pc_name}\"
                       kind:
                         type: \"file\"
-                        file: \"{}\"
+                        file: \"{file_name}\"
                   datatype:
                     type: \"string\"
                   recommendedValues:
-                    - value: \"{}\"
+                    - value: \"{pc_value}\"
                   roles:
-                    - name: \"{}\"
+                    - name: \"{role_1}\"
                       required: true
-                    - name: \"{}\"
+                    - name: \"{role_2}\"
                       required: true
                   asOfVersion: \"0.0.0\"
               - property: 
                   propertyNames:
-                    - name: \"{}\"
+                    - name: \"{pc_bad_version}\"
                       kind:
                         type: \"file\"
-                        file: \"{}\"
+                        file: \"{file_name}\"
                   datatype:
                     type: \"string\"
                   recommendedValues:
-                    - value: \"{}\"
+                    - value: \"{pc_bad_version_value}\"
                   roles:
-                    - name: \"{}\"
+                    - name: \"{role_1}\"
                       required: true
                   asOfVersion: \"0.5.0\"
-            ",
-            pc_name,
-            file_name,
-            pc_value,
-            role_1,
-            role_2,
-            pc_bad_version,
-            file_name,
-            pc_bad_version_value,
-            role_1
+            "
         );
 
         let product_config = ProductConfigManager::from_str(config).unwrap();

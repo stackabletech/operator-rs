@@ -128,7 +128,7 @@ pub fn to_java_heap_value(
     if scaled.value < 1.0 {
         Err(Error::CannotConvertToJavaHeapValue {
             value: q.0.to_owned(),
-            target_unit: format!("{:?}", target_unit),
+            target_unit: format!("{target_unit:?}"),
         })
     } else {
         Ok(scaled.value as u32)
