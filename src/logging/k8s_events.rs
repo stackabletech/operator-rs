@@ -21,7 +21,7 @@ fn error_to_event<E: ReconcilerError>(err: &E) -> Event {
         loop {
             err = match err.source() {
                 Some(err) => {
-                    write!(buf, ": {}", err).unwrap();
+                    write!(buf, ": {err}").unwrap();
                     err
                 }
                 None => break buf,

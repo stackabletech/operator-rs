@@ -18,7 +18,7 @@ pub fn convert_label_selector_to_query_string(
         query_string.push_str(
             &label_map
                 .iter()
-                .map(|(key, value)| format!("{}={}", key, value))
+                .map(|(key, value)| format!("{key}={value}"))
                 .collect::<Vec<_>>()
                 .join(","),
         );
@@ -51,8 +51,7 @@ pub fn convert_label_selector_to_query_string(
                     )),
                     _ => Err(Error::InvalidLabelSelector {
                         message: format!(
-                            "LabelSelector has no or empty values for [{}] operator",
-                            operator
+                            "LabelSelector has no or empty values for [{operator}] operator"
                         ),
                     }),
                 },
@@ -75,7 +74,7 @@ pub fn convert_label_selector_to_query_string(
                 op => {
                     Err(
                         Error::InvalidLabelSelector {
-                            message: format!("LabelSelector has illegal/unknown operator [{}]", op)
+                            message: format!("LabelSelector has illegal/unknown operator [{op}]")
                         })
                 }
             })

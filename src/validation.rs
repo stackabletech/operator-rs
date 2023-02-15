@@ -32,16 +32,16 @@ const RFC_1035_LABEL_MAX_LENGTH: usize = 63;
 
 lazy_static! {
     static ref RFC_1123_SUBDOMAIN_REGEX: Regex =
-        Regex::new(&format!("^{}$", RFC_1123_SUBDOMAIN_FMT)).unwrap();
+        Regex::new(&format!("^{RFC_1123_SUBDOMAIN_FMT}$")).unwrap();
     static ref RFC_1123_LABEL_REGEX: Regex =
-        Regex::new(&format!("^{}$", RFC_1123_SUBDOMAIN_FMT)).unwrap();
+        Regex::new(&format!("^{RFC_1123_SUBDOMAIN_FMT}$")).unwrap();
     static ref RFC_1035_LABEL_REGEX: Regex =
-        Regex::new(&format!("^{}$", RFC_1035_LABEL_FMT)).unwrap();
+        Regex::new(&format!("^{RFC_1035_LABEL_FMT}$")).unwrap();
 }
 
 /// Returns a formatted error message for maximum length violations.
 fn max_len_error(length: usize) -> String {
-    format!("must be no more than {} characters", length)
+    format!("must be no more than {length} characters")
 }
 
 /// Returns a formatted error message for regex violations.
@@ -53,7 +53,7 @@ fn max_len_error(length: usize) -> String {
 /// * `examples` - are optional well, formed examples that would match the regex
 fn regex_error(msg: &str, fmt: &str, examples: &[&str]) -> String {
     if examples.is_empty() {
-        return format!("{} (regex used for validation is '{}')", msg, fmt);
+        return format!("{msg} (regex used for validation is '{fmt}')");
     }
 
     let mut msg = msg.to_string();

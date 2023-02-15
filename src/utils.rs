@@ -37,7 +37,7 @@ pub fn print_startup_string(
 ) {
     let git_information = match git_version {
         None => "".to_string(),
-        Some(git) => format!(" (Git information: {})", git),
+        Some(git) => format!(" (Git information: {git})"),
     };
     info!("Starting {}", pkg_description);
     info!(

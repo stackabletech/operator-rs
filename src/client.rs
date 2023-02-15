@@ -57,7 +57,7 @@ impl Client {
         // According to https://kubernetes.io/docs/reference/using-api/server-side-apply/#using-server-side-apply-in-a-controller we should always force conflicts in controllers.
         params.force = true;
         if let Some(manager) = &mut params.field_manager {
-            *manager = format!("{}/{}", manager, field_manager_scope);
+            *manager = format!("{manager}/{field_manager_scope}");
         }
         params
     }

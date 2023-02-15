@@ -111,7 +111,7 @@ pub type ValidatedRoleConfigByPropertyKind =
 /// # Arguments
 /// - `role`        - The role name.
 /// - `group`       - The role group name.
-/// - `role_config` - The validated product configuration for each role and group.  
+/// - `role_config` - The validated product configuration for each role and group.
 pub fn config_for_role_and_group<'a>(
     role: &str,
     group: &str,
@@ -166,7 +166,7 @@ where
 }
 
 /// Validates a product configuration for all roles and role_groups. Requires a valid product config
-/// and [`RoleConfigByPropertyKind`] which can be obtained via `transform_all_roles_to_config`.  
+/// and [`RoleConfigByPropertyKind`] which can be obtained via `transform_all_roles_to_config`.
 ///
 /// # Arguments
 /// - `version`            - The version of the product to be configured.
@@ -209,7 +209,7 @@ pub fn validate_all_roles_and_groups_config(
 
 /// Calculates and validates a product configuration for a role and group. Requires a valid
 /// product config and existing [`RoleConfigByPropertyKind`] that can be obtained via
-/// `transform_all_roles_to_config`.  
+/// `transform_all_roles_to_config`.
 ///
 /// # Arguments
 /// - `role`               - The name of the role
@@ -1223,46 +1223,37 @@ mod tests {
             spec:
               units: []
             properties:
-              - property: 
+              - property:
                   propertyNames:
-                    - name: \"{}\"
+                    - name: \"{pc_name}\"
                       kind:
                         type: \"file\"
-                        file: \"{}\"
+                        file: \"{file_name}\"
                   datatype:
                     type: \"string\"
                   recommendedValues:
-                    - value: \"{}\"
+                    - value: \"{pc_value}\"
                   roles:
-                    - name: \"{}\"
+                    - name: \"{role_1}\"
                       required: true
-                    - name: \"{}\"
+                    - name: \"{role_2}\"
                       required: true
                   asOfVersion: \"0.0.0\"
-              - property: 
+              - property:
                   propertyNames:
-                    - name: \"{}\"
+                    - name: \"{pc_bad_version}\"
                       kind:
                         type: \"file\"
-                        file: \"{}\"
+                        file: \"{file_name}\"
                   datatype:
                     type: \"string\"
                   recommendedValues:
-                    - value: \"{}\"
+                    - value: \"{pc_bad_version_value}\"
                   roles:
-                    - name: \"{}\"
+                    - name: \"{role_1}\"
                       required: true
                   asOfVersion: \"0.5.0\"
-            ",
-            pc_name,
-            file_name,
-            pc_value,
-            role_1,
-            role_2,
-            pc_bad_version,
-            file_name,
-            pc_bad_version_value,
-            role_1
+            "
         );
 
         let product_config = ProductConfigManager::from_str(config).unwrap();
