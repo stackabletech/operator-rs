@@ -121,6 +121,28 @@ pub fn affinity_between_role_pods(
     }
 }
 
+pub fn affinity_between_cluster_pods(
+    app_name: &str,
+    cluster_name: &str,
+    weight: i32,
+) -> WeightedPodAffinityTerm {
+    WeightedPodAffinityTerm {
+        pod_affinity_term: PodAffinityTerm {
+            label_selector: Some(LabelSelector {
+                match_expressions: None,
+                match_labels: Some(BTreeMap::from([
+                    (APP_NAME_LABEL.to_string(), app_name.to_string()),
+                    (APP_INSTANCE_LABEL.to_string(), cluster_name.to_string()),
+                ])),
+            }),
+            namespace_selector: None,
+            namespaces: None,
+            topology_key: "kubernetes.io/hostname".to_string(),
+        },
+        weight,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use k8s_openapi::{
@@ -317,7 +339,7 @@ mod tests {
         let cluster_name = "simple-kafka";
         let role = "broker";
 
-        let anti_affinity = affinity_between_role_pods(app_name, cluster_name, role, 50);
+        let anti_affinity = affinity_between_role_pods(app_name, cluster_name, role, 70);
         assert_eq!(
             anti_affinity,
             WeightedPodAffinityTerm {
@@ -340,7 +362,36 @@ mod tests {
                     namespaces: None,
                     topology_key: "kubernetes.io/hostname".to_string(),
                 },
-                weight: 50
+                weight: 70
+            }
+        );
+    }
+
+    #[test]
+    fn test_affinity_between_cluster_pods() {
+        let app_name = "kafka";
+        let cluster_name = "simple-kafka";
+
+        let anti_affinity = affinity_between_cluster_pods(app_name, cluster_name, 20);
+        assert_eq!(
+            anti_affinity,
+            WeightedPodAffinityTerm {
+                pod_affinity_term: PodAffinityTerm {
+                    label_selector: Some(LabelSelector {
+                        match_expressions: None,
+                        match_labels: Some(BTreeMap::from([
+                            ("app.kubernetes.io/name".to_string(), "kafka".to_string(),),
+                            (
+                                "app.kubernetes.io/instance".to_string(),
+                                "simple-kafka".to_string(),
+                            )
+                        ]))
+                    }),
+                    namespace_selector: None,
+                    namespaces: None,
+                    topology_key: "kubernetes.io/hostname".to_string(),
+                },
+                weight: 20
             }
         );
     }
