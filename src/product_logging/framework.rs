@@ -691,6 +691,36 @@ extracted_timestamp = parse_regex!(string!(splits[0]), r'(?P<timestamp>[0-9]{{4}
 .message = string!(splits[2])
 '''
 
+[sources.files_opa_json]
+type = "file"
+include = ["{STACKABLE_LOG_DIR}/*/opa.json"]
+
+[transforms.processed_files_opa_json]
+inputs = ["files_opa_json"]
+type = "remap"
+source = '''
+parsed_event = parse_json!(string!(.message))
+.timestamp = parse_timestamp!(parsed_event.time, "%Y-%m-%dT%H:%M:%SZ")
+.level = upcase!(parsed_event.level)
+.message = parsed_event.msg
+## logger selection
+if includes(keys!(parsed_event), "plugin") {{
+   # variant 1: contains [plugin]
+   .logger = parsed_event.plugin
+}} else if includes(keys!(parsed_event), "addrs") {{
+   # variant 2: contains [addrs]
+   .logger = "server"
+}} else if includes(keys!(parsed_event), "current_version") {{
+    # variant 3: contains [current_version]
+   .logger = "update"
+}} else {{
+   .logger = "http"
+}}
+'''
+
+
+
+
 
 
 [transforms.processed_files_stdout]
