@@ -702,19 +702,22 @@ source = '''
 parsed_event = parse_json!(string!(.message))
 .timestamp = parse_timestamp!(parsed_event.time, "%Y-%m-%dT%H:%M:%SZ")
 .level = upcase!(parsed_event.level)
+## message builder
 .message = parsed_event.msg
 ## logger selection
 if includes(keys!(parsed_event), "plugin") {{
    # variant 1: contains [plugin]
-   .logger = parsed_event.plugin
+   .logger = string!(parsed_event.name) + "-" string!(parsed_event.plugin)
 }} else if includes(keys!(parsed_event), "addrs") {{
    # variant 2: contains [addrs]
    .logger = "server"
 }} else if includes(keys!(parsed_event), "current_version") {{
     # variant 3: contains [current_version]
    .logger = "update"
-}} else {{
+   .message = string!(parsed_event.msg) + "\nCurrent version: " + string!(parsed_event.current_version) + "\nLatest version: " + string!(parsed_event.latest_version) + "\nRelease notes: " + string!(parsed_event.release_notes)
+}} else if includes(keys!(parsed_event), "client_addr") {{
    .logger = "http"
+   .message = string!(parsed_event.msg) + "\nclient_addr: " + string!(parsed_event.client_addr) + "\nreq_id: " + string!(parsed_event.req_id) + "\nreq_method: " + string!(parsed_event.req_method) + "\nreq_path: " + string!(parsed_event.req_path) + "\nresp_bytes: " + string!(parsed_event.resp_bytes) + "\nresp_duration: " + string!(parsed_event.resp_duration) + "\nresp_status: " + string!(parsed_event.resp_status) 
 }}
 '''
 
