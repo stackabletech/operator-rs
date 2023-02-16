@@ -2,9 +2,10 @@ use std::collections::BTreeMap;
 
 use k8s_openapi::{
     api::core::v1::{
-        NodeAffinity, PodAffinity, PodAffinityTerm, PodAntiAffinity, WeightedPodAffinityTerm,
+        NodeAffinity, NodeSelector, NodeSelectorRequirement, NodeSelectorTerm, PodAffinity,
+        PodAffinityTerm, PodAntiAffinity, WeightedPodAffinityTerm,
     },
-    apimachinery::pkg::apis::meta::v1::LabelSelector,
+    apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -36,6 +37,52 @@ pub struct StackableAffinity {
     pub pod_anti_affinity: Option<PodAntiAffinity>,
     pub node_affinity: Option<NodeAffinity>,
     pub node_selector: Option<StackableNodeSelector>,
+}
+
+impl StackableAffinityFragment {
+    #[deprecated(
+        since = "0.36.0",
+        note = "During https://github.com/stackabletech/issues/issues/323 we moved from the previous selector field on a rolegroup to a more generic affinity handling. \
+We still need to support the old selector field, which has some custom magic (see the code in this function). \
+So we need a way to transform the old into the mechanism which this function offers. \
+It will be removed once we stop supporting the old mechanism."
+    )]
+    pub fn add_legacy_selector(&mut self, label_selector: &LabelSelector) {
+        let node_labels = label_selector.match_labels.clone();
+        let node_label_exprs = label_selector.match_expressions.clone();
+
+        let node_affinity = node_label_exprs.map(|node_label_exprs| NodeAffinity {
+            required_during_scheduling_ignored_during_execution: Some(NodeSelector {
+                node_selector_terms: vec![NodeSelectorTerm {
+                    match_expressions: Some(
+                        node_label_exprs
+                            .into_iter()
+                            .map(
+                                |LabelSelectorRequirement {
+                                     key,
+                                     operator,
+                                     values,
+                                 }| {
+                                    NodeSelectorRequirement {
+                                        key,
+                                        operator,
+                                        values,
+                                    }
+                                },
+                            )
+                            .collect(),
+                    ),
+                    ..NodeSelectorTerm::default()
+                }],
+            }),
+            ..NodeAffinity::default()
+        });
+
+        self.node_selector = node_labels.map(|node_labels| StackableNodeSelector {
+            node_selector: node_labels,
+        });
+        self.node_affinity = node_affinity;
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
