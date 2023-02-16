@@ -48,6 +48,8 @@ So we need a way to transform the old into the mechanism which this function off
 It will be removed once we stop supporting the old mechanism."
     )]
     pub fn add_legacy_selector(&mut self, label_selector: &LabelSelector) {
+        tracing::error!("Deprecated field `selector` was specified. Please use the new `affinity` field instead, as support for `selector` will be removed in the future. See https://docs.stackable.tech/home/stable/contributor/adr/ADR026-affinities.html for details");
+
         let node_labels = label_selector.match_labels.clone();
         let node_label_exprs = label_selector.match_expressions.clone();
 
