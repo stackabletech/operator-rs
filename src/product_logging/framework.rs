@@ -668,6 +668,31 @@ include = ["{STACKABLE_LOG_DIR}/*/*.py.json"]
 type = "file"
 include = ["{STACKABLE_LOG_DIR}/*/*.airlift.json"]
 
+
+
+
+
+[sources.files_opa_bundle_builder]
+type = "file"
+include = ["{STACKABLE_LOG_DIR}/*/bundle_builder.log"]
+
+[transforms.processed_files_opa_bundle_builder]
+inputs = ["files_opa_bundle_builder"]
+type = "remap"
+source = '''
+splits = split(strip_whitespace(strip_ansi_escape_codes(string!(.message))), r'[ \t]+', limit:3)
+# First element is timestamp
+extracted_timestamp = parse_regex!(string!(splits[0]), r'(?P<timestamp>[0-9]{{4}}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9].[0-9]{{6}}Z)').timestamp
+.timestamp = parse_timestamp!(extracted_timestamp, "%Y-%m-%dT%H:%M:%S.%6fZ")
+# second element is log level
+.level = parse_regex!(string!(splits[1]), r'(?P<level>(DEBUG)|(INFO)|(ERROR))').level
+.logger = "bundle-builder"
+# third element is the message
+.message = string!(splits[2])
+'''
+
+
+
 [transforms.processed_files_stdout]
 inputs = ["files_stdout"]
 type = "remap"
