@@ -96,7 +96,7 @@ pub struct StackableNodeSelector {
 
 impl Atomic for StackableNodeSelector {}
 
-pub fn anti_affinity_between_role_pods(
+pub fn affinity_between_role_pods(
     app_name: &str,
     cluster_name: &str,
     role: &str,
@@ -138,7 +138,7 @@ mod tests {
             pod_affinity: None,
             pod_anti_affinity: Some(PodAntiAffinity {
                 preferred_during_scheduling_ignored_during_execution: Some(vec![
-                    anti_affinity_between_role_pods("kafka", "simple-kafka", "broker", 70),
+                    affinity_between_role_pods("kafka", "simple-kafka", "broker", 70),
                 ]),
                 required_during_scheduling_ignored_during_execution: None,
             }),
@@ -251,7 +251,7 @@ mod tests {
             pod_affinity: None,
             pod_anti_affinity: Some(PodAntiAffinity {
                 preferred_during_scheduling_ignored_during_execution: Some(vec![
-                    anti_affinity_between_role_pods("kafka", "simple-kafka", "broker", 70),
+                    affinity_between_role_pods("kafka", "simple-kafka", "broker", 70),
                 ]),
                 required_during_scheduling_ignored_during_execution: None,
             }),
@@ -312,12 +312,12 @@ mod tests {
     }
 
     #[test]
-    fn test_anti_affinity_between_role_pods() {
+    fn test_affinity_between_role_pods() {
         let app_name = "kafka";
         let cluster_name = "simple-kafka";
         let role = "broker";
 
-        let anti_affinity = anti_affinity_between_role_pods(app_name, cluster_name, role, 50);
+        let anti_affinity = affinity_between_role_pods(app_name, cluster_name, role, 50);
         assert_eq!(
             anti_affinity,
             WeightedPodAffinityTerm {
