@@ -87,7 +87,7 @@ It will be removed once we stop supporting the old mechanism."
     }
 }
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StackableNodeSelector {
     #[serde(flatten)]
