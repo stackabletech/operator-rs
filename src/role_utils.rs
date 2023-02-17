@@ -182,6 +182,8 @@ pub struct RoleGroup<T> {
     #[serde(flatten)]
     pub config: CommonConfiguration<T>,
     pub replicas: Option<u16>,
+    // TODO Can be removed after we stop supporting this field.
+    // See ADR 26 Affinities
     pub selector: Option<LabelSelector>,
 }
 

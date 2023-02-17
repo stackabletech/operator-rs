@@ -2,7 +2,10 @@ pub mod container;
 pub mod security;
 pub mod volume;
 
+use std::collections::BTreeMap;
+
 use crate::builder::meta::ObjectMetaBuilder;
+use crate::commons::affinity::StackableAffinity;
 use crate::commons::product_image_selection::ResolvedProductImage;
 use crate::error::{Error, OperatorResult};
 
@@ -10,13 +13,11 @@ use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilde
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::{
     api::core::v1::{
-        Affinity, Container, LocalObjectReference, NodeAffinity, NodeSelector,
-        NodeSelectorRequirement, NodeSelectorTerm, Pod, PodAffinity, PodAntiAffinity, PodCondition,
-        PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec, Toleration, Volume,
+        Affinity, Container, LocalObjectReference, NodeAffinity, Pod, PodAffinity, PodAntiAffinity,
+        PodCondition, PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec, Toleration, Volume,
     },
-    apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement, ObjectMeta},
+    apimachinery::pkg::apis::meta::v1::ObjectMeta,
 };
-use std::collections::BTreeMap;
 
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
 #[derive(Clone, Default)]
@@ -26,7 +27,8 @@ pub struct PodBuilder {
     init_containers: Option<Vec<Container>>,
     metadata: Option<ObjectMeta>,
     node_name: Option<String>,
-    node_selector: Option<LabelSelector>,
+    node_selector: Option<BTreeMap<String, String>>,
+    node_affinity: Option<NodeAffinity>,
     pod_affinity: Option<PodAffinity>,
     pod_anti_affinity: Option<PodAntiAffinity>,
     status: Option<PodStatus>,
@@ -82,6 +84,16 @@ impl PodBuilder {
         self
     }
 
+    pub fn node_affinity(&mut self, affinity: NodeAffinity) -> &mut Self {
+        self.node_affinity = Some(affinity);
+        self
+    }
+
+    pub fn node_affinity_opt(&mut self, affinity: Option<NodeAffinity>) -> &mut Self {
+        self.node_affinity = affinity;
+        self
+    }
+
     pub fn pod_affinity(&mut self, affinity: PodAffinity) -> &mut Self {
         self.pod_affinity = Some(affinity);
         self
@@ -102,13 +114,24 @@ impl PodBuilder {
         self
     }
 
-    pub fn node_selector(&mut self, node_selector: LabelSelector) -> &mut Self {
+    pub fn node_selector(&mut self, node_selector: BTreeMap<String, String>) -> &mut Self {
         self.node_selector = Some(node_selector);
         self
     }
 
-    pub fn node_selector_opt(&mut self, node_selector: Option<LabelSelector>) -> &mut Self {
+    pub fn node_selector_opt(
+        &mut self,
+        node_selector: Option<BTreeMap<String, String>>,
+    ) -> &mut Self {
         self.node_selector = node_selector;
+        self
+    }
+
+    pub fn affinity(&mut self, affinities: &StackableAffinity) -> &mut Self {
+        self.pod_affinity = affinities.pod_affinity.clone();
+        self.pod_anti_affinity = affinities.pod_anti_affinity.clone();
+        self.node_affinity = affinities.node_affinity.clone();
+        self.node_selector = affinities.node_selector.clone().map(|ns| ns.node_selector);
         self
     }
 
@@ -338,58 +361,15 @@ impl PodBuilder {
         self
     }
 
-    /// Hack because [`Pod`] predates [`LabelSelector`], and so its functionality is split between [`PodSpec::node_selector`] and [`Affinity::node_affinity`]
-    fn node_selector_for_label_selector(
-        label_selector: Option<LabelSelector>,
-    ) -> (Option<BTreeMap<String, String>>, Option<NodeAffinity>) {
-        let (node_labels, node_label_exprs) = match label_selector {
-            Some(LabelSelector {
-                match_labels,
-                match_expressions,
-            }) => (match_labels, match_expressions),
-            None => (None, None),
-        };
-
-        let node_affinity = node_label_exprs.map(|node_label_exprs| NodeAffinity {
-            required_during_scheduling_ignored_during_execution: Some(NodeSelector {
-                node_selector_terms: vec![NodeSelectorTerm {
-                    match_expressions: Some(
-                        node_label_exprs
-                            .into_iter()
-                            .map(
-                                |LabelSelectorRequirement {
-                                     key,
-                                     operator,
-                                     values,
-                                 }| {
-                                    NodeSelectorRequirement {
-                                        key,
-                                        operator,
-                                        values,
-                                    }
-                                },
-                            )
-                            .collect(),
-                    ),
-                    ..NodeSelectorTerm::default()
-                }],
-            }),
-            ..NodeAffinity::default()
-        });
-        (node_labels, node_affinity)
-    }
-
     fn build_spec(&self) -> PodSpec {
-        let (node_selector_labels, node_affinity) =
-            Self::node_selector_for_label_selector(self.node_selector.clone());
         PodSpec {
             containers: self.containers.clone(),
             host_network: self.host_network,
             init_containers: self.init_containers.clone(),
             node_name: self.node_name.clone(),
-            node_selector: node_selector_labels,
+            node_selector: self.node_selector.clone(),
             affinity: Some(Affinity {
-                node_affinity,
+                node_affinity: self.node_affinity.clone(),
                 pod_affinity: self.pod_affinity.clone(),
                 pod_anti_affinity: self.pod_anti_affinity.clone(),
             }),
@@ -461,38 +441,6 @@ mod tests {
             .metadata(ObjectMetaBuilder::new().name("testpod").build())
             .add_container(dummy_container);
         builder
-    }
-
-    // A fixture for a node selector to use on a Pod, and the resulting node selector labels and node affinity.
-    #[fixture]
-    fn node_selector1() -> (
-        LabelSelector,
-        Option<BTreeMap<String, String>>,
-        Option<NodeAffinity>,
-    ) {
-        let labels = BTreeMap::from([("key".to_owned(), "value".to_owned())]);
-        let label_selector = LabelSelector {
-            match_expressions: Some(vec![LabelSelectorRequirement {
-                key: "security".to_owned(),
-                operator: "In".to_owned(),
-                values: Some(vec!["S1".to_owned(), "S2".to_owned()]),
-            }]),
-            match_labels: Some(labels.clone()),
-        };
-        let affinity = Some(NodeAffinity {
-            required_during_scheduling_ignored_during_execution: Some(NodeSelector {
-                node_selector_terms: vec![NodeSelectorTerm {
-                    match_expressions: Some(vec![NodeSelectorRequirement {
-                        key: "security".to_owned(),
-                        operator: "In".to_owned(),
-                        values: Some(vec!["S1".to_owned(), "S2".to_owned()]),
-                    }]),
-                    ..Default::default()
-                }],
-            }),
-            ..Default::default()
-        });
-        (label_selector, Some(labels), affinity)
     }
 
     #[fixture]
@@ -593,89 +541,5 @@ mod tests {
                 name: Some("company-registry-secret".to_string())
             }]
         );
-    }
-
-    /// Test if setting a node selector generates the correct node selector labels and node affinity on the Pod.
-    #[rstest]
-    fn test_pod_builder_node_selector(
-        mut pod_builder_with_name_and_container: PodBuilder,
-        node_selector1: (
-            LabelSelector,
-            Option<BTreeMap<String, String>>,
-            Option<NodeAffinity>,
-        ),
-    ) {
-        // destruct fixture
-        let (node_selector, expected_labels, expected_affinity) = node_selector1;
-        // first test with the normal node_selector function
-        let pod = pod_builder_with_name_and_container
-            .clone()
-            .node_selector(node_selector.clone())
-            .build()
-            .unwrap();
-
-        let spec = pod.spec.unwrap();
-        assert_eq!(spec.node_selector, expected_labels);
-        assert_eq!(spec.affinity.unwrap().node_affinity, expected_affinity);
-
-        // test the node_selector_opt function
-        let pod = pod_builder_with_name_and_container
-            .node_selector_opt(Some(node_selector))
-            .build()
-            .unwrap();
-
-        // asserts
-        let spec = pod.spec.unwrap();
-        assert_eq!(spec.node_selector, expected_labels);
-        assert_eq!(spec.affinity.unwrap().node_affinity, expected_affinity);
-    }
-
-    /// Test if setting a node selector generates the correct node selector labels and node affinity on the Pod,
-    /// while keeping the manually set Pod affinities. Since they are mangled together, it makes sense to make sure that
-    /// one is not replacing the other
-    #[rstest]
-    fn test_pod_builder_node_selector_and_affinity(
-        mut pod_builder_with_name_and_container: PodBuilder,
-        node_selector1: (
-            LabelSelector,
-            Option<BTreeMap<String, String>>,
-            Option<NodeAffinity>,
-        ),
-        pod_affinity: PodAffinity,
-        pod_anti_affinity: PodAntiAffinity,
-    ) {
-        // destruct fixture
-        let (node_selector, expected_labels, expected_affinity) = node_selector1;
-        // first test with the normal functions
-        let pod = pod_builder_with_name_and_container
-            .clone()
-            .node_selector(node_selector.clone())
-            .pod_affinity(pod_affinity.clone())
-            .pod_anti_affinity(pod_anti_affinity.clone())
-            .build()
-            .unwrap();
-
-        let spec = pod.spec.unwrap();
-        assert_eq!(spec.node_selector, expected_labels);
-        let affinity = spec.affinity.unwrap();
-        assert_eq!(affinity.node_affinity, expected_affinity);
-        assert_eq!(affinity.pod_affinity, Some(pod_affinity.clone()));
-        assert_eq!(affinity.pod_anti_affinity, Some(pod_anti_affinity.clone()));
-
-        // test the *_opt functions
-        let pod = pod_builder_with_name_and_container
-            .node_selector_opt(Some(node_selector))
-            .pod_affinity_opt(Some(pod_affinity.clone()))
-            .pod_anti_affinity_opt(Some(pod_anti_affinity.clone()))
-            .build()
-            .unwrap();
-
-        // asserts
-        let spec = pod.spec.unwrap();
-        assert_eq!(spec.node_selector, expected_labels);
-        let affinity = spec.affinity.unwrap();
-        assert_eq!(affinity.node_affinity, expected_affinity);
-        assert_eq!(affinity.pod_affinity, Some(pod_affinity));
-        assert_eq!(affinity.pod_anti_affinity, Some(pod_anti_affinity));
     }
 }
