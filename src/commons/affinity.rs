@@ -98,6 +98,10 @@ pub struct StackableNodeSelector {
 
 impl Atomic for StackableNodeSelector {}
 
+/// Creates a `WeightedPodAffinityTerm`, which expresses a affinity towards all Pods of the given product (`app_name`) instance (`cluster_name`) role (`role`).
+/// This affinity can be used to attract towards (affinity) or away (anti-affinity) from the specified role.
+/// One common example would be to use this to distribute all the Pods of a certain role, e.g. hdfs datanodes.
+/// An other usage would be to attract the hbase regionservers towards hdfs datanodes.
 pub fn affinity_between_role_pods(
     app_name: &str,
     cluster_name: &str,
@@ -123,6 +127,9 @@ pub fn affinity_between_role_pods(
     }
 }
 
+/// Creates a `WeightedPodAffinityTerm`, which expresses a affinity towards all Pods of the given product (`app_name`) instance (`cluster_name`).
+/// This affinity can be used to attract towards (affinity) or away (anti-affinity) from the specified cluster.
+/// One common example would be to use this to co-locate all the Pods of a certain cluster to not have to many network trips.
 pub fn affinity_between_cluster_pods(
     app_name: &str,
     cluster_name: &str,
