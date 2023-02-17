@@ -112,7 +112,7 @@ pub fn affinity_between_role_pods(
                     (APP_NAME_LABEL.to_string(), app_name.to_string()),
                     (APP_INSTANCE_LABEL.to_string(), cluster_name.to_string()),
                     (APP_COMPONENT_LABEL.to_string(), role.to_string()),
-                    // We don't include the role-group label here, as the anti-affinity should be between all rolegroups of the given role
+                    // We don't include the role-group label here, as the affinity should be between all rolegroups of the given role
                 ])),
             }),
             namespace_selector: None,
