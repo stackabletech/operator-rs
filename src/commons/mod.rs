@@ -1,6 +1,6 @@
 //! This module provides common datastructures or CRDs shared between all the operators
 
-pub mod affinities;
+pub mod affinity;
 pub mod authentication;
 pub mod ldap;
 pub mod listener;

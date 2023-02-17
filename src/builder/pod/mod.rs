@@ -5,7 +5,7 @@ pub mod volume;
 use std::collections::BTreeMap;
 
 use crate::builder::meta::ObjectMetaBuilder;
-use crate::commons::affinities::StackableAffinity;
+use crate::commons::affinity::StackableAffinity;
 use crate::commons::product_image_selection::ResolvedProductImage;
 use crate::error::{Error, OperatorResult};
 
