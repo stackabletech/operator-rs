@@ -668,13 +668,13 @@ include = ["{STACKABLE_LOG_DIR}/*/*.py.json"]
 type = "file"
 include = ["{STACKABLE_LOG_DIR}/*/*.airlift.json"]
 
-
-
-
-
 [sources.files_opa_bundle_builder]
 type = "file"
 include = ["{STACKABLE_LOG_DIR}/*/bundle_builder.log"]
+
+[sources.files_opa_json]
+type = "file"
+include = ["{STACKABLE_LOG_DIR}/*/opa.json"]
 
 [transforms.processed_files_opa_bundle_builder]
 inputs = ["files_opa_bundle_builder"]
@@ -687,45 +687,35 @@ parsed_event = parse_regex!(strip_whitespace(strip_ansi_escape_codes(string!(.me
 .message = parsed_event.message
 '''
 
-[sources.files_opa_json]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/*/opa.json"]
-
 [transforms.processed_files_opa_json]
 inputs = ["files_opa_json"]
 type = "remap"
 source = '''
 parsed_event = parse_json!(string!(.message))
 keys = keys!(parsed_event)
-.timestamp = parse_timestamp!(parsed_event.time, "%Y-%m-%dT%H:%M:%SZ")
+
+if includes(keys, "timestamp") {{
+  .timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+}} else {{
+  .timestamp = parse_timestamp!(parsed_event.time, "%Y-%m-%dT%H:%M:%SZ")
+}}
+
+if includes(keys, "decision_id") {{
+  .logger = "decision"
+}} else {{
+  .logger = "server"
+}} 
+
 .level = upcase!(parsed_event.level)
 .message = string!(parsed_event.msg)
-if includes(keys, "plugin") {{
-  if includes(keys, "name") {{
-    .logger = string!(parsed_event.plugin) + "_" + string!(parsed_event.name)
-  }} else {{
-    .logger = string!(parsed_event.plugin)
-  }}
-}} else if includes(keys, "addrs") {{
-  .logger = "server"
-  .message = .message + "\naddrs: ["
-  .message = .message + join!(parsed_event.addrs, ", ")
-  .message = .message + "]" 
-  if includes(keys, "diagnostic-addrs") {{
-    .message = .message + "\ndiagnostic-addrs: ["
-    .message = .message + join!(parsed_event."diagnostic-addrs", ", ")
-    .message = .message + "]" 
-  }}
-}} else if includes(keys, "client_addr") {{
-  .message = .message + "\nclient_addr: " + string!(parsed_event.client_addr)
-  .message = .message + "\nreq_id: " + to_string!(parsed_event.req_id)
-  .message = .message + "\nreq_method: " + string!(parsed_event.req_method)
-  .message = .message + "\nreq_path: " + string!(parsed_event.req_path)
-}}  
+
+del(parsed_event.time)
+del(parsed_event.timestamp)
+del(parsed_event.level)
+del(parsed_event.msg)
+
+.message = .message + "\n" + encode_key_value(object!(parsed_event), field_delimiter: "\n")
 '''
-
-
-
 
 [transforms.processed_files_stdout]
 inputs = ["files_stdout"]
