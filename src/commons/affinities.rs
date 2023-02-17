@@ -16,6 +16,8 @@ use crate::{
     labels::{APP_COMPONENT_LABEL, APP_INSTANCE_LABEL, APP_NAME_LABEL},
 };
 
+pub const TOPOLOGY_KEY_HOSTNAME: &str = "kubernetes.io/hostname";
+
 #[derive(Clone, Debug, Default, Deserialize, Fragment, JsonSchema, PartialEq, Serialize)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
@@ -115,7 +117,7 @@ pub fn affinity_between_role_pods(
             }),
             namespace_selector: None,
             namespaces: None,
-            topology_key: "kubernetes.io/hostname".to_string(),
+            topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
         },
         weight,
     }
@@ -137,7 +139,7 @@ pub fn affinity_between_cluster_pods(
             }),
             namespace_selector: None,
             namespaces: None,
-            topology_key: "kubernetes.io/hostname".to_string(),
+            topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
         },
         weight,
     }
@@ -237,7 +239,7 @@ mod tests {
                                 }),
                                 namespace_selector: None,
                                 namespaces: None,
-                                topology_key: "kubernetes.io/hostname".to_string(),
+                                topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
                             },
                             weight: 70
                         }
@@ -360,7 +362,7 @@ mod tests {
                     }),
                     namespace_selector: None,
                     namespaces: None,
-                    topology_key: "kubernetes.io/hostname".to_string(),
+                    topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
                 },
                 weight: 70
             }
@@ -389,7 +391,7 @@ mod tests {
                     }),
                     namespace_selector: None,
                     namespaces: None,
-                    topology_key: "kubernetes.io/hostname".to_string(),
+                    topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
                 },
                 weight: 20
             }
