@@ -696,10 +696,32 @@ inputs = ["files_opa_json"]
 type = "remap"
 source = '''
 parsed_event = parse_json!(string!(.message))
+keys = keys!(parsed_event)
 .timestamp = parse_timestamp!(parsed_event.time, "%Y-%m-%dT%H:%M:%SZ")
 .level = upcase!(parsed_event.level)
-## message builder
-.message = parsed_event.msg
+.message = string!(parsed_event.msg)
+if includes(keys, "plugin") {{
+  if includes(keys, "name") {{
+    .logger = string!(parsed_event.plugin) + "_" + string!(parsed_event.name)
+  }} else {{
+    .logger = string!(parsed_event.plugin)
+  }}
+}} else if includes(keys, "addrs") {{
+  .logger = "server"
+  .message = .message + "\naddrs: ["
+  .message = .message + join!(parsed_event.addrs, ", ")
+  .message = .message + "]" 
+  if includes(keys, "diagnostic-addrs") {{
+    .message = .message + "\ndiagnostic-addrs: ["
+    .message = .message + join!(parsed_event."diagnostic-addrs", ", ")
+    .message = .message + "]" 
+  }}
+}} else if includes(keys, "client_addr") {{
+  .message = .message + "\nclient_addr: " + string!(parsed_event.client_addr)
+  .message = .message + "\nreq_id: " + to_string!(parsed_event.req_id)
+  .message = .message + "\nreq_method: " + string!(parsed_event.req_method)
+  .message = .message + "\nreq_path: " + string!(parsed_event.req_path)
+}}  
 '''
 
 
