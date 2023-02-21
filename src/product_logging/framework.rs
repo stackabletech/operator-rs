@@ -670,11 +670,11 @@ include = ["{STACKABLE_LOG_DIR}/*/*.airlift.json"]
 
 [sources.files_opa_bundle_builder]
 type = "file"
-include = ["{STACKABLE_LOG_DIR}/*/bundle_builder.log"]
+include = ["{STACKABLE_LOG_DIR}/bundle-builder/current"]
 
 [sources.files_opa_json]
 type = "file"
-include = ["{STACKABLE_LOG_DIR}/*/opa.json"]
+include = ["{STACKABLE_LOG_DIR}/opa/current"]
 
 [transforms.processed_files_opa_bundle_builder]
 inputs = ["files_opa_bundle_builder"]
