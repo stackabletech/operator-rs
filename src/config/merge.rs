@@ -1,4 +1,7 @@
-use k8s_openapi::apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector};
+use k8s_openapi::{
+    api::core::v1::{NodeAffinity, PodAffinity, PodAntiAffinity},
+    apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
+};
 use std::{
     collections::{btree_map, hash_map, BTreeMap, HashMap},
     hash::Hash,
@@ -134,6 +137,9 @@ impl Atomic for String {}
 impl Atomic for Quantity {}
 impl<'a> Atomic for &'a str {}
 impl Atomic for LabelSelector {}
+impl Atomic for PodAffinity {}
+impl Atomic for PodAntiAffinity {}
+impl Atomic for NodeAffinity {}
 
 impl<T: Atomic> Merge for Option<T> {
     fn merge(&mut self, defaults: &Self) {

@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.36.0] - 2023-02-17
+
+### Added
+
+- Added commons structs as well as helper functions for Affinity ([#556]).
+
+[#556]: https://github.com/stackabletech/operator-rs/pull/556
+
 ### Added
 
 - Vector sources and transforms for OPA bundle builder and OPA json logs ([#557]).
