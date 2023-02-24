@@ -82,10 +82,35 @@ It will be removed once we stop supporting the old mechanism."
             ..NodeAffinity::default()
         });
 
-        self.node_selector = node_labels.map(|node_labels| StackableNodeSelector {
-            node_selector: node_labels,
-        });
-        self.node_affinity = node_affinity;
+        if let Some(node_labels) = node_labels {
+            self.node_selector
+                .get_or_insert(StackableNodeSelector {
+                    node_selector: BTreeMap::new(),
+                })
+                .node_selector
+                .extend(node_labels);
+        }
+
+        if let Some(NodeAffinity {
+            required_during_scheduling_ignored_during_execution:
+                Some(NodeSelector {
+                    node_selector_terms,
+                }),
+            ..
+        }) = node_affinity
+        {
+            self.node_affinity
+                .get_or_insert(NodeAffinity {
+                    preferred_during_scheduling_ignored_during_execution: None,
+                    required_during_scheduling_ignored_during_execution: None,
+                })
+                .required_during_scheduling_ignored_during_execution
+                .get_or_insert(NodeSelector {
+                    node_selector_terms: Vec::new(),
+                })
+                .node_selector_terms
+                .extend(node_selector_terms);
+        }
     }
 }
 
@@ -403,5 +428,79 @@ mod tests {
                 weight: 20
             }
         );
+    }
+
+    #[test]
+    fn test_add_legacy_selector() {
+        let role_input = r#"
+        nodeSelector:
+          disktype: ssd
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: topology.kubernetes.io/zone
+                  operator: In
+                  values:
+                    - antarctica-east1
+                    - antarctica-west1
+        "#;
+        let mut role_affinity: StackableAffinityFragment =
+            serde_yaml::from_str(role_input).expect("illegal test input");
+
+        let legacy_selector = LabelSelector {
+            match_expressions: Some(vec![LabelSelectorRequirement {
+                key: "topology.kubernetes.io/region".to_string(),
+                operator: "In".to_string(),
+                values: Some(vec!["antarctica".to_string()]),
+            }]),
+            match_labels: Some(BTreeMap::from([(
+                "generation".to_string(),
+                "new".to_string(),
+            )])),
+        };
+
+        #[allow(deprecated)]
+        role_affinity.add_legacy_selector(&legacy_selector);
+
+        assert_eq!(
+            role_affinity,
+            StackableAffinityFragment {
+                pod_affinity: None,
+                pod_anti_affinity: None,
+                node_affinity: Some(NodeAffinity {
+                    preferred_during_scheduling_ignored_during_execution: None,
+                    required_during_scheduling_ignored_during_execution: Some(NodeSelector {
+                        node_selector_terms: vec![
+                            NodeSelectorTerm {
+                                match_expressions: Some(vec![NodeSelectorRequirement {
+                                    key: "topology.kubernetes.io/zone".to_string(),
+                                    operator: "In".to_string(),
+                                    values: Some(vec![
+                                        "antarctica-east1".to_string(),
+                                        "antarctica-west1".to_string()
+                                    ]),
+                                }]),
+                                match_fields: None,
+                            },
+                            NodeSelectorTerm {
+                                match_expressions: Some(vec![NodeSelectorRequirement {
+                                    key: "topology.kubernetes.io/region".to_string(),
+                                    operator: "In".to_string(),
+                                    values: Some(vec!["antarctica".to_string(),]),
+                                }]),
+                                match_fields: None,
+                            }
+                        ]
+                    }),
+                }),
+                node_selector: Some(StackableNodeSelector {
+                    node_selector: BTreeMap::from([
+                        ("disktype".to_string(), "ssd".to_string()),
+                        ("generation".to_string(), "new".to_string())
+                    ])
+                })
+            }
+        )
     }
 }
