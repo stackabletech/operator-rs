@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix legacy selector overwriting nodeAffinity and nodeSelector ([#560]).
+
+[#560]: https://github.com/stackabletech/operator-rs/pull/560
+
 ## [0.36.0] - 2023-02-17
 
 ### Added
