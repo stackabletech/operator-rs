@@ -183,6 +183,7 @@ mod tests {
         api::core::v1::{NodeSelector, NodeSelectorRequirement, NodeSelectorTerm},
         apimachinery::pkg::apis::meta::v1::LabelSelectorRequirement,
     };
+    use rstest::rstest;
 
     use crate::config::fragment;
 
@@ -430,77 +431,209 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_add_legacy_selector() {
-        let role_input = r#"
-        nodeSelector:
-          disktype: ssd
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                - key: topology.kubernetes.io/zone
-                  operator: In
-                  values:
-                    - antarctica-east1
-                    - antarctica-west1
-        "#;
-        let mut role_affinity: StackableAffinityFragment =
-            serde_yaml::from_str(role_input).expect("illegal test input");
+    #[rstest]
+    #[case::legacy_selector_labels_specified(
+        r#"
+    matchLabels:
+      disktype: ssd
+    "#,
+        r#"
+    nodeSelector:
+      generation: new
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+                - antarctica-east1
+                - antarctica-west1
+    "#,
+        r#"
+    nodeSelector:
+      disktype: ssd
+      generation: new
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+                - antarctica-east1
+                - antarctica-west1
+    "#
+    )]
+    #[case::legacy_selector_expression_specified(
+        r#"
+    matchExpressions:
+        - key: topology.kubernetes.io/continent
+          operator: In
+          values:
+            - europe
+    "#,
+        r#"
+    nodeSelector:
+      generation: new
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+                - antarctica-east1
+                - antarctica-west1
+    "#,
+        r#"
+    nodeSelector:
+      generation: new
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+                - antarctica-east1
+                - antarctica-west1
+          - matchExpressions:
+            - key: topology.kubernetes.io/continent
+              operator: In
+              values:
+                - europe
 
-        let legacy_selector = LabelSelector {
-            match_expressions: Some(vec![LabelSelectorRequirement {
-                key: "topology.kubernetes.io/region".to_string(),
-                operator: "In".to_string(),
-                values: Some(vec!["antarctica".to_string()]),
-            }]),
-            match_labels: Some(BTreeMap::from([(
-                "generation".to_string(),
-                "new".to_string(),
-            )])),
-        };
+    "#
+    )]
+    #[case::legacy_selector_expression_and_labels_specified(
+        r#"
+    matchLabels:
+      disktype: ssd
+    matchExpressions:
+        - key: topology.kubernetes.io/continent
+          operator: In
+          values:
+            - europe
+    "#,
+        r#"
+    nodeSelector:
+      generation: new
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+                - antarctica-east1
+                - antarctica-west1
+    "#,
+        r#"
+    nodeSelector:
+      generation: new
+      disktype: ssd
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+                - antarctica-east1
+                - antarctica-west1
+          - matchExpressions:
+            - key: topology.kubernetes.io/continent
+              operator: In
+              values:
+                - europe
 
+    "#
+    )]
+    #[case::legacy_selector_labels_no_new_labels(
+        r#"
+    matchLabels:
+      disktype: ssd
+    "#,
+        r#"
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+                - antarctica-east1
+                - antarctica-west1
+    "#,
+        r#"
+    nodeSelector:
+      disktype: ssd
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+                - antarctica-east1
+                - antarctica-west1
+    "#
+    )]
+    #[case::legacy_selector_labels_no_new_labels(
+        r#"
+    matchExpressions:
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values:
+            - africa-east1
+    "#,
+        r#"
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+                - antarctica-east1
+                - antarctica-west1
+    "#,
+        r#"
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+                - antarctica-east1
+                - antarctica-west1
+          - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values:
+                - africa-east1
+    "#
+    )]
+    fn test_add_legacy_selector_fn(
+        #[case] legacy_selector: &str,
+        #[case] new_selector: &str,
+        #[case] expected_result: &str,
+    ) {
+        let legacy_selector: LabelSelector =
+            serde_yaml::from_str(legacy_selector).expect("illegal test input for legacy selector");
+
+        let mut new_selector: StackableAffinityFragment =
+            serde_yaml::from_str(new_selector).expect("illegal test input for new selector");
+
+        let expected_result: StackableAffinityFragment =
+            serde_yaml::from_str(expected_result).expect("illegal test input for expected result");
+
+        // Merge legacy and new node selectors
         #[allow(deprecated)]
-        role_affinity.add_legacy_selector(&legacy_selector);
+        new_selector.add_legacy_selector(&legacy_selector);
 
-        assert_eq!(
-            role_affinity,
-            StackableAffinityFragment {
-                pod_affinity: None,
-                pod_anti_affinity: None,
-                node_affinity: Some(NodeAffinity {
-                    preferred_during_scheduling_ignored_during_execution: None,
-                    required_during_scheduling_ignored_during_execution: Some(NodeSelector {
-                        node_selector_terms: vec![
-                            NodeSelectorTerm {
-                                match_expressions: Some(vec![NodeSelectorRequirement {
-                                    key: "topology.kubernetes.io/zone".to_string(),
-                                    operator: "In".to_string(),
-                                    values: Some(vec![
-                                        "antarctica-east1".to_string(),
-                                        "antarctica-west1".to_string()
-                                    ]),
-                                }]),
-                                match_fields: None,
-                            },
-                            NodeSelectorTerm {
-                                match_expressions: Some(vec![NodeSelectorRequirement {
-                                    key: "topology.kubernetes.io/region".to_string(),
-                                    operator: "In".to_string(),
-                                    values: Some(vec!["antarctica".to_string(),]),
-                                }]),
-                                match_fields: None,
-                            }
-                        ]
-                    }),
-                }),
-                node_selector: Some(StackableNodeSelector {
-                    node_selector: BTreeMap::from([
-                        ("disktype".to_string(), "ssd".to_string()),
-                        ("generation".to_string(), "new".to_string())
-                    ])
-                })
-            }
-        )
+        assert_eq!(expected_result, new_selector);
     }
 }
