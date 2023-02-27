@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.36.1] - 2023-02-27
+
 ### Fixed
 
 - Fix legacy selector overwriting nodeAffinity and nodeSelector ([#560]).
