@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Support specifying externalTrafficPolicy in Services created by listener-operator ([#562]).
+
+[#562]: https://github.com/stackabletech/operator-rs/pull/562
+
 ## [0.36.1] - 2023-02-27
 
 ### Fixed

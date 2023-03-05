@@ -7,6 +7,7 @@ use std::{
 
 use crate::{
     client::{Client, GetApi},
+    commons::listener::Listener,
     error::{Error, OperatorResult},
     k8s_openapi::{
         api::{
@@ -50,6 +51,7 @@ impl ClusterResource for StatefulSet {}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
 impl ClusterResource for Secret {}
+impl ClusterResource for Listener {}
 
 /// A structure containing the cluster resources.
 ///
