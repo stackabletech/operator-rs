@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Vector sources and transforms for OPA bundle builder and OPA json logs ([#557]).
+
+[#557]: https://github.com/stackabletech/operator-rs/pull/557
+
 ## [0.36.1] - 2023-02-27
 
 ### Fixed

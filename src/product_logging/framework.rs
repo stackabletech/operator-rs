@@ -668,6 +668,55 @@ include = ["{STACKABLE_LOG_DIR}/*/*.py.json"]
 type = "file"
 include = ["{STACKABLE_LOG_DIR}/*/*.airlift.json"]
 
+[sources.files_opa_bundle_builder]
+type = "file"
+include = ["{STACKABLE_LOG_DIR}/bundle-builder/current"]
+
+[sources.files_opa_json]
+type = "file"
+include = ["{STACKABLE_LOG_DIR}/opa/current"]
+
+[transforms.processed_files_opa_bundle_builder]
+inputs = ["files_opa_bundle_builder"]
+type = "remap"
+source = '''
+parsed_event = parse_regex!(strip_whitespace(strip_ansi_escape_codes(string!(.message))), r'(?P<timestamp>[0-9]{{4}}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9].[0-9]{{6}}Z)[ ]+(?P<level>\w+)[ ]+(?P<logger>.+):[ ]+(?P<message>.*)')
+.timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%6fZ")
+.level = parsed_event.level
+.logger = parsed_event.logger
+.message = parsed_event.message
+'''
+
+[transforms.processed_files_opa_json]
+inputs = ["files_opa_json"]
+type = "remap"
+source = '''
+parsed_event = parse_json!(string!(.message))
+keys = keys!(parsed_event)
+
+if includes(keys, "timestamp") {{
+  .timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+}} else {{
+  .timestamp = parse_timestamp!(parsed_event.time, "%Y-%m-%dT%H:%M:%SZ")
+}}
+
+if includes(keys, "decision_id") {{
+  .logger = "decision"
+}} else {{
+  .logger = "server"
+}} 
+
+.level = upcase!(parsed_event.level)
+.message = string!(parsed_event.msg)
+
+del(parsed_event.time)
+del(parsed_event.timestamp)
+del(parsed_event.level)
+del(parsed_event.msg)
+
+.message = .message + "\n" + encode_key_value(object!(parsed_event), field_delimiter: "\n")
+'''
+
 [transforms.processed_files_stdout]
 inputs = ["files_stdout"]
 type = "remap"
