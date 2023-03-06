@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.37.0] - 2023-03-06
+
 ### Added
 
 - Vector sources and transforms for OPA bundle builder and OPA json logs ([#557]).
