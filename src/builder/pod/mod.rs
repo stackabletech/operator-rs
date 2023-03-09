@@ -37,6 +37,7 @@ pub struct PodBuilder {
     volumes: Option<Vec<Volume>>,
     service_account_name: Option<String>,
     image_pull_secrets: Option<Vec<LocalObjectReference>>,
+    restart_policy: Option<String>,
 }
 
 impl PodBuilder {
@@ -361,6 +362,11 @@ impl PodBuilder {
         self
     }
 
+    pub fn restart_policy(&mut self, restart_policy: &str) -> &mut Self {
+        self.restart_policy = Some(String::from(restart_policy));
+        self
+    }
+
     fn build_spec(&self) -> PodSpec {
         PodSpec {
             containers: self.containers.clone(),
@@ -382,6 +388,7 @@ impl PodBuilder {
             enable_service_links: Some(false),
             service_account_name: self.service_account_name.clone(),
             image_pull_secrets: self.image_pull_secrets.clone(),
+            restart_policy: self.restart_policy.clone(),
             ..PodSpec::default()
         }
     }
@@ -541,5 +548,14 @@ mod tests {
                 name: Some("company-registry-secret".to_string())
             }]
         );
+    }
+
+    #[rstest]
+    fn test_pod_builder_restart_policy(mut pod_builder_with_name_and_container: PodBuilder) {
+        let pod = pod_builder_with_name_and_container
+            .restart_policy("Always")
+            .build()
+            .unwrap();
+        assert_eq!(pod.spec.unwrap().restart_policy.unwrap(), "Always");
     }
 }
