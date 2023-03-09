@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+### Added
+
+- Helper Method to add a restart_policy to PodBuilder([#565])
+
 
 ## [0.37.0] - 2023-03-06
 
