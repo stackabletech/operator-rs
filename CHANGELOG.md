@@ -7,8 +7,10 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Helper Method to add a restart_policy to PodBuilder([#565]).
+- Implement the Atomic trait for VolumeMount ([#566]).
 
 [#565]: https://github.com/stackabletech/operator-rs/pull/565
+[#566]: https://github.com/stackabletech/operator-rs/pull/566
 
 ## [0.37.0] - 2023-03-06
 

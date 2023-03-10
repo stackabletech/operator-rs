@@ -1,5 +1,5 @@
 use k8s_openapi::{
-    api::core::v1::{NodeAffinity, PodAffinity, PodAntiAffinity},
+    api::core::v1::{NodeAffinity, PodAffinity, PodAntiAffinity, VolumeMount},
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
 };
 use std::{
@@ -140,6 +140,7 @@ impl Atomic for LabelSelector {}
 impl Atomic for PodAffinity {}
 impl Atomic for PodAntiAffinity {}
 impl Atomic for NodeAffinity {}
+impl Atomic for VolumeMount {}
 
 impl<T: Atomic> Merge for Option<T> {
     fn merge(&mut self, defaults: &Self) {
