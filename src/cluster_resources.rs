@@ -5,6 +5,19 @@ use std::{
     fmt::Debug,
 };
 
+use k8s_openapi::{
+    api::{
+        apps::v1::{DaemonSetStatus, Deployment, DeploymentStatus, StatefulSetStatus},
+        core::v1::Secret,
+        core::v1::{Pod, PodStatus, ServiceAccount},
+        rbac::v1::RoleBinding,
+    },
+    NamespaceResourceScope,
+};
+use kube::core::ErrorResponse;
+use serde::{de::DeserializeOwned, Serialize};
+use tracing::{debug, info};
+
 use crate::{
     client::{Client, GetApi},
     error::{Error, OperatorResult},
@@ -19,13 +32,6 @@ use crate::{
     labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
     utils::format_full_controller_name,
 };
-use k8s_openapi::{
-    api::{core::v1::Secret, core::v1::ServiceAccount, rbac::v1::RoleBinding},
-    NamespaceResourceScope,
-};
-use kube::core::ErrorResponse;
-use serde::{de::DeserializeOwned, Serialize};
-use tracing::{debug, info};
 
 /// A cluster resource handled by [`ClusterResources`].
 ///
@@ -44,11 +50,17 @@ pub trait ClusterResource:
 }
 
 impl ClusterResource for ConfigMap {}
+
 impl ClusterResource for DaemonSet {}
+
 impl ClusterResource for Service {}
+
 impl ClusterResource for StatefulSet {}
+
 impl ClusterResource for ServiceAccount {}
+
 impl ClusterResource for RoleBinding {}
+
 impl ClusterResource for Secret {}
 
 /// A structure containing the cluster resources.
@@ -96,7 +108,7 @@ impl ClusterResource for Secret {}
 ///     DeleteOrphanedClusterResources {
 ///         source: stackable_operator::error::Error,
 ///     },
-/// };
+/// }
 ///
 /// async fn reconcile(app: Arc<AppCluster>, client: Arc<Client>) -> Result<Action, Error> {
 ///     let validated_config = ValidatedRoleConfigByPropertyKind::default();
@@ -397,7 +409,35 @@ impl ClusterResources {
         &self,
         client: &Client,
     ) -> OperatorResult<Vec<T>> {
-        let label_selector = LabelSelector {
+        let label_selector = self.label_selector();
+
+        let resources = client
+            .list_with_label_selector::<T>(&self.namespace, &label_selector)
+            .await?;
+
+        Ok(resources)
+    }
+
+    pub async fn resources_status(self, client: &Client) -> OperatorResult<ClusterResourcesStatus> {
+        let label_selector = self.label_selector();
+
+        let (dset, sts, deps, pods) = tokio::try_join!(
+            client.list_with_label_selector::<DaemonSet>(&self.namespace, &label_selector),
+            client.list_with_label_selector::<StatefulSet>(&self.namespace, &label_selector),
+            client.list_with_label_selector::<Deployment>(&self.namespace, &label_selector),
+            client.list_with_label_selector::<Pod>(&self.namespace, &label_selector)
+        )?;
+
+        Ok(ClusterResourcesStatus {
+            stateful_set_status: sts.iter().filter_map(|sts| sts.status.clone()).collect(),
+            daemon_set_status: dset.iter().filter_map(|sts| sts.status.clone()).collect(),
+            deployment_status: deps.iter().filter_map(|sts| sts.status.clone()).collect(),
+            pod_status: pods.iter().filter_map(|sts| sts.status.clone()).collect(),
+        })
+    }
+
+    fn label_selector(&self) -> LabelSelector {
+        LabelSelector {
             match_expressions: Some(vec![
                 LabelSelectorRequirement {
                     key: APP_INSTANCE_LABEL.into(),
@@ -416,12 +456,14 @@ impl ClusterResources {
                 },
             ]),
             ..Default::default()
-        };
-
-        let resources = client
-            .list_with_label_selector::<T>(&self.namespace, &label_selector)
-            .await?;
-
-        Ok(resources)
+        }
     }
+}
+
+#[derive(Default, PartialEq)]
+pub struct ClusterResourcesStatus {
+    stateful_set_status: Vec<StatefulSetStatus>,
+    daemon_set_status: Vec<DaemonSetStatus>,
+    deployment_status: Vec<DeploymentStatus>,
+    pod_status: Vec<PodStatus>,
 }
