@@ -14,7 +14,10 @@ use k8s_openapi::{
     },
     NamespaceResourceScope,
 };
-use kube::core::ErrorResponse;
+use kube::{
+    config::Cluster,
+    core::{object::HasStatus, ErrorResponse},
+};
 use serde::{de::DeserializeOwned, Serialize};
 use tracing::{debug, info};
 
@@ -63,6 +66,7 @@ impl ClusterResource for RoleBinding {}
 
 impl ClusterResource for Secret {}
 
+impl ClusterResource for Deployment {}
 /// A structure containing the cluster resources.
 ///
 /// Cluster resources can be added and orphaned resources are deleted. A cluster resource becomes
@@ -258,6 +262,10 @@ impl ClusterResources {
         Ok(patched_resource)
     }
 
+    pub async fn add<T: HasStatus>(&mut self, client: &Client, resource: &T) -> OperatorResult<T> {
+        self.add::<ClusterResource>(client, resource)
+    }
+
     /// Checks that the given `labels` contain the given `label` with the given `expected_content`.
     ///
     /// # Arguments
@@ -418,23 +426,23 @@ impl ClusterResources {
         Ok(resources)
     }
 
-    pub async fn resources_status(self, client: &Client) -> OperatorResult<ClusterResourcesStatus> {
-        let label_selector = self.label_selector();
+    // pub async fn resources_status(self, client: &Client) -> OperatorResult<ClusterResourcesStatus> {
+    //     let label_selector = self.label_selector();
 
-        let (dset, sts, deps, pods) = tokio::try_join!(
-            client.list_with_label_selector::<DaemonSet>(&self.namespace, &label_selector),
-            client.list_with_label_selector::<StatefulSet>(&self.namespace, &label_selector),
-            client.list_with_label_selector::<Deployment>(&self.namespace, &label_selector),
-            client.list_with_label_selector::<Pod>(&self.namespace, &label_selector)
-        )?;
+    //     let (dset, sts, deps, pods) = tokio::try_join!(
+    //         client.list_with_label_selector::<DaemonSet>(&self.namespace, &label_selector),
+    //         client.list_with_label_selector::<StatefulSet>(&self.namespace, &label_selector),
+    //         client.list_with_label_selector::<Deployment>(&self.namespace, &label_selector),
+    //         client.list_with_label_selector::<Pod>(&self.namespace, &label_selector)
+    //     )?;
 
-        Ok(ClusterResourcesStatus {
-            stateful_set_status: sts.iter().filter_map(|sts| sts.status.clone()).collect(),
-            daemon_set_status: dset.iter().filter_map(|sts| sts.status.clone()).collect(),
-            deployment_status: deps.iter().filter_map(|sts| sts.status.clone()).collect(),
-            pod_status: pods.iter().filter_map(|sts| sts.status.clone()).collect(),
-        })
-    }
+    //     Ok(ClusterResourcesStatus {
+    //         stateful_set_status: sts.iter().filter_map(|sts| sts.status.clone()).collect(),
+    //         daemon_set_status: dset.iter().filter_map(|sts| sts.status.clone()).collect(),
+    //         deployment_status: deps.iter().filter_map(|sts| sts.status.clone()).collect(),
+    //         pod_status: pods.iter().filter_map(|sts| sts.status.clone()).collect(),
+    //     })
+    // }
 
     fn label_selector(&self) -> LabelSelector {
         LabelSelector {
@@ -458,12 +466,4 @@ impl ClusterResources {
             ..Default::default()
         }
     }
-}
-
-#[derive(Default, PartialEq)]
-pub struct ClusterResourcesStatus {
-    stateful_set_status: Vec<StatefulSetStatus>,
-    daemon_set_status: Vec<DaemonSetStatus>,
-    deployment_status: Vec<DeploymentStatus>,
-    pod_status: Vec<PodStatus>,
 }
