@@ -265,6 +265,7 @@ impl VolumeMountBuilder {
 pub struct SecretOperatorVolumeSourceBuilder {
     secret_class: String,
     scopes: Vec<SecretOperatorVolumeScope>,
+    kerberos_service_names: Vec<String>,
 }
 
 impl SecretOperatorVolumeSourceBuilder {
@@ -272,6 +273,7 @@ impl SecretOperatorVolumeSourceBuilder {
         Self {
             secret_class: secret_class.into(),
             scopes: Vec::new(),
+            kerberos_service_names: Vec::new(),
         }
     }
 
@@ -288,6 +290,11 @@ impl SecretOperatorVolumeSourceBuilder {
     pub fn with_service_scope(&mut self, name: impl Into<String>) -> &mut Self {
         self.scopes
             .push(SecretOperatorVolumeScope::Service { name: name.into() });
+        self
+    }
+
+    pub fn with_kerberos_service_name(&mut self, name: impl Into<String>) -> &mut Self {
+        self.kerberos_service_names.push(name.into());
         self
     }
 
@@ -313,6 +320,13 @@ impl SecretOperatorVolumeSourceBuilder {
                 }
             }
             attrs.insert("secrets.stackable.tech/scope".to_string(), scopes);
+        }
+
+        if !self.kerberos_service_names.is_empty() {
+            attrs.insert(
+                "secrets.stackable.tech/kerberos.service.names".to_string(),
+                self.kerberos_service_names.join(","),
+            );
         }
 
         EphemeralVolumeSource {
