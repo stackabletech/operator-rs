@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 - Add helper function `SecretOperatorVolumeSourceBuilder::with_kerberos_service_name` ([#567]).
 
 [#565]: https://github.com/stackabletech/operator-rs/pull/565
-[#565]: https://github.com/stackabletech/operator-rs/pull/567
+[#567]: https://github.com/stackabletech/operator-rs/pull/567
 
 ## [0.37.0] - 2023-03-06
 
