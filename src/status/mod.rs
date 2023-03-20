@@ -1,21 +1,19 @@
 use std::collections::HashMap;
 
 use k8s_openapi::{
-    api::apps::v1::{DaemonSet, Deployment, StatefulSet},
+    api::{
+        apps::v1::{
+            DaemonSet, DaemonSetStatus, Deployment, DeploymentStatus, StatefulSet,
+            StatefulSetStatus,
+        },
+        core::v1::PodStatus,
+    },
     apimachinery::pkg::apis::meta::v1::Time,
-    Resource,
 };
 
-use crate::cluster_resources::ClusterResource;
-
+use kube::Resource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-pub trait HasStatus: ClusterResource {}
-
-impl HasStatus for StatefulSet {}
-impl HasStatus for Deployment {}
-impl HasStatus for DaemonSet {}
 
 #[derive(
     strum::Display, Clone, Debug, Default, Deserialize, Eq, Hash, JsonSchema, PartialEq, Serialize,
@@ -50,7 +48,7 @@ impl From<bool> for ClusterConditionStatus {
         }
     }
 }
-#[derive(Default, PartialEq)]
+#[derive(Debug, Default, PartialEq)]
 pub struct ClusterResourcesStatus {
     pub stateful_set_status: Vec<StatefulSetStatus>,
     pub daemon_set_status: Vec<DaemonSetStatus>,
@@ -88,17 +86,87 @@ impl ClusterCondition {
         }
     }
 }
-pub trait StatusBuilder<T: Resource> {
-    fn conditions(resource: &T, crs: &ClusterResourcesStatus) -> Vec<ClusterCondition>;
+
+pub trait HasStop {
+    fn is_stopped(&self) -> bool {
+        false
+    }
+}
+pub trait HasPause {
+    fn is_paused(&self) -> bool {
+        false
+    }
 }
 
-struct ADR27StatusBuilder {}
+trait HasStatus {
+    fn available(&self) -> Option<ClusterCondition> {
+        None
+    }
+}
 
-impl<T: Resource> StatusBuilder<T> for ADR27StatusBuilder {
-    fn conditions(_resource: &T, crs: &ClusterResourcesStatus) -> Vec<ClusterCondition> {
-        let mut result: HashMap<ClusterConditionType, ClusterConditionStatus> = HashMap::new();
+impl HasStatus for StatefulSet {
+    fn available(&self) -> Option<ClusterCondition> {
+        let requested_replicas = self.spec.and_then(|spec| spec.replicas).unwrap_or_default();
+        let available_replicas = self.status.and_then(|status| status.available_replicas).unwrap_or_default();
+        Some(ClusterCondition {
+            last_transition_time: None,
+            last_update_time: None,
+            message: Some("".to_owned()),
+            reason: Some("".to_owned()),
+            status: (requested_replicas == available_replicas).into(),
+            type_: ClusterConditionType::Available })
+    }
 
-        let (sts_replicas, sts_available_replicas) = crs
+}
+
+impl HasStatus for DaemonSet {
+    fn available(&self) -> Option<ClusterCondition> {
+        let requested_replicas = self.status.and_then(|spec| Some(spec.desired_number_scheduled)).unwrap_or_default();
+        let available_replicas = self.status.and_then(|status| Some(status.number_ready)).unwrap_or_default();
+        Some(ClusterCondition {
+            last_transition_time: None,
+            last_update_time: None,
+            message: Some("".to_owned()),
+            reason: Some("".to_owned()),
+            status: (requested_replicas == available_replicas).into(),
+            type_: ClusterConditionType::Available })
+    }
+
+}
+
+impl HasStatus for Deployment {
+    fn available(&self) -> Option<ClusterCondition> {
+        let requested_replicas = self.spec.and_then(|spec| spec.replicas).unwrap_or_default();
+        let available_replicas = self.status.and_then(|status| status.ready_replicas).unwrap_or_default();
+        Some(ClusterCondition {
+            last_transition_time: None,
+            last_update_time: None,
+            message: Some("".to_owned()),
+            reason: Some("".to_owned()),
+            status: (requested_replicas == available_replicas).into(),
+            type_: ClusterConditionType::Available })
+    }
+
+}
+
+pub trait ClusterStatus: HasStatus {
+    fn condtions(&self) -> Vec<ClusterCondition>;
+}
+
+fn compute_cluster_conditions(resources: &[dyn HasStatus]) -> Vec<ClusterCondition> {
+    todo!()
+}
+
+
+pub trait ClusterStatusBuilder {
+    type Status;
+
+    fn available<T: HasStatus>(
+        &self,
+        resource: &[T],
+    ) -> Option<ClusterCondition> {
+/*
+        let (requested_replicas, sts_available_replicas) = crs
             .stateful_set_status
             .iter()
             .map(|s| (s.replicas, s.available_replicas.unwrap_or_default()))
@@ -125,15 +193,66 @@ impl<T: Resource> StatusBuilder<T> for ADR27StatusBuilder {
             })
             .unwrap_or((0, 0));
 
-        result.insert(
-            ClusterConditionType::Available,
-            (sts_replicas + deploy_replicas == sts_available_replicas + deploy_available_replicas)
+        Some(ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: (sts_replicas + deploy_replicas
+                == sts_available_replicas + deploy_available_replicas)
                 .into(),
-        );
+        })
+        */ None
+    }
+
+    fn progressing<T: Resource>(
+        &self,
+        resource: &T,
+        crs: &ClusterResourcesStatus,
+    ) -> Option<ClusterCondition> {
+        None
+    }
+
+    fn degraded<T: Resource>(
+        &self,
+        resource: &T,
+        crs: &ClusterResourcesStatus,
+    ) -> Option<ClusterCondition> {
+        None
+    }
+
+    fn paused<T: Resource + HasPause>(
+        &self,
+        resource: &T,
+        crs: &ClusterResourcesStatus,
+    ) -> Option<ClusterCondition> {
+        None
+    }
+
+    fn stopped<T: Resource + HasStop>(
+        &self,
+        resource: &T,
+        crs: &ClusterResourcesStatus,
+    ) -> Option<ClusterCondition> {
+        None
+    }
+
+    fn conditions<T: Resource + HasPause>(
+        &self,
+        resource: &T,
+        crs: &ClusterResourcesStatus,
+    ) -> Vec<ClusterCondition> {
+        let mut result = vec![];
+
+        if let Some(condition) = self.available(resource, crs) {
+            if condition.status != old_condition.status {
+                // set transition time
+
+            }
+            result.push(condition);
+        }
 
         result
-            .into_iter()
-            .map(|(type_, status)| ClusterCondition::new_with(type_, status))
-            .collect()
+    }
+
+    fn status(&self, resource: &T) -> Status {
+        let c = self.conditions()
     }
 }

@@ -7,17 +7,11 @@ use std::{
 
 use k8s_openapi::{
     api::{
-        apps::v1::{DaemonSetStatus, Deployment, DeploymentStatus, StatefulSetStatus},
-        core::v1::Secret,
-        core::v1::{Pod, PodStatus, ServiceAccount},
-        rbac::v1::RoleBinding,
+        apps::v1::Deployment, core::v1::Secret, core::v1::ServiceAccount, rbac::v1::RoleBinding,
     },
     NamespaceResourceScope,
 };
-use kube::{
-    config::Cluster,
-    core::{object::HasStatus, ErrorResponse},
-};
+use kube::core::ErrorResponse;
 use serde::{de::DeserializeOwned, Serialize};
 use tracing::{debug, info};
 
@@ -33,6 +27,7 @@ use crate::{
     },
     kube::{Resource, ResourceExt},
     labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
+    status::{self, ClusterResourcesStatus},
     utils::format_full_controller_name,
 };
 
@@ -49,6 +44,7 @@ pub trait ClusterResource:
     + Resource<DynamicType = (), Scope = NamespaceResourceScope>
     + GetApi<Namespace = str>
     + Serialize
+    + HasStatus
 {
 }
 
@@ -67,6 +63,7 @@ impl ClusterResource for RoleBinding {}
 impl ClusterResource for Secret {}
 
 impl ClusterResource for Deployment {}
+
 /// A structure containing the cluster resources.
 ///
 /// Cluster resources can be added and orphaned resources are deleted. A cluster resource becomes
@@ -125,6 +122,7 @@ impl ClusterResource for Deployment {}
 ///     )
 ///     .map_err(|source| Error::CreateClusterResources { source })?;
 ///
+///     let mut crs = Cluster
 ///     let role_service = Service::default();
 ///     let patched_role_service =
 ///         cluster_resources.add(&client, &role_service)
@@ -161,10 +159,12 @@ impl ClusterResource for Deployment {}
 ///         .await
 ///         .map_err(|source| Error::DeleteOrphanedClusterResources { source })?;
 ///
+///     let status = cluster_status_builder.status(&self);
+///     client.patch_status(status);
 ///     Ok(Action::await_change())
 /// }
 /// ```
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct ClusterResources {
     /// The namespace of the cluster
     namespace: String,
@@ -176,6 +176,7 @@ pub struct ClusterResources {
     manager: String,
     /// The unique IDs of the cluster resources
     resource_ids: HashSet<String>,
+    status_builders: Vec<dyn ClusterResource>,
 }
 
 impl ClusterResources {
@@ -259,11 +260,9 @@ impl ClusterResources {
 
         self.resource_ids.insert(resource_id);
 
-        Ok(patched_resource)
-    }
+        self.status_builders.push(resource);
 
-    pub async fn add<T: HasStatus>(&mut self, client: &Client, resource: &T) -> OperatorResult<T> {
-        self.add::<ClusterResource>(client, resource)
+        Ok(patched_resource)
     }
 
     /// Checks that the given `labels` contain the given `label` with the given `expected_content`.
@@ -425,24 +424,6 @@ impl ClusterResources {
 
         Ok(resources)
     }
-
-    // pub async fn resources_status(self, client: &Client) -> OperatorResult<ClusterResourcesStatus> {
-    //     let label_selector = self.label_selector();
-
-    //     let (dset, sts, deps, pods) = tokio::try_join!(
-    //         client.list_with_label_selector::<DaemonSet>(&self.namespace, &label_selector),
-    //         client.list_with_label_selector::<StatefulSet>(&self.namespace, &label_selector),
-    //         client.list_with_label_selector::<Deployment>(&self.namespace, &label_selector),
-    //         client.list_with_label_selector::<Pod>(&self.namespace, &label_selector)
-    //     )?;
-
-    //     Ok(ClusterResourcesStatus {
-    //         stateful_set_status: sts.iter().filter_map(|sts| sts.status.clone()).collect(),
-    //         daemon_set_status: dset.iter().filter_map(|sts| sts.status.clone()).collect(),
-    //         deployment_status: deps.iter().filter_map(|sts| sts.status.clone()).collect(),
-    //         pod_status: pods.iter().filter_map(|sts| sts.status.clone()).collect(),
-    //     })
-    // }
 
     fn label_selector(&self) -> LabelSelector {
         LabelSelector {
