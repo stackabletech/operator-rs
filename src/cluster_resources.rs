@@ -5,16 +5,6 @@ use std::{
     fmt::Debug,
 };
 
-use k8s_openapi::{
-    api::{
-        apps::v1::Deployment, core::v1::Secret, core::v1::ServiceAccount, rbac::v1::RoleBinding,
-    },
-    NamespaceResourceScope,
-};
-use kube::core::ErrorResponse;
-use serde::{de::DeserializeOwned, Serialize};
-use tracing::{debug, info};
-
 use crate::{
     client::{Client, GetApi},
     error::{Error, OperatorResult},
@@ -27,9 +17,15 @@ use crate::{
     },
     kube::{Resource, ResourceExt},
     labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
-    status::{self, ClusterResourcesStatus},
     utils::format_full_controller_name,
 };
+use k8s_openapi::{
+    api::{core::v1::Secret, core::v1::ServiceAccount, rbac::v1::RoleBinding},
+    NamespaceResourceScope,
+};
+use kube::core::ErrorResponse;
+use serde::{de::DeserializeOwned, Serialize};
+use tracing::{debug, info};
 
 /// A cluster resource handled by [`ClusterResources`].
 ///
@@ -44,25 +40,16 @@ pub trait ClusterResource:
     + Resource<DynamicType = (), Scope = NamespaceResourceScope>
     + GetApi<Namespace = str>
     + Serialize
-    + HasStatus
 {
 }
 
 impl ClusterResource for ConfigMap {}
-
 impl ClusterResource for DaemonSet {}
-
 impl ClusterResource for Service {}
-
 impl ClusterResource for StatefulSet {}
-
 impl ClusterResource for ServiceAccount {}
-
 impl ClusterResource for RoleBinding {}
-
 impl ClusterResource for Secret {}
-
-impl ClusterResource for Deployment {}
 
 /// A structure containing the cluster resources.
 ///
@@ -109,7 +96,7 @@ impl ClusterResource for Deployment {}
 ///     DeleteOrphanedClusterResources {
 ///         source: stackable_operator::error::Error,
 ///     },
-/// }
+/// };
 ///
 /// async fn reconcile(app: Arc<AppCluster>, client: Arc<Client>) -> Result<Action, Error> {
 ///     let validated_config = ValidatedRoleConfigByPropertyKind::default();
@@ -122,7 +109,6 @@ impl ClusterResource for Deployment {}
 ///     )
 ///     .map_err(|source| Error::CreateClusterResources { source })?;
 ///
-///     let mut crs = Cluster
 ///     let role_service = Service::default();
 ///     let patched_role_service =
 ///         cluster_resources.add(&client, &role_service)
@@ -159,12 +145,10 @@ impl ClusterResource for Deployment {}
 ///         .await
 ///         .map_err(|source| Error::DeleteOrphanedClusterResources { source })?;
 ///
-///     let status = cluster_status_builder.status(&self);
-///     client.patch_status(status);
 ///     Ok(Action::await_change())
 /// }
 /// ```
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct ClusterResources {
     /// The namespace of the cluster
     namespace: String,
@@ -176,7 +160,6 @@ pub struct ClusterResources {
     manager: String,
     /// The unique IDs of the cluster resources
     resource_ids: HashSet<String>,
-    status_builders: Vec<dyn ClusterResource>,
 }
 
 impl ClusterResources {
@@ -259,8 +242,6 @@ impl ClusterResources {
         })?;
 
         self.resource_ids.insert(resource_id);
-
-        self.status_builders.push(resource);
 
         Ok(patched_resource)
     }
@@ -416,17 +397,7 @@ impl ClusterResources {
         &self,
         client: &Client,
     ) -> OperatorResult<Vec<T>> {
-        let label_selector = self.label_selector();
-
-        let resources = client
-            .list_with_label_selector::<T>(&self.namespace, &label_selector)
-            .await?;
-
-        Ok(resources)
-    }
-
-    fn label_selector(&self) -> LabelSelector {
-        LabelSelector {
+        let label_selector = LabelSelector {
             match_expressions: Some(vec![
                 LabelSelectorRequirement {
                     key: APP_INSTANCE_LABEL.into(),
@@ -445,6 +416,12 @@ impl ClusterResources {
                 },
             ]),
             ..Default::default()
-        }
+        };
+
+        let resources = client
+            .list_with_label_selector::<T>(&self.namespace, &label_selector)
+            .await?;
+
+        Ok(resources)
     }
 }
