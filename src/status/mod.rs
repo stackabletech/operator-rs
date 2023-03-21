@@ -5,6 +5,7 @@ use k8s_openapi::{
 };
 use schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
+use std::cmp;
 use std::collections::{BTreeMap, HashMap};
 use tracing::info;
 
@@ -46,39 +47,26 @@ pub enum ClusterConditionStatus {
     Unknown,
 }
 
-impl From<bool> for ClusterConditionStatus {
-    fn from(b: bool) -> ClusterConditionStatus {
-        if b {
-            ClusterConditionStatus::True
-        } else {
-            ClusterConditionStatus::False
-        }
-    }
-}
-
 #[derive(Clone, Debug, Default, PartialEq, Eq, JsonSchema, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ClusterCondition {
+    #[serde(skip_serializing_if = "Option::is_none")]
     /// Last time the condition transitioned from one status to another.
     pub last_transition_time: Option<Time>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     /// The last time this condition was updated.
     pub last_update_time: Option<Time>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     /// A human readable message indicating details about the transition.
     pub message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     /// The reason for the condition's last transition.
     pub reason: Option<String>,
     /// Status of the condition, one of True, False, Unknown.
     pub status: ClusterConditionStatus,
     /// Type of deployment condition.
+    #[serde(rename = "type")]
     pub type_: ClusterConditionType,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub enum ClusterConditionMergeStrategy {
-    #[default]
-    /// Ordered merge strategy means that a higher (Unknown > False > True) ClusterConditionStatus
-    /// will take precedence over lower ClusterConditionStatus. This means a condition for
-    /// Available with status true will be overwritten by a condition for Available with status false.
-    Ordered,
 }
 
 pub trait HasCondition {
@@ -87,8 +75,6 @@ pub trait HasCondition {
 
 pub trait ConditionBuilder {
     fn build_conditions(&self) -> Vec<ClusterCondition>;
-    //fn paused(&self, cluster_resource: &T) -> Option<ClusterCondition>;
-    //fn stopped(&self, cluster_resource: &T) -> Option<ClusterCondition>;
 }
 
 pub struct StatefulSetConditionBuilder<'a, T: HasCondition> {
@@ -116,43 +102,61 @@ impl<'a, T: HasCondition> StatefulSetConditionBuilder<'a, T> {
             .find(|cond| cond.type_ == ClusterConditionType::Available)
             .cloned();
 
-        let mut sts_available = true;
+        let mut sts_available = ClusterConditionStatus::True;
         for sts in &self.stateful_sets {
-            sts_available = sts_available && stateful_set_available(sts);
+            sts_available = cmp::max(sts_available, stateful_set_available(sts));
         }
 
         let message = match sts_available {
-            true => Some("cluster has the requested amount of ready replicas".to_string()),
-            false => {
-                Some("cluster does not have the requested amount of ready replicas".to_string())
+            ClusterConditionStatus::True => "cluster has the requested amount of ready replicas",
+            ClusterConditionStatus::False => {
+                "cluster does not have the requested amount of ready replicas"
             }
+            ClusterConditionStatus::Unknown => "Unknown",
         };
 
-        let now = Time(Utc::now());
-        if let Some(old_available) = opt_old_available {
-            if old_available.status == sts_available.into() {
-                ClusterCondition {
-                    last_update_time: Some(now),
-                    ..old_available
-                }
-            } else {
-                ClusterCondition {
-                    last_update_time: Some(now.clone()),
-                    last_transition_time: Some(now),
-                    status: sts_available.into(),
-                    message,
-                    ..old_available
-                }
+        update_condition(
+            ClusterConditionType::Available,
+            opt_old_available,
+            sts_available,
+            message,
+        )
+    }
+}
+
+fn update_condition(
+    condition_type: ClusterConditionType,
+    old_condition: Option<ClusterCondition>,
+    merged_condition_status: ClusterConditionStatus,
+    message: &str,
+) -> ClusterCondition {
+    let now = Time(Utc::now());
+    if let Some(old_condition) = old_condition {
+        // No change in status -> update "last_update_time"
+        if old_condition.status == merged_condition_status {
+            ClusterCondition {
+                last_update_time: Some(now),
+                ..old_condition
             }
+        // Change in status -> set new message, status and update / transition times
         } else {
             ClusterCondition {
                 last_update_time: Some(now.clone()),
                 last_transition_time: Some(now),
-                status: sts_available.into(),
-                message,
-                reason: None,
-                type_: ClusterConditionType::Available,
+                status: merged_condition_status,
+                message: Some(message.to_string()),
+                ..old_condition
             }
+        }
+    // No condition available -> create
+    } else {
+        ClusterCondition {
+            last_update_time: Some(now.clone()),
+            last_transition_time: Some(now),
+            status: merged_condition_status,
+            message: Some(message.to_string()),
+            reason: None,
+            type_: condition_type,
         }
     }
 }
@@ -188,44 +192,25 @@ impl<'a, T: HasCondition> DaemonSetConditionBuilder<'a, T> {
             .find(|cond| cond.type_ == ClusterConditionType::Available)
             .cloned();
 
-        let mut ds_available = true;
+        let mut ds_available = ClusterConditionStatus::True;
         for ds in &self.daemon_sets {
-            ds_available = ds_available && daemon_set_available(ds);
+            ds_available = cmp::max(ds_available, daemon_set_available(ds));
         }
 
         let message = match ds_available {
-            true => Some("cluster has the requested amount of ready replicas".to_string()),
-            false => {
-                Some("cluster does not have the requested amount of ready replicas".to_string())
+            ClusterConditionStatus::True => "cluster has the requested amount of ready replicas",
+            ClusterConditionStatus::False => {
+                "cluster does not have the requested amount of ready replicas"
             }
+            ClusterConditionStatus::Unknown => "Unknown",
         };
 
-        let now = Time(Utc::now());
-        if let Some(old_available) = opt_old_available {
-            if old_available.status == ds_available.into() {
-                ClusterCondition {
-                    last_update_time: Some(now),
-                    ..old_available
-                }
-            } else {
-                ClusterCondition {
-                    last_update_time: Some(now.clone()),
-                    last_transition_time: Some(now),
-                    status: ds_available.into(),
-                    message,
-                    ..old_available
-                }
-            }
-        } else {
-            ClusterCondition {
-                last_update_time: Some(now.clone()),
-                last_transition_time: Some(now),
-                status: ds_available.into(),
-                message,
-                reason: None,
-                type_: ClusterConditionType::Available,
-            }
-        }
+        update_condition(
+            ClusterConditionType::Available,
+            opt_old_available,
+            ds_available,
+            message,
+        )
     }
 }
 
@@ -264,7 +249,7 @@ pub fn compute_conditions<T: ConditionBuilder>(condition_builder: &[T]) -> Vec<C
     current_conditions.values().cloned().collect()
 }
 
-fn stateful_set_available(sts: &StatefulSet) -> bool {
+fn stateful_set_available(sts: &StatefulSet) -> ClusterConditionStatus {
     let requested_replicas = sts
         .spec
         .as_ref()
@@ -278,10 +263,15 @@ fn stateful_set_available(sts: &StatefulSet) -> bool {
 
     info!("STS: requested_replicas={requested_replicas}");
     info!("STS: available_replicas={available_replicas}");
-    requested_replicas == available_replicas
+
+    if requested_replicas == available_replicas {
+        ClusterConditionStatus::True
+    } else {
+        ClusterConditionStatus::False
+    }
 }
 
-fn daemon_set_available(ds: &DaemonSet) -> bool {
+fn daemon_set_available(ds: &DaemonSet) -> ClusterConditionStatus {
     let desired_number_scheduled = ds
         .status
         .as_ref()
@@ -295,5 +285,15 @@ fn daemon_set_available(ds: &DaemonSet) -> bool {
 
     info!("Ds: desired_number_scheduled={desired_number_scheduled}");
     info!("Ds: number_ready={number_ready}");
-    desired_number_scheduled == number_ready
+    if desired_number_scheduled == number_ready {
+        ClusterConditionStatus::True
+    } else {
+        ClusterConditionStatus::False
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test() {}
 }
