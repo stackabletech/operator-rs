@@ -4,7 +4,7 @@ use chrono::Utc;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 use schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use strum::EnumCount;
 
 pub trait HasStatusCondition {
     fn conditions(&self) -> Vec<ClusterCondition>;
@@ -18,9 +18,10 @@ pub struct ClusterConditionSet {
 impl ClusterConditionSet {
     pub fn new() -> Self {
         ClusterConditionSet {
-            conditions: vec![None, None, None, None, None],
+            conditions: Vec::with_capacity(ClusterConditionType::COUNT),
         }
     }
+
     fn put(&mut self, condition: ClusterCondition) {
         self.conditions[condition.type_ as usize] = Some(condition.clone());
     }
@@ -65,6 +66,7 @@ pub trait ConditionBuilder {
     Debug,
     Default,
     Deserialize,
+    EnumCount,
     Eq,
     Hash,
     JsonSchema,
