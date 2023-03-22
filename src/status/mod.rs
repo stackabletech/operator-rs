@@ -6,8 +6,14 @@ use schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
 use strum::EnumCount;
 
+/// A **data structure** that contains a vector of `ClusterCondition`s.
+/// Should usually be the status of a `CustomResource`.
 pub trait HasStatusCondition {
     fn conditions(&self) -> Vec<ClusterCondition>;
+}
+
+pub trait ConditionBuilder {
+    fn build_conditions(&self) -> ClusterConditionSet;
 }
 
 #[derive(Default)]
@@ -18,32 +24,40 @@ pub struct ClusterConditionSet {
 impl ClusterConditionSet {
     pub fn new() -> Self {
         ClusterConditionSet {
+            // We use this as a quasi "Set" where each ClusterConditionType has its fixed position
+            // This ensures ordering, and in contrast to e.g. a
+            // BTreeMap<ClusterConditionType, ClusterCondition>, prevents shenanigans like adding a
+            // ClusterCondition (as value) with a different ClusterConditionType than its key.
+            // See "put".
             conditions: Vec::with_capacity(ClusterConditionType::COUNT),
         }
     }
 
+    /// Adds a ClusterCondition to its assigned index in the conditions vector.
     fn put(&mut self, condition: ClusterCondition) {
-        self.conditions[condition.type_ as usize] = Some(condition.clone());
+        let index = condition.type_ as usize;
+        self.conditions[index] = Some(condition);
     }
 
     pub fn merge(&mut self, other: &ClusterConditionSet) -> ClusterConditionSet {
         let mut result = ClusterConditionSet::new();
         for (old_condition, new_condition) in self.conditions.iter().zip(other.conditions.iter()) {
-            let c = match (old_condition, new_condition) {
+            if let Some(condition) = match (old_condition, new_condition) {
                 (Some(old), Some(new)) => Some(merge_condition(old, new)),
                 (Some(old), None) => Some(old.clone()),
                 (None, Some(new)) => Some(new.clone()),
                 _ => None,
+            } {
+                result.put(condition);
             };
-            if c.is_some() {
-                result.put(c.unwrap());
-            }
         }
         result
     }
+}
 
-    pub fn to_vec(&self) -> Vec<ClusterCondition> {
-        self.conditions.clone().into_iter().flatten().collect()
+impl From<ClusterConditionSet> for Vec<ClusterCondition> {
+    fn from(value: ClusterConditionSet) -> Self {
+        value.conditions.into_iter().flatten().collect()
     }
 }
 
@@ -55,9 +69,6 @@ impl From<Vec<ClusterCondition>> for ClusterConditionSet {
         }
         result
     }
-}
-pub trait ConditionBuilder {
-    fn build_conditions(&self) -> ClusterConditionSet;
 }
 
 #[derive(
@@ -144,7 +155,7 @@ pub fn compute_conditions<T: ConditionBuilder, R: HasStatusCondition>(
         old_conditions = old_conditions.merge(&new_conditions);
     }
 
-    old_conditions.to_vec()
+    old_conditions.into()
 }
 
 fn merge_condition(
@@ -152,14 +163,14 @@ fn merge_condition(
     new_condition: &ClusterCondition,
 ) -> ClusterCondition {
     let now = Time(Utc::now());
-    // No change in status -> update "last_update_time"
+    // No change in status -> update "last_update_time" and keep "last_transition_time"
     if old_condition.status == new_condition.status {
         ClusterCondition {
             last_update_time: Some(now),
             last_transition_time: old_condition.last_transition_time.clone(),
             ..new_condition.clone()
         }
-        // Change in status -> set new message, status and update / transition times
+    // Change in status -> set new "last_update_time" and "last_transition_time"
     } else {
         ClusterCondition {
             last_update_time: Some(now.clone()),
@@ -167,5 +178,4 @@ fn merge_condition(
             ..new_condition.clone()
         }
     }
-    // No condition available -> create
 }
