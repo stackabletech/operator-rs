@@ -29,7 +29,7 @@ impl ClusterConditionSet {
             // BTreeMap<ClusterConditionType, ClusterCondition>, prevents shenanigans like adding a
             // ClusterCondition (as value) with a different ClusterConditionType than its key.
             // See "put".
-            conditions: Vec::with_capacity(ClusterConditionType::COUNT),
+            conditions: (0..ClusterConditionType::COUNT).map(|_| None).collect(),
         }
     }
 
@@ -177,5 +177,54 @@ fn merge_condition(
             last_transition_time: Some(now),
             ..new_condition.clone()
         }
+    }
+}
+#[cfg(test)]
+mod test {
+    use crate::status::*;
+
+    struct TestResource {}
+    impl HasStatusCondition for TestResource {
+        fn conditions(&self) -> Vec<ClusterCondition> {
+            vec![ClusterCondition {
+                type_: crate::status::ClusterConditionType::Available,
+                status: crate::status::ClusterConditionStatus::False,
+                message: Some("OMG! Thing is broken!".into()),
+                ..ClusterCondition::default()
+            }]
+        }
+    }
+    struct TestConditionBuilder {}
+    impl ConditionBuilder for TestConditionBuilder {
+        fn build_conditions(&self) -> ClusterConditionSet {
+            vec![ClusterCondition {
+                type_: crate::status::ClusterConditionType::Available,
+                status: crate::status::ClusterConditionStatus::True,
+                message: Some("Relax. Everything is fine.".into()),
+                ..ClusterCondition::default()
+            }]
+            .into()
+        }
+    }
+    #[test]
+    pub fn test_compute_conditions_with_transition() {
+        let resource = TestResource {};
+        let condition_builders = vec![TestConditionBuilder {}];
+        let got = compute_conditions(&resource, &condition_builders)
+            .get(0)
+            .cloned()
+            .unwrap();
+        let expected = ClusterCondition {
+            type_: crate::status::ClusterConditionType::Available,
+            status: crate::status::ClusterConditionStatus::True,
+            message: Some("Relax. Everything is fine.".into()),
+            ..ClusterCondition::default()
+        };
+
+        assert_eq!(got.type_, expected.type_);
+        assert_eq!(got.status, expected.status);
+        assert_eq!(got.message, expected.message);
+        assert_eq!(got.last_transition_time, got.last_update_time);
+        assert!(got.last_transition_time.is_some());
     }
 }
