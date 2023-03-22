@@ -16,59 +16,26 @@ pub trait ConditionBuilder {
     fn build_conditions(&self) -> ClusterConditionSet;
 }
 
-#[derive(Default)]
-pub struct ClusterConditionSet {
-    conditions: Vec<Option<ClusterCondition>>,
-}
-
-impl ClusterConditionSet {
-    pub fn new() -> Self {
-        ClusterConditionSet {
-            // We use this as a quasi "Set" where each ClusterConditionType has its fixed position
-            // This ensures ordering, and in contrast to e.g. a
-            // BTreeMap<ClusterConditionType, ClusterCondition>, prevents shenanigans like adding a
-            // ClusterCondition (as value) with a different ClusterConditionType than its key.
-            // See "put".
-            conditions: Vec::with_capacity(ClusterConditionType::COUNT),
-        }
-    }
-
-    /// Adds a ClusterCondition to its assigned index in the conditions vector.
-    fn put(&mut self, condition: ClusterCondition) {
-        let index = condition.type_ as usize;
-        self.conditions[index] = Some(condition);
-    }
-
-    pub fn merge(&mut self, other: &ClusterConditionSet) -> ClusterConditionSet {
-        let mut result = ClusterConditionSet::new();
-        for (old_condition, new_condition) in self.conditions.iter().zip(other.conditions.iter()) {
-            if let Some(condition) = match (old_condition, new_condition) {
-                (Some(old), Some(new)) => Some(merge_condition(old, new)),
-                (Some(old), None) => Some(old.clone()),
-                (None, Some(new)) => Some(new.clone()),
-                _ => None,
-            } {
-                result.put(condition);
-            };
-        }
-        result
-    }
-}
-
-impl From<ClusterConditionSet> for Vec<ClusterCondition> {
-    fn from(value: ClusterConditionSet) -> Self {
-        value.conditions.into_iter().flatten().collect()
-    }
-}
-
-impl From<Vec<ClusterCondition>> for ClusterConditionSet {
-    fn from(value: Vec<ClusterCondition>) -> Self {
-        let mut result = ClusterConditionSet::new();
-        for c in value {
-            result.put(c);
-        }
-        result
-    }
+#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClusterCondition {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Last time the condition transitioned from one status to another.
+    pub last_transition_time: Option<Time>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    /// The last time this condition was updated.
+    pub last_update_time: Option<Time>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    /// A human readable message indicating details about the transition.
+    pub message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    /// The reason for the condition's last transition.
+    pub reason: Option<String>,
+    /// Status of the condition, one of True, False, Unknown.
+    pub status: ClusterConditionStatus,
+    /// Type of deployment condition.
+    #[serde(rename = "type")]
+    pub type_: ClusterConditionType,
 }
 
 #[derive(
@@ -121,26 +88,66 @@ pub enum ClusterConditionStatus {
     Unknown,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, JsonSchema, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ClusterCondition {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// Last time the condition transitioned from one status to another.
-    pub last_transition_time: Option<Time>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// The last time this condition was updated.
-    pub last_update_time: Option<Time>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// A human readable message indicating details about the transition.
-    pub message: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// The reason for the condition's last transition.
-    pub reason: Option<String>,
-    /// Status of the condition, one of True, False, Unknown.
-    pub status: ClusterConditionStatus,
-    /// Type of deployment condition.
-    #[serde(rename = "type")]
-    pub type_: ClusterConditionType,
+#[derive(Default)]
+/// Helper to order and merge `ClusterCondition` objects.
+pub struct ClusterConditionSet {
+    conditions: Vec<Option<ClusterCondition>>,
+}
+
+impl ClusterConditionSet {
+    pub fn new() -> Self {
+        ClusterConditionSet {
+            // We use this as a quasi "Set" where each ClusterConditionType has its fixed position
+            // This ensures ordering, and in contrast to e.g. a
+            // BTreeMap<ClusterConditionType, ClusterCondition>, prevents shenanigans like adding a
+            // ClusterCondition (as value) with a different ClusterConditionType than its key.
+            // See "put".
+            conditions: Vec::with_capacity(ClusterConditionType::COUNT),
+        }
+    }
+
+    /// Adds a ClusterCondition to its assigned index in the conditions vector.
+    fn put(&mut self, condition: ClusterCondition) {
+        let index = condition.type_ as usize;
+        self.conditions[index] = Some(condition);
+    }
+
+    pub fn merge(self, other: ClusterConditionSet) -> ClusterConditionSet {
+        let mut result = ClusterConditionSet::new();
+
+        for (old_condition, new_condition) in self
+            .conditions
+            .into_iter()
+            .zip(other.conditions.into_iter())
+        {
+            if let Some(condition) = match (old_condition, new_condition) {
+                (Some(old), Some(new)) => Some(merge_condition(old, new)),
+                (Some(old), None) => Some(old),
+                (None, Some(new)) => Some(new),
+                _ => None,
+            } {
+                result.put(condition);
+            };
+        }
+
+        result
+    }
+}
+
+impl From<ClusterConditionSet> for Vec<ClusterCondition> {
+    fn from(value: ClusterConditionSet) -> Self {
+        value.conditions.into_iter().flatten().collect()
+    }
+}
+
+impl From<Vec<ClusterCondition>> for ClusterConditionSet {
+    fn from(value: Vec<ClusterCondition>) -> Self {
+        let mut result = ClusterConditionSet::new();
+        for c in value {
+            result.put(c);
+        }
+        result
+    }
 }
 
 pub fn compute_conditions<T: ConditionBuilder, R: HasStatusCondition>(
@@ -152,30 +159,30 @@ pub fn compute_conditions<T: ConditionBuilder, R: HasStatusCondition>(
     for cb in condition_builder {
         let new_conditions: ClusterConditionSet = cb.build_conditions();
 
-        old_conditions = old_conditions.merge(&new_conditions);
+        old_conditions = old_conditions.merge(new_conditions);
     }
 
     old_conditions.into()
 }
 
 fn merge_condition(
-    old_condition: &ClusterCondition,
-    new_condition: &ClusterCondition,
+    old_condition: ClusterCondition,
+    new_condition: ClusterCondition,
 ) -> ClusterCondition {
     let now = Time(Utc::now());
     // No change in status -> update "last_update_time" and keep "last_transition_time"
     if old_condition.status == new_condition.status {
         ClusterCondition {
             last_update_time: Some(now),
-            last_transition_time: old_condition.last_transition_time.clone(),
-            ..new_condition.clone()
+            last_transition_time: old_condition.last_transition_time,
+            ..new_condition
         }
     // Change in status -> set new "last_update_time" and "last_transition_time"
     } else {
         ClusterCondition {
             last_update_time: Some(now.clone()),
             last_transition_time: Some(now),
-            ..new_condition.clone()
+            ..new_condition
         }
     }
 }
