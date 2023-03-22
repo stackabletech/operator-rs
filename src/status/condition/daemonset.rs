@@ -6,21 +6,17 @@ use k8s_openapi::api::apps::v1::DaemonSet;
 use kube::ResourceExt;
 use std::cmp;
 
+#[derive(Default)]
 pub struct DaemonSetConditionBuilder {
     daemon_sets: Vec<DaemonSet>,
 }
 
 impl DaemonSetConditionBuilder {
-    pub fn new() -> Self {
-        DaemonSetConditionBuilder {
-            daemon_sets: vec![],
-        }
-    }
     pub fn add(&mut self, ds: DaemonSet) {
         self.daemon_sets.push(ds);
     }
 
-    pub fn available(&self) -> ClusterCondition {
+    fn available(&self) -> ClusterCondition {
         let mut available = ClusterConditionStatus::True;
         let mut unavailable_ds = vec![];
 
