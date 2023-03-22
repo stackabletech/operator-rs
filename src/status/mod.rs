@@ -74,58 +74,54 @@ pub struct ClusterCondition {
     pub type_: ClusterConditionType,
 }
 
-pub fn compute_conditions<T: ConditionBuilder>(condition_builder: &[T]) -> Vec<ClusterCondition> {
-    let mut current_conditions = BTreeMap::<ClusterConditionType, ClusterCondition>::new();
+pub fn compute_conditions<T: ConditionBuilder, R: HasStatusCondition>(
+    resource: &R,
+    condition_builder: &[T],
+) -> Vec<ClusterCondition> {
+    let mut old_conditions: BTreeMap<ClusterConditionType, ClusterCondition> = resource
+        .conditions()
+        .into_iter()
+        .map(|c| (c.type_.clone(), c))
+        .collect();
+
     for cb in condition_builder {
-        let cb_conditions: HashMap<ClusterConditionType, ClusterCondition> = cb
+        let new_conditions: HashMap<ClusterConditionType, ClusterCondition> = cb
             .build_conditions()
             .iter()
             .map(|c| (c.type_.clone(), c.clone()))
             .collect();
 
-        for (current_condition_type, cb_condition) in cb_conditions {
-            let current_condition = current_conditions.get(&current_condition_type);
-
-            let next_condition = if let Some(current) = current_condition {
-                if current.status > cb_condition.status {
-                    current
-                } else {
-                    &cb_condition
-                }
-            } else {
-                &cb_condition
-            };
-
-            current_conditions.insert(current_condition_type, next_condition.clone());
+        for (condition_type, new_condition) in new_conditions {
+            let old_condition = old_conditions.get(&condition_type);
+            old_conditions.insert(
+                condition_type,
+                merge_condition(old_condition, new_condition),
+            );
         }
     }
 
-    current_conditions.values().cloned().collect()
+    old_conditions.values().cloned().collect()
 }
 
-fn update_condition(
-    condition_type: ClusterConditionType,
-    old_condition: Option<ClusterCondition>,
-    merged_condition_status: ClusterConditionStatus,
-    message: &str,
+fn merge_condition(
+    old_condition: Option<&ClusterCondition>,
+    new_condition: ClusterCondition,
 ) -> ClusterCondition {
     let now = Time(Utc::now());
     if let Some(old_condition) = old_condition {
         // No change in status -> update "last_update_time"
-        if old_condition.status == merged_condition_status {
+        if old_condition.status == new_condition.status {
             ClusterCondition {
                 last_update_time: Some(now),
-                message: Some(message.to_string()),
-                ..old_condition
+                last_transition_time: old_condition.last_transition_time.clone(),
+                ..new_condition
             }
             // Change in status -> set new message, status and update / transition times
         } else {
             ClusterCondition {
                 last_update_time: Some(now.clone()),
                 last_transition_time: Some(now),
-                status: merged_condition_status,
-                message: Some(message.to_string()),
-                ..old_condition
+                ..new_condition
             }
         }
         // No condition available -> create
@@ -133,10 +129,7 @@ fn update_condition(
         ClusterCondition {
             last_update_time: Some(now.clone()),
             last_transition_time: Some(now),
-            status: merged_condition_status,
-            message: Some(message.to_string()),
-            reason: None,
-            type_: condition_type,
+            ..new_condition
         }
     }
 }

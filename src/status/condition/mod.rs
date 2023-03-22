@@ -1,2 +1,2 @@
 pub mod daemonset;
-pub mod statefulset;
+//pub mod statefulset;

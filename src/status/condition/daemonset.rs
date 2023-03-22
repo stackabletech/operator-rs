@@ -1,37 +1,26 @@
 use crate::status::{
-    update_condition, ClusterCondition, ClusterConditionStatus, ClusterConditionType,
-    ConditionBuilder, HasStatusCondition,
+    ClusterCondition, ClusterConditionStatus, ClusterConditionType, ConditionBuilder,
 };
 
 use k8s_openapi::api::apps::v1::DaemonSet;
 use kube::ResourceExt;
 use std::cmp;
 
-pub struct DaemonSetConditionBuilder<'a, T: HasStatusCondition> {
-    resource: &'a T,
+pub struct DaemonSetConditionBuilder {
     daemon_sets: Vec<DaemonSet>,
 }
 
-impl<'a, T: HasStatusCondition> DaemonSetConditionBuilder<'a, T> {
-    pub fn new(resource: &'a T) -> DaemonSetConditionBuilder<T> {
+impl DaemonSetConditionBuilder {
+    pub fn new() -> Self {
         DaemonSetConditionBuilder {
-            resource,
-            daemon_sets: Vec::new(),
+            daemon_sets: vec![],
         }
     }
-
     pub fn add(&mut self, ds: DaemonSet) {
         self.daemon_sets.push(ds);
     }
 
     pub fn available(&self) -> ClusterCondition {
-        let opt_old_available = self
-            .resource
-            .conditions()
-            .iter()
-            .find(|cond| cond.type_ == ClusterConditionType::Available)
-            .cloned();
-
         let mut available = ClusterConditionStatus::True;
         let mut unavailable_ds = vec![];
 
@@ -55,16 +44,18 @@ impl<'a, T: HasStatusCondition> DaemonSetConditionBuilder<'a, T> {
             ClusterConditionStatus::Unknown => "DaemonSet status cannot be determined.".to_string(),
         };
 
-        update_condition(
-            ClusterConditionType::Available,
-            opt_old_available,
-            available,
-            &message,
-        )
+        ClusterCondition {
+            reason: None,
+            message: Some(message),
+            status: available,
+            type_: ClusterConditionType::Available,
+            last_transition_time: None,
+            last_update_time: None,
+        }
     }
 }
 
-impl<'a, T: HasStatusCondition> ConditionBuilder for DaemonSetConditionBuilder<'a, T> {
+impl ConditionBuilder for DaemonSetConditionBuilder {
     fn build_conditions(&self) -> Vec<ClusterCondition> {
         vec![self.available()]
     }
