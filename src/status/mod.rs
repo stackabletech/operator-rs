@@ -10,12 +10,68 @@ pub trait HasStatusCondition {
     fn conditions(&self) -> Vec<ClusterCondition>;
 }
 
+#[derive(Default)]
+pub struct ClusterConditionSet {
+    conditions: Vec<Option<ClusterCondition>>,
+}
+
+impl ClusterConditionSet {
+    pub fn new() -> Self {
+        ClusterConditionSet {
+            conditions: vec![None, None, None, None, None],
+        }
+    }
+    fn put(&mut self, condition: ClusterCondition) {
+        self.conditions[condition.type_ as usize] = Some(condition.clone());
+    }
+
+    pub fn merge(&mut self, other: &ClusterConditionSet) -> ClusterConditionSet {
+        let mut result = ClusterConditionSet::new();
+        for (old_condition, new_condition) in self.conditions.iter().zip(other.conditions.iter()) {
+            let c = match (old_condition, new_condition) {
+                (Some(old), Some(new)) => Some(merge_condition(old, new)),
+                (Some(old), None) => Some(old.clone()),
+                (None, Some(new)) => Some(new.clone()),
+                _ => None,
+            };
+            if c.is_some() {
+                result.put(c.unwrap());
+            }
+        }
+        result
+    }
+
+    pub fn to_vec(&self) -> Vec<ClusterCondition> {
+        self.conditions.clone().into_iter().flatten().collect()
+    }
+}
+
+impl From<Vec<ClusterCondition>> for ClusterConditionSet {
+    fn from(value: Vec<ClusterCondition>) -> Self {
+        let mut result = ClusterConditionSet::new();
+        for c in value {
+            result.put(c);
+        }
+        result
+    }
+}
 pub trait ConditionBuilder {
-    fn build_conditions(&self) -> Vec<ClusterCondition>;
+    fn build_conditions(&self) -> ClusterConditionSet;
 }
 
 #[derive(
-    Clone, Debug, Default, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Deserialize,
+    Eq,
+    Hash,
+    JsonSchema,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
 )]
 #[serde(rename_all = "PascalCase")]
 pub enum ClusterConditionType {
@@ -78,58 +134,36 @@ pub fn compute_conditions<T: ConditionBuilder, R: HasStatusCondition>(
     resource: &R,
     condition_builder: &[T],
 ) -> Vec<ClusterCondition> {
-    let mut old_conditions: BTreeMap<ClusterConditionType, ClusterCondition> = resource
-        .conditions()
-        .into_iter()
-        .map(|c| (c.type_.clone(), c))
-        .collect();
+    let mut old_conditions: ClusterConditionSet = resource.conditions().into();
 
     for cb in condition_builder {
-        let new_conditions: HashMap<ClusterConditionType, ClusterCondition> = cb
-            .build_conditions()
-            .iter()
-            .map(|c| (c.type_.clone(), c.clone()))
-            .collect();
+        let new_conditions: ClusterConditionSet = cb.build_conditions();
 
-        for (condition_type, new_condition) in new_conditions {
-            let old_condition = old_conditions.get(&condition_type);
-            old_conditions.insert(
-                condition_type,
-                merge_condition(old_condition, new_condition),
-            );
-        }
+        old_conditions = old_conditions.merge(&new_conditions);
     }
 
-    old_conditions.values().cloned().collect()
+    old_conditions.to_vec()
 }
 
 fn merge_condition(
-    old_condition: Option<&ClusterCondition>,
-    new_condition: ClusterCondition,
+    old_condition: &ClusterCondition,
+    new_condition: &ClusterCondition,
 ) -> ClusterCondition {
     let now = Time(Utc::now());
-    if let Some(old_condition) = old_condition {
-        // No change in status -> update "last_update_time"
-        if old_condition.status == new_condition.status {
-            ClusterCondition {
-                last_update_time: Some(now),
-                last_transition_time: old_condition.last_transition_time.clone(),
-                ..new_condition
-            }
-            // Change in status -> set new message, status and update / transition times
-        } else {
-            ClusterCondition {
-                last_update_time: Some(now.clone()),
-                last_transition_time: Some(now),
-                ..new_condition
-            }
+    // No change in status -> update "last_update_time"
+    if old_condition.status == new_condition.status {
+        ClusterCondition {
+            last_update_time: Some(now),
+            last_transition_time: old_condition.last_transition_time.clone(),
+            ..new_condition.clone()
         }
-        // No condition available -> create
+        // Change in status -> set new message, status and update / transition times
     } else {
         ClusterCondition {
             last_update_time: Some(now.clone()),
             last_transition_time: Some(now),
-            ..new_condition
+            ..new_condition.clone()
         }
     }
+    // No condition available -> create
 }

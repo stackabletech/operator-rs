@@ -1,5 +1,6 @@
 use crate::status::{
-    ClusterCondition, ClusterConditionStatus, ClusterConditionType, ConditionBuilder,
+    ClusterCondition, ClusterConditionSet, ClusterConditionStatus, ClusterConditionType,
+    ConditionBuilder,
 };
 
 use k8s_openapi::api::apps::v1::DaemonSet;
@@ -52,8 +53,8 @@ impl DaemonSetConditionBuilder {
 }
 
 impl ConditionBuilder for DaemonSetConditionBuilder {
-    fn build_conditions(&self) -> Vec<ClusterCondition> {
-        vec![self.available()]
+    fn build_conditions(&self) -> ClusterConditionSet {
+        vec![self.available()].into()
     }
 }
 
