@@ -75,7 +75,6 @@ pub fn compute_conditions<T: HasStatusCondition>(
 
     for cb in condition_builders {
         let new_conditions: ClusterConditionSet = cb.build_conditions();
-
         old_conditions = old_conditions.merge(new_conditions);
     }
 
@@ -154,7 +153,7 @@ pub enum ClusterConditionStatus {
     Unknown,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 /// Helper struct to order and merge `ClusterCondition` objects.
 pub struct ClusterConditionSet {
     conditions: Vec<Option<ClusterCondition>>,
@@ -207,12 +206,26 @@ impl ClusterConditionSet {
         let now = Time(Utc::now());
         // No change in status -> update "last_update_time" and keep "last_transition_time"
         if old_condition.status == new_condition.status {
+            // concat message if required
+            let message = if let (Some(old_msg), Some(new_msg)) =
+                (old_condition.message, &new_condition.message)
+            {
+                if !old_msg.contains(new_msg) {
+                    Some(format!("{old_msg}\n{new_msg}"))
+                } else {
+                    new_condition.message
+                }
+            } else {
+                new_condition.message
+            };
+
             ClusterCondition {
                 last_update_time: Some(now),
                 last_transition_time: old_condition.last_transition_time,
+                message,
                 ..new_condition
             }
-            // Change in status -> set new "last_update_time" and "last_transition_time"
+        // Change in status -> set new "last_update_time" and "last_transition_time"
         } else {
             ClusterCondition {
                 last_update_time: Some(now.clone()),
@@ -243,45 +256,87 @@ impl From<Vec<ClusterCondition>> for ClusterConditionSet {
 mod test {
     use super::*;
 
-    struct TestResource {}
-    impl HasStatusCondition for TestResource {
+    struct TestClusterCondition {}
+    impl HasStatusCondition for TestClusterCondition {
         fn conditions(&self) -> Vec<ClusterCondition> {
             vec![ClusterCondition {
                 type_: ClusterConditionType::Available,
-                status: ClusterConditionStatus::False,
-                message: Some("OMG! Thing is broken!".into()),
+                status: ClusterConditionStatus::Unknown,
+                message: Some("TestClusterCondition=Unknown".into()),
                 ..ClusterCondition::default()
             }]
         }
     }
 
-    struct TestConditionBuilder {}
-    struct TestConditionBuilder2 {}
-
-    impl ConditionBuilder for TestConditionBuilder {
+    struct AvailableFalseConditionBuilder {}
+    impl ConditionBuilder for AvailableFalseConditionBuilder {
         fn build_conditions(&self) -> ClusterConditionSet {
             vec![ClusterCondition {
                 type_: ClusterConditionType::Available,
-                status: ClusterConditionStatus::True,
-                message: Some("Relax. Everything is fine.".into()),
+                status: ClusterConditionStatus::False,
+                message: Some("AvailableFalseConditionBuilder".into()),
                 ..ClusterCondition::default()
             }]
             .into()
         }
     }
 
-    impl ConditionBuilder for TestConditionBuilder2 {
+    struct AvailableTrueConditionBuilder1 {}
+    impl ConditionBuilder for AvailableTrueConditionBuilder1 {
         fn build_conditions(&self) -> ClusterConditionSet {
-            vec![].into()
+            vec![ClusterCondition {
+                type_: ClusterConditionType::Available,
+                status: ClusterConditionStatus::True,
+                message: Some("AvailableTrueConditionBuilder_1".into()),
+                ..ClusterCondition::default()
+            }]
+            .into()
+        }
+    }
+
+    struct AvailableTrueConditionBuilder2 {}
+    impl ConditionBuilder for AvailableTrueConditionBuilder2 {
+        fn build_conditions(&self) -> ClusterConditionSet {
+            vec![ClusterCondition {
+                type_: ClusterConditionType::Available,
+                status: ClusterConditionStatus::True,
+                message: Some("AvailableTrueConditionBuilder_2".into()),
+                ..ClusterCondition::default()
+            }]
+            .into()
         }
     }
 
     #[test]
     pub fn test_compute_conditions_with_transition() {
-        let resource = TestResource {};
+        let resource = TestClusterCondition {};
+        let condition_builders = &[&AvailableTrueConditionBuilder1 {} as &dyn ConditionBuilder];
+
+        let got = compute_conditions(&resource, condition_builders)
+            .get(0)
+            .cloned()
+            .unwrap();
+
+        let expected = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::True,
+            message: Some("AvailableTrueConditionBuilder_1".into()),
+            ..ClusterCondition::default()
+        };
+
+        assert_eq!(got.type_, expected.type_);
+        assert_eq!(got.status, expected.status);
+        assert_eq!(got.message, expected.message);
+        assert_eq!(got.last_transition_time, got.last_update_time);
+        assert!(got.last_transition_time.is_some());
+    }
+
+    #[test]
+    pub fn test_compute_conditions_message_concatenation() {
+        let resource = TestClusterCondition {};
         let condition_builders = &[
-            &TestConditionBuilder {} as &dyn ConditionBuilder,
-            &TestConditionBuilder2 {} as &dyn ConditionBuilder,
+            &AvailableTrueConditionBuilder1 {} as &dyn ConditionBuilder,
+            &AvailableTrueConditionBuilder2 {} as &dyn ConditionBuilder,
         ];
 
         let got = compute_conditions(&resource, condition_builders)
@@ -292,14 +347,36 @@ mod test {
         let expected = ClusterCondition {
             type_: ClusterConditionType::Available,
             status: ClusterConditionStatus::True,
-            message: Some("Relax. Everything is fine.".into()),
+            message: Some(
+                "AvailableTrueConditionBuilder_1\nAvailableTrueConditionBuilder_2".into(),
+            ),
             ..ClusterCondition::default()
         };
 
         assert_eq!(got.type_, expected.type_);
         assert_eq!(got.status, expected.status);
         assert_eq!(got.message, expected.message);
-        assert_eq!(got.last_transition_time, got.last_update_time);
-        assert!(got.last_transition_time.is_some());
+
+        let condition_builders = &[
+            &AvailableTrueConditionBuilder1 {} as &dyn ConditionBuilder,
+            &AvailableFalseConditionBuilder {} as &dyn ConditionBuilder,
+            &AvailableTrueConditionBuilder2 {} as &dyn ConditionBuilder,
+        ];
+
+        let got = compute_conditions(&resource, condition_builders)
+            .get(0)
+            .cloned()
+            .unwrap();
+
+        let expected = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::False,
+            message: Some("AvailableFalseConditionBuilder".into()),
+            ..ClusterCondition::default()
+        };
+
+        assert_eq!(got.type_, expected.type_);
+        assert_eq!(got.status, expected.status);
+        assert_eq!(got.message, expected.message);
     }
 }

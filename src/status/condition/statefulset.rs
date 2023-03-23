@@ -14,6 +14,12 @@ pub struct StatefulSetConditionBuilder {
     stateful_sets: Vec<StatefulSet>,
 }
 
+impl ConditionBuilder for StatefulSetConditionBuilder {
+    fn build_conditions(&self) -> ClusterConditionSet {
+        vec![self.available()].into()
+    }
+}
+
 impl StatefulSetConditionBuilder {
     pub fn add(&mut self, sts: StatefulSet) {
         self.stateful_sets.push(sts);
@@ -21,23 +27,27 @@ impl StatefulSetConditionBuilder {
 
     fn available(&self) -> ClusterCondition {
         let mut available = ClusterConditionStatus::True;
-        let mut unavailable_sts = vec![];
+        let mut unavailable_resources = vec![];
         for sts in &self.stateful_sets {
             let current_status = Self::stateful_set_available(sts);
 
             if current_status != ClusterConditionStatus::True {
-                unavailable_sts.push(sts.name_any())
+                unavailable_resources.push(sts.name_any())
             }
 
             available = cmp::max(available, current_status);
         }
+
+        // We need to sort here to make sure roles and role groups are not changing position
+        // due to the HashMap (random order) logic.
+        unavailable_resources.sort();
 
         let message = match available {
             ClusterConditionStatus::True => {
                 "All StatefulSet have the requested amount of ready replicas.".to_string()
             }
             ClusterConditionStatus::False => {
-                format!("StatefulSet {unavailable_sts:?} missing ready replicas.")
+                format!("StatefulSet {unavailable_resources:?} missing ready replicas.")
             }
             ClusterConditionStatus::Unknown => {
                 "StatefulSet status cannot be determined.".to_string()
@@ -71,12 +81,6 @@ impl StatefulSetConditionBuilder {
         } else {
             ClusterConditionStatus::False
         }
-    }
-}
-
-impl ConditionBuilder for StatefulSetConditionBuilder {
-    fn build_conditions(&self) -> ClusterConditionSet {
-        vec![self.available()].into()
     }
 }
 
