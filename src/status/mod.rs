@@ -12,8 +12,75 @@ pub trait HasStatusCondition {
     fn conditions(&self) -> Vec<ClusterCondition>;
 }
 
+/// A **data structure** that produces a `ClusterConditionSet` containing all required
+/// `ClusterCondition`s.
 pub trait ConditionBuilder {
     fn build_conditions(&self) -> ClusterConditionSet;
+}
+
+/// Computes the final conditions to be set in the operator status condition field.
+///
+/// # Arguments
+///
+/// * `resource` - A cluster resource or status implementing [`HasStatusCondition`] in order to
+///    retrieve the "current" conditions set in the cluster. This is required to  compute
+///    condition change and set proper update / transition times.
+/// * `condition_builders` - A slice of structs implementing [`ConditionBuilder`]. This can be a
+///    one of the predefined ConditionBuilders like `DaemonSetConditionBuilder` or a custom
+///    implementation.
+///                    
+/// # Examples
+///
+/// ```
+/// use stackable_operator::status::{ClusterCondition, ConditionBuilder, HasStatusCondition};
+/// use stackable_operator::status::condition::daemonset::DaemonSetConditionBuilder;
+/// use stackable_operator::status::condition::statefulset::StatefulSetConditionBuilder;
+/// use k8s_openapi::api::apps::v1::{DaemonSet, StatefulSet};
+///
+/// struct ClusterStatus {
+///     conditions: Vec<ClusterCondition>
+/// }
+///
+/// impl HasStatusCondition for ClusterStatus {
+///     fn conditions(&self) -> Vec<ClusterCondition> {
+///         self.conditions.clone()
+///     }
+/// }
+///
+/// let mut daemonset_condition_builder = DaemonSetConditionBuilder::default();
+/// daemonset_condition_builder.add(DaemonSet::default());
+///
+/// let mut statefulset_condition_builder = StatefulSetConditionBuilder::default();
+/// statefulset_condition_builder.add(StatefulSet::default());
+///
+/// let old_status = ClusterStatus {
+///     conditions: vec![]
+/// };
+///
+/// let new_status = ClusterStatus {
+///     conditions: stackable_operator::status::compute_conditions(&old_status,
+///         &[
+///             &daemonset_condition_builder as &dyn ConditionBuilder,
+///             &statefulset_condition_builder as &dyn ConditionBuilder
+///         ]
+///     )
+/// };
+///
+/// ```
+///
+pub fn compute_conditions<T: HasStatusCondition>(
+    resource: &T,
+    condition_builders: &[&dyn ConditionBuilder],
+) -> Vec<ClusterCondition> {
+    let mut old_conditions: ClusterConditionSet = resource.conditions().into();
+
+    for cb in condition_builders {
+        let new_conditions: ClusterConditionSet = cb.build_conditions();
+
+        old_conditions = old_conditions.merge(new_conditions);
+    }
+
+    old_conditions.into()
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -89,7 +156,7 @@ pub enum ClusterConditionStatus {
 }
 
 #[derive(Default)]
-/// Helper to order and merge `ClusterCondition` objects.
+/// Helper struct to order and merge `ClusterCondition` objects.
 pub struct ClusterConditionSet {
     conditions: Vec<Option<ClusterCondition>>,
 }
@@ -106,12 +173,13 @@ impl ClusterConditionSet {
         }
     }
 
-    /// Adds a ClusterCondition to its assigned index in the conditions vector.
+    /// Adds a [`ClusterCondition`] to its assigned index in the conditions vector.
     fn put(&mut self, condition: ClusterCondition) {
         let index = condition.type_ as usize;
         self.conditions[index] = Some(condition);
     }
 
+    /// Merges two [`ClusterConditionSet`]s.
     pub fn merge(self, other: ClusterConditionSet) -> ClusterConditionSet {
         let mut result = ClusterConditionSet::new();
 
@@ -121,7 +189,7 @@ impl ClusterConditionSet {
             .zip(other.conditions.into_iter())
         {
             if let Some(condition) = match (old_condition, new_condition) {
-                (Some(old), Some(new)) => Some(merge_condition(old, new)),
+                (Some(old), Some(new)) => Some(Self::merge_condition(old, new)),
                 (Some(old), None) => Some(old),
                 (None, Some(new)) => Some(new),
                 _ => None,
@@ -131,6 +199,28 @@ impl ClusterConditionSet {
         }
 
         result
+    }
+
+    fn merge_condition(
+        old_condition: ClusterCondition,
+        new_condition: ClusterCondition,
+    ) -> ClusterCondition {
+        let now = Time(Utc::now());
+        // No change in status -> update "last_update_time" and keep "last_transition_time"
+        if old_condition.status == new_condition.status {
+            ClusterCondition {
+                last_update_time: Some(now),
+                last_transition_time: old_condition.last_transition_time,
+                ..new_condition
+            }
+            // Change in status -> set new "last_update_time" and "last_transition_time"
+        } else {
+            ClusterCondition {
+                last_update_time: Some(now.clone()),
+                last_transition_time: Some(now),
+                ..new_condition
+            }
+        }
     }
 }
 
@@ -150,42 +240,6 @@ impl From<Vec<ClusterCondition>> for ClusterConditionSet {
     }
 }
 
-pub fn compute_conditions<T: ConditionBuilder, R: HasStatusCondition>(
-    resource: &R,
-    condition_builder: &[T],
-) -> Vec<ClusterCondition> {
-    let mut old_conditions: ClusterConditionSet = resource.conditions().into();
-
-    for cb in condition_builder {
-        let new_conditions: ClusterConditionSet = cb.build_conditions();
-
-        old_conditions = old_conditions.merge(new_conditions);
-    }
-
-    old_conditions.into()
-}
-
-fn merge_condition(
-    old_condition: ClusterCondition,
-    new_condition: ClusterCondition,
-) -> ClusterCondition {
-    let now = Time(Utc::now());
-    // No change in status -> update "last_update_time" and keep "last_transition_time"
-    if old_condition.status == new_condition.status {
-        ClusterCondition {
-            last_update_time: Some(now),
-            last_transition_time: old_condition.last_transition_time,
-            ..new_condition
-        }
-    // Change in status -> set new "last_update_time" and "last_transition_time"
-    } else {
-        ClusterCondition {
-            last_update_time: Some(now.clone()),
-            last_transition_time: Some(now),
-            ..new_condition
-        }
-    }
-}
 #[cfg(test)]
 mod test {
     use crate::status::*;
@@ -194,36 +248,51 @@ mod test {
     impl HasStatusCondition for TestResource {
         fn conditions(&self) -> Vec<ClusterCondition> {
             vec![ClusterCondition {
-                type_: crate::status::ClusterConditionType::Available,
-                status: crate::status::ClusterConditionStatus::False,
+                type_: ClusterConditionType::Available,
+                status: ClusterConditionStatus::False,
                 message: Some("OMG! Thing is broken!".into()),
                 ..ClusterCondition::default()
             }]
         }
     }
+
     struct TestConditionBuilder {}
+    struct TestConditionBuilder2 {}
+
     impl ConditionBuilder for TestConditionBuilder {
         fn build_conditions(&self) -> ClusterConditionSet {
             vec![ClusterCondition {
-                type_: crate::status::ClusterConditionType::Available,
-                status: crate::status::ClusterConditionStatus::True,
+                type_: ClusterConditionType::Available,
+                status: ClusterConditionStatus::True,
                 message: Some("Relax. Everything is fine.".into()),
                 ..ClusterCondition::default()
             }]
             .into()
         }
     }
+
+    impl ConditionBuilder for TestConditionBuilder2 {
+        fn build_conditions(&self) -> ClusterConditionSet {
+            vec![].into()
+        }
+    }
+
     #[test]
     pub fn test_compute_conditions_with_transition() {
         let resource = TestResource {};
-        let condition_builders = vec![TestConditionBuilder {}];
-        let got = compute_conditions(&resource, &condition_builders)
+        let condition_builders = &[
+            &TestConditionBuilder {} as &dyn ConditionBuilder,
+            &TestConditionBuilder2 {} as &dyn ConditionBuilder,
+        ];
+
+        let got = compute_conditions(&resource, condition_builders)
             .get(0)
             .cloned()
             .unwrap();
+
         let expected = ClusterCondition {
-            type_: crate::status::ClusterConditionType::Available,
-            status: crate::status::ClusterConditionStatus::True,
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::True,
             message: Some("Relax. Everything is fine.".into()),
             ..ClusterCondition::default()
         };
