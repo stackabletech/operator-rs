@@ -74,13 +74,13 @@ pub fn compute_conditions<T: HasStatusCondition>(
     let mut new_resource_conditions = ClusterConditionSet::new();
     for cb in condition_builders {
         let conditions: ClusterConditionSet = cb.build_conditions();
-        new_resource_conditions = new_resource_conditions.merge(conditions, false);
+        new_resource_conditions = new_resource_conditions.merge(conditions, update_message);
     }
 
     let old_resource_conditions: ClusterConditionSet = resource.conditions().into();
 
     old_resource_conditions
-        .merge(new_resource_conditions, true)
+        .merge(new_resource_conditions, update_timestamps)
         .into()
 }
 
@@ -180,8 +180,13 @@ impl ClusterConditionSet {
         self.conditions[index] = Some(condition);
     }
 
-    /// Merges two [`ClusterConditionSet`]s.
-    pub fn merge(self, other: ClusterConditionSet, merge_combine: bool) -> ClusterConditionSet {
+    /// Merges two [`ClusterConditionSet`]s. The condition_combiner implements the strategy used to merge two conditions of
+    /// of the same type_.
+    fn merge(
+        self,
+        other: ClusterConditionSet,
+        condition_combiner: fn(ClusterCondition, ClusterCondition) -> ClusterCondition,
+    ) -> ClusterConditionSet {
         let mut result = ClusterConditionSet::new();
 
         for (old_condition, new_condition) in self
@@ -190,11 +195,7 @@ impl ClusterConditionSet {
             .zip(other.conditions.into_iter())
         {
             if let Some(condition) = match (old_condition, new_condition) {
-                (Some(old), Some(new)) => Some(if merge_combine {
-                    Self::merge_condition(old, new)
-                } else {
-                    Self::combine_condition(old, new)
-                }),
+                (Some(old), Some(new)) => Some(condition_combiner(old, new)),
                 (Some(old), None) => Some(old),
                 (None, Some(new)) => Some(new),
                 _ => None,
@@ -205,49 +206,62 @@ impl ClusterConditionSet {
 
         result
     }
-    fn merge_condition(
-        old_condition: ClusterCondition,
-        new_condition: ClusterCondition,
-    ) -> ClusterCondition {
-        let now = Time(Utc::now());
-        // No change in status -> update "last_update_time" and keep "last_transition_time"
-        if old_condition.status == new_condition.status {
-            ClusterCondition {
-                last_update_time: Some(now),
-                last_transition_time: old_condition.last_transition_time,
-                ..new_condition
-            }
-        // Change in status -> set new "last_update_time" and "last_transition_time"
-        } else {
-            ClusterCondition {
-                last_update_time: Some(now.clone()),
-                last_transition_time: Some(now),
-                ..new_condition
-            }
+}
+
+/// A condition combiner strategy where the timestamps are updated to reflect a
+/// state transition (if needed).
+fn update_timestamps(
+    old_condition: ClusterCondition,
+    new_condition: ClusterCondition,
+) -> ClusterCondition {
+    // sanity check
+    assert!(old_condition.type_ == new_condition.type_);
+
+    let now = Time(Utc::now());
+    // No change in status -> update "last_update_time" and keep "last_transition_time"
+    if old_condition.status == new_condition.status {
+        ClusterCondition {
+            last_update_time: Some(now),
+            last_transition_time: old_condition.last_transition_time,
+            ..new_condition
+        }
+    // Change in status -> set new "last_update_time" and "last_transition_time"
+    } else {
+        ClusterCondition {
+            last_update_time: Some(now.clone()),
+            last_transition_time: Some(now),
+            ..new_condition
         }
     }
-    fn combine_condition(
-        old_condition: ClusterCondition,
-        new_condition: ClusterCondition,
-    ) -> ClusterCondition {
-        match old_condition.status.cmp(&new_condition.status) {
-            std::cmp::Ordering::Equal => {
-                let message = Some(
-                    vec![old_condition.message, new_condition.message]
-                        .into_iter()
-                        .flatten()
-                        .collect::<Vec<String>>()
-                        .join("\n"),
-                );
+}
 
-                ClusterCondition {
-                    message,
-                    ..new_condition
-                }
+/// A condition combiner strategy with the following properties:
+/// 1. It preserves the condition with the highest status.
+/// 2. It joins the previous messages to the current one if both conditions
+/// have the same status.
+fn update_message(
+    old_condition: ClusterCondition,
+    new_condition: ClusterCondition,
+) -> ClusterCondition {
+    assert!(old_condition.type_ == new_condition.type_);
+
+    match old_condition.status.cmp(&new_condition.status) {
+        std::cmp::Ordering::Equal => {
+            let message = Some(
+                vec![old_condition.message, new_condition.message]
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<String>>()
+                    .join("\n"),
+            );
+
+            ClusterCondition {
+                message,
+                ..new_condition
             }
-            std::cmp::Ordering::Less => new_condition,
-            std::cmp::Ordering::Greater => old_condition,
         }
+        std::cmp::Ordering::Less => new_condition,
+        std::cmp::Ordering::Greater => old_condition,
     }
 }
 
