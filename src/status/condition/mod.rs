@@ -71,14 +71,17 @@ pub fn compute_conditions<T: HasStatusCondition>(
     resource: &T,
     condition_builders: &[&dyn ConditionBuilder],
 ) -> Vec<ClusterCondition> {
-    let mut old_conditions: ClusterConditionSet = resource.conditions().into();
-
+    let mut new_resource_conditions = ClusterConditionSet::new();
     for cb in condition_builders {
-        let new_conditions: ClusterConditionSet = cb.build_conditions();
-        old_conditions = old_conditions.merge(new_conditions);
+        let conditions: ClusterConditionSet = cb.build_conditions();
+        new_resource_conditions = new_resource_conditions.merge(conditions, false);
     }
 
-    old_conditions.into()
+    let old_resource_conditions: ClusterConditionSet = resource.conditions().into();
+
+    old_resource_conditions
+        .merge(new_resource_conditions, true)
+        .into()
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -178,7 +181,7 @@ impl ClusterConditionSet {
     }
 
     /// Merges two [`ClusterConditionSet`]s.
-    pub fn merge(self, other: ClusterConditionSet) -> ClusterConditionSet {
+    pub fn merge(self, other: ClusterConditionSet, merge_combine: bool) -> ClusterConditionSet {
         let mut result = ClusterConditionSet::new();
 
         for (old_condition, new_condition) in self
@@ -187,7 +190,11 @@ impl ClusterConditionSet {
             .zip(other.conditions.into_iter())
         {
             if let Some(condition) = match (old_condition, new_condition) {
-                (Some(old), Some(new)) => Some(Self::merge_condition(old, new)),
+                (Some(old), Some(new)) => Some(if merge_combine {
+                    Self::merge_condition(old, new)
+                } else {
+                    Self::combine_condition(old, new)
+                }),
                 (Some(old), None) => Some(old),
                 (None, Some(new)) => Some(new),
                 _ => None,
@@ -198,7 +205,6 @@ impl ClusterConditionSet {
 
         result
     }
-
     fn merge_condition(
         old_condition: ClusterCondition,
         new_condition: ClusterCondition,
@@ -206,23 +212,9 @@ impl ClusterConditionSet {
         let now = Time(Utc::now());
         // No change in status -> update "last_update_time" and keep "last_transition_time"
         if old_condition.status == new_condition.status {
-            // concat message if required
-            let message = if let (Some(old_msg), Some(new_msg)) =
-                (old_condition.message, &new_condition.message)
-            {
-                if !old_msg.contains(new_msg) {
-                    Some(format!("{old_msg}\n{new_msg}"))
-                } else {
-                    new_condition.message
-                }
-            } else {
-                new_condition.message
-            };
-
             ClusterCondition {
                 last_update_time: Some(now),
                 last_transition_time: old_condition.last_transition_time,
-                message,
                 ..new_condition
             }
         // Change in status -> set new "last_update_time" and "last_transition_time"
@@ -232,6 +224,29 @@ impl ClusterConditionSet {
                 last_transition_time: Some(now),
                 ..new_condition
             }
+        }
+    }
+    fn combine_condition(
+        old_condition: ClusterCondition,
+        new_condition: ClusterCondition,
+    ) -> ClusterCondition {
+        match old_condition.status.cmp(&new_condition.status) {
+            std::cmp::Ordering::Equal => {
+                let message = Some(
+                    vec![old_condition.message, new_condition.message]
+                        .into_iter()
+                        .flatten()
+                        .collect::<Vec<String>>()
+                        .join("\n"),
+                );
+
+                ClusterCondition {
+                    message,
+                    ..new_condition
+                }
+            }
+            std::cmp::Ordering::Less => new_condition,
+            std::cmp::Ordering::Greater => old_condition,
         }
     }
 }
