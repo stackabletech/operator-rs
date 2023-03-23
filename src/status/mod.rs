@@ -102,7 +102,7 @@ impl ClusterConditionSet {
             // BTreeMap<ClusterConditionType, ClusterCondition>, prevents shenanigans like adding a
             // ClusterCondition (as value) with a different ClusterConditionType than its key.
             // See "put".
-            conditions: (0..ClusterConditionType::COUNT).map(|_| None).collect(),
+            conditions: vec![None; ClusterConditionType::COUNT],
         }
     }
 
