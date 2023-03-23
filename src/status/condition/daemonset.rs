@@ -1,4 +1,4 @@
-use crate::status::{
+use crate::status::condition::{
     ClusterCondition, ClusterConditionSet, ClusterConditionStatus, ClusterConditionType,
     ConditionBuilder,
 };
@@ -7,6 +7,8 @@ use k8s_openapi::api::apps::v1::DaemonSet;
 use kube::ResourceExt;
 use std::cmp;
 
+/// Default implementation to build [`crate::status::condition::ClusterCondition`]s for
+/// `DaemonSet` resources.
 #[derive(Default)]
 pub struct DaemonSetConditionBuilder {
     daemon_sets: Vec<DaemonSet>,
@@ -22,7 +24,7 @@ impl DaemonSetConditionBuilder {
         let mut unavailable_ds = vec![];
 
         for ds in &self.daemon_sets {
-            let current_status = daemon_set_available(ds);
+            let current_status = Self::daemon_set_available(ds);
 
             if current_status != ClusterConditionStatus::True {
                 unavailable_ds.push(ds.name_any())
@@ -50,24 +52,24 @@ impl DaemonSetConditionBuilder {
             last_update_time: None,
         }
     }
+
+    fn daemon_set_available(ds: &DaemonSet) -> ClusterConditionStatus {
+        let number_unavailable = ds
+            .status
+            .as_ref()
+            .and_then(|status| status.number_unavailable)
+            .unwrap_or_default();
+
+        if number_unavailable == 0 {
+            ClusterConditionStatus::True
+        } else {
+            ClusterConditionStatus::False
+        }
+    }
 }
 
 impl ConditionBuilder for DaemonSetConditionBuilder {
     fn build_conditions(&self) -> ClusterConditionSet {
         vec![self.available()].into()
-    }
-}
-
-fn daemon_set_available(ds: &DaemonSet) -> ClusterConditionStatus {
-    let number_unavailable = ds
-        .status
-        .as_ref()
-        .and_then(|status| status.number_unavailable)
-        .unwrap_or_default();
-
-    if number_unavailable == 0 {
-        ClusterConditionStatus::True
-    } else {
-        ClusterConditionStatus::False
     }
 }

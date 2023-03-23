@@ -1,4 +1,4 @@
-use crate::status::{
+use crate::status::condition::{
     ClusterCondition, ClusterConditionSet, ClusterConditionStatus, ClusterConditionType,
     ConditionBuilder,
 };
@@ -7,6 +7,8 @@ use k8s_openapi::api::apps::v1::StatefulSet;
 use kube::ResourceExt;
 use std::cmp;
 
+/// Default implementation to build [`crate::status::condition::ClusterCondition`]s for
+/// `StatefulSet` resources.
 #[derive(Default)]
 pub struct StatefulSetConditionBuilder {
     stateful_sets: Vec<StatefulSet>,
@@ -21,7 +23,7 @@ impl StatefulSetConditionBuilder {
         let mut available = ClusterConditionStatus::True;
         let mut unavailable_sts = vec![];
         for sts in &self.stateful_sets {
-            let current_status = stateful_set_available(sts);
+            let current_status = Self::stateful_set_available(sts);
 
             if current_status != ClusterConditionStatus::True {
                 unavailable_sts.push(sts.name_any())
@@ -51,30 +53,30 @@ impl StatefulSetConditionBuilder {
             last_update_time: None,
         }
     }
+
+    fn stateful_set_available(sts: &StatefulSet) -> ClusterConditionStatus {
+        let requested_replicas = sts
+            .spec
+            .as_ref()
+            .and_then(|spec| spec.replicas)
+            .unwrap_or_default();
+        let available_replicas = sts
+            .status
+            .as_ref()
+            .and_then(|status| status.available_replicas)
+            .unwrap_or_default();
+
+        if requested_replicas == available_replicas {
+            ClusterConditionStatus::True
+        } else {
+            ClusterConditionStatus::False
+        }
+    }
 }
 
 impl ConditionBuilder for StatefulSetConditionBuilder {
     fn build_conditions(&self) -> ClusterConditionSet {
         vec![self.available()].into()
-    }
-}
-
-fn stateful_set_available(sts: &StatefulSet) -> ClusterConditionStatus {
-    let requested_replicas = sts
-        .spec
-        .as_ref()
-        .and_then(|spec| spec.replicas)
-        .unwrap_or_default();
-    let available_replicas = sts
-        .status
-        .as_ref()
-        .and_then(|status| status.available_replicas)
-        .unwrap_or_default();
-
-    if requested_replicas == available_replicas {
-        ClusterConditionStatus::True
-    } else {
-        ClusterConditionStatus::False
     }
 }
 
