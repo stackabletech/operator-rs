@@ -6,11 +6,19 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Helper Method to add a restart_policy to PodBuilder([#565]).
-- status::condition module ([#571])
+- status::condition module to compute the cluster resource status ([#571]).
+
+[#571]: https://github.com/stackabletech/operator-rs/pull/571
+
+## [0.38.0] - 2023-03-20
+
+### Added
+
+- Helper function to add a restart_policy to PodBuilder ([#565]).
+- Add helper function `SecretOperatorVolumeSourceBuilder::with_kerberos_service_name` ([#568]).
 
 [#565]: https://github.com/stackabletech/operator-rs/pull/565
-[#571]: https://github.com/stackabletech/operator-rs/pull/571
+[#568]: https://github.com/stackabletech/operator-rs/pull/568
 
 ## [0.37.0] - 2023-03-06
 
