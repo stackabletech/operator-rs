@@ -215,7 +215,7 @@ fn update_timestamps(
     new_condition: ClusterCondition,
 ) -> ClusterCondition {
     // sanity check
-    assert!(old_condition.type_ == new_condition.type_);
+    assert_eq!(old_condition.type_, new_condition.type_);
 
     let now = Time(Utc::now());
     // No change in status -> update "last_update_time" and keep "last_transition_time"
@@ -243,6 +243,7 @@ fn update_message(
     old_condition: ClusterCondition,
     new_condition: ClusterCondition,
 ) -> ClusterCondition {
+    // sanity check
     assert_eq!(old_condition.type_, new_condition.type_);
 
     match old_condition.status.cmp(&new_condition.status) {
