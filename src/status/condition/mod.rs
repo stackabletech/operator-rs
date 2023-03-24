@@ -349,6 +349,19 @@ mod test {
         }
     }
 
+    struct AvailableUnknownConditionBuilder {}
+    impl ConditionBuilder for AvailableUnknownConditionBuilder {
+        fn build_conditions(&self) -> ClusterConditionSet {
+            vec![ClusterCondition {
+                type_: ClusterConditionType::Available,
+                status: ClusterConditionStatus::Unknown,
+                message: Some("AvailableUnknownConditionBuilder".into()),
+                ..ClusterCondition::default()
+            }]
+            .into()
+        }
+    }
+
     #[test]
     pub fn test_compute_conditions_with_transition() {
         let resource = TestClusterCondition {};
@@ -421,6 +434,32 @@ mod test {
             message: Some(
                 "AvailableFalseConditionBuilder\nAvailableFalseConditionBuilder_2".into(),
             ),
+            ..ClusterCondition::default()
+        };
+
+        assert_eq!(got.type_, expected.type_);
+        assert_eq!(got.status, expected.status);
+        assert_eq!(got.message, expected.message);
+    }
+
+    #[test]
+    pub fn test_compute_conditions_status_priority() {
+        let resource = TestClusterCondition {};
+        let condition_builders = &[
+            &AvailableUnknownConditionBuilder {} as &dyn ConditionBuilder,
+            &AvailableFalseConditionBuilder1 {} as &dyn ConditionBuilder,
+            &AvailableTrueConditionBuilder1 {} as &dyn ConditionBuilder,
+        ];
+
+        let got = compute_conditions(&resource, condition_builders)
+            .get(0)
+            .cloned()
+            .unwrap();
+
+        let expected = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::Unknown,
+            message: Some("AvailableUnknownConditionBuilder".into()),
             ..ClusterCondition::default()
         };
 
