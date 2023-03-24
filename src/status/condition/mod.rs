@@ -243,7 +243,7 @@ fn update_message(
     old_condition: ClusterCondition,
     new_condition: ClusterCondition,
 ) -> ClusterCondition {
-    assert!(old_condition.type_ == new_condition.type_);
+    assert_eq!(old_condition.type_, new_condition.type_);
 
     match old_condition.status.cmp(&new_condition.status) {
         std::cmp::Ordering::Equal => {
@@ -297,13 +297,26 @@ mod test {
         }
     }
 
-    struct AvailableFalseConditionBuilder {}
-    impl ConditionBuilder for AvailableFalseConditionBuilder {
+    struct AvailableFalseConditionBuilder1 {}
+    impl ConditionBuilder for AvailableFalseConditionBuilder1 {
         fn build_conditions(&self) -> ClusterConditionSet {
             vec![ClusterCondition {
                 type_: ClusterConditionType::Available,
                 status: ClusterConditionStatus::False,
                 message: Some("AvailableFalseConditionBuilder".into()),
+                ..ClusterCondition::default()
+            }]
+            .into()
+        }
+    }
+
+    struct AvailableFalseConditionBuilder2 {}
+    impl ConditionBuilder for AvailableFalseConditionBuilder2 {
+        fn build_conditions(&self) -> ClusterConditionSet {
+            vec![ClusterCondition {
+                type_: ClusterConditionType::Available,
+                status: ClusterConditionStatus::False,
+                message: Some("AvailableFalseConditionBuilder_2".into()),
                 ..ClusterCondition::default()
             }]
             .into()
@@ -385,10 +398,15 @@ mod test {
         assert_eq!(got.type_, expected.type_);
         assert_eq!(got.status, expected.status);
         assert_eq!(got.message, expected.message);
+    }
 
+    #[test]
+    pub fn test_compute_conditions_message_concatenation_with_different_status() {
+        let resource = TestClusterCondition {};
         let condition_builders = &[
+            &AvailableFalseConditionBuilder1 {} as &dyn ConditionBuilder,
             &AvailableTrueConditionBuilder1 {} as &dyn ConditionBuilder,
-            &AvailableFalseConditionBuilder {} as &dyn ConditionBuilder,
+            &AvailableFalseConditionBuilder2 {} as &dyn ConditionBuilder,
             &AvailableTrueConditionBuilder2 {} as &dyn ConditionBuilder,
         ];
 
@@ -400,7 +418,9 @@ mod test {
         let expected = ClusterCondition {
             type_: ClusterConditionType::Available,
             status: ClusterConditionStatus::False,
-            message: Some("AvailableFalseConditionBuilder".into()),
+            message: Some(
+                "AvailableFalseConditionBuilder\nAvailableFalseConditionBuilder_2".into(),
+            ),
             ..ClusterCondition::default()
         };
 
