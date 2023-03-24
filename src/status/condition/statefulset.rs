@@ -9,6 +9,9 @@ use std::cmp;
 
 /// Default implementation to build [`crate::status::condition::ClusterCondition`]s for
 /// `StatefulSet` resources.
+///
+/// Currently only the `ClusterConditionType::Available` is implemented. This will be extended
+/// to support all `ClusterConditionType`s in the future.
 #[derive(Default)]
 pub struct StatefulSetConditionBuilder {
     stateful_sets: Vec<StatefulSet>,
