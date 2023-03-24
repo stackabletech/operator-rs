@@ -35,7 +35,7 @@ pub trait ConditionBuilder {
 /// use stackable_operator::status::condition::daemonset::DaemonSetConditionBuilder;
 /// use stackable_operator::status::condition::statefulset::StatefulSetConditionBuilder;
 /// use k8s_openapi::api::apps::v1::{DaemonSet, StatefulSet};
-/// use stackable_operator::status::condition::{ClusterCondition, ConditionBuilder, HasStatusCondition};
+/// use stackable_operator::status::condition::{ClusterCondition, ConditionBuilder, HasStatusCondition, compute_conditions};
 ///
 /// struct ClusterStatus {
 ///     conditions: Vec<ClusterCondition>
@@ -58,7 +58,7 @@ pub trait ConditionBuilder {
 /// };
 ///
 /// let new_status = ClusterStatus {
-///     conditions: stackable_operator::status::compute_conditions(&old_status,
+///     conditions: compute_conditions(&old_status,
 ///         &[
 ///             &daemonset_condition_builder as &dyn ConditionBuilder,
 ///             &statefulset_condition_builder as &dyn ConditionBuilder
