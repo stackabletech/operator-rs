@@ -86,6 +86,88 @@ impl StatefulSetConditionBuilder {
 
 #[cfg(test)]
 mod test {
+    use crate::status::condition::statefulset::StatefulSetConditionBuilder;
+    use crate::status::condition::{
+        ClusterCondition, ClusterConditionStatus, ClusterConditionType, ConditionBuilder,
+    };
+    use k8s_openapi::api::apps::v1::{StatefulSet, StatefulSetSpec, StatefulSetStatus};
+
+    fn build_sts(spec_replicas: i32, available_replicas: i32) -> StatefulSet {
+        StatefulSet {
+            spec: Some(StatefulSetSpec {
+                replicas: Some(spec_replicas),
+                ..StatefulSetSpec::default()
+            }),
+            status: Some(StatefulSetStatus {
+                available_replicas: Some(available_replicas),
+                ..StatefulSetStatus::default()
+            }),
+            ..StatefulSet::default()
+        }
+    }
+
     #[test]
-    fn test() {}
+    fn test_stateful_set_available_true() {
+        let sts = build_sts(3, 3);
+
+        assert_eq!(
+            StatefulSetConditionBuilder::stateful_set_available(&sts),
+            ClusterConditionStatus::True
+        );
+    }
+
+    #[test]
+    fn test_stateful_set_available_false() {
+        let sts = build_sts(3, 2);
+
+        assert_eq!(
+            StatefulSetConditionBuilder::stateful_set_available(&sts),
+            ClusterConditionStatus::False
+        );
+
+        let sts = build_sts(3, 4);
+
+        assert_eq!(
+            StatefulSetConditionBuilder::stateful_set_available(&sts),
+            ClusterConditionStatus::False
+        );
+    }
+
+    #[test]
+    fn test_stateful_set_available_condition_true() {
+        let mut sts_condition_builder = StatefulSetConditionBuilder::default();
+        sts_condition_builder.add(build_sts(3, 3));
+
+        let conditions = sts_condition_builder.build_conditions();
+
+        let got = conditions.conditions.get(0).cloned().unwrap().unwrap();
+
+        let expected = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::True,
+            ..ClusterCondition::default()
+        };
+
+        assert_eq!(got.type_, expected.type_);
+        assert_eq!(got.status, expected.status);
+    }
+
+    #[test]
+    fn test_stateful_set_available_condition_false() {
+        let mut sts_condition_builder = StatefulSetConditionBuilder::default();
+        sts_condition_builder.add(build_sts(3, 2));
+
+        let conditions = sts_condition_builder.build_conditions();
+
+        let got = conditions.conditions.get(0).cloned().unwrap().unwrap();
+
+        let expected = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::False,
+            ..ClusterCondition::default()
+        };
+
+        assert_eq!(got.type_, expected.type_);
+        assert_eq!(got.status, expected.status);
+    }
 }
