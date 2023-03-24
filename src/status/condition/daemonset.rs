@@ -77,3 +77,79 @@ impl DaemonSetConditionBuilder {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::status::condition::daemonset::DaemonSetConditionBuilder;
+    use crate::status::condition::{
+        ClusterCondition, ClusterConditionStatus, ClusterConditionType, ConditionBuilder,
+    };
+    use k8s_openapi::api::apps::v1::{DaemonSet, DaemonSetStatus};
+
+    fn build_ds(number_unavailable: i32) -> DaemonSet {
+        DaemonSet {
+            status: Some(DaemonSetStatus {
+                number_unavailable: Some(number_unavailable),
+                ..DaemonSetStatus::default()
+            }),
+            ..DaemonSet::default()
+        }
+    }
+
+    #[test]
+    fn test_daemon_set_available_true() {
+        let ds = build_ds(0);
+
+        assert_eq!(
+            DaemonSetConditionBuilder::daemon_set_available(&ds),
+            ClusterConditionStatus::True
+        );
+    }
+
+    #[test]
+    fn test_daemon_set_available_false() {
+        let ds = build_ds(1);
+        assert_eq!(
+            DaemonSetConditionBuilder::daemon_set_available(&ds),
+            ClusterConditionStatus::False
+        );
+    }
+
+    #[test]
+    fn test_daemon_set_available_condition_true() {
+        let mut ds_condition_builder = DaemonSetConditionBuilder::default();
+        ds_condition_builder.add(build_ds(0));
+
+        let conditions = ds_condition_builder.build_conditions();
+
+        let got = conditions.conditions.get(0).cloned().unwrap().unwrap();
+
+        let expected = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::True,
+            ..ClusterCondition::default()
+        };
+
+        assert_eq!(got.type_, expected.type_);
+        assert_eq!(got.status, expected.status);
+    }
+
+    #[test]
+    fn test_daemon_set_available_condition_false() {
+        let mut ds_condition_builder = DaemonSetConditionBuilder::default();
+        ds_condition_builder.add(build_ds(3));
+
+        let conditions = ds_condition_builder.build_conditions();
+
+        let got = conditions.conditions.get(0).cloned().unwrap().unwrap();
+
+        let expected = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::False,
+            ..ClusterCondition::default()
+        };
+
+        assert_eq!(got.type_, expected.type_);
+        assert_eq!(got.status, expected.status);
+    }
+}
