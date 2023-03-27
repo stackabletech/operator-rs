@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Helper function to build RBAC resources ([#572]).
+
+[#572]: https://github.com/stackabletech/operator-rs/pull/572
+
 ## [0.38.0] - 2023-03-20
 
 ### Added
