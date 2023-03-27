@@ -136,7 +136,7 @@ pub enum ClusterConditionType {
     Progressing,
     /// Paused indicates that the operator is not reconciling the cluster. This may be used for
     /// debugging or operator updating.
-    Paused,
+    ReconciliationPaused,
     /// Stopped indicates that all the cluster replicas are scaled down to 0. All resources (e.g.
     /// ConfigMaps, Services etc.) are kept.
     Stopped,
