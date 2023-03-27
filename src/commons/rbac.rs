@@ -99,7 +99,7 @@ mod tests {
         );
 
         assert_eq!(
-            format!("{RESOURCE_NAME}-clusterrole").to_string(),
+            format!("{RESOURCE_NAME}-clusterrole"),
             rbac_rolebinding.role_ref.name,
             "role_ref does not match"
         );
