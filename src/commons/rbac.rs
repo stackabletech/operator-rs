@@ -77,23 +77,23 @@ mod tests {
         let (rbac_sa, rbac_rolebinding) = build_rbac_resources(&cluster, RESOURCE_NAME);
 
         assert_eq!(
-            Some(format!("{RESOURCE_NAME}-sa").to_string()),
+            Some(format!("{RESOURCE_NAME}-sa")),
             rbac_sa.metadata.name,
             "service account does not match"
         );
         assert_eq!(
-            Some(format!("{CLUSTER_NAME}-ns").to_string()),
+            Some(format!("{CLUSTER_NAME}-ns")),
             rbac_sa.metadata.namespace,
             "namespace does not match"
         );
 
         assert_eq!(
-            Some(format!("{RESOURCE_NAME}-rolebinding").to_string()),
+            Some(format!("{RESOURCE_NAME}-rolebinding")),
             rbac_rolebinding.metadata.name,
             "rolebinding does not match"
         );
         assert_eq!(
-            Some(format!("{CLUSTER_NAME}-ns").to_string()),
+            Some(format!("{CLUSTER_NAME}-ns")),
             rbac_rolebinding.metadata.namespace,
             "namespace does not match"
         );
