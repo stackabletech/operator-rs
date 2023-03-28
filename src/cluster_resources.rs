@@ -55,24 +55,24 @@ pub trait ClusterResource:
 pub enum ClusterResourceApplyStrategy {
     /// Default strategy. Resources a applied via the [`Client::apply_patch`] client method.
     Default,
-    /// Strategy stop the cluster. This means no Pods should be scheduled for either [`StatefulSet`],
+    /// Strategy to pause reconciliation. This means any cluster changes (e.g. in the custom resource
+    /// spec) are ignored. Resources are not applied at all but merely fetched via the
+    /// [`Client::get`] method in order to still be able to e.g. update the cluster status.
+    ReconciliationPaused,
+    /// Strategy to stop the cluster. This means no Pods should be scheduled for either [`StatefulSet`],
     /// [`DaemonSet`] or [`Deployment`]. This is done by setting the [`StatefulSet`] or [`Deployment`]
     /// replicas to 0. For [`DaemonSet`] this is done via an unreachable [`NodeSelector`].
     ///
     /// Resources are applied via the [`Client::apply_patch`] client method.
-    Stopped,
-    /// Strategy to pause reconciliation. This means any cluster changes (e.g. in the custom resource
-    /// spec) are ignored. Resources are not applied at all but merely fetched via the
-    /// [`Client::get`] method in order to still be able to e.g. update the cluster status.
-    Paused,
+    ClusterStopped,
 }
 
 impl From<&ClusterSpecCommons> for ClusterResourceApplyStrategy {
     fn from(commons_spec: &ClusterSpecCommons) -> Self {
         if commons_spec.reconciliation_paused == Some(true) {
-            ClusterResourceApplyStrategy::Paused
+            ClusterResourceApplyStrategy::ReconciliationPaused
         } else if commons_spec.stopped == Some(true) {
-            ClusterResourceApplyStrategy::Stopped
+            ClusterResourceApplyStrategy::ClusterStopped
         } else {
             ClusterResourceApplyStrategy::Default
         }
@@ -80,14 +80,14 @@ impl From<&ClusterSpecCommons> for ClusterResourceApplyStrategy {
 }
 
 impl ClusterResourceApplyStrategy {
-    async fn apply<T: ClusterResource + Sync>(
+    async fn process<T: ClusterResource + Sync>(
         &self,
         manager: &str,
         resource: &T,
         client: &Client,
     ) -> OperatorResult<T> {
         match self {
-            Self::Paused => {
+            Self::ReconciliationPaused => {
                 client
                     .get(
                         &resource.name_any(),
@@ -98,7 +98,9 @@ impl ClusterResourceApplyStrategy {
                     )
                     .await
             }
-            Self::Default | Self::Stopped => client.apply_patch(manager, resource, resource).await,
+            Self::Default | Self::ClusterStopped => {
+                client.apply_patch(manager, resource, resource).await
+            }
         }
     }
 }
@@ -112,14 +114,15 @@ impl ClusterResource for Secret {}
 impl ClusterResource for StatefulSet {
     fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
         match strategy {
-            ClusterResourceApplyStrategy::Stopped => StatefulSet {
+            ClusterResourceApplyStrategy::ClusterStopped => StatefulSet {
                 spec: Some(StatefulSetSpec {
                     replicas: Some(0),
                     ..self.spec.unwrap_or_default()
                 }),
                 ..self
             },
-            ClusterResourceApplyStrategy::Default | ClusterResourceApplyStrategy::Paused => self,
+            ClusterResourceApplyStrategy::Default
+            | ClusterResourceApplyStrategy::ReconciliationPaused => self,
         }
     }
 }
@@ -250,6 +253,7 @@ impl ClusterResources {
     /// * `controller_name` - The name of the lower-case name of the primary resource that
     ///   the controller manages, such as "zookeepercluster"
     /// * `cluster` - A reference to the cluster containing the name and namespace of the cluster
+    /// * `apply_strategy` - A strategy to manage how cluster resources are applied to the API server
     ///
     /// The combination of (`operator_name`, `controller_name`) must be unique for each controller in the cluster,
     /// otherwise resources created by another controller are detected as orphaned and deleted.
@@ -316,7 +320,7 @@ impl ClusterResources {
 
         let patched_resource = self
             .apply_strategy
-            .apply(&self.manager, &mutated, client)
+            .process(&self.manager, &mutated, client)
             .await?;
 
         let resource_id = patched_resource.uid().ok_or(Error::MissingObjectKey {
