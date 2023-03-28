@@ -24,6 +24,7 @@ use std::{
     collections::{BTreeMap, HashSet},
     fmt::Debug,
 };
+use strum::Display;
 use tracing::{debug, info};
 
 #[cfg(doc)]
@@ -51,7 +52,7 @@ pub trait ClusterResource:
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Display, Eq, PartialEq)]
 pub enum ClusterResourceApplyStrategy {
     /// Default strategy. Resources a applied via the [`Client::apply_patch`] client method.
     Default,
@@ -65,6 +66,9 @@ pub enum ClusterResourceApplyStrategy {
     ///
     /// Resources are applied via the [`Client::apply_patch`] client method.
     ClusterStopped,
+    /// Dry-run strategy that doesn't actually create any workload resources. This is useful for
+    /// Superset and Airflow clusters that need to wait for their databases to be set up first.
+    NoApply,
 }
 
 impl From<&ClusterOperation> for ClusterResourceApplyStrategy {
@@ -101,6 +105,14 @@ impl ClusterResourceApplyStrategy {
             Self::Default | Self::ClusterStopped => {
                 client.apply_patch(manager, resource, resource).await
             }
+            Self::NoApply => {
+                info!(
+                    "Skip creating resource [{}] because of [{}] strategy.",
+                    resource.name_any(),
+                    self
+                );
+                Ok(resource.clone())
+            }
         }
     }
 }
@@ -122,7 +134,8 @@ impl ClusterResource for StatefulSet {
                 ..self
             },
             ClusterResourceApplyStrategy::Default
-            | ClusterResourceApplyStrategy::ReconciliationPaused => self,
+            | ClusterResourceApplyStrategy::ReconciliationPaused
+            | ClusterResourceApplyStrategy::NoApply => self,
         }
     }
 }
