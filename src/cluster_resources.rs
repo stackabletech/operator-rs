@@ -91,7 +91,10 @@ impl ClusterResourceApplyStrategy {
                 client
                     .get(
                         &resource.name_any(),
-                        resource.namespace().as_deref().unwrap(),
+                        resource
+                            .namespace()
+                            .as_deref()
+                            .ok_or(Error::MissingObjectKey { key: "namespace" })?,
                     )
                     .await
             }
