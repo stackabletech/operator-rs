@@ -69,9 +69,9 @@ pub enum ClusterResourceApplyStrategy {
 
 impl From<&ClusterOperation> for ClusterResourceApplyStrategy {
     fn from(commons_spec: &ClusterOperation) -> Self {
-        if commons_spec.reconciliation_paused == Some(true) {
+        if commons_spec.reconciliation_paused {
             ClusterResourceApplyStrategy::ReconciliationPaused
-        } else if commons_spec.stopped == Some(true) {
+        } else if commons_spec.stopped {
             ClusterResourceApplyStrategy::ClusterStopped
         } else {
             ClusterResourceApplyStrategy::Default
