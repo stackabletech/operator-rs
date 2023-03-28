@@ -1,12 +1,8 @@
 //! A structure containing the cluster resources.
 
-use std::{
-    collections::{BTreeMap, HashSet},
-    fmt::Debug,
-};
-
 use crate::{
     client::{Client, GetApi},
+    commons::cluster_operation::ClusterSpecCommons,
     error::{Error, OperatorResult},
     k8s_openapi::{
         api::{
@@ -21,9 +17,20 @@ use crate::{
     labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
     utils::format_full_controller_name,
 };
+
 use kube::core::ErrorResponse;
 use serde::{de::DeserializeOwned, Serialize};
+use std::{
+    collections::{BTreeMap, HashSet},
+    fmt::Debug,
+};
 use tracing::{debug, info};
+
+#[cfg(doc)]
+use crate::k8s_openapi::api::{
+    apps::v1::Deployment,
+    core::v1::{NodeSelector, Pod},
+};
 
 /// A cluster resource handled by [`ClusterResources`].
 ///
@@ -39,31 +46,40 @@ pub trait ClusterResource:
     + GetApi<Namespace = str>
     + Serialize
 {
-    fn maybe_mutate(self, _strategy: &ClusterResourceStrategy) -> Self {
+    fn maybe_mutate(self, _strategy: &ClusterResourceApplyStrategy) -> Self {
         self
     }
 }
 
-// #[derive(Serialize, Deserialize, Eq, PartialEq, JsonSchema, Debug, Clone)]
-// #[serde(rename_all = "camelCase")]
-// pub struct ClusterSpecCommons {
-//     #[serde(default, skip_serializing_if = "Option::is_none")]
-//     pub stopped: Option<bool>,
-//     #[serde(default, skip_serializing_if = "Option::is_none")]
-//     pub reconciliation_paused: Option<bool>,
-// }
-
-// TODO:
-//impl From<ClusterSpecCommons> for ClusterResourceStrategy
-
 #[derive(Debug, Eq, PartialEq)]
-pub enum ClusterResourceStrategy {
+pub enum ClusterResourceApplyStrategy {
+    /// Default strategy. Resources a applied via the [`Client::apply_patch`] client method.
     Default,
+    /// Strategy stop the cluster. This means no Pods should be scheduled for either [`StatefulSet`],
+    /// [`DaemonSet`] or [`Deployment`]. This is done by setting the [`StatefulSet`] or [`Deployment`]
+    /// replicas to 0. For [`DaemonSet`] this is done via an unreachable [`NodeSelector`].
+    ///
+    /// Resources are applied via the [`Client::apply_patch`] client method.
     Stopped,
+    /// Strategy to pause reconciliation. This means any cluster changes (e.g. in the custom resource
+    /// spec) are ignored. Resources are not applied at all but merely fetched via the
+    /// [`Client::get`] method in order to still be able to e.g. update the cluster status.
     Paused,
 }
 
-impl ClusterResourceStrategy {
+impl From<&ClusterSpecCommons> for ClusterResourceApplyStrategy {
+    fn from(commons_spec: &ClusterSpecCommons) -> Self {
+        if commons_spec.reconciliation_paused == Some(true) {
+            ClusterResourceApplyStrategy::Paused
+        } else if commons_spec.stopped == Some(true) {
+            ClusterResourceApplyStrategy::Stopped
+        } else {
+            ClusterResourceApplyStrategy::Default
+        }
+    }
+}
+
+impl ClusterResourceApplyStrategy {
     async fn apply<T: ClusterResource + Sync>(
         &self,
         manager: &str,
@@ -91,16 +107,16 @@ impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
 impl ClusterResource for Secret {}
 impl ClusterResource for StatefulSet {
-    fn maybe_mutate(self, strategy: &ClusterResourceStrategy) -> Self {
+    fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
         match strategy {
-            ClusterResourceStrategy::Stopped => StatefulSet {
+            ClusterResourceApplyStrategy::Stopped => StatefulSet {
                 spec: Some(StatefulSetSpec {
                     replicas: Some(0),
                     ..self.spec.unwrap_or_default()
                 }),
                 ..self
             },
-            ClusterResourceStrategy::Default | ClusterResourceStrategy::Paused => self,
+            ClusterResourceApplyStrategy::Default | ClusterResourceApplyStrategy::Paused => self,
         }
     }
 }
@@ -121,7 +137,7 @@ impl ClusterResource for StatefulSet {
 /// use schemars::JsonSchema;
 /// use serde::{Deserialize, Serialize};
 /// use stackable_operator::client::Client;
-/// use stackable_operator::cluster_resources::ClusterResources;
+/// use stackable_operator::cluster_resources::{ClusterResourceApplyStrategy, ClusterResources};
 /// use stackable_operator::product_config_utils::ValidatedRoleConfigByPropertyKind;
 /// use stackable_operator::role_utils::Role;
 /// use std::sync::Arc;
@@ -160,6 +176,7 @@ impl ClusterResource for StatefulSet {
 ///         OPERATOR_NAME,
 ///         CONTROLLER_NAME,
 ///         &app.object_ref(&()),
+///         ClusterResourceApplyStrategy::Default,
 ///     )
 ///     .map_err(|source| Error::CreateClusterResources { source })?;
 ///
@@ -214,8 +231,9 @@ pub struct ClusterResources {
     manager: String,
     /// The unique IDs of the cluster resources
     resource_ids: HashSet<String>,
-
-    strategy: ClusterResourceStrategy,
+    /// Strategy to manage how cluster resources are applied. Resources could be patched, merged
+    /// or not applied at all depending on the strategy.
+    apply_strategy: ClusterResourceApplyStrategy,
 }
 
 impl ClusterResources {
@@ -242,7 +260,7 @@ impl ClusterResources {
         operator_name: &str,
         controller_name: &str,
         cluster: &ObjectReference,
-        strategy: ClusterResourceStrategy,
+        apply_strategy: ClusterResourceApplyStrategy,
     ) -> OperatorResult<Self> {
         let namespace = cluster
             .namespace
@@ -259,7 +277,7 @@ impl ClusterResources {
             app_name: app_name.into(),
             manager: format_full_controller_name(operator_name, controller_name),
             resource_ids: Default::default(),
-            strategy,
+            apply_strategy,
         })
     }
 
@@ -291,9 +309,12 @@ impl ClusterResources {
         ClusterResources::check_label(resource.labels(), APP_MANAGED_BY_LABEL, &self.manager)?;
         ClusterResources::check_label(resource.labels(), APP_NAME_LABEL, &self.app_name)?;
 
-        let mutated = resource.maybe_mutate(&self.strategy);
+        let mutated = resource.maybe_mutate(&self.apply_strategy);
 
-        let patched_resource = self.strategy.apply(&self.manager, &mutated, client).await?;
+        let patched_resource = self
+            .apply_strategy
+            .apply(&self.manager, &mutated, client)
+            .await?;
 
         let resource_id = patched_resource.uid().ok_or(Error::MissingObjectKey {
             key: "metadata/uid",
