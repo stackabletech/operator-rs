@@ -10,9 +10,12 @@ All notable changes to this project will be documented in this file.
 
 - Helper function to add a restart_policy to PodBuilder ([#565]).
 - Add helper function `SecretOperatorVolumeSourceBuilder::with_kerberos_service_name` ([#568]).
+- Add `ClusterResourceApplyStrategy` to `ClusterResource` ([#573]).
+- Add `ClusterOperation` common struct with `reconcilation_paused` and `stopped` flags ([#573]).
 
 [#565]: https://github.com/stackabletech/operator-rs/pull/565
 [#568]: https://github.com/stackabletech/operator-rs/pull/568
+[#573]: https://github.com/stackabletech/operator-rs/pull/573
 
 ## [0.37.0] - 2023-03-06
 
