@@ -2,6 +2,7 @@
 
 pub mod affinity;
 pub mod authentication;
+pub mod cluster_operation;
 pub mod ldap;
 pub mod listener;
 pub mod opa;
