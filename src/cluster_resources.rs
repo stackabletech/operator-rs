@@ -2,7 +2,7 @@
 
 use crate::{
     client::{Client, GetApi},
-    commons::cluster_operation::ClusterSpecCommons,
+    commons::cluster_operation::ClusterOperation,
     error::{Error, OperatorResult},
     k8s_openapi::{
         api::{
@@ -67,8 +67,8 @@ pub enum ClusterResourceApplyStrategy {
     ClusterStopped,
 }
 
-impl From<&ClusterSpecCommons> for ClusterResourceApplyStrategy {
-    fn from(commons_spec: &ClusterSpecCommons) -> Self {
+impl From<&ClusterOperation> for ClusterResourceApplyStrategy {
+    fn from(commons_spec: &ClusterOperation) -> Self {
         if commons_spec.reconciliation_paused == Some(true) {
             ClusterResourceApplyStrategy::ReconciliationPaused
         } else if commons_spec.stopped == Some(true) {
