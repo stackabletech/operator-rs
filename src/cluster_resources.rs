@@ -10,19 +10,18 @@ use crate::{
     error::{Error, OperatorResult},
     k8s_openapi::{
         api::{
-            apps::v1::{DaemonSet, StatefulSet},
-            core::v1::{ConfigMap, ObjectReference, Service},
+            apps::v1::{DaemonSet, StatefulSet, StatefulSetSpec},
+            core::v1::{ConfigMap, ObjectReference, Secret, Service, ServiceAccount},
+            rbac::v1::RoleBinding,
         },
         apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
+        NamespaceResourceScope,
     },
     kube::{Resource, ResourceExt},
     labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
     utils::format_full_controller_name,
 };
-use k8s_openapi::{
-    api::{core::v1::Secret, core::v1::ServiceAccount, rbac::v1::RoleBinding},
-    NamespaceResourceScope,
-};
+use async_trait::async_trait;
 use kube::core::ErrorResponse;
 use serde::{de::DeserializeOwned, Serialize};
 use tracing::{debug, info};
@@ -41,12 +40,70 @@ pub trait ClusterResource:
     + GetApi<Namespace = str>
     + Serialize
 {
+    fn maybe_mutate(&self, strategy: &ClusterResourceStrategy) -> Self {
+        match strategy {
+            _ => self.clone(),
+        }
+    }
+}
+
+// #[derive(Serialize, Deserialize, Eq, PartialEq, JsonSchema, Debug, Clone)]
+// #[serde(rename_all = "camelCase")]
+// pub struct ClusterSpecCommons {
+//     #[serde(default, skip_serializing_if = "Option::is_none")]
+//     pub stopped: Option<bool>,
+//     #[serde(default, skip_serializing_if = "Option::is_none")]
+//     pub reconciliation_paused: Option<bool>,
+// }
+
+// TODO:
+//impl From<ClusterSpecCommons> for ClusterResourceStrategy
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum ClusterResourceStrategy {
+    Default,
+    Stopped,
+    Paused,
+}
+
+impl ClusterResourceStrategy {
+    async fn apply<T: ClusterResource + Sync>(
+        &self,
+        manager: &str,
+        resource: &T,
+        client: &Client,
+    ) -> OperatorResult<T> {
+        match self {
+            Self::Paused => {
+                client
+                    .get(
+                        &resource.name_any(),
+                        resource.namespace().as_deref().unwrap(),
+                    )
+                    .await
+            }
+            _ => client.apply_patch(manager, resource, resource).await,
+        }
+    }
 }
 
 impl ClusterResource for ConfigMap {}
 impl ClusterResource for DaemonSet {}
 impl ClusterResource for Service {}
-impl ClusterResource for StatefulSet {}
+impl ClusterResource for StatefulSet {
+    fn maybe_mutate(&self, strategy: &ClusterResourceStrategy) -> Self {
+        match strategy {
+            ClusterResourceStrategy::Stopped { .. } => StatefulSet {
+                spec: Some(StatefulSetSpec {
+                    replicas: Some(0),
+                    ..self.spec.clone().unwrap()
+                }),
+                ..self.clone()
+            },
+            _ => self.clone(),
+        }
+    }
+}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
 impl ClusterResource for Secret {}
@@ -160,6 +217,8 @@ pub struct ClusterResources {
     manager: String,
     /// The unique IDs of the cluster resources
     resource_ids: HashSet<String>,
+
+    strategy: ClusterResourceStrategy,
 }
 
 impl ClusterResources {
@@ -186,6 +245,7 @@ impl ClusterResources {
         operator_name: &str,
         controller_name: &str,
         cluster: &ObjectReference,
+        strategy: ClusterResourceStrategy,
     ) -> OperatorResult<Self> {
         let namespace = cluster
             .namespace
@@ -202,6 +262,7 @@ impl ClusterResources {
             app_name: app_name.into(),
             manager: format_full_controller_name(operator_name, controller_name),
             resource_ids: Default::default(),
+            strategy,
         })
     }
 
@@ -224,7 +285,7 @@ impl ClusterResources {
     ///
     /// If the patched resource does not contain a UID then an `Error::MissingObjectKey` is
     /// returned.
-    pub async fn add<T: ClusterResource>(
+    pub async fn add<T: ClusterResource + Sync>(
         &mut self,
         client: &Client,
         resource: &T,
@@ -233,9 +294,13 @@ impl ClusterResources {
         ClusterResources::check_label(resource.labels(), APP_MANAGED_BY_LABEL, &self.manager)?;
         ClusterResources::check_label(resource.labels(), APP_NAME_LABEL, &self.app_name)?;
 
-        let patched_resource = client
-            .apply_patch(&self.manager, resource, resource)
-            .await?;
+        let mutated = resource.maybe_mutate(&self.strategy);
+
+        let patched_resource = self.strategy.apply(&self.manager, &mutated, client).await?;
+
+        // let patched_resource = client
+        //     .apply_patch(&self.manager, resource, resource)
+        //     .await?;
 
         let resource_id = patched_resource.uid().ok_or(Error::MissingObjectKey {
             key: "metadata/uid",
