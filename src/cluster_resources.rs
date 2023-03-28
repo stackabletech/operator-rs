@@ -6,8 +6,11 @@ use crate::{
     error::{Error, OperatorResult},
     k8s_openapi::{
         api::{
-            apps::v1::{DaemonSet, StatefulSet, StatefulSetSpec},
-            core::v1::{ConfigMap, ObjectReference, Secret, Service, ServiceAccount},
+            apps::v1::{DaemonSet, DaemonSetSpec, StatefulSet, StatefulSetSpec},
+            core::v1::{
+                ConfigMap, ObjectReference, PodSpec, PodTemplateSpec, Secret, Service,
+                ServiceAccount,
+            },
             rbac::v1::RoleBinding,
         },
         apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
@@ -118,7 +121,6 @@ impl ClusterResourceApplyStrategy {
 }
 
 impl ClusterResource for ConfigMap {}
-impl ClusterResource for DaemonSet {}
 impl ClusterResource for Service {}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
@@ -129,6 +131,41 @@ impl ClusterResource for StatefulSet {
             ClusterResourceApplyStrategy::ClusterStopped => StatefulSet {
                 spec: Some(StatefulSetSpec {
                     replicas: Some(0),
+                    ..self.spec.unwrap_or_default()
+                }),
+                ..self
+            },
+            ClusterResourceApplyStrategy::Default
+            | ClusterResourceApplyStrategy::ReconciliationPaused
+            | ClusterResourceApplyStrategy::NoApply => self,
+        }
+    }
+}
+impl ClusterResource for DaemonSet {
+    fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
+        match strategy {
+            ClusterResourceApplyStrategy::ClusterStopped => DaemonSet {
+                spec: Some(DaemonSetSpec {
+                    template: PodTemplateSpec {
+                        spec: Some(PodSpec {
+                            node_selector: Some(
+                                [(
+                                    "stackable.tech/do-not-schedule".to_string(),
+                                    "cluster-stopped".to_string(),
+                                )]
+                                .into_iter()
+                                .collect::<BTreeMap<String, String>>(),
+                            ),
+                            ..self
+                                .spec
+                                .clone()
+                                .unwrap_or_default()
+                                .template
+                                .spec
+                                .unwrap_or_default()
+                        }),
+                        ..self.spec.clone().unwrap_or_default().template
+                    },
                     ..self.spec.unwrap_or_default()
                 }),
                 ..self
