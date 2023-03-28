@@ -21,7 +21,6 @@ use crate::{
     labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
     utils::format_full_controller_name,
 };
-use async_trait::async_trait;
 use kube::core::ErrorResponse;
 use serde::{de::DeserializeOwned, Serialize};
 use tracing::{debug, info};
@@ -40,10 +39,8 @@ pub trait ClusterResource:
     + GetApi<Namespace = str>
     + Serialize
 {
-    fn maybe_mutate(&self, strategy: &ClusterResourceStrategy) -> Self {
-        match strategy {
-            _ => self.clone(),
-        }
+    fn maybe_mutate(self, _strategy: &ClusterResourceStrategy) -> Self {
+        self
     }
 }
 
@@ -82,7 +79,7 @@ impl ClusterResourceStrategy {
                     )
                     .await
             }
-            _ => client.apply_patch(manager, resource, resource).await,
+            Self::Default | Self::Stopped => client.apply_patch(manager, resource, resource).await,
         }
     }
 }
@@ -90,23 +87,23 @@ impl ClusterResourceStrategy {
 impl ClusterResource for ConfigMap {}
 impl ClusterResource for DaemonSet {}
 impl ClusterResource for Service {}
-impl ClusterResource for StatefulSet {
-    fn maybe_mutate(&self, strategy: &ClusterResourceStrategy) -> Self {
-        match strategy {
-            ClusterResourceStrategy::Stopped { .. } => StatefulSet {
-                spec: Some(StatefulSetSpec {
-                    replicas: Some(0),
-                    ..self.spec.clone().unwrap()
-                }),
-                ..self.clone()
-            },
-            _ => self.clone(),
-        }
-    }
-}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
 impl ClusterResource for Secret {}
+impl ClusterResource for StatefulSet {
+    fn maybe_mutate(self, strategy: &ClusterResourceStrategy) -> Self {
+        match strategy {
+            ClusterResourceStrategy::Stopped => StatefulSet {
+                spec: Some(StatefulSetSpec {
+                    replicas: Some(0),
+                    ..self.spec.unwrap_or_default()
+                }),
+                ..self
+            },
+            ClusterResourceStrategy::Default | ClusterResourceStrategy::Paused => self,
+        }
+    }
+}
 
 /// A structure containing the cluster resources.
 ///
@@ -168,24 +165,24 @@ impl ClusterResource for Secret {}
 ///
 ///     let role_service = Service::default();
 ///     let patched_role_service =
-///         cluster_resources.add(&client, &role_service)
+///         cluster_resources.add(&client, role_service)
 ///             .await
 ///             .map_err(|source| Error::AddClusterResource { source })?;
 ///
 ///     for (role_name, group_config) in validated_config.iter() {
 ///         for (rolegroup_name, rolegroup_config) in group_config.iter() {
 ///             let rolegroup_service = Service::default();
-///             cluster_resources.add(&client, &rolegroup_service)
+///             cluster_resources.add(&client, rolegroup_service)
 ///                 .await
 ///                 .map_err(|source| Error::AddClusterResource { source })?;
 ///
 ///             let rolegroup_configmap = ConfigMap::default();
-///             cluster_resources.add(&client, &rolegroup_configmap)
+///             cluster_resources.add(&client, rolegroup_configmap)
 ///                 .await
 ///                 .map_err(|source| Error::AddClusterResource { source })?;
 ///
 ///             let rolegroup_statefulset = StatefulSet::default();
-///             cluster_resources.add(&client, &rolegroup_statefulset)
+///             cluster_resources.add(&client, rolegroup_statefulset)
 ///                 .await
 ///                 .map_err(|source| Error::AddClusterResource { source })?;
 ///         }
@@ -193,7 +190,7 @@ impl ClusterResource for Secret {}
 ///
 ///     let discovery_configmap = ConfigMap::default();
 ///     let patched_discovery_configmap =
-///         cluster_resources.add(&client, &discovery_configmap)
+///         cluster_resources.add(&client, discovery_configmap)
 ///             .await
 ///             .map_err(|source| Error::AddClusterResource { source })?;
 ///
@@ -288,7 +285,7 @@ impl ClusterResources {
     pub async fn add<T: ClusterResource + Sync>(
         &mut self,
         client: &Client,
-        resource: &T,
+        resource: T,
     ) -> OperatorResult<T> {
         ClusterResources::check_label(resource.labels(), APP_INSTANCE_LABEL, &self.app_instance)?;
         ClusterResources::check_label(resource.labels(), APP_MANAGED_BY_LABEL, &self.manager)?;
@@ -297,10 +294,6 @@ impl ClusterResources {
         let mutated = resource.maybe_mutate(&self.strategy);
 
         let patched_resource = self.strategy.apply(&self.manager, &mutated, client).await?;
-
-        // let patched_resource = client
-        //     .apply_patch(&self.manager, resource, resource)
-        //     .await?;
 
         let resource_id = patched_resource.uid().ok_or(Error::MissingObjectKey {
             key: "metadata/uid",
