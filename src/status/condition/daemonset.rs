@@ -66,14 +66,19 @@ impl DaemonSetConditionBuilder {
         }
     }
 
+    /// Returns a condition "Available: True" if the number of ready Pods is greater than zero.
+    /// This is an heuristic that doesn't take into consideration if *all* eligible nodes have
+    /// running Pods.
+    /// Other fields of the daemon set status have been considered and discarded for being even less
+    /// reliable/informative.
     fn daemon_set_available(ds: &DaemonSet) -> ClusterConditionStatus {
-        let number_unavailable = ds
+        let number_ready = ds
             .status
             .as_ref()
-            .and_then(|status| status.number_unavailable)
+            .map(|status| status.number_ready)
             .unwrap_or_default();
 
-        if number_unavailable == 0 {
+        if number_ready > 0 {
             ClusterConditionStatus::True
         } else {
             ClusterConditionStatus::False
@@ -89,10 +94,10 @@ mod test {
     };
     use k8s_openapi::api::apps::v1::{DaemonSet, DaemonSetStatus};
 
-    fn build_ds(number_unavailable: i32) -> DaemonSet {
+    fn build_ds(number_ready: i32) -> DaemonSet {
         DaemonSet {
             status: Some(DaemonSetStatus {
-                number_unavailable: Some(number_unavailable),
+                number_ready,
                 ..DaemonSetStatus::default()
             }),
             ..DaemonSet::default()
@@ -101,7 +106,7 @@ mod test {
 
     #[test]
     fn test_daemon_set_available_true() {
-        let ds = build_ds(0);
+        let ds = build_ds(1);
 
         assert_eq!(
             DaemonSetConditionBuilder::daemon_set_available(&ds),
@@ -111,7 +116,7 @@ mod test {
 
     #[test]
     fn test_daemon_set_available_false() {
-        let ds = build_ds(1);
+        let ds = build_ds(0);
         assert_eq!(
             DaemonSetConditionBuilder::daemon_set_available(&ds),
             ClusterConditionStatus::False
@@ -121,7 +126,7 @@ mod test {
     #[test]
     fn test_daemon_set_available_condition_true() {
         let mut ds_condition_builder = DaemonSetConditionBuilder::default();
-        ds_condition_builder.add(build_ds(0));
+        ds_condition_builder.add(build_ds(1));
 
         let conditions = ds_condition_builder.build_conditions();
 
@@ -140,7 +145,7 @@ mod test {
     #[test]
     fn test_daemon_set_available_condition_false() {
         let mut ds_condition_builder = DaemonSetConditionBuilder::default();
-        ds_condition_builder.add(build_ds(3));
+        ds_condition_builder.add(build_ds(0));
 
         let conditions = ds_condition_builder.build_conditions();
 

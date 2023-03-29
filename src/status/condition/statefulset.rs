@@ -67,6 +67,9 @@ impl StatefulSetConditionBuilder {
         }
     }
 
+    /// Returns a condition "Available: True" if the number of requested replicas matches
+    /// the number of available replicas. In addition, there needs to be at least one replica
+    /// available.
     fn stateful_set_available(sts: &StatefulSet) -> ClusterConditionStatus {
         let requested_replicas = sts
             .spec
@@ -79,7 +82,7 @@ impl StatefulSetConditionBuilder {
             .and_then(|status| status.available_replicas)
             .unwrap_or_default();
 
-        if requested_replicas == available_replicas {
+        if requested_replicas == available_replicas && requested_replicas != 0 {
             ClusterConditionStatus::True
         } else {
             ClusterConditionStatus::False
