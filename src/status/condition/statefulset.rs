@@ -146,7 +146,12 @@ mod test {
 
         let conditions = sts_condition_builder.build_conditions();
 
-        let got = conditions.conditions.get(0).cloned().unwrap().unwrap();
+        let got = conditions
+            .conditions
+            .get(ClusterConditionType::Available as usize)
+            .cloned()
+            .unwrap()
+            .unwrap();
 
         let expected = ClusterCondition {
             type_: ClusterConditionType::Available,
@@ -165,7 +170,12 @@ mod test {
 
         let conditions = sts_condition_builder.build_conditions();
 
-        let got = conditions.conditions.get(0).cloned().unwrap().unwrap();
+        let got = conditions
+            .conditions
+            .get(ClusterConditionType::Available as usize)
+            .cloned()
+            .unwrap()
+            .unwrap();
 
         let expected = ClusterCondition {
             type_: ClusterConditionType::Available,
