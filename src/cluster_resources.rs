@@ -52,7 +52,7 @@ pub trait ClusterResource:
 {
     /// This must be implemented for any [`ClusterResources`] that should be adapted before
     /// applying depending on the chosen [`ClusterResourceApplyStrategy`].
-    /// An example would be setting [`StateFulSet`] replicas to 0 for the
+    /// An example would be setting [`StatefulSet`] replicas to 0 for the
     /// `ClusterResourceApplyStrategy::ClusterStopped`.
     fn maybe_mutate(self, _strategy: &ClusterResourceApplyStrategy) -> Self {
         self
