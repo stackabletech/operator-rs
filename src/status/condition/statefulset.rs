@@ -7,7 +7,7 @@ use k8s_openapi::api::apps::v1::StatefulSet;
 use kube::ResourceExt;
 use std::cmp;
 
-/// Default implementation to build [`crate::status::condition::ClusterCondition`]s for
+/// Default implementation to build [`ClusterCondition`]s for
 /// `StatefulSet` resources.
 ///
 /// Currently only the `ClusterConditionType::Available` is implemented. This will be extended

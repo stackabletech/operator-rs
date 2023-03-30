@@ -4,6 +4,8 @@ use crate::status::condition::{
     ConditionBuilder,
 };
 
+/// Default implementation to build [`ClusterCondition`]s for
+/// the ClusterOperation.
 #[derive(Debug, Clone)]
 pub struct ClusterOperationsConditionBuilder<'a> {
     cluster_operation: &'a ClusterOperation,
@@ -20,6 +22,7 @@ impl<'a> ClusterOperationsConditionBuilder<'a> {
         Self { cluster_operation }
     }
 
+    /// Returns the `ReconciliationPaused` cluster condition.
     fn reconciliation_paused(&self) -> ClusterCondition {
         let status = if self.cluster_operation.reconciliation_paused {
             ClusterConditionStatus::True
@@ -48,6 +51,7 @@ impl<'a> ClusterOperationsConditionBuilder<'a> {
         }
     }
 
+    /// Returns the `Stopped` cluster condition.
     fn cluster_stopped(&self) -> ClusterCondition {
         let status =
             if self.cluster_operation.stopped && self.cluster_operation.reconciliation_paused {
