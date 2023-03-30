@@ -50,11 +50,18 @@ pub trait ClusterResource:
     + GetApi<Namespace = str>
     + Serialize
 {
+    /// This must be implemented for any [`ClusterResources`] that should be adapted before
+    /// applying depending on the chosen [`ClusterResourceApplyStrategy`].
+    /// An example would be setting [`StateFulSet`] replicas to 0 for the
+    /// `ClusterResourceApplyStrategy::ClusterStopped`.
     fn maybe_mutate(self, _strategy: &ClusterResourceApplyStrategy) -> Self {
         self
     }
 }
 
+/// The [`ClusterResourceApplyStrategy`] defines how to handle resources applied by the operators.
+/// This can be default behavior (apply_patch), only retrieving resources (get) for cluster status
+/// purposes or doing nothing.
 #[derive(Debug, Display, Eq, PartialEq)]
 pub enum ClusterResourceApplyStrategy {
     /// Default strategy. Resources a applied via the [`Client::apply_patch`] client method.
@@ -87,7 +94,9 @@ impl From<&ClusterOperation> for ClusterResourceApplyStrategy {
 }
 
 impl ClusterResourceApplyStrategy {
-    async fn process<T: ClusterResource + Sync>(
+    /// Interacts with the API server depending on the strategy.
+    /// This can be applying, listing resources or doing nothing.
+    async fn run<T: ClusterResource + Sync>(
         &self,
         manager: &str,
         resource: &T,
@@ -95,6 +104,11 @@ impl ClusterResourceApplyStrategy {
     ) -> OperatorResult<T> {
         match self {
             Self::ReconciliationPaused => {
+                debug!(
+                    "Get resource [{}] because of [{}] strategy.",
+                    resource.name_any(),
+                    self
+                );
                 client
                     .get(
                         &resource.name_any(),
@@ -106,16 +120,31 @@ impl ClusterResourceApplyStrategy {
                     .await
             }
             Self::Default | Self::ClusterStopped => {
+                debug!(
+                    "Patching resource [{}] because of [{}] strategy.",
+                    resource.name_any(),
+                    self
+                );
                 client.apply_patch(manager, resource, resource).await
             }
             Self::NoApply => {
-                info!(
+                debug!(
                     "Skip creating resource [{}] because of [{}] strategy.",
                     resource.name_any(),
                     self
                 );
                 Ok(resource.clone())
             }
+        }
+    }
+
+    /// Indicates if orphaned resources should be deleted depending on the strategy.
+    fn delete_orphans(&self) -> bool {
+        match self {
+            ClusterResourceApplyStrategy::NoApply
+            | ClusterResourceApplyStrategy::ReconciliationPaused => true,
+            ClusterResourceApplyStrategy::ClusterStopped
+            | ClusterResourceApplyStrategy::Default => false,
         }
     }
 }
@@ -370,7 +399,7 @@ impl ClusterResources {
 
         let patched_resource = self
             .apply_strategy
-            .process(&self.manager, &mutated, client)
+            .run(&self.manager, &mutated, client)
             .await?;
 
         let resource_id = patched_resource.uid().ok_or(Error::MissingObjectKey {
@@ -463,6 +492,14 @@ impl ClusterResources {
         &self,
         client: &Client,
     ) -> OperatorResult<()> {
+        if !self.apply_strategy.delete_orphans() {
+            debug!(
+                "Skip deleting orphaned resources because of [{}] strategy.",
+                self.apply_strategy
+            );
+            return Ok(());
+        }
+
         match self.list_deployed_cluster_resources::<T>(client).await {
             Ok(deployed_cluster_resources) => {
                 let mut orphaned_resources = Vec::new();
