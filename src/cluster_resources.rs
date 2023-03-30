@@ -1,31 +1,40 @@
 //! A structure containing the cluster resources.
 
-use std::{
-    collections::{BTreeMap, HashSet},
-    fmt::Debug,
-};
-
 use crate::{
     client::{Client, GetApi},
+    commons::cluster_operation::ClusterOperation,
     error::{Error, OperatorResult},
     k8s_openapi::{
         api::{
-            apps::v1::{DaemonSet, StatefulSet},
-            core::v1::{ConfigMap, ObjectReference, Service},
+            apps::v1::{DaemonSet, DaemonSetSpec, StatefulSet, StatefulSetSpec},
+            core::v1::{
+                ConfigMap, ObjectReference, PodSpec, PodTemplateSpec, Secret, Service,
+                ServiceAccount,
+            },
+            rbac::v1::RoleBinding,
         },
         apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
+        NamespaceResourceScope,
     },
     kube::{Resource, ResourceExt},
     labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
     utils::format_full_controller_name,
 };
-use k8s_openapi::{
-    api::{core::v1::Secret, core::v1::ServiceAccount, rbac::v1::RoleBinding},
-    NamespaceResourceScope,
-};
+
 use kube::core::ErrorResponse;
 use serde::{de::DeserializeOwned, Serialize};
+use std::{
+    collections::{BTreeMap, HashSet},
+    fmt::Debug,
+};
+use strum::Display;
 use tracing::{debug, info};
+
+#[cfg(doc)]
+use crate::k8s_openapi::api::{
+    apps::v1::Deployment,
+    core::v1::{NodeSelector, Pod},
+};
 
 /// A cluster resource handled by [`ClusterResources`].
 ///
@@ -41,15 +50,161 @@ pub trait ClusterResource:
     + GetApi<Namespace = str>
     + Serialize
 {
+    /// This must be implemented for any [`ClusterResources`] that should be adapted before
+    /// applying depending on the chosen [`ClusterResourceApplyStrategy`].
+    /// An example would be setting [`StatefulSet`] replicas to 0 for the
+    /// `ClusterResourceApplyStrategy::ClusterStopped`.
+    fn maybe_mutate(self, _strategy: &ClusterResourceApplyStrategy) -> Self {
+        self
+    }
+}
+
+/// The [`ClusterResourceApplyStrategy`] defines how to handle resources applied by the operators.
+/// This can be default behavior (apply_patch), only retrieving resources (get) for cluster status
+/// purposes or doing nothing.
+#[derive(Debug, Display, Eq, PartialEq)]
+pub enum ClusterResourceApplyStrategy {
+    /// Default strategy. Resources a applied via the [`Client::apply_patch`] client method.
+    Default,
+    /// Strategy to pause reconciliation. This means any cluster changes (e.g. in the custom resource
+    /// spec) are ignored. Resources are not applied at all but merely fetched via the
+    /// [`Client::get`] method in order to still be able to e.g. update the cluster status.
+    ReconciliationPaused,
+    /// Strategy to stop the cluster. This means no Pods should be scheduled for either [`StatefulSet`],
+    /// [`DaemonSet`] or [`Deployment`]. This is done by setting the [`StatefulSet`] or [`Deployment`]
+    /// replicas to 0. For [`DaemonSet`] this is done via an unreachable [`NodeSelector`].
+    ///
+    /// Resources are applied via the [`Client::apply_patch`] client method.
+    ClusterStopped,
+    /// Dry-run strategy that doesn't actually create any workload resources. This is useful for
+    /// Superset and Airflow clusters that need to wait for their databases to be set up first.
+    NoApply,
+}
+
+impl From<&ClusterOperation> for ClusterResourceApplyStrategy {
+    fn from(commons_spec: &ClusterOperation) -> Self {
+        if commons_spec.reconciliation_paused {
+            ClusterResourceApplyStrategy::ReconciliationPaused
+        } else if commons_spec.stopped {
+            ClusterResourceApplyStrategy::ClusterStopped
+        } else {
+            ClusterResourceApplyStrategy::Default
+        }
+    }
+}
+
+impl ClusterResourceApplyStrategy {
+    /// Interacts with the API server depending on the strategy.
+    /// This can be applying, listing resources or doing nothing.
+    async fn run<T: ClusterResource + Sync>(
+        &self,
+        manager: &str,
+        resource: &T,
+        client: &Client,
+    ) -> OperatorResult<T> {
+        match self {
+            Self::ReconciliationPaused => {
+                debug!(
+                    "Get resource [{}] because of [{}] strategy.",
+                    resource.name_any(),
+                    self
+                );
+                client
+                    .get(
+                        &resource.name_any(),
+                        resource
+                            .namespace()
+                            .as_deref()
+                            .ok_or(Error::MissingObjectKey { key: "namespace" })?,
+                    )
+                    .await
+            }
+            Self::Default | Self::ClusterStopped => {
+                debug!(
+                    "Patching resource [{}] because of [{}] strategy.",
+                    resource.name_any(),
+                    self
+                );
+                client.apply_patch(manager, resource, resource).await
+            }
+            Self::NoApply => {
+                debug!(
+                    "Skip creating resource [{}] because of [{}] strategy.",
+                    resource.name_any(),
+                    self
+                );
+                Ok(resource.clone())
+            }
+        }
+    }
+
+    /// Indicates if orphaned resources should be deleted depending on the strategy.
+    fn delete_orphans(&self) -> bool {
+        match self {
+            ClusterResourceApplyStrategy::NoApply
+            | ClusterResourceApplyStrategy::ReconciliationPaused => true,
+            ClusterResourceApplyStrategy::ClusterStopped
+            | ClusterResourceApplyStrategy::Default => false,
+        }
+    }
 }
 
 impl ClusterResource for ConfigMap {}
-impl ClusterResource for DaemonSet {}
 impl ClusterResource for Service {}
-impl ClusterResource for StatefulSet {}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
 impl ClusterResource for Secret {}
+impl ClusterResource for StatefulSet {
+    fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
+        match strategy {
+            ClusterResourceApplyStrategy::ClusterStopped => StatefulSet {
+                spec: Some(StatefulSetSpec {
+                    replicas: Some(0),
+                    ..self.spec.unwrap_or_default()
+                }),
+                ..self
+            },
+            ClusterResourceApplyStrategy::Default
+            | ClusterResourceApplyStrategy::ReconciliationPaused
+            | ClusterResourceApplyStrategy::NoApply => self,
+        }
+    }
+}
+impl ClusterResource for DaemonSet {
+    fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
+        match strategy {
+            ClusterResourceApplyStrategy::ClusterStopped => DaemonSet {
+                spec: Some(DaemonSetSpec {
+                    template: PodTemplateSpec {
+                        spec: Some(PodSpec {
+                            node_selector: Some(
+                                [(
+                                    "stackable.tech/do-not-schedule".to_string(),
+                                    "cluster-stopped".to_string(),
+                                )]
+                                .into_iter()
+                                .collect::<BTreeMap<String, String>>(),
+                            ),
+                            ..self
+                                .spec
+                                .clone()
+                                .unwrap_or_default()
+                                .template
+                                .spec
+                                .unwrap_or_default()
+                        }),
+                        ..self.spec.clone().unwrap_or_default().template
+                    },
+                    ..self.spec.unwrap_or_default()
+                }),
+                ..self
+            },
+            ClusterResourceApplyStrategy::Default
+            | ClusterResourceApplyStrategy::ReconciliationPaused
+            | ClusterResourceApplyStrategy::NoApply => self,
+        }
+    }
+}
 
 /// A structure containing the cluster resources.
 ///
@@ -67,7 +222,7 @@ impl ClusterResource for Secret {}
 /// use schemars::JsonSchema;
 /// use serde::{Deserialize, Serialize};
 /// use stackable_operator::client::Client;
-/// use stackable_operator::cluster_resources::ClusterResources;
+/// use stackable_operator::cluster_resources::{ClusterResourceApplyStrategy, ClusterResources};
 /// use stackable_operator::product_config_utils::ValidatedRoleConfigByPropertyKind;
 /// use stackable_operator::role_utils::Role;
 /// use std::sync::Arc;
@@ -106,29 +261,30 @@ impl ClusterResource for Secret {}
 ///         OPERATOR_NAME,
 ///         CONTROLLER_NAME,
 ///         &app.object_ref(&()),
+///         ClusterResourceApplyStrategy::Default,
 ///     )
 ///     .map_err(|source| Error::CreateClusterResources { source })?;
 ///
 ///     let role_service = Service::default();
 ///     let patched_role_service =
-///         cluster_resources.add(&client, &role_service)
+///         cluster_resources.add(&client, role_service)
 ///             .await
 ///             .map_err(|source| Error::AddClusterResource { source })?;
 ///
 ///     for (role_name, group_config) in validated_config.iter() {
 ///         for (rolegroup_name, rolegroup_config) in group_config.iter() {
 ///             let rolegroup_service = Service::default();
-///             cluster_resources.add(&client, &rolegroup_service)
+///             cluster_resources.add(&client, rolegroup_service)
 ///                 .await
 ///                 .map_err(|source| Error::AddClusterResource { source })?;
 ///
 ///             let rolegroup_configmap = ConfigMap::default();
-///             cluster_resources.add(&client, &rolegroup_configmap)
+///             cluster_resources.add(&client, rolegroup_configmap)
 ///                 .await
 ///                 .map_err(|source| Error::AddClusterResource { source })?;
 ///
 ///             let rolegroup_statefulset = StatefulSet::default();
-///             cluster_resources.add(&client, &rolegroup_statefulset)
+///             cluster_resources.add(&client, rolegroup_statefulset)
 ///                 .await
 ///                 .map_err(|source| Error::AddClusterResource { source })?;
 ///         }
@@ -136,7 +292,7 @@ impl ClusterResource for Secret {}
 ///
 ///     let discovery_configmap = ConfigMap::default();
 ///     let patched_discovery_configmap =
-///         cluster_resources.add(&client, &discovery_configmap)
+///         cluster_resources.add(&client, discovery_configmap)
 ///             .await
 ///             .map_err(|source| Error::AddClusterResource { source })?;
 ///
@@ -160,6 +316,9 @@ pub struct ClusterResources {
     manager: String,
     /// The unique IDs of the cluster resources
     resource_ids: HashSet<String>,
+    /// Strategy to manage how cluster resources are applied. Resources could be patched, merged
+    /// or not applied at all depending on the strategy.
+    apply_strategy: ClusterResourceApplyStrategy,
 }
 
 impl ClusterResources {
@@ -173,6 +332,7 @@ impl ClusterResources {
     /// * `controller_name` - The name of the lower-case name of the primary resource that
     ///   the controller manages, such as "zookeepercluster"
     /// * `cluster` - A reference to the cluster containing the name and namespace of the cluster
+    /// * `apply_strategy` - A strategy to manage how cluster resources are applied to the API server
     ///
     /// The combination of (`operator_name`, `controller_name`) must be unique for each controller in the cluster,
     /// otherwise resources created by another controller are detected as orphaned and deleted.
@@ -186,6 +346,7 @@ impl ClusterResources {
         operator_name: &str,
         controller_name: &str,
         cluster: &ObjectReference,
+        apply_strategy: ClusterResourceApplyStrategy,
     ) -> OperatorResult<Self> {
         let namespace = cluster
             .namespace
@@ -202,6 +363,7 @@ impl ClusterResources {
             app_name: app_name.into(),
             manager: format_full_controller_name(operator_name, controller_name),
             resource_ids: Default::default(),
+            apply_strategy,
         })
     }
 
@@ -224,17 +386,20 @@ impl ClusterResources {
     ///
     /// If the patched resource does not contain a UID then an `Error::MissingObjectKey` is
     /// returned.
-    pub async fn add<T: ClusterResource>(
+    pub async fn add<T: ClusterResource + Sync>(
         &mut self,
         client: &Client,
-        resource: &T,
+        resource: T,
     ) -> OperatorResult<T> {
         ClusterResources::check_label(resource.labels(), APP_INSTANCE_LABEL, &self.app_instance)?;
         ClusterResources::check_label(resource.labels(), APP_MANAGED_BY_LABEL, &self.manager)?;
         ClusterResources::check_label(resource.labels(), APP_NAME_LABEL, &self.app_name)?;
 
-        let patched_resource = client
-            .apply_patch(&self.manager, resource, resource)
+        let mutated = resource.maybe_mutate(&self.apply_strategy);
+
+        let patched_resource = self
+            .apply_strategy
+            .run(&self.manager, &mutated, client)
             .await?;
 
         let resource_id = patched_resource.uid().ok_or(Error::MissingObjectKey {
@@ -327,6 +492,14 @@ impl ClusterResources {
         &self,
         client: &Client,
     ) -> OperatorResult<()> {
+        if !self.apply_strategy.delete_orphans() {
+            debug!(
+                "Skip deleting orphaned resources because of [{}] strategy.",
+                self.apply_strategy
+            );
+            return Ok(());
+        }
+
         match self.list_deployed_cluster_resources::<T>(client).await {
             Ok(deployed_cluster_resources) => {
                 let mut orphaned_resources = Vec::new();
