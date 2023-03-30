@@ -7,8 +7,13 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - status::condition module to compute the cluster resource status ([#571]).
+- Helper function to build RBAC resources ([#572]).
+- Add `ClusterResourceApplyStrategy` to `ClusterResource` ([#573]).
+- Add `ClusterOperation` common struct with `reconcilation_paused` and `stopped` flags ([#573]).
 
 [#571]: https://github.com/stackabletech/operator-rs/pull/571
+[#572]: https://github.com/stackabletech/operator-rs/pull/572
+[#573]: https://github.com/stackabletech/operator-rs/pull/573
 
 ## [0.38.0] - 2023-03-20
 
