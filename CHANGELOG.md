@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.39.0] - 2023-03-31
+
 ### Added
 
 - status::condition module to compute the cluster resource status ([#571]).
