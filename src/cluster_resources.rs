@@ -142,9 +142,9 @@ impl ClusterResourceApplyStrategy {
     fn delete_orphans(&self) -> bool {
         match self {
             ClusterResourceApplyStrategy::NoApply
-            | ClusterResourceApplyStrategy::ReconciliationPaused => true,
+            | ClusterResourceApplyStrategy::ReconciliationPaused => false,
             ClusterResourceApplyStrategy::ClusterStopped
-            | ClusterResourceApplyStrategy::Default => false,
+            | ClusterResourceApplyStrategy::Default => true,
         }
     }
 }
