@@ -131,7 +131,7 @@ mod test {
 
         let got = conditions
             .conditions
-            .get(ClusterConditionType::ReconciliationPaused as usize)
+            .get::<usize>(ClusterConditionType::ReconciliationPaused.into())
             .cloned()
             .unwrap()
             .unwrap();
@@ -140,7 +140,7 @@ mod test {
 
         let got = conditions
             .conditions
-            .get(ClusterConditionType::Stopped as usize)
+            .get::<usize>(ClusterConditionType::Stopped.into())
             .cloned()
             .unwrap()
             .unwrap();

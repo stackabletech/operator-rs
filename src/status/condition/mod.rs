@@ -144,6 +144,22 @@ pub enum ClusterConditionType {
     Stopped,
 }
 
+// These are indices for the `ClusterConditionSet` conditions vector and should not be altered.
+// This may lead to problems when upgrading the operator later on.
+// When introducing a new `ClusterConditionType` it MUST be the direct successor of the last
+// condition index due to the "array" access of the `ClusterConditionSet` conditions vector.
+impl From<ClusterConditionType> for usize {
+    fn from(condition_type: ClusterConditionType) -> Self {
+        match condition_type {
+            ClusterConditionType::Available => 0,
+            ClusterConditionType::Degraded => 1,
+            ClusterConditionType::Progressing => 2,
+            ClusterConditionType::ReconciliationPaused => 3,
+            ClusterConditionType::Stopped => 4,
+        }
+    }
+}
+
 #[derive(
     Clone, Debug, Default, Deserialize, Eq, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
 )]
@@ -178,7 +194,7 @@ impl ClusterConditionSet {
 
     /// Adds a [`ClusterCondition`] to its assigned index in the conditions vector.
     fn put(&mut self, condition: ClusterCondition) {
-        let index = condition.type_ as usize;
+        let index: usize = condition.type_.into();
         self.conditions[index] = Some(condition);
     }
 
@@ -384,7 +400,7 @@ mod test {
         let condition_builders = &[&AvailableTrueConditionBuilder1 {} as &dyn ConditionBuilder];
 
         let got = compute_conditions(&resource, condition_builders)
-            .get(0)
+            .get::<usize>(ClusterConditionType::Available.into())
             .cloned()
             .unwrap();
 
@@ -411,7 +427,7 @@ mod test {
         ];
 
         let got = compute_conditions(&resource, condition_builders)
-            .get(0)
+            .get::<usize>(ClusterConditionType::Available.into())
             .cloned()
             .unwrap();
 
@@ -440,7 +456,7 @@ mod test {
         ];
 
         let got = compute_conditions(&resource, condition_builders)
-            .get(0)
+            .get::<usize>(ClusterConditionType::Available.into())
             .cloned()
             .unwrap();
 
@@ -468,7 +484,7 @@ mod test {
         ];
 
         let got = compute_conditions(&resource, condition_builders)
-            .get(0)
+            .get::<usize>(ClusterConditionType::Available.into())
             .cloned()
             .unwrap();
 

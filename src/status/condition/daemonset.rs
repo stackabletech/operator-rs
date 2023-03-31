@@ -132,7 +132,7 @@ mod test {
 
         let got = conditions
             .conditions
-            .get(ClusterConditionType::Available as usize)
+            .get::<usize>(ClusterConditionType::Available.into())
             .cloned()
             .unwrap()
             .unwrap();
@@ -156,7 +156,7 @@ mod test {
 
         let got = conditions
             .conditions
-            .get(ClusterConditionType::Available as usize)
+            .get::<usize>(ClusterConditionType::Available.into())
             .cloned()
             .unwrap()
             .unwrap();
