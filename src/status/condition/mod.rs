@@ -73,13 +73,14 @@ pub fn compute_conditions<T: HasStatusCondition>(
     condition_builders: &[&dyn ConditionBuilder],
 ) -> Vec<ClusterCondition> {
     let mut new_resource_conditions = ClusterConditionSet::new();
+    // compute current conditions and merge their message if required
     for cb in condition_builders {
         let conditions: ClusterConditionSet = cb.build_conditions();
         new_resource_conditions = new_resource_conditions.merge(conditions, update_message);
     }
 
     let old_resource_conditions: ClusterConditionSet = resource.conditions().into();
-
+    // merge the computed conditions and update e.g. transition timestamps if required
     old_resource_conditions
         .merge(new_resource_conditions, update_timestamps)
         .into()
@@ -181,8 +182,16 @@ impl ClusterConditionSet {
         self.conditions[index] = Some(condition);
     }
 
-    /// Merges two [`ClusterConditionSet`]s. The condition_combiner implements the strategy used to merge two conditions of
-    /// of the same type_.
+    /// Merges two [`ClusterConditionSet`]s. The condition_combiner implements the strategy used to
+    /// merge two conditions of the same `type_`.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - The [`ClusterConditionSet`] to be merged
+    /// * `condition_combiner` - This is either be `update_message` or `update_timestamps`. The
+    /// `update_message` is used to concatenate messages of the same [`ClusterConditionStatus`] and
+    /// the same [`ClusterConditionType`]. The `update_timestamps` is required to merge the old
+    /// cluster status with the new one and update transition timestamps correctly.
     fn merge(
         self,
         other: ClusterConditionSet,
@@ -190,14 +199,19 @@ impl ClusterConditionSet {
     ) -> ClusterConditionSet {
         let mut result = ClusterConditionSet::new();
 
+        // Combine the two condition vectors of old and new `ClusterConditionSet`.
         for (old_condition, new_condition) in self
             .conditions
             .into_iter()
             .zip(other.conditions.into_iter())
         {
             if let Some(condition) = match (old_condition, new_condition) {
+                // If both are set use the `condition_combiner` to update timestamps or concatenate
+                // the message
                 (Some(old), Some(new)) => Some(condition_combiner(old, new)),
+                // No new condition is computed, keep the old one
                 (Some(old), None) => Some(old),
+                // No condition of that type existed, use the new one
                 (None, Some(new)) => Some(new),
                 _ => None,
             } {
