@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix the parsing of log4j and logback files in the Vector configuration, avoid
+  rounding errors in the timestamps, and improve the handling of unparseable
+  log events ([#577]).
+
+[#577]: https://github.com/stackabletech/operator-rs/pull/577
+
 ## [0.39.0] - 2023-03-31
 
 ### Added
