@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.39.1] - 2023-04-07
+
 ### Fixed
 
 - Fix the parsing of log4j and logback files in the Vector configuration, avoid
