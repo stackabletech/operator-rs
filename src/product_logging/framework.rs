@@ -648,12 +648,13 @@ include = ["{STACKABLE_LOG_DIR}/*/*.stderr.log"]
 [sources.files_log4j]
 type = "file"
 include = ["{STACKABLE_LOG_DIR}/*/*.log4j.xml"]
+line_delimiter = "\r\n"
 
 [sources.files_log4j.multiline]
-mode = "halt_with"
+mode = "halt_before"
 start_pattern = "^<log4j:event"
-condition_pattern = "</log4j:event>\r$"
-timeout_ms = 10000
+condition_pattern = "^<log4j:event"
+timeout_ms = 1000
 
 [sources.files_log4j2]
 type = "file"
@@ -737,15 +738,24 @@ source = '''
 inputs = ["files_log4j"]
 type = "remap"
 source = '''
+# Wrap the event so that the log4j namespace is defined when parsing the event
 wrapped_xml_event = "<root xmlns:log4j=\"http://jakarta.apache.org/log4j/\">" + string!(.message) + "</root>"
-parsed_event = parse_xml!(wrapped_xml_event).root.event
-.timestamp = to_timestamp!(to_float!(parsed_event.@timestamp) / 1000)
-.logger = parsed_event.@logger
-.level = parsed_event.@level
-.message = join!(
-    filter([parsed_event.message, parsed_event.throwable]) -> |_index, value| {{
-        !is_nullish(value)
-    }}, "\n")
+parsed_event = parse_xml(wrapped_xml_event) ?? {{ "root": {{ "event": {{ "message": .message }} }} }}
+event = parsed_event.root.event
+
+epoch_milliseconds = to_int(event.@timestamp) ?? 0
+if epoch_milliseconds != 0 {{
+    .timestamp = to_timestamp(epoch_milliseconds, "milliseconds") ?? null
+}}
+if is_null(.timestamp) {{
+    .timestamp = now()
+}}
+
+.logger = to_string(event.@logger) ?? ""
+
+.level = to_string(event.@level) ?? ""
+
+.message = join(compact([event.message, event.throwable]), "\n") ?? .message
 '''
 
 [transforms.processed_files_log4j2]
