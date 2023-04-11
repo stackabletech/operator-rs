@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- [BREAKING]: Added ownerreferences and labels to `build_rbac_resources` ([#579]).
+
 ## [0.39.1] - 2023-04-07
 
 ### Fixed
@@ -13,6 +17,7 @@ All notable changes to this project will be documented in this file.
   log events ([#577]).
 
 [#577]: https://github.com/stackabletech/operator-rs/pull/577
+[#579]: https://github.com/stackabletech/operator-rs/pull/579
 
 ## [0.39.0] - 2023-03-31
 

@@ -367,6 +367,21 @@ impl ClusterResources {
         })
     }
 
+    /// Return required labels for cluster resources to be uniquely identified for clean up.
+    // TODO: This is a (quick-fix) helper method but should be replaced by better label handling
+    pub fn get_required_labels(&self) -> BTreeMap<String, String> {
+        vec![
+            (
+                APP_INSTANCE_LABEL.to_string(),
+                self.app_instance.to_string(),
+            ),
+            (APP_MANAGED_BY_LABEL.to_string(), self.manager.to_string()),
+            (APP_NAME_LABEL.to_string(), self.app_name.to_string()),
+        ]
+        .into_iter()
+        .collect()
+    }
+
     /// Adds a resource to the cluster resources.
     ///
     /// The resource will be patched and the patched resource will be returned.
