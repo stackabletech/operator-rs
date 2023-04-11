@@ -7,6 +7,7 @@ use crate::{
     k8s_openapi::{
         api::{
             apps::v1::{DaemonSet, DaemonSetSpec, StatefulSet, StatefulSetSpec},
+            batch::v1::Job,
             core::v1::{
                 ConfigMap, ObjectReference, PodSpec, PodTemplateSpec, Secret, Service,
                 ServiceAccount,
@@ -154,6 +155,7 @@ impl ClusterResource for Service {}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
 impl ClusterResource for Secret {}
+impl ClusterResource for Job {}
 impl ClusterResource for StatefulSet {
     fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
         match strategy {
