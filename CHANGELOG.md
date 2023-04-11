@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- [BREAKING]: Added ownerreferences to `build_rbac_resources` ([#579]).
+- [BREAKING]: Added ownerreferences and labels to `build_rbac_resources` ([#579]).
 
 ## [0.39.1] - 2023-04-07
 
