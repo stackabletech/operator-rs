@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `ClusterResources` implementation for `Job` ([#581]).
+- Helper methods to generate RBAC `ServiceAccount` and `ClusterRole` names ([#581]).
+
+[#581]: https://github.com/stackabletech/operator-rs/pull/581
+
 ## [0.40.0] - 2023-04-11
 
 ### Added
