@@ -13,7 +13,7 @@ pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     rbac_prefix: &str,
     labels: BTreeMap<String, String>,
 ) -> OperatorResult<(ServiceAccount, RoleBinding)> {
-    let sa_name = format!("{rbac_prefix}-sa");
+    let sa_name = service_account_name(rbac_prefix);
     let service_account = ServiceAccount {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(resource)
@@ -27,7 +27,7 @@ pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     let role_binding = RoleBinding {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(resource)
-            .name(format!("{rbac_prefix}-rolebinding"))
+            .name(role_binding_name(rbac_prefix))
             .ownerreference_from_resource(resource, None, Some(true))?
             .with_labels(labels)
             .build(),
@@ -47,9 +47,21 @@ pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     Ok((service_account, role_binding))
 }
 
+/// Generate the service account name.
+/// The `rbac_prefix` is meant to be the product name, for example: zookeeper, airflow, etc.
+pub fn service_account_name(rbac_prefix: &str) -> String {
+    format!("{rbac_prefix}-serviceaccount")
+}
+
+/// Generate the role binding name.
+/// The `rbac_prefix` is meant to be the product name, for example: zookeeper, airflow, etc.
+pub fn role_binding_name(rbac_prefix: &str) -> String {
+    format!("{rbac_prefix}-rolebinding")
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::commons::rbac::build_rbac_resources;
+    use crate::commons::rbac::{build_rbac_resources, role_binding_name, service_account_name};
     use kube::CustomResource;
     use schemars::{self, JsonSchema};
     use serde::{Deserialize, Serialize};
@@ -87,7 +99,7 @@ mod tests {
             build_rbac_resources(&cluster, RESOURCE_NAME, BTreeMap::new()).unwrap();
 
         assert_eq!(
-            Some(format!("{RESOURCE_NAME}-sa")),
+            Some(service_account_name(RESOURCE_NAME)),
             rbac_sa.metadata.name,
             "service account does not match"
         );
@@ -98,7 +110,7 @@ mod tests {
         );
 
         assert_eq!(
-            Some(format!("{RESOURCE_NAME}-rolebinding")),
+            Some(role_binding_name(RESOURCE_NAME)),
             rbac_rolebinding.metadata.name,
             "rolebinding does not match"
         );
