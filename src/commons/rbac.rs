@@ -61,7 +61,7 @@ pub fn role_binding_name(rbac_prefix: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::commons::rbac::build_rbac_resources;
+    use crate::commons::rbac::{build_rbac_resources, role_binding_name, service_account_name};
     use kube::CustomResource;
     use schemars::{self, JsonSchema};
     use serde::{Deserialize, Serialize};
@@ -99,7 +99,7 @@ mod tests {
             build_rbac_resources(&cluster, RESOURCE_NAME, BTreeMap::new()).unwrap();
 
         assert_eq!(
-            Some(format!("{RESOURCE_NAME}-sa")),
+            Some(service_account_name(RESOURCE_NAME)),
             rbac_sa.metadata.name,
             "service account does not match"
         );
@@ -110,7 +110,7 @@ mod tests {
         );
 
         assert_eq!(
-            Some(format!("{RESOURCE_NAME}-rolebinding")),
+            Some(role_binding_name(RESOURCE_NAME)),
             rbac_rolebinding.metadata.name,
             "rolebinding does not match"
         );
