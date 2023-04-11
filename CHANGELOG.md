@@ -4,11 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.39.1] - 2023-04-07
-
 ### Added
 
 - [BREAKING]: Added ownerreferences to `build_rbac_resources` ([#579]).
+
+## [0.39.1] - 2023-04-07
 
 ### Fixed
 
