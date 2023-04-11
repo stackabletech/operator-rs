@@ -3,13 +3,15 @@ use crate::error::OperatorResult;
 use crate::k8s_openapi::api::core::v1::ServiceAccount;
 use crate::k8s_openapi::api::rbac::v1::{RoleBinding, RoleRef, Subject};
 use kube::{Resource, ResourceExt};
+use std::collections::BTreeMap;
 
 /// Build RBAC objects for the product workloads.
 /// The `rbac_prefix` is meant to be the product name, for example: zookeeper, airflow, etc.
 /// and it is a assumed that a ClusterRole named `{rbac_prefix}-clusterrole` exists.
-pub fn build_rbac_resources<T: Resource<DynamicType = ()>>(
+pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     resource: &T,
     rbac_prefix: &str,
+    labels: BTreeMap<String, String>,
 ) -> OperatorResult<(ServiceAccount, RoleBinding)> {
     let sa_name = format!("{rbac_prefix}-sa");
     let service_account = ServiceAccount {
@@ -17,6 +19,7 @@ pub fn build_rbac_resources<T: Resource<DynamicType = ()>>(
             .name_and_namespace(resource)
             .name(sa_name.clone())
             .ownerreference_from_resource(resource, None, Some(true))?
+            .with_labels(labels.clone())
             .build(),
         ..ServiceAccount::default()
     };
@@ -26,6 +29,7 @@ pub fn build_rbac_resources<T: Resource<DynamicType = ()>>(
             .name_and_namespace(resource)
             .name(format!("{rbac_prefix}-rolebinding"))
             .ownerreference_from_resource(resource, None, Some(true))?
+            .with_labels(labels)
             .build(),
         role_ref: RoleRef {
             kind: "ClusterRole".to_string(),
@@ -49,6 +53,7 @@ mod tests {
     use kube::CustomResource;
     use schemars::{self, JsonSchema};
     use serde::{Deserialize, Serialize};
+    use std::collections::BTreeMap;
 
     const CLUSTER_NAME: &str = "simple-cluster";
     const RESOURCE_NAME: &str = "test-resource";
@@ -67,6 +72,7 @@ mod tests {
             metadata:
               name: {CLUSTER_NAME}
               namespace: {CLUSTER_NAME}-ns
+              uid: 12345
             spec:
               test: 100
             "
@@ -77,7 +83,8 @@ mod tests {
     #[test]
     fn test_build_rbac() {
         let cluster = build_test_resource();
-        let (rbac_sa, rbac_rolebinding) = build_rbac_resources(&cluster, RESOURCE_NAME);
+        let (rbac_sa, rbac_rolebinding) =
+            build_rbac_resources(&cluster, RESOURCE_NAME, BTreeMap::new()).unwrap();
 
         assert_eq!(
             Some(format!("{RESOURCE_NAME}-sa")),
