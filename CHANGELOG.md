@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ## [0.39.1] - 2023-04-07
 
+### Added
+
+- [BREAKING]: Added ownerreferences to `build_rbac_resources` ([#579]).
+
 ### Fixed
 
 - Fix the parsing of log4j and logback files in the Vector configuration, avoid
@@ -13,6 +17,7 @@ All notable changes to this project will be documented in this file.
   log events ([#577]).
 
 [#577]: https://github.com/stackabletech/operator-rs/pull/577
+[#579]: https://github.com/stackabletech/operator-rs/pull/579
 
 ## [0.39.0] - 2023-03-31
 
