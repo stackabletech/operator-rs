@@ -1,4 +1,5 @@
 use crate::builder::ObjectMetaBuilder;
+use crate::error::OperatorResult;
 use crate::k8s_openapi::api::core::v1::ServiceAccount;
 use crate::k8s_openapi::api::rbac::v1::{RoleBinding, RoleRef, Subject};
 use kube::{Resource, ResourceExt};
@@ -6,15 +7,16 @@ use kube::{Resource, ResourceExt};
 /// Build RBAC objects for the product workloads.
 /// The `rbac_prefix` is meant to be the product name, for example: zookeeper, airflow, etc.
 /// and it is a assumed that a ClusterRole named `{rbac_prefix}-clusterrole` exists.
-pub fn build_rbac_resources<T: Resource>(
+pub fn build_rbac_resources<T: Resource<DynamicType = ()>>(
     resource: &T,
     rbac_prefix: &str,
-) -> (ServiceAccount, RoleBinding) {
+) -> OperatorResult<(ServiceAccount, RoleBinding)> {
     let sa_name = format!("{rbac_prefix}-sa");
     let service_account = ServiceAccount {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(resource)
             .name(sa_name.clone())
+            .ownerreference_from_resource(resource, None, Some(true))?
             .build(),
         ..ServiceAccount::default()
     };
@@ -23,6 +25,7 @@ pub fn build_rbac_resources<T: Resource>(
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(resource)
             .name(format!("{rbac_prefix}-rolebinding"))
+            .ownerreference_from_resource(resource, None, Some(true))?
             .build(),
         role_ref: RoleRef {
             kind: "ClusterRole".to_string(),
@@ -37,7 +40,7 @@ pub fn build_rbac_resources<T: Resource>(
         }]),
     };
 
-    (service_account, role_binding)
+    Ok((service_account, role_binding))
 }
 
 #[cfg(test)]
