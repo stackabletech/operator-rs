@@ -13,7 +13,7 @@ pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     rbac_prefix: &str,
     labels: BTreeMap<String, String>,
 ) -> OperatorResult<(ServiceAccount, RoleBinding)> {
-    let sa_name = format!("{rbac_prefix}-sa");
+    let sa_name = service_account_name(rbac_prefix);
     let service_account = ServiceAccount {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(resource)
@@ -27,7 +27,7 @@ pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     let role_binding = RoleBinding {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(resource)
-            .name(format!("{rbac_prefix}-rolebinding"))
+            .name(role_binding_name(rbac_prefix))
             .ownerreference_from_resource(resource, None, Some(true))?
             .with_labels(labels)
             .build(),
@@ -45,6 +45,18 @@ pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     };
 
     Ok((service_account, role_binding))
+}
+
+/// Generate the service account name.
+/// The `rbac_prefix` is meant to be the product name, for example: zookeeper, airflow, etc.
+pub fn service_account_name(rbac_prefix: &str) -> String {
+    format!("{rbac_prefix}-serviceaccount")
+}
+
+/// Generate the role binding name.
+/// The `rbac_prefix` is meant to be the product name, for example: zookeeper, airflow, etc.
+pub fn role_binding_name(rbac_prefix: &str) -> String {
+    format!("{rbac_prefix}-rolebinding")
 }
 
 #[cfg(test)]
