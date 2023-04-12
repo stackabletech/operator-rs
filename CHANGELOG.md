@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.40.1] - 2023-04-12
+
 ### Added
 
 - `ClusterResources` implementation for `Job` ([#581]).
