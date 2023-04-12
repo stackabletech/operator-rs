@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Added clean up for `Job` to cluster resources `delete_orphaned_resources` ([#583]).
+
+[#583]: https://github.com/stackabletech/operator-rs/pull/583
+
 ## [0.40.1] - 2023-04-12
 
 ### Added
