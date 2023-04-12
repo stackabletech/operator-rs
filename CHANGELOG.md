@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.40.2] - 2023-04-12
+
 ### Fixed
 
 - Added clean up for `Job` to cluster resources `delete_orphaned_resources` ([#583]).
