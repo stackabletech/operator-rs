@@ -485,6 +485,7 @@ impl ClusterResources {
             self.delete_orphaned_resources_of_kind::<ServiceAccount>(client),
             self.delete_orphaned_resources_of_kind::<RoleBinding>(client),
             self.delete_orphaned_resources_of_kind::<Secret>(client),
+            self.delete_orphaned_resources_of_kind::<Job>(client),
         )?;
 
         Ok(())
