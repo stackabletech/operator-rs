@@ -13,9 +13,9 @@ clap = { version = "4.1.4", features = ["derive", "cargo", "env"] }
 const_format = "0.2.30"
 either = "1.8.1"
 futures = "0.3.26"
-json-patch = "0.3.0"
-k8s-openapi = { version = "0.17.0", default-features = false, features = ["schemars", "v1_26"] }
-kube = { version = "0.78.0", features = ["jsonpatch", "runtime", "derive"] }
+json-patch = "1.0.0"
+k8s-openapi = { version = "0.18.0", default-features = false, features = ["schemars", "v1_26"] }
+kube = { version = "0.82.2", features = ["jsonpatch", "runtime", "derive"] }
 lazy_static = "1.4.0"
 product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.4.0" }
 rand = "0.8.5"
@@ -37,7 +37,7 @@ stackable-operator-derive = { path = "stackable-operator-derive" }
 snafu = "0.7.4"
 
 [dev-dependencies]
-rstest = "0.16.0"
+rstest = "0.17.0"
 tempfile = "3.3.0"
 
 [workspace]
