@@ -67,19 +67,14 @@ pub struct ResolvedProductImage {
     pub pull_secrets: Option<Vec<LocalObjectReference>>,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename = "PascalCase")]
 #[derive(AsRefStr)]
 pub enum PullPolicy {
+    #[default]
     IfNotPresent,
     Always,
     Never,
-}
-
-impl Default for PullPolicy {
-    fn default() -> PullPolicy {
-        PullPolicy::IfNotPresent
-    }
 }
 
 impl ProductImage {
