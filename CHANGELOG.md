@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- kube: 0.78.0 -> 0.82.2 ([#589]).
+- k8s-openapi: 0.17.0 -> 0.18.0 ([#589]).
+
+[#589]: https://github.com/stackabletech/operator-rs/pull/589
+
 ## [0.40.2] - 2023-04-12
 
 ### Fixed

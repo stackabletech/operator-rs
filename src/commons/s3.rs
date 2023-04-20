@@ -205,19 +205,16 @@ impl S3ConnectionSpec {
     }
 }
 
-#[derive(strum::Display, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    strum::Display, Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize,
+)]
 #[strum(serialize_all = "PascalCase")]
 pub enum S3AccessStyle {
     /// Use path-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access>
     Path,
     /// Use as virtual hosted-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#virtual-hosted-style-access>
+    #[default]
     VirtualHosted,
-}
-
-impl Default for S3AccessStyle {
-    fn default() -> Self {
-        S3AccessStyle::VirtualHosted
-    }
 }
 
 #[cfg(test)]
