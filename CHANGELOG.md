@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.41.0] - 2023-04-20
+
 ### Changed
 
 - kube: 0.78.0 -> 0.82.2 ([#589]).
