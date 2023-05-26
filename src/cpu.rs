@@ -32,8 +32,8 @@ impl FromStr for CpuQuantity {
     type Err = Error;
 
     /// Only two formats can be parsed
-    /// - <usize>m
-    /// - <f32>
+    /// - {usize}m
+    /// - {f32}
     /// For the float, only milli-precision is supported.
     /// Using more precise values will trigger an error, and using any other
     /// unit than 'm' or None will also trigger an error.
