@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Made `StaticAuthenticationProvider` fields public ([#597]).
+- [INTERNALLY BREAKING]: Moved `StaticAuthenticationProvider`, `LdapAuthenticationProvider`, `TlsAuthenticationProvider` to its own module `authentication` ([#597]).
+
+[#597]: https://github.com/stackabletech/operator-rs/pull/597
+
 ## [0.41.0] - 2023-04-20
 
 ### Changed
