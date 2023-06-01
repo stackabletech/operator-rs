@@ -10,13 +10,13 @@
 //! * We store the credentials as plain text within the Secret. Some products need the credentials as plain text, others hashed.
 //!   To achieve a commons mechanism we need to store the credentials in plain text.
 //! * The secret gets mounted as files. The entrypoint of the product Pod collects them together in the format accepted by the product.
-//!   If hashing is need (e.g. Trino) it hashes as well. If it makes sense, parts are moved to operator-rs.
+//!   If hashing is needed (e.g. Trino) it hashes as well. If it makes sense, parts are moved to operator-rs.
 //! * Restart-controller is enabled and should work as normal.
 //! * OPTIONAL: Some product allow hot-reloading the credentials (e.g. Trino). In this case no restart should be done, the secret should update automatically.
 //!   Mounted Secrets are updated automatically. When a secret being already consumed in a volume is updated, projected keys are eventually updated as well.
 //!   The update time depends on the kubelet syncing period.
-//!   This would need additional functionality in restart controller to white- or blacklist certain volumes. Additionally, we would need a sidecar container that watches the
-//!   secret and continuously converts it to the required product format.
+//!   This would need additional functionality in restart controller to white- or blacklist certain volumes. Additionally, we would need a sidecar container that periodically
+//!   converts the secret contents to the required product format.
 //!  
 //! See <https://github.com/stackabletech/operator-rs/issues/494>
 use schemars::JsonSchema;
