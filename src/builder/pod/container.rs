@@ -5,8 +5,8 @@ use k8s_openapi::api::core::v1::{
 use std::fmt;
 
 use crate::{
-    commons::product_image_selection::ResolvedProductImage, error::Error,
-    validation::is_rfc_1123_label,
+    commons::product_image_selection::ResolvedProductImage, container_type::ContainerType,
+    error::Error, validation::is_rfc_1123_label,
 };
 
 /// A builder to build [`Container`] objects.
@@ -27,6 +27,10 @@ pub struct ContainerBuilder {
     liveness_probe: Option<Probe>,
     startup_probe: Option<Probe>,
     security_context: Option<SecurityContext>,
+
+    /// Type of container. This indicates wether the container is a main, init
+    /// or sidecar container. Defaults to [`ContainerType::Main`].
+    container_type: ContainerType,
 }
 
 impl ContainerBuilder {
@@ -223,14 +227,25 @@ impl ContainerBuilder {
         self
     }
 
+    /// Sets the container type.
+    pub fn container_type(&mut self, container_type: ContainerType) -> &mut Self {
+        self.container_type = container_type;
+        self
+    }
+
     pub fn build(&self) -> Container {
+        let resources = self
+            .resources
+            .clone()
+            .unwrap_or(ResourceRequirements::from(&self.container_type));
+
         Container {
             args: self.args.clone(),
             command: self.command.clone(),
             env: self.env.clone(),
             image: self.image.clone(),
             image_pull_policy: self.image_pull_policy.clone(),
-            resources: self.resources.clone(),
+            resources: Some(resources),
             name: self.name.clone(),
             ports: self.container_ports.clone(),
             volume_mounts: self.volume_mounts.clone(),
