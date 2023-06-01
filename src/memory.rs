@@ -12,7 +12,7 @@ use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 
 use crate::error::{Error, OperatorResult};
 use std::{
-    ops::{Add, Div, Mul, Sub},
+    ops::{Add, AddAssign, Div, Mul, Sub, SubAssign},
     str::FromStr,
 };
 
@@ -306,6 +306,12 @@ impl Sub<MemoryQuantity> for MemoryQuantity {
     }
 }
 
+impl SubAssign<MemoryQuantity> for MemoryQuantity {
+    fn sub_assign(&mut self, rhs: MemoryQuantity) {
+        self.value -= rhs.value;
+    }
+}
+
 impl Add<MemoryQuantity> for MemoryQuantity {
     type Output = MemoryQuantity;
 
@@ -314,6 +320,12 @@ impl Add<MemoryQuantity> for MemoryQuantity {
             value: self.value + rhs.scale_to(self.unit).value,
             unit: self.unit,
         }
+    }
+}
+
+impl AddAssign<MemoryQuantity> for MemoryQuantity {
+    fn add_assign(&mut self, rhs: MemoryQuantity) {
+        self.value += rhs.value;
     }
 }
 

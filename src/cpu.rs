@@ -1,4 +1,7 @@
-use std::str::FromStr;
+use std::{
+    ops::{Add, AddAssign},
+    str::FromStr,
+};
 
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 
@@ -78,6 +81,20 @@ impl TryFrom<Quantity> for CpuQuantity {
 
     fn try_from(q: Quantity) -> Result<Self, Self::Error> {
         Self::try_from(&q)
+    }
+}
+
+impl Add<CpuQuantity> for CpuQuantity {
+    type Output = CpuQuantity;
+
+    fn add(self, rhs: CpuQuantity) -> Self::Output {
+        CpuQuantity::from_millis(self.millis + rhs.millis)
+    }
+}
+
+impl AddAssign<CpuQuantity> for CpuQuantity {
+    fn add_assign(&mut self, rhs: CpuQuantity) {
+        self.millis += rhs.millis;
     }
 }
 

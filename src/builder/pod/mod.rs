@@ -171,11 +171,13 @@ impl PodBuilder {
         // or cause missing data, e.g. metrics or logs. Hence we don't apply any defaults for sidecars, product operators have to explicitly make a decision
         // on what the resource limits should be.
         if container.resources.is_none() {
+            let limits = Some(BTreeMap::from([
+                ("cpu".to_string(), Quantity("10m".to_string())),
+                ("memory".to_string(), Quantity("128Mi".to_string())),
+            ]));
             container.resources = Some(ResourceRequirements {
-                limits: Some(BTreeMap::from([
-                    ("cpu".to_string(), Quantity("10m".to_string())),
-                    ("memory".to_string(), Quantity("128Mi".to_string())),
-                ])),
+                limits: limits.clone(),
+                requests: limits,
                 ..ResourceRequirements::default()
             });
         }
