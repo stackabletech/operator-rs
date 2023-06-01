@@ -8,6 +8,7 @@ use crate::builder::meta::ObjectMetaBuilder;
 use crate::commons::affinity::StackableAffinity;
 use crate::commons::product_image_selection::ResolvedProductImage;
 use crate::error::{Error, OperatorResult};
+use crate::unwrap_or_return;
 
 use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
 use k8s_openapi::{
@@ -162,13 +163,19 @@ impl PodBuilder {
     }
 
     /// Add the given init container.
-    /// If no resources are set, we default to set a limit of 10m CPU and 128Mi Memory. No request is set.
+    /// If no resources are set, we set a default limit of 10m CPU and 128Mi
+    /// memory. Request values are set to the same values as the limits.
     pub fn add_init_container(&mut self, mut container: Container) -> &mut Self {
         // https://github.com/stackabletech/issues/issues/368:
-        // We only set default limits on *init* containers, as they normally simply copy stuff around, do some text replacement or - at a maximum - create a tls truststore.
-        // These operations should normally complete in <= 1s, so worst-case the Pod will take 1-2s longer to start up when the default is too low.
-        // However, things are different with sidecars, where e.g. a bundle builder, metric collector or a vector log sidecar can be overloaded and slow down operations
-        // or cause missing data, e.g. metrics or logs. Hence we don't apply any defaults for sidecars, product operators have to explicitly make a decision
+        // We only set default limits on *init* containers, as they normally
+        // simply copy stuff around, do some text replacement or, at a maximum,
+        //  create a tls truststore.These operations should normally complete
+        // in <= 1s, so worst-case the Pod will take 1-2s longer to start up
+        // when the default is too low. However, things are different with
+        // sidecars, where e.g. a bundle builder, metric collector or a vector
+        // log sidecar can be overloaded and slow down operations or cause
+        // missing data, e.g. metrics or logs. Hence we don't apply any defaults
+        // for sidecars, product operators have to explicitly make a decision
         // on what the resource limits should be.
         if container.resources.is_none() {
             let limits = Some(BTreeMap::from([
@@ -387,8 +394,57 @@ impl PodBuilder {
         self
     }
 
-    fn build_spec(&self) -> PodSpec {
-        PodSpec {
+    /// Consumes the Builder and returns a constructed [`Pod`]
+    pub fn build(&self) -> OperatorResult<Pod> {
+        Ok(Pod {
+            metadata: match self.metadata {
+                None => return Err(Error::MissingObjectKey { key: "metadata" }),
+                Some(ref metadata) => metadata.clone(),
+            },
+            spec: Some(self.build_spec()?),
+            status: self.status.clone(),
+        })
+    }
+
+    /// Returns a [`PodTemplateSpec`], usable for building a [`StatefulSet`](`k8s_openapi::api::apps::v1::StatefulSet`)
+    /// or [`Deployment`](`k8s_openapi::api::apps::v1::Deployment`)
+    pub fn build_template(&self) -> OperatorResult<PodTemplateSpec> {
+        if self.status.is_some() {
+            tracing::warn!("Tried building a PodTemplate for a PodBuilder with a status, the status will be ignored...");
+        }
+
+        Ok(PodTemplateSpec {
+            metadata: self.metadata.clone(),
+            spec: Some(self.build_spec()?),
+        })
+    }
+
+    /// Returns if any of the containers is missing the resource quota limit
+    /// for `key`. If so, [`Some(container_name)`] is returned, otherwise
+    /// [`None`].
+    fn is_missing_limit_for(&self, key: &str) -> Option<String> {
+        for container in &self.containers {
+            let rr = unwrap_or_return!(&container.resources, Some(container.name.clone()));
+            let limits = unwrap_or_return!(&rr.limits, Some(container.name.clone()));
+
+            if !limits.contains_key(key) {
+                return Some(container.name.clone());
+            }
+        }
+
+        None
+    }
+
+    fn build_spec(&self) -> OperatorResult<PodSpec> {
+        if let Some(name) = self.is_missing_limit_for("cpu") {
+            return Err(Error::MissingCpuResourceQuotaLimit(name));
+        }
+
+        if let Some(name) = self.is_missing_limit_for("memory") {
+            return Err(Error::MissingMemoryResourceQuotaLimit(name));
+        }
+
+        Ok(PodSpec {
             containers: self.containers.clone(),
             host_network: self.host_network,
             init_containers: self.init_containers.clone(),
@@ -410,31 +466,7 @@ impl PodBuilder {
             image_pull_secrets: self.image_pull_secrets.clone(),
             restart_policy: self.restart_policy.clone(),
             ..PodSpec::default()
-        }
-    }
-
-    /// Consumes the Builder and returns a constructed [`Pod`]
-    pub fn build(&self) -> OperatorResult<Pod> {
-        Ok(Pod {
-            metadata: match self.metadata {
-                None => return Err(Error::MissingObjectKey { key: "metadata" }),
-                Some(ref metadata) => metadata.clone(),
-            },
-            spec: Some(self.build_spec()),
-            status: self.status.clone(),
         })
-    }
-
-    /// Returns a [`PodTemplateSpec`], usable for building a [`StatefulSet`](`k8s_openapi::api::apps::v1::StatefulSet`)
-    /// or [`Deployment`](`k8s_openapi::api::apps::v1::Deployment`)
-    pub fn build_template(&self) -> PodTemplateSpec {
-        if self.status.is_some() {
-            tracing::warn!("Tried building a PodTemplate for a PodBuilder with a status, the status will be ignored...");
-        }
-        PodTemplateSpec {
-            metadata: self.metadata.clone(),
-            spec: Some(self.build_spec()),
-        }
     }
 }
 
