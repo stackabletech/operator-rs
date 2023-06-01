@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Set default resource limits on `PodBuilder::add_init_container` ([#599]).
+
+[#599]: https://github.com/stackabletech/operator-rs/pull/599
+
 ## [0.41.0] - 2023-04-20
 
 ### Changed

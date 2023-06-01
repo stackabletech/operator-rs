@@ -10,13 +10,13 @@ use crate::commons::product_image_selection::ResolvedProductImage;
 use crate::error::{Error, OperatorResult};
 
 use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
-use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::{
     api::core::v1::{
         Affinity, Container, LocalObjectReference, NodeAffinity, Pod, PodAffinity, PodAntiAffinity,
-        PodCondition, PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec, Toleration, Volume,
+        PodCondition, PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec,
+        ResourceRequirements, Toleration, Volume,
     },
-    apimachinery::pkg::apis::meta::v1::ObjectMeta,
+    apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
 };
 
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
@@ -161,7 +161,25 @@ impl PodBuilder {
         self
     }
 
-    pub fn add_init_container(&mut self, container: Container) -> &mut Self {
+    /// Add the given init container.
+    /// If no resources are set, we default to set a limit of 10m CPU and 128Mi Memory. No request is set.
+    pub fn add_init_container(&mut self, mut container: Container) -> &mut Self {
+        // https://github.com/stackabletech/issues/issues/368:
+        // We only set default limits on *init* containers, as they normally simply copy stuff around, do some text replacement or - at a maximum - create a tls truststore.
+        // These operations should normally complete in <= 1s, so worst-case the Pod will take 1-2s longer to start up when the default is too low.
+        // However, things are different with sidecars, where e.g. a bundle builder, metric collector or a vector log sidecar can be overloaded and slow down operations
+        // or cause missing data, e.g. metrics or logs. Hence we don't apply any defaults for sidecars, product operators have to explicitly make a decision
+        // on what the resource limits should be.
+        if container.resources.is_none() {
+            container.resources = Some(ResourceRequirements {
+                limits: Some(BTreeMap::from([
+                    ("cpu".to_string(), Quantity("10m".to_string())),
+                    ("memory".to_string(), Quantity("128Mi".to_string())),
+                ])),
+                ..ResourceRequirements::default()
+            });
+        }
+
         self.init_containers
             .get_or_insert_with(Vec::new)
             .push(container);
