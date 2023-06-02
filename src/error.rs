@@ -111,6 +111,12 @@ pub enum Error {
         container_name: String,
         violation: String,
     },
+
+    #[error("container {container_name} is invalid, as it is best practice to set resource limits. It is missing a limit for {resource}")]
+    MissingContainerResourceLimit {
+        container_name: String,
+        resource: String,
+    },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;

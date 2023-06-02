@@ -387,8 +387,11 @@ impl PodBuilder {
         self
     }
 
-    fn build_spec(&self) -> PodSpec {
-        PodSpec {
+    fn build_spec(&self) -> OperatorResult<PodSpec> {
+        self.check_container_resource_limits("cpu")?;
+        self.check_container_resource_limits("memory")?;
+
+        Ok(PodSpec {
             containers: self.containers.clone(),
             host_network: self.host_network,
             init_containers: self.init_containers.clone(),
@@ -410,7 +413,7 @@ impl PodBuilder {
             image_pull_secrets: self.image_pull_secrets.clone(),
             restart_policy: self.restart_policy.clone(),
             ..PodSpec::default()
-        }
+        })
     }
 
     /// Consumes the Builder and returns a constructed [`Pod`]
@@ -420,21 +423,41 @@ impl PodBuilder {
                 None => return Err(Error::MissingObjectKey { key: "metadata" }),
                 Some(ref metadata) => metadata.clone(),
             },
-            spec: Some(self.build_spec()),
+            spec: Some(self.build_spec()?),
             status: self.status.clone(),
         })
     }
 
     /// Returns a [`PodTemplateSpec`], usable for building a [`StatefulSet`](`k8s_openapi::api::apps::v1::StatefulSet`)
     /// or [`Deployment`](`k8s_openapi::api::apps::v1::Deployment`)
-    pub fn build_template(&self) -> PodTemplateSpec {
+    pub fn build_template(&self) -> OperatorResult<PodTemplateSpec> {
         if self.status.is_some() {
             tracing::warn!("Tried building a PodTemplate for a PodBuilder with a status, the status will be ignored...");
         }
-        PodTemplateSpec {
+        Ok(PodTemplateSpec {
             metadata: self.metadata.clone(),
-            spec: Some(self.build_spec()),
+            spec: Some(self.build_spec()?),
+        })
+    }
+
+    /// Returns if any of the containers is missing the resource limit for `resource`.
+    /// If so, [`Err::`] is returned, otherwise [`None`].
+    fn check_container_resource_limits(&self, resource: &str) -> OperatorResult<()> {
+        for container in &self.containers {
+            let limits = container
+                .resources
+                .as_ref()
+                .and_then(|resources| resources.limits.as_ref());
+
+            if limits.map(|limits| limits.get(resource)).is_none() {
+                return Err(Error::MissingContainerResourceLimit {
+                    container_name: container.name.clone(),
+                    resource: resource.to_string(),
+                });
+            }
         }
+
+        Ok(())
     }
 }
 
