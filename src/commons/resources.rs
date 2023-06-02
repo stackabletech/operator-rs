@@ -74,13 +74,14 @@ use crate::config::{
 };
 use derivative::Derivative;
 use k8s_openapi::api::core::v1::{
-    PersistentVolumeClaim, PersistentVolumeClaimSpec, ResourceRequirements,
+    Container, PersistentVolumeClaim, PersistentVolumeClaimSpec, ResourceRequirements,
 };
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{LabelSelector, ObjectMeta};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt::Debug};
+use strum::Display;
 
 // This struct allows specifying memory and cpu limits as well as generically adding storage
 // settings.
@@ -315,6 +316,107 @@ impl<T, K> Into<ResourceRequirements> for Resources<T, K> {
             // the `DynamicResourceAllocation` feature gate.
             claims: None,
         }
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("missing {resource_key} resource {resource_policy} for container {container_name}")]
+pub struct ResourceRequirementsPolicyError {
+    resource_policy: ResourceRequirementsPolicy,
+    container_name: String,
+    resource_key: String,
+}
+
+/// [`ResourceRequirementsPolicy`] dsscribes the available resource requirement
+/// policies. The user can set limits, requests and claims. This enum makes it
+/// possible to check if containers set one or more of these policies.
+#[derive(Copy, Clone, Debug, Display)]
+#[strum(serialize_all = "lowercase")]
+pub enum ResourceRequirementsPolicy {
+    Limits,
+    Requests,
+    Claims,
+}
+
+pub trait ResourceRequirementsPolicyExt {
+    fn check_policy_for_resource(
+        &self,
+        policy: ResourceRequirementsPolicy,
+        resource: &str,
+    ) -> Result<(), ResourceRequirementsPolicyError>;
+
+    fn check_policies_for_resource(
+        &self,
+        policies: Vec<ResourceRequirementsPolicy>,
+        resource: &str,
+    ) -> Result<(), ResourceRequirementsPolicyError>;
+}
+
+impl ResourceRequirementsPolicyExt for Container {
+    fn check_policy_for_resource(
+        &self,
+        policy: ResourceRequirementsPolicy,
+        resource: &str,
+    ) -> Result<(), ResourceRequirementsPolicyError> {
+        let rr = self
+            .resources
+            .as_ref()
+            .ok_or(ResourceRequirementsPolicyError {
+                container_name: self.name.clone(),
+                resource_key: resource.into(),
+                resource_policy: policy,
+            })?;
+
+        match policy {
+            ResourceRequirementsPolicy::Limits => {
+                let limits = rr.limits.as_ref().ok_or(ResourceRequirementsPolicyError {
+                    container_name: self.name.clone(),
+                    resource_key: resource.into(),
+                    resource_policy: policy,
+                })?;
+
+                if !limits.contains_key(resource) {
+                    return Err(ResourceRequirementsPolicyError {
+                        container_name: self.name.clone(),
+                        resource_key: resource.into(),
+                        resource_policy: policy,
+                    });
+                }
+            }
+            ResourceRequirementsPolicy::Requests => {
+                let requests = rr
+                    .requests
+                    .as_ref()
+                    .ok_or(ResourceRequirementsPolicyError {
+                        container_name: self.name.clone(),
+                        resource_key: resource.into(),
+                        resource_policy: policy,
+                    })?;
+
+                if !requests.contains_key(resource) {
+                    return Err(ResourceRequirementsPolicyError {
+                        container_name: self.name.clone(),
+                        resource_key: resource.into(),
+                        resource_policy: policy,
+                    });
+                }
+            }
+            ResourceRequirementsPolicy::Claims => todo!(),
+        }
+
+        Ok(())
+    }
+
+    fn check_policies_for_resource(
+        &self,
+        policies: Vec<ResourceRequirementsPolicy>,
+        resource: &str,
+    ) -> Result<(), ResourceRequirementsPolicyError> {
+        for policy in policies {
+            self.check_policy_for_resource(policy, resource)?
+        }
+
+        Ok(())
     }
 }
 

@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use crate::builder::meta::ObjectMetaBuilder;
 use crate::commons::affinity::StackableAffinity;
 use crate::commons::product_image_selection::ResolvedProductImage;
+use crate::commons::resources::{ResourceRequirementsPolicy, ResourceRequirementsPolicyExt};
 use crate::error::{Error, OperatorResult};
 
 use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
@@ -456,44 +457,24 @@ impl PodBuilder {
         })
     }
 
-    /// Returns if any of the containers is missing the resource limit for
-    /// `resource_key`. If so, [Error::MissingResourceQuotaPolicy] is returned,
-    /// otherwise [`Ok(())`].
-    fn check_container_resource_limits_for(&self, resource_key: &str) -> OperatorResult<()> {
+    /// Checks if any of the containers is missing one resource requirements
+    /// `policy` for `resource`. If so, [Error::MissingResourceRequirementPolicy]
+    /// is returned, otherwise [`Ok(())`].
+    fn check_container_resource_policy(
+        &self,
+        policy: ResourceRequirementsPolicy,
+        resource: &str,
+    ) -> OperatorResult<()> {
         for container in &self.containers {
-            let rr = container
-                .resources
-                .as_ref()
-                .ok_or(Error::MissingResourceQuotaPolicy {
-                    container_name: container.name.clone(),
-                    resource_key: resource_key.into(),
-                    resource_policy: "limits".into(),
-                })?;
-
-            let limits = rr
-                .limits
-                .as_ref()
-                .ok_or(Error::MissingResourceQuotaPolicy {
-                    container_name: container.name.clone(),
-                    resource_key: resource_key.into(),
-                    resource_policy: "limits".into(),
-                })?;
-
-            if !limits.contains_key(resource_key) {
-                return Err(Error::MissingResourceQuotaPolicy {
-                    container_name: container.name.clone(),
-                    resource_key: resource_key.into(),
-                    resource_policy: "limits".into(),
-                });
-            }
+            container.check_policy_for_resource(policy, resource)?
         }
 
         Ok(())
     }
 
     fn build_spec(&self) -> OperatorResult<PodSpec> {
-        self.check_container_resource_limits_for("cpu")?;
-        self.check_container_resource_limits_for("memory")?;
+        self.check_container_resource_policy(ResourceRequirementsPolicy::Limits, "cpu")?;
+        self.check_container_resource_policy(ResourceRequirementsPolicy::Limits, "memory")?;
 
         Ok(PodSpec {
             containers: self.containers.clone(),
