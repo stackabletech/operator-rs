@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Set default resource limits on `PodBuilder::add_init_container` ([#599]).
+- BREAKING: `PodBuilder` now checks that all containers have a cpu and memory limit set. If not, it returns an Error.
+  ([#599]).
 
 [#599]: https://github.com/stackabletech/operator-rs/pull/599
 

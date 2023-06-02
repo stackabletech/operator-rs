@@ -419,30 +419,44 @@ impl PodBuilder {
         })
     }
 
-    /// Returns if any of the containers is missing the resource quota limit
-    /// for `key`. If so, [`Some(container_name)`] is returned, otherwise
-    /// [`None`].
-    fn is_missing_limit_for(&self, key: &str) -> Option<String> {
+    /// Returns if any of the containers is missing the resource limit for
+    /// `resource_key`. If so, [Error::MissingResourceQuotaPolicy] is returned,
+    /// otherwise [`Ok(())`].
+    fn check_container_resource_limits_for(&self, resource_key: &str) -> OperatorResult<()> {
         for container in &self.containers {
-            let rr = unwrap_or_return!(&container.resources, Some(container.name.clone()));
-            let limits = unwrap_or_return!(&rr.limits, Some(container.name.clone()));
+            let rr = container
+                .resources
+                .as_ref()
+                .ok_or(Error::MissingResourceQuotaPolicy {
+                    container_name: container.name.clone(),
+                    resource_key: resource_key.into(),
+                    resource_policy: "limits".into(),
+                })?;
 
-            if !limits.contains_key(key) {
-                return Some(container.name.clone());
+            let limits = rr
+                .limits
+                .as_ref()
+                .ok_or(Error::MissingResourceQuotaPolicy {
+                    container_name: container.name.clone(),
+                    resource_key: resource_key.into(),
+                    resource_policy: "limits".into(),
+                })?;
+
+            if !limits.contains_key(resource_key) {
+                return Err(Error::MissingResourceQuotaPolicy {
+                    container_name: container.name.clone(),
+                    resource_key: resource_key.into(),
+                    resource_policy: "limits".into(),
+                });
             }
         }
 
-        None
+        Ok(())
     }
 
     fn build_spec(&self) -> OperatorResult<PodSpec> {
-        if let Some(name) = self.is_missing_limit_for("cpu") {
-            return Err(Error::MissingCpuResourceQuotaLimit(name));
-        }
-
-        if let Some(name) = self.is_missing_limit_for("memory") {
-            return Err(Error::MissingMemoryResourceQuotaLimit(name));
-        }
+        self.check_container_resource_limits_for("cpu")?;
+        self.check_container_resource_limits_for("memory")?;
 
         Ok(PodSpec {
             containers: self.containers.clone(),

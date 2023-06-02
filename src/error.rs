@@ -112,11 +112,12 @@ pub enum Error {
         violation: String,
     },
 
-    #[error("missing CPU resource quota limit for container {0}")]
-    MissingCpuResourceQuotaLimit(String),
-
-    #[error("missing memory resource quota limit for container {0}")]
-    MissingMemoryResourceQuotaLimit(String),
+    #[error("missing {resource_key} resource {resource_policy} for container {container_name}")]
+    MissingResourceQuotaPolicy {
+        resource_policy: String,
+        container_name: String,
+        resource_key: String,
+    },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
