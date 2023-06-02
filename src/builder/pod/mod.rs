@@ -242,12 +242,27 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::PodBuilder;
     /// # use stackable_operator::builder::ContainerBuilder;
+    /// # use k8s_openapi::{
+    ///     api::core::v1::ResourceRequirements,
+    ///     apimachinery::pkg::api::resource::Quantity
+    /// };
+    ///
     /// let pod = PodBuilder::new()
     ///     .metadata_default()
     ///     .add_container(
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
+    ///             .resources(ResourceRequirements {
+    ///                 limits: Some(
+    ///                     [
+    ///                         ("cpu".into(), Quantity("1".into())),
+    ///                         ("memory".into(), Quantity("128Mi".into())),
+    ///                     ]
+    ///                     .into(),
+    ///                 ),
+    ///                 ..Default::default()
+    ///             })
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_class("listener", "nodeport")
@@ -262,6 +277,10 @@ impl PodBuilder {
     ///   affinity: {}
     ///   containers:
     ///   - name: container
+    ///     resources:
+    ///       limits:
+    ///         cpu: '1'
+    ///         memory: 128Mi
     ///     volumeMounts:
     ///     - mountPath: /path/to/volume
     ///       name: listener
@@ -308,12 +327,27 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::PodBuilder;
     /// # use stackable_operator::builder::ContainerBuilder;
+    /// # use k8s_openapi::{
+    ///     api::core::v1::ResourceRequirements,
+    ///     apimachinery::pkg::api::resource::Quantity
+    /// };
+    ///
     /// let pod = PodBuilder::new()
     ///     .metadata_default()
     ///     .add_container(
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
+    ///             .resources(ResourceRequirements {
+    ///                 limits: Some(
+    ///                     [
+    ///                         ("cpu".into(), Quantity("1".into())),
+    ///                         ("memory".into(), Quantity("128Mi".into())),
+    ///                     ]
+    ///                     .into(),
+    ///                 ),
+    ///                 ..Default::default()
+    ///             })
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener")
@@ -328,6 +362,10 @@ impl PodBuilder {
     ///   affinity: {}
     ///   containers:
     ///   - name: container
+    ///     resources:
+    ///       limits:
+    ///         cpu: '1'
+    ///         memory: 128Mi
     ///     volumeMounts:
     ///     - mountPath: /path/to/volume
     ///       name: listener
@@ -503,6 +541,16 @@ mod tests {
         ContainerBuilder::new("container")
             .expect("ContainerBuilder not created")
             .image("private-company/product:2.4.14")
+            .resources(ResourceRequirements {
+                limits: Some(
+                    [
+                        ("cpu".into(), Quantity("1".into())),
+                        ("memory".into(), Quantity("128Mi".into())),
+                    ]
+                    .into(),
+                ),
+                ..Default::default()
+            })
             .build()
     }
 
