@@ -436,7 +436,7 @@ mod tests {
     fn dummy_container() -> Container {
         ContainerBuilder::new("container")
             .expect("ContainerBuilder not created")
-            .image("private-company/product:2.4.14")
+            .with_image("private-company/product:2.4.14")
             .build()
     }
 
@@ -492,7 +492,7 @@ mod tests {
     fn test_pod_builder(pod_affinity: PodAffinity, dummy_container: Container) {
         let init_container = ContainerBuilder::new("init-containername")
             .expect("ContainerBuilder not created")
-            .image("stackable/zookeeper:2.4.14")
+            .with_image("stackable/zookeeper:2.4.14")
             .build();
 
         let pod = PodBuilder::new()

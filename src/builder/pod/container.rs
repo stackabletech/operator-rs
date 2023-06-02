@@ -5,9 +5,28 @@ use k8s_openapi::api::core::v1::{
 use std::fmt;
 
 use crate::{
-    commons::product_image_selection::ResolvedProductImage, error::Error,
+    commons::{container_type::ContainerType, product_image_selection::ResolvedProductImage},
+    error::{Error, OperatorResult},
     validation::is_rfc_1123_label,
 };
+
+pub struct TypedContainer {
+    pub(crate) container_type: ContainerType,
+    pub(crate) container: Container,
+}
+
+impl TypedContainer {
+    pub fn new(container: Container, container_type: ContainerType) -> Self {
+        Self {
+            container_type,
+            container,
+        }
+    }
+
+    pub fn to_container(&self) -> OperatorResult<Container> {
+        todo!()
+    }
+}
 
 /// A builder to build [`Container`] objects.
 ///
@@ -27,23 +46,25 @@ pub struct ContainerBuilder {
     liveness_probe: Option<Probe>,
     startup_probe: Option<Probe>,
     security_context: Option<SecurityContext>,
+    container_type: ContainerType,
 }
 
 impl ContainerBuilder {
-    pub fn new(name: &str) -> Result<Self, Error> {
+    pub fn new(name: &str) -> OperatorResult<Self> {
         Self::validate_container_name(name)?;
+
         Ok(ContainerBuilder {
             name: name.to_string(),
             ..ContainerBuilder::default()
         })
     }
 
-    pub fn image(&mut self, image: impl Into<String>) -> &mut Self {
+    pub fn with_image(&mut self, image: impl Into<String>) -> &mut Self {
         self.image = Some(image.into());
         self
     }
 
-    pub fn image_pull_policy(&mut self, image_pull_policy: impl Into<String>) -> &mut Self {
+    pub fn with_image_pull_policy(&mut self, image_pull_policy: impl Into<String>) -> &mut Self {
         self.image_pull_policy = Some(image_pull_policy.into());
         self
     }
@@ -51,7 +72,10 @@ impl ContainerBuilder {
     /// Adds the following container attributes from a [ResolvedProductImage]:
     /// * image
     /// * image_pull_policy
-    pub fn image_from_product_image(&mut self, product_image: &ResolvedProductImage) -> &mut Self {
+    pub fn with_image_from_product_image(
+        &mut self,
+        product_image: &ResolvedProductImage,
+    ) -> &mut Self {
         self.image = Some(product_image.image.clone());
         self.image_pull_policy = Some(product_image.image_pull_policy.clone());
         self
@@ -145,12 +169,12 @@ impl ContainerBuilder {
         self
     }
 
-    pub fn command(&mut self, command: Vec<String>) -> &mut Self {
+    pub fn with_command(&mut self, command: Vec<String>) -> &mut Self {
         self.command = Some(command);
         self
     }
 
-    pub fn args(&mut self, args: Vec<String>) -> &mut Self {
+    pub fn with_args(&mut self, args: Vec<String>) -> &mut Self {
         self.args = Some(args);
         self
     }
@@ -173,7 +197,7 @@ impl ContainerBuilder {
         self
     }
 
-    pub fn resources(&mut self, resources: ResourceRequirements) -> &mut Self {
+    pub fn with_resources(&mut self, resources: ResourceRequirements) -> &mut Self {
         self.resources = Some(resources);
         self
     }
@@ -203,23 +227,28 @@ impl ContainerBuilder {
         self
     }
 
-    pub fn readiness_probe(&mut self, probe: Probe) -> &mut Self {
+    pub fn with_readiness_probe(&mut self, probe: Probe) -> &mut Self {
         self.readiness_probe = Some(probe);
         self
     }
 
-    pub fn liveness_probe(&mut self, probe: Probe) -> &mut Self {
+    pub fn with_liveness_probe(&mut self, probe: Probe) -> &mut Self {
         self.liveness_probe = Some(probe);
         self
     }
 
-    pub fn startup_probe(&mut self, probe: Probe) -> &mut Self {
+    pub fn with_startup_probe(&mut self, probe: Probe) -> &mut Self {
         self.startup_probe = Some(probe);
         self
     }
 
-    pub fn security_context(&mut self, context: SecurityContext) -> &mut Self {
+    pub fn with_security_context(&mut self, context: SecurityContext) -> &mut Self {
         self.security_context = Some(context);
+        self
+    }
+
+    pub fn with_container_type(&mut self, container_type: ContainerType) -> &mut Self {
+        self.container_type = container_type;
         self
     }
 
@@ -369,7 +398,7 @@ mod tests {
             .add_env_var_from_secret("envFromSecret", "my-secret", "my-key")
             .add_volume_mount("configmap", "/mount")
             .add_container_port(container_port_name, container_port)
-            .resources(resources.clone())
+            .with_resources(resources.clone())
             .add_container_ports(vec![ContainerPortBuilder::new(container_port_1)
                 .name(container_port_name_1)
                 .build()])

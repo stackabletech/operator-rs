@@ -981,9 +981,9 @@ pub fn vector_container(
 
     ContainerBuilder::new("vector")
         .unwrap()
-        .image_from_product_image(image)
-        .command(vec!["bash".into(), "-c".into()])
-        .args(vec![
+        .with_image_from_product_image(image)
+        .with_command(vec!["bash".into(), "-c".into()])
+        .with_args(vec![
             format!("\
 /stackable/vector/bin/vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$! && \
 if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then \
