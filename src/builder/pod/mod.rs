@@ -8,7 +8,6 @@ use crate::builder::meta::ObjectMetaBuilder;
 use crate::commons::affinity::StackableAffinity;
 use crate::commons::product_image_selection::ResolvedProductImage;
 use crate::error::{Error, OperatorResult};
-use crate::unwrap_or_return;
 
 use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
 use k8s_openapi::{
