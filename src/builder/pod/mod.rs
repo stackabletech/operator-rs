@@ -178,6 +178,16 @@ impl PodBuilder {
         // missing data, e.g. metrics or logs. Hence we don't apply any defaults
         // for sidecars, product operators have to explicitly make a decision
         // on what the resource limits should be.
+
+        // TODO (Techassi): These defaults should not live here and should
+        // instead be set inside the container builder. Having container types
+        // should greatly simplify setting the default resource requirements.
+        // This method should instead be "as dumb" as it can be and should
+        // simply add the provided container to the internal vector. The problem
+        // with the solution down below is that wie side-step the common
+        // interface provided by the `with_resource`, `with_cpu` and
+        // `with_memory` methods of the builder.
+
         if container.resources.is_none() {
             let limits = Some(BTreeMap::from([
                 ("cpu".to_string(), Quantity("10m".to_string())),

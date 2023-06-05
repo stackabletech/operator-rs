@@ -308,9 +308,9 @@ impl ContainerBuilder {
                 }
             },
             None => {
-                // If the resources filed was unset (None), we simply create a
+                // If the resources field was unset (None), we simply create a
                 // default ResourceRequirements struct and set it accordingly.
-                // Further, we recursively calls self.with_resource_quantity to
+                // Further, we recursively call self.with_resource_quantity to
                 // set the requested resource limit or request quantity.
 
                 self.resources = Some(ResourceRequirements::default());
