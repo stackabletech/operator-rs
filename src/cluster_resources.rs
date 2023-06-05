@@ -58,6 +58,10 @@ pub trait ClusterResource:
     fn maybe_mutate(self, _strategy: &ClusterResourceApplyStrategy) -> Self {
         self
     }
+
+    fn pod_spec(self) -> Option<PodSpec> {
+        None
+    }
 }
 
 /// The [`ClusterResourceApplyStrategy`] defines how to handle resources applied by the operators.
@@ -155,7 +159,13 @@ impl ClusterResource for Service {}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
 impl ClusterResource for Secret {}
-impl ClusterResource for Job {}
+
+impl ClusterResource for Job {
+    fn pod_spec(self) -> Option<PodSpec> {
+        self.spec.unwrap_or_default().template.spec
+    }
+}
+
 impl ClusterResource for StatefulSet {
     fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
         match strategy {
@@ -171,7 +181,12 @@ impl ClusterResource for StatefulSet {
             | ClusterResourceApplyStrategy::NoApply => self,
         }
     }
+
+    fn pod_spec(self) -> Option<PodSpec> {
+        self.spec.unwrap_or_default().template.spec
+    }
 }
+
 impl ClusterResource for DaemonSet {
     fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
         match strategy {
@@ -205,6 +220,10 @@ impl ClusterResource for DaemonSet {
             | ClusterResourceApplyStrategy::ReconciliationPaused
             | ClusterResourceApplyStrategy::NoApply => self,
         }
+    }
+
+    fn pod_spec(self) -> Option<PodSpec> {
+        self.spec.unwrap_or_default().template.spec
     }
 }
 
@@ -408,9 +427,11 @@ impl ClusterResources {
         client: &Client,
         resource: T,
     ) -> OperatorResult<T> {
-        ClusterResources::check_label(resource.labels(), APP_INSTANCE_LABEL, &self.app_instance)?;
-        ClusterResources::check_label(resource.labels(), APP_MANAGED_BY_LABEL, &self.manager)?;
-        ClusterResources::check_label(resource.labels(), APP_NAME_LABEL, &self.app_name)?;
+        Self::check_labels(
+            resource.labels(),
+            &[APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL],
+            &[&self.app_instance, &self.manager, &self.app_name],
+        )?;
 
         let mutated = resource.maybe_mutate(&self.apply_strategy);
 
@@ -428,7 +449,8 @@ impl ClusterResources {
         Ok(patched_resource)
     }
 
-    /// Checks that the given `labels` contain the given `label` with the given `expected_content`.
+    /// Checks that the given `labels` contain the given `expected_label` with
+    /// the given `expected_content`.
     ///
     /// # Arguments
     ///
@@ -438,28 +460,46 @@ impl ClusterResources {
     ///
     /// # Errors
     ///
-    /// If `labels` does not contain `label` then an `Error::MissingLabel` is returned.
+    /// If `labels` does not contain `label` then an [`Error::MissingLabel`]
+    /// is returned.
     ///
-    /// If `labels` contains the given `label` but not with the `expected_content` then an
-    /// `Error::UnexpectedLabelContent` is returned
+    /// If `labels` contains the given `label` but not with the
+    /// `expected_content` then an [`Error::UnexpectedLabelContent`]
+    /// is returned.
     fn check_label(
         labels: &BTreeMap<String, String>,
-        label: &'static str,
+        expected_label: &'static str,
         expected_content: &str,
     ) -> OperatorResult<()> {
-        if let Some(actual_content) = labels.get(label) {
+        if let Some(actual_content) = labels.get(expected_label) {
             if expected_content == actual_content {
                 Ok(())
             } else {
                 Err(Error::UnexpectedLabelContent {
-                    label,
+                    label: expected_label,
                     expected_content: expected_content.into(),
                     actual_content: actual_content.into(),
                 })
             }
         } else {
-            Err(Error::MissingLabel { label })
+            Err(Error::MissingLabel {
+                label: expected_label,
+            })
         }
+    }
+
+    /// Checks that the given `labels` contain all given `expected_labels` with
+    /// the given `expected_contents`.
+    fn check_labels(
+        labels: &BTreeMap<String, String>,
+        expected_labels: &[&'static str],
+        expected_contents: &[&str],
+    ) -> OperatorResult<()> {
+        for (label, content) in expected_labels.iter().zip(expected_contents) {
+            Self::check_label(labels, label, content)?;
+        }
+
+        Ok(())
     }
 
     /// Finalizes the cluster creation and deletes all orphaned resources.
