@@ -320,9 +320,9 @@ impl<T, K> Into<ResourceRequirements> for Resources<T, K> {
 }
 
 #[derive(Debug, thiserror::Error)]
-#[error("missing {resource_key} resource {resource_policy} for container {container_name}")]
+#[error("missing {resource_key} resource {resource_type} for container {container_name}")]
 pub struct ResourceRequirementsTypeError {
-    resource_policy: ResourceRequirementsType,
+    resource_type: ResourceRequirementsType,
     container_name: String,
     resource_key: String,
 }
@@ -342,24 +342,37 @@ pub enum ResourceRequirementsType {
     // Claims,
 }
 
+/// This trait allows implementing types to check if a certain
+/// [`ResourceRequirementsType`] is set for a resource. This for example makes
+/// it possible to check if a CPU limit and a memory request is set.
 pub trait ResourceRequirementsTypeExt {
-    fn check_policy_for_resource(
+    /// Checks if one specific [`ResourceRequirementsType`] for a `resource` is
+    /// set. If not, an error is returned.
+    fn check_resource_type(
         &self,
-        policy: ResourceRequirementsType,
+        rr_type: ResourceRequirementsType,
         resource: &str,
     ) -> Result<(), ResourceRequirementsTypeError>;
 
-    fn check_policies_for_resource(
+    /// Checks if all provided [`ResourceRequirementsType`]s for a `resource`
+    /// are set. If not, an error is returned.
+    fn check_resource_types(
         &self,
-        policies: Vec<ResourceRequirementsType>,
+        rr_types: Vec<ResourceRequirementsType>,
         resource: &str,
-    ) -> Result<(), ResourceRequirementsTypeError>;
+    ) -> Result<(), ResourceRequirementsTypeError> {
+        for rr_type in rr_types {
+            self.check_resource_type(rr_type, resource)?;
+        }
+
+        Ok(())
+    }
 }
 
 impl ResourceRequirementsTypeExt for Container {
-    fn check_policy_for_resource(
+    fn check_resource_type(
         &self,
-        policy: ResourceRequirementsType,
+        rr_type: ResourceRequirementsType,
         resource: &str,
     ) -> Result<(), ResourceRequirementsTypeError> {
         let rr = self
@@ -368,22 +381,22 @@ impl ResourceRequirementsTypeExt for Container {
             .ok_or(ResourceRequirementsTypeError {
                 container_name: self.name.clone(),
                 resource_key: resource.into(),
-                resource_policy: policy,
+                resource_type: rr_type,
             })?;
 
-        match policy {
+        match rr_type {
             ResourceRequirementsType::Limits => {
                 let limits = rr.limits.as_ref().ok_or(ResourceRequirementsTypeError {
                     container_name: self.name.clone(),
                     resource_key: resource.into(),
-                    resource_policy: policy,
+                    resource_type: rr_type,
                 })?;
 
                 if !limits.contains_key(resource) {
                     return Err(ResourceRequirementsTypeError {
                         container_name: self.name.clone(),
                         resource_key: resource.into(),
-                        resource_policy: policy,
+                        resource_type: rr_type,
                     });
                 }
             }
@@ -391,29 +404,17 @@ impl ResourceRequirementsTypeExt for Container {
                 let requests = rr.requests.as_ref().ok_or(ResourceRequirementsTypeError {
                     container_name: self.name.clone(),
                     resource_key: resource.into(),
-                    resource_policy: policy,
+                    resource_type: rr_type,
                 })?;
 
                 if !requests.contains_key(resource) {
                     return Err(ResourceRequirementsTypeError {
                         container_name: self.name.clone(),
                         resource_key: resource.into(),
-                        resource_policy: policy,
+                        resource_type: rr_type,
                     });
                 }
             }
-        }
-
-        Ok(())
-    }
-
-    fn check_policies_for_resource(
-        &self,
-        policies: Vec<ResourceRequirementsType>,
-        resource: &str,
-    ) -> Result<(), ResourceRequirementsTypeError> {
-        for policy in policies {
-            self.check_policy_for_resource(policy, resource)?
         }
 
         Ok(())
