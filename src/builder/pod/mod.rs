@@ -169,7 +169,7 @@ impl PodBuilder {
         // https://github.com/stackabletech/issues/issues/368:
         // We only set default limits on *init* containers, as they normally
         // simply copy stuff around, do some text replacement or, at a maximum,
-        //  create a tls truststore.These operations should normally complete
+        // create a tls truststore.These operations should normally complete
         // in <= 1s, so worst-case the Pod will take 1-2s longer to start up
         // when the default is too low. However, things are different with
         // sidecars, where e.g. a bundle builder, metric collector or a vector
