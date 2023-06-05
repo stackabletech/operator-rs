@@ -5,31 +5,20 @@ use k8s_openapi::{
 };
 
 mod state {
+    #[derive(Debug, Default)]
     pub struct Initial {}
     pub struct MissingCpuLimit {}
     pub struct MissingMemLimit {}
     pub struct Final {}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ResourceRequirementsBuilder<S = state::Initial> {
     cpu_limit: Option<Quantity>,
     cpu_request: Option<Quantity>,
     mem_limit: Option<Quantity>,
     mem_request: Option<Quantity>,
     state: PhantomData<S>,
-}
-
-impl Default for ResourceRequirementsBuilder {
-    fn default() -> Self {
-        Self {
-            cpu_limit: Default::default(),
-            cpu_request: Default::default(),
-            mem_limit: Default::default(),
-            mem_request: Default::default(),
-            state: Default::default(),
-        }
-    }
 }
 
 impl ResourceRequirementsBuilder<state::Initial> {
@@ -135,11 +124,31 @@ mod test {
 
     #[test]
     fn test_builder() {
+        let resources = ResourceRequirements {
+            limits: Some(
+                [
+                    ("cpu".to_string(), Quantity("1".to_string())),
+                    ("memory".to_string(), Quantity("128Mi".to_string())),
+                ]
+                .into(),
+            ),
+            requests: Some(
+                [
+                    ("cpu".to_string(), Quantity("500m".to_string())),
+                    ("memory".to_string(), Quantity("64Mi".to_string())),
+                ]
+                .into(),
+            ),
+            ..ResourceRequirements::default()
+        };
+
         let rr = ResourceRequirementsBuilder::new()
             .with_cpu_limit(Quantity("1".into()))
             .with_cpu_request(Quantity("500m".into()))
             .with_memory_limit(Quantity("128Mi".into()))
             .with_memory_request(Quantity("64Mi".into()))
             .build();
+
+        assert_eq!(rr, resources)
     }
 }
