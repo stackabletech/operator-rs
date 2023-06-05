@@ -254,16 +254,8 @@ impl PodBuilder {
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
-    ///             .resources(ResourceRequirements {
-    ///                 limits: Some(
-    ///                     [
-    ///                         ("cpu".into(), Quantity("1".into())),
-    ///                         ("memory".into(), Quantity("128Mi".into())),
-    ///                     ]
-    ///                     .into(),
-    ///                 ),
-    ///                 ..Default::default()
-    ///             })
+    ///             .with_cpu(Quantity("1".into()), None)
+    ///             .with_memory(Quantity("128Mi".into()), None)
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_class("listener", "nodeport")
@@ -339,16 +331,8 @@ impl PodBuilder {
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
-    ///             .resources(ResourceRequirements {
-    ///                 limits: Some(
-    ///                     [
-    ///                         ("cpu".into(), Quantity("1".into())),
-    ///                         ("memory".into(), Quantity("128Mi".into())),
-    ///                     ]
-    ///                     .into(),
-    ///                 ),
-    ///                 ..Default::default()
-    ///             })
+    ///             .with_cpu(Quantity("1".into()), None)
+    ///             .with_memory(Quantity("128Mi".into()), None)
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener")
@@ -461,13 +445,13 @@ impl PodBuilder {
     /// Checks if any of the containers is missing one resource requirement
     /// type for `resource`. If so, [Error::MissingResourceRequirementType]
     /// is returned, otherwise [`Ok(())`].
-    fn check_container_resource_policy(
+    fn check_container_resource(
         &self,
         rr_type: ResourceRequirementsType,
         resource: &str,
     ) -> OperatorResult<()> {
         for container in &self.containers {
-            container.check_policy_for_resource(rr_type, resource)?
+            container.check_resource_type(rr_type, resource)?
         }
 
         Ok(())
@@ -480,14 +464,11 @@ impl PodBuilder {
         // throw a warning which will get displayed in the Kubernetes
         // status.
 
-        if let Err(err) =
-            self.check_container_resource_policy(ResourceRequirementsType::Limits, "cpu")
-        {
+        if let Err(err) = self.check_container_resource(ResourceRequirementsType::Limits, "cpu") {
             warn!("{}", err)
         }
 
-        if let Err(err) =
-            self.check_container_resource_policy(ResourceRequirementsType::Limits, "memory")
+        if let Err(err) = self.check_container_resource(ResourceRequirementsType::Limits, "memory")
         {
             warn!("{}", err)
         }
@@ -537,16 +518,8 @@ mod tests {
         ContainerBuilder::new("container")
             .expect("ContainerBuilder not created")
             .image("private-company/product:2.4.14")
-            .resources(ResourceRequirements {
-                limits: Some(
-                    [
-                        ("cpu".into(), Quantity("1".into())),
-                        ("memory".into(), Quantity("128Mi".into())),
-                    ]
-                    .into(),
-                ),
-                ..Default::default()
-            })
+            .with_cpu(Quantity("1".into()), None)
+            .with_memory(Quantity("128Mi".into()), None)
             .build()
     }
 

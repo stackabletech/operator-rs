@@ -178,11 +178,6 @@ impl ContainerBuilder {
         self
     }
 
-    pub fn resources(&mut self, resources: ResourceRequirements) -> &mut Self {
-        self.resources = Some(resources);
-        self
-    }
-
     pub fn add_volume_mount(
         &mut self,
         name: impl Into<String>,
@@ -472,7 +467,13 @@ mod tests {
             .add_env_var_from_secret("envFromSecret", "my-secret", "my-key")
             .add_volume_mount("configmap", "/mount")
             .add_container_port(container_port_name, container_port)
-            .resources(resources.clone())
+            .with_cpu(Quantity("3000m".into()), Some(Quantity("2000m".into())))
+            .with_memory(Quantity("6Gi".into()), Some(Quantity("4Gi".into())))
+            .with_resource(
+                ResourceRequirementsType::Limits,
+                "nvidia.com/gpu",
+                Quantity("1".into()),
+            )
             .add_container_ports(vec![ContainerPortBuilder::new(container_port_1)
                 .name(container_port_name_1)
                 .build()])
@@ -598,6 +599,35 @@ mod tests {
             ContainerBuilder::new("name_name"),
             "(e.g. 'example-label',  or '1-label-1', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')",
         );
+    }
+
+    #[test]
+    fn test_container_cpu_and_memory_resource_requirements() {
+        let resources = ResourceRequirements {
+            limits: Some(
+                [
+                    ("cpu".to_string(), Quantity("3000m".to_string())),
+                    ("memory".to_string(), Quantity("6Gi".to_string())),
+                ]
+                .into(),
+            ),
+            requests: Some(
+                [
+                    ("cpu".to_string(), Quantity("2000m".to_string())),
+                    ("memory".to_string(), Quantity("4Gi".to_string())),
+                ]
+                .into(),
+            ),
+            ..ResourceRequirements::default()
+        };
+
+        let container = ContainerBuilder::new("testcontainer")
+            .expect("ContainerBuilder not created")
+            .with_cpu(Quantity("3000m".into()), Some(Quantity("2000m".into())))
+            .with_memory(Quantity("6Gi".into()), Some(Quantity("4Gi".into())))
+            .build();
+
+        assert_eq!(container.resources, Some(resources))
     }
 
     /// Panics if given container builder constructor result is not [Err] with error message
