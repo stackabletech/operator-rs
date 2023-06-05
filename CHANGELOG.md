@@ -6,11 +6,11 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Set default resource limits on `PodBuilder::add_init_container` ([#599]).
+- Set default resource limits on `PodBuilder::add_init_container` ([#598]).
 - BREAKING: Removed `resources` method from `ContainerBuilder`. Use `with_resource`, `with_cpu` or `with_memory` methods
-  instead ([#599]).
+  instead ([#598]).
 
-[#599]: https://github.com/stackabletech/operator-rs/pull/599
+[#598]: https://github.com/stackabletech/operator-rs/pull/598
 
 ## [0.41.0] - 2023-04-20
 
