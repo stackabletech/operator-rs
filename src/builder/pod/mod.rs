@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use crate::builder::meta::ObjectMetaBuilder;
 use crate::commons::affinity::StackableAffinity;
 use crate::commons::product_image_selection::ResolvedProductImage;
-use crate::commons::resources::{ResourceRequirementsType, ResourceRequirementsTypeExt};
+use crate::commons::resources::{ResourceRequirementsExt, ResourceRequirementsType};
 use crate::error::{Error, OperatorResult};
 
 use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
@@ -451,7 +451,7 @@ impl PodBuilder {
         resource: &str,
     ) -> OperatorResult<()> {
         for container in &self.containers {
-            container.check_resource_type(rr_type, resource)?
+            container.check_resource_requirement(rr_type, resource)?
         }
 
         Ok(())

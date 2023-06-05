@@ -321,7 +321,7 @@ impl<T, K> Into<ResourceRequirements> for Resources<T, K> {
 
 #[derive(Debug, thiserror::Error)]
 #[error("missing {resource_key} resource {resource_type} for container {container_name}")]
-pub struct ResourceRequirementsTypeError {
+pub struct ResourceRequirementsError {
     resource_type: ResourceRequirementsType,
     container_name: String,
     resource_key: String,
@@ -345,55 +345,70 @@ pub enum ResourceRequirementsType {
 /// This trait allows implementing types to check if a certain
 /// [`ResourceRequirementsType`] is set for a resource. This for example makes
 /// it possible to check if a CPU limit and a memory request is set.
-pub trait ResourceRequirementsTypeExt {
+pub trait ResourceRequirementsExt {
     /// Checks if one specific [`ResourceRequirementsType`] for a `resource` is
     /// set. If not, an error is returned.
-    fn check_resource_type(
+    fn check_resource_requirement(
         &self,
         rr_type: ResourceRequirementsType,
         resource: &str,
-    ) -> Result<(), ResourceRequirementsTypeError>;
+    ) -> Result<(), ResourceRequirementsError>;
+
+    /// Returns wether the implementor has a [`ResourceRequirementsType`] set
+    /// for a `resource`.
+    fn has_resource_requirement(&self, rr_type: ResourceRequirementsType, resource: &str) -> bool {
+        self.check_resource_requirement(rr_type, resource)
+            .map_or(false, |_| true)
+    }
 
     /// Checks if all provided [`ResourceRequirementsType`]s for a `resource`
     /// are set. If not, an error is returned.
-    fn check_resource_types(
+    fn check_resource_requirements(
         &self,
         rr_types: Vec<ResourceRequirementsType>,
         resource: &str,
-    ) -> Result<(), ResourceRequirementsTypeError> {
+    ) -> Result<(), ResourceRequirementsError> {
         for rr_type in rr_types {
-            self.check_resource_type(rr_type, resource)?;
+            self.check_resource_requirement(rr_type, resource)?;
         }
 
         Ok(())
     }
+
+    /// Returns wether the implementor has all [`ResourceRequirementsType`]s set
+    /// for a `resource`.
+    fn has_resource_requirements(
+        &self,
+        rr_types: Vec<ResourceRequirementsType>,
+        resource: &str,
+    ) -> bool {
+        self.check_resource_requirements(rr_types, resource)
+            .map_or(false, |_| true)
+    }
 }
 
-impl ResourceRequirementsTypeExt for Container {
-    fn check_resource_type(
+impl ResourceRequirementsExt for Container {
+    fn check_resource_requirement(
         &self,
         rr_type: ResourceRequirementsType,
         resource: &str,
-    ) -> Result<(), ResourceRequirementsTypeError> {
-        let rr = self
-            .resources
-            .as_ref()
-            .ok_or(ResourceRequirementsTypeError {
-                container_name: self.name.clone(),
-                resource_key: resource.into(),
-                resource_type: rr_type,
-            })?;
+    ) -> Result<(), ResourceRequirementsError> {
+        let rr = self.resources.as_ref().ok_or(ResourceRequirementsError {
+            container_name: self.name.clone(),
+            resource_key: resource.into(),
+            resource_type: rr_type,
+        })?;
 
         match rr_type {
             ResourceRequirementsType::Limits => {
-                let limits = rr.limits.as_ref().ok_or(ResourceRequirementsTypeError {
+                let limits = rr.limits.as_ref().ok_or(ResourceRequirementsError {
                     container_name: self.name.clone(),
                     resource_key: resource.into(),
                     resource_type: rr_type,
                 })?;
 
                 if !limits.contains_key(resource) {
-                    return Err(ResourceRequirementsTypeError {
+                    return Err(ResourceRequirementsError {
                         container_name: self.name.clone(),
                         resource_key: resource.into(),
                         resource_type: rr_type,
@@ -401,14 +416,14 @@ impl ResourceRequirementsTypeExt for Container {
                 }
             }
             ResourceRequirementsType::Requests => {
-                let requests = rr.requests.as_ref().ok_or(ResourceRequirementsTypeError {
+                let requests = rr.requests.as_ref().ok_or(ResourceRequirementsError {
                     container_name: self.name.clone(),
                     resource_key: resource.into(),
                     resource_type: rr_type,
                 })?;
 
                 if !requests.contains_key(resource) {
-                    return Err(ResourceRequirementsTypeError {
+                    return Err(ResourceRequirementsError {
                         container_name: self.name.clone(),
                         resource_key: resource.into(),
                         resource_type: rr_type,
