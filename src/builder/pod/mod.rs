@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use crate::builder::meta::ObjectMetaBuilder;
 use crate::commons::affinity::StackableAffinity;
 use crate::commons::product_image_selection::ResolvedProductImage;
-use crate::commons::resources::{ResourceRequirementsPolicy, ResourceRequirementsPolicyExt};
+use crate::commons::resources::{ResourceRequirementsType, ResourceRequirementsTypeExt};
 use crate::error::{Error, OperatorResult};
 
 use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
@@ -19,6 +19,7 @@ use k8s_openapi::{
     },
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
 };
+use tracing::warn;
 
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
 #[derive(Clone, Default)]
@@ -439,7 +440,7 @@ impl PodBuilder {
                 None => return Err(Error::MissingObjectKey { key: "metadata" }),
                 Some(ref metadata) => metadata.clone(),
             },
-            spec: Some(self.build_spec()?),
+            spec: Some(self.build_spec()),
             status: self.status.clone(),
         })
     }
@@ -453,30 +454,45 @@ impl PodBuilder {
 
         Ok(PodTemplateSpec {
             metadata: self.metadata.clone(),
-            spec: Some(self.build_spec()?),
+            spec: Some(self.build_spec()),
         })
     }
 
-    /// Checks if any of the containers is missing one resource requirements
-    /// `policy` for `resource`. If so, [Error::MissingResourceRequirementPolicy]
+    /// Checks if any of the containers is missing one resource requirement
+    /// type for `resource`. If so, [Error::MissingResourceRequirementType]
     /// is returned, otherwise [`Ok(())`].
     fn check_container_resource_policy(
         &self,
-        policy: ResourceRequirementsPolicy,
+        rr_type: ResourceRequirementsType,
         resource: &str,
     ) -> OperatorResult<()> {
         for container in &self.containers {
-            container.check_policy_for_resource(policy, resource)?
+            container.check_policy_for_resource(rr_type, resource)?
         }
 
         Ok(())
     }
 
-    fn build_spec(&self) -> OperatorResult<PodSpec> {
-        self.check_container_resource_policy(ResourceRequirementsPolicy::Limits, "cpu")?;
-        self.check_container_resource_policy(ResourceRequirementsPolicy::Limits, "memory")?;
+    fn build_spec(&self) -> PodSpec {
+        // We don't hard error here, because if we do, the StatefulSet (for
+        // example) doesn't show up at all. Instead users then need to comb
+        // through the logs to find the error. That's why we opted to just
+        // throw a warning which will get displayed in the Kubernetes
+        // status.
 
-        Ok(PodSpec {
+        if let Err(err) =
+            self.check_container_resource_policy(ResourceRequirementsType::Limits, "cpu")
+        {
+            warn!("{}", err)
+        }
+
+        if let Err(err) =
+            self.check_container_resource_policy(ResourceRequirementsType::Limits, "memory")
+        {
+            warn!("{}", err)
+        }
+
+        PodSpec {
             containers: self.containers.clone(),
             host_network: self.host_network,
             init_containers: self.init_containers.clone(),
@@ -498,7 +514,7 @@ impl PodBuilder {
             image_pull_secrets: self.image_pull_secrets.clone(),
             restart_policy: self.restart_policy.clone(),
             ..PodSpec::default()
-        })
+        }
     }
 }
 

@@ -321,87 +321,87 @@ impl<T, K> Into<ResourceRequirements> for Resources<T, K> {
 
 #[derive(Debug, thiserror::Error)]
 #[error("missing {resource_key} resource {resource_policy} for container {container_name}")]
-pub struct ResourceRequirementsPolicyError {
-    resource_policy: ResourceRequirementsPolicy,
+pub struct ResourceRequirementsTypeError {
+    resource_policy: ResourceRequirementsType,
     container_name: String,
     resource_key: String,
 }
 
-/// [`ResourceRequirementsPolicy`] dsscribes the available resource requirement
-/// policies. The user can set limits, requests and claims. This enum makes it
-/// possible to check if containers set one or more of these policies.
+/// [`ResourceRequirementsType`] dsscribes the available resource requirement
+/// types. The user can set limits, requests and claims. This enum makes it
+/// possible to check if containers set one or more of these types.
 #[derive(Copy, Clone, Debug, Display)]
 #[strum(serialize_all = "lowercase")]
-pub enum ResourceRequirementsPolicy {
+pub enum ResourceRequirementsType {
     Limits,
     Requests,
-    Claims,
+    // We currently don't use claims in our container builder and thus also
+    // do not support setting and validating them. When we do support claims
+    // in the future, we can just remove the comment to get support for it
+    // immediatly.
+    // Claims,
 }
 
-pub trait ResourceRequirementsPolicyExt {
+pub trait ResourceRequirementsTypeExt {
     fn check_policy_for_resource(
         &self,
-        policy: ResourceRequirementsPolicy,
+        policy: ResourceRequirementsType,
         resource: &str,
-    ) -> Result<(), ResourceRequirementsPolicyError>;
+    ) -> Result<(), ResourceRequirementsTypeError>;
 
     fn check_policies_for_resource(
         &self,
-        policies: Vec<ResourceRequirementsPolicy>,
+        policies: Vec<ResourceRequirementsType>,
         resource: &str,
-    ) -> Result<(), ResourceRequirementsPolicyError>;
+    ) -> Result<(), ResourceRequirementsTypeError>;
 }
 
-impl ResourceRequirementsPolicyExt for Container {
+impl ResourceRequirementsTypeExt for Container {
     fn check_policy_for_resource(
         &self,
-        policy: ResourceRequirementsPolicy,
+        policy: ResourceRequirementsType,
         resource: &str,
-    ) -> Result<(), ResourceRequirementsPolicyError> {
+    ) -> Result<(), ResourceRequirementsTypeError> {
         let rr = self
             .resources
             .as_ref()
-            .ok_or(ResourceRequirementsPolicyError {
+            .ok_or(ResourceRequirementsTypeError {
                 container_name: self.name.clone(),
                 resource_key: resource.into(),
                 resource_policy: policy,
             })?;
 
         match policy {
-            ResourceRequirementsPolicy::Limits => {
-                let limits = rr.limits.as_ref().ok_or(ResourceRequirementsPolicyError {
+            ResourceRequirementsType::Limits => {
+                let limits = rr.limits.as_ref().ok_or(ResourceRequirementsTypeError {
                     container_name: self.name.clone(),
                     resource_key: resource.into(),
                     resource_policy: policy,
                 })?;
 
                 if !limits.contains_key(resource) {
-                    return Err(ResourceRequirementsPolicyError {
+                    return Err(ResourceRequirementsTypeError {
                         container_name: self.name.clone(),
                         resource_key: resource.into(),
                         resource_policy: policy,
                     });
                 }
             }
-            ResourceRequirementsPolicy::Requests => {
-                let requests = rr
-                    .requests
-                    .as_ref()
-                    .ok_or(ResourceRequirementsPolicyError {
-                        container_name: self.name.clone(),
-                        resource_key: resource.into(),
-                        resource_policy: policy,
-                    })?;
+            ResourceRequirementsType::Requests => {
+                let requests = rr.requests.as_ref().ok_or(ResourceRequirementsTypeError {
+                    container_name: self.name.clone(),
+                    resource_key: resource.into(),
+                    resource_policy: policy,
+                })?;
 
                 if !requests.contains_key(resource) {
-                    return Err(ResourceRequirementsPolicyError {
+                    return Err(ResourceRequirementsTypeError {
                         container_name: self.name.clone(),
                         resource_key: resource.into(),
                         resource_policy: policy,
                     });
                 }
             }
-            ResourceRequirementsPolicy::Claims => todo!(),
         }
 
         Ok(())
@@ -409,9 +409,9 @@ impl ResourceRequirementsPolicyExt for Container {
 
     fn check_policies_for_resource(
         &self,
-        policies: Vec<ResourceRequirementsPolicy>,
+        policies: Vec<ResourceRequirementsType>,
         resource: &str,
-    ) -> Result<(), ResourceRequirementsPolicyError> {
+    ) -> Result<(), ResourceRequirementsTypeError> {
         for policy in policies {
             self.check_policy_for_resource(policy, resource)?
         }
