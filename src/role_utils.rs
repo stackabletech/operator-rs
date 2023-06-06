@@ -93,12 +93,14 @@ use crate::{
     product_config_utils::Configuration,
 };
 use derivative::Derivative;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
+use k8s_openapi::{
+    api::core::v1::PodTemplateSpec, apimachinery::pkg::apis::meta::v1::LabelSelector,
+};
 use kube::{runtime::reflector::ObjectRef, Resource};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(
     rename_all = "camelCase",
     bound(deserialize = "T: Default + Deserialize<'de>")
@@ -117,6 +119,8 @@ pub struct CommonConfiguration<T> {
     // BTreeMap to keep some order with the cli arguments.
     #[serde(default)]
     pub cli_overrides: BTreeMap<String, String>,
+    #[serde(default)]
+    pub pod_overrides: PodTemplateSpec,
 }
 
 fn config_schema_default() -> serde_json::Value {
@@ -148,6 +152,7 @@ impl<T: Configuration + 'static> Role<T> {
                 config_overrides: self.config.config_overrides,
                 env_overrides: self.config.env_overrides,
                 cli_overrides: self.config.cli_overrides,
+                pod_overrides: self.config.pod_overrides,
             },
             role_groups: self
                 .role_groups
@@ -162,6 +167,7 @@ impl<T: Configuration + 'static> Role<T> {
                                 config_overrides: group.config.config_overrides,
                                 env_overrides: group.config.env_overrides,
                                 cli_overrides: group.config.cli_overrides,
+                                pod_overrides: group.config.pod_overrides,
                             },
                             replicas: group.replicas,
                             selector: group.selector,
