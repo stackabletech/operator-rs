@@ -339,7 +339,6 @@ mod tests {
         },
         commons::resources::ResourceRequirementsType,
     };
-    use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 
     #[test]
     fn test_container_builder() {

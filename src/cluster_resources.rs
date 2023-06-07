@@ -2,7 +2,10 @@
 
 use crate::{
     client::{Client, GetApi},
-    commons::cluster_operation::ClusterOperation,
+    commons::{
+        cluster_operation::ClusterOperation,
+        resources::{ResourceRequirementsExt, ResourceRequirementsType},
+    },
     error::{Error, OperatorResult},
     k8s_openapi::{
         api::{
@@ -29,7 +32,7 @@ use std::{
     fmt::Debug,
 };
 use strum::Display;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 #[cfg(doc)]
 use crate::k8s_openapi::api::{
@@ -432,6 +435,20 @@ impl ClusterResources {
             &[APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL],
             &[&self.app_instance, &self.manager, &self.app_name],
         )?;
+
+        if let Some(pod_spec) = resource.clone().pod_spec() {
+            if let Err(err) =
+                pod_spec.check_resource_requirement(ResourceRequirementsType::Limits, "cpu")
+            {
+                warn!("{}", err)
+            }
+
+            if let Err(err) =
+                pod_spec.check_resource_requirement(ResourceRequirementsType::Limits, "memory")
+            {
+                warn!("{}", err)
+            }
+        }
 
         let mutated = resource.maybe_mutate(&self.apply_strategy);
 

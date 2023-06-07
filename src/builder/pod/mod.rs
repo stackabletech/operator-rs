@@ -462,21 +462,6 @@ impl PodBuilder {
         })
     }
 
-    /// Checks if any of the containers is missing one resource requirement
-    /// type for `resource`. If so, [Error::MissingResourceRequirementType]
-    /// is returned, otherwise [`Ok(())`].
-    fn check_container_resource(
-        &self,
-        rr_type: ResourceRequirementsType,
-        resource: &str,
-    ) -> OperatorResult<()> {
-        for container in &self.containers {
-            container.check_resource_requirement(rr_type, resource)?
-        }
-
-        Ok(())
-    }
-
     fn build_spec(&self) -> PodSpec {
         // We don't hard error here, because if we do, the StatefulSet (for
         // example) doesn't show up at all. Instead users then need to comb
@@ -494,7 +479,7 @@ impl PodBuilder {
             warn!("{}", err)
         }
 
-        PodSpec {
+        let pod_spec = PodSpec {
             containers: self.containers.clone(),
             host_network: self.host_network,
             init_containers: self.init_containers.clone(),
@@ -516,7 +501,27 @@ impl PodBuilder {
             image_pull_secrets: self.image_pull_secrets.clone(),
             restart_policy: self.restart_policy.clone(),
             ..PodSpec::default()
+        };
+
+        // We don't hard error here, because if we do, the StatefulSet (for
+        // example) doesn't show up at all. Instead users then need to comb
+        // through the logs to find the error. That's why we opted to just
+        // throw a warning which will get displayed in the Kubernetes
+        // status.
+
+        if let Err(err) =
+            pod_spec.check_resource_requirement(ResourceRequirementsType::Limits, "cpu")
+        {
+            warn!("{}", err)
         }
+
+        if let Err(err) =
+            pod_spec.check_resource_requirement(ResourceRequirementsType::Limits, "memory")
+        {
+            warn!("{}", err)
+        }
+
+        pod_spec
     }
 }
 

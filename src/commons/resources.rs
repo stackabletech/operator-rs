@@ -74,7 +74,7 @@ use crate::config::{
 };
 use derivative::Derivative;
 use k8s_openapi::api::core::v1::{
-    Container, PersistentVolumeClaim, PersistentVolumeClaimSpec, ResourceRequirements,
+    Container, PersistentVolumeClaim, PersistentVolumeClaimSpec, PodSpec, ResourceRequirements,
 };
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{LabelSelector, ObjectMeta};
@@ -428,6 +428,20 @@ impl ResourceRequirementsExt for Container {
                     });
                 }
             }
+        }
+
+        Ok(())
+    }
+}
+
+impl ResourceRequirementsExt for PodSpec {
+    fn check_resource_requirement(
+        &self,
+        rr_type: ResourceRequirementsType,
+        resource: &str,
+    ) -> Result<(), ResourceRequirementsError> {
+        for container in &self.containers {
+            container.check_resource_requirement(rr_type, resource)?
         }
 
         Ok(())

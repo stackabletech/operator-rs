@@ -1,4 +1,4 @@
-use crate::{commons::resources::ResourceRequirementsError, product_config_utils};
+use crate::product_config_utils;
 use std::path::PathBuf;
 
 #[derive(Debug, thiserror::Error)]
@@ -111,10 +111,6 @@ pub enum Error {
         container_name: String,
         violation: String,
     },
-
-    /// This error indicates that a resource policy is missing for a container.
-    #[error("resource requirements policy error: {0}")]
-    MissingResourceRequirementType(#[from] ResourceRequirementsError),
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
