@@ -260,8 +260,8 @@ impl PodBuilder {
     /// };
     ///
     /// let resources = ResourceRequirementsBuilder::new()
-    ///     .with_cpu_limit(Quantity("1".into()))
-    ///     .with_memory_limit(Quantity("128Mi".into()))
+    ///     .with_cpu_limit("1")
+    ///     .with_memory_limit("128Mi")
     ///     .build();
     ///
     /// let pod = PodBuilder::new()
@@ -342,8 +342,8 @@ impl PodBuilder {
     /// };
     ///
     /// let resources = ResourceRequirementsBuilder::new()
-    ///     .with_cpu_limit(Quantity("1".into()))
-    ///     .with_memory_limit(Quantity("128Mi".into()))
+    ///     .with_cpu_limit("1")
+    ///     .with_memory_limit("128Mi")
     ///     .build();
     ///
     /// let pod = PodBuilder::new()
@@ -537,8 +537,8 @@ mod tests {
     #[fixture]
     fn dummy_container() -> Container {
         let resources = ResourceRequirementsBuilder::new()
-            .with_cpu_limit(Quantity("1".into()))
-            .with_memory_limit(Quantity("128Mi".into()))
+            .with_cpu_limit("1")
+            .with_memory_limit("128Mi")
             .build();
 
         ContainerBuilder::new("container")

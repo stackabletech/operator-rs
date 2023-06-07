@@ -12,8 +12,8 @@ const RESOURCE_DENYLIST: &[&str] = &["cpu", "memory"];
 mod state {
     #[derive(Debug, Default)]
     pub struct Initial {}
-    pub struct MissingCpuLimit {}
-    pub struct MissingMemLimit {}
+    pub struct CpuLimitSet {}
+    pub struct MemLimitSet {}
     pub struct Final {}
 }
 
@@ -34,10 +34,10 @@ impl ResourceRequirementsBuilder<state::Initial> {
 
     pub fn with_cpu_limit(
         self,
-        limit: Quantity,
-    ) -> ResourceRequirementsBuilder<state::MissingMemLimit> {
+        limit: impl Into<String>,
+    ) -> ResourceRequirementsBuilder<state::CpuLimitSet> {
         ResourceRequirementsBuilder {
-            cpu_limit: Some(limit),
+            cpu_limit: Some(Quantity(limit.into())),
             cpu_request: self.cpu_request,
             mem_limit: self.mem_limit,
             mem_request: self.mem_request,
@@ -48,12 +48,12 @@ impl ResourceRequirementsBuilder<state::Initial> {
 
     pub fn with_memory_limit(
         self,
-        limit: Quantity,
-    ) -> ResourceRequirementsBuilder<state::MissingCpuLimit> {
+        limit: impl Into<String>,
+    ) -> ResourceRequirementsBuilder<state::MemLimitSet> {
         ResourceRequirementsBuilder {
             cpu_limit: self.cpu_limit,
             cpu_request: self.cpu_request,
-            mem_limit: Some(limit),
+            mem_limit: Some(Quantity(limit.into())),
             mem_request: self.mem_request,
             other: self.other,
             state: PhantomData,
@@ -61,10 +61,13 @@ impl ResourceRequirementsBuilder<state::Initial> {
     }
 }
 
-impl ResourceRequirementsBuilder<state::MissingCpuLimit> {
-    pub fn with_cpu_limit(self, limit: Quantity) -> ResourceRequirementsBuilder<state::Final> {
+impl ResourceRequirementsBuilder<state::MemLimitSet> {
+    pub fn with_cpu_limit(
+        self,
+        limit: impl Into<String>,
+    ) -> ResourceRequirementsBuilder<state::Final> {
         ResourceRequirementsBuilder {
-            cpu_limit: Some(limit),
+            cpu_limit: Some(Quantity(limit.into())),
             cpu_request: self.cpu_request,
             mem_limit: self.mem_limit,
             mem_request: self.mem_request,
@@ -74,12 +77,15 @@ impl ResourceRequirementsBuilder<state::MissingCpuLimit> {
     }
 }
 
-impl ResourceRequirementsBuilder<state::MissingMemLimit> {
-    pub fn with_memory_limit(self, limit: Quantity) -> ResourceRequirementsBuilder<state::Final> {
+impl ResourceRequirementsBuilder<state::CpuLimitSet> {
+    pub fn with_memory_limit(
+        self,
+        limit: impl Into<String>,
+    ) -> ResourceRequirementsBuilder<state::Final> {
         ResourceRequirementsBuilder {
             cpu_limit: self.cpu_limit,
             cpu_request: self.cpu_request,
-            mem_limit: Some(limit),
+            mem_limit: Some(Quantity(limit.into())),
             mem_request: self.mem_request,
             other: self.other,
             state: PhantomData,
@@ -119,16 +125,16 @@ impl ResourceRequirementsBuilder<state::Final> {
         }
 
         // Only add limits/requests when there is actually stuff to add
-        let limits = if !limits.is_empty() {
-            Some(limits)
-        } else {
+        let limits = if limits.is_empty() {
             None
+        } else {
+            Some(limits)
         };
 
-        let requests = if !requests.is_empty() {
-            Some(requests)
-        } else {
+        let requests = if requests.is_empty() {
             None
+        } else {
+            Some(requests)
         };
 
         ResourceRequirements {
@@ -140,13 +146,13 @@ impl ResourceRequirementsBuilder<state::Final> {
 }
 
 impl<S> ResourceRequirementsBuilder<S> {
-    pub fn with_cpu_request(mut self, request: Quantity) -> Self {
-        self.cpu_request = Some(request);
+    pub fn with_cpu_request(mut self, request: impl Into<String>) -> Self {
+        self.cpu_request = Some(Quantity(request.into()));
         self
     }
 
-    pub fn with_memory_request(mut self, request: Quantity) -> Self {
-        self.mem_request = Some(request);
+    pub fn with_memory_request(mut self, request: impl Into<String>) -> Self {
+        self.mem_request = Some(Quantity(request.into()));
         self
     }
 
@@ -154,7 +160,7 @@ impl<S> ResourceRequirementsBuilder<S> {
         mut self,
         rr_type: ResourceRequirementsType,
         resource: &str,
-        quantity: Quantity,
+        quantity: impl Into<String>,
     ) -> Self {
         if RESOURCE_DENYLIST.contains(&resource) {
             warn!(
@@ -171,7 +177,9 @@ impl<S> ResourceRequirementsBuilder<S> {
             return self;
         }
 
-        self.other.insert(resource, (rr_type, quantity));
+        self.other
+            .insert(resource, (rr_type, Quantity(quantity.into())));
+
         self
     }
 }
@@ -202,15 +210,11 @@ mod test {
         };
 
         let rr = ResourceRequirementsBuilder::new()
-            .with_cpu_limit(Quantity("1".into()))
-            .with_cpu_request(Quantity("500m".into()))
-            .with_memory_limit(Quantity("128Mi".into()))
-            .with_memory_request(Quantity("64Mi".into()))
-            .with_resource(
-                ResourceRequirementsType::Requests,
-                "nvidia.com/gpu",
-                Quantity("1".into()),
-            )
+            .with_cpu_limit("1")
+            .with_cpu_request("500m")
+            .with_memory_limit("128Mi")
+            .with_memory_request("64Mi")
+            .with_resource(ResourceRequirementsType::Requests, "nvidia.com/gpu", "1")
             .build();
 
         assert_eq!(rr, resources)

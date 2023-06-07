@@ -357,8 +357,7 @@ pub trait ResourceRequirementsExt {
     /// Returns wether the implementor has a [`ResourceRequirementsType`] set
     /// for a `resource`.
     fn has_resource_requirement(&self, rr_type: ResourceRequirementsType, resource: &str) -> bool {
-        self.check_resource_requirement(rr_type, resource)
-            .map_or(false, |_| true)
+        self.check_resource_requirement(rr_type, resource).is_ok()
     }
 
     /// Checks if all provided [`ResourceRequirementsType`]s for a `resource`
@@ -382,8 +381,7 @@ pub trait ResourceRequirementsExt {
         rr_types: Vec<ResourceRequirementsType>,
         resource: &str,
     ) -> bool {
-        self.check_resource_requirements(rr_types, resource)
-            .map_or(false, |_| true)
+        self.check_resource_requirements(rr_types, resource).is_ok()
     }
 }
 

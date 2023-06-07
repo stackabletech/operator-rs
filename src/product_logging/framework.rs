@@ -958,8 +958,8 @@ address = "{vector_aggregator_address}"
 /// pod_builder.metadata(ObjectMetaBuilder::default().build());
 ///
 /// let resources = ResourceRequirementsBuilder::new()
-///     .with_cpu_limit(Quantity("1".into()))
-///     .with_memory_limit(Quantity("1Gi".into()))
+///     .with_cpu_limit("1")
+///     .with_memory_limit("1Gi")
 ///     .build();
 ///
 /// if logging.enable_vector_agent {
