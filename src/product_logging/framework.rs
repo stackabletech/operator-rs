@@ -2,6 +2,8 @@
 
 use std::cmp;
 
+use k8s_openapi::api::core::v1::ResourceRequirements;
+
 use crate::{
     builder::ContainerBuilder, commons::product_image_selection::ResolvedProductImage,
     k8s_openapi::api::core::v1::Container, kube::Resource, role_utils::RoleGroupRef,
@@ -925,9 +927,11 @@ address = "{vector_aggregator_address}"
 ///     builder::{
 ///         meta::ObjectMetaBuilder,
 ///         PodBuilder,
+///         resources::ResourceRequirementsBuilder
 ///     },
 ///     product_logging,
 /// };
+/// use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 /// # use stackable_operator::{
 /// #     commons::product_image_selection::ResolvedProductImage,
 /// #     config::fragment,
@@ -953,12 +957,18 @@ address = "{vector_aggregator_address}"
 /// let mut pod_builder = PodBuilder::new();
 /// pod_builder.metadata(ObjectMetaBuilder::default().build());
 ///
+/// let resources = ResourceRequirementsBuilder::new()
+///     .with_cpu_limit(Quantity("1".into()))
+///     .with_memory_limit(Quantity("1Gi".into()))
+///     .build();
+///
 /// if logging.enable_vector_agent {
 ///     pod_builder.add_container(product_logging::framework::vector_container(
 ///         &resolved_product_image,
 ///         "config",
 ///         "log",
 ///         logging.containers.get(&Container::Vector),
+///         resources,
 ///     ));
 /// }
 ///
@@ -969,6 +979,7 @@ pub fn vector_container(
     config_volume_name: &str,
     log_volume_name: &str,
     log_config: Option<&ContainerLogConfig>,
+    resources: ResourceRequirements,
 ) -> Container {
     let log_level = if let Some(ContainerLogConfig {
         choice: Some(ContainerLogConfigChoice::Automatic(automatic_log_config)),
@@ -995,6 +1006,7 @@ kill $vector_pid"),
         .add_env_var("VECTOR_LOG", log_level.to_vector_literal())
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
         .add_volume_mount(log_volume_name, STACKABLE_LOG_DIR)
+        .with_resources(resources)
         .build()
 }
 
