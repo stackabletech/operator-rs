@@ -3,6 +3,11 @@ use std::{collections::BTreeMap, marker::PhantomData};
 use k8s_openapi::{
     api::core::v1::ResourceRequirements, apimachinery::pkg::api::resource::Quantity,
 };
+use tracing::warn;
+
+use crate::commons::resources::ResourceRequirementsType;
+
+const RESOURCE_DENYLIST: &[&str] = &["cpu", "memory"];
 
 mod state {
     #[derive(Debug, Default)]
@@ -18,6 +23,7 @@ pub struct ResourceRequirementsBuilder<S = state::Initial> {
     cpu_request: Option<Quantity>,
     mem_limit: Option<Quantity>,
     mem_request: Option<Quantity>,
+    other: BTreeMap<String, (ResourceRequirementsType, Quantity)>,
     state: PhantomData<S>,
 }
 
@@ -35,6 +41,7 @@ impl ResourceRequirementsBuilder<state::Initial> {
             cpu_request: self.cpu_request,
             mem_limit: self.mem_limit,
             mem_request: self.mem_request,
+            other: self.other,
             state: PhantomData,
         }
     }
@@ -48,6 +55,7 @@ impl ResourceRequirementsBuilder<state::Initial> {
             cpu_request: self.cpu_request,
             mem_limit: Some(limit),
             mem_request: self.mem_request,
+            other: self.other,
             state: PhantomData,
         }
     }
@@ -60,6 +68,7 @@ impl ResourceRequirementsBuilder<state::MissingCpuLimit> {
             cpu_request: self.cpu_request,
             mem_limit: self.mem_limit,
             mem_request: self.mem_request,
+            other: self.other,
             state: PhantomData,
         }
     }
@@ -72,6 +81,7 @@ impl ResourceRequirementsBuilder<state::MissingMemLimit> {
             cpu_request: self.cpu_request,
             mem_limit: Some(limit),
             mem_request: self.mem_request,
+            other: self.other,
             state: PhantomData,
         }
     }
@@ -98,6 +108,13 @@ impl ResourceRequirementsBuilder<state::Final> {
             requests.insert("memory".into(), mem_request);
         }
 
+        for (resource, (rr_type, quantity)) in self.other {
+            match rr_type {
+                ResourceRequirementsType::Limits => limits.insert(resource, quantity),
+                ResourceRequirementsType::Requests => requests.insert(resource, quantity),
+            };
+        }
+
         ResourceRequirements {
             limits: Some(limits),
             requests: Some(requests),
@@ -116,6 +133,31 @@ impl<S> ResourceRequirementsBuilder<S> {
         self.mem_request = Some(request);
         self
     }
+
+    pub fn with_resource(
+        mut self,
+        rr_type: ResourceRequirementsType,
+        resource: &str,
+        quantity: Quantity,
+    ) -> Self {
+        if RESOURCE_DENYLIST.contains(&resource) {
+            warn!(
+                "setting resource '{}' directly is not allowed - use provided methods instead",
+                resource
+            );
+            return self;
+        }
+
+        let resource = resource.to_string();
+
+        if self.other.contains_key(&resource) {
+            warn!("resource '{}' already set, not overwriting", resource);
+            return self;
+        }
+
+        self.other.insert(resource, (rr_type, quantity));
+        self
+    }
 }
 
 #[cfg(test)]
@@ -127,15 +169,16 @@ mod test {
         let resources = ResourceRequirements {
             limits: Some(
                 [
-                    ("cpu".to_string(), Quantity("1".to_string())),
-                    ("memory".to_string(), Quantity("128Mi".to_string())),
+                    ("cpu".into(), Quantity("1".into())),
+                    ("memory".into(), Quantity("128Mi".into())),
                 ]
                 .into(),
             ),
             requests: Some(
                 [
-                    ("cpu".to_string(), Quantity("500m".to_string())),
-                    ("memory".to_string(), Quantity("64Mi".to_string())),
+                    ("cpu".into(), Quantity("500m".into())),
+                    ("memory".into(), Quantity("64Mi".into())),
+                    ("nvidia.com/gpu".into(), Quantity("1".into())),
                 ]
                 .into(),
             ),
@@ -147,6 +190,11 @@ mod test {
             .with_cpu_request(Quantity("500m".into()))
             .with_memory_limit(Quantity("128Mi".into()))
             .with_memory_request(Quantity("64Mi".into()))
+            .with_resource(
+                ResourceRequirementsType::Requests,
+                "nvidia.com/gpu",
+                Quantity("1".into()),
+            )
             .build();
 
         assert_eq!(rr, resources)
