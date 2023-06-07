@@ -92,6 +92,7 @@ impl ResourceRequirementsBuilder<state::Final> {
         let mut limits: BTreeMap<String, Quantity> = BTreeMap::new();
         let mut requests: BTreeMap<String, Quantity> = BTreeMap::new();
 
+        // Insert the CPU and memory limits/requests only when they are set
         if let Some(cpu_limit) = self.cpu_limit {
             limits.insert("cpu".into(), cpu_limit);
         }
@@ -108,6 +109,8 @@ impl ResourceRequirementsBuilder<state::Final> {
             requests.insert("memory".into(), mem_request);
         }
 
+        // Insert all other resources not covered by the with_cpu_* and
+        // with_memory_* methods.
         for (resource, (rr_type, quantity)) in self.other {
             match rr_type {
                 ResourceRequirementsType::Limits => limits.insert(resource, quantity),
@@ -115,9 +118,22 @@ impl ResourceRequirementsBuilder<state::Final> {
             };
         }
 
+        // Only add limits/requests when there is actually stuff to add
+        let limits = if !limits.is_empty() {
+            Some(limits)
+        } else {
+            None
+        };
+
+        let requests = if !requests.is_empty() {
+            Some(requests)
+        } else {
+            None
+        };
+
         ResourceRequirements {
-            limits: Some(limits),
-            requests: Some(requests),
+            limits,
+            requests,
             ..Default::default()
         }
     }

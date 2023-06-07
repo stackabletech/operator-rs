@@ -253,10 +253,16 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::PodBuilder;
     /// # use stackable_operator::builder::ContainerBuilder;
+    /// # use stackable_operator::builder::resources::ResourceRequirementsBuilder;
     /// # use k8s_openapi::{
     ///     api::core::v1::ResourceRequirements,
     ///     apimachinery::pkg::api::resource::Quantity
     /// };
+    ///
+    /// let resources = ResourceRequirementsBuilder::new()
+    ///     .with_cpu_limit(Quantity("1".into()))
+    ///     .with_memory_limit(Quantity("128Mi".into()))
+    ///     .build();
     ///
     /// let pod = PodBuilder::new()
     ///     .metadata_default()
@@ -264,8 +270,7 @@ impl PodBuilder {
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
-    ///             .with_cpu(Quantity("1".into()), None)
-    ///             .with_memory(Quantity("128Mi".into()), None)
+    ///             .with_resources(resources)
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_class("listener", "nodeport")
@@ -330,10 +335,16 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::PodBuilder;
     /// # use stackable_operator::builder::ContainerBuilder;
+    /// # use stackable_operator::builder::resources::ResourceRequirementsBuilder;
     /// # use k8s_openapi::{
     ///     api::core::v1::ResourceRequirements,
     ///     apimachinery::pkg::api::resource::Quantity
     /// };
+    ///
+    /// let resources = ResourceRequirementsBuilder::new()
+    ///     .with_cpu_limit(Quantity("1".into()))
+    ///     .with_memory_limit(Quantity("128Mi".into()))
+    ///     .build();
     ///
     /// let pod = PodBuilder::new()
     ///     .metadata_default()
@@ -341,8 +352,7 @@ impl PodBuilder {
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
-    ///             .with_cpu(Quantity("1".into()), None)
-    ///             .with_memory(Quantity("128Mi".into()), None)
+    ///             .with_resources(resources)
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener")
