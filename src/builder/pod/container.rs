@@ -1,16 +1,11 @@
-use k8s_openapi::{
-    api::core::v1::{
-        ConfigMapKeySelector, Container, ContainerPort, EnvVar, EnvVarSource, ObjectFieldSelector,
-        Probe, ResourceRequirements, SecretKeySelector, SecurityContext, VolumeMount,
-    },
-    apimachinery::pkg::api::resource::Quantity,
+use k8s_openapi::api::core::v1::{
+    ConfigMapKeySelector, Container, ContainerPort, EnvVar, EnvVarSource, ObjectFieldSelector,
+    Probe, ResourceRequirements, SecretKeySelector, SecurityContext, VolumeMount,
 };
-use std::{collections::BTreeMap, fmt};
-use tracing::warn;
+use std::fmt;
 
 use crate::{
-    commons::{product_image_selection::ResolvedProductImage, resources::ResourceRequirementsType},
-    error::Error,
+    commons::product_image_selection::ResolvedProductImage, error::Error,
     validation::is_rfc_1123_label,
 };
 
@@ -223,101 +218,8 @@ impl ContainerBuilder {
         self
     }
 
-    /// Sets the CPU limit and optionally request quantity for this container.
-    /// This overwrites previously defined quantitities for both limit and
-    /// request. Internally this uses [`self.with_resource`].
-    pub fn with_cpu(&mut self, limit: Quantity, request: Option<Quantity>) -> &mut Self {
-        self.with_resource(ResourceRequirementsType::Limits, "cpu", limit);
-
-        if let Some(request) = request {
-            self.with_resource(ResourceRequirementsType::Requests, "cpu", request);
-        }
-
-        self
-    }
-
-    /// Sets the memory limit and optionally request quantity for this container.
-    /// This overwrites previously defined quantitities for both limit and
-    /// request. Internally this uses [`self.with_resource`].
-    pub fn with_memory(&mut self, limit: Quantity, request: Option<Quantity>) -> &mut Self {
-        self.with_resource(ResourceRequirementsType::Limits, "memory", limit);
-
-        if let Some(request) = request {
-            self.with_resource(ResourceRequirementsType::Requests, "memory", request);
-        }
-
-        self
-    }
-
-    /// Sets the `quantity` of `resource` for limits or requests based on the
-    /// `rr_type`. This method overwrites previously set limits or requests
-    /// for the same `resource`. If this is the case, a warning is logged.
-    pub fn with_resource(
-        &mut self,
-        rr_type: ResourceRequirementsType,
-        resource: &str,
-        quantity: Quantity,
-    ) -> &mut Self {
-        // First check if there are some resource requirements set. If this is
-        // the case, we can simply use it. If not, we need to first create a
-        // ResourceRequirements struct and store is in the builder
-
-        match self.resources.as_mut() {
-            Some(resources) => match rr_type {
-                ResourceRequirementsType::Limits => {
-                    // Limits, requests and claims can also be unset (None). If
-                    // they are present, we can simply use the exiting maps to
-                    // insert our requested quantity for the desired resource.
-
-                    if let Some(limits) = resources.limits.as_mut() {
-                        if let Some(old_quantity) =
-                            limits.insert(resource.to_string(), quantity.clone())
-                        {
-                            warn!(
-                                "Overwriting already exisiting resource limit for resource {} with value {:?} (old: {:?})",
-                                resource,
-                                quantity,
-                                old_quantity
-                            )
-                        }
-                    } else {
-                        let mut btm = BTreeMap::new();
-                        btm.insert(resource.to_string(), quantity);
-
-                        resources.limits = Some(btm);
-                    }
-                }
-                ResourceRequirementsType::Requests => {
-                    if let Some(requests) = resources.requests.as_mut() {
-                        if let Some(old_quantity) =
-                            requests.insert(resource.to_string(), quantity.clone())
-                        {
-                            warn!(
-                                "Overwriting already exisiting resource request for resource {} with value {:?} (old: {:?})",
-                                resource,
-                                quantity,
-                                old_quantity
-                            )
-                        }
-                    } else {
-                        let mut btm = BTreeMap::new();
-                        btm.insert(resource.to_string(), quantity);
-
-                        resources.requests = Some(btm);
-                    }
-                }
-            },
-            None => {
-                // If the resources field was unset (None), we simply create a
-                // default ResourceRequirements struct and set it accordingly.
-                // Further, we recursively call self.with_resource_quantity to
-                // set the requested resource limit or request quantity.
-
-                self.resources = Some(ResourceRequirements::default());
-                self.with_resource(rr_type, resource, quantity);
-            }
-        }
-
+    pub fn with_resources(&mut self, resources: ResourceRequirements) -> &mut Self {
+        self.resources = Some(resources);
         self
     }
 
@@ -430,10 +332,14 @@ impl fmt::Display for FieldPathEnvVar {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builder::pod::container::{ContainerBuilder, ContainerPortBuilder, FieldPathEnvVar};
-    use k8s_openapi::{
-        api::core::v1::ResourceRequirements, apimachinery::pkg::api::resource::Quantity,
+    use crate::{
+        builder::{
+            pod::container::{ContainerBuilder, ContainerPortBuilder, FieldPathEnvVar},
+            resources::ResourceRequirementsBuilder,
+        },
+        commons::resources::ResourceRequirementsType,
     };
+    use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 
     #[test]
     fn test_container_builder() {
@@ -441,24 +347,18 @@ mod tests {
         let container_port_name = "foo_port_name";
         let container_port_1: i32 = 20000;
         let container_port_name_1 = "bar_port_name";
-        let resources = ResourceRequirements {
-            limits: Some(
-                [
-                    ("cpu".to_string(), Quantity("3000m".to_string())),
-                    ("memory".to_string(), Quantity("6Gi".to_string())),
-                    ("nvidia.com/gpu".to_string(), Quantity("1".to_string())),
-                ]
-                .into(),
-            ),
-            requests: Some(
-                [
-                    ("cpu".to_string(), Quantity("2000m".to_string())),
-                    ("memory".to_string(), Quantity("4Gi".to_string())),
-                ]
-                .into(),
-            ),
-            ..ResourceRequirements::default()
-        };
+
+        let resources = ResourceRequirementsBuilder::new()
+            .with_cpu_limit(Quantity("3000m".into()))
+            .with_cpu_request(Quantity("2000m".into()))
+            .with_memory_limit(Quantity("6Gi".into()))
+            .with_memory_request(Quantity("4Gi".into()))
+            .with_resource(
+                ResourceRequirementsType::Limits,
+                "nvidia.com/gpu",
+                Quantity("1".into()),
+            )
+            .build();
 
         let container = ContainerBuilder::new("testcontainer")
             .expect("ContainerBuilder not created")
@@ -467,13 +367,7 @@ mod tests {
             .add_env_var_from_secret("envFromSecret", "my-secret", "my-key")
             .add_volume_mount("configmap", "/mount")
             .add_container_port(container_port_name, container_port)
-            .with_cpu(Quantity("3000m".into()), Some(Quantity("2000m".into())))
-            .with_memory(Quantity("6Gi".into()), Some(Quantity("4Gi".into())))
-            .with_resource(
-                ResourceRequirementsType::Limits,
-                "nvidia.com/gpu",
-                Quantity("1".into()),
-            )
+            .with_resources(resources.clone())
             .add_container_ports(vec![ContainerPortBuilder::new(container_port_1)
                 .name(container_port_name_1)
                 .build()])
@@ -603,28 +497,21 @@ mod tests {
 
     #[test]
     fn test_container_cpu_and_memory_resource_requirements() {
-        let resources = ResourceRequirements {
-            limits: Some(
-                [
-                    ("cpu".to_string(), Quantity("3000m".to_string())),
-                    ("memory".to_string(), Quantity("6Gi".to_string())),
-                ]
-                .into(),
-            ),
-            requests: Some(
-                [
-                    ("cpu".to_string(), Quantity("2000m".to_string())),
-                    ("memory".to_string(), Quantity("4Gi".to_string())),
-                ]
-                .into(),
-            ),
-            ..ResourceRequirements::default()
-        };
+        let resources = ResourceRequirementsBuilder::new()
+            .with_cpu_limit(Quantity("3000m".into()))
+            .with_cpu_request(Quantity("2000m".into()))
+            .with_memory_limit(Quantity("6Gi".into()))
+            .with_memory_request(Quantity("4Gi".into()))
+            .with_resource(
+                ResourceRequirementsType::Limits,
+                "nvidia.com/gpu",
+                Quantity("1".into()),
+            )
+            .build();
 
         let container = ContainerBuilder::new("testcontainer")
             .expect("ContainerBuilder not created")
-            .with_cpu(Quantity("3000m".into()), Some(Quantity("2000m".into())))
-            .with_memory(Quantity("6Gi".into()), Some(Quantity("4Gi".into())))
+            .with_resources(resources.clone())
             .build();
 
         assert_eq!(container.resources, Some(resources))

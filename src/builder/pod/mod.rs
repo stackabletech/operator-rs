@@ -515,6 +515,7 @@ mod tests {
     use crate::builder::{
         meta::ObjectMetaBuilder,
         pod::{container::ContainerBuilder, volume::VolumeBuilder},
+        resources::ResourceRequirementsBuilder,
     };
     use k8s_openapi::{
         api::core::v1::{LocalObjectReference, PodAffinity, PodAffinityTerm},
@@ -525,11 +526,15 @@ mod tests {
     // A simple [`Container`] with a name and image.
     #[fixture]
     fn dummy_container() -> Container {
+        let resources = ResourceRequirementsBuilder::new()
+            .with_cpu_limit(Quantity("1".into()))
+            .with_memory_limit(Quantity("128Mi".into()))
+            .build();
+
         ContainerBuilder::new("container")
             .expect("ContainerBuilder not created")
             .image("private-company/product:2.4.14")
-            .with_cpu(Quantity("1".into()), None)
-            .with_memory(Quantity("128Mi".into()), None)
+            .with_resources(resources)
             .build()
     }
 
