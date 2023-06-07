@@ -463,22 +463,6 @@ impl PodBuilder {
     }
 
     fn build_spec(&self) -> PodSpec {
-        // We don't hard error here, because if we do, the StatefulSet (for
-        // example) doesn't show up at all. Instead users then need to comb
-        // through the logs to find the error. That's why we opted to just
-        // throw a warning which will get displayed in the Kubernetes
-        // status. Additionally the Statefulset will have events describing the
-        // actual problem.
-
-        if let Err(err) = self.check_container_resource(ResourceRequirementsType::Limits, "cpu") {
-            warn!("{}", err)
-        }
-
-        if let Err(err) = self.check_container_resource(ResourceRequirementsType::Limits, "memory")
-        {
-            warn!("{}", err)
-        }
-
         let pod_spec = PodSpec {
             containers: self.containers.clone(),
             host_network: self.host_network,
@@ -507,7 +491,8 @@ impl PodBuilder {
         // example) doesn't show up at all. Instead users then need to comb
         // through the logs to find the error. That's why we opted to just
         // throw a warning which will get displayed in the Kubernetes
-        // status.
+        // status. Additionally the Statefulset will have events describing the
+        // actual problem.
 
         if let Err(err) =
             pod_spec.check_resource_requirement(ResourceRequirementsType::Limits, "cpu")
