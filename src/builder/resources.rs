@@ -164,7 +164,7 @@ impl<S> ResourceRequirementsBuilder<S> {
     ) -> Self {
         if RESOURCE_DENYLIST.contains(&resource) {
             warn!(
-                "setting resource '{}' directly is not allowed - use provided methods instead",
+                "setting resource '{}' directly is discouraged - use provided methods instead",
                 resource
             );
             return self;
