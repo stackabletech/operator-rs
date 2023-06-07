@@ -482,7 +482,8 @@ impl PodBuilder {
         // example) doesn't show up at all. Instead users then need to comb
         // through the logs to find the error. That's why we opted to just
         // throw a warning which will get displayed in the Kubernetes
-        // status.
+        // status. Additionally the Statefulset will have events describing the
+        // actual problem.
 
         if let Err(err) = self.check_container_resource(ResourceRequirementsType::Limits, "cpu") {
             warn!("{}", err)
