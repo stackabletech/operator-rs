@@ -62,7 +62,7 @@ pub trait ClusterResource:
         self
     }
 
-    fn pod_spec(self) -> Option<PodSpec> {
+    fn pod_spec(&self) -> Option<PodSpec> {
         None
     }
 }
@@ -164,8 +164,8 @@ impl ClusterResource for RoleBinding {}
 impl ClusterResource for Secret {}
 
 impl ClusterResource for Job {
-    fn pod_spec(self) -> Option<PodSpec> {
-        self.spec.unwrap_or_default().template.spec
+    fn pod_spec(&self) -> Option<PodSpec> {
+        self.spec.clone().unwrap_or_default().template.spec
     }
 }
 
@@ -185,8 +185,8 @@ impl ClusterResource for StatefulSet {
         }
     }
 
-    fn pod_spec(self) -> Option<PodSpec> {
-        self.spec.unwrap_or_default().template.spec
+    fn pod_spec(&self) -> Option<PodSpec> {
+        self.spec.clone().unwrap_or_default().template.spec
     }
 }
 
@@ -225,8 +225,8 @@ impl ClusterResource for DaemonSet {
         }
     }
 
-    fn pod_spec(self) -> Option<PodSpec> {
-        self.spec.unwrap_or_default().template.spec
+    fn pod_spec(&self) -> Option<PodSpec> {
+        self.spec.clone().unwrap_or_default().template.spec
     }
 }
 
@@ -436,7 +436,7 @@ impl ClusterResources {
             &[&self.app_instance, &self.manager, &self.app_name],
         )?;
 
-        if let Some(pod_spec) = resource.clone().pod_spec() {
+        if let Some(pod_spec) = resource.pod_spec() {
             if let Err(err) =
                 pod_spec.check_resource_requirement(ResourceRequirementsType::Limits, "cpu")
             {

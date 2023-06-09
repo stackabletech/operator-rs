@@ -1,4 +1,5 @@
 pub mod container;
+pub mod resources;
 pub mod security;
 pub mod volume;
 
@@ -253,7 +254,7 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::PodBuilder;
     /// # use stackable_operator::builder::ContainerBuilder;
-    /// # use stackable_operator::builder::resources::ResourceRequirementsBuilder;
+    /// # use stackable_operator::builder::pod::resources::ResourceRequirementsBuilder;
     /// # use k8s_openapi::{
     ///     api::core::v1::ResourceRequirements,
     ///     apimachinery::pkg::api::resource::Quantity
@@ -335,7 +336,7 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::PodBuilder;
     /// # use stackable_operator::builder::ContainerBuilder;
-    /// # use stackable_operator::builder::resources::ResourceRequirementsBuilder;
+    /// # use stackable_operator::builder::pod::resources::ResourceRequirementsBuilder;
     /// # use k8s_openapi::{
     ///     api::core::v1::ResourceRequirements,
     ///     apimachinery::pkg::api::resource::Quantity
@@ -515,8 +516,10 @@ mod tests {
     use super::*;
     use crate::builder::{
         meta::ObjectMetaBuilder,
-        pod::{container::ContainerBuilder, volume::VolumeBuilder},
-        resources::ResourceRequirementsBuilder,
+        pod::{
+            container::ContainerBuilder, resources::ResourceRequirementsBuilder,
+            volume::VolumeBuilder,
+        },
     };
     use k8s_openapi::{
         api::core::v1::{LocalObjectReference, PodAffinity, PodAffinityTerm},
