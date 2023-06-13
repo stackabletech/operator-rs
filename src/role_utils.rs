@@ -126,7 +126,7 @@ pub struct CommonConfiguration<T> {
 
 /// Special schema for PodTemplateSpec without mandatory fields (e.g. `containers`).
 ///
-/// The normal PodTemplateSpec requires you to specify `containers` as an Vec<Container>.
+/// The normal PodTemplateSpec requires you to specify `containers` as an `Vec<Container>`.
 /// Often times the user want's to overwrite/add stuff not related to a container
 /// (e.g. tolerations or a ServiceAccount), so it's annoying that he always needs to
 /// specify an empty array for `containers`.
