@@ -271,7 +271,7 @@ impl PodBuilder {
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
-    ///             .with_resources(resources)
+    ///             .resources(resources)
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_class("listener", "nodeport")
@@ -353,7 +353,7 @@ impl PodBuilder {
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
-    ///             .with_resources(resources)
+    ///             .resources(resources)
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener")
@@ -538,7 +538,7 @@ mod tests {
         ContainerBuilder::new("container")
             .expect("ContainerBuilder not created")
             .image("private-company/product:2.4.14")
-            .with_resources(resources)
+            .resources(resources)
             .build()
     }
 

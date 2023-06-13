@@ -7,7 +7,6 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Set default resource limits on `PodBuilder::add_init_container` ([#598]).
-- BREAKING: Renamed `resources` method from `ContainerBuilder` to `with_resources`. ([#598]).
 
 ### Added
 

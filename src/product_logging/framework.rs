@@ -1006,7 +1006,7 @@ kill $vector_pid"),
         .add_env_var("VECTOR_LOG", log_level.to_vector_literal())
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
         .add_volume_mount(log_volume_name, STACKABLE_LOG_DIR)
-        .with_resources(resources)
+        .resources(resources)
         .build()
 }
 

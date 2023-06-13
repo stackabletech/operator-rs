@@ -218,7 +218,7 @@ impl ContainerBuilder {
         self
     }
 
-    pub fn with_resources(&mut self, resources: ResourceRequirements) -> &mut Self {
+    pub fn resources(&mut self, resources: ResourceRequirements) -> &mut Self {
         self.resources = Some(resources);
         self
     }
@@ -362,7 +362,7 @@ mod tests {
             .add_env_var_from_secret("envFromSecret", "my-secret", "my-key")
             .add_volume_mount("configmap", "/mount")
             .add_container_port(container_port_name, container_port)
-            .with_resources(resources.clone())
+            .resources(resources.clone())
             .add_container_ports(vec![ContainerPortBuilder::new(container_port_1)
                 .name(container_port_name_1)
                 .build()])
@@ -502,7 +502,7 @@ mod tests {
 
         let container = ContainerBuilder::new("testcontainer")
             .expect("ContainerBuilder not created")
-            .with_resources(resources.clone())
+            .resources(resources.clone())
             .build();
 
         assert_eq!(container.resources, Some(resources))
