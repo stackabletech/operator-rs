@@ -180,7 +180,7 @@ impl PodBuilder {
         // for sidecars, product operators have to explicitly make a decision
         // on what the resource limits should be.
 
-        // TODO (Techassi): These defaults should not live here and should
+        // FIXME: These defaults should not live here and should
         // instead be set inside the container builder. Having container types
         // should greatly simplify setting the default resource requirements.
         // This method should instead be "as dumb" as it can be and should

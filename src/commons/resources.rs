@@ -327,10 +327,10 @@ pub struct ResourceRequirementsError {
     resource_key: String,
 }
 
-/// [`ResourceRequirementsType`] dsscribes the available resource requirement
+/// [`ResourceRequirementsType`] describes the available resource requirement
 /// types. The user can set limits, requests and claims. This enum makes it
 /// possible to check if containers set one or more of these types.
-#[derive(Copy, Clone, Debug, Display)]
+#[derive(Copy, Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord)]
 #[strum(serialize_all = "lowercase")]
 pub enum ResourceRequirementsType {
     Limits,

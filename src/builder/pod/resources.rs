@@ -23,7 +23,7 @@ pub struct ResourceRequirementsBuilder<S = state::Initial> {
     cpu_request: Option<Quantity>,
     mem_limit: Option<Quantity>,
     mem_request: Option<Quantity>,
-    other: BTreeMap<String, (ResourceRequirementsType, Quantity)>,
+    other: BTreeMap<String, BTreeMap<ResourceRequirementsType, Quantity>>,
     state: PhantomData<S>,
 }
 
@@ -117,11 +117,15 @@ impl ResourceRequirementsBuilder<state::Final> {
 
         // Insert all other resources not covered by the with_cpu_* and
         // with_memory_* methods.
-        for (resource, (rr_type, quantity)) in self.other {
-            match rr_type {
-                ResourceRequirementsType::Limits => limits.insert(resource, quantity),
-                ResourceRequirementsType::Requests => requests.insert(resource, quantity),
-            };
+        for (resource, types) in self.other {
+            for (rr_type, quantity) in types {
+                match rr_type {
+                    ResourceRequirementsType::Limits => limits.insert(resource.clone(), quantity),
+                    ResourceRequirementsType::Requests => {
+                        requests.insert(resource.clone(), quantity)
+                    }
+                };
+            }
         }
 
         // Only add limits/requests when there is actually stuff to add
@@ -172,13 +176,22 @@ impl<S> ResourceRequirementsBuilder<S> {
 
         let resource = resource.to_string();
 
-        if self.other.contains_key(&resource) {
-            warn!("resource '{}' already set, not overwriting", resource);
-            return self;
-        }
+        match self.other.get_mut(&resource) {
+            Some(types) => {
+                if types.contains_key(&rr_type) {
+                    warn!(
+                        "resource {} for '{}' already set, not overwriting",
+                        rr_type, resource
+                    );
+                }
 
-        self.other
-            .insert(resource, (rr_type, Quantity(quantity.into())));
+                types.insert(rr_type, Quantity(quantity.into()));
+            }
+            None => {
+                let types = BTreeMap::from([(rr_type, Quantity(quantity.into()))]);
+                self.other.insert(resource, types);
+            }
+        }
 
         self
     }
@@ -195,6 +208,7 @@ mod test {
                 [
                     ("cpu".into(), Quantity("1".into())),
                     ("memory".into(), Quantity("128Mi".into())),
+                    ("nvidia.com/gpu".into(), Quantity("2".into())),
                 ]
                 .into(),
             ),
@@ -214,6 +228,7 @@ mod test {
             .with_cpu_request("500m")
             .with_memory_limit("128Mi")
             .with_memory_request("64Mi")
+            .with_resource(ResourceRequirementsType::Limits, "nvidia.com/gpu", "2")
             .with_resource(ResourceRequirementsType::Requests, "nvidia.com/gpu", "1")
             .build();
 
