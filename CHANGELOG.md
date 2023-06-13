@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add podOverrides to common struct CommonConfiguration ([#601]).
+
+[#601]: https://github.com/stackabletech/operator-rs/pull/601
+
 ## [0.41.0] - 2023-04-20
 
 ### Changed
