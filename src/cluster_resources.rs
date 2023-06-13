@@ -164,8 +164,10 @@ impl ClusterResource for RoleBinding {}
 impl ClusterResource for Secret {}
 
 impl ClusterResource for Job {
-    fn pod_spec(&self) -> Option<PodSpec> {
-        self.spec.clone().unwrap_or_default().template.spec
+    fn pod_spec(&self) -> Option<&PodSpec> {
+        self.spec
+            .as_ref()
+            .and_then(|spec| spec.template.spec.as_ref())
     }
 }
 
