@@ -62,7 +62,7 @@ pub trait ClusterResource:
         self
     }
 
-    fn pod_spec(&self) -> Option<PodSpec> {
+    fn pod_spec(&self) -> Option<&PodSpec> {
         None
     }
 }
