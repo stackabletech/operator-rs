@@ -128,7 +128,8 @@ pub struct CommonConfiguration<T> {
 ///
 /// The normal PodTemplateSpec requires you to specify `containers` as an Vec<Container>.
 /// Often times the user want's to overwrite/add stuff not related to a container
-/// (e.g. tolerations or a ServiceAccount).
+/// (e.g. tolerations or a ServiceAccount), so it's annoying that he always needs to
+/// specify an empty array for `containers`.
 fn pod_overrides_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
     let mut schema = PodTemplateSpec::json_schema(gen);
     if let Schema::Object(ref mut schema_object) = schema {
