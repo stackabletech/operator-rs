@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add podOverrides to common struct CommonConfiguration ([#601]).
+- All the operators now must respect the new `podOverrides` configuration! ([#601]).
 
 [#601]: https://github.com/stackabletech/operator-rs/pull/601
 
