@@ -8,7 +8,10 @@ use std::collections::BTreeMap;
 use crate::builder::meta::ObjectMetaBuilder;
 use crate::commons::affinity::StackableAffinity;
 use crate::commons::product_image_selection::ResolvedProductImage;
-use crate::commons::resources::{ResourceRequirementsExt, ResourceRequirementsType};
+use crate::commons::resources::{
+    ComputeResource, ResourceRequirementsExt, ResourceRequirementsType, LIMIT_REQUEST_RATIO_CPU,
+    LIMIT_REQUEST_RATIO_MEMORY,
+};
 use crate::error::{Error, OperatorResult};
 
 use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
@@ -513,6 +516,18 @@ impl PodBuilder {
 
         if let Err(err) =
             pod_spec.check_resource_requirement(ResourceRequirementsType::Limits, "memory")
+        {
+            warn!("{}", err)
+        }
+
+        if let Err(err) =
+            pod_spec.check_limit_to_request_ratio(&ComputeResource::Cpu, LIMIT_REQUEST_RATIO_CPU)
+        {
+            warn!("{}", err)
+        }
+
+        if let Err(err) = pod_spec
+            .check_limit_to_request_ratio(&ComputeResource::Memory, LIMIT_REQUEST_RATIO_MEMORY)
         {
             warn!("{}", err)
         }

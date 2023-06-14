@@ -311,6 +311,14 @@ impl Div<f32> for MemoryQuantity {
     }
 }
 
+impl Div<MemoryQuantity> for MemoryQuantity {
+    type Output = f32;
+
+    fn div(self, rhs: MemoryQuantity) -> Self::Output {
+        self.value / rhs.value
+    }
+}
+
 impl Sub<MemoryQuantity> for MemoryQuantity {
     type Output = MemoryQuantity;
 

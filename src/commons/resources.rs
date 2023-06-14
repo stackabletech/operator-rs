@@ -68,9 +68,13 @@
 //! }
 //! ```
 
-use crate::config::{
-    fragment::{Fragment, FromFragment},
-    merge::Merge,
+use crate::{
+    config::{
+        fragment::{Fragment, FromFragment},
+        merge::Merge,
+    },
+    cpu::CpuQuantity,
+    memory::MemoryQuantity,
 };
 use derivative::Derivative;
 use k8s_openapi::api::core::v1::{
@@ -82,6 +86,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt::Debug};
 use strum::Display;
+
+pub const LIMIT_REQUEST_RATIO_CPU: f32 = 5.0;
+pub const LIMIT_REQUEST_RATIO_MEMORY: f32 = 1.0;
 
 // This struct allows specifying memory and cpu limits as well as generically adding storage
 // settings.
@@ -321,11 +328,22 @@ impl<T, K> Into<ResourceRequirements> for Resources<T, K> {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ResourceRequirementsError {
+    #[error("failed to parse quantity")]
+    ParseQuantity {
+        #[source]
+        error: crate::error::Error,
+    },
     #[error("missing {resource_key} resource {resource_type} for container {container_name}")]
     MissingResourceRequirements {
         resource_type: ResourceRequirementsType,
         container_name: String,
         resource_key: String,
+    },
+    #[error("{resource_key} max limit to request ratio for Container {container_name} is {allowed_ration}, but ratio was exceeded or request and limit where not set explicitly")]
+    LimitToRequestRatioExceeded {
+        container_name: String,
+        resource_key: String,
+        allowed_ration: f32,
     },
 }
 
@@ -342,6 +360,13 @@ pub enum ResourceRequirementsType {
     // in the future, we can just remove the comment to get support for it
     // immediatly.
     // Claims,
+}
+
+#[derive(Copy, Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord)]
+#[strum(serialize_all = "lowercase")]
+pub enum ComputeResource {
+    Cpu,
+    Memory,
 }
 
 /// This trait allows implementing types to check if a certain
@@ -385,6 +410,13 @@ pub trait ResourceRequirementsExt {
     ) -> bool {
         self.check_resource_requirements(rr_types, resource).is_ok()
     }
+
+    fn check_limit_to_request_ratio(
+        &self,
+        resource: &ComputeResource,
+        // We did choose a f32 instead of a usize here, as LimitRange ratios can be a floating point (Quantity - e.g. 1500m)
+        ratio: f32,
+    ) -> Result<(), ResourceRequirementsError>;
 }
 
 impl ResourceRequirementsExt for Container {
@@ -411,6 +443,51 @@ impl ResourceRequirementsExt for Container {
 
         Ok(())
     }
+
+    fn check_limit_to_request_ratio(
+        &self,
+        resource: &ComputeResource,
+        ratio: f32,
+    ) -> Result<(), ResourceRequirementsError> {
+        let limit = self
+            .resources
+            .as_ref()
+            .and_then(|rr| rr.limits.as_ref())
+            .and_then(|l| l.get(&resource.to_string()));
+        let request = self
+            .resources
+            .as_ref()
+            .and_then(|rr| rr.requests.as_ref())
+            .and_then(|r| r.get(&resource.to_string()));
+        if let (Some(limit), Some(request)) = (limit, request) {
+            match resource {
+                ComputeResource::Cpu => {
+                    let limit = CpuQuantity::try_from(limit)
+                        .map_err(|error| ResourceRequirementsError::ParseQuantity { error })?;
+                    let request = CpuQuantity::try_from(request)
+                        .map_err(|error| ResourceRequirementsError::ParseQuantity { error })?;
+                    if limit / request <= ratio {
+                        return Ok(());
+                    }
+                }
+                ComputeResource::Memory => {
+                    let limit = MemoryQuantity::try_from(limit)
+                        .map_err(|error| ResourceRequirementsError::ParseQuantity { error })?;
+                    let request = MemoryQuantity::try_from(request)
+                        .map_err(|error| ResourceRequirementsError::ParseQuantity { error })?;
+                    if limit / request <= ratio {
+                        return Ok(());
+                    }
+                }
+            }
+        }
+
+        Err(ResourceRequirementsError::LimitToRequestRatioExceeded {
+            container_name: self.name.clone(),
+            resource_key: resource.to_string(),
+            allowed_ration: ratio,
+        })
+    }
 }
 
 impl ResourceRequirementsExt for PodSpec {
@@ -420,7 +497,19 @@ impl ResourceRequirementsExt for PodSpec {
         resource: &str,
     ) -> Result<(), ResourceRequirementsError> {
         for container in &self.containers {
-            container.check_resource_requirement(rr_type, resource)?
+            container.check_resource_requirement(rr_type, resource)?;
+        }
+
+        Ok(())
+    }
+
+    fn check_limit_to_request_ratio(
+        &self,
+        resource: &ComputeResource,
+        ratio: f32,
+    ) -> Result<(), ResourceRequirementsError> {
+        for container in &self.containers {
+            container.check_limit_to_request_ratio(resource, ratio)?;
         }
 
         Ok(())
@@ -429,14 +518,17 @@ impl ResourceRequirementsExt for PodSpec {
 
 #[cfg(test)]
 mod tests {
+    use crate::builder::resources::ResourceRequirementsBuilder;
     use crate::commons::resources::{PvcConfig, PvcConfigFragment, Resources, ResourcesFragment};
     use crate::config::{
         fragment::{self, Fragment},
         merge::Merge,
     };
-    use k8s_openapi::api::core::v1::{PersistentVolumeClaim, ResourceRequirements};
+    use k8s_openapi::api::core::v1::{Container, PersistentVolumeClaim, ResourceRequirements};
     use rstest::rstest;
     use serde::{Deserialize, Serialize};
+
+    use super::*;
 
     #[derive(Clone, Debug, Default, Fragment)]
     #[fragment(path_overrides(fragment = "crate::config::fragment"))]
@@ -604,5 +696,43 @@ mod tests {
             serde_yaml::from_str(&expected).expect("illegal expected output");
 
         assert_eq!(result, expected_requirements);
+    }
+
+    #[rstest]
+    #[case::valid("1", "1", "4Gi", "4Gi", true, true)]
+    #[case::cpu_ratio_invalid("100m", "1", "4Gi", "4Gi", false, true)]
+    #[case::memory_ratio_invalid("1", "1", "2Gi", "4Gi", true, false)]
+    #[case::both_ratios_invalid("100m", "1", "2Gi", "4Gi", false, false)]
+    fn test_resource_requirements_checks(
+        #[case] cr: String,
+        #[case] cl: String,
+        #[case] mr: String,
+        #[case] ml: String,
+        #[case] expected_valid_cpu: bool,
+        #[case] expected_valid_memory: bool,
+    ) {
+        let container = Container {
+            resources: Some(
+                ResourceRequirementsBuilder::new()
+                    .with_cpu_limit(cl)
+                    .with_cpu_request(cr)
+                    .with_memory_limit(ml)
+                    .with_memory_request(mr)
+                    .build(),
+            ),
+            ..Default::default()
+        };
+        assert_eq!(
+            container
+                .check_limit_to_request_ratio(&ComputeResource::Cpu, 5.0)
+                .is_ok(),
+            expected_valid_cpu
+        );
+        assert_eq!(
+            container
+                .check_limit_to_request_ratio(&ComputeResource::Memory, 1.0)
+                .is_ok(),
+            expected_valid_memory
+        );
     }
 }

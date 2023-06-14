@@ -4,7 +4,10 @@ use crate::{
     client::{Client, GetApi},
     commons::{
         cluster_operation::ClusterOperation,
-        resources::{ResourceRequirementsExt, ResourceRequirementsType},
+        resources::{
+            ComputeResource, ResourceRequirementsExt, ResourceRequirementsType,
+            LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
+        },
     },
     error::{Error, OperatorResult},
     k8s_openapi::{
@@ -451,6 +454,18 @@ impl ClusterResources {
 
             if let Err(err) =
                 pod_spec.check_resource_requirement(ResourceRequirementsType::Limits, "memory")
+            {
+                warn!("{}", err)
+            }
+
+            if let Err(err) = pod_spec
+                .check_limit_to_request_ratio(&ComputeResource::Cpu, LIMIT_REQUEST_RATIO_CPU)
+            {
+                warn!("{}", err)
+            }
+
+            if let Err(err) = pod_spec
+                .check_limit_to_request_ratio(&ComputeResource::Memory, LIMIT_REQUEST_RATIO_MEMORY)
             {
                 warn!("{}", err)
             }
