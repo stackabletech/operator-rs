@@ -1,165 +1,173 @@
-use std::{collections::BTreeMap, marker::PhantomData};
+use std::{collections::BTreeMap, str::FromStr};
 
 use k8s_openapi::{
     api::core::v1::ResourceRequirements, apimachinery::pkg::api::resource::Quantity,
 };
 use tracing::warn;
 
-use crate::commons::resources::ResourceRequirementsType;
+use crate::{
+    commons::resources::ResourceRequirementsType, cpu::CpuQuantity, error::OperatorResult,
+    memory::MemoryQuantity,
+};
 
 const RESOURCE_DENYLIST: &[&str] = &["cpu", "memory"];
 
-mod state {
-    #[derive(Debug, Default)]
-    pub struct Initial {}
-    pub struct CpuLimitSet {}
-    pub struct MemLimitSet {}
-    pub struct Final {}
-}
-
 #[derive(Debug, Default)]
-pub struct ResourceRequirementsBuilder<S = state::Initial> {
-    cpu_limit: Option<Quantity>,
-    cpu_request: Option<Quantity>,
-    mem_limit: Option<Quantity>,
-    mem_request: Option<Quantity>,
+pub struct ResourceRequirementsBuilder<CL, CR, ML, MR> {
     other: BTreeMap<String, BTreeMap<ResourceRequirementsType, Quantity>>,
-    state: PhantomData<S>,
+    cpu_request: CR,
+    mem_request: MR,
+    mem_limit: ML,
+    cpu_limit: CL,
 }
 
-impl ResourceRequirementsBuilder<state::Initial> {
+impl ResourceRequirementsBuilder<(), (), (), ()> {
     pub fn new() -> Self {
         ResourceRequirementsBuilder::default()
     }
+}
 
+impl<CR, ML, MR> ResourceRequirementsBuilder<(), CR, ML, MR> {
     pub fn with_cpu_limit(
         self,
         limit: impl Into<String>,
-    ) -> ResourceRequirementsBuilder<state::CpuLimitSet> {
+    ) -> ResourceRequirementsBuilder<Quantity, CR, ML, MR> {
+        let Self {
+            cpu_request,
+            mem_request,
+            mem_limit,
+            other,
+            ..
+        } = self;
+
         ResourceRequirementsBuilder {
-            cpu_limit: Some(Quantity(limit.into())),
-            cpu_request: self.cpu_request,
-            mem_limit: self.mem_limit,
-            mem_request: self.mem_request,
-            other: self.other,
-            state: PhantomData,
+            cpu_limit: Quantity(limit.into()),
+            cpu_request,
+            mem_request,
+            mem_limit,
+            other,
         }
     }
 
+    pub fn with_cpu_range(
+        self,
+        request: impl Into<String>,
+        factor: usize,
+    ) -> OperatorResult<ResourceRequirementsBuilder<Quantity, Quantity, ML, MR>> {
+        let request = CpuQuantity::from_str(&request.into())?;
+        let limit = request * factor;
+
+        let Self {
+            mem_request,
+            mem_limit,
+            other,
+            ..
+        } = self;
+
+        Ok(ResourceRequirementsBuilder {
+            cpu_request: request.into(),
+            cpu_limit: limit.into(),
+            mem_request,
+            mem_limit,
+            other,
+        })
+    }
+}
+
+impl<ML, MR> ResourceRequirementsBuilder<Quantity, (), ML, MR> {
+    pub fn with_cpu_request(
+        self,
+        request: impl Into<String>,
+    ) -> ResourceRequirementsBuilder<Quantity, Quantity, ML, MR> {
+        let Self {
+            mem_request,
+            cpu_limit,
+            mem_limit,
+            other,
+            ..
+        } = self;
+
+        ResourceRequirementsBuilder {
+            cpu_request: Quantity(request.into()),
+            mem_request,
+            cpu_limit,
+            mem_limit,
+            other,
+        }
+    }
+}
+
+impl<CL, CR, MR> ResourceRequirementsBuilder<CL, CR, (), MR> {
     pub fn with_memory_limit(
         self,
         limit: impl Into<String>,
-    ) -> ResourceRequirementsBuilder<state::MemLimitSet> {
+    ) -> ResourceRequirementsBuilder<CL, CR, Quantity, MR> {
+        let Self {
+            cpu_request,
+            mem_request,
+            cpu_limit,
+            other,
+            ..
+        } = self;
+
         ResourceRequirementsBuilder {
-            cpu_limit: self.cpu_limit,
-            cpu_request: self.cpu_request,
-            mem_limit: Some(Quantity(limit.into())),
-            mem_request: self.mem_request,
-            other: self.other,
-            state: PhantomData,
+            mem_limit: Quantity(limit.into()),
+            cpu_request,
+            mem_request,
+            cpu_limit,
+            other,
         }
     }
-}
 
-impl ResourceRequirementsBuilder<state::MemLimitSet> {
-    pub fn with_cpu_limit(
+    pub fn with_memory_range(
         self,
-        limit: impl Into<String>,
-    ) -> ResourceRequirementsBuilder<state::Final> {
-        ResourceRequirementsBuilder {
-            cpu_limit: Some(Quantity(limit.into())),
-            cpu_request: self.cpu_request,
-            mem_limit: self.mem_limit,
-            mem_request: self.mem_request,
-            other: self.other,
-            state: PhantomData,
-        }
+        request: impl Into<String>,
+        factor: f32,
+    ) -> OperatorResult<ResourceRequirementsBuilder<CL, CR, Quantity, Quantity>> {
+        let request = MemoryQuantity::from_str(&request.into())?;
+        let limit = request * factor;
+
+        let Self {
+            cpu_request,
+            cpu_limit,
+            other,
+            ..
+        } = self;
+
+        Ok(ResourceRequirementsBuilder {
+            mem_request: request.into(),
+            mem_limit: limit.into(),
+            cpu_request,
+            cpu_limit,
+            other,
+        })
     }
 }
 
-impl ResourceRequirementsBuilder<state::CpuLimitSet> {
-    pub fn with_memory_limit(
+impl<CL, CR> ResourceRequirementsBuilder<CL, CR, Quantity, ()> {
+    pub fn with_memory_request(
         self,
-        limit: impl Into<String>,
-    ) -> ResourceRequirementsBuilder<state::Final> {
+        request: impl Into<String>,
+    ) -> ResourceRequirementsBuilder<CL, CR, Quantity, Quantity> {
+        let Self {
+            cpu_request,
+            cpu_limit,
+            mem_limit,
+            other,
+            ..
+        } = self;
+
         ResourceRequirementsBuilder {
-            cpu_limit: self.cpu_limit,
-            cpu_request: self.cpu_request,
-            mem_limit: Some(Quantity(limit.into())),
-            mem_request: self.mem_request,
-            other: self.other,
-            state: PhantomData,
+            mem_request: Quantity(request.into()),
+            cpu_request,
+            cpu_limit,
+            mem_limit,
+            other,
         }
     }
 }
 
-impl ResourceRequirementsBuilder<state::Final> {
-    pub fn build(self) -> ResourceRequirements {
-        let mut limits: BTreeMap<String, Quantity> = BTreeMap::new();
-        let mut requests: BTreeMap<String, Quantity> = BTreeMap::new();
-
-        // Insert the CPU and memory limits/requests only when they are set
-        if let Some(cpu_limit) = self.cpu_limit {
-            limits.insert("cpu".into(), cpu_limit);
-        }
-
-        if let Some(mem_limit) = self.mem_limit {
-            limits.insert("memory".into(), mem_limit);
-        }
-
-        if let Some(cpu_request) = self.cpu_request {
-            requests.insert("cpu".into(), cpu_request);
-        }
-
-        if let Some(mem_request) = self.mem_request {
-            requests.insert("memory".into(), mem_request);
-        }
-
-        // Insert all other resources not covered by the with_cpu_* and
-        // with_memory_* methods.
-        for (resource, types) in self.other {
-            for (rr_type, quantity) in types {
-                match rr_type {
-                    ResourceRequirementsType::Limits => limits.insert(resource.clone(), quantity),
-                    ResourceRequirementsType::Requests => {
-                        requests.insert(resource.clone(), quantity)
-                    }
-                };
-            }
-        }
-
-        // Only add limits/requests when there is actually stuff to add
-        let limits = if limits.is_empty() {
-            None
-        } else {
-            Some(limits)
-        };
-
-        let requests = if requests.is_empty() {
-            None
-        } else {
-            Some(requests)
-        };
-
-        ResourceRequirements {
-            limits,
-            requests,
-            ..Default::default()
-        }
-    }
-}
-
-impl<S> ResourceRequirementsBuilder<S> {
-    pub fn with_cpu_request(mut self, request: impl Into<String>) -> Self {
-        self.cpu_request = Some(Quantity(request.into()));
-        self
-    }
-
-    pub fn with_memory_request(mut self, request: impl Into<String>) -> Self {
-        self.mem_request = Some(Quantity(request.into()));
-        self
-    }
-
+impl<CL, CR, ML, MR> ResourceRequirementsBuilder<CL, CR, ML, MR> {
     pub fn with_resource(
         mut self,
         rr_type: ResourceRequirementsType,
@@ -194,6 +202,51 @@ impl<S> ResourceRequirementsBuilder<S> {
         }
 
         self
+    }
+}
+
+impl ResourceRequirementsBuilder<Quantity, Quantity, Quantity, Quantity> {
+    pub fn build(self) -> ResourceRequirements {
+        let mut limits: BTreeMap<String, Quantity> = BTreeMap::new();
+        let mut requests: BTreeMap<String, Quantity> = BTreeMap::new();
+
+        limits.insert("cpu".into(), self.cpu_limit);
+        requests.insert("cpu".into(), self.cpu_request);
+
+        limits.insert("memory".into(), self.mem_limit);
+        requests.insert("memory".into(), self.mem_request);
+
+        // Insert all other resources not covered by the with_cpu_* and
+        // with_memory_* methods.
+        for (resource, types) in self.other {
+            for (rr_type, quantity) in types {
+                match rr_type {
+                    ResourceRequirementsType::Limits => limits.insert(resource.clone(), quantity),
+                    ResourceRequirementsType::Requests => {
+                        requests.insert(resource.clone(), quantity)
+                    }
+                };
+            }
+        }
+
+        // Only add limits/requests when there is actually stuff to add
+        let limits = if limits.is_empty() {
+            None
+        } else {
+            Some(limits)
+        };
+
+        let requests = if requests.is_empty() {
+            None
+        } else {
+            Some(requests)
+        };
+
+        ResourceRequirements {
+            limits,
+            requests,
+            ..Default::default()
+        }
     }
 }
 

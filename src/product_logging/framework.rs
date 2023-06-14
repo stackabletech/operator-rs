@@ -959,7 +959,9 @@ address = "{vector_aggregator_address}"
 ///
 /// let resources = ResourceRequirementsBuilder::new()
 ///     .with_cpu_limit("1")
+///     .with_cpu_request("1")
 ///     .with_memory_limit("1Gi")
+///     .with_memory_request("1Gi")
 ///     .build();
 ///
 /// if logging.enable_vector_agent {

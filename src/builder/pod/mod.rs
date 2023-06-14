@@ -262,7 +262,9 @@ impl PodBuilder {
     ///
     /// let resources = ResourceRequirementsBuilder::new()
     ///     .with_cpu_limit("1")
+    ///     .with_cpu_request("1")
     ///     .with_memory_limit("128Mi")
+    ///     .with_memory_request("128Mi")
     ///     .build();
     ///
     /// let pod = PodBuilder::new()
@@ -288,6 +290,9 @@ impl PodBuilder {
     ///   - name: container
     ///     resources:
     ///       limits:
+    ///         cpu: '1'
+    ///         memory: 128Mi
+    ///       requests:
     ///         cpu: '1'
     ///         memory: 128Mi
     ///     volumeMounts:
@@ -344,7 +349,9 @@ impl PodBuilder {
     ///
     /// let resources = ResourceRequirementsBuilder::new()
     ///     .with_cpu_limit("1")
+    ///     .with_cpu_request("1")
     ///     .with_memory_limit("128Mi")
+    ///     .with_memory_request("128Mi")
     ///     .build();
     ///
     /// let pod = PodBuilder::new()
@@ -370,6 +377,9 @@ impl PodBuilder {
     ///   - name: container
     ///     resources:
     ///       limits:
+    ///         cpu: '1'
+    ///         memory: 128Mi
+    ///       requests:
     ///         cpu: '1'
     ///         memory: 128Mi
     ///     volumeMounts:
@@ -532,7 +542,9 @@ mod tests {
     fn dummy_container() -> Container {
         let resources = ResourceRequirementsBuilder::new()
             .with_cpu_limit("1")
+            .with_cpu_request("1")
             .with_memory_limit("128Mi")
+            .with_memory_request("128Mi")
             .build();
 
         ContainerBuilder::new("container")

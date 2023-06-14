@@ -1,5 +1,5 @@
 use std::{
-    ops::{Add, AddAssign},
+    ops::{Add, AddAssign, Mul, MulAssign},
     str::FromStr,
 };
 
@@ -13,6 +13,7 @@ use crate::error::{Error, OperatorResult};
 /// A CPU quantity cannot have a precision finer than 'm' (millis) in Kubernetes.
 /// So we use that as our internal representation (see:
 /// `<https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-cpu>`).
+#[derive(Debug, Clone, Copy)]
 pub struct CpuQuantity {
     millis: usize,
 }
@@ -68,6 +69,18 @@ impl FromStr for CpuQuantity {
     }
 }
 
+impl From<CpuQuantity> for Quantity {
+    fn from(quantity: CpuQuantity) -> Self {
+        Self::from(&quantity)
+    }
+}
+
+impl From<&CpuQuantity> for Quantity {
+    fn from(quantity: &CpuQuantity) -> Self {
+        Quantity(format!("{}", quantity.as_cpu_count()))
+    }
+}
+
 impl TryFrom<&Quantity> for CpuQuantity {
     type Error = Error;
 
@@ -95,6 +108,22 @@ impl Add<CpuQuantity> for CpuQuantity {
 impl AddAssign<CpuQuantity> for CpuQuantity {
     fn add_assign(&mut self, rhs: CpuQuantity) {
         self.millis += rhs.millis;
+    }
+}
+
+impl Mul<usize> for CpuQuantity {
+    type Output = CpuQuantity;
+
+    fn mul(self, rhs: usize) -> Self::Output {
+        Self {
+            millis: self.millis * rhs,
+        }
+    }
+}
+
+impl MulAssign<usize> for CpuQuantity {
+    fn mul_assign(&mut self, rhs: usize) {
+        self.millis *= rhs;
     }
 }
 

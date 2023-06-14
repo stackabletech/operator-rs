@@ -12,6 +12,7 @@ use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 
 use crate::error::{Error, OperatorResult};
 use std::{
+    fmt::Display,
     ops::{Add, AddAssign, Div, Mul, Sub, SubAssign},
     str::FromStr,
 };
@@ -71,6 +72,21 @@ impl FromStr for BinaryMultiple {
                 value: q.to_string(),
             }),
         }
+    }
+}
+
+impl Display for BinaryMultiple {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let out = match self {
+            BinaryMultiple::Kibi => "Ki",
+            BinaryMultiple::Mebi => "Mi",
+            BinaryMultiple::Gibi => "Gi",
+            BinaryMultiple::Tebi => "Ti",
+            BinaryMultiple::Pebi => "Pi",
+            BinaryMultiple::Exbi => "Ei",
+        };
+
+        out.fmt(f)
     }
 }
 
@@ -373,11 +389,24 @@ impl TryFrom<Quantity> for MemoryQuantity {
         Self::try_from(&quantity)
     }
 }
+
 impl TryFrom<&Quantity> for MemoryQuantity {
     type Error = Error;
 
     fn try_from(quantity: &Quantity) -> OperatorResult<Self> {
         quantity.0.parse()
+    }
+}
+
+impl From<MemoryQuantity> for Quantity {
+    fn from(quantity: MemoryQuantity) -> Self {
+        Self::from(&quantity)
+    }
+}
+
+impl From<&MemoryQuantity> for Quantity {
+    fn from(quantity: &MemoryQuantity) -> Self {
+        Quantity(format!("{}{}", quantity.value, quantity.unit))
     }
 }
 
