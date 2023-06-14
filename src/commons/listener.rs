@@ -31,6 +31,8 @@ pub enum ServiceType {
     NodePort,
     /// Provision a dedicated load balancer.
     LoadBalancer,
+    /// Generate a cluster IP.
+    ClusterIP,
 }
 
 /// Exposes a set of pods to the outside world.
