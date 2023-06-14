@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Support ClusterIP type in services created by listener-operator ([#602]).
+
+[#602]: https://github.com/stackabletech/operator-rs/pull/602
+
 ## [0.41.0] - 2023-04-20
 
 ### Changed
