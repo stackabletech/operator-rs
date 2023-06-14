@@ -348,10 +348,10 @@ mod tests {
         let container_port_name_1 = "bar_port_name";
 
         let resources = ResourceRequirementsBuilder::new()
-            .with_cpu_limit("3000m")
             .with_cpu_request("2000m")
-            .with_memory_limit("6Gi")
+            .with_cpu_limit("3000m")
             .with_memory_request("4Gi")
+            .with_memory_limit("6Gi")
             .with_resource(ResourceRequirementsType::Limits, "nvidia.com/gpu", "1")
             .build();
 
@@ -493,10 +493,10 @@ mod tests {
     #[test]
     fn test_container_cpu_and_memory_resource_requirements() {
         let resources = ResourceRequirementsBuilder::new()
-            .with_cpu_limit("3000m")
             .with_cpu_request("2000m")
-            .with_memory_limit("6Gi")
+            .with_cpu_limit("3000m")
             .with_memory_request("4Gi")
+            .with_memory_limit("6Gi")
             .with_resource(ResourceRequirementsType::Limits, "nvidia.com/gpu", "1")
             .build();
 

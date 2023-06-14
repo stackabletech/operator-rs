@@ -714,10 +714,10 @@ mod tests {
         let container = Container {
             resources: Some(
                 ResourceRequirementsBuilder::new()
-                    .with_cpu_limit(cl)
                     .with_cpu_request(cr)
-                    .with_memory_limit(ml)
+                    .with_cpu_limit(cl)
                     .with_memory_request(mr)
+                    .with_memory_limit(ml)
                     .build(),
             ),
             ..Default::default()

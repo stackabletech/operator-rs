@@ -13,7 +13,7 @@ use crate::{
 const RESOURCE_DENYLIST: &[&str] = &["cpu", "memory"];
 
 #[derive(Debug, Default)]
-pub struct ResourceRequirementsBuilder<CL, CR, ML, MR> {
+pub struct ResourceRequirementsBuilder<CR, CL, MR, ML> {
     other: BTreeMap<String, BTreeMap<ResourceRequirementsType, Quantity>>,
     cpu_request: CR,
     mem_request: MR,
@@ -27,23 +27,23 @@ impl ResourceRequirementsBuilder<(), (), (), ()> {
     }
 }
 
-impl<CR, ML, MR> ResourceRequirementsBuilder<(), CR, ML, MR> {
-    pub fn with_cpu_limit(
+impl<CL, MR, ML> ResourceRequirementsBuilder<(), CL, MR, ML> {
+    pub fn with_cpu_request(
         self,
-        limit: impl Into<String>,
-    ) -> ResourceRequirementsBuilder<Quantity, CR, ML, MR> {
+        request: impl Into<String>,
+    ) -> ResourceRequirementsBuilder<Quantity, CL, MR, ML> {
         let Self {
-            cpu_request,
             mem_request,
+            cpu_limit,
             mem_limit,
             other,
             ..
         } = self;
 
         ResourceRequirementsBuilder {
-            cpu_limit: Quantity(limit.into()),
-            cpu_request,
+            cpu_request: Quantity(request.into()),
             mem_request,
+            cpu_limit,
             mem_limit,
             other,
         }
@@ -53,7 +53,7 @@ impl<CR, ML, MR> ResourceRequirementsBuilder<(), CR, ML, MR> {
         self,
         request: impl Into<String>,
         factor: f32,
-    ) -> OperatorResult<ResourceRequirementsBuilder<Quantity, Quantity, ML, MR>> {
+    ) -> OperatorResult<ResourceRequirementsBuilder<Quantity, Quantity, MR, ML>> {
         let request = CpuQuantity::from_str(&request.into())?;
         let limit = request * factor;
 
@@ -74,47 +74,47 @@ impl<CR, ML, MR> ResourceRequirementsBuilder<(), CR, ML, MR> {
     }
 }
 
-impl<ML, MR> ResourceRequirementsBuilder<Quantity, (), ML, MR> {
-    pub fn with_cpu_request(
+impl<MR, ML> ResourceRequirementsBuilder<Quantity, (), MR, ML> {
+    pub fn with_cpu_limit(
         self,
-        request: impl Into<String>,
-    ) -> ResourceRequirementsBuilder<Quantity, Quantity, ML, MR> {
+        limit: impl Into<String>,
+    ) -> ResourceRequirementsBuilder<Quantity, Quantity, MR, ML> {
         let Self {
+            cpu_request,
             mem_request,
-            cpu_limit,
             mem_limit,
             other,
             ..
         } = self;
 
         ResourceRequirementsBuilder {
-            cpu_request: Quantity(request.into()),
+            cpu_limit: Quantity(limit.into()),
+            cpu_request,
             mem_request,
-            cpu_limit,
             mem_limit,
             other,
         }
     }
 }
 
-impl<CL, CR, MR> ResourceRequirementsBuilder<CL, CR, (), MR> {
-    pub fn with_memory_limit(
+impl<CR, CL, ML> ResourceRequirementsBuilder<CL, CR, (), ML> {
+    pub fn with_memory_request(
         self,
-        limit: impl Into<String>,
-    ) -> ResourceRequirementsBuilder<CL, CR, Quantity, MR> {
+        request: impl Into<String>,
+    ) -> ResourceRequirementsBuilder<CL, CR, Quantity, ML> {
         let Self {
             cpu_request,
-            mem_request,
             cpu_limit,
+            mem_limit,
             other,
             ..
         } = self;
 
         ResourceRequirementsBuilder {
-            mem_limit: Quantity(limit.into()),
+            mem_request: Quantity(request.into()),
             cpu_request,
-            mem_request,
             cpu_limit,
+            mem_limit,
             other,
         }
     }
@@ -144,24 +144,24 @@ impl<CL, CR, MR> ResourceRequirementsBuilder<CL, CR, (), MR> {
     }
 }
 
-impl<CL, CR> ResourceRequirementsBuilder<CL, CR, Quantity, ()> {
-    pub fn with_memory_request(
+impl<CR, CL> ResourceRequirementsBuilder<CR, CL, Quantity, ()> {
+    pub fn with_memory_limit(
         self,
-        request: impl Into<String>,
-    ) -> ResourceRequirementsBuilder<CL, CR, Quantity, Quantity> {
+        limit: impl Into<String>,
+    ) -> ResourceRequirementsBuilder<CR, CL, Quantity, Quantity> {
         let Self {
             cpu_request,
+            mem_request,
             cpu_limit,
-            mem_limit,
             other,
             ..
         } = self;
 
         ResourceRequirementsBuilder {
-            mem_request: Quantity(request.into()),
+            mem_limit: Quantity(limit.into()),
             cpu_request,
+            mem_request,
             cpu_limit,
-            mem_limit,
             other,
         }
     }
@@ -277,10 +277,10 @@ mod test {
         };
 
         let rr = ResourceRequirementsBuilder::new()
-            .with_cpu_limit("1")
             .with_cpu_request("500m")
-            .with_memory_limit("128Mi")
+            .with_cpu_limit("1")
             .with_memory_request("64Mi")
+            .with_memory_limit("128Mi")
             .with_resource(ResourceRequirementsType::Limits, "nvidia.com/gpu", "2")
             .with_resource(ResourceRequirementsType::Requests, "nvidia.com/gpu", "1")
             .build();
