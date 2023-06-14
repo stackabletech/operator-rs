@@ -127,6 +127,22 @@ impl MulAssign<usize> for CpuQuantity {
     }
 }
 
+impl Mul<f32> for CpuQuantity {
+    type Output = CpuQuantity;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        Self {
+            millis: (self.millis as f32 * rhs) as usize,
+        }
+    }
+}
+
+impl MulAssign<f32> for CpuQuantity {
+    fn mul_assign(&mut self, rhs: f32) {
+        self.millis = (self.millis as f32 * rhs) as usize;
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

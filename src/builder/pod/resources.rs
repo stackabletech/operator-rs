@@ -52,7 +52,7 @@ impl<CR, ML, MR> ResourceRequirementsBuilder<(), CR, ML, MR> {
     pub fn with_cpu_range(
         self,
         request: impl Into<String>,
-        factor: usize,
+        factor: f32,
     ) -> OperatorResult<ResourceRequirementsBuilder<Quantity, Quantity, ML, MR>> {
         let request = CpuQuantity::from_str(&request.into())?;
         let limit = request * factor;
