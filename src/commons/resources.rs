@@ -320,11 +320,13 @@ impl<T, K> Into<ResourceRequirements> for Resources<T, K> {
 }
 
 #[derive(Debug, thiserror::Error)]
-#[error("missing {resource_key} resource {resource_type} for container {container_name}")]
-pub struct ResourceRequirementsError {
-    resource_type: ResourceRequirementsType,
-    container_name: String,
-    resource_key: String,
+pub enum ResourceRequirementsError {
+    #[error("missing {resource_key} resource {resource_type} for container {container_name}")]
+    MissingResourceRequirements {
+        resource_type: ResourceRequirementsType,
+        container_name: String,
+        resource_key: String,
+    },
 }
 
 /// [`ResourceRequirementsType`] describes the available resource requirement
@@ -391,43 +393,20 @@ impl ResourceRequirementsExt for Container {
         rr_type: ResourceRequirementsType,
         resource: &str,
     ) -> Result<(), ResourceRequirementsError> {
-        let rr = self.resources.as_ref().ok_or(ResourceRequirementsError {
-            container_name: self.name.clone(),
-            resource_key: resource.into(),
-            resource_type: rr_type,
-        })?;
-
-        match rr_type {
+        let resources = match rr_type {
             ResourceRequirementsType::Limits => {
-                let limits = rr.limits.as_ref().ok_or(ResourceRequirementsError {
-                    container_name: self.name.clone(),
-                    resource_key: resource.into(),
-                    resource_type: rr_type,
-                })?;
-
-                if !limits.contains_key(resource) {
-                    return Err(ResourceRequirementsError {
-                        container_name: self.name.clone(),
-                        resource_key: resource.into(),
-                        resource_type: rr_type,
-                    });
-                }
+                self.resources.as_ref().and_then(|rr| rr.limits.as_ref())
             }
             ResourceRequirementsType::Requests => {
-                let requests = rr.requests.as_ref().ok_or(ResourceRequirementsError {
-                    container_name: self.name.clone(),
-                    resource_key: resource.into(),
-                    resource_type: rr_type,
-                })?;
-
-                if !requests.contains_key(resource) {
-                    return Err(ResourceRequirementsError {
-                        container_name: self.name.clone(),
-                        resource_key: resource.into(),
-                        resource_type: rr_type,
-                    });
-                }
+                self.resources.as_ref().and_then(|rr| rr.requests.as_ref())
             }
+        };
+        if resources.and_then(|r| r.get(resource)).is_none() {
+            return Err(ResourceRequirementsError::MissingResourceRequirements {
+                container_name: self.name.clone(),
+                resource_key: resource.into(),
+                resource_type: rr_type,
+            });
         }
 
         Ok(())
