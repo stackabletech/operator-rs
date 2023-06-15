@@ -1,8 +1,16 @@
-use crate::{
+pub mod ldap;
+pub mod static_;
+pub mod tls;
+
+pub use crate::{
     client::Client,
-    commons::{ldap::LdapAuthenticationProvider, tls::TlsAuthenticationProvider},
+    commons::authentication::{
+        ldap::LdapAuthenticationProvider, static_::StaticAuthenticationProvider,
+        tls::TlsAuthenticationProvider,
+    },
     error::Error,
 };
+
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -35,37 +43,6 @@ pub enum AuthenticationClassProvider {
     Static(StaticAuthenticationProvider),
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StaticAuthenticationProvider {
-    /// Secret providing the usernames and password.
-    /// The secret must contain an entry for every user, with the key being the username and the value the password in plain text.
-    /// It must be located in the same namespace as the product using it.
-    user_credentials_secret: UserCredentialsSecretRef,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UserCredentialsSecretRef {
-    /// Name of the secret
-    name: String,
-}
-
-#[cfg(test)]
-mod test {
-    use crate::commons::{
-        authentication::AuthenticationClassProvider, tls::TlsAuthenticationProvider,
-    };
-
-    #[test]
-    fn test_authentication_class_provider_to_string() {
-        let tls_provider = AuthenticationClassProvider::Tls(TlsAuthenticationProvider {
-            client_cert_secret_class: None,
-        });
-        assert_eq!("Tls", tls_provider.to_string())
-    }
-}
-
 impl AuthenticationClass {
     pub async fn resolve(
         client: &Client,
@@ -74,5 +51,20 @@ impl AuthenticationClass {
         client
             .get::<AuthenticationClass>(authentication_class_name, &()) // AuthenticationClass has ClusterScope
             .await
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::commons::authentication::{
+        tls::TlsAuthenticationProvider, AuthenticationClassProvider,
+    };
+
+    #[test]
+    fn test_authentication_class_provider_to_string() {
+        let tls_provider = AuthenticationClassProvider::Tls(TlsAuthenticationProvider {
+            client_cert_secret_class: None,
+        });
+        assert_eq!("Tls", tls_provider.to_string())
     }
 }
