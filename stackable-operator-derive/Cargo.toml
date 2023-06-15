@@ -11,10 +11,10 @@ repository = "https://github.com/stackabletech/operator-rs"
 proc-macro = true
 
 [dependencies]
-darling = "0.14.2"
-proc-macro2 = "1.0.50"
-quote = "1.0.23"
-syn = "1.0.107"
+darling = "0.20.1"
+proc-macro2 = "1.0.60"
+quote = "1.0.28"
+syn = "2.0.18"
 
 [dev-dependencies]
 stackable-operator = { path = ".." }
