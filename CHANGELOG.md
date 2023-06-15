@@ -8,7 +8,9 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Let `PodBuilder::build_template` return `PodTemplateSpec` instead of `OperatorResult<PodTemplateSpec>` ([#XXX]).
+- Let `PodBuilder::build_template` return `PodTemplateSpec` instead of `OperatorResult<PodTemplateSpec>` (fixup of #598) ([#605]).
+
+[#605]: https://github.com/stackabletech/operator-rs/pull/605
 
 ## [0.42.0] - 2023-06-15
 
