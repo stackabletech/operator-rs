@@ -59,20 +59,31 @@ fn split_by_comma(tokens: TokenStream) -> Vec<TokenStream> {
     groups
 }
 
-fn extract_forwarded_attrs(attrs: &[Attribute]) -> TokenStream {
+enum ExtractAttrsError {
+    InvalidAttrForm,
+}
+impl ExtractAttrsError {
+    fn into_compile_error(self) -> TokenStream {
+        match self {
+            Self::InvalidAttrForm => quote! {
+                compile_error!("`#[fragment_attrs]` only takes list-form parameters");
+            },
+        }
+    }
+}
+
+fn extract_forwarded_attrs(attrs: &[Attribute]) -> Result<TokenStream, ExtractAttrsError> {
     attrs
         .iter()
         .filter(|attr| attr.path().is_ident("fragment_attrs"))
         .flat_map(|Attribute { meta, .. }| match meta {
-            Meta::List(MetaList { tokens, .. }) => split_by_comma(tokens.clone()),
-            _ => vec![quote! {
-                compile_error!("`#[fragment_attrs]` only takes list-form parameters");
-            }],
+            Meta::List(MetaList { tokens, .. }) => {
+                split_by_comma(tokens.clone()).into_iter().map(Ok).collect()
+            }
+            _ => vec![Err(ExtractAttrsError::InvalidAttrForm)],
         })
-        .flat_map(|attr| {
-            quote! { #[#attr] }
-        })
-        .collect()
+        .map(|attr| attr.map(|attr| quote! { #[#attr] }))
+        .collect::<Result<TokenStream, ExtractAttrsError>>()
 }
 
 #[derive(FromVariant)]
@@ -141,7 +152,10 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                  ty,
                  attrs,
              }| {
-                let attrs = extract_forwarded_attrs(attrs);
+                let attrs = match extract_forwarded_attrs(attrs) {
+                    Ok(x) => x,
+                    Err(err) => return err.into_compile_error(),
+                };
                 quote! { #attrs #vis #ident: <#ty as #fragment_mod::FromFragment>::Fragment, }
             },
         )
@@ -167,7 +181,10 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         )
         .collect::<TokenStream>();
 
-    let attrs = extract_forwarded_attrs(&attrs);
+    let attrs = match extract_forwarded_attrs(&attrs) {
+        Ok(x) => x,
+        Err(err) => return err.into_compile_error(),
+    };
     if let Some(bound) = bound {
         let where_clause = generics.make_where_clause();
         where_clause.predicates.extend(bound);
