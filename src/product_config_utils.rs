@@ -491,6 +491,7 @@ mod tests {
 
     use super::*;
     use crate::role_utils::{Role, RoleGroup};
+    use k8s_openapi::api::core::v1::PodTemplateSpec;
     use rstest::*;
     use std::collections::HashMap;
     use std::str::FromStr;
@@ -580,6 +581,7 @@ mod tests {
             config_overrides: config_overrides.unwrap_or_default(),
             env_overrides: env_overrides.unwrap_or_default(),
             cli_overrides: cli_overrides.unwrap_or_default(),
+            pod_overrides: PodTemplateSpec::default(),
         }
     }
 
