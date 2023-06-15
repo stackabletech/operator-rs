@@ -2,7 +2,8 @@ use darling::{ast::Data, FromDeriveInput, FromField, FromMeta, FromVariant};
 use proc_macro2::{Ident, TokenStream, TokenTree};
 use quote::{format_ident, quote};
 use syn::{
-    parse_quote, Attribute, DeriveInput, Expr, Generics, Path, Type, Visibility, WherePredicate,
+    parse_quote, Attribute, DeriveInput, Expr, Generics, Meta, MetaList, Path, Type, Visibility,
+    WherePredicate,
 };
 
 #[derive(FromMeta)]
@@ -61,10 +62,12 @@ fn split_by_comma(tokens: TokenStream) -> Vec<TokenStream> {
 fn extract_forwarded_attrs(attrs: &[Attribute]) -> TokenStream {
     attrs
         .iter()
-        .filter(|attr| attr.path.is_ident("fragment_attrs"))
-        .flat_map(|Attribute { tokens, .. }| match only(tokens.clone()) {
-            Some(TokenTree::Group(group)) => split_by_comma(group.stream()),
-            _ => todo!(),
+        .filter(|attr| attr.path().is_ident("fragment_attrs"))
+        .flat_map(|Attribute { meta, .. }| match meta {
+            Meta::List(MetaList { tokens, .. }) => split_by_comma(tokens.clone()),
+            _ => vec![quote! {
+                compile_error!("`#[fragment_attrs]` only takes list-form parameters");
+            }],
         })
         .flat_map(|attr| {
             quote! { #[#attr] }
@@ -100,16 +103,6 @@ impl FromMeta for Default {
 
     fn from_value(value: &syn::Lit) -> darling::Result<Self> {
         Expr::from_value(value).map(Box::new).map(Self::Expr)
-    }
-}
-
-fn only<I: IntoIterator>(iter: I) -> Option<I::Item> {
-    let mut iter = iter.into_iter();
-    let item = iter.next()?;
-    if iter.next().is_some() {
-        None
-    } else {
-        Some(item)
     }
 }
 
