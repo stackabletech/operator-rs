@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.42.1] - 2023-06-15
+
+### Fixed
+
+- Let `PodBuilder::build_template` return `PodTemplateSpec` instead of `OperatorResult<PodTemplateSpec>` ([#XXX]).
+
 ## [0.42.0] - 2023-06-15
 
 ### Added
