@@ -4,10 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Changed
-
-- Set default resource limits on `PodBuilder::add_init_container` ([#598]).
-
 ### Added
 
 - Add a new `ResourceRequirementsBuilder` to more easily build resource requirements in a controlled and well defined
@@ -15,6 +11,14 @@ All notable changes to this project will be documented in this file.
 - Add podOverrides to common struct CommonConfiguration ([#601]).
 - All the operators now must respect the new `podOverrides` attribute! ([#601]).
 
+### Changed
+
+- Set default resource limits on `PodBuilder::add_init_container` ([#598]).
+- Made `StaticAuthenticationProvider` fields public ([#597]).
+- [INTERNALLY BREAKING]: Moved `StaticAuthenticationProvider`, `LdapAuthenticationProvider`, `TlsAuthenticationProvider`
+  to its own module `authentication` ([#597]).
+
+[#597]: https://github.com/stackabletech/operator-rs/pull/597
 [#598]: https://github.com/stackabletech/operator-rs/pull/598
 [#601]: https://github.com/stackabletech/operator-rs/pull/601
 
