@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.42.0] - 2023-06-15
+
 ### Added
 
 - Add a new `ResourceRequirementsBuilder` to more easily build resource requirements in a controlled and well defined

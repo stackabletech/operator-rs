@@ -4,7 +4,7 @@ description = "Stackable Operator Framework"
 edition = "2021"
 license = "Apache-2.0"
 name = "stackable-operator"
-version = "0.41.0"
+version = "0.42.0"
 repository = "https://github.com/stackabletech/operator-rs"
 
 [dependencies]
