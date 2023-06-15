@@ -353,8 +353,8 @@ pub enum ResourceRequirementsError {
 #[derive(Copy, Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord)]
 #[strum(serialize_all = "lowercase")]
 pub enum ResourceRequirementsType {
-    Limits,
     Requests,
+    Limits,
     // We currently don't use claims in our container builder and thus also
     // do not support setting and validating them. When we do support claims
     // in the future, we can just remove the comment to get support for it
