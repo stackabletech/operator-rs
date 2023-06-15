@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
   way. ([#598]).
 - Add podOverrides to common struct CommonConfiguration ([#601]).
 - All the operators now must respect the new `podOverrides` attribute! ([#601]).
+- Support ClusterIP type in services created by listener-operator ([#602]).
 
 ### Changed
 
@@ -21,6 +22,7 @@ All notable changes to this project will be documented in this file.
 [#597]: https://github.com/stackabletech/operator-rs/pull/597
 [#598]: https://github.com/stackabletech/operator-rs/pull/598
 [#601]: https://github.com/stackabletech/operator-rs/pull/601
+[#602]: https://github.com/stackabletech/operator-rs/pull/602
 
 ## [0.41.0] - 2023-04-20
 
