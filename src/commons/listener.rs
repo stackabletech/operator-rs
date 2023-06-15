@@ -31,7 +31,7 @@ pub enum ServiceType {
     NodePort,
     /// Provision a dedicated load balancer.
     LoadBalancer,
-    /// Generate a cluster IP.
+    /// Assigns an IP address from a pool of IP addresses that your cluster has reserved for that purpose.
     ClusterIP,
 }
 
