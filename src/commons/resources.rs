@@ -68,19 +68,27 @@
 //! }
 //! ```
 
-use crate::config::{
-    fragment::{Fragment, FromFragment},
-    merge::Merge,
+use crate::{
+    config::{
+        fragment::{Fragment, FromFragment},
+        merge::Merge,
+    },
+    cpu::CpuQuantity,
+    memory::MemoryQuantity,
 };
 use derivative::Derivative;
 use k8s_openapi::api::core::v1::{
-    PersistentVolumeClaim, PersistentVolumeClaimSpec, ResourceRequirements,
+    Container, PersistentVolumeClaim, PersistentVolumeClaimSpec, PodSpec, ResourceRequirements,
 };
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{LabelSelector, ObjectMeta};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt::Debug};
+use strum::Display;
+
+pub const LIMIT_REQUEST_RATIO_CPU: f32 = 5.0;
+pub const LIMIT_REQUEST_RATIO_MEMORY: f32 = 1.0;
 
 // This struct allows specifying memory and cpu limits as well as generically adding storage
 // settings.
@@ -318,16 +326,209 @@ impl<T, K> Into<ResourceRequirements> for Resources<T, K> {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum ResourceRequirementsError {
+    #[error("failed to parse quantity")]
+    ParseQuantity {
+        #[source]
+        error: crate::error::Error,
+    },
+    #[error("missing {resource_key} resource {resource_type} for container {container_name}")]
+    MissingResourceRequirements {
+        resource_type: ResourceRequirementsType,
+        container_name: String,
+        resource_key: String,
+    },
+    #[error("{resource_key} max limit to request ratio for Container {container_name} is {allowed_ration}, but ratio was exceeded or request and limit where not set explicitly")]
+    LimitToRequestRatioExceeded {
+        container_name: String,
+        resource_key: String,
+        allowed_ration: f32,
+    },
+}
+
+/// [`ResourceRequirementsType`] describes the available resource requirement
+/// types. The user can set limits, requests and claims. This enum makes it
+/// possible to check if containers set one or more of these types.
+#[derive(Copy, Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord)]
+#[strum(serialize_all = "lowercase")]
+pub enum ResourceRequirementsType {
+    Requests,
+    Limits,
+    // We currently don't use claims in our container builder and thus also
+    // do not support setting and validating them. When we do support claims
+    // in the future, we can just remove the comment to get support for it
+    // immediatly.
+    // Claims,
+}
+
+#[derive(Copy, Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord)]
+#[strum(serialize_all = "lowercase")]
+pub enum ComputeResource {
+    Cpu,
+    Memory,
+}
+
+/// This trait allows implementing types to check if a certain
+/// [`ResourceRequirementsType`] is set for a resource. This for example makes
+/// it possible to check if a CPU limit and a memory request is set.
+pub trait ResourceRequirementsExt {
+    /// Checks if one specific [`ResourceRequirementsType`] for a `resource` is
+    /// set. If not, an error is returned.
+    fn check_resource_requirement(
+        &self,
+        rr_type: ResourceRequirementsType,
+        resource: &str,
+    ) -> Result<(), ResourceRequirementsError>;
+
+    /// Returns wether the implementor has a [`ResourceRequirementsType`] set
+    /// for a `resource`.
+    fn has_resource_requirement(&self, rr_type: ResourceRequirementsType, resource: &str) -> bool {
+        self.check_resource_requirement(rr_type, resource).is_ok()
+    }
+
+    /// Checks if all provided [`ResourceRequirementsType`]s for a `resource`
+    /// are set. If not, an error is returned.
+    fn check_resource_requirements(
+        &self,
+        rr_types: Vec<ResourceRequirementsType>,
+        resource: &str,
+    ) -> Result<(), ResourceRequirementsError> {
+        for rr_type in rr_types {
+            self.check_resource_requirement(rr_type, resource)?;
+        }
+
+        Ok(())
+    }
+
+    /// Returns wether the implementor has all [`ResourceRequirementsType`]s set
+    /// for a `resource`.
+    fn has_resource_requirements(
+        &self,
+        rr_types: Vec<ResourceRequirementsType>,
+        resource: &str,
+    ) -> bool {
+        self.check_resource_requirements(rr_types, resource).is_ok()
+    }
+
+    fn check_limit_to_request_ratio(
+        &self,
+        resource: &ComputeResource,
+        // We did choose a f32 instead of a usize here, as LimitRange ratios can be a floating point (Quantity - e.g. 1500m)
+        ratio: f32,
+    ) -> Result<(), ResourceRequirementsError>;
+}
+
+impl ResourceRequirementsExt for Container {
+    fn check_resource_requirement(
+        &self,
+        rr_type: ResourceRequirementsType,
+        resource: &str,
+    ) -> Result<(), ResourceRequirementsError> {
+        let resources = match rr_type {
+            ResourceRequirementsType::Limits => {
+                self.resources.as_ref().and_then(|rr| rr.limits.as_ref())
+            }
+            ResourceRequirementsType::Requests => {
+                self.resources.as_ref().and_then(|rr| rr.requests.as_ref())
+            }
+        };
+        if resources.and_then(|r| r.get(resource)).is_none() {
+            return Err(ResourceRequirementsError::MissingResourceRequirements {
+                container_name: self.name.clone(),
+                resource_key: resource.into(),
+                resource_type: rr_type,
+            });
+        }
+
+        Ok(())
+    }
+
+    fn check_limit_to_request_ratio(
+        &self,
+        resource: &ComputeResource,
+        ratio: f32,
+    ) -> Result<(), ResourceRequirementsError> {
+        let limit = self
+            .resources
+            .as_ref()
+            .and_then(|rr| rr.limits.as_ref())
+            .and_then(|l| l.get(&resource.to_string()));
+        let request = self
+            .resources
+            .as_ref()
+            .and_then(|rr| rr.requests.as_ref())
+            .and_then(|r| r.get(&resource.to_string()));
+        if let (Some(limit), Some(request)) = (limit, request) {
+            match resource {
+                ComputeResource::Cpu => {
+                    let limit = CpuQuantity::try_from(limit)
+                        .map_err(|error| ResourceRequirementsError::ParseQuantity { error })?;
+                    let request = CpuQuantity::try_from(request)
+                        .map_err(|error| ResourceRequirementsError::ParseQuantity { error })?;
+                    if limit / request <= ratio {
+                        return Ok(());
+                    }
+                }
+                ComputeResource::Memory => {
+                    let limit = MemoryQuantity::try_from(limit)
+                        .map_err(|error| ResourceRequirementsError::ParseQuantity { error })?;
+                    let request = MemoryQuantity::try_from(request)
+                        .map_err(|error| ResourceRequirementsError::ParseQuantity { error })?;
+                    if limit / request <= ratio {
+                        return Ok(());
+                    }
+                }
+            }
+        }
+
+        Err(ResourceRequirementsError::LimitToRequestRatioExceeded {
+            container_name: self.name.clone(),
+            resource_key: resource.to_string(),
+            allowed_ration: ratio,
+        })
+    }
+}
+
+impl ResourceRequirementsExt for PodSpec {
+    fn check_resource_requirement(
+        &self,
+        rr_type: ResourceRequirementsType,
+        resource: &str,
+    ) -> Result<(), ResourceRequirementsError> {
+        for container in &self.containers {
+            container.check_resource_requirement(rr_type, resource)?;
+        }
+
+        Ok(())
+    }
+
+    fn check_limit_to_request_ratio(
+        &self,
+        resource: &ComputeResource,
+        ratio: f32,
+    ) -> Result<(), ResourceRequirementsError> {
+        for container in &self.containers {
+            container.check_limit_to_request_ratio(resource, ratio)?;
+        }
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::builder::resources::ResourceRequirementsBuilder;
     use crate::commons::resources::{PvcConfig, PvcConfigFragment, Resources, ResourcesFragment};
     use crate::config::{
         fragment::{self, Fragment},
         merge::Merge,
     };
-    use k8s_openapi::api::core::v1::{PersistentVolumeClaim, ResourceRequirements};
+    use k8s_openapi::api::core::v1::{Container, PersistentVolumeClaim, ResourceRequirements};
     use rstest::rstest;
     use serde::{Deserialize, Serialize};
+
+    use super::*;
 
     #[derive(Clone, Debug, Default, Fragment)]
     #[fragment(path_overrides(fragment = "crate::config::fragment"))]
@@ -495,5 +696,43 @@ mod tests {
             serde_yaml::from_str(&expected).expect("illegal expected output");
 
         assert_eq!(result, expected_requirements);
+    }
+
+    #[rstest]
+    #[case::valid("1", "1", "4Gi", "4Gi", true, true)]
+    #[case::cpu_ratio_invalid("100m", "1", "4Gi", "4Gi", false, true)]
+    #[case::memory_ratio_invalid("1", "1", "2Gi", "4Gi", true, false)]
+    #[case::both_ratios_invalid("100m", "1", "2Gi", "4Gi", false, false)]
+    fn test_resource_requirements_checks(
+        #[case] cr: String,
+        #[case] cl: String,
+        #[case] mr: String,
+        #[case] ml: String,
+        #[case] expected_valid_cpu: bool,
+        #[case] expected_valid_memory: bool,
+    ) {
+        let container = Container {
+            resources: Some(
+                ResourceRequirementsBuilder::new()
+                    .with_cpu_request(cr)
+                    .with_cpu_limit(cl)
+                    .with_memory_request(mr)
+                    .with_memory_limit(ml)
+                    .build(),
+            ),
+            ..Default::default()
+        };
+        assert_eq!(
+            container
+                .check_limit_to_request_ratio(&ComputeResource::Cpu, 5.0)
+                .is_ok(),
+            expected_valid_cpu
+        );
+        assert_eq!(
+            container
+                .check_limit_to_request_ratio(&ComputeResource::Memory, 1.0)
+                .is_ok(),
+            expected_valid_memory
+        );
     }
 }

@@ -1,4 +1,5 @@
 pub mod container;
+pub mod resources;
 pub mod security;
 pub mod volume;
 
@@ -7,17 +8,22 @@ use std::collections::BTreeMap;
 use crate::builder::meta::ObjectMetaBuilder;
 use crate::commons::affinity::StackableAffinity;
 use crate::commons::product_image_selection::ResolvedProductImage;
+use crate::commons::resources::{
+    ComputeResource, ResourceRequirementsExt, ResourceRequirementsType, LIMIT_REQUEST_RATIO_CPU,
+    LIMIT_REQUEST_RATIO_MEMORY,
+};
 use crate::error::{Error, OperatorResult};
 
 use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
-use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::{
     api::core::v1::{
         Affinity, Container, LocalObjectReference, NodeAffinity, Pod, PodAffinity, PodAntiAffinity,
-        PodCondition, PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec, Toleration, Volume,
+        PodCondition, PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec,
+        ResourceRequirements, Toleration, Volume,
     },
-    apimachinery::pkg::apis::meta::v1::ObjectMeta,
+    apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
 };
+use tracing::warn;
 
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
 #[derive(Clone, Default)]
@@ -161,7 +167,43 @@ impl PodBuilder {
         self
     }
 
-    pub fn add_init_container(&mut self, container: Container) -> &mut Self {
+    /// Add the given init container.
+    /// If no resources are set, we set a default limit of 10m CPU and 128Mi
+    /// memory. Request values are set to the same values as the limits.
+    pub fn add_init_container(&mut self, mut container: Container) -> &mut Self {
+        // https://github.com/stackabletech/issues/issues/368:
+        // We only set default limits on *init* containers, as they normally
+        // simply copy stuff around, do some text replacement or, at a maximum,
+        // create a tls truststore.These operations should normally complete
+        // in <= 1s, so worst-case the Pod will take 1-2s longer to start up
+        // when the default is too low. However, things are different with
+        // sidecars, where e.g. a bundle builder, metric collector or a vector
+        // log sidecar can be overloaded and slow down operations or cause
+        // missing data, e.g. metrics or logs. Hence we don't apply any defaults
+        // for sidecars, product operators have to explicitly make a decision
+        // on what the resource limits should be.
+
+        // FIXME: These defaults should not live here and should
+        // instead be set inside the container builder. Having container types
+        // should greatly simplify setting the default resource requirements.
+        // This method should instead be "as dumb" as it can be and should
+        // simply add the provided container to the internal vector. The problem
+        // with the solution down below is that wie side-step the common
+        // interface provided by the `with_resource`, `with_cpu` and
+        // `with_memory` methods of the builder.
+
+        if container.resources.is_none() {
+            let limits = Some(BTreeMap::from([
+                ("cpu".to_string(), Quantity("10m".to_string())),
+                ("memory".to_string(), Quantity("128Mi".to_string())),
+            ]));
+            container.resources = Some(ResourceRequirements {
+                limits: limits.clone(),
+                requests: limits,
+                ..ResourceRequirements::default()
+            });
+        }
+
         self.init_containers
             .get_or_insert_with(Vec::new)
             .push(container);
@@ -215,12 +257,26 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::PodBuilder;
     /// # use stackable_operator::builder::ContainerBuilder;
+    /// # use stackable_operator::builder::pod::resources::ResourceRequirementsBuilder;
+    /// # use k8s_openapi::{
+    ///     api::core::v1::ResourceRequirements,
+    ///     apimachinery::pkg::api::resource::Quantity
+    /// };
+    ///
+    /// let resources = ResourceRequirementsBuilder::new()
+    ///     .with_cpu_request("1")
+    ///     .with_cpu_limit("1")
+    ///     .with_memory_request("128Mi")
+    ///     .with_memory_limit("128Mi")
+    ///     .build();
+    ///
     /// let pod = PodBuilder::new()
     ///     .metadata_default()
     ///     .add_container(
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
+    ///             .resources(resources)
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_class("listener", "nodeport")
@@ -235,6 +291,13 @@ impl PodBuilder {
     ///   affinity: {}
     ///   containers:
     ///   - name: container
+    ///     resources:
+    ///       limits:
+    ///         cpu: '1'
+    ///         memory: 128Mi
+    ///       requests:
+    ///         cpu: '1'
+    ///         memory: 128Mi
     ///     volumeMounts:
     ///     - mountPath: /path/to/volume
     ///       name: listener
@@ -281,12 +344,26 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::PodBuilder;
     /// # use stackable_operator::builder::ContainerBuilder;
+    /// # use stackable_operator::builder::pod::resources::ResourceRequirementsBuilder;
+    /// # use k8s_openapi::{
+    ///     api::core::v1::ResourceRequirements,
+    ///     apimachinery::pkg::api::resource::Quantity
+    /// };
+    ///
+    /// let resources = ResourceRequirementsBuilder::new()
+    ///     .with_cpu_request("1")
+    ///     .with_cpu_limit("1")
+    ///     .with_memory_request("128Mi")
+    ///     .with_memory_limit("128Mi")
+    ///     .build();
+    ///
     /// let pod = PodBuilder::new()
     ///     .metadata_default()
     ///     .add_container(
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
+    ///             .resources(resources)
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener")
@@ -301,6 +378,13 @@ impl PodBuilder {
     ///   affinity: {}
     ///   containers:
     ///   - name: container
+    ///     resources:
+    ///       limits:
+    ///         cpu: '1'
+    ///         memory: 128Mi
+    ///       requests:
+    ///         cpu: '1'
+    ///         memory: 128Mi
     ///     volumeMounts:
     ///     - mountPath: /path/to/volume
     ///       name: listener
@@ -367,8 +451,33 @@ impl PodBuilder {
         self
     }
 
+    /// Consumes the Builder and returns a constructed [`Pod`]
+    pub fn build(&self) -> OperatorResult<Pod> {
+        Ok(Pod {
+            metadata: match self.metadata {
+                None => return Err(Error::MissingObjectKey { key: "metadata" }),
+                Some(ref metadata) => metadata.clone(),
+            },
+            spec: Some(self.build_spec()),
+            status: self.status.clone(),
+        })
+    }
+
+    /// Returns a [`PodTemplateSpec`], usable for building a [`StatefulSet`](`k8s_openapi::api::apps::v1::StatefulSet`)
+    /// or [`Deployment`](`k8s_openapi::api::apps::v1::Deployment`)
+    pub fn build_template(&self) -> OperatorResult<PodTemplateSpec> {
+        if self.status.is_some() {
+            tracing::warn!("Tried building a PodTemplate for a PodBuilder with a status, the status will be ignored...");
+        }
+
+        Ok(PodTemplateSpec {
+            metadata: self.metadata.clone(),
+            spec: Some(self.build_spec()),
+        })
+    }
+
     fn build_spec(&self) -> PodSpec {
-        PodSpec {
+        let pod_spec = PodSpec {
             containers: self.containers.clone(),
             host_network: self.host_network,
             init_containers: self.init_containers.clone(),
@@ -390,31 +499,32 @@ impl PodBuilder {
             image_pull_secrets: self.image_pull_secrets.clone(),
             restart_policy: self.restart_policy.clone(),
             ..PodSpec::default()
-        }
-    }
+        };
 
-    /// Consumes the Builder and returns a constructed [`Pod`]
-    pub fn build(&self) -> OperatorResult<Pod> {
-        Ok(Pod {
-            metadata: match self.metadata {
-                None => return Err(Error::MissingObjectKey { key: "metadata" }),
-                Some(ref metadata) => metadata.clone(),
-            },
-            spec: Some(self.build_spec()),
-            status: self.status.clone(),
-        })
-    }
+        // We don't hard error here, because if we do, the StatefulSet (for
+        // example) doesn't show up at all. Instead users then need to comb
+        // through the logs to find the error. That's why we opted to just
+        // throw a warning which will get displayed in the Kubernetes
+        // status. Additionally the Statefulset will have events describing the
+        // actual problem.
 
-    /// Returns a [`PodTemplateSpec`], usable for building a [`StatefulSet`](`k8s_openapi::api::apps::v1::StatefulSet`)
-    /// or [`Deployment`](`k8s_openapi::api::apps::v1::Deployment`)
-    pub fn build_template(&self) -> PodTemplateSpec {
-        if self.status.is_some() {
-            tracing::warn!("Tried building a PodTemplate for a PodBuilder with a status, the status will be ignored...");
-        }
-        PodTemplateSpec {
-            metadata: self.metadata.clone(),
-            spec: Some(self.build_spec()),
-        }
+        pod_spec
+            .check_resource_requirement(ResourceRequirementsType::Limits, "cpu")
+            .unwrap_or_else(|err| warn!("{}", err));
+
+        pod_spec
+            .check_resource_requirement(ResourceRequirementsType::Limits, "memory")
+            .unwrap_or_else(|err| warn!("{}", err));
+
+        pod_spec
+            .check_limit_to_request_ratio(&ComputeResource::Cpu, LIMIT_REQUEST_RATIO_CPU)
+            .unwrap_or_else(|err| warn!("{}", err));
+
+        pod_spec
+            .check_limit_to_request_ratio(&ComputeResource::Memory, LIMIT_REQUEST_RATIO_MEMORY)
+            .unwrap_or_else(|err| warn!("{}", err));
+
+        pod_spec
     }
 }
 
@@ -423,7 +533,10 @@ mod tests {
     use super::*;
     use crate::builder::{
         meta::ObjectMetaBuilder,
-        pod::{container::ContainerBuilder, volume::VolumeBuilder},
+        pod::{
+            container::ContainerBuilder, resources::ResourceRequirementsBuilder,
+            volume::VolumeBuilder,
+        },
     };
     use k8s_openapi::{
         api::core::v1::{LocalObjectReference, PodAffinity, PodAffinityTerm},
@@ -434,9 +547,17 @@ mod tests {
     // A simple [`Container`] with a name and image.
     #[fixture]
     fn dummy_container() -> Container {
+        let resources = ResourceRequirementsBuilder::new()
+            .with_cpu_request("1")
+            .with_cpu_limit("1")
+            .with_memory_request("128Mi")
+            .with_memory_limit("128Mi")
+            .build();
+
         ContainerBuilder::new("container")
             .expect("ContainerBuilder not created")
             .image("private-company/product:2.4.14")
+            .resources(resources)
             .build()
     }
 
