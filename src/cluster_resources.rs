@@ -446,29 +446,21 @@ impl ClusterResources {
         )?;
 
         if let Some(pod_spec) = resource.pod_spec() {
-            if let Err(err) =
-                pod_spec.check_resource_requirement(ResourceRequirementsType::Limits, "cpu")
-            {
-                warn!("{}", err)
-            }
+            pod_spec
+                .check_resource_requirement(ResourceRequirementsType::Limits, "cpu")
+                .unwrap_or_else(|err| warn!("{}", err));
 
-            if let Err(err) =
-                pod_spec.check_resource_requirement(ResourceRequirementsType::Limits, "memory")
-            {
-                warn!("{}", err)
-            }
+            pod_spec
+                .check_resource_requirement(ResourceRequirementsType::Limits, "memory")
+                .unwrap_or_else(|err| warn!("{}", err));
 
-            if let Err(err) = pod_spec
+            pod_spec
                 .check_limit_to_request_ratio(&ComputeResource::Cpu, LIMIT_REQUEST_RATIO_CPU)
-            {
-                warn!("{}", err)
-            }
+                .unwrap_or_else(|err| warn!("{}", err));
 
-            if let Err(err) = pod_spec
+            pod_spec
                 .check_limit_to_request_ratio(&ComputeResource::Memory, LIMIT_REQUEST_RATIO_MEMORY)
-            {
-                warn!("{}", err)
-            }
+                .unwrap_or_else(|err| warn!("{}", err));
         }
 
         let mutated = resource.maybe_mutate(&self.apply_strategy);
