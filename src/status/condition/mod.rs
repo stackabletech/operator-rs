@@ -108,6 +108,40 @@ pub struct ClusterCondition {
     pub type_: ClusterConditionType,
 }
 
+impl std::fmt::Display for ClusterCondition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let out = match self.type_ {
+            ClusterConditionType::Available => match self.status {
+                ClusterConditionStatus::True => "Available",
+                ClusterConditionStatus::False => "Unavailable",
+                ClusterConditionStatus::Unknown => "Availability unknown",
+            },
+            ClusterConditionType::Degraded => match self.status {
+                ClusterConditionStatus::True => "Degraded",
+                ClusterConditionStatus::False => "Not degraded",
+                ClusterConditionStatus::Unknown => "Degradation unknown",
+            },
+            ClusterConditionType::Progressing => match self.status {
+                ClusterConditionStatus::True => "Progressing",
+                ClusterConditionStatus::False => "Not progressing",
+                ClusterConditionStatus::Unknown => "Progression unknown",
+            },
+            ClusterConditionType::ReconciliationPaused => match self.status {
+                ClusterConditionStatus::True => "Reconciling",
+                ClusterConditionStatus::False => "Not reconciling",
+                ClusterConditionStatus::Unknown => "Reconciliation unknown",
+            },
+            ClusterConditionType::Stopped => match self.status {
+                ClusterConditionStatus::True => "Stopped",
+                ClusterConditionStatus::False => "Running",
+                ClusterConditionStatus::Unknown => "Stopped status unknown",
+            },
+        };
+
+        out.fmt(f)
+    }
+}
+
 #[derive(
     Clone,
     Copy,
