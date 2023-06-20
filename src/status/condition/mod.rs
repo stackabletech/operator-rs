@@ -142,6 +142,24 @@ impl std::fmt::Display for ClusterCondition {
     }
 }
 
+impl ClusterCondition {
+    /// Returns a short display string. This method wraps the
+    /// [`std::fmt::Display`] implementation of the [`ClusterCondition`].
+    pub fn display_short(&self) -> String {
+        self.to_string()
+    }
+
+    /// Returns a long display string. This method uses the
+    /// [`std::fmt::Display`] implementation of the [`ClusterCondition`] and
+    /// combines it with the optional message to provide more context.
+    pub fn display_long(&self) -> String {
+        match &self.message {
+            Some(message) => format!("{}: {}", self.to_string(), message),
+            None => self.to_string(),
+        }
+    }
+}
+
 #[derive(
     Clone,
     Copy,
