@@ -158,6 +158,20 @@ impl ClusterCondition {
             None => self.to_string(),
         }
     }
+
+    /// Returns either a short ot long display string, This method additionally
+    /// checks if the status is either [`ClusterConditionStatus::False`] or
+    /// [`ClusterConditionStatus::Unknown`] and then returns the long display
+    /// string which contains the optional message to provide more context. In
+    /// case the status is [`ClusterConditionStatus::True`], it only returns
+    /// the short display string. Internally this method uses the
+    /// `display_short` and `display_long` methods.
+    pub fn display_short_or_long(&self) -> String {
+        match self.status {
+            ClusterConditionStatus::False | ClusterConditionStatus::Unknown => self.display_long(),
+            ClusterConditionStatus::True => self.display_short(),
+        }
+    }
 }
 
 #[derive(
