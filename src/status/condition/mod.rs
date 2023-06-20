@@ -143,6 +143,32 @@ impl std::fmt::Display for ClusterCondition {
 }
 
 impl ClusterCondition {
+    /// Returns if the [`ClusterCondition`] is considered to be an error.
+    pub fn is_error(&self) -> bool {
+        match self.type_ {
+            ClusterConditionType::Available => match self.status {
+                ClusterConditionStatus::False | ClusterConditionStatus::Unknown => true,
+                ClusterConditionStatus::True => false,
+            },
+            ClusterConditionType::Degraded => match self.status {
+                ClusterConditionStatus::False | ClusterConditionStatus::Unknown => false,
+                ClusterConditionStatus::True => true,
+            },
+            ClusterConditionType::Progressing => match self.status {
+                ClusterConditionStatus::False | ClusterConditionStatus::Unknown => true,
+                ClusterConditionStatus::True => false,
+            },
+            ClusterConditionType::ReconciliationPaused => match self.status {
+                ClusterConditionStatus::False | ClusterConditionStatus::True => false,
+                ClusterConditionStatus::Unknown => true,
+            },
+            ClusterConditionType::Stopped => match self.status {
+                ClusterConditionStatus::True | ClusterConditionStatus::Unknown => true,
+                ClusterConditionStatus::False => false,
+            },
+        }
+    }
+
     /// Returns a short display string. This method wraps the
     /// [`std::fmt::Display`] implementation of the [`ClusterCondition`].
     pub fn display_short(&self) -> String {
@@ -167,9 +193,9 @@ impl ClusterCondition {
     /// the short display string. Internally this method uses the
     /// `display_short` and `display_long` methods.
     pub fn display_short_or_long(&self) -> String {
-        match self.status {
-            ClusterConditionStatus::False | ClusterConditionStatus::Unknown => self.display_long(),
-            ClusterConditionStatus::True => self.display_short(),
+        match self.is_error() {
+            true => self.display_long(),
+            false => self.display_short(),
         }
     }
 }
