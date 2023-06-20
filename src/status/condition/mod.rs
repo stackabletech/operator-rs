@@ -154,7 +154,7 @@ impl ClusterCondition {
     /// combines it with the optional message to provide more context.
     pub fn display_long(&self) -> String {
         match &self.message {
-            Some(message) => format!("{}: {}", self.to_string(), message),
+            Some(message) => format!("{}: {}", self, message),
             None => self.to_string(),
         }
     }
