@@ -127,8 +127,8 @@ impl std::fmt::Display for ClusterCondition {
                 ClusterConditionStatus::Unknown => "Progression unknown",
             },
             ClusterConditionType::ReconciliationPaused => match self.status {
-                ClusterConditionStatus::True => "Reconciling",
-                ClusterConditionStatus::False => "Not reconciling",
+                ClusterConditionStatus::True => "Not reconciling",
+                ClusterConditionStatus::False => "Reconciling",
                 ClusterConditionStatus::Unknown => "Reconciliation unknown",
             },
             ClusterConditionType::Stopped => match self.status {
