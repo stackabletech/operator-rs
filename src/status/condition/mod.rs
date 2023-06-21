@@ -591,4 +591,82 @@ mod test {
         assert_eq!(got.status, expected.status);
         assert_eq!(got.message, expected.message);
     }
+
+    #[test]
+    fn test_display_short() {
+        let condition = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::False,
+            message: Some("This should not be displayed".into()),
+            ..Default::default()
+        };
+
+        assert!(!condition.is_good());
+        assert_eq!(condition.display_short(), "Unavailable".to_string());
+
+        let condition = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::True,
+            message: Some("This should not be displayed".into()),
+            ..Default::default()
+        };
+
+        assert!(condition.is_good());
+        assert_eq!(condition.display_short(), "Available".to_string());
+    }
+
+    #[test]
+    fn test_display_long() {
+        let condition = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::False,
+            message: Some("This should be displayed".into()),
+            ..Default::default()
+        };
+
+        assert!(!condition.is_good());
+        assert_eq!(
+            condition.display_long(),
+            "Unavailable: This should be displayed".to_string()
+        );
+
+        let condition = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::True,
+            message: Some("This should be displayed".into()),
+            ..Default::default()
+        };
+
+        assert!(condition.is_good());
+        assert_eq!(
+            condition.display_long(),
+            "Available: This should be displayed".to_string()
+        );
+    }
+
+    #[test]
+    fn test_display_short_or_long() {
+        let condition = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::False,
+            message: Some("This should be displayed if unhealthy".into()),
+            ..Default::default()
+        };
+
+        assert!(!condition.is_good());
+        assert_eq!(
+            condition.display_short_or_long(),
+            "Unavailable: This should be displayed if unhealthy".to_string()
+        );
+
+        let condition = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::True,
+            message: Some("This should not be displayed".into()),
+            ..Default::default()
+        };
+
+        assert!(condition.is_good());
+        assert_eq!(condition.display_short_or_long(), "Available".to_string());
+    }
 }
