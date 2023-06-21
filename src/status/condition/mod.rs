@@ -143,28 +143,29 @@ impl std::fmt::Display for ClusterCondition {
 }
 
 impl ClusterCondition {
-    /// Returns if the [`ClusterCondition`] is considered to be an error.
-    pub fn is_error(&self) -> bool {
+    /// Returns if the [`ClusterCondition`] is considered to be in a good /
+    /// healthy state.
+    pub fn is_good(&self) -> bool {
         match self.type_ {
             ClusterConditionType::Available => match self.status {
-                ClusterConditionStatus::False | ClusterConditionStatus::Unknown => true,
-                ClusterConditionStatus::True => false,
-            },
-            ClusterConditionType::Degraded => match self.status {
                 ClusterConditionStatus::False | ClusterConditionStatus::Unknown => false,
                 ClusterConditionStatus::True => true,
             },
-            ClusterConditionType::Progressing => match self.status {
+            ClusterConditionType::Degraded => match self.status {
                 ClusterConditionStatus::False | ClusterConditionStatus::Unknown => true,
                 ClusterConditionStatus::True => false,
             },
+            ClusterConditionType::Progressing => match self.status {
+                ClusterConditionStatus::False | ClusterConditionStatus::Unknown => false,
+                ClusterConditionStatus::True => true,
+            },
             ClusterConditionType::ReconciliationPaused => match self.status {
-                ClusterConditionStatus::False | ClusterConditionStatus::True => false,
-                ClusterConditionStatus::Unknown => true,
+                ClusterConditionStatus::False | ClusterConditionStatus::True => true,
+                ClusterConditionStatus::Unknown => false,
             },
             ClusterConditionType::Stopped => match self.status {
-                ClusterConditionStatus::True | ClusterConditionStatus::Unknown => true,
-                ClusterConditionStatus::False => false,
+                ClusterConditionStatus::True | ClusterConditionStatus::Unknown => false,
+                ClusterConditionStatus::False => true,
             },
         }
     }
@@ -185,17 +186,16 @@ impl ClusterCondition {
         }
     }
 
-    /// Returns either a short ot long display string, This method additionally
-    /// checks if the status is either [`ClusterConditionStatus::False`] or
-    /// [`ClusterConditionStatus::Unknown`] and then returns the long display
-    /// string which contains the optional message to provide more context. In
-    /// case the status is [`ClusterConditionStatus::True`], it only returns
-    /// the short display string. Internally this method uses the
-    /// `display_short` and `display_long` methods.
+    /// Returns either a short or long display string, This method additionally
+    /// checks if the condition is considered to be in a good state and then
+    /// returns the short display string. In case the condition is considered
+    /// to be in an unhealthy state, the method returns a long display string
+    /// which contains the optional message to provide more context. Internally
+    /// this method uses the `display_short` and `display_long` methods.
     pub fn display_short_or_long(&self) -> String {
-        match self.is_error() {
-            true => self.display_long(),
-            false => self.display_short(),
+        match self.is_good() {
+            true => self.display_short(),
+            false => self.display_long(),
         }
     }
 }
