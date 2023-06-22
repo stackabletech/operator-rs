@@ -265,6 +265,7 @@ impl VolumeMountBuilder {
 pub struct SecretOperatorVolumeSourceBuilder {
     secret_class: String,
     scopes: Vec<SecretOperatorVolumeScope>,
+    format: Option<SecretFormat>,
     kerberos_service_names: Vec<String>,
 }
 
@@ -273,6 +274,7 @@ impl SecretOperatorVolumeSourceBuilder {
         Self {
             secret_class: secret_class.into(),
             scopes: Vec::new(),
+            format: None,
             kerberos_service_names: Vec::new(),
         }
     }
@@ -290,6 +292,11 @@ impl SecretOperatorVolumeSourceBuilder {
     pub fn with_service_scope(&mut self, name: impl Into<String>) -> &mut Self {
         self.scopes
             .push(SecretOperatorVolumeScope::Service { name: name.into() });
+        self
+    }
+
+    pub fn with_format(&mut self, format: SecretFormat) -> &mut Self {
+        self.format = Some(format);
         self
     }
 
@@ -322,6 +329,13 @@ impl SecretOperatorVolumeSourceBuilder {
             attrs.insert("secrets.stackable.tech/scope".to_string(), scopes);
         }
 
+        if let Some(format) = &self.format {
+            attrs.insert(
+                "secrets.stackable.tech/format".to_string(),
+                format.as_str().to_string(),
+            );
+        }
+
         if !self.kerberos_service_names.is_empty() {
             attrs.insert(
                 "secrets.stackable.tech/kerberos.service.names".to_string(),
@@ -342,6 +356,23 @@ impl SecretOperatorVolumeSourceBuilder {
                     ..PersistentVolumeClaimSpec::default()
                 },
             }),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub enum SecretFormat {
+    Tls,
+    TlsPkcs12,
+    Kerberos,
+}
+
+impl SecretFormat {
+    fn as_str(&self) -> &'static str {
+        match self {
+            SecretFormat::Tls => "tls",
+            SecretFormat::TlsPkcs12 => "tls-pkcs12",
+            SecretFormat::Kerberos => "kerberos",
         }
     }
 }
