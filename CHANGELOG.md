@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Secrets can now be requested in a custom format ([#610]).
+
+[#610]: https://github.com/stackabletech/operator-rs/pull/610
+
 ## [0.41.0] - 2023-04-20
 
 ### Changed
