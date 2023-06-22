@@ -360,10 +360,16 @@ impl SecretOperatorVolumeSourceBuilder {
     }
 }
 
+/// A [secret format](https://docs.stackable.tech/home/stable/secret-operator/secretclass.html#format) known by secret-operator.
+///
+/// This must either match or be convertible from the corresponding secret class, or provisioning the volume will fail.
 #[derive(Clone)]
 pub enum SecretFormat {
+    /// A TLS certificate formatted as a PEM triple (`ca.crt`, `tls.crt`, `tls.key`) according to Kubernetes conventions.
     Tls,
+    /// A TLS certificate formatted as a PKCS#12 store.
     TlsPkcs12,
+    /// A Kerberos keytab.
     Kerberos,
 }
 
