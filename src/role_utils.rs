@@ -130,6 +130,10 @@ pub struct CommonConfiguration<T> {
 /// Often times the user want's to overwrite/add stuff not related to a container
 /// (e.g. tolerations or a ServiceAccount), so it's annoying that he always needs to
 /// specify an empty array for `containers`.
+///
+/// Additionally all docs are removed, as the resulting Stackable CRD objects where to big for Kubernetes.
+/// E.g. the HdfsCluster CRD increased to ~3.2 MB (which is over the limit of 3MB), after stripping
+/// the docs it went down to ~1.3 MiB.
 fn pod_overrides_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
     let mut schema = PodTemplateSpec::json_schema(gen);
     SimplifyOverrideSchema.visit_schema(&mut schema);
