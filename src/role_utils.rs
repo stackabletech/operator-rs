@@ -81,7 +81,7 @@
 //! Each resource can have more operator specific labels.
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, HashMap},
     fmt::{Debug, Display},
 };
 
