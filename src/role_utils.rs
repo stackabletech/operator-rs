@@ -97,7 +97,7 @@ use k8s_openapi::{
     api::core::v1::PodTemplateSpec, apimachinery::pkg::apis::meta::v1::LabelSelector,
 };
 use kube::{runtime::reflector::ObjectRef, Resource};
-use schemars::{schema::Schema, JsonSchema};
+use schemars::{schema::Schema, visit::Visitor, JsonSchema};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -124,7 +124,7 @@ pub struct CommonConfiguration<T> {
     pub pod_overrides: PodTemplateSpec,
 }
 
-/// Special schema for PodTemplateSpec without mandatory fields (e.g. `containers`).
+/// Simplified schema for PodTemplateSpec without mandatory fields (e.g. `containers`) or documentation.
 ///
 /// The normal PodTemplateSpec requires you to specify `containers` as an `Vec<Container>`.
 /// Often times the user want's to overwrite/add stuff not related to a container
@@ -132,19 +132,28 @@ pub struct CommonConfiguration<T> {
 /// specify an empty array for `containers`.
 fn pod_overrides_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
     let mut schema = PodTemplateSpec::json_schema(gen);
-    if let Schema::Object(ref mut schema_object) = schema {
-        if let Schema::Object(schema_object) = schema_object
-            .object
-            .as_mut()
-            .unwrap()
-            .properties
-            .get_mut("spec")
-            .unwrap()
-        {
-            schema_object.object.as_mut().unwrap().required = BTreeSet::new();
-        }
-    };
+    SimplifyOverrideSchema.visit_schema(&mut schema);
+    if let Schema::Object(schema) = &mut schema {
+        let meta = schema.metadata.get_or_insert_with(Default::default);
+        meta.description = Some("See PodTemplateSpec (https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core) for more details".to_string());
+    }
     schema
+}
+
+struct SimplifyOverrideSchema;
+impl schemars::visit::Visitor for SimplifyOverrideSchema {
+    fn visit_schema_object(&mut self, schema: &mut schemars::schema::SchemaObject) {
+        // Strip docs to make the schema more compact
+        if let Some(meta) = &mut schema.metadata {
+            meta.description = None;
+            meta.examples.clear();
+        }
+        // Make all options optional
+        if let Some(object) = &mut schema.object {
+            object.required.clear();
+        }
+        schemars::visit::visit_schema_object(self, schema);
+    }
 }
 
 fn config_schema_default() -> serde_json::Value {
