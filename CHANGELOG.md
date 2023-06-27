@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.42.2] - 2023-06-27
+
+### Fixed
+
+- Strip out documentation from pod override templates ([#611]).
+
+[#611]: https://github.com/stackabletech/operator-rs/pull/611
+
 ## [0.42.1] - 2023-06-15
 
 ### Fixed
