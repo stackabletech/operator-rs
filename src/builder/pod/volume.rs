@@ -332,7 +332,7 @@ impl SecretOperatorVolumeSourceBuilder {
         if let Some(format) = &self.format {
             attrs.insert(
                 "secrets.stackable.tech/format".to_string(),
-                format.as_str().to_string(),
+                format.as_ref().to_string(),
             );
         }
 
@@ -363,24 +363,15 @@ impl SecretOperatorVolumeSourceBuilder {
 /// A [secret format](https://docs.stackable.tech/home/stable/secret-operator/secretclass.html#format) known by secret-operator.
 ///
 /// This must either match or be convertible from the corresponding secret class, or provisioning the volume will fail.
-#[derive(Clone)]
+#[derive(Clone, strum::AsRefStr)]
+#[strum(serialize_all = "kebab-case")]
 pub enum SecretFormat {
     /// A TLS certificate formatted as a PEM triple (`ca.crt`, `tls.crt`, `tls.key`) according to Kubernetes conventions.
-    Tls,
+    TlsPem,
     /// A TLS certificate formatted as a PKCS#12 store.
     TlsPkcs12,
     /// A Kerberos keytab.
     Kerberos,
-}
-
-impl SecretFormat {
-    fn as_str(&self) -> &'static str {
-        match self {
-            SecretFormat::Tls => "tls",
-            SecretFormat::TlsPkcs12 => "tls-pkcs12",
-            SecretFormat::Kerberos => "kerberos",
-        }
-    }
 }
 
 #[derive(Clone)]
