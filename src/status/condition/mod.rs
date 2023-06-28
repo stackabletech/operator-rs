@@ -108,6 +108,98 @@ pub struct ClusterCondition {
     pub type_: ClusterConditionType,
 }
 
+impl std::fmt::Display for ClusterCondition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let out = match self.type_ {
+            ClusterConditionType::Available => match self.status {
+                ClusterConditionStatus::True => "Available",
+                ClusterConditionStatus::False => "Unavailable",
+                ClusterConditionStatus::Unknown => "Availability unknown",
+            },
+            ClusterConditionType::Degraded => match self.status {
+                ClusterConditionStatus::True => "Degraded",
+                ClusterConditionStatus::False => "Not degraded",
+                ClusterConditionStatus::Unknown => "Degradation unknown",
+            },
+            ClusterConditionType::Progressing => match self.status {
+                ClusterConditionStatus::True => "Progressing",
+                ClusterConditionStatus::False => "Not progressing",
+                ClusterConditionStatus::Unknown => "Progression unknown",
+            },
+            ClusterConditionType::ReconciliationPaused => match self.status {
+                ClusterConditionStatus::True => "Not reconciling",
+                ClusterConditionStatus::False => "Reconciling",
+                ClusterConditionStatus::Unknown => "Reconciliation unknown",
+            },
+            ClusterConditionType::Stopped => match self.status {
+                ClusterConditionStatus::True => "Stopped",
+                ClusterConditionStatus::False => "Running",
+                ClusterConditionStatus::Unknown => "Stopped status unknown",
+            },
+        };
+
+        out.fmt(f)
+    }
+}
+
+impl ClusterCondition {
+    /// Returns if the [`ClusterCondition`] is considered to be in a good /
+    /// healthy state.
+    pub fn is_good(&self) -> bool {
+        match self.type_ {
+            ClusterConditionType::Available => match self.status {
+                ClusterConditionStatus::False | ClusterConditionStatus::Unknown => false,
+                ClusterConditionStatus::True => true,
+            },
+            ClusterConditionType::Degraded => match self.status {
+                ClusterConditionStatus::False | ClusterConditionStatus::Unknown => true,
+                ClusterConditionStatus::True => false,
+            },
+            ClusterConditionType::Progressing => match self.status {
+                ClusterConditionStatus::False | ClusterConditionStatus::Unknown => false,
+                ClusterConditionStatus::True => true,
+            },
+            ClusterConditionType::ReconciliationPaused => match self.status {
+                ClusterConditionStatus::False | ClusterConditionStatus::True => true,
+                ClusterConditionStatus::Unknown => false,
+            },
+            ClusterConditionType::Stopped => match self.status {
+                ClusterConditionStatus::True | ClusterConditionStatus::Unknown => false,
+                ClusterConditionStatus::False => true,
+            },
+        }
+    }
+
+    /// Returns a short display string. This method wraps the
+    /// [`std::fmt::Display`] implementation of the [`ClusterCondition`].
+    pub fn display_short(&self) -> String {
+        self.to_string()
+    }
+
+    /// Returns a long display string. This method uses the
+    /// [`std::fmt::Display`] implementation of the [`ClusterCondition`] and
+    /// combines it with the optional message to provide more context.
+    pub fn display_long(&self) -> String {
+        match &self.message {
+            Some(message) => format!("{}: {}", self, message),
+            None => self.to_string(),
+        }
+    }
+
+    /// Returns either a short or long display string, This method additionally
+    /// checks if the condition is considered to be in a good state and then
+    /// returns the short display string. In case the condition is considered
+    /// to be in an unhealthy state, the method returns a long display string
+    /// which contains the optional message to provide more context. Internally
+    /// this method uses the `display_short` and `display_long` methods.
+    pub fn display_short_or_long(&self) -> String {
+        match self.is_good() {
+            true => self.display_short(),
+            false => self.display_long(),
+        }
+    }
+}
+
 #[derive(
     Clone,
     Copy,
@@ -498,5 +590,83 @@ mod test {
         assert_eq!(got.type_, expected.type_);
         assert_eq!(got.status, expected.status);
         assert_eq!(got.message, expected.message);
+    }
+
+    #[test]
+    fn test_display_short() {
+        let condition = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::False,
+            message: Some("This should not be displayed".into()),
+            ..Default::default()
+        };
+
+        assert!(!condition.is_good());
+        assert_eq!(condition.display_short(), "Unavailable".to_string());
+
+        let condition = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::True,
+            message: Some("This should not be displayed".into()),
+            ..Default::default()
+        };
+
+        assert!(condition.is_good());
+        assert_eq!(condition.display_short(), "Available".to_string());
+    }
+
+    #[test]
+    fn test_display_long() {
+        let condition = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::False,
+            message: Some("This should be displayed".into()),
+            ..Default::default()
+        };
+
+        assert!(!condition.is_good());
+        assert_eq!(
+            condition.display_long(),
+            "Unavailable: This should be displayed".to_string()
+        );
+
+        let condition = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::True,
+            message: Some("This should be displayed".into()),
+            ..Default::default()
+        };
+
+        assert!(condition.is_good());
+        assert_eq!(
+            condition.display_long(),
+            "Available: This should be displayed".to_string()
+        );
+    }
+
+    #[test]
+    fn test_display_short_or_long() {
+        let condition = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::False,
+            message: Some("This should be displayed if unhealthy".into()),
+            ..Default::default()
+        };
+
+        assert!(!condition.is_good());
+        assert_eq!(
+            condition.display_short_or_long(),
+            "Unavailable: This should be displayed if unhealthy".to_string()
+        );
+
+        let condition = ClusterCondition {
+            type_: ClusterConditionType::Available,
+            status: ClusterConditionStatus::True,
+            message: Some("This should not be displayed".into()),
+            ..Default::default()
+        };
+
+        assert!(condition.is_good());
+        assert_eq!(condition.display_short_or_long(), "Available".to_string());
     }
 }

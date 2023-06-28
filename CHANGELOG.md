@@ -10,6 +10,44 @@ All notable changes to this project will be documented in this file.
 
 [#610]: https://github.com/stackabletech/operator-rs/pull/610
 
+## [0.42.2] - 2023-06-27
+
+### Fixed
+
+- Strip out documentation from pod override templates ([#611]).
+
+[#611]: https://github.com/stackabletech/operator-rs/pull/611
+
+## [0.42.1] - 2023-06-15
+
+### Fixed
+
+- Let `PodBuilder::build_template` return `PodTemplateSpec` instead of `OperatorResult<PodTemplateSpec>` (fixup of #598) ([#605]).
+
+[#605]: https://github.com/stackabletech/operator-rs/pull/605
+
+## [0.42.0] - 2023-06-15
+
+### Added
+
+- Add a new `ResourceRequirementsBuilder` to more easily build resource requirements in a controlled and well defined
+  way. ([#598]).
+- Add podOverrides to common struct CommonConfiguration ([#601]).
+- All the operators now must respect the new `podOverrides` attribute! ([#601]).
+- Support ClusterIP type in services created by listener-operator ([#602]).
+
+### Changed
+
+- Set default resource limits on `PodBuilder::add_init_container` ([#598]).
+- Made `StaticAuthenticationProvider` fields public ([#597]).
+- [INTERNALLY BREAKING]: Moved `StaticAuthenticationProvider`, `LdapAuthenticationProvider`, `TlsAuthenticationProvider`
+  to its own module `authentication` ([#597]).
+
+[#597]: https://github.com/stackabletech/operator-rs/pull/597
+[#598]: https://github.com/stackabletech/operator-rs/pull/598
+[#601]: https://github.com/stackabletech/operator-rs/pull/601
+[#602]: https://github.com/stackabletech/operator-rs/pull/602
+
 ## [0.41.0] - 2023-04-20
 
 ### Changed

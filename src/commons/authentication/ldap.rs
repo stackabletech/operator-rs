@@ -1,10 +1,10 @@
 use crate::builder::ContainerBuilder;
-use crate::commons::tls::Tls;
+use crate::commons::authentication::tls::Tls;
 use crate::{builder::PodBuilder, commons::secret_class::SecretClassVolume};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use super::tls::{CaCert, TlsServerVerification, TlsVerification};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 pub const SECRET_BASE_PATH: &str = "/stackable/secrets";
 
