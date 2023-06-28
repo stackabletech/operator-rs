@@ -265,6 +265,7 @@ impl VolumeMountBuilder {
 pub struct SecretOperatorVolumeSourceBuilder {
     secret_class: String,
     scopes: Vec<SecretOperatorVolumeScope>,
+    format: Option<SecretFormat>,
     kerberos_service_names: Vec<String>,
 }
 
@@ -273,6 +274,7 @@ impl SecretOperatorVolumeSourceBuilder {
         Self {
             secret_class: secret_class.into(),
             scopes: Vec::new(),
+            format: None,
             kerberos_service_names: Vec::new(),
         }
     }
@@ -290,6 +292,11 @@ impl SecretOperatorVolumeSourceBuilder {
     pub fn with_service_scope(&mut self, name: impl Into<String>) -> &mut Self {
         self.scopes
             .push(SecretOperatorVolumeScope::Service { name: name.into() });
+        self
+    }
+
+    pub fn with_format(&mut self, format: SecretFormat) -> &mut Self {
+        self.format = Some(format);
         self
     }
 
@@ -322,6 +329,13 @@ impl SecretOperatorVolumeSourceBuilder {
             attrs.insert("secrets.stackable.tech/scope".to_string(), scopes);
         }
 
+        if let Some(format) = &self.format {
+            attrs.insert(
+                "secrets.stackable.tech/format".to_string(),
+                format.as_ref().to_string(),
+            );
+        }
+
         if !self.kerberos_service_names.is_empty() {
             attrs.insert(
                 "secrets.stackable.tech/kerberos.service.names".to_string(),
@@ -344,6 +358,20 @@ impl SecretOperatorVolumeSourceBuilder {
             }),
         }
     }
+}
+
+/// A [secret format](https://docs.stackable.tech/home/stable/secret-operator/secretclass.html#format) known by secret-operator.
+///
+/// This must either match or be convertible from the corresponding secret class, or provisioning the volume will fail.
+#[derive(Clone, strum::AsRefStr)]
+#[strum(serialize_all = "kebab-case")]
+pub enum SecretFormat {
+    /// A TLS certificate formatted as a PEM triple (`ca.crt`, `tls.crt`, `tls.key`) according to Kubernetes conventions.
+    TlsPem,
+    /// A TLS certificate formatted as a PKCS#12 store.
+    TlsPkcs12,
+    /// A Kerberos keytab.
+    Kerberos,
 }
 
 #[derive(Clone)]
