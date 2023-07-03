@@ -9,6 +9,7 @@ use crate::{
             LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
         },
     },
+    constants::labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
     error::{Error, OperatorResult},
     k8s_openapi::{
         api::{
@@ -24,7 +25,6 @@ use crate::{
         NamespaceResourceScope,
     },
     kube::{Resource, ResourceExt},
-    labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
     utils::format_full_controller_name,
 };
 

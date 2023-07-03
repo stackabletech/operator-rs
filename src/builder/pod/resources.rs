@@ -6,11 +6,9 @@ use k8s_openapi::{
 use tracing::warn;
 
 use crate::{
-    commons::resources::ResourceRequirementsType, cpu::CpuQuantity, error::OperatorResult,
-    memory::MemoryQuantity,
+    commons::resources::ResourceRequirementsType, constants::resources::RESOURCE_DENYLIST,
+    cpu::CpuQuantity, error::OperatorResult, memory::MemoryQuantity,
 };
-
-const RESOURCE_DENYLIST: &[&str] = &["cpu", "memory"];
 
 #[derive(Debug, Default)]
 pub struct ResourceRequirementsBuilder<CR, CL, MR, ML> {

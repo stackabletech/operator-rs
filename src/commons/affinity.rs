@@ -13,10 +13,11 @@ use stackable_operator_derive::Fragment;
 
 use crate::{
     config::merge::{Atomic, Merge},
-    labels::{APP_COMPONENT_LABEL, APP_INSTANCE_LABEL, APP_NAME_LABEL},
+    constants::{
+        affinity::TOPOLOGY_KEY_HOSTNAME,
+        labels::{APP_COMPONENT_LABEL, APP_INSTANCE_LABEL, APP_NAME_LABEL},
+    },
 };
-
-pub const TOPOLOGY_KEY_HOSTNAME: &str = "kubernetes.io/hostname";
 
 #[derive(Clone, Debug, Default, Deserialize, Fragment, JsonSchema, PartialEq, Serialize)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]

@@ -116,8 +116,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub const AUTHOR: &str = "Stackable GmbH - info@stackable.de";
-
 /// Framework-standardized commands
 ///
 /// If you need operator-specific commands then you can flatten [`Command`] into your own command enum. For example:
