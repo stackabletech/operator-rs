@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - Secrets can now be requested in a custom format ([#610]).
 
+### Changed
+
+- Make pod overrides usable independently of roles (like in the case of the Spark operator) ([#xxx])
+
 [#610]: https://github.com/stackabletech/operator-rs/pull/610
 
 ## [0.42.2] - 2023-06-27
