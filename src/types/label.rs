@@ -60,7 +60,7 @@ impl FromStr for Label {
             return Err(LabelParseError::EmptyInput);
         }
 
-        let parts: Vec<_> = input.split("=").collect();
+        let parts: Vec<_> = input.split('=').collect();
 
         if parts.len() != 2 {
             return Err(LabelParseError::InvalidSyntax);
@@ -145,7 +145,7 @@ impl FromStr for LabelKey {
     type Err = LabelKeyParseError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<_> = input.trim().split("/").collect();
+        let parts: Vec<_> = input.trim().split('/').collect();
         let len = parts.len();
 
         // More then one slash (more than two parts)
