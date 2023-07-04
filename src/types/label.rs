@@ -110,7 +110,7 @@ impl Label {
         let name = name.into();
 
         if let Some(prefix) = &prefix {
-            validation::is_rfc_1123_label(&prefix)
+            validation::is_rfc_1123_label(prefix)
                 .map_err(LabelCreateError::InvalidRfc1123LabelError)?;
         }
 
