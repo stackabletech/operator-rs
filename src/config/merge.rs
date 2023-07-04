@@ -1,5 +1,5 @@
 use k8s_openapi::{
-    api::core::v1::{NodeAffinity, PodAffinity, PodAntiAffinity},
+    api::core::v1::{NodeAffinity, PodAffinity, PodAntiAffinity, PodTemplateSpec},
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
 };
 use std::{
@@ -140,6 +140,8 @@ impl Atomic for LabelSelector {}
 impl Atomic for PodAffinity {}
 impl Atomic for PodAntiAffinity {}
 impl Atomic for NodeAffinity {}
+/// Needed for the Spark operator where pod_overrides are used directly and not via the roles.
+impl Atomic for PodTemplateSpec {}
 
 impl<T: Atomic> Merge for Option<T> {
     fn merge(&mut self, defaults: &Self) {
