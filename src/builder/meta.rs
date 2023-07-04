@@ -1,5 +1,6 @@
 use crate::error::{Error, OperatorResult};
 use crate::labels::{self, ObjectLabels};
+use crate::types::Annotation;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
 use kube::{Resource, ResourceExt};
 use std::collections::BTreeMap;
@@ -18,7 +19,7 @@ pub struct ObjectMetaBuilder {
     namespace: Option<String>,
     ownerreference: Option<OwnerReference>,
     labels: Option<BTreeMap<String, String>>,
-    annotations: Option<BTreeMap<String, String>>,
+    annotations: BTreeMap<String, Annotation>,
 }
 
 impl ObjectMetaBuilder {
@@ -92,29 +93,29 @@ impl ObjectMetaBuilder {
 
     /// This adds a single annotation to the existing annotations.
     /// It'll override an annotation with the same key.
-    pub fn with_annotation(
-        &mut self,
-        annotation_key: impl Into<String>,
-        annotation_value: impl Into<String>,
-    ) -> &mut Self {
-        self.annotations
-            .get_or_insert_with(BTreeMap::new)
-            .insert(annotation_key.into(), annotation_value.into());
+    pub fn with_annotation(&mut self, annotation: Annotation) -> &mut Self {
+        self.annotations.insert(annotation.key(), annotation);
         self
     }
 
     /// This adds multiple annotations to the existing annotations.
     /// Any existing annotation with a key that is contained in `annotations` will be overwritten
-    pub fn with_annotations(&mut self, annotations: BTreeMap<String, String>) -> &mut Self {
-        self.annotations
-            .get_or_insert_with(BTreeMap::new)
-            .extend(annotations);
+    pub fn with_annotations(&mut self, annotations: Vec<Annotation>) -> &mut Self {
+        for annotation in annotations {
+            self.annotations.insert(annotation.key(), annotation);
+        }
         self
     }
 
     /// This will replace all existing annotations
-    pub fn annotations(&mut self, annotations: BTreeMap<String, String>) -> &mut Self {
-        self.annotations = Some(annotations);
+    pub fn annotations(&mut self, annotations: Vec<Annotation>) -> &mut Self {
+        let mut map = BTreeMap::new();
+
+        for annotation in annotations {
+            map.insert(annotation.key(), annotation);
+        }
+
+        self.annotations = map;
         self
     }
 
@@ -179,7 +180,12 @@ impl ObjectMetaBuilder {
                 .as_ref()
                 .map(|ownerreference| vec![ownerreference.clone()]),
             labels: self.labels.clone(),
-            annotations: self.annotations.clone(),
+            annotations: Some(
+                self.annotations
+                    .iter()
+                    .map(|(name, annotation)| (name.clone(), annotation.value()))
+                    .collect(),
+            ),
             ..ObjectMeta::default()
         }
     }
@@ -305,7 +311,7 @@ impl OwnerReferenceBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builder::meta::ObjectMetaBuilder;
+    use crate::{builder::meta::ObjectMetaBuilder, types::Annotation};
     use k8s_openapi::api::core::v1::Pod;
 
     #[test]
@@ -329,7 +335,7 @@ mod tests {
                 role: "role",
                 role_group: "rolegroup",
             })
-            .with_annotation("foo", "bar")
+            .with_annotation(Annotation::new(None, "foo", "bar").unwrap())
             .build();
 
         assert_eq!(meta.generate_name, Some("generate_foo".to_string()));

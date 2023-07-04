@@ -27,6 +27,7 @@ pub type AnnotationKeyParseError = KeyParseError;
 /// ```
 ///
 /// [1]: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+#[derive(Debug, Clone)]
 pub struct Annotation(KeyValuePair);
 
 impl FromStr for Annotation {
@@ -68,5 +69,14 @@ impl Annotation {
     {
         let kvp = KeyValuePair::new(prefix, name, value)?;
         Ok(Self(kvp))
+    }
+
+    /// Returns the annotation key as a [`String`].
+    pub fn key(&self) -> String {
+        self.0.key.to_string()
+    }
+
+    pub fn value(&self) -> String {
+        self.0.value.clone()
     }
 }

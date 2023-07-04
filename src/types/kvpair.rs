@@ -14,7 +14,7 @@ pub enum KeyValuePairParseError {
     KeyParseError(#[from] KeyParseError),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct KeyValuePair {
     pub key: Key,
     pub value: String,
@@ -94,7 +94,7 @@ pub enum KeyParseError {
     InvalidRfc1123SubdomainError(Vec<String>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Key {
     pub prefix: Option<String>,
     pub name: String,

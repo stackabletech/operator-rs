@@ -10,9 +10,9 @@ use k8s_openapi::{
     },
     apimachinery::pkg::api::resource::Quantity,
 };
-use std::collections::BTreeMap;
 
-use crate::builder::ObjectMetaBuilder;
+use crate::builder::{annotation::AnnotationListBuilder, ObjectMetaBuilder};
+use crate::types::{Annotation, AnnotationParseError};
 
 /// A builder to build [`Volume`] objects.
 /// May only contain one `volume_source` at a time.
@@ -306,10 +306,9 @@ impl SecretOperatorVolumeSourceBuilder {
     }
 
     pub fn build(&self) -> EphemeralVolumeSource {
-        let mut attrs = BTreeMap::from([(
-            "secrets.stackable.tech/class".to_string(),
-            self.secret_class.clone(),
-        )]);
+        // TODO (Techassi): Get rid of all unwraps
+        let mut attrs = AnnotationListBuilder::new(Some("secrets.stackable.tech"));
+        attrs.add("class", &self.secret_class).unwrap();
 
         if !self.scopes.is_empty() {
             let mut scopes = String::new();
@@ -326,26 +325,25 @@ impl SecretOperatorVolumeSourceBuilder {
                     }
                 }
             }
-            attrs.insert("secrets.stackable.tech/scope".to_string(), scopes);
+            attrs.add("scope", &scopes).unwrap();
         }
 
         if let Some(format) = &self.format {
-            attrs.insert(
-                "secrets.stackable.tech/format".to_string(),
-                format.as_ref().to_string(),
-            );
+            attrs.add("format", format.as_ref()).unwrap();
         }
 
         if !self.kerberos_service_names.is_empty() {
-            attrs.insert(
-                "secrets.stackable.tech/kerberos.service.names".to_string(),
-                self.kerberos_service_names.join(","),
-            );
+            attrs
+                .add(
+                    "kerberos.service.names",
+                    &self.kerberos_service_names.join(","),
+                )
+                .unwrap();
         }
 
         EphemeralVolumeSource {
             volume_claim_template: Some(PersistentVolumeClaimTemplate {
-                metadata: Some(ObjectMetaBuilder::new().annotations(attrs).build()),
+                metadata: Some(ObjectMetaBuilder::new().annotations(attrs.build()).build()),
                 spec: PersistentVolumeClaimSpec {
                     storage_class_name: Some("secrets.stackable.tech".to_string()),
                     resources: Some(ResourceRequirements {
@@ -390,16 +388,14 @@ pub enum ListenerReference {
 
 impl ListenerReference {
     /// Return the key and value for a Kubernetes object annotation
-    fn to_annotation(&self) -> (String, String) {
+    fn to_annotation(&self) -> Result<Annotation, AnnotationParseError> {
         match self {
-            ListenerReference::ListenerClass(value) => (
-                "listeners.stackable.tech/listener-class".into(),
-                value.into(),
-            ),
-            ListenerReference::ListenerName(value) => (
-                "listeners.stackable.tech/listener-name".into(),
-                value.into(),
-            ),
+            ListenerReference::ListenerClass(value) => {
+                Annotation::new(Some("listeners.stackable.tech"), "listener-class", value)
+            }
+            ListenerReference::ListenerName(value) => {
+                Annotation::new(Some("listeners.stackable.tech"), "listener-name", value)
+            }
         }
     }
 }
@@ -449,7 +445,7 @@ impl ListenerOperatorVolumeSourceBuilder {
             volume_claim_template: Some(PersistentVolumeClaimTemplate {
                 metadata: Some(
                     ObjectMetaBuilder::new()
-                        .annotations([self.listener_reference.to_annotation()].into())
+                        .annotations([self.listener_reference.to_annotation().unwrap()].into())
                         .build(),
                 ),
                 spec: PersistentVolumeClaimSpec {
