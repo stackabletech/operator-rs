@@ -1,6 +1,7 @@
 use k8s_openapi::{
     api::core::v1::{NodeAffinity, PodAffinity, PodAntiAffinity, PodTemplateSpec},
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
+    DeepMerge,
 };
 use std::{
     collections::{btree_map, hash_map, BTreeMap, HashMap},
@@ -83,6 +84,11 @@ impl<K: Hash + Eq + Clone, V: Merge + Clone> Merge for HashMap<K, V> {
         }
     }
 }
+impl Merge for PodTemplateSpec {
+    fn merge(&mut self, defaults: &Self) {
+        self.merge_from(defaults.clone())
+    }
+}
 
 /// Moving version of [`Merge::merge`], to produce slightly nicer test output
 pub fn merge<T: Merge>(mut overrides: T, defaults: &T) -> T {
@@ -140,8 +146,6 @@ impl Atomic for LabelSelector {}
 impl Atomic for PodAffinity {}
 impl Atomic for PodAntiAffinity {}
 impl Atomic for NodeAffinity {}
-/// Needed for the Spark operator where pod_overrides are used directly and not via the roles.
-impl Atomic for PodTemplateSpec {}
 
 impl<T: Atomic> Merge for Option<T> {
     fn merge(&mut self, defaults: &Self) {
