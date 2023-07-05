@@ -14,10 +14,28 @@ pub enum KeyValuePairParseError {
     KeyParseError(#[from] KeyParseError),
 }
 
+pub trait KeyValuePairExt: Sized + Clone + FromStr + Display {
+    /// Creates a new key/value pair. The key consists of an optional `prefix`
+    /// and a `name`.
+    ///
+    /// ```
+    /// use stackable_operator::types::KeyValuePair;
+    ///
+    /// // stackable.tech/release=23.7
+    /// let kvp = KeyValuePair::new(Some("stackable.tech"), "release", "23.7");
+    /// ```
+    fn new<T>(prefix: Option<T>, name: T, value: T) -> Result<Self, KeyValuePairParseError>
+    where
+        T: Into<String>;
+
+    fn key(&self) -> String;
+    fn value(&self) -> &String;
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct KeyValuePair {
-    pub key: Key,
-    pub value: String,
+    key: Key,
+    value: String,
 }
 
 impl FromStr for KeyValuePair {
@@ -61,7 +79,7 @@ impl Display for KeyValuePair {
     }
 }
 
-impl KeyValuePair {
+impl KeyValuePairExt for KeyValuePair {
     /// Creates a new key/value pair. The key consists of an optional `prefix`
     /// and a `name`.
     ///
@@ -71,7 +89,7 @@ impl KeyValuePair {
     /// // stackable.tech/release=23.7
     /// let kvp = KeyValuePair::new(Some("stackable.tech"), "release", "23.7");
     /// ```
-    pub fn new<T>(prefix: Option<T>, name: T, value: T) -> Result<Self, KeyValuePairParseError>
+    fn new<T>(prefix: Option<T>, name: T, value: T) -> Result<Self, KeyValuePairParseError>
     where
         T: Into<String>,
     {
@@ -79,6 +97,14 @@ impl KeyValuePair {
         let value = value.into();
 
         Ok(Self { key, value })
+    }
+
+    fn key(&self) -> String {
+        self.key.to_string()
+    }
+
+    fn value(&self) -> &String {
+        &self.value
     }
 }
 

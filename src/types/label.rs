@@ -1,6 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
-use crate::types::{KeyParseError, KeyValuePair, KeyValuePairParseError};
+use crate::types::{KeyParseError, KeyValuePair, KeyValuePairExt, KeyValuePairParseError};
 
 pub type LabelParseError = KeyValuePairParseError;
 pub type LabelKeyParseError = KeyParseError;
@@ -26,7 +26,39 @@ pub type LabelKeyParseError = KeyParseError;
 /// ```
 ///
 /// [1]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+#[derive(Clone, Debug)]
 pub struct Label(KeyValuePair);
+
+impl KeyValuePairExt for Label {
+    /// Creates a new label (key/value pair). The key consists of an optional
+    /// `prefix` and a name.
+    ///
+    /// ```
+    /// use stackable_operator::types::Label;
+    ///
+    /// // stackable.tech/release=23.7
+    /// let label = Label::new(Some("stackable.tech"), "release", "23.7");
+    /// ```
+    fn new<T>(prefix: Option<T>, name: T, value: T) -> Result<Self, LabelParseError>
+    where
+        T: Into<String>,
+    {
+        let kvp = KeyValuePair::new(prefix, name, value)?;
+        Ok(Self(kvp))
+    }
+
+    /// Returns the label key as a formatted [`String`]. If the key contains
+    /// a prefix, the key has a format like `<prefix>/<name>`. If not, the key
+    /// only consists of a name.
+    fn key(&self) -> String {
+        self.0.key()
+    }
+
+    /// Returns the label value as a [`String`].
+    fn value(&self) -> &String {
+        self.0.value()
+    }
+}
 
 impl FromStr for Label {
     type Err = LabelParseError;
@@ -48,24 +80,5 @@ impl TryFrom<&str> for Label {
 impl Display for Label {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
-    }
-}
-
-impl Label {
-    /// Creates a new label (key/value pair). The key consists of an optional
-    /// `prefix` and a name.
-    ///
-    /// ```
-    /// use stackable_operator::types::Label;
-    ///
-    /// // stackable.tech/release=23.7
-    /// let label = Label::new(Some("stackable.tech"), "release", "23.7");
-    /// ```
-    pub fn new<T>(prefix: Option<T>, name: T, value: T) -> Result<Self, LabelParseError>
-    where
-        T: Into<String>,
-    {
-        let kvp = KeyValuePair::new(prefix, name, value)?;
-        Ok(Self(kvp))
     }
 }

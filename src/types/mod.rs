@@ -1,7 +1,7 @@
 mod annotation;
-mod kvpair;
+mod kvp;
 mod label;
 
 pub use annotation::*;
-pub use kvpair::*;
+pub use kvp::*;
 pub use label::*;

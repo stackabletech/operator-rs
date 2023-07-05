@@ -1,8 +1,11 @@
 use crate::{
+    builder::kvp::LabelListBuilder,
     constants::labels::{
-        APP_COMPONENT_LABEL, APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL,
-        APP_ROLE_GROUP_LABEL, APP_VERSION_LABEL,
+        LABEL_KEY_NAME_APP_COMPONENT, LABEL_KEY_NAME_APP_INSTANCE, LABEL_KEY_NAME_APP_MANAGED_BY,
+        LABEL_KEY_NAME_APP_NAME, LABEL_KEY_NAME_APP_ROLE_GROUP, LABEL_KEY_NAME_APP_VERSION,
+        LABEL_KEY_PREFIX_APP_KUBERNETES,
     },
+    types::{Label, LabelParseError},
     utils::format_full_controller_name,
 };
 
@@ -55,56 +58,23 @@ pub fn get_recommended_labels<T>(
         role,
         role_group,
     }: ObjectLabels<T>,
-) -> BTreeMap<String, String>
+) -> Result<BTreeMap<String, Label>, LabelParseError>
 where
     T: Resource,
 {
-    let mut labels = role_group_selector_labels(owner, app_name, role, role_group);
+    let mut labels = LabelListBuilder::new(Some(LABEL_KEY_PREFIX_APP_KUBERNETES));
+    labels.add(
+        LABEL_KEY_NAME_APP_MANAGED_BY,
+        &format_full_controller_name(operator_name, controller_name),
+    )?;
+    labels.add(LABEL_KEY_NAME_APP_INSTANCE, &owner.name_any())?;
+    labels.add(LABEL_KEY_NAME_APP_ROLE_GROUP, role_group)?;
+    labels.add(LABEL_KEY_NAME_APP_VERSION, app_version)?;
+    labels.add(LABEL_KEY_NAME_APP_COMPONENT, role)?;
+    labels.add(LABEL_KEY_NAME_APP_NAME, app_name)?;
 
     // TODO: Add operator version label
     // TODO: part-of is empty for now, decide on how this can be used in a proper fashion
-    labels.insert(APP_VERSION_LABEL.to_string(), app_version.to_string());
-    labels.insert(
-        APP_MANAGED_BY_LABEL.to_string(),
-        format_full_controller_name(operator_name, controller_name),
-    );
 
-    labels
-}
-
-/// The labels required to match against objects of a certain role, assuming that those objects
-/// are defined using [`get_recommended_labels`]
-pub fn role_group_selector_labels<T: Resource>(
-    owner: &T,
-    app_name: &str,
-    role: &str,
-    role_group: &str,
-) -> BTreeMap<String, String> {
-    let mut labels = role_selector_labels(owner, app_name, role);
-    labels.insert(APP_ROLE_GROUP_LABEL.to_string(), role_group.to_string());
-    labels
-}
-
-/// The labels required to match against objects of a certain role group, assuming that those objects
-/// are defined using [`get_recommended_labels`]
-pub fn role_selector_labels<T: Resource>(
-    owner: &T,
-    app_name: &str,
-    role: &str,
-) -> BTreeMap<String, String> {
-    let mut labels = build_common_labels_for_all_managed_resources(app_name, &owner.name_any());
-    labels.insert(APP_COMPONENT_LABEL.to_string(), role.to_string());
-    labels
-}
-
-/// The APP_NAME_LABEL (Spark, Kafka, ZooKeeper...) and APP_INSTANCES_LABEL (simple, test ...) are
-/// required to identify resources that belong to a certain owner object (such as a particular `ZookeeperCluster`).
-pub fn build_common_labels_for_all_managed_resources(
-    app_name: &str,
-    owner_name: &str,
-) -> BTreeMap<String, String> {
-    let mut labels = BTreeMap::new();
-    labels.insert(APP_NAME_LABEL.to_string(), app_name.to_string());
-    labels.insert(APP_INSTANCE_LABEL.to_string(), owner_name.to_string());
-    labels
+    Ok(labels.build())
 }
