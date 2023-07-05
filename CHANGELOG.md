@@ -10,9 +10,10 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Make pod overrides usable independently of roles (like in the case of the Spark operator) ([#xxx])
+- Make pod overrides usable independently of roles (like in the case of the Spark operator) ([#616])
 
 [#610]: https://github.com/stackabletech/operator-rs/pull/610
+[#616]: https://github.com/stackabletech/operator-rs/pull/616
 
 ## [0.42.2] - 2023-06-27
 
