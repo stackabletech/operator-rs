@@ -1,6 +1,7 @@
 use k8s_openapi::{
-    api::core::v1::{NodeAffinity, PodAffinity, PodAntiAffinity},
+    api::core::v1::{NodeAffinity, PodAffinity, PodAntiAffinity, PodTemplateSpec},
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
+    DeepMerge,
 };
 use std::{
     collections::{btree_map, hash_map, BTreeMap, HashMap},
@@ -83,6 +84,11 @@ impl<K: Hash + Eq + Clone, V: Merge + Clone> Merge for HashMap<K, V> {
         }
     }
 }
+impl Merge for PodTemplateSpec {
+    fn merge(&mut self, defaults: &Self) {
+        self.merge_from(defaults.clone())
+    }
+}
 
 /// Moving version of [`Merge::merge`], to produce slightly nicer test output
 pub fn merge<T: Merge>(mut overrides: T, defaults: &T) -> T {
@@ -151,6 +157,7 @@ impl<T: Atomic> Merge for Option<T> {
 
 #[cfg(test)]
 mod tests {
+    use k8s_openapi::api::core::v1::{PodSpec, PodTemplateSpec};
     use std::collections::{BTreeMap, HashMap};
 
     use super::{merge, Merge};
@@ -423,6 +430,61 @@ mod tests {
                 &[("a", Acc(3)), ("c", Acc(5))].into()
             ),
             BTreeMap::from([("a", Acc(4)), ("b", Acc(2)), ("c", Acc(5))])
+        );
+    }
+
+    #[test]
+    fn merge_pod_template_spec() {
+        assert_eq!(
+            merge(
+                PodTemplateSpec {
+                    spec: Some(PodSpec {
+                        service_account_name: Some("my-sa".to_string()),
+                        ..PodSpec::default()
+                    }),
+                    ..PodTemplateSpec::default()
+                },
+                &PodTemplateSpec {
+                    spec: Some(PodSpec {
+                        priority: Some(3000),
+                        ..PodSpec::default()
+                    }),
+                    ..PodTemplateSpec::default()
+                }
+            ),
+            PodTemplateSpec {
+                spec: Some(PodSpec {
+                    service_account_name: Some("my-sa".to_string()),
+                    priority: Some(3000),
+                    ..PodSpec::default()
+                }),
+                ..PodTemplateSpec::default()
+            }
+        );
+        assert_eq!(
+            merge(
+                PodTemplateSpec {
+                    spec: Some(PodSpec {
+                        service_account_name: Some("sa-to-be-overridden".to_string()),
+                        ..PodSpec::default()
+                    }),
+                    ..PodTemplateSpec::default()
+                },
+                &PodTemplateSpec {
+                    spec: Some(PodSpec {
+                        service_account_name: Some("sa-override".to_string()),
+                        ..PodSpec::default()
+                    }),
+                    ..PodTemplateSpec::default()
+                }
+            ),
+            PodTemplateSpec {
+                spec: Some(PodSpec {
+                    service_account_name: Some("sa-override".to_string()),
+                    ..PodSpec::default()
+                }),
+                ..PodTemplateSpec::default()
+            }
         );
     }
 }

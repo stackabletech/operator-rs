@@ -134,7 +134,7 @@ pub struct CommonConfiguration<T> {
 /// Additionally all docs are removed, as the resulting Stackable CRD objects where to big for Kubernetes.
 /// E.g. the HdfsCluster CRD increased to ~3.2 MB (which is over the limit of 3MB), after stripping
 /// the docs it went down to ~1.3 MiB.
-fn pod_overrides_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
+pub fn pod_overrides_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
     let mut schema = PodTemplateSpec::json_schema(gen);
     SimplifyOverrideSchema.visit_schema(&mut schema);
     if let Schema::Object(schema) = &mut schema {
