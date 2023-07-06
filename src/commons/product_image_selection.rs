@@ -47,8 +47,9 @@ pub struct ProductImageCustom {
 pub struct ProductImageStackableVersion {
     /// Version of the product, e.g. `1.4.1`.
     product_version: String,
-    /// Stackable version of the product, e.g. 2.1.0
-    stackable_version: String,
+    /// Stackable version of the product, e.g. 2.1.0.
+    /// If not specified, the operator will use the same version as he has (e.g. `23.4.1` or `0.0.0-dev`)
+    stackable_version: Option<String>,
     /// Name of the docker repo, e.g. `docker.stackable.tech/stackable`
     repo: Option<String>,
 }
@@ -78,7 +79,7 @@ pub enum PullPolicy {
 }
 
 impl ProductImage {
-    pub fn resolve(&self, image_base_name: &str) -> ResolvedProductImage {
+    pub fn resolve(&self, image_base_name: &str, operator_version: &str) -> ResolvedProductImage {
         let image_pull_policy = self.pull_policy.as_ref().to_string();
         let pull_secrets = self.pull_secrets.clone();
 
@@ -102,15 +103,17 @@ impl ProductImage {
                     .repo
                     .as_deref()
                     .unwrap_or(STACKABLE_DOCKER_REPO);
+                let stackable_version_version = stackable_version
+                    .stackable_version
+                    .as_deref()
+                    .unwrap_or(operator_version);
                 let image = format!(
-                    "{repo}/{image_base_name}:{product_version}-stackable{stackable_version}",
+                    "{repo}/{image_base_name}:{product_version}-stackable{stackable_version_version}",
                     product_version = stackable_version.product_version,
-                    stackable_version = stackable_version.stackable_version,
                 );
                 let app_version_label = format!(
-                    "{product_version}-stackable{stackable_version}",
+                    "{product_version}-stackable{stackable_version_version}",
                     product_version = stackable_version.product_version,
-                    stackable_version = stackable_version.stackable_version,
                 );
                 ResolvedProductImage {
                     product_version: stackable_version.product_version.to_string(),
@@ -131,6 +134,19 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
+    #[case::stackable_version_without_stackable_version(
+        "superset",
+        r#"
+        productVersion: 1.4.1
+        "#,
+        ResolvedProductImage {
+            image: "docker.stackable.tech/stackable/superset:1.4.1-stackableoperator-version".to_string(),
+            app_version_label: "1.4.1-stackableoperator-version".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "IfNotPresent".to_string(),
+            pull_secrets: None,
+        }
+    )]
     #[case::stackable_version_without_repo(
         "superset",
         r#"
@@ -271,8 +287,9 @@ mod tests {
         #[case] input: String,
         #[case] expected: ResolvedProductImage,
     ) {
+        let operator_version = "operator-version";
         let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
-        let resolved_product_image = product_image.resolve(&image_base_name);
+        let resolved_product_image = product_image.resolve(&image_base_name, operator_version);
 
         assert_eq!(resolved_product_image, expected);
     }
@@ -281,12 +298,6 @@ mod tests {
     #[case::custom(
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
-        "#,
-        "data did not match any variant of untagged enum ProductImageSelection at line 2 column 9"
-    )]
-    #[case::product_version(
-        r#"
-        productVersion: 1.4.1
         "#,
         "data did not match any variant of untagged enum ProductImageSelection at line 2 column 9"
     )]
