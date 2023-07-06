@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.43.0] - 2023-07-06
+
 ### Added
 
 - Secrets can now be requested in a custom format ([#610]).
