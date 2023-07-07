@@ -72,7 +72,7 @@ impl PodBuilder {
     {
         let builder = ObjectMetaBuilder::new();
         let builder = f(builder);
-        self.metadata = Some(builder.clone().build());
+        self.metadata = Some(builder.build());
         self
     }
 
