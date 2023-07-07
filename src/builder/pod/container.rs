@@ -1,8 +1,9 @@
+use std::fmt;
+
 use k8s_openapi::api::core::v1::{
     ConfigMapKeySelector, Container, ContainerPort, EnvVar, EnvVarSource, ObjectFieldSelector,
     Probe, ResourceRequirements, SecretKeySelector, SecurityContext, VolumeMount,
 };
-use std::fmt;
 
 use crate::{
     commons::product_image_selection::ResolvedProductImage, error::Error,

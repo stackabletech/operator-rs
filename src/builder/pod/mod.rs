@@ -5,25 +5,30 @@ pub mod volume;
 
 use std::collections::BTreeMap;
 
-use crate::builder::meta::ObjectMetaBuilder;
-use crate::commons::affinity::StackableAffinity;
-use crate::commons::product_image_selection::ResolvedProductImage;
-use crate::commons::resources::{
-    ComputeResource, ResourceRequirementsExt, ResourceRequirementsType, LIMIT_REQUEST_RATIO_CPU,
-    LIMIT_REQUEST_RATIO_MEMORY,
-};
-use crate::error::{Error, OperatorResult};
-
-use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
 use k8s_openapi::{
     api::core::v1::{
         Affinity, Container, LocalObjectReference, NodeAffinity, Pod, PodAffinity, PodAntiAffinity,
-        PodCondition, PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec,
-        ResourceRequirements, Toleration, Volume,
+        PodCondition, PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec, Toleration, Volume,
     },
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
 };
 use tracing::warn;
+
+use crate::{
+    builder::{
+        meta::ObjectMetaBuilder, resources::ResourceRequirementsBuilder,
+        ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder,
+    },
+    commons::{
+        affinity::StackableAffinity,
+        product_image_selection::ResolvedProductImage,
+        resources::{
+            ComputeResource, ResourceRequirementsExt, ResourceRequirementsType,
+            LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
+        },
+    },
+    error::{Error, OperatorResult},
+};
 
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
 #[derive(Clone, Default)]
@@ -187,22 +192,16 @@ impl PodBuilder {
         // instead be set inside the container builder. Having container types
         // should greatly simplify setting the default resource requirements.
         // This method should instead be "as dumb" as it can be and should
-        // simply add the provided container to the internal vector. The problem
-        // with the solution down below is that wie side-step the common
-        // interface provided by the `with_resource`, `with_cpu` and
-        // `with_memory` methods of the builder.
+        // simply add the provided container to the internal vector.
 
-        if container.resources.is_none() {
-            let limits = Some(BTreeMap::from([
-                ("cpu".to_string(), Quantity("10m".to_string())),
-                ("memory".to_string(), Quantity("128Mi".to_string())),
-            ]));
-            container.resources = Some(ResourceRequirements {
-                limits: limits.clone(),
-                requests: limits,
-                ..ResourceRequirements::default()
-            });
-        }
+        container.resources = container.resources.or(Some(
+            ResourceRequirementsBuilder::new()
+                .with_cpu_request("10m")
+                .with_cpu_limit("10m")
+                .with_memory_request("128Mi")
+                .with_memory_limit("128Mi")
+                .build(),
+        ));
 
         self.init_containers
             .get_or_insert_with(Vec::new)
