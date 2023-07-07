@@ -17,7 +17,7 @@ pub type LabelKeyParseError = KeyParseError;
 /// ### Examples
 ///
 /// ```
-/// use stackable_operator::types::Label;
+/// use stackable_operator::types::{Label, KeyValuePairExt};
 /// use std::str::FromStr;
 ///
 /// let label = Label::new(Some("stackable.tech"), "release", "23.7");
@@ -34,7 +34,7 @@ impl KeyValuePairExt for Label {
     /// `prefix` and a name.
     ///
     /// ```
-    /// use stackable_operator::types::Label;
+    /// use stackable_operator::types::{Label, KeyValuePairExt};
     ///
     /// // stackable.tech/release=23.7
     /// let label = Label::new(Some("stackable.tech"), "release", "23.7");

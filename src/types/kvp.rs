@@ -4,7 +4,7 @@ use crate::validation;
 
 #[derive(Debug, PartialEq, thiserror::Error)]
 pub enum KeyValuePairParseError {
-    #[error("invalid key/value pair syntax, expected 'key=value'")]
+    #[error("invalid key/value pair syntax, expected '(prefix/)name=value'")]
     InvalidSyntax,
 
     #[error("key/value pair input cannot be empty")]
@@ -19,7 +19,7 @@ pub trait KeyValuePairExt: Sized + Clone + FromStr + Display {
     /// and a `name`.
     ///
     /// ```
-    /// use stackable_operator::types::KeyValuePair;
+    /// use stackable_operator::types::{KeyValuePair, KeyValuePairExt};
     ///
     /// // stackable.tech/release=23.7
     /// let kvp = KeyValuePair::new(Some("stackable.tech"), "release", "23.7");
@@ -84,7 +84,7 @@ impl KeyValuePairExt for KeyValuePair {
     /// and a `name`.
     ///
     /// ```
-    /// use stackable_operator::types::KeyValuePair;
+    /// use stackable_operator::types::{KeyValuePair, KeyValuePairExt};
     ///
     /// // stackable.tech/release=23.7
     /// let kvp = KeyValuePair::new(Some("stackable.tech"), "release", "23.7");

@@ -1,9 +1,16 @@
-use crate::builder::ObjectMetaBuilder;
-use crate::error::OperatorResult;
-use crate::k8s_openapi::api::core::v1::ServiceAccount;
-use crate::k8s_openapi::api::rbac::v1::{RoleBinding, RoleRef, Subject};
-use kube::{Resource, ResourceExt};
 use std::collections::BTreeMap;
+
+use kube::{Resource, ResourceExt};
+
+use crate::{
+    builder::ObjectMetaBuilder,
+    error::OperatorResult,
+    k8s_openapi::api::{
+        core::v1::ServiceAccount,
+        rbac::v1::{RoleBinding, RoleRef, Subject},
+    },
+    types::Label,
+};
 
 /// Build RBAC objects for the product workloads.
 /// The `rbac_prefix` is meant to be the product name, for example: zookeeper, airflow, etc.
@@ -11,7 +18,7 @@ use std::collections::BTreeMap;
 pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     resource: &T,
     rbac_prefix: &str,
-    labels: BTreeMap<String, String>,
+    labels: BTreeMap<String, Label>,
 ) -> OperatorResult<(ServiceAccount, RoleBinding)> {
     let sa_name = service_account_name(rbac_prefix);
     let service_account = ServiceAccount {

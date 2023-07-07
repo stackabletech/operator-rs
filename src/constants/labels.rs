@@ -24,3 +24,27 @@ pub const LABEL_KEY_NAME_APP_PART_OF: &str = "part-of";
 
 /// The label key name identifying the application name e.g. "mysql"
 pub const LABEL_KEY_NAME_APP_NAME: &str = "name";
+
+// COMBINATIONS //
+
+/// The label key identifying the tool used to manage the operation of an
+/// application: `app.kubernetes.io/managed-by`
+pub const LABEL_KEY_APP_MANAGED_BY: &str = const_format::concatcp!(
+    LABEL_KEY_PREFIX_APP_KUBERNETES,
+    "/",
+    LABEL_KEY_NAME_APP_MANAGED_BY
+);
+
+/// The label key identifying the application instance: `app.kubernetes.io/instance`
+pub const LABEL_KEY_APP_INSTANCE: &str = const_format::concatcp!(
+    LABEL_KEY_PREFIX_APP_KUBERNETES,
+    "/",
+    LABEL_KEY_NAME_APP_INSTANCE
+);
+
+/// The label key indentifying the application name: `app.kubernetes.io/name`
+pub const LABEL_KEY_APP_NAME: &str = const_format::concatcp!(
+    LABEL_KEY_PREFIX_APP_KUBERNETES,
+    "/",
+    LABEL_KEY_NAME_APP_NAME
+);

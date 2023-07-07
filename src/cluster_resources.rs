@@ -1,6 +1,15 @@
 //! A structure containing the cluster resources.
+use std::{
+    collections::{BTreeMap, HashSet},
+    fmt::Debug,
+};
+
+use serde::{de::DeserializeOwned, Serialize};
+use strum::Display;
+use tracing::{debug, info, warn};
 
 use crate::{
+    builder::kvp::LabelListBuilder,
     client::{Client, GetApi},
     commons::{
         cluster_operation::ClusterOperation,
@@ -9,7 +18,11 @@ use crate::{
             LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
         },
     },
-    constants::labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
+    constants::labels::{
+        LABEL_KEY_APP_INSTANCE, LABEL_KEY_APP_MANAGED_BY, LABEL_KEY_APP_NAME,
+        LABEL_KEY_NAME_APP_INSTANCE, LABEL_KEY_NAME_APP_MANAGED_BY, LABEL_KEY_NAME_APP_NAME,
+        LABEL_KEY_PREFIX_APP_KUBERNETES,
+    },
     error::{Error, OperatorResult},
     k8s_openapi::{
         api::{
@@ -24,18 +37,10 @@ use crate::{
         apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
         NamespaceResourceScope,
     },
-    kube::{Resource, ResourceExt},
+    kube::{core::ErrorResponse, Resource, ResourceExt},
+    types::{Label, LabelParseError},
     utils::format_full_controller_name,
 };
-
-use kube::core::ErrorResponse;
-use serde::{de::DeserializeOwned, Serialize};
-use std::{
-    collections::{BTreeMap, HashSet},
-    fmt::Debug,
-};
-use strum::Display;
-use tracing::{debug, info, warn};
 
 #[cfg(doc)]
 use crate::k8s_openapi::api::{
@@ -402,17 +407,14 @@ impl ClusterResources {
 
     /// Return required labels for cluster resources to be uniquely identified for clean up.
     // TODO: This is a (quick-fix) helper method but should be replaced by better label handling
-    pub fn get_required_labels(&self) -> BTreeMap<String, String> {
-        vec![
-            (
-                APP_INSTANCE_LABEL.to_string(),
-                self.app_instance.to_string(),
-            ),
-            (APP_MANAGED_BY_LABEL.to_string(), self.manager.to_string()),
-            (APP_NAME_LABEL.to_string(), self.app_name.to_string()),
-        ]
-        .into_iter()
-        .collect()
+    pub fn get_required_labels(&self) -> Result<BTreeMap<String, Label>, LabelParseError> {
+        let mut labels = LabelListBuilder::new(Some(LABEL_KEY_PREFIX_APP_KUBERNETES));
+
+        labels.add(LABEL_KEY_NAME_APP_INSTANCE, &self.app_instance)?;
+        labels.add(LABEL_KEY_NAME_APP_MANAGED_BY, &self.manager)?;
+        labels.add(LABEL_KEY_NAME_APP_NAME, &self.app_name)?;
+
+        Ok(labels.build())
     }
 
     /// Adds a resource to the cluster resources.
@@ -441,7 +443,11 @@ impl ClusterResources {
     ) -> OperatorResult<T> {
         Self::check_labels(
             resource.labels(),
-            &[APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL],
+            &[
+                LABEL_KEY_APP_INSTANCE,
+                LABEL_KEY_APP_MANAGED_BY,
+                LABEL_KEY_APP_NAME,
+            ],
             &[&self.app_instance, &self.manager, &self.app_name],
         )?;
 
@@ -661,17 +667,17 @@ impl ClusterResources {
         let label_selector = LabelSelector {
             match_expressions: Some(vec![
                 LabelSelectorRequirement {
-                    key: APP_INSTANCE_LABEL.into(),
+                    key: LABEL_KEY_APP_INSTANCE.into(),
                     operator: "In".into(),
                     values: Some(vec![self.app_instance.to_owned()]),
                 },
                 LabelSelectorRequirement {
-                    key: APP_NAME_LABEL.into(),
+                    key: LABEL_KEY_APP_NAME.into(),
                     operator: "In".into(),
                     values: Some(vec![self.app_name.to_owned()]),
                 },
                 LabelSelectorRequirement {
-                    key: APP_MANAGED_BY_LABEL.into(),
+                    key: LABEL_KEY_APP_MANAGED_BY.into(),
                     operator: "In".into(),
                     values: Some(vec![self.manager.to_owned()]),
                 },

@@ -228,17 +228,8 @@ impl ResourceRequirementsBuilder<Quantity, Quantity, Quantity, Quantity> {
         }
 
         // Only add limits/requests when there is actually stuff to add
-        let limits = if limits.is_empty() {
-            None
-        } else {
-            Some(limits)
-        };
-
-        let requests = if requests.is_empty() {
-            None
-        } else {
-            Some(requests)
-        };
+        let requests = (!requests.is_empty()).then_some(requests);
+        let limits = (!limits.is_empty()).then_some(limits);
 
         ResourceRequirements {
             limits,

@@ -68,11 +68,11 @@ impl PodBuilder {
 
     pub fn metadata_builder<F>(&mut self, f: F) -> &mut Self
     where
-        F: Fn(&mut ObjectMetaBuilder) -> &mut ObjectMetaBuilder,
+        F: Fn(ObjectMetaBuilder) -> ObjectMetaBuilder,
     {
-        let mut builder = ObjectMetaBuilder::new();
-        let builder = f(&mut builder);
-        self.metadata = Some(builder.build());
+        let builder = ObjectMetaBuilder::new();
+        let builder = f(builder);
+        self.metadata = Some(builder.clone().build());
         self
     }
 

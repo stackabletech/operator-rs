@@ -1,18 +1,17 @@
-use k8s_openapi::api::core::v1::{
-    EphemeralVolumeSource, PersistentVolumeClaimSpec, PersistentVolumeClaimTemplate,
-    ResourceRequirements, VolumeMount,
-};
 use k8s_openapi::{
     api::core::v1::{
         CSIVolumeSource, ConfigMapVolumeSource, DownwardAPIVolumeSource, EmptyDirVolumeSource,
-        HostPathVolumeSource, PersistentVolumeClaimVolumeSource, ProjectedVolumeSource,
-        SecretVolumeSource, Volume,
+        EphemeralVolumeSource, HostPathVolumeSource, PersistentVolumeClaimSpec,
+        PersistentVolumeClaimTemplate, PersistentVolumeClaimVolumeSource, ProjectedVolumeSource,
+        ResourceRequirements, SecretVolumeSource, Volume, VolumeMount,
     },
     apimachinery::pkg::api::resource::Quantity,
 };
 
-use crate::builder::{annotation::AnnotationListBuilder, ObjectMetaBuilder};
-use crate::types::{Annotation, AnnotationParseError};
+use crate::{
+    builder::{kvp::AnnotationListBuilder, ObjectMetaBuilder},
+    types::{Annotation, AnnotationParseError, KeyValuePairExt},
+};
 
 /// A builder to build [`Volume`] objects.
 /// May only contain one `volume_source` at a time.
@@ -441,11 +440,13 @@ impl ListenerOperatorVolumeSourceBuilder {
 
     /// Build an [`EphemeralVolumeSource`] from the builder
     pub fn build(&self) -> EphemeralVolumeSource {
+        let annotation = self.listener_reference.to_annotation().unwrap();
+
         EphemeralVolumeSource {
             volume_claim_template: Some(PersistentVolumeClaimTemplate {
                 metadata: Some(
                     ObjectMetaBuilder::new()
-                        .annotations([self.listener_reference.to_annotation().unwrap()].into())
+                        .annotations([(annotation.key(), annotation)].into())
                         .build(),
                 ),
                 spec: PersistentVolumeClaimSpec {

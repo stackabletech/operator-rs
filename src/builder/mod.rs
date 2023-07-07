@@ -3,9 +3,9 @@
 //! They are often not _pure_ builders but contain extra logic to set fields based on others or
 //! to fill in sensible defaults.
 //!
-pub mod annotation;
 pub mod configmap;
 pub mod event;
+pub mod kvp;
 pub mod meta;
 pub mod pod;
 

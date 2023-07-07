@@ -12,12 +12,23 @@ use serde::{Deserialize, Serialize};
 use stackable_operator_derive::Fragment;
 
 use crate::{
+    builder::kvp::LabelListBuilder,
     config::merge::{Atomic, Merge},
     constants::{
         affinity::TOPOLOGY_KEY_HOSTNAME,
-        labels::{APP_COMPONENT_LABEL, APP_INSTANCE_LABEL, APP_NAME_LABEL},
+        labels::{
+            LABEL_KEY_NAME_APP_COMPONENT, LABEL_KEY_NAME_APP_INSTANCE, LABEL_KEY_NAME_APP_NAME,
+            LABEL_KEY_PREFIX_APP_KUBERNETES,
+        },
     },
+    types::KeyValuePairParseError,
 };
+
+#[derive(Debug, thiserror::Error)]
+pub enum StackableAffinityError {
+    #[error("key/value pair error")]
+    KeyValuePairError(#[from] KeyValuePairParseError),
+}
 
 #[derive(Clone, Debug, Default, Deserialize, Fragment, JsonSchema, PartialEq, Serialize)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
@@ -133,24 +144,25 @@ pub fn affinity_between_role_pods(
     cluster_name: &str,
     role: &str,
     weight: i32,
-) -> WeightedPodAffinityTerm {
-    WeightedPodAffinityTerm {
+) -> Result<WeightedPodAffinityTerm, StackableAffinityError> {
+    let mut builder = LabelListBuilder::new(Some(LABEL_KEY_PREFIX_APP_KUBERNETES));
+    builder.add(LABEL_KEY_NAME_APP_NAME, app_name)?;
+    builder.add(LABEL_KEY_NAME_APP_INSTANCE, cluster_name)?;
+    builder.add(LABEL_KEY_NAME_APP_COMPONENT, role)?;
+    let match_labels = builder.build_raw();
+
+    Ok(WeightedPodAffinityTerm {
         pod_affinity_term: PodAffinityTerm {
             label_selector: Some(LabelSelector {
                 match_expressions: None,
-                match_labels: Some(BTreeMap::from([
-                    (APP_NAME_LABEL.to_string(), app_name.to_string()),
-                    (APP_INSTANCE_LABEL.to_string(), cluster_name.to_string()),
-                    (APP_COMPONENT_LABEL.to_string(), role.to_string()),
-                    // We don't include the role-group label here, as the affinity should be between all rolegroups of the given role
-                ])),
+                match_labels: Some(match_labels),
             }),
             namespace_selector: None,
             namespaces: None,
             topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
         },
         weight,
-    }
+    })
 }
 
 /// Creates a `WeightedPodAffinityTerm`, which expresses a affinity towards all Pods of the given product (`app_name`) instance (`cluster_name`).
@@ -160,22 +172,24 @@ pub fn affinity_between_cluster_pods(
     app_name: &str,
     cluster_name: &str,
     weight: i32,
-) -> WeightedPodAffinityTerm {
-    WeightedPodAffinityTerm {
+) -> Result<WeightedPodAffinityTerm, StackableAffinityError> {
+    let mut builder = LabelListBuilder::new(Some(LABEL_KEY_PREFIX_APP_KUBERNETES));
+    builder.add(LABEL_KEY_NAME_APP_NAME, app_name)?;
+    builder.add(LABEL_KEY_NAME_APP_INSTANCE, cluster_name)?;
+    let match_labels = builder.build_raw();
+
+    Ok(WeightedPodAffinityTerm {
         pod_affinity_term: PodAffinityTerm {
             label_selector: Some(LabelSelector {
                 match_expressions: None,
-                match_labels: Some(BTreeMap::from([
-                    (APP_NAME_LABEL.to_string(), app_name.to_string()),
-                    (APP_INSTANCE_LABEL.to_string(), cluster_name.to_string()),
-                ])),
+                match_labels: Some(match_labels),
             }),
             namespace_selector: None,
             namespaces: None,
             topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
         },
         weight,
-    }
+    })
 }
 
 #[cfg(test)]
@@ -192,11 +206,14 @@ mod tests {
 
     #[test]
     fn test_affinity_merge_new_attributes() {
+        let affinity_between_role_pods =
+            affinity_between_role_pods("kafka", "simple-kafka", "broker", 70).unwrap();
+
         let default_affinity = StackableAffinityFragment {
             pod_affinity: None,
             pod_anti_affinity: Some(PodAntiAffinity {
                 preferred_during_scheduling_ignored_during_execution: Some(vec![
-                    affinity_between_role_pods("kafka", "simple-kafka", "broker", 70),
+                    affinity_between_role_pods,
                 ]),
                 required_during_scheduling_ignored_during_execution: None,
             }),
@@ -305,11 +322,14 @@ mod tests {
 
     #[test]
     fn test_affinity_merge_overwrite_existing_attribute() {
+        let affinity_between_role_pods =
+            affinity_between_role_pods("kafka", "simple-kafka", "broker", 70).unwrap();
+
         let default_affinity = StackableAffinityFragment {
             pod_affinity: None,
             pod_anti_affinity: Some(PodAntiAffinity {
                 preferred_during_scheduling_ignored_during_execution: Some(vec![
-                    affinity_between_role_pods("kafka", "simple-kafka", "broker", 70),
+                    affinity_between_role_pods,
                 ]),
                 required_during_scheduling_ignored_during_execution: None,
             }),
@@ -375,7 +395,7 @@ mod tests {
         let cluster_name = "simple-kafka";
         let role = "broker";
 
-        let anti_affinity = affinity_between_role_pods(app_name, cluster_name, role, 70);
+        let anti_affinity = affinity_between_role_pods(app_name, cluster_name, role, 70).unwrap();
         assert_eq!(
             anti_affinity,
             WeightedPodAffinityTerm {
@@ -408,7 +428,7 @@ mod tests {
         let app_name = "kafka";
         let cluster_name = "simple-kafka";
 
-        let anti_affinity = affinity_between_cluster_pods(app_name, cluster_name, 20);
+        let anti_affinity = affinity_between_cluster_pods(app_name, cluster_name, 20).unwrap();
         assert_eq!(
             anti_affinity,
             WeightedPodAffinityTerm {

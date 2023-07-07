@@ -18,7 +18,7 @@ pub type AnnotationKeyParseError = KeyParseError;
 /// ### Examples
 ///
 /// ```
-/// use stackable_operator::types::Annotation;
+/// use stackable_operator::types::{Annotation, KeyValuePairExt};
 /// use std::str::FromStr;
 ///
 /// let label = Annotation::new(Some("stackable.tech"), "node", "1");
@@ -35,7 +35,7 @@ impl KeyValuePairExt for Annotation {
     /// `prefix` and a name.
     ///
     /// ```
-    /// use stackable_operator::types::Annotation;
+    /// use stackable_operator::types::{Annotation, KeyValuePairExt};
     ///
     /// // stackable.tech/node=1
     /// let annotattion = Annotation::new(Some("stackable.tech"), "node", "1");

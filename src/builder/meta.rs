@@ -1,10 +1,15 @@
-use crate::error::{Error, OperatorResult};
-use crate::labels::{self, ObjectLabels};
-use crate::types::Annotation;
+use std::collections::BTreeMap;
+
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
 use kube::{Resource, ResourceExt};
-use std::collections::BTreeMap;
 use tracing::warn;
+
+use crate::{
+    builder::kvp::KeyValuePairMapExt,
+    error::{Error, OperatorResult},
+    labels::{self, ObjectLabels},
+    types::{Annotation, KeyValuePairExt, Label, LabelParseError},
+};
 
 /// A builder to build [`ObjectMeta`] objects.
 ///
@@ -14,12 +19,12 @@ use tracing::warn;
 /// It is strongly recommended to always call [`Self::with_recommended_labels()`]!
 #[derive(Clone, Default)]
 pub struct ObjectMetaBuilder {
-    name: Option<String>,
+    annotations: BTreeMap<String, Annotation>,
+    owner_reference: Option<OwnerReference>,
+    labels: BTreeMap<String, Label>,
     generate_name: Option<String>,
     namespace: Option<String>,
-    ownerreference: Option<OwnerReference>,
-    labels: Option<BTreeMap<String, String>>,
-    annotations: BTreeMap<String, Annotation>,
+    name: Option<String>,
 }
 
 impl ObjectMetaBuilder {
@@ -28,60 +33,60 @@ impl ObjectMetaBuilder {
     }
 
     /// This sets the name and namespace from a given resource
-    pub fn name_and_namespace<T: Resource>(&mut self, resource: &T) -> &mut Self {
+    pub fn name_and_namespace<T: Resource>(mut self, resource: &T) -> Self {
         self.name = Some(resource.name_any());
         self.namespace = resource.namespace();
         self
     }
 
-    pub fn name_opt(&mut self, name: impl Into<Option<String>>) -> &mut Self {
+    pub fn name_opt(mut self, name: impl Into<Option<String>>) -> Self {
         self.name = name.into();
         self
     }
 
-    pub fn name(&mut self, name: impl Into<String>) -> &mut Self {
+    pub fn name(mut self, name: impl Into<String>) -> Self {
         self.name = Some(name.into());
         self
     }
 
-    pub fn generate_name(&mut self, generate_name: impl Into<String>) -> &mut Self {
+    pub fn generate_name(mut self, generate_name: impl Into<String>) -> Self {
         self.generate_name = Some(generate_name.into());
         self
     }
 
-    pub fn generate_name_opt(&mut self, generate_name: impl Into<Option<String>>) -> &mut Self {
+    pub fn generate_name_opt(mut self, generate_name: impl Into<Option<String>>) -> Self {
         self.generate_name = generate_name.into();
         self
     }
 
-    pub fn namespace_opt(&mut self, namespace: impl Into<Option<String>>) -> &mut Self {
+    pub fn namespace_opt(mut self, namespace: impl Into<Option<String>>) -> Self {
         self.namespace = namespace.into();
         self
     }
 
-    pub fn namespace(&mut self, namespace: impl Into<String>) -> &mut Self {
+    pub fn namespace(mut self, namespace: impl Into<String>) -> Self {
         self.namespace = Some(namespace.into());
         self
     }
 
-    pub fn ownerreference(&mut self, ownerreference: OwnerReference) -> &mut Self {
-        self.ownerreference = Some(ownerreference);
+    pub fn ownerreference(mut self, ownerreference: OwnerReference) -> Self {
+        self.owner_reference = Some(ownerreference);
         self
     }
 
-    pub fn ownerreference_opt(&mut self, ownerreference: Option<OwnerReference>) -> &mut Self {
-        self.ownerreference = ownerreference;
+    pub fn ownerreference_opt(mut self, ownerreference: Option<OwnerReference>) -> Self {
+        self.owner_reference = ownerreference;
         self
     }
 
     /// This can be used to set the `OwnerReference` to the provided resource.
     pub fn ownerreference_from_resource<T: Resource<DynamicType = ()>>(
-        &mut self,
+        mut self,
         resource: &T,
         block_owner_deletion: Option<bool>,
         controller: Option<bool>,
-    ) -> OperatorResult<&mut Self> {
-        self.ownerreference = Some(
+    ) -> OperatorResult<Self> {
+        self.owner_reference = Some(
             OwnerReferenceBuilder::new()
                 .initialize_from_resource(resource)
                 .block_owner_deletion_opt(block_owner_deletion)
@@ -93,55 +98,41 @@ impl ObjectMetaBuilder {
 
     /// This adds a single annotation to the existing annotations.
     /// It'll override an annotation with the same key.
-    pub fn with_annotation(&mut self, annotation: Annotation) -> &mut Self {
+    pub fn with_annotation(mut self, annotation: Annotation) -> Self {
         self.annotations.insert(annotation.key(), annotation);
         self
     }
 
     /// This adds multiple annotations to the existing annotations.
     /// Any existing annotation with a key that is contained in `annotations` will be overwritten
-    pub fn with_annotations(&mut self, annotations: Vec<Annotation>) -> &mut Self {
-        for annotation in annotations {
-            self.annotations.insert(annotation.key(), annotation);
-        }
+    pub fn with_annotations(mut self, annotations: BTreeMap<String, Annotation>) -> Self {
+        self.annotations.extend(annotations);
         self
     }
 
     /// This will replace all existing annotations
-    pub fn annotations(&mut self, annotations: Vec<Annotation>) -> &mut Self {
-        let mut map = BTreeMap::new();
-
-        for annotation in annotations {
-            map.insert(annotation.key(), annotation);
-        }
-
-        self.annotations = map;
+    pub fn annotations(mut self, annotations: BTreeMap<String, Annotation>) -> Self {
+        self.annotations = annotations;
         self
     }
 
     /// This adds a single label to the existing labels.
     /// It'll override a label with the same key.
-    pub fn with_label(
-        &mut self,
-        label_key: impl Into<String>,
-        label_value: impl Into<String>,
-    ) -> &mut Self {
-        self.labels
-            .get_or_insert_with(BTreeMap::new)
-            .insert(label_key.into(), label_value.into());
+    pub fn with_label(mut self, label: Label) -> Self {
+        self.labels.insert(label.key(), label);
         self
     }
 
     /// This adds multiple labels to the existing labels.
     /// Any existing label with a key that is contained in `labels` will be overwritten
-    pub fn with_labels(&mut self, labels: BTreeMap<String, String>) -> &mut Self {
-        self.labels.get_or_insert_with(BTreeMap::new).extend(labels);
+    pub fn with_labels(mut self, labels: BTreeMap<String, Label>) -> Self {
+        self.labels.extend(labels);
         self
     }
 
     /// This will replace all existing labels
-    pub fn labels(&mut self, labels: BTreeMap<String, String>) -> &mut Self {
-        self.labels = Some(labels);
+    pub fn labels(mut self, labels: BTreeMap<String, Label>) -> Self {
+        self.labels = labels;
         self
     }
 
@@ -150,17 +141,15 @@ impl ObjectMetaBuilder {
     /// The only reasons it is not _required_ is to make testing easier and to allow for more
     /// flexibility if needed.
     pub fn with_recommended_labels<T: Resource>(
-        &mut self,
+        mut self,
         object_labels: ObjectLabels<T>,
-    ) -> &mut Self {
-        let recommended_labels = labels::get_recommended_labels(object_labels);
-        self.labels
-            .get_or_insert_with(BTreeMap::new)
-            .extend(recommended_labels);
-        self
+    ) -> Result<Self, LabelParseError> {
+        let recommended_labels = labels::get_recommended_labels(object_labels)?;
+        self.labels.extend(recommended_labels);
+        Ok(self)
     }
 
-    pub fn build(&self) -> ObjectMeta {
+    pub fn build(self) -> ObjectMeta {
         // if 'generate_name' and 'name' are set, Kubernetes will prioritize the 'name' field and
         // 'generate_name' has no impact.
         if let (Some(name), Some(generate_name)) = (&self.name, &self.generate_name) {
@@ -171,21 +160,19 @@ impl ObjectMetaBuilder {
             );
         }
 
+        let annotations = (!self.annotations.is_empty()).then_some(self.annotations.into_raw());
+        let labels = (!self.labels.is_empty()).then_some(self.labels.into_raw());
+
         ObjectMeta {
             generate_name: self.generate_name.clone(),
             name: self.name.clone(),
             namespace: self.namespace.clone(),
             owner_references: self
-                .ownerreference
+                .owner_reference
                 .as_ref()
                 .map(|ownerreference| vec![ownerreference.clone()]),
-            labels: self.labels.clone(),
-            annotations: Some(
-                self.annotations
-                    .iter()
-                    .map(|(name, annotation)| (name.clone(), annotation.value()))
-                    .collect(),
-            ),
+            labels,
+            annotations,
             ..ObjectMeta::default()
         }
     }
@@ -335,6 +322,7 @@ mod tests {
                 role: "role",
                 role_group: "rolegroup",
             })
+            .unwrap()
             .with_annotation(Annotation::new(None, "foo", "bar").unwrap())
             .build();
 
