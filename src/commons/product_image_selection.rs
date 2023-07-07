@@ -47,7 +47,7 @@ pub struct ProductImageCustom {
 pub struct ProductImageStackableVersion {
     /// Version of the product, e.g. `1.4.1`.
     product_version: String,
-    /// Stackable version of the product, e.g. 2.1.0.
+    /// Stackable version of the product, e.g. `23.4`, `23.4.1` or `0.0.0-dev`.
     /// If not specified, the operator will use the same version as he has (e.g. `23.4.1` or `0.0.0-dev`)
     stackable_version: Option<String>,
     /// Name of the docker repo, e.g. `docker.stackable.tech/stackable`
@@ -84,39 +84,40 @@ impl ProductImage {
         let pull_secrets = self.pull_secrets.clone();
 
         match &self.image_selection {
-            ProductImageSelection::Custom(custom) => {
-                let custom_image_tag = custom
+            ProductImageSelection::Custom(image_selection) => {
+                let image_tag = image_selection
                     .custom
                     .split_once(':')
                     .map_or("latest", |splits| splits.1);
-                let app_version_label = format!("{}-{}", custom.product_version, custom_image_tag);
+                let app_version_label =
+                    format!("{}-{}", image_selection.product_version, image_tag);
                 ResolvedProductImage {
-                    product_version: custom.product_version.to_string(),
+                    product_version: image_selection.product_version.to_string(),
                     app_version_label,
-                    image: custom.custom.to_string(),
+                    image: image_selection.custom.clone(),
                     image_pull_policy,
                     pull_secrets,
                 }
             }
-            ProductImageSelection::StackableVersion(stackable_version) => {
-                let repo = stackable_version
+            ProductImageSelection::StackableVersion(image_selection) => {
+                let repo = image_selection
                     .repo
                     .as_deref()
                     .unwrap_or(STACKABLE_DOCKER_REPO);
-                let stackable_version_version = stackable_version
+                let stackable_version = image_selection
                     .stackable_version
                     .as_deref()
                     .unwrap_or(operator_version);
                 let image = format!(
-                    "{repo}/{image_base_name}:{product_version}-stackable{stackable_version_version}",
-                    product_version = stackable_version.product_version,
+                    "{repo}/{image_base_name}:{product_version}-stackable{stackable_version}",
+                    product_version = image_selection.product_version,
                 );
                 let app_version_label = format!(
-                    "{product_version}-stackable{stackable_version_version}",
-                    product_version = stackable_version.product_version,
+                    "{product_version}-stackable{stackable_version}",
+                    product_version = image_selection.product_version,
                 );
                 ResolvedProductImage {
-                    product_version: stackable_version.product_version.to_string(),
+                    product_version: image_selection.product_version.to_string(),
                     app_version_label,
                     image,
                     image_pull_policy,
