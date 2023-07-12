@@ -10,6 +10,7 @@ use crate::{
         apimachinery::pkg::api::resource::Quantity,
     },
     kube::Resource,
+    memory::{BinaryMultiple, MemoryQuantity},
     role_utils::RoleGroupRef,
 };
 
@@ -49,11 +50,21 @@ pub const VECTOR_CONFIG_FILE: &str = "vector.toml";
 ///         PodBuilder,
 ///         meta::ObjectMetaBuilder,
 ///     },
+///     memory::{
+///         BinaryMultiple,
+///         MemoryQuantity,
+///     },
 /// };
 /// # use stackable_operator::product_logging;
 ///
-/// pub const MAX_INIT_CONTAINER_LOG_FILES_SIZE_IN_MIB: u32 = 1;
-/// pub const MAX_MAIN_CONTAINER_LOG_FILES_SIZE_IN_MIB: u32 = 10;
+/// const MAX_INIT_CONTAINER_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
+///     value: 1.0,
+///     unit: BinaryMultiple::Mebi,
+/// };
+/// const MAX_MAIN_CONTAINER_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
+///     value: 10.0,
+///     unit: BinaryMultiple::Mebi,
+/// };
 ///
 /// PodBuilder::new()
 ///     .metadata(ObjectMetaBuilder::default().build())
@@ -61,17 +72,22 @@ pub const VECTOR_CONFIG_FILE: &str = "vector.toml";
 ///         "log",
 ///         Some(product_logging::framework::calculate_log_volume_size_limit(
 ///             &[
-///                 MAX_INIT_CONTAINER_LOG_FILES_SIZE_IN_MIB,
-///                 MAX_MAIN_CONTAINER_LOG_FILES_SIZE_IN_MIB,
+///                 MAX_INIT_CONTAINER_LOG_FILES_SIZE,
+///                 MAX_MAIN_CONTAINER_LOG_FILES_SIZE,
 ///             ],
 ///         )),
 ///     )
 ///     .build()
 ///     .unwrap();
 /// ```
-pub fn calculate_log_volume_size_limit(max_log_files_size_in_mib: &[u32]) -> Quantity {
-    let log_volume_size_limit_in_mib = max_log_files_size_in_mib.iter().sum::<u32>() * 3;
-    Quantity(format!("{log_volume_size_limit_in_mib}Mi"))
+pub fn calculate_log_volume_size_limit(max_log_files_size: &[MemoryQuantity]) -> Quantity {
+    let log_volume_size_limit = max_log_files_size
+        .iter()
+        .cloned()
+        .sum::<MemoryQuantity>()
+        .scale_to(BinaryMultiple::Mebi)
+        * 3.0;
+    log_volume_size_limit.into()
 }
 
 /// Create a Bash command which filters stdout and stderr according to the given log configuration

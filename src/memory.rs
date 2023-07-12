@@ -13,6 +13,7 @@ use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use crate::error::{Error, OperatorResult};
 use std::{
     fmt::Display,
+    iter::Sum,
     ops::{Add, AddAssign, Div, Mul, Sub, SubAssign},
     str::FromStr,
 };
@@ -344,6 +345,18 @@ impl Add<MemoryQuantity> for MemoryQuantity {
             value: self.value + rhs.scale_to(self.unit).value,
             unit: self.unit,
         }
+    }
+}
+
+impl Sum<MemoryQuantity> for MemoryQuantity {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(
+            MemoryQuantity {
+                value: 0.0,
+                unit: BinaryMultiple::Kibi,
+            },
+            MemoryQuantity::add,
+        )
     }
 }
 
