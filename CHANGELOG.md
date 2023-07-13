@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add a function for calculating the size limit of log volumes ([#621]).
+
+[#621]: https://github.com/stackabletech/operator-rs/pull/621
+
 ## [0.43.0] - 2023-07-06
 
 ### Added

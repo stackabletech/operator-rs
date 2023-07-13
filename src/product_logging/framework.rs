@@ -1,12 +1,17 @@
 //! Log aggregation framework
 
-use std::cmp;
-
-use k8s_openapi::api::core::v1::ResourceRequirements;
+use std::{cmp, ops::Mul};
 
 use crate::{
-    builder::ContainerBuilder, commons::product_image_selection::ResolvedProductImage,
-    k8s_openapi::api::core::v1::Container, kube::Resource, role_utils::RoleGroupRef,
+    builder::ContainerBuilder,
+    commons::product_image_selection::ResolvedProductImage,
+    k8s_openapi::{
+        api::core::v1::{Container, ResourceRequirements},
+        apimachinery::pkg::api::resource::Quantity,
+    },
+    kube::Resource,
+    memory::{BinaryMultiple, MemoryQuantity},
+    role_utils::RoleGroupRef,
 };
 
 use super::spec::{
@@ -25,6 +30,74 @@ const SHUTDOWN_FILE: &str = "shutdown";
 
 /// File name of the Vector config file
 pub const VECTOR_CONFIG_FILE: &str = "vector.toml";
+
+/// Calculate the size limit for the log volume.
+///
+/// The size limit must be much larger than the sum of the given maximum log file sizes for the
+/// following reasons:
+/// - The log file rollover occurs when the log file exceeds the maximum log file size. Depending
+///   on the size of the last log entries, the file can be several kilobytes larger than defined.
+/// - The actual disk usage depends on the block size of the file system.
+/// - OpenShift sometimes reserves more than twice the amount of blocks than needed. For instance,
+///   a ZooKeeper log file with 4,127,151 bytes occupied 4,032 blocks. Then log entries were written
+///   and the actual file size increased to 4,132,477 bytes which occupied 8,128 blocks.
+///
+/// This function is meant to be used for log volumes up to a size of approximately 100 MiB. The
+/// overhead might not be acceptable for larger volumes, however this needs to be tested
+/// beforehand.
+///
+/// # Example
+///
+/// ```
+/// use stackable_operator::{
+///     builder::{
+///         PodBuilder,
+///         meta::ObjectMetaBuilder,
+///     },
+///     memory::{
+///         BinaryMultiple,
+///         MemoryQuantity,
+///     },
+/// };
+/// # use stackable_operator::product_logging;
+///
+/// const MAX_INIT_CONTAINER_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
+///     value: 1.0,
+///     unit: BinaryMultiple::Mebi,
+/// };
+/// const MAX_MAIN_CONTAINER_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
+///     value: 10.0,
+///     unit: BinaryMultiple::Mebi,
+/// };
+///
+/// PodBuilder::new()
+///     .metadata(ObjectMetaBuilder::default().build())
+///     .add_empty_dir_volume(
+///         "log",
+///         Some(product_logging::framework::calculate_log_volume_size_limit(
+///             &[
+///                 MAX_INIT_CONTAINER_LOG_FILES_SIZE,
+///                 MAX_MAIN_CONTAINER_LOG_FILES_SIZE,
+///             ],
+///         )),
+///     )
+///     .build()
+///     .unwrap();
+/// ```
+pub fn calculate_log_volume_size_limit(max_log_files_size: &[MemoryQuantity]) -> Quantity {
+    let log_volume_size_limit = max_log_files_size
+        .iter()
+        .cloned()
+        .sum::<MemoryQuantity>()
+        .scale_to(BinaryMultiple::Mebi)
+        // According to the reasons mentioned in the function documentation, the multiplier must be
+        // greater than 2. Manual tests with ZooKeeper 3.8 in an OpenShift cluster showed that 3 is
+        // absolutely sufficient.
+        .mul(3.0)
+        // Avoid bulky numbers due to the floating-point arithmetic.
+        .ceil();
+    log_volume_size_limit.into()
+}
 
 /// Create a Bash command which filters stdout and stderr according to the given log configuration
 /// and additionally stores the output in log files
@@ -1048,7 +1121,29 @@ touch {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}"
 mod tests {
     use super::*;
     use crate::product_logging::spec::{AppenderConfig, LoggerConfig};
+    use rstest::rstest;
     use std::collections::BTreeMap;
+
+    #[rstest]
+    #[case("0Mi", &[])]
+    #[case("3Mi", &["1Mi"])]
+    #[case("5Mi", &["1.5Mi"])]
+    #[case("1Mi", &["100Ki"])]
+    #[case("3076Mi", &["1Ki", "1Mi", "1Gi"])]
+    fn test_calculate_log_volume_size_limit(
+        #[case] expected_log_volume_size_limit: &str,
+        #[case] max_log_files_sizes: &[&str],
+    ) {
+        let input = max_log_files_sizes
+            .iter()
+            .map(|v| MemoryQuantity::try_from(Quantity(v.to_string())).unwrap())
+            .collect::<Vec<_>>();
+        let calculated_log_volume_size_limit = calculate_log_volume_size_limit(&input);
+        assert_eq!(
+            Quantity(expected_log_volume_size_limit.to_string()),
+            calculated_log_volume_size_limit
+        );
+    }
 
     #[test]
     fn test_create_log4j2_config() {
