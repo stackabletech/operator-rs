@@ -42,6 +42,10 @@ pub const VECTOR_CONFIG_FILE: &str = "vector.toml";
 ///   a ZooKeeper log file with 4,127,151 bytes occupied 4,032 blocks. Then log entries were written
 ///   and the actual file size increased to 4,132,477 bytes which occupied 8,128 blocks.
 ///
+/// This function is meant to be used for log volumes up to a size of approximately 100 MiB. The
+/// overhead might not be acceptable for larger volumes, however this needs to be tested
+/// beforehand.
+///
 /// # Example
 ///
 /// ```
