@@ -207,6 +207,14 @@ impl MemoryQuantity {
         }
     }
 
+    /// Ceils the value of this MemoryQuantity.
+    pub fn ceil(&self) -> Self {
+        Self {
+            value: self.value.ceil(),
+            unit: self.unit,
+        }
+    }
+
     /// If the MemoryQuantity value is smaller than 1 (starts with a zero), convert it to a smaller
     /// unit until the non fractional part of the value is not zero anymore.
     /// This can fail if the quantity is smaller than 1kB.

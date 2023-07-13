@@ -1,6 +1,6 @@
 //! Log aggregation framework
 
-use std::cmp;
+use std::{cmp, ops::Mul};
 
 use crate::{
     builder::ContainerBuilder,
@@ -86,7 +86,12 @@ pub fn calculate_log_volume_size_limit(max_log_files_size: &[MemoryQuantity]) ->
         .cloned()
         .sum::<MemoryQuantity>()
         .scale_to(BinaryMultiple::Mebi)
-        * 3.0;
+        // According to the reasons mentioned in the function documentation, the multiplier must be
+        // greater than 2. Manual tests with ZooKeeper 3.8 in an OpenShift cluster showed that 3 is
+        // absolutely sufficient.
+        .mul(3.0)
+        // Avoid bulky numbers due to the floating-point arithmetic.
+        .ceil();
     log_volume_size_limit.into()
 }
 
@@ -1112,7 +1117,29 @@ touch {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}"
 mod tests {
     use super::*;
     use crate::product_logging::spec::{AppenderConfig, LoggerConfig};
+    use rstest::rstest;
     use std::collections::BTreeMap;
+
+    #[rstest]
+    #[case("0Mi", &[])]
+    #[case("3Mi", &["1Mi"])]
+    #[case("5Mi", &["1.5Mi"])]
+    #[case("1Mi", &["100Ki"])]
+    #[case("3076Mi", &["1Ki", "1Mi", "1Gi"])]
+    fn test_calculate_log_volume_size_limit(
+        #[case] expected_log_volume_size_limit: &str,
+        #[case] max_log_files_sizes: &[&str],
+    ) {
+        let input = max_log_files_sizes
+            .iter()
+            .map(|v| MemoryQuantity::try_from(Quantity(v.to_string())).unwrap())
+            .collect::<Vec<_>>();
+        let calculated_log_volume_size_limit = calculate_log_volume_size_limit(&input);
+        assert_eq!(
+            Quantity(expected_log_volume_size_limit.to_string()),
+            calculated_log_volume_size_limit
+        );
+    }
 
     #[test]
     fn test_create_log4j2_config() {
