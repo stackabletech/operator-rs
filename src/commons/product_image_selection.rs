@@ -75,7 +75,7 @@ pub struct ResolvedProductImage {
 #[serde(rename = "PascalCase")]
 #[derive(AsRefStr)]
 /// We default to `Always`, as we use floating tags for our release lines.
-/// This means the tag 23.4 starts of pointing to the same image 23.4.0 does, but switches to 23.4.1 after the releases of 23.4.1
+/// This means the tag 23.4 starts of pointing to the same image 23.4.0 does, but switches to 23.4.1 after the releases of 23.4.1.
 /// We let users always pull the latest version of the image, so that
 /// 1.) Users always get the latest version with security fixes
 /// 2.) We try our best that all pods use the same version and that not some nodes have an old version cached
@@ -87,7 +87,7 @@ pub enum PullPolicy {
 }
 
 impl ProductImage {
-    /// `image_base_name` should be base of the image name in the container image registry, e.g. `trino`
+    /// `image_base_name` should be base of the image name in the container image registry, e.g. `trino`.
     /// `operator_version` needs to be the full operator version and needs to be a valid semver string.
     /// Accepted values are `23.7.0` or `0.0.0-dev`. Versions with a trailing `-pr` or something else is not supported.
     pub fn resolve(
@@ -122,7 +122,7 @@ impl ProductImage {
                 let stackable_version = match image_selection.stackable_version.as_ref() {
                     Some(stackable_version) => stackable_version.to_string(),
                     None => {
-                        // nightly and pr versions should use the nightly image
+                        // Nightly and pr versions should use the nightly image
                         if operator_version == "0.0.0-dev" {
                             "0.0.0-dev".to_string()
                         // All other (stable) releases should use the floating tag of the release line
