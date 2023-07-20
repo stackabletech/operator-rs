@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - [BREAKING] ProductImageSelection now defaults `stackableVersion` to operator version ([#619]).
+- Default `pullPolicy` to operator `Always`` ([#619]).
 
 [#619]: https://github.com/stackabletech/operator-rs/pull/619
 
