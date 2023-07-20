@@ -50,7 +50,8 @@ pub struct ProductImageStackableVersion {
     /// Version of the product, e.g. `1.4.1`.
     product_version: String,
     /// Stackable version of the product, e.g. `23.4`, `23.4.1` or `0.0.0-dev`.
-    /// If not specified, the operator will use the same version as he has (e.g. `23.4.1` or `0.0.0-dev`)
+    /// If not specified, the operator will use a floating image tag pointing to the latest patch version of this release line, e.g. `23.4`.
+    /// When using a nightly operator it will use the nightly `0.0.0-dev` image.
     stackable_version: Option<String>,
     /// Name of the docker repo, e.g. `docker.stackable.tech/stackable`
     repo: Option<String>,
