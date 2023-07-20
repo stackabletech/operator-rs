@@ -111,6 +111,12 @@ pub enum Error {
         container_name: String,
         violation: String,
     },
+
+    #[error("failed to parse operator version: {source}")]
+    ParseOperatorVersion {
+        #[from]
+        source: semver::Error,
+    },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;

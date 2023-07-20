@@ -1,8 +1,10 @@
 use k8s_openapi::api::core::v1::LocalObjectReference;
 use schemars::JsonSchema;
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use strum::AsRefStr;
 
+use crate::error::{Error, OperatorResult};
 #[cfg(doc)]
 use crate::labels::get_recommended_labels;
 
@@ -84,12 +86,14 @@ pub enum PullPolicy {
 }
 
 impl ProductImage {
+    /// `image_base_name` should be base of the image name in the container image registry, e.g. `trino`
+    /// `operator_version` needs to be the full operator version and needs to be a valid semver string.
+    /// Accepted values are `23.7.0` or `0.0.0-dev`. Versions with a trailing `-pr` or something else is not supported.
     pub fn resolve(
         &self,
         image_base_name: &str,
-        operator_major_version: &str,
-        operator_minor_version: &str,
-    ) -> ResolvedProductImage {
+        operator_version: &str,
+    ) -> OperatorResult<ResolvedProductImage> {
         let image_pull_policy = self.pull_policy.as_ref().to_string();
         let pull_secrets = self.pull_secrets.clone();
 
@@ -101,23 +105,33 @@ impl ProductImage {
                     .map_or("latest", |splits| splits.1);
                 let app_version_label =
                     format!("{}-{}", image_selection.product_version, image_tag);
-                ResolvedProductImage {
+                Ok(ResolvedProductImage {
                     product_version: image_selection.product_version.to_string(),
                     app_version_label,
                     image: image_selection.custom.clone(),
                     image_pull_policy,
                     pull_secrets,
-                }
+                })
             }
             ProductImageSelection::StackableVersion(image_selection) => {
                 let repo = image_selection
                     .repo
                     .as_deref()
                     .unwrap_or(STACKABLE_DOCKER_REPO);
-                let stackable_version = image_selection
-                    .stackable_version
-                    .clone()
-                    .unwrap_or(format!("{operator_major_version}.{operator_minor_version}"));
+                let stackable_version = match image_selection.stackable_version.as_ref() {
+                    Some(stackable_version) => stackable_version.to_string(),
+                    None => {
+                        // nightly and pr versions should use the nightly image
+                        if operator_version == "0.0.0-dev" {
+                            "0.0.0-dev".to_string()
+                        // All other (stable) releases should use the floating tag of the release line
+                        } else {
+                            let operator_version = Version::parse(operator_version)
+                                .map_err(|err| Error::ParseOperatorVersion { source: err })?;
+                            format!("{}.{}", operator_version.major, operator_version.minor)
+                        }
+                    }
+                };
                 let image = format!(
                     "{repo}/{image_base_name}:{product_version}-stackable{stackable_version}",
                     product_version = image_selection.product_version,
@@ -126,13 +140,13 @@ impl ProductImage {
                     "{product_version}-stackable{stackable_version}",
                     product_version = image_selection.product_version,
                 );
-                ResolvedProductImage {
+                Ok(ResolvedProductImage {
                     product_version: image_selection.product_version.to_string(),
                     app_version_label,
                     image,
                     image_pull_policy,
                     pull_secrets,
-                }
+                })
             }
         }
     }
@@ -299,7 +313,7 @@ mod tests {
         #[case] expected: ResolvedProductImage,
     ) {
         let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
-        let resolved_product_image = product_image.resolve(&image_base_name, "23", "7");
+        let resolved_product_image = product_image.resolve(&image_base_name, "23.7.42").unwrap();
 
         assert_eq!(resolved_product_image, expected);
     }
