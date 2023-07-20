@@ -13,6 +13,7 @@ use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use crate::error::{Error, OperatorResult};
 use std::{
     fmt::Display,
+    iter::Sum,
     ops::{Add, AddAssign, Div, Mul, Sub, SubAssign},
     str::FromStr,
 };
@@ -206,6 +207,14 @@ impl MemoryQuantity {
         }
     }
 
+    /// Ceils the value of this MemoryQuantity.
+    pub fn ceil(&self) -> Self {
+        Self {
+            value: self.value.ceil(),
+            unit: self.unit,
+        }
+    }
+
     /// If the MemoryQuantity value is smaller than 1 (starts with a zero), convert it to a smaller
     /// unit until the non fractional part of the value is not zero anymore.
     /// This can fail if the quantity is smaller than 1kB.
@@ -344,6 +353,18 @@ impl Add<MemoryQuantity> for MemoryQuantity {
             value: self.value + rhs.scale_to(self.unit).value,
             unit: self.unit,
         }
+    }
+}
+
+impl Sum<MemoryQuantity> for MemoryQuantity {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(
+            MemoryQuantity {
+                value: 0.0,
+                unit: BinaryMultiple::Kibi,
+            },
+            MemoryQuantity::add,
+        )
     }
 }
 
