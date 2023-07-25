@@ -695,7 +695,7 @@ where
 
     let vector_log_level_filter_expression = match vector_log_level {
         LogLevel::TRACE => "true",
-        LogLevel::DEBUG => r#".level != "TRACE""#,
+        LogLevel::DEBUG => r#".metadata.level != "TRACE""#,
         LogLevel::INFO => r#"!includes(["TRACE", "DEBUG"], .metadata.level)"#,
         LogLevel::WARN => r#"!includes(["TRACE", "DEBUG", "INFO"], .metadata.level)"#,
         LogLevel::ERROR => r#"!includes(["TRACE", "DEBUG", "INFO", "WARN"], .metadata.level)"#,

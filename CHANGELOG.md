@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix the log level filter for the Vector container. If the level of the
+  ROOT logger was set to TRACE and the level of the file logger was set
+  to DEBUG then TRACE logs were written anyway.
+
 ## [0.44.0] - 2023-07-13
 
 ### Added
