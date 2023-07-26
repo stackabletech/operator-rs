@@ -1,10 +1,9 @@
 use k8s_openapi::api::core::v1::LocalObjectReference;
 use schemars::JsonSchema;
-use semver::Version;
 use serde::{Deserialize, Serialize};
 use strum::AsRefStr;
 
-use crate::error::{Error, OperatorResult};
+use crate::error::OperatorResult;
 #[cfg(doc)]
 use crate::labels::get_recommended_labels;
 
@@ -50,7 +49,7 @@ pub struct ProductImageStackableVersion {
     /// Version of the product, e.g. `1.4.1`.
     product_version: String,
     /// Stackable version of the product, e.g. `23.4`, `23.4.1` or `0.0.0-dev`.
-    /// If not specified, the operator will use a floating image tag pointing to the latest patch version of this release line, e.g. `23.4`.
+    /// If not specified, the operator will use its own version, e.g. `23.4.1`.
     /// When using a nightly operator it will use the nightly `0.0.0-dev` image.
     stackable_version: Option<String>,
     /// Name of the docker repo, e.g. `docker.stackable.tech/stackable`
@@ -88,8 +87,8 @@ pub enum PullPolicy {
 
 impl ProductImage {
     /// `image_base_name` should be base of the image name in the container image registry, e.g. `trino`.
-    /// `operator_version` needs to be the full operator version and needs to be a valid semver string.
-    /// Accepted values are `23.7.0` or `0.0.0-dev`. Versions with a trailing `-pr` or something else is not supported.
+    /// `operator_version` needs to be the full operator version and a valid semver string.
+    /// Accepted values are `23.7.0` or `0.0.0-dev`. Versions with a trailing `-pr` or something else are not supported.
     pub fn resolve(
         &self,
         image_base_name: &str,
@@ -119,20 +118,10 @@ impl ProductImage {
                     .repo
                     .as_deref()
                     .unwrap_or(STACKABLE_DOCKER_REPO);
-                let stackable_version = match image_selection.stackable_version.as_ref() {
-                    Some(stackable_version) => stackable_version.to_string(),
-                    None => {
-                        // Nightly and pr versions should use the nightly image
-                        if operator_version == "0.0.0-dev" {
-                            "0.0.0-dev".to_string()
-                        // All other (stable) releases should use the floating tag of the release line
-                        } else {
-                            let operator_version = Version::parse(operator_version)
-                                .map_err(|err| Error::ParseOperatorVersion { source: err })?;
-                            format!("{}.{}", operator_version.major, operator_version.minor)
-                        }
-                    }
-                };
+                let stackable_version = image_selection
+                    .stackable_version
+                    .clone()
+                    .unwrap_or(operator_version.to_string());
                 let image = format!(
                     "{repo}/{image_base_name}:{product_version}-stackable{stackable_version}",
                     product_version = image_selection.product_version,
@@ -166,8 +155,8 @@ mod tests {
         productVersion: 1.4.1
         "#,
         ResolvedProductImage {
-            image: "docker.stackable.tech/stackable/superset:1.4.1-stackable23.7".to_string(),
-            app_version_label: "1.4.1-stackable23.7".to_string(),
+            image: "docker.stackable.tech/stackable/superset:1.4.1-stackable23.7.42".to_string(),
+            app_version_label: "1.4.1-stackable23.7.42".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
