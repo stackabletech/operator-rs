@@ -75,9 +75,6 @@ pub struct ResolvedProductImage {
 #[derive(AsRefStr)]
 /// We default to `Always`, as we use floating tags for our release lines.
 /// This means the tag 23.4 starts of pointing to the same image 23.4.0 does, but switches to 23.4.1 after the releases of 23.4.1.
-/// We let users always pull the latest version of the image, so that
-/// 1.) Users always get the latest version with security fixes
-/// 2.) We try our best that all pods use the same version and that not some nodes have an old version cached
 pub enum PullPolicy {
     IfNotPresent,
     #[default]
