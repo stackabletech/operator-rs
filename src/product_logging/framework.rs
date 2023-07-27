@@ -820,7 +820,7 @@ event = parsed_event.root.event
 
 epoch_milliseconds = to_int(event.@timestamp) ?? 0
 if epoch_milliseconds != 0 {{
-    .timestamp = to_timestamp(epoch_milliseconds, "milliseconds") ?? null
+    .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
 }}
 if is_null(.timestamp) {{
     .timestamp = now()
@@ -844,13 +844,13 @@ instant = parsed_event.Instant
 if instant != null {{
     epoch_nanoseconds = to_int(instant.@epochSecond) * 1_000_000_000 + to_int(instant.@nanoOfSecond) ?? null
     if epoch_nanoseconds != null {{
-        .timestamp = to_timestamp(epoch_nanoseconds, "nanoseconds") ?? null
+        .timestamp = from_unix_timestamp(epoch_nanoseconds, "nanoseconds") ?? null
     }}
 }}
 if .timestamp == null && parsed_event.@timeMillis != null {{
     epoch_milliseconds = to_int(parsed_event.@timeMillis) ?? null
     if epoch_milliseconds != null {{
-        .timestamp = to_timestamp(epoch_milliseconds, "milliseconds") ?? null
+        .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
     }}
 }}
 if .timestamp == null {{
