@@ -4,11 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Update `product_logging::framework::create_vector_config` to
+  be compatible with Vector version 0.31.0. The product image must
+  contain Vector 0.31.x ([#625]).
+
 ### Fixed
 
 - Fix the log level filter for the Vector container. If the level of the
   ROOT logger was set to TRACE and the level of the file logger was set
-  to DEBUG then TRACE logs were written anyway.
+  to DEBUG then TRACE logs were written anyway ([#625]).
+
+[#625]: https://github.com/stackabletech/operator-rs/pull/625
 
 ## [0.44.0] - 2023-07-13
 
