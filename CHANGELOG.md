@@ -6,6 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- BREAKING: Assume that the Vector executable is located in a directory
+  which is specified in the PATH environment variable. This is the case
+  if Vector is installed via RPM ([#625]).
 - BREAKING: Update `product_logging::framework::create_vector_config` to
   be compatible with Vector version 0.31.0. The product image must
   contain Vector 0.31.x ([#625]).

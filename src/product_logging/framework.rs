@@ -1069,15 +1069,15 @@ pub fn vector_container(
         .unwrap()
         .image_from_product_image(image)
         .command(vec!["bash".into(), "-c".into()])
-        .args(vec![
-            format!("\
-/stackable/vector/bin/vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$! && \
+        .args(vec![format!(
+            "\
+vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$! && \
 if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then \
 mkdir -p {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR} && \
 inotifywait -qq --event create {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}; \
 fi && \
-kill $vector_pid"),
-        ])
+kill $vector_pid"
+        )])
         .add_env_var("VECTOR_LOG", log_level.to_vector_literal())
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
         .add_volume_mount(log_volume_name, STACKABLE_LOG_DIR)
