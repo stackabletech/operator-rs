@@ -6,6 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- [BREAKING] ProductImageSelection now defaults `stackableVersion` to
+  operator version ([#619]).
+- Default `pullPolicy` to operator `Always`` ([#619]).
 - BREAKING: Assume that the Vector executable is located in a directory
   which is specified in the PATH environment variable. This is the case
   if Vector is installed via RPM ([#625]).
@@ -19,6 +22,7 @@ All notable changes to this project will be documented in this file.
   ROOT logger was set to TRACE and the level of the file logger was set
   to DEBUG then TRACE logs were written anyway ([#625]).
 
+[#619]: https://github.com/stackabletech/operator-rs/pull/619
 [#625]: https://github.com/stackabletech/operator-rs/pull/625
 
 ## [0.44.0] - 2023-07-13
