@@ -3,7 +3,6 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum::AsRefStr;
 
-use crate::error::OperatorResult;
 #[cfg(doc)]
 use crate::labels::get_recommended_labels;
 
@@ -86,11 +85,7 @@ impl ProductImage {
     /// `image_base_name` should be base of the image name in the container image registry, e.g. `trino`.
     /// `operator_version` needs to be the full operator version and a valid semver string.
     /// Accepted values are `23.7.0` or `0.0.0-dev`. Versions with a trailing `-pr` or something else are not supported.
-    pub fn resolve(
-        &self,
-        image_base_name: &str,
-        operator_version: &str,
-    ) -> OperatorResult<ResolvedProductImage> {
+    pub fn resolve(&self, image_base_name: &str, operator_version: &str) -> ResolvedProductImage {
         let image_pull_policy = self.pull_policy.as_ref().to_string();
         let pull_secrets = self.pull_secrets.clone();
 
@@ -102,13 +97,13 @@ impl ProductImage {
                     .map_or("latest", |splits| splits.1);
                 let app_version_label =
                     format!("{}-{}", image_selection.product_version, image_tag);
-                Ok(ResolvedProductImage {
+                ResolvedProductImage {
                     product_version: image_selection.product_version.to_string(),
                     app_version_label,
                     image: image_selection.custom.clone(),
                     image_pull_policy,
                     pull_secrets,
-                })
+                }
             }
             ProductImageSelection::StackableVersion(image_selection) => {
                 let repo = image_selection
@@ -127,13 +122,13 @@ impl ProductImage {
                     "{product_version}-stackable{stackable_version}",
                     product_version = image_selection.product_version,
                 );
-                Ok(ResolvedProductImage {
+                ResolvedProductImage {
                     product_version: image_selection.product_version.to_string(),
                     app_version_label,
                     image,
                     image_pull_policy,
                     pull_secrets,
-                })
+                }
             }
         }
     }
@@ -300,7 +295,7 @@ mod tests {
         #[case] expected: ResolvedProductImage,
     ) {
         let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
-        let resolved_product_image = product_image.resolve(&image_base_name, "23.7.42").unwrap();
+        let resolved_product_image = product_image.resolve(&image_base_name, "23.7.42");
 
         assert_eq!(resolved_product_image, expected);
     }
