@@ -117,8 +117,8 @@ impl ProductImage {
                     .unwrap_or(STACKABLE_DOCKER_REPO);
                 let stackable_version = image_selection
                     .stackable_version
-                    .clone()
-                    .unwrap_or(operator_version.to_string());
+                    .as_deref()
+                    .unwrap_or(operator_version);
                 let image = format!(
                     "{repo}/{image_base_name}:{product_version}-stackable{stackable_version}",
                     product_version = image_selection.product_version,
