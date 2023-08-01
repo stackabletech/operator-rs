@@ -695,7 +695,7 @@ where
 
     let vector_log_level_filter_expression = match vector_log_level {
         LogLevel::TRACE => "true",
-        LogLevel::DEBUG => r#".level != "TRACE""#,
+        LogLevel::DEBUG => r#".metadata.level != "TRACE""#,
         LogLevel::INFO => r#"!includes(["TRACE", "DEBUG"], .metadata.level)"#,
         LogLevel::WARN => r#"!includes(["TRACE", "DEBUG", "INFO"], .metadata.level)"#,
         LogLevel::ERROR => r#"!includes(["TRACE", "DEBUG", "INFO", "WARN"], .metadata.level)"#,
@@ -820,7 +820,7 @@ event = parsed_event.root.event
 
 epoch_milliseconds = to_int(event.@timestamp) ?? 0
 if epoch_milliseconds != 0 {{
-    .timestamp = to_timestamp(epoch_milliseconds, "milliseconds") ?? null
+    .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
 }}
 if is_null(.timestamp) {{
     .timestamp = now()
@@ -844,13 +844,13 @@ instant = parsed_event.Instant
 if instant != null {{
     epoch_nanoseconds = to_int(instant.@epochSecond) * 1_000_000_000 + to_int(instant.@nanoOfSecond) ?? null
     if epoch_nanoseconds != null {{
-        .timestamp = to_timestamp(epoch_nanoseconds, "nanoseconds") ?? null
+        .timestamp = from_unix_timestamp(epoch_nanoseconds, "nanoseconds") ?? null
     }}
 }}
 if .timestamp == null && parsed_event.@timeMillis != null {{
     epoch_milliseconds = to_int(parsed_event.@timeMillis) ?? null
     if epoch_milliseconds != null {{
-        .timestamp = to_timestamp(epoch_milliseconds, "milliseconds") ?? null
+        .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
     }}
 }}
 if .timestamp == null {{
@@ -1069,15 +1069,15 @@ pub fn vector_container(
         .unwrap()
         .image_from_product_image(image)
         .command(vec!["bash".into(), "-c".into()])
-        .args(vec![
-            format!("\
-/stackable/vector/bin/vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$! && \
+        .args(vec![format!(
+            "\
+vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$! && \
 if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then \
 mkdir -p {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR} && \
 inotifywait -qq --event create {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}; \
 fi && \
-kill $vector_pid"),
-        ])
+kill $vector_pid"
+        )])
         .add_env_var("VECTOR_LOG", log_level.to_vector_literal())
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
         .add_volume_mount(log_volume_name, STACKABLE_LOG_DIR)

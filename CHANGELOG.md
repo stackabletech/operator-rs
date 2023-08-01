@@ -6,10 +6,24 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- [BREAKING] ProductImageSelection now defaults `stackableVersion` to operator version ([#619]).
+- [BREAKING] ProductImageSelection now defaults `stackableVersion` to
+  operator version ([#619]).
 - Default `pullPolicy` to operator `Always`` ([#619]).
+- BREAKING: Assume that the Vector executable is located in a directory
+  which is specified in the PATH environment variable. This is the case
+  if Vector is installed via RPM ([#625]).
+- BREAKING: Update `product_logging::framework::create_vector_config` to
+  be compatible with Vector version 0.31.0. The product image must
+  contain Vector 0.31.x ([#625]).
+
+### Fixed
+
+- Fix the log level filter for the Vector container. If the level of the
+  ROOT logger was set to TRACE and the level of the file logger was set
+  to DEBUG then TRACE logs were written anyway ([#625]).
 
 [#619]: https://github.com/stackabletech/operator-rs/pull/619
+[#625]: https://github.com/stackabletech/operator-rs/pull/625
 
 ## [0.44.0] - 2023-07-13
 
