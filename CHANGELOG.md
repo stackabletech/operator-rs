@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.45.1] - 2023-08-01
+
+### Fixed
+
+- Support PR versions in automatic stackableVersion - ([#619]) falsely assumed the binaries in `-pr` versions
+  have the version `0.0.0-dev` ([#629]).
+
+[#629]: https://github.com/stackabletech/operator-rs/pull/629
+
 ## [0.45.0] - 2023-08-01
 
 ### Changed
