@@ -49,7 +49,7 @@ pub struct ProductImageStackableVersion {
     product_version: String,
     /// Stackable version of the product, e.g. `23.4`, `23.4.1` or `0.0.0-dev`.
     /// If not specified, the operator will use its own version, e.g. `23.4.1`.
-    /// When using a nightly operator it will use the nightly `0.0.0-dev` image.
+    /// When using a nightly operator or a pr version, it will use the nightly `0.0.0-dev` image.
     stackable_version: Option<String>,
     /// Name of the docker repo, e.g. `docker.stackable.tech/stackable`
     repo: Option<String>,
@@ -84,7 +84,7 @@ pub enum PullPolicy {
 impl ProductImage {
     /// `image_base_name` should be base of the image name in the container image registry, e.g. `trino`.
     /// `operator_version` needs to be the full operator version and a valid semver string.
-    /// Accepted values are `23.7.0` or `0.0.0-dev`. Versions with a trailing `-pr` or something else are not supported.
+    /// Accepted values are `23.7.0`, `0.0.0-dev` or `0.0.0-pr123`. Other variants are not supported.
     pub fn resolve(&self, image_base_name: &str, operator_version: &str) -> ResolvedProductImage {
         let image_pull_policy = self.pull_policy.as_ref().to_string();
         let pull_secrets = self.pull_secrets.clone();
@@ -110,10 +110,16 @@ impl ProductImage {
                     .repo
                     .as_deref()
                     .unwrap_or(STACKABLE_DOCKER_REPO);
-                let stackable_version = image_selection
-                    .stackable_version
-                    .as_deref()
-                    .unwrap_or(operator_version);
+                let stackable_version = match &image_selection.stackable_version {
+                    Some(stackable_version) => stackable_version,
+                    None => {
+                        if operator_version.starts_with("0.0.0-") {
+                            "0.0.0-dev"
+                        } else {
+                            operator_version
+                        }
+                    }
+                };
                 let image = format!(
                     "{repo}/{image_base_name}:{product_version}-stackable{stackable_version}",
                     product_version = image_selection.product_version,
@@ -141,8 +147,9 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    #[case::stackable_version_without_stackable_version(
+    #[case::stackable_version_without_stackable_version_stable_version(
         "superset",
+        "23.7.42",
         r#"
         productVersion: 1.4.1
         "#,
@@ -154,8 +161,37 @@ mod tests {
             pull_secrets: None,
         }
     )]
+    #[case::stackable_version_without_stackable_version_nightly(
+        "superset",
+        "0.0.0-dev",
+        r#"
+        productVersion: 1.4.1
+        "#,
+        ResolvedProductImage {
+            image: "docker.stackable.tech/stackable/superset:1.4.1-stackable0.0.0-dev".to_string(),
+            app_version_label: "1.4.1-stackable0.0.0-dev".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::stackable_version_without_stackable_version_pr_version(
+        "superset",
+        "0.0.0-pr123",
+        r#"
+        productVersion: 1.4.1
+        "#,
+        ResolvedProductImage {
+            image: "docker.stackable.tech/stackable/superset:1.4.1-stackable0.0.0-dev".to_string(),
+            app_version_label: "1.4.1-stackable0.0.0-dev".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        }
+    )]
     #[case::stackable_version_without_repo(
         "superset",
+        "23.7.42",
         r#"
         productVersion: 1.4.1
         stackableVersion: 2.1.0
@@ -170,6 +206,7 @@ mod tests {
     )]
     #[case::stackable_version_with_repo(
         "trino",
+        "23.7.42",
         r#"
         productVersion: 1.4.1
         stackableVersion: 2.1.0
@@ -185,6 +222,7 @@ mod tests {
     )]
     #[case::custom_without_tag(
         "superset",
+        "23.7.42",
         r#"
         custom: my.corp/myteam/stackable/superset
         productVersion: 1.4.1
@@ -199,6 +237,7 @@ mod tests {
     )]
     #[case::custom_with_tag(
         "superset",
+        "23.7.42",
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
@@ -213,6 +252,7 @@ mod tests {
     )]
     #[case::custom_takes_precedence(
         "superset",
+        "23.7.42",
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
@@ -228,6 +268,7 @@ mod tests {
     )]
     #[case::pull_policy_if_not_present(
         "superset",
+        "23.7.42",
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
@@ -243,6 +284,7 @@ mod tests {
     )]
     #[case::pull_policy_always(
         "superset",
+        "23.7.42",
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
@@ -258,6 +300,7 @@ mod tests {
     )]
     #[case::pull_policy_never(
         "superset",
+        "23.7.42",
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
@@ -273,6 +316,7 @@ mod tests {
     )]
     #[case::pull_secrets(
         "superset",
+        "23.7.42",
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
@@ -291,11 +335,12 @@ mod tests {
     )]
     fn test_correct_resolved_image(
         #[case] image_base_name: String,
+        #[case] operator_version: String,
         #[case] input: String,
         #[case] expected: ResolvedProductImage,
     ) {
         let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
-        let resolved_product_image = product_image.resolve(&image_base_name, "23.7.42");
+        let resolved_product_image = product_image.resolve(&image_base_name, &operator_version);
 
         assert_eq!(resolved_product_image, expected);
     }
