@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.45.0] - 2023-08-01
+
 ### Changed
 
 - [BREAKING] ProductImageSelection now defaults `stackableVersion` to
