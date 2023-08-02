@@ -19,7 +19,7 @@ All notable changes to this project will be documented in this file.
 
 - [BREAKING] ProductImageSelection now defaults `stackableVersion` to
   operator version ([#619]).
-- Default `pullPolicy` to operator `Always`` ([#619]).
+- Default `pullPolicy` to operator `Always` ([#619]).
 - BREAKING: Assume that the Vector executable is located in a directory
   which is specified in the PATH environment variable. This is the case
   if Vector is installed via RPM ([#625]).
