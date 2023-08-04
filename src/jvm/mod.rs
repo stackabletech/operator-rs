@@ -63,6 +63,6 @@ pub fn default_security_config_map<T: Resource>(app: &T) -> OperatorResult<Confi
     security_config_map(app, &Security::default())
 }
 
-pub fn security_system_property(cm_name: &str, mountpoint: &str) -> String {
-    format!("-D{SECURITY_SYSTEM_PROPERTY_NAME}={mountpoint}/{cm_name}")
+pub fn security_system_property(mountpoint: &str) -> String {
+    format!("-D{SECURITY_SYSTEM_PROPERTY_NAME}={mountpoint}/{SECURITY_FILE_NAME}")
 }
