@@ -10,6 +10,7 @@ use crate::{
     builder::{ConfigMapBuilder, ObjectMetaBuilder},
     error::Error,
     error::OperatorResult,
+    labels::build_common_labels_for_all_managed_resources,
 };
 
 /// JVM configuration management.
@@ -43,12 +44,21 @@ impl Default for Security {
     }
 }
 
-pub fn security_config_map<T: Resource>(app: &T, sec: &Security) -> OperatorResult<ConfigMap> {
+pub fn security_config_map<T: Resource<DynamicType = ()>>(
+    owner: &T,
+    app_name: &str,
+    sec: &Security,
+) -> OperatorResult<ConfigMap> {
     ConfigMapBuilder::new()
         .metadata(
             ObjectMetaBuilder::new()
-                .name_and_namespace(app)
-                .name(format!("{}-jvm-security", app.name_any()))
+                .name_and_namespace(owner)
+                .name(format!("{}-jvm-security", owner.name_any()))
+                .ownerreference_from_resource(owner, None, Some(true))?
+                .with_labels(build_common_labels_for_all_managed_resources(
+                    app_name,
+                    owner.name_any().as_str(),
+                ))
                 .build(),
         )
         .add_data(
@@ -59,8 +69,11 @@ pub fn security_config_map<T: Resource>(app: &T, sec: &Security) -> OperatorResu
         .build()
 }
 
-pub fn default_security_config_map<T: Resource>(app: &T) -> OperatorResult<ConfigMap> {
-    security_config_map(app, &Security::default())
+pub fn default_security_config_map<T: Resource<DynamicType = ()>>(
+    owner: &T,
+    app_name: &str,
+) -> OperatorResult<ConfigMap> {
+    security_config_map(owner, app_name, &Security::default())
 }
 
 pub fn security_system_property(mountpoint: &str) -> String {
