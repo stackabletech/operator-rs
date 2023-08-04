@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use k8s_openapi::api::core::v1::ConfigMap;
 use kube::{Resource, ResourceExt};
@@ -10,7 +10,6 @@ use crate::{
     builder::{ConfigMapBuilder, ObjectMetaBuilder},
     error::Error,
     error::OperatorResult,
-    labels::build_common_labels_for_all_managed_resources,
 };
 
 /// JVM configuration management.
@@ -46,7 +45,7 @@ impl Default for Security {
 
 pub fn security_config_map<T: Resource<DynamicType = ()>>(
     owner: &T,
-    app_name: &str,
+    labels: BTreeMap<String, String>,
     sec: &Security,
 ) -> OperatorResult<ConfigMap> {
     ConfigMapBuilder::new()
@@ -55,10 +54,7 @@ pub fn security_config_map<T: Resource<DynamicType = ()>>(
                 .name_and_namespace(owner)
                 .name(format!("{}-jvm-security", owner.name_any()))
                 .ownerreference_from_resource(owner, None, Some(true))?
-                .with_labels(build_common_labels_for_all_managed_resources(
-                    app_name,
-                    owner.name_any().as_str(),
-                ))
+                .with_labels(labels)
                 .build(),
         )
         .add_data(
@@ -71,9 +67,9 @@ pub fn security_config_map<T: Resource<DynamicType = ()>>(
 
 pub fn default_security_config_map<T: Resource<DynamicType = ()>>(
     owner: &T,
-    app_name: &str,
+    labels: BTreeMap<String, String>,
 ) -> OperatorResult<ConfigMap> {
-    security_config_map(owner, app_name, &Security::default())
+    security_config_map(owner, labels, &Security::default())
 }
 
 pub fn security_system_property(mountpoint: &str) -> String {
