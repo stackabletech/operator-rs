@@ -111,6 +111,8 @@ pub enum Error {
         container_name: String,
         violation: String,
     },
+    #[error("Error creating properties file: {0}")]
+    JavaProperties(String),
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;

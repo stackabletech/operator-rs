@@ -8,6 +8,7 @@ pub mod cpu;
 pub mod crd;
 pub mod error;
 pub mod iter;
+pub mod jvm;
 pub mod label_selector;
 pub mod labels;
 pub mod logging;
