@@ -60,7 +60,7 @@ impl Default for Security {
 pub fn security_config_map<T: Resource<DynamicType = ()>>(
     owner: &T,
     labels: BTreeMap<String, String>,
-    security_opt: &Option<Security>,
+    security_opt: Option<&Security>,
 ) -> OperatorResult<ConfigMap> {
     let props = match security_opt {
         Some(sec) => sec.properties.clone(),
