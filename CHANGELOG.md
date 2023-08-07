@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Bump all dependencies (including kube and k8s-openapi) ([#632]).
+
+[#632]: https://github.com/stackabletech/operator-rs/pull/632
+
 ## [0.45.1] - 2023-08-01
 
 ### Fixed
