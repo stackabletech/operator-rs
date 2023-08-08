@@ -1,11 +1,11 @@
 [package]
-authors = ["Stackable GmbH <info@stackable.de>"]
-description = "Stackable Operator Framework"
-edition = "2021"
-license = "Apache-2.0"
 name = "stackable-operator-derive"
-version = "0.45.1"
-repository = "https://github.com/stackabletech/operator-rs"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [lib]
 proc-macro = true

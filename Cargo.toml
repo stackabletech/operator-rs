@@ -1,11 +1,19 @@
-[package]
-authors = ["Stackable GmbH <info@stackable.de>"]
+[workspace.package]
 description = "Stackable Operator Framework"
-edition = "2021"
-license = "Apache-2.0"
-name = "stackable-operator"
 version = "0.45.1"
+authors = ["Stackable GmbH <info@stackable.de>"]
+license = "Apache-2.0"
+edition = "2021"
 repository = "https://github.com/stackabletech/operator-rs"
+
+[package]
+name = "stackable-operator"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 chrono = { version = "0.4.26", default-features = false }
