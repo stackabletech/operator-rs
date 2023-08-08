@@ -1,6 +1,6 @@
 [workspace.package]
 description = "Stackable Operator Framework"
-version = "0.45.1"
+version = "0.46.0"
 authors = ["Stackable GmbH <info@stackable.de>"]
 license = "Apache-2.0"
 edition = "2021"
