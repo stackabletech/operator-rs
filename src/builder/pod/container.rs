@@ -173,11 +173,6 @@ impl ContainerBuilder {
         self
     }
 
-    pub fn resources(&mut self, resources: ResourceRequirements) -> &mut Self {
-        self.resources = Some(resources);
-        self
-    }
-
     pub fn add_volume_mount(
         &mut self,
         name: impl Into<String>,
@@ -220,6 +215,11 @@ impl ContainerBuilder {
 
     pub fn security_context(&mut self, context: SecurityContext) -> &mut Self {
         self.security_context = Some(context);
+        self
+    }
+
+    pub fn resources(&mut self, resources: ResourceRequirements) -> &mut Self {
+        self.resources = Some(resources);
         self
     }
 
@@ -332,9 +332,12 @@ impl fmt::Display for FieldPathEnvVar {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builder::pod::container::{ContainerBuilder, ContainerPortBuilder, FieldPathEnvVar};
-    use k8s_openapi::{
-        api::core::v1::ResourceRequirements, apimachinery::pkg::api::resource::Quantity,
+    use crate::{
+        builder::{
+            pod::container::{ContainerBuilder, ContainerPortBuilder, FieldPathEnvVar},
+            resources::ResourceRequirementsBuilder,
+        },
+        commons::resources::ResourceRequirementsType,
     };
 
     #[test]
@@ -343,24 +346,14 @@ mod tests {
         let container_port_name = "foo_port_name";
         let container_port_1: i32 = 20000;
         let container_port_name_1 = "bar_port_name";
-        let resources = ResourceRequirements {
-            limits: Some(
-                [
-                    ("cpu".to_string(), Quantity("3000m".to_string())),
-                    ("memory".to_string(), Quantity("6Gi".to_string())),
-                    ("nvidia.com/gpu".to_string(), Quantity("1".to_string())),
-                ]
-                .into(),
-            ),
-            requests: Some(
-                [
-                    ("cpu".to_string(), Quantity("2000m".to_string())),
-                    ("memory".to_string(), Quantity("4Gi".to_string())),
-                ]
-                .into(),
-            ),
-            ..ResourceRequirements::default()
-        };
+
+        let resources = ResourceRequirementsBuilder::new()
+            .with_cpu_request("2000m")
+            .with_cpu_limit("3000m")
+            .with_memory_request("4Gi")
+            .with_memory_limit("6Gi")
+            .with_resource(ResourceRequirementsType::Limits, "nvidia.com/gpu", "1")
+            .build();
 
         let container = ContainerBuilder::new("testcontainer")
             .expect("ContainerBuilder not created")
@@ -495,6 +488,24 @@ mod tests {
             ContainerBuilder::new("name_name"),
             "(e.g. 'example-label',  or '1-label-1', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')",
         );
+    }
+
+    #[test]
+    fn test_container_cpu_and_memory_resource_requirements() {
+        let resources = ResourceRequirementsBuilder::new()
+            .with_cpu_request("2000m")
+            .with_cpu_limit("3000m")
+            .with_memory_request("4Gi")
+            .with_memory_limit("6Gi")
+            .with_resource(ResourceRequirementsType::Limits, "nvidia.com/gpu", "1")
+            .build();
+
+        let container = ContainerBuilder::new("testcontainer")
+            .expect("ContainerBuilder not created")
+            .resources(resources.clone())
+            .build();
+
+        assert_eq!(container.resources, Some(resources))
     }
 
     /// Panics if given container builder constructor result is not [Err] with error message

@@ -2,7 +2,8 @@ use darling::{ast::Data, FromDeriveInput, FromField, FromMeta, FromVariant};
 use proc_macro2::{Ident, TokenStream, TokenTree};
 use quote::{format_ident, quote};
 use syn::{
-    parse_quote, Attribute, DeriveInput, Expr, Generics, Path, Type, Visibility, WherePredicate,
+    parse_quote, Attribute, DeriveInput, Expr, Generics, Meta, MetaList, Path, Type, Visibility,
+    WherePredicate,
 };
 
 #[derive(FromMeta)]
@@ -58,18 +59,31 @@ fn split_by_comma(tokens: TokenStream) -> Vec<TokenStream> {
     groups
 }
 
-fn extract_forwarded_attrs(attrs: &[Attribute]) -> TokenStream {
+enum ExtractAttrsError {
+    InvalidAttrForm,
+}
+impl ExtractAttrsError {
+    fn into_compile_error(self) -> TokenStream {
+        match self {
+            Self::InvalidAttrForm => quote! {
+                compile_error!("`#[fragment_attrs]` only takes list-form parameters");
+            },
+        }
+    }
+}
+
+fn extract_forwarded_attrs(attrs: &[Attribute]) -> Result<TokenStream, ExtractAttrsError> {
     attrs
         .iter()
-        .filter(|attr| attr.path.is_ident("fragment_attrs"))
-        .flat_map(|Attribute { tokens, .. }| match only(tokens.clone()) {
-            Some(TokenTree::Group(group)) => split_by_comma(group.stream()),
-            _ => todo!(),
+        .filter(|attr| attr.path().is_ident("fragment_attrs"))
+        .flat_map(|Attribute { meta, .. }| match meta {
+            Meta::List(MetaList { tokens, .. }) => {
+                split_by_comma(tokens.clone()).into_iter().map(Ok).collect()
+            }
+            _ => vec![Err(ExtractAttrsError::InvalidAttrForm)],
         })
-        .flat_map(|attr| {
-            quote! { #[#attr] }
-        })
-        .collect()
+        .map(|attr| attr.map(|attr| quote! { #[#attr] }))
+        .collect::<Result<TokenStream, ExtractAttrsError>>()
 }
 
 #[derive(FromVariant)]
@@ -100,16 +114,6 @@ impl FromMeta for Default {
 
     fn from_value(value: &syn::Lit) -> darling::Result<Self> {
         Expr::from_value(value).map(Box::new).map(Self::Expr)
-    }
-}
-
-fn only<I: IntoIterator>(iter: I) -> Option<I::Item> {
-    let mut iter = iter.into_iter();
-    let item = iter.next()?;
-    if iter.next().is_some() {
-        None
-    } else {
-        Some(item)
     }
 }
 
@@ -148,7 +152,10 @@ pub fn derive(input: DeriveInput) -> TokenStream {
                  ty,
                  attrs,
              }| {
-                let attrs = extract_forwarded_attrs(attrs);
+                let attrs = match extract_forwarded_attrs(attrs) {
+                    Ok(x) => x,
+                    Err(err) => return err.into_compile_error(),
+                };
                 quote! { #attrs #vis #ident: <#ty as #fragment_mod::FromFragment>::Fragment, }
             },
         )
@@ -174,7 +181,10 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         )
         .collect::<TokenStream>();
 
-    let attrs = extract_forwarded_attrs(&attrs);
+    let attrs = match extract_forwarded_attrs(&attrs) {
+        Ok(x) => x,
+        Err(err) => return err.into_compile_error(),
+    };
     if let Some(bound) = bound {
         let where_clause = generics.make_where_clause();
         where_clause.predicates.extend(bound);

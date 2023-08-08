@@ -93,12 +93,14 @@ use crate::{
     product_config_utils::Configuration,
 };
 use derivative::Derivative;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
+use k8s_openapi::{
+    api::core::v1::PodTemplateSpec, apimachinery::pkg::apis::meta::v1::LabelSelector,
+};
 use kube::{runtime::reflector::ObjectRef, Resource};
-use schemars::JsonSchema;
+use schemars::{schema::Schema, visit::Visitor, JsonSchema};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(
     rename_all = "camelCase",
     bound(deserialize = "T: Default + Deserialize<'de>")
@@ -117,6 +119,45 @@ pub struct CommonConfiguration<T> {
     // BTreeMap to keep some order with the cli arguments.
     #[serde(default)]
     pub cli_overrides: BTreeMap<String, String>,
+    #[serde(default)]
+    #[schemars(schema_with = "pod_overrides_schema")]
+    pub pod_overrides: PodTemplateSpec,
+}
+
+/// Simplified schema for PodTemplateSpec without mandatory fields (e.g. `containers`) or documentation.
+///
+/// The normal PodTemplateSpec requires you to specify `containers` as an `Vec<Container>`.
+/// Often times the user want's to overwrite/add stuff not related to a container
+/// (e.g. tolerations or a ServiceAccount), so it's annoying that he always needs to
+/// specify an empty array for `containers`.
+///
+/// Additionally all docs are removed, as the resulting Stackable CRD objects where to big for Kubernetes.
+/// E.g. the HdfsCluster CRD increased to ~3.2 MB (which is over the limit of 3MB), after stripping
+/// the docs it went down to ~1.3 MiB.
+pub fn pod_overrides_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
+    let mut schema = PodTemplateSpec::json_schema(gen);
+    SimplifyOverrideSchema.visit_schema(&mut schema);
+    if let Schema::Object(schema) = &mut schema {
+        let meta = schema.metadata.get_or_insert_with(Default::default);
+        meta.description = Some("See PodTemplateSpec (https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core) for more details".to_string());
+    }
+    schema
+}
+
+struct SimplifyOverrideSchema;
+impl schemars::visit::Visitor for SimplifyOverrideSchema {
+    fn visit_schema_object(&mut self, schema: &mut schemars::schema::SchemaObject) {
+        // Strip docs to make the schema more compact
+        if let Some(meta) = &mut schema.metadata {
+            meta.description = None;
+            meta.examples.clear();
+        }
+        // Make all options optional
+        if let Some(object) = &mut schema.object {
+            object.required.clear();
+        }
+        schemars::visit::visit_schema_object(self, schema);
+    }
 }
 
 fn config_schema_default() -> serde_json::Value {
@@ -148,6 +189,7 @@ impl<T: Configuration + 'static> Role<T> {
                 config_overrides: self.config.config_overrides,
                 env_overrides: self.config.env_overrides,
                 cli_overrides: self.config.cli_overrides,
+                pod_overrides: self.config.pod_overrides,
             },
             role_groups: self
                 .role_groups
@@ -162,6 +204,7 @@ impl<T: Configuration + 'static> Role<T> {
                                 config_overrides: group.config.config_overrides,
                                 env_overrides: group.config.env_overrides,
                                 cli_overrides: group.config.cli_overrides,
+                                pod_overrides: group.config.pod_overrides,
                             },
                             replicas: group.replicas,
                             selector: group.selector,

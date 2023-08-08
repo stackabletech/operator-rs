@@ -1,4 +1,7 @@
-use std::str::FromStr;
+use std::{
+    ops::{Add, AddAssign, Div, Mul, MulAssign},
+    str::FromStr,
+};
 
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 
@@ -10,6 +13,7 @@ use crate::error::{Error, OperatorResult};
 /// A CPU quantity cannot have a precision finer than 'm' (millis) in Kubernetes.
 /// So we use that as our internal representation (see:
 /// `<https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#meaning-of-cpu>`).
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct CpuQuantity {
     millis: usize,
 }
@@ -32,8 +36,8 @@ impl FromStr for CpuQuantity {
     type Err = Error;
 
     /// Only two formats can be parsed
-    /// - <usize>m
-    /// - <f32>
+    /// - {usize}m
+    /// - {f32}
     /// For the float, only milli-precision is supported.
     /// Using more precise values will trigger an error, and using any other
     /// unit than 'm' or None will also trigger an error.
@@ -65,6 +69,18 @@ impl FromStr for CpuQuantity {
     }
 }
 
+impl From<CpuQuantity> for Quantity {
+    fn from(quantity: CpuQuantity) -> Self {
+        Self::from(&quantity)
+    }
+}
+
+impl From<&CpuQuantity> for Quantity {
+    fn from(quantity: &CpuQuantity) -> Self {
+        Quantity(format!("{}", quantity.as_cpu_count()))
+    }
+}
+
 impl TryFrom<&Quantity> for CpuQuantity {
     type Error = Error;
 
@@ -78,6 +94,60 @@ impl TryFrom<Quantity> for CpuQuantity {
 
     fn try_from(q: Quantity) -> Result<Self, Self::Error> {
         Self::try_from(&q)
+    }
+}
+
+impl Add<CpuQuantity> for CpuQuantity {
+    type Output = CpuQuantity;
+
+    fn add(self, rhs: CpuQuantity) -> Self::Output {
+        CpuQuantity::from_millis(self.millis + rhs.millis)
+    }
+}
+
+impl AddAssign<CpuQuantity> for CpuQuantity {
+    fn add_assign(&mut self, rhs: CpuQuantity) {
+        self.millis += rhs.millis;
+    }
+}
+
+impl Mul<usize> for CpuQuantity {
+    type Output = CpuQuantity;
+
+    fn mul(self, rhs: usize) -> Self::Output {
+        Self {
+            millis: self.millis * rhs,
+        }
+    }
+}
+
+impl MulAssign<usize> for CpuQuantity {
+    fn mul_assign(&mut self, rhs: usize) {
+        self.millis *= rhs;
+    }
+}
+
+impl Mul<f32> for CpuQuantity {
+    type Output = CpuQuantity;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        Self {
+            millis: (self.millis as f32 * rhs) as usize,
+        }
+    }
+}
+
+impl Div<CpuQuantity> for CpuQuantity {
+    type Output = f32;
+
+    fn div(self, rhs: CpuQuantity) -> Self::Output {
+        self.millis as f32 / rhs.millis as f32
+    }
+}
+
+impl MulAssign<f32> for CpuQuantity {
+    fn mul_assign(&mut self, rhs: f32) {
+        self.millis = (self.millis as f32 * rhs) as usize;
     }
 }
 

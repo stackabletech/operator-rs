@@ -1,9 +1,0 @@
-status = [
-    'All tests passed'
-]
-delete_merged_branches = true
-use_squash_merge = true
-pr_status = [ 'license/cla' ]
-timeout_sec = 7200
-cut_body_after = "<!-- Commit message above. Everything below is not added to the message. Do not change this line! -->"
-required_approvals = 1

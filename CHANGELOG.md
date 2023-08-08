@@ -10,6 +10,178 @@ All notable changes to this project will be documented in this file.
 
 [#562]: https://github.com/stackabletech/operator-rs/pull/562
 
+### Changed
+
+- Bump all dependencies (including kube and k8s-openapi) ([#632]).
+
+[#632]: https://github.com/stackabletech/operator-rs/pull/632
+
+## [0.45.1] - 2023-08-01
+
+### Fixed
+
+- Support PR versions in automatic stackableVersion - ([#619]) falsely assumed the binaries in `-pr` versions
+  have the version `0.0.0-dev` ([#629]).
+
+[#629]: https://github.com/stackabletech/operator-rs/pull/629
+
+## [0.45.0] - 2023-08-01
+
+### Changed
+
+- [BREAKING] ProductImageSelection now defaults `stackableVersion` to
+  operator version ([#619]).
+- Default `pullPolicy` to operator `Always` ([#619]).
+- BREAKING: Assume that the Vector executable is located in a directory
+  which is specified in the PATH environment variable. This is the case
+  if Vector is installed via RPM ([#625]).
+- BREAKING: Update `product_logging::framework::create_vector_config` to
+  be compatible with Vector version 0.31.0. The product image must
+  contain Vector 0.31.x ([#625]).
+
+### Fixed
+
+- Fix the log level filter for the Vector container. If the level of the
+  ROOT logger was set to TRACE and the level of the file logger was set
+  to DEBUG then TRACE logs were written anyway ([#625]).
+
+[#619]: https://github.com/stackabletech/operator-rs/pull/619
+[#625]: https://github.com/stackabletech/operator-rs/pull/625
+
+## [0.44.0] - 2023-07-13
+
+### Added
+
+- Add a function for calculating the size limit of log volumes ([#621]).
+
+[#621]: https://github.com/stackabletech/operator-rs/pull/621
+
+## [0.43.0] - 2023-07-06
+
+### Added
+
+- Secrets can now be requested in a custom format ([#610]).
+
+### Changed
+
+- Make pod overrides usable independently of roles (like in the case of the Spark operator) ([#616])
+
+[#610]: https://github.com/stackabletech/operator-rs/pull/610
+[#616]: https://github.com/stackabletech/operator-rs/pull/616
+
+## [0.42.2] - 2023-06-27
+
+### Fixed
+
+- Strip out documentation from pod override templates ([#611]).
+
+[#611]: https://github.com/stackabletech/operator-rs/pull/611
+
+## [0.42.1] - 2023-06-15
+
+### Fixed
+
+- Let `PodBuilder::build_template` return `PodTemplateSpec` instead of `OperatorResult<PodTemplateSpec>` (fixup of #598) ([#605]).
+
+[#605]: https://github.com/stackabletech/operator-rs/pull/605
+
+## [0.42.0] - 2023-06-15
+
+### Added
+
+- Add a new `ResourceRequirementsBuilder` to more easily build resource requirements in a controlled and well defined
+  way. ([#598]).
+- Add podOverrides to common struct CommonConfiguration ([#601]).
+- All the operators now must respect the new `podOverrides` attribute! ([#601]).
+- Support ClusterIP type in services created by listener-operator ([#602]).
+
+### Changed
+
+- Set default resource limits on `PodBuilder::add_init_container` ([#598]).
+- Made `StaticAuthenticationProvider` fields public ([#597]).
+- [INTERNALLY BREAKING]: Moved `StaticAuthenticationProvider`, `LdapAuthenticationProvider`, `TlsAuthenticationProvider`
+  to its own module `authentication` ([#597]).
+
+[#597]: https://github.com/stackabletech/operator-rs/pull/597
+[#598]: https://github.com/stackabletech/operator-rs/pull/598
+[#601]: https://github.com/stackabletech/operator-rs/pull/601
+[#602]: https://github.com/stackabletech/operator-rs/pull/602
+
+## [0.41.0] - 2023-04-20
+
+### Changed
+
+- kube: 0.78.0 -> 0.82.2 ([#589]).
+- k8s-openapi: 0.17.0 -> 0.18.0 ([#589]).
+
+[#589]: https://github.com/stackabletech/operator-rs/pull/589
+
+## [0.40.2] - 2023-04-12
+
+### Fixed
+
+- Added clean up for `Job` to cluster resources `delete_orphaned_resources` ([#583]).
+
+[#583]: https://github.com/stackabletech/operator-rs/pull/583
+
+## [0.40.1] - 2023-04-12
+
+### Added
+
+- `ClusterResources` implementation for `Job` ([#581]).
+- Helper methods to generate RBAC `ServiceAccount` and `ClusterRole` names ([#581]).
+
+[#581]: https://github.com/stackabletech/operator-rs/pull/581
+
+## [0.40.0] - 2023-04-11
+
+### Added
+
+- [BREAKING]: Added ownerreferences and labels to `build_rbac_resources` ([#579]).
+
+[#579]: https://github.com/stackabletech/operator-rs/pull/579
+
+## [0.39.1] - 2023-04-07
+
+### Fixed
+
+- Fix the parsing of log4j and logback files in the Vector configuration, avoid
+  rounding errors in the timestamps, and improve the handling of unparseable
+  log events ([#577]).
+
+[#577]: https://github.com/stackabletech/operator-rs/pull/577
+
+## [0.39.0] - 2023-03-31
+
+### Added
+
+- status::condition module to compute the cluster resource status ([#571]).
+- Helper function to build RBAC resources ([#572]).
+- Add `ClusterResourceApplyStrategy` to `ClusterResource` ([#573]).
+- Add `ClusterOperation` common struct with `reconcilation_paused` and `stopped` flags ([#573]).
+
+[#571]: https://github.com/stackabletech/operator-rs/pull/571
+[#572]: https://github.com/stackabletech/operator-rs/pull/572
+[#573]: https://github.com/stackabletech/operator-rs/pull/573
+
+## [0.38.0] - 2023-03-20
+
+### Added
+
+- Helper function to add a restart_policy to PodBuilder ([#565]).
+- Add helper function `SecretOperatorVolumeSourceBuilder::with_kerberos_service_name` ([#568]).
+
+[#565]: https://github.com/stackabletech/operator-rs/pull/565
+[#568]: https://github.com/stackabletech/operator-rs/pull/568
+
+## [0.37.0] - 2023-03-06
+
+### Added
+
+- Vector sources and transforms for OPA bundle builder and OPA json logs ([#557]).
+
+[#557]: https://github.com/stackabletech/operator-rs/pull/557
+
 ## [0.36.1] - 2023-02-27
 
 ### Fixed

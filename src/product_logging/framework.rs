@@ -1,10 +1,17 @@
 //! Log aggregation framework
 
-use std::cmp;
+use std::{cmp, ops::Mul};
 
 use crate::{
-    builder::ContainerBuilder, commons::product_image_selection::ResolvedProductImage,
-    k8s_openapi::api::core::v1::Container, kube::Resource, role_utils::RoleGroupRef,
+    builder::ContainerBuilder,
+    commons::product_image_selection::ResolvedProductImage,
+    k8s_openapi::{
+        api::core::v1::{Container, ResourceRequirements},
+        apimachinery::pkg::api::resource::Quantity,
+    },
+    kube::Resource,
+    memory::{BinaryMultiple, MemoryQuantity},
+    role_utils::RoleGroupRef,
 };
 
 use super::spec::{
@@ -23,6 +30,74 @@ const SHUTDOWN_FILE: &str = "shutdown";
 
 /// File name of the Vector config file
 pub const VECTOR_CONFIG_FILE: &str = "vector.toml";
+
+/// Calculate the size limit for the log volume.
+///
+/// The size limit must be much larger than the sum of the given maximum log file sizes for the
+/// following reasons:
+/// - The log file rollover occurs when the log file exceeds the maximum log file size. Depending
+///   on the size of the last log entries, the file can be several kilobytes larger than defined.
+/// - The actual disk usage depends on the block size of the file system.
+/// - OpenShift sometimes reserves more than twice the amount of blocks than needed. For instance,
+///   a ZooKeeper log file with 4,127,151 bytes occupied 4,032 blocks. Then log entries were written
+///   and the actual file size increased to 4,132,477 bytes which occupied 8,128 blocks.
+///
+/// This function is meant to be used for log volumes up to a size of approximately 100 MiB. The
+/// overhead might not be acceptable for larger volumes, however this needs to be tested
+/// beforehand.
+///
+/// # Example
+///
+/// ```
+/// use stackable_operator::{
+///     builder::{
+///         PodBuilder,
+///         meta::ObjectMetaBuilder,
+///     },
+///     memory::{
+///         BinaryMultiple,
+///         MemoryQuantity,
+///     },
+/// };
+/// # use stackable_operator::product_logging;
+///
+/// const MAX_INIT_CONTAINER_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
+///     value: 1.0,
+///     unit: BinaryMultiple::Mebi,
+/// };
+/// const MAX_MAIN_CONTAINER_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
+///     value: 10.0,
+///     unit: BinaryMultiple::Mebi,
+/// };
+///
+/// PodBuilder::new()
+///     .metadata(ObjectMetaBuilder::default().build())
+///     .add_empty_dir_volume(
+///         "log",
+///         Some(product_logging::framework::calculate_log_volume_size_limit(
+///             &[
+///                 MAX_INIT_CONTAINER_LOG_FILES_SIZE,
+///                 MAX_MAIN_CONTAINER_LOG_FILES_SIZE,
+///             ],
+///         )),
+///     )
+///     .build()
+///     .unwrap();
+/// ```
+pub fn calculate_log_volume_size_limit(max_log_files_size: &[MemoryQuantity]) -> Quantity {
+    let log_volume_size_limit = max_log_files_size
+        .iter()
+        .cloned()
+        .sum::<MemoryQuantity>()
+        .scale_to(BinaryMultiple::Mebi)
+        // According to the reasons mentioned in the function documentation, the multiplier must be
+        // greater than 2. Manual tests with ZooKeeper 3.8 in an OpenShift cluster showed that 3 is
+        // absolutely sufficient.
+        .mul(3.0)
+        // Avoid bulky numbers due to the floating-point arithmetic.
+        .ceil();
+    log_volume_size_limit.into()
+}
 
 /// Create a Bash command which filters stdout and stderr according to the given log configuration
 /// and additionally stores the output in log files
@@ -620,7 +695,7 @@ where
 
     let vector_log_level_filter_expression = match vector_log_level {
         LogLevel::TRACE => "true",
-        LogLevel::DEBUG => r#".level != "TRACE""#,
+        LogLevel::DEBUG => r#".metadata.level != "TRACE""#,
         LogLevel::INFO => r#"!includes(["TRACE", "DEBUG"], .metadata.level)"#,
         LogLevel::WARN => r#"!includes(["TRACE", "DEBUG", "INFO"], .metadata.level)"#,
         LogLevel::ERROR => r#"!includes(["TRACE", "DEBUG", "INFO", "WARN"], .metadata.level)"#,
@@ -648,12 +723,13 @@ include = ["{STACKABLE_LOG_DIR}/*/*.stderr.log"]
 [sources.files_log4j]
 type = "file"
 include = ["{STACKABLE_LOG_DIR}/*/*.log4j.xml"]
+line_delimiter = "\r\n"
 
 [sources.files_log4j.multiline]
-mode = "halt_with"
+mode = "halt_before"
 start_pattern = "^<log4j:event"
-condition_pattern = "</log4j:event>\r$"
-timeout_ms = 10000
+condition_pattern = "^<log4j:event"
+timeout_ms = 1000
 
 [sources.files_log4j2]
 type = "file"
@@ -667,6 +743,55 @@ include = ["{STACKABLE_LOG_DIR}/*/*.py.json"]
 [sources.files_airlift]
 type = "file"
 include = ["{STACKABLE_LOG_DIR}/*/*.airlift.json"]
+
+[sources.files_opa_bundle_builder]
+type = "file"
+include = ["{STACKABLE_LOG_DIR}/bundle-builder/current"]
+
+[sources.files_opa_json]
+type = "file"
+include = ["{STACKABLE_LOG_DIR}/opa/current"]
+
+[transforms.processed_files_opa_bundle_builder]
+inputs = ["files_opa_bundle_builder"]
+type = "remap"
+source = '''
+parsed_event = parse_regex!(strip_whitespace(strip_ansi_escape_codes(string!(.message))), r'(?P<timestamp>[0-9]{{4}}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9].[0-9]{{6}}Z)[ ]+(?P<level>\w+)[ ]+(?P<logger>.+):[ ]+(?P<message>.*)')
+.timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%6fZ")
+.level = parsed_event.level
+.logger = parsed_event.logger
+.message = parsed_event.message
+'''
+
+[transforms.processed_files_opa_json]
+inputs = ["files_opa_json"]
+type = "remap"
+source = '''
+parsed_event = parse_json!(string!(.message))
+keys = keys!(parsed_event)
+
+if includes(keys, "timestamp") {{
+  .timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+}} else {{
+  .timestamp = parse_timestamp!(parsed_event.time, "%Y-%m-%dT%H:%M:%SZ")
+}}
+
+if includes(keys, "decision_id") {{
+  .logger = "decision"
+}} else {{
+  .logger = "server"
+}} 
+
+.level = upcase!(parsed_event.level)
+.message = string!(parsed_event.msg)
+
+del(parsed_event.time)
+del(parsed_event.timestamp)
+del(parsed_event.level)
+del(parsed_event.msg)
+
+.message = .message + "\n" + encode_key_value(object!(parsed_event), field_delimiter: "\n")
+'''
 
 [transforms.processed_files_stdout]
 inputs = ["files_stdout"]
@@ -688,15 +813,24 @@ source = '''
 inputs = ["files_log4j"]
 type = "remap"
 source = '''
+# Wrap the event so that the log4j namespace is defined when parsing the event
 wrapped_xml_event = "<root xmlns:log4j=\"http://jakarta.apache.org/log4j/\">" + string!(.message) + "</root>"
-parsed_event = parse_xml!(wrapped_xml_event).root.event
-.timestamp = to_timestamp!(to_float!(parsed_event.@timestamp) / 1000)
-.logger = parsed_event.@logger
-.level = parsed_event.@level
-.message = join!(
-    filter([parsed_event.message, parsed_event.throwable]) -> |_index, value| {{
-        !is_nullish(value)
-    }}, "\n")
+parsed_event = parse_xml(wrapped_xml_event) ?? {{ "root": {{ "event": {{ "message": .message }} }} }}
+event = parsed_event.root.event
+
+epoch_milliseconds = to_int(event.@timestamp) ?? 0
+if epoch_milliseconds != 0 {{
+    .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
+}}
+if is_null(.timestamp) {{
+    .timestamp = now()
+}}
+
+.logger = to_string(event.@logger) ?? ""
+
+.level = to_string(event.@level) ?? ""
+
+.message = join(compact([event.message, event.throwable]), "\n") ?? .message
 '''
 
 [transforms.processed_files_log4j2]
@@ -710,13 +844,13 @@ instant = parsed_event.Instant
 if instant != null {{
     epoch_nanoseconds = to_int(instant.@epochSecond) * 1_000_000_000 + to_int(instant.@nanoOfSecond) ?? null
     if epoch_nanoseconds != null {{
-        .timestamp = to_timestamp(epoch_nanoseconds, "nanoseconds") ?? null
+        .timestamp = from_unix_timestamp(epoch_nanoseconds, "nanoseconds") ?? null
     }}
 }}
 if .timestamp == null && parsed_event.@timeMillis != null {{
     epoch_milliseconds = to_int(parsed_event.@timeMillis) ?? null
     if epoch_milliseconds != null {{
-        .timestamp = to_timestamp(epoch_milliseconds, "milliseconds") ?? null
+        .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
     }}
 }}
 if .timestamp == null {{
@@ -866,9 +1000,11 @@ address = "{vector_aggregator_address}"
 ///     builder::{
 ///         meta::ObjectMetaBuilder,
 ///         PodBuilder,
+///         resources::ResourceRequirementsBuilder
 ///     },
 ///     product_logging,
 /// };
+/// use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 /// # use stackable_operator::{
 /// #     commons::product_image_selection::ResolvedProductImage,
 /// #     config::fragment,
@@ -894,12 +1030,20 @@ address = "{vector_aggregator_address}"
 /// let mut pod_builder = PodBuilder::new();
 /// pod_builder.metadata(ObjectMetaBuilder::default().build());
 ///
+/// let resources = ResourceRequirementsBuilder::new()
+///     .with_cpu_request("1")
+///     .with_cpu_limit("1")
+///     .with_memory_request("1Gi")
+///     .with_memory_limit("1Gi")
+///     .build();
+///
 /// if logging.enable_vector_agent {
 ///     pod_builder.add_container(product_logging::framework::vector_container(
 ///         &resolved_product_image,
 ///         "config",
 ///         "log",
 ///         logging.containers.get(&Container::Vector),
+///         resources,
 ///     ));
 /// }
 ///
@@ -910,6 +1054,7 @@ pub fn vector_container(
     config_volume_name: &str,
     log_volume_name: &str,
     log_config: Option<&ContainerLogConfig>,
+    resources: ResourceRequirements,
 ) -> Container {
     let log_level = if let Some(ContainerLogConfig {
         choice: Some(ContainerLogConfigChoice::Automatic(automatic_log_config)),
@@ -924,18 +1069,19 @@ pub fn vector_container(
         .unwrap()
         .image_from_product_image(image)
         .command(vec!["bash".into(), "-c".into()])
-        .args(vec![
-            format!("\
-/stackable/vector/bin/vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$! && \
+        .args(vec![format!(
+            "\
+vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$! && \
 if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then \
 mkdir -p {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR} && \
 inotifywait -qq --event create {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}; \
 fi && \
-kill $vector_pid"),
-        ])
+kill $vector_pid"
+        )])
         .add_env_var("VECTOR_LOG", log_level.to_vector_literal())
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
         .add_volume_mount(log_volume_name, STACKABLE_LOG_DIR)
+        .resources(resources)
         .build()
 }
 
@@ -975,7 +1121,29 @@ touch {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}"
 mod tests {
     use super::*;
     use crate::product_logging::spec::{AppenderConfig, LoggerConfig};
+    use rstest::rstest;
     use std::collections::BTreeMap;
+
+    #[rstest]
+    #[case("0Mi", &[])]
+    #[case("3Mi", &["1Mi"])]
+    #[case("5Mi", &["1.5Mi"])]
+    #[case("1Mi", &["100Ki"])]
+    #[case("3076Mi", &["1Ki", "1Mi", "1Gi"])]
+    fn test_calculate_log_volume_size_limit(
+        #[case] expected_log_volume_size_limit: &str,
+        #[case] max_log_files_sizes: &[&str],
+    ) {
+        let input = max_log_files_sizes
+            .iter()
+            .map(|v| MemoryQuantity::try_from(Quantity(v.to_string())).unwrap())
+            .collect::<Vec<_>>();
+        let calculated_log_volume_size_limit = calculate_log_volume_size_limit(&input);
+        assert_eq!(
+            Quantity(expected_log_volume_size_limit.to_string()),
+            calculated_log_volume_size_limit
+        );
+    }
 
     #[test]
     fn test_create_log4j2_config() {

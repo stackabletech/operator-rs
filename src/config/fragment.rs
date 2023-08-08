@@ -15,6 +15,7 @@ use super::merge::Merge;
 #[cfg(doc)]
 use crate::role_utils::{Role, RoleGroup};
 
+use k8s_openapi::api::core::v1::PodTemplateSpec;
 use snafu::Snafu;
 
 pub use stackable_operator_derive::Fragment;
@@ -190,6 +191,17 @@ impl<T: FromFragment> FromFragment for Option<T> {
         } else {
             Ok(None)
         }
+    }
+}
+impl FromFragment for PodTemplateSpec {
+    type Fragment = PodTemplateSpec;
+    type RequiredFragment = PodTemplateSpec;
+
+    fn from_fragment(
+        fragment: Self::Fragment,
+        _validator: Validator,
+    ) -> Result<Self, ValidationError> {
+        Ok(fragment)
     }
 }
 

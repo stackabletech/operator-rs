@@ -47,8 +47,10 @@ pub struct ProductImageCustom {
 pub struct ProductImageStackableVersion {
     /// Version of the product, e.g. `1.4.1`.
     product_version: String,
-    /// Stackable version of the product, e.g. 2.1.0
-    stackable_version: String,
+    /// Stackable version of the product, e.g. `23.4`, `23.4.1` or `0.0.0-dev`.
+    /// If not specified, the operator will use its own version, e.g. `23.4.1`.
+    /// When using a nightly operator or a pr version, it will use the nightly `0.0.0-dev` image.
+    stackable_version: Option<String>,
     /// Name of the docker repo, e.g. `docker.stackable.tech/stackable`
     repo: Option<String>,
 }
@@ -67,58 +69,67 @@ pub struct ResolvedProductImage {
     pub pull_secrets: Option<Vec<LocalObjectReference>>,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename = "PascalCase")]
 #[derive(AsRefStr)]
+/// We default to `Always`, as we use floating tags for our release lines.
+/// This means the tag 23.4 starts of pointing to the same image 23.4.0 does, but switches to 23.4.1 after the releases of 23.4.1.
 pub enum PullPolicy {
     IfNotPresent,
+    #[default]
     Always,
     Never,
 }
 
-impl Default for PullPolicy {
-    fn default() -> PullPolicy {
-        PullPolicy::IfNotPresent
-    }
-}
-
 impl ProductImage {
-    pub fn resolve(&self, image_base_name: &str) -> ResolvedProductImage {
+    /// `image_base_name` should be base of the image name in the container image registry, e.g. `trino`.
+    /// `operator_version` needs to be the full operator version and a valid semver string.
+    /// Accepted values are `23.7.0`, `0.0.0-dev` or `0.0.0-pr123`. Other variants are not supported.
+    pub fn resolve(&self, image_base_name: &str, operator_version: &str) -> ResolvedProductImage {
         let image_pull_policy = self.pull_policy.as_ref().to_string();
         let pull_secrets = self.pull_secrets.clone();
 
         match &self.image_selection {
-            ProductImageSelection::Custom(custom) => {
-                let custom_image_tag = custom
+            ProductImageSelection::Custom(image_selection) => {
+                let image_tag = image_selection
                     .custom
                     .split_once(':')
                     .map_or("latest", |splits| splits.1);
-                let app_version_label = format!("{}-{}", custom.product_version, custom_image_tag);
+                let app_version_label =
+                    format!("{}-{}", image_selection.product_version, image_tag);
                 ResolvedProductImage {
-                    product_version: custom.product_version.to_string(),
+                    product_version: image_selection.product_version.to_string(),
                     app_version_label,
-                    image: custom.custom.to_string(),
+                    image: image_selection.custom.clone(),
                     image_pull_policy,
                     pull_secrets,
                 }
             }
-            ProductImageSelection::StackableVersion(stackable_version) => {
-                let repo = stackable_version
+            ProductImageSelection::StackableVersion(image_selection) => {
+                let repo = image_selection
                     .repo
                     .as_deref()
                     .unwrap_or(STACKABLE_DOCKER_REPO);
+                let stackable_version = match &image_selection.stackable_version {
+                    Some(stackable_version) => stackable_version,
+                    None => {
+                        if operator_version.starts_with("0.0.0-") {
+                            "0.0.0-dev"
+                        } else {
+                            operator_version
+                        }
+                    }
+                };
                 let image = format!(
                     "{repo}/{image_base_name}:{product_version}-stackable{stackable_version}",
-                    product_version = stackable_version.product_version,
-                    stackable_version = stackable_version.stackable_version,
+                    product_version = image_selection.product_version,
                 );
                 let app_version_label = format!(
                     "{product_version}-stackable{stackable_version}",
-                    product_version = stackable_version.product_version,
-                    stackable_version = stackable_version.stackable_version,
+                    product_version = image_selection.product_version,
                 );
                 ResolvedProductImage {
-                    product_version: stackable_version.product_version.to_string(),
+                    product_version: image_selection.product_version.to_string(),
                     app_version_label,
                     image,
                     image_pull_policy,
@@ -136,8 +147,51 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
+    #[case::stackable_version_without_stackable_version_stable_version(
+        "superset",
+        "23.7.42",
+        r#"
+        productVersion: 1.4.1
+        "#,
+        ResolvedProductImage {
+            image: "docker.stackable.tech/stackable/superset:1.4.1-stackable23.7.42".to_string(),
+            app_version_label: "1.4.1-stackable23.7.42".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::stackable_version_without_stackable_version_nightly(
+        "superset",
+        "0.0.0-dev",
+        r#"
+        productVersion: 1.4.1
+        "#,
+        ResolvedProductImage {
+            image: "docker.stackable.tech/stackable/superset:1.4.1-stackable0.0.0-dev".to_string(),
+            app_version_label: "1.4.1-stackable0.0.0-dev".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::stackable_version_without_stackable_version_pr_version(
+        "superset",
+        "0.0.0-pr123",
+        r#"
+        productVersion: 1.4.1
+        "#,
+        ResolvedProductImage {
+            image: "docker.stackable.tech/stackable/superset:1.4.1-stackable0.0.0-dev".to_string(),
+            app_version_label: "1.4.1-stackable0.0.0-dev".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        }
+    )]
     #[case::stackable_version_without_repo(
         "superset",
+        "23.7.42",
         r#"
         productVersion: 1.4.1
         stackableVersion: 2.1.0
@@ -146,12 +200,13 @@ mod tests {
             image: "docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0".to_string(),
             app_version_label: "1.4.1-stackable2.1.0".to_string(),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "IfNotPresent".to_string(),
+            image_pull_policy: "Always".to_string(),
             pull_secrets: None,
         }
     )]
     #[case::stackable_version_with_repo(
         "trino",
+        "23.7.42",
         r#"
         productVersion: 1.4.1
         stackableVersion: 2.1.0
@@ -161,12 +216,13 @@ mod tests {
             image: "my.corp/myteam/stackable/trino:1.4.1-stackable2.1.0".to_string(),
             app_version_label: "1.4.1-stackable2.1.0".to_string(),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "IfNotPresent".to_string(),
+            image_pull_policy: "Always".to_string(),
             pull_secrets: None,
         }
     )]
     #[case::custom_without_tag(
         "superset",
+        "23.7.42",
         r#"
         custom: my.corp/myteam/stackable/superset
         productVersion: 1.4.1
@@ -175,12 +231,13 @@ mod tests {
             image: "my.corp/myteam/stackable/superset".to_string(),
             app_version_label: "1.4.1-latest".to_string(),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "IfNotPresent".to_string(),
+            image_pull_policy: "Always".to_string(),
             pull_secrets: None,
         }
     )]
     #[case::custom_with_tag(
         "superset",
+        "23.7.42",
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
@@ -189,12 +246,13 @@ mod tests {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
             app_version_label: "1.4.1-latest-and-greatest".to_string(),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "IfNotPresent".to_string(),
+            image_pull_policy: "Always".to_string(),
             pull_secrets: None,
         }
     )]
     #[case::custom_takes_precedence(
         "superset",
+        "23.7.42",
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
@@ -204,12 +262,13 @@ mod tests {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
             app_version_label: "1.4.1-latest-and-greatest".to_string(),
             product_version: "1.4.1".to_string(),
-            image_pull_policy: "IfNotPresent".to_string(),
+            image_pull_policy: "Always".to_string(),
             pull_secrets: None,
         }
     )]
     #[case::pull_policy_if_not_present(
         "superset",
+        "23.7.42",
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
@@ -225,6 +284,7 @@ mod tests {
     )]
     #[case::pull_policy_always(
         "superset",
+        "23.7.42",
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
@@ -240,6 +300,7 @@ mod tests {
     )]
     #[case::pull_policy_never(
         "superset",
+        "23.7.42",
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
@@ -255,6 +316,7 @@ mod tests {
     )]
     #[case::pull_secrets(
         "superset",
+        "23.7.42",
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
         productVersion: 1.4.1
@@ -273,11 +335,12 @@ mod tests {
     )]
     fn test_correct_resolved_image(
         #[case] image_base_name: String,
+        #[case] operator_version: String,
         #[case] input: String,
         #[case] expected: ResolvedProductImage,
     ) {
         let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
-        let resolved_product_image = product_image.resolve(&image_base_name);
+        let resolved_product_image = product_image.resolve(&image_base_name, &operator_version);
 
         assert_eq!(resolved_product_image, expected);
     }
@@ -286,12 +349,6 @@ mod tests {
     #[case::custom(
         r#"
         custom: my.corp/myteam/stackable/superset:latest-and-greatest
-        "#,
-        "data did not match any variant of untagged enum ProductImageSelection at line 2 column 9"
-    )]
-    #[case::product_version(
-        r#"
-        productVersion: 1.4.1
         "#,
         "data did not match any variant of untagged enum ProductImageSelection at line 2 column 9"
     )]
