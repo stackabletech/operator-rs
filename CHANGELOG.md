@@ -4,11 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.46.0] - 2023-08-08
+
 ### Changed
 
 - Bump all dependencies (including kube and k8s-openapi) ([#632]).
+- Bump Rust version to 0.71.0 ([#633]).
+- Refactor Cargo.toml's to share workspace configuration, such as version and license ([#633]).
 
 [#632]: https://github.com/stackabletech/operator-rs/pull/632
+[#633]: https://github.com/stackabletech/operator-rs/pull/633
 
 ## [0.45.1] - 2023-08-01
 
