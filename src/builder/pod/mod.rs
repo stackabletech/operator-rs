@@ -143,7 +143,7 @@ impl PodBuilder {
     }
 
     pub fn phase(&mut self, phase: &str) -> &mut Self {
-        let mut status = self.status.get_or_insert_with(PodStatus::default);
+        let status = self.status.get_or_insert_with(PodStatus::default);
         status.phase = Some(phase.to_string());
         self
     }
