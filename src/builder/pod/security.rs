@@ -63,7 +63,7 @@ impl SecurityContextBuilder {
     }
 
     pub fn se_linux_level(&mut self, level: impl Into<String>) -> &mut Self {
-        let mut sc = self
+        let sc = self
             .security_context
             .se_linux_options
             .get_or_insert_with(SELinuxOptions::default);
@@ -71,7 +71,7 @@ impl SecurityContextBuilder {
         self
     }
     pub fn se_linux_role(&mut self, role: impl Into<String>) -> &mut Self {
-        let mut sc = self
+        let sc = self
             .security_context
             .se_linux_options
             .get_or_insert_with(SELinuxOptions::default);
@@ -80,7 +80,7 @@ impl SecurityContextBuilder {
     }
 
     pub fn se_linux_type(&mut self, type_: impl Into<String>) -> &mut Self {
-        let mut sc = self
+        let sc = self
             .security_context
             .se_linux_options
             .get_or_insert_with(SELinuxOptions::default);
@@ -89,7 +89,7 @@ impl SecurityContextBuilder {
     }
 
     pub fn se_linux_user(&mut self, user: impl Into<String>) -> &mut Self {
-        let mut sc = self
+        let sc = self
             .security_context
             .se_linux_options
             .get_or_insert_with(SELinuxOptions::default);
@@ -98,7 +98,7 @@ impl SecurityContextBuilder {
     }
 
     pub fn seccomp_profile_localhost(&mut self, profile: impl Into<String>) -> &mut Self {
-        let mut sc = self
+        let sc = self
             .security_context
             .seccomp_profile
             .get_or_insert_with(SeccompProfile::default);
@@ -107,7 +107,7 @@ impl SecurityContextBuilder {
     }
 
     pub fn seccomp_profile_type(&mut self, type_: impl Into<String>) -> &mut Self {
-        let mut sc = self
+        let sc = self
             .security_context
             .seccomp_profile
             .get_or_insert_with(SeccompProfile::default);
@@ -116,7 +116,7 @@ impl SecurityContextBuilder {
     }
 
     pub fn win_credential_spec(&mut self, spec: impl Into<String>) -> &mut Self {
-        let mut wo = self
+        let wo = self
             .security_context
             .windows_options
             .get_or_insert_with(WindowsSecurityContextOptions::default);
@@ -125,7 +125,7 @@ impl SecurityContextBuilder {
     }
 
     pub fn win_credential_spec_name(&mut self, name: impl Into<String>) -> &mut Self {
-        let mut wo = self
+        let wo = self
             .security_context
             .windows_options
             .get_or_insert_with(WindowsSecurityContextOptions::default);
@@ -134,7 +134,7 @@ impl SecurityContextBuilder {
     }
 
     pub fn win_run_as_user_name(&mut self, name: impl Into<String>) -> &mut Self {
-        let mut wo = self
+        let wo = self
             .security_context
             .windows_options
             .get_or_insert_with(WindowsSecurityContextOptions::default);

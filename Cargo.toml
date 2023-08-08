@@ -1,44 +1,51 @@
-[package]
+[workspace.package]
+version = "0.46.0"
 authors = ["Stackable GmbH <info@stackable.de>"]
-description = "Stackable Operator Framework"
-edition = "2021"
 license = "Apache-2.0"
-name = "stackable-operator"
-version = "0.45.1"
+edition = "2021"
 repository = "https://github.com/stackabletech/operator-rs"
+
+[package]
+name = "stackable-operator"
+description = "Stackable Operator Framework"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+repository.workspace = true
 
 [dependencies]
 chrono = { version = "0.4.26", default-features = false }
-clap = { version = "4.3.4", features = ["derive", "cargo", "env"] }
+clap = { version = "4.3.19", features = ["derive", "cargo", "env"] }
 const_format = "0.2.31"
-either = "1.8.1"
+either = "1.9.0"
 futures = "0.3.28"
 json-patch = "1.0.0"
-k8s-openapi = { version = "0.18.0", default-features = false, features = ["schemars", "v1_26"] }
-kube = { version = "0.83.0", features = ["jsonpatch", "runtime", "derive"] }
+k8s-openapi = { version = "0.19.0", default-features = false, features = ["schemars", "v1_27"] }
+kube = { version = "0.85.0", features = ["jsonpatch", "runtime", "derive"] }
 lazy_static = "1.4.0"
 product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.4.0" }
 rand = "0.8.5"
-regex = "1.8.4"
+regex = "1.9.3"
 schemars = "0.8.12"
-serde = { version = "1.0.164", features = ["derive"] }
-serde_json = "1.0.96"
-serde_yaml = "0.9.21"
-strum = { version = "0.24.1", features = ["derive"] }
-thiserror = "1.0.40"
-tokio = { version = "1.28.2", features = ["macros", "rt-multi-thread"] }
+serde = { version = "=1.0.171", features = ["derive"] } # We need to pin 1.0.171 as of now, as otherwise Nix builds break because of https://github.com/serde-rs/serde/issues/2538
+serde_json = "1.0.104"
+serde_yaml = "0.9.25"
+strum = { version = "0.25.0", features = ["derive"] }
+thiserror = "1.0.44"
+tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 derivative = "2.2.0"
-tracing-opentelemetry = "0.19.0"
-opentelemetry = { version = "0.19.0", features = ["rt-tokio"] }
-opentelemetry-jaeger = { version = "0.18.0", features = ["rt-tokio"] }
+tracing-opentelemetry = "0.20.0"
+opentelemetry = { version = "0.20.0", features = ["rt-tokio"] }
+opentelemetry-jaeger = { version = "0.19.0", features = ["rt-tokio"] }
 stackable-operator-derive = { path = "stackable-operator-derive" }
-snafu = "0.7.4"
+snafu = "0.7.5"
 
 [dev-dependencies]
-rstest = "0.17.0"
-tempfile = "3.6.0"
+rstest = "0.18.1"
+tempfile = "3.7.1"
 
 [workspace]
 members = ["stackable-operator-derive"]
