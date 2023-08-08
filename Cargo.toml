@@ -1,5 +1,4 @@
 [workspace.package]
-description = "Stackable Operator Framework"
 version = "0.46.0"
 authors = ["Stackable GmbH <info@stackable.de>"]
 license = "Apache-2.0"
@@ -8,11 +7,11 @@ repository = "https://github.com/stackabletech/operator-rs"
 
 [package]
 name = "stackable-operator"
+description = "Stackable Operator Framework"
 version.workspace = true
 authors.workspace = true
-edition.workspace = true
-description.workspace = true
 license.workspace = true
+edition.workspace = true
 repository.workspace = true
 
 [dependencies]
