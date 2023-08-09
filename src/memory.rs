@@ -356,7 +356,7 @@ impl Add<MemoryQuantity> for MemoryQuantity {
     }
 }
 
-impl Sum<MemoryQuantity> for MemoryQuantity {
+impl Sum for MemoryQuantity {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.fold(
             MemoryQuantity {
