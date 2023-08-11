@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Switch from `openssl` to `rustls` ([#634]).
+- Switch from `openssl` to `rustls` ([#635]).
 
 [#634]: https://github.com/stackabletech/operator-rs/pull/634
 [#635]: https://github.com/stackabletech/operator-rs/pull/635
