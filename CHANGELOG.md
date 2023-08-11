@@ -8,7 +8,12 @@ All notable changes to this project will be documented in this file.
 
 - Implement `Sum` for `CpuQuantity` and `MemoryQuantity` ([#634]).
 
+### Changed
+
+- Switch from `openssl` to `rustls` ([#634]).
+
 [#634]: https://github.com/stackabletech/operator-rs/pull/634
+[#635]: https://github.com/stackabletech/operator-rs/pull/635
 
 ## [0.46.0] - 2023-08-08
 
