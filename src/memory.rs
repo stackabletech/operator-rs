@@ -557,7 +557,11 @@ mod test {
         let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
         let expected = MemoryQuantity::try_from(Quantity(res.to_owned())).unwrap();
         let actual = lhs - rhs;
-        assert_eq!(expected, actual)
+        assert_eq!(expected, actual);
+
+        let mut actual = lhs;
+        actual -= rhs;
+        assert_eq!(expected, actual);
     }
 
     #[rstest]
@@ -576,10 +580,6 @@ mod test {
         actual += lhs;
         actual += rhs;
         assert_eq!(expected, actual);
-
-        actual -= lhs;
-        actual -= rhs;
-        assert_eq!(MemoryQuantity::from_mebi(0.0), actual);
     }
 
     #[rstest]
