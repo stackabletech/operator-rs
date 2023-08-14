@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - Implement `Sum` for `CpuQuantity` and `MemoryQuantity` ([#634]).
 
+### Fixed
+
+- Fixed buggy `Div`, `SubAssign` and `AddAssign` for `MemoryQuantity` when left and right side had different units ([#XXX]).
+
 [#634]: https://github.com/stackabletech/operator-rs/pull/634
 
 ## [0.46.0] - 2023-08-08
