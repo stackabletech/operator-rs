@@ -10,9 +10,10 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Fixed buggy `Div`, `SubAssign` and `AddAssign` for `MemoryQuantity` when left and right side had different units ([#XXX]).
+- Fixed buggy `Div`, `SubAssign` and `AddAssign` for `MemoryQuantity` when left and right side had different units ([#636]).
 
 [#634]: https://github.com/stackabletech/operator-rs/pull/634
+[#636]: https://github.com/stackabletech/operator-rs/pull/636
 
 ## [0.46.0] - 2023-08-08
 
