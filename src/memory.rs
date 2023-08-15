@@ -324,6 +324,7 @@ impl Div<MemoryQuantity> for MemoryQuantity {
     type Output = f32;
 
     fn div(self, rhs: MemoryQuantity) -> Self::Output {
+        let rhs = rhs.scale_to(self.unit);
         self.value / rhs.value
     }
 }
@@ -341,6 +342,7 @@ impl Sub<MemoryQuantity> for MemoryQuantity {
 
 impl SubAssign<MemoryQuantity> for MemoryQuantity {
     fn sub_assign(&mut self, rhs: MemoryQuantity) {
+        let rhs = rhs.scale_to(self.unit);
         self.value -= rhs.value;
     }
 }
@@ -370,6 +372,7 @@ impl Sum for MemoryQuantity {
 
 impl AddAssign<MemoryQuantity> for MemoryQuantity {
     fn add_assign(&mut self, rhs: MemoryQuantity) {
+        let rhs = rhs.scale_to(self.unit);
         self.value += rhs.value;
     }
 }
@@ -447,12 +450,13 @@ mod test {
     use rstest::rstest;
 
     #[rstest]
-    #[case("256Ki", MemoryQuantity { value: 256f32, unit: BinaryMultiple::Kibi })]
-    #[case("8Mi", MemoryQuantity { value: 8f32, unit: BinaryMultiple::Mebi })]
-    #[case("1.5Gi", MemoryQuantity { value: 1.5f32, unit: BinaryMultiple::Gibi })]
-    #[case("0.8Ti", MemoryQuantity { value: 0.8f32, unit: BinaryMultiple::Tebi })]
-    #[case("3.2Pi", MemoryQuantity { value: 3.2f32, unit: BinaryMultiple::Pebi })]
-    #[case("0.2Ei", MemoryQuantity { value: 0.2f32, unit: BinaryMultiple::Exbi })]
+    #[case("256Ki", MemoryQuantity { value: 256.0, unit: BinaryMultiple::Kibi })]
+    #[case("49041204Ki", MemoryQuantity { value: 49041204.0, unit: BinaryMultiple::Kibi })]
+    #[case("8Mi", MemoryQuantity { value: 8.0, unit: BinaryMultiple::Mebi })]
+    #[case("1.5Gi", MemoryQuantity { value: 1.5, unit: BinaryMultiple::Gibi })]
+    #[case("0.8Ti", MemoryQuantity { value: 0.8, unit: BinaryMultiple::Tebi })]
+    #[case("3.2Pi", MemoryQuantity { value: 3.2, unit: BinaryMultiple::Pebi })]
+    #[case("0.2Ei", MemoryQuantity { value: 0.2, unit: BinaryMultiple::Exbi })]
     fn test_memory_parse(#[case] input: &str, #[case] output: MemoryQuantity) {
         let got = input.parse::<MemoryQuantity>().unwrap();
         assert_eq!(got, output);
@@ -553,7 +557,11 @@ mod test {
         let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
         let expected = MemoryQuantity::try_from(Quantity(res.to_owned())).unwrap();
         let actual = lhs - rhs;
-        assert_eq!(expected, actual)
+        assert_eq!(expected, actual);
+
+        let mut actual = lhs;
+        actual -= rhs;
+        assert_eq!(expected, actual);
     }
 
     #[rstest]
@@ -566,7 +574,12 @@ mod test {
         let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
         let expected = MemoryQuantity::try_from(Quantity(res.to_owned())).unwrap();
         let actual = lhs + rhs;
-        assert_eq!(expected, actual)
+        assert_eq!(expected, actual);
+
+        let mut actual = MemoryQuantity::from_mebi(0.0);
+        actual += lhs;
+        actual += rhs;
+        assert_eq!(expected, actual);
     }
 
     #[rstest]
