@@ -414,6 +414,12 @@ impl FromStr for MemoryQuantity {
     }
 }
 
+impl Display for MemoryQuantity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", self.value, self.unit)
+    }
+}
+
 impl TryFrom<Quantity> for MemoryQuantity {
     type Error = Error;
 
@@ -438,7 +444,7 @@ impl From<MemoryQuantity> for Quantity {
 
 impl From<&MemoryQuantity> for Quantity {
     fn from(quantity: &MemoryQuantity) -> Self {
-        Quantity(format!("{}{}", quantity.value, quantity.unit))
+        Quantity(format!("{}", quantity))
     }
 }
 
@@ -460,6 +466,18 @@ mod test {
     fn test_memory_parse(#[case] input: &str, #[case] output: MemoryQuantity) {
         let got = input.parse::<MemoryQuantity>().unwrap();
         assert_eq!(got, output);
+    }
+
+    #[rstest]
+    #[case("256Ki")]
+    #[case("1.6Mi")]
+    #[case("1.2Gi")]
+    #[case("1.6Gi")]
+    #[case("1Gi")]
+    pub fn test_fmt(#[case] q: String) {
+        let m = MemoryQuantity::try_from(Quantity(q.clone())).unwrap();
+        let actual = format!("{m}");
+        assert_eq!(q, actual);
     }
 
     #[rstest]
