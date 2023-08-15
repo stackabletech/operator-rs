@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Implement Display for MemoryQuantity ([#638]).
 - Implement `Sum` for `CpuQuantity` and `MemoryQuantity` ([#634]).
 
 ### Changed
@@ -20,6 +21,7 @@ All notable changes to this project will be documented in this file.
 [#635]: https://github.com/stackabletech/operator-rs/pull/635
 [#636]: https://github.com/stackabletech/operator-rs/pull/636
 [#637]: https://github.com/stackabletech/operator-rs/pull/637
+[#638]: https://github.com/stackabletech/operator-rs/pull/638
 
 ## [0.46.0] - 2023-08-08
 
