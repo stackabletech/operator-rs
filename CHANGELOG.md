@@ -8,11 +8,16 @@ All notable changes to this project will be documented in this file.
 
 - Implement `Sum` for `CpuQuantity` and `MemoryQuantity` ([#634]).
 
+### Changed
+
+- Switch from `openssl` to `rustls` ([#635]).
+
 ### Fixed
 
 - Fixed buggy `Div`, `SubAssign` and `AddAssign` for `MemoryQuantity` when left and right side had different units ([#636], [#637]).
 
 [#634]: https://github.com/stackabletech/operator-rs/pull/634
+[#635]: https://github.com/stackabletech/operator-rs/pull/635
 [#636]: https://github.com/stackabletech/operator-rs/pull/636
 [#637]: https://github.com/stackabletech/operator-rs/pull/637
 
