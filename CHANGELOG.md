@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Implement Display for MemoryQuantity ([#638]).
+- Implement `Display` for `MemoryQuantity` ([#638]).
 - Implement `Sum` for `CpuQuantity` and `MemoryQuantity` ([#634]).
 
 ### Changed
