@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Switch from `openssl` to `rustls` ([#635]).
-- Bump `product-config`` 0.4.0 -> 0.5.0 ([#XXX]).
+- Bump `product-config`` 0.4.0 -> 0.5.0 ([#639]).
 
 ### Fixed
 
@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 [#636]: https://github.com/stackabletech/operator-rs/pull/636
 [#637]: https://github.com/stackabletech/operator-rs/pull/637
 [#638]: https://github.com/stackabletech/operator-rs/pull/638
+[#639]: https://github.com/stackabletech/operator-rs/pull/639
 
 ## [0.46.0] - 2023-08-08
 
