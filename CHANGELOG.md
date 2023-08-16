@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add `PodBuilder::termination_grace_period_seconds` ([#641]).
+- Add support for adding `lifecycle`s to `ContainerBuilder` ([#641]).
 
 [#641]: https://github.com/stackabletech/operator-rs/pull/641
 
