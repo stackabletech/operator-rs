@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.47.0] - 2023-08-16
+
 ### Added
 
 - Implement `Display` for `MemoryQuantity` ([#638]).
