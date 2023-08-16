@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Switch from `openssl` to `rustls` ([#635]).
+- Bump `product-config`` 0.4.0 -> 0.5.0 ([#XXX]).
 
 ### Fixed
 
