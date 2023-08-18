@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.48.0] - 2023-08-18
+
 ### Added
 
 - Add `PodBuilder::termination_grace_period_seconds` ([#641]).
