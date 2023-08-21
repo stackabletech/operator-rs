@@ -32,7 +32,7 @@ product-config = { git = "https://github.com/stackabletech/product-config.git", 
 rand = "0.8.5"
 regex = "1.9.3"
 schemars = "0.8.12"
-serde = { version = "=1.0.171", features = ["derive"] } # We need to pin 1.0.171 as of now, as otherwise Nix builds break because of https://github.com/serde-rs/serde/issues/2538
+serde = { version = "1.0.184", features = ["derive"] }
 serde_json = "1.0.104"
 serde_yaml = "0.9.25"
 snafu = "0.7.5"
