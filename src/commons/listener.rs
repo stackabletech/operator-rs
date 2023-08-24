@@ -106,3 +106,15 @@ pub struct ListenerIngress {
     /// Port mapping table.
     pub ports: BTreeMap<String, i32>,
 }
+
+#[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, Default)]
+#[kube(
+    group = "listeners.stackable.tech",
+    version = "v1alpha1",
+    kind = "PodListeners",
+    namespaced
+)]
+#[serde(rename_all = "camelCase")]
+pub struct PodListenersSpec {
+    pub listeners: BTreeMap<String, Vec<ListenerIngress>>,
+}
