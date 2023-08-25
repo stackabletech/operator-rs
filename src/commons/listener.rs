@@ -116,5 +116,19 @@ pub struct ListenerIngress {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct PodListenersSpec {
-    pub listeners: BTreeMap<String, Vec<ListenerIngress>>,
+    pub listeners: BTreeMap<String, PodListener>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PodListener {
+    pub scope: PodListenerScope,
+    pub ingress_addresses: Option<Vec<ListenerIngress>>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum PodListenerScope {
+    Node,
+    Cluster,
 }
