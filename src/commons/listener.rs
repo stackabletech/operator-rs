@@ -103,8 +103,17 @@ pub struct ListenerStatus {
 pub struct ListenerIngress {
     /// The hostname or IP address to the [`Listener`].
     pub address: String,
+    pub address_type: AddressType,
     /// Port mapping table.
     pub ports: BTreeMap<String, i32>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[serde(rename_all = "PascalCase")]
+pub enum AddressType {
+    Hostname,
+    #[serde(rename = "IP")]
+    Ip,
 }
 
 #[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, Default)]
@@ -127,7 +136,7 @@ pub struct PodListener {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub enum PodListenerScope {
     Node,
     Cluster,
