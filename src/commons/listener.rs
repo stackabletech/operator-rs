@@ -150,7 +150,7 @@ pub enum AddressType {
 /// Informs users about [`Listener`]s that are bound by a given [`Pod`].
 ///
 /// This is not expected to be created or modified by users. It will be created by
-/// the Stackable Listener Operator when mounting the listener volume, and is always.
+/// the Stackable Listener Operator when mounting the listener volume, and is always
 /// named `pod-{pod.metadata.uid}`.
 #[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, Default)]
 #[kube(
