@@ -10,6 +10,38 @@ All notable changes to this project will be documented in this file.
 
 [#644]: https://github.com/stackabletech/operator-rs/pull/644
 
+## [0.48.0] - 2023-08-18
+
+### Added
+
+- Add `PodBuilder::termination_grace_period_seconds` ([#641]).
+- Add support for adding `lifecycle`s to `ContainerBuilder` ([#641]).
+
+[#641]: https://github.com/stackabletech/operator-rs/pull/641
+
+## [0.47.0] - 2023-08-16
+
+### Added
+
+- Implement `Display` for `MemoryQuantity` ([#638]).
+- Implement `Sum` for `CpuQuantity` and `MemoryQuantity` ([#634]).
+
+### Changed
+
+- Switch from `openssl` to `rustls` ([#635]).
+- Bump `product-config`` 0.4.0 -> 0.5.0 ([#639]).
+
+### Fixed
+
+- Fixed buggy `Div`, `SubAssign` and `AddAssign` for `MemoryQuantity` when left and right side had different units ([#636], [#637]).
+
+[#634]: https://github.com/stackabletech/operator-rs/pull/634
+[#635]: https://github.com/stackabletech/operator-rs/pull/635
+[#636]: https://github.com/stackabletech/operator-rs/pull/636
+[#637]: https://github.com/stackabletech/operator-rs/pull/637
+[#638]: https://github.com/stackabletech/operator-rs/pull/638
+[#639]: https://github.com/stackabletech/operator-rs/pull/639
+
 ## [0.46.0] - 2023-08-08
 
 ### Changed
