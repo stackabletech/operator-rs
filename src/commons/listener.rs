@@ -1,4 +1,29 @@
 //! This modules provides resource types used to interact with [listener-operator](https://docs.stackable.tech/listener-operator/stable/index.html)
+//!
+//! # Custom Resources
+//!
+//! ## [`Listener`]
+//!
+//! Exposes a set of pods, either internally to the cluster or to the outside world. The mechanism for how it is exposed
+//! is managed by the [`ListenerClass`].
+//!
+//! It can be either created manually by the application administrator (for applications that expose a single load-balanced endpoint),
+//! or automatically when mounting a [listener volume](`ListenerOperatorVolumeSourceBuilder`) (for applications that expose a separate endpoint
+//! per replica).
+//!
+//! All exposed pods *must* have a mounted [listener volume](`ListenerOperatorVolumeSourceBuilder`), regardless of whether the [`Listener`] is created automatically.
+//!
+//! ## [`ListenerClass`]
+//!
+//! Declares a policy for how [`Listener`]s are exposed to users.
+//!
+//! It is created by the cluster administrator.
+//!
+//! ## [`PodListeners`]
+//!
+//! Informs users and other operators about the state of all [`Listener`]s associated with a [`Pod`].
+//!
+//! It is created by the Stackable Secret Operator, and always named `pod-{pod.metadata.uid}`.
 
 use std::collections::BTreeMap;
 
@@ -10,6 +35,9 @@ use serde::{Deserialize, Serialize};
 use k8s_openapi::api::core::v1::{
     Node, PersistentVolume, PersistentVolumeClaim, Pod, Service, Volume,
 };
+
+#[cfg(doc)]
+use crate::builder::ListenerOperatorVolumeSourceBuilder;
 
 /// Defines a policy for how [`Listener`]s should be exposed.
 #[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -39,7 +67,7 @@ pub enum ServiceType {
 
 /// Exposes a set of pods to the outside world.
 ///
-/// Essentially a Stackable extension of a Kubernetes [`Service`]. Compared to [`Service`], [`Listener`] changes two things:
+/// Essentially a Stackable extension of a Kubernetes [`Service`]. Compared to [`Service`], [`Listener`] changes three things:
 /// 1. It uses a cluster-level policy object ([`ListenerClass`]) to define how exactly the exposure works
 /// 2. It has a consistent API for reading back the exposed address(es) of the service
 /// 3. The [`Pod`] must mount a [`Volume`] referring to the `Listener`, which also allows us to control stickiness
@@ -119,10 +147,11 @@ pub enum AddressType {
     Ip,
 }
 
-/// Informs users about [`Listener`] objects that are bound by a given [`Pod`].
+/// Informs users about [`Listener`]s that are bound by a given [`Pod`].
 ///
 /// This is not expected to be created or modified by users. It will be created by
-/// the Stackable Listener Operator when mounting the listener volume.
+/// the Stackable Listener Operator when mounting the listener volume, and is always.
+/// named `pod-{pod.metadata.uid}`.
 #[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, Default)]
 #[kube(
     group = "listeners.stackable.tech",
