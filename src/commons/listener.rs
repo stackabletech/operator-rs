@@ -7,7 +7,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[cfg(doc)]
-use k8s_openapi::api::core::v1::{Node, Pod, Service, Volume};
+use k8s_openapi::api::core::v1::{
+    Node, PersistentVolume, PersistentVolumeClaim, Pod, Service, Volume,
+};
 
 /// Defines a policy for how [`Listener`]s should be exposed.
 #[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -103,6 +105,7 @@ pub struct ListenerStatus {
 pub struct ListenerIngress {
     /// The hostname or IP address to the [`Listener`].
     pub address: String,
+    /// The type of address (`Hostname` or `IP`).
     pub address_type: AddressType,
     /// Port mapping table.
     pub ports: BTreeMap<String, i32>,
@@ -116,6 +119,9 @@ pub enum AddressType {
     Ip,
 }
 
+/// Informs users about [`Listener`] objects that are bound by a given [`Pod`].
+///
+/// This is not expected to be created or modified by users.
 #[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, Default)]
 #[kube(
     group = "listeners.stackable.tech",
@@ -125,13 +131,22 @@ pub enum AddressType {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct PodListenersSpec {
+    /// All listeners currently bound by the [`Pod`].
+    ///
+    /// Indexed by [`Volume`] name (not [`PersistentVolume`] or [`PersistentVolumeClaim`]).
     pub listeners: BTreeMap<String, PodListener>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PodListener {
+    /// `Node` if this address only allows access to [`Pod`]s hosted on a specific Kubernetes [`Node`], otherwise `Cluster`.
     pub scope: PodListenerScope,
+    /// Addresses allowing access to this [`Pod`].
+    ///
+    /// Compared to [`ListenerStatus::ingress_addresses`], this list is restricted to addresses that can access this [`Pod`].
+    ///
+    /// This field is intended to be equivalent to the files mounted into the listener volume.
     pub ingress_addresses: Option<Vec<ListenerIngress>>,
 }
 
