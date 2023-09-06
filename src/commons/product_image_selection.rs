@@ -33,7 +33,7 @@ pub enum ProductImageSelection {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct ProductImageCustom {
     /// Overwrite the docker image.
     /// Specify the full docker image name, e.g. `docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0`
@@ -43,7 +43,7 @@ pub struct ProductImageCustom {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct ProductImageStackableVersion {
     /// Version of the product, e.g. `1.4.1`.
     product_version: String,
