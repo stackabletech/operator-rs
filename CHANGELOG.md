@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix the error "data did not match any variant of untagged enum
+  ProductImageSelection" on OpenShift ([#646]).
+
+[#646]: https://github.com/stackabletech/operator-rs/pull/646
+
 ## [0.48.0] - 2023-08-18
 
 ### Added
