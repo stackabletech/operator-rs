@@ -267,6 +267,7 @@ pub struct SecretOperatorVolumeSourceBuilder {
     scopes: Vec<SecretOperatorVolumeScope>,
     format: Option<SecretFormat>,
     kerberos_service_names: Vec<String>,
+    tls_pkcs12_password: Option<String>,
 }
 
 impl SecretOperatorVolumeSourceBuilder {
@@ -305,6 +306,11 @@ impl SecretOperatorVolumeSourceBuilder {
         self
     }
 
+    pub fn with_tls_pkcs12_password(&mut self, password: impl Into<String>) -> &mut Self {
+        self.tls_pkcs12_password = Some(password);
+        self
+    }
+
     pub fn build(&self) -> EphemeralVolumeSource {
         let mut attrs = BTreeMap::from([(
             "secrets.stackable.tech/class".to_string(),
@@ -340,6 +346,13 @@ impl SecretOperatorVolumeSourceBuilder {
             attrs.insert(
                 "secrets.stackable.tech/kerberos.service.names".to_string(),
                 self.kerberos_service_names.join(","),
+            );
+        }
+
+        if let Some(password) = &self.tls_pkcs12_password {
+            attrs.insert(
+                "secrets.stackable.tech/format.compatibility.tls-pkcs12.password".to_string(),
+                password.to_string(),
             );
         }
 
