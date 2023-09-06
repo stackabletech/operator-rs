@@ -354,7 +354,7 @@ impl SecretOperatorVolumeSourceBuilder {
         if let Some(password) = &self.tls_pkcs12_password {
             // The `tls_pkcs12_password` is only used for PKCS12 stores.
             if Some(SecretFormat::TlsPkcs12) != self.format {
-                warn!("A TLS PKCS12 password was set but ignored because the specified format was not set to {}", SecretFormat::TlsPkcs12.to_string())
+                warn!(format.actual = ?self.format, format.expected = ?Some(SecretFormat::TlsPkcs12), "A TLS PKCS12 password was set but ignored because another format was requested")
             } else {
                 attrs.insert(
                     "secrets.stackable.tech/format.compatibility.tls-pkcs12.password".to_string(),
@@ -383,7 +383,7 @@ impl SecretOperatorVolumeSourceBuilder {
 /// A [secret format](https://docs.stackable.tech/home/stable/secret-operator/secretclass.html#format) known by secret-operator.
 ///
 /// This must either match or be convertible from the corresponding secret class, or provisioning the volume will fail.
-#[derive(Clone, strum::Display, PartialEq, strum::AsRefStr)]
+#[derive(Clone, Debug, PartialEq, Eq, strum::AsRefStr)]
 #[strum(serialize_all = "kebab-case")]
 pub enum SecretFormat {
     /// A TLS certificate formatted as a PEM triple (`ca.crt`, `tls.crt`, `tls.key`) according to Kubernetes conventions.
