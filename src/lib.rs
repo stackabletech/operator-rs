@@ -6,6 +6,7 @@ pub mod commons;
 pub mod config;
 pub mod cpu;
 pub mod crd;
+pub mod duration;
 pub mod error;
 pub mod iter;
 pub mod label_selector;
