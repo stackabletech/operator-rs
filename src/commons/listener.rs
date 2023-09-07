@@ -161,7 +161,8 @@ pub enum AddressType {
     group = "listeners.stackable.tech",
     version = "v1alpha1",
     kind = "PodListeners",
-    namespaced
+    namespaced,
+    plural = "podlisteners"
 )]
 #[serde(rename_all = "camelCase")]
 pub struct PodListenersSpec {
