@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - `PodListeners` CRD ([#644]).
 
+### Changed
+
+- Derive `Eq` and `Copy` where applicable for listener CRDs ([#644]).
+
 [#644]: https://github.com/stackabletech/operator-rs/pull/644
 
 ## [0.46.0] - 2023-08-08

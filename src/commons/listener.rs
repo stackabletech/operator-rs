@@ -40,7 +40,7 @@ use k8s_openapi::api::core::v1::{
 use crate::builder::ListenerOperatorVolumeSourceBuilder;
 
 /// Defines a policy for how [`Listener`]s should be exposed.
-#[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
 #[kube(
     group = "listeners.stackable.tech",
     version = "v1alpha1",
@@ -55,7 +55,7 @@ pub struct ListenerClassSpec {
 }
 
 /// The method used to access the services.
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, JsonSchema, PartialEq, Eq)]
 pub enum ServiceType {
     /// Reserve a port on each node.
     NodePort,
@@ -71,7 +71,9 @@ pub enum ServiceType {
 /// 1. It uses a cluster-level policy object ([`ListenerClass`]) to define how exactly the exposure works
 /// 2. It has a consistent API for reading back the exposed address(es) of the service
 /// 3. The [`Pod`] must mount a [`Volume`] referring to the `Listener`, which also allows us to control stickiness
-#[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, Default)]
+#[derive(
+    CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, Default, PartialEq, Eq,
+)]
 #[kube(
     group = "listeners.stackable.tech",
     version = "v1alpha1",
@@ -99,7 +101,7 @@ impl ListenerSpec {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ListenerPort {
     /// The name of the port.
@@ -113,7 +115,7 @@ pub struct ListenerPort {
 }
 
 /// Informs users about how to reach the [`Listener`].
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ListenerStatus {
     /// The backing Kubernetes [`Service`].
@@ -128,7 +130,7 @@ pub struct ListenerStatus {
 }
 
 /// One address that a [`Listener`] is accessible from.
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ListenerIngress {
     /// The hostname or IP address to the [`Listener`].
@@ -139,7 +141,7 @@ pub struct ListenerIngress {
     pub ports: BTreeMap<String, i32>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "PascalCase")]
 pub enum AddressType {
     Hostname,
@@ -152,7 +154,9 @@ pub enum AddressType {
 /// This is not expected to be created or modified by users. It will be created by
 /// the Stackable Listener Operator when mounting the listener volume, and is always
 /// named `pod-{pod.metadata.uid}`.
-#[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, Default)]
+#[derive(
+    CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, Default, PartialEq, Eq,
+)]
 #[kube(
     group = "listeners.stackable.tech",
     version = "v1alpha1",
@@ -167,7 +171,7 @@ pub struct PodListenersSpec {
     pub listeners: BTreeMap<String, PodListener>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct PodListener {
     /// `Node` if this address only allows access to [`Pod`]s hosted on a specific Kubernetes [`Node`], otherwise `Cluster`.
@@ -180,7 +184,7 @@ pub struct PodListener {
     pub ingress_addresses: Option<Vec<ListenerIngress>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "PascalCase")]
 pub enum PodListenerScope {
     Node,
