@@ -44,6 +44,7 @@ pub struct PodBuilder {
     service_account_name: Option<String>,
     image_pull_secrets: Option<Vec<LocalObjectReference>>,
     restart_policy: Option<String>,
+    termination_grace_period_seconds: Option<i64>,
 }
 
 impl PodBuilder {
@@ -451,6 +452,14 @@ impl PodBuilder {
         self
     }
 
+    pub fn termination_grace_period_seconds(
+        &mut self,
+        termination_grace_period_seconds: i64,
+    ) -> &mut Self {
+        self.termination_grace_period_seconds = Some(termination_grace_period_seconds);
+        self
+    }
+
     /// Consumes the Builder and returns a constructed [`Pod`]
     pub fn build(&self) -> OperatorResult<Pod> {
         Ok(Pod {
@@ -498,6 +507,7 @@ impl PodBuilder {
             service_account_name: self.service_account_name.clone(),
             image_pull_secrets: self.image_pull_secrets.clone(),
             restart_policy: self.restart_policy.clone(),
+            termination_grace_period_seconds: self.termination_grace_period_seconds,
             ..PodSpec::default()
         };
 
@@ -627,6 +637,7 @@ mod tests {
                     .with_config_map("configmap")
                     .build(),
             )
+            .termination_grace_period_seconds(42)
             .build()
             .unwrap();
 
@@ -654,6 +665,7 @@ mod tests {
                 .and_then(|volume| volume.config_map.as_ref()?.name.clone())),
             Some("configmap".to_string())
         );
+        assert_eq!(pod_spec.termination_grace_period_seconds, Some(42));
     }
 
     #[rstest]

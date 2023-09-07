@@ -1,6 +1,7 @@
 use k8s_openapi::api::core::v1::{
-    ConfigMapKeySelector, Container, ContainerPort, EnvVar, EnvVarSource, ObjectFieldSelector,
-    Probe, ResourceRequirements, SecretKeySelector, SecurityContext, VolumeMount,
+    ConfigMapKeySelector, Container, ContainerPort, EnvVar, EnvVarSource, Lifecycle,
+    LifecycleHandler, ObjectFieldSelector, Probe, ResourceRequirements, SecretKeySelector,
+    SecurityContext, VolumeMount,
 };
 use std::fmt;
 
@@ -26,6 +27,7 @@ pub struct ContainerBuilder {
     readiness_probe: Option<Probe>,
     liveness_probe: Option<Probe>,
     startup_probe: Option<Probe>,
+    lifecycle: Option<Lifecycle>,
     security_context: Option<SecurityContext>,
 }
 
@@ -213,6 +215,23 @@ impl ContainerBuilder {
         self
     }
 
+    pub fn lifecycle(&mut self, lifecycle: Lifecycle) -> &mut Self {
+        self.lifecycle = Some(lifecycle);
+        self
+    }
+
+    pub fn lifecycle_post_start(&mut self, post_start: LifecycleHandler) -> &mut Self {
+        self.lifecycle
+            .get_or_insert(Lifecycle::default())
+            .post_start = Some(post_start);
+        self
+    }
+
+    pub fn lifecycle_pre_stop(&mut self, pre_stop: LifecycleHandler) -> &mut Self {
+        self.lifecycle.get_or_insert(Lifecycle::default()).pre_stop = Some(pre_stop);
+        self
+    }
+
     pub fn security_context(&mut self, context: SecurityContext) -> &mut Self {
         self.security_context = Some(context);
         self
@@ -237,6 +256,7 @@ impl ContainerBuilder {
             readiness_probe: self.readiness_probe.clone(),
             liveness_probe: self.liveness_probe.clone(),
             startup_probe: self.startup_probe.clone(),
+            lifecycle: self.lifecycle.clone(),
             security_context: self.security_context.clone(),
             ..Container::default()
         }
@@ -331,6 +351,8 @@ impl fmt::Display for FieldPathEnvVar {
 
 #[cfg(test)]
 mod tests {
+    use k8s_openapi::api::core::v1::ExecAction;
+
     use super::*;
     use crate::{
         builder::{
@@ -398,6 +420,34 @@ mod tests {
             Some((&Some(container_port_name_1.to_string()), container_port_1))
         );
         assert_eq!(container.resources, Some(resources));
+    }
+
+    #[test]
+    fn test_container_builder_lifecycle() {
+        let post_start = LifecycleHandler {
+            exec: Some(ExecAction {
+                command: Some(vec!["hello".to_string(), "world".to_string()]),
+            }),
+            ..Default::default()
+        };
+        let pre_stop = LifecycleHandler {
+            exec: Some(ExecAction {
+                command: Some(vec!["bye".to_string(), "bye".to_string()]),
+            }),
+            ..Default::default()
+        };
+        let container = ContainerBuilder::new("testcontainer")
+            .expect("ContainerBuilder not created")
+            .lifecycle_post_start(post_start.clone())
+            .lifecycle_pre_stop(pre_stop.clone())
+            .build();
+        assert_eq!(
+            container.lifecycle,
+            Some(Lifecycle {
+                post_start: Some(post_start),
+                pre_stop: Some(pre_stop)
+            })
+        );
     }
 
     #[test]

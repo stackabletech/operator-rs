@@ -1,4 +1,5 @@
 use std::{
+    iter::Sum,
     ops::{Add, AddAssign, Div, Mul, MulAssign},
     str::FromStr,
 };
@@ -148,6 +149,12 @@ impl Div<CpuQuantity> for CpuQuantity {
 impl MulAssign<f32> for CpuQuantity {
     fn mul_assign(&mut self, rhs: f32) {
         self.millis = (self.millis as f32 * rhs) as usize;
+    }
+}
+
+impl Sum for CpuQuantity {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(CpuQuantity { millis: 0 }, CpuQuantity::add)
     }
 }
 
