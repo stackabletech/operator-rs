@@ -116,6 +116,18 @@ impl Deref for Duration {
     }
 }
 
+impl Duration {
+    /// Creates a new [`Duration`] from the specified number of whole seconds.
+    pub fn from_secs(secs: u64) -> Self {
+        Self(std::time::Duration::from_secs(secs).into())
+    }
+
+    /// Creates a new [`Duration`] from the specified number of milliseconds.
+    pub fn from_millis(millis: u64) -> Self {
+        Self(std::time::Duration::from_millis(millis).into())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -160,5 +172,14 @@ mod test {
             dur: "15d 2m 2s".parse().unwrap(),
         };
         assert_eq!(serde_yaml::to_string(&s).unwrap(), "dur: 15days 2m 2s\n");
+    }
+
+    #[test]
+    fn from_impls() {
+        let dur = Duration::from_secs(10);
+        assert_eq!(dur.to_string(), "10s");
+
+        let dur = Duration::from_millis(1000);
+        assert_eq!(dur.to_string(), "1s");
     }
 }
