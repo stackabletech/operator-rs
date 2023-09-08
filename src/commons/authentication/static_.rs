@@ -17,7 +17,7 @@
 //!   The update time depends on the kubelet syncing period.
 //!   This would need additional functionality in restart controller to white- or blacklist certain volumes. Additionally, we would need a sidecar container that
 //!   periodically converts the secret contents to the required product format.
-//!  
+//!
 //! See <https://github.com/stackabletech/operator-rs/issues/494>
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
