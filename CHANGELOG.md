@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Support specifying externalTrafficPolicy in Services created by listener-operator ([#562]).
+
+[#562]: https://github.com/stackabletech/operator-rs/pull/562
+
 ### Changed
 
 - Bump `kube` to `0.86.0` and Kubernetes version to `1.28` ([#648]).

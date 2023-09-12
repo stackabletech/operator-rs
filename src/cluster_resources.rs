@@ -4,6 +4,7 @@ use crate::{
     client::{Client, GetApi},
     commons::{
         cluster_operation::ClusterOperation,
+        listener::Listener,
         resources::{
             ComputeResource, ResourceRequirementsExt, ResourceRequirementsType,
             LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
@@ -165,6 +166,7 @@ impl ClusterResource for Service {}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
 impl ClusterResource for Secret {}
+impl ClusterResource for Listener {}
 
 impl ClusterResource for Job {
     fn pod_spec(&self) -> Option<&PodSpec> {

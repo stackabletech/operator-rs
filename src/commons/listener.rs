@@ -35,6 +35,38 @@ pub enum ServiceType {
     ClusterIP,
 }
 
+impl ServiceType {
+    pub fn to_kubernetes_literal(&self) -> String {
+        match self {
+            ServiceType::NodePort => "NodePort".to_string(),
+            ServiceType::LoadBalancer => "LoadBalancer".to_string(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
+pub enum TrafficPolicy {
+    /// Obscures the client source IP and may cause a second hop to another node, but allows Kubernetes to spread the load between all nodes.
+    Cluster,
+    /// Preserves the client source IP and avoid a second hop for LoadBalancer and NodePort type Services, but makes clients responsible for spreading the load.
+    Local,
+}
+
+impl Default for TrafficPolicy {
+    fn default() -> Self {
+        TrafficPolicy::Cluster
+    }
+}
+
+impl TrafficPolicy {
+    pub fn to_kubernetes_literal(&self) -> String {
+        match self {
+            TrafficPolicy::Cluster => "Cluster".to_string(),
+            TrafficPolicy::Local => "Local".to_string(),
+        }
+    }
+}
+
 /// Exposes a set of pods to the outside world.
 ///
 /// Essentially a Stackable extension of a Kubernetes [`Service`]. Compared to [`Service`], [`Listener`] changes two things:
@@ -61,6 +93,9 @@ pub struct ListenerSpec {
     /// Whether incoming traffic should also be directed to `Pod`s that are not `Ready`.
     #[schemars(default = "Self::default_publish_not_ready_addresses")]
     pub publish_not_ready_addresses: Option<bool>,
+    /// `externalTrafficPolicy` that should be set on the [`Service`] object.
+    #[serde(default)]
+    pub service_external_traffic_policy: TrafficPolicy,
 }
 
 impl ListenerSpec {
