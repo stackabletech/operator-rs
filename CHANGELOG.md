@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Bump `kube` to `0.86.0` and Kubernetes version to `1.28` ([#648]).
+
+[#648]: https://github.com/stackabletech/operator-rs/pull/648
+
 ## [0.48.0] - 2023-08-18
 
 ### Added
