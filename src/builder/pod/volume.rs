@@ -11,6 +11,7 @@ use k8s_openapi::{
     apimachinery::pkg::api::resource::Quantity,
 };
 use std::collections::BTreeMap;
+use tracing::warn;
 
 use crate::builder::ObjectMetaBuilder;
 
@@ -267,6 +268,7 @@ pub struct SecretOperatorVolumeSourceBuilder {
     scopes: Vec<SecretOperatorVolumeScope>,
     format: Option<SecretFormat>,
     kerberos_service_names: Vec<String>,
+    tls_pkcs12_password: Option<String>,
 }
 
 impl SecretOperatorVolumeSourceBuilder {
@@ -276,6 +278,7 @@ impl SecretOperatorVolumeSourceBuilder {
             scopes: Vec::new(),
             format: None,
             kerberos_service_names: Vec::new(),
+            tls_pkcs12_password: None,
         }
     }
 
@@ -302,6 +305,11 @@ impl SecretOperatorVolumeSourceBuilder {
 
     pub fn with_kerberos_service_name(&mut self, name: impl Into<String>) -> &mut Self {
         self.kerberos_service_names.push(name.into());
+        self
+    }
+
+    pub fn with_tls_pkcs12_password(&mut self, password: impl Into<String>) -> &mut Self {
+        self.tls_pkcs12_password = Some(password.into());
         self
     }
 
@@ -343,6 +351,18 @@ impl SecretOperatorVolumeSourceBuilder {
             );
         }
 
+        if let Some(password) = &self.tls_pkcs12_password {
+            // The `tls_pkcs12_password` is only used for PKCS12 stores.
+            if Some(SecretFormat::TlsPkcs12) != self.format {
+                warn!(format.actual = ?self.format, format.expected = ?Some(SecretFormat::TlsPkcs12), "A TLS PKCS12 password was set but ignored because another format was requested")
+            } else {
+                attrs.insert(
+                    "secrets.stackable.tech/format.compatibility.tls-pkcs12.password".to_string(),
+                    password.to_string(),
+                );
+            }
+        }
+
         EphemeralVolumeSource {
             volume_claim_template: Some(PersistentVolumeClaimTemplate {
                 metadata: Some(ObjectMetaBuilder::new().annotations(attrs).build()),
@@ -363,7 +383,7 @@ impl SecretOperatorVolumeSourceBuilder {
 /// A [secret format](https://docs.stackable.tech/home/stable/secret-operator/secretclass.html#format) known by secret-operator.
 ///
 /// This must either match or be convertible from the corresponding secret class, or provisioning the volume will fail.
-#[derive(Clone, strum::AsRefStr)]
+#[derive(Clone, Debug, PartialEq, Eq, strum::AsRefStr)]
 #[strum(serialize_all = "kebab-case")]
 pub enum SecretFormat {
     /// A TLS certificate formatted as a PEM triple (`ca.crt`, `tls.crt`, `tls.key`) according to Kubernetes conventions.
