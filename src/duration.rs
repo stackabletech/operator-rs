@@ -39,13 +39,10 @@ const HOURS_FACTOR: u64 = MINUTES_FACTOR * 60;
 const MINUTES_FACTOR: u64 = SECONDS_FACTOR * 60;
 const SECONDS_FACTOR: u64 = 1;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq)]
 pub enum DurationParseError {
     #[error("failed to parse string as number")]
     ParseIntError(#[from] ParseIntError),
-
-    #[error("expected a number, found character")]
-    ExpectedNumber,
 
     #[error("expected a character, found number")]
     ExpectedChar,
@@ -82,6 +79,11 @@ impl FromStr for Duration {
     type Err = DurationParseError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let input = input.trim();
+        if input.is_empty() || !input.is_ascii() {
+            return Err(DurationParseError::InvalidInput);
+        }
+
         let mut state = DurationParseState::Init;
         let mut buffer = String::new();
         let mut iter = input.chars();
@@ -316,6 +318,18 @@ mod test {
     fn parse(#[case] input: &str, #[case] output: u64) {
         let dur: Duration = input.parse().unwrap();
         assert_eq!(dur.as_secs(), output);
+    }
+
+    #[rstest]
+    #[case("2y2", DurationParseError::ExpectedChar)]
+    #[case("-1y", DurationParseError::InvalidInput)]
+    #[case("1Y", DurationParseError::InvalidInput)]
+    #[case("1ä", DurationParseError::InvalidInput)]
+    #[case("1q", DurationParseError::InvalidUnit)]
+    #[case(" ", DurationParseError::InvalidInput)]
+    fn parse_invalid(#[case] input: &str, #[case] expected_err: DurationParseError) {
+        let err = Duration::from_str(input).unwrap_err();
+        assert_eq!(err, expected_err)
     }
 
     #[rstest]
