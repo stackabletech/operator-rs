@@ -11,7 +11,12 @@
 //! [`std::time::Duration`] when dealing with durations of any form, like
 //! timeouts or retries.
 
-use std::{num::ParseIntError, ops::Deref, str::FromStr};
+use std::{
+    fmt::{Display, Write},
+    num::ParseIntError,
+    ops::{Add, AddAssign, Deref, Sub, SubAssign},
+    str::FromStr,
+};
 
 use derivative::Derivative;
 use schemars::{
@@ -19,9 +24,20 @@ use schemars::{
     schema::{InstanceType, Schema, SchemaObject},
     JsonSchema,
 };
-use serde::{de::Visitor, Deserialize};
+use serde::{de::Visitor, Deserialize, Serialize};
 use strum::Display;
 use thiserror::Error;
+
+const DAYS_IN_MONTH: f64 = 30.436875;
+const DAYS_IN_YEAR: f64 = 365.2425;
+
+const YEARS_FACTOR: u64 = (DAYS_FACTOR as f64 * DAYS_IN_YEAR) as u64;
+const MONTHS_FACTOR: u64 = (DAYS_FACTOR as f64 * DAYS_IN_MONTH) as u64;
+const WEEKS_FACTOR: u64 = DAYS_FACTOR * 7;
+const DAYS_FACTOR: u64 = HOURS_FACTOR * 24;
+const HOURS_FACTOR: u64 = MINUTES_FACTOR * 60;
+const MINUTES_FACTOR: u64 = SECONDS_FACTOR * 60;
+const SECONDS_FACTOR: u64 = 1;
 
 #[derive(Debug, Error)]
 pub enum DurationParseError {
@@ -47,6 +63,9 @@ pub enum DurationParseError {
 /// A [`Duration`] which is capable of parsing human-readable duration formats,
 /// like `2y 2h 20m 42s` or `15d 2m 2s`. It additionally provides many required
 /// trait implementations, which makes it suited for use in CRDs for example.
+///
+/// The maximum granularity currently supported is **seconds**. Support for
+/// milliseconds can be added, when there is the need for it.
 #[derive(Clone, Copy, Debug, Derivative, Hash, PartialEq, PartialOrd)]
 pub struct Duration(std::time::Duration);
 
@@ -144,13 +163,13 @@ impl FromStr for Duration {
 
 fn parse_unit(buffer: &str) -> Result<u64, DurationParseError> {
     let factor = match buffer {
-        "seconds" | "second" | "secs" | "sec" | "s" => 1,
-        "minutes" | "minute" | "mins" | "min" | "m" => 60,
-        "hours" | "hour" | "hrs" | "hr" | "h" => 3600,
-        "days" | "day" | "d" => 86400,
-        "weeks" | "week" | "w" => 86400 * 7,
-        "months" | "month" | "M" => 2_630_016,
-        "years" | "year" | "y" => 31_557_600,
+        "seconds" | "second" | "secs" | "sec" | "s" => SECONDS_FACTOR,
+        "minutes" | "minute" | "mins" | "min" | "m" => MINUTES_FACTOR,
+        "hours" | "hour" | "hrs" | "hr" | "h" => HOURS_FACTOR,
+        "days" | "day" | "d" => DAYS_FACTOR,
+        "weeks" | "week" | "w" => WEEKS_FACTOR,
+        "months" | "month" | "M" => MONTHS_FACTOR,
+        "years" | "year" | "y" => YEARS_FACTOR,
         _ => return Err(DurationParseError::InvalidUnit),
     };
 
@@ -184,14 +203,14 @@ impl<'de> Deserialize<'de> for Duration {
     }
 }
 
-// impl Serialize for Duration {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         S: serde::Serializer,
-//     {
-//         serializer.serialize_str(self.0.to_string().as_str())
-//     }
-// }
+impl Serialize for Duration {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
 
 impl JsonSchema for Duration {
     fn schema_name() -> String {
@@ -207,11 +226,32 @@ impl JsonSchema for Duration {
     }
 }
 
-// impl Display for Duration {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         write!(f, "{}", self.0)
-//     }
-// }
+impl Display for Duration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut secs = self.0.as_secs();
+        let mut formatted = String::new();
+
+        for (factor, unit) in [
+            (YEARS_FACTOR, "y"),
+            (MONTHS_FACTOR, "M"),
+            (DAYS_FACTOR, "d"),
+            (HOURS_FACTOR, "h"),
+            (MINUTES_FACTOR, "m"),
+            (SECONDS_FACTOR, "s"),
+        ] {
+            let whole = secs / factor;
+            let rest = secs % factor;
+
+            if whole > 0 {
+                write!(formatted, "{}{} ", whole, unit)?;
+            }
+
+            secs = rest;
+        }
+
+        write!(f, "{}", formatted.trim_end())
+    }
+}
 
 impl Deref for Duration {
     type Target = std::time::Duration;
@@ -227,15 +267,38 @@ impl From<std::time::Duration> for Duration {
     }
 }
 
+impl Add for Duration {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::from(self.0 + rhs.0)
+    }
+}
+
+impl Sub for Duration {
+    type Output = Duration;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self::from(self.0 - rhs.0)
+    }
+}
+
+impl AddAssign for Duration {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0.add_assign(rhs.0)
+    }
+}
+
+impl SubAssign for Duration {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0.sub_assign(rhs.0)
+    }
+}
+
 impl Duration {
     /// Creates a new [`Duration`] from the specified number of whole seconds.
     pub const fn from_secs(secs: u64) -> Self {
         Self(std::time::Duration::from_secs(secs))
-    }
-
-    /// Creates a new [`Duration`] from the specified number of milliseconds.
-    pub const fn from_millis(millis: u64) -> Self {
-        Self(std::time::Duration::from_millis(millis))
     }
 }
 
@@ -245,7 +308,7 @@ mod test {
     use rstest::rstest;
 
     #[rstest]
-    #[case("2y 2h 20m 42s", 63123642)]
+    #[case("2y 2h 20m 42s", 63122346)]
     #[case("15d 2m 2s", 1296122)]
     #[case("1h", 3600)]
     #[case("1m", 60)]
@@ -255,6 +318,17 @@ mod test {
         assert_eq!(dur.as_secs(), output);
     }
 
+    #[rstest]
+    #[case("2y 2h 20m 42s")]
+    #[case("15d 2m 2s")]
+    #[case("1h")]
+    #[case("1m")]
+    #[case("1s")]
+    fn to_string(#[case] duration: &str) {
+        let dur: Duration = duration.parse().unwrap();
+        assert_eq!(dur.to_string(), duration);
+    }
+
     #[test]
     fn deserialize() {
         #[derive(Deserialize)]
@@ -262,29 +336,44 @@ mod test {
             dur: Duration,
         }
 
-        let s: S = serde_yaml::from_str("dur: \"15d 2m 2s\"").unwrap();
+        let s: S = serde_yaml::from_str("dur: 15d 2m 2s").unwrap();
         assert_eq!(s.dur.as_secs(), 1296122);
     }
 
-    // #[test]
-    // fn serialize() {
-    //     #[derive(Serialize)]
-    //     struct S {
-    //         dur: Duration,
-    //     }
+    #[test]
+    fn serialize() {
+        #[derive(Serialize)]
+        struct S {
+            dur: Duration,
+        }
 
-    //     let s = S {
-    //         dur: "15d 2m 2s".parse().unwrap(),
-    //     };
-    //     assert_eq!(serde_yaml::to_string(&s).unwrap(), "dur: 15days 2m 2s\n");
-    // }
+        let s = S {
+            dur: "15d 2m 2s".parse().unwrap(),
+        };
+        assert_eq!(serde_yaml::to_string(&s).unwrap(), "dur: 15d 2m 2s\n");
+    }
 
-    // #[test]
-    // fn from_impls() {
-    //     let dur = Duration::from_secs(10);
-    //     assert_eq!(dur.to_string(), "10s");
+    #[test]
+    fn add_ops() {
+        let mut dur1 = Duration::from_secs(20);
+        let dur2 = Duration::from_secs(10);
 
-    //     let dur = Duration::from_millis(1000);
-    //     assert_eq!(dur.to_string(), "1s");
-    // }
+        let dur = dur1 + dur2;
+        assert_eq!(dur.as_secs(), 30);
+
+        dur1 += dur2;
+        assert_eq!(dur1.as_secs(), 30);
+    }
+
+    #[test]
+    fn sub_ops() {
+        let mut dur1 = Duration::from_secs(20);
+        let dur2 = Duration::from_secs(10);
+
+        let dur = dur1 - dur2;
+        assert_eq!(dur.as_secs(), 10);
+
+        dur1 -= dur2;
+        assert_eq!(dur1.as_secs(), 10);
+    }
 }
