@@ -228,7 +228,7 @@ impl FromStr for DurationFragment {
         }
 
         // Parse the alphabetic characters as a supported duration unit
-        let unit = if end_index != 0 {
+        let unit = if end_index != start_index {
             s[start_index..end_index]
                 .parse::<DurationUnit>()
                 .map_err(|_| DurationFragmentParseError::UnitParseError)?
