@@ -49,8 +49,11 @@ impl FromStr for Duration {
             return Err(DurationParseError::InvalidInput);
         }
 
+        // Let's split up individual parts separated by a space
         let parts: Vec<&str> = input.split(' ').collect();
 
+        // Parse each part as a DurationFragment and extract the final duration
+        // of each fragment in milliseconds
         let values: Vec<u128> = parts
             .iter()
             .map(|p| p.parse::<DurationFragment>())
@@ -68,6 +71,8 @@ impl FromStr for Duration {
 
 impl Display for Duration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // If the inner Duration is zero, print out '0ms' as milliseconds
+        // is the base unit for our Duration.
         if self.0.is_zero() {
             return write!(f, "0{}", DurationUnit::Milliseconds);
         }
@@ -115,8 +120,19 @@ impl Duration {
     pub const fn from_secs(secs: u64) -> Self {
         Self(std::time::Duration::from_secs(secs))
     }
+
+    /// Creates a new [`Duration`] from the specified number of whole
+    /// milliseconds.
+    pub const fn from_millis(millis: u64) -> Self {
+        Self(std::time::Duration::from_millis(millis))
+    }
 }
 
+/// Defines supported [`DurationUnit`]s. Each [`DurationFragment`] consists of
+/// a numeric value followed by a [`DurationUnit`]. The order of variants
+/// **MATTERS**. It is the basis for the correct transformation of the
+/// [`std::time::Duration`] back to a human-readable format, which is defined
+/// in the [`Display`] implementation of [`Duration`].
 #[derive(Debug, strum::EnumString, strum::Display, strum::AsRefStr, strum::EnumIter)]
 pub enum DurationUnit {
     #[strum(serialize = "d")]
@@ -136,7 +152,7 @@ pub enum DurationUnit {
 }
 
 impl DurationUnit {
-    /// Returns the number of whole milliseconds for each supported
+    /// Returns the number of whole milliseconds in each supported
     /// [`DurationUnit`].
     pub fn millis(&self) -> u128 {
         use DurationUnit::*;
@@ -169,6 +185,8 @@ pub enum DurationFragmentParseError {
     UnitParseError,
 }
 
+/// Each [`DurationFragment`] consists of a numeric value followed by
+/// a[`DurationUnit`].
 #[derive(Debug)]
 pub struct DurationFragment {
     value: u128,
@@ -234,6 +252,8 @@ impl Display for DurationFragment {
 }
 
 impl DurationFragment {
+    /// Returns the amount of whole milliseconds encoded by this
+    /// [`DurationFragment`].
     pub fn millis(&self) -> u128 {
         self.value * self.unit.millis()
     }
