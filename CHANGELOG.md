@@ -4,10 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add support for tls pkcs12 password to secret operator volume builder ([#645]).
+
 ### Changed
 
 - Bump `kube` to `0.86.0` and Kubernetes version to `1.28` ([#648]).
 
+[#645]: https://github.com/stackabletech/operator-rs/pull/645
 [#648]: https://github.com/stackabletech/operator-rs/pull/648
 
 ## [0.48.0] - 2023-08-18
@@ -16,10 +21,8 @@ All notable changes to this project will be documented in this file.
 
 - Add `PodBuilder::termination_grace_period_seconds` ([#641]).
 - Add support for adding `lifecycle`s to `ContainerBuilder` ([#641]).
-- Add support for tls pkcs12 password to secret operator volume builder ([#645]).
 
 [#641]: https://github.com/stackabletech/operator-rs/pull/641
-[#645]: https://github.com/stackabletech/operator-rs/pull/645
 
 ## [0.47.0] - 2023-08-16
 
