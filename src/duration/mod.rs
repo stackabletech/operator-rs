@@ -32,13 +32,13 @@ pub enum DurationParseError {
     #[snafu(display("invalid input, either empty or contains non-ascii characters"))]
     InvalidInput,
 
-    #[snafu(display("unexpected character '{chr}'"))]
+    #[snafu(display("unexpected character {chr:?}"))]
     UnexpectedCharacter { chr: char },
 
-    #[snafu(display("duration fragment with value '{value}' has no unit"))]
+    #[snafu(display("duration fragment with value {value:?} has no unit"))]
     NoUnit { value: u128 },
 
-    #[snafu(display("failed to parse fragment unit '{unit}'"))]
+    #[snafu(display("failed to parse fragment unit {unit:?}"))]
     ParseUnitError { unit: String },
 
     #[snafu(display("failed to parse fragment value as integer"))]
