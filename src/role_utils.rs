@@ -93,9 +93,7 @@ use crate::{
     product_config_utils::Configuration,
 };
 use derivative::Derivative;
-use k8s_openapi::{
-    api::core::v1::PodTemplateSpec, apimachinery::pkg::apis::meta::v1::LabelSelector,
-};
+use k8s_openapi::api::core::v1::PodTemplateSpec;
 use kube::{runtime::reflector::ObjectRef, Resource};
 use schemars::{schema::Schema, visit::Visitor, JsonSchema};
 use serde::{Deserialize, Serialize};
@@ -207,7 +205,6 @@ impl<T: Configuration + 'static> Role<T> {
                                 pod_overrides: group.config.pod_overrides,
                             },
                             replicas: group.replicas,
-                            selector: group.selector,
                         },
                     )
                 })
@@ -225,9 +222,6 @@ pub struct RoleGroup<T> {
     #[serde(flatten)]
     pub config: CommonConfiguration<T>,
     pub replicas: Option<u16>,
-    // TODO Can be removed after we stop supporting this field.
-    // See ADR 26 Affinities
-    pub selector: Option<LabelSelector>,
 }
 
 impl<T> RoleGroup<T> {
