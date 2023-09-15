@@ -21,30 +21,31 @@ use std::{
 
 use derivative::Derivative;
 use schemars::JsonSchema;
+use snafu::{OptionExt, ResultExt, Snafu};
 use strum::IntoEnumIterator;
-use thiserror::Error;
 
 mod serde_impl;
 pub use serde_impl::*;
 
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Snafu, PartialEq)]
+#[snafu(context(suffix(false)))]
 pub enum DurationParseError {
-    #[error("invalid input, either empty or contains non-ascii characters")]
+    #[snafu(display("invalid input, either empty or contains non-ascii characters"))]
     InvalidInput,
 
-    #[error(
-        "expected character '{0}', the duration fragments must end with an alphabetic character"
-    )]
-    ExpectedCharacter(char),
+    #[snafu(display(
+        "expected character '{expected}', the duration fragments must end with an alphabetic character"
+    ))]
+    ExpectedCharacter { expected: char },
 
-    #[error("duration fragment with value '{0} has no unit")]
-    NoUnit(u64),
+    #[snafu(display("duration fragment with value '{value}' has no unit"))]
+    NoUnit { value: u128 },
 
-    #[error("failed to parse fragment unit '{0}'")]
-    ParseUnitError(String),
+    #[snafu(display("failed to parse fragment unit '{unit}'"))]
+    ParseUnitError { unit: String },
 
-    #[error("failed to parse fragment value as integer: {0}")]
-    ParseIntError(#[from] ParseIntError),
+    #[snafu(display("failed to parse fragment value as integer"))]
+    ParseIntError { source: ParseIntError },
 }
 
 #[derive(Clone, Copy, Debug, Derivative, Hash, PartialEq, PartialOrd, JsonSchema)]
@@ -76,21 +77,26 @@ impl FromStr for Duration {
         };
 
         while let Some(value) = take_group(char::is_numeric) {
-            let value = value.parse::<u64>()?;
+            let value = value.parse::<u128>().context(ParseInt)?;
 
             let Some(unit) = take_group(char::is_alphabetic) else {
                 if let Some(&(_, c)) = chars.peek() {
-                    return Err(DurationParseError::ExpectedCharacter(c));
+                    return ExpectedCharacter {expected: c}.fail();
                 } else {
-                    return Err(DurationParseError::NoUnit(value));
+                    return NoUnit { value }.fail();
                 }
             };
 
-            let unit = unit
-                .parse::<DurationUnit>()
-                .map_err(|_| DurationParseError::ParseUnitError(unit.to_string()))?;
+            let unit = unit.parse::<DurationUnit>().ok().context(ParseUnit {
+                unit: unit.to_string(),
+            })?;
 
-            duration += std::time::Duration::from_secs(value * unit.secs())
+            // This try_into is needed, as Duration::from_millis was stabilized
+            // in 1.3.0 but u128 was only added in 1.26.0. See
+            // - https://users.rust-lang.org/t/why-duration-as-from-millis-uses-different-primitives/89302
+            // - https://github.com/rust-lang/rust/issues/58580
+            duration +=
+                std::time::Duration::from_millis((value * unit.millis()).try_into().unwrap())
         }
 
         Ok(Self(duration))
@@ -105,17 +111,17 @@ impl Display for Duration {
             return write!(f, "0{}", DurationUnit::Seconds);
         }
 
-        let mut secs = self.0.as_secs();
+        let mut millis = self.0.as_millis();
 
         for unit in DurationUnit::iter() {
-            let whole = secs / unit.secs();
-            let rest = secs % unit.secs();
+            let whole = millis / unit.millis();
+            let rest = millis % unit.millis();
 
             if whole > 0 {
                 write!(f, "{}{}", whole, unit)?;
             }
 
-            secs = rest;
+            millis = rest;
         }
 
         Ok(())
@@ -195,19 +201,23 @@ pub enum DurationUnit {
 
     #[strum(serialize = "s")]
     Seconds,
+
+    #[strum(serialize = "ms")]
+    Milliseconds,
 }
 
 impl DurationUnit {
     /// Returns the number of whole milliseconds in each supported
     /// [`DurationUnit`].
-    pub fn secs(&self) -> u64 {
+    pub fn millis(&self) -> u128 {
         use DurationUnit::*;
 
         match self {
-            Days => 24 * Hours.secs(),
-            Hours => 60 * Minutes.secs(),
-            Minutes => 60 * Seconds.secs(),
-            Seconds => 1,
+            Days => 24 * Hours.millis(),
+            Hours => 60 * Minutes.millis(),
+            Minutes => 60 * Seconds.millis(),
+            Seconds => 1000,
+            Milliseconds => 1,
         }
     }
 }
@@ -219,21 +229,23 @@ mod test {
     use serde::{Deserialize, Serialize};
 
     #[rstest]
+    #[case("15d2m2s1000ms", 1296123)]
+    #[case("15d2m2s600ms", 1296122)]
     #[case("15d2m2s", 1296122)]
     #[case("70m", 4200)]
     #[case("1h", 3600)]
     #[case("1m", 60)]
     #[case("1s", 1)]
-    fn parse(#[case] input: &str, #[case] output: u64) {
+    fn parse_as_secs(#[case] input: &str, #[case] output: u64) {
         let dur: Duration = input.parse().unwrap();
         assert_eq!(dur.as_secs(), output);
     }
 
     #[rstest]
-    #[case("1D", DurationParseError::ParseUnitError("D".into()))]
+    #[case("1D", DurationParseError::ParseUnitError{unit: "D".into()})]
+    #[case("2d2", DurationParseError::NoUnit{value: 2})]
     #[case("1ä", DurationParseError::InvalidInput)]
     #[case(" ", DurationParseError::InvalidInput)]
-    #[case("2d2", DurationParseError::NoUnit(2))]
     fn parse_invalid(#[case] input: &str, #[case] expected_err: DurationParseError) {
         let err = Duration::from_str(input).unwrap_err();
         assert_eq!(err, expected_err)
