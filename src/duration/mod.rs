@@ -32,10 +32,8 @@ pub enum DurationParseError {
     #[snafu(display("invalid input, either empty or contains non-ascii characters"))]
     InvalidInput,
 
-    #[snafu(display(
-        "expected character '{expected}', the duration fragments must end with an alphabetic character"
-    ))]
-    ExpectedCharacter { expected: char },
+    #[snafu(display("unexpected character '{chr}'"))]
+    UnexpectedCharacter { chr: char },
 
     #[snafu(display("duration fragment with value '{value}' has no unit"))]
     NoUnit { value: u128 },
@@ -80,8 +78,8 @@ impl FromStr for Duration {
             let value = value.parse::<u128>().context(ParseIntSnafu)?;
 
             let Some(unit) = take_group(char::is_alphabetic) else {
-                if let Some(&(_, c)) = chars.peek() {
-                    return ExpectedCharacterSnafu { expected: c }.fail();
+                if let Some(&(_, chr)) = chars.peek() {
+                    return UnexpectedCharacterSnafu { chr }.fail();
                 } else {
                     return NoUnitSnafu { value }.fail();
                 }
