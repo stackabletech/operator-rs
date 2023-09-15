@@ -97,6 +97,11 @@ impl FromStr for Duration {
                 std::time::Duration::from_millis((value * unit.millis()).try_into().unwrap())
         }
 
+        // Buffer must not contain any remaining data
+        if let Some(&(_, chr)) = chars.peek() {
+            return UnexpectedCharacterSnafu { chr }.fail();
+        }
+
         Ok(Self(duration))
     }
 }
