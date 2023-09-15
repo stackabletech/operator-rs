@@ -4,16 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.49.0] - 2023-09-15
+
 ### Added
 
+- `PodListeners` CRD ([#644]).
+- Add support for tls pkcs12 password to secret operator volume builder ([#645]).
 - Add `Duration` capable of parsing human-readable duration formats ([#647])
 
+[#647]: https://github.com/stackabletech/operator-rs/pull/644
+[#647]: https://github.com/stackabletech/operator-rs/pull/645
 [#647]: https://github.com/stackabletech/operator-rs/pull/647
 
 ### Changed
 
+- Derive `Eq` and `Copy` where applicable for listener CRDs ([#644]).
 - Bump `kube` to `0.86.0` and Kubernetes version to `1.28` ([#648]).
 
+[#644]: https://github.com/stackabletech/operator-rs/pull/644
+[#645]: https://github.com/stackabletech/operator-rs/pull/645
 [#648]: https://github.com/stackabletech/operator-rs/pull/648
 
 ## [0.48.0] - 2023-08-18
@@ -22,10 +31,8 @@ All notable changes to this project will be documented in this file.
 
 - Add `PodBuilder::termination_grace_period_seconds` ([#641]).
 - Add support for adding `lifecycle`s to `ContainerBuilder` ([#641]).
-- Add support for tls pkcs12 password to secret operator volume builder ([#645]).
 
 [#641]: https://github.com/stackabletech/operator-rs/pull/641
-[#645]: https://github.com/stackabletech/operator-rs/pull/645
 
 ## [0.47.0] - 2023-08-16
 
