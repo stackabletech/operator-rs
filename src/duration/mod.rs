@@ -27,7 +27,7 @@ use strum::IntoEnumIterator;
 mod serde_impl;
 
 #[derive(Debug, Snafu, PartialEq)]
-#[snafu(context(suffix(false)))]
+#[snafu(module)]
 pub enum DurationParseError {
     #[snafu(display("invalid input, either empty or contains non-ascii characters"))]
     InvalidInput,
@@ -54,6 +54,7 @@ impl FromStr for Duration {
     type Err = DurationParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use duration_parse_error::*;
         let input = s.trim();
 
         // An empty or non-ascii input is invalid
@@ -76,17 +77,17 @@ impl FromStr for Duration {
         };
 
         while let Some(value) = take_group(char::is_numeric) {
-            let value = value.parse::<u128>().context(ParseInt)?;
+            let value = value.parse::<u128>().context(ParseIntSnafu)?;
 
             let Some(unit) = take_group(char::is_alphabetic) else {
                 if let Some(&(_, c)) = chars.peek() {
-                    return ExpectedCharacter { expected: c }.fail();
+                    return ExpectedCharacterSnafu { expected: c }.fail();
                 } else {
-                    return NoUnit { value }.fail();
+                    return NoUnitSnafu { value }.fail();
                 }
             };
 
-            let unit = unit.parse::<DurationUnit>().ok().context(ParseUnit {
+            let unit = unit.parse::<DurationUnit>().ok().context(ParseUnitSnafu {
                 unit: unit.to_string(),
             })?;
 
