@@ -191,7 +191,7 @@ impl Duration {
 /// [`std::time::Duration`] back to a human-readable format, which is defined
 /// in the [`Display`] implementation of [`Duration`].
 #[derive(Debug, strum::EnumString, strum::Display, strum::AsRefStr, strum::EnumIter)]
-pub enum DurationUnit {
+enum DurationUnit {
     #[strum(serialize = "d")]
     Days,
 
@@ -211,7 +211,7 @@ pub enum DurationUnit {
 impl DurationUnit {
     /// Returns the number of whole milliseconds in each supported
     /// [`DurationUnit`].
-    pub fn millis(&self) -> u128 {
+    fn millis(&self) -> u128 {
         use DurationUnit::*;
 
         match self {
