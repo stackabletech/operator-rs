@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Remove legacy node selector on `RoleGroup` ([#652]).
+
+[#652]: https://github.com/stackabletech/operator-rs/pull/652
+
 ## [0.49.0] - 2023-09-15
 
 ### Added
