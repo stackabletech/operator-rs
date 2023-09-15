@@ -6,12 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- `PodListeners` CRD ([#644]).
 - Add support for tls pkcs12 password to secret operator volume builder ([#645]).
 
 ### Changed
 
+- Derive `Eq` and `Copy` where applicable for listener CRDs ([#644]).
 - Bump `kube` to `0.86.0` and Kubernetes version to `1.28` ([#648]).
 
+[#644]: https://github.com/stackabletech/operator-rs/pull/644
 [#645]: https://github.com/stackabletech/operator-rs/pull/645
 [#648]: https://github.com/stackabletech/operator-rs/pull/648
 
