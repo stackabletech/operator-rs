@@ -29,8 +29,8 @@ mod serde_impl;
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(module)]
 pub enum DurationParseError {
-    #[snafu(display("invalid input, either empty or contains non-ascii characters"))]
-    InvalidInput,
+    #[snafu(display("empty input"))]
+    EmptyInput,
 
     #[snafu(display("unexpected character {chr:?}"))]
     UnexpectedCharacter { chr: char },
@@ -55,9 +55,8 @@ impl FromStr for Duration {
         use duration_parse_error::*;
         let input = s.trim();
 
-        // An empty or non-ascii input is invalid
-        if input.is_empty() || !input.is_ascii() {
-            return Err(DurationParseError::InvalidInput);
+        if input.is_empty() {
+            return EmptyInputSnafu.fail();
         }
 
         let mut chars = input.char_indices().peekable();
@@ -247,8 +246,8 @@ mod test {
     #[rstest]
     #[case("1D", DurationParseError::ParseUnitError{unit: "D".into()})]
     #[case("2d2", DurationParseError::NoUnit{value: 2})]
-    #[case("1ä", DurationParseError::InvalidInput)]
-    #[case(" ", DurationParseError::InvalidInput)]
+    #[case("1ä", DurationParseError::EmptyInput)]
+    #[case(" ", DurationParseError::EmptyInput)]
     fn parse_invalid(#[case] input: &str, #[case] expected_err: DurationParseError) {
         let err = Duration::from_str(input).unwrap_err();
         assert_eq!(err, expected_err)
