@@ -1,5 +1,5 @@
 //! This module contains a common [`Duration`] struct which is able to parse
-//! human-readable duration formats, like `2y 2h 20m 42s` or`15d 2m 2s`. It
+//! human-readable duration formats, like `5s`, `24h`, `2y2h20m42s` or`15d2m2s`. It
 //! additionally implements many required traits, like [`Derivative`],
 //! [`JsonSchema`], [`Deserialize`][serde::Deserialize], and
 //! [`Serialize`][serde::Serialize].
