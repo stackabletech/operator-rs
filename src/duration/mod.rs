@@ -13,9 +13,9 @@
 //! timeouts or retries.
 
 use std::{
-    fmt::{Display, Write},
+    fmt::Display,
     num::ParseIntError,
-    ops::{Deref, DerefMut},
+    ops::{Add, AddAssign, Deref, DerefMut, Sub, SubAssign},
     str::FromStr,
 };
 
@@ -32,8 +32,19 @@ pub enum DurationParseError {
     #[error("invalid input, either empty or contains non-ascii characters")]
     InvalidInput,
 
-    #[error("failed to parse duration fragment")]
-    FragmentError(#[from] DurationFragmentParseError),
+    #[error(
+        "expected character '{0}', the duration fragments must end with an alphabetic character"
+    )]
+    ExpectedCharacter(char),
+
+    #[error("duration fragment with value '{0} has no unit")]
+    NoUnit(u64),
+
+    #[error("failed to parse fragment unit '{0}'")]
+    ParseUnitError(String),
+
+    #[error("failed to parse fragment value as integer: {0}")]
+    ParseIntError(#[from] ParseIntError),
 }
 
 #[derive(Clone, Copy, Debug, Derivative, Hash, PartialEq, PartialOrd, JsonSchema)]
@@ -50,23 +61,39 @@ impl FromStr for Duration {
             return Err(DurationParseError::InvalidInput);
         }
 
-        // Let's split up individual parts separated by a space
-        let parts: Vec<&str> = input.split(' ').collect();
+        let mut chars = input.char_indices().peekable();
+        let mut duration = std::time::Duration::ZERO;
 
-        // Parse each part as a DurationFragment and extract the final duration
-        // of each fragment in milliseconds
-        let values: Vec<u128> = parts
-            .iter()
-            .map(|p| p.parse::<DurationFragment>())
-            .map(|r| r.map(|f| f.millis()))
-            .collect::<Result<Vec<_>, DurationFragmentParseError>>()?;
+        let mut take_group = |f: fn(char) -> bool| {
+            let &(from, _) = chars.peek()?;
+            let mut to = from;
 
-        // NOTE (Techassi): This derefernce is super weird, but
-        // Duration::from_millis doesn't accept a u128, but returns a u128
-        // when as_millis is called.
-        Ok(Self(std::time::Duration::from_millis(
-            values.iter().fold(0, |acc, v| acc + (*v as u64)),
-        )))
+            while let Some((i, _)) = chars.next_if(|(_, c)| f(*c)) {
+                to = i;
+            }
+
+            Some(&input[from..=to])
+        };
+
+        while let Some(value) = take_group(char::is_numeric) {
+            let value = value.parse::<u64>()?;
+
+            let Some(unit) = take_group(char::is_alphabetic) else {
+                if let Some(&(_, c)) = chars.peek() {
+                    return Err(DurationParseError::ExpectedCharacter(c));
+                } else {
+                    return Err(DurationParseError::NoUnit(value));
+                }
+            };
+
+            let unit = unit
+                .parse::<DurationUnit>()
+                .map_err(|_| DurationParseError::ParseUnitError(unit.to_string()))?;
+
+            duration += std::time::Duration::from_secs(value * unit.secs())
+        }
+
+        Ok(Self(duration))
     }
 }
 
@@ -75,24 +102,23 @@ impl Display for Duration {
         // If the inner Duration is zero, print out '0ms' as milliseconds
         // is the base unit for our Duration.
         if self.0.is_zero() {
-            return write!(f, "0{}", DurationUnit::Milliseconds);
+            return write!(f, "0{}", DurationUnit::Seconds);
         }
 
-        let mut millis = self.0.as_millis();
-        let mut formatted = String::new();
+        let mut secs = self.0.as_secs();
 
         for unit in DurationUnit::iter() {
-            let whole = millis / unit.millis();
-            let rest = millis % unit.millis();
+            let whole = secs / unit.secs();
+            let rest = secs % unit.secs();
 
             if whole > 0 {
-                write!(formatted, "{}{} ", whole, unit)?;
+                write!(f, "{}{}", whole, unit)?;
             }
 
-            millis = rest;
+            secs = rest;
         }
 
-        write!(f, "{}", formatted.trim_end())
+        Ok(())
     }
 }
 
@@ -116,16 +142,38 @@ impl From<std::time::Duration> for Duration {
     }
 }
 
+impl Add for Duration {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self(self.0 + rhs.0)
+    }
+}
+
+impl AddAssign for Duration {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0.add_assign(rhs.0)
+    }
+}
+
+impl Sub for Duration {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self(self.0 - rhs.0)
+    }
+}
+
+impl SubAssign for Duration {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0.sub_assign(rhs.0)
+    }
+}
+
 impl Duration {
     /// Creates a new [`Duration`] from the specified number of whole seconds.
     pub const fn from_secs(secs: u64) -> Self {
         Self(std::time::Duration::from_secs(secs))
-    }
-
-    /// Creates a new [`Duration`] from the specified number of whole
-    /// milliseconds.
-    pub const fn from_millis(millis: u64) -> Self {
-        Self(std::time::Duration::from_millis(millis))
     }
 }
 
@@ -147,116 +195,20 @@ pub enum DurationUnit {
 
     #[strum(serialize = "s")]
     Seconds,
-
-    #[strum(serialize = "ms")]
-    Milliseconds,
 }
 
 impl DurationUnit {
     /// Returns the number of whole milliseconds in each supported
     /// [`DurationUnit`].
-    pub fn millis(&self) -> u128 {
+    pub fn secs(&self) -> u64 {
         use DurationUnit::*;
 
         match self {
-            Days => 24 * Hours.millis(),
-            Hours => 60 * Minutes.millis(),
-            Minutes => 60 * Seconds.millis(),
-            Seconds => 1000,
-            Milliseconds => 1,
+            Days => 24 * Hours.secs(),
+            Hours => 60 * Minutes.secs(),
+            Minutes => 60 * Seconds.secs(),
+            Seconds => 1,
         }
-    }
-}
-
-#[derive(Debug, Error, PartialEq)]
-pub enum DurationFragmentParseError {
-    #[error("invalid input, either empty or contains non-ascii characters")]
-    InvalidInput,
-
-    #[error("expected number, the duration fragment must start with a numeric character")]
-    ExpectedNumber,
-
-    #[error("expected character, the duration fragments must end with an alphabetic character")]
-    ExpectedCharacter,
-
-    #[error("failed to parse fragment value as integer")]
-    ParseIntError(#[from] ParseIntError),
-
-    #[error("failed to parse fragment unit")]
-    UnitParseError,
-}
-
-/// Each [`DurationFragment`] consists of a numeric value followed by
-/// a[`DurationUnit`].
-#[derive(Debug)]
-pub struct DurationFragment {
-    value: u128,
-    unit: DurationUnit,
-}
-
-impl FromStr for DurationFragment {
-    type Err = DurationFragmentParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let input = s.trim();
-
-        // An empty is invalid, non-ascii characters are already ruled out by
-        // the Duration impl
-        if input.is_empty() {
-            return Err(DurationFragmentParseError::InvalidInput);
-        }
-
-        let mut chars = input.char_indices().peekable();
-        let mut end_index = 0;
-
-        // First loop through all numeric characters
-        while let Some((i, _)) = chars.next_if(|(_, c)| char::is_numeric(*c)) {
-            end_index = i + 1;
-        }
-
-        // Parse the numeric characters as a u128
-        let value = if end_index != 0 {
-            s[0..end_index].parse::<u128>()?
-        } else {
-            return Err(DurationFragmentParseError::ExpectedNumber);
-        };
-
-        // Loop through all alphabetic characters
-        let start_index = end_index;
-        while let Some((i, _)) = chars.next_if(|(_, c)| char::is_alphabetic(*c)) {
-            end_index = i + 1;
-        }
-
-        // Parse the alphabetic characters as a supported duration unit
-        let unit = if end_index != start_index {
-            s[start_index..end_index]
-                .parse::<DurationUnit>()
-                .map_err(|_| DurationFragmentParseError::UnitParseError)?
-        } else {
-            return Err(DurationFragmentParseError::ExpectedCharacter);
-        };
-
-        // If there are characters left which are not alphabetic, we return an
-        // error
-        if chars.peek().is_some() {
-            return Err(DurationFragmentParseError::ExpectedCharacter);
-        }
-
-        Ok(Self { value, unit })
-    }
-}
-
-impl Display for DurationFragment {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}", self.value, self.unit)
-    }
-}
-
-impl DurationFragment {
-    /// Returns the amount of whole milliseconds encoded by this
-    /// [`DurationFragment`].
-    pub fn millis(&self) -> u128 {
-        self.value * self.unit.millis()
     }
 }
 
@@ -267,7 +219,8 @@ mod test {
     use serde::{Deserialize, Serialize};
 
     #[rstest]
-    #[case("15d 2m 2s", 1296122)]
+    #[case("15d2m2s", 1296122)]
+    #[case("70m", 4200)]
     #[case("1h", 3600)]
     #[case("1m", 60)]
     #[case("1s", 1)]
@@ -277,33 +230,27 @@ mod test {
     }
 
     #[rstest]
-    #[case(
-        "2d2",
-        DurationParseError::FragmentError(DurationFragmentParseError::ExpectedCharacter)
-    )]
-    #[case(
-        "-1y",
-        DurationParseError::FragmentError(DurationFragmentParseError::ExpectedNumber)
-    )]
-    #[case(
-        "1D",
-        DurationParseError::FragmentError(DurationFragmentParseError::UnitParseError)
-    )]
+    #[case("1D", DurationParseError::ParseUnitError("D".into()))]
     #[case("1ä", DurationParseError::InvalidInput)]
     #[case(" ", DurationParseError::InvalidInput)]
+    #[case("2d2", DurationParseError::NoUnit(2))]
     fn parse_invalid(#[case] input: &str, #[case] expected_err: DurationParseError) {
         let err = Duration::from_str(input).unwrap_err();
         assert_eq!(err, expected_err)
     }
 
     #[rstest]
-    #[case("15d 2m 2s")]
-    #[case("1h 20m")]
-    #[case("1m")]
-    #[case("1s")]
-    fn to_string(#[case] duration: &str) {
-        let dur: Duration = duration.parse().unwrap();
-        assert_eq!(dur.to_string(), duration);
+    #[case("70m", Some("1h10m"))]
+    #[case("15d2m2s", None)]
+    #[case("1h20m", None)]
+    #[case("1m", None)]
+    #[case("1s", None)]
+    fn to_string(#[case] input: &str, #[case] expected: Option<&str>) {
+        let dur: Duration = input.parse().unwrap();
+        match expected {
+            Some(e) => assert_eq!(dur.to_string(), e),
+            None => assert_eq!(dur.to_string(), input),
+        }
     }
 
     #[test]
@@ -313,7 +260,7 @@ mod test {
             dur: Duration,
         }
 
-        let s: S = serde_yaml::from_str("dur: 15d 2m 2s").unwrap();
+        let s: S = serde_yaml::from_str("dur: 15d2m2s").unwrap();
         assert_eq!(s.dur.as_secs(), 1296122);
     }
 
@@ -325,32 +272,32 @@ mod test {
         }
 
         let s = S {
-            dur: "15d 2m 2s".parse().unwrap(),
+            dur: "15d2m2s".parse().unwrap(),
         };
-        assert_eq!(serde_yaml::to_string(&s).unwrap(), "dur: 15d 2m 2s\n");
+        assert_eq!(serde_yaml::to_string(&s).unwrap(), "dur: 15d2m2s\n");
     }
 
-    // #[test]
-    // fn add_ops() {
-    //     let mut dur1 = Duration::from_secs(20);
-    //     let dur2 = Duration::from_secs(10);
+    #[test]
+    fn add_ops() {
+        let mut dur1 = Duration::from_str("20s").unwrap();
+        let dur2 = Duration::from_secs(10);
 
-    //     let dur = dur1 + dur2;
-    //     assert_eq!(dur.as_secs(), 30);
+        let dur = dur1 + dur2;
+        assert_eq!(dur.as_secs(), 30);
 
-    //     dur1 += dur2;
-    //     assert_eq!(dur1.as_secs(), 30);
-    // }
+        dur1 += dur2;
+        assert_eq!(dur1.as_secs(), 30);
+    }
 
-    // #[test]
-    // fn sub_ops() {
-    //     let mut dur1 = Duration::from_secs(20);
-    //     let dur2 = Duration::from_secs(10);
+    #[test]
+    fn sub_ops() {
+        let mut dur1 = Duration::from_str("20s").unwrap();
+        let dur2 = Duration::from_secs(10);
 
-    //     let dur = dur1 - dur2;
-    //     assert_eq!(dur.as_secs(), 10);
+        let dur = dur1 - dur2;
+        assert_eq!(dur.as_secs(), 10);
 
-    //     dur1 -= dur2;
-    //     assert_eq!(dur1.as_secs(), 10);
-    // }
+        dur1 -= dur2;
+        assert_eq!(dur1.as_secs(), 10);
+    }
 }
