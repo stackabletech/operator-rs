@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.49.0] - 2023-09-15
+
 ### Added
 
 - `PodListeners` CRD ([#644]).
