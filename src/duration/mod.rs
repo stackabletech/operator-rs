@@ -25,7 +25,6 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use strum::IntoEnumIterator;
 
 mod serde_impl;
-pub use serde_impl::*;
 
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(context(suffix(false)))]
@@ -81,7 +80,7 @@ impl FromStr for Duration {
 
             let Some(unit) = take_group(char::is_alphabetic) else {
                 if let Some(&(_, c)) = chars.peek() {
-                    return ExpectedCharacter {expected: c}.fail();
+                    return ExpectedCharacter { expected: c }.fail();
                 } else {
                     return NoUnit { value }.fail();
                 }
