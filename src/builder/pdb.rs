@@ -18,7 +18,7 @@ pub struct PdbBuilder<ObjectMeta, LabelSelector, Constraints> {
     /// We intentionally only support fixed numbers, so percentage, see ADR on Pod disruptions for details.
     /// We use u16, as [`IntOrString`] takes an i32 and we don't want to allow negative numbers. u16 will always fit in i32.
     min_available: Option<u16>,
-    /// Tracks wether either [`max_unavailable`] or [`min_available`] is set
+    /// Tracks wether either `max_unavailable` or `min_available` are set
     _constraints: Constraints,
 }
 
