@@ -61,10 +61,8 @@ pub struct Duration(std::time::Duration);
 impl FromStr for Duration {
     type Err = DurationParseError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
         use duration_parse_error::*;
-        let input = s.trim();
-
         if input.is_empty() {
             return EmptyInputSnafu.fail();
         }
@@ -76,12 +74,15 @@ impl FromStr for Duration {
         let mut take_group = |f: fn(char) -> bool| {
             let &(from, _) = chars.peek()?;
             let mut to = from;
+            let mut last_char = None;
 
-            while let Some((i, _)) = chars.next_if(|(_, c)| f(*c)) {
+            while let Some((i, c)) = chars.next_if(|(_, c)| f(*c)) {
                 to = i;
+                last_char = Some(c);
             }
 
-            Some(&input[from..=to])
+            // if last_char == None then we read 0 characters => fail
+            Some(&input[from..(to + last_char?.len_utf8())])
         };
 
         while let Some(value) = take_group(char::is_numeric) {
@@ -326,8 +327,9 @@ mod test {
     #[rstest]
     #[case("1D", DurationParseError::ParseUnitError{unit: "D".into()})]
     #[case("2d2", DurationParseError::NoUnit{value: 2})]
-    #[case("1ä", DurationParseError::EmptyInput)]
-    #[case(" ", DurationParseError::EmptyInput)]
+    #[case("1ä", DurationParseError::ParseUnitError { unit: "ä".into() })]
+    #[case(" ", DurationParseError::UnexpectedCharacter { chr: ' ' })]
+    #[case("", DurationParseError::EmptyInput)]
     fn parse_invalid(#[case] input: &str, #[case] expected_err: DurationParseError) {
         let err = Duration::from_str(input).unwrap_err();
         assert_eq!(err, expected_err)
