@@ -482,7 +482,7 @@ rootLogger.appenderRef.FILE.ref = FILE"#,
 /// * `config` - The logging configuration for the container
 /// * `additional_config` - Optional unstructured parameter to add special cases that are not
 ///       covered in the logging configuration. Must adhere to the inner logback XML schema as
-///       shown in the example below. It is not parsed or checked and added as is to the `logback.xml`.  
+///       shown in the example below. It is not parsed or checked and added as is to the `logback.xml`.
 ///
 /// # Example
 ///
@@ -780,7 +780,7 @@ if includes(keys, "decision_id") {{
   .logger = "decision"
 }} else {{
   .logger = "server"
-}} 
+}}
 
 .level = upcase!(parsed_event.level)
 .message = string!(parsed_event.msg)

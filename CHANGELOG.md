@@ -10,6 +10,11 @@ All notable changes to this project will be documented in this file.
 
 - `PodListeners` CRD ([#644]).
 - Add support for tls pkcs12 password to secret operator volume builder ([#645]).
+- Add `Duration` capable of parsing human-readable duration formats ([#647])
+
+[#644]: https://github.com/stackabletech/operator-rs/pull/644
+[#645]: https://github.com/stackabletech/operator-rs/pull/645
+[#647]: https://github.com/stackabletech/operator-rs/pull/647
 
 ### Changed
 
