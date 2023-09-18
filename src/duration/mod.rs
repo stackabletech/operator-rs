@@ -241,14 +241,6 @@ impl Div<u32> for Duration {
     }
 }
 
-impl Div<Duration> for u32 {
-    type Output = Duration;
-
-    fn div(self, rhs: Duration) -> Duration {
-        rhs / self
-    }
-}
-
 impl Duration {
     /// Creates a new [`Duration`] from the specified number of whole seconds.
     pub const fn from_secs(secs: u64) -> Self {
