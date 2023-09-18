@@ -16,7 +16,7 @@ use std::{
     cmp::Ordering,
     fmt::Display,
     num::ParseIntError,
-    ops::{Add, AddAssign, Deref, DerefMut, Sub, SubAssign},
+    ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, Sub, SubAssign},
     str::FromStr,
 };
 
@@ -198,6 +198,22 @@ impl Sub for Duration {
 
     fn sub(self, rhs: Self) -> Self::Output {
         Self(self.0 - rhs.0)
+    }
+}
+
+impl Mul<u32> for Duration {
+    type Output = Self;
+
+    fn mul(self, rhs: u32) -> Duration {
+        Self(self.0 * rhs)
+    }
+}
+
+impl Div<u32> for Duration {
+    type Output = Self;
+
+    fn div(self, rhs: u32) -> Duration {
+        Self(self.0 / rhs)
     }
 }
 
