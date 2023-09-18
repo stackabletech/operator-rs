@@ -209,11 +209,27 @@ impl Mul<u32> for Duration {
     }
 }
 
+impl Mul<Duration> for u32 {
+    type Output = Duration;
+
+    fn mul(self, rhs: Duration) -> Duration {
+        rhs * self
+    }
+}
+
 impl Div<u32> for Duration {
     type Output = Self;
 
     fn div(self, rhs: u32) -> Duration {
         Self(self.0 / rhs)
+    }
+}
+
+impl Div<Duration> for u32 {
+    type Output = Duration;
+
+    fn div(self, rhs: Duration) -> Duration {
+        rhs / self
     }
 }
 
