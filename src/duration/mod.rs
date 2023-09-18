@@ -13,6 +13,7 @@
 //! timeouts or retries.
 
 use std::{
+    cmp::Ordering,
     fmt::Display,
     num::ParseIntError,
     ops::{Add, AddAssign, Deref, DerefMut, Sub, SubAssign},
@@ -35,8 +36,17 @@ pub enum DurationParseError {
     #[snafu(display("unexpected character {chr:?}"))]
     UnexpectedCharacter { chr: char },
 
-    #[snafu(display("duration fragment with value {value:?} has no unit"))]
+    #[snafu(display("fragment with value {value:?} has no unit"))]
     NoUnit { value: u128 },
+
+    #[snafu(display("invalid fragment order, {current} must be before {previous}"))]
+    InvalidUnitOrdering {
+        previous: DurationUnit,
+        current: DurationUnit,
+    },
+
+    #[snafu(display("fragment unit {unit} was specified multiple times"))]
+    DuplicateUnit { unit: DurationUnit },
 
     #[snafu(display("failed to parse fragment unit {unit:?}"))]
     ParseUnitError { unit: String },
@@ -45,7 +55,7 @@ pub enum DurationParseError {
     ParseIntError { source: ParseIntError },
 }
 
-#[derive(Clone, Copy, Debug, Derivative, Hash, PartialEq, PartialOrd, JsonSchema)]
+#[derive(Clone, Copy, Debug, Derivative, Hash, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
 pub struct Duration(std::time::Duration);
 
 impl FromStr for Duration {
@@ -61,6 +71,7 @@ impl FromStr for Duration {
 
         let mut chars = input.char_indices().peekable();
         let mut duration = std::time::Duration::ZERO;
+        let mut last_unit = None;
 
         let mut take_group = |f: fn(char) -> bool| {
             let &(from, _) = chars.peek()?;
@@ -88,12 +99,29 @@ impl FromStr for Duration {
                 unit: unit.to_string(),
             })?;
 
+            // Check that the unit is smaller than the previous one, and that
+            // it wasn't specified multiple times
+            if let Some(last_unit) = last_unit {
+                match unit.cmp(&last_unit) {
+                    Ordering::Less => {
+                        return InvalidUnitOrderingSnafu {
+                            previous: last_unit,
+                            current: unit,
+                        }
+                        .fail()
+                    }
+                    Ordering::Equal => return DuplicateUnitSnafu { unit }.fail(),
+                    _ => (),
+                }
+            }
+
             // This try_into is needed, as Duration::from_millis was stabilized
             // in 1.3.0 but u128 was only added in 1.26.0. See
             // - https://users.rust-lang.org/t/why-duration-as-from-millis-uses-different-primitives/89302
             // - https://github.com/rust-lang/rust/issues/58580
             duration +=
-                std::time::Duration::from_millis((value * unit.millis()).try_into().unwrap())
+                std::time::Duration::from_millis((value * unit.millis()).try_into().unwrap());
+            last_unit = Some(unit);
         }
 
         // Buffer must not contain any remaining data
@@ -190,8 +218,18 @@ impl Duration {
 /// **MATTERS**. It is the basis for the correct transformation of the
 /// [`std::time::Duration`] back to a human-readable format, which is defined
 /// in the [`Display`] implementation of [`Duration`].
-#[derive(Debug, strum::EnumString, strum::Display, strum::AsRefStr, strum::EnumIter)]
-enum DurationUnit {
+#[derive(
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    strum::EnumString,
+    strum::Display,
+    strum::AsRefStr,
+    strum::EnumIter,
+)]
+pub enum DurationUnit {
     #[strum(serialize = "d")]
     Days,
 
@@ -249,6 +287,17 @@ mod test {
     #[case("1ä", DurationParseError::EmptyInput)]
     #[case(" ", DurationParseError::EmptyInput)]
     fn parse_invalid(#[case] input: &str, #[case] expected_err: DurationParseError) {
+        let err = Duration::from_str(input).unwrap_err();
+        assert_eq!(err, expected_err)
+    }
+
+    #[rstest]
+    #[case("15d2h1d", DurationParseError::InvalidUnitOrdering { previous: DurationUnit::Hours, current: DurationUnit::Days })]
+    #[case("15d2d", DurationParseError::DuplicateUnit { unit: DurationUnit::Days })]
+    fn invalid_order_or_duplicate_unit(
+        #[case] input: &str,
+        #[case] expected_err: DurationParseError,
+    ) {
         let err = Duration::from_str(input).unwrap_err();
         assert_eq!(err, expected_err)
     }
