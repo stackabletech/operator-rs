@@ -55,7 +55,7 @@ pub enum DurationParseError {
     ParseIntError { source: ParseIntError },
 }
 
-#[derive(Clone, Copy, Debug, Derivative, Hash, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
+#[derive(Clone, Copy, Debug, Derivative, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Duration(std::time::Duration);
 
 impl FromStr for Duration {
@@ -131,6 +131,16 @@ impl FromStr for Duration {
         }
 
         Ok(Self(duration))
+    }
+}
+
+impl JsonSchema for Duration {
+    fn schema_name() -> String {
+        "Duration".to_string()
+    }
+
+    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        String::json_schema(gen)
     }
 }
 
