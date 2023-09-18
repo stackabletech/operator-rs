@@ -214,9 +214,9 @@ impl Duration {
     }
 }
 
-/// Defines supported [`DurationUnit`]s. Each [`DurationFragment`] consists of
-/// a numeric value followed by a [`DurationUnit`]. The order of variants
-/// **MATTERS**. It is the basis for the correct transformation of the
+/// Defines supported [`DurationUnit`]s. Each fragment consists of a numeric
+/// value followed by a [`DurationUnit`]. The order of variants **MATTERS**.
+/// It is the basis for the correct transformation of the
 /// [`std::time::Duration`] back to a human-readable format, which is defined
 /// in the [`Display`] implementation of [`Duration`].
 #[derive(
