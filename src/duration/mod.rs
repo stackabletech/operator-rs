@@ -211,6 +211,12 @@ impl Sub for Duration {
     }
 }
 
+impl SubAssign for Duration {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0.sub_assign(rhs.0)
+    }
+}
+
 impl Mul<u32> for Duration {
     type Output = Self;
 
@@ -240,12 +246,6 @@ impl Div<Duration> for u32 {
 
     fn div(self, rhs: Duration) -> Duration {
         rhs / self
-    }
-}
-
-impl SubAssign for Duration {
-    fn sub_assign(&mut self, rhs: Self) {
-        self.0.sub_assign(rhs.0)
     }
 }
 
