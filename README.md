@@ -5,13 +5,13 @@
 <h1 align="center">Stackable operator-rs</h1>
 
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-green.svg)](https://docs.stackable.tech/home/stable/contributor/index.html)
-[![License OSL3.0](https://img.shields.io/badge/license-OSL3.0-green)](./LICENSE)
+[![Apache License 2.0](https://img.shields.io/badge/license-Apache--2.0-green)](./LICENSE)
 
 [Stackable Data Platform](https://stackable.tech/) | [Platform Docs](https://docs.stackable.tech/) | [Discussions](https://github.com/orgs/stackabletech/discussions) | [Discord](https://discord.gg/7kZ3BNnCAF)
 
 This is a simple Rust library that includes all kinds of helper methods, structs and enums that can be used to write a Kubernetes Controller/Operator with the [kube-rs](https://github.com/kube-rs/kube-rs) crate.
 
-It is part of the Stackable Data Platform, a curated selection of the best open source data apps like Kafka, Druid, Trino or Spark, [all](#other-operators) working together seamlessly. Based on Kubernetes, Stackable is designed to run on prem or in the cloud.
+It is part of the Stackable Data Platform, a curated selection of the best open source data apps like Apache Kafka, Apache Druid, Trino or Apache Spark, [all](#our-operators) working together seamlessly. Based on Kubernetes, Stackable is designed to run on prem or in the cloud.
 
 ## Documentation
 
@@ -24,7 +24,7 @@ If you have a question about the Stackable Data Platform contact us via our [hom
 
 ## About The Stackable Data Platform
 
-This operator is written and maintained by [Stackable](https://www.stackable.tech) and it is part of a larger data platform.
+This operator is written and maintained by [Stackable](https://stackable.tech) and it is part of a larger data platform.
 
 ![Stackable Data Platform Overview](./.readme/static/borrowed/sdp_overview.png)
 
@@ -65,7 +65,7 @@ Contributions are welcome. Follow our [Contributors Guide](https://docs.stackabl
 
 ## License
 
-[Open Software License version 3.0](./LICENSE).
+[Apache License 2.0](./LICENSE).
 
 ## Support
 
