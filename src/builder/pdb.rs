@@ -147,6 +147,7 @@ mod test {
 
     #[test]
     pub fn test_normal_build() {
+        #[allow(deprecated)]
         let pdb = PdbBuilder::new()
             .metadata(
                 ObjectMetaBuilder::new()
