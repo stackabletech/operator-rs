@@ -173,6 +173,7 @@ fn config_schema_default() -> serde_json::Value {
 pub struct Role<T> {
     #[serde(flatten)]
     pub config: CommonConfiguration<T>,
+    #[serde(default)]
     pub pdb: Pdb,
     pub role_groups: HashMap<String, RoleGroup<T>>,
 }
