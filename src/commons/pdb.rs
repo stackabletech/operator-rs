@@ -12,6 +12,7 @@ pub struct Pdb {
     /// The number of Pods that are allowed to be down because of voluntary disruptions.
     /// If you don't explicitly set this, the operator will use a sane default based
     /// upon knowledge about the individual product.
+    #[serde(default)]
     pub max_unavailable: Option<u16>,
 }
 
