@@ -159,6 +159,7 @@ impl ClusterResourceApplyStrategy {
     }
 }
 
+// IMPORTANT: Don't forget to add new Resources to [`delete_orphaned_resources`] as well!
 impl ClusterResource for ConfigMap {}
 impl ClusterResource for Secret {}
 impl ClusterResource for Service {}
@@ -546,16 +547,18 @@ impl ClusterResources {
     /// # Arguments
     ///
     /// * `client` - The client which is used to access Kubernetes
+    ///
     pub async fn delete_orphaned_resources(self, client: &Client) -> OperatorResult<()> {
         tokio::try_join!(
             self.delete_orphaned_resources_of_kind::<Service>(client),
             self.delete_orphaned_resources_of_kind::<StatefulSet>(client),
             self.delete_orphaned_resources_of_kind::<DaemonSet>(client),
+            self.delete_orphaned_resources_of_kind::<Job>(client),
             self.delete_orphaned_resources_of_kind::<ConfigMap>(client),
+            self.delete_orphaned_resources_of_kind::<Secret>(client),
             self.delete_orphaned_resources_of_kind::<ServiceAccount>(client),
             self.delete_orphaned_resources_of_kind::<RoleBinding>(client),
-            self.delete_orphaned_resources_of_kind::<Secret>(client),
-            self.delete_orphaned_resources_of_kind::<Job>(client),
+            self.delete_orphaned_resources_of_kind::<PodDisruptionBudget>(client),
         )?;
 
         Ok(())
