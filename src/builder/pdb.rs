@@ -1,4 +1,9 @@
-use crate::{builder::ObjectMetaBuilder, labels::role_selector_labels};
+use crate::{
+    builder::ObjectMetaBuilder,
+    error::OperatorResult,
+    labels::{role_selector_labels, APP_MANAGED_BY_LABEL},
+    utils::format_full_controller_name,
+};
 use k8s_openapi::{
     api::policy::v1::{PodDisruptionBudget, PodDisruptionBudgetSpec},
     apimachinery::pkg::{
@@ -27,24 +32,32 @@ impl PdbBuilder<(), (), ()> {
         PdbBuilder::default()
     }
 
-    pub fn new_for_role<T: Resource>(
+    pub fn new_for_role<T: Resource<DynamicType = ()>>(
         owner: &T,
         app_name: &str,
         role: &str,
-    ) -> PdbBuilder<ObjectMeta, LabelSelector, ()> {
+        operator_name: &str,
+        controller_name: &str,
+    ) -> OperatorResult<PdbBuilder<ObjectMeta, LabelSelector, ()>> {
+        let role_selector_labels = role_selector_labels(owner, app_name, role);
         let metadata = ObjectMetaBuilder::new()
             .namespace_opt(owner.namespace())
             .name(format!("{}-{}", owner.name_any(), role))
+            .ownerreference_from_resource(owner, None, Some(true))?
+            .with_labels(role_selector_labels.clone())
+            .with_label(
+                APP_MANAGED_BY_LABEL.to_string(),
+                format_full_controller_name(operator_name, controller_name),
+            )
             .build();
-        let role_selector_labels = role_selector_labels(owner, app_name, role);
-        PdbBuilder {
+        Ok(PdbBuilder {
             metadata,
             selector: LabelSelector {
                 match_expressions: None,
                 match_labels: Some(role_selector_labels),
             },
             ..PdbBuilder::default()
-        }
+        })
     }
 
     pub fn metadata(self, metadata: impl Into<ObjectMeta>) -> PdbBuilder<ObjectMeta, (), ()> {
@@ -124,7 +137,7 @@ mod test {
     use schemars::JsonSchema;
     use serde::{Deserialize, Serialize};
 
-    use crate::builder::ObjectMetaBuilder;
+    use crate::builder::{ObjectMetaBuilder, OwnerReferenceBuilder};
 
     use super::PdbBuilder;
 
@@ -182,13 +195,17 @@ mod test {
             metadata:
               name: simple-trino
               namespace: default
+              uid: 123 # Needed for the ownerreference
             spec: {}
             ",
         )
         .unwrap();
         let app_name = "trino";
         let role = "worker";
-        let pdb = PdbBuilder::new_for_role(&trino, app_name, role)
+        let operator_name = "trino.stackable.tech";
+        let controller_name = "trino-operator-trino-controller";
+        let pdb = PdbBuilder::new_for_role(&trino, app_name, role, operator_name, controller_name)
+            .unwrap()
             .max_unavailable(2)
             .build();
 
@@ -198,6 +215,27 @@ mod test {
                 metadata: ObjectMeta {
                     name: Some("simple-trino-worker".to_string()),
                     namespace: Some("default".to_string()),
+                    labels: Some(BTreeMap::from([
+                        ("app.kubernetes.io/name".to_string(), "trino".to_string()),
+                        (
+                            "app.kubernetes.io/instance".to_string(),
+                            "simple-trino".to_string()
+                        ),
+                        (
+                            "app.kubernetes.io/managed-by".to_string(),
+                            "trino.stackable.tech_trino-operator-trino-controller".to_string()
+                        ),
+                        (
+                            "app.kubernetes.io/component".to_string(),
+                            "worker".to_string()
+                        )
+                    ])),
+                    owner_references: Some(vec![OwnerReferenceBuilder::new()
+                        .initialize_from_resource(&trino)
+                        .block_owner_deletion_opt(None)
+                        .controller_opt(Some(true))
+                        .build()
+                        .unwrap()]),
                     ..Default::default()
                 },
                 spec: Some(PodDisruptionBudgetSpec {
