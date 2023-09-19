@@ -10,25 +10,24 @@ use crate::{
         },
     },
     error::{Error, OperatorResult},
-    k8s_openapi::{
-        api::{
-            apps::v1::{DaemonSet, DaemonSetSpec, StatefulSet, StatefulSetSpec},
-            batch::v1::Job,
-            core::v1::{
-                ConfigMap, ObjectReference, PodSpec, PodTemplateSpec, Secret, Service,
-                ServiceAccount,
-            },
-            rbac::v1::RoleBinding,
-        },
-        apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
-        NamespaceResourceScope,
-    },
-    kube::{Resource, ResourceExt},
     labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
     utils::format_full_controller_name,
 };
 
-use kube::core::ErrorResponse;
+use k8s_openapi::{
+    api::{
+        apps::v1::{DaemonSet, DaemonSetSpec, StatefulSet, StatefulSetSpec},
+        batch::v1::Job,
+        core::v1::{
+            ConfigMap, ObjectReference, PodSpec, PodTemplateSpec, Secret, Service, ServiceAccount,
+        },
+        policy::v1::PodDisruptionBudget,
+        rbac::v1::RoleBinding,
+    },
+    apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
+    NamespaceResourceScope,
+};
+use kube::{core::ErrorResponse, Resource, ResourceExt};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::{BTreeMap, HashSet},
@@ -161,10 +160,11 @@ impl ClusterResourceApplyStrategy {
 }
 
 impl ClusterResource for ConfigMap {}
+impl ClusterResource for Secret {}
 impl ClusterResource for Service {}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
-impl ClusterResource for Secret {}
+impl ClusterResource for PodDisruptionBudget {}
 
 impl ClusterResource for Job {
     fn pod_spec(&self) -> Option<&PodSpec> {
