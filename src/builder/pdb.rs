@@ -97,6 +97,10 @@ impl PdbBuilder<ObjectMeta, LabelSelector, ()> {
         }
     }
 
+    #[deprecated(
+        since = "0.51.0",
+        note = "It is strongly recommended to use [`max_unavailable`]. Please read the ADR on Pod disruptions before using this function."
+    )]
     pub fn min_available(self, min_available: u16) -> PdbBuilder<ObjectMeta, LabelSelector, bool> {
         PdbBuilder {
             metadata: self.metadata,
