@@ -116,7 +116,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub const AUTHOR: &str = "Stackable GmbH - info@stackable.de";
+pub const AUTHOR: &str = "Stackable GmbH - info@stackable.tech";
 
 /// Framework-standardized commands
 ///

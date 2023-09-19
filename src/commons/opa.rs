@@ -22,7 +22,7 @@
 //! )]
 //! #[serde(rename_all = "camelCase")]
 //! pub struct TestClusterSpec {
-//!     opa: Option<OpaConfig>    
+//!     opa: Option<OpaConfig>
 //! }
 //!
 //! let cluster: TestCluster = serde_yaml::from_str(
