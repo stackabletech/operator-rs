@@ -128,11 +128,14 @@ impl FromStr for Duration {
 
             // First, make sure we can multiply the supplied fragment value by
             // the appropriate number of milliseconds for this unit
-            let fragment_value = value.checked_mul(unit.millis()).context(OverflowSnafu {
-                input: input.to_string(),
-                value,
-                unit,
-            })?;
+            let fragment_value =
+                value
+                    .checked_mul(unit.millis() as u128)
+                    .context(OverflowSnafu {
+                        input: input.to_string(),
+                        value,
+                        unit,
+                    })?;
 
             // This try_into is needed, as Duration::from_millis was stabilized
             // in 1.3.0 but u128 was only added in 1.26.0. See
@@ -183,8 +186,8 @@ impl Display for Duration {
         let mut millis = self.0.as_millis();
 
         for unit in DurationUnit::iter() {
-            let whole = millis / unit.millis();
-            let rest = millis % unit.millis();
+            let whole = millis / unit.millis() as u128;
+            let rest = millis % unit.millis() as u128;
 
             if whole > 0 {
                 write!(f, "{}{}", whole, unit)?;
@@ -270,9 +273,47 @@ impl Div<u32> for Duration {
 }
 
 impl Duration {
+    /// Creates a new [`Duration`] from the specified number of whole milliseconds.
+    pub const fn from_millis(millis: u64) -> Self {
+        Self(std::time::Duration::from_millis(millis))
+    }
+
     /// Creates a new [`Duration`] from the specified number of whole seconds.
     pub const fn from_secs(secs: u64) -> Self {
         Self(std::time::Duration::from_secs(secs))
+    }
+
+    /// Creates a new [`Duration`] from the specified number of whole minutes.
+    /// Panics if the Duration is higher than [`std::time::Duration`] supports
+    /// (which is 584.9 years).
+    pub const fn from_minutes(minutes: u64) -> Self {
+        let millis = match minutes.checked_mul(DurationUnit::Minutes.millis()) {
+            Some(millis) => millis,
+            None => panic!("overflow in Duration::from_minutes"),
+        };
+        Self::from_millis(millis)
+    }
+
+    /// Creates a new [`Duration`] from the specified number of whole hours.
+    /// Panics if the Duration is higher than [`std::time::Duration`] supports
+    /// (which is 584.9 years).
+    pub const fn from_hours(hours: u64) -> Self {
+        let millis = match hours.checked_mul(DurationUnit::Hours.millis()) {
+            Some(millis) => millis,
+            None => panic!("overflow in Duration::from_hours"),
+        };
+        Self::from_millis(millis)
+    }
+
+    /// Creates a new [`Duration`] from the specified number of whole days.
+    /// Panics if the Duration is higher than [`std::time::Duration`] supports
+    /// (which is 584.9 years).
+    pub const fn from_days(days: u64) -> Self {
+        let millis = match days.checked_mul(DurationUnit::Days.millis()) {
+            Some(millis) => millis,
+            None => panic!("overflow in Duration::from_days"),
+        };
+        Self::from_millis(millis)
     }
 }
 
@@ -314,7 +355,7 @@ pub enum DurationUnit {
 impl DurationUnit {
     /// Returns the number of whole milliseconds in each supported
     /// [`DurationUnit`].
-    fn millis(&self) -> u128 {
+    const fn millis(&self) -> u64 {
         use DurationUnit::*;
 
         match self {
@@ -332,6 +373,28 @@ mod test {
     use super::*;
     use rstest::rstest;
     use serde::{Deserialize, Serialize};
+
+    #[test]
+    fn const_from() {
+        assert_eq!(Duration::from_secs(42).as_secs(), 42);
+        assert_eq!(Duration::from_minutes(42).as_secs(), 42 * 60);
+        assert_eq!(Duration::from_hours(42).as_secs(), 42 * 60 * 60);
+        assert_eq!(Duration::from_days(42).as_secs(), 42 * 24 * 60 * 60);
+        assert_eq!(Duration::from_days(999).as_secs(), 999 * 24 * 60 * 60);
+    }
+
+    #[test]
+    fn const_from_overflow() {
+        let max_duration_ms = u64::MAX;
+        let max_duration_days = max_duration_ms / 1000 / 60 / 60 / 24;
+
+        assert_eq!(
+            Duration::from_days(max_duration_days).as_millis(),
+            18446744073657600000 // Precision lost due to ms -> day conversion
+        );
+        let result = std::panic::catch_unwind(|| Duration::from_days(max_duration_days + 1));
+        assert!(result.is_err());
+    }
 
     #[rstest]
     #[case("15d2m2s1000ms", 1296123)]
