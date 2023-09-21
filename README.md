@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD041 MD033 -->
+
 <p align="center">
   <img width="150" src="./.readme/static/borrowed/Icon_Stackable.svg" alt="Stackable Logo"/>
 </p>
