@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Add `Pdb` struct and `PdbBuilder` ([#653]).
+
+[#653]: https://github.com/stackabletech/operator-rs/pull/653
+
 ## [0.50.0] - 2023-09-18
 
 - Add `Duration` capable of parsing human-readable duration formats ([#647]).
