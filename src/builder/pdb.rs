@@ -126,7 +126,9 @@ impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, PodDisruptionBudgetCo
             Some(PodDisruptionBudgetConstraint::MinAvailable(min_unavailable)) => {
                 (None, Some(min_unavailable))
             }
-            None => unreachable!(),
+            None => {
+                unreachable!("Either minUnavailable or maxUnavailable must be set at this point!")
+            }
         };
         PodDisruptionBudget {
             metadata: self.metadata,
