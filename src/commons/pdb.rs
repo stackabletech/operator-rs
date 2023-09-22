@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Pdb {
+pub struct PdbConfig {
     /// Wether a PodDisruptionBudget should be written out for this role.
     /// Disabling this enables you to specify you own - custom - one.
     /// Defaults to true.
@@ -20,7 +20,7 @@ fn default_pdb_enabled() -> bool {
     true
 }
 
-impl Default for Pdb {
+impl Default for PdbConfig {
     fn default() -> Self {
         Self {
             enabled: true,

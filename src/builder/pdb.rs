@@ -14,7 +14,7 @@ use k8s_openapi::{
 use kube::{Resource, ResourceExt};
 
 #[derive(Debug, Default)]
-pub struct PdbBuilder<ObjectMeta, LabelSelector, Constraints> {
+pub struct PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, Constraints> {
     metadata: ObjectMeta,
     selector: LabelSelector,
     /// We intentionally only support fixed numbers, no percentage, see ADR 30 on Pod disruptions for details.
@@ -27,9 +27,9 @@ pub struct PdbBuilder<ObjectMeta, LabelSelector, Constraints> {
     _constraints: Constraints,
 }
 
-impl PdbBuilder<(), (), ()> {
+impl PodDisruptionBudgetBuilder<(), (), ()> {
     pub fn new() -> Self {
-        PdbBuilder::default()
+        PodDisruptionBudgetBuilder::default()
     }
 
     pub fn new_with_role<T: Resource<DynamicType = ()>>(
@@ -38,7 +38,7 @@ impl PdbBuilder<(), (), ()> {
         role: &str,
         operator_name: &str,
         controller_name: &str,
-    ) -> OperatorResult<PdbBuilder<ObjectMeta, LabelSelector, ()>> {
+    ) -> OperatorResult<PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()>> {
         let role_selector_labels = role_selector_labels(owner, app_name, role);
         let metadata = ObjectMetaBuilder::new()
             .namespace_opt(owner.namespace())
@@ -51,21 +51,21 @@ impl PdbBuilder<(), (), ()> {
             )
             .build();
 
-        Ok(PdbBuilder {
+        Ok(PodDisruptionBudgetBuilder {
             metadata,
             selector: LabelSelector {
                 match_expressions: None,
                 match_labels: Some(role_selector_labels),
             },
-            ..PdbBuilder::default()
+            ..PodDisruptionBudgetBuilder::default()
         })
     }
 
     pub fn new_with_metadata(
         self,
         metadata: impl Into<ObjectMeta>,
-    ) -> PdbBuilder<ObjectMeta, (), ()> {
-        PdbBuilder {
+    ) -> PodDisruptionBudgetBuilder<ObjectMeta, (), ()> {
+        PodDisruptionBudgetBuilder {
             metadata: metadata.into(),
             selector: self.selector,
             max_unavailable: self.max_unavailable,
@@ -75,12 +75,12 @@ impl PdbBuilder<(), (), ()> {
     }
 }
 
-impl PdbBuilder<ObjectMeta, (), ()> {
+impl PodDisruptionBudgetBuilder<ObjectMeta, (), ()> {
     pub fn with_selector(
         self,
         selector: LabelSelector,
-    ) -> PdbBuilder<ObjectMeta, LabelSelector, ()> {
-        PdbBuilder {
+    ) -> PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()> {
+        PodDisruptionBudgetBuilder {
             metadata: self.metadata,
             selector,
             max_unavailable: self.max_unavailable,
@@ -90,12 +90,12 @@ impl PdbBuilder<ObjectMeta, (), ()> {
     }
 }
 
-impl PdbBuilder<ObjectMeta, LabelSelector, ()> {
+impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()> {
     pub fn with_max_unavailable(
         self,
         max_unavailable: u16,
-    ) -> PdbBuilder<ObjectMeta, LabelSelector, bool> {
-        PdbBuilder {
+    ) -> PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, bool> {
+        PodDisruptionBudgetBuilder {
             metadata: self.metadata,
             selector: self.selector,
             max_unavailable: Some(max_unavailable),
@@ -111,8 +111,8 @@ impl PdbBuilder<ObjectMeta, LabelSelector, ()> {
     pub fn with_min_available(
         self,
         min_available: u16,
-    ) -> PdbBuilder<ObjectMeta, LabelSelector, bool> {
-        PdbBuilder {
+    ) -> PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, bool> {
+        PodDisruptionBudgetBuilder {
             metadata: self.metadata,
             selector: self.selector,
             max_unavailable: self.max_unavailable,
@@ -122,7 +122,7 @@ impl PdbBuilder<ObjectMeta, LabelSelector, ()> {
     }
 }
 
-impl PdbBuilder<ObjectMeta, LabelSelector, bool> {
+impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, bool> {
     pub fn build(self) -> PodDisruptionBudget {
         PodDisruptionBudget {
             metadata: self.metadata,
@@ -152,12 +152,12 @@ mod test {
 
     use crate::builder::{ObjectMetaBuilder, OwnerReferenceBuilder};
 
-    use super::PdbBuilder;
+    use super::PodDisruptionBudgetBuilder;
 
     #[test]
     pub fn test_normal_build() {
         #[allow(deprecated)]
-        let pdb = PdbBuilder::new()
+        let pdb = PodDisruptionBudgetBuilder::new()
             .new_with_metadata(
                 ObjectMetaBuilder::new()
                     .namespace("default")
@@ -218,10 +218,16 @@ mod test {
         let role = "worker";
         let operator_name = "trino.stackable.tech";
         let controller_name = "trino-operator-trino-controller";
-        let pdb = PdbBuilder::new_with_role(&trino, app_name, role, operator_name, controller_name)
-            .unwrap()
-            .with_max_unavailable(2)
-            .build();
+        let pdb = PodDisruptionBudgetBuilder::new_with_role(
+            &trino,
+            app_name,
+            role,
+            operator_name,
+            controller_name,
+        )
+        .unwrap()
+        .with_max_unavailable(2)
+        .build();
 
         assert_eq!(
             pdb,
