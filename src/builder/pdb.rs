@@ -14,17 +14,19 @@ use k8s_openapi::{
 use kube::{Resource, ResourceExt};
 
 #[derive(Debug, Default)]
-pub struct PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, Constraints> {
+pub struct PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, PodDisruptionBudgetConstraint> {
     metadata: ObjectMeta,
     selector: LabelSelector,
-    /// We intentionally only support fixed numbers, no percentage, see ADR 30 on Pod disruptions for details.
-    /// We use u16, as [`IntOrString`] takes an i32 and we don't want to allow negative numbers. u16 will always fit in i32.
-    max_unavailable: Option<u16>,
-    /// We intentionally only support fixed numbers, no percentage, see ADR 30 on Pod disruptions for details.
-    /// We use u16, as [`IntOrString`] takes an i32 and we don't want to allow negative numbers. u16 will always fit in i32.
-    min_available: Option<u16>,
-    /// Tracks wether either `max_unavailable` or `min_available` are set
-    _constraints: Constraints,
+    /// Tracks wether either `maxUnavailable` or `minAvailable` are set
+    constraint: Option<PodDisruptionBudgetConstraint>,
+}
+
+/// We intentionally only support fixed numbers, no percentage, see ADR 30 on Pod disruptions for details.
+/// We use u16, as [`IntOrString`] takes an i32 and we don't want to allow negative numbers. u16 will always fit in i32.
+#[derive(Debug)]
+pub enum PodDisruptionBudgetConstraint {
+    MaxUnavailable(u16),
+    MinAvailable(u16),
 }
 
 impl PodDisruptionBudgetBuilder<(), (), ()> {
@@ -67,10 +69,7 @@ impl PodDisruptionBudgetBuilder<(), (), ()> {
     ) -> PodDisruptionBudgetBuilder<ObjectMeta, (), ()> {
         PodDisruptionBudgetBuilder {
             metadata: metadata.into(),
-            selector: self.selector,
-            max_unavailable: self.max_unavailable,
-            min_available: self.min_available,
-            _constraints: self._constraints,
+            ..PodDisruptionBudgetBuilder::default()
         }
     }
 }
@@ -83,9 +82,7 @@ impl PodDisruptionBudgetBuilder<ObjectMeta, (), ()> {
         PodDisruptionBudgetBuilder {
             metadata: self.metadata,
             selector,
-            max_unavailable: self.max_unavailable,
-            min_available: self.min_available,
-            _constraints: self._constraints,
+            constraint: self.constraint,
         }
     }
 }
@@ -94,13 +91,13 @@ impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()> {
     pub fn with_max_unavailable(
         self,
         max_unavailable: u16,
-    ) -> PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, bool> {
+    ) -> PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, PodDisruptionBudgetConstraint> {
         PodDisruptionBudgetBuilder {
             metadata: self.metadata,
             selector: self.selector,
-            max_unavailable: Some(max_unavailable),
-            min_available: self.min_available,
-            _constraints: true, // Some dummy value to set Constraints to something other than ()
+            constraint: Some(PodDisruptionBudgetConstraint::MaxUnavailable(
+                max_unavailable,
+            )),
         }
     }
 
@@ -111,24 +108,31 @@ impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()> {
     pub fn with_min_available(
         self,
         min_available: u16,
-    ) -> PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, bool> {
+    ) -> PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, PodDisruptionBudgetConstraint> {
         PodDisruptionBudgetBuilder {
             metadata: self.metadata,
             selector: self.selector,
-            max_unavailable: self.max_unavailable,
-            min_available: Some(min_available),
-            _constraints: true, // Some dummy value to set Constraints to something other than ()
+            constraint: Some(PodDisruptionBudgetConstraint::MinAvailable(min_available)),
         }
     }
 }
 
-impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, bool> {
+impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, PodDisruptionBudgetConstraint> {
     pub fn build(self) -> PodDisruptionBudget {
+        let (max_unavailable, min_available) = match self.constraint {
+            Some(PodDisruptionBudgetConstraint::MaxUnavailable(max_unavailable)) => {
+                (Some(max_unavailable), None)
+            }
+            Some(PodDisruptionBudgetConstraint::MinAvailable(min_unavailable)) => {
+                (None, Some(min_unavailable))
+            }
+            None => unreachable!(),
+        };
         PodDisruptionBudget {
             metadata: self.metadata,
             spec: Some(PodDisruptionBudgetSpec {
-                max_unavailable: self.max_unavailable.map(i32::from).map(IntOrString::Int),
-                min_available: self.min_available.map(i32::from).map(IntOrString::Int),
+                max_unavailable: max_unavailable.map(i32::from).map(IntOrString::Int),
+                min_available: min_available.map(i32::from).map(IntOrString::Int),
                 selector: Some(self.selector),
                 // Because this feature is still in beta in k8s version 1.27, the builder currently does not offer this attribute.
                 unhealthy_pod_eviction_policy: Default::default(),
