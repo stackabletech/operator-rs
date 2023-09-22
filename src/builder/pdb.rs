@@ -32,7 +32,7 @@ impl PdbBuilder<(), (), ()> {
         PdbBuilder::default()
     }
 
-    pub fn new_for_role<T: Resource<DynamicType = ()>>(
+    pub fn new_with_role<T: Resource<DynamicType = ()>>(
         owner: &T,
         app_name: &str,
         role: &str,
@@ -50,6 +50,7 @@ impl PdbBuilder<(), (), ()> {
                 format_full_controller_name(operator_name, controller_name),
             )
             .build();
+
         Ok(PdbBuilder {
             metadata,
             selector: LabelSelector {
@@ -60,7 +61,10 @@ impl PdbBuilder<(), (), ()> {
         })
     }
 
-    pub fn metadata(self, metadata: impl Into<ObjectMeta>) -> PdbBuilder<ObjectMeta, (), ()> {
+    pub fn new_with_metadata(
+        self,
+        metadata: impl Into<ObjectMeta>,
+    ) -> PdbBuilder<ObjectMeta, (), ()> {
         PdbBuilder {
             metadata: metadata.into(),
             selector: self.selector,
@@ -72,7 +76,10 @@ impl PdbBuilder<(), (), ()> {
 }
 
 impl PdbBuilder<ObjectMeta, (), ()> {
-    pub fn selector(self, selector: LabelSelector) -> PdbBuilder<ObjectMeta, LabelSelector, ()> {
+    pub fn with_selector(
+        self,
+        selector: LabelSelector,
+    ) -> PdbBuilder<ObjectMeta, LabelSelector, ()> {
         PdbBuilder {
             metadata: self.metadata,
             selector,
@@ -84,7 +91,7 @@ impl PdbBuilder<ObjectMeta, (), ()> {
 }
 
 impl PdbBuilder<ObjectMeta, LabelSelector, ()> {
-    pub fn max_unavailable(
+    pub fn with_max_unavailable(
         self,
         max_unavailable: u16,
     ) -> PdbBuilder<ObjectMeta, LabelSelector, bool> {
@@ -101,7 +108,10 @@ impl PdbBuilder<ObjectMeta, LabelSelector, ()> {
         since = "0.51.0",
         note = "It is strongly recommended to use [`max_unavailable`]. Please read the ADR on Pod disruptions before using this function."
     )]
-    pub fn min_available(self, min_available: u16) -> PdbBuilder<ObjectMeta, LabelSelector, bool> {
+    pub fn with_min_available(
+        self,
+        min_available: u16,
+    ) -> PdbBuilder<ObjectMeta, LabelSelector, bool> {
         PdbBuilder {
             metadata: self.metadata,
             selector: self.selector,
@@ -120,8 +130,7 @@ impl PdbBuilder<ObjectMeta, LabelSelector, bool> {
                 max_unavailable: self.max_unavailable.map(i32::from).map(IntOrString::Int),
                 min_available: self.min_available.map(i32::from).map(IntOrString::Int),
                 selector: Some(self.selector),
-                /// As this is beta as of 1.27 we can not use it yet,
-                /// so this builder does not offer this attribute.
+                // Because this feature is still in beta in k8s version 1.27, the builder currently does not offer this attribute.
                 unhealthy_pod_eviction_policy: Default::default(),
             }),
             ..Default::default()
@@ -149,17 +158,17 @@ mod test {
     pub fn test_normal_build() {
         #[allow(deprecated)]
         let pdb = PdbBuilder::new()
-            .metadata(
+            .new_with_metadata(
                 ObjectMetaBuilder::new()
                     .namespace("default")
                     .name("trino")
                     .build(),
             )
-            .selector(LabelSelector {
+            .with_selector(LabelSelector {
                 match_expressions: None,
                 match_labels: Some(BTreeMap::from([("foo".to_string(), "bar".to_string())])),
             })
-            .min_available(42)
+            .with_min_available(42)
             .build();
 
         assert_eq!(
@@ -209,9 +218,9 @@ mod test {
         let role = "worker";
         let operator_name = "trino.stackable.tech";
         let controller_name = "trino-operator-trino-controller";
-        let pdb = PdbBuilder::new_for_role(&trino, app_name, role, operator_name, controller_name)
+        let pdb = PdbBuilder::new_with_role(&trino, app_name, role, operator_name, controller_name)
             .unwrap()
-            .max_unavailable(2)
+            .with_max_unavailable(2)
             .build();
 
         assert_eq!(
