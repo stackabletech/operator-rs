@@ -14,10 +14,22 @@ use k8s_openapi::{
 use kube::{Resource, ResourceExt};
 
 #[derive(Debug, Default)]
+/// This builder is used to construct [`PodDisruptionBudget`]s.
+/// If you are using this to create [`PodDisruptionBudget`]s according to ADR 30 on Pod disruptions,
+/// the use of [`PodDisruptionBudgetBuilder::new_with_role`] is recommended.
+///
+/// The following attributes on a [`PodDisruptionBudget`] are considered mandatory and must be specified
+/// before being able to construct the [`PodDisruptionBudget`]:
+///
+/// 1. `metadata`
+/// 2. `selector`
+/// 3. Either `minAvailable` or `maxUnavailable`
+///
+/// Both `metadata` and `selector` will be set by [`PodDisruptionBudgetBuilder::new_with_role`].
 pub struct PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, PodDisruptionBudgetConstraint> {
     metadata: ObjectMeta,
     selector: LabelSelector,
-    /// Tracks wether either `maxUnavailable` or `minAvailable` are set
+    /// Tracks wether either `maxUnavailable` or `minAvailable` is set.
     constraint: Option<PodDisruptionBudgetConstraint>,
 }
 
@@ -34,6 +46,14 @@ impl PodDisruptionBudgetBuilder<(), (), ()> {
         PodDisruptionBudgetBuilder::default()
     }
 
+    /// This method populates `metadata` and `selector` from the give role (not roleGroup!).
+    ///
+    /// The parameters are the same as the fields from [`crate::labels::ObjectLabels`]:
+    /// * `owner` - Reference to the k8s object owning the PDB, this should be e.g. `HdfsCluster` or `TrinoCluster`.
+    /// * `app_name` - The name of the app being managed, such as `hdfs` or `trino`.
+    /// * `role` - The role that this object belongs to, e.g. `datanode` or `worker`.
+    /// * `operator_name` - The DNS-style name of the operator managing the object (such as `hdfs.stackable.tech`).
+    /// * `controller_name` - The name of the controller inside of the operator managing the object (such as `hdfscluster`)
     pub fn new_with_role<T: Resource<DynamicType = ()>>(
         owner: &T,
         app_name: &str,
@@ -118,6 +138,8 @@ impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()> {
 }
 
 impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, PodDisruptionBudgetConstraint> {
+    /// This function can be called after `metadata`, `selector` and either `minAvailable` or
+    /// `maxUnavailable` are set.
     pub fn build(self) -> PodDisruptionBudget {
         let (max_unavailable, min_available) = match self.constraint {
             Some(PodDisruptionBudgetConstraint::MaxUnavailable(max_unavailable)) => {
