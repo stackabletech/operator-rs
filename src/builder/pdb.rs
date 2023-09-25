@@ -14,7 +14,7 @@ use k8s_openapi::{
 use kube::{Resource, ResourceExt};
 
 /// This builder is used to construct [`PodDisruptionBudget`]s.
-/// If you are using this to create [`PodDisruptionBudget`]s according to ADR 30 on Pod disruptions,
+/// If you are using this to create [`PodDisruptionBudget`]s according to [ADR 30 on Allowed Pod disruptions][adr],
 /// the use of [`PodDisruptionBudgetBuilder::new_with_role`] is recommended.
 ///
 /// The following attributes on a [`PodDisruptionBudget`] are considered mandatory and must be specified
@@ -25,6 +25,8 @@ use kube::{Resource, ResourceExt};
 /// 3. Either `minAvailable` or `maxUnavailable`
 ///
 /// Both `metadata` and `selector` will be set by [`PodDisruptionBudgetBuilder::new_with_role`].
+///
+/// [adr]: https://docs.stackable.tech/home/stable/contributor/adr/adr030-allowed-pod-disruptions
 #[derive(Debug, Default)]
 pub struct PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, PodDisruptionBudgetConstraint> {
     metadata: ObjectMeta,
