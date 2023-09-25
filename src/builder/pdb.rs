@@ -49,7 +49,7 @@ impl PodDisruptionBudgetBuilder<(), (), ()> {
     /// This method populates `metadata` and `selector` from the give role (not roleGroup!).
     ///
     /// The parameters are the same as the fields from [`crate::labels::ObjectLabels`]:
-    /// * `owner` - Reference to the k8s object owning the PDB, this should be e.g. `HdfsCluster` or `TrinoCluster`.
+    /// * `owner` - Reference to the k8s object owning the created resource, such as `HdfsCluster` or `TrinoCluster`.
     /// * `app_name` - The name of the app being managed, such as `hdfs` or `trino`.
     /// * `role` - The role that this object belongs to, e.g. `datanode` or `worker`.
     /// * `operator_name` - The DNS-style name of the operator managing the object (such as `hdfs.stackable.tech`).
