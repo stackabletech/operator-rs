@@ -490,7 +490,7 @@ mod tests {
     }
 
     use super::*;
-    use crate::role_utils::{Role, RoleGroup};
+    use crate::role_utils::{Role, RoleConfig, RoleGroup};
     use k8s_openapi::api::core::v1::PodTemplateSpec;
     use rstest::*;
     use std::collections::HashMap;
@@ -619,6 +619,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -636,6 +637,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -650,6 +652,7 @@ mod tests {
                     None,
                     None,
                 ),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -667,6 +670,7 @@ mod tests {
                     None,
                     None,
                 ),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -684,6 +688,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -701,6 +706,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
@@ -714,6 +720,7 @@ mod tests {
                     None,
                     None,
                 ),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -732,6 +739,7 @@ mod tests {
                     None,
                     None,
                 ),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
@@ -745,6 +753,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -762,6 +771,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -774,6 +784,7 @@ mod tests {
             },
             (false, true, false, true) => Role {
                 config: CommonConfiguration::default(),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -786,6 +797,7 @@ mod tests {
             },
             (false, true, false, false) => Role {
                 config: CommonConfiguration::default(),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -803,6 +815,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -820,6 +833,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
@@ -828,6 +842,7 @@ mod tests {
             },
             (false, false, false, true) => Role {
                 config: CommonConfiguration::default(),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -840,6 +855,7 @@ mod tests {
             },
             (false, false, false, false) => Role {
                 config: CommonConfiguration::default(),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
@@ -1039,6 +1055,7 @@ mod tests {
                 // should override
                 build_cli_override("cli"),
             ),
+            role_config: RoleConfig::default(),
             role_groups: collection! {role_group.to_string() => RoleGroup {
                 replicas: Some(1),
                 config: build_common_config(
@@ -1098,6 +1115,7 @@ mod tests {
                 None,
                 None,
             ),
+            role_config: RoleConfig::default(),
             role_groups: collection! {role_group_1.to_string() => RoleGroup {
                 replicas: Some(1),
                 config: build_common_config(
@@ -1126,6 +1144,7 @@ mod tests {
                 None,
                 None,
             ),
+            role_config: RoleConfig::default(),
             role_groups: collection! {role_group_1.to_string() => RoleGroup {
                 replicas: Some(1),
                 config: build_common_config(
@@ -1187,6 +1206,7 @@ mod tests {
         let roles: HashMap<String, (Vec<PropertyNameKind>, Role<Box<TestConfig>>)> = collection! {
             role_1.to_string() => (vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env], Role {
                 config: CommonConfiguration::default(),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {
                     role_group_1.to_string() => RoleGroup {
                         replicas: Some(1),
@@ -1202,6 +1222,7 @@ mod tests {
             ),
             role_2.to_string() => (vec![PropertyNameKind::File(file_name.to_string())], Role {
                 config: CommonConfiguration::default(),
+                role_config: RoleConfig::default(),
                 role_groups: collection! {
                     role_group_2.to_string() => RoleGroup {
                         replicas: Some(1),

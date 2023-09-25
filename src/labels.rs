@@ -29,7 +29,7 @@ pub const APP_ROLE_GROUP_LABEL: &str = concatcp!(APP_KUBERNETES_LABEL_BASE, "rol
 /// See [`get_recommended_labels`] and [`ObjectMetaBuilder::with_recommended_labels`].
 #[derive(Debug, Clone, Copy)]
 pub struct ObjectLabels<'a, T> {
-    /// The name of the object that this object is being created on behalf of, such as a `ZookeeperCluster`
+    /// Reference to the k8s object owning the created resource, such as `HdfsCluster` or `TrinoCluster`.
     pub owner: &'a T,
     /// The name of the app being managed, such as `zookeeper`
     pub app_name: &'a str,

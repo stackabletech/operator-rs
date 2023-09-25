@@ -86,6 +86,7 @@ use std::{
 };
 
 use crate::{
+    commons::pdb::PdbConfig,
     config::{
         fragment::{self, FromFragment},
         merge::Merge,
@@ -172,6 +173,10 @@ fn config_schema_default() -> serde_json::Value {
 pub struct Role<T> {
     #[serde(flatten)]
     pub config: CommonConfiguration<T>,
+
+    #[serde(default)]
+    pub role_config: RoleConfig,
+
     pub role_groups: HashMap<String, RoleGroup<T>>,
 }
 
@@ -191,6 +196,7 @@ impl<T: Configuration + 'static> Role<T> {
                 cli_overrides: self.config.cli_overrides,
                 pod_overrides: self.config.pod_overrides,
             },
+            role_config: RoleConfig::default(),
             role_groups: self
                 .role_groups
                 .into_iter()
@@ -214,6 +220,13 @@ impl<T: Configuration + 'static> Role<T> {
                 .collect(),
         }
     }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoleConfig {
+    #[serde(default)]
+    pub pod_disruption_budget: PdbConfig,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]

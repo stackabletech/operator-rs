@@ -5,6 +5,7 @@ pub mod authentication;
 pub mod cluster_operation;
 pub mod listener;
 pub mod opa;
+pub mod pdb;
 pub mod product_image_selection;
 pub mod rbac;
 pub mod resources;

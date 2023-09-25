@@ -10,25 +10,24 @@ use crate::{
         },
     },
     error::{Error, OperatorResult},
-    k8s_openapi::{
-        api::{
-            apps::v1::{DaemonSet, DaemonSetSpec, StatefulSet, StatefulSetSpec},
-            batch::v1::Job,
-            core::v1::{
-                ConfigMap, ObjectReference, PodSpec, PodTemplateSpec, Secret, Service,
-                ServiceAccount,
-            },
-            rbac::v1::RoleBinding,
-        },
-        apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
-        NamespaceResourceScope,
-    },
-    kube::{Resource, ResourceExt},
     labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
     utils::format_full_controller_name,
 };
 
-use kube::core::ErrorResponse;
+use k8s_openapi::{
+    api::{
+        apps::v1::{DaemonSet, DaemonSetSpec, StatefulSet, StatefulSetSpec},
+        batch::v1::Job,
+        core::v1::{
+            ConfigMap, ObjectReference, PodSpec, PodTemplateSpec, Secret, Service, ServiceAccount,
+        },
+        policy::v1::PodDisruptionBudget,
+        rbac::v1::RoleBinding,
+    },
+    apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
+    NamespaceResourceScope,
+};
+use kube::{core::ErrorResponse, Resource, ResourceExt};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::{BTreeMap, HashSet},
@@ -160,11 +159,13 @@ impl ClusterResourceApplyStrategy {
     }
 }
 
+// IMPORTANT: Don't forget to add new Resources to [`delete_orphaned_resources`] as well!
 impl ClusterResource for ConfigMap {}
+impl ClusterResource for Secret {}
 impl ClusterResource for Service {}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
-impl ClusterResource for Secret {}
+impl ClusterResource for PodDisruptionBudget {}
 
 impl ClusterResource for Job {
     fn pod_spec(&self) -> Option<&PodSpec> {
@@ -546,16 +547,18 @@ impl ClusterResources {
     /// # Arguments
     ///
     /// * `client` - The client which is used to access Kubernetes
+    ///
     pub async fn delete_orphaned_resources(self, client: &Client) -> OperatorResult<()> {
         tokio::try_join!(
             self.delete_orphaned_resources_of_kind::<Service>(client),
             self.delete_orphaned_resources_of_kind::<StatefulSet>(client),
             self.delete_orphaned_resources_of_kind::<DaemonSet>(client),
+            self.delete_orphaned_resources_of_kind::<Job>(client),
             self.delete_orphaned_resources_of_kind::<ConfigMap>(client),
+            self.delete_orphaned_resources_of_kind::<Secret>(client),
             self.delete_orphaned_resources_of_kind::<ServiceAccount>(client),
             self.delete_orphaned_resources_of_kind::<RoleBinding>(client),
-            self.delete_orphaned_resources_of_kind::<Secret>(client),
-            self.delete_orphaned_resources_of_kind::<Job>(client),
+            self.delete_orphaned_resources_of_kind::<PodDisruptionBudget>(client),
         )?;
 
         Ok(())
