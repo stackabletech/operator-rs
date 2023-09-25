@@ -4,7 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- Add `Pdb` struct and `PdbBuilder` ([#653]).
+## [0.51.0] - 2023-09-25
+
+- Add `PdbConfig` struct and `PodDisruptionBudgetBuilder` ([#653]).
 
 [#653]: https://github.com/stackabletech/operator-rs/pull/653
 
