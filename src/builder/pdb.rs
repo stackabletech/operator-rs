@@ -20,11 +20,11 @@ use kube::{Resource, ResourceExt};
 /// The following attributes on a [`PodDisruptionBudget`] are considered mandatory and must be specified
 /// before being able to construct the [`PodDisruptionBudget`]:
 ///
-/// 1. `metadata`
-/// 2. `selector`
-/// 3. Either `minAvailable` or `maxUnavailable`
+/// 1. [`PodDisruptionBudget::metadata`]
+/// 2. [`PodDisruptionBudgetSpec::selector`]
+/// 3. Either [`PodDisruptionBudgetSpec::min_available`] or [`PodDisruptionBudgetSpec::max_unavailable`]
 ///
-/// Both `metadata` and `selector` will be set by [`PodDisruptionBudgetBuilder::new_with_role`].
+/// Both [`PodDisruptionBudget::metadata`] and [`PodDisruptionBudgetSpec::selector`] will be set by [`PodDisruptionBudgetBuilder::new_with_role`].
 ///
 /// [adr]: https://docs.stackable.tech/home/stable/contributor/adr/adr030-allowed-pod-disruptions
 #[derive(Debug, Default)]
@@ -48,7 +48,8 @@ impl PodDisruptionBudgetBuilder<(), (), ()> {
         PodDisruptionBudgetBuilder::default()
     }
 
-    /// This method populates `metadata` and `selector` from the give role (not roleGroup!).
+    /// This method populates [`PodDisruptionBudget::metadata`] and [`PodDisruptionBudgetSpec::selector`] from the give role
+    /// (not roleGroup!).
     ///
     /// The parameters are the same as the fields from [`crate::labels::ObjectLabels`]:
     /// * `owner` - Reference to the k8s object owning the created resource, such as `HdfsCluster` or `TrinoCluster`.
@@ -85,6 +86,7 @@ impl PodDisruptionBudgetBuilder<(), (), ()> {
         })
     }
 
+    /// Sets the mandatory [`PodDisruptionBudget::metadata`].
     pub fn new_with_metadata(
         self,
         metadata: impl Into<ObjectMeta>,
@@ -97,6 +99,7 @@ impl PodDisruptionBudgetBuilder<(), (), ()> {
 }
 
 impl PodDisruptionBudgetBuilder<ObjectMeta, (), ()> {
+    /// Sets the mandatory [`PodDisruptionBudgetSpec::selector`].
     pub fn with_selector(
         self,
         selector: LabelSelector,
@@ -110,6 +113,8 @@ impl PodDisruptionBudgetBuilder<ObjectMeta, (), ()> {
 }
 
 impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()> {
+    /// Sets the mandatory [`PodDisruptionBudgetSpec::max_unavailable`].
+    /// Mutually exclusive with [`PodDisruptionBudgetBuilder::with_min_available`].
     pub fn with_max_unavailable(
         self,
         max_unavailable: u16,
@@ -123,6 +128,8 @@ impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()> {
         }
     }
 
+    /// Sets the mandatory [`PodDisruptionBudgetSpec::min_available`].
+    /// Mutually exclusive with [`PodDisruptionBudgetBuilder::with_max_unavailable`].
     #[deprecated(
         since = "0.51.0",
         note = "It is strongly recommended to use [`max_unavailable`]. Please read the ADR on Pod disruptions before using this function."
@@ -140,8 +147,8 @@ impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()> {
 }
 
 impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, PodDisruptionBudgetConstraint> {
-    /// This function can be called after `metadata`, `selector` and either `minAvailable` or
-    /// `maxUnavailable` are set.
+    /// This function can be called after [`PodDisruptionBudget::metadata`], [`PodDisruptionBudgetSpec::selector`]
+    /// and either [`PodDisruptionBudgetSpec::min_available`] or [`PodDisruptionBudgetSpec::max_unavailable`] are set.
     pub fn build(self) -> PodDisruptionBudget {
         let (max_unavailable, min_available) = match self.constraint {
             Some(PodDisruptionBudgetConstraint::MaxUnavailable(max_unavailable)) => {
