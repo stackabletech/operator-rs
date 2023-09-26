@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PdbConfig {
-    /// Wether a PodDisruptionBudget should be written out for this role.
-    /// Disabling this enables you to specify you own - custom - one.
+    /// Whether a PodDisruptionBudget should be written out for this role.
+    /// Disabling this enables you to specify your own - custom - one.
     /// Defaults to true.
     #[serde(default = "default_pdb_enabled")]
     pub enabled: bool,
