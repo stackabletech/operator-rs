@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix a typo in the documentation of the `PdbConfig` struct ([#659]).
+
+[#659]: https://github.com/stackabletech/operator-rs/pull/659
+
 ## [0.51.0] - 2023-09-25
 
 - Add `PdbConfig` struct and `PodDisruptionBudgetBuilder` ([#653]).
