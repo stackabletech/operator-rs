@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.51.1] - 2023-09-26
+
 ### Fixed
 
 - Fix a typo in the documentation of the `PdbConfig` struct ([#659]).
