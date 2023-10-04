@@ -285,8 +285,9 @@ impl Duration {
 
     /// Creates a new [`Duration`] from the specified number of whole minutes.
     /// Panics if the Duration is higher than [`std::time::Duration`] supports
-    /// (which is 584.9 years).
-    pub const fn from_minutes(minutes: u64) -> Self {
+    /// (which is 584.9 years). Please only use this function in constant contexts,
+    /// and not based upon user input!
+    pub const fn from_minutes_unchecked(minutes: u64) -> Self {
         let millis = match minutes.checked_mul(DurationUnit::Minutes.millis()) {
             Some(millis) => millis,
             None => panic!("overflow in Duration::from_minutes"),
@@ -296,8 +297,9 @@ impl Duration {
 
     /// Creates a new [`Duration`] from the specified number of whole hours.
     /// Panics if the Duration is higher than [`std::time::Duration`] supports
-    /// (which is 584.9 years).
-    pub const fn from_hours(hours: u64) -> Self {
+    /// (which is 584.9 years). Please only use this function in constant contexts,
+    /// and not based upon user input!
+    pub const fn from_hours_unchecked(hours: u64) -> Self {
         let millis = match hours.checked_mul(DurationUnit::Hours.millis()) {
             Some(millis) => millis,
             None => panic!("overflow in Duration::from_hours"),
@@ -307,8 +309,9 @@ impl Duration {
 
     /// Creates a new [`Duration`] from the specified number of whole days.
     /// Panics if the Duration is higher than [`std::time::Duration`] supports
-    /// (which is 584.9 years).
-    pub const fn from_days(days: u64) -> Self {
+    /// (which is 584.9 years). Please only use this function in constant contexts,
+    /// and not based upon user input!
+    pub const fn from_days_unchecked(days: u64) -> Self {
         let millis = match days.checked_mul(DurationUnit::Days.millis()) {
             Some(millis) => millis,
             None => panic!("overflow in Duration::from_days"),
@@ -377,10 +380,16 @@ mod test {
     #[test]
     fn const_from() {
         assert_eq!(Duration::from_secs(42).as_secs(), 42);
-        assert_eq!(Duration::from_minutes(42).as_secs(), 42 * 60);
-        assert_eq!(Duration::from_hours(42).as_secs(), 42 * 60 * 60);
-        assert_eq!(Duration::from_days(42).as_secs(), 42 * 24 * 60 * 60);
-        assert_eq!(Duration::from_days(999).as_secs(), 999 * 24 * 60 * 60);
+        assert_eq!(Duration::from_minutes_unchecked(42).as_secs(), 42 * 60);
+        assert_eq!(Duration::from_hours_unchecked(42).as_secs(), 42 * 60 * 60);
+        assert_eq!(
+            Duration::from_days_unchecked(42).as_secs(),
+            42 * 24 * 60 * 60
+        );
+        assert_eq!(
+            Duration::from_days_unchecked(999).as_secs(),
+            999 * 24 * 60 * 60
+        );
     }
 
     #[test]
@@ -389,10 +398,11 @@ mod test {
         let max_duration_days = max_duration_ms / 1000 / 60 / 60 / 24;
 
         assert_eq!(
-            Duration::from_days(max_duration_days).as_millis(),
+            Duration::from_days_unchecked(max_duration_days).as_millis(),
             18446744073657600000 // Precision lost due to ms -> day conversion
         );
-        let result = std::panic::catch_unwind(|| Duration::from_days(max_duration_days + 1));
+        let result =
+            std::panic::catch_unwind(|| Duration::from_days_unchecked(max_duration_days + 1));
         assert!(result.is_err());
     }
 
