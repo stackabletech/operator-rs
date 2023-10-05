@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Add duration overflow check ([#665]).
-- Add `Duration::from_minutes`, `Duration::from_hours` and `Duration::from_days` ([#657]).
+- Add 'Duration::from_millis`, `Duration::from_minutes_unchecked`, `Duration::from_hours_unchecked` and `Duration::from_days_unchecked` ([#657]).
 
 [#657]: https://github.com/stackabletech/operator-rs/pull/657
 [#665]: https://github.com/stackabletech/operator-rs/pull/665
