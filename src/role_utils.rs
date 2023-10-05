@@ -194,7 +194,11 @@ where
     pub role_groups: HashMap<String, RoleGroup<T>>,
 }
 
-impl<T: Configuration + 'static, U: Default + JsonSchema + Serialize> Role<T, U> {
+impl<T, U> Role<T, U>
+where
+    T: Configuration + 'static,
+    U: Default + JsonSchema + Serialize,
+{
     /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
     /// and used in [`Role`] into a Box of a dynamically dispatched
     /// [`crate::product_config_utils::Configuration`] Trait. This is required to use the generic
