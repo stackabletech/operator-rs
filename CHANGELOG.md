@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.52.0] - 2023-10-05
+
 ### Changed
 
 - BREAKING: Make roleConfig customizable by making the `Role` struct generic over the `roleConfig` ([#661]).
