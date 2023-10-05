@@ -240,7 +240,7 @@ where
     }
 }
 
-/// This is a product-agnostic RoleConfig, which fulfills the needs for most of the product.
+/// This is a product-agnostic RoleConfig, which is sufficient for most of the products.
 /// Currently it contains:
 ///
 /// 1. `podDisruptionBudget` to configure the created PDBs.
