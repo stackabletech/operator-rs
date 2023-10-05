@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Make roleConfig customizable by making the `Role` struct generic over the `roleConfig` ([#661]).
+
+[#661]: https://github.com/stackabletech/operator-rs/pull/661
+
 ## [0.51.1] - 2023-09-26
 
 ### Fixed
@@ -13,6 +19,8 @@ All notable changes to this project will be documented in this file.
 [#659]: https://github.com/stackabletech/operator-rs/pull/659
 
 ## [0.51.0] - 2023-09-25
+
+### Added
 
 - Add `PdbConfig` struct and `PodDisruptionBudgetBuilder` ([#653]).
 
