@@ -165,8 +165,17 @@ fn config_schema_default() -> serde_json::Value {
     serde_json::json!({})
 }
 
-/// `U` is the `RoleConfig`, which is specific to the role and can *not* be overridden at roleGroup level.
-/// It is recommended to use either [`GenericRoleConfig`] or [`EmptyRoleConfig`].
+/// This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a [`HashMap`] containing
+/// all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable
+/// at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured
+/// on role level using the [`Merge`] trait. There is also a second form of config, which can only be configured
+/// at role level, the `roleConfig`.
+///
+/// [`T`] here is the `config` shared between role and roleGroup.
+///
+/// [`U`] here is the `roleConfig` only available on the role. It defaults to [`GenericRoleConfig`], as this
+/// is sufficient for most products. There are some exceptions, where e.g. [`EmptyRoleConfig`] is used.
+/// However, product-operators can define their own - custom - struct and use that here.
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Role<T, U = GenericRoleConfig>
@@ -227,7 +236,8 @@ impl<T: Configuration + 'static, U: Default + JsonSchema + Serialize> Role<T, U>
     }
 }
 
-/// This is a generic RoleConfig, which fulfills the needs for most of the product. Currently it contains:
+/// This is a product-agnostic RoleConfig, which fulfills the needs for most of the product.
+/// Currently it contains:
 ///
 /// 1. `podDisruptionBudget` to configure the created PDBs.
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -237,8 +247,8 @@ pub struct GenericRoleConfig {
     pub pod_disruption_budget: PdbConfig,
 }
 
-/// This is a generic RoleConfig, with nothing in it. It is used e.g. by products that have nothing configurable
-/// at role level.
+/// This is a product-agnostic RoleConfig, with nothing in it. It is used e.g. by products that have
+/// nothing configurable at role level.
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmptyRoleConfig {}
