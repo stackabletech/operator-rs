@@ -170,12 +170,15 @@ fn config_schema_default() -> serde_json::Value {
 /// at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured
 /// on role level using the [`Merge`] trait. There is also a second form of config, which can only be configured
 /// at role level, the `roleConfig`.
-///
-/// `T` here is the `config` shared between role and roleGroup.
-///
-/// `U` here is the `roleConfig` only available on the role. It defaults to [`GenericRoleConfig`], as this
-/// is sufficient for most products. There are some exceptions, where e.g. [`EmptyRoleConfig`] is used.
-/// However, product-operators can define their own - custom - struct and use that here.
+//
+// Everything below is only a "normal" comment, not rustdoc - so we don't bloat the CRD documentation
+// with technical (Rust) details.
+//
+// `T` here is the `config` shared between role and roleGroup.
+//
+// `U` here is the `roleConfig` only available on the role. It defaults to [`GenericRoleConfig`], which is
+// sufficient for most of the products. There are some exceptions, where e.g. [`EmptyRoleConfig`] is used.
+// However, product-operators can define their own - custom - struct and use that here.
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Role<T, U = GenericRoleConfig>
@@ -240,10 +243,7 @@ where
     }
 }
 
-/// This is a product-agnostic RoleConfig, which fulfills the needs for most of the product.
-/// Currently it contains:
-///
-/// 1. `podDisruptionBudget` to configure the created PDBs.
+/// This is a product-agnostic RoleConfig, which is sufficient for most of the products.
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenericRoleConfig {
