@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.52.1] - 2023-10-05
+
+Only rust documentation was changed.
+
 ## [0.52.0] - 2023-10-05
 
 ### Changed
