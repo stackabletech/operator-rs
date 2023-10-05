@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Make roleConfig customizable by making the `Role` struct generic over the `roleConfig` ([#661]).
+
+[#661]: https://github.com/stackabletech/operator-rs/pull/661
+
 ## [0.51.1] - 2023-09-26
 
 ### Fixed
@@ -13,6 +19,8 @@ All notable changes to this project will be documented in this file.
 [#659]: https://github.com/stackabletech/operator-rs/pull/659
 
 ## [0.51.0] - 2023-09-25
+
+### Added
 
 - Add `PdbConfig` struct and `PodDisruptionBudgetBuilder` ([#653]).
 
@@ -99,7 +107,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- [BREAKING] ProductImageSelection now defaults `stackableVersion` to
+- BREAKING: ProductImageSelection now defaults `stackableVersion` to
   operator version ([#619]).
 - Default `pullPolicy` to operator `Always` ([#619]).
 - BREAKING: Assume that the Vector executable is located in a directory
@@ -207,7 +215,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- [BREAKING]: Added ownerreferences and labels to `build_rbac_resources` ([#579]).
+- BREAKING: Added ownerreferences and labels to `build_rbac_resources` ([#579]).
 
 [#579]: https://github.com/stackabletech/operator-rs/pull/579
 
@@ -302,7 +310,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Deprecated `to_java_heap` and `to_java_heap_value` ([#544]).
-- [BREAKING]: For all products using logback. Added additional optional parameter to `create_logback_config()` to supply custom configurations not covered via the standard log configuration ([#546]).
+- BREAKING: For all products using logback. Added additional optional parameter to `create_logback_config()` to supply custom configurations not covered via the standard log configuration ([#546]).
 
 [#544]: https://github.com/stackabletech/operator-rs/pull/544
 [#546]: https://github.com/stackabletech/operator-rs/pull/546

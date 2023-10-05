@@ -165,28 +165,46 @@ fn config_schema_default() -> serde_json::Value {
     serde_json::json!({})
 }
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[serde(
-    rename_all = "camelCase",
-    bound(deserialize = "T: Default + Deserialize<'de>")
-)]
-pub struct Role<T> {
-    #[serde(flatten)]
+/// This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a [`HashMap`] containing
+/// all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable
+/// at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured
+/// on role level using the [`Merge`] trait. There is also a second form of config, which can only be configured
+/// at role level, the `roleConfig`.
+///
+/// `T` here is the `config` shared between role and roleGroup.
+///
+/// `U` here is the `roleConfig` only available on the role. It defaults to [`GenericRoleConfig`], as this
+/// is sufficient for most products. There are some exceptions, where e.g. [`EmptyRoleConfig`] is used.
+/// However, product-operators can define their own - custom - struct and use that here.
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Role<T, U = GenericRoleConfig>
+where
+    // Don't remove this trait bounds!!!
+    // We don't know why, but if you remove either of them, the generated default value in the CRDs will
+    // be missing!
+    U: Default + JsonSchema + Serialize,
+{
+    #[serde(flatten, bound(deserialize = "T: Default + Deserialize<'de>"))]
     pub config: CommonConfiguration<T>,
 
     #[serde(default)]
-    pub role_config: RoleConfig,
+    pub role_config: U,
 
     pub role_groups: HashMap<String, RoleGroup<T>>,
 }
 
-impl<T: Configuration + 'static> Role<T> {
+impl<T, U> Role<T, U>
+where
+    T: Configuration + 'static,
+    U: Default + JsonSchema + Serialize,
+{
     /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
     /// and used in [`Role`] into a Box of a dynamically dispatched
     /// [`crate::product_config_utils::Configuration`] Trait. This is required to use the generic
     /// [`Role`] with more than a single generic struct. For example different roles most likely
     /// have different structs implementing Configuration.
-    pub fn erase(self) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>> {
+    pub fn erase(self) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>, U> {
         Role {
             config: CommonConfiguration {
                 config: Box::new(self.config.config)
@@ -196,7 +214,7 @@ impl<T: Configuration + 'static> Role<T> {
                 cli_overrides: self.config.cli_overrides,
                 pod_overrides: self.config.pod_overrides,
             },
-            role_config: RoleConfig::default(),
+            role_config: self.role_config,
             role_groups: self
                 .role_groups
                 .into_iter()
@@ -222,12 +240,22 @@ impl<T: Configuration + 'static> Role<T> {
     }
 }
 
+/// This is a product-agnostic RoleConfig, which fulfills the needs for most of the product.
+/// Currently it contains:
+///
+/// 1. `podDisruptionBudget` to configure the created PDBs.
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RoleConfig {
+pub struct GenericRoleConfig {
     #[serde(default)]
     pub pod_disruption_budget: PdbConfig,
 }
+
+/// This is a product-agnostic RoleConfig, with nothing in it. It is used e.g. by products that have
+/// nothing configurable at role level.
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EmptyRoleConfig {}
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(
@@ -244,14 +272,15 @@ pub struct RoleGroup<T> {
 }
 
 impl<T> RoleGroup<T> {
-    pub fn validate_config<C>(
+    pub fn validate_config<C, U>(
         &self,
-        role: &Role<T>,
+        role: &Role<T, U>,
         default_config: &T,
     ) -> Result<C, fragment::ValidationError>
     where
         C: FromFragment<Fragment = T>,
         T: Merge + Clone,
+        U: Default + JsonSchema + Serialize,
     {
         let mut role_config = role.config.config.clone();
         role_config.merge(default_config);
