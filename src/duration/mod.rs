@@ -15,7 +15,7 @@
 use std::{
     cmp::Ordering,
     fmt::Display,
-    num::ParseIntError,
+    num::{ParseIntError, TryFromIntError},
     ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, Sub, SubAssign},
     str::FromStr,
 };
@@ -53,6 +53,16 @@ pub enum DurationParseError {
 
     #[snafu(display("failed to parse fragment value as integer"))]
     ParseIntError { source: ParseIntError },
+
+    #[snafu(display("duration overflow occured while parsing {value}{unit} in {input}"))]
+    Overflow {
+        unit: DurationUnit,
+        input: String,
+        value: u128,
+    },
+
+    #[snafu(display("failed to convert u128 to u64"))]
+    IntConvertError { source: TryFromIntError },
 }
 
 #[derive(Clone, Copy, Debug, Derivative, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -81,7 +91,7 @@ impl FromStr for Duration {
                 last_char = Some(c);
             }
 
-            // if last_char == None then we read 0 characters => fail
+            // If last_char == None then we read 0 characters => fail
             Some(&input[from..(to + last_char?.len_utf8())])
         };
 
@@ -116,12 +126,30 @@ impl FromStr for Duration {
                 }
             }
 
+            // First, make sure we can multiply the supplied fragment value by
+            // the appropriate number of milliseconds for this unit
+            let fragment_value = value.checked_mul(unit.millis()).context(OverflowSnafu {
+                input: input.to_string(),
+                value,
+                unit,
+            })?;
+
             // This try_into is needed, as Duration::from_millis was stabilized
             // in 1.3.0 but u128 was only added in 1.26.0. See
             // - https://users.rust-lang.org/t/why-duration-as-from-millis-uses-different-primitives/89302
             // - https://github.com/rust-lang/rust/issues/58580
-            duration +=
-                std::time::Duration::from_millis((value * unit.millis()).try_into().unwrap());
+            let fragment_duration = fragment_value.try_into().context(IntConvertSnafu)?;
+
+            // Now lets make sure that the Duration can fit the provided fragment
+            // duration
+            duration = duration
+                .checked_add(std::time::Duration::from_millis(fragment_duration))
+                .context(OverflowSnafu {
+                    input: input.to_string(),
+                    value,
+                    unit,
+                })?;
+
             last_unit = Some(unit);
         }
 
@@ -254,6 +282,8 @@ impl Duration {
 /// [`std::time::Duration`] back to a human-readable format, which is defined
 /// in the [`Display`] implementation of [`Duration`].
 #[derive(
+    Clone,
+    Copy,
     Debug,
     PartialEq,
     Eq,
