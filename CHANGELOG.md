@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Add duration overflow check ([#665])
+
+[#665]: https://github.com/stackabletech/operator-rs/pull/665
+
 ## [0.52.1] - 2023-10-05
 
 Only rust documentation was changed.
