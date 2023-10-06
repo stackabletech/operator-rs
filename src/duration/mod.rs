@@ -285,8 +285,10 @@ impl Duration {
 
     /// Creates a new [`Duration`] from the specified number of whole minutes.
     /// Panics if the Duration is higher than [`std::time::Duration`] supports
-    /// (which is 584.9 years). Please only use this function in constant contexts,
-    /// and not based upon user input!
+    /// (which is 584.9 years). It is recommended to only use this function in `const`
+    /// environments. It is, however, not recommended to use the function to construct
+    /// [`Duration`]s from user provided input. Instead, use [`Duration::from_str`] to
+    /// parse human-readable duration strings.
     pub const fn from_minutes_unchecked(minutes: u64) -> Self {
         let millis = match minutes.checked_mul(DurationUnit::Minutes.millis()) {
             Some(millis) => millis,
