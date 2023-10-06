@@ -53,6 +53,9 @@ pub enum DurationParseError {
 
     #[snafu(display("failed to parse fragment value as integer"))]
     ParseIntError { source: ParseIntError },
+
+    #[snafu(display("duration overflow occured while parsing {value}{unit}"))]
+    Overflow { value: u128, unit: DurationUnit },
 }
 
 #[derive(Clone, Copy, Debug, Derivative, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -120,8 +123,13 @@ impl FromStr for Duration {
             // in 1.3.0 but u128 was only added in 1.26.0. See
             // - https://users.rust-lang.org/t/why-duration-as-from-millis-uses-different-primitives/89302
             // - https://github.com/rust-lang/rust/issues/58580
-            duration +=
-                std::time::Duration::from_millis((value * unit.millis()).try_into().unwrap());
+            match duration.checked_add(std::time::Duration::from_millis(
+                (value * unit.millis()).try_into().unwrap(),
+            )) {
+                Some(dur) => duration = dur,
+                None => return OverflowSnafu { value, unit }.fail(),
+            }
+
             last_unit = Some(unit);
         }
 
