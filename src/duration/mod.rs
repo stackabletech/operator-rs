@@ -15,7 +15,7 @@
 use std::{
     cmp::Ordering,
     fmt::Display,
-    num::{ParseIntError, TryFromIntError},
+    num::ParseIntError,
     ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, Sub, SubAssign},
     str::FromStr,
 };
@@ -54,15 +54,12 @@ pub enum DurationParseError {
     #[snafu(display("failed to parse fragment value as integer"))]
     ParseIntError { source: ParseIntError },
 
-    #[snafu(display("duration overflow occured while parsing {value}{unit} in {input}"))]
+    #[snafu(display("duration overflow occurred while parsing {value}{unit} in {input}"))]
     Overflow {
         unit: DurationUnit,
         input: String,
         value: u128,
     },
-
-    #[snafu(display("failed to convert u128 to u64"))]
-    IntConvertError { source: TryFromIntError },
 }
 
 #[derive(Clone, Copy, Debug, Derivative, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -128,17 +125,24 @@ impl FromStr for Duration {
 
             // First, make sure we can multiply the supplied fragment value by
             // the appropriate number of milliseconds for this unit
-            let fragment_value = value.checked_mul(unit.millis()).context(OverflowSnafu {
-                input: input.to_string(),
-                value,
-                unit,
-            })?;
+            let fragment_value =
+                value
+                    .checked_mul(unit.millis() as u128)
+                    .context(OverflowSnafu {
+                        input: input.to_string(),
+                        value,
+                        unit,
+                    })?;
 
             // This try_into is needed, as Duration::from_millis was stabilized
             // in 1.3.0 but u128 was only added in 1.26.0. See
             // - https://users.rust-lang.org/t/why-duration-as-from-millis-uses-different-primitives/89302
             // - https://github.com/rust-lang/rust/issues/58580
-            let fragment_duration = fragment_value.try_into().context(IntConvertSnafu)?;
+            let fragment_duration = fragment_value.try_into().ok().context(OverflowSnafu {
+                input: input.to_string(),
+                value,
+                unit,
+            })?;
 
             // Now lets make sure that the Duration can fit the provided fragment
             // duration
@@ -183,8 +187,8 @@ impl Display for Duration {
         let mut millis = self.0.as_millis();
 
         for unit in DurationUnit::iter() {
-            let whole = millis / unit.millis();
-            let rest = millis % unit.millis();
+            let whole = millis / unit.millis() as u128;
+            let rest = millis % unit.millis() as u128;
 
             if whole > 0 {
                 write!(f, "{}{}", whole, unit)?;
@@ -270,9 +274,59 @@ impl Div<u32> for Duration {
 }
 
 impl Duration {
+    /// Creates a new [`Duration`] from the specified number of whole milliseconds.
+    pub const fn from_millis(millis: u64) -> Self {
+        Self(std::time::Duration::from_millis(millis))
+    }
+
     /// Creates a new [`Duration`] from the specified number of whole seconds.
     pub const fn from_secs(secs: u64) -> Self {
         Self(std::time::Duration::from_secs(secs))
+    }
+
+    /// Creates a new [`Duration`] from the specified number of whole minutes.
+    /// Panics if the minutes are bigger than `u64::MAX / 60 / 1000 = 307445734561825`,
+    /// which is approx. 584,942,417,355 years.
+    ///
+    /// It is recommended to only use this function in `const` environments. It is, however,
+    /// not recommended to use the function to construct [`Duration`]s from user provided input.
+    /// Instead, use [`Duration::from_str`] to parse human-readable duration strings.
+    pub const fn from_minutes_unchecked(minutes: u64) -> Self {
+        let millis = match minutes.checked_mul(DurationUnit::Minutes.millis()) {
+            Some(millis) => millis,
+            None => panic!("overflow in Duration::from_minutes"),
+        };
+        Self::from_millis(millis)
+    }
+
+    /// Creates a new [`Duration`] from the specified number of whole hours.
+    /// Panics if the hours are bigger than `u64::MAX / 60 / 60 / 1000 = 5124095576030`,
+    /// which is approx. 584,942,417,355 years.
+    ///
+    /// It is recommended to only use this function in `const` environments. It is, however,
+    /// not recommended to use the function to construct [`Duration`]s from user provided input.
+    /// Instead, use [`Duration::from_str`] to parse human-readable duration strings.
+    pub const fn from_hours_unchecked(hours: u64) -> Self {
+        let millis = match hours.checked_mul(DurationUnit::Hours.millis()) {
+            Some(millis) => millis,
+            None => panic!("overflow in Duration::from_hours"),
+        };
+        Self::from_millis(millis)
+    }
+
+    /// Creates a new [`Duration`] from the specified number of whole days.
+    /// Panics if the days are bigger than `u64::MAX / 24 / 60 / 60 / 1000 = 213503982334`,
+    /// which is approx. 584,942,417,355 years.
+    ///
+    /// It is recommended to only use this function in `const` environments. It is, however,
+    /// not recommended to use the function to construct [`Duration`]s from user provided input.
+    /// Instead, use [`Duration::from_str`] to parse human-readable duration strings.
+    pub const fn from_days_unchecked(days: u64) -> Self {
+        let millis = match days.checked_mul(DurationUnit::Days.millis()) {
+            Some(millis) => millis,
+            None => panic!("overflow in Duration::from_days"),
+        };
+        Self::from_millis(millis)
     }
 }
 
@@ -314,7 +368,7 @@ pub enum DurationUnit {
 impl DurationUnit {
     /// Returns the number of whole milliseconds in each supported
     /// [`DurationUnit`].
-    fn millis(&self) -> u128 {
+    const fn millis(&self) -> u64 {
         use DurationUnit::*;
 
         match self {
@@ -333,14 +387,44 @@ mod test {
     use rstest::rstest;
     use serde::{Deserialize, Serialize};
 
+    #[test]
+    fn const_from() {
+        assert_eq!(Duration::from_secs(42).as_secs(), 42);
+        assert_eq!(Duration::from_minutes_unchecked(42).as_secs(), 42 * 60);
+        assert_eq!(Duration::from_hours_unchecked(42).as_secs(), 42 * 60 * 60);
+        assert_eq!(
+            Duration::from_days_unchecked(42).as_secs(),
+            42 * 24 * 60 * 60
+        );
+        assert_eq!(
+            Duration::from_days_unchecked(999).as_secs(),
+            999 * 24 * 60 * 60
+        );
+    }
+
+    #[test]
+    fn const_from_overflow() {
+        let max_duration_ms = u64::MAX;
+        let max_duration_days = max_duration_ms / 1000 / 60 / 60 / 24;
+
+        assert_eq!(
+            Duration::from_days_unchecked(max_duration_days).as_millis(),
+            18446744073657600000 // Precision lost due to ms -> day conversion
+        );
+        let result =
+            std::panic::catch_unwind(|| Duration::from_days_unchecked(max_duration_days + 1));
+        assert!(result.is_err());
+    }
+
     #[rstest]
-    #[case("15d2m2s1000ms", 1296123)]
-    #[case("15d2m2s600ms", 1296122)]
-    #[case("15d2m2s", 1296122)]
-    #[case("70m", 4200)]
-    #[case("1h", 3600)]
-    #[case("1m", 60)]
     #[case("1s", 1)]
+    #[case("1m", 60)]
+    #[case("1h", 3600)]
+    #[case("70m", 4200)]
+    #[case("15d2m2s", 1296122)]
+    #[case("15d2m2s600ms", 1296122)]
+    #[case("15d2m2s1000ms", 1296123)]
+    #[case("213503982334d", 18446744073657600)]
     fn parse_as_secs(#[case] input: &str, #[case] output: u64) {
         let dur: Duration = input.parse().unwrap();
         assert_eq!(dur.as_secs(), output);
@@ -352,6 +436,7 @@ mod test {
     #[case("1ä", DurationParseError::ParseUnitError { unit: "ä".into() })]
     #[case(" ", DurationParseError::UnexpectedCharacter { chr: ' ' })]
     #[case("", DurationParseError::EmptyInput)]
+    #[case("213503982335d", DurationParseError::Overflow { input: "213503982335d".to_string(), value: 213503982335_u128, unit: DurationUnit::Days })]
     fn parse_invalid(#[case] input: &str, #[case] expected_err: DurationParseError) {
         let err = Duration::from_str(input).unwrap_err();
         assert_eq!(err, expected_err)
