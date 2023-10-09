@@ -284,11 +284,12 @@ impl Duration {
     }
 
     /// Creates a new [`Duration`] from the specified number of whole minutes.
-    /// Panics if the Duration is higher than [`std::time::Duration`] supports
-    /// (which is 584.9 years). It is recommended to only use this function in `const`
-    /// environments. It is, however, not recommended to use the function to construct
-    /// [`Duration`]s from user provided input. Instead, use [`Duration::from_str`] to
-    /// parse human-readable duration strings.
+    /// Panics if the minutes are bigger than `u64::MAX / 60 / 1000 = 307445734561825`,
+    /// which is approx. 584,942,417,355 years.
+    ///
+    /// It is recommended to only use this function in `const` environments. It is, however,
+    /// not recommended to use the function to construct [`Duration`]s from user provided input.
+    /// Instead, use [`Duration::from_str`] to parse human-readable duration strings.
     pub const fn from_minutes_unchecked(minutes: u64) -> Self {
         let millis = match minutes.checked_mul(DurationUnit::Minutes.millis()) {
             Some(millis) => millis,
@@ -298,9 +299,12 @@ impl Duration {
     }
 
     /// Creates a new [`Duration`] from the specified number of whole hours.
-    /// Panics if the Duration is higher than [`std::time::Duration`] supports
-    /// (which is 584.9 years). Please only use this function in constant contexts,
-    /// and not based upon user input!
+    /// Panics if the hours are bigger than `u64::MAX / 60 / 60 / 1000 = 5124095576030`,
+    /// which is approx. 584,942,417,355 years.
+    ///
+    /// It is recommended to only use this function in `const` environments. It is, however,
+    /// not recommended to use the function to construct [`Duration`]s from user provided input.
+    /// Instead, use [`Duration::from_str`] to parse human-readable duration strings.
     pub const fn from_hours_unchecked(hours: u64) -> Self {
         let millis = match hours.checked_mul(DurationUnit::Hours.millis()) {
             Some(millis) => millis,
@@ -310,9 +314,12 @@ impl Duration {
     }
 
     /// Creates a new [`Duration`] from the specified number of whole days.
-    /// Panics if the Duration is higher than [`std::time::Duration`] supports
-    /// (which is 584.9 years). Please only use this function in constant contexts,
-    /// and not based upon user input!
+    /// Panics if the days are bigger than `u64::MAX / 24 / 60 / 60 / 1000 = 213503982334`,
+    /// which is approx. 584,942,417,355 years.
+    ///
+    /// It is recommended to only use this function in `const` environments. It is, however,
+    /// not recommended to use the function to construct [`Duration`]s from user provided input.
+    /// Instead, use [`Duration::from_str`] to parse human-readable duration strings.
     pub const fn from_days_unchecked(days: u64) -> Self {
         let millis = match days.checked_mul(DurationUnit::Days.millis()) {
             Some(millis) => millis,
