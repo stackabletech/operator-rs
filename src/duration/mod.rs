@@ -15,7 +15,7 @@
 use std::{
     cmp::Ordering,
     fmt::Display,
-    num::{ParseIntError, TryFromIntError},
+    num::ParseIntError,
     ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, Sub, SubAssign},
     str::FromStr,
 };
@@ -54,15 +54,12 @@ pub enum DurationParseError {
     #[snafu(display("failed to parse fragment value as integer"))]
     ParseIntError { source: ParseIntError },
 
-    #[snafu(display("duration overflow occured while parsing {value}{unit} in {input}"))]
+    #[snafu(display("duration overflow occurred while parsing {value}{unit} in {input}"))]
     Overflow {
         unit: DurationUnit,
         input: String,
         value: u128,
     },
-
-    #[snafu(display("failed to convert u128 to u64"))]
-    IntConvertError { source: TryFromIntError },
 }
 
 #[derive(Clone, Copy, Debug, Derivative, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -141,7 +138,11 @@ impl FromStr for Duration {
             // in 1.3.0 but u128 was only added in 1.26.0. See
             // - https://users.rust-lang.org/t/why-duration-as-from-millis-uses-different-primitives/89302
             // - https://github.com/rust-lang/rust/issues/58580
-            let fragment_duration = fragment_value.try_into().context(IntConvertSnafu)?;
+            let fragment_duration = fragment_value.try_into().ok().context(OverflowSnafu {
+                input: input.to_string(),
+                value,
+                unit,
+            })?;
 
             // Now lets make sure that the Duration can fit the provided fragment
             // duration
@@ -416,13 +417,14 @@ mod test {
     }
 
     #[rstest]
-    #[case("15d2m2s1000ms", 1296123)]
-    #[case("15d2m2s600ms", 1296122)]
-    #[case("15d2m2s", 1296122)]
-    #[case("70m", 4200)]
-    #[case("1h", 3600)]
-    #[case("1m", 60)]
     #[case("1s", 1)]
+    #[case("1m", 60)]
+    #[case("1h", 3600)]
+    #[case("70m", 4200)]
+    #[case("15d2m2s", 1296122)]
+    #[case("15d2m2s600ms", 1296122)]
+    #[case("15d2m2s1000ms", 1296123)]
+    #[case("213503982334d", 18446744073657600)]
     fn parse_as_secs(#[case] input: &str, #[case] output: u64) {
         let dur: Duration = input.parse().unwrap();
         assert_eq!(dur.as_secs(), output);
@@ -434,6 +436,7 @@ mod test {
     #[case("1ä", DurationParseError::ParseUnitError { unit: "ä".into() })]
     #[case(" ", DurationParseError::UnexpectedCharacter { chr: ' ' })]
     #[case("", DurationParseError::EmptyInput)]
+    #[case("213503982335d", DurationParseError::Overflow { input: "213503982335d".to_string(), value: 213503982335_u128, unit: DurationUnit::Days })]
     fn parse_invalid(#[case] input: &str, #[case] expected_err: DurationParseError) {
         let err = Duration::from_str(input).unwrap_err();
         assert_eq!(err, expected_err)
