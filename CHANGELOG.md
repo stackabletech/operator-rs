@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.53.0] - 2023-10-09
+
 ### Changed
 
 - Add duration overflow check ([#665]).
