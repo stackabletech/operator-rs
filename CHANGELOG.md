@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Add `gracefulShutdownTimeout` to `GenericRoleConfig` with a default of 15 minutes ([#667]).
+
+[#667]: https://github.com/stackabletech/operator-rs/pull/667
+
 ## [0.53.0] - 2023-10-09
 
 ### Changed
