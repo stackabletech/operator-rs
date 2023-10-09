@@ -91,6 +91,7 @@ use crate::{
         fragment::{self, FromFragment},
         merge::Merge,
     },
+    duration::Duration,
     product_config_utils::Configuration,
 };
 use derivative::Derivative;
@@ -244,11 +245,37 @@ where
 }
 
 /// This is a product-agnostic RoleConfig, which is sufficient for most of the products.
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+//
+// Everything below is only a "normal" comment, not rustdoc - so we don't bloat the CRD documentation
+// with technical (Rust) details.
+//
+// Please use your own (role specific) struct in case the role
+// 1.) Doesn't support PDBs
+// 2.) Needs a different graceful shutdown timeout default value
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenericRoleConfig {
     #[serde(default)]
     pub pod_disruption_budget: PdbConfig,
+
+    /// Time period the Pods of this role have to gracefully shut down, e.g. `1h`, `30m` or `2d`.
+    /// Consult the individual operator documentation for details on how the graceful shutdown
+    /// mechanism works.
+    #[serde(default = "default_graceful_shutdown_timeout")]
+    pub graceful_shutdown_timeout: Duration,
+}
+
+impl Default for GenericRoleConfig {
+    fn default() -> Self {
+        Self {
+            pod_disruption_budget: Default::default(),
+            graceful_shutdown_timeout: default_graceful_shutdown_timeout(),
+        }
+    }
+}
+
+fn default_graceful_shutdown_timeout() -> Duration {
+    Duration::from_minutes_unchecked(15)
 }
 
 /// This is a product-agnostic RoleConfig, with nothing in it. It is used e.g. by products that have
