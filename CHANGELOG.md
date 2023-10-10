@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.54.0] - 2023-10-10
+
+### Changed
+
+- impl `Atomic` for `Duration` ([#668]).
+
+[#668]: https://github.com/stackabletech/operator-rs/pull/668
+
 ## [0.53.0] - 2023-10-09
 
 ### Changed
