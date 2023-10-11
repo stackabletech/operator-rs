@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Convert the format of the Vector configuration from TOML to YAML ([#670]).
+
+[#670]: https://github.com/stackabletech/operator-rs/pull/670
+
 ## [0.54.0] - 2023-10-10
 
 ### Changed
