@@ -1,6 +1,6 @@
 //! Log aggregation framework
 
-use std::{cmp, ops::Mul};
+use std::{cmp, fmt::Write, ops::Mul};
 
 use crate::{
     builder::ContainerBuilder,
@@ -280,14 +280,15 @@ pub fn create_log4j_config(
         .loggers
         .iter()
         .filter(|(name, _)| name.as_str() != AutomaticContainerLogConfig::ROOT_LOGGER)
-        .map(|(name, logger_config)| {
-            format!(
-                "log4j.logger.{name}={level}\n",
+        .fold(String::new(), |mut output, (name, logger_config)| {
+            let _ = writeln!(
+                output,
+                "log4j.logger.{name}={level}",
                 name = name.escape_default(),
                 level = logger_config.level.to_log4j_literal(),
-            )
-        })
-        .collect::<String>();
+            );
+            output
+        });
 
     format!(
         r#"log4j.rootLogger={root_log_level}, CONSOLE, FILE
@@ -412,14 +413,13 @@ pub fn create_log4j2_config(
         .loggers
         .iter()
         .filter(|(name, _)| name.as_str() != AutomaticContainerLogConfig::ROOT_LOGGER)
-        .map(|(name, logger_config)| {
-            format!(
-                "logger.{name}.name = {name}\nlogger.{name}.level = {level}\n",
-                name = name.escape_default(),
-                level = logger_config.level.to_log4j_literal(),
-            )
-        })
-        .collect::<String>();
+        .fold(String::new(), |mut output, (name, logger_config)| {
+            let name = name.escape_default();
+            let level = logger_config.level.to_log4j_literal();
+            let _ = writeln!(output, "logger.{name}.name = {name}");
+            let _ = writeln!(output, "logger.{name}.level = {level}");
+            output
+        });
 
     format!(
         r#"appenders = FILE, CONSOLE
@@ -553,14 +553,15 @@ pub fn create_logback_config(
         .loggers
         .iter()
         .filter(|(name, _)| name.as_str() != AutomaticContainerLogConfig::ROOT_LOGGER)
-        .map(|(name, logger_config)| {
-            format!(
-                "  <logger name=\"{name}\" level=\"{level}\" />\n",
+        .fold(String::new(), |mut output, (name, logger_config)| {
+            let _ = writeln!(
+                output,
+                "  <logger name=\"{name}\" level=\"{level}\" />",
                 name = name.escape_default(),
                 level = logger_config.level.to_logback_literal(),
-            )
-        })
-        .collect::<String>();
+            );
+            output
+        });
 
     format!(
         r#"<configuration>
