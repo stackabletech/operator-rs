@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Mark the following functions as `const` ([#674]):
+  - `ClusterResourceApplyStrategy::delete_orphans`
+  - `LdapAuthenticationProvider::default_port`
+  - `LdapAuthenticationProvider::use_tls`
+  - `ListenerSpec::default_publish_not_ready_addresses`
+  - `OpaApiVersion::get_data_api`
+  - `CpuQuantity::from_millis`
+  - `CpuQuantity::as_milli_cpus`
+  - `BinaryMultiple::exponential_scale_factor`
+  - `BinaryMultiple::get_smallest`
+  - `MemoryQuantity::from_gibi`
+  - `MemoryQuantity::from_mebi`
+  - `ClusterCondition::is_good`
+  - `ClusterOperationsConditionBuilder::new`
+  - `commons::pdb::default_pdb_enabled`
+
+[#674]: https://github.com/stackabletech/operator-rs/pull/674
+
 ### Changed
 
 - Convert the format of the Vector configuration from TOML to YAML ([#670]).
