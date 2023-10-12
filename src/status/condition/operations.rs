@@ -18,7 +18,7 @@ impl<'a> ConditionBuilder for ClusterOperationsConditionBuilder<'a> {
 }
 
 impl<'a> ClusterOperationsConditionBuilder<'a> {
-    pub fn new(cluster_operation: &'a ClusterOperation) -> Self {
+    pub const fn new(cluster_operation: &'a ClusterOperation) -> Self {
         Self { cluster_operation }
     }
 

@@ -20,7 +20,7 @@ pub struct PdbConfig {
     pub max_unavailable: Option<u16>,
 }
 
-fn default_pdb_enabled() -> bool {
+const fn default_pdb_enabled() -> bool {
     true
 }
 

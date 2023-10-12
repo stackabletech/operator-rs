@@ -31,7 +31,7 @@ pub struct LdapAuthenticationProvider {
 }
 
 impl LdapAuthenticationProvider {
-    pub fn default_port(&self) -> u16 {
+    pub const fn default_port(&self) -> u16 {
         match self.tls {
             None => 389,
             Some(_) => 636,
@@ -91,7 +91,7 @@ impl LdapAuthenticationProvider {
     }
 
     /// Whether TLS is configured
-    pub fn use_tls(&self) -> bool {
+    pub const fn use_tls(&self) -> bool {
         self.tls.is_some()
     }
 

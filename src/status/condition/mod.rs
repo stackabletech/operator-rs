@@ -145,7 +145,7 @@ impl std::fmt::Display for ClusterCondition {
 impl ClusterCondition {
     /// Returns if the [`ClusterCondition`] is considered to be in a good /
     /// healthy state.
-    pub fn is_good(&self) -> bool {
+    pub const fn is_good(&self) -> bool {
         match self.type_ {
             ClusterConditionType::Available => match self.status {
                 ClusterConditionStatus::False | ClusterConditionStatus::Unknown => false,
