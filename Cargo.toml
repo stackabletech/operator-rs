@@ -35,7 +35,6 @@ schemars = "0.8.12"
 serde = { version = "1.0.184", features = ["derive"] }
 serde_json = "1.0.104"
 serde_yaml = "0.9.25"
-snafu = "0.7.5"
 stackable-operator-derive = { path = "stackable-operator-derive" }
 strum = { version = "0.25.0", features = ["derive"] }
 thiserror = "1.0.44"

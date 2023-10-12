@@ -22,39 +22,40 @@ use std::{
 
 use derivative::Derivative;
 use schemars::JsonSchema;
-use snafu::{OptionExt, ResultExt, Snafu};
 use strum::IntoEnumIterator;
 
 mod serde_impl;
 
-#[derive(Debug, Snafu, PartialEq)]
-#[snafu(module)]
+#[derive(Debug, thiserror::Error, PartialEq)]
 pub enum DurationParseError {
-    #[snafu(display("empty input"))]
+    #[error("empty input")]
     EmptyInput,
 
-    #[snafu(display("unexpected character {chr:?}"))]
+    #[error("unexpected character {chr:?}")]
     UnexpectedCharacter { chr: char },
 
-    #[snafu(display("fragment with value {value:?} has no unit"))]
+    #[error("fragment with value {value:?} has no unit")]
     NoUnit { value: u128 },
 
-    #[snafu(display("invalid fragment order, {current} must be before {previous}"))]
+    #[error("invalid fragment order, {current} must be before {previous}")]
     InvalidUnitOrdering {
         previous: DurationUnit,
         current: DurationUnit,
     },
 
-    #[snafu(display("fragment unit {unit} was specified multiple times"))]
+    #[error("fragment unit {unit} was specified multiple times")]
     DuplicateUnit { unit: DurationUnit },
 
-    #[snafu(display("failed to parse fragment unit {unit:?}"))]
-    ParseUnitError { unit: String },
+    #[error("failed to parse fragment unit {unit:?}")]
+    ParseUnit { unit: String },
 
-    #[snafu(display("failed to parse fragment value as integer"))]
-    ParseIntError { source: ParseIntError },
+    #[error("failed to parse fragment value as integer")]
+    ParseInt {
+        #[from]
+        source: ParseIntError,
+    },
 
-    #[snafu(display("duration overflow occurred while parsing {value}{unit} in {input}"))]
+    #[error("duration overflow occurred while parsing {value}{unit} in {input}")]
     Overflow {
         unit: DurationUnit,
         input: String,
@@ -69,9 +70,9 @@ impl FromStr for Duration {
     type Err = DurationParseError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        use duration_parse_error::*;
+        use DurationParseError::*;
         if input.is_empty() {
-            return EmptyInputSnafu.fail();
+            return Err(EmptyInput {});
         }
 
         let mut chars = input.char_indices().peekable();
@@ -93,17 +94,17 @@ impl FromStr for Duration {
         };
 
         while let Some(value) = take_group(char::is_numeric) {
-            let value = value.parse::<u128>().context(ParseIntSnafu)?;
+            let value = value.parse::<u128>()?;
 
             let Some(unit) = take_group(char::is_alphabetic) else {
                 if let Some(&(_, chr)) = chars.peek() {
-                    return UnexpectedCharacterSnafu { chr }.fail();
+                    return Err(UnexpectedCharacter { chr });
                 } else {
-                    return NoUnitSnafu { value }.fail();
+                    return Err(NoUnit { value });
                 }
             };
 
-            let unit = unit.parse::<DurationUnit>().ok().context(ParseUnitSnafu {
+            let unit = unit.parse::<DurationUnit>().map_err(|_| ParseUnit {
                 unit: unit.to_string(),
             })?;
 
@@ -112,33 +113,29 @@ impl FromStr for Duration {
             if let Some(last_unit) = last_unit {
                 match unit.cmp(&last_unit) {
                     Ordering::Less => {
-                        return InvalidUnitOrderingSnafu {
+                        return Err(InvalidUnitOrdering {
                             previous: last_unit,
                             current: unit,
-                        }
-                        .fail()
+                        })
                     }
-                    Ordering::Equal => return DuplicateUnitSnafu { unit }.fail(),
+                    Ordering::Equal => return Err(DuplicateUnit { unit }),
                     _ => (),
                 }
             }
 
             // First, make sure we can multiply the supplied fragment value by
             // the appropriate number of milliseconds for this unit
-            let fragment_value =
-                value
-                    .checked_mul(unit.millis() as u128)
-                    .context(OverflowSnafu {
-                        input: input.to_string(),
-                        value,
-                        unit,
-                    })?;
+            let fragment_value = value.checked_mul(unit.millis() as u128).ok_or(Overflow {
+                input: input.to_string(),
+                value,
+                unit,
+            })?;
 
             // This try_into is needed, as Duration::from_millis was stabilized
             // in 1.3.0 but u128 was only added in 1.26.0. See
             // - https://users.rust-lang.org/t/why-duration-as-from-millis-uses-different-primitives/89302
             // - https://github.com/rust-lang/rust/issues/58580
-            let fragment_duration = fragment_value.try_into().ok().context(OverflowSnafu {
+            let fragment_duration = fragment_value.try_into().map_err(|_| Overflow {
                 input: input.to_string(),
                 value,
                 unit,
@@ -148,7 +145,7 @@ impl FromStr for Duration {
             // duration
             duration = duration
                 .checked_add(std::time::Duration::from_millis(fragment_duration))
-                .context(OverflowSnafu {
+                .ok_or(Overflow {
                     input: input.to_string(),
                     value,
                     unit,
@@ -159,7 +156,7 @@ impl FromStr for Duration {
 
         // Buffer must not contain any remaining data
         if let Some(&(_, chr)) = chars.peek() {
-            return UnexpectedCharacterSnafu { chr }.fail();
+            return Err(UnexpectedCharacter { chr });
         }
 
         Ok(Self(duration))
@@ -431,9 +428,9 @@ mod test {
     }
 
     #[rstest]
-    #[case("1D", DurationParseError::ParseUnitError{unit: "D".into()})]
+    #[case("1D", DurationParseError::ParseUnit{unit: "D".into()})]
     #[case("2d2", DurationParseError::NoUnit{value: 2})]
-    #[case("1ä", DurationParseError::ParseUnitError { unit: "ä".into() })]
+    #[case("1ä", DurationParseError::ParseUnit { unit: "ä".into() })]
     #[case(" ", DurationParseError::UnexpectedCharacter { chr: ' ' })]
     #[case("", DurationParseError::EmptyInput)]
     #[case("213503982335d", DurationParseError::Overflow { input: "213503982335d".to_string(), value: 213503982335_u128, unit: DurationUnit::Days })]

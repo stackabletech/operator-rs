@@ -16,7 +16,6 @@ use super::merge::Merge;
 use crate::role_utils::{Role, RoleGroup};
 
 use k8s_openapi::api::core::v1::PodTemplateSpec;
-use snafu::Snafu;
 
 pub use stackable_operator_derive::Fragment;
 
@@ -74,20 +73,20 @@ impl Display for FieldPath {
     }
 }
 
-#[derive(Debug, Snafu)]
-#[snafu(display("failed to validate {path}"))]
+#[derive(Debug, thiserror::Error)]
+#[error("failed to validate {path}")]
 /// An error that occurred when validating an object.
 ///
 /// It is constructed by calling one of the `error_*` methods on [`Validator`], such as [`Validator::error_required`].
 pub struct ValidationError {
     path: FieldPath,
-    #[snafu(source)]
     problem: ValidationProblem,
 }
+
 /// A problem that was discovered during validation, with no additional context.
-#[derive(Debug, Snafu)]
+#[derive(Debug, thiserror::Error)]
 enum ValidationProblem {
-    #[snafu(display("field is required"))]
+    #[error("field is required")]
     FieldRequired,
 }
 
