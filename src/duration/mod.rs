@@ -62,6 +62,9 @@ pub enum DurationParseError {
     },
 }
 
+/// A common [`Duration`] struct which is able to parse human-readable duration
+/// formats, like `5s`, `24h`, `2y2h20m42s` or`15d2m2s`. It additionally
+/// implements many required traits (for CRD deserialization and serialization).
 #[derive(Clone, Copy, Debug, Derivative, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Duration(std::time::Duration);
 
@@ -178,8 +181,7 @@ impl JsonSchema for Duration {
 
 impl Display for Duration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // If the inner Duration is zero, print out '0ms' as milliseconds
-        // is the base unit for our Duration.
+        // If the inner Duration is zero, print out '0s' instead of '0ms'.
         if self.0.is_zero() {
             return write!(f, "0{}", DurationUnit::Seconds);
         }
