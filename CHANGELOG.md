@@ -7,8 +7,10 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Convert the format of the Vector configuration from TOML to YAML ([#670]).
+- BREAKING: Change `PodBuilder::termination_grace_period` to take `Duration` struct ([#672]).
 
 [#670]: https://github.com/stackabletech/operator-rs/pull/670
+[#672]: https://github.com/stackabletech/operator-rs/pull/672
 
 ## [0.54.0] - 2023-10-10
 
