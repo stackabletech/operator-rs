@@ -4,6 +4,7 @@ pub mod security;
 pub mod volume;
 
 use std::collections::BTreeMap;
+use std::num::TryFromIntError;
 
 use crate::builder::meta::ObjectMetaBuilder;
 use crate::commons::affinity::StackableAffinity;
@@ -13,7 +14,7 @@ use crate::commons::resources::{
     LIMIT_REQUEST_RATIO_MEMORY,
 };
 use crate::duration::Duration;
-use crate::error::{Error, OperatorResult};
+use crate::error::{self, OperatorResult};
 
 use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
 use k8s_openapi::{
@@ -26,8 +27,18 @@ use k8s_openapi::{
 };
 use tracing::warn;
 
+#[derive(Debug, thiserror::Error, PartialEq)]
+pub enum Error {
+    #[error("The duration {duration} is too long to put it into the Pods terminationGracePeriodSeconds. The maximum duration is {}", Duration::from_secs(i64::MAX as u64))]
+    DurationTooLong {
+        source: TryFromIntError,
+        duration: Duration,
+    },
+}
+pub type Result<T> = std::result::Result<T, Error>;
+
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct PodBuilder {
     containers: Vec<Container>,
     host_network: Option<bool>,
@@ -456,11 +467,12 @@ impl PodBuilder {
     pub fn termination_grace_period(
         &mut self,
         termination_grace_period: &Duration,
-    ) -> OperatorResult<&mut Self> {
+    ) -> Result<&mut Self> {
         let termination_grace_period_seconds = termination_grace_period
             .as_secs()
             .try_into()
-            .map_err(|_| Error::DurationTooLong {
+            .map_err(|err| Error::DurationTooLong {
+                source: err,
                 duration: *termination_grace_period,
             })?;
 
@@ -472,7 +484,7 @@ impl PodBuilder {
     pub fn build(&self) -> OperatorResult<Pod> {
         Ok(Pod {
             metadata: match self.metadata {
-                None => return Err(Error::MissingObjectKey { key: "metadata" }),
+                None => return Err(error::Error::MissingObjectKey { key: "metadata" }),
                 Some(ref metadata) => metadata.clone(),
             },
             spec: Some(self.build_spec()),
@@ -699,5 +711,20 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(pod.spec.unwrap().restart_policy.unwrap(), "Always");
+    }
+
+    #[test]
+    fn test_pod_builder_too_long_termination_grace_period() {
+        let too_long_duration = Duration::from_secs(i64::MAX as u64 + 1);
+        let mut pod_builder = PodBuilder::new();
+
+        let result = pod_builder.termination_grace_period(&too_long_duration);
+        assert!(matches!(
+            result,
+            Err(Error::DurationTooLong {
+                source: TryFromIntError { .. },
+                duration,
+            }) if duration == too_long_duration
+        ));
     }
 }

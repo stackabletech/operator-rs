@@ -1,4 +1,4 @@
-use crate::{duration::Duration, product_config_utils};
+use crate::product_config_utils;
 use std::path::PathBuf;
 
 #[derive(Debug, thiserror::Error)]
@@ -111,9 +111,6 @@ pub enum Error {
         container_name: String,
         violation: String,
     },
-
-    #[error("The duration {duration:?} is too long to process")]
-    DurationTooLong { duration: Duration },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
