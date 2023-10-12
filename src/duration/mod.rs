@@ -304,6 +304,18 @@ impl Div<u32> for Duration {
 }
 
 impl Duration {
+    /// Creates a new [`Duration`] containing the amount of time passed since
+    /// 1970-01-01 UTC. This can be used to calculate [`Duration`]s based on
+    /// UTC timestamps, for example to define lifetimes when generating TLS
+    /// certificates.
+    pub fn now_utc() -> Self {
+        let now = std::time::SystemTime::now();
+
+        now.duration_since(std::time::UNIX_EPOCH)
+            .expect("system time before Unix epoch")
+            .into()
+    }
+
     /// Creates a new [`Duration`] from the specified number of whole milliseconds.
     pub const fn from_millis(millis: u64) -> Self {
         Self(std::time::Duration::from_millis(millis))
