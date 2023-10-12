@@ -6,9 +6,11 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Convert the format of the Vector configuration from TOML to YAML ([#670]).
+- Convert the format of the Vector configuration from TOML to YAML([#670]).
+- Switch from `snafu` to `thiserror` ([#673]).
 
 [#670]: https://github.com/stackabletech/operator-rs/pull/670
+[#673]: https://github.com/stackabletech/operator-rs/pull/673
 
 ## [0.54.0] - 2023-10-10
 
