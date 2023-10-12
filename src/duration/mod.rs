@@ -231,9 +231,23 @@ impl Add for Duration {
     }
 }
 
+impl Add<Duration> for std::time::Instant {
+    type Output = Self;
+
+    fn add(self, rhs: Duration) -> Self::Output {
+        self.add(rhs.0)
+    }
+}
+
 impl AddAssign for Duration {
     fn add_assign(&mut self, rhs: Self) {
         self.0.add_assign(rhs.0)
+    }
+}
+
+impl AddAssign<Duration> for std::time::Instant {
+    fn add_assign(&mut self, rhs: Duration) {
+        self.add_assign(rhs.0)
     }
 }
 
@@ -245,9 +259,23 @@ impl Sub for Duration {
     }
 }
 
+impl Sub<Duration> for std::time::Instant {
+    type Output = Self;
+
+    fn sub(self, rhs: Duration) -> Self::Output {
+        self.sub(rhs.0)
+    }
+}
+
 impl SubAssign for Duration {
     fn sub_assign(&mut self, rhs: Self) {
         self.0.sub_assign(rhs.0)
+    }
+}
+
+impl SubAssign<Duration> for std::time::Instant {
+    fn sub_assign(&mut self, rhs: Duration) {
+        self.add_assign(rhs.0)
     }
 }
 
