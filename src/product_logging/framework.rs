@@ -1,6 +1,6 @@
 //! Log aggregation framework
 
-use std::{cmp, ops::Mul};
+use std::{cmp, fmt::Write, ops::Mul};
 
 use crate::{
     builder::ContainerBuilder,
@@ -29,7 +29,7 @@ const VECTOR_LOG_DIR: &str = "_vector";
 const SHUTDOWN_FILE: &str = "shutdown";
 
 /// File name of the Vector config file
-pub const VECTOR_CONFIG_FILE: &str = "vector.toml";
+pub const VECTOR_CONFIG_FILE: &str = "vector.yaml";
 
 /// Calculate the size limit for the log volume.
 ///
@@ -280,14 +280,15 @@ pub fn create_log4j_config(
         .loggers
         .iter()
         .filter(|(name, _)| name.as_str() != AutomaticContainerLogConfig::ROOT_LOGGER)
-        .map(|(name, logger_config)| {
-            format!(
-                "log4j.logger.{name}={level}\n",
+        .fold(String::new(), |mut output, (name, logger_config)| {
+            let _ = writeln!(
+                output,
+                "log4j.logger.{name}={level}",
                 name = name.escape_default(),
                 level = logger_config.level.to_log4j_literal(),
-            )
-        })
-        .collect::<String>();
+            );
+            output
+        });
 
     format!(
         r#"log4j.rootLogger={root_log_level}, CONSOLE, FILE
@@ -412,14 +413,13 @@ pub fn create_log4j2_config(
         .loggers
         .iter()
         .filter(|(name, _)| name.as_str() != AutomaticContainerLogConfig::ROOT_LOGGER)
-        .map(|(name, logger_config)| {
-            format!(
-                "logger.{name}.name = {name}\nlogger.{name}.level = {level}\n",
-                name = name.escape_default(),
-                level = logger_config.level.to_log4j_literal(),
-            )
-        })
-        .collect::<String>();
+        .fold(String::new(), |mut output, (name, logger_config)| {
+            let name = name.escape_default();
+            let level = logger_config.level.to_log4j_literal();
+            let _ = writeln!(output, "logger.{name}.name = {name}");
+            let _ = writeln!(output, "logger.{name}.level = {level}");
+            output
+        });
 
     format!(
         r#"appenders = FILE, CONSOLE
@@ -553,14 +553,15 @@ pub fn create_logback_config(
         .loggers
         .iter()
         .filter(|(name, _)| name.as_str() != AutomaticContainerLogConfig::ROOT_LOGGER)
-        .map(|(name, logger_config)| {
-            format!(
-                "  <logger name=\"{name}\" level=\"{level}\" />\n",
+        .fold(String::new(), |mut output, (name, logger_config)| {
+            let _ = writeln!(
+                output,
+                "  <logger name=\"{name}\" level=\"{level}\" />",
                 name = name.escape_default(),
                 level = logger_config.level.to_logback_literal(),
-            )
-        })
-        .collect::<String>();
+            );
+            output
+        });
 
     format!(
         r#"<configuration>
@@ -618,7 +619,8 @@ pub fn create_logback_config(
     )
 }
 
-/// Create the content of a Vector configuration file according to the given log configuration
+/// Create the content of a Vector configuration file in YAML format according to the given log
+/// configuration
 ///
 /// # Example
 ///
@@ -704,287 +706,299 @@ where
     };
 
     format!(
-        r#"data_dir = "/stackable/vector/var"
+        r#"data_dir: /stackable/vector/var
 
-[log_schema]
-host_key = "pod"
+log_schema:
+  host_key: pod
 
-[sources.vector]
-type = "internal_logs"
+sources:
+  vector:
+    type: internal_logs
 
-[sources.files_stdout]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/*/*.stdout.log"]
+  files_stdout:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/*/*.stdout.log
 
-[sources.files_stderr]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/*/*.stderr.log"]
+  files_stderr:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/*/*.stderr.log
 
-[sources.files_log4j]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/*/*.log4j.xml"]
-line_delimiter = "\r\n"
+  files_log4j:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/*/*.log4j.xml
+    line_delimiter: "\r\n"
+    multiline:
+      mode: halt_before
+      start_pattern: ^<log4j:event
+      condition_pattern: ^<log4j:event
+      timeout_ms: 1000
 
-[sources.files_log4j.multiline]
-mode = "halt_before"
-start_pattern = "^<log4j:event"
-condition_pattern = "^<log4j:event"
-timeout_ms = 1000
+  files_log4j2:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/*/*.log4j2.xml
+    line_delimiter: "\r\n"
 
-[sources.files_log4j2]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/*/*.log4j2.xml"]
-line_delimiter = "\r\n"
+  files_py:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/*/*.py.json
 
-[sources.files_py]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/*/*.py.json"]
+  files_airlift:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/*/*.airlift.json
 
-[sources.files_airlift]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/*/*.airlift.json"]
+  files_opa_bundle_builder:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/bundle-builder/current
 
-[sources.files_opa_bundle_builder]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/bundle-builder/current"]
+  files_opa_json:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/opa/current
 
-[sources.files_opa_json]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/opa/current"]
+transforms:
+  processed_files_opa_bundle_builder:
+    inputs:
+      - files_opa_bundle_builder
+    type: remap
+    source: |
+      parsed_event = parse_regex!(strip_whitespace(strip_ansi_escape_codes(string!(.message))), r'(?P<timestamp>[0-9]{{4}}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9].[0-9]{{6}}Z)[ ]+(?P<level>\w+)[ ]+(?P<logger>.+):[ ]+(?P<message>.*)')
+      .timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%6fZ")
+      .level = parsed_event.level
+      .logger = parsed_event.logger
+      .message = parsed_event.message
 
-[transforms.processed_files_opa_bundle_builder]
-inputs = ["files_opa_bundle_builder"]
-type = "remap"
-source = '''
-parsed_event = parse_regex!(strip_whitespace(strip_ansi_escape_codes(string!(.message))), r'(?P<timestamp>[0-9]{{4}}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9].[0-9]{{6}}Z)[ ]+(?P<level>\w+)[ ]+(?P<logger>.+):[ ]+(?P<message>.*)')
-.timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%6fZ")
-.level = parsed_event.level
-.logger = parsed_event.logger
-.message = parsed_event.message
-'''
+  processed_files_opa_json:
+    inputs:
+      - files_opa_json
+    type: remap
+    source: |
+      parsed_event = parse_json!(string!(.message))
+      keys = keys!(parsed_event)
 
-[transforms.processed_files_opa_json]
-inputs = ["files_opa_json"]
-type = "remap"
-source = '''
-parsed_event = parse_json!(string!(.message))
-keys = keys!(parsed_event)
+      if includes(keys, "timestamp") {{
+        .timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+      }} else {{
+        .timestamp = parse_timestamp!(parsed_event.time, "%Y-%m-%dT%H:%M:%SZ")
+      }}
 
-if includes(keys, "timestamp") {{
-  .timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
-}} else {{
-  .timestamp = parse_timestamp!(parsed_event.time, "%Y-%m-%dT%H:%M:%SZ")
-}}
+      if includes(keys, "decision_id") {{
+        .logger = "decision"
+      }} else {{
+        .logger = "server"
+      }}
 
-if includes(keys, "decision_id") {{
-  .logger = "decision"
-}} else {{
-  .logger = "server"
-}}
+      .level = upcase!(parsed_event.level)
+      .message = string!(parsed_event.msg)
 
-.level = upcase!(parsed_event.level)
-.message = string!(parsed_event.msg)
+      del(parsed_event.time)
+      del(parsed_event.timestamp)
+      del(parsed_event.level)
+      del(parsed_event.msg)
 
-del(parsed_event.time)
-del(parsed_event.timestamp)
-del(parsed_event.level)
-del(parsed_event.msg)
+      .message = .message + "\n" + encode_key_value(object!(parsed_event), field_delimiter: "\n")
 
-.message = .message + "\n" + encode_key_value(object!(parsed_event), field_delimiter: "\n")
-'''
+  processed_files_stdout:
+    inputs:
+      - files_stdout
+    type: remap
+    source: |
+      .logger = "ROOT"
+      .level = "INFO"
 
-[transforms.processed_files_stdout]
-inputs = ["files_stdout"]
-type = "remap"
-source = '''
-.logger = "ROOT"
-.level = "INFO"
-'''
+  processed_files_stderr:
+    inputs:
+      - files_stderr
+    type: remap
+    source: |
+      .logger = "ROOT"
+      .level = "ERROR"
 
-[transforms.processed_files_stderr]
-inputs = ["files_stderr"]
-type = "remap"
-source = '''
-.logger = "ROOT"
-.level = "ERROR"
-'''
+  processed_files_log4j:
+    inputs:
+      - files_log4j
+    type: remap
+    source: |
+      # Wrap the event so that the log4j namespace is defined when parsing the event
+      wrapped_xml_event = "<root xmlns:log4j=\"http://jakarta.apache.org/log4j/\">" + string!(.message) + "</root>"
+      parsed_event = parse_xml(wrapped_xml_event) ?? {{ "root": {{ "event": {{ "message": .message }} }} }}
+      event = parsed_event.root.event
 
-[transforms.processed_files_log4j]
-inputs = ["files_log4j"]
-type = "remap"
-source = '''
-# Wrap the event so that the log4j namespace is defined when parsing the event
-wrapped_xml_event = "<root xmlns:log4j=\"http://jakarta.apache.org/log4j/\">" + string!(.message) + "</root>"
-parsed_event = parse_xml(wrapped_xml_event) ?? {{ "root": {{ "event": {{ "message": .message }} }} }}
-event = parsed_event.root.event
+      epoch_milliseconds = to_int(event.@timestamp) ?? 0
+      if epoch_milliseconds != 0 {{
+          .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
+      }}
+      if is_null(.timestamp) {{
+          .timestamp = now()
+      }}
 
-epoch_milliseconds = to_int(event.@timestamp) ?? 0
-if epoch_milliseconds != 0 {{
-    .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
-}}
-if is_null(.timestamp) {{
-    .timestamp = now()
-}}
+      .logger = to_string(event.@logger) ?? ""
 
-.logger = to_string(event.@logger) ?? ""
+      .level = to_string(event.@level) ?? ""
 
-.level = to_string(event.@level) ?? ""
+      .message = join(compact([event.message, event.throwable]), "\n") ?? .message
 
-.message = join(compact([event.message, event.throwable]), "\n") ?? .message
-'''
+  processed_files_log4j2:
+    inputs:
+      - files_log4j2
+    type: remap
+    source: |
+      parsed_event = parse_xml!(.message).Event
 
-[transforms.processed_files_log4j2]
-inputs = ["files_log4j2"]
-type = "remap"
-source = '''
-parsed_event = parse_xml!(.message).Event
+      .timestamp = null
+      instant = parsed_event.Instant
+      if instant != null {{
+          epoch_nanoseconds = to_int(instant.@epochSecond) * 1_000_000_000 + to_int(instant.@nanoOfSecond) ?? null
+          if epoch_nanoseconds != null {{
+              .timestamp = from_unix_timestamp(epoch_nanoseconds, "nanoseconds") ?? null
+          }}
+      }}
+      if .timestamp == null && parsed_event.@timeMillis != null {{
+          epoch_milliseconds = to_int(parsed_event.@timeMillis) ?? null
+          if epoch_milliseconds != null {{
+              .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
+          }}
+      }}
+      if .timestamp == null {{
+          .timestamp = now()
+      }}
 
-.timestamp = null
-instant = parsed_event.Instant
-if instant != null {{
-    epoch_nanoseconds = to_int(instant.@epochSecond) * 1_000_000_000 + to_int(instant.@nanoOfSecond) ?? null
-    if epoch_nanoseconds != null {{
-        .timestamp = from_unix_timestamp(epoch_nanoseconds, "nanoseconds") ?? null
-    }}
-}}
-if .timestamp == null && parsed_event.@timeMillis != null {{
-    epoch_milliseconds = to_int(parsed_event.@timeMillis) ?? null
-    if epoch_milliseconds != null {{
-        .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
-    }}
-}}
-if .timestamp == null {{
-    .timestamp = now()
-}}
+      .logger = parsed_event.@loggerName
 
-.logger = parsed_event.@loggerName
+      .level = parsed_event.@level
 
-.level = parsed_event.@level
+      exception = null
+      thrown = parsed_event.Thrown
+      if thrown != null {{
+          exception = "Exception"
+          thread = to_string(parsed_event.@thread) ?? null
+          if thread != null {{
+              exception = exception + " in thread \"" + thread + "\""
+          }}
+          thrown_name = to_string(thrown.@name) ?? null
+          if thrown_name != null {{
+              exception = exception + " " + thrown_name
+          }}
+          message = to_string(thrown.@localizedMessage) ??
+              to_string(thrown.@message) ??
+              null
+          if message != null {{
+              exception = exception + ": " + message
+          }}
+          stacktrace_items = array(thrown.ExtendedStackTrace.ExtendedStackTraceItem) ?? []
+          stacktrace = ""
+          for_each(stacktrace_items) -> |_index, value| {{
+              stacktrace = stacktrace + "        "
+              class = to_string(value.@class) ?? null
+              method = to_string(value.@method) ?? null
+              if class != null && method != null {{
+                  stacktrace = stacktrace + "at " + class + "." + method
+              }}
+              file = to_string(value.@file) ?? null
+              line = to_string(value.@line) ?? null
+              if file != null && line != null {{
+                  stacktrace = stacktrace + "(" + file + ":" + line + ")"
+              }}
+              exact = to_bool(value.@exact) ?? false
+              location = to_string(value.@location) ?? null
+              version = to_string(value.@version) ?? null
+              if location != null && version != null {{
+                  stacktrace = stacktrace + " "
+                  if !exact {{
+                      stacktrace = stacktrace + "~"
+                  }}
+                  stacktrace = stacktrace + "[" + location + ":" + version + "]"
+              }}
+              stacktrace = stacktrace + "\n"
+          }}
+          if stacktrace != "" {{
+              exception = exception + "\n" + stacktrace
+          }}
+      }}
+      .message = join!(compact([parsed_event.Message, exception]), "\n")
 
-exception = null
-thrown = parsed_event.Thrown
-if thrown != null {{
-    exception = "Exception"
-    thread = to_string(parsed_event.@thread) ?? null
-    if thread != null {{
-        exception = exception + " in thread \"" + thread + "\""
-    }}
-    thrown_name = to_string(thrown.@name) ?? null
-    if thrown_name != null {{
-        exception = exception + " " + thrown_name
-    }}
-    message = to_string(thrown.@localizedMessage) ??
-        to_string(thrown.@message) ??
-        null
-    if message != null {{
-        exception = exception + ": " + message
-    }}
-    stacktrace_items = array(thrown.ExtendedStackTrace.ExtendedStackTraceItem) ?? []
-    stacktrace = ""
-    for_each(stacktrace_items) -> |_index, value| {{
-        stacktrace = stacktrace + "        "
-        class = to_string(value.@class) ?? null
-        method = to_string(value.@method) ?? null
-        if class != null && method != null {{
-            stacktrace = stacktrace + "at " + class + "." + method
-        }}
-        file = to_string(value.@file) ?? null
-        line = to_string(value.@line) ?? null
-        if file != null && line != null {{
-            stacktrace = stacktrace + "(" + file + ":" + line + ")"
-        }}
-        exact = to_bool(value.@exact) ?? false
-        location = to_string(value.@location) ?? null
-        version = to_string(value.@version) ?? null
-        if location != null && version != null {{
-            stacktrace = stacktrace + " "
-            if !exact {{
-                stacktrace = stacktrace + "~"
-            }}
-            stacktrace = stacktrace + "[" + location + ":" + version + "]"
-        }}
-        stacktrace = stacktrace + "\n"
-    }}
-    if stacktrace != "" {{
-        exception = exception + "\n" + stacktrace
-    }}
-}}
-.message = join!(compact([parsed_event.Message, exception]), "\n")
-'''
+  processed_files_py:
+    inputs:
+      - files_py
+    type: remap
+    source: |
+      parsed_event = parse_json!(.message)
+      .timestamp = parse_timestamp!(parsed_event.asctime, "%F %T,%3f")
+      .logger = parsed_event.name
+      if parsed_event.levelname == "DEBUG" {{
+        .level = "DEBUG"
+      }} else if parsed_event.levelname == "INFO" {{
+        .level = "INFO"
+      }} else if parsed_event.levelname == "WARNING" {{
+        .level = "WARN"
+      }} else if parsed_event.levelname == "ERROR" {{
+        .level = "ERROR"
+      }} else if parsed_event.levelname == "CRITICAL" {{
+        .level = "FATAL"
+      }}
+      .message = parsed_event.message
 
-[transforms.processed_files_py]
-inputs = ["files_py"]
-type = "remap"
-source = '''
-parsed_event = parse_json!(.message)
-.timestamp = parse_timestamp!(parsed_event.asctime, "%F %T,%3f")
-.logger = parsed_event.name
-if parsed_event.levelname == "DEBUG" {{
-  .level = "DEBUG"
-}} else if parsed_event.levelname == "INFO" {{
-  .level = "INFO"
-}} else if parsed_event.levelname == "WARNING" {{
-  .level = "WARN"
-}} else if parsed_event.levelname == "ERROR" {{
-  .level = "ERROR"
-}} else if parsed_event.levelname == "CRITICAL" {{
-  .level = "FATAL"
-}}
-.message = parsed_event.message
-'''
+  processed_files_airlift:
+    inputs:
+      - files_airlift
+    type: remap
+    source: |
+      parsed_event = parse_json!(string!(.message))
+      .message = join!(compact([parsed_event.message, parsed_event.stackTrace]), "\n")
+      .timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+      .logger = parsed_event.logger
+      .level = parsed_event.level
+      .thread = parsed_event.thread
 
-[transforms.processed_files_airlift]
-inputs = ["files_airlift"]
-type = "remap"
-source = '''
-parsed_event = parse_json!(string!(.message))
-.message = join!(compact([parsed_event.message, parsed_event.stackTrace]), "\n")
-.timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
-.logger = parsed_event.logger
-.level = parsed_event.level
-.thread = parsed_event.thread
-'''
+  extended_logs_files:
+    inputs:
+      - processed_files_*
+    type: remap
+    source: |
+      . |= parse_regex!(.file, r'^{STACKABLE_LOG_DIR}/(?P<container>.*?)/(?P<file>.*?)$')
+      del(.source_type)
 
-[transforms.extended_logs_files]
-inputs = ["processed_files_*"]
-type = "remap"
-source = '''
-. |= parse_regex!(.file, r'^{STACKABLE_LOG_DIR}/(?P<container>.*?)/(?P<file>.*?)$')
-del(.source_type)
-'''
+  filtered_logs_vector:
+    inputs:
+      - vector
+    type: filter
+    condition: '{vector_log_level_filter_expression}'
 
-[transforms.filtered_logs_vector]
-inputs = ["vector"]
-type = "filter"
-condition = '{vector_log_level_filter_expression}'
+  extended_logs_vector:
+    inputs:
+      - filtered_logs_vector
+    type: remap
+    source: |
+      .container = "vector"
+      .level = .metadata.level
+      .logger = .metadata.module_path
+      if exists(.file) {{ .processed_file = del(.file) }}
+      del(.metadata)
+      del(.pid)
+      del(.source_type)
 
-[transforms.extended_logs_vector]
-inputs = ["filtered_logs_vector"]
-type = "remap"
-source = '''
-.container = "vector"
-.level = .metadata.level
-.logger = .metadata.module_path
-if exists(.file) {{ .processed_file = del(.file) }}
-del(.metadata)
-del(.pid)
-del(.source_type)
-'''
+  extended_logs:
+    inputs:
+      - extended_logs_*
+    type: remap
+    source: |
+      .namespace = "{namespace}"
+      .cluster = "{cluster_name}"
+      .role = "{role_name}"
+      .roleGroup = "{role_group_name}"
 
-[transforms.extended_logs]
-inputs = ["extended_logs_*"]
-type = "remap"
-source = '''
-.namespace = "{namespace}"
-.cluster = "{cluster_name}"
-.role = "{role_name}"
-.roleGroup = "{role_group_name}"
-'''
-
-[sinks.aggregator]
-inputs = ["extended_logs"]
-type = "vector"
-address = "{vector_aggregator_address}"
+sinks:
+  aggregator:
+    inputs:
+      - extended_logs
+    type: vector
+    address: {vector_aggregator_address}
 "#,
         namespace = role_group.cluster.namespace.clone().unwrap_or_default(),
         cluster_name = role_group.cluster.name,
