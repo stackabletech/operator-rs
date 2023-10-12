@@ -42,7 +42,7 @@ impl BinaryMultiple {
 
     /// The exponential scale factor used when converting a `BinaryMultiple`
     /// to another one.
-    fn exponential_scale_factor(&self) -> i32 {
+    const fn exponential_scale_factor(&self) -> i32 {
         match self {
             BinaryMultiple::Kibi => 1,
             BinaryMultiple::Mebi => 2,
@@ -53,7 +53,7 @@ impl BinaryMultiple {
         }
     }
 
-    pub fn get_smallest() -> Self {
+    pub const fn get_smallest() -> Self {
         Self::Kibi
     }
 }
@@ -160,14 +160,14 @@ pub struct MemoryQuantity {
 }
 
 impl MemoryQuantity {
-    pub fn from_gibi(gibi: f32) -> Self {
+    pub const fn from_gibi(gibi: f32) -> Self {
         Self {
             value: gibi,
             unit: BinaryMultiple::Gibi,
         }
     }
 
-    pub fn from_mebi(mebi: f32) -> Self {
+    pub const fn from_mebi(mebi: f32) -> Self {
         Self {
             value: mebi,
             unit: BinaryMultiple::Mebi,

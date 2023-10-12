@@ -66,7 +66,7 @@ pub enum OpaApiVersion {
 
 impl OpaApiVersion {
     /// Returns the OPA data API path for the selected version
-    pub fn get_data_api(&self) -> &'static str {
+    pub const fn get_data_api(&self) -> &'static str {
         match self {
             Self::V1 => "v1/data",
         }
