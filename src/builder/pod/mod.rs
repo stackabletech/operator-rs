@@ -12,6 +12,7 @@ use crate::commons::resources::{
     ComputeResource, ResourceRequirementsExt, ResourceRequirementsType, LIMIT_REQUEST_RATIO_CPU,
     LIMIT_REQUEST_RATIO_MEMORY,
 };
+use crate::duration::Duration;
 use crate::error::{Error, OperatorResult};
 
 use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
@@ -452,12 +453,19 @@ impl PodBuilder {
         self
     }
 
-    pub fn termination_grace_period_seconds(
+    pub fn termination_grace_period(
         &mut self,
-        termination_grace_period_seconds: i64,
-    ) -> &mut Self {
+        termination_grace_period: Duration,
+    ) -> OperatorResult<&mut Self> {
+        let termination_grace_period_seconds = termination_grace_period
+            .as_secs()
+            .try_into()
+            .map_err(|_| Error::DurationTooLong {
+                duration: termination_grace_period,
+            })?;
+
         self.termination_grace_period_seconds = Some(termination_grace_period_seconds);
-        self
+        Ok(self)
     }
 
     /// Consumes the Builder and returns a constructed [`Pod`]
@@ -637,7 +645,8 @@ mod tests {
                     .with_config_map("configmap")
                     .build(),
             )
-            .termination_grace_period_seconds(42)
+            .termination_grace_period(Duration::from_secs(42))
+            .unwrap()
             .build()
             .unwrap();
 
