@@ -220,6 +220,8 @@ pub fn validate<T: FromFragment>(fragment: T::Fragment) -> Result<T, ValidationE
 
 #[cfg(test)]
 mod tests {
+    use schemars::{schema_for, JsonSchema};
+
     use super::{validate, Fragment};
 
     #[derive(Fragment, Debug, PartialEq, Eq)]
@@ -227,10 +229,12 @@ mod tests {
     #[fragment_attrs(derive(Debug))]
     struct Empty {}
 
-    #[derive(Fragment, Debug, PartialEq, Eq)]
+    #[derive(Fragment, Debug, PartialEq, Eq, JsonSchema)]
     #[fragment(path_overrides(fragment = "super"))]
-    #[fragment_attrs(derive(Default))]
+    #[fragment_attrs(derive(Default, JsonSchema))]
+    /// This is an awesome struct with fields
     struct WithFields {
+        /// This field contains the name
         name: String,
         replicas: u8,
         overhead: u8,
@@ -305,5 +309,36 @@ mod tests {
         })
         .unwrap();
         assert_eq!(nested.optional, None);
+    }
+
+    #[test]
+    fn validate_struct_description() {
+        let schema = schema_for!(WithFieldsFragment);
+
+        let struct_description = schema.schema.metadata.unwrap().description;
+        assert_eq!(
+            struct_description,
+            Some("This is an awesome struct with fields".to_string())
+        );
+    }
+
+    #[test]
+    fn validate_field_description() {
+        let schema = schema_for!(WithFieldsFragment);
+        let field_schema = schema
+            .schema
+            .object
+            .unwrap()
+            .as_ref()
+            .properties
+            .get("name")
+            .unwrap()
+            .clone()
+            .into_object();
+
+        assert_eq!(
+            field_schema.metadata.unwrap().description,
+            Some("This field contains the name".to_string())
+        );
     }
 }
