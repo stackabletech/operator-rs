@@ -30,7 +30,7 @@ use tracing::warn;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("termination grace period is too long (got {duration}, maximum allowed is {max})", max = Duration::from_secs(i64::MAX as u64))]
-    DurationTooLong {
+    TerminationGracePeriodTooLong {
         source: TryFromIntError,
         duration: Duration,
     },
@@ -471,7 +471,7 @@ impl PodBuilder {
         let termination_grace_period_seconds = termination_grace_period
             .as_secs()
             .try_into()
-            .map_err(|err| Error::DurationTooLong {
+            .map_err(|err| Error::TerminationGracePeriodTooLong {
                 source: err,
                 duration: *termination_grace_period,
             })?;
@@ -721,7 +721,7 @@ mod tests {
         let result = pod_builder.termination_grace_period(&too_long_duration);
         assert!(matches!(
             result,
-            Err(Error::DurationTooLong {
+            Err(Error::TerminationGracePeriodTooLong {
                 source: TryFromIntError { .. },
                 duration,
             }) if duration == too_long_duration
