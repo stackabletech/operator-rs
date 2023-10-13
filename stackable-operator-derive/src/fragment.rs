@@ -1,9 +1,9 @@
 use darling::{ast::Data, FromDeriveInput, FromField, FromMeta, FromVariant};
 use proc_macro2::{Ident, TokenStream, TokenTree};
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use syn::{
-    parse_quote, Attribute, DeriveInput, Expr, ExprLit, Generics, Lit, Meta, MetaList,
-    MetaNameValue, Path, Type, Visibility, WherePredicate,
+    parse_quote, Attribute, DeriveInput, Expr, Generics, Meta, MetaList, Path, Type, Visibility,
+    WherePredicate,
 };
 
 #[derive(FromMeta)]
@@ -61,16 +61,12 @@ fn split_by_comma(tokens: TokenStream) -> Vec<TokenStream> {
 
 enum ExtractAttrsError {
     InvalidAttrForm,
-    InvalidDocAttrForm,
 }
 impl ExtractAttrsError {
     fn into_compile_error(self) -> TokenStream {
         match self {
             Self::InvalidAttrForm => quote! {
                 compile_error!("`#[fragment_attrs]` only takes list-form parameters");
-            },
-            Self::InvalidDocAttrForm => quote! {
-                compile_error!("`#[doc]` only supports doc comments with string literals");
             },
         }
     }
@@ -79,31 +75,20 @@ impl ExtractAttrsError {
 fn extract_forwarded_attrs(attrs: &[Attribute]) -> Result<TokenStream, ExtractAttrsError> {
     attrs
         .iter()
-        .filter_map(|attr| {
+        .flat_map(|attr| {
             if attr.path().is_ident("fragment_attrs") {
                 match &attr.meta {
                     Meta::List(MetaList { tokens, .. }) => {
-                        Some(split_by_comma(tokens.clone()).into_iter().map(Ok).collect())
+                        split_by_comma(tokens.clone()).into_iter().map(Ok).collect()
                     }
-                    _ => Some(vec![Err(ExtractAttrsError::InvalidAttrForm)]),
+                    _ => vec![Err(ExtractAttrsError::InvalidAttrForm)],
                 }
             } else if attr.path().is_ident("doc") {
-                match &attr.meta {
-                    Meta::NameValue(MetaNameValue {
-                        value:
-                            Expr::Lit(ExprLit {
-                                lit: Lit::Str(token),
-                                ..
-                            }),
-                        ..
-                    }) => Some(vec![Ok(quote!(doc = #token))]),
-                    _ => Some(vec![Err(ExtractAttrsError::InvalidDocAttrForm)]),
-                }
+                vec![Ok(attr.meta.to_token_stream())]
             } else {
-                None
+                Vec::new()
             }
         })
-        .flatten()
         .map(|attr| attr.map(|attr| quote! { #[#attr] }))
         .collect::<Result<TokenStream, ExtractAttrsError>>()
 }
