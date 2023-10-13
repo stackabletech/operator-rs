@@ -30,7 +30,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Add descriptions to derived Fragment structs ([#675]).
+- stackable-operator-derive: Add descriptions to derived Fragment structs ([#675]).
 
 [#670]: https://github.com/stackabletech/operator-rs/pull/670
 [#675]: https://github.com/stackabletech/operator-rs/pull/675
