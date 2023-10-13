@@ -14,6 +14,9 @@ license.workspace = true
 edition.workspace = true
 repository.workspace = true
 
+[features]
+time = ["dep:time"]
+
 [dependencies]
 chrono = { version = "0.4.26", default-features = false }
 clap = { version = "4.3.19", features = ["derive", "cargo", "env"] }
@@ -39,6 +42,7 @@ snafu = "0.7.5"
 stackable-operator-derive = { path = "stackable-operator-derive" }
 strum = { version = "0.25.0", features = ["derive"] }
 thiserror = "1.0.44"
+time = { version = "0.3.29", optional = true }
 tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.37"
 tracing-opentelemetry = "0.21.0"

@@ -25,8 +25,6 @@ use schemars::JsonSchema;
 use snafu::{OptionExt, ResultExt, Snafu};
 use strum::IntoEnumIterator;
 
-mod serde_impl;
-
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(module)]
 pub enum DurationParseError {

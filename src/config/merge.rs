@@ -10,7 +10,7 @@ use std::{
 
 pub use stackable_operator_derive::Merge;
 
-use crate::duration::Duration;
+use crate::time::Duration;
 
 /// A type that can be merged with itself
 ///

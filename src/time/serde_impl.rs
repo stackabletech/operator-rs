@@ -1,6 +1,6 @@
 use serde::{de::Visitor, Deserialize, Serialize};
 
-use crate::duration::Duration;
+use crate::time::Duration;
 
 struct DurationVisitor;
 
