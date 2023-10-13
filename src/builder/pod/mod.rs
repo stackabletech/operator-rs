@@ -29,7 +29,7 @@ use tracing::warn;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("The duration {duration} is too long to put it into the Pods terminationGracePeriodSeconds. The maximum duration is {}", Duration::from_secs(i64::MAX as u64))]
+    #[error("termination grace period is too long (got {duration}, maximum allowed is {max})", max = Duration::from_secs(i64::MAX as u64))]
     DurationTooLong {
         source: TryFromIntError,
         duration: Duration,
