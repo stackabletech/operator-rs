@@ -27,7 +27,7 @@ use k8s_openapi::{
 };
 use tracing::warn;
 
-#[derive(Debug, thiserror::Error, PartialEq)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("The duration {duration} is too long to put it into the Pods terminationGracePeriodSeconds. The maximum duration is {}", Duration::from_secs(i64::MAX as u64))]
     DurationTooLong {
