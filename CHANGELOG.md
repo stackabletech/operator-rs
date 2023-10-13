@@ -28,7 +28,12 @@ All notable changes to this project will be documented in this file.
 
 - Convert the format of the Vector configuration from TOML to YAML ([#670]).
 
+### Fixed
+
+- Add descriptions to derived Fragment structs ([#675]).
+
 [#670]: https://github.com/stackabletech/operator-rs/pull/670
+[#675]: https://github.com/stackabletech/operator-rs/pull/675
 
 ## [0.54.0] - 2023-10-10
 
