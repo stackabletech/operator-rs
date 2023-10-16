@@ -22,8 +22,9 @@ All notable changes to this project will be documented in this file.
   - `ClusterOperationsConditionBuilder::new`
   - `commons::pdb::default_pdb_enabled`
 - Add interoperability between the `time` crate and the `stackable_operator::time::Duration` struct. This is opt-in and
-  requires the `time` feature to be enabled. Also added a new helper dunction `Duration::now_utc` which calculates the
-  duration from the unix epoch (1970-01-01 00:00:00) until now ([#671]).
+  requires the `time` feature to be enabled. Additionally, adds `Add`, `AddAssign`, `Sub`, and `SubAssign` operations
+  between `Duration` and `std::time::INstant`. Further adds a new helper dunction `Duration::now_utc` which calculates
+  the duration from the unix epoch (1970-01-01 00:00:00) until now ([#671]).
 
 ### Changed
 
