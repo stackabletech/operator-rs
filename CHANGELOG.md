@@ -4,10 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add interoperability between the `time` crate and the `stackable_operator::time::Duration` struct. This is opt-in and
+  requires the `time` feature to be enabled. Also added a new helper dunction `Duration::now_utc` which calculates the
+  duration from the unix epoch (1970-01-01 00:00:00) until now ([#671]).
+
 ### Changed
 
+- BREAKING: Rename top-level `duration` module to `time`. Imports now use `stackable_operator::time::Duration` for
+  example ([#671]).
 - Convert the format of the Vector configuration from TOML to YAML ([#670]).
 
+[#671]: https://github.com/stackabletech/operator-rs/pull/671
 [#670]: https://github.com/stackabletech/operator-rs/pull/670
 
 ## [0.54.0] - 2023-10-10
@@ -23,7 +32,8 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Add duration overflow check ([#665]).
-- Add `Duration::from_millis`, `Duration::from_minutes_unchecked`, `Duration::from_hours_unchecked` and `Duration::from_days_unchecked` ([#657]).
+- Add `Duration::from_millis`, `Duration::from_minutes_unchecked`, `Duration::from_hours_unchecked` and
+  `Duration::from_days_unchecked` ([#657]).
 
 [#657]: https://github.com/stackabletech/operator-rs/pull/657
 [#665]: https://github.com/stackabletech/operator-rs/pull/665
