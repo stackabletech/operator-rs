@@ -25,8 +25,6 @@ use schemars::JsonSchema;
 use snafu::{OptionExt, ResultExt, Snafu};
 use strum::IntoEnumIterator;
 
-mod serde_impl;
-
 #[derive(Debug, Snafu, PartialEq)]
 #[snafu(module)]
 pub enum DurationParseError {
@@ -62,6 +60,9 @@ pub enum DurationParseError {
     },
 }
 
+/// A common [`Duration`] struct which is able to parse human-readable duration
+/// formats, like `5s`, `24h`, `2y2h20m42s` or`15d2m2s`. It additionally
+/// implements many required traits (for CRD deserialization and serialization).
 #[derive(Clone, Copy, Debug, Derivative, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Duration(std::time::Duration);
 
@@ -178,8 +179,7 @@ impl JsonSchema for Duration {
 
 impl Display for Duration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // If the inner Duration is zero, print out '0ms' as milliseconds
-        // is the base unit for our Duration.
+        // If the inner Duration is zero, print out '0s' instead of '0ms'.
         if self.0.is_zero() {
             return write!(f, "0{}", DurationUnit::Seconds);
         }
@@ -229,9 +229,23 @@ impl Add for Duration {
     }
 }
 
+impl Add<Duration> for std::time::Instant {
+    type Output = Self;
+
+    fn add(self, rhs: Duration) -> Self::Output {
+        self.add(rhs.0)
+    }
+}
+
 impl AddAssign for Duration {
     fn add_assign(&mut self, rhs: Self) {
         self.0.add_assign(rhs.0)
+    }
+}
+
+impl AddAssign<Duration> for std::time::Instant {
+    fn add_assign(&mut self, rhs: Duration) {
+        self.add_assign(rhs.0)
     }
 }
 
@@ -243,9 +257,23 @@ impl Sub for Duration {
     }
 }
 
+impl Sub<Duration> for std::time::Instant {
+    type Output = Self;
+
+    fn sub(self, rhs: Duration) -> Self::Output {
+        self.sub(rhs.0)
+    }
+}
+
 impl SubAssign for Duration {
     fn sub_assign(&mut self, rhs: Self) {
         self.0.sub_assign(rhs.0)
+    }
+}
+
+impl SubAssign<Duration> for std::time::Instant {
+    fn sub_assign(&mut self, rhs: Duration) {
+        self.add_assign(rhs.0)
     }
 }
 
@@ -274,6 +302,18 @@ impl Div<u32> for Duration {
 }
 
 impl Duration {
+    /// Creates a new [`Duration`] containing the amount of time passed since
+    /// 1970-01-01 UTC. This can be used to calculate [`Duration`]s based on
+    /// UTC timestamps, for example to define lifetimes when generating TLS
+    /// certificates.
+    pub fn now_utc() -> Self {
+        let now = std::time::SystemTime::now();
+
+        now.duration_since(std::time::UNIX_EPOCH)
+            .expect("system time before Unix epoch")
+            .into()
+    }
+
     /// Creates a new [`Duration`] from the specified number of whole milliseconds.
     pub const fn from_millis(millis: u64) -> Self {
         Self(std::time::Duration::from_millis(millis))
