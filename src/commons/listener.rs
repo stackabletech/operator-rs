@@ -96,7 +96,7 @@ pub struct ListenerSpec {
 }
 
 impl ListenerSpec {
-    fn default_publish_not_ready_addresses() -> Option<bool> {
+    const fn default_publish_not_ready_addresses() -> Option<bool> {
         Some(true)
     }
 }

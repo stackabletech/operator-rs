@@ -4,6 +4,7 @@ pub mod security;
 pub mod volume;
 
 use std::collections::BTreeMap;
+use std::num::TryFromIntError;
 
 use crate::builder::meta::ObjectMetaBuilder;
 use crate::commons::affinity::StackableAffinity;
@@ -12,7 +13,8 @@ use crate::commons::resources::{
     ComputeResource, ResourceRequirementsExt, ResourceRequirementsType, LIMIT_REQUEST_RATIO_CPU,
     LIMIT_REQUEST_RATIO_MEMORY,
 };
-use crate::error::{Error, OperatorResult};
+use crate::duration::Duration;
+use crate::error::{self, OperatorResult};
 
 use super::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
 use k8s_openapi::{
@@ -25,8 +27,18 @@ use k8s_openapi::{
 };
 use tracing::warn;
 
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("termination grace period is too long (got {duration}, maximum allowed is {max})", max = Duration::from_secs(i64::MAX as u64))]
+    TerminationGracePeriodTooLong {
+        source: TryFromIntError,
+        duration: Duration,
+    },
+}
+pub type Result<T> = std::result::Result<T, Error>;
+
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct PodBuilder {
     containers: Vec<Container>,
     host_network: Option<bool>,
@@ -452,19 +464,27 @@ impl PodBuilder {
         self
     }
 
-    pub fn termination_grace_period_seconds(
+    pub fn termination_grace_period(
         &mut self,
-        termination_grace_period_seconds: i64,
-    ) -> &mut Self {
+        termination_grace_period: &Duration,
+    ) -> Result<&mut Self> {
+        let termination_grace_period_seconds = termination_grace_period
+            .as_secs()
+            .try_into()
+            .map_err(|err| Error::TerminationGracePeriodTooLong {
+                source: err,
+                duration: *termination_grace_period,
+            })?;
+
         self.termination_grace_period_seconds = Some(termination_grace_period_seconds);
-        self
+        Ok(self)
     }
 
     /// Consumes the Builder and returns a constructed [`Pod`]
     pub fn build(&self) -> OperatorResult<Pod> {
         Ok(Pod {
             metadata: match self.metadata {
-                None => return Err(Error::MissingObjectKey { key: "metadata" }),
+                None => return Err(error::Error::MissingObjectKey { key: "metadata" }),
                 Some(ref metadata) => metadata.clone(),
             },
             spec: Some(self.build_spec()),
@@ -637,7 +657,8 @@ mod tests {
                     .with_config_map("configmap")
                     .build(),
             )
-            .termination_grace_period_seconds(42)
+            .termination_grace_period(&Duration::from_secs(42))
+            .unwrap()
             .build()
             .unwrap();
 
@@ -690,5 +711,20 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(pod.spec.unwrap().restart_policy.unwrap(), "Always");
+    }
+
+    #[test]
+    fn test_pod_builder_too_long_termination_grace_period() {
+        let too_long_duration = Duration::from_secs(i64::MAX as u64 + 1);
+        let mut pod_builder = PodBuilder::new();
+
+        let result = pod_builder.termination_grace_period(&too_long_duration);
+        assert!(matches!(
+            result,
+            Err(Error::TerminationGracePeriodTooLong {
+                source: TryFromIntError { .. },
+                duration,
+            }) if duration == too_long_duration
+        ));
     }
 }

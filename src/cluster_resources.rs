@@ -149,7 +149,7 @@ impl ClusterResourceApplyStrategy {
     }
 
     /// Indicates if orphaned resources should be deleted depending on the strategy.
-    fn delete_orphans(&self) -> bool {
+    const fn delete_orphans(&self) -> bool {
         match self {
             ClusterResourceApplyStrategy::NoApply
             | ClusterResourceApplyStrategy::ReconciliationPaused => false,

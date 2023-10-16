@@ -6,6 +6,21 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Mark the following functions as `const` ([#674]):
+  - `ClusterResourceApplyStrategy::delete_orphans`
+  - `LdapAuthenticationProvider::default_port`
+  - `LdapAuthenticationProvider::use_tls`
+  - `ListenerSpec::default_publish_not_ready_addresses`
+  - `OpaApiVersion::get_data_api`
+  - `CpuQuantity::from_millis`
+  - `CpuQuantity::as_milli_cpus`
+  - `BinaryMultiple::exponential_scale_factor`
+  - `BinaryMultiple::get_smallest`
+  - `MemoryQuantity::from_gibi`
+  - `MemoryQuantity::from_mebi`
+  - `ClusterCondition::is_good`
+  - `ClusterOperationsConditionBuilder::new`
+  - `commons::pdb::default_pdb_enabled`
 - Add interoperability between the `time` crate and the `stackable_operator::time::Duration` struct. This is opt-in and
   requires the `time` feature to be enabled. Also added a new helper dunction `Duration::now_utc` which calculates the
   duration from the unix epoch (1970-01-01 00:00:00) until now ([#671]).
@@ -15,9 +30,17 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Rename top-level `duration` module to `time`. Imports now use `stackable_operator::time::Duration` for
   example ([#671]).
 - Convert the format of the Vector configuration from TOML to YAML ([#670]).
+- BREAKING: Rename `PodBuilder::termination_grace_period_seconds` to `termination_grace_period`, and change it to take `Duration` struct ([#672]).
 
-[#671]: https://github.com/stackabletech/operator-rs/pull/671
+### Fixed
+
+- stackable-operator-derive: Add descriptions to derived Fragment structs ([#675]).
+
 [#670]: https://github.com/stackabletech/operator-rs/pull/670
+[#671]: https://github.com/stackabletech/operator-rs/pull/671
+[#672]: https://github.com/stackabletech/operator-rs/pull/672
+[#674]: https://github.com/stackabletech/operator-rs/pull/674
+[#675]: https://github.com/stackabletech/operator-rs/pull/675
 
 ## [0.54.0] - 2023-10-10
 

@@ -20,7 +20,7 @@ pub struct CpuQuantity {
 }
 
 impl CpuQuantity {
-    pub fn from_millis(millis: usize) -> Self {
+    pub const fn from_millis(millis: usize) -> Self {
         Self { millis }
     }
 
@@ -28,7 +28,7 @@ impl CpuQuantity {
         self.millis as f32 / 1000.
     }
 
-    pub fn as_milli_cpus(&self) -> usize {
+    pub const fn as_milli_cpus(&self) -> usize {
         self.millis
     }
 }
