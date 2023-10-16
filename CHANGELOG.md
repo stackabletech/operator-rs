@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.55.0] - 2023-10-16
+
 ### Added
 
 - Mark the following functions as `const` ([#674]):
