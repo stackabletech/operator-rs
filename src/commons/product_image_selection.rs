@@ -91,10 +91,7 @@ impl ProductImage {
 
         match &self.image_selection {
             ProductImageSelection::Custom(image_selection) => {
-                let image_tag = image_selection
-                    .custom
-                    .split_once(':')
-                    .map_or("latest", |splits| splits.1);
+                let image_tag = extract_image_tag(&image_selection.custom);
                 let app_version_label =
                     format!("{}-{}", image_selection.product_version, image_tag);
                 ResolvedProductImage {
@@ -140,11 +137,48 @@ impl ProductImage {
     }
 }
 
+fn extract_image_tag(image: &str) -> &str {
+    let parts = image.split(':').collect::<Vec<_>>();
+    match parts[..] {
+        // Empty string or no colon at all
+        [] | [_] => "latest",
+        // Here the array must have at least 2 elements
+        _ => parts
+            .into_iter()
+            .skip(1)
+            .rev()
+            // We need to filter out anything that is not an actual tag
+            .find(|p| !p.contains('/'))
+            .unwrap_or("latest"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     use rstest::rstest;
+
+    #[rstest]
+    #[case("ubuntu", "latest")]
+    #[case("ubuntu:latest", "latest")]
+    #[case(
+        "my.corp/myteam/stackable/superset:latest-and-greatest",
+        "latest-and-greatest"
+    )]
+    #[case("my.corp/myteam/stackable/superset", "latest")]
+    #[case("nixos/nix:1.10", "1.10")]
+    #[case("localhost:5000/ubuntu:latest", "latest")]
+    #[case("localhost:5000/ubuntu", "latest")]
+    #[case(
+        "localhost:5000/myteam/stackable/superset:latest-and-greatest",
+        "latest-and-greatest"
+    )]
+    #[case("localhost:5000/myteam/stackable/superset", "latest")]
+    #[case("localhost:5000/nixos/nix:1.10", "1.10")]
+    fn test_extract_image_tag(#[case] image: String, #[case] expected_tag: String) {
+        assert_eq!(extract_image_tag(image.as_str()), expected_tag);
+    }
 
     #[rstest]
     #[case::stackable_version_without_stackable_version_stable_version(
@@ -244,6 +278,36 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
+            app_version_label: "1.4.1-latest-and-greatest".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::custom_with_colon_in_repo_and_without_tag(
+        "superset",
+        "23.7.42",
+        r#"
+        custom: 127.0.0.1:8080/myteam/stackable/superset
+        productVersion: 1.4.1
+        "#,
+        ResolvedProductImage {
+            image: "127.0.0.1:8080/myteam/stackable/superset".to_string(),
+            app_version_label: "1.4.1-latest".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::custom_with_colon_in_repo_and_with_tag(
+        "superset",
+        "23.7.42",
+        r#"
+        custom: 127.0.0.1:8080/myteam/stackable/superset:latest-and-greatest
+        productVersion: 1.4.1
+        "#,
+        ResolvedProductImage {
+            image: "127.0.0.1:8080/myteam/stackable/superset:latest-and-greatest".to_string(),
             app_version_label: "1.4.1-latest-and-greatest".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
