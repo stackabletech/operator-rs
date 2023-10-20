@@ -1085,6 +1085,15 @@ pub fn vector_container(
         .command(vec!["bash".into(), "-c".into()])
         .args(vec![format!(
             "\
+# The vector process will not run as PID 1, so the Kubernetes SIGINT will have no effect.
+# Instead, the vector process can be shut down by creating a file below {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR},
+# e.g.{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}.
+# This way logs from the products will always be shipped, the vector container will be the last one to terminate.
+# A specific container must be chosen, which has the responsibility to create a file after it has
+# properly shut down. It should be the one taking the longest to shut down.
+# E.g. the lifetime of vector will be bound to the datanode container and not to the zkfc container.
+# We *could* have different shutdown trigger files for all application containers and wait for all containers
+# to terminate, but that seems rather complicated and will be added once needed.
 vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$! && \
 if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then \
 mkdir -p {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR} && \
