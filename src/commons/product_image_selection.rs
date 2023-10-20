@@ -1,3 +1,4 @@
+use dockerfile_parser::ImageRef;
 use k8s_openapi::api::core::v1::LocalObjectReference;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -91,9 +92,12 @@ impl ProductImage {
 
         match &self.image_selection {
             ProductImageSelection::Custom(image_selection) => {
-                let image_tag = extract_image_tag(&image_selection.custom);
-                let app_version_label =
-                    format!("{}-{}", image_selection.product_version, image_tag);
+                let image = ImageRef::parse(&image_selection.custom);
+                let app_version_label = format!(
+                    "{}-{}",
+                    image_selection.product_version,
+                    image.tag.unwrap_or("latest".to_string())
+                );
                 ResolvedProductImage {
                     product_version: image_selection.product_version.to_string(),
                     app_version_label,
@@ -137,48 +141,11 @@ impl ProductImage {
     }
 }
 
-fn extract_image_tag(image: &str) -> &str {
-    let parts = image.split(':').collect::<Vec<_>>();
-    match parts[..] {
-        // Empty string or no colon at all
-        [] | [_] => "latest",
-        // Here the array must have at least 2 elements
-        _ => parts
-            .into_iter()
-            .skip(1)
-            .rev()
-            // We need to filter out anything that is not an actual tag
-            .find(|p| !p.contains('/'))
-            .unwrap_or("latest"),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     use rstest::rstest;
-
-    #[rstest]
-    #[case("ubuntu", "latest")]
-    #[case("ubuntu:latest", "latest")]
-    #[case(
-        "my.corp/myteam/stackable/superset:latest-and-greatest",
-        "latest-and-greatest"
-    )]
-    #[case("my.corp/myteam/stackable/superset", "latest")]
-    #[case("nixos/nix:1.10", "1.10")]
-    #[case("localhost:5000/ubuntu:latest", "latest")]
-    #[case("localhost:5000/ubuntu", "latest")]
-    #[case(
-        "localhost:5000/myteam/stackable/superset:latest-and-greatest",
-        "latest-and-greatest"
-    )]
-    #[case("localhost:5000/myteam/stackable/superset", "latest")]
-    #[case("localhost:5000/nixos/nix:1.10", "1.10")]
-    fn test_extract_image_tag(#[case] image: String, #[case] expected_tag: String) {
-        assert_eq!(extract_image_tag(image.as_str()), expected_tag);
-    }
 
     #[rstest]
     #[case::stackable_version_without_stackable_version_stable_version(
