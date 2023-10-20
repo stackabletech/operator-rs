@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix Docker image tag parsing when user specifies custom image ([#677]).
+
+[#677]: https://github.com/stackabletech/operator-rs/pull/677
+
 ## [0.55.0] - 2023-10-16
 
 ### Added
