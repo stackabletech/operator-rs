@@ -1085,7 +1085,7 @@ pub fn vector_container(
         .command(vec!["bash".into(), "-c".into()])
         .args(vec![format!(
             "\
-# The vector process will not run as PID 1, so the Kubernetes SIGINT will have no effect.
+# The vector process wil not run as PID 1, so a Kubernetes SIGINT will be have no effect.
 # Instead, the vector process can be shut down by creating a file below {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR},
 # e.g.{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}.
 # This way logs from the products will always be shipped, the vector container will be the last one to terminate.
@@ -1138,6 +1138,10 @@ pub fn shutdown_vector_command(stackable_log_dir: &str) -> String {
         "mkdir -p {stackable_log_dir}/{VECTOR_LOG_DIR} && \
 touch {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}"
     )
+}
+
+pub fn remove_vector_shutdown_file_command(stackable_log_dir: &str) -> String {
+    format!("rm -f {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}")
 }
 
 #[cfg(test)]
