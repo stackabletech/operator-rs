@@ -1082,15 +1082,32 @@ pub fn vector_container(
     ContainerBuilder::new("vector")
         .unwrap()
         .image_from_product_image(image)
-        .command(vec!["bash".into(), "-c".into()])
+        .command(vec![
+          "/bin/bash".to_string(),
+          "-x".to_string(),
+          "-euo".to_string(),
+          "pipefail".to_string(),
+          "-c".to_string(),
+      ])
         .args(vec![format!(
             "\
-vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$! && \
-if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then \
-mkdir -p {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR} && \
-inotifywait -qq --event create {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}; \
-fi && \
-kill $vector_pid"
+# The vector process wil not run as PID 1, so a Kubernetes SIGINT will be have no effect.
+# Instead, the vector process can be shut down by creating a file below {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR},
+# e.g.{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}.
+# This way logs from the products will always be shipped, the vector container will be the last one to terminate.
+# A specific container must be chosen, which has the responsibility to create a file after it has
+# properly shut down. It should be the one taking the longest to shut down.
+# E.g. the lifetime of vector will be bound to the datanode container and not to the zkfc container.
+# We *could* have different shutdown trigger files for all application containers and wait for all containers
+# to terminate, but that seems rather complicated and will be added once needed.
+# Additionally, you should remove the shutdown marker file on startup of the application, as the application
+# container can crash for any reason and get restarted. If you don't remove the shutdown file on startup,
+# the vector container will crashloop forever!
+
+bash -c 'sleep 1 && if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then mkdir -p {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR} && inotifywait -qq --event create {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}; fi && kill 1' &
+
+exec vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE}
+"
         )])
         .add_env_var("VECTOR_LOG", log_level.to_vector_literal())
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
@@ -1099,7 +1116,8 @@ kill $vector_pid"
         .build()
 }
 
-/// Command to shut down the Vector instance
+/// Command to create a shutdown file for the vector container.
+/// Please delete it before starting your application using [`remove_vector_shutdown_file_command`].
 ///
 /// # Example
 ///
@@ -1124,11 +1142,17 @@ kill $vector_pid"
 ///     .add_volume_mount("log", STACKABLE_LOG_DIR)
 ///     .build();
 /// ```
-pub fn shutdown_vector_command(stackable_log_dir: &str) -> String {
+pub fn create_vector_shutdown_file_command(stackable_log_dir: &str) -> String {
     format!(
         "mkdir -p {stackable_log_dir}/{VECTOR_LOG_DIR} && \
 touch {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}"
     )
+}
+
+/// Use this command to remove the shutdown file (if it exists) created by [`create_vector_shutdown_file_command`].
+/// You should execute this command before starting your application.
+pub fn remove_vector_shutdown_file_command(stackable_log_dir: &str) -> String {
+    format!("rm -f {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}")
 }
 
 #[cfg(test)]
