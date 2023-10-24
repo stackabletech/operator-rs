@@ -181,3 +181,46 @@ impl Default for LdapFieldNames {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_ldap_minimal() {
+        let ldap = serde_yaml::from_str::<LdapAuthenticationProvider>(
+            "
+            hostname: my.ldap.server
+            ",
+        );
+        assert!(ldap.is_ok());
+    }
+
+    #[test]
+    fn test_ldap_with_bind_credentials() {
+        let ldap = serde_yaml::from_str::<LdapAuthenticationProvider>(
+            "
+            hostname: my.ldap.server
+            port: 389
+            searchBase: ou=users,dc=example,dc=org
+            bindCredentials:
+              secretClass: openldap-bind-credentials
+            ",
+        );
+        assert!(ldap.is_ok());
+    }
+
+    #[test]
+    fn test_ldap_full() {
+        let ldap = serde_yaml::from_str::<LdapAuthenticationProvider>(
+            "
+            hostname: my.ldap.server
+            port: 389
+            searchBase: ou=users,dc=example,dc=org
+            bindCredentials:
+              secretClass: openldap-bind-credentials
+            ",
+        );
+        assert!(ldap.is_ok());
+    }
+}
