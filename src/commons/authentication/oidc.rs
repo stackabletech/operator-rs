@@ -18,7 +18,11 @@ pub enum Error {
     SetOidcEndpointScheme { endpoint: Url },
 }
 
-/// TODO: docs
+/// This struct contains configuration values to configure an OpenID Connect
+/// (OIDC) authentication class. Required fields are the identity provider
+/// (IdP) `hostname` and the TLS configuration. The `port` is selected
+/// automatically if not configured otherwise. The `rootPath` defaults
+/// to `/`.
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OidcAuthenticationProvider {
