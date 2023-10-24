@@ -3,23 +3,20 @@ use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use url::{ParseError, Url};
 
-use crate::commons::authentication::{
-    oidc::oidc_error::ParseOidcEndpointSnafu, TlsClientUsage, SECRET_BASE_PATH,
-};
+use crate::commons::authentication::{TlsClientUsage, SECRET_BASE_PATH};
 
-use self::oidc_error::SetOidcEndpointSchemeSnafu;
+pub type Result<T, E = OidcAuthenticationError> = std::result::Result<T, E>;
+
+pub const DEFAULT_OIDC_WELLKNOWN_PATH: &str = ".well-known/openid-configuration";
 
 #[derive(Debug, Snafu)]
-#[snafu(module)]
-pub enum OidcError {
+pub enum OidcAuthenticationError {
     #[snafu(display("failed to parse OIDC endpoint"))]
     ParseOidcEndpoint { source: ParseError },
 
     #[snafu(display("failed to set OIDC endpoint scheme for endpoint {endpoint:?}"))]
     SetOidcEndpointScheme { endpoint: Url },
 }
-
-pub type Result<T> = std::result::Result<T, OidcError>;
 
 /// TODO: docs
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -45,13 +42,23 @@ fn default_root_path() -> String {
 }
 
 impl OidcAuthenticationProvider {
-    pub fn endpoint_uri(&self) -> Result<Url> {
-        let mut url = Url::parse(&format!("{}:{}", self.hostname, self.port()))
+    /// Returns the OIDC endpoint [`Url`]. To append the default OIDC well-known
+    /// configuration path, use `url.join()`. This module provides the default
+    /// path at [`DEFAULT_OIDC_WELLKNOWN_PATH`].
+    pub fn endpoint_url(&self) -> Result<Url> {
+        let mut url = Url::parse(&format!("http://{}:{}", self.hostname, self.port()))
             .context(ParseOidcEndpointSnafu)?;
-        url.set_scheme(if self.tls.use_tls() { "https" } else { "http" })
-            .context(SetOidcEndpointSchemeSnafu { endpoint: url })?;
-        url.set_path(&self.root_path);
 
+        if self.tls.use_tls() {
+            url.set_scheme("https").map_err(|_| {
+                SetOidcEndpointSchemeSnafu {
+                    endpoint: url.clone(),
+                }
+                .build()
+            })?;
+        }
+
+        url.set_path(&self.root_path);
         Ok(url)
     }
 
@@ -96,10 +103,51 @@ mod test {
         let oidc = serde_yaml::from_str::<OidcAuthenticationProvider>(
             "
             hostname: my.keycloak.server
-            port: 389
             rootPath: /
+            port: 12345
             ",
         );
         assert!(oidc.is_ok());
+    }
+
+    #[test]
+    fn test_oidc_http_endpoint_uri() {
+        let oidc = serde_yaml::from_str::<OidcAuthenticationProvider>(
+            "
+            hostname: my.keycloak.server
+            rootPath: my-root-path
+            port: 12345
+            ",
+        )
+        .unwrap();
+
+        assert_eq!(
+            oidc.endpoint_url().unwrap().as_str(),
+            "http://my.keycloak.server:12345/my-root-path"
+        );
+    }
+
+    #[test]
+    fn test_oidc_https_endpoint_uri() {
+        let oidc = serde_yaml::from_str::<OidcAuthenticationProvider>(
+            "
+            hostname: my.keycloak.server
+            tls:
+              verification:
+                server:
+                  caCert:
+                    secretClass: keycloak-ca-cert
+            ",
+        )
+        .unwrap();
+
+        assert_eq!(
+            oidc.endpoint_url()
+                .unwrap()
+                .join(DEFAULT_OIDC_WELLKNOWN_PATH)
+                .unwrap()
+                .as_str(),
+            "https://my.keycloak.server/.well-known/openid-configuration"
+        );
     }
 }
