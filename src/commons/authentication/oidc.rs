@@ -3,14 +3,14 @@ use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use url::{ParseError, Url};
 
-use crate::commons::authentication::{TlsClientUsage, SECRET_BASE_PATH};
+use crate::commons::authentication::{TlsClientDetails, SECRET_BASE_PATH};
 
-pub type Result<T, E = OidcAuthenticationError> = std::result::Result<T, E>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub const DEFAULT_OIDC_WELLKNOWN_PATH: &str = ".well-known/openid-configuration";
 
 #[derive(Debug, Snafu)]
-pub enum OidcAuthenticationError {
+pub enum Error {
     #[snafu(display("failed to parse OIDC endpoint"))]
     ParseOidcEndpoint { source: ParseError },
 
@@ -34,7 +34,7 @@ pub struct OidcAuthenticationProvider {
 
     /// Use a TLS connection. If not specified no TLS will be used
     #[serde(flatten)]
-    pub tls: TlsClientUsage,
+    pub tls: TlsClientDetails,
 }
 
 fn default_root_path() -> String {

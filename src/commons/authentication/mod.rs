@@ -63,7 +63,7 @@ impl AuthenticationClass {
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TlsClientUsage {
+pub struct TlsClientDetails {
     /// Use a TLS connection. If not specified no TLS will be used
     pub tls: Option<Tls>,
 }
@@ -103,7 +103,7 @@ pub enum CaCert {
     SecretClass(String),
 }
 
-impl TlsClientUsage {
+impl TlsClientDetails {
     /// This functions adds
     ///
     /// * The needed volumes to the PodBuilder

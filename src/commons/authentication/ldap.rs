@@ -1,13 +1,14 @@
 use crate::{
     builder::{ContainerBuilder, PodBuilder, VolumeMountBuilder},
-    commons::{authentication::SECRET_BASE_PATH, secret_class::SecretClassVolume},
+    commons::{
+        authentication::{TlsClientDetails, SECRET_BASE_PATH},
+        secret_class::SecretClassVolume,
+    },
 };
 
 use k8s_openapi::api::core::v1::{Volume, VolumeMount};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-use super::TlsClientUsage;
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -35,7 +36,7 @@ pub struct LdapAuthenticationProvider {
 
     /// Use a TLS connection. If not specified no TLS will be used
     #[serde(flatten)]
-    pub tls: TlsClientUsage,
+    pub tls: TlsClientDetails,
 }
 
 impl LdapAuthenticationProvider {
