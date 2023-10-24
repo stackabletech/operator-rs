@@ -3,7 +3,10 @@ pub mod oidc;
 pub mod static_;
 pub mod tls;
 
-use crate::builder::{ContainerBuilder, PodBuilder, VolumeMountBuilder};
+use crate::{
+    builder::{ContainerBuilder, PodBuilder, VolumeMountBuilder},
+    commons::authentication::oidc::OidcAuthenticationProvider,
+};
 pub use crate::{
     client::Client,
     commons::authentication::{
@@ -48,6 +51,7 @@ pub enum AuthenticationClassProvider {
     Ldap(LdapAuthenticationProvider),
     Tls(TlsAuthenticationProvider),
     Static(StaticAuthenticationProvider),
+    Oidc(OidcAuthenticationProvider),
 }
 
 impl AuthenticationClass {
