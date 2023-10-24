@@ -14,8 +14,8 @@ pub enum Error {
     #[snafu(display("failed to parse OIDC endpoint"))]
     ParseOidcEndpoint { source: ParseError },
 
-    #[snafu(display("failed to set OIDC endpoint scheme for endpoint {endpoint:?}"))]
-    SetOidcEndpointScheme { endpoint: Url },
+    #[snafu(display("failed to set OIDC endpoint scheme '{scheme}' for endpoint '{endpoint}'"))]
+    SetOidcEndpointScheme { endpoint: Url, scheme: String },
 }
 
 /// This struct contains configuration values to configure an OpenID Connect
@@ -56,6 +56,7 @@ impl OidcAuthenticationProvider {
         if self.tls.use_tls() {
             url.set_scheme("https").map_err(|_| {
                 SetOidcEndpointSchemeSnafu {
+                    scheme: "https".to_string(),
                     endpoint: url.clone(),
                 }
                 .build()
@@ -115,7 +116,7 @@ mod test {
     }
 
     #[test]
-    fn test_oidc_http_endpoint_uri() {
+    fn test_oidc_http_endpoint_url() {
         let oidc = serde_yaml::from_str::<OidcAuthenticationProvider>(
             "
             hostname: my.keycloak.server
@@ -132,7 +133,7 @@ mod test {
     }
 
     #[test]
-    fn test_oidc_https_endpoint_uri() {
+    fn test_oidc_https_endpoint_url() {
         let oidc = serde_yaml::from_str::<OidcAuthenticationProvider>(
             "
             hostname: my.keycloak.server
@@ -152,6 +153,23 @@ mod test {
                 .unwrap()
                 .as_str(),
             "https://my.keycloak.server/.well-known/openid-configuration"
+        );
+    }
+
+    #[test]
+    fn test_oidc_ipv6_endpoint_url() {
+        let oidc = serde_yaml::from_str::<OidcAuthenticationProvider>(
+            "
+            hostname: '[2606:2800:220:1:248:1893:25c8:1946]'
+            rootPath: my-root-path
+            port: 12345
+            ",
+        )
+        .unwrap();
+
+        assert_eq!(
+            oidc.endpoint_url().unwrap().as_str(),
+            "http://[2606:2800:220:1:248:1893:25c8:1946]:12345/my-root-path"
         );
     }
 }
