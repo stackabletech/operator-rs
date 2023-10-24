@@ -30,8 +30,10 @@ use serde::{Deserialize, Serialize};
 )]
 #[serde(rename_all = "camelCase")]
 pub struct S3BucketSpec {
+    // FIXME: Try to remove the Option<>, as this field should be mandatory
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bucket_name: Option<String>,
+    // FIXME: Try to remove the Option<>, as this field should be mandatory
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub connection: Option<S3ConnectionDef>,
 }
@@ -155,6 +157,7 @@ impl S3ConnectionDef {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct S3ConnectionSpec {
+    // FIXME: Try to remove the Option<>, as this field should be mandatory
     /// Hostname of the S3 server without any protocol or port
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub host: Option<String>,
@@ -162,6 +165,7 @@ pub struct S3ConnectionSpec {
     /// If not specified the products will determine the port to use.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub port: Option<u16>,
+    // FIXME: Try to remove the Option<>, as this field should be mandatory
     /// Which access style to use.
     /// Defaults to virtual hosted-style as most of the data products out there.
     /// Have a look at the official documentation on <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html>
