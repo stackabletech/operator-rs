@@ -5,13 +5,14 @@ pub mod tls;
 
 use crate::{
     builder::{ContainerBuilder, PodBuilder, VolumeMountBuilder},
-    commons::authentication::oidc::OidcAuthenticationProvider,
+    commons::secret_class::SecretClassVolume,
 };
+
 pub use crate::{
     client::Client,
     commons::authentication::{
-        ldap::LdapAuthenticationProvider, static_::StaticAuthenticationProvider,
-        tls::TlsAuthenticationProvider,
+        ldap::LdapAuthenticationProvider, oidc::OidcAuthenticationProvider,
+        static_::StaticAuthenticationProvider, tls::TlsAuthenticationProvider,
     },
     error::Error,
 };
@@ -21,8 +22,6 @@ use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum::Display;
-
-use super::secret_class::SecretClassVolume;
 
 const SECRET_BASE_PATH: &str = "/stackable/secrets";
 
