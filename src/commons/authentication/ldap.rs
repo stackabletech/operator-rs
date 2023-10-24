@@ -17,7 +17,7 @@ pub struct LdapAuthenticationProvider {
     pub hostname: String,
 
     /// Port of the LDAP server. If TLS is used defaults to 636 otherwise to 389
-    pub port: Option<u16>,
+    port: Option<u16>,
 
     /// LDAP search base
     #[serde(default)]
@@ -32,11 +32,11 @@ pub struct LdapAuthenticationProvider {
     pub ldap_field_names: LdapFieldNames,
 
     /// In case you need a special account for searching the LDAP server you can specify it here
-    pub bind_credentials: Option<SecretClassVolume>,
+    bind_credentials: Option<SecretClassVolume>,
 
     /// Use a TLS connection. If not specified no TLS will be used
     #[serde(flatten)]
-    pub tls: TlsClientDetails,
+    tls: TlsClientDetails,
 }
 
 impl LdapAuthenticationProvider {

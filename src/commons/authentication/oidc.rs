@@ -27,18 +27,18 @@ pub enum Error {
 #[serde(rename_all = "camelCase")]
 pub struct OidcAuthenticationProvider {
     /// Hostname of the identity provider
-    pub hostname: String,
+    hostname: String,
 
     /// Port of the identity provider. If TLS is used defaults to 443, otherwise to 80
-    pub port: Option<u16>,
+    port: Option<u16>,
 
     /// Root HTTP path of the identity provider. Defaults to `/`.
     #[serde(default = "default_root_path")]
-    pub root_path: String,
+    root_path: String,
 
     /// Use a TLS connection. If not specified no TLS will be used
     #[serde(flatten)]
-    pub tls: TlsClientDetails,
+    tls: TlsClientDetails,
 }
 
 fn default_root_path() -> String {
