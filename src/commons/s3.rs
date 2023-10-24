@@ -4,7 +4,7 @@
 //! Operator CRDs are expected to use the [S3BucketDef] as an entry point to this module
 //! and obtain an [InlinedS3BucketSpec] by calling [`S3BucketDef::resolve`].
 //!
-use crate::commons::{authentication::tls::Tls, secret_class::SecretClassVolume};
+use crate::commons::{authentication::Tls, secret_class::SecretClassVolume};
 use crate::error;
 use crate::{client::Client, error::OperatorResult};
 use kube::CustomResource;
