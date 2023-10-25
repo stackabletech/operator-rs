@@ -36,7 +36,7 @@ pub struct LdapAuthenticationProvider {
 
     /// Use a TLS connection. If not specified no TLS will be used
     #[serde(flatten)]
-    tls: TlsClientDetails,
+    pub tls: TlsClientDetails,
 }
 
 impl LdapAuthenticationProvider {

@@ -38,7 +38,7 @@ pub struct OidcAuthenticationProvider {
 
     /// Use a TLS connection. If not specified no TLS will be used
     #[serde(flatten)]
-    tls: TlsClientDetails,
+    pub tls: TlsClientDetails,
 
     /// Scopes to request from your Identity Provider.
     /// E.g. for keycloak you need to at least request the `openid` scope.
