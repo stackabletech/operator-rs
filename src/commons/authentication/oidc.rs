@@ -108,8 +108,8 @@ impl OidcAuthenticationProvider {
         let mut hasher = DefaultHasher::new();
         secret_name.hash(&mut hasher);
         let secret_name_hash = hasher.finish();
-        // Prefix with zeros to have consistent length. Max length is 16 characters, which corresponds to u64::MAX
-        let secret_name_hash = format!("{:016}", secret_name_hash).to_uppercase();
+        // Prefix with zeros to have consistent length. Max length is 16 characters, which is caused by [`u64::MAX`].
+        let secret_name_hash = format!("{:016x}", secret_name_hash).to_uppercase();
         let env_var_prefix = format!("OIDC_{secret_name_hash}");
 
         (
@@ -247,8 +247,8 @@ mod test {
         assert_eq!(
             env_names,
             (
-                "OIDC_7496668300980572358_CLIENT_ID".to_string(),
-                "OIDC_7496668300980572358_CLIENT_SECRET".to_string()
+                "OIDC_68098419C6E0D0C6_CLIENT_ID".to_string(),
+                "OIDC_68098419C6E0D0C6_CLIENT_SECRET".to_string()
             )
         );
         let env_var_mounts =
