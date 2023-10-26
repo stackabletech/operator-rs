@@ -1,3 +1,9 @@
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+};
+
+use k8s_openapi::api::core::v1::{EnvVar, EnvVarSource, SecretKeySelector};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
@@ -8,6 +14,8 @@ use crate::commons::authentication::{TlsClientDetails, SECRET_BASE_PATH};
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub const DEFAULT_OIDC_WELLKNOWN_PATH: &str = ".well-known/openid-configuration";
+pub const CLIENT_ID_SECRET_KEY: &str = "clientId";
+pub const CLIENT_SECRET_SECRET_KEY: &str = "clientSecret";
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -87,9 +95,59 @@ impl OidcAuthenticationProvider {
     pub fn client_credentials_mount_paths(secret_name: &str) -> (String, String) {
         let volume_mount_path = Self::client_credentials_volume_mount_path(secret_name);
         (
-            format!("{volume_mount_path}/clientId"),
-            format!("{volume_mount_path}/clientSecret"),
+            format!("{volume_mount_path}/{CLIENT_ID_SECRET_KEY}"),
+            format!("{volume_mount_path}/{CLIENT_SECRET_SECRET_KEY}"),
         )
+    }
+
+    /// Name of the clientId and clientSecret env variables.
+    ///
+    /// Env variables need to be C_IDENTIFIER according to k8s docs. We could replace `-` with `_` and `.` with `_`,
+    /// but this could cause collisions. To be collision-free we hash the secret key instead and use the hash in the env var.
+    pub fn client_credentials_env_names(secret_name: &str) -> (String, String) {
+        let mut hasher = DefaultHasher::new();
+        secret_name.hash(&mut hasher);
+        let secret_name_hash = hasher.finish();
+        // Prefix with zeros to have consistent length. Max length is 16 characters, which corresponds to u64::MAX
+        let secret_name_hash = format!("{:016}", secret_name_hash).to_uppercase();
+        let env_var_prefix = format!("OIDC_{secret_name_hash}");
+
+        (
+            format!("{env_var_prefix}_CLIENT_ID"),
+            format!("{env_var_prefix}_CLIENT_SECRET"),
+        )
+    }
+
+    pub fn client_credentials_env_var_mounts(secret_name: String) -> Vec<EnvVar> {
+        let (client_id_env_var, client_secret_env_var) =
+            Self::client_credentials_env_names(&secret_name);
+
+        vec![
+            EnvVar {
+                name: client_id_env_var,
+                value_from: Some(EnvVarSource {
+                    secret_key_ref: Some(SecretKeySelector {
+                        key: CLIENT_ID_SECRET_KEY.to_string(),
+                        name: Some(secret_name.clone()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            EnvVar {
+                name: client_secret_env_var,
+                value_from: Some(EnvVarSource {
+                    secret_key_ref: Some(SecretKeySelector {
+                        key: CLIENT_SECRET_SECRET_KEY.to_string(),
+                        name: Some(secret_name),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        ]
     }
 }
 
@@ -102,6 +160,7 @@ mod test {
         let oidc = serde_yaml::from_str::<OidcAuthenticationProvider>(
             "
             hostname: my.keycloak.server
+            scopes: [openid]
             ",
         );
         assert!(oidc.is_ok());
@@ -114,6 +173,7 @@ mod test {
             hostname: my.keycloak.server
             rootPath: /
             port: 12345
+            scopes: [openid]
             ",
         );
         assert!(oidc.is_ok());
@@ -126,6 +186,7 @@ mod test {
             hostname: my.keycloak.server
             rootPath: my-root-path
             port: 12345
+            scopes: [openid]
             ",
         )
         .unwrap();
@@ -146,6 +207,7 @@ mod test {
                 server:
                   caCert:
                     secretClass: keycloak-ca-cert
+            scopes: [openid]
             ",
         )
         .unwrap();
@@ -167,6 +229,7 @@ mod test {
             hostname: '[2606:2800:220:1:248:1893:25c8:1946]'
             rootPath: my-root-path
             port: 12345
+            scopes: [openid]
             ",
         )
         .unwrap();
@@ -174,6 +237,46 @@ mod test {
         assert_eq!(
             oidc.endpoint_url().unwrap().as_str(),
             "http://[2606:2800:220:1:248:1893:25c8:1946]:12345/my-root-path"
+        );
+    }
+
+    #[test]
+    fn test_oidc_client_env_vars() {
+        let secret_name = "my-keycloak-client";
+        let env_names = OidcAuthenticationProvider::client_credentials_env_names(secret_name);
+        assert_eq!(
+            env_names,
+            (
+                "OIDC_7496668300980572358_CLIENT_ID".to_string(),
+                "OIDC_7496668300980572358_CLIENT_SECRET".to_string()
+            )
+        );
+        let env_var_mounts =
+            OidcAuthenticationProvider::client_credentials_env_var_mounts(secret_name.to_string());
+        assert_eq!(
+            env_var_mounts
+                .iter()
+                .map(|e| e.name.clone())
+                .collect::<Vec<_>>(),
+            vec![env_names.0, env_names.1],
+        );
+        assert_eq!(
+            env_var_mounts
+                .iter()
+                .map(|e| e.value_from.clone().unwrap().secret_key_ref.unwrap())
+                .collect::<Vec<_>>(),
+            vec![
+                SecretKeySelector {
+                    key: CLIENT_ID_SECRET_KEY.to_string(),
+                    name: Some(secret_name.to_string()),
+                    optional: None,
+                },
+                SecretKeySelector {
+                    key: CLIENT_SECRET_SECRET_KEY.to_string(),
+                    name: Some(secret_name.to_string()),
+                    optional: None,
+                }
+            ],
         );
     }
 }
