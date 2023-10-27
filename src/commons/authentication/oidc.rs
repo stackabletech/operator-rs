@@ -51,10 +51,26 @@ pub struct OidcAuthenticationProvider {
     /// Scopes to request from your Identity Provider.
     /// E.g. for keycloak you need to at least request the `openid` scope.
     pub scopes: Vec<String>,
+
+    /// This is a hint for the products on a best-effort base, most of the products will ignore this value.
+    /// E.g. Superset uses this to configure the correct claims to extract from the user-info endpoint
+    /// as well as a nice icon.
+    #[serde(default)]
+    pub provider: OidcIdentityProvider,
 }
 
 fn default_root_path() -> String {
     "/".to_string()
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum OidcIdentityProvider {
+    Keycloak,
+
+    /// Fallback in case your identity provider is not supported explicitly.
+    #[default]
+    Custom,
 }
 
 impl OidcAuthenticationProvider {
