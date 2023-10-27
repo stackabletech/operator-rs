@@ -1,5 +1,36 @@
 use tracing::info;
 
+pub const COMMON_BASH_TRAP_FUNCTIONS: &str = r#"
+prepare_signal_handlers()
+{
+    unset term_child_pid
+    unset term_kill_needed
+    trap 'handle_term' TERM
+}
+
+handle_term()
+{
+    if [ "${term_child_pid}" ]; then
+        kill -TERM "${term_child_pid}" 2>/dev/null
+    else
+        term_kill_needed="yes"
+    fi
+}
+
+wait_for_termination()
+{
+    set +e
+    term_child_pid=$!
+    if [[ -v term_kill_needed ]]; then
+        kill -TERM "${term_child_pid}" 2>/dev/null
+    fi
+    wait ${term_child_pid} 2>/dev/null
+    trap - TERM
+    wait ${term_child_pid} 2>/dev/null
+    set -e
+}
+"#;
+
 /// Prints helpful and standardized diagnostic messages.
 ///
 /// This method is meant to be called first thing in the `main` method of an Operator.
