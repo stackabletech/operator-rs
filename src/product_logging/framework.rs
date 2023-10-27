@@ -1138,8 +1138,9 @@ kill $vector_pid
 /// const STACKABLE_LOG_DIR: &str = "/stackable/log";
 ///
 /// let args = vec![
-///     "echo Perform initialization tasks ...".into(),
-///     product_logging::framework::shutdown_vector_command(STACKABLE_LOG_DIR),
+///     product_logging::framework::remove_vector_shutdown_file_command(STACKABLE_LOG_DIR),
+///     "echo Perform some tasks ...".into(),
+///     product_logging::framework::create_vector_shutdown_file_command(STACKABLE_LOG_DIR),
 /// ];
 ///
 /// let container = ContainerBuilder::new("init")
