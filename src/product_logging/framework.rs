@@ -1100,23 +1100,13 @@ pub fn vector_container(
 # E.g. the lifetime of vector will be bound to the datanode container and not to the zkfc container.
 # We *could* have different shutdown trigger files for all application containers and wait for all containers
 # to terminate, but that seems rather complicated and will be added once needed.
-<<<<<<< HEAD
 # Additionally, you should remove the shutdown marker file on startup of the application, as the application
 # container can crash for any reason and get restarted. If you don't remove the shutdown file on startup,
 # the vector container will crashloop forever!
 
 bash -c 'sleep 1 && if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then mkdir -p {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR} && inotifywait -qq --event create {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}; fi && kill 1' &
 
-exec vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE}
-"
-=======
-vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$! && \
-if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then \
-mkdir -p {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR} && \
-inotifywait -qq --event create {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}; \
-fi && \
-kill $vector_pid"
->>>>>>> refs/remotes/origin/docs/vector-process
+exec vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE}"
         )])
         .add_env_var("VECTOR_LOG", log_level.to_vector_literal())
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
@@ -1158,11 +1148,8 @@ touch {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}"
     )
 }
 
-<<<<<<< HEAD
 /// Use this command to remove the shutdown file (if it exists) created by [`create_vector_shutdown_file_command`].
 /// You should execute this command before starting your application.
-=======
->>>>>>> refs/remotes/origin/docs/vector-process
 pub fn remove_vector_shutdown_file_command(stackable_log_dir: &str) -> String {
     format!("rm -f {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}")
 }
