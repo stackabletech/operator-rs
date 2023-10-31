@@ -12,6 +12,11 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: Rename `product_logging::framework::shutdown_vector_command` to `create_vector_shutdown_file_command` and added `remove_vector_shutdown_file_command` ([#681]).
 
+### Fixed
+
+- Fix Docker image tag parsing when user specifies custom image ([#677]).
+
+[#677]: https://github.com/stackabletech/operator-rs/pull/677
 [#681]: https://github.com/stackabletech/operator-rs/pull/681
 
 ## [0.55.0] - 2023-10-16
