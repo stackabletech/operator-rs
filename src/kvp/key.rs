@@ -83,7 +83,7 @@ impl Key {
     ///
     /// ```
     /// use std::str::FromStr;
-    /// use stackable_cockpit::platform::label::{Key, KeyPrefix};
+    /// use stackable_operator::kvp::{Key, KeyPrefix};
     ///
     /// let key = Key::from_str("stackable.tech/vendor").unwrap();
     /// let prefix = KeyPrefix::from_str("stackable.tech").unwrap();
@@ -113,7 +113,7 @@ impl Key {
     ///
     /// ```
     /// use std::str::FromStr;
-    /// use stackable_cockpit::platform::label::{Key, KeyName};
+    /// use stackable_operator::kvp::{Key, KeyName};
     ///
     /// let key = Key::from_str("stackable.tech/vendor").unwrap();
     /// let name = KeyName::from_str("vendor").unwrap();
