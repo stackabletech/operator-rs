@@ -1,3 +1,4 @@
+use dockerfile_parser::ImageRef;
 use k8s_openapi::api::core::v1::LocalObjectReference;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -91,12 +92,12 @@ impl ProductImage {
 
         match &self.image_selection {
             ProductImageSelection::Custom(image_selection) => {
-                let image_tag = image_selection
-                    .custom
-                    .split_once(':')
-                    .map_or("latest", |splits| splits.1);
-                let app_version_label =
-                    format!("{}-{}", image_selection.product_version, image_tag);
+                let image = ImageRef::parse(&image_selection.custom);
+                let app_version_label = format!(
+                    "{}-{}",
+                    image_selection.product_version,
+                    image.tag.unwrap_or("latest".to_string())
+                );
                 ResolvedProductImage {
                     product_version: image_selection.product_version.to_string(),
                     app_version_label,
@@ -244,6 +245,36 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
+            app_version_label: "1.4.1-latest-and-greatest".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::custom_with_colon_in_repo_and_without_tag(
+        "superset",
+        "23.7.42",
+        r#"
+        custom: 127.0.0.1:8080/myteam/stackable/superset
+        productVersion: 1.4.1
+        "#,
+        ResolvedProductImage {
+            image: "127.0.0.1:8080/myteam/stackable/superset".to_string(),
+            app_version_label: "1.4.1-latest".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::custom_with_colon_in_repo_and_with_tag(
+        "superset",
+        "23.7.42",
+        r#"
+        custom: 127.0.0.1:8080/myteam/stackable/superset:latest-and-greatest
+        productVersion: 1.4.1
+        "#,
+        ResolvedProductImage {
+            image: "127.0.0.1:8080/myteam/stackable/superset:latest-and-greatest".to_string(),
             app_version_label: "1.4.1-latest-and-greatest".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
