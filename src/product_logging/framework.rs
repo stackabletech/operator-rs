@@ -1007,16 +1007,30 @@ sinks:
     )
 }
 
-/// Create the specification of the Vector log agent container
+/// Create the specification of the Vector log agent container.
+///
+/// The vector process is not running as PID 1, so a Kubernetes SIGTERM will be have no effect.
+/// Instead, the vector process can be shut down by creating a file below {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR},
+/// e.g. {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}. This way logs from the products will always be shipped,
+/// as the vector container will be the last one to terminate. A specific container must be chosen, which has the responsibility
+/// to create a file after it has properly shut down. It should be the one taking the longest to shut down.
+/// E.g. for hdfs the lifetime of vector will be bound to the datanode container and not to the zkfc container.
+/// We *could* have different shutdown trigger files for all application containers and wait for all containers
+/// to terminate, but that seems rather complicated and will be added once needed. Additionally, you should remove
+/// the shutdown marker file on startup of the application, as the application container can crash for any reason
+/// and get restarted. If you don't remove the shutdown file on startup, the vector container will crashloop forever,
+/// as it will start and shut down immediately after!
 ///
 /// ```
 /// use stackable_operator::{
 ///     builder::{
+///         ContainerBuilder,
 ///         meta::ObjectMetaBuilder,
 ///         PodBuilder,
 ///         resources::ResourceRequirementsBuilder
 ///     },
-///     product_logging,
+///     product_logging::{self, framework:: {create_vector_shutdown_file_command, remove_vector_shutdown_file_command}},
+///     utils::COMMON_BASH_TRAP_FUNCTIONS,
 /// };
 /// use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 /// # use stackable_operator::{
@@ -1025,6 +1039,8 @@ sinks:
 /// #     product_logging::spec::{default_logging, Logging},
 /// # };
 /// # use strum::{Display, EnumIter};
+/// #
+/// # pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
 /// #
 /// # #[derive(Clone, Display, Eq, EnumIter, Ord, PartialEq, PartialOrd)]
 /// # pub enum Container {
@@ -1050,6 +1066,27 @@ sinks:
 ///     .with_memory_request("1Gi")
 ///     .with_memory_limit("1Gi")
 ///     .build();
+///
+/// pod_builder.add_container(
+///     ContainerBuilder::new("application")
+///         .unwrap()
+///         .image_from_product_image(&resolved_product_image)
+///         .args(vec![format!(
+///             "\
+/// {COMMON_BASH_TRAP_FUNCTIONS}
+/// {remove_vector_shutdown_file_command}
+/// prepare_signal_handlers
+/// my-application start &
+/// wait_for_termination $!
+/// {create_vector_shutdown_file_command}
+/// ",
+///             remove_vector_shutdown_file_command =
+///                 remove_vector_shutdown_file_command(STACKABLE_LOG_DIR),
+///             create_vector_shutdown_file_command =
+///                 create_vector_shutdown_file_command(STACKABLE_LOG_DIR),
+///         )])
+///         .build(),
+/// );
 ///
 /// if logging.enable_vector_agent {
 ///     pod_builder.add_container(product_logging::framework::vector_container(
@@ -1082,15 +1119,28 @@ pub fn vector_container(
     ContainerBuilder::new("vector")
         .unwrap()
         .image_from_product_image(image)
-        .command(vec!["bash".into(), "-c".into()])
+        .command(vec![
+            "/bin/bash".to_string(),
+            "-x".to_string(),
+            "-euo".to_string(),
+            "pipefail".to_string(),
+            "-c".to_string(),
+        ])
+        // The following code is an alternative approach which can get SIGTERM terminated as well as via writing a file.
+        // It is left in here, as it needed some effort to get it right and can be helpful in the future.
+        // bash -c 'sleep 1 && if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then mkdir -p {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR} && inotifywait -qq --event create {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}; fi && kill 1' &
+        // exec vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE}
         .args(vec![format!(
             "\
-vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$! && \
-if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then \
-mkdir -p {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR} && \
-inotifywait -qq --event create {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}; \
-fi && \
-kill $vector_pid"
+# Vector will ignore SIGTERM (as PID != 1) and must be shut down by writing a shutdown trigger file
+vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$!
+if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then
+  mkdir -p {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR} && \
+  inotifywait -qq --event create {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}; \
+fi
+sleep 1
+kill $vector_pid
+"
         )])
         .add_env_var("VECTOR_LOG", log_level.to_vector_literal())
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
@@ -1099,7 +1149,8 @@ kill $vector_pid"
         .build()
 }
 
-/// Command to shut down the Vector instance
+/// Command to create a shutdown file for the vector container.
+/// Please delete it before starting your application using [`remove_vector_shutdown_file_command`].
 ///
 /// # Example
 ///
@@ -1112,8 +1163,9 @@ kill $vector_pid"
 /// const STACKABLE_LOG_DIR: &str = "/stackable/log";
 ///
 /// let args = vec![
-///     "echo Perform initialization tasks ...".into(),
-///     product_logging::framework::shutdown_vector_command(STACKABLE_LOG_DIR),
+///     product_logging::framework::remove_vector_shutdown_file_command(STACKABLE_LOG_DIR),
+///     "echo Perform some tasks ...".into(),
+///     product_logging::framework::create_vector_shutdown_file_command(STACKABLE_LOG_DIR),
 /// ];
 ///
 /// let container = ContainerBuilder::new("init")
@@ -1124,11 +1176,17 @@ kill $vector_pid"
 ///     .add_volume_mount("log", STACKABLE_LOG_DIR)
 ///     .build();
 /// ```
-pub fn shutdown_vector_command(stackable_log_dir: &str) -> String {
+pub fn create_vector_shutdown_file_command(stackable_log_dir: &str) -> String {
     format!(
         "mkdir -p {stackable_log_dir}/{VECTOR_LOG_DIR} && \
 touch {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}"
     )
+}
+
+/// Use this command to remove the shutdown file (if it exists) created by [`create_vector_shutdown_file_command`].
+/// You should execute this command before starting your application.
+pub fn remove_vector_shutdown_file_command(stackable_log_dir: &str) -> String {
+    format!("rm -f {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}")
 }
 
 #[cfg(test)]
