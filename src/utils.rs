@@ -6,7 +6,7 @@ use tracing::info;
 /// 2. `wait_for_termination` waits for the PID you passed as the first argument to terminate
 ///
 /// An example use could be
-/// ```
+/// ```text
 /// {COMMON_BASH_TRAP_FUNCTIONS}
 /// echo "Run before startup"
 /// prepare_signal_handlers
