@@ -1024,11 +1024,13 @@ sinks:
 /// ```
 /// use stackable_operator::{
 ///     builder::{
+///         ContainerBuilder,
 ///         meta::ObjectMetaBuilder,
 ///         PodBuilder,
 ///         resources::ResourceRequirementsBuilder
 ///     },
-///     product_logging,
+///     product_logging::{self, framework:: {create_vector_shutdown_file_command, remove_vector_shutdown_file_command}},
+///     utils::COMMON_BASH_TRAP_FUNCTIONS,
 /// };
 /// use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 /// # use stackable_operator::{
@@ -1037,6 +1039,8 @@ sinks:
 /// #     product_logging::spec::{default_logging, Logging},
 /// # };
 /// # use strum::{Display, EnumIter};
+/// #
+/// # pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
 /// #
 /// # #[derive(Clone, Display, Eq, EnumIter, Ord, PartialEq, PartialOrd)]
 /// # pub enum Container {
@@ -1062,6 +1066,27 @@ sinks:
 ///     .with_memory_request("1Gi")
 ///     .with_memory_limit("1Gi")
 ///     .build();
+///
+/// pod_builder.add_container(
+///     ContainerBuilder::new("application")
+///         .unwrap()
+///         .image_from_product_image(&resolved_product_image)
+///         .args(vec![format!(
+///             "\
+/// {COMMON_BASH_TRAP_FUNCTIONS}
+/// {remove_vector_shutdown_file_command}
+/// prepare_signal_handlers
+/// my-application start &
+/// wait_for_termination $!
+/// {create_vector_shutdown_file_command}
+/// ",
+///             remove_vector_shutdown_file_command =
+///                 remove_vector_shutdown_file_command(STACKABLE_LOG_DIR),
+///             create_vector_shutdown_file_command =
+///                 create_vector_shutdown_file_command(STACKABLE_LOG_DIR),
+///         )])
+///         .build(),
+/// );
 ///
 /// if logging.enable_vector_agent {
 ///     pod_builder.add_container(product_logging::framework::vector_container(
