@@ -8,6 +8,7 @@ pub mod cpu;
 pub mod crd;
 pub mod error;
 pub mod iter;
+pub mod kvp;
 pub mod label_selector;
 pub mod labels;
 pub mod logging;
@@ -28,3 +29,8 @@ pub use crate::crd::CustomResourceExt;
 pub use ::k8s_openapi;
 pub use ::kube;
 pub use ::schemars;
+
+#[cfg(feature = "macros")]
+pub mod macros {
+    pub use stackable_operator_macros::*;
+}
