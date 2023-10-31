@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Added `COMMON_BASH_TRAP_FUNCTIONS`, which can be used to write Vector shutdown trigger file after the main application stopped ([#681]).
+- Added `COMMON_BASH_TRAP_FUNCTIONS`, which can be used to write a Vector shutdown trigger file after the main application stopped ([#681]).
 
 ### Changed
 
