@@ -1,20 +1,22 @@
-use crate::error;
-use crate::error::*;
-use crate::role_utils::{CommonConfiguration, Role};
-use product_config::types::PropertyNameKind;
-use product_config::{ProductConfigManager, PropertyValidationResult};
+use std::collections::{BTreeMap, HashMap};
+
+use product_config::{types::PropertyNameKind, ProductConfigManager, PropertyValidationResult};
 use schemars::JsonSchema;
 use serde::Serialize;
-use std::collections::{BTreeMap, HashMap};
-use thiserror::Error;
+use snafu::Snafu;
 use tracing::{debug, error, warn};
 
-#[derive(Error, Debug)]
+use crate::{
+    error::{Error, OperatorResult},
+    role_utils::{CommonConfiguration, Role},
+};
+
+#[derive(Debug, Snafu)]
 pub enum ConfigError {
-    #[error("Invalid configuration found: {reason}")]
+    #[snafu(display("Invalid configuration found: {reason}"))]
     InvalidConfiguration { reason: String },
 
-    #[error("Collected product config validation errors: {collected_errors:?}")]
+    #[snafu(display("Collected product config validation errors: {collected_errors:?}"))]
     ProductConfigErrors {
         collected_errors: Vec<product_config::error::Error>,
     },
@@ -121,13 +123,13 @@ pub fn config_for_role_and_group<'a>(
 ) -> OperatorResult<&'a HashMap<PropertyNameKind, BTreeMap<String, String>>> {
     let result = match role_config.get(role) {
         None => {
-            return Err(error::Error::MissingRole {
+            return Err(Error::MissingRole {
                 role: role.to_string(),
             })
         }
         Some(group_config) => match group_config.get(group) {
             None => {
-                return Err(error::Error::MissingRoleGroup {
+                return Err(Error::MissingRoleGroup {
                     role: role.to_string(),
                     role_group: group.to_string(),
                 })

@@ -6,11 +6,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Added `COMMON_BASH_TRAP_FUNCTIONS`, which can be used to write a Vector shutdown trigger file after the main application stopped ([#681]).
+- Added `COMMON_BASH_TRAP_FUNCTIONS`, which can be used to write a Vector shutdown trigger file after the main
+  application stopped ([#681]).
 
 ### Changed
 
-- BREAKING: Rename `product_logging::framework::shutdown_vector_command` to `create_vector_shutdown_file_command` and added `remove_vector_shutdown_file_command` ([#681]).
+- BREAKING: Rename `product_logging::framework::shutdown_vector_command` to `create_vector_shutdown_file_command` and
+  added `remove_vector_shutdown_file_command` ([#681]).
+- BREAKING: Remove re-export of `product_config`, update `product_config` to `0.6.0` ([#682]).
 
 ### Fixed
 
@@ -18,6 +21,7 @@ All notable changes to this project will be documented in this file.
 
 [#677]: https://github.com/stackabletech/operator-rs/pull/677
 [#681]: https://github.com/stackabletech/operator-rs/pull/681
+[#682]: https://github.com/stackabletech/operator-rs/pull/682
 
 ## [0.55.0] - 2023-10-16
 

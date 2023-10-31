@@ -32,7 +32,7 @@ kube = { version = "0.86.0", default-features = false, features = ["client", "js
 lazy_static = "1.4.0"
 opentelemetry = { version = "0.20.0", features = ["rt-tokio"] }
 opentelemetry-jaeger = { version = "0.19.0", features = ["rt-tokio"] }
-product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.5.0" }
+product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.6.0" }
 rand = "0.8.5"
 regex = "1.9.3"
 schemars = "0.8.12"
