@@ -29,6 +29,13 @@ pub enum KeyError {
     KeyNameError { source: KeyNameError },
 }
 
+/// The [`Key`] of a [`KeyValuePair`](crate::kvp::KeyValuePair). It contains an
+/// optional prefix, and a required name. The Kubernetes documentation defines
+/// the format and allowed characters [here][k8s-labels]. A [`Key`] is always
+/// validated. It also doesn't provide any associated functions which enable
+/// unvalidated manipulation of the inner values.
+///
+/// [k8s-labels]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 #[derive(Debug, PartialEq)]
 pub struct Key {
     prefix: Option<KeyPrefix>,
@@ -155,6 +162,11 @@ pub enum KeyPrefixError {
     PrefixInvalid,
 }
 
+/// A validated optional [`KeyPrefix`] of [`Key`]. Again, instances of this
+/// struct are always valid. [`KeyPrefix`] implements [`Deref`], which enables
+/// read-only access to the inner value (a [`String`]). It, however, does not
+/// implement [`DerefMut`](std::ops::DerefMut) which would enable unvalidated
+/// mutable access to inner values.
 #[derive(Debug, PartialEq)]
 pub struct KeyPrefix(String);
 
