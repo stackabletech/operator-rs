@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.56.0] - 2023-10-31 👻
+
 ### Added
 
 - Added `COMMON_BASH_TRAP_FUNCTIONS`, which can be used to write a Vector shutdown trigger file after the main
