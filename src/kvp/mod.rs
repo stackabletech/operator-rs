@@ -1,4 +1,4 @@
-use std::{fmt::Display, str::FromStr};
+use std::{collections::BTreeMap, fmt::Display, ops::Deref, str::FromStr};
 
 use snafu::{ensure, ResultExt, Snafu};
 
@@ -9,7 +9,7 @@ pub use key::*;
 pub use value::*;
 
 #[derive(Debug, Snafu)]
-pub enum KeyPairError {
+pub enum KeyValuePairError {
     #[snafu(display("label input cannot be empty"))]
     EmptyInput,
 
@@ -37,7 +37,7 @@ pub struct KeyValuePair {
 }
 
 impl FromStr for KeyValuePair {
-    type Err = KeyPairError;
+    type Err = KeyValuePairError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let input = input.trim();
@@ -63,6 +63,20 @@ impl FromStr for KeyValuePair {
     }
 }
 
+impl<T> TryFrom<(T, T)> for KeyValuePair
+where
+    T: AsRef<str>,
+{
+    type Error = KeyValuePairError;
+
+    fn try_from(value: (T, T)) -> Result<Self, Self::Error> {
+        let key = Key::from_str(value.0.as_ref()).context(KeySnafu)?;
+        let value = Value::from_str(value.1.as_ref()).context(ValueSnafu)?;
+
+        Ok(Self { key, value })
+    }
+}
+
 impl Display for KeyValuePair {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}={}", self.key, self.value)
@@ -83,5 +97,57 @@ impl KeyValuePair {
     /// Returns an immutable reference to the pair's [`Value`].
     pub fn value(&self) -> &Value {
         &self.value
+    }
+}
+
+struct KeyValuePairs(Vec<KeyValuePair>);
+
+impl TryFrom<BTreeMap<String, String>> for KeyValuePairs {
+    type Error = KeyValuePairError;
+
+    fn try_from(map: BTreeMap<String, String>) -> Result<Self, Self::Error> {
+        let pairs = map
+            .into_iter()
+            .map(KeyValuePair::try_from)
+            .collect::<Result<Vec<_>, KeyValuePairError>>()?;
+
+        Ok(Self(pairs))
+    }
+}
+
+impl Deref for KeyValuePairs {
+    type Target = Vec<KeyValuePair>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn try_from() {
+        let kvp = KeyValuePair::try_from(("stackable.tech/vendor", "Stackable")).unwrap();
+
+        assert_eq!(kvp.key(), &Key::from_str("stackable.tech/vendor").unwrap());
+        assert_eq!(kvp.value(), &Value::from_str("Stackable").unwrap());
+
+        assert_eq!(kvp.to_string(), "stackable.tech/vendor=Stackable");
+    }
+
+    #[test]
+    fn try_from_map() {
+        let map = BTreeMap::from([
+            ("stackable.tech/vendor".to_string(), "Stackable".to_string()),
+            (
+                "stackable.tech/managed-by".to_string(),
+                "stackablectl".to_string(),
+            ),
+        ]);
+
+        let kvps = KeyValuePairs::try_from(map).unwrap();
+        assert_eq!(kvps.len(), 2);
     }
 }
