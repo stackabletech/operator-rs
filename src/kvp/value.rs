@@ -25,6 +25,15 @@ pub enum ValueError {
     ValueInvalid,
 }
 
+/// A validated [`Value`] of a [`KeyValuePair`](crate::kvp::KeyValuePair).
+/// Instances of this struct are always valid. The format and valid characters
+/// are described [here][k8s-labels]. It also implements [`Deref`], which
+/// enables read-only access to the inner value (a [`String`]). It, however,
+/// does not implement [`DerefMut`](std::ops::DerefMut) which would enable
+/// unvalidated mutable access to inner values.
+///
+/// [k8s-labels]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+#[derive(Debug, PartialEq)]
 pub struct Value(String);
 
 impl FromStr for Value {

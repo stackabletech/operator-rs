@@ -23,6 +23,14 @@ pub enum KeyPairError {
     ValueError { source: ValueError },
 }
 
+/// A [`KeyValuePair`] is a pair values which consist of a [`Key`] and [`Value`].
+/// These pairs can be used as Kubernetes labels or annotations. A pair can be
+/// parsed from a string with the following format: `(<PREFIX>/)<NAME>=<VALUE>`.
+///
+/// ### Links
+///
+/// - https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+/// - https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
 pub struct KeyValuePair {
     key: Key,
     value: Value,
@@ -62,14 +70,17 @@ impl Display for KeyValuePair {
 }
 
 impl KeyValuePair {
+    /// Creates a new [`KeyValuePair`] from a validated [`Key`] and [`Value`].
     pub fn new(key: Key, value: Value) -> Self {
         Self { key, value }
     }
 
+    /// Returns an immutable reference to the pair's [`Key`].
     pub fn key(&self) -> &Key {
         &self.key
     }
 
+    /// Returns an immutable reference to the pair's [`Value`].
     pub fn value(&self) -> &Value {
         &self.value
     }

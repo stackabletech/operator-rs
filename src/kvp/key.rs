@@ -162,7 +162,7 @@ pub enum KeyPrefixError {
     PrefixInvalid,
 }
 
-/// A validated optional [`KeyPrefix`] of [`Key`]. Again, instances of this
+/// A validated optional [`KeyPrefix`] segment of [`Key`]. Instances of this
 /// struct are always valid. [`KeyPrefix`] implements [`Deref`], which enables
 /// read-only access to the inner value (a [`String`]). It, however, does not
 /// implement [`DerefMut`](std::ops::DerefMut) which would enable unvalidated
@@ -224,6 +224,11 @@ pub enum KeyNameError {
     NameInvalid,
 }
 
+/// A validated [`KeyName`] segment of [`Key`]. This part of the key is
+/// required. Instances of this struct are always valid. It also implements
+/// [`Deref`], which enables read-only access to the inner value (a [`String`]).
+/// It, however, does not implement [`DerefMut`](std::ops::DerefMut) which would
+/// enable unvalidated mutable access to inner values.
 #[derive(Debug, PartialEq)]
 pub struct KeyName(String);
 
