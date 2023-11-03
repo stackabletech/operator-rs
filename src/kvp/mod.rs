@@ -120,9 +120,9 @@ impl TryFrom<BTreeMap<String, String>> for KeyValuePairs {
     }
 }
 
-impl From<Vec<KeyValuePair>> for KeyValuePairs {
-    fn from(value: Vec<KeyValuePair>) -> Self {
-        Self(value)
+impl FromIterator<KeyValuePair> for KeyValuePairs {
+    fn from_iter<T: IntoIterator<Item = KeyValuePair>>(iter: T) -> Self {
+        Self(iter.into_iter().collect())
     }
 }
 
@@ -163,6 +163,16 @@ impl KeyValuePairs {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn from_iter() {
+        let kvps = KeyValuePairs::from_iter([
+            KeyValuePair::from_str("stackable.tech/managed-by=stackablectl").unwrap(),
+            KeyValuePair::from_str("stackable.tech/vendor=Stackable").unwrap(),
+        ]);
+
+        assert_eq!(kvps.len(), 2);
+    }
 
     #[test]
     fn try_from_tuple() {
