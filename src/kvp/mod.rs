@@ -163,6 +163,26 @@ impl KeyValuePairs {
 #[cfg(test)]
 mod test {
     use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case(
+        "stackable.tech/managed-by=stackablectl",
+        "stackable.tech/managed-by",
+        "stackablectl"
+    )]
+    #[case(
+        "stackable.tech/vendor=Stackable",
+        "stackable.tech/vendor",
+        "Stackable"
+    )]
+    #[case("foo=bar", "foo", "bar")]
+    fn from_str_valid(#[case] input: &str, #[case] key: &str, #[case] value: &str) {
+        let kvp = KeyValuePair::from_str(input).unwrap();
+
+        assert_eq!(kvp.key(), &Key::from_str(key).unwrap());
+        assert_eq!(kvp.value(), &Value::from_str(value).unwrap());
+    }
 
     #[test]
     fn from_iter() {
