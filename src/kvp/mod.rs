@@ -29,8 +29,9 @@ pub enum KeyValuePairError {
 ///
 /// ### Links
 ///
-/// - https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-/// - https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+/// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>
+/// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
+#[derive(Debug)]
 pub struct KeyValuePair {
     key: Key,
     value: Value,
@@ -100,6 +101,10 @@ impl KeyValuePair {
     }
 }
 
+/// [`KeyValuePairs`] is a list of [`KeyValuePair`]s. It provides different helper
+/// functions to convert from and to [`BTreeMap<String, String>`] and
+/// [`Vec<KeyValuePair>`].
+#[derive(Debug, Default)]
 struct KeyValuePairs(Vec<KeyValuePair>);
 
 impl TryFrom<BTreeMap<String, String>> for KeyValuePairs {
@@ -115,6 +120,21 @@ impl TryFrom<BTreeMap<String, String>> for KeyValuePairs {
     }
 }
 
+impl From<Vec<KeyValuePair>> for KeyValuePairs {
+    fn from(value: Vec<KeyValuePair>) -> Self {
+        Self(value)
+    }
+}
+
+impl From<KeyValuePairs> for BTreeMap<String, String> {
+    fn from(value: KeyValuePairs) -> Self {
+        value
+            .iter()
+            .map(|pair| (pair.key().to_string(), pair.value().to_string()))
+            .collect()
+    }
+}
+
 impl Deref for KeyValuePairs {
     type Target = Vec<KeyValuePair>;
 
@@ -123,12 +143,29 @@ impl Deref for KeyValuePairs {
     }
 }
 
+impl KeyValuePairs {
+    /// Creates a new empty list of [`KeyValuePair`]s.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Creates a new list of [`KeyValuePair`]s from `pairs`.
+    pub fn new_with(pairs: Vec<KeyValuePair>) -> Self {
+        Self(pairs)
+    }
+
+    /// Extends `self` with `other`.
+    pub fn extend(&mut self, other: Self) {
+        self.0.extend(other.0);
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
-    fn try_from() {
+    fn try_from_tuple() {
         let kvp = KeyValuePair::try_from(("stackable.tech/vendor", "Stackable")).unwrap();
 
         assert_eq!(kvp.key(), &Key::from_str("stackable.tech/vendor").unwrap());
@@ -149,5 +186,18 @@ mod test {
 
         let kvps = KeyValuePairs::try_from(map).unwrap();
         assert_eq!(kvps.len(), 2);
+    }
+
+    #[test]
+    fn into_map() {
+        let pairs = vec![
+            KeyValuePair::from_str("stackable.tech/vendor=Stackable").unwrap(),
+            KeyValuePair::from_str("stackable.tech/managed-by=stackablectl").unwrap(),
+        ];
+
+        let kvps = KeyValuePairs::new_with(pairs);
+        let map: BTreeMap<String, String> = kvps.into();
+
+        assert_eq!(map.len(), 2);
     }
 }
