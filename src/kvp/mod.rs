@@ -8,7 +8,7 @@ mod value;
 pub use key::*;
 pub use value::*;
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum KeyValuePairError {
     #[snafu(display("label input cannot be empty"))]
     EmptyInput,
@@ -53,7 +53,9 @@ impl FromStr for KeyValuePair {
         // Ensure there are only two parts
         ensure!(
             parts.len() == 2,
-            InvalidEqualSignCountSnafu { signs: parts.len() }
+            InvalidEqualSignCountSnafu {
+                signs: parts.len() - 1
+            }
         );
 
         // Parse key and value parts
@@ -182,6 +184,14 @@ mod test {
 
         assert_eq!(kvp.key(), &Key::from_str(key).unwrap());
         assert_eq!(kvp.value(), &Value::from_str(value).unwrap());
+    }
+
+    #[rstest]
+    #[case("foo=bar=baz", KeyValuePairError::InvalidEqualSignCount { signs: 2 })]
+    #[case("", KeyValuePairError::EmptyInput)]
+    fn from_str_invalid(#[case] input: &str, #[case] error: KeyValuePairError) {
+        let err = KeyValuePair::from_str(input).unwrap_err();
+        assert_eq!(err, error)
     }
 
     #[test]

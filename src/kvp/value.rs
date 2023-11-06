@@ -11,7 +11,7 @@ lazy_static! {
         Regex::new(r"^[a-z0-9A-Z]([a-z0-9A-Z-_.]*[a-z0-9A-Z]+)?$").unwrap();
 }
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum ValueError {
     #[snafu(display(
         "value exceeds the maximum length - expected 63 characters or less, got {length}"
