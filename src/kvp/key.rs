@@ -4,8 +4,8 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use snafu::{ensure, ResultExt, Snafu};
 
-const LABEL_KEY_PREFIX_MAX_LEN: usize = 253;
-const LABEL_KEY_NAME_MAX_LEN: usize = 63;
+const KEY_PREFIX_MAX_LEN: usize = 253;
+const KEY_NAME_MAX_LEN: usize = 63;
 
 lazy_static! {
     static ref KEY_PREFIX_REGEX: Regex =
@@ -179,7 +179,7 @@ impl FromStr for KeyPrefix {
 
         // The length of the prefix cannot exceed 253 characters
         ensure!(
-            input.len() <= LABEL_KEY_PREFIX_MAX_LEN,
+            input.len() <= KEY_PREFIX_MAX_LEN,
             PrefixTooLongSnafu {
                 length: input.len()
             }
@@ -241,7 +241,7 @@ impl FromStr for KeyName {
 
         // The length of the name cannot exceed 63 characters
         ensure!(
-            input.len() <= LABEL_KEY_NAME_MAX_LEN,
+            input.len() <= KEY_NAME_MAX_LEN,
             NameTooLongSnafu {
                 length: input.len()
             }

@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use snafu::{ensure, Snafu};
 
-const LABEL_VALUE_MAX_LEN: usize = 63;
+const VALUE_MAX_LEN: usize = 63;
 
 lazy_static! {
     static ref VALUE_REGEX: Regex =
@@ -43,7 +43,7 @@ impl FromStr for Value {
         // The length of the value cannot exceed 63 characters, but can be
         // empty
         ensure!(
-            input.len() <= LABEL_VALUE_MAX_LEN,
+            input.len() <= VALUE_MAX_LEN,
             ValueTooLongSnafu {
                 length: input.len()
             }
