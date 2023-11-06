@@ -274,6 +274,7 @@ impl Display for KeyName {
 #[cfg(test)]
 mod test {
     use super::*;
+    use rstest::rstest;
 
     #[test]
     fn key_with_prefix() {
@@ -293,16 +294,31 @@ mod test {
         assert_eq!(key.to_string(), "vendor");
     }
 
-    #[test]
-    fn invalid_key_prefix() {
-        // TODO (Techassi): Add more invalid test cases
-        let err = Key::from_str("stackable/vendor").unwrap_err();
+    #[rstest]
+    #[case("foo/bar/baz", KeyError::InvalidSlashCharCount { count: 2 })]
+    #[case("", KeyError::EmptyInput)]
+    fn invalid_key(#[case] input: &str, #[case] error: KeyError) {
+        let err = Key::from_str(input).unwrap_err();
+        assert_eq!(err, error)
+    }
 
-        assert_eq!(
-            err,
-            KeyError::KeyPrefixError {
-                source: KeyPrefixError::PrefixInvalid
-            }
-        )
+    #[rstest]
+    #[case("a".repeat(254), KeyPrefixError::PrefixTooLong { length: 254 })]
+    #[case("foo.", KeyPrefixError::PrefixInvalid)]
+    #[case("ä", KeyPrefixError::PrefixNotAscii)]
+    #[case("", KeyPrefixError::PrefixEmpty)]
+    fn invalid_key_prefix(#[case] input: String, #[case] error: KeyPrefixError) {
+        let err = KeyPrefix::from_str(&input).unwrap_err();
+        assert_eq!(err, error)
+    }
+
+    #[rstest]
+    #[case("a".repeat(64), KeyNameError::NameTooLong { length: 64 })]
+    #[case("foo-", KeyNameError::NameInvalid)]
+    #[case("ä", KeyNameError::NameNotAscii)]
+    #[case("", KeyNameError::NameEmpty)]
+    fn invalid_key_name(#[case] input: String, #[case] error: KeyNameError) {
+        let err = KeyName::from_str(&input).unwrap_err();
+        assert_eq!(err, error)
     }
 }
