@@ -7,7 +7,7 @@ use snafu::{ensure, Snafu};
 const LABEL_VALUE_MAX_LEN: usize = 63;
 
 lazy_static! {
-    static ref LABEL_VALUE_REGEX: Regex =
+    static ref VALUE_REGEX: Regex =
         Regex::new(r"^[a-z0-9A-Z]([a-z0-9A-Z-_.]*[a-z0-9A-Z]+)?$").unwrap();
 }
 
@@ -53,7 +53,7 @@ impl FromStr for Value {
         ensure!(input.is_ascii(), ValueNotAsciiSnafu);
 
         // The value must use the format specified by Kubernetes
-        ensure!(LABEL_VALUE_REGEX.is_match(input), ValueInvalidSnafu);
+        ensure!(VALUE_REGEX.is_match(input), ValueInvalidSnafu);
 
         Ok(Self(input.to_string()))
     }
@@ -70,5 +70,20 @@ impl Deref for Value {
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case("a".repeat(64), ValueError::ValueTooLong { length: 64 })]
+    #[case("foo-", ValueError::ValueInvalid)]
+    #[case("ä", ValueError::ValueNotAscii)]
+    fn invalid_value(#[case] input: String, #[case] error: ValueError) {
+        let err = Value::from_str(&input).unwrap_err();
+        assert_eq!(err, error);
     }
 }

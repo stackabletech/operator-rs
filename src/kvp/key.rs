@@ -8,9 +8,9 @@ const LABEL_KEY_PREFIX_MAX_LEN: usize = 253;
 const LABEL_KEY_NAME_MAX_LEN: usize = 63;
 
 lazy_static! {
-    static ref LABEL_KEY_PREFIX_REGEX: Regex =
+    static ref KEY_PREFIX_REGEX: Regex =
         Regex::new(r"^[a-zA-Z](\.?[a-zA-Z0-9-])*\.[a-zA-Z]{2,}\.?$").unwrap();
-    static ref LABEL_KEY_NAME_REGEX: Regex =
+    static ref KEY_NAME_REGEX: Regex =
         Regex::new(r"^[a-z0-9A-Z]([a-z0-9A-Z-_.]*[a-z0-9A-Z]+)?$").unwrap();
 }
 
@@ -189,7 +189,7 @@ impl FromStr for KeyPrefix {
         ensure!(input.is_ascii(), PrefixNotAsciiSnafu);
 
         // The prefix must use the format specified by Kubernetes
-        ensure!(LABEL_KEY_PREFIX_REGEX.is_match(input), PrefixInvalidSnafu);
+        ensure!(KEY_PREFIX_REGEX.is_match(input), PrefixInvalidSnafu);
 
         Ok(Self(input.to_string()))
     }
@@ -251,7 +251,7 @@ impl FromStr for KeyName {
         ensure!(input.is_ascii(), NameNotAsciiSnafu);
 
         // The name must use the format specified by Kubernetes
-        ensure!(LABEL_KEY_NAME_REGEX.is_match(input), NameInvalidSnafu);
+        ensure!(KEY_NAME_REGEX.is_match(input), NameInvalidSnafu);
 
         Ok(Self(input.to_string()))
     }
@@ -299,7 +299,7 @@ mod test {
     #[case("", KeyError::EmptyInput)]
     fn invalid_key(#[case] input: &str, #[case] error: KeyError) {
         let err = Key::from_str(input).unwrap_err();
-        assert_eq!(err, error)
+        assert_eq!(err, error);
     }
 
     #[rstest]
@@ -309,7 +309,7 @@ mod test {
     #[case("", KeyPrefixError::PrefixEmpty)]
     fn invalid_key_prefix(#[case] input: String, #[case] error: KeyPrefixError) {
         let err = KeyPrefix::from_str(&input).unwrap_err();
-        assert_eq!(err, error)
+        assert_eq!(err, error);
     }
 
     #[rstest]
@@ -319,6 +319,6 @@ mod test {
     #[case("", KeyNameError::NameEmpty)]
     fn invalid_key_name(#[case] input: String, #[case] error: KeyNameError) {
         let err = KeyName::from_str(&input).unwrap_err();
-        assert_eq!(err, error)
+        assert_eq!(err, error);
     }
 }
