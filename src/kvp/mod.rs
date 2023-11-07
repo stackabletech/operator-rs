@@ -160,6 +160,15 @@ impl KeyValuePairs {
     pub fn extend(&mut self, other: Self) {
         self.0.extend(other.0);
     }
+
+    /// Adds a [`KeyValuePair`] to the end of the list of [`KeyValuePairs`].
+    pub fn push(&mut self, key: &str, value: &str) -> Result<&mut Self, KeyValuePairError> {
+        let key = Key::from_str(key).context(KeySnafu)?;
+        let value = Value::from_str(value).context(ValueSnafu)?;
+
+        self.0.push(KeyValuePair::new(key, value));
+        Ok(self)
+    }
 }
 
 #[cfg(test)]
