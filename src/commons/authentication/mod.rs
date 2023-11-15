@@ -8,20 +8,13 @@ use crate::{
     commons::secret_class::SecretClassVolume,
 };
 
-pub use crate::{
-    client::Client,
-    commons::authentication::{
-        ldap::LdapAuthenticationProvider, oidc::OidcAuthenticationProvider,
-        static_::StaticAuthenticationProvider, tls::TlsAuthenticationProvider,
-    },
-    error::Error,
-};
-
 use k8s_openapi::api::core::v1::{Volume, VolumeMount};
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum::Display;
+
+pub use crate::{client::Client, error::Error};
 
 const SECRET_BASE_PATH: &str = "/stackable/secrets";
 
@@ -47,10 +40,10 @@ pub struct AuthenticationClassSpec {
 #[serde(rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
 pub enum AuthenticationClassProvider {
-    Ldap(LdapAuthenticationProvider),
-    Tls(TlsAuthenticationProvider),
-    Static(StaticAuthenticationProvider),
-    Oidc(OidcAuthenticationProvider),
+    Static(static_::AuthenticationProvider),
+    Ldap(ldap::AuthenticationProvider),
+    Oidc(oidc::AuthenticationProvider),
+    Tls(tls::AuthenticationProvider),
 }
 
 impl AuthenticationClass {
@@ -83,6 +76,7 @@ pub struct Tls {
 pub enum TlsVerification {
     /// Use TLS but don't verify certificates
     None {},
+
     /// Use TLS and ca certificate to verify the server
     Server(TlsServerVerification),
 }
@@ -100,6 +94,7 @@ pub enum CaCert {
     /// Use TLS and the ca certificates trusted by the common web browsers to verify the server.
     /// This can be useful when you e.g. use public AWS S3 or other public available services.
     WebPki {},
+
     /// Name of the SecretClass which will provide the ca cert.
     /// Note that a SecretClass does not need to have a key but can also work with just a ca cert.
     /// So if you got provided with a ca cert but don't have access to the key you can still use this method.
@@ -187,15 +182,74 @@ impl TlsClientDetails {
     }
 }
 
+/// Common [`ClientAuthenticationDetails`] which is specified at the client/
+/// product cluster level. It provides a name (key) to resolve a particular
+/// [`AuthenticationClass`]. Additionally, it provides authentication provider
+/// specific configuration (OIDC and LDAP for example).
+///
+/// If the product needs additional (product specific) authentication options,
+/// it is recommended to wrap this struct and use `#[serde(flatten)]` on the
+/// field.
+///
+/// ### Example
+///
+/// ```
+/// # use schemars::JsonSchema;
+/// # use serde::{Deserialize, Serialize};
+/// use stackable_operator::commons::authentication::ClientAuthenticationDetails;
+///
+/// #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+/// #[serde(rename_all = "camelCase")]
+/// pub struct SupersetAuthenticationClass {
+///     pub user_registration_role: String,
+///     pub user_registration: bool,
+///
+///     #[serde(flatten)]
+///     pub common: ClientAuthenticationDetails,
+/// }
+/// ```
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientAuthenticationDetails {
+    /// A name/key which references an authentication class. To get the concrete
+    /// [`AuthenticationClass`], we must resolve it. This resolution can be
+    /// achieved by using [`ClientAuthenticationDetails::resolve_class`].
+    #[serde(rename = "authenticationClass")]
+    authentication_class_ref: String,
+
+    /// This field contains authentication provider specific configuration. It
+    /// is flattened into the final CRD.
+    #[serde(flatten)]
+    config: ClientAuthenticationConfig,
+}
+
+impl ClientAuthenticationDetails {
+    pub fn resolve_class(&self) -> Result<AuthenticationClass, Error> {
+        todo!()
+    }
+}
+
+/// An enum of supported authentication providers. Each variant contains
+/// provider specific options. The structure is based on disussions around the
+/// [OIDC ADR][oidc-adr].
+///
+/// [oidc-adr]: https://docs.stackable.tech/home/nightly/contributor/adr/adr032-oauth-oidc-support
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ClientAuthenticationConfig {
+    Oidc(oidc::ClientAuthenticationOptions),
+    Ldap(ldap::ClientAuthenticationOptions),
+}
+
 #[cfg(test)]
 mod test {
     use crate::commons::authentication::{
-        tls::TlsAuthenticationProvider, AuthenticationClassProvider,
+        tls::AuthenticationProvider, AuthenticationClassProvider,
     };
 
     #[test]
     fn test_authentication_class_provider_to_string() {
-        let tls_provider = AuthenticationClassProvider::Tls(TlsAuthenticationProvider {
+        let tls_provider = AuthenticationClassProvider::Tls(AuthenticationProvider {
             client_cert_secret_class: None,
         });
         assert_eq!("Tls", tls_provider.to_string())

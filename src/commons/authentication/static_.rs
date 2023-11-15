@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct StaticAuthenticationProvider {
+pub struct AuthenticationProvider {
     /// Secret providing the usernames and password.
     /// The secret must contain an entry for every user, with the key being the username and the value the password in plain text.
     /// It must be located in the same namespace as the product using it.

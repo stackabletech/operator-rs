@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LdapAuthenticationProvider {
+pub struct AuthenticationProvider {
     /// Hostname of the LDAP server
     pub hostname: String,
 
@@ -29,7 +29,7 @@ pub struct LdapAuthenticationProvider {
 
     /// The name of the LDAP object fields
     #[serde(default)]
-    pub ldap_field_names: LdapFieldNames,
+    pub ldap_field_names: FieldNames,
 
     /// In case you need a special account for searching the LDAP server you can specify it here
     bind_credentials: Option<SecretClassVolume>,
@@ -39,7 +39,7 @@ pub struct LdapAuthenticationProvider {
     pub tls: TlsClientDetails,
 }
 
-impl LdapAuthenticationProvider {
+impl AuthenticationProvider {
     /// Returns the port to be used, which is either user configured or defaulted based upon TLS usage
     pub fn port(&self) -> u16 {
         self.port
@@ -101,25 +101,25 @@ impl LdapAuthenticationProvider {
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LdapFieldNames {
+pub struct FieldNames {
     /// The name of the username field
-    #[serde(default = "LdapFieldNames::default_uid")]
+    #[serde(default = "FieldNames::default_uid")]
     pub uid: String,
     /// The name of the group field
-    #[serde(default = "LdapFieldNames::default_group")]
+    #[serde(default = "FieldNames::default_group")]
     pub group: String,
     /// The name of the firstname field
-    #[serde(default = "LdapFieldNames::default_given_name")]
+    #[serde(default = "FieldNames::default_given_name")]
     pub given_name: String,
     /// The name of the lastname field
-    #[serde(default = "LdapFieldNames::default_surname")]
+    #[serde(default = "FieldNames::default_surname")]
     pub surname: String,
     /// The name of the email field
-    #[serde(default = "LdapFieldNames::default_email")]
+    #[serde(default = "FieldNames::default_email")]
     pub email: String,
 }
 
-impl LdapFieldNames {
+impl FieldNames {
     fn default_uid() -> String {
         "uid".to_string()
     }
@@ -141,9 +141,9 @@ impl LdapFieldNames {
     }
 }
 
-impl Default for LdapFieldNames {
+impl Default for FieldNames {
     fn default() -> Self {
-        LdapFieldNames {
+        FieldNames {
             uid: Self::default_uid(),
             group: Self::default_group(),
             given_name: Self::default_given_name(),
@@ -153,13 +153,19 @@ impl Default for LdapFieldNames {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientAuthenticationOptions {
+    bind_credentials_secret_class: Option<String>,
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn test_ldap_minimal() {
-        let ldap = serde_yaml::from_str::<LdapAuthenticationProvider>(
+        let ldap = serde_yaml::from_str::<AuthenticationProvider>(
             "
             hostname: my.ldap.server
             ",
@@ -173,7 +179,7 @@ mod test {
 
     #[test]
     fn test_ldap_with_bind_credentials() {
-        let _ldap = serde_yaml::from_str::<LdapAuthenticationProvider>(
+        let _ldap = serde_yaml::from_str::<AuthenticationProvider>(
             "
             hostname: my.ldap.server
             port: 389
@@ -200,7 +206,7 @@ mod test {
                     secretClass: ldap-ca-cert
         "#;
         let deserializer = serde_yaml::Deserializer::from_str(input);
-        let ldap: LdapAuthenticationProvider =
+        let ldap: AuthenticationProvider =
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
         assert_eq!(ldap.port(), 42);
