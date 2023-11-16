@@ -72,6 +72,24 @@ fn default_root_path() -> String {
 }
 
 impl AuthenticationProvider {
+    pub fn new(
+        hostname: String,
+        port: Option<u16>,
+        root_path: String,
+        tls: TlsClientDetails,
+        scopes: Vec<String>,
+        provider_hint: Option<IdentityProviderHint>,
+    ) -> Self {
+        Self {
+            hostname,
+            port,
+            root_path,
+            tls,
+            scopes,
+            provider_hint,
+        }
+    }
+
     /// Returns the OIDC endpoint [`Url`]. To append the default OIDC well-known
     /// configuration path, use `url.join()`. This module provides the default
     /// path at [`DEFAULT_OIDC_WELLKNOWN_PATH`].
