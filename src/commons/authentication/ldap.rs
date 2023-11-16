@@ -43,7 +43,7 @@ impl AuthenticationProvider {
     /// Returns the port to be used, which is either user configured or defaulted based upon TLS usage
     pub fn port(&self) -> u16 {
         self.port
-            .unwrap_or(if self.tls.use_tls() { 636 } else { 389 })
+            .unwrap_or(if self.tls.uses_tls() { 636 } else { 389 })
     }
 
     /// This functions adds
@@ -173,7 +173,7 @@ mod test {
         .unwrap();
 
         assert_eq!(ldap.port(), 389);
-        assert!(!ldap.tls.use_tls());
+        assert!(!ldap.tls.uses_tls());
         assert_eq!(ldap.tls.tls_ca_cert_secret_class(), None);
     }
 
@@ -210,7 +210,7 @@ mod test {
             serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
 
         assert_eq!(ldap.port(), 42);
-        assert!(ldap.tls.use_tls());
+        assert!(ldap.tls.uses_tls());
         assert_eq!(
             ldap.tls.tls_ca_cert_secret_class(),
             Some("ldap-ca-cert".to_string())

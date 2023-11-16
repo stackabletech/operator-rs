@@ -70,12 +70,12 @@ impl TlsClientDetails {
     }
 
     /// Whether TLS is configured
-    pub const fn use_tls(&self) -> bool {
+    pub const fn uses_tls(&self) -> bool {
         self.tls.is_some()
     }
 
-    /// Whether TLS verification is configured. Returns false if TLS itself isn't configured
-    pub fn use_tls_verification(&self) -> bool {
+    /// Whether TLS verification is configured. Returns `false` if TLS itself isn't configured
+    pub fn uses_tls_verification(&self) -> bool {
         self.tls
             .as_ref()
             .map(|tls| tls.verification != TlsVerification::None {})
