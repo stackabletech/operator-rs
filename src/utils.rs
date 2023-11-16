@@ -106,6 +106,17 @@ pub trait UrlExt: Sized {
     /// will **allocate** on the heap to append the missing trailing slash.
     /// See <https://docs.rs/url/latest/url/struct.Url.html#method.join> for
     /// more information about why the trailing slash is important.
+    ///
+    /// ### Example
+    ///
+    /// ```
+    /// use stackable_operator::utils::UrlExt;
+    ///
+    /// let url = url::Url::parse("http://example.com").unwrap();
+    /// let url = url.join_many(vec!["realms/", "master/", "myuser"]).unwrap();
+    ///
+    /// assert_eq!(url.as_str(), "http://example.com/realms/master/myuser");
+    /// ```
     fn join_many<'a>(
         self,
         inputs: impl IntoIterator<Item = &'a str>,
@@ -139,7 +150,7 @@ mod test {
     #[test]
     fn url_join_many() {
         let url = url::Url::parse("http://example.com").unwrap();
-        let url = url.join_many(vec!["realms", "master", "myuser"]).unwrap();
+        let url = url.join_many(vec!["realms/", "master/", "myuser"]).unwrap();
 
         assert_eq!(url.as_str(), "http://example.com/realms/master/myuser");
     }
