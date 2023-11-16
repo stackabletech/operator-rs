@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Change the naming of all authentication provider structs. It is now required to import them using the
   module. So imports change from `...::authentication::LdapAuthenticationProvider` to
   `...::authentication::ldap::AuthenticationProvider` for example ([#680]).
+- BREAKING: Move TLS related structs into the `tls` module. Imports need to be adjusted accordingly ([#680]).
 
 [#680]: https://github.com/stackabletech/operator-rs/pull/680
 

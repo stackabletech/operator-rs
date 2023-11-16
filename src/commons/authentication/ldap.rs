@@ -1,14 +1,14 @@
-use crate::{
-    builder::{ContainerBuilder, PodBuilder, VolumeMountBuilder},
-    commons::{
-        authentication::{TlsClientDetails, SECRET_BASE_PATH},
-        secret_class::SecretClassVolume,
-    },
-};
-
 use k8s_openapi::api::core::v1::{Volume, VolumeMount};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    builder::{ContainerBuilder, PodBuilder, VolumeMountBuilder},
+    commons::{
+        authentication::{tls::TlsClientDetails, SECRET_BASE_PATH},
+        secret_class::SecretClassVolume,
+    },
+};
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

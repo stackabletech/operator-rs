@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use url::{ParseError, Url};
 
-use crate::commons::authentication::{TlsClientDetails, SECRET_BASE_PATH};
+use crate::commons::authentication::{tls::TlsClientDetails, SECRET_BASE_PATH};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -36,27 +36,33 @@ pub enum Error {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticationProvider {
-    /// Hostname of the identity provider
+    /// Hostname of the identity provider, e.g. `my.keycloak.corp`.
     hostname: String,
 
-    /// Port of the identity provider. If TLS is used defaults to 443, otherwise to 80
+    // FIXME (Techassi): This should be based on the scheme. How do we pass in the scheme?
+    /// Port of the identity provider. If TLS is used defaults to `443`,
+    /// otherwise to `80`.
     port: Option<u16>,
 
     /// Root HTTP path of the identity provider. Defaults to `/`.
     #[serde(default = "default_root_path")]
     root_path: String,
 
-    /// Use a TLS connection. If not specified no TLS will be used
+    /// Use a TLS connection. If not specified no TLS will be used.
     #[serde(flatten)]
     pub tls: TlsClientDetails,
 
-    /// Scopes to request from your Identity Provider.
-    /// It is recommended to request the `openid`, `email`, and `profile` scopes.
+    /// Scopes to request from your identity provider. It is recommended to
+    /// request the `openid`, `email`, and `profile` scopes.
     pub scopes: Vec<String>,
 
-    /// This is a hint for the products on a best-effort base, most of the products will ignore this value.
-    /// E.g. Superset uses this to configure the correct claims to extract from the user-info endpoint
-    /// as well as a nice icon.
+    /// This is a hint about which identity provider is used by the
+    /// [`AuthenticationClass`][authclass]. Operators *can* opt to use this
+    /// value to enable known quirks around OIDC / OAuth authentication.
+    /// [`None`] means there is no hint and OIDC should be used as it is
+    /// intented to be used (via the `.well-known` discovery).
+    ///
+    /// [authclass]: crate::commons::authentication::AuthenticationClass
     #[serde(default)]
     pub provider_hint: Option<IdentityProviderHint>,
 }
