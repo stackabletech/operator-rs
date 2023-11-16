@@ -107,7 +107,8 @@ impl ClientAuthenticationDetails {
 #[serde(rename_all = "camelCase")]
 pub enum ClientAuthenticationConfig {
     Oidc(oidc::ClientAuthenticationOptions),
-    Ldap(ldap::ClientAuthenticationOptions),
+    // NOTE (Techassi): Commented out for now, as LDAP uses the old syntax
+    // Ldap(ldap::ClientAuthenticationOptions),
 }
 
 #[cfg(test)]
