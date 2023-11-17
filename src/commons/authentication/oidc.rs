@@ -201,14 +201,14 @@ pub enum IdentityProviderHint {
 pub struct ClientAuthenticationOptions {
     /// A reference to the OIDC client credentials secret. The secret contains
     /// the client id and secret.
-    client_credentials_secret_ref: String,
+    pub client_credentials_secret_ref: String,
 
     /// An optional list of extra scopes which get merged with the scopes
     /// defined in the [`AuthenticationClass`][authclass].
     ///
     /// [authclass]: crate::commons::authentication::AuthenticationClass
     #[serde(default)]
-    extra_scopes: Vec<String>,
+    pub extra_scopes: Vec<String>,
 }
 
 #[cfg(test)]
