@@ -89,7 +89,7 @@ pub struct ClientAuthenticationDetails {
     /// This field contains authentication provider specific configuration. It
     /// is flattened into the final CRD.
     #[serde(flatten)]
-    config: ClientAuthenticationConfig,
+    pub config: ClientAuthenticationConfig,
 }
 
 impl ClientAuthenticationDetails {
