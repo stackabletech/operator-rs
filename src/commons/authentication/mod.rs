@@ -79,6 +79,7 @@ impl AuthenticationClass {
 /// ```
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[schemars(description = "")]
 pub struct ClientAuthenticationDetails {
     /// A name/key which references an authentication class. To get the concrete
     /// [`AuthenticationClass`], we must resolve it. This resolution can be
