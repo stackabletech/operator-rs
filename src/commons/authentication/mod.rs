@@ -86,6 +86,11 @@ pub struct ClientAuthenticationDetails {
     #[serde(rename = "authenticationClass")]
     authentication_class_ref: String,
 
+    /// Please note that we sadly can not put [`AuthenticationClass`] in here
+    /// because of weird derive macro bugs.
+    #[serde(skip)]
+    authentication_class: Option<AuthenticationClassSpec>,
+
     /// This field contains authentication provider specific configuration. It
     /// is flattened into the final CRD.
     #[serde(flatten)]
@@ -93,19 +98,29 @@ pub struct ClientAuthenticationDetails {
 }
 
 impl ClientAuthenticationDetails {
-    /// Resolves this specific [`AuthenticationClass`]. Usually products support
-    /// a list of authentication classes, which indivually need to be resolved.
-    pub async fn resolve_class(&self, client: &Client) -> Result<AuthenticationClass, Error> {
-        AuthenticationClass::resolve(client, &self.authentication_class_ref).await
-    }
-
     pub fn authentication_class_name(&self) -> &String {
         &self.authentication_class_ref
+    }
+
+    pub async fn authentication_class(
+        &mut self,
+        client: &Client,
+    ) -> Result<AuthenticationClassSpec, Error> {
+        if let Some(authentication_class) = &self.authentication_class {
+            return Ok(authentication_class.clone());
+        }
+
+        let authentication_class =
+            AuthenticationClass::resolve(client, &self.authentication_class_ref)
+                .await?
+                .spec;
+        self.authentication_class = Some(authentication_class.clone());
+        Ok(authentication_class)
     }
 }
 
 /// An enum of supported authentication providers. Each variant contains
-/// provider specific options. The structure is based on disussions around the
+/// provider specific options. The structure is based on discussions around the
 /// [OIDC ADR][oidc-adr].
 ///
 /// [oidc-adr]: https://docs.stackable.tech/home/nightly/contributor/adr/adr032-oauth-oidc-support
