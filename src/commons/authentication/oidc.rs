@@ -201,6 +201,7 @@ pub enum IdentityProviderHint {
 pub struct ClientAuthenticationOptions {
     /// A reference to the OIDC client credentials secret. The secret contains
     /// the client id and secret.
+    #[serde(rename = "clientCredentialsSecret")]
     pub client_credentials_secret_ref: String,
 
     /// An optional list of extra scopes which get merged with the scopes
