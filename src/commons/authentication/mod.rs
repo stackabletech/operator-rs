@@ -98,6 +98,10 @@ impl ClientAuthenticationDetails {
     pub async fn resolve_class(&self, client: &Client) -> Result<AuthenticationClass, Error> {
         AuthenticationClass::resolve(client, &self.authentication_class_ref).await
     }
+
+    pub fn authentication_class_name(&self) -> &String {
+        &self.authentication_class_ref
+    }
 }
 
 /// An enum of supported authentication providers. Each variant contains
