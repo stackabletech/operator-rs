@@ -93,8 +93,10 @@ pub struct ClientAuthenticationDetails {
 }
 
 impl ClientAuthenticationDetails {
-    pub fn resolve_class(&self) -> Result<AuthenticationClass, Error> {
-        todo!()
+    /// Resolves this specific [`AuthenticationClass`]. Usually products support
+    /// a list of authentication classes, which indivually need to be resolved.
+    pub async fn resolve_class(&self, client: &Client) -> Result<AuthenticationClass, Error> {
+        AuthenticationClass::resolve(client, &self.authentication_class_ref).await
     }
 }
 
