@@ -112,6 +112,7 @@ impl ClientAuthenticationDetails {
 /// [oidc-adr]: https://docs.stackable.tech/home/nightly/contributor/adr/adr032-oauth-oidc-support
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[schemars(description = "")]
 pub enum ClientAuthenticationConfig {
     Oidc(oidc::ClientAuthenticationOptions),
     // NOTE (Techassi): Commented out for now, as LDAP uses the old syntax
