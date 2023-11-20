@@ -89,8 +89,7 @@ pub struct ClientAuthenticationDetails {
 
     /// This field contains authentication provider specific configuration. It
     /// is flattened into the final CRD.
-    #[serde(flatten)]
-    pub config: ClientAuthenticationConfig,
+    pub oidc: Option<oidc::ClientAuthenticationOptions>,
 }
 
 impl ClientAuthenticationDetails {
@@ -103,20 +102,6 @@ impl ClientAuthenticationDetails {
     pub fn authentication_class_name(&self) -> &String {
         &self.authentication_class_ref
     }
-}
-
-/// An enum of supported authentication providers. Each variant contains
-/// provider specific options. The structure is based on disussions around the
-/// [OIDC ADR][oidc-adr].
-///
-/// [oidc-adr]: https://docs.stackable.tech/home/nightly/contributor/adr/adr032-oauth-oidc-support
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[schemars(description = "")]
-pub enum ClientAuthenticationConfig {
-    Oidc(oidc::ClientAuthenticationOptions),
-    // NOTE (Techassi): Commented out for now, as LDAP uses the old syntax
-    // Ldap(ldap::ClientAuthenticationOptions),
 }
 
 #[cfg(test)]
