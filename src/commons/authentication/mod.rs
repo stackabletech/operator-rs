@@ -3,7 +3,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
-pub use crate::{client::Client, error::Error};
+use crate::{
+    client::Client,
+    error::{Error, OperatorResult},
+};
 
 pub mod ldap;
 pub mod oidc;
@@ -44,7 +47,7 @@ impl AuthenticationClass {
     pub async fn resolve(
         client: &Client,
         authentication_class_name: &str,
-    ) -> Result<AuthenticationClass, Error> {
+    ) -> OperatorResult<AuthenticationClass> {
         client
             .get::<AuthenticationClass>(authentication_class_name, &()) // AuthenticationClass has ClusterScope
             .await
@@ -89,18 +92,31 @@ pub struct ClientAuthenticationDetails {
 
     /// This field contains authentication provider specific configuration. It
     /// is flattened into the final CRD.
-    pub oidc: Option<oidc::ClientAuthenticationOptions>,
+    ///
+    /// Use [`oidc_or_error`] to get the value or report an error to the user.
+    oidc: Option<oidc::ClientAuthenticationOptions>,
 }
 
 impl ClientAuthenticationDetails {
     /// Resolves this specific [`AuthenticationClass`]. Usually products support
     /// a list of authentication classes, which indivually need to be resolved.
-    pub async fn resolve_class(&self, client: &Client) -> Result<AuthenticationClass, Error> {
+    pub async fn resolve_class(&self, client: &Client) -> OperatorResult<AuthenticationClass> {
         AuthenticationClass::resolve(client, &self.authentication_class_ref).await
     }
 
     pub fn authentication_class_name(&self) -> &String {
         &self.authentication_class_ref
+    }
+
+    pub fn oidc_or_error(
+        &self,
+        auth_class_name: &str,
+    ) -> OperatorResult<&oidc::ClientAuthenticationOptions> {
+        self.oidc
+            .as_ref()
+            .ok_or(Error::OidcAuthenticationDetailsNotSpecified {
+                auth_class_name: auth_class_name.to_string(),
+            })
     }
 }
 
