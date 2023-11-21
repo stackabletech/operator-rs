@@ -204,16 +204,6 @@ mod test {
     }
 
     #[test]
-    fn from_iter() {
-        let kvps = KeyValuePairs::from_iter([
-            KeyValuePair::from_str("stackable.tech/managed-by=stackablectl").unwrap(),
-            KeyValuePair::from_str("stackable.tech/vendor=Stackable").unwrap(),
-        ]);
-
-        assert_eq!(kvps.len(), 2);
-    }
-
-    #[test]
     fn try_from_tuple() {
         let kvp = KeyValuePair::try_from(("stackable.tech/vendor", "Stackable")).unwrap();
 
@@ -224,7 +214,17 @@ mod test {
     }
 
     #[test]
-    fn try_from_map() {
+    fn pairs_from_iter() {
+        let kvps = KeyValuePairs::from_iter([
+            KeyValuePair::from_str("stackable.tech/managed-by=stackablectl").unwrap(),
+            KeyValuePair::from_str("stackable.tech/vendor=Stackable").unwrap(),
+        ]);
+
+        assert_eq!(kvps.len(), 2);
+    }
+
+    #[test]
+    fn pairs_try_from_map() {
         let map = BTreeMap::from([
             ("stackable.tech/vendor".to_string(), "Stackable".to_string()),
             (
@@ -238,7 +238,7 @@ mod test {
     }
 
     #[test]
-    fn into_map() {
+    fn pairs_into_map() {
         let pairs = vec![
             KeyValuePair::from_str("stackable.tech/vendor=Stackable").unwrap(),
             KeyValuePair::from_str("stackable.tech/managed-by=stackablectl").unwrap(),
