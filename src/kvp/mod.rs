@@ -9,9 +9,9 @@ pub use key::*;
 pub use value::*;
 
 #[derive(Debug, PartialEq, Snafu)]
-pub enum KeyValuePairError<V>
+pub enum KeyValuePairError<E>
 where
-    V: std::error::Error + 'static,
+    E: std::error::Error + 'static,
 {
     #[snafu(display("label input cannot be empty"))]
     EmptyInput,
@@ -23,7 +23,7 @@ where
     InvalidKey { source: KeyError },
 
     #[snafu(display("failed to parse label value"))]
-    InvalidValue { source: V },
+    InvalidValue { source: E },
 }
 
 pub type Annotations = KeyValuePairs<AnnotationValue>;
@@ -32,7 +32,7 @@ pub type Annotation = KeyValuePair<AnnotationValue>;
 pub type Labels = KeyValuePairs<LabelValue>;
 pub type Label = KeyValuePair<LabelValue>;
 
-/// A [`KeyValuePair`] is a pair values which consist of a [`Key`] and [`Value`].
+/// A [`KeyValuePair`] is a pair values which consist of a [`Key`] and value.
 /// These pairs can be used as Kubernetes labels or annotations. A pair can be
 /// parsed from a string with the following format: `(<PREFIX>/)<NAME>=<VALUE>`.
 ///
