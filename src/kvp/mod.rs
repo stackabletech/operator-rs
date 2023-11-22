@@ -9,7 +9,10 @@ pub use key::*;
 pub use value::*;
 
 #[derive(Debug, PartialEq, Snafu)]
-pub enum KeyValuePairError {
+pub enum KeyValuePairError<V>
+where
+    V: std::error::Error + 'static,
+{
     #[snafu(display("label input cannot be empty"))]
     EmptyInput,
 
@@ -17,11 +20,17 @@ pub enum KeyValuePairError {
     InvalidEqualSignCount { signs: usize },
 
     #[snafu(display("failed to parse label key"))]
-    KeyError { source: KeyError },
+    InvalidKey { source: KeyError },
 
     #[snafu(display("failed to parse label value"))]
-    ValueError { source: ValueError },
+    InvalidValue { source: V },
 }
+
+pub type Annotations = KeyValuePairs<AnnotationValue>;
+pub type Annotation = KeyValuePair<AnnotationValue>;
+
+pub type Labels = KeyValuePairs<LabelValue>;
+pub type Label = KeyValuePair<LabelValue>;
 
 /// A [`KeyValuePair`] is a pair values which consist of a [`Key`] and [`Value`].
 /// These pairs can be used as Kubernetes labels or annotations. A pair can be
@@ -32,13 +41,19 @@ pub enum KeyValuePairError {
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
 #[derive(Debug)]
-pub struct KeyValuePair {
+pub struct KeyValuePair<V>
+where
+    V: ValueExt,
+{
     key: Key,
-    value: Value,
+    value: V,
 }
 
-impl FromStr for KeyValuePair {
-    type Err = KeyValuePairError;
+impl<V> FromStr for KeyValuePair<V>
+where
+    V: ValueExt,
+{
+    type Err = KeyValuePairError<V::Error>;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let input = input.trim();
@@ -59,36 +74,43 @@ impl FromStr for KeyValuePair {
         );
 
         // Parse key and value parts
-        let key = Key::from_str(parts[0]).context(KeySnafu)?;
-        let value = Value::from_str(parts[1]).context(ValueSnafu)?;
+        let key = Key::from_str(parts[0]).context(InvalidKeySnafu)?;
+        let value = V::from_str(parts[1]).context(InvalidValueSnafu)?;
 
         Ok(Self { key, value })
     }
 }
 
-impl<T> TryFrom<(T, T)> for KeyValuePair
+impl<T, V> TryFrom<(T, T)> for KeyValuePair<V>
 where
     T: AsRef<str>,
+    V: ValueExt,
 {
-    type Error = KeyValuePairError;
+    type Error = KeyValuePairError<V::Error>;
 
     fn try_from(value: (T, T)) -> Result<Self, Self::Error> {
-        let key = Key::from_str(value.0.as_ref()).context(KeySnafu)?;
-        let value = Value::from_str(value.1.as_ref()).context(ValueSnafu)?;
+        let key = Key::from_str(value.0.as_ref()).context(InvalidKeySnafu)?;
+        let value = V::from_str(value.1.as_ref()).context(InvalidValueSnafu)?;
 
         Ok(Self { key, value })
     }
 }
 
-impl Display for KeyValuePair {
+impl<V> Display for KeyValuePair<V>
+where
+    V: ValueExt,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}={}", self.key, self.value)
     }
 }
 
-impl KeyValuePair {
-    /// Creates a new [`KeyValuePair`] from a validated [`Key`] and [`Value`].
-    pub fn new(key: Key, value: Value) -> Self {
+impl<V> KeyValuePair<V>
+where
+    V: ValueExt,
+{
+    /// Creates a new [`KeyValuePair`] from a validated [`Key`] and value.
+    pub fn new(key: Key, value: V) -> Self {
         Self { key, value }
     }
 
@@ -97,39 +119,48 @@ impl KeyValuePair {
         &self.key
     }
 
-    /// Returns an immutable reference to the pair's [`Value`].
-    pub fn value(&self) -> &Value {
+    /// Returns an immutable reference to the pair's value.
+    pub fn value(&self) -> &V {
         &self.value
     }
 }
 
-/// [`KeyValuePairs`] is a list of [`KeyValuePair`]s. It provides different helper
+/// [`KeyValuePairs`] is a list of [`KeyValuePair`]. It provides different helper
 /// functions to convert from and to [`BTreeMap<String, String>`] and
 /// [`Vec<KeyValuePair>`].
 #[derive(Debug, Default)]
-struct KeyValuePairs(Vec<KeyValuePair>);
+pub struct KeyValuePairs<V: ValueExt>(Vec<KeyValuePair<V>>);
 
-impl TryFrom<BTreeMap<String, String>> for KeyValuePairs {
-    type Error = KeyValuePairError;
+impl<V> TryFrom<BTreeMap<String, String>> for KeyValuePairs<V>
+where
+    V: ValueExt,
+{
+    type Error = KeyValuePairError<V::Error>;
 
     fn try_from(map: BTreeMap<String, String>) -> Result<Self, Self::Error> {
         let pairs = map
             .into_iter()
             .map(KeyValuePair::try_from)
-            .collect::<Result<Vec<_>, KeyValuePairError>>()?;
+            .collect::<Result<Vec<_>, KeyValuePairError<V::Error>>>()?;
 
         Ok(Self(pairs))
     }
 }
 
-impl FromIterator<KeyValuePair> for KeyValuePairs {
-    fn from_iter<T: IntoIterator<Item = KeyValuePair>>(iter: T) -> Self {
+impl<V> FromIterator<KeyValuePair<V>> for KeyValuePairs<V>
+where
+    V: ValueExt,
+{
+    fn from_iter<T: IntoIterator<Item = KeyValuePair<V>>>(iter: T) -> Self {
         Self(iter.into_iter().collect())
     }
 }
 
-impl From<KeyValuePairs> for BTreeMap<String, String> {
-    fn from(value: KeyValuePairs) -> Self {
+impl<V> From<KeyValuePairs<V>> for BTreeMap<String, String>
+where
+    V: ValueExt,
+{
+    fn from(value: KeyValuePairs<V>) -> Self {
         value
             .iter()
             .map(|pair| (pair.key().to_string(), pair.value().to_string()))
@@ -137,22 +168,28 @@ impl From<KeyValuePairs> for BTreeMap<String, String> {
     }
 }
 
-impl Deref for KeyValuePairs {
-    type Target = Vec<KeyValuePair>;
+impl<V> Deref for KeyValuePairs<V>
+where
+    V: ValueExt,
+{
+    type Target = Vec<KeyValuePair<V>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl KeyValuePairs {
+impl<V> KeyValuePairs<V>
+where
+    V: ValueExt + std::default::Default,
+{
     /// Creates a new empty list of [`KeyValuePair`]s.
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Creates a new list of [`KeyValuePair`]s from `pairs`.
-    pub fn new_with(pairs: Vec<KeyValuePair>) -> Self {
+    pub fn new_with(pairs: Vec<KeyValuePair<V>>) -> Self {
         Self(pairs)
     }
 
@@ -162,9 +199,13 @@ impl KeyValuePairs {
     }
 
     /// Adds a [`KeyValuePair`] to the end of the list of [`KeyValuePairs`].
-    pub fn push(&mut self, key: &str, value: &str) -> Result<&mut Self, KeyValuePairError> {
-        let key = Key::from_str(key).context(KeySnafu)?;
-        let value = Value::from_str(value).context(ValueSnafu)?;
+    pub fn push(
+        &mut self,
+        key: &str,
+        value: &str,
+    ) -> Result<&mut Self, KeyValuePairError<V::Error>> {
+        let key = Key::from_str(key).context(InvalidKeySnafu)?;
+        let value = V::from_str(value).context(InvalidValueSnafu)?;
 
         self.0.push(KeyValuePair::new(key, value));
         Ok(self)
@@ -189,38 +230,41 @@ mod test {
     )]
     #[case("foo=bar", "foo", "bar")]
     fn from_str_valid(#[case] input: &str, #[case] key: &str, #[case] value: &str) {
-        let kvp = KeyValuePair::from_str(input).unwrap();
+        let label = Label::from_str(input).unwrap();
 
-        assert_eq!(kvp.key(), &Key::from_str(key).unwrap());
-        assert_eq!(kvp.value(), &Value::from_str(value).unwrap());
+        assert_eq!(label.key(), &Key::from_str(key).unwrap());
+        assert_eq!(label.value(), &LabelValue::from_str(value).unwrap());
     }
 
     #[rstest]
     #[case("foo=bar=baz", KeyValuePairError::InvalidEqualSignCount { signs: 2 })]
     #[case("", KeyValuePairError::EmptyInput)]
-    fn from_str_invalid(#[case] input: &str, #[case] error: KeyValuePairError) {
-        let err = KeyValuePair::from_str(input).unwrap_err();
+    fn from_str_invalid(#[case] input: &str, #[case] error: KeyValuePairError<LabelValueError>) {
+        let err = Label::from_str(input).unwrap_err();
         assert_eq!(err, error)
     }
 
     #[test]
     fn try_from_tuple() {
-        let kvp = KeyValuePair::try_from(("stackable.tech/vendor", "Stackable")).unwrap();
+        let label = Label::try_from(("stackable.tech/vendor", "Stackable")).unwrap();
 
-        assert_eq!(kvp.key(), &Key::from_str("stackable.tech/vendor").unwrap());
-        assert_eq!(kvp.value(), &Value::from_str("Stackable").unwrap());
+        assert_eq!(
+            label.key(),
+            &Key::from_str("stackable.tech/vendor").unwrap()
+        );
+        assert_eq!(label.value(), &LabelValue::from_str("Stackable").unwrap());
 
-        assert_eq!(kvp.to_string(), "stackable.tech/vendor=Stackable");
+        assert_eq!(label.to_string(), "stackable.tech/vendor=Stackable");
     }
 
     #[test]
     fn pairs_from_iter() {
-        let kvps = KeyValuePairs::from_iter([
+        let labels = Labels::from_iter([
             KeyValuePair::from_str("stackable.tech/managed-by=stackablectl").unwrap(),
             KeyValuePair::from_str("stackable.tech/vendor=Stackable").unwrap(),
         ]);
 
-        assert_eq!(kvps.len(), 2);
+        assert_eq!(labels.len(), 2);
     }
 
     #[test]
@@ -233,8 +277,8 @@ mod test {
             ),
         ]);
 
-        let kvps = KeyValuePairs::try_from(map).unwrap();
-        assert_eq!(kvps.len(), 2);
+        let labels = Labels::try_from(map).unwrap();
+        assert_eq!(labels.len(), 2);
     }
 
     #[test]
@@ -244,8 +288,8 @@ mod test {
             KeyValuePair::from_str("stackable.tech/managed-by=stackablectl").unwrap(),
         ];
 
-        let kvps = KeyValuePairs::new_with(pairs);
-        let map: BTreeMap<String, String> = kvps.into();
+        let labels = Labels::new_with(pairs);
+        let map: BTreeMap<String, String> = labels.into();
 
         assert_eq!(map.len(), 2);
     }
