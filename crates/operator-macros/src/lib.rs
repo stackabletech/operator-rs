@@ -1,3 +1,12 @@
+/// Creates a label from the provided string literal. Kubernetes labels
+/// can contain any valid ASCII data. It additionally must follow Kubernetes
+/// specific rules documented [here][k8s-labels].
+///
+/// [k8s-labels]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+///
+/// ```
+/// let label = label!("stackable.tech/vendor=Stackable");
+/// ```
 #[macro_export]
 macro_rules! label {
     ($Input:literal) => {{
@@ -6,6 +15,12 @@ macro_rules! label {
     }};
 }
 
+/// Creates an annotation from the provided string literal. Kubernetes
+/// annotations can contain any valid UTF-8 data.
+///
+/// ```
+/// let annotation = annotation!("stackable.tech/vendor=Hello Wörld!");
+/// ```
 #[macro_export]
 macro_rules! annotation {
     ($Input:literal) => {{
