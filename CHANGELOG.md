@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 - Add `oidc::AuthenticationProvider`. This enables users to deploy a new `AuthenticationClass` for OIDC providers like
   Keycloak, Okta or Auth0 ([#680]).
 - Add a common `ClientAuthenticationDetails` struct, which provides common fields and functions to specify
-  authentication options on product cluster level. Addittionally, the PR also adds `ClientAuthenticationConfig`,
+  authentication options on product cluster level. Additionally, the PR also adds `ClientAuthenticationConfig`,
   `oidc::ClientAuthenticationOptions`, and `ldap::ClientAuthenticationOptions` ([#680]).
 
 ### Changed
