@@ -10,7 +10,7 @@ macro_rules! label {
 macro_rules! annotation {
     ($Input:literal) => {{
         use std::str::FromStr;
-        stackable_operator::kvp::KeyValuePair::from_str($Input)
+        stackable_operator::kvp::Annotation::from_str($Input)
     }};
 }
 
@@ -19,8 +19,14 @@ mod test {
     use super::*;
 
     #[test]
-    fn macros() {
-        let pair = label!("stackable.tech/vendor=Stackable").unwrap();
-        assert_eq!(pair.to_string(), "stackable.tech/vendor=Stackable");
+    fn label_macro() {
+        let label = label!("stackable.tech/vendor=Stackable").unwrap();
+        assert_eq!(label.to_string(), "stackable.tech/vendor=Stackable");
+    }
+
+    #[test]
+    fn annotation_macro() {
+        let annotation = annotation!("stackable.tech/vendor=Hello Wörld!").unwrap();
+        assert_eq!(annotation.to_string(), "stackable.tech/vendor=Hello Wörld!");
     }
 }
