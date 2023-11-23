@@ -52,6 +52,22 @@ pub struct AuthenticationProvider {
     #[serde(flatten)]
     pub tls: TlsClientDetails,
 
+    /// If a product extracts some sort of "effective user" that's is represented by a
+    /// string internally, this config determines with claim is used to extract that
+    /// string. It is desirable to use `sub` in here (or some other stable identifier),
+    /// but in many cases you might need to use `preferred_username` (e.g. in case of Keycloak)
+    /// or a different claim instead.
+    ///
+    /// Please note that some products hard-coded the claim in their implementation,
+    /// so some product operators might error out if the product hardcodes a different
+    /// claim than configured here.
+    ///
+    /// We don't provide any default value, as there is no correct way of doing it
+    /// that works in all setups. Most demos will probably use `preferred_username`,
+    /// although `sub` being more desirable, but technically impossible with the current
+    /// behavior of the products.
+    pub principal_claim: String,
+
     /// Scopes to request from your identity provider. It is recommended to
     /// request the `openid`, `email`, and `profile` scopes.
     pub scopes: Vec<String>,
@@ -77,6 +93,7 @@ impl AuthenticationProvider {
         port: Option<u16>,
         root_path: String,
         tls: TlsClientDetails,
+        principal_claim: String,
         scopes: Vec<String>,
         provider_hint: Option<IdentityProviderHint>,
     ) -> Self {
@@ -85,6 +102,7 @@ impl AuthenticationProvider {
             port,
             root_path,
             tls,
+            principal_claim,
             scopes,
             provider_hint,
         }
