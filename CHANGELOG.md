@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.56.1] - 2023-11-23
+
 ### Changed
 
 - Update `kube` to `0.87.1` as version `0.86.0` was yanked.
