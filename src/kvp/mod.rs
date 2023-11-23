@@ -1,4 +1,9 @@
-use std::{collections::BTreeMap, fmt::Display, ops::Deref, str::FromStr};
+use std::{
+    collections::{BTreeMap, HashSet},
+    fmt::Display,
+    ops::Deref,
+    str::FromStr,
+};
 
 use snafu::{ensure, ResultExt, Snafu};
 
@@ -40,7 +45,7 @@ pub type Label = KeyValuePair<LabelValue>;
 ///
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct KeyValuePair<V>
 where
     V: ValueExt,
@@ -125,11 +130,18 @@ where
     }
 }
 
-/// [`KeyValuePairs`] is a list of [`KeyValuePair`]. It provides different helper
-/// functions to convert from and to [`BTreeMap<String, String>`] and
-/// [`Vec<KeyValuePair>`].
+#[derive(Debug, Snafu)]
+pub enum KeyValuePairsError {
+    AlreadyPresent,
+}
+
+/// [`KeyValuePairs`] is a list of [`KeyValuePair`]. This collection **doesn't**
+/// provide any de-duplication mechanism, meaning multiple [`KeyValuePair`]s
+/// with the same content can be present at the same time. However, converting
+/// to a [`BTreeMap<String, String>`] removes any duplicate data. Order matters
+/// in this case: later labels overwrite previous onces.
 #[derive(Debug, Default)]
-pub struct KeyValuePairs<V: ValueExt>(Vec<KeyValuePair<V>>);
+pub struct KeyValuePairs<V: ValueExt>(HashSet<KeyValuePair<V>>);
 
 impl<V> TryFrom<BTreeMap<String, String>> for KeyValuePairs<V>
 where
@@ -141,7 +153,7 @@ where
         let pairs = map
             .into_iter()
             .map(KeyValuePair::try_from)
-            .collect::<Result<Vec<_>, KeyValuePairError<V::Error>>>()?;
+            .collect::<Result<HashSet<_>, KeyValuePairError<V::Error>>>()?;
 
         Ok(Self(pairs))
     }
@@ -172,7 +184,7 @@ impl<V> Deref for KeyValuePairs<V>
 where
     V: ValueExt,
 {
-    type Target = Vec<KeyValuePair<V>>;
+    type Target = HashSet<KeyValuePair<V>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -189,7 +201,7 @@ where
     }
 
     /// Creates a new list of [`KeyValuePair`]s from `pairs`.
-    pub fn new_with(pairs: Vec<KeyValuePair<V>>) -> Self {
+    pub fn new_with(pairs: HashSet<KeyValuePair<V>>) -> Self {
         Self(pairs)
     }
 
@@ -198,17 +210,16 @@ where
         self.0.extend(other.0);
     }
 
-    /// Adds a [`KeyValuePair`] to the end of the list of [`KeyValuePairs`].
-    pub fn push(
-        &mut self,
-        key: &str,
-        value: &str,
-    ) -> Result<&mut Self, KeyValuePairError<V::Error>> {
-        let key = Key::from_str(key).context(InvalidKeySnafu)?;
-        let value = V::from_str(value).context(InvalidValueSnafu)?;
+    pub fn try_insert(&mut self, kvp: KeyValuePair<V>) -> Result<&mut Self, KeyValuePairsError> {
+        ensure!(!self.contains(&kvp), AlreadyPresentSnafu);
 
-        self.0.push(KeyValuePair::new(key, value));
+        self.0.insert(kvp);
         Ok(self)
+    }
+
+    pub fn insert(&mut self, kvp: KeyValuePair<V>) -> &mut Self {
+        self.0.insert(kvp);
+        self
     }
 }
 
@@ -283,10 +294,10 @@ mod test {
 
     #[test]
     fn pairs_into_map() {
-        let pairs = vec![
+        let pairs = HashSet::from([
             KeyValuePair::from_str("stackable.tech/vendor=Stackable").unwrap(),
             KeyValuePair::from_str("stackable.tech/managed-by=stackablectl").unwrap(),
-        ];
+        ]);
 
         let labels = Labels::new_with(pairs);
         let map: BTreeMap<String, String> = labels.into();

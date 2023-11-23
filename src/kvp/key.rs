@@ -36,7 +36,7 @@ pub enum KeyError {
 /// unvalidated manipulation of the inner values.
 ///
 /// [k8s-labels]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Key {
     prefix: Option<KeyPrefix>,
     name: KeyName,
@@ -167,7 +167,7 @@ pub enum KeyPrefixError {
 /// read-only access to the inner value (a [`String`]). It, however, does not
 /// implement [`DerefMut`](std::ops::DerefMut) which would enable unvalidated
 /// mutable access to inner values.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct KeyPrefix(String);
 
 impl FromStr for KeyPrefix {
@@ -229,7 +229,7 @@ pub enum KeyNameError {
 /// [`Deref`], which enables read-only access to the inner value (a [`String`]).
 /// It, however, does not implement [`DerefMut`](std::ops::DerefMut) which would
 /// enable unvalidated mutable access to inner values.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct KeyName(String);
 
 impl FromStr for KeyName {
