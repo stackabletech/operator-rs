@@ -60,7 +60,7 @@ pub struct AuthenticationProvider {
     /// [`AuthenticationClass`][authclass]. Operators *can* opt to use this
     /// value to enable known quirks around OIDC / OAuth authentication.
     /// [`None`] means there is no hint and OIDC should be used as it is
-    /// intented to be used (via the `.well-known` discovery).
+    /// intended to be used (via the `.well-known` discovery).
     ///
     /// [authclass]: crate::commons::authentication::AuthenticationClass
     #[serde(default)]
@@ -198,7 +198,7 @@ pub enum IdentityProviderHint {
 /// OIDC specific config options. These are set on the product config level.
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ClientAuthenticationOptions {
+pub struct ClientAuthenticationOptions<T> {
     /// A reference to the OIDC client credentials secret. The secret contains
     /// the client id and secret.
     #[serde(rename = "clientCredentialsSecret")]
@@ -210,6 +210,9 @@ pub struct ClientAuthenticationOptions {
     /// [authclass]: crate::commons::authentication::AuthenticationClass
     #[serde(default)]
     pub extra_scopes: Vec<String>,
+
+    #[serde(flatten)]
+    pub extra_fields_for_product: T,
 }
 
 #[cfg(test)]

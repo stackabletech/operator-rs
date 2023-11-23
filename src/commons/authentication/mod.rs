@@ -63,6 +63,11 @@ impl AuthenticationClass {
 /// it is recommended to wrap this struct and use `#[serde(flatten)]` on the
 /// field.
 ///
+/// Additionally, it might be the case that special fields are needed in the
+/// contained structs, such as [`oidc::ClientAuthenticationOptions`]. To be able
+/// to add custom fields in that structs without serde(flattening) multiple structs,
+/// they are generic, so you can add additional attributes if needed.
+///
 /// ### Example
 ///
 /// ```
@@ -83,7 +88,7 @@ impl AuthenticationClass {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[schemars(description = "")]
-pub struct ClientAuthenticationDetails {
+pub struct ClientAuthenticationDetails<O = ()> {
     /// A name/key which references an authentication class. To get the concrete
     /// [`AuthenticationClass`], we must resolve it. This resolution can be
     /// achieved by using [`ClientAuthenticationDetails::resolve_class`].
@@ -94,10 +99,10 @@ pub struct ClientAuthenticationDetails {
     /// is flattened into the final CRD.
     ///
     /// Use [`oidc_or_error`] to get the value or report an error to the user.
-    oidc: Option<oidc::ClientAuthenticationOptions>,
+    oidc: Option<oidc::ClientAuthenticationOptions<O>>,
 }
 
-impl ClientAuthenticationDetails {
+impl<O> ClientAuthenticationDetails<O> {
     /// Resolves this specific [`AuthenticationClass`]. Usually products support
     /// a list of authentication classes, which indivually need to be resolved.
     pub async fn resolve_class(&self, client: &Client) -> OperatorResult<AuthenticationClass> {
@@ -111,7 +116,7 @@ impl ClientAuthenticationDetails {
     pub fn oidc_or_error(
         &self,
         auth_class_name: &str,
-    ) -> OperatorResult<&oidc::ClientAuthenticationOptions> {
+    ) -> OperatorResult<&oidc::ClientAuthenticationOptions<O>> {
         self.oidc
             .as_ref()
             .ok_or(Error::OidcAuthenticationDetailsNotSpecified {
