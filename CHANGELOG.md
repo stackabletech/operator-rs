@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `stackble_operator::kvp` module and types to allow validated construction of key/value pairs, like labels and
+  annotations. Most users want to use the exported type aliases `Label` and `Annotation`, or the macros at
+  `stackable_operator::macros::{label, annotation}` with the `macros` feature enabled ([#684]).
+
+[#684]: https://github.com/stackabletech/operator-rs/pull/684
+
 ## [0.56.0] - 2023-10-31 👻
 
 ### Added
