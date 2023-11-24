@@ -59,7 +59,7 @@ struct KeyValuePairVisitor<V> {
 
 impl<'de, V> Visitor<'de> for KeyValuePairVisitor<V>
 where
-    V: ValueExt,
+    V: Deserialize<'de> + ValueExt + Default,
 {
     type Value = KeyValuePair<V>;
 
@@ -67,23 +67,27 @@ where
         formatter.write_str("a valid key/value pair (label or annotation)")
     }
 
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
     where
-        E: serde::de::Error,
+        A: serde::de::MapAccess<'de>,
     {
-        KeyValuePair::from_str(v).map_err(serde::de::Error::custom)
+        if let Some((key, value)) = map.next_entry()? {
+            return Ok(KeyValuePair::new(key, value));
+        }
+
+        Err(serde::de::Error::custom("expected at least one map entry"))
     }
 }
 
 impl<'de, V> Deserialize<'de> for KeyValuePair<V>
 where
-    V: ValueExt,
+    V: Deserialize<'de> + ValueExt + Default,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(KeyValuePairVisitor {
+        deserializer.deserialize_map(KeyValuePairVisitor {
             marker: PhantomData,
         })
     }

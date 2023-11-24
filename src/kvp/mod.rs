@@ -38,6 +38,30 @@ pub type Annotation = KeyValuePair<AnnotationValue>;
 pub type Labels = KeyValuePairs<LabelValue>;
 pub type Label = KeyValuePair<LabelValue>;
 
+impl Labels {
+    /// Returns a common set of labels, which are required to identify resources
+    /// that belong to a certain owner object, for example a `ZookeeperCluster`.
+    /// The set contains these well-known labels:
+    ///
+    /// - `app.kubernetes.io/instance` and
+    /// - `app.kubernetes.io/name`
+    ///
+    /// This function returns a result, because the parameters `app_name` and
+    /// `app_instance` can contain invalid data or can exceed the maximum
+    /// allowed number of characters.
+    pub fn common(
+        app_name: &str,
+        app_instance: &str,
+    ) -> Result<Self, KeyValuePairError<LabelValueError>> {
+        let mut labels = Self::new();
+
+        labels.insert(("app.kubernetes.io/instance", app_instance).try_into()?);
+        labels.insert(("app.kubernetes.io/name", app_name).try_into()?);
+
+        Ok(labels)
+    }
+}
+
 /// A [`KeyValuePair`] is a pair values which consist of a [`Key`] and value.
 /// These pairs can be used as Kubernetes labels or annotations. A pair can be
 /// parsed from a string with the following format: `(<PREFIX>/)<NAME>=<VALUE>`.
@@ -228,6 +252,7 @@ where
 mod test {
     use super::*;
     use rstest::rstest;
+    use serde::{Deserialize, Serialize};
 
     #[rstest]
     #[case(
@@ -270,7 +295,7 @@ mod test {
     }
 
     #[test]
-    fn pairs_from_iter() {
+    fn labels_from_iter() {
         let labels = Labels::from_iter([
             KeyValuePair::from_str("stackable.tech/managed-by=stackablectl").unwrap(),
             KeyValuePair::from_str("stackable.tech/vendor=Stackable").unwrap(),
@@ -280,7 +305,7 @@ mod test {
     }
 
     #[test]
-    fn pairs_try_from_map() {
+    fn labels_try_from_map() {
         let map = BTreeMap::from([
             ("stackable.tech/vendor".to_string(), "Stackable".to_string()),
             (
@@ -294,7 +319,7 @@ mod test {
     }
 
     #[test]
-    fn pairs_into_map() {
+    fn labels_into_map() {
         let pairs = BTreeSet::from([
             KeyValuePair::from_str("stackable.tech/vendor=Stackable").unwrap(),
             KeyValuePair::from_str("stackable.tech/managed-by=stackablectl").unwrap(),
@@ -304,5 +329,37 @@ mod test {
         let map: BTreeMap<String, String> = labels.into();
 
         assert_eq!(map.len(), 2);
+    }
+
+    #[test]
+    fn serialize() {
+        #[derive(Serialize)]
+        struct Kvp {
+            labels: Labels,
+            label: Label,
+        }
+
+        let label = Label::from_str("stackable.tech/managed-by=stackablectl").unwrap();
+        let labels = Labels::common("zookeeper", "zookeeper-default-1").unwrap();
+
+        let kvp = Kvp { labels, label };
+
+        assert_eq!(serde_yaml::to_string(&kvp).unwrap(), "labels:\n  app.kubernetes.io/instance: zookeeper-default-1\n  app.kubernetes.io/name: zookeeper\nlabel:\n  stackable.tech/managed-by: stackablectl\n");
+    }
+
+    #[test]
+    fn deserialize() {
+        #[derive(Deserialize)]
+        struct Kvp {
+            labels: Labels,
+            label: Label,
+        }
+
+        let kvp: Kvp = serde_yaml::from_str("labels:\n  app.kubernetes.io/instance: zookeeper-default-1\n  app.kubernetes.io/name: zookeeper\nlabel:\n  stackable.tech/managed-by: stackablectl\n").unwrap();
+
+        assert_eq!(kvp.label.key().to_string(), "stackable.tech/managed-by");
+        assert_eq!(kvp.label.value().to_string(), "stackablectl");
+
+        assert_eq!(kvp.labels.len(), 2);
     }
 }
