@@ -2,6 +2,7 @@ use std::{fmt::Display, ops::Deref, str::FromStr};
 
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde::Serialize;
 use snafu::{ensure, ResultExt, Snafu};
 
 const KEY_PREFIX_MAX_LEN: usize = 253;
@@ -82,6 +83,15 @@ impl Display for Key {
             Some(prefix) => write!(f, "{}/{}", prefix, self.name),
             None => write!(f, "{}", self.name),
         }
+    }
+}
+
+impl Serialize for Key {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
     }
 }
 

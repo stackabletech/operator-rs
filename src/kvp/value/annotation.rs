@@ -1,5 +1,6 @@
 use std::{fmt::Display, ops::Deref, str::FromStr};
 
+use serde::Serialize;
 use snafu::{ResultExt, Snafu};
 
 use crate::kvp::ValueExt;
@@ -10,7 +11,7 @@ pub enum AnnotationValueError {
     ValueNotUtf8 { source: std::str::Utf8Error },
 }
 
-#[derive(Debug, PartialEq, Default, Eq, Hash)]
+#[derive(Debug, PartialEq, Default, Eq, Hash, Serialize)]
 pub struct AnnotationValue(String);
 
 impl ValueExt for AnnotationValue {

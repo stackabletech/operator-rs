@@ -6,6 +6,8 @@ use std::{
     str::FromStr,
 };
 
+use serde::Serialize;
+
 mod annotation;
 mod label;
 
@@ -16,7 +18,7 @@ pub use label::*;
 /// is validated. Different value implementations should use [`FromStr`] to
 /// parse and validate the value based on the requirements.
 pub trait ValueExt:
-    Deref<Target = String> + FromStr<Err = Self::Error> + Display + Eq + Hash
+    Deref<Target = String> + FromStr<Err = Self::Error> + Display + Eq + Hash + Serialize
 {
     type Error: Error + Debug + 'static;
 }

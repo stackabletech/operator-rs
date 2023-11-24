@@ -8,6 +8,7 @@ use std::{
 use snafu::{ensure, ResultExt, Snafu};
 
 mod key;
+mod serde_impl;
 mod value;
 
 pub use key::*;
