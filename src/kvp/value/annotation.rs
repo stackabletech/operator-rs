@@ -11,7 +11,7 @@ pub enum AnnotationValueError {
     ValueNotUtf8 { source: std::str::Utf8Error },
 }
 
-#[derive(Debug, PartialEq, Default, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct AnnotationValue(String);
 
 impl ValueExt for AnnotationValue {

@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashSet},
+    collections::{BTreeMap, BTreeSet},
     fmt::Display,
     ops::Deref,
     str::FromStr,
@@ -46,7 +46,7 @@ pub type Label = KeyValuePair<LabelValue>;
 ///
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyValuePair<V>
 where
     V: ValueExt,
@@ -142,7 +142,7 @@ pub enum KeyValuePairsError {
 /// to a [`BTreeMap<String, String>`] removes any duplicate data. Order matters
 /// in this case: later labels overwrite previous onces.
 #[derive(Debug, Default)]
-pub struct KeyValuePairs<V: ValueExt>(HashSet<KeyValuePair<V>>);
+pub struct KeyValuePairs<V: ValueExt>(BTreeSet<KeyValuePair<V>>);
 
 impl<V> TryFrom<BTreeMap<String, String>> for KeyValuePairs<V>
 where
@@ -154,7 +154,7 @@ where
         let pairs = map
             .into_iter()
             .map(KeyValuePair::try_from)
-            .collect::<Result<HashSet<_>, KeyValuePairError<V::Error>>>()?;
+            .collect::<Result<BTreeSet<_>, KeyValuePairError<V::Error>>>()?;
 
         Ok(Self(pairs))
     }
@@ -185,7 +185,7 @@ impl<V> Deref for KeyValuePairs<V>
 where
     V: ValueExt,
 {
-    type Target = HashSet<KeyValuePair<V>>;
+    type Target = BTreeSet<KeyValuePair<V>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -202,7 +202,7 @@ where
     }
 
     /// Creates a new list of [`KeyValuePair`]s from `pairs`.
-    pub fn new_with(pairs: HashSet<KeyValuePair<V>>) -> Self {
+    pub fn new_with(pairs: BTreeSet<KeyValuePair<V>>) -> Self {
         Self(pairs)
     }
 
@@ -295,7 +295,7 @@ mod test {
 
     #[test]
     fn pairs_into_map() {
-        let pairs = HashSet::from([
+        let pairs = BTreeSet::from([
             KeyValuePair::from_str("stackable.tech/vendor=Stackable").unwrap(),
             KeyValuePair::from_str("stackable.tech/managed-by=stackablectl").unwrap(),
         ]);
