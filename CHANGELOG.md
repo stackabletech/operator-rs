@@ -12,6 +12,14 @@ All notable changes to this project will be documented in this file.
 
 [#684]: https://github.com/stackabletech/operator-rs/pull/684
 
+## [0.56.1] - 2023-11-23
+
+### Changed
+
+- Update `kube` to `0.87.1` as version `0.86.0` was yanked ([#685]).
+
+[#685]: https://github.com/stackabletech/operator-rs/pull/685
+
 ## [0.56.0] - 2023-10-31 👻
 
 ### Added
