@@ -98,7 +98,7 @@ pub struct ClientAuthenticationDetails<O = ()> {
     /// This field contains authentication provider specific configuration. It
     /// is flattened into the final CRD.
     ///
-    /// Use [`oidc_or_error`] to get the value or report an error to the user.
+    /// Use [`ClientAuthenticationDetails::idc_or_error`] to get the value or report an error to the user.
     oidc: Option<oidc::ClientAuthenticationOptions<O>>,
 }
 
