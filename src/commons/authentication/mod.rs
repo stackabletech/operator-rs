@@ -98,13 +98,13 @@ pub struct ClientAuthenticationDetails<O = ()> {
     /// This field contains authentication provider specific configuration. It
     /// is flattened into the final CRD.
     ///
-    /// Use [`ClientAuthenticationDetails::idc_or_error`] to get the value or report an error to the user.
+    /// Use [`ClientAuthenticationDetails::oidc_or_error`] to get the value or report an error to the user.
     oidc: Option<oidc::ClientAuthenticationOptions<O>>,
 }
 
 impl<O> ClientAuthenticationDetails<O> {
     /// Resolves this specific [`AuthenticationClass`]. Usually products support
-    /// a list of authentication classes, which indivually need to be resolved.
+    /// a list of authentication classes, which individually need to be resolved.
     pub async fn resolve_class(&self, client: &Client) -> OperatorResult<AuthenticationClass> {
         AuthenticationClass::resolve(client, &self.authentication_class_ref).await
     }
