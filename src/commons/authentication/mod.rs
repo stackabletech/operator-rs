@@ -113,6 +113,9 @@ impl<O> ClientAuthenticationDetails<O> {
         &self.authentication_class_ref
     }
 
+    /// In case OIDC is configured, the user *needs* to provide some connection details,
+    /// such as the client credentials. Call this function in case the user has configured
+    /// OIDC, as it will error out then the OIDC client details are missing.
     pub fn oidc_or_error(
         &self,
         auth_class_name: &str,
