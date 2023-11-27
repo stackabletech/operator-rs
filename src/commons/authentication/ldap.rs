@@ -153,12 +153,6 @@ impl Default for FieldNames {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ClientAuthenticationOptions {
-    bind_credentials_secret_class: Option<String>,
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
