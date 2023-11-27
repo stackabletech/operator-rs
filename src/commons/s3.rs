@@ -4,15 +4,15 @@
 //! Operator CRDs are expected to use the [S3BucketDef] as an entry point to this module
 //! and obtain an [InlinedS3BucketSpec] by calling [`S3BucketDef::resolve`].
 //!
+use kube::CustomResource;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
 use crate::{
     client::Client,
     commons::{authentication::tls::Tls, secret_class::SecretClassVolume},
     error::{self, OperatorResult},
 };
-
-use kube::CustomResource;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 /// S3 bucket specification containing only the bucket name and an inlined or
 /// referenced connection specification.
