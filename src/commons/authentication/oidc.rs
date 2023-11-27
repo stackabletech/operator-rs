@@ -9,13 +9,15 @@ use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use url::{ParseError, Url};
 
+#[cfg(doc)]
+use crate::commons::authentication::AuthenticationClass;
 use crate::commons::authentication::{tls::TlsClientDetails, SECRET_BASE_PATH};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub const DEFAULT_OIDC_WELLKNOWN_PATH: &str = ".well-known/openid-configuration";
-pub const CLIENT_SECRET_SECRET_KEY: &str = "clientSecret";
 pub const CLIENT_ID_SECRET_KEY: &str = "clientId";
+pub const CLIENT_SECRET_SECRET_KEY: &str = "clientSecret";
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -39,7 +41,6 @@ pub struct AuthenticationProvider {
     /// Hostname of the identity provider, e.g. `my.keycloak.corp`.
     hostname: String,
 
-    // FIXME (Techassi): This should be based on the scheme. How do we pass in the scheme?
     /// Port of the identity provider. If TLS is used defaults to `443`,
     /// otherwise to `80`.
     port: Option<u16>,
@@ -52,7 +53,7 @@ pub struct AuthenticationProvider {
     #[serde(flatten)]
     pub tls: TlsClientDetails,
 
-    /// If a product extracts some sort of "effective user" that's is represented by a
+    /// If a product extracts some sort of "effective user" that is represented by a
     /// string internally, this config determines with claim is used to extract that
     /// string. It is desirable to use `sub` in here (or some other stable identifier),
     /// but in many cases you might need to use `preferred_username` (e.g. in case of Keycloak)
@@ -73,12 +74,10 @@ pub struct AuthenticationProvider {
     pub scopes: Vec<String>,
 
     /// This is a hint about which identity provider is used by the
-    /// [`AuthenticationClass`][authclass]. Operators *can* opt to use this
+    /// [`AuthenticationClass`]. Operators *can* opt to use this
     /// value to enable known quirks around OIDC / OAuth authentication.
     /// [`None`] means there is no hint and OIDC should be used as it is
     /// intended to be used (via the `.well-known` discovery).
-    ///
-    /// [authclass]: crate::commons::authentication::AuthenticationClass
     #[serde(default)]
     pub provider_hint: Option<IdentityProviderHint>,
 }
@@ -223,9 +222,7 @@ pub struct ClientAuthenticationOptions<T = ()> {
     pub client_credentials_secret_ref: String,
 
     /// An optional list of extra scopes which get merged with the scopes
-    /// defined in the [`AuthenticationClass`][authclass].
-    ///
-    /// [authclass]: crate::commons::authentication::AuthenticationClass
+    /// defined in the [`AuthenticationClass`].
     #[serde(default)]
     pub extra_scopes: Vec<String>,
 
