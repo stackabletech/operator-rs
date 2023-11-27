@@ -205,7 +205,7 @@ impl AuthenticationProvider {
 /// An enum of supported OIDC or identity providers which can serve as a hint
 /// in the product operator. Some products require special handling of
 /// authentication related config options. This hint can be used to enable such
-/// sepcial handling.
+/// special handling.
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum IdentityProviderHint {
