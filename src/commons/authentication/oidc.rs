@@ -243,6 +243,7 @@ mod test {
             "
             hostname: my.keycloak.server
             scopes: [openid]
+            principalClaim: preferred_username
             ",
         );
         assert!(oidc.is_ok());
@@ -256,6 +257,7 @@ mod test {
             rootPath: /
             port: 12345
             scopes: [openid]
+            principalClaim: preferred_username
             ",
         );
         assert!(oidc.is_ok());
@@ -269,6 +271,7 @@ mod test {
             rootPath: my-root-path
             port: 12345
             scopes: [openid]
+            principalClaim: preferred_username
             ",
         )
         .unwrap();
@@ -290,6 +293,7 @@ mod test {
                   caCert:
                     secretClass: keycloak-ca-cert
             scopes: [openid]
+            principalClaim: preferred_username
             ",
         )
         .unwrap();
@@ -312,6 +316,7 @@ mod test {
             rootPath: my-root-path
             port: 12345
             scopes: [openid]
+            principalClaim: preferred_username
             ",
         )
         .unwrap();
