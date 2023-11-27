@@ -216,7 +216,7 @@ pub enum IdentityProviderHint {
 /// OIDC specific config options. These are set on the product config level.
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ClientAuthenticationOptions<T> {
+pub struct ClientAuthenticationOptions<T = ()> {
     /// A reference to the OIDC client credentials secret. The secret contains
     /// the client id and secret.
     #[serde(rename = "clientCredentialsSecret")]
