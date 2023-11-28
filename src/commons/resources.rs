@@ -90,8 +90,8 @@ use strum::Display;
 pub const LIMIT_REQUEST_RATIO_CPU: f32 = 5.0;
 pub const LIMIT_REQUEST_RATIO_MEMORY: f32 = 1.0;
 
-// This struct allows specifying memory and cpu limits as well as generically adding storage
-// settings.
+/// Resource usage is configured here, this includes CPU usage, memory usage and disk storage
+/// usage, if this role needs any.
 #[derive(Clone, Debug, Default, Fragment, PartialEq, JsonSchema)]
 #[fragment(
     bound = "T: FromFragment, K: FromFragment",
@@ -158,10 +158,14 @@ pub struct Resources<T, K = NoRuntimeLimits> {
     schemars(bound = "T: JsonSchema, T::Fragment: JsonSchema + Default")
 )]
 pub struct MemoryLimits<T> {
-    // The maximum amount of memory that should be available
-    // Should in most cases be mapped to resources.limits.memory
+    /// The maximum amount of memory that should be available to the Pod.
+    /// Specified as a byte [Quantity](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/),
+    /// which means these suffixes are supported: E, P, T, G, M, k.
+    /// You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki.
+    /// For example, the following represent roughly the same value:
+    /// `128974848, 129e6, 129M,  128974848000m, 123Mi`
     pub limit: Option<Quantity>,
-    // Additional options that may be required
+    /// Additional options that may be required.
     #[fragment_attrs(serde(default))]
     pub runtime_limits: T,
 }
@@ -211,8 +215,6 @@ pub struct JvmHeapLimits {
     pub min: Option<Quantity>,
 }
 
-// Cpu limits
-// These should usually be forwarded to resources.limits.cpu
 #[derive(Clone, Debug, Default, Fragment, PartialEq, JsonSchema)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
@@ -230,7 +232,15 @@ pub struct JvmHeapLimits {
     serde(rename_all = "camelCase")
 )]
 pub struct CpuLimits {
+    /// The minimal amount of CPU cores that Pods need to run.
+    /// Equivalent to the `request` for Pod resource configuration.
+    /// Cores are specified either as a decimal point number or as milli units.
+    /// For example:`1.5` will be 1.5 cores, also written as `1500m`.
     pub min: Option<Quantity>,
+    /// The maximum amount of CPU cores that can be requested by Pods.
+    /// Equivalent to the `limit` for Pod resource configuration.
+    /// Cores are specified either as a decimal point number or as milli units.
+    /// For example:`1.5` will be 1.5 cores, also written as `1500m`.
     pub max: Option<Quantity>,
 }
 
