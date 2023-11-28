@@ -4,9 +4,14 @@ use std::{
     str::FromStr,
 };
 
+use kube::{Resource, ResourceExt};
 use serde::{Deserialize, Serialize};
 
-use crate::kvp::{Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError};
+use crate::{
+    kvp::{Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError},
+    labels::ObjectLabels,
+    utils::format_full_controller_name,
+};
 
 mod value;
 
@@ -57,6 +62,24 @@ impl Label {
     pub fn into_inner(self) -> KeyValuePair<LabelValue> {
         self.0
     }
+
+    /// Creates the `app.kubernetes.io/component` label with `role` as the
+    /// value. This function will return an error if `role` violates the required
+    /// Kubernetes restrictions.
+    pub fn role_selector(role: &str) -> Result<Self, KeyValuePairError<LabelValueError>> {
+        let kvp = KeyValuePair::try_from(("app.kubernetes.io/component", role))?;
+        Ok(Self(kvp))
+    }
+
+    /// Creates the `app.kubernetes.io/role-group` label with `role_group` as
+    /// the value. This function will return an error if `role` violates the
+    /// required Kubernetes restrictions.
+    pub fn role_group_selector(
+        role_group: &str,
+    ) -> Result<Self, KeyValuePairError<LabelValueError>> {
+        let kvp = KeyValuePair::try_from(("app.kubernetes.io/role-group", role_group))?;
+        Ok(Self(kvp))
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -106,9 +129,14 @@ impl Labels {
     /// Inserts a new [`Label`]. This function will overide any existing label
     /// already present. If this behaviour is not desired, use the `try_insert`
     /// function instead.
-    pub fn insert(&mut self, kvp: KeyValuePair<LabelValue>) -> &mut Self {
-        self.0.insert(kvp);
+    pub fn insert(&mut self, label: Label) -> &mut Self {
+        self.0.insert(label.0);
         self
+    }
+
+    /// Extends `self` with `other`.
+    pub fn extend(&mut self, other: Self) {
+        self.0.extend(other.0)
     }
 
     /// Returns the number of labels.
@@ -139,6 +167,51 @@ impl Labels {
 
         labels.insert(("app.kubernetes.io/instance", app_instance).try_into()?);
         labels.insert(("app.kubernetes.io/name", app_name).try_into()?);
+
+        Ok(labels)
+    }
+
+    /// Returns the recommended set of labels. The set includes these well-known
+    /// labels:
+    ///
+    /// - `app.kubernetes.io/role-group`
+    /// - `app.kubernetes.io/managed-by`
+    /// - `app.kubernetes.io/component`
+    /// - `app.kubernetes.io/instance`
+    /// - `app.kubernetes.io/version`
+    /// - `app.kubernetes.io/name`
+    ///
+    /// This function returns a result, because the parameter`object_labels`
+    /// can contain invalid data or can exceed the maximum allowed number of
+    /// characters.
+    pub fn recommended<R>(
+        object_labels: ObjectLabels<R>,
+    ) -> Result<Self, KeyValuePairError<LabelValueError>>
+    where
+        R: Resource,
+    {
+        let common = Self::common(object_labels.app_name, &object_labels.owner.name_any())?;
+        let role_group_selector = Label::role_group_selector(object_labels.role_group)?;
+        let role_selector = Label::role_selector(object_labels.role)?;
+
+        let mut labels = Self::new();
+        labels.extend(common);
+
+        labels.insert(role_group_selector);
+        labels.insert(role_selector);
+
+        labels.insert(("app.kubernetes.io/version", object_labels.app_version).try_into()?);
+        labels.insert(
+            (
+                "app.kubernetes.io/managed-by",
+                format_full_controller_name(
+                    object_labels.operator_name,
+                    object_labels.controller_name,
+                )
+                .as_str(),
+            )
+                .try_into()?,
+        );
 
         Ok(labels)
     }

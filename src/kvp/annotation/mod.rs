@@ -106,9 +106,14 @@ impl Annotations {
     /// Inserts a new [`Annotation`]. This function will overide any existing
     /// annotation already present. If this behaviour is not desired, use the
     /// `try_insert` function instead.
-    pub fn insert(&mut self, kvp: KeyValuePair<AnnotationValue>) -> &mut Self {
-        self.0.insert(kvp);
+    pub fn insert(&mut self, annotation: Annotation) -> &mut Self {
+        self.0.insert(annotation.0);
         self
+    }
+
+    /// Extends `self` with `other`.
+    pub fn extend(&mut self, other: Self) {
+        self.0.extend(other.0)
     }
 
     /// Returns the number of annotations.
