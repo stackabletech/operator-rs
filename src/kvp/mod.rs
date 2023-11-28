@@ -1,17 +1,22 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Display,
+    marker::PhantomData,
     ops::Deref,
     str::FromStr,
 };
 
+use serde::{de::Visitor, ser::SerializeMap, Deserialize, Serialize};
 use snafu::{ensure, ResultExt, Snafu};
 
+mod annotation;
 mod key;
-mod serde_impl;
+mod label;
 mod value;
 
+pub use annotation::*;
 pub use key::*;
+pub use label::*;
 pub use value::*;
 
 #[derive(Debug, PartialEq, Snafu)]
@@ -30,36 +35,6 @@ where
 
     #[snafu(display("failed to parse label value"))]
     InvalidValue { source: E },
-}
-
-pub type Annotations = KeyValuePairs<AnnotationValue>;
-pub type Annotation = KeyValuePair<AnnotationValue>;
-
-pub type Labels = KeyValuePairs<LabelValue>;
-pub type Label = KeyValuePair<LabelValue>;
-
-impl Labels {
-    /// Returns a common set of labels, which are required to identify resources
-    /// that belong to a certain owner object, for example a `ZookeeperCluster`.
-    /// The set contains these well-known labels:
-    ///
-    /// - `app.kubernetes.io/instance` and
-    /// - `app.kubernetes.io/name`
-    ///
-    /// This function returns a result, because the parameters `app_name` and
-    /// `app_instance` can contain invalid data or can exceed the maximum
-    /// allowed number of characters.
-    pub fn common(
-        app_name: &str,
-        app_instance: &str,
-    ) -> Result<Self, KeyValuePairError<LabelValueError>> {
-        let mut labels = Self::new();
-
-        labels.insert(("app.kubernetes.io/instance", app_instance).try_into()?);
-        labels.insert(("app.kubernetes.io/name", app_name).try_into()?);
-
-        Ok(labels)
-    }
 }
 
 /// A [`KeyValuePair`] is a pair values which consist of a [`Key`] and value.
@@ -132,6 +107,60 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}={}", self.key, self.value)
+    }
+}
+
+impl<V> Serialize for KeyValuePair<V>
+where
+    V: ValueExt,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(1))?;
+        map.serialize_entry(&self.key, &self.value)?;
+        map.end()
+    }
+}
+
+struct KeyValuePairVisitor<V> {
+    marker: PhantomData<V>,
+}
+
+impl<'de, V> Visitor<'de> for KeyValuePairVisitor<V>
+where
+    V: Deserialize<'de> + ValueExt + Default,
+{
+    type Value = KeyValuePair<V>;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a valid key/value pair (label or annotation)")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::MapAccess<'de>,
+    {
+        if let Some((key, value)) = map.next_entry()? {
+            return Ok(KeyValuePair::new(key, value));
+        }
+
+        Err(serde::de::Error::custom("expected at least one map entry"))
+    }
+}
+
+impl<'de, V> Deserialize<'de> for KeyValuePair<V>
+where
+    V: Deserialize<'de> + ValueExt + Default,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(KeyValuePairVisitor {
+            marker: PhantomData,
+        })
     }
 }
 
@@ -213,6 +242,68 @@ where
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<V> Serialize for KeyValuePairs<V>
+where
+    V: ValueExt,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.len()))?;
+        for kvp in &self.0 {
+            map.serialize_entry(kvp.key(), kvp.value())?;
+        }
+        map.end()
+    }
+}
+
+struct KeyValuePairsVisitor<V> {
+    value_marker: PhantomData<V>,
+}
+
+impl<V> KeyValuePairsVisitor<V> {
+    pub fn new() -> Self {
+        Self {
+            value_marker: PhantomData,
+        }
+    }
+}
+
+impl<'de, V> Visitor<'de> for KeyValuePairsVisitor<V>
+where
+    V: Deserialize<'de> + ValueExt + Default,
+{
+    type Value = KeyValuePairs<V>;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("valid list of key/value pairs (labels and or annotations)")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::MapAccess<'de>,
+    {
+        let mut pairs = KeyValuePairs::new();
+        while let Some((key, value)) = map.next_entry()? {
+            pairs.insert(KeyValuePair::new(key, value));
+        }
+        Ok(pairs)
+    }
+}
+
+impl<'de, V> Deserialize<'de> for KeyValuePairs<V>
+where
+    V: Deserialize<'de> + ValueExt + Default,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(KeyValuePairsVisitor::new())
     }
 }
 
