@@ -99,19 +99,7 @@ pub struct ClientAuthenticationDetails<O = ()> {
     /// is flattened into the final CRD.
     ///
     /// Use [`ClientAuthenticationDetails::oidc_or_error`] to get the value or report an error to the user.
-    ///
-    /// We are aware that this prevents users from e.g. configuring oidc and ldap clientAuthenticationOptions
-    /// simultaneously. This might be helpful in cases of a migration of the provider of an AuthenticationClass,
-    /// but we consider a good validation for 90% of the use-cases more important.
-    #[serde(flatten)]
-    client_authentication_options: Option<ClientAuthenticationOptions<O>>,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-
-pub enum ClientAuthenticationOptions<O> {
-    Oidc(oidc::ClientAuthenticationOptions<O>),
+    oidc: Option<oidc::ClientAuthenticationOptions<O>>,
 }
 
 impl<O> ClientAuthenticationDetails<O> {
@@ -132,12 +120,11 @@ impl<O> ClientAuthenticationDetails<O> {
         &self,
         auth_class_name: &str,
     ) -> OperatorResult<&oidc::ClientAuthenticationOptions<O>> {
-        match &self.client_authentication_options {
-            Some(ClientAuthenticationOptions::Oidc(oidc)) => Ok(oidc),
-            None => Err(Error::OidcAuthenticationDetailsNotSpecified {
+        self.oidc
+            .as_ref()
+            .ok_or(Error::OidcAuthenticationDetailsNotSpecified {
                 auth_class_name: auth_class_name.to_string(),
-            }),
-        }
+            })
     }
 }
 
