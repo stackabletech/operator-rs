@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- More documentation for CRD structs ([#687]).
+
+[#687]: https://github.com/stackabletech/operator-rs/pull/687
+
 ## [0.56.1] - 2023-11-23
 
 ### Changed
