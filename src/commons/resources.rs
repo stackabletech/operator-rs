@@ -165,7 +165,7 @@ pub struct MemoryLimits<T> {
     /// For example, the following represent roughly the same value:
     /// `128974848, 129e6, 129M,  128974848000m, 123Mi`
     pub limit: Option<Quantity>,
-    /// Additional options that may be required.
+    /// Additional options that can be specified.
     #[fragment_attrs(serde(default))]
     pub runtime_limits: T,
 }
