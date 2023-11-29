@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.56.2] - 2023-11-23
+
 ### Added
 
 - More documentation for CRD structs ([#687]).
