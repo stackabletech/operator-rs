@@ -59,7 +59,7 @@ impl Annotation {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Annotations(KeyValuePairs<AnnotationValue>);
 
 impl TryFrom<BTreeMap<String, String>> for Annotations {

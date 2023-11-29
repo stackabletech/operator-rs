@@ -36,7 +36,7 @@ pub enum LabelValueError {
 /// unvalidated mutable access to inner values.
 ///
 /// [k8s-labels]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct LabelValue(String);
 
 impl ValueExt for LabelValue {

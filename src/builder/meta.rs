@@ -1,9 +1,11 @@
-use crate::error::{Error, OperatorResult};
-use crate::labels::{self, ObjectLabels};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
 use kube::{Resource, ResourceExt};
-use std::collections::BTreeMap;
 use tracing::warn;
+
+use crate::{
+    error::{Error, OperatorResult},
+    kvp::{Annotation, Annotations, Label, Labels, ObjectLabels},
+};
 
 /// A builder to build [`ObjectMeta`] objects.
 ///
@@ -13,12 +15,12 @@ use tracing::warn;
 /// It is strongly recommended to always call [`Self::with_recommended_labels()`]!
 #[derive(Clone, Default)]
 pub struct ObjectMetaBuilder {
-    name: Option<String>,
+    ownerreference: Option<OwnerReference>,
+    annotations: Option<Annotations>,
     generate_name: Option<String>,
     namespace: Option<String>,
-    ownerreference: Option<OwnerReference>,
-    labels: Option<BTreeMap<String, String>>,
-    annotations: Option<BTreeMap<String, String>>,
+    labels: Option<Labels>,
+    name: Option<String>,
 }
 
 impl ObjectMetaBuilder {
@@ -92,54 +94,44 @@ impl ObjectMetaBuilder {
 
     /// This adds a single annotation to the existing annotations.
     /// It'll override an annotation with the same key.
-    pub fn with_annotation(
-        &mut self,
-        annotation_key: impl Into<String>,
-        annotation_value: impl Into<String>,
-    ) -> &mut Self {
+    pub fn with_annotation(&mut self, annotation: Annotation) -> &mut Self {
         self.annotations
-            .get_or_insert_with(BTreeMap::new)
-            .insert(annotation_key.into(), annotation_value.into());
+            .get_or_insert(Annotations::new())
+            .insert(annotation);
         self
     }
 
     /// This adds multiple annotations to the existing annotations.
     /// Any existing annotation with a key that is contained in `annotations` will be overwritten
-    pub fn with_annotations(&mut self, annotations: BTreeMap<String, String>) -> &mut Self {
+    pub fn with_annotations(&mut self, annotations: Annotations) -> &mut Self {
         self.annotations
-            .get_or_insert_with(BTreeMap::new)
+            .get_or_insert(Annotations::new())
             .extend(annotations);
         self
     }
 
     /// This will replace all existing annotations
-    pub fn annotations(&mut self, annotations: BTreeMap<String, String>) -> &mut Self {
+    pub fn annotations(&mut self, annotations: Annotations) -> &mut Self {
         self.annotations = Some(annotations);
         self
     }
 
     /// This adds a single label to the existing labels.
     /// It'll override a label with the same key.
-    pub fn with_label(
-        &mut self,
-        label_key: impl Into<String>,
-        label_value: impl Into<String>,
-    ) -> &mut Self {
-        self.labels
-            .get_or_insert_with(BTreeMap::new)
-            .insert(label_key.into(), label_value.into());
+    pub fn with_label(&mut self, label: Label) -> &mut Self {
+        self.labels.get_or_insert(Labels::new()).insert(label);
         self
     }
 
     /// This adds multiple labels to the existing labels.
     /// Any existing label with a key that is contained in `labels` will be overwritten
-    pub fn with_labels(&mut self, labels: BTreeMap<String, String>) -> &mut Self {
-        self.labels.get_or_insert_with(BTreeMap::new).extend(labels);
+    pub fn with_labels(&mut self, labels: Labels) -> &mut Self {
+        self.labels.get_or_insert(Labels::new()).extend(labels);
         self
     }
 
     /// This will replace all existing labels
-    pub fn labels(&mut self, labels: BTreeMap<String, String>) -> &mut Self {
+    pub fn labels(&mut self, labels: Labels) -> &mut Self {
         self.labels = Some(labels);
         self
     }
@@ -152,9 +144,10 @@ impl ObjectMetaBuilder {
         &mut self,
         object_labels: ObjectLabels<T>,
     ) -> &mut Self {
-        let recommended_labels = labels::get_recommended_labels(object_labels);
+        // TODO (Techassi): Remove unwrap
+        let recommended_labels = Labels::recommended(object_labels).unwrap();
         self.labels
-            .get_or_insert_with(BTreeMap::new)
+            .get_or_insert(Labels::new())
             .extend(recommended_labels);
         self
     }
@@ -178,8 +171,8 @@ impl ObjectMetaBuilder {
                 .ownerreference
                 .as_ref()
                 .map(|ownerreference| vec![ownerreference.clone()]),
-            labels: self.labels.clone(),
-            annotations: self.annotations.clone(),
+            labels: self.labels.map(|l| l.into()),
+            annotations: self.annotations.map(|a| a.into()),
             ..ObjectMeta::default()
         }
     }
@@ -329,7 +322,7 @@ mod tests {
                 role: "role",
                 role_group: "rolegroup",
             })
-            .with_annotation("foo", "bar")
+            .with_annotation(("foo", "bar").try_into().unwrap())
             .build();
 
         assert_eq!(meta.generate_name, Some("generate_foo".to_string()));

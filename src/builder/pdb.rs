@@ -1,8 +1,5 @@
 use crate::{
-    builder::ObjectMetaBuilder,
-    error::OperatorResult,
-    labels::{role_selector_labels, APP_MANAGED_BY_LABEL},
-    utils::format_full_controller_name,
+    builder::ObjectMetaBuilder, error::OperatorResult, utils::format_full_controller_name,
 };
 use k8s_openapi::{
     api::policy::v1::{PodDisruptionBudget, PodDisruptionBudgetSpec},

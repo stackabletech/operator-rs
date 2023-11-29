@@ -10,6 +10,7 @@ use serde::{de::Visitor, ser::SerializeMap, Deserialize, Serialize};
 use snafu::{ensure, ResultExt, Snafu};
 
 mod annotation;
+pub mod consts;
 mod key;
 mod label;
 mod value;
@@ -45,7 +46,7 @@ where
 ///
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyValuePair<V>
 where
     V: ValueExt,
@@ -185,8 +186,15 @@ where
 }
 
 #[derive(Debug, Snafu)]
-pub enum KeyValuePairsError {
+pub enum KeyValuePairsError<E>
+where
+    E: std::error::Error + 'static,
+{
+    #[snafu(display("key/value pair already present"))]
     AlreadyPresent,
+
+    #[snafu(display("failed to parse key/value pair"))]
+    KeyValuePairParse { source: KeyValuePairError<E> },
 }
 
 /// [`KeyValuePairs`] is a list of [`KeyValuePair`]. This collection **doesn't**
@@ -194,7 +202,7 @@ pub enum KeyValuePairsError {
 /// with the same content can be present at the same time. However, converting
 /// to a [`BTreeMap<String, String>`] removes any duplicate data. Order matters
 /// in this case: later labels overwrite previous onces.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct KeyValuePairs<V: ValueExt>(BTreeSet<KeyValuePair<V>>);
 
 impl<V> TryFrom<BTreeMap<String, String>> for KeyValuePairs<V>
@@ -326,8 +334,11 @@ where
         self.0.extend(other.0);
     }
 
-    pub fn try_insert(&mut self, kvp: KeyValuePair<V>) -> Result<&mut Self, KeyValuePairsError> {
-        ensure!(!self.contains(&kvp), AlreadyPresentSnafu);
+    pub fn try_insert(
+        &mut self,
+        kvp: KeyValuePair<V>,
+    ) -> Result<&mut Self, KeyValuePairsError<V::Error>> {
+        ensure!(!self.0.contains(&kvp), AlreadyPresentSnafu);
 
         self.0.insert(kvp);
         Ok(self)
@@ -337,6 +348,85 @@ where
         self.0.insert(kvp);
         self
     }
+
+    pub fn contains(&self, kvp: KeyValuePair<V>) -> bool {
+        self.0.contains(&kvp)
+    }
+
+    pub fn contains_raw(
+        &self,
+        key: impl AsRef<str>,
+        value: impl AsRef<str>,
+    ) -> Result<bool, KeyValuePairsError<V::Error>> {
+        let kvp = KeyValuePair::try_from((key.as_ref(), value.as_ref()))
+            .context(KeyValuePairParseSnafu)?;
+
+        Ok(self.0.contains(&kvp))
+    }
+
+    pub fn contains_all(&self, kvps: KeyValuePairs<V>) -> bool {
+        for kvp in kvps {
+            if !self.contains(&kvp) {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    pub fn contains_all_raw(
+        &self,
+        keys: impl AsRef<[str]>,
+        values: impl AsRef<[str]>,
+    ) -> Result<bool, KeyValuePairsError<V::Error>> {
+        for (key, value) in keys.as_ref().iter().zip(values.as_ref()) {
+            if !self
+                .contains_raw(key, value)
+                .context(KeyValuePairParseSnafu)?
+            {
+                return Ok(false);
+            }
+        }
+
+        Ok(true)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ObjectLabels<'a, T> {
+    /// Reference to the k8s object owning the created resource, such as
+    /// `HdfsCluster` or `TrinoCluster`.
+    pub owner: &'a T,
+
+    /// The name of the app being managed, such as `zookeeper`.
+    pub app_name: &'a str,
+
+    /// The version of the app being managed (not of the operator).
+    ///
+    /// If setting this label on a Stackable product then please use
+    /// [`ResolvedProductImage::app_version_label`]
+    ///
+    /// This version should include the Stackable version, such as
+    /// `3.0.0-stackable23.11`. If the Stackable version is not known, then
+    /// the product version should be used together with a suffix (if possible).
+    /// If a custom product image is provided by the user (in which case only
+    /// the product version is known), then the format `3.0.0-<tag-of-custom-image>`
+    /// should be used.
+    ///
+    /// However, this is pure documentation and should not be parsed.
+    pub app_version: &'a str,
+
+    /// The DNS-style name of the operator managing the object (such as `zookeeper.stackable.tech`)
+    pub operator_name: &'a str,
+
+    /// The name of the controller inside of the operator managing the object (such as `zookeepercluster`)
+    pub controller_name: &'a str,
+
+    /// The role that this object belongs to
+    pub role: &'a str,
+
+    /// The role group that this object belongs to
+    pub role_group: &'a str,
 }
 
 #[cfg(test)]

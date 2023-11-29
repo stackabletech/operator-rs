@@ -8,8 +8,12 @@ use kube::{Resource, ResourceExt};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    kvp::{Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError},
-    labels::ObjectLabels,
+    kvp::{
+        consts::{
+            COMPONENT_KEY, INSTANCE_KEY, MANAGED_BY_KEY, NAME_KEY, ROLE_GROUP_KEY, VERSION_KEY,
+        },
+        Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError, ObjectLabels,
+    },
     utils::format_full_controller_name,
 };
 
@@ -17,7 +21,7 @@ mod value;
 
 pub use value::*;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Label(KeyValuePair<LabelValue>);
 
 impl FromStr for Label {
@@ -67,7 +71,7 @@ impl Label {
     /// value. This function will return an error if `role` violates the required
     /// Kubernetes restrictions.
     pub fn role_selector(role: &str) -> Result<Self, KeyValuePairError<LabelValueError>> {
-        let kvp = KeyValuePair::try_from(("app.kubernetes.io/component", role))?;
+        let kvp = KeyValuePair::try_from((COMPONENT_KEY, role))?;
         Ok(Self(kvp))
     }
 
@@ -77,12 +81,30 @@ impl Label {
     pub fn role_group_selector(
         role_group: &str,
     ) -> Result<Self, KeyValuePairError<LabelValueError>> {
-        let kvp = KeyValuePair::try_from(("app.kubernetes.io/role-group", role_group))?;
+        let kvp = KeyValuePair::try_from((ROLE_GROUP_KEY, role_group))?;
+        Ok(Self(kvp))
+    }
+
+    // TODO (Techassi): Add doc comment
+    pub fn managed_by(
+        operator_name: &str,
+        controller_name: &str,
+    ) -> Result<Self, KeyValuePairError<LabelValueError>> {
+        let kvp = KeyValuePair::try_from((
+            MANAGED_BY_KEY,
+            format_full_controller_name(operator_name, controller_name),
+        ))?;
+        Ok(Self(kvp))
+    }
+
+    // TODO (Techassi): Maybe use semver::Version, add doc comments
+    pub fn version(version: &str) -> Result<Self, KeyValuePairError<LabelValueError>> {
+        let kvp = KeyValuePair::try_from((VERSION_KEY, version))?;
         Ok(Self(kvp))
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Labels(KeyValuePairs<LabelValue>);
 
 impl TryFrom<BTreeMap<String, String>> for Labels {
@@ -121,7 +143,10 @@ impl Labels {
     /// Tries to insert a new [`Label`]. It ensures there are no duplicate
     /// entries. Trying to insert duplicated data returns an error. If no such
     /// check is required, use the `insert` function instead.
-    pub fn try_insert(&mut self, label: Label) -> Result<&mut Self, KeyValuePairsError> {
+    pub fn try_insert(
+        &mut self,
+        label: Label,
+    ) -> Result<&mut Self, KeyValuePairsError<LabelValueError>> {
         self.0.try_insert(label.0)?;
         Ok(self)
     }
@@ -165,8 +190,8 @@ impl Labels {
     ) -> Result<Self, KeyValuePairError<LabelValueError>> {
         let mut labels = Self::new();
 
-        labels.insert(("app.kubernetes.io/instance", app_instance).try_into()?);
-        labels.insert(("app.kubernetes.io/name", app_name).try_into()?);
+        labels.insert((INSTANCE_KEY, app_instance).try_into()?);
+        labels.insert((NAME_KEY, app_name).try_into()?);
 
         Ok(labels)
     }
@@ -191,27 +216,20 @@ impl Labels {
         R: Resource,
     {
         let common = Self::common(object_labels.app_name, &object_labels.owner.name_any())?;
+
+        let managed_by =
+            Label::managed_by(object_labels.operator_name, object_labels.controller_name)?;
         let role_group_selector = Label::role_group_selector(object_labels.role_group)?;
         let role_selector = Label::role_selector(object_labels.role)?;
+        let version = Label::version(object_labels.app_version)?;
 
         let mut labels = Self::new();
         labels.extend(common);
 
         labels.insert(role_group_selector);
         labels.insert(role_selector);
-
-        labels.insert(("app.kubernetes.io/version", object_labels.app_version).try_into()?);
-        labels.insert(
-            (
-                "app.kubernetes.io/managed-by",
-                format_full_controller_name(
-                    object_labels.operator_name,
-                    object_labels.controller_name,
-                )
-                .as_str(),
-            )
-                .try_into()?,
-        );
+        labels.insert(managed_by);
+        labels.insert(version);
 
         Ok(labels)
     }

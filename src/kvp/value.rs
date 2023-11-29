@@ -11,7 +11,7 @@ use serde::Serialize;
 /// is validated. Different value implementations should use [`FromStr`] to
 /// parse and validate the value based on the requirements.
 pub trait ValueExt:
-    Deref<Target = String> + FromStr<Err = Self::Error> + Display + Eq + Ord + Serialize
+    Deref<Target = String> + FromStr<Err = Self::Error> + Clone + Display + Eq + Ord + Serialize
 {
     type Error: Error + Debug + 'static;
 }
