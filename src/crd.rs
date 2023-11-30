@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use semver::Version;
 
 use crate::error::{Error, OperatorResult};
 use crate::yaml;
@@ -73,24 +74,23 @@ pub trait HasApplication {
 }
 
 /// Takes an operator version and returns a docs version
-fn docs_version(operator_version: &str) -> String {
+fn docs_version(operator_version: &str) -> OperatorResult<String> {
     if operator_version == "0.0.0-dev" {
-        "nightly".to_owned()
+        Ok("nightly".to_owned())
     } else {
-        // Take the major.minor component of the semantic version
-        operator_version
-            .split('.')
-            .take(2)
-            .collect::<Vec<_>>()
-            .join(".")
+        let v = Version::parse(operator_version).map_err(|err| Error::InvalidSemverVersion {
+            source: err,
+            version: operator_version.to_owned(),
+        })?;
+        Ok(format!("{}.{}", v.major, v.minor))
     }
 }
 
 /// Given an operator version like 0.0.0-dev or 23.1.1, generate a docs home
 /// component base URL like `https://docs.stackable.tech/home/nightly/` or
 /// `https://docs.stackable.tech/home/23.1/`.
-fn docs_home_versioned_base_url(operator_version: &str) -> String {
-    format!("{}/{}", DOCS_HOME_BASE_URL, docs_version(operator_version))
+fn docs_home_versioned_base_url(operator_version: &str) -> OperatorResult<String> {
+    Ok(format!("{}/{}", DOCS_HOME_BASE_URL, docs_version(operator_version)?))
 }
 
 /// This trait can be implemented to allow automatic handling
@@ -110,7 +110,7 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
             .map_err(Error::CrdFromUtf8Error)?
             .replace(
                 DOCS_HOME_URL_PLACEHOLDER,
-                &docs_home_versioned_base_url(operator_version),
+                &docs_home_versioned_base_url(operator_version)?,
             );
 
         Ok(writer.write_all(yaml_schema.as_bytes())?)

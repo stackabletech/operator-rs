@@ -111,6 +111,12 @@ pub enum Error {
         container_name: String,
         violation: String,
     },
+
+    #[error("Cannot parse version [{version}] as a semantic version.")]
+    InvalidSemverVersion {
+        source: semver::Error,
+        version: String,
+    }
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
