@@ -17,6 +17,8 @@
 //! use stackable_operator::{CustomResourceExt, cli};
 //! use stackable_operator::error::OperatorResult;
 //!
+//! const OPERATOR_VERSION: &str = "23.1.1";
+//!
 //! #[derive(Clone, CustomResource, Debug, JsonSchema, Serialize, Deserialize)]
 //! #[kube(
 //!     group = "foo.stackable.tech",
@@ -56,8 +58,8 @@
 //!
 //! match opts.command {
 //!     cli::Command::Crd => {
-//!         FooCluster::print_yaml_schema()?;
-//!         BarCluster::print_yaml_schema()?;
+//!         FooCluster::print_yaml_schema(OPERATOR_VERSION)?;
+//!         BarCluster::print_yaml_schema(OPERATOR_VERSION)?;
 //!     },
 //!     cli::Command::Run { .. } => {
 //!         // Run the operator
