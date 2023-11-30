@@ -2,8 +2,8 @@ use std::marker::PhantomData;
 
 use derivative::Derivative;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use semver::Version;
+use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, OperatorResult};
 use crate::yaml;
@@ -90,7 +90,11 @@ fn docs_version(operator_version: &str) -> OperatorResult<String> {
 /// component base URL like `https://docs.stackable.tech/home/nightly/` or
 /// `https://docs.stackable.tech/home/23.1/`.
 fn docs_home_versioned_base_url(operator_version: &str) -> OperatorResult<String> {
-    Ok(format!("{}/{}", DOCS_HOME_BASE_URL, docs_version(operator_version)?))
+    Ok(format!(
+        "{}/{}",
+        DOCS_HOME_BASE_URL,
+        docs_version(operator_version)?
+    ))
 }
 
 /// This trait can be implemented to allow automatic handling

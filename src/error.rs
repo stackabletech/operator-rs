@@ -116,7 +116,7 @@ pub enum Error {
     InvalidSemverVersion {
         source: semver::Error,
         version: String,
-    }
+    },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;
