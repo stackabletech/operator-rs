@@ -75,8 +75,9 @@ pub trait HasApplication {
 /// Takes an operator version and returns a docs version
 fn docs_version(operator_version: &str) -> String {
     if operator_version == "0.0.0-dev" {
-        return "nightly".to_owned();
+        "nightly".to_owned()
     } else {
+        // Take the major.minor component of the semantic version
         operator_version
             .split('.')
             .take(2)
