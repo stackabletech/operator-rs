@@ -33,9 +33,12 @@ use crate::{
 )]
 #[serde(rename_all = "camelCase")]
 pub struct S3BucketSpec {
+    /// The name of the S3 bucket.
     // FIXME: Try to remove the Option<>, as this field should be mandatory
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bucket_name: Option<String>,
+
+    /// The definition of an S3 connection, either inline or as a reference.
     // FIXME: Try to remove the Option<>, as this field should be mandatory
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub connection: Option<S3ConnectionDef>,
@@ -91,11 +94,17 @@ impl InlinedS3BucketSpec {
     }
 }
 
-/// Operators are expected to define fields for this type in order to work with S3 buckets.
+/// An S3 bucket definition, it can either be a reference to an explicit S3Bucket object,
+/// or it can be an inline defintion of a bucket. Read the
+/// [S3 resources concept documentation](https://docs.stackable.tech/home/nightly/concepts/s3)
+/// to learn more.
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum S3BucketDef {
+    /// An inline definition, containing the S3 bucket properties.
     Inline(S3BucketSpec),
+    /// A reference to an S3 bucket object. This is simply the name of the `S3Bucket`
+    /// resource.
     Reference(String),
 }
 
@@ -122,7 +131,9 @@ impl S3BucketDef {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum S3ConnectionDef {
+    /// Inline definition of an S3 connection.
     Inline(S3ConnectionSpec),
+    /// A reference to an S3Connection resource.
     Reference(String),
 }
 
@@ -160,24 +171,28 @@ impl S3ConnectionDef {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct S3ConnectionSpec {
+    /// Hostname of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.
     // FIXME: Try to remove the Option<>, as this field should be mandatory
-    /// Hostname of the S3 server without any protocol or port
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub host: Option<String>,
+
     /// Port the S3 server listens on.
-    /// If not specified the products will determine the port to use.
+    /// If not specified the product will determine the port to use.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub port: Option<u16>,
+
     // FIXME: Try to remove the Option<>, as this field should be mandatory
     /// Which access style to use.
     /// Defaults to virtual hosted-style as most of the data products out there.
-    /// Have a look at the official documentation on <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html>
+    /// Have a look at the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub access_style: Option<S3AccessStyle>,
+
     /// If the S3 uses authentication you have to specify you S3 credentials.
     /// In the most cases a SecretClass providing `accessKey` and `secretKey` is sufficient.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credentials: Option<SecretClassVolume>,
+
     /// If you want to use TLS when talking to S3 you can enable TLS encrypted communication with this setting.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tls: Option<Tls>,

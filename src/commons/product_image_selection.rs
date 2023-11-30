@@ -9,6 +9,12 @@ use crate::labels::get_recommended_labels;
 
 pub const STACKABLE_DOCKER_REPO: &str = "docker.stackable.tech/stackable";
 
+/// Specify which image to use, the easiest way is to only configure the `productVersion`.
+/// You can also configure a custom image registry to pull from, as well as completely custom
+/// images.
+///
+/// Consult the [Product image selection documentation](https://docs.stackable.tech/home/nightly/concepts/product_image_selection)
+/// for details.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductImage {
@@ -16,10 +22,10 @@ pub struct ProductImage {
     image_selection: ProductImageSelection,
 
     #[serde(default)]
-    /// [Pull policy](https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy) used when pulling the Images
+    /// [Pull policy](https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy) used when pulling the image.
     pull_policy: PullPolicy,
 
-    /// [Image pull secrets](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod) to pull images from a private registry
+    /// [Image pull secrets](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod) to pull images from a private registry.
     pull_secrets: Option<Vec<LocalObjectReference>>,
 }
 

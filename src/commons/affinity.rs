@@ -18,6 +18,8 @@ use crate::{
 
 pub const TOPOLOGY_KEY_HOSTNAME: &str = "kubernetes.io/hostname";
 
+/// These configuration settings control
+/// [Pod placement](https://docs.stackable.tech/home/nightly/concepts/operations/pod_placement).
 #[derive(Clone, Debug, Default, Deserialize, Fragment, JsonSchema, PartialEq, Serialize)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(

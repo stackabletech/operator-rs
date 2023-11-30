@@ -1,6 +1,8 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// [Cluster operations](https://docs.stackable.tech/home/nightly/concepts/operations/cluster_operations)
+/// properties, allow stopping the product instance as well as pausing reconciliation.
 #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClusterOperation {

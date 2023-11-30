@@ -68,15 +68,15 @@ use serde::{Deserialize, Serialize};
         rename_all = "camelCase",
     ),
     // We don't want Rust code in public API descriptions
-    schemars(description = "Logging configuration")
+    schemars(description = "Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).")
 )]
 pub struct Logging<T>
 where
     T: Clone + Display + Ord,
 {
-    /// Wether or not to deploy a container with the Vector log agent
+    /// Wether or not to deploy a container with the Vector log agent.
     pub enable_vector_agent: bool,
-    /// Log configuration per container
+    /// Log configuration per container.
     #[fragment_attrs(serde(default))]
     pub containers: BTreeMap<T, ContainerLogConfig>,
 }
