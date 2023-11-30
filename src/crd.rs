@@ -10,6 +10,9 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
+const DOCS_HOME_URL_PLACEHOLDER: &str = "DOCS_BASE_URL_PLACEHOLDER";
+const DOCS_HOME_BASE_URL: &str = "https://docs.stackable.tech/home";
+
 /// A reference to a product cluster (for example, a `ZookeeperCluster`)
 ///
 /// `namespace`'s defaulting only applies when retrieved via [`ClusterRef::namespace_relative_from`]
@@ -69,41 +72,66 @@ pub trait HasApplication {
     fn get_application_name() -> &'static str;
 }
 
+/// Takes an operator version and returns a docs version
+fn docs_version(operator_version: &str) -> String {
+    if operator_version == "0.0.0-dev" {
+        return "nightly".to_owned();
+    } else {
+        operator_version
+            .split('.')
+            .take(2)
+            .collect::<Vec<_>>()
+            .join(".")
+    }
+}
+
+/// Given an operator version like 0.0.0-dev or 23.1.1, generate a docs home
+/// component base URL like `https://docs.stackable.tech/home/nightly/` or
+/// `https://docs.stackable.tech/home/23.1/`.
+fn docs_home_versioned_base_url(operator_version: &str) -> String {
+    format!("{}/{}", DOCS_HOME_BASE_URL, docs_version(operator_version))
+}
+
 /// This trait can be implemented to allow automatic handling
 /// (e.g. creation) of `CustomResourceDefinition`s in Kubernetes.
 pub trait CustomResourceExt: kube::CustomResourceExt {
     /// Generates a YAML CustomResourceDefinition and writes it to a `Write`.
     ///
     /// The generated YAML string is an explicit document with leading dashes (`---`).
-    fn generate_yaml_schema<W>(mut writer: W) -> OperatorResult<()>
+    fn generate_yaml_schema<W>(mut writer: W, operator_version: &str) -> OperatorResult<()>
     where
         W: Write,
     {
-        yaml::serialize_to_explicit_document(&mut writer, &Self::crd())
+        let mut buffer = Vec::new();
+        yaml::serialize_to_explicit_document(&mut buffer, &Self::crd())?;
+        let intermediate_crd = String::from_utf8(buffer).unwrap();
+        let docs_home_url = docs_home_versioned_base_url(operator_version);
+        let replaced_crd = intermediate_crd.replace(DOCS_HOME_URL_PLACEHOLDER, &docs_home_url);
+        Ok(writer.write_all(replaced_crd.as_bytes())?)
     }
 
     /// Generates a YAML CustomResourceDefinition and writes it to the specified file.
     ///
     /// The written YAML string is an explicit document with leading dashes (`---`).
-    fn write_yaml_schema<P: AsRef<Path>>(path: P) -> OperatorResult<()> {
+    fn write_yaml_schema<P: AsRef<Path>>(path: P, operator_version: &str) -> OperatorResult<()> {
         let writer = File::create(path)?;
-        Self::generate_yaml_schema(writer)
+        Self::generate_yaml_schema(writer, operator_version)
     }
 
     /// Generates a YAML CustomResourceDefinition and prints it to stdout.
     ///
     /// The printed YAML string is an explicit document with leading dashes (`---`).
-    fn print_yaml_schema() -> OperatorResult<()> {
+    fn print_yaml_schema(operator_version: &str) -> OperatorResult<()> {
         let writer = std::io::stdout();
-        Self::generate_yaml_schema(writer)
+        Self::generate_yaml_schema(writer, operator_version)
     }
 
     /// Returns the YAML schema of this CustomResourceDefinition as a string.
     ///
     /// The written YAML string is an explicit document with leading dashes (`---`).
-    fn yaml_schema() -> OperatorResult<String> {
+    fn yaml_schema(operator_version: &str) -> OperatorResult<String> {
         let mut writer = Vec::new();
-        Self::generate_yaml_schema(&mut writer)?;
+        Self::generate_yaml_schema(&mut writer, operator_version)?;
         String::from_utf8(writer).map_err(Error::CrdFromUtf8Error)
     }
 }
