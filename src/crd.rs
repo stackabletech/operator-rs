@@ -105,10 +105,15 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
     {
         let mut buffer = Vec::new();
         yaml::serialize_to_explicit_document(&mut buffer, &Self::crd())?;
-        let intermediate_crd = String::from_utf8(buffer).unwrap();
-        let docs_home_url = docs_home_versioned_base_url(operator_version);
-        let replaced_crd = intermediate_crd.replace(DOCS_HOME_URL_PLACEHOLDER, &docs_home_url);
-        Ok(writer.write_all(replaced_crd.as_bytes())?)
+
+        let yaml_schema = String::from_utf8(buffer)
+            .map_err(Error::CrdFromUtf8Error)?
+            .replace(
+                DOCS_HOME_URL_PLACEHOLDER,
+                &docs_home_versioned_base_url(operator_version),
+            );
+
+        Ok(writer.write_all(yaml_schema.as_bytes())?)
     }
 
     /// Generates a YAML CustomResourceDefinition and writes it to the specified file.
