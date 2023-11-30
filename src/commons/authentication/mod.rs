@@ -99,6 +99,10 @@ pub struct ClientAuthenticationDetails<O = ()> {
     /// is flattened into the final CRD.
     ///
     /// Use [`ClientAuthenticationDetails::oidc_or_error`] to get the value or report an error to the user.
+    // TODO: Ideally we want this to be an enum once other `ClientAuthenticationOptions` are added, so
+    // that user can not configure multiple options at the same time (yes we are aware that this makes a
+    // changing the type of an AuthenticationClass harder).
+    // This is a non-breaking change though :)
     oidc: Option<oidc::ClientAuthenticationOptions<O>>,
 }
 
