@@ -13,7 +13,7 @@ pub const STACKABLE_DOCKER_REPO: &str = "docker.stackable.tech/stackable";
 /// You can also configure a custom image registry to pull from, as well as completely custom
 /// images.
 ///
-/// Consult the [Product image selection documentation](https://docs.stackable.tech/home/nightly/concepts/product_image_selection)
+/// Consult the [Product image selection documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/product_image_selection)
 /// for details.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

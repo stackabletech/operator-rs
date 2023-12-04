@@ -114,16 +114,8 @@ pub struct CommonConfiguration<T> {
     #[schemars(default = "config_schema_default")]
     pub config: T,
     /// The `configOverrides` can be used to configure properties in product config files
-    /// that are not exposed in the CRD. For example, for a HdfsCluster:
-    ///
-    /// ```yaml
-    ///   configOverrides: # on role level
-    ///     core-site.xml: # the name of the configuration file
-    ///       fs.trash.interval: "5"  # the name of the property and the value to set
-    /// ```
-    ///
-    /// Read the
-    /// [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides)
+    /// that are not exposed in the CRD. Read the
+    /// [config overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#config-overrides)
     /// and consult the operator specific usage guide documentation for details on the
     /// available config files and settings for the specific product.
     #[serde(default)]
@@ -131,7 +123,7 @@ pub struct CommonConfiguration<T> {
     /// `envOverrides` configure environment variables to be set in the Pods.
     /// It is a map from strings to strings - environment variables and the value to set.
     /// Read the
-    /// [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides)
+    /// [environment variable overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#env-overrides)
     /// for more information and consult the operator specific usage guide to find out about
     /// the product specific environment variables that are available.
     #[serde(default)]
@@ -144,7 +136,7 @@ pub struct CommonConfiguration<T> {
     /// [PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core)
     /// to override any property that can be set on a Kubernetes Pod.
     /// Read the
-    /// [Pod overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#pod-overrides)
+    /// [Pod overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#pod-overrides)
     /// for more information.
     #[serde(default)]
     #[schemars(schema_with = "pod_overrides_schema")]
