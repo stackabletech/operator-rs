@@ -117,6 +117,9 @@ pub enum Error {
         source: semver::Error,
         version: String,
     },
+
+    #[error("OIDC authentication details not specified. The AuthenticationClass {auth_class_name:?} uses an OIDC provider, you need to specify OIDC authentication details (such as client credentials) as well")]
+    OidcAuthenticationDetailsNotSpecified { auth_class_name: String },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;

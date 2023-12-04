@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `oidc::AuthenticationProvider`. This enables users to deploy a new `AuthenticationClass` for OIDC providers like
+  Keycloak, Okta or Auth0 ([#680]).
+- Add a common `ClientAuthenticationDetails` struct, which provides common fields and functions to specify
+  authentication options on product cluster level. Additionally, the PR also adds `ClientAuthenticationConfig`,
+  `oidc::ClientAuthenticationOptions`, and `ldap::ClientAuthenticationOptions` ([#680]).
+
+### Changed
+
+- BREAKING: Change the naming of all authentication provider structs. It is now required to import them using the
+  module. So imports change from `...::authentication::LdapAuthenticationProvider` to
+  `...::authentication::ldap::AuthenticationProvider` for example ([#680]).
+- BREAKING: Move TLS related structs into the `tls` module. Imports need to be adjusted accordingly ([#680]).
+
+[#680]: https://github.com/stackabletech/operator-rs/pull/680
+
 ## [0.57.0] - 2023-12-04
 
 ### Changed

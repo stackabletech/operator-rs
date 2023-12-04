@@ -4,12 +4,15 @@
 //! Operator CRDs are expected to use the [S3BucketDef] as an entry point to this module
 //! and obtain an [InlinedS3BucketSpec] by calling [`S3BucketDef::resolve`].
 //!
-use crate::commons::{authentication::tls::Tls, secret_class::SecretClassVolume};
-use crate::error;
-use crate::{client::Client, error::OperatorResult};
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    client::Client,
+    commons::{authentication::tls::Tls, secret_class::SecretClassVolume},
+    error::{self, OperatorResult},
+};
 
 /// S3 bucket specification containing only the bucket name and an inlined or
 /// referenced connection specification.
@@ -31,9 +34,12 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct S3BucketSpec {
     /// The name of the S3 bucket.
+    // FIXME: Try to remove the Option<>, as this field should be mandatory
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bucket_name: Option<String>,
+
     /// The definition of an S3 connection, either inline or as a reference.
+    // FIXME: Try to remove the Option<>, as this field should be mandatory
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub connection: Option<S3ConnectionDef>,
 }
@@ -166,21 +172,27 @@ impl S3ConnectionDef {
 #[serde(rename_all = "camelCase")]
 pub struct S3ConnectionSpec {
     /// Hostname of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.
+    // FIXME: Try to remove the Option<>, as this field should be mandatory
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub host: Option<String>,
+
     /// Port the S3 server listens on.
     /// If not specified the product will determine the port to use.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub port: Option<u16>,
+
+    // FIXME: Try to remove the Option<>, as this field should be mandatory
     /// Which access style to use.
     /// Defaults to virtual hosted-style as most of the data products out there.
     /// Have a look at the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub access_style: Option<S3AccessStyle>,
+
     /// If the S3 uses authentication you have to specify you S3 credentials.
     /// In the most cases a SecretClass providing `accessKey` and `secretKey` is sufficient.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credentials: Option<SecretClassVolume>,
+
     /// If you want to use TLS when talking to S3 you can enable TLS encrypted communication with this setting.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tls: Option<Tls>,
