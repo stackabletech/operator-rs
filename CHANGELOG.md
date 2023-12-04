@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.57.0] - 2023-12-04
+
 ### Changed
 
 - BREAKING: The `CustomResourceExt` functions now take the Operator version as an argument.
