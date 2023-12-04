@@ -68,7 +68,7 @@ use serde::{Deserialize, Serialize};
         rename_all = "camelCase",
     ),
     // We don't want Rust code in public API descriptions
-    schemars(description = "Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).")
+    schemars(description = "Logging configuration, learn more in the [logging concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/logging).")
 )]
 pub struct Logging<T>
 where

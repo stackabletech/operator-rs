@@ -21,6 +21,17 @@ All notable changes to this project will be documented in this file.
 
 [#680]: https://github.com/stackabletech/operator-rs/pull/680
 
+## [0.57.0] - 2023-12-04
+
+### Changed
+
+- BREAKING: The `CustomResourceExt` functions now take the Operator version as an argument.
+  It replaces `DOCS_BASE_URL_PLACEHOLDER` in doc strings with a link to URL base, so
+  `DOCS_BASE_URL_PLACEHOLDER/druid/` turns into `https://docs.stackable.tech/home/nightly/druid/`
+  in the nightly operator ([#689]).
+
+[#689]: https://github.com/stackabletech/operator-rs/pull/689
+
 ## [0.56.2] - 2023-11-23
 
 ### Added
