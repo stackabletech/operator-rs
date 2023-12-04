@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.58.0] - 2023-12-04
+
 ### Added
 
 - Add `oidc::AuthenticationProvider`. This enables users to deploy a new `AuthenticationClass` for OIDC providers like
@@ -19,7 +21,12 @@ All notable changes to this project will be documented in this file.
   `...::authentication::ldap::AuthenticationProvider` for example ([#680]).
 - BREAKING: Move TLS related structs into the `tls` module. Imports need to be adjusted accordingly ([#680]).
 
+### Fixed
+
+- Fixed appVersion label in case container images contain a hash, such as `docker.stackable.tech/stackable/nifi@sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb8c42f76efc109`. Also added a test-case to ensure we support images containing hashes. This should be a rather cosmetic fix, images with hashes should have worked before anyway ([#690]).
+
 [#680]: https://github.com/stackabletech/operator-rs/pull/680
+[#690]: https://github.com/stackabletech/operator-rs/pull/690
 
 ## [0.57.0] - 2023-12-04
 
@@ -38,18 +45,15 @@ All notable changes to this project will be documented in this file.
 
 - More documentation for CRD structs ([#687]).
 
-### Fixed
-
-- Fixed appVersion label in case container images contain a hash, such as `docker.stackable.tech/stackable/nifi@sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb8c42f76efc109`. Also added a test-case to ensure we support images containing hashes. This should be a rather cosmetic fix, images with hashes should have worked before anyway ([#690]).
-
 [#687]: https://github.com/stackabletech/operator-rs/pull/687
-[#690]: https://github.com/stackabletech/operator-rs/pull/690
 
 ## [0.56.1] - 2023-11-23
 
 ### Changed
 
-- Update `kube` to `0.87.1` as version `0.86.0` was yanked.
+- Update `kube` to `0.87.1` as version `0.86.0` was yanked ([#685]).
+
+[#685]: https://github.com/stackabletech/operator-rs/pull/685
 
 ## [0.56.0] - 2023-10-31 👻
 
