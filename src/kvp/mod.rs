@@ -87,14 +87,15 @@ where
     }
 }
 
-impl<T, V> TryFrom<(T, T)> for KeyValuePair<V>
+impl<T, K, V> TryFrom<(T, K)> for KeyValuePair<V>
 where
     T: AsRef<str>,
+    K: AsRef<str>,
     V: ValueExt,
 {
     type Error = KeyValuePairError<V::Error>;
 
-    fn try_from(value: (T, T)) -> Result<Self, Self::Error> {
+    fn try_from(value: (T, K)) -> Result<Self, Self::Error> {
         let key = Key::from_str(value.0.as_ref()).context(InvalidKeySnafu)?;
         let value = V::from_str(value.1.as_ref()).context(InvalidValueSnafu)?;
 
@@ -349,8 +350,8 @@ where
         self
     }
 
-    pub fn contains(&self, kvp: KeyValuePair<V>) -> bool {
-        self.0.contains(&kvp)
+    pub fn contains(&self, kvp: &KeyValuePair<V>) -> bool {
+        self.0.contains(kvp)
     }
 
     pub fn contains_raw(
@@ -365,8 +366,8 @@ where
     }
 
     pub fn contains_all(&self, kvps: KeyValuePairs<V>) -> bool {
-        for kvp in kvps {
-            if !self.contains(&kvp) {
+        for kvp in kvps.iter() {
+            if !self.contains(kvp) {
                 return false;
             }
         }
@@ -374,16 +375,13 @@ where
         true
     }
 
-    pub fn contains_all_raw(
+    pub fn contains_all_raw<'a>(
         &self,
-        keys: impl AsRef<[str]>,
-        values: impl AsRef<[str]>,
+        keys: impl AsRef<[&'a str]>,
+        values: impl AsRef<[&'a str]>,
     ) -> Result<bool, KeyValuePairsError<V::Error>> {
         for (key, value) in keys.as_ref().iter().zip(values.as_ref()) {
-            if !self
-                .contains_raw(key, value)
-                .context(KeyValuePairParseSnafu)?
-            {
+            if !self.contains_raw(key, value)? {
                 return Ok(false);
             }
         }

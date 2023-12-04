@@ -70,17 +70,15 @@ impl Label {
     /// Creates the `app.kubernetes.io/component` label with `role` as the
     /// value. This function will return an error if `role` violates the required
     /// Kubernetes restrictions.
-    pub fn role_selector(role: &str) -> Result<Self, KeyValuePairError<LabelValueError>> {
-        let kvp = KeyValuePair::try_from((COMPONENT_KEY, role))?;
+    pub fn component(component: &str) -> Result<Self, KeyValuePairError<LabelValueError>> {
+        let kvp = KeyValuePair::try_from((COMPONENT_KEY, component))?;
         Ok(Self(kvp))
     }
 
     /// Creates the `app.kubernetes.io/role-group` label with `role_group` as
     /// the value. This function will return an error if `role` violates the
     /// required Kubernetes restrictions.
-    pub fn role_group_selector(
-        role_group: &str,
-    ) -> Result<Self, KeyValuePairError<LabelValueError>> {
+    pub fn role_group(role_group: &str) -> Result<Self, KeyValuePairError<LabelValueError>> {
         let kvp = KeyValuePair::try_from((ROLE_GROUP_KEY, role_group))?;
         Ok(Self(kvp))
     }
@@ -92,7 +90,7 @@ impl Label {
     ) -> Result<Self, KeyValuePairError<LabelValueError>> {
         let kvp = KeyValuePair::try_from((
             MANAGED_BY_KEY,
-            format_full_controller_name(operator_name, controller_name),
+            format_full_controller_name(operator_name, controller_name).as_str(),
         ))?;
         Ok(Self(kvp))
     }
@@ -174,28 +172,6 @@ impl Labels {
         self.0.is_empty()
     }
 
-    /// Returns a common set of labels, which are required to identify resources
-    /// that belong to a certain owner object, for example a `ZookeeperCluster`.
-    /// The set contains these well-known labels:
-    ///
-    /// - `app.kubernetes.io/instance` and
-    /// - `app.kubernetes.io/name`
-    ///
-    /// This function returns a result, because the parameters `app_name` and
-    /// `app_instance` can contain invalid data or can exceed the maximum
-    /// allowed number of characters.
-    pub fn common(
-        app_name: &str,
-        app_instance: &str,
-    ) -> Result<Self, KeyValuePairError<LabelValueError>> {
-        let mut labels = Self::new();
-
-        labels.insert((INSTANCE_KEY, app_instance).try_into()?);
-        labels.insert((NAME_KEY, app_name).try_into()?);
-
-        Ok(labels)
-    }
-
     /// Returns the recommended set of labels. The set includes these well-known
     /// labels:
     ///
@@ -215,21 +191,70 @@ impl Labels {
     where
         R: Resource,
     {
-        let common = Self::common(object_labels.app_name, &object_labels.owner.name_any())?;
+        let mut labels = Self::role_group_selector(
+            object_labels.owner,
+            object_labels.app_name,
+            object_labels.role,
+            object_labels.role_group,
+        )?;
 
         let managed_by =
             Label::managed_by(object_labels.operator_name, object_labels.controller_name)?;
-        let role_group_selector = Label::role_group_selector(object_labels.role_group)?;
-        let role_selector = Label::role_selector(object_labels.role)?;
         let version = Label::version(object_labels.app_version)?;
 
-        let mut labels = Self::new();
-        labels.extend(common);
-
-        labels.insert(role_group_selector);
-        labels.insert(role_selector);
         labels.insert(managed_by);
         labels.insert(version);
+
+        Ok(labels)
+    }
+
+    // TODO (Techassi): Add doc comment
+    pub fn role_group_selector<R>(
+        owner: &R,
+        app_name: &str,
+        role: &str,
+        role_group: &str,
+    ) -> Result<Self, KeyValuePairError<LabelValueError>>
+    where
+        R: Resource,
+    {
+        let mut labels = Self::role_selector(owner, app_name, role)?;
+        labels.insert(Label::role_group(role_group)?);
+        Ok(labels)
+    }
+
+    // TODO (Techassi): Add doc comment
+    pub fn role_selector<R>(
+        owner: &R,
+        app_name: &str,
+        role: &str,
+    ) -> Result<Self, KeyValuePairError<LabelValueError>>
+    where
+        R: Resource,
+    {
+        let mut labels = Self::common(app_name, owner.name_any().as_str())?;
+        labels.insert(Label::component(role)?);
+        Ok(labels)
+    }
+
+    /// Returns a common set of labels, which are required to identify resources
+    /// that belong to a certain owner object, for example a `ZookeeperCluster`.
+    /// The set contains these well-known labels:
+    ///
+    /// - `app.kubernetes.io/instance` and
+    /// - `app.kubernetes.io/name`
+    ///
+    /// This function returns a result, because the parameters `app_name` and
+    /// `app_instance` can contain invalid data or can exceed the maximum
+    /// allowed number of characters.
+    pub fn common(
+        app_name: &str,
+        app_instance: &str,
+    ) -> Result<Self, KeyValuePairError<LabelValueError>> {
+        let mut labels = Self::new();
+
+        labels.insert((INSTANCE_KEY, app_instance).try_into()?);
+        labels.insert((NAME_KEY, app_name).try_into()?);
 
         Ok(labels)
     }

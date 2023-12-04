@@ -6,7 +6,10 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::kvp::{Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError};
+use crate::{
+    builder::SecretOperatorVolumeScope,
+    kvp::{Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError},
+};
 
 mod value;
 
@@ -57,6 +60,60 @@ impl Annotation {
     pub fn into_inner(self) -> KeyValuePair<AnnotationValue> {
         self.0
     }
+
+    pub fn secret_class(
+        secret_class: &str,
+    ) -> Result<Self, KeyValuePairError<AnnotationValueError>> {
+        let kvp = KeyValuePair::try_from(("secrets.stackable.tech/class", secret_class))?;
+        Ok(Self(kvp))
+    }
+
+    pub fn secret_scope(
+        scopes: impl AsRef<[SecretOperatorVolumeScope]>,
+    ) -> Result<Self, KeyValuePairError<AnnotationValueError>> {
+        let mut value = String::new();
+
+        for scope in scopes.as_ref() {
+            if !value.is_empty() {
+                value.push(',');
+            }
+
+            match scope {
+                SecretOperatorVolumeScope::Node => value.push_str("node"),
+                SecretOperatorVolumeScope::Pod => value.push_str("pod"),
+                SecretOperatorVolumeScope::Service { name } => {
+                    value.push_str("service=");
+                    value.push_str(&name);
+                }
+            }
+        }
+
+        let kvp = KeyValuePair::try_from(("secrets.stackable.tech/scope", value))?;
+        Ok(Self(kvp))
+    }
+
+    pub fn secret_format(format: &str) -> Result<Self, KeyValuePairError<AnnotationValueError>> {
+        let kvp = KeyValuePair::try_from(("secrets.stackable.tech/format", format))?;
+        Ok(Self(kvp))
+    }
+
+    pub fn kerberos_service_names(
+        names: impl AsRef<[String]>,
+    ) -> Result<Self, KeyValuePairError<AnnotationValueError>> {
+        let names = names.as_ref().join(",");
+        let kvp = KeyValuePair::try_from(("secret", names))?;
+        Ok(Self(kvp))
+    }
+
+    pub fn tls_pkcs12_password(
+        password: &str,
+    ) -> Result<Self, KeyValuePairError<AnnotationValueError>> {
+        let kvp = KeyValuePair::try_from((
+            "secrets.stackable.tech/format.compatibility.tls-pkcs12.password",
+            password,
+        ))?;
+        Ok(Self(kvp))
+    }
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -98,7 +155,10 @@ impl Annotations {
     /// Tries to insert a new [`Annotation`]. It ensures there are no duplicate
     /// entries. Trying to insert duplicated data returns an error. If no such
     /// check is required, use the `insert` function instead.
-    pub fn try_insert(&mut self, annotation: Annotation) -> Result<&mut Self, KeyValuePairsError> {
+    pub fn try_insert(
+        &mut self,
+        annotation: Annotation,
+    ) -> Result<&mut Self, KeyValuePairsError<AnnotationValueError>> {
         self.0.try_insert(annotation.0)?;
         Ok(self)
     }

@@ -10,7 +10,11 @@ use crate::{
         },
     },
     error::{Error, OperatorResult},
-    kvp::{Label, Labels},
+    kvp::{
+        consts::{INSTANCE_KEY, MANAGED_BY_KEY, NAME_KEY},
+        Label, Labels,
+    },
+    utils::format_full_controller_name,
 };
 
 use k8s_openapi::{
@@ -354,6 +358,9 @@ pub struct ClusterResources {
     // TODO (Techassi): Add doc comments
     controller_name: String,
 
+    // TODO (Techassi): Add doc comment
+    manager: String,
+
     /// The unique IDs of the cluster resources
     resource_ids: HashSet<String>,
 
@@ -404,6 +411,7 @@ impl ClusterResources {
             app_name: app_name.into(),
             operator_name: operator_name.into(),
             controller_name: controller_name.into(),
+            manager: format_full_controller_name(operator_name, controller_name),
             resource_ids: Default::default(),
             apply_strategy,
         })
@@ -414,7 +422,7 @@ impl ClusterResources {
     pub fn get_required_labels(&self) -> BTreeMap<String, String> {
         // TODO (Techassi): Remove unwrap
         let mut labels = Labels::common(&self.app_name, &self.app_instance).unwrap();
-        labels.extend(Label::managed_by(&self.operator_name, &self.controller_name).unwrap());
+        labels.insert(Label::managed_by(&self.operator_name, &self.controller_name).unwrap());
 
         labels.into()
     }
@@ -445,7 +453,7 @@ impl ClusterResources {
     ) -> OperatorResult<T> {
         Self::check_labels(
             resource.labels(),
-            &[APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL],
+            &[INSTANCE_KEY, MANAGED_BY_KEY, NAME_KEY],
             &[&self.app_instance, &self.manager, &self.app_name],
         )?;
 
@@ -667,17 +675,17 @@ impl ClusterResources {
         let label_selector = LabelSelector {
             match_expressions: Some(vec![
                 LabelSelectorRequirement {
-                    key: APP_INSTANCE_LABEL.into(),
+                    key: INSTANCE_KEY.into(),
                     operator: "In".into(),
                     values: Some(vec![self.app_instance.to_owned()]),
                 },
                 LabelSelectorRequirement {
-                    key: APP_NAME_LABEL.into(),
+                    key: NAME_KEY.into(),
                     operator: "In".into(),
                     values: Some(vec![self.app_name.to_owned()]),
                 },
                 LabelSelectorRequirement {
-                    key: APP_MANAGED_BY_LABEL.into(),
+                    key: MANAGED_BY_KEY.into(),
                     operator: "In".into(),
                     values: Some(vec![self.manager.to_owned()]),
                 },

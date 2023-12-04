@@ -13,7 +13,7 @@ use stackable_operator_derive::Fragment;
 
 use crate::{
     config::merge::{Atomic, Merge},
-    labels::{APP_COMPONENT_LABEL, APP_INSTANCE_LABEL, APP_NAME_LABEL},
+    kvp::consts::{COMPONENT_KEY, INSTANCE_KEY, NAME_KEY},
 };
 
 pub const TOPOLOGY_KEY_HOSTNAME: &str = "kubernetes.io/hostname";
@@ -138,9 +138,9 @@ pub fn affinity_between_role_pods(
             label_selector: Some(LabelSelector {
                 match_expressions: None,
                 match_labels: Some(BTreeMap::from([
-                    (APP_NAME_LABEL.to_string(), app_name.to_string()),
-                    (APP_INSTANCE_LABEL.to_string(), cluster_name.to_string()),
-                    (APP_COMPONENT_LABEL.to_string(), role.to_string()),
+                    (NAME_KEY.to_string(), app_name.to_string()),
+                    (INSTANCE_KEY.to_string(), cluster_name.to_string()),
+                    (COMPONENT_KEY.to_string(), role.to_string()),
                     // We don't include the role-group label here, as the affinity should be between all rolegroups of the given role
                 ])),
             }),
@@ -165,8 +165,8 @@ pub fn affinity_between_cluster_pods(
             label_selector: Some(LabelSelector {
                 match_expressions: None,
                 match_labels: Some(BTreeMap::from([
-                    (APP_NAME_LABEL.to_string(), app_name.to_string()),
-                    (APP_INSTANCE_LABEL.to_string(), cluster_name.to_string()),
+                    (NAME_KEY.to_string(), app_name.to_string()),
+                    (INSTANCE_KEY.to_string(), cluster_name.to_string()),
                 ])),
             }),
             namespace_selector: None,
