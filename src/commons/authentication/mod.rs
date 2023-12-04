@@ -95,8 +95,7 @@ pub struct ClientAuthenticationDetails<O = ()> {
     #[serde(rename = "authenticationClass")]
     authentication_class_ref: String,
 
-    /// This field contains authentication provider specific configuration. It
-    /// is flattened into the final CRD.
+    /// This field contains authentication provider specific configuration.
     ///
     /// Use [`ClientAuthenticationDetails::oidc_or_error`] to get the value or report an error to the user.
     // TODO: Ideally we want this to be an enum once other `ClientAuthenticationOptions` are added, so
