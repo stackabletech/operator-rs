@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// 2. The allowed number of Pods to be unavailable (`maxUnavailable`)
 ///
 /// Learn more in the
-/// [allowed Pod disruptions documentation](https://docs.stackable.tech/home/nightly/concepts/operations/pod_disruptions).
+/// [allowed Pod disruptions documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/operations/pod_disruptions).
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PdbConfig {
