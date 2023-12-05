@@ -2,8 +2,12 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// This struct is used to configure:
-/// 1.) If PodDisruptionBudgets are created by the operator
-/// 2.) The allowed number of Pods to be unavailable (`maxUnavailable`)
+///
+/// 1. If PodDisruptionBudgets are created by the operator
+/// 2. The allowed number of Pods to be unavailable (`maxUnavailable`)
+///
+/// Learn more in the
+/// [allowed Pod disruptions documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/operations/pod_disruptions).
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PdbConfig {

@@ -9,6 +9,12 @@ use crate::kvp::Labels;
 
 pub const STACKABLE_DOCKER_REPO: &str = "docker.stackable.tech/stackable";
 
+/// Specify which image to use, the easiest way is to only configure the `productVersion`.
+/// You can also configure a custom image registry to pull from, as well as completely custom
+/// images.
+///
+/// Consult the [Product image selection documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/product_image_selection)
+/// for details.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductImage {
@@ -16,10 +22,10 @@ pub struct ProductImage {
     image_selection: ProductImageSelection,
 
     #[serde(default)]
-    /// [Pull policy](https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy) used when pulling the Images
+    /// [Pull policy](https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy) used when pulling the image.
     pull_policy: PullPolicy,
 
-    /// [Image pull secrets](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod) to pull images from a private registry
+    /// [Image pull secrets](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod) to pull images from a private registry.
     pull_secrets: Option<Vec<LocalObjectReference>>,
 }
 
@@ -97,11 +103,12 @@ impl ProductImage {
         match &self.image_selection {
             ProductImageSelection::Custom(image_selection) => {
                 let image = ImageRef::parse(&image_selection.custom);
-                let app_version_label = format!(
-                    "{}-{}",
-                    image_selection.product_version,
-                    image.tag.unwrap_or("latest".to_string())
-                );
+                let image_tag_or_hash = image.tag.or(image.hash).unwrap_or("latest".to_string());
+                let mut app_version_label =
+                    format!("{}-{}", image_selection.product_version, image_tag_or_hash);
+                // TODO Use new label mechanism once added
+                app_version_label.truncate(63);
+
                 ResolvedProductImage {
                     product_version: image_selection.product_version.to_string(),
                     app_version_label,
@@ -280,6 +287,21 @@ mod tests {
         ResolvedProductImage {
             image: "127.0.0.1:8080/myteam/stackable/superset:latest-and-greatest".to_string(),
             app_version_label: "1.4.1-latest-and-greatest".to_string(),
+            product_version: "1.4.1".to_string(),
+            image_pull_policy: "Always".to_string(),
+            pull_secrets: None,
+        }
+    )]
+    #[case::custom_with_hash_in_repo_and_without_tag(
+        "superset",
+        "23.7.42",
+        r#"
+        custom: docker.stackable.tech/stackable/superset@sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb8c42f76efc1098
+        productVersion: 1.4.1
+        "#,
+        ResolvedProductImage {
+            image: "docker.stackable.tech/stackable/superset@sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb8c42f76efc1098".to_string(),
+            app_version_label: "1.4.1-sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,

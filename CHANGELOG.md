@@ -12,6 +12,49 @@ All notable changes to this project will be documented in this file.
 
 [#684]: https://github.com/stackabletech/operator-rs/pull/684
 
+## [0.58.0] - 2023-12-04
+
+### Added
+
+- Add `oidc::AuthenticationProvider`. This enables users to deploy a new `AuthenticationClass` for OIDC providers like
+  Keycloak, Okta or Auth0 ([#680]).
+- Add a common `ClientAuthenticationDetails` struct, which provides common fields and functions to specify
+  authentication options on product cluster level. Additionally, the PR also adds `ClientAuthenticationConfig`,
+  `oidc::ClientAuthenticationOptions`, and `ldap::ClientAuthenticationOptions` ([#680]).
+
+### Changed
+
+- BREAKING: Change the naming of all authentication provider structs. It is now required to import them using the
+  module. So imports change from `...::authentication::LdapAuthenticationProvider` to
+  `...::authentication::ldap::AuthenticationProvider` for example ([#680]).
+- BREAKING: Move TLS related structs into the `tls` module. Imports need to be adjusted accordingly ([#680]).
+
+### Fixed
+
+- Fixed appVersion label in case container images contain a hash, such as `docker.stackable.tech/stackable/nifi@sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb8c42f76efc109`. Also added a test-case to ensure we support images containing hashes. This should be a rather cosmetic fix, images with hashes should have worked before anyway ([#690]).
+
+[#680]: https://github.com/stackabletech/operator-rs/pull/680
+[#690]: https://github.com/stackabletech/operator-rs/pull/690
+
+## [0.57.0] - 2023-12-04
+
+### Changed
+
+- BREAKING: The `CustomResourceExt` functions now take the Operator version as an argument.
+  It replaces `DOCS_BASE_URL_PLACEHOLDER` in doc strings with a link to URL base, so
+  `DOCS_BASE_URL_PLACEHOLDER/druid/` turns into `https://docs.stackable.tech/home/nightly/druid/`
+  in the nightly operator ([#689]).
+
+[#689]: https://github.com/stackabletech/operator-rs/pull/689
+
+## [0.56.2] - 2023-11-23
+
+### Added
+
+- More documentation for CRD structs ([#687]).
+
+[#687]: https://github.com/stackabletech/operator-rs/pull/687
+
 ## [0.56.1] - 2023-11-23
 
 ### Changed
