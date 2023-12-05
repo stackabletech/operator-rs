@@ -1,11 +1,19 @@
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{ObjectMeta, OwnerReference};
 use kube::{Resource, ResourceExt};
+use snafu::{ResultExt, Snafu};
 use tracing::warn;
 
 use crate::{
     error::{Error, OperatorResult},
-    kvp::{Annotation, Annotations, Label, Labels, ObjectLabels},
+    kvp::{Annotation, Annotations, Label, LabelError, Labels, ObjectLabels},
 };
+
+// NOTE (Techassi): Think about that name
+#[derive(Debug, Snafu)]
+pub enum ObjectMetaBuilderError {
+    #[snafu(display("failed to set recommended labels"))]
+    RecommendedLabels { source: LabelError },
+}
 
 /// A builder to build [`ObjectMeta`] objects.
 ///
@@ -136,20 +144,22 @@ impl ObjectMetaBuilder {
         self
     }
 
-    /// This sets the common recommended labels (in the `app.kubernetes.io` namespace).
-    /// It is recommended to always call this method.
-    /// The only reasons it is not _required_ is to make testing easier and to allow for more
-    /// flexibility if needed.
+    /// This sets the common recommended labels (in the `app.kubernetes.io`
+    /// namespace). It is recommended to always call this method. The only
+    /// reasons it is not _required_ is to make testing easier and to allow
+    /// for more flexibility if needed.
     pub fn with_recommended_labels<T: Resource>(
         &mut self,
         object_labels: ObjectLabels<T>,
-    ) -> &mut Self {
-        // TODO (Techassi): Remove unwrap
-        let recommended_labels = Labels::recommended(object_labels).unwrap();
+    ) -> Result<&mut Self, ObjectMetaBuilderError> {
+        let recommended_labels =
+            Labels::recommended(object_labels).context(RecommendedLabelsSnafu)?;
+
         self.labels
             .get_or_insert(Labels::new())
             .extend(recommended_labels);
-        self
+
+        Ok(self)
     }
 
     pub fn build(&self) -> ObjectMeta {
@@ -325,6 +335,7 @@ mod tests {
                 role: "role",
                 role_group: "rolegroup",
             })
+            .unwrap()
             .with_annotation(("foo", "bar").try_into().unwrap())
             .build();
 
