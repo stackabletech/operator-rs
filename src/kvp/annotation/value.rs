@@ -3,7 +3,7 @@ use std::{fmt::Display, ops::Deref, str::FromStr};
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 
-use crate::kvp::ValueExt;
+use crate::kvp::Value;
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum AnnotationValueError {
@@ -14,7 +14,7 @@ pub enum AnnotationValueError {
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct AnnotationValue(String);
 
-impl ValueExt for AnnotationValue {
+impl Value for AnnotationValue {
     type Error = AnnotationValueError;
 }
 

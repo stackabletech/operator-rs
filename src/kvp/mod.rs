@@ -49,7 +49,7 @@ where
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyValuePair<V>
 where
-    V: ValueExt,
+    V: Value,
 {
     key: Key,
     value: V,
@@ -57,7 +57,7 @@ where
 
 impl<V> FromStr for KeyValuePair<V>
 where
-    V: ValueExt,
+    V: Value,
 {
     type Err = KeyValuePairError<V::Error>;
 
@@ -91,7 +91,7 @@ impl<T, K, V> TryFrom<(T, K)> for KeyValuePair<V>
 where
     T: AsRef<str>,
     K: AsRef<str>,
-    V: ValueExt,
+    V: Value,
 {
     type Error = KeyValuePairError<V::Error>;
 
@@ -105,7 +105,7 @@ where
 
 impl<V> Display for KeyValuePair<V>
 where
-    V: ValueExt,
+    V: Value,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}={}", self.key, self.value)
@@ -114,7 +114,7 @@ where
 
 impl<V> Serialize for KeyValuePair<V>
 where
-    V: ValueExt,
+    V: Value,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -132,7 +132,7 @@ struct KeyValuePairVisitor<V> {
 
 impl<'de, V> Visitor<'de> for KeyValuePairVisitor<V>
 where
-    V: Deserialize<'de> + ValueExt + Default,
+    V: Deserialize<'de> + Value + Default,
 {
     type Value = KeyValuePair<V>;
 
@@ -154,7 +154,7 @@ where
 
 impl<'de, V> Deserialize<'de> for KeyValuePair<V>
 where
-    V: Deserialize<'de> + ValueExt + Default,
+    V: Deserialize<'de> + Value + Default,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -168,7 +168,7 @@ where
 
 impl<V> KeyValuePair<V>
 where
-    V: ValueExt,
+    V: Value,
 {
     /// Creates a new [`KeyValuePair`] from a validated [`Key`] and value.
     pub fn new(key: Key, value: V) -> Self {
@@ -204,11 +204,11 @@ where
 /// to a [`BTreeMap<String, String>`] removes any duplicate data. Order matters
 /// in this case: later labels overwrite previous onces.
 #[derive(Clone, Debug, Default)]
-pub struct KeyValuePairs<V: ValueExt>(BTreeSet<KeyValuePair<V>>);
+pub struct KeyValuePairs<V: Value>(BTreeSet<KeyValuePair<V>>);
 
 impl<V> TryFrom<BTreeMap<String, String>> for KeyValuePairs<V>
 where
-    V: ValueExt,
+    V: Value,
 {
     type Error = KeyValuePairError<V::Error>;
 
@@ -224,7 +224,7 @@ where
 
 impl<V> FromIterator<KeyValuePair<V>> for KeyValuePairs<V>
 where
-    V: ValueExt,
+    V: Value,
 {
     fn from_iter<T: IntoIterator<Item = KeyValuePair<V>>>(iter: T) -> Self {
         Self(iter.into_iter().collect())
@@ -233,7 +233,7 @@ where
 
 impl<V> From<KeyValuePairs<V>> for BTreeMap<String, String>
 where
-    V: ValueExt,
+    V: Value,
 {
     fn from(value: KeyValuePairs<V>) -> Self {
         value
@@ -245,7 +245,7 @@ where
 
 impl<V> Deref for KeyValuePairs<V>
 where
-    V: ValueExt,
+    V: Value,
 {
     type Target = BTreeSet<KeyValuePair<V>>;
 
@@ -256,7 +256,7 @@ where
 
 impl<V> Serialize for KeyValuePairs<V>
 where
-    V: ValueExt,
+    V: Value,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -284,7 +284,7 @@ impl<V> KeyValuePairsVisitor<V> {
 
 impl<'de, V> Visitor<'de> for KeyValuePairsVisitor<V>
 where
-    V: Deserialize<'de> + ValueExt + Default,
+    V: Deserialize<'de> + Value + Default,
 {
     type Value = KeyValuePairs<V>;
 
@@ -306,7 +306,7 @@ where
 
 impl<'de, V> Deserialize<'de> for KeyValuePairs<V>
 where
-    V: Deserialize<'de> + ValueExt + Default,
+    V: Deserialize<'de> + Value + Default,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -318,7 +318,7 @@ where
 
 impl<V> KeyValuePairs<V>
 where
-    V: ValueExt + std::default::Default,
+    V: Value + std::default::Default,
 {
     /// Creates a new empty list of [`KeyValuePair`]s.
     pub fn new() -> Self {

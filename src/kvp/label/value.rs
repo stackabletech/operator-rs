@@ -5,7 +5,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use snafu::{ensure, Snafu};
 
-use crate::kvp::ValueExt;
+use crate::kvp::Value;
 
 const LABEL_VALUE_MAX_LEN: usize = 63;
 
@@ -39,7 +39,7 @@ pub enum LabelValueError {
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct LabelValue(String);
 
-impl ValueExt for LabelValue {
+impl Value for LabelValue {
     type Error = LabelValueError;
 }
 
