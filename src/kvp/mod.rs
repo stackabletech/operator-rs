@@ -455,9 +455,9 @@ mod test {
     }
 
     #[rstest]
-    #[case("foo=bar=baz", KeyValuePairError::InvalidEqualSignCount { signs: 2 })]
-    #[case("", KeyValuePairError::EmptyInput)]
-    fn from_str_invalid(#[case] input: &str, #[case] error: KeyValuePairError<LabelValueError>) {
+    #[case("foo=bar=baz", LabelError::InvalidEqualSignCount { signs: 2 })]
+    #[case("", LabelError::EmptyInput)]
+    fn from_str_invalid(#[case] input: &str, #[case] error: LabelError) {
         let err = Label::from_str(input).unwrap_err();
         assert_eq!(err, error)
     }

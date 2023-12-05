@@ -11,7 +11,7 @@ use tracing::warn;
 
 use crate::{
     builder::ObjectMetaBuilder,
-    kvp::{Annotation, AnnotationValueError, Annotations, KeyValuePairError},
+    kvp::{Annotation, AnnotationError, Annotations},
 };
 
 /// A builder to build [`Volume`] objects.
@@ -386,7 +386,7 @@ pub enum ListenerReference {
 
 impl ListenerReference {
     /// Return the key and value for a Kubernetes object annotation
-    fn to_annotation(&self) -> Result<Annotation, KeyValuePairError<AnnotationValueError>> {
+    fn to_annotation(&self) -> Result<Annotation, AnnotationError> {
         match self {
             ListenerReference::ListenerClass(class) => {
                 Annotation::try_from(("listeners.stackable.tech/listener-class", class.as_str()))

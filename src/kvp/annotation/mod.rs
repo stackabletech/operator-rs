@@ -15,11 +15,14 @@ mod value;
 
 pub use value::*;
 
+pub type AnnotationsError = KeyValuePairsError<AnnotationValueError>;
+pub type AnnotationError = KeyValuePairError<AnnotationValueError>;
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Annotation(KeyValuePair<AnnotationValue>);
 
 impl FromStr for Annotation {
-    type Err = KeyValuePairError<AnnotationValueError>;
+    type Err = AnnotationError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let kvp = KeyValuePair::from_str(s)?;
@@ -31,7 +34,7 @@ impl<T> TryFrom<(T, T)> for Annotation
 where
     T: AsRef<str>,
 {
-    type Error = KeyValuePairError<AnnotationValueError>;
+    type Error = AnnotationError;
 
     fn try_from(value: (T, T)) -> Result<Self, Self::Error> {
         let kvp = KeyValuePair::try_from(value)?;
@@ -61,16 +64,14 @@ impl Annotation {
         self.0
     }
 
-    pub fn secret_class(
-        secret_class: &str,
-    ) -> Result<Self, KeyValuePairError<AnnotationValueError>> {
+    pub fn secret_class(secret_class: &str) -> Result<Self, AnnotationError> {
         let kvp = KeyValuePair::try_from(("secrets.stackable.tech/class", secret_class))?;
         Ok(Self(kvp))
     }
 
     pub fn secret_scope(
         scopes: impl AsRef<[SecretOperatorVolumeScope]>,
-    ) -> Result<Self, KeyValuePairError<AnnotationValueError>> {
+    ) -> Result<Self, AnnotationError> {
         let mut value = String::new();
 
         for scope in scopes.as_ref() {
@@ -92,22 +93,18 @@ impl Annotation {
         Ok(Self(kvp))
     }
 
-    pub fn secret_format(format: &str) -> Result<Self, KeyValuePairError<AnnotationValueError>> {
+    pub fn secret_format(format: &str) -> Result<Self, AnnotationError> {
         let kvp = KeyValuePair::try_from(("secrets.stackable.tech/format", format))?;
         Ok(Self(kvp))
     }
 
-    pub fn kerberos_service_names(
-        names: impl AsRef<[String]>,
-    ) -> Result<Self, KeyValuePairError<AnnotationValueError>> {
+    pub fn kerberos_service_names(names: impl AsRef<[String]>) -> Result<Self, AnnotationError> {
         let names = names.as_ref().join(",");
         let kvp = KeyValuePair::try_from(("secret", names))?;
         Ok(Self(kvp))
     }
 
-    pub fn tls_pkcs12_password(
-        password: &str,
-    ) -> Result<Self, KeyValuePairError<AnnotationValueError>> {
+    pub fn tls_pkcs12_password(password: &str) -> Result<Self, AnnotationError> {
         let kvp = KeyValuePair::try_from((
             "secrets.stackable.tech/format.compatibility.tls-pkcs12.password",
             password,
@@ -120,7 +117,7 @@ impl Annotation {
 pub struct Annotations(KeyValuePairs<AnnotationValue>);
 
 impl TryFrom<BTreeMap<String, String>> for Annotations {
-    type Error = KeyValuePairError<AnnotationValueError>;
+    type Error = AnnotationError;
 
     fn try_from(value: BTreeMap<String, String>) -> Result<Self, Self::Error> {
         let kvps = KeyValuePairs::try_from(value)?;
@@ -155,10 +152,7 @@ impl Annotations {
     /// Tries to insert a new [`Annotation`]. It ensures there are no duplicate
     /// entries. Trying to insert duplicated data returns an error. If no such
     /// check is required, use the `insert` function instead.
-    pub fn try_insert(
-        &mut self,
-        annotation: Annotation,
-    ) -> Result<&mut Self, KeyValuePairsError<AnnotationValueError>> {
+    pub fn try_insert(&mut self, annotation: Annotation) -> Result<&mut Self, AnnotationsError> {
         self.0.try_insert(annotation.0)?;
         Ok(self)
     }

@@ -21,11 +21,14 @@ mod value;
 
 pub use value::*;
 
+pub type LabelsError = KeyValuePairsError<LabelValueError>;
+pub type LabelError = KeyValuePairError<LabelValueError>;
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Label(KeyValuePair<LabelValue>);
 
 impl FromStr for Label {
-    type Err = KeyValuePairError<LabelValueError>;
+    type Err = LabelError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let kvp = KeyValuePair::from_str(s)?;
@@ -37,7 +40,7 @@ impl<T> TryFrom<(T, T)> for Label
 where
     T: AsRef<str>,
 {
-    type Error = KeyValuePairError<LabelValueError>;
+    type Error = LabelError;
 
     fn try_from(value: (T, T)) -> Result<Self, Self::Error> {
         let kvp = KeyValuePair::try_from(value)?;
@@ -70,7 +73,7 @@ impl Label {
     /// Creates the `app.kubernetes.io/component` label with `role` as the
     /// value. This function will return an error if `role` violates the required
     /// Kubernetes restrictions.
-    pub fn component(component: &str) -> Result<Self, KeyValuePairError<LabelValueError>> {
+    pub fn component(component: &str) -> Result<Self, LabelError> {
         let kvp = KeyValuePair::try_from((COMPONENT_KEY, component))?;
         Ok(Self(kvp))
     }
@@ -78,16 +81,13 @@ impl Label {
     /// Creates the `app.kubernetes.io/role-group` label with `role_group` as
     /// the value. This function will return an error if `role` violates the
     /// required Kubernetes restrictions.
-    pub fn role_group(role_group: &str) -> Result<Self, KeyValuePairError<LabelValueError>> {
+    pub fn role_group(role_group: &str) -> Result<Self, LabelError> {
         let kvp = KeyValuePair::try_from((ROLE_GROUP_KEY, role_group))?;
         Ok(Self(kvp))
     }
 
     // TODO (Techassi): Add doc comment
-    pub fn managed_by(
-        operator_name: &str,
-        controller_name: &str,
-    ) -> Result<Self, KeyValuePairError<LabelValueError>> {
+    pub fn managed_by(operator_name: &str, controller_name: &str) -> Result<Self, LabelError> {
         let kvp = KeyValuePair::try_from((
             MANAGED_BY_KEY,
             format_full_controller_name(operator_name, controller_name).as_str(),
@@ -96,7 +96,7 @@ impl Label {
     }
 
     // TODO (Techassi): Maybe use semver::Version, add doc comments
-    pub fn version(version: &str) -> Result<Self, KeyValuePairError<LabelValueError>> {
+    pub fn version(version: &str) -> Result<Self, LabelError> {
         let kvp = KeyValuePair::try_from((VERSION_KEY, version))?;
         Ok(Self(kvp))
     }
@@ -106,7 +106,7 @@ impl Label {
 pub struct Labels(KeyValuePairs<LabelValue>);
 
 impl TryFrom<BTreeMap<String, String>> for Labels {
-    type Error = KeyValuePairError<LabelValueError>;
+    type Error = LabelError;
 
     fn try_from(value: BTreeMap<String, String>) -> Result<Self, Self::Error> {
         let kvps = KeyValuePairs::try_from(value)?;
@@ -141,10 +141,7 @@ impl Labels {
     /// Tries to insert a new [`Label`]. It ensures there are no duplicate
     /// entries. Trying to insert duplicated data returns an error. If no such
     /// check is required, use the `insert` function instead.
-    pub fn try_insert(
-        &mut self,
-        label: Label,
-    ) -> Result<&mut Self, KeyValuePairsError<LabelValueError>> {
+    pub fn try_insert(&mut self, label: Label) -> Result<&mut Self, LabelsError> {
         self.0.try_insert(label.0)?;
         Ok(self)
     }
@@ -185,9 +182,7 @@ impl Labels {
     /// This function returns a result, because the parameter`object_labels`
     /// can contain invalid data or can exceed the maximum allowed number of
     /// characters.
-    pub fn recommended<R>(
-        object_labels: ObjectLabels<R>,
-    ) -> Result<Self, KeyValuePairError<LabelValueError>>
+    pub fn recommended<R>(object_labels: ObjectLabels<R>) -> Result<Self, LabelError>
     where
         R: Resource,
     {
@@ -214,7 +209,7 @@ impl Labels {
         app_name: &str,
         role: &str,
         role_group: &str,
-    ) -> Result<Self, KeyValuePairError<LabelValueError>>
+    ) -> Result<Self, LabelError>
     where
         R: Resource,
     {
@@ -224,11 +219,7 @@ impl Labels {
     }
 
     // TODO (Techassi): Add doc comment
-    pub fn role_selector<R>(
-        owner: &R,
-        app_name: &str,
-        role: &str,
-    ) -> Result<Self, KeyValuePairError<LabelValueError>>
+    pub fn role_selector<R>(owner: &R, app_name: &str, role: &str) -> Result<Self, LabelError>
     where
         R: Resource,
     {
@@ -247,10 +238,7 @@ impl Labels {
     /// This function returns a result, because the parameters `app_name` and
     /// `app_instance` can contain invalid data or can exceed the maximum
     /// allowed number of characters.
-    pub fn common(
-        app_name: &str,
-        app_instance: &str,
-    ) -> Result<Self, KeyValuePairError<LabelValueError>> {
+    pub fn common(app_name: &str, app_instance: &str) -> Result<Self, LabelError> {
         let mut labels = Self::new();
 
         labels.insert((INSTANCE_KEY, app_instance).try_into()?);
