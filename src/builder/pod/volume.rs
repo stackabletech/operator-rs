@@ -317,7 +317,7 @@ impl SecretOperatorVolumeSourceBuilder {
         let mut annotations = Annotations::new();
         annotations.insert(Annotation::secret_class(&self.secret_class).unwrap());
 
-        if self.scopes.is_empty() {
+        if !self.scopes.is_empty() {
             annotations.insert(Annotation::secret_scope(&self.scopes).unwrap());
         }
 
@@ -335,7 +335,7 @@ impl SecretOperatorVolumeSourceBuilder {
             if Some(SecretFormat::TlsPkcs12) != self.format {
                 warn!(format.actual = ?self.format, format.expected = ?Some(SecretFormat::TlsPkcs12), "A TLS PKCS12 password was set but ignored because another format was requested")
             } else {
-                annotations.insert(Annotation::tls_pkcs12_password(&password).unwrap());
+                annotations.insert(Annotation::tls_pkcs12_password(password).unwrap());
             }
         }
 
@@ -371,7 +371,7 @@ pub enum SecretFormat {
 }
 
 #[derive(Clone)]
-pub(crate) enum SecretOperatorVolumeScope {
+pub enum SecretOperatorVolumeScope {
     Node,
     Pod,
     Service { name: String },

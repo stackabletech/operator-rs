@@ -153,6 +153,9 @@ impl ObjectMetaBuilder {
     }
 
     pub fn build(&self) -> ObjectMeta {
+        // NOTE (Techassi): Shouldn't this take self instead of &self to consume
+        // the builder and build ObjectMeta without cloning?
+
         // if 'generate_name' and 'name' are set, Kubernetes will prioritize the 'name' field and
         // 'generate_name' has no impact.
         if let (Some(name), Some(generate_name)) = (&self.name, &self.generate_name) {
@@ -171,8 +174,8 @@ impl ObjectMetaBuilder {
                 .ownerreference
                 .as_ref()
                 .map(|ownerreference| vec![ownerreference.clone()]),
-            labels: self.labels.map(|l| l.into()),
-            annotations: self.annotations.map(|a| a.into()),
+            labels: self.labels.clone().map(|l| l.into()),
+            annotations: self.annotations.clone().map(|a| a.into()),
             ..ObjectMeta::default()
         }
     }

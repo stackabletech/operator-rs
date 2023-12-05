@@ -402,7 +402,7 @@ pub struct ObjectLabels<'a, T> {
     /// The version of the app being managed (not of the operator).
     ///
     /// If setting this label on a Stackable product then please use
-    /// [`ResolvedProductImage::app_version_label`]
+    /// [`ResolvedProductImage::app_version_label`][avl].
     ///
     /// This version should include the Stackable version, such as
     /// `3.0.0-stackable23.11`. If the Stackable version is not known, then
@@ -412,6 +412,8 @@ pub struct ObjectLabels<'a, T> {
     /// should be used.
     ///
     /// However, this is pure documentation and should not be parsed.
+    ///
+    /// [avl]: crate::commons::product_image_selection::ResolvedProductImage::app_version_label
     pub app_version: &'a str,
 
     /// The DNS-style name of the operator managing the object (such as `zookeeper.stackable.tech`)

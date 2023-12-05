@@ -83,7 +83,7 @@ impl Annotation {
                 SecretOperatorVolumeScope::Pod => value.push_str("pod"),
                 SecretOperatorVolumeScope::Service { name } => {
                     value.push_str("service=");
-                    value.push_str(&name);
+                    value.push_str(name);
                 }
             }
         }
