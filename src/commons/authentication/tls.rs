@@ -1,10 +1,14 @@
 use k8s_openapi::api::core::v1::{Volume, VolumeMount};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 
 use crate::{
     builder::{ContainerBuilder, PodBuilder, VolumeMountBuilder},
-    commons::{authentication::SECRET_BASE_PATH, secret_class::SecretClassVolume},
+    commons::{
+        authentication::SECRET_BASE_PATH,
+        secret_class::{SecretClassVolume, SecretClassVolumeError},
+    },
 };
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -15,6 +19,12 @@ pub struct AuthenticationProvider {
     /// If `client_cert_secret_class` is set, the [SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html)
     /// will be used to provision client certificates.
     pub client_cert_secret_class: Option<String>,
+}
+
+#[derive(Debug, Snafu)]
+pub enum TlsClientDetailsError {
+    #[snafu(display("failed to convert secret class volume into named Kubernetes volume"))]
+    SecretClassVolume { source: SecretClassVolumeError },
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -37,36 +47,40 @@ impl TlsClientDetails {
         &self,
         pod_builder: &mut PodBuilder,
         container_builders: Vec<&mut ContainerBuilder>,
-    ) {
-        let (volumes, mounts) = self.volumes_and_mounts();
+    ) -> Result<(), TlsClientDetailsError> {
+        let (volumes, mounts) = self.volumes_and_mounts()?;
         pod_builder.add_volumes(volumes);
+
         for cb in container_builders {
             cb.add_volume_mounts(mounts.clone());
         }
+
+        Ok(())
     }
 
     /// It is recommended to use [`Self::add_volumes_and_mounts`], this function returns you the
     /// volumes and mounts in case you need to add them by yourself.
-    pub fn volumes_and_mounts(&self) -> (Vec<Volume>, Vec<VolumeMount>) {
+    pub fn volumes_and_mounts(
+        &self,
+    ) -> Result<(Vec<Volume>, Vec<VolumeMount>), TlsClientDetailsError> {
         let mut volumes = Vec::new();
         let mut mounts = Vec::new();
 
         if let Some(secret_class) = self.tls_ca_cert_secret_class() {
             let volume_name = format!("{secret_class}-ca-cert");
-            volumes.push(
-                SecretClassVolume {
-                    secret_class: secret_class.to_string(),
-                    scope: None,
-                }
-                .to_volume(&volume_name),
-            );
+            let secret_class_volume = SecretClassVolume::new(secret_class.clone(), None);
+            let volume = secret_class_volume
+                .to_volume(&volume_name)
+                .context(SecretClassVolumeSnafu)?;
+
+            volumes.push(volume);
             mounts.push(
                 VolumeMountBuilder::new(volume_name, format!("{SECRET_BASE_PATH}/{secret_class}"))
                     .build(),
             );
         }
 
-        (volumes, mounts)
+        Ok((volumes, mounts))
     }
 
     /// Whether TLS is configured

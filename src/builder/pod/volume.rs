@@ -7,6 +7,7 @@ use k8s_openapi::{
     },
     apimachinery::pkg::api::resource::Quantity,
 };
+use snafu::{ResultExt, Snafu};
 use tracing::warn;
 
 use crate::{
@@ -14,9 +15,9 @@ use crate::{
     kvp::{Annotation, AnnotationError, Annotations},
 };
 
-/// A builder to build [`Volume`] objects.
-/// May only contain one `volume_source` at a time.
-/// E.g. a call like `secret` after `empty_dir` will overwrite the `empty_dir`.
+/// A builder to build [`Volume`] objects. May only contain one `volume_source`
+/// at a time. E.g. a call like `secret` after `empty_dir` will overwrite the
+/// `empty_dir`.
 #[derive(Clone, Default)]
 pub struct VolumeBuilder {
     name: String,
@@ -208,7 +209,6 @@ impl VolumeBuilder {
 }
 
 /// A builder to build [`VolumeMount`] objects.
-///
 #[derive(Clone, Default)]
 pub struct VolumeMountBuilder {
     mount_path: String,
@@ -259,6 +259,12 @@ impl VolumeMountBuilder {
             sub_path_expr: self.sub_path_expr.clone(),
         }
     }
+}
+
+#[derive(Debug, Snafu)]
+pub enum SecretOperatorVolumeSourceBuilderError {
+    #[snafu(display("failed to parse secret operator volume annotation"))]
+    ParseAnnotation { source: AnnotationError },
 }
 
 #[derive(Clone)]
@@ -312,22 +318,27 @@ impl SecretOperatorVolumeSourceBuilder {
         self
     }
 
-    pub fn build(&self) -> EphemeralVolumeSource {
-        // TODO (Techassi): Remove unwrap
+    pub fn build(&self) -> Result<EphemeralVolumeSource, SecretOperatorVolumeSourceBuilderError> {
         let mut annotations = Annotations::new();
-        annotations.insert(Annotation::secret_class(&self.secret_class).unwrap());
+
+        annotations
+            .insert(Annotation::secret_class(&self.secret_class).context(ParseAnnotationSnafu)?);
 
         if !self.scopes.is_empty() {
-            annotations.insert(Annotation::secret_scope(&self.scopes).unwrap());
+            annotations
+                .insert(Annotation::secret_scope(&self.scopes).context(ParseAnnotationSnafu)?);
         }
 
         if let Some(format) = &self.format {
-            annotations.insert(Annotation::secret_format(format.as_ref()).unwrap());
+            annotations
+                .insert(Annotation::secret_format(format.as_ref()).context(ParseAnnotationSnafu)?);
         }
 
         if !self.kerberos_service_names.is_empty() {
-            annotations
-                .insert(Annotation::kerberos_service_names(&self.kerberos_service_names).unwrap());
+            annotations.insert(
+                Annotation::kerberos_service_names(&self.kerberos_service_names)
+                    .context(ParseAnnotationSnafu)?,
+            );
         }
 
         if let Some(password) = &self.tls_pkcs12_password {
@@ -335,11 +346,13 @@ impl SecretOperatorVolumeSourceBuilder {
             if Some(SecretFormat::TlsPkcs12) != self.format {
                 warn!(format.actual = ?self.format, format.expected = ?Some(SecretFormat::TlsPkcs12), "A TLS PKCS12 password was set but ignored because another format was requested")
             } else {
-                annotations.insert(Annotation::tls_pkcs12_password(password).unwrap());
+                annotations.insert(
+                    Annotation::tls_pkcs12_password(password).context(ParseAnnotationSnafu)?,
+                );
             }
         }
 
-        EphemeralVolumeSource {
+        Ok(EphemeralVolumeSource {
             volume_claim_template: Some(PersistentVolumeClaimTemplate {
                 metadata: Some(ObjectMetaBuilder::new().annotations(annotations).build()),
                 spec: PersistentVolumeClaimSpec {
@@ -352,7 +365,7 @@ impl SecretOperatorVolumeSourceBuilder {
                     ..PersistentVolumeClaimSpec::default()
                 },
             }),
-        }
+        })
     }
 }
 
