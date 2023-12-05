@@ -71,14 +71,13 @@ impl PodDisruptionBudgetBuilder<(), (), ()> {
         operator_name: &str,
         controller_name: &str,
     ) -> OperatorResult<PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()>> {
-        // TODO (Techassi): Remove unwrap
-        let role_selector_labels = Labels::role_selector(owner, app_name, role).unwrap();
+        let role_selector_labels = Labels::role_selector(owner, app_name, role)?;
         let metadata = ObjectMetaBuilder::new()
             .namespace_opt(owner.namespace())
             .name(format!("{}-{}", owner.name_any(), role))
             .ownerreference_from_resource(owner, None, Some(true))?
             .with_labels(role_selector_labels.clone())
-            .with_label(Label::managed_by(operator_name, controller_name).unwrap())
+            .with_label(Label::managed_by(operator_name, controller_name)?)
             .build();
 
         Ok(PodDisruptionBudgetBuilder {
