@@ -1,15 +1,20 @@
-pub mod container;
-pub mod resources;
-pub mod security;
-pub mod volume;
+use std::{collections::BTreeMap, num::TryFromIntError};
 
-use std::collections::BTreeMap;
-use std::num::TryFromIntError;
+use k8s_openapi::{
+    api::core::v1::{
+        Affinity, Container, LocalObjectReference, NodeAffinity, Pod, PodAffinity, PodAntiAffinity,
+        PodCondition, PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec,
+        ResourceRequirements, Toleration, Volume,
+    },
+    apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
+};
+use snafu::{ResultExt, Snafu};
+use tracing::warn;
 
 use crate::{
     builder::{
-        meta::ObjectMetaBuilder, ListenerOperatorVolumeSourceBuilder, ListenerReference,
-        VolumeBuilder,
+        meta::ObjectMetaBuilder, ListenerOperatorVolumeSourceBuilder,
+        ListenerOperatorVolumeSourceBuilderError, ListenerReference, VolumeBuilder,
     },
     commons::{
         affinity::StackableAffinity,
@@ -23,22 +28,23 @@ use crate::{
     time::Duration,
 };
 
-use k8s_openapi::{
-    api::core::v1::{
-        Affinity, Container, LocalObjectReference, NodeAffinity, Pod, PodAffinity, PodAntiAffinity,
-        PodCondition, PodSecurityContext, PodSpec, PodStatus, PodTemplateSpec,
-        ResourceRequirements, Toleration, Volume,
-    },
-    apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
-};
-use tracing::warn;
+pub mod container;
+pub mod resources;
+pub mod security;
+pub mod volume;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Snafu)]
 pub enum Error {
-    #[error("termination grace period is too long (got {duration}, maximum allowed is {max})", max = Duration::from_secs(i64::MAX as u64))]
+    #[snafu(display("termination grace period is too long (got {duration}, maximum allowed is {max})", max = Duration::from_secs(i64::MAX as u64)))]
     TerminationGracePeriodTooLong {
         source: TryFromIntError,
         duration: Duration,
+    },
+
+    #[snafu(display("failed to add listener volume '{name}' to the pod"))]
+    ListenerVolume {
+        source: ListenerOperatorVolumeSourceBuilderError,
+        name: String,
     },
 }
 pub type Result<T> = std::result::Result<T, Error>;
@@ -299,6 +305,7 @@ impl PodBuilder {
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_class("listener", "nodeport")
+    ///     .unwrap()
     ///     .build()
     ///     .unwrap();
     ///
@@ -341,18 +348,19 @@ impl PodBuilder {
         &mut self,
         volume_name: &str,
         listener_class: &str,
-    ) -> &mut Self {
+    ) -> Result<&mut Self> {
+        let listener_reference = ListenerReference::ListenerClass(listener_class.to_string());
+        let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference)
+            .build()
+            .context(ListenerVolumeSnafu { name: volume_name })?;
+
         self.add_volume(Volume {
             name: volume_name.into(),
-            ephemeral: Some(
-                ListenerOperatorVolumeSourceBuilder::new(&ListenerReference::ListenerClass(
-                    listener_class.into(),
-                ))
-                .build(),
-            ),
+            ephemeral: Some(volume),
             ..Volume::default()
         });
-        self
+
+        Ok(self)
     }
 
     /// Add a [`Volume`] for the storage class `listeners.stackable.tech` with the given listener
@@ -386,6 +394,7 @@ impl PodBuilder {
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener")
+    ///     .unwrap()
     ///     .build()
     ///     .unwrap();
     ///
@@ -428,18 +437,19 @@ impl PodBuilder {
         &mut self,
         volume_name: &str,
         listener_name: &str,
-    ) -> &mut Self {
+    ) -> Result<&mut Self> {
+        let listener_reference = ListenerReference::ListenerName(listener_name.to_string());
+        let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference)
+            .build()
+            .context(ListenerVolumeSnafu { name: volume_name })?;
+
         self.add_volume(Volume {
             name: volume_name.into(),
-            ephemeral: Some(
-                ListenerOperatorVolumeSourceBuilder::new(&ListenerReference::ListenerName(
-                    listener_name.into(),
-                ))
-                .build(),
-            ),
+            ephemeral: Some(volume),
             ..Volume::default()
         });
-        self
+
+        Ok(self)
     }
 
     pub fn image_pull_secrets(

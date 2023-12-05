@@ -411,6 +411,14 @@ impl ListenerReference {
     }
 }
 
+// NOTE (Techassi): We might want to think about these names and how long they
+// are getting.
+#[derive(Debug, Snafu)]
+pub enum ListenerOperatorVolumeSourceBuilderError {
+    #[snafu(display("failed to convert listener reference into Kubernetes annotation"))]
+    ListenerReferenceAnnotation { source: AnnotationError },
+}
+
 /// Builder for an [`EphemeralVolumeSource`] containing the listener configuration
 ///
 /// # Example
@@ -422,10 +430,13 @@ impl ListenerReference {
 /// # use stackable_operator::builder::PodBuilder;
 /// let mut pod_builder = PodBuilder::new();
 ///
-/// let volume_source = ListenerOperatorVolumeSourceBuilder::new(
+/// let volume_source =
+///     ListenerOperatorVolumeSourceBuilder::new(
 ///         &ListenerReference::ListenerClass("nodeport".into()),
 ///     )
-///     .build();
+///     .build()
+///     .unwrap();
+///
 /// pod_builder
 ///     .add_volume(Volume {
 ///         name: "listener".to_string(),
@@ -451,13 +462,17 @@ impl ListenerOperatorVolumeSourceBuilder {
     }
 
     /// Build an [`EphemeralVolumeSource`] from the builder
-    pub fn build(&self) -> EphemeralVolumeSource {
-        EphemeralVolumeSource {
+    pub fn build(&self) -> Result<EphemeralVolumeSource, ListenerOperatorVolumeSourceBuilderError> {
+        let listener_reference_annotation = self
+            .listener_reference
+            .to_annotation()
+            .context(ListenerReferenceAnnotationSnafu)?;
+
+        Ok(EphemeralVolumeSource {
             volume_claim_template: Some(PersistentVolumeClaimTemplate {
                 metadata: Some(
-                    // TODO (Techassi): Remove unwrap
                     ObjectMetaBuilder::new()
-                        .with_annotation(self.listener_reference.to_annotation().unwrap())
+                        .with_annotation(listener_reference_annotation)
                         .build(),
                 ),
                 spec: PersistentVolumeClaimSpec {
@@ -470,7 +485,7 @@ impl ListenerOperatorVolumeSourceBuilder {
                     ..PersistentVolumeClaimSpec::default()
                 },
             }),
-        }
+        })
     }
 }
 
@@ -541,7 +556,7 @@ mod tests {
             "public".into(),
         ));
 
-        let volume_source = builder.build();
+        let volume_source = builder.build().unwrap();
 
         let volume_claim_template = volume_source.volume_claim_template;
         let annotations = volume_claim_template
