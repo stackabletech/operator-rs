@@ -5,19 +5,8 @@ license = "Apache-2.0"
 edition = "2021"
 repository = "https://github.com/stackabletech/operator-rs"
 
-[package]
-name = "stackable-operator"
-description = "Stackable Operator Framework"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-edition.workspace = true
-repository.workspace = true
-
-[features]
-time = ["dep:time"]
-
-[dependencies]
+[workspace.dependencies]
+axum = "0.7.2"
 chrono = { version = "0.4.26", default-features = false }
 clap = { version = "4.3.19", features = ["derive", "cargo", "env"] }
 const_format = "0.2.31"
@@ -36,6 +25,7 @@ opentelemetry-jaeger = { version = "0.20.0", features = ["rt-tokio"] }
 product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.6.0" }
 rand = "0.8.5"
 regex = "1.9.3"
+rstest = "0.18.1"
 schemars = "0.8.12"
 semver = "1.0"
 serde = { version = "1.0.184", features = ["derive"] }
@@ -44,17 +34,14 @@ serde_yaml = "0.9.25"
 snafu = "0.7.5"
 stackable-operator-derive = { path = "crates/operator-derive" }
 strum = { version = "0.25.0", features = ["derive"] }
+tempfile = "3.7.1"
 thiserror = "1.0.44"
-time = { version = "0.3.29", optional = true }
+time = { version = "0.3.29" }
 tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.37"
 tracing-opentelemetry = "0.22.0"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 url = "2.4.1"
-
-[dev-dependencies]
-rstest = "0.18.1"
-tempfile = "3.7.1"
 
 [workspace]
 members = ["crates/*"]
