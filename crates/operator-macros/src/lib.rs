@@ -5,13 +5,12 @@
 /// [k8s-labels]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 ///
 /// ```
-/// let label = label!("stackable.tech/vendor=Stackable");
+/// let label = label!(("stackable.tech/vendor", "Stackable"));
 /// ```
 #[macro_export]
 macro_rules! label {
-    ($Input:literal) => {{
-        use std::str::FromStr;
-        stackable_operator::kvp::Label::from_str($Input)
+    ($Input:expr) => {{
+        stackable_operator::kvp::Label::try_from($Input)
     }};
 }
 
@@ -19,13 +18,12 @@ macro_rules! label {
 /// annotations can contain any valid UTF-8 data.
 ///
 /// ```
-/// let annotation = annotation!("stackable.tech/vendor=Hello Wörld!");
+/// let annotation = annotation!(("stackable.tech/vendor", "Hello Wörld!"));
 /// ```
 #[macro_export]
 macro_rules! annotation {
-    ($Input:literal) => {{
-        use std::str::FromStr;
-        stackable_operator::kvp::Annotation::from_str($Input)
+    ($Input:expr) => {{
+        stackable_operator::kvp::Annotation::try_from($Input)
     }};
 }
 
@@ -35,13 +33,13 @@ mod test {
 
     #[test]
     fn label_macro() {
-        let label = label!("stackable.tech/vendor=Stackable").unwrap();
+        let label = label!(("stackable.tech/vendor", "Stackable")).unwrap();
         assert_eq!(label.to_string(), "stackable.tech/vendor=Stackable");
     }
 
     #[test]
     fn annotation_macro() {
-        let annotation = annotation!("stackable.tech/vendor=Hello Wörld!").unwrap();
+        let annotation = annotation!(("stackable.tech/vendor", "Hello Wörld!")).unwrap();
         assert_eq!(annotation.to_string(), "stackable.tech/vendor=Hello Wörld!");
     }
 }

@@ -1,7 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Display,
-    str::FromStr,
 };
 
 use kube::{Resource, ResourceExt};
@@ -26,15 +25,6 @@ pub type LabelError = KeyValuePairError<LabelValueError>;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Label(KeyValuePair<LabelValue>);
-
-impl FromStr for Label {
-    type Err = LabelError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let kvp = KeyValuePair::from_str(s)?;
-        Ok(Self(kvp))
-    }
-}
 
 impl<T> TryFrom<(T, T)> for Label
 where

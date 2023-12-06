@@ -55,38 +55,6 @@ where
     value: V,
 }
 
-impl<V> FromStr for KeyValuePair<V>
-where
-    V: Value,
-{
-    type Err = KeyValuePairError<V::Error>;
-
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let input = input.trim();
-
-        // Ensure the input is not empty
-        ensure!(!input.is_empty(), EmptyInputSnafu);
-
-        // Then split up the key and value, which is separated by an equal
-        // sign
-        let parts: Vec<_> = input.split('=').collect();
-
-        // Ensure there are only two parts
-        ensure!(
-            parts.len() == 2,
-            InvalidEqualSignCountSnafu {
-                signs: parts.len() - 1
-            }
-        );
-
-        // Parse key and value parts
-        let key = Key::from_str(parts[0]).context(InvalidKeySnafu)?;
-        let value = V::from_str(parts[1]).context(InvalidValueSnafu)?;
-
-        Ok(Self { key, value })
-    }
-}
-
 impl<T, K, V> TryFrom<(T, K)> for KeyValuePair<V>
 where
     T: AsRef<str>,
@@ -432,35 +400,7 @@ pub struct ObjectLabels<'a, T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use rstest::rstest;
     use serde::{Deserialize, Serialize};
-
-    #[rstest]
-    #[case(
-        "stackable.tech/managed-by=stackablectl",
-        "stackable.tech/managed-by",
-        "stackablectl"
-    )]
-    #[case(
-        "stackable.tech/vendor=Stackable",
-        "stackable.tech/vendor",
-        "Stackable"
-    )]
-    #[case("foo=bar", "foo", "bar")]
-    fn from_str_valid(#[case] input: &str, #[case] key: &str, #[case] value: &str) {
-        let label = Label::from_str(input).unwrap();
-
-        assert_eq!(label.key(), &Key::from_str(key).unwrap());
-        assert_eq!(label.value(), &LabelValue::from_str(value).unwrap());
-    }
-
-    #[rstest]
-    #[case("foo=bar=baz", LabelError::InvalidEqualSignCount { signs: 2 })]
-    #[case("", LabelError::EmptyInput)]
-    fn from_str_invalid(#[case] input: &str, #[case] error: LabelError) {
-        let err = Label::from_str(input).unwrap_err();
-        assert_eq!(err, error)
-    }
 
     #[test]
     fn try_from_tuple() {
@@ -478,8 +418,8 @@ mod test {
     #[test]
     fn labels_from_iter() {
         let labels = Labels::from_iter([
-            KeyValuePair::from_str("stackable.tech/managed-by=stackablectl").unwrap(),
-            KeyValuePair::from_str("stackable.tech/vendor=Stackable").unwrap(),
+            KeyValuePair::try_from(("stackable.tech/managed-by", "stackablectl")).unwrap(),
+            KeyValuePair::try_from(("stackable.tech/vendor", "Stackable")).unwrap(),
         ]);
 
         assert_eq!(labels.len(), 2);
@@ -502,8 +442,8 @@ mod test {
     #[test]
     fn labels_into_map() {
         let pairs = BTreeSet::from([
-            KeyValuePair::from_str("stackable.tech/vendor=Stackable").unwrap(),
-            KeyValuePair::from_str("stackable.tech/managed-by=stackablectl").unwrap(),
+            KeyValuePair::try_from(("stackable.tech/managed-by", "stackablectl")).unwrap(),
+            KeyValuePair::try_from(("stackable.tech/vendor", "Stackable")).unwrap(),
         ]);
 
         let labels = Labels::new_with(pairs);
@@ -520,7 +460,7 @@ mod test {
             label: Label,
         }
 
-        let label = Label::from_str("stackable.tech/managed-by=stackablectl").unwrap();
+        let label = Label::try_from(("stackable.tech/managed-by", "stackablectl")).unwrap();
         let labels = Labels::common("zookeeper", "zookeeper-default-1").unwrap();
 
         let kvp = Kvp { labels, label };

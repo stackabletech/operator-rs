@@ -2,7 +2,6 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     convert::Infallible,
     fmt::Display,
-    str::FromStr,
 };
 
 use serde::{Deserialize, Serialize};
@@ -21,15 +20,6 @@ pub type AnnotationError = KeyValuePairError<Infallible>;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Annotation(KeyValuePair<AnnotationValue>);
-
-impl FromStr for Annotation {
-    type Err = AnnotationError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let kvp = KeyValuePair::from_str(s)?;
-        Ok(Self(kvp))
-    }
-}
 
 impl<T> TryFrom<(T, T)> for Annotation
 where
