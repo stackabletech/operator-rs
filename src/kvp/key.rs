@@ -20,8 +20,8 @@ pub enum KeyError {
     #[snafu(display("key input cannot be empty"))]
     EmptyInput,
 
-    #[snafu(display("invalid number of slashes in key - expected 0 or 1, got {count}"))]
-    InvalidSlashCharCount { count: usize },
+    #[snafu(display("key prefixes cannot be nested, only use a single slash"))]
+    NestedPrefix,
 
     #[snafu(display("failed to parse key prefix"))]
     KeyPrefixError { source: KeyPrefixError },
@@ -53,27 +53,23 @@ impl FromStr for Key {
         ensure!(!input.is_empty(), EmptyInputSnafu);
 
         // Split the input up into the optional prefix and name
-        let parts: Vec<_> = input.split('/').collect();
+        let parts = input.split('/').collect::<Vec<_>>();
 
-        // Ensure we have 2 or less parts. More parts are a result of too many
-        // slashes
-        ensure!(
-            parts.len() <= 2,
-            InvalidSlashCharCountSnafu {
-                count: parts.len() - 1
-            }
-        );
-
-        let (prefix, name) = if parts.len() == 1 {
-            (None, KeyName::from_str(parts[0]).context(KeyNameSnafu)?)
-        } else {
-            (
-                Some(KeyPrefix::from_str(parts[0]).context(KeyPrefixSnafu)?),
-                KeyName::from_str(parts[1]).context(KeyNameSnafu)?,
-            )
+        let (prefix, name) = match parts[..] {
+            [name] => (None, name),
+            [prefix, name] => (Some(prefix), name),
+            _ => return NestedPrefixSnafu.fail(),
         };
 
-        Ok(Self { prefix, name })
+        let key = Self {
+            prefix: prefix
+                .map(KeyPrefix::from_str)
+                .transpose()
+                .context(KeyPrefixSnafu)?,
+            name: KeyName::from_str(name).context(KeyNameSnafu)?,
+        };
+
+        Ok(key)
     }
 }
 
@@ -331,7 +327,7 @@ mod test {
     }
 
     #[rstest]
-    #[case("foo/bar/baz", KeyError::InvalidSlashCharCount { count: 2 })]
+    #[case("foo/bar/baz", KeyError::NestedPrefix)]
     #[case("", KeyError::EmptyInput)]
     fn invalid_key(#[case] input: &str, #[case] error: KeyError) {
         let err = Key::from_str(input).unwrap_err();
