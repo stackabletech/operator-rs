@@ -12,7 +12,7 @@ use crate::{
     error::{Error, OperatorResult},
     kvp::{
         consts::{INSTANCE_KEY, MANAGED_BY_KEY, NAME_KEY},
-        Label, Labels,
+        Label, LabelError, Labels,
     },
     utils::format_full_controller_name,
 };
@@ -419,12 +419,15 @@ impl ClusterResources {
 
     /// Return required labels for cluster resources to be uniquely identified for clean up.
     // TODO: This is a (quick-fix) helper method but should be replaced by better label handling
-    pub fn get_required_labels(&self) -> BTreeMap<String, String> {
-        // TODO (Techassi): Remove unwrap
-        let mut labels = Labels::common(&self.app_name, &self.app_instance).unwrap();
-        labels.insert(Label::managed_by(&self.operator_name, &self.controller_name).unwrap());
+    pub fn get_required_labels(&self) -> Result<Labels, LabelError> {
+        let mut labels = Labels::common(&self.app_name, &self.app_instance)?;
 
-        labels.into()
+        labels.insert(Label::managed_by(
+            &self.operator_name,
+            &self.controller_name,
+        )?);
+
+        Ok(labels)
     }
 
     /// Adds a resource to the cluster resources.
