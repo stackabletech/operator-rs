@@ -1,5 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
+    convert::Infallible,
     fmt::Display,
     str::FromStr,
 };
@@ -15,8 +16,8 @@ mod value;
 
 pub use value::*;
 
-pub type AnnotationsError = KeyValuePairsError<AnnotationValueError>;
-pub type AnnotationError = KeyValuePairError<AnnotationValueError>;
+pub type AnnotationsError = KeyValuePairsError<Infallible>;
+pub type AnnotationError = KeyValuePairError<Infallible>;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Annotation(KeyValuePair<AnnotationValue>);
