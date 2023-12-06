@@ -17,4 +17,4 @@ quote = "1.0.32"
 syn = "2.0.28"
 
 [dev-dependencies]
-stackable-operator = { path = ".." }
+stackable-operator = { path = "../.." }
