@@ -7,3 +7,4 @@ edition.workspace = true
 repository.workspace = true
 
 [dependencies]
+k8s-openapi.workspace = true

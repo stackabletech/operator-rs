@@ -1,14 +1,69 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+use k8s_openapi::{
+    api::admissionregistration::v1::{
+        MutatingWebhook, MutatingWebhookConfiguration, ValidatingWebhook,
+        ValidatingWebhookConfiguration,
+    },
+    apimachinery::pkg::apis::meta::v1::ObjectMeta,
+};
+/// The [`WebhookConfigurationBuilder`] helps to create valid admission webhook
+/// configurations. Webhooks can either be [validating][k8s-val] or
+/// [mutating][k8s-mut].
+///
+/// [k8s-val]: https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#validatingadmissionwebhook
+/// [k8s-mut]: https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#mutatingadmissionwebhook
+#[derive(Debug, Default)]
+pub struct WebhookConfigurationBuilder;
+
+impl WebhookConfigurationBuilder {
+    /// Create a validating webhook configuration
+    pub fn validating(name: String) -> ValidatingWebhookConfigurationBuilder {
+        // TODO (Techassi): Add name validation. Needs to be DNS name
+        ValidatingWebhookConfigurationBuilder {
+            webhooks: Vec::new(),
+            name,
+        }
+    }
+
+    /// Create a mutating webhook configuration
+    pub fn mutating(name: String) -> MutatingWebhookConfigurationBuilder {
+        // TODO (Techassi): Add name validation. Needs to be DNS name
+        MutatingWebhookConfigurationBuilder {
+            webhooks: Vec::new(),
+            name,
+        }
+    }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub struct ValidatingWebhookConfigurationBuilder {
+    webhooks: Vec<ValidatingWebhook>,
+    name: String,
+}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+impl ValidatingWebhookConfigurationBuilder {
+    pub fn build(self) -> ValidatingWebhookConfiguration {
+        ValidatingWebhookConfiguration {
+            metadata: ObjectMeta {
+                name: Some(self.name),
+                ..Default::default()
+            },
+            webhooks: (!self.webhooks.is_empty()).then_some(self.webhooks),
+        }
+    }
+}
+
+pub struct MutatingWebhookConfigurationBuilder {
+    webhooks: Vec<MutatingWebhook>,
+    name: String,
+}
+
+impl MutatingWebhookConfigurationBuilder {
+    pub fn build(self) -> MutatingWebhookConfiguration {
+        MutatingWebhookConfiguration {
+            metadata: ObjectMeta {
+                name: Some(self.name),
+                ..Default::default()
+            },
+            webhooks: (!self.webhooks.is_empty()).then_some(self.webhooks),
+        }
     }
 }
