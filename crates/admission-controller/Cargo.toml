@@ -7,4 +7,6 @@ edition.workspace = true
 repository.workspace = true
 
 [dependencies]
+axum.workspace = true
 k8s-openapi.workspace = true
+tokio.workspace = true

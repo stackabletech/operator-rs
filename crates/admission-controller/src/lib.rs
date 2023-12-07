@@ -1,3 +1,4 @@
+use axum::{routing::post, Router};
 use k8s_openapi::{
     api::admissionregistration::v1::{
         MutatingWebhook, MutatingWebhookConfiguration, ValidatingWebhook,
@@ -5,6 +6,24 @@ use k8s_openapi::{
     },
     apimachinery::pkg::apis::meta::v1::ObjectMeta,
 };
+
+pub struct AdmissionController {
+    router: Router,
+}
+
+impl AdmissionController {
+    pub fn new() -> Self {
+        let router = Router::new().route("/", post(|| async {}));
+
+        Self { router }
+    }
+
+    pub async fn run(self) {
+        let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+        axum::serve(listener, self.router).await.unwrap();
+    }
+}
+
 /// The [`WebhookConfigurationBuilder`] helps to create valid admission webhook
 /// configurations. Webhooks can either be [validating][k8s-val] or
 /// [mutating][k8s-mut].
