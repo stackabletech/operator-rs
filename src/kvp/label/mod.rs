@@ -1,3 +1,14 @@
+//! This module provides various types and functions to construct valid
+//! Kubernetes labels. Labels are key/value pairs, where the key must meet
+//! certain requirementens regarding length and character set. The value can
+//! contain a limited set of ASCII characters.
+//!
+//! Additionally, the [`Label`] struct provides various helper functions to
+//! construct commonly used labels across the Stackable Data Platform, like
+//! the role_group or component.
+//!
+//! See <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>
+//! for more information on Kubernetes labels.
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Display,
@@ -20,9 +31,20 @@ mod value;
 
 pub use value::*;
 
+/// This is an type alias for [`KeyValuePairsError<LabelValueError>`]. This
+/// error is returned when an error occurs while manipulating [`Labels`].
 pub type LabelsError = KeyValuePairsError<LabelValueError>;
+
+/// This is an type alias for [`KeyValuePairError<LabelValueError>`]. This
+/// error is returned when constructing a [`Label`].
 pub type LabelError = KeyValuePairError<LabelValueError>;
 
+/// [`Label`] is a specialized implementation of [`KeyValuePair`]. The
+/// validation of the label value can fail due to multiple reasons. It can only
+/// contain a limited set of ASCII characters.
+///
+/// See <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>
+/// for more information on Kubernetes labels.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Label(KeyValuePair<LabelValue>);
 
@@ -69,14 +91,17 @@ impl Label {
     }
 
     /// Creates the `app.kubernetes.io/role-group` label with `role_group` as
-    /// the value. This function will return an error if `role` violates the
-    /// required Kubernetes restrictions.
+    /// the value. This function will return an error if `role_group` violates
+    /// the required Kubernetes restrictions.
     pub fn role_group(role_group: &str) -> Result<Self, LabelError> {
         let kvp = KeyValuePair::try_from((ROLE_GROUP_KEY, role_group))?;
         Ok(Self(kvp))
     }
 
-    // TODO (Techassi): Add doc comment
+    /// Creates the `app.kubernetes.io/managed-by` label with the formated
+    /// full controller name based on `operator_name` and `controller_name` as
+    /// the value. This function will return an error if the formatted controller
+    /// name violates the required Kubernetes restrictions.
     pub fn managed_by(operator_name: &str, controller_name: &str) -> Result<Self, LabelError> {
         let kvp = KeyValuePair::try_from((
             MANAGED_BY_KEY,
@@ -85,13 +110,18 @@ impl Label {
         Ok(Self(kvp))
     }
 
-    // TODO (Techassi): Maybe use semver::Version, add doc comments
+    /// Creates the `app.kubernetes.io/version` label with `version` as the
+    /// value. This function will return an error if `role_group` violates the
+    /// required Kubernetes restrictions.
     pub fn version(version: &str) -> Result<Self, LabelError> {
+        // NOTE (Techassi): Maybe use semver::Version
         let kvp = KeyValuePair::try_from((VERSION_KEY, version))?;
         Ok(Self(kvp))
     }
 }
 
+/// [`Labels`] is a set of [`Label`]. It provides selected associated functions
+/// to manipulate the set of labels, like inserting or extending.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Labels(KeyValuePairs<LabelValue>);
 
@@ -169,7 +199,7 @@ impl Labels {
     /// - `app.kubernetes.io/version`
     /// - `app.kubernetes.io/name`
     ///
-    /// This function returns a result, because the parameter`object_labels`
+    /// This function returns a result, because the parameter `object_labels`
     /// can contain invalid data or can exceed the maximum allowed number of
     /// characters.
     pub fn recommended<R>(object_labels: ObjectLabels<R>) -> Result<Self, LabelError>
@@ -193,7 +223,10 @@ impl Labels {
         Ok(labels)
     }
 
-    // TODO (Techassi): Add doc comment
+    /// Returns the set of labels required to select the resource based on the
+    /// role group. The set contains role selector labels, see
+    /// [`Labels::role_selector`] for more details. Additionally, it contains
+    /// the `app.kubernetes.io/role-group` label with `role_group` as the value.
     pub fn role_group_selector<R>(
         owner: &R,
         app_name: &str,
@@ -208,7 +241,14 @@ impl Labels {
         Ok(labels)
     }
 
-    // TODO (Techassi): Add doc comment
+    /// Returns the set of labels required to select the resource based on the
+    /// role. The set contains the common labels, see [`Labels::common`] for
+    /// more details. Additionally, it contains the `app.kubernetes.io/component`
+    /// label with `role` as the value.
+    ///
+    /// This function returns a result, because the parameters `owner`, `app_name`,
+    /// and `role` can contain invalid data or can exceed the maximum allowed
+    /// number fo characters.
     pub fn role_selector<R>(owner: &R, app_name: &str, role: &str) -> Result<Self, LabelError>
     where
         R: Resource,
