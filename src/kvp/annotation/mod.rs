@@ -1,3 +1,14 @@
+//! This module provides various types and functions to construct valid Kubernetes
+//! annotations. Annotations are key/value pairs, where the key must meet certain
+//! requirementens regarding length and character set. The value can contain
+//! **any** valid UTF-8 data.
+//!
+//! Additionally, the [`Annotation`] struct provides various helper functions to
+//! construct commonly used annotations across the Stackable Data Platform, like
+//! the secret scope or class.
+//!
+//! See <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
+//! for more information on Kubernetes annotations.
 use std::{
     collections::{BTreeMap, BTreeSet},
     convert::Infallible,
@@ -15,9 +26,21 @@ mod value;
 
 pub use value::*;
 
+/// This is an type alias for [`KeyValuePairsError<Infallible>`]. This error is
+/// returned when an error occurs while manipulating [`Annotations`].
 pub type AnnotationsError = KeyValuePairsError<Infallible>;
+
+/// This is an type alias for [`KeyValuePairError<Infallible>`]. This error is
+/// returned when constructing an [`Annotation`].
 pub type AnnotationError = KeyValuePairError<Infallible>;
 
+/// [`Annotation`] is a specialized implementation of [`KeyValuePair`]. The
+/// validation of the annotation value can **never** fail, as `&str` is guaranteed
+/// to only contain valid UTF-8 data - which is the only requirement for a valid
+/// Kubernetes annotation value.
+///
+/// See <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
+/// for more information on Kubernetes annotations.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Annotation(KeyValuePair<AnnotationValue>);
 
@@ -55,11 +78,13 @@ impl Annotation {
         self.0
     }
 
+    /// Constructs a `secrets.stackable.tech/class` annotation.
     pub fn secret_class(secret_class: &str) -> Result<Self, AnnotationError> {
         let kvp = KeyValuePair::try_from(("secrets.stackable.tech/class", secret_class))?;
         Ok(Self(kvp))
     }
 
+    /// Constructs a `secrets.stackable.tech/scope` annotation.
     pub fn secret_scope(
         scopes: impl AsRef<[SecretOperatorVolumeScope]>,
     ) -> Result<Self, AnnotationError> {
@@ -84,17 +109,21 @@ impl Annotation {
         Ok(Self(kvp))
     }
 
+    /// Constructs a `secrets.stackable.tech/format` annotation.
     pub fn secret_format(format: &str) -> Result<Self, AnnotationError> {
         let kvp = KeyValuePair::try_from(("secrets.stackable.tech/format", format))?;
         Ok(Self(kvp))
     }
 
+    /// Constructs a `secrets.stackable.tech/kerberos.service.names` annotation.
     pub fn kerberos_service_names(names: impl AsRef<[String]>) -> Result<Self, AnnotationError> {
         let names = names.as_ref().join(",");
-        let kvp = KeyValuePair::try_from(("secret", names))?;
+        let kvp = KeyValuePair::try_from(("secrets.stackable.tech/kerberos.service.names", names))?;
         Ok(Self(kvp))
     }
 
+    /// Constructs a `secrets.stackable.tech/format.compatibility.tls-pkcs12.password`
+    /// annotation.
     pub fn tls_pkcs12_password(password: &str) -> Result<Self, AnnotationError> {
         let kvp = KeyValuePair::try_from((
             "secrets.stackable.tech/format.compatibility.tls-pkcs12.password",
@@ -104,6 +133,8 @@ impl Annotation {
     }
 }
 
+/// [`Annotations`] is a set of [`Annotation`]. It provides selected associated
+/// functions to manipulate the set of annotations, like inserting or extending.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Annotations(KeyValuePairs<AnnotationValue>);
 
