@@ -1,3 +1,5 @@
+//! Utility functions and data structures the create and manage Kubernetes
+//! key/value pairs, like labels and annotations.
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Display,
@@ -166,11 +168,7 @@ where
     KeyValuePairParse { source: KeyValuePairError<E> },
 }
 
-/// [`KeyValuePairs`] is a list of [`KeyValuePair`]. This collection **doesn't**
-/// provide any de-duplication mechanism, meaning multiple [`KeyValuePair`]s
-/// with the same content can be present at the same time. However, converting
-/// to a [`BTreeMap<String, String>`] removes any duplicate data. Order matters
-/// in this case: later labels overwrite previous onces.
+/// [`KeyValuePairs`] is a list of [`KeyValuePair`].
 #[derive(Clone, Debug, Default)]
 pub struct KeyValuePairs<V: Value>(BTreeSet<KeyValuePair<V>>);
 
