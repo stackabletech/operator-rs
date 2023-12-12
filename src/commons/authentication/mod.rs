@@ -15,6 +15,11 @@ pub mod tls;
 
 pub(crate) const SECRET_BASE_PATH: &str = "/stackable/secrets";
 
+/// The Stackable Platform uses the AuthenticationClass as a central mechanism to handle user authentication across supported products.
+/// The authentication mechanism needs to be configured only in the AuthenticationClass which is then referenced in the product.
+/// Multiple different authentication providers are supported.
+/// Learn more in the [authentication concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication) and the
+/// [Authentication with OpenLDAP tutorial](DOCS_BASE_URL_PLACEHOLDER/tutorials/authentication_with_openldap).
 #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[kube(
     group = "authentication.stackable.tech",
@@ -29,7 +34,7 @@ pub(crate) const SECRET_BASE_PATH: &str = "/stackable/secrets";
 )]
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticationClassSpec {
-    /// Provider used for authentication like LDAP or Kerberos
+    /// Provider used for authentication like LDAP or Kerberos.
     pub provider: AuthenticationClassProvider,
 }
 
@@ -37,9 +42,20 @@ pub struct AuthenticationClassSpec {
 #[serde(rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
 pub enum AuthenticationClassProvider {
+    /// The [static provider](https://DOCS_BASE_URL_PLACEHOLDER/concepts/authentication#_static) is used to configure a
+    /// static set of users, identified by username and password.
     Static(static_::AuthenticationProvider),
+
+    /// The [LDAP provider](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication#_ldap).
+    /// There is also the ["Authentication with LDAP" tutorial](DOCS_BASE_URL_PLACEHOLDER/tutorials/authentication_with_openldap)
+    /// where you can learn to configure Superset and Trino with OpenLDAP.
     Ldap(ldap::AuthenticationProvider),
+
+    /// The OIDC provider can be used to configure OpenID connect.
     Oidc(oidc::AuthenticationProvider),
+
+    /// The [TLS provider](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication#_tls).
+    /// The TLS AuthenticationClass is used when users should authenticate themselves with a TLS certificate.
     Tls(tls::AuthenticationProvider),
 }
 

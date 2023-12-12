@@ -25,8 +25,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticationProvider {
-    /// Secret providing the usernames and password.
-    /// The secret must contain an entry for every user, with the key being the username and the value the password in plain text.
+    /// Secret providing the usernames and passwords.
+    /// The Secret must contain an entry for every user, with the key being the username and the value the password in plain text.
     /// It must be located in the same namespace as the product using it.
     pub user_credentials_secret: UserCredentialsSecretRef,
 }
@@ -34,6 +34,6 @@ pub struct AuthenticationProvider {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserCredentialsSecretRef {
-    /// Name of the secret
+    /// Name of the Secret.
     pub name: String,
 }
