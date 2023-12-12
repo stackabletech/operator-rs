@@ -175,7 +175,7 @@ pub enum AddressType {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct PodListenersSpec {
-    /// All listeners currently bound by the Pod.
+    /// All Listeners currently bound by the Pod.
     ///
     /// Indexed by Volume name (not PersistentVolume or PersistentVolumeClaim).
     pub listeners: BTreeMap<String, PodListener>,
