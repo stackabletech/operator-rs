@@ -11,7 +11,7 @@ use crate::{
     },
     error::{Error, OperatorResult},
     kvp::{
-        consts::{INSTANCE_KEY, MANAGED_BY_KEY, NAME_KEY},
+        consts::{K8S_APP_INSTANCE_KEY, K8S_APP_NAME_KEY, MANAGED_BY_KEY},
         Label, LabelError, Labels,
     },
     utils::format_full_controller_name,
@@ -456,7 +456,7 @@ impl ClusterResources {
     ) -> OperatorResult<T> {
         Self::check_labels(
             resource.labels(),
-            &[INSTANCE_KEY, MANAGED_BY_KEY, NAME_KEY],
+            &[K8S_APP_INSTANCE_KEY, MANAGED_BY_KEY, K8S_APP_NAME_KEY],
             &[&self.app_instance, &self.manager, &self.app_name],
         )?;
 
@@ -678,12 +678,12 @@ impl ClusterResources {
         let label_selector = LabelSelector {
             match_expressions: Some(vec![
                 LabelSelectorRequirement {
-                    key: INSTANCE_KEY.into(),
+                    key: K8S_APP_INSTANCE_KEY.into(),
                     operator: "In".into(),
                     values: Some(vec![self.app_instance.to_owned()]),
                 },
                 LabelSelectorRequirement {
-                    key: NAME_KEY.into(),
+                    key: K8S_APP_NAME_KEY.into(),
                     operator: "In".into(),
                     values: Some(vec![self.app_name.to_owned()]),
                 },

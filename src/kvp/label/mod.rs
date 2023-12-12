@@ -20,7 +20,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     kvp::{
         consts::{
-            COMPONENT_KEY, INSTANCE_KEY, MANAGED_BY_KEY, NAME_KEY, ROLE_GROUP_KEY, VERSION_KEY,
+            K8S_APP_COMPONENT_KEY, K8S_APP_INSTANCE_KEY, K8S_APP_NAME_KEY, K8S_APP_ROLE_GROUP_KEY,
+            K8S_APP_VERSION_KEY, MANAGED_BY_KEY,
         },
         Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError, ObjectLabels,
     },
@@ -86,7 +87,7 @@ impl Label {
     /// value. This function will return an error if `role` violates the required
     /// Kubernetes restrictions.
     pub fn component(component: &str) -> Result<Self, LabelError> {
-        let kvp = KeyValuePair::try_from((COMPONENT_KEY, component))?;
+        let kvp = KeyValuePair::try_from((K8S_APP_COMPONENT_KEY, component))?;
         Ok(Self(kvp))
     }
 
@@ -94,7 +95,7 @@ impl Label {
     /// the value. This function will return an error if `role_group` violates
     /// the required Kubernetes restrictions.
     pub fn role_group(role_group: &str) -> Result<Self, LabelError> {
-        let kvp = KeyValuePair::try_from((ROLE_GROUP_KEY, role_group))?;
+        let kvp = KeyValuePair::try_from((K8S_APP_ROLE_GROUP_KEY, role_group))?;
         Ok(Self(kvp))
     }
 
@@ -115,7 +116,7 @@ impl Label {
     /// required Kubernetes restrictions.
     pub fn version(version: &str) -> Result<Self, LabelError> {
         // NOTE (Techassi): Maybe use semver::Version
-        let kvp = KeyValuePair::try_from((VERSION_KEY, version))?;
+        let kvp = KeyValuePair::try_from((K8S_APP_VERSION_KEY, version))?;
         Ok(Self(kvp))
     }
 }
@@ -271,8 +272,8 @@ impl Labels {
     pub fn common(app_name: &str, app_instance: &str) -> Result<Self, LabelError> {
         let mut labels = Self::new();
 
-        labels.insert((INSTANCE_KEY, app_instance).try_into()?);
-        labels.insert((NAME_KEY, app_name).try_into()?);
+        labels.insert((K8S_APP_INSTANCE_KEY, app_instance).try_into()?);
+        labels.insert((K8S_APP_NAME_KEY, app_name).try_into()?);
 
         Ok(labels)
     }
