@@ -9,7 +9,6 @@ pub mod crd;
 pub mod error;
 pub mod iter;
 pub mod kvp;
-pub mod label_selector;
 pub mod logging;
 pub mod memory;
 pub mod namespace;

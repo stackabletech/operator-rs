@@ -7,8 +7,13 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add `stackble_operator::kvp` module and types to allow validated construction of key/value pairs, like labels and
-  annotations. Most users want to use the exported type aliases `Label` and `Annotation`, or the macros at
-  `stackable_operator::macros::{label, annotation}` with the `macros` feature enabled ([#684]).
+  annotations. Most users want to use the exported type aliases `Label` and `Annotation` ([#684]).
+
+### Changed
+
+- Move `stackable_operator::label_selector::convert_label_selector_to_query_string` into `kvp` module. The conversion
+  functionality now is encapsulated in a new trait `LabelSelectorExt`. An instance of a `LabelSelector` can now be
+  converted into a query string by calling the associated function `ls.to_query_string()` ([#684]).
 
 [#684]: https://github.com/stackabletech/operator-rs/pull/684
 

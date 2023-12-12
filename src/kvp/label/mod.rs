@@ -28,8 +28,10 @@ use crate::{
     utils::format_full_controller_name,
 };
 
+mod selector;
 mod value;
 
+pub use selector::*;
 pub use value::*;
 
 /// This is an type alias for [`KeyValuePairsError<LabelValueError>`]. This
