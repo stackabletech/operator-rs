@@ -28,8 +28,3 @@ pub use crate::crd::CustomResourceExt;
 pub use ::k8s_openapi;
 pub use ::kube;
 pub use ::schemars;
-
-#[cfg(feature = "macros")]
-pub mod macros {
-    pub use stackable_operator_macros::*;
-}
