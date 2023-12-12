@@ -122,7 +122,7 @@ pub struct ListenerPort {
     pub protocol: Option<String>,
 }
 
-/// Informs users about how to reach the [`Listener`].
+/// Informs users about how to reach the Listener.
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ListenerStatus {
@@ -157,7 +157,7 @@ pub enum AddressType {
     Ip,
 }
 
-/// Informs users about [`Listener`]s that are bound by a given [`Pod`].
+/// Informs users about Listeners that are bound by a given Pod.
 ///
 /// This is not expected to be created or modified by users. It will be created by
 /// the Stackable Listener Operator when mounting the listener volume, and is always
