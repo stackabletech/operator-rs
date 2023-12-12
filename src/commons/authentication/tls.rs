@@ -138,6 +138,6 @@ pub enum CaCert {
 
     /// Name of the [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass) which will provide the CA certificate.
     /// Note that a SecretClass does not need to have a key but can also work with just a CA certificate,
-    /// so if you got provided with a ca cert but don't have access to the key you can still use this method.
+    /// so if you got provided with a CA cert but don't have access to the key you can still use this method.
     SecretClass(String),
 }
