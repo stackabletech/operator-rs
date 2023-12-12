@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.58.1] - 2023-12-12
+
 ### Added
 
 - More CRD documentation ([#697]).
