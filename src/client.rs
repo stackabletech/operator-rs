@@ -128,7 +128,7 @@ impl Client {
 
     /// Lists resources from the API using a LabelSelector.
     ///
-    /// This takes a LabelSelector and converts it into a query string using [`label_selector::convert_label_selector_to_query_string`].
+    /// This takes a LabelSelector and converts it into a query string using [`LabelSelectorExt`].
     ///
     /// # Arguments
     ///
