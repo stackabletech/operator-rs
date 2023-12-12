@@ -20,8 +20,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     kvp::{
         consts::{
-            K8S_APP_COMPONENT_KEY, K8S_APP_INSTANCE_KEY, K8S_APP_NAME_KEY, K8S_APP_ROLE_GROUP_KEY,
-            K8S_APP_VERSION_KEY, MANAGED_BY_KEY,
+            K8S_APP_COMPONENT_KEY, K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY,
+            K8S_APP_ROLE_GROUP_KEY, K8S_APP_VERSION_KEY,
         },
         Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError, ObjectLabels,
     },
@@ -105,7 +105,7 @@ impl Label {
     /// name violates the required Kubernetes restrictions.
     pub fn managed_by(operator_name: &str, controller_name: &str) -> Result<Self, LabelError> {
         let kvp = KeyValuePair::try_from((
-            MANAGED_BY_KEY,
+            K8S_APP_MANAGED_BY_KEY,
             format_full_controller_name(operator_name, controller_name).as_str(),
         ))?;
         Ok(Self(kvp))

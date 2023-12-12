@@ -1,3 +1,7 @@
+//! This module contains various label and annotation related constants used by
+//! Kubernetes. Most constants define well-known `app.kubernetes.io/<NAME>`
+//! keys. These constants can be used to construct various labels or annotations
+//! without sprinkling magic values all over the code.
 use const_format::concatcp;
 
 /// The well-known Kubernetes app key prefix.
@@ -28,7 +32,7 @@ pub const K8S_APP_PART_OF_KEY: &str = concatcp!(K8S_APP_KEY_PREFIX, "part-of");
 /// The well-known Kubernetes app managed-by key `app.kubernetes.io/managed-by`.
 /// It is used to indicate what tool is being used to manage the operation of
 /// an application, e.g. `helm`.
-pub const MANAGED_BY_KEY: &str = concatcp!(K8S_APP_KEY_PREFIX, "managed-by");
+pub const K8S_APP_MANAGED_BY_KEY: &str = concatcp!(K8S_APP_KEY_PREFIX, "managed-by");
 
 /// The well-kown Kubernetes app role-group key `app.kubernetes.io/role-group`.
 /// It is used to specify to which role group this application belongs to, e.g.
