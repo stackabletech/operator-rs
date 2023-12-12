@@ -54,7 +54,7 @@ pub struct SecretClassVolumeScope {
     pub node: bool,
 
     /// The service scope allows Pod objects to specify custom scopes.
-    /// This should typically correspond to Service objects that the Pod participate in.
+    /// This should typically correspond to Service objects that the Pod participates in.
     #[serde(default)]
     pub services: Vec<String>,
 }
