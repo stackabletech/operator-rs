@@ -70,7 +70,7 @@ pub enum ServiceType {
 
 /// Exposes a set of pods to the outside world.
 ///
-/// Essentially a Stackable extension of a Kubernetes Service. Compared to Service, Listener changes three things:
+/// Essentially a Stackable extension of a Kubernetes Service. Compared to a Service, a Listener changes three things:
 /// 1. It uses a cluster-level policy object (ListenerClass) to define how exactly the exposure works
 /// 2. It has a consistent API for reading back the exposed address(es) of the service
 /// 3. The Pod must mount a Volume referring to the Listener, which also allows us to control stickiness.
