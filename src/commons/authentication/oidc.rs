@@ -41,8 +41,8 @@ pub struct AuthenticationProvider {
     /// Hostname of the identity provider, e.g. `my.keycloak.corp`.
     hostname: String,
 
-    /// Port of the identity provider. If TLS is used defaults to `443`,
-    /// otherwise to `80`.
+    /// Port of the identity provider. If TLS is used defaults to 443,
+    /// otherwise to 80.
     port: Option<u16>,
 
     /// Root HTTP path of the identity provider. Defaults to `/`.
@@ -74,9 +74,9 @@ pub struct AuthenticationProvider {
     pub scopes: Vec<String>,
 
     /// This is a hint about which identity provider is used by the
-    /// [`AuthenticationClass`]. Operators *can* opt to use this
+    /// AuthenticationClass. Operators *can* opt to use this
     /// value to enable known quirks around OIDC / OAuth authentication.
-    /// [`None`] means there is no hint and OIDC should be used as it is
+    /// Not providing a hint means there is no hint and OIDC should be used as it is
     /// intended to be used (via the `.well-known` discovery).
     #[serde(default)]
     pub provider_hint: Option<IdentityProviderHint>,

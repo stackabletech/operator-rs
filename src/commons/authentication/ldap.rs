@@ -13,28 +13,28 @@ use crate::{
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticationProvider {
-    /// Hostname of the LDAP server
+    /// Hostname of the LDAP server, for example: `my.ldap.server`.
     pub hostname: String,
 
-    /// Port of the LDAP server. If TLS is used defaults to 636 otherwise to 389
+    /// Port of the LDAP server. If TLS is used defaults to 636 otherwise to 389.
     port: Option<u16>,
 
-    /// LDAP search base
+    /// LDAP search base, for example: `ou=users,dc=example,dc=org`.
     #[serde(default)]
     pub search_base: String,
 
-    /// LDAP query to filter users
+    /// LDAP query to filter users, for example: `(memberOf=cn=myTeam,ou=teams,dc=example,dc=org)`.
     #[serde(default)]
     pub search_filter: String,
 
-    /// The name of the LDAP object fields
+    /// The name of the LDAP object fields.
     #[serde(default)]
     pub ldap_field_names: FieldNames,
 
-    /// In case you need a special account for searching the LDAP server you can specify it here
+    /// In case you need a special account for searching the LDAP server you can specify it here.
     bind_credentials: Option<SecretClassVolume>,
 
-    /// Use a TLS connection. If not specified no TLS will be used
+    /// Use a TLS connection. If not specified no TLS will be used.
     #[serde(flatten)]
     pub tls: TlsClientDetails,
 }

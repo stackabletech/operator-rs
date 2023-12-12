@@ -147,11 +147,13 @@ fn config_schema_default() -> serde_json::Value {
     serde_json::json!({})
 }
 
-/// This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a [`HashMap`] containing
+/// This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a key-value-map containing
 /// all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable
 /// at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured
-/// on role level using the [`Merge`] trait. There is also a second form of config, which can only be configured
+/// on role level. There is also a second form of config, which can only be configured
 /// at role level, the `roleConfig`.
+/// You can learn more about this in the
+/// [Roles and role group concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/roles-and-role-groups).
 //
 // Everything below is only a "normal" comment, not rustdoc - so we don't bloat the CRD documentation
 // with technical (Rust) details.
