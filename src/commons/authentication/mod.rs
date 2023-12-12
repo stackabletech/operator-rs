@@ -51,7 +51,7 @@ pub enum AuthenticationClassProvider {
     /// where you can learn to configure Superset and Trino with OpenLDAP.
     Ldap(ldap::AuthenticationProvider),
 
-    /// The OIDC provider can be used to configure OpenID connect.
+    /// The OIDC provider can be used to configure OpenID Connect.
     Oidc(oidc::AuthenticationProvider),
 
     /// The [TLS provider](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication#_tls).
