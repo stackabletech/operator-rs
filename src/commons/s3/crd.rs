@@ -6,7 +6,7 @@ use crate::commons::{secret_class::SecretClassVolume, tls::TlsClientDetails};
 
 use super::S3ConnectionInlineOrReference;
 
-// Contains all the needed details to access an S3 object store.
+/// Contains connection and access details to access an S3 object store.
 #[derive(CustomResource, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[kube(
     group = "s3.stackable.tech",
