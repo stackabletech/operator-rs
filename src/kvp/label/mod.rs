@@ -34,19 +34,25 @@ mod value;
 pub use selector::*;
 pub use value::*;
 
-/// This is an type alias for [`KeyValuePairsError<LabelValueError>`]. This
-/// error is returned when an error occurs while manipulating [`Labels`].
+/// A type alias for errors returned when construction of a label fails.
 pub type LabelsError = KeyValuePairsError<LabelValueError>;
 
-/// This is an type alias for [`KeyValuePairError<LabelValueError>`]. This
-/// error is returned when constructing a [`Label`].
+/// A type alias for errors returned when construction or manipulation of a set
+/// of labels fails.
 pub type LabelError = KeyValuePairError<LabelValueError>;
 
-/// [`Label`] is a specialized implementation of [`KeyValuePair`]. The
-/// validation of the label value can fail due to multiple reasons. It can only
-/// contain a limited set of ASCII characters.
+/// A specialized implementation of a key/value pair representing Kubernetes
+/// labels.
 ///
-/// See <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>
+/// ```
+/// # use stackable_operator::kvp::Label;
+/// let label = Label::try_from(("stackable.tech/vendor", "Stackable")).unwrap();
+/// assert_eq!(label.to_string(), "stackable.tech/vendor=Stackable");
+/// ```
+///
+/// The validation of the label value can fail due to multiple reasons. It can
+/// only contain a limited set and combination of ASCII characters. See
+/// <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>
 /// for more information on Kubernetes labels.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Label(KeyValuePair<LabelValue>);
@@ -71,6 +77,12 @@ impl Display for Label {
 
 impl Label {
     /// Returns an immutable reference to the label's [`Key`].
+    ///
+    /// ```
+    /// # use stackable_operator::kvp::Label;
+    /// let label = Label::try_from(("stackable.tech/vendor", "Stackable")).unwrap();
+    /// assert_eq!(label.key().to_string(), "stackable.tech/vendor");
+    /// ```
     pub fn key(&self) -> &Key {
         self.0.key()
     }
@@ -123,8 +135,10 @@ impl Label {
     }
 }
 
-/// [`Labels`] is a set of [`Label`]. It provides selected associated functions
-/// to manipulate the set of labels, like inserting or extending.
+/// A validated set/list of Kubernetes labels.
+///
+/// It provides selected associated functions to manipulate the set of labels,
+/// like inserting or extending.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Labels(KeyValuePairs<LabelValue>);
 

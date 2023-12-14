@@ -22,27 +22,65 @@ pub use key::*;
 pub use label::*;
 pub use value::*;
 
+/// The error type for key/value pair parsing/validating operations.
 #[derive(Debug, PartialEq, Snafu)]
 pub enum KeyValuePairError<E>
 where
     E: std::error::Error + 'static,
 {
-    #[snafu(display("label input cannot be empty"))]
-    EmptyInput,
-
-    #[snafu(display("invalid number of equal signs - expected exactly 1, got {signs}"))]
-    InvalidEqualSignCount { signs: usize },
-
-    #[snafu(display("failed to parse label key"))]
+    /// Indicates that the key failed to parse. See [`KeyError`] for more
+    /// information about the error causes.
+    #[snafu(display("failed to parse key of key/value pair"))]
     InvalidKey { source: KeyError },
 
-    #[snafu(display("failed to parse label value"))]
+    /// Indicates that the value failed to parse.
+    #[snafu(display("failed to parse value of key/value pair"))]
     InvalidValue { source: E },
 }
 
-/// A [`KeyValuePair`] is a pair values which consist of a [`Key`] and value.
+/// A validated Kubernetes key/value pair.
+///
 /// These pairs can be used as Kubernetes labels or annotations. A pair can be
-/// parsed from a string with the following format: `(<PREFIX>/)<NAME>=<VALUE>`.
+/// parsed from a `(str, str)` tuple.
+///
+/// ### Examples
+///
+/// This example describes the usage of [`Label`], which is a specialized
+/// [`KeyValuePair`]. The implementation makes sure that both the key (comprised
+/// of optional prefix and name) and the value are validated according to the
+/// Kubernetes spec linked [below](#links).
+///
+/// ```
+/// # use stackable_operator::kvp::Label;
+/// let label = Label::try_from(("stackable.tech/vendor", "Stackable")).unwrap();
+/// assert_eq!(label.to_string(), "stackable.tech/vendor=Stackable");
+/// ```
+///
+/// ---
+///
+/// [`KeyValuePair`] is generic over the value. This allows implementors to
+/// write custom validation logic for different value requirements. This
+/// library provides two implementations out of the box: [`AnnotationValue`]
+/// and [`LabelValue`]. Custom implementations need to implement the required
+/// trait [`Value`].
+///
+/// ```ignore
+/// use stackable_operator::kvp::{KeyValuePair, Value};
+/// use serde::Serialize;
+///
+/// #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+/// struct MyValue(String);
+///
+/// impl Value for MyValue {
+///     // Implementation omitted for brevity
+/// }
+///
+/// let kvp = KeyValuePair::<MyValue>::try_from(("key", "my_custom_value"));
+/// ```
+///
+/// Implementing [`Value`] requires various other trait implementations like
+/// [`Deref`] and [`FromStr`]. Check out the documentation for the [`Value`]
+/// trait for a more detailed implementation guide.
 ///
 /// ### Links
 ///
@@ -168,7 +206,7 @@ where
     KeyValuePairParse { source: KeyValuePairError<E> },
 }
 
-/// [`KeyValuePairs`] is a list of [`KeyValuePair`].
+/// A validated set/list of Kubernetes key/value pairs.
 #[derive(Clone, Debug, Default)]
 pub struct KeyValuePairs<V: Value>(BTreeSet<KeyValuePair<V>>);
 

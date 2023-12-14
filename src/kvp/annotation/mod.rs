@@ -26,18 +26,19 @@ mod value;
 
 pub use value::*;
 
-/// This is an type alias for [`KeyValuePairsError<Infallible>`]. This error is
-/// returned when an error occurs while manipulating [`Annotations`].
+/// A type alias for errors returned when construction of an annotation fails.
 pub type AnnotationsError = KeyValuePairsError<Infallible>;
 
-/// This is an type alias for [`KeyValuePairError<Infallible>`]. This error is
-/// returned when constructing an [`Annotation`].
+/// A type alias for errors returned when construction or manipulation of a set
+/// of annotations fails.
 pub type AnnotationError = KeyValuePairError<Infallible>;
 
-/// [`Annotation`] is a specialized implementation of [`KeyValuePair`]. The
-/// validation of the annotation value can **never** fail, as `&str` is guaranteed
-/// to only contain valid UTF-8 data - which is the only requirement for a valid
-/// Kubernetes annotation value.
+/// A specialized implementation of a key/value pair representing Kubernetes
+/// annotations.
+///
+/// The validation of the annotation value can **never** fail, as [`str`] is
+/// guaranteed  to only contain valid UTF-8 data - which is the only
+/// requirement for a valid Kubernetes annotation value.
 ///
 /// See <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
 /// for more information on Kubernetes annotations.
@@ -133,8 +134,10 @@ impl Annotation {
     }
 }
 
-/// [`Annotations`] is a set of [`Annotation`]. It provides selected associated
-/// functions to manipulate the set of annotations, like inserting or extending.
+/// A validated set/list of Kubernetes annotations.
+///
+/// It provides selected associated functions to manipulate the set of
+/// annotations, like inserting or extending.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Annotations(KeyValuePairs<AnnotationValue>);
 

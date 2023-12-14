@@ -14,21 +14,29 @@ lazy_static! {
         Regex::new(r"^[a-z0-9A-Z]([a-z0-9A-Z-_.]*[a-z0-9A-Z]+)?$").unwrap();
 }
 
+/// The error type for label value parse/validation operations.
 #[derive(Debug, PartialEq, Snafu)]
 pub enum LabelValueError {
+    /// Indicates that the label value exceeds the maximum length of 63 ASCII
+    /// characters. It additionally reports how many characters were
+    /// encountered during parsing / validation.
     #[snafu(display(
         "value exceeds the maximum length - expected 63 characters or less, got {length}"
     ))]
     ValueTooLong { length: usize },
 
+    /// Indicates that the label value contains non-ASCII characters which the
+    /// Kubernetes spec does not permit.
     #[snafu(display("value contains non-ascii characters"))]
     ValueNotAscii,
 
+    /// Indicates that the label value violates the specified Kubernetes format.
     #[snafu(display("value violates kubernetes format"))]
     ValueInvalid,
 }
 
-/// A validated label value of a [`KeyValuePair`](crate::kvp::KeyValuePair).
+/// A validated Kubernetes label value.
+///
 /// Instances of this struct are always valid. The format and valid characters
 /// are described [here][k8s-labels]. It also implements [`Deref`], which
 /// enables read-only access to the inner value (a [`String`]). It, however,

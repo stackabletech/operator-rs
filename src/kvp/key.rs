@@ -15,26 +15,43 @@ lazy_static! {
         Regex::new(r"^[a-z0-9A-Z]([a-z0-9A-Z-_.]*[a-z0-9A-Z]+)?$").unwrap();
 }
 
+/// The error type for key parsing/validation operations.
+///
+/// This error will be returned if the input is empty, the parser encounters
+/// multiple prefixes or any deeper errors occur during key prefix and key name
+/// parsing.
 #[derive(Debug, PartialEq, Snafu)]
 pub enum KeyError {
+    /// Indicates that the input is empty. The key must at least contain a name.
+    /// The prefix is optional.
     #[snafu(display("key input cannot be empty"))]
     EmptyInput,
 
+    /// Indicates that the input contains multiple nested prefixes, e.g.
+    /// `app.kubernetes.io/nested/name`. Valid keys only contain one prefix
+    /// like `app.kubernetes.io/name`.
     #[snafu(display("key prefixes cannot be nested, only use a single slash"))]
     NestedPrefix,
 
+    /// Indicates that the key prefix failed to parse. See [`KeyPrefixError`]
+    /// for more information about error causes.
     #[snafu(display("failed to parse key prefix"))]
     KeyPrefixError { source: KeyPrefixError },
 
+    /// Indicates that the key name failed to parse. See [`KeyNameError`] for
+    /// more information about error causes.
     #[snafu(display("failed to parse key name"))]
     KeyNameError { source: KeyNameError },
 }
 
-/// The [`Key`] of a [`KeyValuePair`](crate::kvp::KeyValuePair). It contains an
-/// optional prefix, and a required name. The Kubernetes documentation defines
-/// the format and allowed characters [here][k8s-labels]. A [`Key`] is always
-/// validated. It also doesn't provide any associated functions which enable
-/// unvalidated manipulation of the inner values.
+/// The key of a a key/value pair. It contains an optional prefix, and a
+/// required name.
+///
+/// The general format is `(<PREFIX>/)<NAME>`. Further, the Kubernetes
+/// documentation defines the format and allowed characters in more detail
+/// [here][k8s-labels]. A [`Key`] is always validated. It also doesn't provide
+/// any associated functions which enable unvalidated manipulation of the inner
+/// values.
 ///
 /// [k8s-labels]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -179,26 +196,38 @@ impl Key {
     }
 }
 
+/// The error type for key prefix parsing/validation operations.
 #[derive(Debug, PartialEq, Snafu)]
 pub enum KeyPrefixError {
+    /// Indicates that the key prefix segment is empty, which is not permitted
+    /// when the key indicates that a prefix is present (via a slash). This
+    /// prevents keys like `/name`.
     #[snafu(display("prefix segment of key cannot be empty"))]
     PrefixEmpty,
 
+    /// Indicates that the key prefix segment exceeds the mamximum length of
+    /// 253 ASCII characters. It additionally reports how many characters were
+    /// encountered during parsing / validation.
     #[snafu(display("prefix segment of key exceeds the maximum length - expected 253 characters or less, got {length}"))]
     PrefixTooLong { length: usize },
 
+    /// Indidcates that the key prefix segment contains non-ASCII characters
+    /// which the Kubernetes spec does not permit.
     #[snafu(display("prefix segment of key contains non-ascii characters"))]
     PrefixNotAscii,
 
+    /// Indicates that the key prefix segment violates the specified Kubernetes
+    /// format.
     #[snafu(display("prefix segment of key violates kubernetes format"))]
     PrefixInvalid,
 }
 
-/// A validated optional [`KeyPrefix`] segment of [`Key`]. Instances of this
-/// struct are always valid. [`KeyPrefix`] implements [`Deref`], which enables
-/// read-only access to the inner value (a [`String`]). It, however, does not
-/// implement [`DerefMut`](std::ops::DerefMut) which would enable unvalidated
-/// mutable access to inner values.
+/// A validated optional key prefix segment of a key.
+///
+/// Instances of this struct are always valid. [`KeyPrefix`] implements
+/// [`Deref`], which enables read-only access to the inner value (a [`String`]).
+/// It, however, does not implement [`DerefMut`](std::ops::DerefMut) which would
+/// enable unvalidated mutable access to inner values.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyPrefix(String);
 
@@ -241,25 +270,36 @@ impl Display for KeyPrefix {
     }
 }
 
+/// The error type for key name parsing/validation operations.
 #[derive(Debug, PartialEq, Snafu)]
 pub enum KeyNameError {
+    /// Indicates that the key name segment is empty. The key name is required
+    /// and therefore cannot be empty.
     #[snafu(display("name segment of key cannot be empty"))]
     NameEmpty,
 
+    /// Indicates that the key name sgement exceeds the maximum length of 63
+    /// ASCII characters. It additionally reports how many characters were
+    /// encountered during parsing / validation.
     #[snafu(display("name segment of key exceeds the maximum length - expected 63 characters or less, got {length}"))]
     NameTooLong { length: usize },
 
+    /// Indidcates that the key name segment contains non-ASCII characters
+    /// which the Kubernetes spec does not permit.
     #[snafu(display("name segment of key contains non-ascii characters"))]
     NameNotAscii,
 
+    /// Indicates that the key name segment violates the specified Kubernetes
+    /// format.
     #[snafu(display("name segment of key violates kubernetes format"))]
     NameInvalid,
 }
 
-/// A validated [`KeyName`] segment of [`Key`]. This part of the key is
-/// required. Instances of this struct are always valid. It also implements
-/// [`Deref`], which enables read-only access to the inner value (a [`String`]).
-/// It, however, does not implement [`DerefMut`](std::ops::DerefMut) which would
+/// A validated name segement of a key. This part of the key is required.
+///
+/// Instances of this struct are always valid. It also implements [`Deref`],
+/// which enables read-only access to the inner value (a [`String`]). It,
+/// however, does not implement [`DerefMut`](std::ops::DerefMut) which would
 /// enable unvalidated mutable access to inner values.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyName(String);

@@ -4,6 +4,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::kvp::Value;
 
+/// A validated Kubernetes annotation value, which only requires valid UTF-8
+/// data.
+///
+/// Since [`str`] and [`String`] are guaranteed to be valid UTF-8 data, we
+/// don't perform any additional validation.
+///
+/// This wrapper type solely exists to mirror the label value type.
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct AnnotationValue(String);
 
