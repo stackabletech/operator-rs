@@ -356,6 +356,8 @@ where
     }
 }
 
+/// A recommended set of labels to set on objects created by Stackable
+/// operators or management tools.
 #[derive(Debug, Clone, Copy)]
 pub struct ObjectLabels<'a, T> {
     /// Reference to the k8s object owning the created resource, such as
