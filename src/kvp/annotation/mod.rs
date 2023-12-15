@@ -15,8 +15,6 @@ use std::{
     fmt::Display,
 };
 
-use serde::{Deserialize, Serialize};
-
 use crate::{
     builder::SecretOperatorVolumeScope,
     kvp::{Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError},
@@ -42,7 +40,7 @@ pub type AnnotationError = KeyValuePairError<Infallible>;
 ///
 /// See <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
 /// for more information on Kubernetes annotations.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug)]
 pub struct Annotation(KeyValuePair<AnnotationValue>);
 
 impl<T> TryFrom<(T, T)> for Annotation
@@ -138,7 +136,7 @@ impl Annotation {
 ///
 /// It provides selected associated functions to manipulate the set of
 /// annotations, like inserting or extending.
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default)]
 pub struct Annotations(KeyValuePairs<AnnotationValue>);
 
 impl TryFrom<BTreeMap<String, String>> for Annotations {

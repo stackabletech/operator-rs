@@ -1,7 +1,5 @@
 use std::{convert::Infallible, fmt::Display, ops::Deref, str::FromStr};
 
-use serde::{Deserialize, Serialize};
-
 use crate::kvp::Value;
 
 /// A validated Kubernetes annotation value, which only requires valid UTF-8
@@ -11,7 +9,7 @@ use crate::kvp::Value;
 /// don't perform any additional validation.
 ///
 /// This wrapper type solely exists to mirror the label value type.
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AnnotationValue(String);
 
 impl Value for AnnotationValue {

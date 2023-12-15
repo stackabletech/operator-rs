@@ -15,7 +15,6 @@ use std::{
 };
 
 use kube::{Resource, ResourceExt};
-use serde::{Deserialize, Serialize};
 
 use crate::{
     kvp::{
@@ -54,7 +53,7 @@ pub type LabelError = KeyValuePairError<LabelValueError>;
 /// only contain a limited set and combination of ASCII characters. See
 /// <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>
 /// for more information on Kubernetes labels.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 pub struct Label(KeyValuePair<LabelValue>);
 
 impl<T> TryFrom<(T, T)> for Label
@@ -139,7 +138,7 @@ impl Label {
 ///
 /// It provides selected associated functions to manipulate the set of labels,
 /// like inserting or extending.
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default)]
 pub struct Labels(KeyValuePairs<LabelValue>);
 
 impl TryFrom<BTreeMap<String, String>> for Labels {

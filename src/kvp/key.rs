@@ -2,7 +2,6 @@ use std::{fmt::Display, ops::Deref, str::FromStr};
 
 use lazy_static::lazy_static;
 use regex::Regex;
-use serde::{de::Visitor, Deserialize, Serialize};
 use snafu::{ensure, ResultExt, Snafu};
 
 const KEY_PREFIX_MAX_LEN: usize = 253;
@@ -96,41 +95,6 @@ impl Display for Key {
             Some(prefix) => write!(f, "{}/{}", prefix, self.name),
             None => write!(f, "{}", self.name),
         }
-    }
-}
-
-impl Serialize for Key {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl<'de> Deserialize<'de> for Key {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        struct KeyVisitor;
-
-        impl<'de> Visitor<'de> for KeyVisitor {
-            type Value = Key;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("a valid kubernetes label or annotation key")
-            }
-
-            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                Key::from_str(v).map_err(serde::de::Error::custom)
-            }
-        }
-
-        deserializer.deserialize_str(KeyVisitor)
     }
 }
 

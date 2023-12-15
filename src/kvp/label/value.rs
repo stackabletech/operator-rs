@@ -2,7 +2,6 @@ use std::{fmt::Display, ops::Deref, str::FromStr};
 
 use lazy_static::lazy_static;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 use snafu::{ensure, Snafu};
 
 use crate::kvp::Value;
@@ -44,7 +43,7 @@ pub enum LabelValueError {
 /// unvalidated mutable access to inner values.
 ///
 /// [k8s-labels]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LabelValue(String);
 
 impl Value for LabelValue {

@@ -3,12 +3,10 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Display,
-    marker::PhantomData,
     ops::Deref,
     str::FromStr,
 };
 
-use serde::{de::Visitor, ser::SerializeMap, Deserialize, Serialize};
 use snafu::{ensure, ResultExt, Snafu};
 
 mod annotation;
@@ -120,60 +118,6 @@ where
     }
 }
 
-impl<V> Serialize for KeyValuePair<V>
-where
-    V: Value,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(1))?;
-        map.serialize_entry(&self.key, &self.value)?;
-        map.end()
-    }
-}
-
-struct KeyValuePairVisitor<V> {
-    marker: PhantomData<V>,
-}
-
-impl<'de, V> Visitor<'de> for KeyValuePairVisitor<V>
-where
-    V: Deserialize<'de> + Value + Default,
-{
-    type Value = KeyValuePair<V>;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("a valid key/value pair (label or annotation)")
-    }
-
-    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::MapAccess<'de>,
-    {
-        if let Some((key, value)) = map.next_entry()? {
-            return Ok(KeyValuePair::new(key, value));
-        }
-
-        Err(serde::de::Error::custom("expected at least one map entry"))
-    }
-}
-
-impl<'de, V> Deserialize<'de> for KeyValuePair<V>
-where
-    V: Deserialize<'de> + Value + Default,
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_map(KeyValuePairVisitor {
-            marker: PhantomData,
-        })
-    }
-}
-
 impl<V> KeyValuePair<V>
 where
     V: Value,
@@ -255,68 +199,6 @@ where
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-impl<V> Serialize for KeyValuePairs<V>
-where
-    V: Value,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut map = serializer.serialize_map(Some(self.len()))?;
-        for kvp in &self.0 {
-            map.serialize_entry(kvp.key(), kvp.value())?;
-        }
-        map.end()
-    }
-}
-
-struct KeyValuePairsVisitor<V> {
-    value_marker: PhantomData<V>,
-}
-
-impl<V> KeyValuePairsVisitor<V> {
-    pub fn new() -> Self {
-        Self {
-            value_marker: PhantomData,
-        }
-    }
-}
-
-impl<'de, V> Visitor<'de> for KeyValuePairsVisitor<V>
-where
-    V: Deserialize<'de> + Value + Default,
-{
-    type Value = KeyValuePairs<V>;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("valid list of key/value pairs (labels and or annotations)")
-    }
-
-    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::MapAccess<'de>,
-    {
-        let mut pairs = KeyValuePairs::new();
-        while let Some((key, value)) = map.next_entry()? {
-            pairs.insert(KeyValuePair::new(key, value));
-        }
-        Ok(pairs)
-    }
-}
-
-impl<'de, V> Deserialize<'de> for KeyValuePairs<V>
-where
-    V: Deserialize<'de> + Value + Default,
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_map(KeyValuePairsVisitor::new())
     }
 }
 
@@ -438,7 +320,6 @@ pub struct ObjectLabels<'a, T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use serde::{Deserialize, Serialize};
 
     #[test]
     fn try_from_tuple() {
@@ -488,37 +369,5 @@ mod test {
         let map: BTreeMap<String, String> = labels.into();
 
         assert_eq!(map.len(), 2);
-    }
-
-    #[test]
-    fn serialize() {
-        #[derive(Serialize)]
-        struct Kvp {
-            labels: Labels,
-            label: Label,
-        }
-
-        let label = Label::try_from(("stackable.tech/managed-by", "stackablectl")).unwrap();
-        let labels = Labels::common("zookeeper", "zookeeper-default-1").unwrap();
-
-        let kvp = Kvp { labels, label };
-
-        assert_eq!(serde_yaml::to_string(&kvp).unwrap(), "labels:\n  app.kubernetes.io/instance: zookeeper-default-1\n  app.kubernetes.io/name: zookeeper\nlabel:\n  stackable.tech/managed-by: stackablectl\n");
-    }
-
-    #[test]
-    fn deserialize() {
-        #[derive(Deserialize)]
-        struct Kvp {
-            labels: Labels,
-            label: Label,
-        }
-
-        let kvp: Kvp = serde_yaml::from_str("labels:\n  app.kubernetes.io/instance: zookeeper-default-1\n  app.kubernetes.io/name: zookeeper\nlabel:\n  stackable.tech/managed-by: stackablectl\n").unwrap();
-
-        assert_eq!(kvp.label.key().to_string(), "stackable.tech/managed-by");
-        assert_eq!(kvp.label.value().to_string(), "stackablectl");
-
-        assert_eq!(kvp.labels.len(), 2);
     }
 }
