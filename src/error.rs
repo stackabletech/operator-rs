@@ -1,4 +1,4 @@
-use crate::product_config_utils;
+use crate::{kvp::LabelError, product_config_utils};
 use std::path::PathBuf;
 
 #[derive(Debug, thiserror::Error)]
@@ -120,6 +120,12 @@ pub enum Error {
 
     #[error("OIDC authentication details not specified. The AuthenticationClass {auth_class_name:?} uses an OIDC provider, you need to specify OIDC authentication details (such as client credentials) as well")]
     OidcAuthenticationDetailsNotSpecified { auth_class_name: String },
+
+    #[error("failed to parse label: {source}")]
+    InvalidLabel {
+        #[from]
+        source: LabelError,
+    },
 }
 
 pub type OperatorResult<T> = std::result::Result<T, Error>;

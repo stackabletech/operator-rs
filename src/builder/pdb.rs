@@ -1,9 +1,3 @@
-use crate::{
-    builder::ObjectMetaBuilder,
-    error::OperatorResult,
-    labels::{role_selector_labels, APP_MANAGED_BY_LABEL},
-    utils::format_full_controller_name,
-};
 use k8s_openapi::{
     api::policy::v1::{PodDisruptionBudget, PodDisruptionBudgetSpec},
     apimachinery::pkg::{
@@ -12,6 +6,12 @@ use k8s_openapi::{
     },
 };
 use kube::{Resource, ResourceExt};
+
+use crate::{
+    builder::ObjectMetaBuilder,
+    error::OperatorResult,
+    kvp::{Label, Labels},
+};
 
 /// This builder is used to construct [`PodDisruptionBudget`]s.
 /// If you are using this to create [`PodDisruptionBudget`]s according to [ADR 30 on Allowed Pod disruptions][adr],
@@ -48,15 +48,22 @@ impl PodDisruptionBudgetBuilder<(), (), ()> {
         PodDisruptionBudgetBuilder::default()
     }
 
-    /// This method populates [`PodDisruptionBudget::metadata`] and [`PodDisruptionBudgetSpec::selector`] from the give role
-    /// (not roleGroup!).
+    /// This method populates [`PodDisruptionBudget::metadata`] and
+    /// [`PodDisruptionBudgetSpec::selector`] from the give role (not roleGroup!).
     ///
-    /// The parameters are the same as the fields from [`crate::labels::ObjectLabels`]:
-    /// * `owner` - Reference to the k8s object owning the created resource, such as `HdfsCluster` or `TrinoCluster`.
-    /// * `app_name` - The name of the app being managed, such as `hdfs` or `trino`.
-    /// * `role` - The role that this object belongs to, e.g. `datanode` or `worker`.
-    /// * `operator_name` - The DNS-style name of the operator managing the object (such as `hdfs.stackable.tech`).
-    /// * `controller_name` - The name of the controller inside of the operator managing the object (such as `hdfscluster`)
+    /// The parameters are the same as the fields from
+    /// [`ObjectLabels`][crate::kvp::ObjectLabels]:
+    ///
+    /// * `owner` - Reference to the k8s object owning the created resource,
+    ///   such as `HdfsCluster` or `TrinoCluster`.
+    /// * `app_name` - The name of the app being managed, such as `hdfs` or
+    ///   `trino`.
+    /// * `role` - The role that this object belongs to, e.g. `datanode` or
+    ///   `worker`.
+    /// * `operator_name` - The DNS-style name of the operator managing the
+    ///   object (such as `hdfs.stackable.tech`).
+    /// * `controller_name` - The name of the controller inside of the operator
+    ///   managing the object (such as `hdfscluster`)
     pub fn new_with_role<T: Resource<DynamicType = ()>>(
         owner: &T,
         app_name: &str,
@@ -64,23 +71,20 @@ impl PodDisruptionBudgetBuilder<(), (), ()> {
         operator_name: &str,
         controller_name: &str,
     ) -> OperatorResult<PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()>> {
-        let role_selector_labels = role_selector_labels(owner, app_name, role);
+        let role_selector_labels = Labels::role_selector(owner, app_name, role)?;
         let metadata = ObjectMetaBuilder::new()
             .namespace_opt(owner.namespace())
             .name(format!("{}-{}", owner.name_any(), role))
             .ownerreference_from_resource(owner, None, Some(true))?
             .with_labels(role_selector_labels.clone())
-            .with_label(
-                APP_MANAGED_BY_LABEL.to_string(),
-                format_full_controller_name(operator_name, controller_name),
-            )
+            .with_label(Label::managed_by(operator_name, controller_name)?)
             .build();
 
         Ok(PodDisruptionBudgetBuilder {
             metadata,
             selector: LabelSelector {
                 match_expressions: None,
-                match_labels: Some(role_selector_labels),
+                match_labels: Some(role_selector_labels.into()),
             },
             ..PodDisruptionBudgetBuilder::default()
         })

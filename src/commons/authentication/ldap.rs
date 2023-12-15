@@ -1,14 +1,23 @@
 use k8s_openapi::api::core::v1::{Volume, VolumeMount};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 
 use crate::{
     builder::{ContainerBuilder, PodBuilder, VolumeMountBuilder},
     commons::{
         authentication::{tls::TlsClientDetails, SECRET_BASE_PATH},
-        secret_class::SecretClassVolume,
+        secret_class::{SecretClassVolume, SecretClassVolumeError},
     },
 };
+
+#[derive(Debug, Snafu)]
+pub enum AuthenticationProviderError {
+    #[snafu(display(
+        "failed to convert bind credentials (secret class volume) into named Kubernetes volume"
+    ))]
+    BindCredentials { source: SecretClassVolumeError },
+}
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -58,32 +67,40 @@ impl AuthenticationProvider {
         &self,
         pod_builder: &mut PodBuilder,
         container_builders: Vec<&mut ContainerBuilder>,
-    ) {
-        let (volumes, mounts) = self.volumes_and_mounts();
+    ) -> Result<(), AuthenticationProviderError> {
+        let (volumes, mounts) = self.volumes_and_mounts()?;
         pod_builder.add_volumes(volumes);
+
         for cb in container_builders {
             cb.add_volume_mounts(mounts.clone());
         }
+
+        Ok(())
     }
 
     /// It is recommended to use [`Self::add_volumes_and_mounts`], this function returns you the
     /// volumes and mounts in case you need to add them by yourself.
-    pub fn volumes_and_mounts(&self) -> (Vec<Volume>, Vec<VolumeMount>) {
+    pub fn volumes_and_mounts(
+        &self,
+    ) -> Result<(Vec<Volume>, Vec<VolumeMount>), AuthenticationProviderError> {
         let mut volumes = Vec::new();
         let mut mounts = Vec::new();
 
         if let Some(bind_credentials) = &self.bind_credentials {
             let secret_class = &bind_credentials.secret_class;
             let volume_name = format!("{secret_class}-bind-credentials");
+            let volume = bind_credentials
+                .to_volume(&volume_name)
+                .context(BindCredentialsSnafu)?;
 
-            volumes.push(bind_credentials.to_volume(&volume_name));
+            volumes.push(volume);
             mounts.push(
                 VolumeMountBuilder::new(volume_name, format!("{SECRET_BASE_PATH}/{secret_class}"))
                     .build(),
             );
         }
 
-        (volumes, mounts)
+        Ok((volumes, mounts))
     }
 
     /// Returns the path of the files containing bind user and password.
@@ -213,14 +230,15 @@ mod test {
             ldap.tls.tls_ca_cert_mount_path(),
             Some("/stackable/secrets/ldap-ca-cert/ca.crt".to_string())
         );
-        let (tls_volumes, tls_mounts) = ldap.tls.volumes_and_mounts();
+        let (tls_volumes, tls_mounts) = ldap.tls.volumes_and_mounts().unwrap();
         assert_eq!(
             tls_volumes,
             vec![SecretClassVolume {
                 secret_class: "ldap-ca-cert".to_string(),
                 scope: None,
             }
-            .to_volume("ldap-ca-cert-ca-cert")]
+            .to_volume("ldap-ca-cert-ca-cert")
+            .unwrap()]
         );
         assert_eq!(
             tls_mounts,
@@ -238,14 +256,15 @@ mod test {
                 "/stackable/secrets/openldap-bind-credentials/password".to_string()
             ))
         );
-        let (bind_volumes, bind_mounts) = ldap.volumes_and_mounts();
+        let (bind_volumes, bind_mounts) = ldap.volumes_and_mounts().unwrap();
         assert_eq!(
             bind_volumes,
             vec![SecretClassVolume {
                 secret_class: "openldap-bind-credentials".to_string(),
                 scope: None,
             }
-            .to_volume("openldap-bind-credentials-bind-credentials")]
+            .to_volume("openldap-bind-credentials-bind-credentials")
+            .unwrap()]
         );
         assert_eq!(
             bind_mounts,

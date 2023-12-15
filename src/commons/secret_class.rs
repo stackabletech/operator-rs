@@ -1,20 +1,42 @@
-use crate::builder::{SecretOperatorVolumeSourceBuilder, VolumeBuilder};
 use k8s_openapi::api::core::v1::{EphemeralVolumeSource, Volume};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
+
+use crate::builder::{
+    SecretOperatorVolumeSourceBuilder, SecretOperatorVolumeSourceBuilderError, VolumeBuilder,
+};
+
+#[derive(Debug, Snafu)]
+pub enum SecretClassVolumeError {
+    #[snafu(display("failed to build secret operator volume"))]
+    SecretOperatorVolume {
+        source: SecretOperatorVolumeSourceBuilderError,
+    },
+}
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SecretClassVolume {
     /// [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass) containing the LDAP bind credentials.
     pub secret_class: String,
+
     /// [Scope](DOCS_BASE_URL_PLACEHOLDER/secret-operator/scope) of the
     /// [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass).
     pub scope: Option<SecretClassVolumeScope>,
 }
 
 impl SecretClassVolume {
-    pub fn to_ephemeral_volume_source(&self) -> EphemeralVolumeSource {
+    pub fn new(secret_class: String, scope: Option<SecretClassVolumeScope>) -> Self {
+        Self {
+            secret_class,
+            scope,
+        }
+    }
+
+    pub fn to_ephemeral_volume_source(
+        &self,
+    ) -> Result<EphemeralVolumeSource, SecretClassVolumeError> {
         let mut secret_operator_volume_builder =
             SecretOperatorVolumeSourceBuilder::new(&self.secret_class);
 
@@ -30,13 +52,14 @@ impl SecretClassVolume {
             }
         }
 
-        secret_operator_volume_builder.build()
+        secret_operator_volume_builder
+            .build()
+            .context(SecretOperatorVolumeSnafu)
     }
 
-    pub fn to_volume(&self, volume_name: &str) -> Volume {
-        VolumeBuilder::new(volume_name)
-            .ephemeral(self.to_ephemeral_volume_source())
-            .build()
+    pub fn to_volume(&self, volume_name: &str) -> Result<Volume, SecretClassVolumeError> {
+        let ephemeral = self.to_ephemeral_volume_source()?;
+        Ok(VolumeBuilder::new(volume_name).ephemeral(ephemeral).build())
     }
 }
 
@@ -74,7 +97,8 @@ mod tests {
                 services: vec!["myservice".to_string()],
             }),
         }
-        .to_ephemeral_volume_source();
+        .to_ephemeral_volume_source()
+        .unwrap();
 
         let expected_volume_attributes = BTreeMap::from([
             (

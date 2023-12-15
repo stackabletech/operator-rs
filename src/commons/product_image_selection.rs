@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use strum::AsRefStr;
 
 #[cfg(doc)]
-use crate::labels::get_recommended_labels;
+use crate::kvp::Labels;
 
 pub const STACKABLE_DOCKER_REPO: &str = "docker.stackable.tech/stackable";
 
@@ -66,12 +66,16 @@ pub struct ProductImageStackableVersion {
 pub struct ResolvedProductImage {
     /// Version of the product, e.g. `1.4.1`.
     pub product_version: String,
-    /// App version as formatted for [`get_recommended_labels`]
+
+    /// App version as formatted for [`Labels::recommended`]
     pub app_version_label: String,
+
     /// Image to be used for the product image e.g. `docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0`
     pub image: String,
+
     /// Image pull policy for the containers using the product image
     pub image_pull_policy: String,
+
     /// Image pull secrets for the containers using the product image
     pub pull_secrets: Option<Vec<LocalObjectReference>>,
 }

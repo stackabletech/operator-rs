@@ -1,9 +1,14 @@
-use crate::builder::ObjectMetaBuilder;
-use crate::error::OperatorResult;
-use crate::k8s_openapi::api::core::v1::ServiceAccount;
-use crate::k8s_openapi::api::rbac::v1::{RoleBinding, RoleRef, Subject};
 use kube::{Resource, ResourceExt};
-use std::collections::BTreeMap;
+
+use crate::{
+    builder::ObjectMetaBuilder,
+    error::OperatorResult,
+    k8s_openapi::api::{
+        core::v1::ServiceAccount,
+        rbac::v1::{RoleBinding, RoleRef, Subject},
+    },
+    kvp::Labels,
+};
 
 /// Build RBAC objects for the product workloads.
 /// The `rbac_prefix` is meant to be the product name, for example: zookeeper, airflow, etc.
@@ -11,7 +16,7 @@ use std::collections::BTreeMap;
 pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     resource: &T,
     rbac_prefix: &str,
-    labels: BTreeMap<String, String>,
+    labels: Labels,
 ) -> OperatorResult<(ServiceAccount, RoleBinding)> {
     let sa_name = service_account_name(rbac_prefix);
     let service_account = ServiceAccount {
@@ -61,11 +66,14 @@ pub fn role_binding_name(rbac_prefix: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::commons::rbac::{build_rbac_resources, role_binding_name, service_account_name};
     use kube::CustomResource;
     use schemars::{self, JsonSchema};
     use serde::{Deserialize, Serialize};
-    use std::collections::BTreeMap;
+
+    use crate::{
+        commons::rbac::{build_rbac_resources, role_binding_name, service_account_name},
+        kvp::Labels,
+    };
 
     const CLUSTER_NAME: &str = "simple-cluster";
     const RESOURCE_NAME: &str = "test-resource";
@@ -96,7 +104,7 @@ mod tests {
     fn test_build_rbac() {
         let cluster = build_test_resource();
         let (rbac_sa, rbac_rolebinding) =
-            build_rbac_resources(&cluster, RESOURCE_NAME, BTreeMap::new()).unwrap();
+            build_rbac_resources(&cluster, RESOURCE_NAME, Labels::new()).unwrap();
 
         assert_eq!(
             Some(service_account_name(RESOURCE_NAME)),
