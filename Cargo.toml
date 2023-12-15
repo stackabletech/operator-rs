@@ -21,6 +21,8 @@ time = ["dep:time"]
 chrono = { version = "0.4.26", default-features = false }
 clap = { version = "4.3.19", features = ["derive", "cargo", "env"] }
 const_format = "0.2.31"
+# Switch this to release version once the required feature is released
+delegate = { git = "https://github.com/Kobzol/rust-delegate", branch = "main"}
 derivative = "2.2.0"
 dockerfile-parser = "0.8.0"
 either = "1.9.0"
