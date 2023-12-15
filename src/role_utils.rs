@@ -86,7 +86,7 @@ use std::{
 };
 
 use crate::{
-    commons::pdb::PdbConfig,
+    commons::{pdb::PdbConfig, pod_overrides::pod_overrides_schema},
     config::{
         fragment::{self, FromFragment},
         merge::Merge,
@@ -98,7 +98,7 @@ use k8s_openapi::{
     api::core::v1::PodTemplateSpec, apimachinery::pkg::apis::meta::v1::LabelSelector,
 };
 use kube::{runtime::reflector::ObjectRef, Resource};
-use schemars::{schema::Schema, visit::Visitor, JsonSchema};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -143,51 +143,17 @@ pub struct CommonConfiguration<T> {
     pub pod_overrides: PodTemplateSpec,
 }
 
-/// Simplified schema for PodTemplateSpec without mandatory fields (e.g. `containers`) or documentation.
-///
-/// The normal PodTemplateSpec requires you to specify `containers` as an `Vec<Container>`.
-/// Often times the user want's to overwrite/add stuff not related to a container
-/// (e.g. tolerations or a ServiceAccount), so it's annoying that he always needs to
-/// specify an empty array for `containers`.
-///
-/// Additionally all docs are removed, as the resulting Stackable CRD objects where to big for Kubernetes.
-/// E.g. the HdfsCluster CRD increased to ~3.2 MB (which is over the limit of 3MB), after stripping
-/// the docs it went down to ~1.3 MiB.
-pub fn pod_overrides_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
-    let mut schema = PodTemplateSpec::json_schema(gen);
-    SimplifyOverrideSchema.visit_schema(&mut schema);
-    if let Schema::Object(schema) = &mut schema {
-        let meta = schema.metadata.get_or_insert_with(Default::default);
-        meta.description = Some("See PodTemplateSpec (https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core) for more details".to_string());
-    }
-    schema
-}
-
-struct SimplifyOverrideSchema;
-impl schemars::visit::Visitor for SimplifyOverrideSchema {
-    fn visit_schema_object(&mut self, schema: &mut schemars::schema::SchemaObject) {
-        // Strip docs to make the schema more compact
-        if let Some(meta) = &mut schema.metadata {
-            meta.description = None;
-            meta.examples.clear();
-        }
-        // Make all options optional
-        if let Some(object) = &mut schema.object {
-            object.required.clear();
-        }
-        schemars::visit::visit_schema_object(self, schema);
-    }
-}
-
 fn config_schema_default() -> serde_json::Value {
     serde_json::json!({})
 }
 
-/// This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a [`HashMap`] containing
+/// This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a key-value-map containing
 /// all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable
 /// at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured
-/// on role level using the [`Merge`] trait. There is also a second form of config, which can only be configured
+/// on role level. There is also a second form of config, which can only be configured
 /// at role level, the `roleConfig`.
+/// You can learn more about this in the
+/// [Roles and role group concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/roles-and-role-groups).
 //
 // Everything below is only a "normal" comment, not rustdoc - so we don't bloat the CRD documentation
 // with technical (Rust) details.

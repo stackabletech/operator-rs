@@ -14,8 +14,8 @@ use crate::{
     error::{self, OperatorResult},
 };
 
-/// S3 bucket specification containing only the bucket name and an inlined or
-/// referenced connection specification.
+/// S3 bucket specification containing the bucket name and an inlined or referenced connection specification.
+/// Learn more on the [S3 concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
 #[derive(
     Clone, CustomResource, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize,
 )]
@@ -153,7 +153,8 @@ impl S3ConnectionDef {
     }
 }
 
-/// S3 connection definition as CRD.
+/// S3 connection definition as a resource.
+/// Learn more on the [S3 concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
 #[derive(
     CustomResource, Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize,
 )]
@@ -189,7 +190,8 @@ pub struct S3ConnectionSpec {
     pub access_style: Option<S3AccessStyle>,
 
     /// If the S3 uses authentication you have to specify you S3 credentials.
-    /// In the most cases a SecretClass providing `accessKey` and `secretKey` is sufficient.
+    /// In the most cases a [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass)
+    /// providing `accessKey` and `secretKey` is sufficient.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credentials: Option<SecretClassVolume>,
 

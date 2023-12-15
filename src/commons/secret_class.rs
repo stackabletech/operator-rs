@@ -18,10 +18,11 @@ pub enum SecretClassVolumeError {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SecretClassVolume {
-    /// [SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html) containing the LDAP bind credentials
+    /// [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass) containing the LDAP bind credentials.
     pub secret_class: String,
 
-    /// [Scope](https://docs.stackable.tech/secret-operator/scope.html) of the [SecretClass](https://docs.stackable.tech/secret-operator/secretclass.html)
+    /// [Scope](DOCS_BASE_URL_PLACEHOLDER/secret-operator/scope) of the
+    /// [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass).
     pub scope: Option<SecretClassVolumeScope>,
 }
 
@@ -65,10 +66,18 @@ impl SecretClassVolume {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SecretClassVolumeScope {
+    /// The pod scope is resolved to the name of the Kubernetes Pod.
+    /// This allows the secret to differentiate between StatefulSet replicas.
     #[serde(default)]
     pub pod: bool,
+
+    /// The node scope is resolved to the name of the Kubernetes Node object that the Pod is running on.
+    /// This will typically be the DNS name of the node.
     #[serde(default)]
     pub node: bool,
+
+    /// The service scope allows Pod objects to specify custom scopes.
+    /// This should typically correspond to Service objects that the Pod participates in.
     #[serde(default)]
     pub services: Vec<String>,
 }

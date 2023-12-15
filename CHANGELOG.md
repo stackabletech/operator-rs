@@ -17,6 +17,14 @@ All notable changes to this project will be documented in this file.
 
 [#684]: https://github.com/stackabletech/operator-rs/pull/684
 
+## [0.58.1] - 2023-12-12
+
+### Added
+
+- More CRD documentation ([#697]).
+
+[#697]: https://github.com/stackabletech/operator-rs/pull/697
+
 ## [0.58.0] - 2023-12-04
 
 ### Added
