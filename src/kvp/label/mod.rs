@@ -163,6 +163,7 @@ impl From<Labels> for BTreeMap<String, String> {
     }
 }
 
+// TODO (Techassi): Use https://crates.io/crates/delegate to forward function impls
 impl Labels {
     /// Creates a new empty list of [`Labels`].
     pub fn new() -> Self {
@@ -203,6 +204,18 @@ impl Labels {
     /// Returns if the set of labels is empty.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    /// Returns if the set of labels contains the provided `label`. Failure to
+    /// parse/validate the [`KeyValuePair`] will return `false`.
+    pub fn contains(&self, label: impl TryInto<KeyValuePair<LabelValue>>) -> bool {
+        self.0.contains(label)
+    }
+
+    /// Returns if the set of labels contains a label with the provided `key`.
+    /// Failure to parse/validate the [`Key`] will return `false`.
+    pub fn contains_key(&self, key: impl TryInto<Key>) -> bool {
+        self.0.contains_key(key)
     }
 
     /// Returns the recommended set of labels. The set includes these well-known

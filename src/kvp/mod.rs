@@ -236,43 +236,21 @@ where
         self
     }
 
-    pub fn contains(&self, kvp: &KeyValuePair<V>) -> bool {
-        self.0.contains(kvp)
+    pub fn contains(&self, kvp: impl TryInto<KeyValuePair<V>>) -> bool {
+        let Ok(kvp) = kvp.try_into() else {return false};
+        self.0.contains(&kvp)
     }
 
-    pub fn contains_raw(
-        &self,
-        key: impl AsRef<str>,
-        value: impl AsRef<str>,
-    ) -> Result<bool, KeyValuePairsError<V::Error>> {
-        let kvp = KeyValuePair::try_from((key.as_ref(), value.as_ref()))
-            .context(KeyValuePairParseSnafu)?;
+    pub fn contains_key(&self, key: impl TryInto<Key>) -> bool {
+        let Ok(key) = key.try_into() else {return false};
 
-        Ok(self.0.contains(&kvp))
-    }
-
-    pub fn contains_all(&self, kvps: KeyValuePairs<V>) -> bool {
-        for kvp in kvps.iter() {
-            if !self.contains(kvp) {
-                return false;
+        for kvp in &self.0 {
+            if kvp.key == key {
+                return true;
             }
         }
 
-        true
-    }
-
-    pub fn contains_all_raw<'a>(
-        &self,
-        keys: impl AsRef<[&'a str]>,
-        values: impl AsRef<[&'a str]>,
-    ) -> Result<bool, KeyValuePairsError<V::Error>> {
-        for (key, value) in keys.as_ref().iter().zip(values.as_ref()) {
-            if !self.contains_raw(key, value)? {
-                return Ok(false);
-            }
-        }
-
-        Ok(true)
+        false
     }
 }
 
@@ -369,5 +347,13 @@ mod test {
         let map: BTreeMap<String, String> = labels.into();
 
         assert_eq!(map.len(), 2);
+    }
+
+    #[test]
+    fn contains() {
+        let labels = Labels::common("test", "test-01").unwrap();
+
+        assert!(labels.contains(("app.kubernetes.io/name", "test")));
+        assert!(labels.contains_key("app.kubernetes.io/instance"))
     }
 }

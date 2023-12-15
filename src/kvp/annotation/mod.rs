@@ -161,6 +161,7 @@ impl From<Annotations> for BTreeMap<String, String> {
     }
 }
 
+// TODO (Techassi): Use https://crates.io/crates/delegate to forward function impls
 impl Annotations {
     /// Creates a new empty list of [`Annotations`].
     pub fn new() -> Self {
@@ -201,5 +202,17 @@ impl Annotations {
     /// Returns if the set of annotations is empty.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    /// Returns if the set of annotations contains the provided `label`.
+    /// Failure to parse/validate the [`KeyValuePair`] will return `false`.
+    pub fn contains(&self, annotation: impl TryInto<KeyValuePair<AnnotationValue>>) -> bool {
+        self.0.contains(annotation)
+    }
+
+    /// Returns if the set of annotations contains a label with the provided
+    /// `key`. Failure to parse/validate the [`Key`] will return `false`.
+    pub fn contains_key(&self, key: impl TryInto<Key>) -> bool {
+        self.0.contains_key(key)
     }
 }
