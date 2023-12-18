@@ -191,12 +191,15 @@ pub struct ProductOperatorRun {
     /// Provides the path to a product-config file
     #[arg(long, short = 'p', value_name = "FILE", default_value = "", env)]
     pub product_config: ProductConfigPath,
+
     /// Provides a specific namespace to watch (instead of watching all namespaces)
     #[arg(long, env, default_value = "")]
     pub watch_namespace: WatchNamespace,
+
     /// Tracing log collector system
     #[arg(long, env, default_value_t, value_enum)]
     pub tracing_target: TracingTarget,
+
     /// The full name of the operator image. This env var is set by the helm-charts and should
     /// therefore always be present.
     #[arg(long, env)]
