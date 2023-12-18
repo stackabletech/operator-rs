@@ -159,13 +159,14 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 /// use clap::Parser;
 /// use stackable_operator::logging::TracingTarget;
 /// use stackable_operator::namespace::WatchNamespace;
-/// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar", "--watch-namespace", "foobar"]);
+/// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar", "--watch-namespace", "foobar", "--operator-image", "baz"]);
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
 ///     common: ProductOperatorRun {
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
 ///         watch_namespace: WatchNamespace::One("foobar".to_string()),
-///         tracing_target: TracingTarget::None
+///         tracing_target: TracingTarget::None,
+///         operator_image: "baz".to_string(),
 ///     },
 /// }));
 /// ```
