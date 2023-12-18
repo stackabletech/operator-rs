@@ -197,6 +197,8 @@ pub struct ProductOperatorRun {
     /// Tracing log collector system
     #[arg(long, env, default_value_t, value_enum)]
     pub tracing_target: TracingTarget,
+    #[arg(long, env)]
+    pub operator_image: String,
 }
 
 /// A path to a [`ProductConfigManager`] spec file
