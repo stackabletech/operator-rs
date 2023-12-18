@@ -1,41 +1,58 @@
-use crate::builder::ContainerBuilder;
-use crate::commons::authentication::tls::Tls;
-use crate::{builder::PodBuilder, commons::secret_class::SecretClassVolume};
-
-use super::tls::{CaCert, TlsServerVerification, TlsVerification};
+use k8s_openapi::api::core::v1::{Volume, VolumeMount};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 
-pub const SECRET_BASE_PATH: &str = "/stackable/secrets";
+use crate::{
+    builder::{ContainerBuilder, PodBuilder, VolumeMountBuilder},
+    commons::{
+        authentication::{tls::TlsClientDetails, SECRET_BASE_PATH},
+        secret_class::{SecretClassVolume, SecretClassVolumeError},
+    },
+};
+
+#[derive(Debug, Snafu)]
+pub enum AuthenticationProviderError {
+    #[snafu(display(
+        "failed to convert bind credentials (secret class volume) into named Kubernetes volume"
+    ))]
+    BindCredentials { source: SecretClassVolumeError },
+}
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LdapAuthenticationProvider {
-    /// Hostname of the LDAP server
+pub struct AuthenticationProvider {
+    /// Hostname of the LDAP server, for example: `my.ldap.server`.
     pub hostname: String,
-    /// Port of the LDAP server. If TLS is used defaults to 636 otherwise to 389
-    pub port: Option<u16>,
-    /// LDAP search base
+
+    /// Port of the LDAP server. If TLS is used defaults to 636 otherwise to 389.
+    port: Option<u16>,
+
+    /// LDAP search base, for example: `ou=users,dc=example,dc=org`.
     #[serde(default)]
     pub search_base: String,
-    /// LDAP query to filter users
+
+    /// LDAP query to filter users, for example: `(memberOf=cn=myTeam,ou=teams,dc=example,dc=org)`.
     #[serde(default)]
     pub search_filter: String,
-    /// The name of the LDAP object fields
+
+    /// The name of the LDAP object fields.
     #[serde(default)]
-    pub ldap_field_names: LdapFieldNames,
-    /// In case you need a special account for searching the LDAP server you can specify it here
-    pub bind_credentials: Option<SecretClassVolume>,
-    /// Use a TLS connection. If not specified no TLS will be used
-    pub tls: Option<Tls>,
+    pub ldap_field_names: FieldNames,
+
+    /// In case you need a special account for searching the LDAP server you can specify it here.
+    bind_credentials: Option<SecretClassVolume>,
+
+    /// Use a TLS connection. If not specified no TLS will be used.
+    #[serde(flatten)]
+    pub tls: TlsClientDetails,
 }
 
-impl LdapAuthenticationProvider {
-    pub fn default_port(&self) -> u16 {
-        match self.tls {
-            None => 389,
-            Some(_) => 636,
-        }
+impl AuthenticationProvider {
+    /// Returns the port to be used, which is either user configured or defaulted based upon TLS usage
+    pub fn port(&self) -> u16 {
+        self.port
+            .unwrap_or(if self.tls.uses_tls() { 636 } else { 389 })
     }
 
     /// This functions adds
@@ -46,36 +63,44 @@ impl LdapAuthenticationProvider {
     /// This function will handle
     ///
     /// * Bind credentials needed to connect to LDAP server
-    /// * Tls secret class used to verify the cert of the LDAP server
     pub fn add_volumes_and_mounts(
         &self,
         pod_builder: &mut PodBuilder,
         container_builders: Vec<&mut ContainerBuilder>,
-    ) {
-        let mut mounts: Vec<(String, String)> = Vec::new();
-        if let Some(bind_credentials) = &self.bind_credentials {
-            let secret_class = bind_credentials.secret_class.to_owned();
-            let volume_name = format!("{secret_class}-bind-credentials");
+    ) -> Result<(), AuthenticationProviderError> {
+        let (volumes, mounts) = self.volumes_and_mounts()?;
+        pod_builder.add_volumes(volumes);
 
-            pod_builder.add_volume(bind_credentials.to_volume(&volume_name));
-            mounts.push((volume_name, secret_class));
-        }
-        if let Some(secret_class) = self.tls_ca_cert_secret_class() {
-            let volume_name = format!("{secret_class}-ca-cert");
-            let volume = SecretClassVolume {
-                secret_class: secret_class.to_string(),
-                scope: None,
-            }
-            .to_volume(&volume_name);
-
-            pod_builder.add_volume(volume);
-            mounts.push((volume_name, secret_class));
-        }
         for cb in container_builders {
-            for (mount, secret_class) in mounts.iter() {
-                cb.add_volume_mount(mount, format!("{SECRET_BASE_PATH}/{secret_class}"));
-            }
+            cb.add_volume_mounts(mounts.clone());
         }
+
+        Ok(())
+    }
+
+    /// It is recommended to use [`Self::add_volumes_and_mounts`], this function returns you the
+    /// volumes and mounts in case you need to add them by yourself.
+    pub fn volumes_and_mounts(
+        &self,
+    ) -> Result<(Vec<Volume>, Vec<VolumeMount>), AuthenticationProviderError> {
+        let mut volumes = Vec::new();
+        let mut mounts = Vec::new();
+
+        if let Some(bind_credentials) = &self.bind_credentials {
+            let secret_class = &bind_credentials.secret_class;
+            let volume_name = format!("{secret_class}-bind-credentials");
+            let volume = bind_credentials
+                .to_volume(&volume_name)
+                .context(BindCredentialsSnafu)?;
+
+            volumes.push(volume);
+            mounts.push(
+                VolumeMountBuilder::new(volume_name, format!("{SECRET_BASE_PATH}/{secret_class}"))
+                    .build(),
+            );
+        }
+
+        Ok((volumes, mounts))
     }
 
     /// Returns the path of the files containing bind user and password.
@@ -89,66 +114,29 @@ impl LdapAuthenticationProvider {
             )
         })
     }
-
-    /// Whether TLS is configured
-    pub fn use_tls(&self) -> bool {
-        self.tls.is_some()
-    }
-
-    /// Whether TLS verification is configured
-    /// Returns false if TLS itself isn't configured
-    pub fn use_tls_verification(&self) -> bool {
-        if let Some(tls) = &self.tls {
-            tls.verification != TlsVerification::None {}
-        } else {
-            false
-        }
-    }
-
-    /// Returns the path of the ca.crt that should be used to verify the LDAP server certificate
-    /// if TLS verification with a CA cert from a SecretClass is configured.
-    pub fn tls_ca_cert_mount_path(&self) -> Option<String> {
-        self.tls_ca_cert_secret_class()
-            .map(|secret_class| format!("{SECRET_BASE_PATH}/{secret_class}/ca.crt"))
-    }
-
-    /// Extracts the secret class that provides the CA used to verify the LDAP server certificate.
-    fn tls_ca_cert_secret_class(&self) -> Option<String> {
-        if let Some(Tls {
-            verification:
-                TlsVerification::Server(TlsServerVerification {
-                    ca_cert: CaCert::SecretClass(secret_class),
-                }),
-        }) = &self.tls
-        {
-            Some(secret_class.to_owned())
-        } else {
-            None
-        }
-    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LdapFieldNames {
+pub struct FieldNames {
     /// The name of the username field
-    #[serde(default = "LdapFieldNames::default_uid")]
+    #[serde(default = "FieldNames::default_uid")]
     pub uid: String,
     /// The name of the group field
-    #[serde(default = "LdapFieldNames::default_group")]
+    #[serde(default = "FieldNames::default_group")]
     pub group: String,
     /// The name of the firstname field
-    #[serde(default = "LdapFieldNames::default_given_name")]
+    #[serde(default = "FieldNames::default_given_name")]
     pub given_name: String,
     /// The name of the lastname field
-    #[serde(default = "LdapFieldNames::default_surname")]
+    #[serde(default = "FieldNames::default_surname")]
     pub surname: String,
     /// The name of the email field
-    #[serde(default = "LdapFieldNames::default_email")]
+    #[serde(default = "FieldNames::default_email")]
     pub email: String,
 }
 
-impl LdapFieldNames {
+impl FieldNames {
     fn default_uid() -> String {
         "uid".to_string()
     }
@@ -170,14 +158,121 @@ impl LdapFieldNames {
     }
 }
 
-impl Default for LdapFieldNames {
+impl Default for FieldNames {
     fn default() -> Self {
-        LdapFieldNames {
+        FieldNames {
             uid: Self::default_uid(),
             group: Self::default_group(),
             given_name: Self::default_given_name(),
             surname: Self::default_surname(),
             email: Self::default_email(),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_ldap_minimal() {
+        let ldap = serde_yaml::from_str::<AuthenticationProvider>(
+            "
+            hostname: my.ldap.server
+            ",
+        )
+        .unwrap();
+
+        assert_eq!(ldap.port(), 389);
+        assert!(!ldap.tls.uses_tls());
+        assert_eq!(ldap.tls.tls_ca_cert_secret_class(), None);
+    }
+
+    #[test]
+    fn test_ldap_with_bind_credentials() {
+        let _ldap = serde_yaml::from_str::<AuthenticationProvider>(
+            "
+            hostname: my.ldap.server
+            port: 389
+            searchBase: ou=users,dc=example,dc=org
+            bindCredentials:
+              secretClass: openldap-bind-credentials
+            ",
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn test_ldap_full() {
+        let input = r#"
+            hostname: my.ldap.server
+            port: 42
+            searchBase: ou=users,dc=example,dc=org
+            bindCredentials:
+              secretClass: openldap-bind-credentials
+            tls:
+              verification:
+                server:
+                  caCert:
+                    secretClass: ldap-ca-cert
+        "#;
+        let deserializer = serde_yaml::Deserializer::from_str(input);
+        let ldap: AuthenticationProvider =
+            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+
+        assert_eq!(ldap.port(), 42);
+        assert!(ldap.tls.uses_tls());
+        assert_eq!(
+            ldap.tls.tls_ca_cert_secret_class(),
+            Some("ldap-ca-cert".to_string())
+        );
+        assert_eq!(
+            ldap.tls.tls_ca_cert_mount_path(),
+            Some("/stackable/secrets/ldap-ca-cert/ca.crt".to_string())
+        );
+        let (tls_volumes, tls_mounts) = ldap.tls.volumes_and_mounts().unwrap();
+        assert_eq!(
+            tls_volumes,
+            vec![SecretClassVolume {
+                secret_class: "ldap-ca-cert".to_string(),
+                scope: None,
+            }
+            .to_volume("ldap-ca-cert-ca-cert")
+            .unwrap()]
+        );
+        assert_eq!(
+            tls_mounts,
+            vec![VolumeMountBuilder::new(
+                "ldap-ca-cert-ca-cert",
+                "/stackable/secrets/ldap-ca-cert"
+            )
+            .build()]
+        );
+
+        assert_eq!(
+            ldap.bind_credentials_mount_paths(),
+            Some((
+                "/stackable/secrets/openldap-bind-credentials/user".to_string(),
+                "/stackable/secrets/openldap-bind-credentials/password".to_string()
+            ))
+        );
+        let (bind_volumes, bind_mounts) = ldap.volumes_and_mounts().unwrap();
+        assert_eq!(
+            bind_volumes,
+            vec![SecretClassVolume {
+                secret_class: "openldap-bind-credentials".to_string(),
+                scope: None,
+            }
+            .to_volume("openldap-bind-credentials-bind-credentials")
+            .unwrap()]
+        );
+        assert_eq!(
+            bind_mounts,
+            vec![VolumeMountBuilder::new(
+                "openldap-bind-credentials-bind-credentials",
+                "/stackable/secrets/openldap-bind-credentials"
+            )
+            .build()]
+        );
     }
 }

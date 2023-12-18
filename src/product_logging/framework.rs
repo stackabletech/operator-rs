@@ -1,6 +1,6 @@
 //! Log aggregation framework
 
-use std::{cmp, ops::Mul};
+use std::{cmp, fmt::Write, ops::Mul};
 
 use crate::{
     builder::ContainerBuilder,
@@ -29,7 +29,7 @@ const VECTOR_LOG_DIR: &str = "_vector";
 const SHUTDOWN_FILE: &str = "shutdown";
 
 /// File name of the Vector config file
-pub const VECTOR_CONFIG_FILE: &str = "vector.toml";
+pub const VECTOR_CONFIG_FILE: &str = "vector.yaml";
 
 /// Calculate the size limit for the log volume.
 ///
@@ -280,14 +280,15 @@ pub fn create_log4j_config(
         .loggers
         .iter()
         .filter(|(name, _)| name.as_str() != AutomaticContainerLogConfig::ROOT_LOGGER)
-        .map(|(name, logger_config)| {
-            format!(
-                "log4j.logger.{name}={level}\n",
+        .fold(String::new(), |mut output, (name, logger_config)| {
+            let _ = writeln!(
+                output,
+                "log4j.logger.{name}={level}",
                 name = name.escape_default(),
                 level = logger_config.level.to_log4j_literal(),
-            )
-        })
-        .collect::<String>();
+            );
+            output
+        });
 
     format!(
         r#"log4j.rootLogger={root_log_level}, CONSOLE, FILE
@@ -412,14 +413,13 @@ pub fn create_log4j2_config(
         .loggers
         .iter()
         .filter(|(name, _)| name.as_str() != AutomaticContainerLogConfig::ROOT_LOGGER)
-        .map(|(name, logger_config)| {
-            format!(
-                "logger.{name}.name = {name}\nlogger.{name}.level = {level}\n",
-                name = name.escape_default(),
-                level = logger_config.level.to_log4j_literal(),
-            )
-        })
-        .collect::<String>();
+        .fold(String::new(), |mut output, (name, logger_config)| {
+            let name = name.escape_default();
+            let level = logger_config.level.to_log4j_literal();
+            let _ = writeln!(output, "logger.{name}.name = {name}");
+            let _ = writeln!(output, "logger.{name}.level = {level}");
+            output
+        });
 
     format!(
         r#"appenders = FILE, CONSOLE
@@ -482,7 +482,7 @@ rootLogger.appenderRef.FILE.ref = FILE"#,
 /// * `config` - The logging configuration for the container
 /// * `additional_config` - Optional unstructured parameter to add special cases that are not
 ///       covered in the logging configuration. Must adhere to the inner logback XML schema as
-///       shown in the example below. It is not parsed or checked and added as is to the `logback.xml`.  
+///       shown in the example below. It is not parsed or checked and added as is to the `logback.xml`.
 ///
 /// # Example
 ///
@@ -553,14 +553,15 @@ pub fn create_logback_config(
         .loggers
         .iter()
         .filter(|(name, _)| name.as_str() != AutomaticContainerLogConfig::ROOT_LOGGER)
-        .map(|(name, logger_config)| {
-            format!(
-                "  <logger name=\"{name}\" level=\"{level}\" />\n",
+        .fold(String::new(), |mut output, (name, logger_config)| {
+            let _ = writeln!(
+                output,
+                "  <logger name=\"{name}\" level=\"{level}\" />",
                 name = name.escape_default(),
                 level = logger_config.level.to_logback_literal(),
-            )
-        })
-        .collect::<String>();
+            );
+            output
+        });
 
     format!(
         r#"<configuration>
@@ -618,7 +619,8 @@ pub fn create_logback_config(
     )
 }
 
-/// Create the content of a Vector configuration file according to the given log configuration
+/// Create the content of a Vector configuration file in YAML format according to the given log
+/// configuration
 ///
 /// # Example
 ///
@@ -704,287 +706,299 @@ where
     };
 
     format!(
-        r#"data_dir = "/stackable/vector/var"
+        r#"data_dir: /stackable/vector/var
 
-[log_schema]
-host_key = "pod"
+log_schema:
+  host_key: pod
 
-[sources.vector]
-type = "internal_logs"
+sources:
+  vector:
+    type: internal_logs
 
-[sources.files_stdout]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/*/*.stdout.log"]
+  files_stdout:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/*/*.stdout.log
 
-[sources.files_stderr]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/*/*.stderr.log"]
+  files_stderr:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/*/*.stderr.log
 
-[sources.files_log4j]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/*/*.log4j.xml"]
-line_delimiter = "\r\n"
+  files_log4j:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/*/*.log4j.xml
+    line_delimiter: "\r\n"
+    multiline:
+      mode: halt_before
+      start_pattern: ^<log4j:event
+      condition_pattern: ^<log4j:event
+      timeout_ms: 1000
 
-[sources.files_log4j.multiline]
-mode = "halt_before"
-start_pattern = "^<log4j:event"
-condition_pattern = "^<log4j:event"
-timeout_ms = 1000
+  files_log4j2:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/*/*.log4j2.xml
+    line_delimiter: "\r\n"
 
-[sources.files_log4j2]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/*/*.log4j2.xml"]
-line_delimiter = "\r\n"
+  files_py:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/*/*.py.json
 
-[sources.files_py]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/*/*.py.json"]
+  files_airlift:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/*/*.airlift.json
 
-[sources.files_airlift]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/*/*.airlift.json"]
+  files_opa_bundle_builder:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/bundle-builder/current
 
-[sources.files_opa_bundle_builder]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/bundle-builder/current"]
+  files_opa_json:
+    type: file
+    include:
+      - {STACKABLE_LOG_DIR}/opa/current
 
-[sources.files_opa_json]
-type = "file"
-include = ["{STACKABLE_LOG_DIR}/opa/current"]
+transforms:
+  processed_files_opa_bundle_builder:
+    inputs:
+      - files_opa_bundle_builder
+    type: remap
+    source: |
+      parsed_event = parse_regex!(strip_whitespace(strip_ansi_escape_codes(string!(.message))), r'(?P<timestamp>[0-9]{{4}}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9].[0-9]{{6}}Z)[ ]+(?P<level>\w+)[ ]+(?P<logger>.+):[ ]+(?P<message>.*)')
+      .timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%6fZ")
+      .level = parsed_event.level
+      .logger = parsed_event.logger
+      .message = parsed_event.message
 
-[transforms.processed_files_opa_bundle_builder]
-inputs = ["files_opa_bundle_builder"]
-type = "remap"
-source = '''
-parsed_event = parse_regex!(strip_whitespace(strip_ansi_escape_codes(string!(.message))), r'(?P<timestamp>[0-9]{{4}}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9].[0-9]{{6}}Z)[ ]+(?P<level>\w+)[ ]+(?P<logger>.+):[ ]+(?P<message>.*)')
-.timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%6fZ")
-.level = parsed_event.level
-.logger = parsed_event.logger
-.message = parsed_event.message
-'''
+  processed_files_opa_json:
+    inputs:
+      - files_opa_json
+    type: remap
+    source: |
+      parsed_event = parse_json!(string!(.message))
+      keys = keys!(parsed_event)
 
-[transforms.processed_files_opa_json]
-inputs = ["files_opa_json"]
-type = "remap"
-source = '''
-parsed_event = parse_json!(string!(.message))
-keys = keys!(parsed_event)
+      if includes(keys, "timestamp") {{
+        .timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+      }} else {{
+        .timestamp = parse_timestamp!(parsed_event.time, "%Y-%m-%dT%H:%M:%SZ")
+      }}
 
-if includes(keys, "timestamp") {{
-  .timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
-}} else {{
-  .timestamp = parse_timestamp!(parsed_event.time, "%Y-%m-%dT%H:%M:%SZ")
-}}
+      if includes(keys, "decision_id") {{
+        .logger = "decision"
+      }} else {{
+        .logger = "server"
+      }}
 
-if includes(keys, "decision_id") {{
-  .logger = "decision"
-}} else {{
-  .logger = "server"
-}} 
+      .level = upcase!(parsed_event.level)
+      .message = string!(parsed_event.msg)
 
-.level = upcase!(parsed_event.level)
-.message = string!(parsed_event.msg)
+      del(parsed_event.time)
+      del(parsed_event.timestamp)
+      del(parsed_event.level)
+      del(parsed_event.msg)
 
-del(parsed_event.time)
-del(parsed_event.timestamp)
-del(parsed_event.level)
-del(parsed_event.msg)
+      .message = .message + "\n" + encode_key_value(object!(parsed_event), field_delimiter: "\n")
 
-.message = .message + "\n" + encode_key_value(object!(parsed_event), field_delimiter: "\n")
-'''
+  processed_files_stdout:
+    inputs:
+      - files_stdout
+    type: remap
+    source: |
+      .logger = "ROOT"
+      .level = "INFO"
 
-[transforms.processed_files_stdout]
-inputs = ["files_stdout"]
-type = "remap"
-source = '''
-.logger = "ROOT"
-.level = "INFO"
-'''
+  processed_files_stderr:
+    inputs:
+      - files_stderr
+    type: remap
+    source: |
+      .logger = "ROOT"
+      .level = "ERROR"
 
-[transforms.processed_files_stderr]
-inputs = ["files_stderr"]
-type = "remap"
-source = '''
-.logger = "ROOT"
-.level = "ERROR"
-'''
+  processed_files_log4j:
+    inputs:
+      - files_log4j
+    type: remap
+    source: |
+      # Wrap the event so that the log4j namespace is defined when parsing the event
+      wrapped_xml_event = "<root xmlns:log4j=\"http://jakarta.apache.org/log4j/\">" + string!(.message) + "</root>"
+      parsed_event = parse_xml(wrapped_xml_event) ?? {{ "root": {{ "event": {{ "message": .message }} }} }}
+      event = parsed_event.root.event
 
-[transforms.processed_files_log4j]
-inputs = ["files_log4j"]
-type = "remap"
-source = '''
-# Wrap the event so that the log4j namespace is defined when parsing the event
-wrapped_xml_event = "<root xmlns:log4j=\"http://jakarta.apache.org/log4j/\">" + string!(.message) + "</root>"
-parsed_event = parse_xml(wrapped_xml_event) ?? {{ "root": {{ "event": {{ "message": .message }} }} }}
-event = parsed_event.root.event
+      epoch_milliseconds = to_int(event.@timestamp) ?? 0
+      if epoch_milliseconds != 0 {{
+          .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
+      }}
+      if is_null(.timestamp) {{
+          .timestamp = now()
+      }}
 
-epoch_milliseconds = to_int(event.@timestamp) ?? 0
-if epoch_milliseconds != 0 {{
-    .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
-}}
-if is_null(.timestamp) {{
-    .timestamp = now()
-}}
+      .logger = to_string(event.@logger) ?? ""
 
-.logger = to_string(event.@logger) ?? ""
+      .level = to_string(event.@level) ?? ""
 
-.level = to_string(event.@level) ?? ""
+      .message = join(compact([event.message, event.throwable]), "\n") ?? .message
 
-.message = join(compact([event.message, event.throwable]), "\n") ?? .message
-'''
+  processed_files_log4j2:
+    inputs:
+      - files_log4j2
+    type: remap
+    source: |
+      parsed_event = parse_xml!(.message).Event
 
-[transforms.processed_files_log4j2]
-inputs = ["files_log4j2"]
-type = "remap"
-source = '''
-parsed_event = parse_xml!(.message).Event
+      .timestamp = null
+      instant = parsed_event.Instant
+      if instant != null {{
+          epoch_nanoseconds = to_int(instant.@epochSecond) * 1_000_000_000 + to_int(instant.@nanoOfSecond) ?? null
+          if epoch_nanoseconds != null {{
+              .timestamp = from_unix_timestamp(epoch_nanoseconds, "nanoseconds") ?? null
+          }}
+      }}
+      if .timestamp == null && parsed_event.@timeMillis != null {{
+          epoch_milliseconds = to_int(parsed_event.@timeMillis) ?? null
+          if epoch_milliseconds != null {{
+              .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
+          }}
+      }}
+      if .timestamp == null {{
+          .timestamp = now()
+      }}
 
-.timestamp = null
-instant = parsed_event.Instant
-if instant != null {{
-    epoch_nanoseconds = to_int(instant.@epochSecond) * 1_000_000_000 + to_int(instant.@nanoOfSecond) ?? null
-    if epoch_nanoseconds != null {{
-        .timestamp = from_unix_timestamp(epoch_nanoseconds, "nanoseconds") ?? null
-    }}
-}}
-if .timestamp == null && parsed_event.@timeMillis != null {{
-    epoch_milliseconds = to_int(parsed_event.@timeMillis) ?? null
-    if epoch_milliseconds != null {{
-        .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
-    }}
-}}
-if .timestamp == null {{
-    .timestamp = now()
-}}
+      .logger = parsed_event.@loggerName
 
-.logger = parsed_event.@loggerName
+      .level = parsed_event.@level
 
-.level = parsed_event.@level
+      exception = null
+      thrown = parsed_event.Thrown
+      if thrown != null {{
+          exception = "Exception"
+          thread = to_string(parsed_event.@thread) ?? null
+          if thread != null {{
+              exception = exception + " in thread \"" + thread + "\""
+          }}
+          thrown_name = to_string(thrown.@name) ?? null
+          if thrown_name != null {{
+              exception = exception + " " + thrown_name
+          }}
+          message = to_string(thrown.@localizedMessage) ??
+              to_string(thrown.@message) ??
+              null
+          if message != null {{
+              exception = exception + ": " + message
+          }}
+          stacktrace_items = array(thrown.ExtendedStackTrace.ExtendedStackTraceItem) ?? []
+          stacktrace = ""
+          for_each(stacktrace_items) -> |_index, value| {{
+              stacktrace = stacktrace + "        "
+              class = to_string(value.@class) ?? null
+              method = to_string(value.@method) ?? null
+              if class != null && method != null {{
+                  stacktrace = stacktrace + "at " + class + "." + method
+              }}
+              file = to_string(value.@file) ?? null
+              line = to_string(value.@line) ?? null
+              if file != null && line != null {{
+                  stacktrace = stacktrace + "(" + file + ":" + line + ")"
+              }}
+              exact = to_bool(value.@exact) ?? false
+              location = to_string(value.@location) ?? null
+              version = to_string(value.@version) ?? null
+              if location != null && version != null {{
+                  stacktrace = stacktrace + " "
+                  if !exact {{
+                      stacktrace = stacktrace + "~"
+                  }}
+                  stacktrace = stacktrace + "[" + location + ":" + version + "]"
+              }}
+              stacktrace = stacktrace + "\n"
+          }}
+          if stacktrace != "" {{
+              exception = exception + "\n" + stacktrace
+          }}
+      }}
+      .message = join!(compact([parsed_event.Message, exception]), "\n")
 
-exception = null
-thrown = parsed_event.Thrown
-if thrown != null {{
-    exception = "Exception"
-    thread = to_string(parsed_event.@thread) ?? null
-    if thread != null {{
-        exception = exception + " in thread \"" + thread + "\""
-    }}
-    thrown_name = to_string(thrown.@name) ?? null
-    if thrown_name != null {{
-        exception = exception + " " + thrown_name
-    }}
-    message = to_string(thrown.@localizedMessage) ??
-        to_string(thrown.@message) ??
-        null
-    if message != null {{
-        exception = exception + ": " + message
-    }}
-    stacktrace_items = array(thrown.ExtendedStackTrace.ExtendedStackTraceItem) ?? []
-    stacktrace = ""
-    for_each(stacktrace_items) -> |_index, value| {{
-        stacktrace = stacktrace + "        "
-        class = to_string(value.@class) ?? null
-        method = to_string(value.@method) ?? null
-        if class != null && method != null {{
-            stacktrace = stacktrace + "at " + class + "." + method
-        }}
-        file = to_string(value.@file) ?? null
-        line = to_string(value.@line) ?? null
-        if file != null && line != null {{
-            stacktrace = stacktrace + "(" + file + ":" + line + ")"
-        }}
-        exact = to_bool(value.@exact) ?? false
-        location = to_string(value.@location) ?? null
-        version = to_string(value.@version) ?? null
-        if location != null && version != null {{
-            stacktrace = stacktrace + " "
-            if !exact {{
-                stacktrace = stacktrace + "~"
-            }}
-            stacktrace = stacktrace + "[" + location + ":" + version + "]"
-        }}
-        stacktrace = stacktrace + "\n"
-    }}
-    if stacktrace != "" {{
-        exception = exception + "\n" + stacktrace
-    }}
-}}
-.message = join!(compact([parsed_event.Message, exception]), "\n")
-'''
+  processed_files_py:
+    inputs:
+      - files_py
+    type: remap
+    source: |
+      parsed_event = parse_json!(.message)
+      .timestamp = parse_timestamp!(parsed_event.asctime, "%F %T,%3f")
+      .logger = parsed_event.name
+      if parsed_event.levelname == "DEBUG" {{
+        .level = "DEBUG"
+      }} else if parsed_event.levelname == "INFO" {{
+        .level = "INFO"
+      }} else if parsed_event.levelname == "WARNING" {{
+        .level = "WARN"
+      }} else if parsed_event.levelname == "ERROR" {{
+        .level = "ERROR"
+      }} else if parsed_event.levelname == "CRITICAL" {{
+        .level = "FATAL"
+      }}
+      .message = parsed_event.message
 
-[transforms.processed_files_py]
-inputs = ["files_py"]
-type = "remap"
-source = '''
-parsed_event = parse_json!(.message)
-.timestamp = parse_timestamp!(parsed_event.asctime, "%F %T,%3f")
-.logger = parsed_event.name
-if parsed_event.levelname == "DEBUG" {{
-  .level = "DEBUG"
-}} else if parsed_event.levelname == "INFO" {{
-  .level = "INFO"
-}} else if parsed_event.levelname == "WARNING" {{
-  .level = "WARN"
-}} else if parsed_event.levelname == "ERROR" {{
-  .level = "ERROR"
-}} else if parsed_event.levelname == "CRITICAL" {{
-  .level = "FATAL"
-}}
-.message = parsed_event.message
-'''
+  processed_files_airlift:
+    inputs:
+      - files_airlift
+    type: remap
+    source: |
+      parsed_event = parse_json!(string!(.message))
+      .message = join!(compact([parsed_event.message, parsed_event.stackTrace]), "\n")
+      .timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+      .logger = parsed_event.logger
+      .level = parsed_event.level
+      .thread = parsed_event.thread
 
-[transforms.processed_files_airlift]
-inputs = ["files_airlift"]
-type = "remap"
-source = '''
-parsed_event = parse_json!(string!(.message))
-.message = join!(compact([parsed_event.message, parsed_event.stackTrace]), "\n")
-.timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
-.logger = parsed_event.logger
-.level = parsed_event.level
-.thread = parsed_event.thread
-'''
+  extended_logs_files:
+    inputs:
+      - processed_files_*
+    type: remap
+    source: |
+      . |= parse_regex!(.file, r'^{STACKABLE_LOG_DIR}/(?P<container>.*?)/(?P<file>.*?)$')
+      del(.source_type)
 
-[transforms.extended_logs_files]
-inputs = ["processed_files_*"]
-type = "remap"
-source = '''
-. |= parse_regex!(.file, r'^{STACKABLE_LOG_DIR}/(?P<container>.*?)/(?P<file>.*?)$')
-del(.source_type)
-'''
+  filtered_logs_vector:
+    inputs:
+      - vector
+    type: filter
+    condition: '{vector_log_level_filter_expression}'
 
-[transforms.filtered_logs_vector]
-inputs = ["vector"]
-type = "filter"
-condition = '{vector_log_level_filter_expression}'
+  extended_logs_vector:
+    inputs:
+      - filtered_logs_vector
+    type: remap
+    source: |
+      .container = "vector"
+      .level = .metadata.level
+      .logger = .metadata.module_path
+      if exists(.file) {{ .processed_file = del(.file) }}
+      del(.metadata)
+      del(.pid)
+      del(.source_type)
 
-[transforms.extended_logs_vector]
-inputs = ["filtered_logs_vector"]
-type = "remap"
-source = '''
-.container = "vector"
-.level = .metadata.level
-.logger = .metadata.module_path
-if exists(.file) {{ .processed_file = del(.file) }}
-del(.metadata)
-del(.pid)
-del(.source_type)
-'''
+  extended_logs:
+    inputs:
+      - extended_logs_*
+    type: remap
+    source: |
+      .namespace = "{namespace}"
+      .cluster = "{cluster_name}"
+      .role = "{role_name}"
+      .roleGroup = "{role_group_name}"
 
-[transforms.extended_logs]
-inputs = ["extended_logs_*"]
-type = "remap"
-source = '''
-.namespace = "{namespace}"
-.cluster = "{cluster_name}"
-.role = "{role_name}"
-.roleGroup = "{role_group_name}"
-'''
-
-[sinks.aggregator]
-inputs = ["extended_logs"]
-type = "vector"
-address = "{vector_aggregator_address}"
+sinks:
+  aggregator:
+    inputs:
+      - extended_logs
+    type: vector
+    address: {vector_aggregator_address}
 "#,
         namespace = role_group.cluster.namespace.clone().unwrap_or_default(),
         cluster_name = role_group.cluster.name,
@@ -993,16 +1007,30 @@ address = "{vector_aggregator_address}"
     )
 }
 
-/// Create the specification of the Vector log agent container
+/// Create the specification of the Vector log agent container.
+///
+/// The vector process is not running as PID 1, so a Kubernetes SIGTERM will be have no effect.
+/// Instead, the vector process can be shut down by creating a file below {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR},
+/// e.g. {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}. This way logs from the products will always be shipped,
+/// as the vector container will be the last one to terminate. A specific container must be chosen, which has the responsibility
+/// to create a file after it has properly shut down. It should be the one taking the longest to shut down.
+/// E.g. for hdfs the lifetime of vector will be bound to the datanode container and not to the zkfc container.
+/// We *could* have different shutdown trigger files for all application containers and wait for all containers
+/// to terminate, but that seems rather complicated and will be added once needed. Additionally, you should remove
+/// the shutdown marker file on startup of the application, as the application container can crash for any reason
+/// and get restarted. If you don't remove the shutdown file on startup, the vector container will crashloop forever,
+/// as it will start and shut down immediately after!
 ///
 /// ```
 /// use stackable_operator::{
 ///     builder::{
+///         ContainerBuilder,
 ///         meta::ObjectMetaBuilder,
 ///         PodBuilder,
 ///         resources::ResourceRequirementsBuilder
 ///     },
-///     product_logging,
+///     product_logging::{self, framework:: {create_vector_shutdown_file_command, remove_vector_shutdown_file_command}},
+///     utils::COMMON_BASH_TRAP_FUNCTIONS,
 /// };
 /// use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 /// # use stackable_operator::{
@@ -1011,6 +1039,8 @@ address = "{vector_aggregator_address}"
 /// #     product_logging::spec::{default_logging, Logging},
 /// # };
 /// # use strum::{Display, EnumIter};
+/// #
+/// # pub const STACKABLE_LOG_DIR: &str = "/stackable/log";
 /// #
 /// # #[derive(Clone, Display, Eq, EnumIter, Ord, PartialEq, PartialOrd)]
 /// # pub enum Container {
@@ -1036,6 +1066,27 @@ address = "{vector_aggregator_address}"
 ///     .with_memory_request("1Gi")
 ///     .with_memory_limit("1Gi")
 ///     .build();
+///
+/// pod_builder.add_container(
+///     ContainerBuilder::new("application")
+///         .unwrap()
+///         .image_from_product_image(&resolved_product_image)
+///         .args(vec![format!(
+///             "\
+/// {COMMON_BASH_TRAP_FUNCTIONS}
+/// {remove_vector_shutdown_file_command}
+/// prepare_signal_handlers
+/// my-application start &
+/// wait_for_termination $!
+/// {create_vector_shutdown_file_command}
+/// ",
+///             remove_vector_shutdown_file_command =
+///                 remove_vector_shutdown_file_command(STACKABLE_LOG_DIR),
+///             create_vector_shutdown_file_command =
+///                 create_vector_shutdown_file_command(STACKABLE_LOG_DIR),
+///         )])
+///         .build(),
+/// );
 ///
 /// if logging.enable_vector_agent {
 ///     pod_builder.add_container(product_logging::framework::vector_container(
@@ -1068,15 +1119,28 @@ pub fn vector_container(
     ContainerBuilder::new("vector")
         .unwrap()
         .image_from_product_image(image)
-        .command(vec!["bash".into(), "-c".into()])
+        .command(vec![
+            "/bin/bash".to_string(),
+            "-x".to_string(),
+            "-euo".to_string(),
+            "pipefail".to_string(),
+            "-c".to_string(),
+        ])
+        // The following code is an alternative approach which can get SIGTERM terminated as well as via writing a file.
+        // It is left in here, as it needed some effort to get it right and can be helpful in the future.
+        // bash -c 'sleep 1 && if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then mkdir -p {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR} && inotifywait -qq --event create {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}; fi && kill 1' &
+        // exec vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE}
         .args(vec![format!(
             "\
-vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$! && \
-if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then \
-mkdir -p {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR} && \
-inotifywait -qq --event create {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}; \
-fi && \
-kill $vector_pid"
+# Vector will ignore SIGTERM (as PID != 1) and must be shut down by writing a shutdown trigger file
+vector --config {STACKABLE_CONFIG_DIR}/{VECTOR_CONFIG_FILE} & vector_pid=$!
+if [ ! -f \"{STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}\" ]; then
+  mkdir -p {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR} && \
+  inotifywait -qq --event create {STACKABLE_LOG_DIR}/{VECTOR_LOG_DIR}; \
+fi
+sleep 1
+kill $vector_pid
+"
         )])
         .add_env_var("VECTOR_LOG", log_level.to_vector_literal())
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
@@ -1085,7 +1149,8 @@ kill $vector_pid"
         .build()
 }
 
-/// Command to shut down the Vector instance
+/// Command to create a shutdown file for the vector container.
+/// Please delete it before starting your application using [`remove_vector_shutdown_file_command`].
 ///
 /// # Example
 ///
@@ -1098,8 +1163,9 @@ kill $vector_pid"
 /// const STACKABLE_LOG_DIR: &str = "/stackable/log";
 ///
 /// let args = vec![
-///     "echo Perform initialization tasks ...".into(),
-///     product_logging::framework::shutdown_vector_command(STACKABLE_LOG_DIR),
+///     product_logging::framework::remove_vector_shutdown_file_command(STACKABLE_LOG_DIR),
+///     "echo Perform some tasks ...".into(),
+///     product_logging::framework::create_vector_shutdown_file_command(STACKABLE_LOG_DIR),
 /// ];
 ///
 /// let container = ContainerBuilder::new("init")
@@ -1110,11 +1176,17 @@ kill $vector_pid"
 ///     .add_volume_mount("log", STACKABLE_LOG_DIR)
 ///     .build();
 /// ```
-pub fn shutdown_vector_command(stackable_log_dir: &str) -> String {
+pub fn create_vector_shutdown_file_command(stackable_log_dir: &str) -> String {
     format!(
         "mkdir -p {stackable_log_dir}/{VECTOR_LOG_DIR} && \
 touch {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}"
     )
+}
+
+/// Use this command to remove the shutdown file (if it exists) created by [`create_vector_shutdown_file_command`].
+/// You should execute this command before starting your application.
+pub fn remove_vector_shutdown_file_command(stackable_log_dir: &str) -> String {
+    format!("rm -f {stackable_log_dir}/{VECTOR_LOG_DIR}/{SHUTDOWN_FILE}")
 }
 
 #[cfg(test)]

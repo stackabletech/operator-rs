@@ -153,6 +153,6 @@ mod tests {
 
         assert!(matches!(event.involved_object.kind, Some(pod_name) if pod_name == "Pod"));
         assert!(matches!(event.message, Some(message) if message == "message"));
-        assert!(matches!(event.reason, None));
+        assert!(event.reason.is_none());
     }
 }

@@ -86,6 +86,7 @@ use std::{
 };
 
 use crate::{
+    commons::{pdb::PdbConfig, pod_overrides::pod_overrides_schema},
     config::{
         fragment::{self, FromFragment},
         merge::Merge,
@@ -95,7 +96,7 @@ use crate::{
 use derivative::Derivative;
 use k8s_openapi::api::core::v1::PodTemplateSpec;
 use kube::{runtime::reflector::ObjectRef, Resource};
-use schemars::{schema::Schema, visit::Visitor, JsonSchema};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -110,76 +111,85 @@ pub struct CommonConfiguration<T> {
     // does not support specifying custom bounds.
     #[schemars(default = "config_schema_default")]
     pub config: T,
+    /// The `configOverrides` can be used to configure properties in product config files
+    /// that are not exposed in the CRD. Read the
+    /// [config overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#config-overrides)
+    /// and consult the operator specific usage guide documentation for details on the
+    /// available config files and settings for the specific product.
     #[serde(default)]
     pub config_overrides: HashMap<String, HashMap<String, String>>,
+    /// `envOverrides` configure environment variables to be set in the Pods.
+    /// It is a map from strings to strings - environment variables and the value to set.
+    /// Read the
+    /// [environment variable overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#env-overrides)
+    /// for more information and consult the operator specific usage guide to find out about
+    /// the product specific environment variables that are available.
     #[serde(default)]
     pub env_overrides: HashMap<String, String>,
     // BTreeMap to keep some order with the cli arguments.
+    // TODO add documentation.
     #[serde(default)]
     pub cli_overrides: BTreeMap<String, String>,
+    /// In the `podOverrides` property you can define a
+    /// [PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core)
+    /// to override any property that can be set on a Kubernetes Pod.
+    /// Read the
+    /// [Pod overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#pod-overrides)
+    /// for more information.
     #[serde(default)]
     #[schemars(schema_with = "pod_overrides_schema")]
     pub pod_overrides: PodTemplateSpec,
-}
-
-/// Simplified schema for PodTemplateSpec without mandatory fields (e.g. `containers`) or documentation.
-///
-/// The normal PodTemplateSpec requires you to specify `containers` as an `Vec<Container>`.
-/// Often times the user want's to overwrite/add stuff not related to a container
-/// (e.g. tolerations or a ServiceAccount), so it's annoying that he always needs to
-/// specify an empty array for `containers`.
-///
-/// Additionally all docs are removed, as the resulting Stackable CRD objects where to big for Kubernetes.
-/// E.g. the HdfsCluster CRD increased to ~3.2 MB (which is over the limit of 3MB), after stripping
-/// the docs it went down to ~1.3 MiB.
-pub fn pod_overrides_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
-    let mut schema = PodTemplateSpec::json_schema(gen);
-    SimplifyOverrideSchema.visit_schema(&mut schema);
-    if let Schema::Object(schema) = &mut schema {
-        let meta = schema.metadata.get_or_insert_with(Default::default);
-        meta.description = Some("See PodTemplateSpec (https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core) for more details".to_string());
-    }
-    schema
-}
-
-struct SimplifyOverrideSchema;
-impl schemars::visit::Visitor for SimplifyOverrideSchema {
-    fn visit_schema_object(&mut self, schema: &mut schemars::schema::SchemaObject) {
-        // Strip docs to make the schema more compact
-        if let Some(meta) = &mut schema.metadata {
-            meta.description = None;
-            meta.examples.clear();
-        }
-        // Make all options optional
-        if let Some(object) = &mut schema.object {
-            object.required.clear();
-        }
-        schemars::visit::visit_schema_object(self, schema);
-    }
 }
 
 fn config_schema_default() -> serde_json::Value {
     serde_json::json!({})
 }
 
-#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
-#[serde(
-    rename_all = "camelCase",
-    bound(deserialize = "T: Default + Deserialize<'de>")
-)]
-pub struct Role<T> {
-    #[serde(flatten)]
+/// This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a key-value-map containing
+/// all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable
+/// at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured
+/// on role level. There is also a second form of config, which can only be configured
+/// at role level, the `roleConfig`.
+/// You can learn more about this in the
+/// [Roles and role group concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/roles-and-role-groups).
+//
+// Everything below is only a "normal" comment, not rustdoc - so we don't bloat the CRD documentation
+// with technical (Rust) details.
+//
+// `T` here is the `config` shared between role and roleGroup.
+//
+// `U` here is the `roleConfig` only available on the role. It defaults to [`GenericRoleConfig`], which is
+// sufficient for most of the products. There are some exceptions, where e.g. [`EmptyRoleConfig`] is used.
+// However, product-operators can define their own - custom - struct and use that here.
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Role<T, U = GenericRoleConfig>
+where
+    // Don't remove this trait bounds!!!
+    // We don't know why, but if you remove either of them, the generated default value in the CRDs will
+    // be missing!
+    U: Default + JsonSchema + Serialize,
+{
+    #[serde(flatten, bound(deserialize = "T: Default + Deserialize<'de>"))]
     pub config: CommonConfiguration<T>,
+
+    #[serde(default)]
+    pub role_config: U,
+
     pub role_groups: HashMap<String, RoleGroup<T>>,
 }
 
-impl<T: Configuration + 'static> Role<T> {
+impl<T, U> Role<T, U>
+where
+    T: Configuration + 'static,
+    U: Default + JsonSchema + Serialize,
+{
     /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
     /// and used in [`Role`] into a Box of a dynamically dispatched
     /// [`crate::product_config_utils::Configuration`] Trait. This is required to use the generic
     /// [`Role`] with more than a single generic struct. For example different roles most likely
     /// have different structs implementing Configuration.
-    pub fn erase(self) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>> {
+    pub fn erase(self) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>, U> {
         Role {
             config: CommonConfiguration {
                 config: Box::new(self.config.config)
@@ -189,6 +199,7 @@ impl<T: Configuration + 'static> Role<T> {
                 cli_overrides: self.config.cli_overrides,
                 pod_overrides: self.config.pod_overrides,
             },
+            role_config: self.role_config,
             role_groups: self
                 .role_groups
                 .into_iter()
@@ -213,6 +224,20 @@ impl<T: Configuration + 'static> Role<T> {
     }
 }
 
+/// This is a product-agnostic RoleConfig, which is sufficient for most of the products.
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GenericRoleConfig {
+    #[serde(default)]
+    pub pod_disruption_budget: PdbConfig,
+}
+
+/// This is a product-agnostic RoleConfig, with nothing in it. It is used e.g. by products that have
+/// nothing configurable at role level.
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EmptyRoleConfig {}
+
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(
     rename_all = "camelCase",
@@ -225,14 +250,15 @@ pub struct RoleGroup<T> {
 }
 
 impl<T> RoleGroup<T> {
-    pub fn validate_config<C>(
+    pub fn validate_config<C, U>(
         &self,
-        role: &Role<T>,
+        role: &Role<T, U>,
         default_config: &T,
     ) -> Result<C, fragment::ValidationError>
     where
         C: FromFragment<Fragment = T>,
         T: Merge + Clone,
+        U: Default + JsonSchema + Serialize,
     {
         let mut role_config = role.config.config.clone();
         role_config.merge(default_config);

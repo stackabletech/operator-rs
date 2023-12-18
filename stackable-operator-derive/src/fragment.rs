@@ -1,6 +1,6 @@
 use darling::{ast::Data, FromDeriveInput, FromField, FromMeta, FromVariant};
 use proc_macro2::{Ident, TokenStream, TokenTree};
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use syn::{
     parse_quote, Attribute, DeriveInput, Expr, Generics, Meta, MetaList, Path, Type, Visibility,
     WherePredicate,
@@ -32,7 +32,7 @@ impl PathOverrides {
 }
 
 #[derive(FromDeriveInput)]
-#[darling(attributes(fragment), forward_attrs(fragment_attrs))]
+#[darling(attributes(fragment), forward_attrs(fragment_attrs, doc))]
 pub struct FragmentInput {
     ident: Ident,
     generics: Generics,
@@ -75,22 +75,29 @@ impl ExtractAttrsError {
 fn extract_forwarded_attrs(attrs: &[Attribute]) -> Result<TokenStream, ExtractAttrsError> {
     attrs
         .iter()
-        .filter(|attr| attr.path().is_ident("fragment_attrs"))
-        .flat_map(|Attribute { meta, .. }| match meta {
-            Meta::List(MetaList { tokens, .. }) => {
-                split_by_comma(tokens.clone()).into_iter().map(Ok).collect()
+        .flat_map(|attr| {
+            if attr.path().is_ident("fragment_attrs") {
+                match &attr.meta {
+                    Meta::List(MetaList { tokens, .. }) => {
+                        split_by_comma(tokens.clone()).into_iter().map(Ok).collect()
+                    }
+                    _ => vec![Err(ExtractAttrsError::InvalidAttrForm)],
+                }
+            } else if attr.path().is_ident("doc") {
+                vec![Ok(attr.meta.to_token_stream())]
+            } else {
+                Vec::new()
             }
-            _ => vec![Err(ExtractAttrsError::InvalidAttrForm)],
         })
         .map(|attr| attr.map(|attr| quote! { #[#attr] }))
         .collect::<Result<TokenStream, ExtractAttrsError>>()
 }
 
-#[derive(FromVariant)]
+#[derive(Debug, FromVariant)]
 struct FragmentVariant {}
 
-#[derive(FromField)]
-#[darling(attributes(fragment), forward_attrs(fragment_attrs))]
+#[derive(Debug, FromField)]
+#[darling(attributes(fragment), forward_attrs(fragment_attrs, doc))]
 struct FragmentField {
     vis: Visibility,
     ident: Option<Ident>,

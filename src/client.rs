@@ -1,5 +1,5 @@
 use crate::error::{Error, OperatorResult};
-use crate::label_selector;
+use crate::kvp::LabelSelectorExt;
 
 use either::Either;
 use futures::StreamExt;
@@ -128,7 +128,7 @@ impl Client {
 
     /// Lists resources from the API using a LabelSelector.
     ///
-    /// This takes a LabelSelector and converts it into a query string using [`label_selector::convert_label_selector_to_query_string`].
+    /// This takes a LabelSelector and converts it into a query string using [`LabelSelectorExt`].
     ///
     /// # Arguments
     ///
@@ -143,7 +143,7 @@ impl Client {
         T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
-        let selector_string = label_selector::convert_label_selector_to_query_string(selector)?;
+        let selector_string = selector.to_query_string()?;
         trace!("Listing for LabelSelector [{}]", selector_string);
         let list_params = ListParams {
             label_selector: Some(selector_string),

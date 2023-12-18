@@ -1,5 +1,50 @@
 use tracing::info;
 
+/// This is a bash snippet, which adds two functions out of interest:
+///
+/// 1. `prepare_signal_handlers` call this first to set up the needed traps
+/// 2. `wait_for_termination` waits for the PID you passed as the first argument to terminate
+///
+/// An example use could be
+/// ```text
+/// {COMMON_BASH_TRAP_FUNCTIONS}
+/// echo "Run before startup"
+/// prepare_signal_handlers
+/// {hadoop_home}/bin/hdfs {role} &
+/// wait_for_termination $!
+/// echo "Run after termination"
+/// ```
+pub const COMMON_BASH_TRAP_FUNCTIONS: &str = r#"
+prepare_signal_handlers()
+{
+    unset term_child_pid
+    unset term_kill_needed
+    trap 'handle_term_signal' TERM
+}
+
+handle_term_signal()
+{
+    if [ "${term_child_pid}" ]; then
+        kill -TERM "${term_child_pid}" 2>/dev/null
+    else
+        term_kill_needed="yes"
+    fi
+}
+
+wait_for_termination()
+{
+    set +e
+    term_child_pid=$1
+    if [[ -v term_kill_needed ]]; then
+        kill -TERM "${term_child_pid}" 2>/dev/null
+    fi
+    wait ${term_child_pid} 2>/dev/null
+    trap - TERM
+    wait ${term_child_pid} 2>/dev/null
+    set -e
+}
+"#;
+
 /// Prints helpful and standardized diagnostic messages.
 ///
 /// This method is meant to be called first thing in the `main` method of an Operator.
@@ -53,4 +98,60 @@ pub fn print_startup_string(
 /// controller manages (for example: `zookeepercluster`).
 pub(crate) fn format_full_controller_name(operator: &str, controller: &str) -> String {
     format!("{operator}_{controller}")
+}
+
+pub trait UrlExt: Sized {
+    /// Joins many path segments to the [`Url`][url::Url]. Note: Passing
+    /// segments without a trailing slash while not being the final segment
+    /// will **allocate** on the heap to append the missing trailing slash.
+    /// See <https://docs.rs/url/latest/url/struct.Url.html#method.join> for
+    /// more information about why the trailing slash is important.
+    ///
+    /// ### Example
+    ///
+    /// ```
+    /// use stackable_operator::utils::UrlExt;
+    ///
+    /// let url = url::Url::parse("http://example.com").unwrap();
+    /// let url = url.join_many(vec!["realms/", "master/", "myuser"]).unwrap();
+    ///
+    /// assert_eq!(url.as_str(), "http://example.com/realms/master/myuser");
+    /// ```
+    fn join_many<'a>(
+        self,
+        inputs: impl IntoIterator<Item = &'a str>,
+    ) -> Result<Self, url::ParseError>;
+}
+
+impl UrlExt for url::Url {
+    fn join_many<'a>(
+        self,
+        inputs: impl IntoIterator<Item = &'a str>,
+    ) -> Result<Self, url::ParseError> {
+        let mut iter = inputs.into_iter().peekable();
+        let mut url = self;
+
+        while let Some(input) = iter.next() {
+            url = if !input.ends_with('/') && iter.peek().is_some() {
+                url.join(&format!("{}/", input))?
+            } else {
+                url.join(input)?
+            };
+        }
+
+        Ok(url)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn url_join_many() {
+        let url = url::Url::parse("http://example.com").unwrap();
+        let url = url.join_many(vec!["realms/", "master/", "myuser"]).unwrap();
+
+        assert_eq!(url.as_str(), "http://example.com/realms/master/myuser");
+    }
 }

@@ -1,9 +1,0 @@
-= Stackable operator-rs
-
-This is a simple Rust library that includes all kinds of helper methods, structs and enums that can be used to write a Kubernetes Controller/Operator with the https://github.com/kube-rs/kube-rs[kube-rs] crate.
-
-WARNING: This is very new, undocumented and partially tested (see the link:CONTRIBUTING.adoc[contributing guide])!
-
-== Contributing
-
-Contributions are much welcome. A detailed guide on contributing, development and testing is to be found at link:CONTRIBUTING.adoc[CONTRIBUTING].

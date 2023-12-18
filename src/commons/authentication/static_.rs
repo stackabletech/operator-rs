@@ -17,16 +17,16 @@
 //!   The update time depends on the kubelet syncing period.
 //!   This would need additional functionality in restart controller to white- or blacklist certain volumes. Additionally, we would need a sidecar container that
 //!   periodically converts the secret contents to the required product format.
-//!  
+//!
 //! See <https://github.com/stackabletech/operator-rs/issues/494>
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct StaticAuthenticationProvider {
-    /// Secret providing the usernames and password.
-    /// The secret must contain an entry for every user, with the key being the username and the value the password in plain text.
+pub struct AuthenticationProvider {
+    /// Secret providing the usernames and passwords.
+    /// The Secret must contain an entry for every user, with the key being the username and the value the password in plain text.
     /// It must be located in the same namespace as the product using it.
     pub user_credentials_secret: UserCredentialsSecretRef,
 }
@@ -34,6 +34,6 @@ pub struct StaticAuthenticationProvider {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserCredentialsSecretRef {
-    /// Name of the secret
+    /// Name of the Secret.
     pub name: String,
 }

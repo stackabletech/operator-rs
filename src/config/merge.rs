@@ -10,6 +10,8 @@ use std::{
 
 pub use stackable_operator_derive::Merge;
 
+use crate::time::Duration;
+
 /// A type that can be merged with itself
 ///
 /// This is primarily intended to be implemented for configuration values that can come from several sources, for example
@@ -141,6 +143,7 @@ impl Atomic for isize {}
 impl Atomic for bool {}
 impl Atomic for String {}
 impl Atomic for Quantity {}
+impl Atomic for Duration {}
 impl<'a> Atomic for &'a str {}
 impl Atomic for LabelSelector {}
 impl Atomic for PodAffinity {}

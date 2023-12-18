@@ -22,7 +22,7 @@
 //! )]
 //! #[serde(rename_all = "camelCase")]
 //! pub struct TestClusterSpec {
-//!     opa: Option<OpaConfig>    
+//!     opa: Option<OpaConfig>
 //! }
 //!
 //! let cluster: TestCluster = serde_yaml::from_str(
@@ -66,17 +66,24 @@ pub enum OpaApiVersion {
 
 impl OpaApiVersion {
     /// Returns the OPA data API path for the selected version
-    pub fn get_data_api(&self) -> &'static str {
+    pub const fn get_data_api(&self) -> &'static str {
         match self {
             Self::V1 => "v1/data",
         }
     }
 }
 
+/// Configure the OPA stacklet [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery)
+/// and the name of the Rego package containing your authorization rules.
+/// Consult the [OPA authorization documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/opa)
+/// to learn how to deploy Rego authorization rules with OPA.
 #[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpaConfig {
+    /// The [discovery ConfigMap](DOCS_BASE_URL_PLACEHOLDER/concepts/service_discovery)
+    /// for the OPA stacklet that should be used for authorization requests.
     pub config_map_name: String,
+    /// The name of the Rego package containing the Rego rules for the product.
     pub package: Option<String>,
 }
 

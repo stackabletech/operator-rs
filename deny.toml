@@ -35,7 +35,8 @@ allow = [
     "LicenseRef-webpki",
     "MIT",
     "Unicode-DFS-2016",
-    "Zlib"
+    "Zlib",
+    "Unlicense",
 ]
 
 [[licenses.clarify]]

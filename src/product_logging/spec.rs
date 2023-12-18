@@ -66,15 +66,17 @@ use serde::{Deserialize, Serialize};
     serde(
         bound(serialize = "T: Serialize", deserialize = "T: Deserialize<'de>",),
         rename_all = "camelCase",
-    )
+    ),
+    // We don't want Rust code in public API descriptions
+    schemars(description = "Logging configuration, learn more in the [logging concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/logging).")
 )]
 pub struct Logging<T>
 where
     T: Clone + Display + Ord,
 {
-    /// Wether or not to deploy a container with the Vector log agent
+    /// Wether or not to deploy a container with the Vector log agent.
     pub enable_vector_agent: bool,
-    /// Log configuration per container
+    /// Log configuration per container.
     #[fragment_attrs(serde(default))]
     pub containers: BTreeMap<T, ContainerLogConfig>,
 }
@@ -115,7 +117,6 @@ pub enum ContainerLogConfigChoice {
     Automatic(AutomaticContainerLogConfig),
 }
 
-/// Fragment derived from `ContainerLogConfigChoice`
 #[derive(Clone, Debug, Derivative, Deserialize, JsonSchema, Merge, PartialEq, Serialize)]
 #[derivative(Default)]
 #[merge(path_overrides(merge = "crate::config::merge"))]
@@ -259,8 +260,7 @@ impl AutomaticContainerLogConfig {
     serde(rename_all = "camelCase")
 )]
 pub struct LoggerConfig {
-    /// The log level threshold
-    ///
+    /// The log level threshold.
     /// Log events with a lower log level are discarded.
     pub level: LogLevel,
 }
@@ -283,8 +283,7 @@ pub struct LoggerConfig {
     serde(rename_all = "camelCase")
 )]
 pub struct AppenderConfig {
-    /// The log level threshold
-    ///
+    /// The log level threshold.
     /// Log events with a lower log level are discarded.
     pub level: Option<LogLevel>,
 }

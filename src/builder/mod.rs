@@ -6,6 +6,7 @@
 pub mod configmap;
 pub mod event;
 pub mod meta;
+pub mod pdb;
 pub mod pod;
 
 #[deprecated(since = "0.15.0", note = "Please use `builder::configmap::*` instead.")]

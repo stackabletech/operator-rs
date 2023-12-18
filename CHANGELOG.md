@@ -4,11 +4,194 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `stackble_operator::kvp` module and types to allow validated construction of key/value pairs, like labels and
+  annotations. Most users want to use the exported type aliases `Label` and `Annotation` ([#684]).
+
 ### Changed
 
+- Move `stackable_operator::label_selector::convert_label_selector_to_query_string` into `kvp` module. The conversion
+  functionality now is encapsulated in a new trait `LabelSelectorExt`. An instance of a `LabelSelector` can now be
+  converted into a query string by calling the associated function `ls.to_query_string()` ([#684]).
 - BREAKING: Remove legacy node selector on `RoleGroup` ([#652]).
 
+[#684]: https://github.com/stackabletech/operator-rs/pull/684
 [#652]: https://github.com/stackabletech/operator-rs/pull/652
+
+## [0.58.1] - 2023-12-12
+
+### Added
+
+- More CRD documentation ([#697]).
+
+[#697]: https://github.com/stackabletech/operator-rs/pull/697
+
+## [0.58.0] - 2023-12-04
+
+### Added
+
+- Add `oidc::AuthenticationProvider`. This enables users to deploy a new `AuthenticationClass` for OIDC providers like
+  Keycloak, Okta or Auth0 ([#680]).
+- Add a common `ClientAuthenticationDetails` struct, which provides common fields and functions to specify
+  authentication options on product cluster level. Additionally, the PR also adds `ClientAuthenticationConfig`,
+  `oidc::ClientAuthenticationOptions`, and `ldap::ClientAuthenticationOptions` ([#680]).
+
+### Changed
+
+- BREAKING: Change the naming of all authentication provider structs. It is now required to import them using the
+  module. So imports change from `...::authentication::LdapAuthenticationProvider` to
+  `...::authentication::ldap::AuthenticationProvider` for example ([#680]).
+- BREAKING: Move TLS related structs into the `tls` module. Imports need to be adjusted accordingly ([#680]).
+
+### Fixed
+
+- Fixed appVersion label in case container images contain a hash, such as `docker.stackable.tech/stackable/nifi@sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb8c42f76efc109`. Also added a test-case to ensure we support images containing hashes. This should be a rather cosmetic fix, images with hashes should have worked before anyway ([#690]).
+
+[#680]: https://github.com/stackabletech/operator-rs/pull/680
+[#690]: https://github.com/stackabletech/operator-rs/pull/690
+
+## [0.57.0] - 2023-12-04
+
+### Changed
+
+- BREAKING: The `CustomResourceExt` functions now take the Operator version as an argument.
+  It replaces `DOCS_BASE_URL_PLACEHOLDER` in doc strings with a link to URL base, so
+  `DOCS_BASE_URL_PLACEHOLDER/druid/` turns into `https://docs.stackable.tech/home/nightly/druid/`
+  in the nightly operator ([#689]).
+
+[#689]: https://github.com/stackabletech/operator-rs/pull/689
+
+## [0.56.2] - 2023-11-23
+
+### Added
+
+- More documentation for CRD structs ([#687]).
+
+[#687]: https://github.com/stackabletech/operator-rs/pull/687
+
+## [0.56.1] - 2023-11-23
+
+### Changed
+
+- Update `kube` to `0.87.1` as version `0.86.0` was yanked ([#685]).
+
+[#685]: https://github.com/stackabletech/operator-rs/pull/685
+
+## [0.56.0] - 2023-10-31 👻
+
+### Added
+
+- Added `COMMON_BASH_TRAP_FUNCTIONS`, which can be used to write a Vector shutdown trigger file after the main
+  application stopped ([#681]).
+
+### Changed
+
+- BREAKING: Rename `product_logging::framework::shutdown_vector_command` to `create_vector_shutdown_file_command` and
+  added `remove_vector_shutdown_file_command` ([#681]).
+- BREAKING: Remove re-export of `product_config`, update `product_config` to `0.6.0` ([#682]).
+
+### Fixed
+
+- Fix Docker image tag parsing when user specifies custom image ([#677]).
+
+[#677]: https://github.com/stackabletech/operator-rs/pull/677
+[#681]: https://github.com/stackabletech/operator-rs/pull/681
+[#682]: https://github.com/stackabletech/operator-rs/pull/682
+
+## [0.55.0] - 2023-10-16
+
+### Added
+
+- Mark the following functions as `const` ([#674]):
+  - `ClusterResourceApplyStrategy::delete_orphans`
+  - `LdapAuthenticationProvider::default_port`
+  - `LdapAuthenticationProvider::use_tls`
+  - `ListenerSpec::default_publish_not_ready_addresses`
+  - `OpaApiVersion::get_data_api`
+  - `CpuQuantity::from_millis`
+  - `CpuQuantity::as_milli_cpus`
+  - `BinaryMultiple::exponential_scale_factor`
+  - `BinaryMultiple::get_smallest`
+  - `MemoryQuantity::from_gibi`
+  - `MemoryQuantity::from_mebi`
+  - `ClusterCondition::is_good`
+  - `ClusterOperationsConditionBuilder::new`
+  - `commons::pdb::default_pdb_enabled`
+- Add interoperability between the `time` crate and the `stackable_operator::time::Duration` struct. This is opt-in and
+  requires the `time` feature to be enabled. Additionally, adds `Add`, `AddAssign`, `Sub`, and `SubAssign` operations
+  between `Duration` and `std::time::Instant`. Further adds a new helper function `Duration::now_utc` which calculates
+  the duration from the unix epoch (1970-01-01 00:00:00) until now ([#671]).
+
+### Changed
+
+- BREAKING: Rename top-level `duration` module to `time`. Imports now use `stackable_operator::time::Duration` for
+  example ([#671]).
+- Convert the format of the Vector configuration from TOML to YAML ([#670]).
+- BREAKING: Rename `PodBuilder::termination_grace_period_seconds` to `termination_grace_period`, and change it to take `Duration` struct ([#672]).
+
+### Fixed
+
+- stackable-operator-derive: Add descriptions to derived Fragment structs ([#675]).
+
+[#670]: https://github.com/stackabletech/operator-rs/pull/670
+[#671]: https://github.com/stackabletech/operator-rs/pull/671
+[#672]: https://github.com/stackabletech/operator-rs/pull/672
+[#674]: https://github.com/stackabletech/operator-rs/pull/674
+[#675]: https://github.com/stackabletech/operator-rs/pull/675
+
+## [0.54.0] - 2023-10-10
+
+### Changed
+
+- impl `Atomic` for `Duration` ([#668]).
+
+[#668]: https://github.com/stackabletech/operator-rs/pull/668
+
+## [0.53.0] - 2023-10-09
+
+### Changed
+
+- Add duration overflow check ([#665]).
+- Add `Duration::from_millis`, `Duration::from_minutes_unchecked`, `Duration::from_hours_unchecked` and
+  `Duration::from_days_unchecked` ([#657]).
+
+[#657]: https://github.com/stackabletech/operator-rs/pull/657
+[#665]: https://github.com/stackabletech/operator-rs/pull/665
+
+## [0.52.1] - 2023-10-05
+
+Only rust documentation was changed.
+
+## [0.52.0] - 2023-10-05
+
+### Changed
+
+- BREAKING: Make roleConfig customizable by making the `Role` struct generic over the `roleConfig` ([#661]).
+
+[#661]: https://github.com/stackabletech/operator-rs/pull/661
+
+## [0.51.1] - 2023-09-26
+
+### Fixed
+
+- Fix a typo in the documentation of the `PdbConfig` struct ([#659]).
+
+[#659]: https://github.com/stackabletech/operator-rs/pull/659
+
+## [0.51.0] - 2023-09-25
+
+### Added
+
+- Add `PdbConfig` struct and `PodDisruptionBudgetBuilder` ([#653]).
+
+[#653]: https://github.com/stackabletech/operator-rs/pull/653
+
+## [0.50.0] - 2023-09-18
+
+- Add `Duration` capable of parsing human-readable duration formats ([#647]).
+
+[#647]: https://github.com/stackabletech/operator-rs/pull/647
 
 ## [0.49.0] - 2023-09-15
 
@@ -16,6 +199,9 @@ All notable changes to this project will be documented in this file.
 
 - `PodListeners` CRD ([#644]).
 - Add support for tls pkcs12 password to secret operator volume builder ([#645]).
+
+[#644]: https://github.com/stackabletech/operator-rs/pull/644
+[#645]: https://github.com/stackabletech/operator-rs/pull/645
 
 ### Changed
 
@@ -82,7 +268,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- [BREAKING] ProductImageSelection now defaults `stackableVersion` to
+- BREAKING: ProductImageSelection now defaults `stackableVersion` to
   operator version ([#619]).
 - Default `pullPolicy` to operator `Always` ([#619]).
 - BREAKING: Assume that the Vector executable is located in a directory
@@ -190,7 +376,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- [BREAKING]: Added ownerreferences and labels to `build_rbac_resources` ([#579]).
+- BREAKING: Added ownerreferences and labels to `build_rbac_resources` ([#579]).
 
 [#579]: https://github.com/stackabletech/operator-rs/pull/579
 
@@ -285,7 +471,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Deprecated `to_java_heap` and `to_java_heap_value` ([#544]).
-- [BREAKING]: For all products using logback. Added additional optional parameter to `create_logback_config()` to supply custom configurations not covered via the standard log configuration ([#546]).
+- BREAKING: For all products using logback. Added additional optional parameter to `create_logback_config()` to supply custom configurations not covered via the standard log configuration ([#546]).
 
 [#544]: https://github.com/stackabletech/operator-rs/pull/544
 [#546]: https://github.com/stackabletech/operator-rs/pull/546

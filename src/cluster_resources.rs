@@ -10,25 +10,27 @@ use crate::{
         },
     },
     error::{Error, OperatorResult},
-    k8s_openapi::{
-        api::{
-            apps::v1::{DaemonSet, DaemonSetSpec, StatefulSet, StatefulSetSpec},
-            batch::v1::Job,
-            core::v1::{
-                ConfigMap, ObjectReference, PodSpec, PodTemplateSpec, Secret, Service,
-                ServiceAccount,
-            },
-            rbac::v1::RoleBinding,
-        },
-        apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
-        NamespaceResourceScope,
+    kvp::{
+        consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
+        Label, LabelError, Labels,
     },
-    kube::{Resource, ResourceExt},
-    labels::{APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL},
     utils::format_full_controller_name,
 };
 
-use kube::core::ErrorResponse;
+use k8s_openapi::{
+    api::{
+        apps::v1::{DaemonSet, DaemonSetSpec, StatefulSet, StatefulSetSpec},
+        batch::v1::Job,
+        core::v1::{
+            ConfigMap, ObjectReference, PodSpec, PodTemplateSpec, Secret, Service, ServiceAccount,
+        },
+        policy::v1::PodDisruptionBudget,
+        rbac::v1::RoleBinding,
+    },
+    apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
+    NamespaceResourceScope,
+};
+use kube::{core::ErrorResponse, Resource, ResourceExt};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::{BTreeMap, HashSet},
@@ -150,7 +152,7 @@ impl ClusterResourceApplyStrategy {
     }
 
     /// Indicates if orphaned resources should be deleted depending on the strategy.
-    fn delete_orphans(&self) -> bool {
+    const fn delete_orphans(&self) -> bool {
         match self {
             ClusterResourceApplyStrategy::NoApply
             | ClusterResourceApplyStrategy::ReconciliationPaused => false,
@@ -160,11 +162,13 @@ impl ClusterResourceApplyStrategy {
     }
 }
 
+// IMPORTANT: Don't forget to add new Resources to [`delete_orphaned_resources`] as well!
 impl ClusterResource for ConfigMap {}
+impl ClusterResource for Secret {}
 impl ClusterResource for Service {}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
-impl ClusterResource for Secret {}
+impl ClusterResource for PodDisruptionBudget {}
 
 impl ClusterResource for Job {
     fn pod_spec(&self) -> Option<&PodSpec> {
@@ -341,14 +345,25 @@ impl ClusterResource for DaemonSet {
 pub struct ClusterResources {
     /// The namespace of the cluster
     namespace: String,
+
     /// The name of the cluster
     app_instance: String,
+
     /// The name of the application
     app_name: String,
-    /// The manager of the cluster resources, e.g. the controller
+
+    // TODO (Techassi): Add doc comments
+    operator_name: String,
+
+    // TODO (Techassi): Add doc comments
+    controller_name: String,
+
+    // TODO (Techassi): Add doc comment
     manager: String,
+
     /// The unique IDs of the cluster resources
     resource_ids: HashSet<String>,
+
     /// Strategy to manage how cluster resources are applied. Resources could be patched, merged
     /// or not applied at all depending on the strategy.
     apply_strategy: ClusterResourceApplyStrategy,
@@ -394,6 +409,8 @@ impl ClusterResources {
             namespace,
             app_instance,
             app_name: app_name.into(),
+            operator_name: operator_name.into(),
+            controller_name: controller_name.into(),
             manager: format_full_controller_name(operator_name, controller_name),
             resource_ids: Default::default(),
             apply_strategy,
@@ -402,17 +419,15 @@ impl ClusterResources {
 
     /// Return required labels for cluster resources to be uniquely identified for clean up.
     // TODO: This is a (quick-fix) helper method but should be replaced by better label handling
-    pub fn get_required_labels(&self) -> BTreeMap<String, String> {
-        vec![
-            (
-                APP_INSTANCE_LABEL.to_string(),
-                self.app_instance.to_string(),
-            ),
-            (APP_MANAGED_BY_LABEL.to_string(), self.manager.to_string()),
-            (APP_NAME_LABEL.to_string(), self.app_name.to_string()),
-        ]
-        .into_iter()
-        .collect()
+    pub fn get_required_labels(&self) -> Result<Labels, LabelError> {
+        let mut labels = Labels::common(&self.app_name, &self.app_instance)?;
+
+        labels.insert(Label::managed_by(
+            &self.operator_name,
+            &self.controller_name,
+        )?);
+
+        Ok(labels)
     }
 
     /// Adds a resource to the cluster resources.
@@ -441,7 +456,11 @@ impl ClusterResources {
     ) -> OperatorResult<T> {
         Self::check_labels(
             resource.labels(),
-            &[APP_INSTANCE_LABEL, APP_MANAGED_BY_LABEL, APP_NAME_LABEL],
+            &[
+                K8S_APP_INSTANCE_KEY,
+                K8S_APP_MANAGED_BY_KEY,
+                K8S_APP_NAME_KEY,
+            ],
             &[&self.app_instance, &self.manager, &self.app_name],
         )?;
 
@@ -546,16 +565,18 @@ impl ClusterResources {
     /// # Arguments
     ///
     /// * `client` - The client which is used to access Kubernetes
+    ///
     pub async fn delete_orphaned_resources(self, client: &Client) -> OperatorResult<()> {
         tokio::try_join!(
             self.delete_orphaned_resources_of_kind::<Service>(client),
             self.delete_orphaned_resources_of_kind::<StatefulSet>(client),
             self.delete_orphaned_resources_of_kind::<DaemonSet>(client),
+            self.delete_orphaned_resources_of_kind::<Job>(client),
             self.delete_orphaned_resources_of_kind::<ConfigMap>(client),
+            self.delete_orphaned_resources_of_kind::<Secret>(client),
             self.delete_orphaned_resources_of_kind::<ServiceAccount>(client),
             self.delete_orphaned_resources_of_kind::<RoleBinding>(client),
-            self.delete_orphaned_resources_of_kind::<Secret>(client),
-            self.delete_orphaned_resources_of_kind::<Job>(client),
+            self.delete_orphaned_resources_of_kind::<PodDisruptionBudget>(client),
         )?;
 
         Ok(())
@@ -661,17 +682,17 @@ impl ClusterResources {
         let label_selector = LabelSelector {
             match_expressions: Some(vec![
                 LabelSelectorRequirement {
-                    key: APP_INSTANCE_LABEL.into(),
+                    key: K8S_APP_INSTANCE_KEY.into(),
                     operator: "In".into(),
                     values: Some(vec![self.app_instance.to_owned()]),
                 },
                 LabelSelectorRequirement {
-                    key: APP_NAME_LABEL.into(),
+                    key: K8S_APP_NAME_KEY.into(),
                     operator: "In".into(),
                     values: Some(vec![self.app_name.to_owned()]),
                 },
                 LabelSelectorRequirement {
-                    key: APP_MANAGED_BY_LABEL.into(),
+                    key: K8S_APP_MANAGED_BY_KEY.into(),
                     operator: "In".into(),
                     values: Some(vec![self.manager.to_owned()]),
                 },

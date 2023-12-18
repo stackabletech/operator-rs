@@ -1,18 +1,22 @@
-use crate::error;
-use crate::error::*;
-use crate::role_utils::{CommonConfiguration, Role};
-use product_config::types::PropertyNameKind;
-use product_config::{ProductConfigManager, PropertyValidationResult};
 use std::collections::{BTreeMap, HashMap};
-use thiserror::Error;
+
+use product_config::{types::PropertyNameKind, ProductConfigManager, PropertyValidationResult};
+use schemars::JsonSchema;
+use serde::Serialize;
+use snafu::Snafu;
 use tracing::{debug, error, warn};
 
-#[derive(Error, Debug)]
+use crate::{
+    error::{Error, OperatorResult},
+    role_utils::{CommonConfiguration, Role},
+};
+
+#[derive(Debug, Snafu)]
 pub enum ConfigError {
-    #[error("Invalid configuration found: {reason}")]
+    #[snafu(display("Invalid configuration found: {reason}"))]
     InvalidConfiguration { reason: String },
 
-    #[error("Collected product config validation errors: {collected_errors:?}")]
+    #[snafu(display("Collected product config validation errors: {collected_errors:?}"))]
     ProductConfigErrors {
         collected_errors: Vec<product_config::error::Error>,
     },
@@ -119,13 +123,13 @@ pub fn config_for_role_and_group<'a>(
 ) -> OperatorResult<&'a HashMap<PropertyNameKind, BTreeMap<String, String>>> {
     let result = match role_config.get(role) {
         None => {
-            return Err(error::Error::MissingRole {
+            return Err(Error::MissingRole {
                 role: role.to_string(),
             })
         }
         Some(group_config) => match group_config.get(group) {
             None => {
-                return Err(error::Error::MissingRoleGroup {
+                return Err(Error::MissingRoleGroup {
                     role: role.to_string(),
                     role_group: group.to_string(),
                 })
@@ -147,12 +151,13 @@ pub fn config_for_role_and_group<'a>(
 /// - `resource`  - Not used directly. It's passed on to the `Configuration::compute_*` calls.
 /// - `roles`     - A map keyed by role names. The value is a tuple of a vector of `PropertyNameKind`
 ///                 like (Cli, Env or Files) and [`crate::role_utils::Role`] with a boxed [`Configuration`].
-pub fn transform_all_roles_to_config<T>(
+pub fn transform_all_roles_to_config<T, U>(
     resource: &T::Configurable,
-    roles: HashMap<String, (Vec<PropertyNameKind>, Role<T>)>,
+    roles: HashMap<String, (Vec<PropertyNameKind>, Role<T, U>)>,
 ) -> ConfigResult<RoleConfigByPropertyKind>
 where
     T: Configuration,
+    U: Default + JsonSchema + Serialize,
 {
     let mut result = HashMap::new();
 
@@ -340,14 +345,15 @@ fn process_validation_result(
 /// - `role_name`      - The name of the role.
 /// - `role`           - The role for which to transform the configuration parameters.
 /// - `property_kinds` - Used as "buckets" to partition the configuration properties by.
-fn transform_role_to_config<T>(
+fn transform_role_to_config<T, U>(
     resource: &T::Configurable,
     role_name: &str,
-    role: &Role<T>,
+    role: &Role<T, U>,
     property_kinds: &[PropertyNameKind],
 ) -> ConfigResult<RoleGroupConfigByPropertyKind>
 where
     T: Configuration,
+    U: Default + JsonSchema + Serialize,
 {
     let mut result = HashMap::new();
 
@@ -521,6 +527,9 @@ mod tests {
         pub cli: Option<String>,
     }
 
+    #[derive(Clone, Default, Debug, PartialEq, JsonSchema, Serialize)]
+    struct TestRoleConfig {}
+
     impl Configuration for TestConfig {
         type Configurable = String;
 
@@ -607,7 +616,7 @@ mod tests {
         group_config: bool,
         role_overrides: bool,
         group_overrides: bool,
-    ) -> Role<Box<TestConfig>> {
+    ) -> Role<Box<TestConfig>, TestRoleConfig> {
         let role_group = ROLE_GROUP.to_string();
         let file_name = "foo.conf";
 
@@ -619,6 +628,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -635,6 +645,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -648,6 +659,7 @@ mod tests {
                     None,
                     None,
                 ),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -664,6 +676,7 @@ mod tests {
                     None,
                     None,
                 ),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -680,6 +693,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -696,6 +710,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
@@ -708,6 +723,7 @@ mod tests {
                     None,
                     None,
                 ),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -725,6 +741,7 @@ mod tests {
                     None,
                     None,
                 ),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
@@ -737,6 +754,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -753,6 +771,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -764,6 +783,7 @@ mod tests {
             },
             (false, true, false, true) => Role {
                 config: CommonConfiguration::default(),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -775,6 +795,7 @@ mod tests {
             },
             (false, true, false, false) => Role {
                 config: CommonConfiguration::default(),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -791,6 +812,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -807,6 +829,7 @@ mod tests {
                     build_env_override(ROLE_ENV_OVERRIDE),
                     build_cli_override(ROLE_CLI_OVERRIDE),
                 ),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
@@ -814,6 +837,7 @@ mod tests {
             },
             (false, false, false, true) => Role {
                 config: CommonConfiguration::default(),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: build_common_config(
@@ -825,6 +849,7 @@ mod tests {
             },
             (false, false, false, false) => Role {
                 config: CommonConfiguration::default(),
+                role_config: Default::default(),
                 role_groups: collection! {role_group => RoleGroup {
                     replicas: Some(1),
                     config: CommonConfiguration::default(),
@@ -1023,6 +1048,7 @@ mod tests {
                 // should override
                 build_cli_override("cli"),
             ),
+            role_config: TestRoleConfig::default(),
             role_groups: collection! {role_group.to_string() => RoleGroup {
                 replicas: Some(1),
                 config: build_common_config(
@@ -1073,7 +1099,11 @@ mod tests {
         let role_group_2 = "role_group_2";
         let file_name = "foo.bar";
 
-        let roles: HashMap<String, (Vec<PropertyNameKind>, Role<Box<TestConfig>>)> = collection! {
+        #[allow(clippy::type_complexity)]
+        let roles: HashMap<
+            String,
+            (Vec<PropertyNameKind>, Role<Box<TestConfig>, TestRoleConfig>),
+        > = collection! {
             role_1.to_string() => (vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env], Role {
             config: build_common_config(
                 build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
@@ -1081,6 +1111,7 @@ mod tests {
                 None,
                 None,
             ),
+            role_config: Default::default(),
             role_groups: collection! {role_group_1.to_string() => RoleGroup {
                 replicas: Some(1),
                 config: build_common_config(
@@ -1107,6 +1138,7 @@ mod tests {
                 None,
                 None,
             ),
+            role_config: Default::default(),
             role_groups: collection! {role_group_1.to_string() => RoleGroup {
                 replicas: Some(1),
                 config: build_common_config(
@@ -1164,9 +1196,14 @@ mod tests {
         let pc_bad_version = "pc_bad_version";
         let pc_bad_version_value = "pc_bad_version_value";
 
-        let roles: HashMap<String, (Vec<PropertyNameKind>, Role<Box<TestConfig>>)> = collection! {
+        #[allow(clippy::type_complexity)]
+        let roles: HashMap<
+            String,
+            (Vec<PropertyNameKind>, Role<Box<TestConfig>, TestRoleConfig>),
+        > = collection! {
             role_1.to_string() => (vec![PropertyNameKind::File(file_name.to_string()), PropertyNameKind::Env], Role {
                 config: CommonConfiguration::default(),
+                role_config: Default::default(),
                 role_groups: collection! {
                     role_group_1.to_string() => RoleGroup {
                         replicas: Some(1),
@@ -1181,6 +1218,7 @@ mod tests {
             ),
             role_2.to_string() => (vec![PropertyNameKind::File(file_name.to_string())], Role {
                 config: CommonConfiguration::default(),
+                role_config: Default::default(),
                 role_groups: collection! {
                     role_group_2.to_string() => RoleGroup {
                         replicas: Some(1),
