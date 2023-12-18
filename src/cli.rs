@@ -274,6 +274,7 @@ mod tests {
     const DEPLOY_FILE_PATH: &str = "deploy_config_spec_properties.yaml";
     const DEFAULT_FILE_PATH: &str = "default_file_path_properties.yaml";
     const WATCH_NAMESPACE: &str = "WATCH_NAMESPACE";
+    const OPERATOR_IMAGE: &str = "OPERATOR_IMAGE";
 
     #[test]
     fn verify_cli() {
@@ -360,6 +361,7 @@ mod tests {
     fn test_product_operator_run_watch_namespace() {
         // clean env var to not interfere if already set
         env::remove_var(WATCH_NAMESPACE);
+        env::remove_var(OPERATOR_IMAGE);
 
         // cli with namespace
         let opts = ProductOperatorRun::parse_from([
@@ -368,6 +370,8 @@ mod tests {
             "bar",
             "--watch-namespace",
             "foo",
+            "--operator-image",
+            "baz",
         ]);
         assert_eq!(
             opts,
@@ -375,22 +379,31 @@ mod tests {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
                 tracing_target: TracingTarget::None,
+                operator_image: "baz".to_string(),
             }
         );
 
         // no cli / no env
-        let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
+        let opts = ProductOperatorRun::parse_from([
+            "run",
+            "--product-config",
+            "bar",
+            "--operator-image",
+            "baz",
+        ]);
         assert_eq!(
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::All,
                 tracing_target: TracingTarget::None,
+                operator_image: "baz".to_string(),
             }
         );
 
-        // env with namespace
+        // env with namespace and operator image
         env::set_var(WATCH_NAMESPACE, "foo");
+        env::set_var(OPERATOR_IMAGE, "baz");
         let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
         assert_eq!(
             opts,
@@ -398,6 +411,7 @@ mod tests {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
                 tracing_target: TracingTarget::None,
+                operator_image: "baz".to_string(),
             }
         );
     }
