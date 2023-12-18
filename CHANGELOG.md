@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Add `stackble_operator::kvp` module and types to allow validated construction of key/value pairs, like labels and
   annotations. Most users want to use the exported type aliases `Label` and `Annotation` ([#684]).
+- BREAKING: Add mandatory operator argument `--operator-image`, which can also be set via the `OPERATOR_IMAGE` env var.
 
 ### Changed
 
