@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.59.0] - 2023-12-21 🌲
+
 ### Added
 
 - Add `stackble_operator::kvp` module and types to allow validated construction of key/value pairs, like labels and
