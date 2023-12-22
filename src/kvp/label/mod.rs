@@ -279,6 +279,10 @@ impl Labels {
         Ok(labels)
     }
 
+    // This forwards / delegates associated functions to the inner field. In
+    // this case self.0 which is of type KeyValuePairs<T>. So calling
+    // Labels::len() will be delegated to KeyValuePair<T>::len() without the
+    // need to write boilerplate code.
     delegate! {
         to self.0 {
             /// Extends `self` with `other`.
