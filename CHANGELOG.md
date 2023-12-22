@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.59.0] - 2023-12-21 🌲
+
 ### Added
 
 - Add `stackble_operator::kvp` module and types to allow validated construction of key/value pairs, like labels and
@@ -14,8 +16,10 @@ All notable changes to this project will be documented in this file.
 - Move `stackable_operator::label_selector::convert_label_selector_to_query_string` into `kvp` module. The conversion
   functionality now is encapsulated in a new trait `LabelSelectorExt`. An instance of a `LabelSelector` can now be
   converted into a query string by calling the associated function `ls.to_query_string()` ([#684]).
+- BREAKING: Remove legacy node selector on `RoleGroup` ([#652]).
 
 [#684]: https://github.com/stackabletech/operator-rs/pull/684
+[#652]: https://github.com/stackabletech/operator-rs/pull/652
 
 ## [0.58.1] - 2023-12-12
 
