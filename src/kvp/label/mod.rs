@@ -14,6 +14,7 @@ use std::{
     fmt::Display,
 };
 
+use delegate::delegate;
 use kube::{Resource, ResourceExt};
 
 use crate::{
@@ -163,7 +164,6 @@ impl From<Labels> for BTreeMap<String, String> {
     }
 }
 
-// TODO (Techassi): Use https://crates.io/crates/delegate to forward function impls
 impl Labels {
     /// Creates a new empty list of [`Labels`].
     pub fn new() -> Self {
@@ -189,33 +189,6 @@ impl Labels {
     pub fn insert(&mut self, label: Label) -> &mut Self {
         self.0.insert(label.0);
         self
-    }
-
-    /// Extends `self` with `other`.
-    pub fn extend(&mut self, other: Self) {
-        self.0.extend(other.0)
-    }
-
-    /// Returns the number of labels.
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    /// Returns if the set of labels is empty.
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    /// Returns if the set of labels contains the provided `label`. Failure to
-    /// parse/validate the [`KeyValuePair`] will return `false`.
-    pub fn contains(&self, label: impl TryInto<KeyValuePair<LabelValue>>) -> bool {
-        self.0.contains(label)
-    }
-
-    /// Returns if the set of labels contains a label with the provided `key`.
-    /// Failure to parse/validate the [`Key`] will return `false`.
-    pub fn contains_key(&self, key: impl TryInto<Key>) -> bool {
-        self.0.contains_key(key)
     }
 
     /// Returns the recommended set of labels. The set includes these well-known
@@ -304,5 +277,30 @@ impl Labels {
         labels.insert((K8S_APP_NAME_KEY, app_name).try_into()?);
 
         Ok(labels)
+    }
+
+    // This forwards / delegates associated functions to the inner field. In
+    // this case self.0 which is of type KeyValuePairs<T>. So calling
+    // Labels::len() will be delegated to KeyValuePair<T>::len() without the
+    // need to write boilerplate code.
+    delegate! {
+        to self.0 {
+            /// Extends `self` with `other`.
+            pub fn extend(&mut self, #[newtype] other: Self);
+
+            /// Returns the number of labels.
+            pub fn len(&self) -> usize;
+
+            /// Returns if the set of labels is empty.
+            pub fn is_empty(&self) -> bool;
+
+            /// Returns if the set of labels contains the provided `label`. Failure to
+            /// parse/validate the [`KeyValuePair`] will return `false`.
+            pub fn contains(&self, label: impl TryInto<KeyValuePair<LabelValue>>) -> bool;
+
+            /// Returns if the set of labels contains a label with the provided `key`.
+            /// Failure to parse/validate the [`Key`] will return `false`.
+            pub fn contains_key(&self, key: impl TryInto<Key>) -> bool;
+        }
     }
 }

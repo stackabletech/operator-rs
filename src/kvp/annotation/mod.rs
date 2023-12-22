@@ -15,6 +15,8 @@ use std::{
     fmt::Display,
 };
 
+use delegate::delegate;
+
 use crate::{
     builder::SecretOperatorVolumeScope,
     kvp::{Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError},
@@ -161,7 +163,6 @@ impl From<Annotations> for BTreeMap<String, String> {
     }
 }
 
-// TODO (Techassi): Use https://crates.io/crates/delegate to forward function impls
 impl Annotations {
     /// Creates a new empty list of [`Annotations`].
     pub fn new() -> Self {
@@ -189,30 +190,30 @@ impl Annotations {
         self
     }
 
-    /// Extends `self` with `other`.
-    pub fn extend(&mut self, other: Self) {
-        self.0.extend(other.0)
-    }
+    // This forwards / delegates associated functions to the inner field. In
+    // this case self.0 which is of type KeyValuePairs<T>. So calling
+    // Annotations::len() will be delegated to KeyValuePair<T>::len() without
+    // the need to write boilerplate code.
+    delegate! {
+        to self.0 {
+            /// Extends `self` with `other`.
+            pub fn extend(&mut self, #[newtype] other: Self);
 
-    /// Returns the number of annotations.
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
+            /// Returns the number of labels.
+            pub fn len(&self) -> usize;
 
-    /// Returns if the set of annotations is empty.
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
+            /// Returns if the set of labels is empty.
+            pub fn is_empty(&self) -> bool;
 
-    /// Returns if the set of annotations contains the provided `label`.
-    /// Failure to parse/validate the [`KeyValuePair`] will return `false`.
-    pub fn contains(&self, annotation: impl TryInto<KeyValuePair<AnnotationValue>>) -> bool {
-        self.0.contains(annotation)
-    }
+            /// Returns if the set of annotations contains the provided
+            /// `annotation`. Failure to parse/validate the [`KeyValuePair`]
+            /// will return `false`.
+            pub fn contains(&self, annotation: impl TryInto<KeyValuePair<AnnotationValue>>) -> bool;
 
-    /// Returns if the set of annotations contains a label with the provided
-    /// `key`. Failure to parse/validate the [`Key`] will return `false`.
-    pub fn contains_key(&self, key: impl TryInto<Key>) -> bool {
-        self.0.contains_key(key)
+            /// Returns if the set of annotations contains a label with the
+            /// provided `key`. Failure to parse/validate the [`Key`] will
+            /// return `false`.
+            pub fn contains_key(&self, key: impl TryInto<Key>) -> bool;
+        }
     }
 }
