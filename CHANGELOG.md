@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.60.0] - 2024-01-03
+
+### Added
+
+- Add LDAP AuthenticationClassProvider `endpoint()` method so each operator doesn't have to construct it. ([#705])
+
+[#705]: https://github.com/stackabletech/operator-rs/pull/705
+
 ## [0.59.0] - 2023-12-21 🌲
 
 ### Added
