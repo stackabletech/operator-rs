@@ -2,6 +2,7 @@ use k8s_openapi::api::core::v1::{Volume, VolumeMount};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
+use url::{ParseError, Url};
 
 use crate::{
     builder::{ContainerBuilder, PodBuilder, VolumeMountBuilder},
@@ -11,12 +12,17 @@ use crate::{
     },
 };
 
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
 #[derive(Debug, Snafu)]
-pub enum AuthenticationProviderError {
+pub enum Error {
     #[snafu(display(
         "failed to convert bind credentials (secret class volume) into named Kubernetes volume"
     ))]
     BindCredentials { source: SecretClassVolumeError },
+
+    #[snafu(display("failed to parse LDAP endpoint url"))]
+    ParseLdapEndpointUrl { source: ParseError },
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -49,6 +55,22 @@ pub struct AuthenticationProvider {
 }
 
 impl AuthenticationProvider {
+    /// Returns the LDAP endpoint [`Url`].
+    pub fn endpoint_url(&self) -> Result<Url> {
+        let url = Url::parse(&format!(
+            "{protocol}{server_hostname}:{server_port}",
+            protocol = match self.tls.tls {
+                None => "ldap://",
+                Some(_) => "ldaps://",
+            },
+            server_hostname = self.hostname,
+            server_port = self.port()
+        ))
+        .context(ParseLdapEndpointUrlSnafu)?;
+
+        Ok(url)
+    }
+
     /// Returns the port to be used, which is either user configured or defaulted based upon TLS usage
     pub fn port(&self) -> u16 {
         self.port
@@ -67,7 +89,7 @@ impl AuthenticationProvider {
         &self,
         pod_builder: &mut PodBuilder,
         container_builders: Vec<&mut ContainerBuilder>,
-    ) -> Result<(), AuthenticationProviderError> {
+    ) -> Result<()> {
         let (volumes, mounts) = self.volumes_and_mounts()?;
         pod_builder.add_volumes(volumes);
 
@@ -80,9 +102,7 @@ impl AuthenticationProvider {
 
     /// It is recommended to use [`Self::add_volumes_and_mounts`], this function returns you the
     /// volumes and mounts in case you need to add them by yourself.
-    pub fn volumes_and_mounts(
-        &self,
-    ) -> Result<(Vec<Volume>, Vec<VolumeMount>), AuthenticationProviderError> {
+    pub fn volumes_and_mounts(&self) -> Result<(Vec<Volume>, Vec<VolumeMount>)> {
         let mut volumes = Vec::new();
         let mut mounts = Vec::new();
 
