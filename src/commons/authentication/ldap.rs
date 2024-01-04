@@ -7,7 +7,10 @@ use url::{ParseError, Url};
 use crate::{
     builder::{ContainerBuilder, PodBuilder, VolumeMountBuilder},
     commons::{
-        authentication::{tls::TlsClientDetails, SECRET_BASE_PATH},
+        authentication::{
+            tls::{TlsClientDetails, TlsClientDetailsError},
+            SECRET_BASE_PATH,
+        },
         secret_class::{SecretClassVolume, SecretClassVolumeError},
     },
 };
@@ -23,6 +26,9 @@ pub enum Error {
 
     #[snafu(display("failed to parse LDAP endpoint url"))]
     ParseLdapEndpointUrl { source: ParseError },
+
+    #[snafu(display("failed to add LDAP TLS client details volumes and volume mounts"))]
+    AddLdapTlsClientDetailsVolumes { source: TlsClientDetailsError },
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -85,6 +91,7 @@ impl AuthenticationProvider {
     /// This function will handle
     ///
     /// * Bind credentials needed to connect to LDAP server
+    /// * Tls secret class used to verify the cert of the LDAP server
     pub fn add_volumes_and_mounts(
         &self,
         pod_builder: &mut PodBuilder,
@@ -119,6 +126,14 @@ impl AuthenticationProvider {
                     .build(),
             );
         }
+
+        // Add needed TLS volumes
+        let (tls_volumes, tls_mounts) = self
+            .tls
+            .volumes_and_mounts()
+            .context(AddLdapTlsClientDetailsVolumesSnafu)?;
+        volumes.extend(tls_volumes);
+        mounts.extend(tls_mounts);
 
         Ok((volumes, mounts))
     }
