@@ -149,6 +149,10 @@ impl AuthenticationProvider {
             )
         })
     }
+
+    pub fn has_bind_credentials(&self) -> bool {
+        self.bind_credentials.is_some()
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -284,6 +288,7 @@ mod test {
             .build()]
         );
 
+        assert!(ldap.has_bind_credentials());
         assert_eq!(
             ldap.bind_credentials_mount_paths(),
             Some((
@@ -291,23 +296,35 @@ mod test {
                 "/stackable/secrets/openldap-bind-credentials/password".to_string()
             ))
         );
-        let (bind_volumes, bind_mounts) = ldap.volumes_and_mounts().unwrap();
+        let (ldap_volumes, ldap_mounts) = ldap.volumes_and_mounts().unwrap();
         assert_eq!(
-            bind_volumes,
-            vec![SecretClassVolume {
-                secret_class: "openldap-bind-credentials".to_string(),
-                scope: None,
-            }
-            .to_volume("openldap-bind-credentials-bind-credentials")
-            .unwrap()]
+            ldap_volumes,
+            vec![
+                SecretClassVolume {
+                    secret_class: "openldap-bind-credentials".to_string(),
+                    scope: None,
+                }
+                .to_volume("openldap-bind-credentials-bind-credentials")
+                .unwrap(),
+                SecretClassVolume {
+                    secret_class: "ldap-ca-cert".to_string(),
+                    scope: None,
+                }
+                .to_volume("ldap-ca-cert-ca-cert")
+                .unwrap()
+            ]
         );
         assert_eq!(
-            bind_mounts,
-            vec![VolumeMountBuilder::new(
-                "openldap-bind-credentials-bind-credentials",
-                "/stackable/secrets/openldap-bind-credentials"
-            )
-            .build()]
+            ldap_mounts,
+            vec![
+                VolumeMountBuilder::new(
+                    "openldap-bind-credentials-bind-credentials",
+                    "/stackable/secrets/openldap-bind-credentials"
+                )
+                .build(),
+                VolumeMountBuilder::new("ldap-ca-cert-ca-cert", "/stackable/secrets/ldap-ca-cert")
+                    .build()
+            ]
         );
     }
 }
