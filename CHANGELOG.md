@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add LDAP AuthenticationClassProvider `endpoint()` method so each operator doesn't have to construct it. ([#705])
+- Add LDAP AuthenticationClassProvider `endpoint_url()` method so each operator doesn't have to construct it. ([#705])
 
 [#705]: https://github.com/stackabletech/operator-rs/pull/705
 
