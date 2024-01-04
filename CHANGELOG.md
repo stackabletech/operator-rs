@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.60.1] - 2024-01-04
+
 ### Fixed
 
 - Let `ldap::AuthenticationProvider::add_volumes_and_mounts` also add the needed TLS volumes. This functionality was removed in [#680] and causes kuttl tests to fail, as the ca-cert volume and mount where missing. This patch restores the previous behavior (of adding needed TLS volumes) ([#708]).
