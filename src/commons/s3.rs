@@ -95,7 +95,7 @@ impl InlinedS3BucketSpec {
 }
 
 /// An S3 bucket definition, it can either be a reference to an explicit S3Bucket object,
-/// or it can be an inline defintion of a bucket. Read the
+/// or it can be an inline definition of a bucket. Read the
 /// [S3 resources concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/s3)
 /// to learn more.
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
