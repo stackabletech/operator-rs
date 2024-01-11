@@ -23,7 +23,7 @@ use crate::{
             K8S_APP_COMPONENT_KEY, K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY,
             K8S_APP_ROLE_GROUP_KEY, K8S_APP_VERSION_KEY,
         },
-        Key, KeyValuePair, KeyValuePairError, KeyValuePairs, ObjectLabels,
+        Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError, ObjectLabels,
     },
     utils::format_full_controller_name,
 };
@@ -33,6 +33,8 @@ mod value;
 
 pub use selector::*;
 pub use value::*;
+
+pub type LabelsError = KeyValuePairsError;
 
 /// A type alias for errors returned when construction or manipulation of a set
 /// of labels fails.
@@ -189,7 +191,7 @@ impl Labels {
     /// Tries to insert a new label by first parsing `label` as a [`Label`]
     /// and then inserting it into the list. This function will overide any
     /// existing label already present.
-    pub fn try_insert(
+    pub fn parse_insert(
         &mut self,
         label: impl TryInto<Label, Error = LabelError>,
     ) -> Result<(), LabelError> {
@@ -298,6 +300,11 @@ impl Labels {
     // need to write boilerplate code.
     delegate! {
         to self.0 {
+            /// Tries to insert a new [`Label`]. It ensures there are no duplicate
+            /// entries. Trying to insert duplicated data returns an error. If no such
+            /// check is required, use the `insert` function instead.
+            pub fn try_insert(&mut self, #[newtype] label: Label) -> Result<(), LabelsError>;
+
             /// Extends `self` with `other`.
             pub fn extend(&mut self, #[newtype] other: Self);
 

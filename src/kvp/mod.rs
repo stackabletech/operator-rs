@@ -7,7 +7,7 @@ use std::{
     str::FromStr,
 };
 
-use snafu::{ResultExt, Snafu};
+use snafu::{ensure, ResultExt, Snafu};
 
 mod annotation;
 pub mod consts;
@@ -138,6 +138,12 @@ where
     }
 }
 
+#[derive(Debug, Snafu)]
+pub enum KeyValuePairsError {
+    #[snafu(display("key/value pair already exists"))]
+    PairAlreadyExists,
+}
+
 /// A validated set/list of Kubernetes key/value pairs.
 #[derive(Clone, Debug, Default)]
 pub struct KeyValuePairs<V: Value>(BTreeSet<KeyValuePair<V>>);
@@ -231,11 +237,22 @@ where
     /// Inserts a new [`KeyValuePair`] into the list of pairs.
     ///
     /// This function overides any existing key/value pair. To avoid overiding
-    /// existing pairs, use [`KeyValuePairs::contains`] or
-    /// [`KeyValuePairs::contains_key`] before inserting.
+    /// existing pairs, either use [`KeyValuePairs::contains`] or
+    /// [`KeyValuePairs::contains_key`] before inserting or try to insert
+    /// fallible via [`KeyValuePairs::try_insert`].
     pub fn insert(&mut self, kvp: KeyValuePair<V>) -> &mut Self {
         self.0.insert(kvp);
         self
+    }
+
+    /// Tries to insert a new [`KeyValuePair`] into the list of pairs.
+    ///
+    /// If the list already had this pair present, nothing is updated, and an
+    /// error is returned.
+    pub fn try_insert(&mut self, kvp: KeyValuePair<V>) -> Result<(), KeyValuePairsError> {
+        ensure!(!self.0.contains(&kvp), PairAlreadyExistsSnafu);
+        self.insert(kvp);
+        Ok(())
     }
 
     /// Returns if the list contains a specific [`KeyValuePair`].

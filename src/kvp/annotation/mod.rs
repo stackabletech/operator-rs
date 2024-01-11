@@ -19,12 +19,14 @@ use delegate::delegate;
 
 use crate::{
     builder::SecretOperatorVolumeScope,
-    kvp::{Key, KeyValuePair, KeyValuePairError, KeyValuePairs},
+    kvp::{Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError},
 };
 
 mod value;
 
 pub use value::*;
+
+pub type AnnotationsError = KeyValuePairsError;
 
 /// A type alias for errors returned when construction or manipulation of a set
 /// of annotations fails.
@@ -188,7 +190,7 @@ impl Annotations {
     /// Tries to insert a new annotation by first parsing `annotation` as an
     /// [`Annotation`] and then inserting it into the list. This function will
     /// overide any existing annotation already present.
-    pub fn try_insert(
+    pub fn parse_insert(
         &mut self,
         annotation: impl TryInto<Annotation, Error = AnnotationError>,
     ) -> Result<(), AnnotationError> {
@@ -209,6 +211,11 @@ impl Annotations {
     // the need to write boilerplate code.
     delegate! {
         to self.0 {
+            /// Tries to insert a new [`Annotation`]. It ensures there are no duplicate
+            /// entries. Trying to insert duplicated data returns an error. If no such
+            /// check is required, use the `insert` function instead.
+            pub fn try_insert(&mut self, #[newtype] annotation: Annotation) -> Result<(), AnnotationsError>;
+
             /// Extends `self` with `other`.
             pub fn extend(&mut self, #[newtype] other: Self);
 
