@@ -19,15 +19,12 @@ use delegate::delegate;
 
 use crate::{
     builder::SecretOperatorVolumeScope,
-    kvp::{Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError},
+    kvp::{Key, KeyValuePair, KeyValuePairError, KeyValuePairs},
 };
 
 mod value;
 
 pub use value::*;
-
-/// A type alias for errors returned when construction of an annotation fails.
-pub type AnnotationsError = KeyValuePairsError<Infallible>;
 
 /// A type alias for errors returned when construction or manipulation of a set
 /// of annotations fails.
@@ -188,17 +185,19 @@ impl Annotations {
         Self(KeyValuePairs::new_with(pairs))
     }
 
-    /// Tries to insert a new [`Annotation`]. It ensures there are no duplicate
-    /// entries. Trying to insert duplicated data returns an error. If no such
-    /// check is required, use the `insert` function instead.
-    pub fn try_insert(&mut self, annotation: Annotation) -> Result<&mut Self, AnnotationsError> {
-        self.0.try_insert(annotation.0)?;
-        Ok(self)
+    /// Tries to insert a new annotation by first parsing `annotation` as an
+    /// [`Annotation`] and then inserting it into the list. This function will
+    /// overide any existing annotation already present.
+    pub fn try_insert(
+        &mut self,
+        annotation: impl TryInto<Annotation, Error = AnnotationError>,
+    ) -> Result<(), AnnotationError> {
+        self.0.insert(annotation.try_into()?.0);
+        Ok(())
     }
 
     /// Inserts a new [`Annotation`]. This function will overide any existing
-    /// annotation already present. If this behaviour is not desired, use the
-    /// `try_insert` function instead.
+    /// annotation already present.
     pub fn insert(&mut self, annotation: Annotation) -> &mut Self {
         self.0.insert(annotation.0);
         self

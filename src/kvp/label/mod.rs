@@ -23,7 +23,7 @@ use crate::{
             K8S_APP_COMPONENT_KEY, K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY,
             K8S_APP_ROLE_GROUP_KEY, K8S_APP_VERSION_KEY,
         },
-        Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError, ObjectLabels,
+        Key, KeyValuePair, KeyValuePairError, KeyValuePairs, ObjectLabels,
     },
     utils::format_full_controller_name,
 };
@@ -33,9 +33,6 @@ mod value;
 
 pub use selector::*;
 pub use value::*;
-
-/// A type alias for errors returned when construction of a label fails.
-pub type LabelsError = KeyValuePairsError<LabelValueError>;
 
 /// A type alias for errors returned when construction or manipulation of a set
 /// of labels fails.
@@ -189,17 +186,19 @@ impl Labels {
         Self(KeyValuePairs::new_with(pairs))
     }
 
-    /// Tries to insert a new [`Label`]. It ensures there are no duplicate
-    /// entries. Trying to insert duplicated data returns an error. If no such
-    /// check is required, use the `insert` function instead.
-    pub fn try_insert(&mut self, label: Label) -> Result<&mut Self, LabelsError> {
-        self.0.try_insert(label.0)?;
-        Ok(self)
+    /// Tries to insert a new label by first parsing `label` as a [`Label`]
+    /// and then inserting it into the list. This function will overide any
+    /// existing label already present.
+    pub fn try_insert(
+        &mut self,
+        label: impl TryInto<Label, Error = LabelError>,
+    ) -> Result<(), LabelError> {
+        self.0.insert(label.try_into()?.0);
+        Ok(())
     }
 
     /// Inserts a new [`Label`]. This function will overide any existing label
-    /// already present. If this behaviour is not desired, use the `try_insert`
-    /// function instead.
+    /// already present.
     pub fn insert(&mut self, label: Label) -> &mut Self {
         self.0.insert(label.0);
         self
