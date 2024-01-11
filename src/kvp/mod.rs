@@ -170,6 +170,25 @@ where
     }
 }
 
+impl<const N: usize, T, K, V> TryFrom<[(T, K); N]> for KeyValuePairs<V>
+where
+    T: AsRef<str>,
+    K: AsRef<str>,
+    V: Value + std::default::Default,
+{
+    type Error = KeyValuePairError<V::Error>;
+
+    fn try_from(array: [(T, K); N]) -> Result<Self, Self::Error> {
+        let mut pairs = KeyValuePairs::new();
+
+        for item in array {
+            pairs.insert(KeyValuePair::try_from(item)?);
+        }
+
+        Ok(pairs)
+    }
+}
+
 impl<V> FromIterator<KeyValuePair<V>> for KeyValuePairs<V>
 where
     V: Value,
@@ -310,6 +329,17 @@ mod test {
         assert_eq!(label.value(), &LabelValue::from_str("Stackable").unwrap());
 
         assert_eq!(label.to_string(), "stackable.tech/vendor=Stackable");
+    }
+
+    #[test]
+    fn labels_from_array() {
+        let labels = Labels::try_from([
+            ("stackable.tech/managed-by", "stackablectl"),
+            ("stackable.tech/vendor", "Stackable"),
+        ])
+        .unwrap();
+
+        assert_eq!(labels.len(), 2);
     }
 
     #[test]

@@ -45,13 +45,14 @@ pub type AnnotationError = KeyValuePairError<Infallible>;
 #[derive(Debug)]
 pub struct Annotation(KeyValuePair<AnnotationValue>);
 
-impl<T> TryFrom<(T, T)> for Annotation
+impl<T, K> TryFrom<(T, K)> for Annotation
 where
     T: AsRef<str>,
+    K: AsRef<str>,
 {
     type Error = AnnotationError;
 
-    fn try_from(value: (T, T)) -> Result<Self, Self::Error> {
+    fn try_from(value: (T, K)) -> Result<Self, Self::Error> {
         let kvp = KeyValuePair::try_from(value)?;
         Ok(Self(kvp))
     }
@@ -145,6 +146,19 @@ impl TryFrom<BTreeMap<String, String>> for Annotations {
     type Error = AnnotationError;
 
     fn try_from(value: BTreeMap<String, String>) -> Result<Self, Self::Error> {
+        let kvps = KeyValuePairs::try_from(value)?;
+        Ok(Self(kvps))
+    }
+}
+
+impl<const N: usize, T, K> TryFrom<[(T, K); N]> for Annotations
+where
+    T: AsRef<str>,
+    K: AsRef<str>,
+{
+    type Error = AnnotationError;
+
+    fn try_from(value: [(T, K); N]) -> Result<Self, Self::Error> {
         let kvps = KeyValuePairs::try_from(value)?;
         Ok(Self(kvps))
     }
