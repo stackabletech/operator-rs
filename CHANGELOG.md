@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `TryFrom<[(K, V); N]>` implementation for `Annotations` and `Labels` ([#711]).
+- Add `parse_insert` associated function for `Annotations` and `Labels` ([#711]).
+
+### Changed
+
+- Adjust `try_insert` for `Annotations` and `Labels` slightly ([#711]).
+
+[#711]: https://github.com/stackabletech/operator-rs/pull/711
+
 ## [0.60.1] - 2024-01-04
 
 ### Fixed
