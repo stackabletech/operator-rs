@@ -324,3 +324,23 @@ impl Labels {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse_insert() {
+        let mut labels = Labels::new();
+
+        labels
+            .parse_insert(("stackable.tech/managed-by", "stackablectl"))
+            .unwrap();
+
+        labels
+            .parse_insert(("stackable.tech/vendor", "Stackable"))
+            .unwrap();
+
+        assert_eq!(labels.len(), 2);
+    }
+}

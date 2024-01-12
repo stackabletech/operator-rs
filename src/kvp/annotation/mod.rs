@@ -237,3 +237,23 @@ impl Annotations {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse_insert() {
+        let mut annotations = Annotations::new();
+
+        annotations
+            .parse_insert(("stackable.tech/managed-by", "stackablectl"))
+            .unwrap();
+
+        annotations
+            .parse_insert(("stackable.tech/vendor", "Stäckable"))
+            .unwrap();
+
+        assert_eq!(annotations.len(), 2);
+    }
+}
