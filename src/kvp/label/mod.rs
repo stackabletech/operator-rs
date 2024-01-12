@@ -18,6 +18,7 @@ use delegate::delegate;
 use kube::{Resource, ResourceExt};
 
 use crate::{
+    iter::TryFromIterator,
     kvp::{
         consts::{
             K8S_APP_COMPONENT_KEY, K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY,
@@ -185,6 +186,19 @@ impl FromIterator<KeyValuePair<LabelValue>> for Labels {
     fn from_iter<T: IntoIterator<Item = KeyValuePair<LabelValue>>>(iter: T) -> Self {
         let kvps = KeyValuePairs::from_iter(iter);
         Self(kvps)
+    }
+}
+
+impl<K, V> TryFromIterator<(K, V)> for Labels
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+{
+    type Error = LabelError;
+
+    fn try_from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Result<Self, Self::Error> {
+        let kvps = KeyValuePairs::try_from_iter(iter)?;
+        Ok(Self(kvps))
     }
 }
 

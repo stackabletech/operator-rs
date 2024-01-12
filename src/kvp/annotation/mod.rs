@@ -19,6 +19,7 @@ use delegate::delegate;
 
 use crate::{
     builder::SecretOperatorVolumeScope,
+    iter::TryFromIterator,
     kvp::{Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError},
 };
 
@@ -184,6 +185,19 @@ impl FromIterator<KeyValuePair<AnnotationValue>> for Annotations {
     fn from_iter<T: IntoIterator<Item = KeyValuePair<AnnotationValue>>>(iter: T) -> Self {
         let kvps = KeyValuePairs::from_iter(iter);
         Self(kvps)
+    }
+}
+
+impl<K, V> TryFromIterator<(K, V)> for Annotations
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+{
+    type Error = AnnotationError;
+
+    fn try_from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Result<Self, Self::Error> {
+        let kvps = KeyValuePairs::try_from_iter(iter)?;
+        Ok(Self(kvps))
     }
 }
 

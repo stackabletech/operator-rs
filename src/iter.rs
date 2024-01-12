@@ -45,6 +45,12 @@ where
     }
 }
 
+pub trait TryFromIterator<T>: Sized {
+    type Error: std::error::Error;
+
+    fn try_from_iter<I: IntoIterator<Item = T>>(iter: I) -> Result<Self, Self::Error>;
+}
+
 #[cfg(test)]
 mod tests {
     use crate::iter::try_flatten;

@@ -9,6 +9,8 @@ use std::{
 
 use snafu::{ensure, ResultExt, Snafu};
 
+use crate::iter::TryFromIterator;
+
 mod annotation;
 pub mod consts;
 mod key;
@@ -249,6 +251,25 @@ where
     }
 }
 
+impl<K, V, T> TryFromIterator<(K, V)> for KeyValuePairs<T>
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+    T: Value,
+{
+    type Error = KeyValuePairError<T::Error>;
+
+    fn try_from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Result<Self, Self::Error> {
+        let mut set = BTreeSet::new();
+
+        for pair in iter {
+            set.insert(KeyValuePair::try_from(pair)?);
+        }
+
+        Ok(Self(set))
+    }
+}
+
 impl<T> From<KeyValuePairs<T>> for BTreeMap<String, String>
 where
     T: Value,
@@ -440,5 +461,16 @@ mod test {
 
         assert!(labels.contains(("app.kubernetes.io/name", "test")));
         assert!(labels.contains_key("app.kubernetes.io/instance"))
+    }
+
+    #[test]
+    fn try_from_iter() {
+        let map = BTreeMap::from([
+            ("stackable.tech/managed-by", "stackablectl"),
+            ("stackable.tech/vendor", "Stackable"),
+        ]);
+
+        let labels = Labels::try_from_iter(map).unwrap();
+        assert_eq!(labels.len(), 2);
     }
 }
