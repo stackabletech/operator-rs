@@ -302,7 +302,7 @@ impl Labels {
         to self.0 {
             /// Tries to insert a new [`Label`]. It ensures there are no duplicate
             /// entries. Trying to insert duplicated data returns an error. If no such
-            /// check is required, use the `insert` function instead.
+            /// check is required, use [`Labels::insert`] instead.
             pub fn try_insert(&mut self, #[newtype] label: Label) -> Result<(), LabelsError>;
 
             /// Extends `self` with `other`.

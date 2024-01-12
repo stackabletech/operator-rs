@@ -213,7 +213,7 @@ impl Annotations {
         to self.0 {
             /// Tries to insert a new [`Annotation`]. It ensures there are no duplicate
             /// entries. Trying to insert duplicated data returns an error. If no such
-            /// check is required, use [`Annotation::insert`] instead.
+            /// check is required, use [`Annotations::insert`] instead.
             pub fn try_insert(&mut self, #[newtype] annotation: Annotation) -> Result<(), AnnotationsError>;
 
             /// Extends `self` with `other`.
