@@ -85,45 +85,45 @@ where
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct KeyValuePair<V>
+pub struct KeyValuePair<T>
 where
-    V: Value,
+    T: Value,
 {
     key: Key,
-    value: V,
+    value: T,
 }
 
-impl<T, K, V> TryFrom<(T, K)> for KeyValuePair<V>
+impl<K, V, T> TryFrom<(K, V)> for KeyValuePair<T>
 where
-    T: AsRef<str>,
     K: AsRef<str>,
-    V: Value,
+    V: AsRef<str>,
+    T: Value,
 {
-    type Error = KeyValuePairError<V::Error>;
+    type Error = KeyValuePairError<T::Error>;
 
-    fn try_from(value: (T, K)) -> Result<Self, Self::Error> {
+    fn try_from(value: (K, V)) -> Result<Self, Self::Error> {
         let key = Key::from_str(value.0.as_ref()).context(InvalidKeySnafu)?;
-        let value = V::from_str(value.1.as_ref()).context(InvalidValueSnafu)?;
+        let value = T::from_str(value.1.as_ref()).context(InvalidValueSnafu)?;
 
         Ok(Self { key, value })
     }
 }
 
-impl<V> Display for KeyValuePair<V>
+impl<T> Display for KeyValuePair<T>
 where
-    V: Value,
+    T: Value,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}={}", self.key, self.value)
     }
 }
 
-impl<V> KeyValuePair<V>
+impl<T> KeyValuePair<T>
 where
-    V: Value,
+    T: Value,
 {
     /// Creates a new [`KeyValuePair`] from a validated [`Key`] and value.
-    pub fn new(key: Key, value: V) -> Self {
+    pub fn new(key: Key, value: T) -> Self {
         Self { key, value }
     }
 
@@ -133,7 +133,7 @@ where
     }
 
     /// Returns an immutable reference to the pair's value.
-    pub fn value(&self) -> &V {
+    pub fn value(&self) -> &T {
         &self.value
     }
 }
@@ -146,33 +146,33 @@ pub enum KeyValuePairsError {
 
 /// A validated set/list of Kubernetes key/value pairs.
 #[derive(Clone, Debug, Default)]
-pub struct KeyValuePairs<V: Value>(BTreeSet<KeyValuePair<V>>);
+pub struct KeyValuePairs<T: Value>(BTreeSet<KeyValuePair<T>>);
 
-impl<V> TryFrom<BTreeMap<String, String>> for KeyValuePairs<V>
+impl<T> TryFrom<BTreeMap<String, String>> for KeyValuePairs<T>
 where
-    V: Value,
+    T: Value,
 {
-    type Error = KeyValuePairError<V::Error>;
+    type Error = KeyValuePairError<T::Error>;
 
     fn try_from(map: BTreeMap<String, String>) -> Result<Self, Self::Error> {
         let pairs = map
             .into_iter()
             .map(KeyValuePair::try_from)
-            .collect::<Result<BTreeSet<_>, KeyValuePairError<V::Error>>>()?;
+            .collect::<Result<BTreeSet<_>, KeyValuePairError<T::Error>>>()?;
 
         Ok(Self(pairs))
     }
 }
 
-impl<const N: usize, T, K, V> TryFrom<[(T, K); N]> for KeyValuePairs<V>
+impl<const N: usize, K, V, T> TryFrom<[(K, V); N]> for KeyValuePairs<T>
 where
-    T: AsRef<str>,
     K: AsRef<str>,
-    V: Value + std::default::Default,
+    V: AsRef<str>,
+    T: Value + std::default::Default,
 {
-    type Error = KeyValuePairError<V::Error>;
+    type Error = KeyValuePairError<T::Error>;
 
-    fn try_from(array: [(T, K); N]) -> Result<Self, Self::Error> {
+    fn try_from(array: [(K, V); N]) -> Result<Self, Self::Error> {
         let mut pairs = KeyValuePairs::new();
 
         for item in array {
@@ -183,20 +183,20 @@ where
     }
 }
 
-impl<V> FromIterator<KeyValuePair<V>> for KeyValuePairs<V>
+impl<T> FromIterator<KeyValuePair<T>> for KeyValuePairs<T>
 where
-    V: Value,
+    T: Value,
 {
-    fn from_iter<T: IntoIterator<Item = KeyValuePair<V>>>(iter: T) -> Self {
+    fn from_iter<I: IntoIterator<Item = KeyValuePair<T>>>(iter: I) -> Self {
         Self(iter.into_iter().collect())
     }
 }
 
-impl<V> From<KeyValuePairs<V>> for BTreeMap<String, String>
+impl<T> From<KeyValuePairs<T>> for BTreeMap<String, String>
 where
-    V: Value,
+    T: Value,
 {
-    fn from(value: KeyValuePairs<V>) -> Self {
+    fn from(value: KeyValuePairs<T>) -> Self {
         value
             .iter()
             .map(|pair| (pair.key().to_string(), pair.value().to_string()))
@@ -204,20 +204,20 @@ where
     }
 }
 
-impl<V> Deref for KeyValuePairs<V>
+impl<T> Deref for KeyValuePairs<T>
 where
-    V: Value,
+    T: Value,
 {
-    type Target = BTreeSet<KeyValuePair<V>>;
+    type Target = BTreeSet<KeyValuePair<T>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<V> KeyValuePairs<V>
+impl<T> KeyValuePairs<T>
 where
-    V: Value + std::default::Default,
+    T: Value + std::default::Default,
 {
     /// Creates a new empty list of [`KeyValuePair`]s.
     pub fn new() -> Self {
@@ -225,7 +225,7 @@ where
     }
 
     /// Creates a new list of [`KeyValuePair`]s from `pairs`.
-    pub fn new_with(pairs: BTreeSet<KeyValuePair<V>>) -> Self {
+    pub fn new_with(pairs: BTreeSet<KeyValuePair<T>>) -> Self {
         Self(pairs)
     }
 
@@ -240,7 +240,7 @@ where
     /// overwriting existing pairs, either use [`KeyValuePairs::contains`] or
     /// [`KeyValuePairs::contains_key`] before inserting or try to insert
     /// fallible via [`KeyValuePairs::try_insert`].
-    pub fn insert(&mut self, kvp: KeyValuePair<V>) -> &mut Self {
+    pub fn insert(&mut self, kvp: KeyValuePair<T>) -> &mut Self {
         self.0.insert(kvp);
         self
     }
@@ -249,14 +249,14 @@ where
     ///
     /// If the list already had this pair present, nothing is updated, and an
     /// error is returned.
-    pub fn try_insert(&mut self, kvp: KeyValuePair<V>) -> Result<(), KeyValuePairsError> {
+    pub fn try_insert(&mut self, kvp: KeyValuePair<T>) -> Result<(), KeyValuePairsError> {
         ensure!(!self.0.contains(&kvp), PairAlreadyExistsSnafu);
         self.insert(kvp);
         Ok(())
     }
 
     /// Returns if the list contains a specific [`KeyValuePair`].
-    pub fn contains(&self, kvp: impl TryInto<KeyValuePair<V>>) -> bool {
+    pub fn contains(&self, kvp: impl TryInto<KeyValuePair<T>>) -> bool {
         let Ok(kvp) = kvp.try_into() else {return false};
         self.0.contains(&kvp)
     }

@@ -56,14 +56,14 @@ pub type LabelError = KeyValuePairError<LabelValueError>;
 #[derive(Clone, Debug)]
 pub struct Label(KeyValuePair<LabelValue>);
 
-impl<T, K> TryFrom<(T, K)> for Label
+impl<K, V> TryFrom<(K, V)> for Label
 where
-    T: AsRef<str>,
     K: AsRef<str>,
+    V: AsRef<str>,
 {
     type Error = LabelError;
 
-    fn try_from(value: (T, K)) -> Result<Self, Self::Error> {
+    fn try_from(value: (K, V)) -> Result<Self, Self::Error> {
         let kvp = KeyValuePair::try_from(value)?;
         Ok(Self(kvp))
     }
@@ -151,14 +151,14 @@ impl TryFrom<BTreeMap<String, String>> for Labels {
     }
 }
 
-impl<const N: usize, T, K> TryFrom<[(T, K); N]> for Labels
+impl<const N: usize, K, V> TryFrom<[(K, V); N]> for Labels
 where
-    T: AsRef<str>,
     K: AsRef<str>,
+    V: AsRef<str>,
 {
     type Error = LabelError;
 
-    fn try_from(value: [(T, K); N]) -> Result<Self, Self::Error> {
+    fn try_from(value: [(K, V); N]) -> Result<Self, Self::Error> {
         let kvps = KeyValuePairs::try_from(value)?;
         Ok(Self(kvps))
     }
