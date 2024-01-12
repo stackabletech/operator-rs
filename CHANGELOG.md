@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.61.0] - 2024-01-12
+
 ### Added
 
 - Add `TryFrom<[(K, V); N]>` implementation for `Annotations` and `Labels` ([#711]).
