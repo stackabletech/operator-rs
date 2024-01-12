@@ -189,7 +189,7 @@ impl Labels {
     }
 
     /// Tries to insert a new label by first parsing `label` as a [`Label`]
-    /// and then inserting it into the list. This function will overide any
+    /// and then inserting it into the list. This function will overwrite any
     /// existing label already present.
     pub fn parse_insert(
         &mut self,
@@ -199,7 +199,7 @@ impl Labels {
         Ok(())
     }
 
-    /// Inserts a new [`Label`]. This function will overide any existing label
+    /// Inserts a new [`Label`]. This function will overwrite any existing label
     /// already present.
     pub fn insert(&mut self, label: Label) -> &mut Self {
         self.0.insert(label.0);

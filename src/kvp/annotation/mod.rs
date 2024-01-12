@@ -189,7 +189,7 @@ impl Annotations {
 
     /// Tries to insert a new annotation by first parsing `annotation` as an
     /// [`Annotation`] and then inserting it into the list. This function will
-    /// overide any existing annotation already present.
+    /// overwrite any existing annotation already present.
     pub fn parse_insert(
         &mut self,
         annotation: impl TryInto<Annotation, Error = AnnotationError>,
@@ -198,7 +198,7 @@ impl Annotations {
         Ok(())
     }
 
-    /// Inserts a new [`Annotation`]. This function will overide any existing
+    /// Inserts a new [`Annotation`]. This function will overwrite any existing
     /// annotation already present.
     pub fn insert(&mut self, annotation: Annotation) -> &mut Self {
         self.0.insert(annotation.0);
@@ -213,7 +213,7 @@ impl Annotations {
         to self.0 {
             /// Tries to insert a new [`Annotation`]. It ensures there are no duplicate
             /// entries. Trying to insert duplicated data returns an error. If no such
-            /// check is required, use the `insert` function instead.
+            /// check is required, use [`Annotation::insert`] instead.
             pub fn try_insert(&mut self, #[newtype] annotation: Annotation) -> Result<(), AnnotationsError>;
 
             /// Extends `self` with `other`.

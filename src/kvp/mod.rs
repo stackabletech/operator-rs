@@ -236,8 +236,8 @@ where
 
     /// Inserts a new [`KeyValuePair`] into the list of pairs.
     ///
-    /// This function overides any existing key/value pair. To avoid overiding
-    /// existing pairs, either use [`KeyValuePairs::contains`] or
+    /// This function overwrites any existing key/value pair. To avoid
+    /// overwriting existing pairs, either use [`KeyValuePairs::contains`] or
     /// [`KeyValuePairs::contains_key`] before inserting or try to insert
     /// fallible via [`KeyValuePairs::try_insert`].
     pub fn insert(&mut self, kvp: KeyValuePair<V>) -> &mut Self {
