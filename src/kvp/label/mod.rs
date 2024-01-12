@@ -34,8 +34,7 @@ mod value;
 pub use selector::*;
 pub use value::*;
 
-/// A type alias for errors returned when construction of a label fails.
-pub type LabelsError = KeyValuePairsError<LabelValueError>;
+pub type LabelsError = KeyValuePairsError;
 
 /// A type alias for errors returned when construction or manipulation of a set
 /// of labels fails.
@@ -57,13 +56,14 @@ pub type LabelError = KeyValuePairError<LabelValueError>;
 #[derive(Clone, Debug)]
 pub struct Label(KeyValuePair<LabelValue>);
 
-impl<T> TryFrom<(T, T)> for Label
+impl<K, V> TryFrom<(K, V)> for Label
 where
-    T: AsRef<str>,
+    K: AsRef<str>,
+    V: AsRef<str>,
 {
     type Error = LabelError;
 
-    fn try_from(value: (T, T)) -> Result<Self, Self::Error> {
+    fn try_from(value: (K, V)) -> Result<Self, Self::Error> {
         let kvp = KeyValuePair::try_from(value)?;
         Ok(Self(kvp))
     }
@@ -151,6 +151,19 @@ impl TryFrom<BTreeMap<String, String>> for Labels {
     }
 }
 
+impl<const N: usize, K, V> TryFrom<[(K, V); N]> for Labels
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+{
+    type Error = LabelError;
+
+    fn try_from(value: [(K, V); N]) -> Result<Self, Self::Error> {
+        let kvps = KeyValuePairs::try_from(value)?;
+        Ok(Self(kvps))
+    }
+}
+
 impl FromIterator<KeyValuePair<LabelValue>> for Labels {
     fn from_iter<T: IntoIterator<Item = KeyValuePair<LabelValue>>>(iter: T) -> Self {
         let kvps = KeyValuePairs::from_iter(iter);
@@ -175,17 +188,19 @@ impl Labels {
         Self(KeyValuePairs::new_with(pairs))
     }
 
-    /// Tries to insert a new [`Label`]. It ensures there are no duplicate
-    /// entries. Trying to insert duplicated data returns an error. If no such
-    /// check is required, use the `insert` function instead.
-    pub fn try_insert(&mut self, label: Label) -> Result<&mut Self, LabelsError> {
-        self.0.try_insert(label.0)?;
-        Ok(self)
+    /// Tries to insert a new label by first parsing `label` as a [`Label`]
+    /// and then inserting it into the list. This function will overwrite any
+    /// existing label already present.
+    pub fn parse_insert(
+        &mut self,
+        label: impl TryInto<Label, Error = LabelError>,
+    ) -> Result<(), LabelError> {
+        self.0.insert(label.try_into()?.0);
+        Ok(())
     }
 
-    /// Inserts a new [`Label`]. This function will overide any existing label
-    /// already present. If this behaviour is not desired, use the `try_insert`
-    /// function instead.
+    /// Inserts a new [`Label`]. This function will overwrite any existing label
+    /// already present.
     pub fn insert(&mut self, label: Label) -> &mut Self {
         self.0.insert(label.0);
         self
@@ -285,6 +300,11 @@ impl Labels {
     // need to write boilerplate code.
     delegate! {
         to self.0 {
+            /// Tries to insert a new [`Label`]. It ensures there are no duplicate
+            /// entries. Trying to insert duplicated data returns an error. If no such
+            /// check is required, use [`Labels::insert`] instead.
+            pub fn try_insert(&mut self, #[newtype] label: Label) -> Result<(), LabelsError>;
+
             /// Extends `self` with `other`.
             pub fn extend(&mut self, #[newtype] other: Self);
 
@@ -302,5 +322,25 @@ impl Labels {
             /// Failure to parse/validate the [`Key`] will return `false`.
             pub fn contains_key(&self, key: impl TryInto<Key>) -> bool;
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse_insert() {
+        let mut labels = Labels::new();
+
+        labels
+            .parse_insert(("stackable.tech/managed-by", "stackablectl"))
+            .unwrap();
+
+        labels
+            .parse_insert(("stackable.tech/vendor", "Stackable"))
+            .unwrap();
+
+        assert_eq!(labels.len(), 2);
     }
 }

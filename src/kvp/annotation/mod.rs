@@ -26,8 +26,7 @@ mod value;
 
 pub use value::*;
 
-/// A type alias for errors returned when construction of an annotation fails.
-pub type AnnotationsError = KeyValuePairsError<Infallible>;
+pub type AnnotationsError = KeyValuePairsError;
 
 /// A type alias for errors returned when construction or manipulation of a set
 /// of annotations fails.
@@ -45,13 +44,14 @@ pub type AnnotationError = KeyValuePairError<Infallible>;
 #[derive(Debug)]
 pub struct Annotation(KeyValuePair<AnnotationValue>);
 
-impl<T> TryFrom<(T, T)> for Annotation
+impl<K, V> TryFrom<(K, V)> for Annotation
 where
-    T: AsRef<str>,
+    K: AsRef<str>,
+    V: AsRef<str>,
 {
     type Error = AnnotationError;
 
-    fn try_from(value: (T, T)) -> Result<Self, Self::Error> {
+    fn try_from(value: (K, V)) -> Result<Self, Self::Error> {
         let kvp = KeyValuePair::try_from(value)?;
         Ok(Self(kvp))
     }
@@ -150,6 +150,19 @@ impl TryFrom<BTreeMap<String, String>> for Annotations {
     }
 }
 
+impl<const N: usize, K, V> TryFrom<[(K, V); N]> for Annotations
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+{
+    type Error = AnnotationError;
+
+    fn try_from(value: [(K, V); N]) -> Result<Self, Self::Error> {
+        let kvps = KeyValuePairs::try_from(value)?;
+        Ok(Self(kvps))
+    }
+}
+
 impl FromIterator<KeyValuePair<AnnotationValue>> for Annotations {
     fn from_iter<T: IntoIterator<Item = KeyValuePair<AnnotationValue>>>(iter: T) -> Self {
         let kvps = KeyValuePairs::from_iter(iter);
@@ -174,17 +187,19 @@ impl Annotations {
         Self(KeyValuePairs::new_with(pairs))
     }
 
-    /// Tries to insert a new [`Annotation`]. It ensures there are no duplicate
-    /// entries. Trying to insert duplicated data returns an error. If no such
-    /// check is required, use the `insert` function instead.
-    pub fn try_insert(&mut self, annotation: Annotation) -> Result<&mut Self, AnnotationsError> {
-        self.0.try_insert(annotation.0)?;
-        Ok(self)
+    /// Tries to insert a new annotation by first parsing `annotation` as an
+    /// [`Annotation`] and then inserting it into the list. This function will
+    /// overwrite any existing annotation already present.
+    pub fn parse_insert(
+        &mut self,
+        annotation: impl TryInto<Annotation, Error = AnnotationError>,
+    ) -> Result<(), AnnotationError> {
+        self.0.insert(annotation.try_into()?.0);
+        Ok(())
     }
 
-    /// Inserts a new [`Annotation`]. This function will overide any existing
-    /// annotation already present. If this behaviour is not desired, use the
-    /// `try_insert` function instead.
+    /// Inserts a new [`Annotation`]. This function will overwrite any existing
+    /// annotation already present.
     pub fn insert(&mut self, annotation: Annotation) -> &mut Self {
         self.0.insert(annotation.0);
         self
@@ -196,6 +211,11 @@ impl Annotations {
     // the need to write boilerplate code.
     delegate! {
         to self.0 {
+            /// Tries to insert a new [`Annotation`]. It ensures there are no duplicate
+            /// entries. Trying to insert duplicated data returns an error. If no such
+            /// check is required, use [`Annotations::insert`] instead.
+            pub fn try_insert(&mut self, #[newtype] annotation: Annotation) -> Result<(), AnnotationsError>;
+
             /// Extends `self` with `other`.
             pub fn extend(&mut self, #[newtype] other: Self);
 
@@ -215,5 +235,25 @@ impl Annotations {
             /// return `false`.
             pub fn contains_key(&self, key: impl TryInto<Key>) -> bool;
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse_insert() {
+        let mut annotations = Annotations::new();
+
+        annotations
+            .parse_insert(("stackable.tech/managed-by", "stackablectl"))
+            .unwrap();
+
+        annotations
+            .parse_insert(("stackable.tech/vendor", "Stäckable"))
+            .unwrap();
+
+        assert_eq!(annotations.len(), 2);
     }
 }
