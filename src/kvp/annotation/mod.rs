@@ -141,10 +141,27 @@ impl Annotation {
 #[derive(Clone, Debug, Default)]
 pub struct Annotations(KeyValuePairs<AnnotationValue>);
 
-impl TryFrom<BTreeMap<String, String>> for Annotations {
+impl<K, V> TryFrom<BTreeMap<K, V>> for Annotations
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+{
     type Error = AnnotationError;
 
-    fn try_from(value: BTreeMap<String, String>) -> Result<Self, Self::Error> {
+    fn try_from(value: BTreeMap<K, V>) -> Result<Self, Self::Error> {
+        let kvps = KeyValuePairs::try_from(value)?;
+        Ok(Self(kvps))
+    }
+}
+
+impl<K, V> TryFrom<&BTreeMap<K, V>> for Annotations
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+{
+    type Error = AnnotationError;
+
+    fn try_from(value: &BTreeMap<K, V>) -> Result<Self, Self::Error> {
         let kvps = KeyValuePairs::try_from(value)?;
         Ok(Self(kvps))
     }
