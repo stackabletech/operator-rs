@@ -142,11 +142,28 @@ impl Label {
 #[derive(Clone, Debug, Default)]
 pub struct Labels(KeyValuePairs<LabelValue>);
 
-impl TryFrom<BTreeMap<String, String>> for Labels {
+impl<K, V> TryFrom<BTreeMap<K, V>> for Labels
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+{
     type Error = LabelError;
 
-    fn try_from(value: BTreeMap<String, String>) -> Result<Self, Self::Error> {
-        let kvps = KeyValuePairs::try_from(value)?;
+    fn try_from(map: BTreeMap<K, V>) -> Result<Self, Self::Error> {
+        let kvps = KeyValuePairs::try_from(map)?;
+        Ok(Self(kvps))
+    }
+}
+
+impl<K, V> TryFrom<&BTreeMap<K, V>> for Labels
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+{
+    type Error = LabelError;
+
+    fn try_from(map: &BTreeMap<K, V>) -> Result<Self, Self::Error> {
+        let kvps = KeyValuePairs::try_from(map)?;
         Ok(Self(kvps))
     }
 }

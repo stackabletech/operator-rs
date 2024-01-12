@@ -145,18 +145,75 @@ pub enum KeyValuePairsError {
 }
 
 /// A validated set/list of Kubernetes key/value pairs.
+///
+/// It implements various traits which allows conversion from and to different
+/// data types. Traits to construct [`KeyValuePairs`] from other data types are:
+///
+/// - `TryFrom<&BTreeMap<String, String>>`
+/// - `TryFrom<BTreeMap<String, String>>`
+/// - `FromIterator<KeyValuePair<T>>`
+/// - `TryFrom<[(K, V); N]>`
+///
+/// Traits to convert [`KeyValuePairs`] into a different data type are:
+///
+/// - `From<KeyValuePairs<T>> for BTreeMap<String, String>`
+///
+/// ## Examples
+///
+/// ### Converting a BTreeMap into a list of labels
+///
+/// ```
+/// # use std::collections::BTreeMap;
+/// # use stackable_operator::kvp::Labels;
+/// let map = BTreeMap::from([
+///     ("stackable.tech/managed-by", "stackablectl"),
+///     ("stackable.tech/vendor", "Stackable"),
+/// ]);
+///
+/// let labels = Labels::try_from(map).unwrap();
+/// ```
+///
+/// ### Creating a list of labels from an array
+///
+/// ```
+/// # use stackable_operator::kvp::Labels;
+/// let labels = Labels::try_from([
+///     ("stackable.tech/managed-by", "stackablectl"),
+///     ("stackable.tech/vendor", "Stackable"),
+/// ]).unwrap();
+/// ```
 #[derive(Clone, Debug, Default)]
 pub struct KeyValuePairs<T: Value>(BTreeSet<KeyValuePair<T>>);
 
-impl<T> TryFrom<BTreeMap<String, String>> for KeyValuePairs<T>
+impl<K, V, T> TryFrom<BTreeMap<K, V>> for KeyValuePairs<T>
 where
+    K: AsRef<str>,
+    V: AsRef<str>,
     T: Value,
 {
     type Error = KeyValuePairError<T::Error>;
 
-    fn try_from(map: BTreeMap<String, String>) -> Result<Self, Self::Error> {
+    fn try_from(map: BTreeMap<K, V>) -> Result<Self, Self::Error> {
         let pairs = map
-            .into_iter()
+            .iter()
+            .map(KeyValuePair::try_from)
+            .collect::<Result<BTreeSet<_>, KeyValuePairError<T::Error>>>()?;
+
+        Ok(Self(pairs))
+    }
+}
+
+impl<K, V, T> TryFrom<&BTreeMap<K, V>> for KeyValuePairs<T>
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+    T: Value,
+{
+    type Error = KeyValuePairError<T::Error>;
+
+    fn try_from(map: &BTreeMap<K, V>) -> Result<Self, Self::Error> {
+        let pairs = map
+            .iter()
             .map(KeyValuePair::try_from)
             .collect::<Result<BTreeSet<_>, KeyValuePairError<T::Error>>>()?;
 
@@ -357,11 +414,8 @@ mod test {
     #[test]
     fn labels_try_from_map() {
         let map = BTreeMap::from([
-            ("stackable.tech/vendor".to_string(), "Stackable".to_string()),
-            (
-                "stackable.tech/managed-by".to_string(),
-                "stackablectl".to_string(),
-            ),
+            ("stackable.tech/managed-by", "stackablectl"),
+            ("stackable.tech/vendor", "Stackable"),
         ]);
 
         let labels = Labels::try_from(map).unwrap();
@@ -370,14 +424,13 @@ mod test {
 
     #[test]
     fn labels_into_map() {
-        let pairs = BTreeSet::from([
-            KeyValuePair::try_from(("stackable.tech/managed-by", "stackablectl")).unwrap(),
-            KeyValuePair::try_from(("stackable.tech/vendor", "Stackable")).unwrap(),
-        ]);
+        let labels = Labels::try_from([
+            ("stackable.tech/managed-by", "stackablectl"),
+            ("stackable.tech/vendor", "Stackable"),
+        ])
+        .unwrap();
 
-        let labels = Labels::new_with(pairs);
         let map: BTreeMap<String, String> = labels.into();
-
         assert_eq!(map.len(), 2);
     }
 
