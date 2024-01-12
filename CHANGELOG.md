@@ -10,8 +10,8 @@ All notable changes to this project will be documented in this file.
 - Add `parse_insert` associated function for `Annotations` and `Labels` ([#711]).
 - Add generic types for `TryFrom<BTreeMap<K, V>>` impl ([#714]).
 - Add `TryFromIterator` trait, which tries to construct `Self` from an iterator. It is a falliable version of
-  `FromIterator` ([]).
-- Add `TryFromIterator` impl for `Labels` and `Annotations` ([]).
+  `FromIterator` ([#715]).
+- Add `TryFromIterator` impl for `Labels` and `Annotations` ([#715]).
 
 ### Changed
 
@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 
 [#711]: https://github.com/stackabletech/operator-rs/pull/711
 [#714]: https://github.com/stackabletech/operator-rs/pull/714
+[#715]: https://github.com/stackabletech/operator-rs/pull/715
 
 ## [0.60.1] - 2024-01-04
 
