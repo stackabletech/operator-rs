@@ -9,6 +9,8 @@ use std::{
 
 use snafu::{ensure, ResultExt, Snafu};
 
+use crate::iter::TryFromIterator;
+
 mod annotation;
 pub mod consts;
 mod key;
@@ -158,30 +160,7 @@ pub enum KeyValuePairsError {
 ///
 /// - `From<KeyValuePairs<T>> for BTreeMap<String, String>`
 ///
-/// ## Examples
-///
-/// ### Converting a BTreeMap into a list of labels
-///
-/// ```
-/// # use std::collections::BTreeMap;
-/// # use stackable_operator::kvp::Labels;
-/// let map = BTreeMap::from([
-///     ("stackable.tech/managed-by", "stackablectl"),
-///     ("stackable.tech/vendor", "Stackable"),
-/// ]);
-///
-/// let labels = Labels::try_from(map).unwrap();
-/// ```
-///
-/// ### Creating a list of labels from an array
-///
-/// ```
-/// # use stackable_operator::kvp::Labels;
-/// let labels = Labels::try_from([
-///     ("stackable.tech/managed-by", "stackablectl"),
-///     ("stackable.tech/vendor", "Stackable"),
-/// ]).unwrap();
-/// ```
+/// See [`Labels`] and [`Annotations`] on how these traits can be used.
 #[derive(Clone, Debug, Default)]
 pub struct KeyValuePairs<T: Value>(BTreeSet<KeyValuePair<T>>);
 
@@ -194,12 +173,7 @@ where
     type Error = KeyValuePairError<T::Error>;
 
     fn try_from(map: BTreeMap<K, V>) -> Result<Self, Self::Error> {
-        let pairs = map
-            .iter()
-            .map(KeyValuePair::try_from)
-            .collect::<Result<BTreeSet<_>, KeyValuePairError<T::Error>>>()?;
-
-        Ok(Self(pairs))
+        Self::try_from_iter(map)
     }
 }
 
@@ -212,12 +186,7 @@ where
     type Error = KeyValuePairError<T::Error>;
 
     fn try_from(map: &BTreeMap<K, V>) -> Result<Self, Self::Error> {
-        let pairs = map
-            .iter()
-            .map(KeyValuePair::try_from)
-            .collect::<Result<BTreeSet<_>, KeyValuePairError<T::Error>>>()?;
-
-        Ok(Self(pairs))
+        Self::try_from_iter(map)
     }
 }
 
@@ -230,13 +199,7 @@ where
     type Error = KeyValuePairError<T::Error>;
 
     fn try_from(array: [(K, V); N]) -> Result<Self, Self::Error> {
-        let mut pairs = KeyValuePairs::new();
-
-        for item in array {
-            pairs.insert(KeyValuePair::try_from(item)?);
-        }
-
-        Ok(pairs)
+        Self::try_from_iter(array)
     }
 }
 
@@ -246,6 +209,24 @@ where
 {
     fn from_iter<I: IntoIterator<Item = KeyValuePair<T>>>(iter: I) -> Self {
         Self(iter.into_iter().collect())
+    }
+}
+
+impl<K, V, T> TryFromIterator<(K, V)> for KeyValuePairs<T>
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+    T: Value,
+{
+    type Error = KeyValuePairError<T::Error>;
+
+    fn try_from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Result<Self, Self::Error> {
+        let pairs = iter
+            .into_iter()
+            .map(KeyValuePair::try_from)
+            .collect::<Result<BTreeSet<_>, KeyValuePairError<T::Error>>>()?;
+
+        Ok(Self(pairs))
     }
 }
 
@@ -440,5 +421,16 @@ mod test {
 
         assert!(labels.contains(("app.kubernetes.io/name", "test")));
         assert!(labels.contains_key("app.kubernetes.io/instance"))
+    }
+
+    #[test]
+    fn try_from_iter() {
+        let map = BTreeMap::from([
+            ("stackable.tech/managed-by", "stackablectl"),
+            ("stackable.tech/vendor", "Stackable"),
+        ]);
+
+        let labels = Labels::try_from_iter(map).unwrap();
+        assert_eq!(labels.len(), 2);
     }
 }
