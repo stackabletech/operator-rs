@@ -140,6 +140,31 @@ impl Label {
 ///
 /// It provides selected associated functions to manipulate the set of labels,
 /// like inserting or extending.
+///
+/// ## Examples
+///
+/// ### Converting a BTreeMap into a list of labels
+///
+/// ```
+/// # use std::collections::BTreeMap;
+/// # use stackable_operator::kvp::Labels;
+/// let map = BTreeMap::from([
+///     ("stackable.tech/managed-by", "stackablectl"),
+///     ("stackable.tech/vendor", "Stackable"),
+/// ]);
+///
+/// let labels = Labels::try_from(map).unwrap();
+/// ```
+///
+/// ### Creating a list of labels from an array
+///
+/// ```
+/// # use stackable_operator::kvp::Labels;
+/// let labels = Labels::try_from([
+///     ("stackable.tech/managed-by", "stackablectl"),
+///     ("stackable.tech/vendor", "Stackable"),
+/// ]).unwrap();
+/// ```
 #[derive(Clone, Debug, Default)]
 pub struct Labels(KeyValuePairs<LabelValue>);
 
@@ -151,8 +176,7 @@ where
     type Error = LabelError;
 
     fn try_from(map: BTreeMap<K, V>) -> Result<Self, Self::Error> {
-        let kvps = KeyValuePairs::try_from(map)?;
-        Ok(Self(kvps))
+        Self::try_from_iter(map)
     }
 }
 
@@ -164,8 +188,7 @@ where
     type Error = LabelError;
 
     fn try_from(map: &BTreeMap<K, V>) -> Result<Self, Self::Error> {
-        let kvps = KeyValuePairs::try_from(map)?;
-        Ok(Self(kvps))
+        Self::try_from_iter(map)
     }
 }
 
@@ -176,9 +199,8 @@ where
 {
     type Error = LabelError;
 
-    fn try_from(value: [(K, V); N]) -> Result<Self, Self::Error> {
-        let kvps = KeyValuePairs::try_from(value)?;
-        Ok(Self(kvps))
+    fn try_from(array: [(K, V); N]) -> Result<Self, Self::Error> {
+        Self::try_from_iter(array)
     }
 }
 
