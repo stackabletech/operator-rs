@@ -9,10 +9,7 @@
 //!
 //! See <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>
 //! for more information on Kubernetes labels.
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    fmt::Display,
-};
+use std::{collections::BTreeMap, fmt::Display};
 
 use delegate::delegate;
 use kube::{Resource, ResourceExt};
@@ -237,7 +234,7 @@ impl Labels {
     }
 
     /// Creates a new list of [`Labels`] from `pairs`.
-    pub fn new_with(pairs: BTreeSet<KeyValuePair<LabelValue>>) -> Self {
+    pub fn new_with(pairs: Vec<KeyValuePair<LabelValue>>) -> Self {
         Self(KeyValuePairs::new_with(pairs))
     }
 

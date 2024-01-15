@@ -1,11 +1,6 @@
 //! Utility functions and data structures the create and manage Kubernetes
 //! key/value pairs, like labels and annotations.
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    fmt::Display,
-    ops::Deref,
-    str::FromStr,
-};
+use std::{collections::BTreeMap, fmt::Display, ops::Deref, str::FromStr};
 
 use snafu::{ensure, ResultExt, Snafu};
 
@@ -162,7 +157,7 @@ pub enum KeyValuePairsError {
 ///
 /// See [`Labels`] and [`Annotations`] on how these traits can be used.
 #[derive(Clone, Debug, Default)]
-pub struct KeyValuePairs<T: Value>(BTreeSet<KeyValuePair<T>>);
+pub struct KeyValuePairs<T: Value>(Vec<KeyValuePair<T>>);
 
 impl<K, V, T> TryFrom<BTreeMap<K, V>> for KeyValuePairs<T>
 where
@@ -224,7 +219,7 @@ where
         let pairs = iter
             .into_iter()
             .map(KeyValuePair::try_from)
-            .collect::<Result<BTreeSet<_>, KeyValuePairError<T::Error>>>()?;
+            .collect::<Result<Vec<_>, KeyValuePairError<T::Error>>>()?;
 
         Ok(Self(pairs))
     }
@@ -246,7 +241,7 @@ impl<T> Deref for KeyValuePairs<T>
 where
     T: Value,
 {
-    type Target = BTreeSet<KeyValuePair<T>>;
+    type Target = Vec<KeyValuePair<T>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -263,7 +258,7 @@ where
     }
 
     /// Creates a new list of [`KeyValuePair`]s from `pairs`.
-    pub fn new_with(pairs: BTreeSet<KeyValuePair<T>>) -> Self {
+    pub fn new_with(pairs: Vec<KeyValuePair<T>>) -> Self {
         Self(pairs)
     }
 
@@ -279,7 +274,7 @@ where
     /// [`KeyValuePairs::contains_key`] before inserting or try to insert
     /// fallible via [`KeyValuePairs::try_insert`].
     pub fn insert(&mut self, kvp: KeyValuePair<T>) -> &mut Self {
-        self.0.insert(kvp);
+        self.0.push(kvp);
         self
     }
 
