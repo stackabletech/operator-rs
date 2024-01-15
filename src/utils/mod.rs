@@ -1,5 +1,6 @@
 pub mod bash;
 pub mod logging;
+mod option;
 mod url;
 
 #[deprecated(
@@ -12,7 +13,8 @@ pub use self::bash::COMMON_BASH_TRAP_FUNCTIONS;
     since = "0.61.1"
 )]
 pub use self::logging::print_startup_string;
-pub use self::url::UrlExt;
+
+pub use self::{option::OptionExt, url::UrlExt};
 
 /// Returns the fully qualified controller name, which should be used when a single controller needs to be referred to uniquely.
 ///
