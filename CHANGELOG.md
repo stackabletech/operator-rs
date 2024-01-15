@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added `Option::as_ref_or_else` to `utils` ([#717]).
+
+### Changed
+
+- Split `utils` into submodules ([#717]).
+
+[#717]: https://github.com/stackabletech/operator-rs/pull/717
+
 ## [0.61.0] - 2024-01-15
 
 ### Added
