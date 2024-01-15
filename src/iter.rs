@@ -45,6 +45,12 @@ where
     }
 }
 
+/// This is a fallible version of the std [`FromIterator`] trait.
+///
+/// The standard [`FromIterator`] trait specifies it must never fail. This trait
+/// makes it easier to work with iterators, which can fail during the creation
+/// `Self`. It will immediately return an error if processing failed and will
+/// not continue to process items.
 pub trait TryFromIterator<T>: Sized {
     type Error: std::error::Error;
 
