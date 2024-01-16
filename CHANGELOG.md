@@ -7,12 +7,17 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Added `Option::as_ref_or_else` to `utils` ([#717]).
+- Add `iter()` and `into_iter()` methods to `KeyValuePairs<T>` ([#720]).
+- Delegate `iter()` and `into_iter()` for `Labels` and `Annotations` ([#720]).
 
 ### Changed
 
 - Split `utils` into submodules ([#717]).
+- Bump rust to 1.75.0 ([#720]).
+- Replace `BTreeSet` with `Vec` for underlying `KeyValuePairs` collection ([#720]).
 
 [#717]: https://github.com/stackabletech/operator-rs/pull/717
+[#720]: https://github.com/stackabletech/operator-rs/pull/720
 
 ## [0.61.0] - 2024-01-15
 
