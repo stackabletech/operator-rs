@@ -7,8 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Added `Option::as_ref_or_else` to `utils` ([#717]).
-- Add `iter()` and `into_iter()` methods to `KeyValuePairs<T>` ([#720]).
-- Delegate `iter()` and `into_iter()` for `Labels` and `Annotations` ([#720]).
+- Add `iter()` methods to `KeyValuePairs<T>`, and delegate iter() for `Labels`, and `Annotations` ([#720]).
+- Implement `IntoIterator` for `KeyValuePairs<T>`, `Labels` and `Annotations` ([#720]).
 
 ### Changed
 
