@@ -256,17 +256,6 @@ impl Labels {
         self
     }
 
-    /// Returns an [`Iterator`] over [`Labels`] yielding a reference to every [`Label`] contained within.
-    pub fn iter(&self) -> impl Iterator<Item = &KeyValuePair<LabelValue>> {
-        self.0.iter()
-    }
-
-    /// Returns a consuming [`Iterator`] over [`Labels`] moving every [`Label`] out.
-    /// The [`Labels`] cannot be used again after calling this.
-    pub fn into_iter(self) -> impl Iterator<Item = KeyValuePair<LabelValue>> {
-        self.0.into_iter()
-    }
-
     /// Returns the recommended set of labels. The set includes these well-known
     /// labels:
     ///
@@ -382,6 +371,13 @@ impl Labels {
             /// Returns if the set of labels contains a label with the provided `key`.
             /// Failure to parse/validate the [`Key`] will return `false`.
             pub fn contains_key(&self, key: impl TryInto<Key>) -> bool;
+
+            /// Returns an [`Iterator`] over [`Labels`] yielding a reference to every [`Label`] contained within.
+            pub fn iter(&self) -> impl Iterator<Item = &KeyValuePair<LabelValue>>;
+
+            /// Returns a consuming [`Iterator`] over [`Labels`] moving every [`Label`] out.
+            /// The [`Labels`] cannot be used again after calling this.
+            pub fn into_iter(self) -> impl Iterator<Item = KeyValuePair<LabelValue>>;
         }
     }
 }

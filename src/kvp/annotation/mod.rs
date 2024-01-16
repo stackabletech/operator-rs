@@ -254,17 +254,6 @@ impl Annotations {
         self
     }
 
-    /// Returns an [`Iterator`] over [`Annotations`] yielding a reference to every [`Annotation`] contained within.
-    pub fn iter(&self) -> impl Iterator<Item = &KeyValuePair<AnnotationValue>> {
-        self.0.iter()
-    }
-
-    /// Returns a consuming [`Iterator`] over [`Annotations`] moving every [`Annotation`] out.
-    /// The [`Annotations`] cannot be used again after calling this.
-    pub fn into_iter(self) -> impl Iterator<Item = KeyValuePair<AnnotationValue>> {
-        self.0.into_iter()
-    }
-
     // This forwards / delegates associated functions to the inner field. In
     // this case self.0 which is of type KeyValuePairs<T>. So calling
     // Annotations::len() will be delegated to KeyValuePair<T>::len() without
@@ -294,6 +283,13 @@ impl Annotations {
             /// provided `key`. Failure to parse/validate the [`Key`] will
             /// return `false`.
             pub fn contains_key(&self, key: impl TryInto<Key>) -> bool;
+
+            /// Returns an [`Iterator`] over [`Annotations`] yielding a reference to every [`Annotation`] contained within.
+            pub fn iter(&self) -> impl Iterator<Item = &KeyValuePair<AnnotationValue>>;
+
+            /// Returns a consuming [`Iterator`] over [`Annotations`] moving every [`Annotation`] out.
+            /// The [`Annotations`] cannot be used again after calling this.
+            pub fn into_iter(self) -> impl Iterator<Item = KeyValuePair<AnnotationValue>>;
         }
     }
 }
