@@ -324,6 +324,15 @@ impl Display for KeyName {
     }
 }
 
+impl<T> PartialEq<T> for KeyName
+where
+    T: AsRef<str>,
+{
+    fn eq(&self, other: &T) -> bool {
+        self.as_str() == other.as_ref()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
