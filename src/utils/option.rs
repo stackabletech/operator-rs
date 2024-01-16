@@ -1,5 +1,8 @@
 use std::{borrow::Cow, ops::Deref};
 
+#[cfg(doc)]
+use std::path::PathBuf;
+
 /// Extension methods for [`Option`].
 pub trait OptionExt<T> {
     /// Returns a reference to the value if [`Some`], otherwise evaluates `default()`.
