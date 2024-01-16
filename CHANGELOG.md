@@ -7,12 +7,15 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Added `Option::as_ref_or_else` to `utils` ([#717]).
+- Added `ListenerOperatorVolumeSourceBuilder::build_pvc` ([#719]).
 
 ### Changed
 
 - Split `utils` into submodules ([#717]).
+- Renamed `ListenerOperatorVolumeSourceBuilder::build` to `::build_ephemeral` ([#719]).
 
 [#717]: https://github.com/stackabletech/operator-rs/pull/717
+[#719]: https://github.com/stackabletech/operator-rs/pull/719
 
 ## [0.61.0] - 2024-01-15
 
