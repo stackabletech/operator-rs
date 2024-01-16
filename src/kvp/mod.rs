@@ -310,6 +310,17 @@ where
 
         false
     }
+
+    /// Returns an [`Iterator`] over [`KeyValuePairs`] yielding a reference to every [`KeyValuePair`] contained within.
+    pub fn iter(&self) -> impl Iterator<Item = &KeyValuePair<T>> {
+        self.0.iter()
+    }
+
+    /// Returns a consuming [`Iterator`] over [`KeyValuePairs`] moving every [`KeyValuePair`] out.
+    /// The [`KeyValuePairs`] cannot be used again after calling this.
+    pub fn into_iter(self) -> impl Iterator<Item = KeyValuePair<T>> {
+        self.0.into_iter()
+    }
 }
 
 /// A recommended set of labels to set on objects created by Stackable
