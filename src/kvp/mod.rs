@@ -290,13 +290,17 @@ where
 
     /// Returns if the list contains a specific [`KeyValuePair`].
     pub fn contains(&self, kvp: impl TryInto<KeyValuePair<T>>) -> bool {
-        let Ok(kvp) = kvp.try_into() else {return false};
+        let Ok(kvp) = kvp.try_into() else {
+            return false;
+        };
         self.0.contains(&kvp)
     }
 
     /// Returns if the list contains a key/value pair with a specific [`Key`].
     pub fn contains_key(&self, key: impl TryInto<Key>) -> bool {
-        let Ok(key) = key.try_into() else {return false};
+        let Ok(key) = key.try_into() else {
+            return false;
+        };
 
         for kvp in &self.0 {
             if kvp.key == key {
