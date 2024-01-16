@@ -315,10 +315,18 @@ where
     pub fn iter(&self) -> impl Iterator<Item = &KeyValuePair<T>> {
         self.0.iter()
     }
+}
+
+impl<T> IntoIterator for KeyValuePairs<T>
+where
+    T: Value,
+{
+    type Item = KeyValuePair<T>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
 
     /// Returns a consuming [`Iterator`] over [`KeyValuePairs`] moving every [`KeyValuePair`] out.
     /// The [`KeyValuePairs`] cannot be used again after calling this.
-    pub fn into_iter(self) -> impl Iterator<Item = KeyValuePair<T>> {
+    fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
 }

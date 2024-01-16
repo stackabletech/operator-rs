@@ -287,10 +287,18 @@ impl Annotations {
             /// Returns an [`Iterator`] over [`Annotations`] yielding a reference to every [`Annotation`] contained within.
             pub fn iter(&self) -> impl Iterator<Item = &KeyValuePair<AnnotationValue>>;
 
-            /// Returns a consuming [`Iterator`] over [`Annotations`] moving every [`Annotation`] out.
-            /// The [`Annotations`] cannot be used again after calling this.
-            pub fn into_iter(self) -> impl Iterator<Item = KeyValuePair<AnnotationValue>>;
         }
+    }
+}
+
+impl IntoIterator for Annotations {
+    type Item = KeyValuePair<AnnotationValue>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    /// Returns a consuming [`Iterator`] over [`Annotations`] moving every [`Annotation`] out.
+    /// The [`Annotations`] cannot be used again after calling this.
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 

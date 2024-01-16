@@ -375,10 +375,18 @@ impl Labels {
             /// Returns an [`Iterator`] over [`Labels`] yielding a reference to every [`Label`] contained within.
             pub fn iter(&self) -> impl Iterator<Item = &KeyValuePair<LabelValue>>;
 
-            /// Returns a consuming [`Iterator`] over [`Labels`] moving every [`Label`] out.
-            /// The [`Labels`] cannot be used again after calling this.
-            pub fn into_iter(self) -> impl Iterator<Item = KeyValuePair<LabelValue>>;
         }
+    }
+}
+
+impl IntoIterator for Labels {
+    type Item = KeyValuePair<LabelValue>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    /// Returns a consuming [`Iterator`] over [`Labels`] moving every [`Label`] out.
+    /// The [`Labels`] cannot be used again after calling this.
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 
