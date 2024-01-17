@@ -14,7 +14,6 @@ All notable changes to this project will be documented in this file.
 
 - Split `utils` into submodules ([#717]).
 - Bump rust to 1.75.0 ([#720]).
-- Replace `BTreeSet` with `Vec` for underlying `KeyValuePairs` collection ([#720]).
 
 [#717]: https://github.com/stackabletech/operator-rs/pull/717
 [#720]: https://github.com/stackabletech/operator-rs/pull/720
