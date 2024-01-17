@@ -9,7 +9,11 @@
 //!
 //! See <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
 //! for more information on Kubernetes annotations.
-use std::{collections::BTreeMap, convert::Infallible, fmt::Display};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    convert::Infallible,
+    fmt::Display,
+};
 
 use delegate::delegate;
 
@@ -232,7 +236,7 @@ impl Annotations {
     }
 
     /// Creates a new list of [`Annotations`] from `pairs`.
-    pub fn new_with(pairs: Vec<KeyValuePair<AnnotationValue>>) -> Self {
+    pub fn new_with(pairs: BTreeSet<KeyValuePair<AnnotationValue>>) -> Self {
         Self(KeyValuePairs::new_with(pairs))
     }
 
