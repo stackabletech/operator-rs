@@ -384,7 +384,7 @@ impl Labels {
 
 impl IntoIterator for Labels {
     type Item = KeyValuePair<LabelValue>;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
+    type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
 
     /// Returns a consuming [`Iterator`] over [`Labels`] moving every [`Label`] out.
     /// The [`Labels`] cannot be used again after calling this.

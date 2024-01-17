@@ -333,7 +333,7 @@ where
     T: Value,
 {
     type Item = KeyValuePair<T>;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
+    type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
 
     /// Returns a consuming [`Iterator`] over [`KeyValuePairs`] moving every [`KeyValuePair`] out.
     /// The [`KeyValuePairs`] cannot be used again after calling this.

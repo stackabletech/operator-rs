@@ -297,7 +297,7 @@ impl Annotations {
 
 impl IntoIterator for Annotations {
     type Item = KeyValuePair<AnnotationValue>;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
+    type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
 
     /// Returns a consuming [`Iterator`] over [`Annotations`] moving every [`Annotation`] out.
     /// The [`Annotations`] cannot be used again after calling this.
