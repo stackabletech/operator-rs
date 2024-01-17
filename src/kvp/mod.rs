@@ -161,6 +161,12 @@ pub enum KeyValuePairsError {
 /// - `From<KeyValuePairs<T>> for BTreeMap<String, String>`
 ///
 /// See [`Labels`] and [`Annotations`] on how these traits can be used.
+///
+/// # Note
+///
+/// A [`BTreeSet`] is used as the inner collection to preserve order of items
+/// which ultimately prevent unncessary reconciliations due to changes
+/// in item order.
 #[derive(Clone, Debug, Default)]
 pub struct KeyValuePairs<T: Value>(BTreeSet<KeyValuePair<T>>);
 
