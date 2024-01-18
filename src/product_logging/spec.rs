@@ -1,7 +1,6 @@
 //! Logging structure used within Custom Resource Definitions
 
-use std::collections::BTreeMap;
-use std::fmt::Display;
+use std::{borrow::Cow, collections::BTreeMap, fmt::Display};
 
 use crate::config::{
     fragment::{self, Fragment, FromFragment},
@@ -79,6 +78,19 @@ where
     /// Log configuration per container.
     #[fragment_attrs(serde(default))]
     pub containers: BTreeMap<T, ContainerLogConfig>,
+}
+
+impl<T> Logging<T>
+where
+    T: Clone + Display + Ord,
+{
+    /// Get the logging configuration for `container`, falling back to the default.
+    pub fn for_container(&self, container: &T) -> Cow<ContainerLogConfig> {
+        self.containers
+            .get(container)
+            .map(Cow::Borrowed)
+            .unwrap_or_default()
+    }
 }
 
 /// Log configuration of the container
