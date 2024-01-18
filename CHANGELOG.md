@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Added `Option::as_ref_or_else` to `utils` ([#717]).
 - Added `ListenerOperatorVolumeSourceBuilder::build_pvc` ([#719]).
+- Added `Logging::for_container` ([#721]).
 
 ### Changed
 
@@ -16,6 +17,7 @@ All notable changes to this project will be documented in this file.
 
 [#717]: https://github.com/stackabletech/operator-rs/pull/717
 [#719]: https://github.com/stackabletech/operator-rs/pull/719
+[#721]: https://github.com/stackabletech/operator-rs/pull/721
 
 ## [0.61.0] - 2024-01-15
 
