@@ -364,6 +364,14 @@ mod test {
         assert!(example_prefix == EXAMPLE_PREFIX_STR);
     }
 
+    #[test]
+    fn name_equality() {
+        const EXAMPLE_NAME_STR: &str = "managed-by";
+
+        let example_name = KeyName::from_str(EXAMPLE_NAME_STR).expect("valid test name");
+        assert!(example_name == EXAMPLE_NAME_STR);
+    }
+
     #[rstest]
     #[case("foo/bar/baz", KeyError::NestedPrefix)]
     #[case("", KeyError::EmptyInput)]
