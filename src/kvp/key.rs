@@ -358,7 +358,7 @@ mod test {
 
     #[test]
     fn prefix_equality() {
-        const EXAMPLE_PREFIX_STR: &str = "example.prefix";
+        const EXAMPLE_PREFIX_STR: &str = "stackable.tech";
 
         let example_prefix = KeyPrefix::from_str(EXAMPLE_PREFIX_STR).expect("valid test prefix");
         assert!(example_prefix == EXAMPLE_PREFIX_STR);
