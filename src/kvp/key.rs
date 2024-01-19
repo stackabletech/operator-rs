@@ -242,6 +242,15 @@ impl Display for KeyPrefix {
     }
 }
 
+impl<T> PartialEq<T> for KeyPrefix
+where
+    T: AsRef<str>,
+{
+    fn eq(&self, other: &T) -> bool {
+        self.as_str() == other.as_ref()
+    }
+}
+
 /// The error type for key name parsing/validation operations.
 #[derive(Debug, PartialEq, Snafu)]
 pub enum KeyNameError {
@@ -315,6 +324,15 @@ impl Display for KeyName {
     }
 }
 
+impl<T> PartialEq<T> for KeyName
+where
+    T: AsRef<str>,
+{
+    fn eq(&self, other: &T) -> bool {
+        self.as_str() == other.as_ref()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -336,6 +354,22 @@ mod test {
         assert_eq!(key.prefix, None);
         assert_eq!(key.name, KeyName("vendor".into()));
         assert_eq!(key.to_string(), "vendor");
+    }
+
+    #[test]
+    fn prefix_equality() {
+        const EXAMPLE_PREFIX_STR: &str = "stackable.tech";
+
+        let example_prefix = KeyPrefix::from_str(EXAMPLE_PREFIX_STR).expect("valid test prefix");
+        assert!(example_prefix == EXAMPLE_PREFIX_STR);
+    }
+
+    #[test]
+    fn name_equality() {
+        const EXAMPLE_NAME_STR: &str = "managed-by";
+
+        let example_name = KeyName::from_str(EXAMPLE_NAME_STR).expect("valid test name");
+        assert!(example_name == EXAMPLE_NAME_STR);
     }
 
     #[rstest]

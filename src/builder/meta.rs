@@ -343,7 +343,7 @@ mod tests {
         assert_eq!(meta.name, Some("foo".to_string()));
         assert_eq!(meta.owner_references.as_ref().unwrap().len(), 1);
         assert!(
-            matches!(meta.owner_references.unwrap().get(0), Some(OwnerReference { uid, ..}) if uid == "uid")
+            matches!(meta.owner_references.unwrap().first(), Some(OwnerReference { uid, ..}) if uid == "uid")
         );
         assert_eq!(meta.annotations.as_ref().unwrap().len(), 1);
         assert_eq!(
