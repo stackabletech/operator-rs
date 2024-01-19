@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.62.0] - 2024-01-19
+
 ### Added
 
 - Added `Option::as_ref_or_else` to `utils` ([#717]).
