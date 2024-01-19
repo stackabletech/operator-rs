@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Add `iter()` methods to `KeyValuePairs<T>`, and delegate iter() for `Labels`, and `Annotations` ([#720]).
 - Implement `IntoIterator` for `KeyValuePairs<T>`, `Labels` and `Annotations` ([#720]).
 - Added `ListenerOperatorVolumeSourceBuilder::build_pvc` ([#719]).
+- Added `Logging::for_container` ([#721]).
 
 ### Changed
 
@@ -20,6 +21,7 @@ All notable changes to this project will be documented in this file.
 [#717]: https://github.com/stackabletech/operator-rs/pull/717
 [#720]: https://github.com/stackabletech/operator-rs/pull/720
 [#719]: https://github.com/stackabletech/operator-rs/pull/719
+[#721]: https://github.com/stackabletech/operator-rs/pull/721
 
 ## [0.61.0] - 2024-01-15
 
