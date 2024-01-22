@@ -374,7 +374,22 @@ impl Labels {
             /// Returns if the set of labels contains a label with the provided `key`.
             /// Failure to parse/validate the [`Key`] will return `false`.
             pub fn contains_key(&self, key: impl TryInto<Key>) -> bool;
+
+            /// Returns an [`Iterator`] over [`Labels`] yielding a reference to every [`Label`] contained within.
+            pub fn iter(&self) -> impl Iterator<Item = &KeyValuePair<LabelValue>>;
+
         }
+    }
+}
+
+impl IntoIterator for Labels {
+    type Item = KeyValuePair<LabelValue>;
+    type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
+
+    /// Returns a consuming [`Iterator`] over [`Labels`] moving every [`Label`] out.
+    /// The [`Labels`] cannot be used again after calling this.
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 

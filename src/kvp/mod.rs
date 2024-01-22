@@ -161,6 +161,12 @@ pub enum KeyValuePairsError {
 /// - `From<KeyValuePairs<T>> for BTreeMap<String, String>`
 ///
 /// See [`Labels`] and [`Annotations`] on how these traits can be used.
+///
+/// # Note
+///
+/// A [`BTreeSet`] is used as the inner collection to preserve order of items
+/// which ultimately prevent unncessary reconciliations due to changes
+/// in item order.
 #[derive(Clone, Debug, Default)]
 pub struct KeyValuePairs<T: Value>(BTreeSet<KeyValuePair<T>>);
 
@@ -295,13 +301,17 @@ where
 
     /// Returns if the list contains a specific [`KeyValuePair`].
     pub fn contains(&self, kvp: impl TryInto<KeyValuePair<T>>) -> bool {
-        let Ok(kvp) = kvp.try_into() else {return false};
+        let Ok(kvp) = kvp.try_into() else {
+            return false;
+        };
         self.0.contains(&kvp)
     }
 
     /// Returns if the list contains a key/value pair with a specific [`Key`].
     pub fn contains_key(&self, key: impl TryInto<Key>) -> bool {
-        let Ok(key) = key.try_into() else {return false};
+        let Ok(key) = key.try_into() else {
+            return false;
+        };
 
         for kvp in &self.0 {
             if kvp.key == key {
@@ -310,6 +320,25 @@ where
         }
 
         false
+    }
+
+    /// Returns an [`Iterator`] over [`KeyValuePairs`] yielding a reference to every [`KeyValuePair`] contained within.
+    pub fn iter(&self) -> impl Iterator<Item = &KeyValuePair<T>> {
+        self.0.iter()
+    }
+}
+
+impl<T> IntoIterator for KeyValuePairs<T>
+where
+    T: Value,
+{
+    type Item = KeyValuePair<T>;
+    type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
+
+    /// Returns a consuming [`Iterator`] over [`KeyValuePairs`] moving every [`KeyValuePair`] out.
+    /// The [`KeyValuePairs`] cannot be used again after calling this.
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 
