@@ -335,8 +335,11 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use rstest::rstest;
+
+    use crate::kvp::Label;
+
+    use super::*;
 
     #[test]
     fn key_with_prefix() {
@@ -398,5 +401,31 @@ mod test {
     fn invalid_key_name(#[case] input: String, #[case] error: KeyNameError) {
         let err = KeyName::from_str(&input).unwrap_err();
         assert_eq!(err, error);
+    }
+
+    #[rstest]
+    #[case("app.kubernetes.io/name", true)]
+    #[case("name", false)]
+    fn key_prefix_deref(#[case] key: &str, #[case] expected: bool) {
+        let label = Label::try_from((key, "zookeeper")).unwrap();
+
+        let is_valid = label
+            .key()
+            .prefix()
+            .is_some_and(|prefix| *prefix == "app.kubernetes.io");
+
+        assert_eq!(is_valid, expected)
+    }
+
+    #[rstest]
+    #[case("app.kubernetes.io/name", true)]
+    #[case("app.kubernetes.io/foo", false)]
+    #[case("name", true)]
+    #[case("foo", false)]
+    fn key_name_deref(#[case] key: &str, #[case] expected: bool) {
+        let label = Label::try_from((key, "zookeeper")).unwrap();
+        let is_valid = *label.key().name() == "name";
+
+        assert_eq!(is_valid, expected);
     }
 }
