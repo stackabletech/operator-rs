@@ -1,10 +1,12 @@
 use std::{
+    fmt::Display,
     iter::Sum,
     ops::{Add, AddAssign, Div, Mul, MulAssign},
     str::FromStr,
 };
 
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+use serde::{de::Visitor, Deserialize, Serialize};
 
 use crate::error::{Error, OperatorResult};
 
@@ -30,6 +32,50 @@ impl CpuQuantity {
 
     pub const fn as_milli_cpus(&self) -> usize {
         self.millis
+    }
+}
+
+impl Serialize for CpuQuantity {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for CpuQuantity {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct CpuQuantityVisitor;
+
+        impl<'de> Visitor<'de> for CpuQuantityVisitor {
+            type Value = CpuQuantity;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a valid CPU quantity")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                CpuQuantity::from_str(v).map_err(serde::de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_str(CpuQuantityVisitor)
+    }
+}
+
+impl Display for CpuQuantity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.millis < 1000 {
+            true => write!(f, "{}m", self.millis),
+            false => write!(f, "{}", self.as_cpu_count()),
+        }
     }
 }
 
@@ -184,5 +230,55 @@ mod test {
     fn test_from_str_err(#[case] s: &str) {
         let result = CpuQuantity::from_str(s);
         assert!(result.is_err());
+    }
+
+    #[rstest]
+    #[case(CpuQuantity::from_millis(10000), "10")]
+    #[case(CpuQuantity::from_millis(1500), "1.5")]
+    #[case(CpuQuantity::from_millis(999), "999m")]
+    #[case(CpuQuantity::from_millis(500), "500m")]
+    #[case(CpuQuantity::from_millis(100), "100m")]
+    #[case(CpuQuantity::from_millis(2000), "2")]
+    #[case(CpuQuantity::from_millis(1000), "1")]
+    fn test_display_to_string(#[case] cpu: CpuQuantity, #[case] expected: &str) {
+        assert_eq!(cpu.to_string(), expected)
+    }
+
+    #[rstest]
+    #[case(CpuQuantity::from_millis(10000), "cpu: '10'\n")]
+    #[case(CpuQuantity::from_millis(1500), "cpu: '1.5'\n")]
+    #[case(CpuQuantity::from_millis(999), "cpu: 999m\n")]
+    #[case(CpuQuantity::from_millis(500), "cpu: 500m\n")]
+    #[case(CpuQuantity::from_millis(100), "cpu: 100m\n")]
+    #[case(CpuQuantity::from_millis(2000), "cpu: '2'\n")]
+    #[case(CpuQuantity::from_millis(1000), "cpu: '1'\n")]
+    fn test_serialize(#[case] cpu: CpuQuantity, #[case] expected: &str) {
+        #[derive(Serialize)]
+        struct Cpu {
+            cpu: CpuQuantity,
+        }
+
+        let cpu = Cpu { cpu };
+        let output = serde_yaml::to_string(&cpu).unwrap();
+
+        assert_eq!(output, expected);
+    }
+
+    #[rstest]
+    #[case("cpu: '10'", CpuQuantity::from_millis(10000))]
+    #[case("cpu: '1.5'", CpuQuantity::from_millis(1500))]
+    #[case("cpu: 999m", CpuQuantity::from_millis(999))]
+    #[case("cpu: 500m", CpuQuantity::from_millis(500))]
+    #[case("cpu: 100m", CpuQuantity::from_millis(100))]
+    #[case("cpu: 2", CpuQuantity::from_millis(2000))]
+    #[case("cpu: 1", CpuQuantity::from_millis(1000))]
+    fn test_deserialize(#[case] input: &str, #[case] expected: CpuQuantity) {
+        #[derive(Deserialize)]
+        struct Cpu {
+            cpu: CpuQuantity,
+        }
+
+        let cpu: Cpu = serde_yaml::from_str(input).unwrap();
+        assert_eq!(cpu.cpu, expected);
     }
 }

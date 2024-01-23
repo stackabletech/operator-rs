@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add Serde `Deserialize` and `Serialize` support for `CpuQuantity` and `MemoryQuantity` ([#724]).
+
+[#724]: https://github.com/stackabletech/operator-rs/pull/724
+
 ### Changed
 
 - Change Deref target of `KeyPrefix` and `KeyName` from `String` to `str` ([#725]).
