@@ -229,7 +229,7 @@ impl FromStr for KeyPrefix {
 }
 
 impl Deref for KeyPrefix {
-    type Target = String;
+    type Target = str;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -247,7 +247,7 @@ where
     T: AsRef<str>,
 {
     fn eq(&self, other: &T) -> bool {
-        self.as_str() == other.as_ref()
+        self.deref() == other.as_ref()
     }
 }
 
@@ -311,7 +311,7 @@ impl FromStr for KeyName {
 }
 
 impl Deref for KeyName {
-    type Target = String;
+    type Target = str;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -329,7 +329,7 @@ where
     T: AsRef<str>,
 {
     fn eq(&self, other: &T) -> bool {
-        self.as_str() == other.as_ref()
+        self.deref() == other.as_ref()
     }
 }
 
