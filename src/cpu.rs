@@ -55,7 +55,7 @@ impl<'de> Deserialize<'de> for CpuQuantity {
             type Value = CpuQuantity;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("a valid CPU quantiry")
+                formatter.write_str("a valid CPU quantity")
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
