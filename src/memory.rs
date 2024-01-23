@@ -9,6 +9,7 @@
 //! For details on Kubernetes quantities see: <https://github.com/kubernetes/apimachinery/blob/master/pkg/api/resource/quantity.go>
 
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+use serde::{de::Visitor, Deserialize, Serialize};
 
 use crate::error::{Error, OperatorResult};
 use std::{
@@ -301,6 +302,66 @@ impl MemoryQuantity {
     }
 }
 
+impl Serialize for MemoryQuantity {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for MemoryQuantity {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct MemoryQuantityVisitor;
+
+        impl<'de> Visitor<'de> for MemoryQuantityVisitor {
+            type Value = MemoryQuantity;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a valid memory quantity")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                MemoryQuantity::from_str(v).map_err(serde::de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_str(MemoryQuantityVisitor)
+    }
+}
+
+impl FromStr for MemoryQuantity {
+    type Err = Error;
+
+    fn from_str(q: &str) -> OperatorResult<Self> {
+        let start_of_unit =
+            q.find(|c: char| c != '.' && !c.is_numeric())
+                .ok_or(Error::NoQuantityUnit {
+                    value: q.to_owned(),
+                })?;
+        let (value, unit) = q.split_at(start_of_unit);
+        Ok(MemoryQuantity {
+            value: value.parse::<f32>().map_err(|_| Error::InvalidQuantity {
+                value: q.to_owned(),
+            })?,
+            unit: unit.parse()?,
+        })
+    }
+}
+
+impl Display for MemoryQuantity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}{}", self.value, self.unit)
+    }
+}
+
 impl Mul<f32> for MemoryQuantity {
     type Output = MemoryQuantity;
 
@@ -395,31 +456,6 @@ impl PartialEq for MemoryQuantity {
 
 impl Eq for MemoryQuantity {}
 
-impl FromStr for MemoryQuantity {
-    type Err = Error;
-
-    fn from_str(q: &str) -> OperatorResult<Self> {
-        let start_of_unit =
-            q.find(|c: char| c != '.' && !c.is_numeric())
-                .ok_or(Error::NoQuantityUnit {
-                    value: q.to_owned(),
-                })?;
-        let (value, unit) = q.split_at(start_of_unit);
-        Ok(MemoryQuantity {
-            value: value.parse::<f32>().map_err(|_| Error::InvalidQuantity {
-                value: q.to_owned(),
-            })?,
-            unit: unit.parse()?,
-        })
-    }
-}
-
-impl Display for MemoryQuantity {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}", self.value, self.unit)
-    }
-}
-
 impl TryFrom<Quantity> for MemoryQuantity {
     type Error = Error;
 
@@ -474,7 +510,7 @@ mod test {
     #[case("1.2Gi")]
     #[case("1.6Gi")]
     #[case("1Gi")]
-    pub fn test_fmt(#[case] q: String) {
+    fn test_try_from_quantity(#[case] q: String) {
         let m = MemoryQuantity::try_from(Quantity(q.clone())).unwrap();
         let actual = format!("{m}");
         assert_eq!(q, actual);
@@ -486,7 +522,7 @@ mod test {
     #[case("2Mi", 0.8, "-Xmx1638k")]
     #[case("1.5Gi", 0.8, "-Xmx1229m")]
     #[case("2Gi", 0.8, "-Xmx1638m")]
-    pub fn test_to_java_heap(#[case] q: &str, #[case] factor: f32, #[case] heap: &str) {
+    fn test_to_java_heap(#[case] q: &str, #[case] factor: f32, #[case] heap: &str) {
         #[allow(deprecated)] // allow use of the deprecated 'to_java_heap' function to test it
         let actual = to_java_heap(&Quantity(q.to_owned()), factor).unwrap();
         assert_eq!(heap, actual);
@@ -498,7 +534,7 @@ mod test {
     #[case("1.2Gi", "1228m")]
     #[case("1.6Gi", "1638m")]
     #[case("1Gi", "1g")]
-    pub fn test_format_java(#[case] q: String, #[case] expected: String) {
+    fn test_format_java(#[case] q: String, #[case] expected: String) {
         let m = MemoryQuantity::try_from(Quantity(q)).unwrap();
         let actual = m.format_for_java().unwrap();
         assert_eq!(expected, actual);
@@ -513,7 +549,7 @@ mod test {
     #[case(2000f32, BinaryMultiple::Pebi, BinaryMultiple::Mebi, 2000f32*1024f32*1024f32*1024f32)]
     #[case(2000f32, BinaryMultiple::Pebi, BinaryMultiple::Kibi, 2000f32*1024f32*1024f32*1024f32*1024f32)]
     #[case(2000f32, BinaryMultiple::Exbi, BinaryMultiple::Pebi, 2000f32*1024f32)]
-    pub fn test_scale_to(
+    fn test_scale_to(
         #[case] value: f32,
         #[case] unit: BinaryMultiple,
         #[case] target_unit: BinaryMultiple,
@@ -537,7 +573,7 @@ mod test {
     #[case("2000Ki", 1.0, BinaryMultiple::Mebi, 1)]
     #[case("4000Mi", 1.0, BinaryMultiple::Gibi, 3)]
     #[case("4000Mi", 0.8, BinaryMultiple::Gibi, 3)]
-    pub fn test_to_java_heap_value(
+    fn test_to_java_heap_value(
         #[case] q: &str,
         #[case] factor: f32,
         #[case] target_unit: BinaryMultiple,
@@ -555,7 +591,7 @@ mod test {
     #[case("1000Mi", 1.0, BinaryMultiple::Gibi)]
     #[case("1023Mi", 1.0, BinaryMultiple::Gibi)]
     #[case("1024Mi", 0.8, BinaryMultiple::Gibi)]
-    pub fn test_to_java_heap_value_failure(
+    fn test_to_java_heap_value_failure(
         #[case] q: &str,
         #[case] factor: f32,
         #[case] target_unit: BinaryMultiple,
@@ -570,7 +606,7 @@ mod test {
     #[case("1Mi", "512Ki", "512Ki")]
     #[case("2Mi", "512Ki", "1536Ki")]
     #[case("2048Ki", "1Mi", "1024Ki")]
-    pub fn test_subtraction(#[case] lhs: &str, #[case] rhs: &str, #[case] res: &str) {
+    fn test_subtraction(#[case] lhs: &str, #[case] rhs: &str, #[case] res: &str) {
         let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
         let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
         let expected = MemoryQuantity::try_from(Quantity(res.to_owned())).unwrap();
@@ -587,7 +623,7 @@ mod test {
     #[case("1Mi", "512Ki", "1536Ki")]
     #[case("2Mi", "512Ki", "2560Ki")]
     #[case("2048Ki", "1Mi", "3072Ki")]
-    pub fn test_addition(#[case] lhs: &str, #[case] rhs: &str, #[case] res: &str) {
+    fn test_addition(#[case] lhs: &str, #[case] rhs: &str, #[case] res: &str) {
         let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
         let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
         let expected = MemoryQuantity::try_from(Quantity(res.to_owned())).unwrap();
@@ -608,7 +644,7 @@ mod test {
     #[case("100Ki", "101Ki", false)]
     #[case("1Mi", "100Ki", true)]
     #[case("2000Ki", "1Mi", true)]
-    pub fn test_comparison(#[case] lhs: &str, #[case] rhs: &str, #[case] res: bool) {
+    fn test_comparison(#[case] lhs: &str, #[case] rhs: &str, #[case] res: bool) {
         let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
         let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
         assert_eq!(lhs > rhs, res)
@@ -619,9 +655,41 @@ mod test {
     #[case("100Ki", "200Ki", false)]
     #[case("1Mi", "1024Ki", true)]
     #[case("1024Ki", "1Mi", true)]
-    pub fn test_eq(#[case] lhs: &str, #[case] rhs: &str, #[case] res: bool) {
+    fn test_eq(#[case] lhs: &str, #[case] rhs: &str, #[case] res: bool) {
         let lhs = MemoryQuantity::try_from(Quantity(lhs.to_owned())).unwrap();
         let rhs = MemoryQuantity::try_from(Quantity(rhs.to_owned())).unwrap();
         assert_eq!(lhs == rhs, res)
+    }
+
+    #[rstest]
+    #[case(MemoryQuantity::from_mebi(1536.0), "memory: 1536Mi\n")]
+    #[case(MemoryQuantity::from_mebi(100.0), "memory: 100Mi\n")]
+    #[case(MemoryQuantity::from_gibi(10.0), "memory: 10Gi\n")]
+    #[case(MemoryQuantity::from_gibi(1.0), "memory: 1Gi\n")]
+    fn test_serialize(#[case] memory: MemoryQuantity, #[case] expected: &str) {
+        #[derive(Serialize)]
+        struct Memory {
+            memory: MemoryQuantity,
+        }
+
+        let memory = Memory { memory };
+        let output = serde_yaml::to_string(&memory).unwrap();
+
+        assert_eq!(output, expected);
+    }
+
+    #[rstest]
+    #[case("memory: 1536Mi", MemoryQuantity::from_mebi(1536.0))]
+    #[case("memory: 100Mi", MemoryQuantity::from_mebi(100.0))]
+    #[case("memory: 10Gi", MemoryQuantity::from_gibi(10.0))]
+    #[case("memory: 1Gi", MemoryQuantity::from_gibi(1.0))]
+    fn test_deserialize(#[case] input: &str, #[case] expected: MemoryQuantity) {
+        #[derive(Deserialize)]
+        struct Memory {
+            memory: MemoryQuantity,
+        }
+
+        let memory: Memory = serde_yaml::from_str(input).unwrap();
+        assert_eq!(memory.memory, expected);
     }
 }
