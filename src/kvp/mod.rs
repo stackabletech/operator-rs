@@ -30,12 +30,12 @@ where
 {
     /// Indicates that the key failed to parse. See [`KeyError`] for more
     /// information about the error causes.
-    #[snafu(display("failed to parse key of key/value pair"))]
-    InvalidKey { source: KeyError },
+    #[snafu(display("failed to parse key {key:?} of key/value pair"))]
+    InvalidKey { source: KeyError, key: String },
 
     /// Indicates that the value failed to parse.
-    #[snafu(display("failed to parse value of key/value pair"))]
-    InvalidValue { source: E },
+    #[snafu(display("failed to parse value {value:?} of key/value pair"))]
+    InvalidValue { source: E, value: String },
 }
 
 /// A validated Kubernetes key/value pair.
@@ -104,8 +104,13 @@ where
     type Error = KeyValuePairError<T::Error>;
 
     fn try_from(value: (K, V)) -> Result<Self, Self::Error> {
-        let key = Key::from_str(value.0.as_ref()).context(InvalidKeySnafu)?;
-        let value = T::from_str(value.1.as_ref()).context(InvalidValueSnafu)?;
+        let key = Key::from_str(value.0.as_ref()).context(InvalidKeySnafu {
+            key: value.0.as_ref(),
+        })?;
+
+        let value = T::from_str(value.1.as_ref()).context(InvalidValueSnafu {
+            value: value.1.as_ref(),
+        })?;
 
         Ok(Self { key, value })
     }
@@ -385,6 +390,8 @@ pub struct ObjectLabels<'a, T> {
 
 #[cfg(test)]
 mod test {
+    use snafu::Report;
+
     use super::*;
 
     #[test]
@@ -461,5 +468,19 @@ mod test {
 
         let labels = Labels::try_from_iter(map).unwrap();
         assert_eq!(labels.len(), 2);
+    }
+
+    #[test]
+    fn key_error() {
+        let err = Label::try_from(("stäckable.tech/vendor", "Stackable")).unwrap_err();
+        let report = Report::from_error(err);
+        println!("{report}")
+    }
+
+    #[test]
+    fn value_error() {
+        let err = Label::try_from(("stackable.tech/vendor", "Stäckable")).unwrap_err();
+        let report = Report::from_error(err);
+        println!("{report}")
     }
 }
