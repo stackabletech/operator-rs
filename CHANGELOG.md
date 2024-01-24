@@ -10,6 +10,12 @@ All notable changes to this project will be documented in this file.
 
 [#724]: https://github.com/stackabletech/operator-rs/pull/724
 
+### Changed
+
+- Change Deref target of `KeyPrefix` and `KeyName` from `String` to `str` ([#725]).
+
+[#725]: https://github.com/stackabletech/operator-rs/pull/725
+
 ## [0.62.0] - 2024-01-19
 
 ### Added
