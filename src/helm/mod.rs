@@ -19,7 +19,7 @@ static EMPTY_MAP: BTreeMap<String, String> = BTreeMap::new();
 pub struct DynamicValues {
     pub image: ImageValues,
     pub name_override: String,
-    pub full_name_override: String,
+    pub fullname_override: String,
     pub service_account: ServiceAccountValues,
     pub resources: ResourceValues,
 
@@ -88,4 +88,89 @@ pub struct ResourceValues {
 pub struct ComputeResourceValues {
     cpu: CpuQuantity,
     memory: MemoryQuantity,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_deserialize() {
+        // Taken from https://github.com/stackabletech/zookeeper-operator/blob/main/deploy/helm/zookeeper-operator/values.yaml
+        let input = "---
+image:
+  repository: docker.stackable.tech/stackable/zookeeper-operator
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+nameOverride: ''
+fullnameOverride: ''
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ''
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+labels:
+  stackable.tech/vendor: Stackable
+  stackable.tech/managed-by: stackablectl";
+
+        let values: DynamicValues = serde_yaml::from_str(input).unwrap();
+        assert_eq!(values.labels().len(), 2);
+    }
+
+    #[test]
+    fn test_serialize() {
+        // Taken from https://github.com/stackabletech/zookeeper-operator/blob/main/deploy/helm/zookeeper-operator/values.yaml
+        let input = "---
+image:
+  repository: docker.stackable.tech/stackable/zookeeper-operator
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+nameOverride: ''
+fullnameOverride: ''
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ''
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi";
+
+        let mut values: DynamicValues = serde_yaml::from_str(input).unwrap();
+        values
+            .labels_mut()
+            .insert("stackable.tech/vendor".into(), "Stackable".into());
+
+        let output = "image:
+  repository: docker.stackable.tech/stackable/zookeeper-operator
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+nameOverride: ''
+fullnameOverride: ''
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ''
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+labels:
+  stackable.tech/vendor: Stackable
+";
+
+        assert_eq!(serde_yaml::to_string(&values).unwrap(), output);
+    }
 }
