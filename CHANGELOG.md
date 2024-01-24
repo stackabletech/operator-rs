@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add Serde `Deserialize` and `Serialize` support for `CpuQuantity` and `MemoryQuantity` ([#724]).
+
+[#724]: https://github.com/stackabletech/operator-rs/pull/724
+
 ## [0.62.0] - 2024-01-19
 
 ### Added
