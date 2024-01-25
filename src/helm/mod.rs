@@ -92,85 +92,29 @@ pub struct ComputeResourceValues {
 
 #[cfg(test)]
 mod test {
+    use std::path::PathBuf;
+
+    use rstest::rstest;
+
     use super::*;
 
-    #[test]
-    fn test_deserialize() {
-        // Taken from https://github.com/stackabletech/zookeeper-operator/blob/main/deploy/helm/zookeeper-operator/values.yaml
-        let input = "---
-image:
-  repository: docker.stackable.tech/stackable/zookeeper-operator
-  pullPolicy: IfNotPresent
-  pullSecrets: []
-nameOverride: ''
-fullnameOverride: ''
-serviceAccount:
-  create: true
-  annotations: {}
-  name: ''
-resources:
-  limits:
-    cpu: 100m
-    memory: 128Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
-labels:
-  stackable.tech/vendor: Stackable
-  stackable.tech/managed-by: stackablectl";
-
-        let values: DynamicValues = serde_yaml::from_str(input).unwrap();
+    #[rstest]
+    fn test_deserialize(#[files("fixtures/helm/input-*.yaml")] path: PathBuf) {
+        let contents = std::fs::read_to_string(path).unwrap();
+        let values: DynamicValues = serde_yaml::from_str(&contents).unwrap();
         assert_eq!(values.labels().len(), 2);
     }
 
-    #[test]
-    fn test_serialize() {
-        // Taken from https://github.com/stackabletech/zookeeper-operator/blob/main/deploy/helm/zookeeper-operator/values.yaml
-        let input = "---
-image:
-  repository: docker.stackable.tech/stackable/zookeeper-operator
-  pullPolicy: IfNotPresent
-  pullSecrets: []
-nameOverride: ''
-fullnameOverride: ''
-serviceAccount:
-  create: true
-  annotations: {}
-  name: ''
-resources:
-  limits:
-    cpu: 100m
-    memory: 128Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi";
+    #[rstest]
+    fn test_serialize(#[files("fixtures/helm/input-required.yaml")] input: PathBuf) {
+        let contents = std::fs::read_to_string(input).unwrap();
+        let mut values: DynamicValues = serde_yaml::from_str(&contents).unwrap();
 
-        let mut values: DynamicValues = serde_yaml::from_str(input).unwrap();
         values
             .labels_mut()
-            .insert("stackable.tech/vendor".into(), "Stackable".into());
+            .insert("stackable.tech/demo".into(), "logging".into());
 
-        let output = "image:
-  repository: docker.stackable.tech/stackable/zookeeper-operator
-  pullPolicy: IfNotPresent
-  pullSecrets: []
-nameOverride: ''
-fullnameOverride: ''
-serviceAccount:
-  create: true
-  annotations: {}
-  name: ''
-resources:
-  limits:
-    cpu: 100m
-    memory: 128Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
-labels:
-  stackable.tech/vendor: Stackable
-";
-
+        let output = std::fs::read_to_string("fixtures/helm/output.yaml").unwrap();
         assert_eq!(serde_yaml::to_string(&values).unwrap(), output);
     }
 }
