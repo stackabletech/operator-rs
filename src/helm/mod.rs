@@ -96,6 +96,8 @@ mod test {
 
     use rstest::rstest;
 
+    use crate::yaml::serialize_to_explicit_document;
+
     use super::*;
 
     #[rstest]
@@ -114,7 +116,11 @@ mod test {
             .labels_mut()
             .insert("stackable.tech/demo".into(), "logging".into());
 
-        let output = std::fs::read_to_string("fixtures/helm/output.yaml").unwrap();
-        assert_eq!(serde_yaml::to_string(&values).unwrap(), output);
+        let expected = std::fs::read_to_string("fixtures/helm/output.yaml").unwrap();
+
+        let mut output = Vec::new();
+        serialize_to_explicit_document(&mut output, &values).unwrap();
+
+        assert_eq!(std::str::from_utf8(&output).unwrap(), expected);
     }
 }
