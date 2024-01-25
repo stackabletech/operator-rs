@@ -85,6 +85,11 @@ pub struct ResolvedProductImage {
 #[derive(AsRefStr)]
 /// We default to `Always`, as we use floating tags for our release lines.
 /// This means the tag 23.4 starts of pointing to the same image 23.4.0 does, but switches to 23.4.1 after the releases of 23.4.1.
+///
+/// ### See
+///
+/// - <https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy>
+/// - <https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/core/types.go#L2291-L2300>
 pub enum PullPolicy {
     IfNotPresent,
     #[default]
