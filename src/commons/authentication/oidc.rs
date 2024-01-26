@@ -35,7 +35,9 @@ pub enum Error {
 /// (IdP) `hostname` and the TLS configuration. The `port` is selected
 /// automatically if not configured otherwise. The `rootPath` defaults
 /// to `/`.
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticationProvider {
     /// Hostname of the identity provider, e.g. `my.keycloak.corp`.
@@ -206,14 +208,18 @@ impl AuthenticationProvider {
 /// in the product operator. Some products require special handling of
 /// authentication related config options. This hint can be used to enable such
 /// special handling.
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "PascalCase")]
 pub enum IdentityProviderHint {
     Keycloak,
 }
 
 /// OIDC specific config options. These are set on the product config level.
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct ClientAuthenticationOptions<T = ()> {
     /// A reference to the OIDC client credentials secret. The secret contains
