@@ -1,11 +1,10 @@
-//! This module contains various label and annotation related constants used by
-//! Kubernetes. Most constants define well-known `app.kubernetes.io/<NAME>`
-//! keys. These constants can be used to construct various labels or annotations
-//! without sprinkling magic values all over the code.
 use const_format::concatcp;
 
 /// The well-known Kubernetes app key prefix.
 const K8S_APP_KEY_PREFIX: &str = "app.kubernetes.io/";
+
+/// The Stackable-specific general key prefix.
+const STACKABLE_KEY_PREFIX: &str = "stackable.tech/";
 
 /// The well-known Kubernetes app name key `app.kubernetes.io/name`. It is used
 /// to label the application with a name, e.g. `mysql`.
@@ -38,3 +37,7 @@ pub const K8S_APP_MANAGED_BY_KEY: &str = concatcp!(K8S_APP_KEY_PREFIX, "managed-
 /// It is used to specify to which role group this application belongs to, e.g.
 /// `worker`.
 pub const K8S_APP_ROLE_GROUP_KEY: &str = concatcp!(K8S_APP_KEY_PREFIX, "role-group");
+
+/// The common Stackable vendor key `stackable.tech/vendor`. It is used to
+/// indicate that the resource was deployed as part of the SDP.
+pub const STACKABLE_VENDOR_KEY: &str = concatcp!(STACKABLE_KEY_PREFIX, "vendor");
