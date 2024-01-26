@@ -15,7 +15,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Change Deref target of `KeyPrefix` and `KeyName` from `String` to `str` ([#725]).
-- Add Stackable vendor label to recommended labels ([#728]).
+- Add Stackable vendor label `stackable.tech/vendor: Stackable` to recommended labels ([#728]).
 
 [#725]: https://github.com/stackabletech/operator-rs/pull/725
 [#728]: https://github.com/stackabletech/operator-rs/pull/728
