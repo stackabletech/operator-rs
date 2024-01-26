@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.63.0] - 2024-01-26
+
 ### Added
 
 - Add Serde `Deserialize` and `Serialize` support for `CpuQuantity` and `MemoryQuantity` ([#724]).
