@@ -15,7 +15,9 @@ pub enum SecretClassVolumeError {
     },
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct SecretClassVolume {
     /// [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass) containing the LDAP bind credentials.
@@ -63,7 +65,9 @@ impl SecretClassVolume {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct SecretClassVolumeScope {
     /// The pod scope is resolved to the name of the Kubernetes Pod.

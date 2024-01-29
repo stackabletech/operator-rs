@@ -11,7 +11,9 @@ use crate::{
     },
 };
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticationProvider {
     /// See [ADR017: TLS authentication](DOCS_BASE_URL_PLACEHOLDER/contributor/adr/adr017-tls_authentication).
@@ -27,7 +29,9 @@ pub enum TlsClientDetailsError {
     SecretClassVolume { source: SecretClassVolumeError },
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct TlsClientDetails {
     /// Use a TLS connection. If not specified no TLS will be used.
@@ -119,14 +123,18 @@ impl TlsClientDetails {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Tls {
     /// The verification method used to verify the certificates of the server and/or the client.
     pub verification: TlsVerification,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum TlsVerification {
     /// Use TLS but don't verify certificates.
@@ -136,14 +144,18 @@ pub enum TlsVerification {
     Server(TlsServerVerification),
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct TlsServerVerification {
     /// CA cert to verify the server.
     pub ca_cert: CaCert,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum CaCert {
     /// Use TLS and the CA certificates trusted by the common web browsers to verify the server.

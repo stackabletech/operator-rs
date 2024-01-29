@@ -20,7 +20,19 @@ pub(crate) const SECRET_BASE_PATH: &str = "/stackable/secrets";
 /// Multiple different authentication providers are supported.
 /// Learn more in the [authentication concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication) and the
 /// [Authentication with OpenLDAP tutorial](DOCS_BASE_URL_PLACEHOLDER/tutorials/authentication_with_openldap).
-#[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone,
+    CustomResource,
+    Debug,
+    Deserialize,
+    Eq,
+    Hash,
+    JsonSchema,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Serialize,
+)]
 #[kube(
     group = "authentication.stackable.tech",
     version = "v1alpha1",
@@ -38,7 +50,9 @@ pub struct AuthenticationClassSpec {
     pub provider: AuthenticationClassProvider,
 }
 
-#[derive(Clone, Debug, Deserialize, Display, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Display, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 #[allow(clippy::large_enum_variant)]
 pub enum AuthenticationClassProvider {
