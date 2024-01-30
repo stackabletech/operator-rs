@@ -4,18 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Derive `Hash` and `Ord` instances for `AuthenticationClassProvider`,
+  so that duplicates can be detected ([#731]).
+
+[#731]: https://github.com/stackabletech/operator-rs/pull/731
+
 ## [0.63.0] - 2024-01-26
 
 ### Added
 
 - Add Serde `Deserialize` and `Serialize` support for `CpuQuantity` and `MemoryQuantity` ([#724]).
 - Add `DynamicValues` struct to work with operator `values.yaml` files during runtime ([#723]).
-- Derive `Hash` and `Ord` instances for `AuthenticationClassProvider`,
-  so that duplicates can be detected ([#731]).
 
 [#723]: https://github.com/stackabletech/operator-rs/pull/723
 [#724]: https://github.com/stackabletech/operator-rs/pull/724
-[#731]: https://github.com/stackabletech/operator-rs/pull/731
 
 ### Changed
 
