@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.64.0] - 2024-01-31
+
 ### Added
 
 - Derive `Hash` and `Ord` instances for `AuthenticationClassProvider`,
