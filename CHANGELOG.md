@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## Changed
+
+- Remove `resources` key from `DynamicValues` struct ([#734]).
+
+[#734]: https://github.com/stackabletech/operator-rs/pull/734
+
 ## [0.64.0] - 2024-01-31
 
 ### Added
