@@ -3,9 +3,7 @@ use std::collections::BTreeMap;
 use k8s_openapi::api::core::v1::LocalObjectReference;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    commons::product_image_selection::PullPolicy, cpu::CpuQuantity, memory::MemoryQuantity,
-};
+use crate::commons::product_image_selection::PullPolicy;
 
 static EMPTY_MAP: BTreeMap<String, String> = BTreeMap::new();
 
@@ -21,7 +19,6 @@ pub struct DynamicValues {
     pub name_override: String,
     pub fullname_override: String,
     pub service_account: ServiceAccountValues,
-    pub resources: ResourceValues,
 
     // TODO(Techassi): Here we could use direct Serialize and Deserialize support
     pub labels: Option<BTreeMap<String, String>>,
@@ -74,20 +71,6 @@ pub struct ServiceAccountValues {
     /// If this is not set and `create` is true, a name is generated using the
     /// fullname template.
     pub name: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ResourceValues {
-    limits: ComputeResourceValues,
-    requests: ComputeResourceValues,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ComputeResourceValues {
-    cpu: CpuQuantity,
-    memory: MemoryQuantity,
 }
 
 #[cfg(test)]
