@@ -273,7 +273,7 @@ impl SubAssign for Duration {
 
 impl SubAssign<Duration> for std::time::Instant {
     fn sub_assign(&mut self, rhs: Duration) {
-        self.add_assign(rhs.0)
+        self.sub_assign(rhs.0)
     }
 }
 
