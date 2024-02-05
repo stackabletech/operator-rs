@@ -4,17 +4,7 @@ use axum::{routing::MethodRouter, Router};
 use tokio::net::TcpListener;
 
 pub mod conversion;
-
-pub trait Handlers {
-    fn endpoints<T>(&self) -> Vec<(&str, MethodRouter<T>)>
-    where
-        T: Clone + Sync + Send + 'static;
-}
-
-pub struct WebhookServer<T>
-where
-    T: Handlers,
-{
+pub mod redirect;
     socket_addr: SocketAddr,
     handlers: T,
 }
