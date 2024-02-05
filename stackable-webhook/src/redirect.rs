@@ -35,7 +35,7 @@ pub struct Redirector {
 }
 
 impl Redirector {
-    pub fn new(ip_addr: IpAddr, http_port: u16, https_port: u16) -> Self {
+    pub fn new(ip_addr: IpAddr, https_port: u16, http_port: u16) -> Self {
         Self {
             https_port,
             http_port,
