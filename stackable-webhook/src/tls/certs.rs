@@ -75,21 +75,3 @@ impl CertificateChain {
         (self.chain, self.private_key)
     }
 }
-
-#[cfg(test)]
-mod test {
-
-    use rustls_pemfile::ec_private_keys;
-    use tokio_rustls::rustls::PrivateKey;
-
-    #[test]
-    fn test() {
-        let t = "-----BEGIN EC PRIVATE KEY-----\n
-MHcCAQEEIFMX2VakgYH6/5+aj7vinwmwVlBvTjCkw8/HjE3YE3xeoAoGCCqGSM49\n
-AwEHoUQDQgAE6lU4Z0tU8A+0jlwCFB1Efaq6nV+gbIDv1poXLf0d+wkMkiopOWlE\n
-QVYafabw9A/ziUVWTCovvuI7RWzA4l4Pqg==\n
------END EC PRIVATE KEY-----";
-        let key = ec_private_keys(&mut t.as_bytes()).unwrap().remove(0);
-        let key = PrivateKey(key);
-    }
-}
