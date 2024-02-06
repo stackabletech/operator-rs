@@ -1,6 +1,6 @@
 use std::{fs::File, io::BufReader, path::Path};
 
-use rustls_pemfile::{certs, pkcs8_private_keys};
+use rustls_pemfile::{certs, ec_private_keys};
 use snafu::{ResultExt, Snafu};
 use tokio_rustls::rustls::{Certificate, PrivateKey};
 
@@ -38,7 +38,8 @@ where
             .map(Certificate)
             .collect();
 
-        let private_key = pkcs8_private_keys(readers.1)
+        // TODO (@Techassi): Make this function configurable
+        let private_key = ec_private_keys(readers.1)
             .context(ReadBufferedKeyFileSnafu)?
             .remove(0);
         let private_key = PrivateKey(private_key);
@@ -72,5 +73,23 @@ impl CertificateChain {
 
     pub fn into_parts(self) -> (Vec<Certificate>, PrivateKey) {
         (self.chain, self.private_key)
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use rustls_pemfile::ec_private_keys;
+    use tokio_rustls::rustls::PrivateKey;
+
+    #[test]
+    fn test() {
+        let t = "-----BEGIN EC PRIVATE KEY-----\n
+MHcCAQEEIFMX2VakgYH6/5+aj7vinwmwVlBvTjCkw8/HjE3YE3xeoAoGCCqGSM49\n
+AwEHoUQDQgAE6lU4Z0tU8A+0jlwCFB1Efaq6nV+gbIDv1poXLf0d+wkMkiopOWlE\n
+QVYafabw9A/ziUVWTCovvuI7RWzA4l4Pqg==\n
+-----END EC PRIVATE KEY-----";
+        let key = ec_private_keys(&mut t.as_bytes()).unwrap().remove(0);
+        let key = PrivateKey(key);
     }
 }
