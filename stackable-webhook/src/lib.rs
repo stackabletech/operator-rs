@@ -97,10 +97,12 @@ impl WebhookServer {
             }
         }
 
-        let mut cert_file =
-            &mut BufReader::new(File::open("/tmp/webhook-certs/serverCert.pem").unwrap());
-        let mut key_file =
-            &mut BufReader::new(File::open("/tmp/webhook-certs/serverKey.pem").unwrap());
+        let mut cert_file = &mut BufReader::new(
+            File::open("/apiserver.local.config/certificates/apiserver.crt").unwrap(),
+        );
+        let mut key_file = &mut BufReader::new(
+            File::open("/apiserver.local.config/certificates/apiserver.key").unwrap(),
+        );
 
         let key = PrivateKey(pkcs8_private_keys(&mut key_file).unwrap().remove(0));
         let certs = certs(&mut cert_file)
