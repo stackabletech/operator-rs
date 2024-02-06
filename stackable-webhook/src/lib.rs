@@ -22,7 +22,6 @@ use tower::Service;
 use tracing::{debug, error, warn};
 
 pub mod constants;
-pub mod conversion;
 mod options;
 mod redirect;
 
