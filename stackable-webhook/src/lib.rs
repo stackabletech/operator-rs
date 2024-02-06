@@ -6,21 +6,20 @@
 //! The crate is also fully compatible with [`tracing`], and emits multiple
 //! levels of tracing data.
 
-use std::{net::SocketAddr, sync::Arc};
+use std::sync::Arc;
 
 use axum::Router;
 use tokio::net::TcpListener;
 use tokio_rustls::rustls::ServerConfig;
 use tracing::{debug, warn};
 
-use crate::{
-    constants::{DEFAULT_HTTPS_PORT, DEFAULT_HTTP_PORT, DEFAULT_IP_ADDRESS},
-    redirect::Redirector,
-};
-
 pub mod constants;
 pub mod conversion;
-pub mod redirect;
+mod options;
+mod redirect;
+
+pub use options::*;
+pub use redirect::*;
 
 /// A ready-to-use webhook server.
 pub struct WebhookServer {
@@ -36,7 +35,10 @@ impl WebhookServer {
     /// it is sufficient to use [`Options::default()`]. See the documentation
     /// for [`Options`] for more details on the default values.
     ///
-    /// ### Example
+    /// To start the server, use the [`WebhookServer::run()`] function. This will
+    /// run the server using the Tokio runtime until it is terminated.
+    ///
+    /// ### Basic Example
     ///
     /// ```
     /// use stackable_webhook::{WebhookServer, Options};
@@ -45,7 +47,22 @@ impl WebhookServer {
     /// let router = Router::new();
     /// let server = WebhookServer::new(router, Options::default());
     /// ```
-    pub async fn new(router: Router, options: Options) -> Self {
+    ///
+    /// ### Example with Custom Options
+    ///
+    /// ```
+    /// use stackable_webhook::{WebhookServer, Options};
+    /// use axum::Router;
+    ///
+    /// let options = Options::builder()
+    ///     .disable_redirect()
+    ///     .socket_addr(([127, 0, 0, 1], 8080))
+    ///     .build();
+    ///
+    /// let router = Router::new();
+    /// let server = WebhookServer::new(router, options);
+    /// ```
+    pub fn new(router: Router, options: Options) -> Self {
         debug!("create new webhook server");
         Self { options, router }
     }
@@ -73,6 +90,7 @@ impl WebhookServer {
             }
         }
 
+        // Create the root router and merge the provided router into it.
         let mut router = Router::new();
         router = router.merge(self.router);
 
@@ -94,35 +112,4 @@ impl TlsServer {
 
     //     Self { config }
     // }
-}
-
-/// Specifies available webhook server options.
-///
-/// The [`Default`] implemention for this struct contains the following
-/// values:
-///
-/// - Redirect from HTTP to HTTPS is enabled, HTTP listens on port 8080
-/// - The socket binds to 127.0.0.1 on port 8443 (HTTPS)
-pub struct Options {
-    /// Enables or disables the automatic HTTP to HTTPS redirect. If enabled,
-    /// it is required to specify the HTTP port.
-    pub redirect: RedirectOption,
-
-    /// The default HTTPS socket address the [`TcpListener`] binds to. The same
-    /// IP adress is used for the auto HTTP to HTTPS redirect handler.
-    pub socket_addr: SocketAddr,
-}
-
-impl Default for Options {
-    fn default() -> Self {
-        Self {
-            socket_addr: SocketAddr::from((DEFAULT_IP_ADDRESS, DEFAULT_HTTPS_PORT)),
-            redirect: RedirectOption::Enabled(DEFAULT_HTTP_PORT),
-        }
-    }
-}
-
-pub enum RedirectOption {
-    Enabled(u16),
-    Disabled,
 }
