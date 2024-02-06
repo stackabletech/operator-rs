@@ -11,7 +11,7 @@ use axum::{
 };
 use snafu::{ResultExt, Snafu};
 use tokio::net::TcpListener;
-use tracing::warn;
+use tracing::{debug, info, instrument, warn};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -28,6 +28,7 @@ pub enum Error {
 /// singular [`Service`][tower::MakeService] at the root "/" path. If the
 /// conversion from HTTP to HTTPS fails, the [`Redirector`] returns a HTTP
 /// status code 400 (Bad Request). Additionally, a warning trace is emitted.
+#[derive(Debug)]
 pub struct Redirector {
     ip_addr: IpAddr,
     https_port: u16,
@@ -35,7 +36,10 @@ pub struct Redirector {
 }
 
 impl Redirector {
+    #[instrument]
     pub fn new(ip_addr: IpAddr, https_port: u16, http_port: u16) -> Self {
+        debug!("create new HTTP to HTTPS redirector");
+
         Self {
             https_port,
             http_port,
@@ -43,7 +47,10 @@ impl Redirector {
         }
     }
 
+    #[instrument]
     pub async fn run(self) {
+        debug!("run redirector");
+
         // The redirector only binds to the HTTP port. The actual HTTPS
         // application runs in a separate task and is completely independent
         // of this redirector.
@@ -54,8 +61,13 @@ impl Redirector {
         // redirector emits a warning trace and returns HTTP status code 400
         // (Bad Request).
         let redirect = move |Host(host): Host, uri: Uri| async move {
-            match http_to_https(host, uri, self.http_port, self.https_port) {
-                Ok(uri) => Ok(Redirect::permanent(&uri.to_string())),
+            // NOTE (@Techassi): Is it worth to clone here just to be able to
+            // print it in the trace?
+            match http_to_https(host, uri.clone(), self.http_port, self.https_port) {
+                Ok(redirect_uri) => {
+                    info!("redirecting from {} to {}", uri, redirect_uri);
+                    Ok(Redirect::permanent(&redirect_uri.to_string()))
+                }
                 Err(err) => {
                     warn!(%err, "failed to convert HTTP URI to HTTPS");
                     Err(StatusCode::BAD_REQUEST)
