@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, path::PathBuf};
 
 use crate::constants::{DEFAULT_HTTPS_PORT, DEFAULT_HTTP_PORT, DEFAULT_IP_ADDRESS};
 
@@ -14,8 +14,9 @@ pub struct Options {
     /// it is required to specify the HTTP port.
     pub redirect: RedirectOption,
 
-    /// The default HTTPS socket address the [`TcpListener`] binds to. The same
-    /// IP adress is used for the auto HTTP to HTTPS redirect handler.
+    /// The default HTTPS socket address the [`TcpListener`][tokio::net::TcpListener]
+    /// binds to. The same IP adress is used for the auto HTTP to HTTPS redirect
+    /// handler.
     pub socket_addr: SocketAddr,
 
     /// Either auto-generate or use an injected TLS certificate.
@@ -94,7 +95,10 @@ impl Default for RedirectOption {
 #[derive(Debug)]
 pub enum TlsOption {
     AutoGenerate,
-    Inject,
+    Mount {
+        cert_path: PathBuf,
+        key_path: PathBuf,
+    },
 }
 
 impl Default for TlsOption {

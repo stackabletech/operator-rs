@@ -1,18 +1,20 @@
-use std::{fs::File, io::BufReader, net::SocketAddr, path::Path, sync::Arc};
+//! This module contains structs and functions to easily create a TLS termination
+//! server, which can be used in combination with an Axum [`Router`].
+use std::{net::SocketAddr, path::Path, sync::Arc};
 
 use axum::{extract::Request, Router};
 use futures_util::pin_mut;
-use hyper::body::Incoming;
+use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
-use rustls_pemfile::{certs, pkcs8_private_keys};
 use tokio::net::TcpListener;
-use tokio_rustls::{
-    rustls::{Certificate, PrivateKey, ServerConfig},
-    TlsAcceptor,
-};
+use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
 use tower::Service;
 use tracing::{error, warn};
 
+use crate::CertificateChain;
+
+/// A server which terminates TLS connections and allows clients to commnunicate
+/// via HTTPS with the underlying HTTP router.
 pub struct TlsServer {
     config: Arc<ServerConfig>,
     socket_addr: SocketAddr,
@@ -23,28 +25,20 @@ impl TlsServer {
     pub fn new(
         socket_addr: SocketAddr,
         router: Router,
-        cert_file: impl AsRef<Path>,
-        key_file: impl AsRef<Path>,
+        cert_path: impl AsRef<Path>,
+        key_path: impl AsRef<Path>,
     ) -> Self {
-        // TODO (@Techassi): Abstract away the cert chain loading
-        // TODO (@Techassi): Remove unwraps
-        let mut cert_file = &mut BufReader::new(File::open(cert_file).unwrap());
-        let mut key_file = &mut BufReader::new(File::open(key_file).unwrap());
-
         // TODO (@Techassi): Remove unwrap
-        let key = PrivateKey(pkcs8_private_keys(&mut key_file).unwrap().remove(0));
-        let certs = certs(&mut cert_file)
+        let (chain, private_key) = CertificateChain::from_files(cert_path, key_path)
             .unwrap()
-            .into_iter()
-            .map(Certificate)
-            .collect();
+            .into_parts();
 
         // TODO (@Techassi): Use the latest version of rustls related crates
         // TODO (@Techassi): Remove expect
         let mut config = ServerConfig::builder()
             .with_safe_defaults()
             .with_no_client_auth()
-            .with_single_cert(certs, key)
+            .with_single_cert(chain, private_key)
             .expect("bad certificate/key");
 
         config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
@@ -84,14 +78,13 @@ impl TlsServer {
                 // Hyper also has its own `Service` trait and doesn't use tower. We can use
                 // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
                 // `tower::Service::call`.
-                let hyper_service =
-                    hyper::service::service_fn(move |request: Request<Incoming>| {
-                        // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
-                        // tower's `Service` requires `&mut self`.
-                        //
-                        // We don't need to call `poll_ready` since `Router` is always ready.
-                        router.clone().call(request)
-                    });
+                let hyper_service = service_fn(move |request: Request<Incoming>| {
+                    // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
+                    // tower's `Service` requires `&mut self`.
+                    //
+                    // We don't need to call `poll_ready` since `Router` is always ready.
+                    router.clone().call(request)
+                });
 
                 if let Err(err) = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
                     .serve_connection_with_upgrades(tls_stream, hyper_service)

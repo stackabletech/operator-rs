@@ -22,12 +22,14 @@ pub enum Error {
     ConvertPartsToUri { source: InvalidUriParts },
 }
 
-/// A redirector which redirects HTTP connections at "/" to HTTPS automatically.
+/// A redirector which redirects all incoming HTTP connections to HTTPS
+/// automatically.
 ///
 /// Internally it uses a simple handler function which is registered as a
-/// singular [`Service`][tower::MakeService] at the root "/" path. If the
-/// conversion from HTTP to HTTPS fails, the [`Redirector`] returns a HTTP
-/// status code 400 (Bad Request). Additionally, a warning trace is emitted.
+/// singular [`Service`][tower::MakeService] at the root "/" path. The request
+/// paths are preserved. If the conversion from HTTP to HTTPS fails, the
+/// [`Redirector`] returns a HTTP status code 400 (Bad Request). Additionally,
+/// a warning trace is emitted.
 #[derive(Debug)]
 pub struct Redirector {
     ip_addr: IpAddr,
