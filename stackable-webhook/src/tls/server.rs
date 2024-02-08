@@ -1,17 +1,29 @@
 //! This module contains structs and functions to easily create a TLS termination
 //! server, which can be used in combination with an Axum [`Router`].
-use std::{net::SocketAddr, path::Path, sync::Arc};
+use std::{net::SocketAddr, sync::Arc};
 
 use axum::{extract::Request, Router};
 use futures_util::pin_mut;
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
+use snafu::Snafu;
 use tokio::net::TcpListener;
 use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
 use tower::Service;
 use tracing::{error, warn};
 
-use crate::CertificateChain;
+use crate::{
+    options::TlsOption,
+    tls::{CertifacteError, CertificateChain},
+};
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("failed to create TLS certificate chain"))]
+    TlsCertificateChain { source: CertifacteError },
+}
 
 /// A server which terminates TLS connections and allows clients to commnunicate
 /// via HTTPS with the underlying HTTP router.
@@ -22,35 +34,50 @@ pub struct TlsServer {
 }
 
 impl TlsServer {
-    pub fn new(
-        socket_addr: SocketAddr,
-        router: Router,
-        cert_path: impl AsRef<Path>,
-        key_path: impl AsRef<Path>,
-    ) -> Self {
-        // TODO (@Techassi): Remove unwrap
-        let (chain, private_key) = CertificateChain::from_files(cert_path, key_path)
-            .unwrap()
-            .into_parts();
+    pub fn new(socket_addr: SocketAddr, router: Router, tls: TlsOption) -> Result<Self> {
+        let config = match tls {
+            TlsOption::AutoGenerate => {
+                // let mut config = ServerConfig::builder()
+                //     .with_safe_defaults()
+                //     .with_no_client_auth()
+                //     .with_cert_resolver(cert_resolver);
+                // config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+                todo!()
+            }
+            TlsOption::Mount {
+                cert_path,
+                key_path,
+            } => {
+                // TODO (@Techassi): Remove unwrap
+                let (chain, private_key) = CertificateChain::from_files(cert_path, key_path)
+                    .unwrap()
+                    .into_parts();
 
-        // TODO (@Techassi): Use the latest version of rustls related crates
-        // TODO (@Techassi): Remove expect
-        let mut config = ServerConfig::builder()
-            .with_safe_defaults()
-            .with_no_client_auth()
-            .with_single_cert(chain, private_key)
-            .expect("bad certificate/key");
+                // TODO (@Techassi): Use the latest version of rustls related crates
+                // TODO (@Techassi): Remove expect
+                let mut config = ServerConfig::builder()
+                    .with_safe_defaults()
+                    .with_no_client_auth()
+                    .with_single_cert(chain, private_key)
+                    .expect("bad certificate/key");
 
-        config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
-        let config = Arc::new(config);
+                config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+                config
+            }
+        }
+        .wrap(Arc::new); // Silly little thing, drop it again I guess
 
-        Self {
+        Ok(Self {
             socket_addr,
             config,
             router,
-        }
+        })
     }
 
+    /// Runs the TLS server by listening for incoming TCP connections on the
+    /// bound socket address. It only accepts TLS connections. Internally each
+    /// TLS stream get handled by a Hyper service, which in turn is an Axum
+    /// router.
     pub async fn run(self) {
         // TODO (@Techassi): Remove unwrap
         let tls_acceptor = TlsAcceptor::from(self.config);
@@ -78,7 +105,7 @@ impl TlsServer {
                 // Hyper also has its own `Service` trait and doesn't use tower. We can use
                 // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
                 // `tower::Service::call`.
-                let hyper_service = service_fn(move |request: Request<Incoming>| {
+                let service = service_fn(move |request: Request<Incoming>| {
                     // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
                     // tower's `Service` requires `&mut self`.
                     //
@@ -87,12 +114,22 @@ impl TlsServer {
                 });
 
                 if let Err(err) = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
-                    .serve_connection_with_upgrades(tls_stream, hyper_service)
+                    .serve_connection_with_upgrades(tls_stream, service)
                     .await
                 {
                     warn!(%err, "failed to serve connection from {}", remote_addr);
                 }
             });
         }
+    }
+}
+
+trait Wrap<S, T>: Sized {
+    fn wrap(self, f: impl Fn(S) -> T) -> T;
+}
+
+impl<S, T> Wrap<S, T> for S {
+    fn wrap(self, f: impl Fn(S) -> T) -> T {
+        f(self)
     }
 }

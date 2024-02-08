@@ -6,20 +6,32 @@
 //! The crate is also fully compatible with [`tracing`], and emits multiple
 //! levels of tracing data.
 use axum::Router;
+use snafu::Snafu;
 use tracing::{debug, warn};
 
+use crate::{
+    options::{Options, RedirectOption},
+    redirect::Redirector,
+    tls::TlsServer,
+};
+
 pub mod constants;
+pub mod options;
+pub mod redirect;
 pub mod servers;
+pub mod tls;
 
-mod options;
-mod redirect;
-mod tls;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-pub use options::*;
-pub use redirect::*;
-pub use tls::*;
+#[derive(Debug, Snafu)]
+pub enum Error {}
 
 /// A ready-to-use webhook server.
+///
+/// This server abstracts away lower-level details like TLS termination
+/// and other various configurations, validations or middlewares. The routes
+/// and their handlers are completely customizable by bringing your own
+/// Axum [`Router`].
 pub struct WebhookServer {
     options: Options,
     router: Router,
@@ -93,13 +105,9 @@ impl WebhookServer {
         router = router.merge(self.router);
 
         // Create server for TLS termination
-        let tls_server = TlsServer::new(
-            self.options.socket_addr,
-            router,
-            "/apiserver.local.config/certificates/apiserver.crt",
-            "/apiserver.local.config/certificates/apiserver.key",
-        );
-
+        // TODO (@Techassi): Remove unwrap
+        let tls_server =
+            TlsServer::new(self.options.socket_addr, router, self.options.tls).unwrap();
         tls_server.run().await;
     }
 }
@@ -107,22 +115,19 @@ impl WebhookServer {
 #[cfg(test)]
 mod test {
     use super::*;
-    use axum::{routing::post, Router};
+    use axum::{routing::get, Router};
 
     #[tokio::test]
     async fn test() {
-        let router = Router::new().route("/", post(handler));
+        let router = Router::new().route("/", get(|| async { "Ok" }));
         let options = Options::builder()
-            .disable_redirect()
-            .socket_addr(([127, 0, 0, 1], 8080))
+            .tls_mount(
+                "/tmp/webhook-certs/serverCert.pem",
+                "/tmp/webhook-certs/serverKey.pem",
+            )
             .build();
 
         let server = WebhookServer::new(router, options);
         server.run().await
-    }
-
-    async fn handler() -> &'static str {
-        println!("Test");
-        "Ok"
     }
 }

@@ -5,7 +5,7 @@ use snafu::{ResultExt, Snafu};
 use tokio_rustls::rustls::{Certificate, PrivateKey};
 
 #[derive(Debug, Snafu)]
-pub enum Error {
+pub enum CertifacteError {
     #[snafu(display("failed to read certificate file"))]
     ReadCertFile { source: std::io::Error },
 
@@ -29,7 +29,7 @@ where
     C: std::io::BufRead,
     P: std::io::BufRead,
 {
-    type Error = Error;
+    type Error = CertifacteError;
 
     fn try_from(readers: (&mut C, &mut P)) -> Result<Self, Self::Error> {
         let chain = certs(readers.0)
@@ -49,7 +49,10 @@ where
 }
 
 impl CertificateChain {
-    pub fn from_files<C, P>(certificate_path: C, private_key_path: P) -> Result<Self, Error>
+    pub fn from_files<C, P>(
+        certificate_path: C,
+        private_key_path: P,
+    ) -> Result<Self, CertifacteError>
     where
         C: AsRef<Path>,
         P: AsRef<Path>,

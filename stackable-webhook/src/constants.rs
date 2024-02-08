@@ -1,4 +1,7 @@
-pub const DEFAULT_HTTPS_PORT: u16 = 443;
-pub const DEFAULT_HTTP_PORT: u16 = 80;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-pub const DEFAULT_IP_ADDRESS: [u8; 4] = [127, 0, 0, 1];
+pub const DEFAULT_HTTPS_PORT: u16 = 8443;
+pub const DEFAULT_HTTP_PORT: u16 = 8080;
+
+pub const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+pub const DEFAULT_SOCKET_ADDR: SocketAddr = SocketAddr::new(DEFAULT_IP_ADDRESS, DEFAULT_HTTPS_PORT);
