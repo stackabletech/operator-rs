@@ -1,3 +1,4 @@
+//! Contains structs and functions to enable auto HTTP to HTTPS redirection.
 use std::net::{IpAddr, SocketAddr};
 
 use axum::{

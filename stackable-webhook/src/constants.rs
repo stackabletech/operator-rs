@@ -1,3 +1,5 @@
+//! Contains various constant definitions, mostly for default ports and IP
+//! addresses.
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 pub const DEFAULT_HTTPS_PORT: u16 = 8443;

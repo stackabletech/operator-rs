@@ -1,3 +1,4 @@
+//! Contains available options to configure the [WebhookServer][crate::WebhookServer].
 use std::{
     net::{IpAddr, SocketAddr},
     path::PathBuf,
@@ -60,6 +61,7 @@ use crate::constants::{DEFAULT_HTTP_PORT, DEFAULT_SOCKET_ADDR};
 ///     .tls_mount("path/to/pem/cert", "path/to/pem/key")
 ///     .build();
 /// ```
+#[derive(Debug)]
 pub struct Options {
     /// Enables or disables the automatic HTTP to HTTPS redirect. If enabled,
     /// it is required to specify the HTTP port. If disabled, the webhook
@@ -139,11 +141,17 @@ impl OptionsBuilder {
         self
     }
 
+    /// Enables TLS certificate auto-generation instead of using a mounted
+    /// one. If instead a mounted TLS certificate is needed, use the
+    /// [`OptionsBuilder::tls_mount()`] function.
     pub fn tls_autogenerate(mut self) -> Self {
         self.tls = Some(TlsOption::AutoGenerate);
         self
     }
 
+    /// Uses a mounted TLS certificate instead of auto-generating one. If
+    /// instead a auto-generated TLS certificate is needed, us ethe
+    /// [`OptionsBuilder::tls_autogenerate()`] function.
     pub fn tls_mount(
         mut self,
         cert_path: impl Into<PathBuf>,
@@ -156,6 +164,8 @@ impl OptionsBuilder {
         self
     }
 
+    /// Builds the final [`Options`] by using default values for any not
+    /// explicitly set option.
     pub fn build(self) -> Options {
         Options {
             redirect: self.redirect.unwrap_or_default(),

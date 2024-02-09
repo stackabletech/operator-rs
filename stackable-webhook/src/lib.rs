@@ -1,13 +1,32 @@
 //! Utility types and functions to easily create ready-to-use webhook servers
 //! which can handle different tasks, for example CRD conversions. All webhook
-//! servers use HTTPS per default and provide options to enable HTTP to HTTPS
-//! redirection as well.
+//! servers use HTTPS by default and provides options to enable HTTP to HTTPS
+//! redirection as well. This library is fully compatible with the [`tracing`]
+//! crate and emits multiple levels of tracing data.
 //!
-//! The crate is also fully compatible with [`tracing`], and emits multiple
-//! levels of tracing data.
+//! Most users will only use the top-level exported generic [`WebhookServer`]
+//! which enables complete control over the [Router] which handles registering
+//! routes and their handler functions.
+//!
+//! ```
+//! use stackable_webhook::{WebhookServer, Options};
+//! use axum::Router;
+//!
+//! let router = Router::new();
+//! let server = WebhookServer::new(router, Options::default());
+//! ```
+//!
+//! For some application complete end-to-end [`WebhookServer`] implementations
+//! exist. One such implementation is the [`ConversionWebhookServer`][1]. The
+//! only required parameters are a conversion handler function and [`Options`].
+//!
+//! [1]: crate::servers::ConversionWebhookServer
+//!
+//! This library additionally also exposes lower-level structs and functions to
+//! enable complete controll over these details if needed.
 use axum::Router;
-use snafu::Snafu;
-use tracing::{debug, warn};
+use snafu::{ResultExt, Snafu};
+use tracing::{debug, info, instrument, warn};
 
 use crate::{
     options::{Options, RedirectOption},
@@ -23,8 +42,25 @@ pub mod tls;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+/// A generic webhook handler receiving a request and sending back a response.
+///
+/// This trait is usually not implemented by external callers and this library
+/// provides various ready-to-use implementations for it. One such an
+/// implementation is part of the [`ConversionWebhookServer`][1].
+///
+/// [1]: crate::servers::ConversionWebhookServer
+pub trait WebhookHandler<Req, Res> {
+    fn call(self, req: Res) -> Res;
+}
+
 #[derive(Debug, Snafu)]
-pub enum Error {}
+pub enum Error {
+    #[snafu(display("failed to create TLS server"))]
+    CreateTlsServer { source: tls::Error },
+
+    #[snafu(display("failed to run TLS server"))]
+    RunTlsServer { source: tls::Error },
+}
 
 /// A ready-to-use webhook server.
 ///
@@ -72,6 +108,7 @@ impl WebhookServer {
     /// let router = Router::new();
     /// let server = WebhookServer::new(router, options);
     /// ```
+    #[instrument(name = "create_webhook_server", skip(router))]
     pub fn new(router: Router, options: Options) -> Self {
         debug!("create new webhook server");
         Self { options, router }
@@ -79,7 +116,8 @@ impl WebhookServer {
 
     /// Runs the webhook server by creating a TCP listener and binding it to
     /// the specified socket address.
-    pub async fn run(self) {
+    #[instrument(name = "run_webhook_server", skip(self), fields(self.options))]
+    pub async fn run(self) -> Result<()> {
         debug!("run webhook server");
 
         // Only run the auto redirector when enabled
@@ -93,6 +131,7 @@ impl WebhookServer {
                     http_port,
                 );
 
+                info!(http_port, "spawning redirector in separate task");
                 tokio::spawn(redirector.run());
             }
             RedirectOption::Disabled => {
@@ -101,14 +140,17 @@ impl WebhookServer {
         }
 
         // Create the root router and merge the provided router into it.
+        debug!("create core couter and merge provided router");
         let mut router = Router::new();
         router = router.merge(self.router);
 
         // Create server for TLS termination
-        // TODO (@Techassi): Remove unwrap
-        let tls_server =
-            TlsServer::new(self.options.socket_addr, router, self.options.tls).unwrap();
-        tls_server.run().await;
+        debug!("create TLS server");
+        let tls_server = TlsServer::new(self.options.socket_addr, router, self.options.tls)
+            .context(CreateTlsServerSnafu)?;
+
+        info!("running TLS server");
+        tls_server.run().await.context(RunTlsServerSnafu)
     }
 }
 
@@ -128,6 +170,6 @@ mod test {
             .build();
 
         let server = WebhookServer::new(router, options);
-        server.run().await
+        server.run().await.unwrap()
     }
 }
