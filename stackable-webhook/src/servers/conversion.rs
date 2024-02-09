@@ -1,42 +1,55 @@
-// use std::{net::SocketAddr, ops::Deref};
+use axum::{routing::post, Json, Router};
+use kube::core::conversion::ConversionReview;
 
-// use axum::{
-//     routing::{post, MethodRouter},
-//     Json,
-// };
-// use kube::core::conversion::{ConversionRequest, ConversionResponse};
+use crate::{options::Options, WebhookHandler, WebhookServer};
 
-// use crate::{Handlers, WebhookServer};
+impl<F> WebhookHandler<ConversionReview, ConversionReview> for F
+where
+    F: FnOnce(ConversionReview) -> ConversionReview,
+{
+    fn call(self, req: ConversionReview) -> ConversionReview {
+        self(req)
+    }
+}
 
-// pub struct ConversionWebhookServer(WebhookServer<ConversionHandlers>);
+pub struct ConversionWebhookServer {
+    options: Options,
+    router: Router,
+}
 
-// impl Deref for ConversionWebhookServer {
-//     type Target = WebhookServer<ConversionHandlers>;
+impl ConversionWebhookServer {
+    pub fn new<T>(handler: T, options: Options) -> Self
+    where
+        T: WebhookHandler<ConversionReview, ConversionReview> + Clone + Send + Sync + 'static,
+    {
+        let handler_fn = |Json(review): Json<ConversionReview>| async {
+            let review = handler.call(review);
+            Json(review)
+        };
 
-//     fn deref(&self) -> &Self::Target {
-//         &self.0
-//     }
-// }
+        let router = Router::new().route("/convert", post(handler_fn));
+        Self { router, options }
+    }
 
-// impl ConversionWebhookServer {
-//     pub async fn new(socket_addr: SocketAddr) -> Self {
-//         Self(WebhookServer::new(socket_addr, ConversionHandlers).await)
-//     }
-// }
+    pub async fn run(self) -> Result<(), crate::Error> {
+        let server = WebhookServer::new(self.router, self.options);
+        server.run().await
+    }
+}
 
-// pub struct ConversionHandlers;
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::Options;
 
-// impl Handlers for ConversionHandlers {
-//     fn endpoints<T>(&self) -> Vec<(&str, MethodRouter<T>)>
-//     where
-//         T: Clone + Sync + Send + 'static,
-//     {
-//         vec![("/convert", post(convert_handler))]
-//     }
-// }
+    fn handler(req: ConversionReview) -> ConversionReview {
+        // In here we can do the CRD conversion
+        req
+    }
 
-// async fn convert_handler(
-//     Json(_conversion_request): Json<ConversionRequest>,
-// ) -> Json<ConversionResponse> {
-//     todo!()
-// }
+    #[tokio::test]
+    async fn test() {
+        let server = ConversionWebhookServer::new(handler, Options::default());
+        server.run().await.unwrap();
+    }
+}
