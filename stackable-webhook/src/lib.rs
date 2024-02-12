@@ -16,11 +16,9 @@
 //! let server = WebhookServer::new(router, Options::default());
 //! ```
 //!
-//! For some application complete end-to-end [`WebhookServer`] implementations
-//! exist. One such implementation is the [`ConversionWebhookServer`][1]. The
+//! For some usages, complete end-to-end [`WebhookServer`] implementations
+//! exist. One such implementation is the [`ConversionWebhookServer`]. The
 //! only required parameters are a conversion handler function and [`Options`].
-//!
-//! [1]: crate::servers::ConversionWebhookServer
 //!
 //! This library additionally also exposes lower-level structs and functions to
 //! enable complete controll over these details if needed.
@@ -28,11 +26,7 @@ use axum::Router;
 use snafu::{ResultExt, Snafu};
 use tracing::{debug, info, instrument, warn};
 
-use crate::{
-    options::{Options, RedirectOption},
-    redirect::Redirector,
-    tls::TlsServer,
-};
+use crate::{options::RedirectOption, redirect::Redirector, tls::TlsServer};
 
 pub mod constants;
 pub mod options;
@@ -40,21 +34,29 @@ pub mod redirect;
 pub mod servers;
 pub mod tls;
 
+// Selected re-exports
+pub use crate::{options::Options, servers::ConversionWebhookServer};
+
+/// A result type alias with the library-level [`Error`] type as teh default
+/// error type.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// A generic webhook handler receiving a request and sending back a response.
 ///
 /// This trait is usually not implemented by external callers and this library
 /// provides various ready-to-use implementations for it. One such an
-/// implementation is part of the [`ConversionWebhookServer`][1].
-///
-/// [1]: crate::servers::ConversionWebhookServer
 pub trait WebhookHandler<Req, Res> {
-    fn call(self, req: Res) -> Res;
+    fn call(self, req: Req) -> Res;
 }
 
+/// A generic webhook handler receiving a request and state and sending back
+/// a response.
+///
+/// This trait is usually not implemented by external callers and this library
+/// provides various ready-to-use implementations for it. One such an
+/// implementation is part of the [`ConversionWebhookServer`].
 pub trait StatefulWebhookHandler<Req, Res, S> {
-    fn call(self, req: Res, state: S) -> Res;
+    fn call(self, req: Req, state: S) -> Res;
 }
 
 #[derive(Debug, Snafu)]
@@ -72,6 +74,9 @@ pub enum Error {
 /// and other various configurations, validations or middlewares. The routes
 /// and their handlers are completely customizable by bringing your own
 /// Axum [`Router`].
+///
+/// For complete complete end-to-end implementations, see
+/// [`ConversionWebhookServer`].
 pub struct WebhookServer {
     options: Options,
     router: Router,
