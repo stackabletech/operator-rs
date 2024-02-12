@@ -53,6 +53,10 @@ pub trait WebhookHandler<Req, Res> {
     fn call(self, req: Res) -> Res;
 }
 
+pub trait StatefulWebhookHandler<Req, Res, S> {
+    fn call(self, req: Res, state: S) -> Res;
+}
+
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("failed to create TLS server"))]
