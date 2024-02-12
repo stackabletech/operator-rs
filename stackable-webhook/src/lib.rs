@@ -165,6 +165,8 @@ impl WebhookServer {
 
 #[cfg(test)]
 mod test {
+    use crate::tls::PrivateKeyEncoding;
+
     use super::*;
     use axum::{routing::get, Router};
 
@@ -175,6 +177,7 @@ mod test {
             .tls_mount(
                 "/tmp/webhook-certs/serverCert.pem",
                 "/tmp/webhook-certs/serverKey.pem",
+                PrivateKeyEncoding::Ec,
             )
             .build();
 

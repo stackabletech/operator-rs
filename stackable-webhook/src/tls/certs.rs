@@ -1,6 +1,8 @@
+// TODO (@Techassi): Move this into a separate crate which handles TLS cert
+// generation and reading.
 use std::{fs::File, io::BufReader, path::Path};
 
-use rustls_pemfile::{certs, ec_private_keys};
+use rustls_pemfile::{certs, ec_private_keys, pkcs8_private_keys, rsa_private_keys};
 use snafu::{ResultExt, Snafu};
 use tokio_rustls::rustls::{Certificate, PrivateKey};
 
@@ -24,46 +26,42 @@ pub struct CertificateChain {
     private_key: PrivateKey,
 }
 
-impl<C, P> TryFrom<(&mut C, &mut P)> for CertificateChain
-where
-    C: std::io::BufRead,
-    P: std::io::BufRead,
-{
-    type Error = CertifacteError;
+impl CertificateChain {
+    pub fn from_files(
+        cert_path: impl AsRef<Path>,
+        pk_path: impl AsRef<Path>,
+        pk_encoding: PrivateKeyEncoding,
+    ) -> Result<Self, CertifacteError> {
+        let cert_file = File::open(cert_path).context(ReadCertFileSnafu)?;
+        let cert_reader = &mut BufReader::new(cert_file);
 
-    fn try_from(readers: (&mut C, &mut P)) -> Result<Self, Self::Error> {
-        let chain = certs(readers.0)
+        let key_file = File::open(pk_path).context(ReadKeyFileSnafu)?;
+        let key_reader = &mut BufReader::new(key_file);
+
+        Self::from_buffer(cert_reader, key_reader, pk_encoding)
+    }
+
+    fn from_buffer(
+        cert_reader: &mut dyn std::io::BufRead,
+        pk_reader: &mut dyn std::io::BufRead,
+        pk_encoding: PrivateKeyEncoding,
+    ) -> Result<Self, CertifacteError> {
+        let chain = certs(cert_reader)
             .context(ReadBufferedCertFileSnafu)?
             .into_iter()
             .map(Certificate)
             .collect();
 
-        // TODO (@Techassi): Make this function configurable
-        let private_key = ec_private_keys(readers.1)
-            .context(ReadBufferedKeyFileSnafu)?
-            .remove(0);
-        let private_key = PrivateKey(private_key);
+        let pk_bytes = match pk_encoding {
+            PrivateKeyEncoding::Pkcs8 => pkcs8_private_keys(pk_reader),
+            PrivateKeyEncoding::Rsa => rsa_private_keys(pk_reader),
+            PrivateKeyEncoding::Ec => ec_private_keys(pk_reader),
+        }
+        .context(ReadBufferedKeyFileSnafu)?
+        .remove(0);
 
+        let private_key = PrivateKey(pk_bytes);
         Ok(Self { chain, private_key })
-    }
-}
-
-impl CertificateChain {
-    pub fn from_files<C, P>(
-        certificate_path: C,
-        private_key_path: P,
-    ) -> Result<Self, CertifacteError>
-    where
-        C: AsRef<Path>,
-        P: AsRef<Path>,
-    {
-        let cert_file = File::open(certificate_path).context(ReadCertFileSnafu)?;
-        let cert_reader = &mut BufReader::new(cert_file);
-
-        let key_file = File::open(private_key_path).context(ReadKeyFileSnafu)?;
-        let key_reader = &mut BufReader::new(key_file);
-
-        Self::try_from((cert_reader, key_reader))
     }
 
     pub fn chain(&self) -> &[Certificate] {
@@ -77,4 +75,11 @@ impl CertificateChain {
     pub fn into_parts(self) -> (Vec<Certificate>, PrivateKey) {
         (self.chain, self.private_key)
     }
+}
+
+#[derive(Debug)]
+pub enum PrivateKeyEncoding {
+    Pkcs8,
+    Rsa,
+    Ec,
 }

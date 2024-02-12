@@ -4,7 +4,10 @@ use std::{
     path::PathBuf,
 };
 
-use crate::constants::{DEFAULT_HTTP_PORT, DEFAULT_SOCKET_ADDR};
+use crate::{
+    constants::{DEFAULT_HTTP_PORT, DEFAULT_SOCKET_ADDR},
+    tls::PrivateKeyEncoding,
+};
 
 /// Specifies available webhook server options.
 ///
@@ -155,11 +158,13 @@ impl OptionsBuilder {
     pub fn tls_mount(
         mut self,
         cert_path: impl Into<PathBuf>,
-        key_path: impl Into<PathBuf>,
+        pk_path: impl Into<PathBuf>,
+        pk_encoding: PrivateKeyEncoding,
     ) -> Self {
         self.tls = Some(TlsOption::Mount {
             cert_path: cert_path.into(),
-            key_path: key_path.into(),
+            pk_path: pk_path.into(),
+            pk_encoding,
         });
         self
     }
@@ -191,8 +196,9 @@ impl Default for RedirectOption {
 pub enum TlsOption {
     AutoGenerate,
     Mount {
+        pk_encoding: PrivateKeyEncoding,
         cert_path: PathBuf,
-        key_path: PathBuf,
+        pk_path: PathBuf,
     },
 }
 
