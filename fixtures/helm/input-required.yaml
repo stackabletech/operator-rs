@@ -10,13 +10,6 @@ serviceAccount:
   create: true
   annotations: {}
   name: ''
-resources:
-  limits:
-    cpu: 100m
-    memory: 128Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
 labels:
   stackable.tech/vendor: Stackable
   stackable.tech/managed-by: stackablectl

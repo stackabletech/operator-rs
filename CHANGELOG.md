@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## Changed
+
+- Remove `resources` key from `DynamicValues` struct ([#734]).
+
+[#734]: https://github.com/stackabletech/operator-rs/pull/734
+
+## [0.64.0] - 2024-01-31
+
+### Added
+
+- Derive `Hash` and `Ord` instances for `AuthenticationClassProvider`,
+  so that duplicates can be detected ([#731]).
+
+[#731]: https://github.com/stackabletech/operator-rs/pull/731
+
+## [0.63.0] - 2024-01-26
+
 ### Added
 
 - Add Serde `Deserialize` and `Serialize` support for `CpuQuantity` and `MemoryQuantity` ([#724]).

@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.62.0"
+version = "0.64.0"
 authors = ["Stackable GmbH <info@stackable.de>"]
 license = "Apache-2.0"
 edition = "2021"

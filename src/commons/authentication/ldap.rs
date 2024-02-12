@@ -31,7 +31,9 @@ pub enum Error {
     AddLdapTlsClientDetailsVolumes { source: TlsClientDetailsError },
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticationProvider {
     /// Hostname of the LDAP server, for example: `my.ldap.server`.
@@ -155,7 +157,9 @@ impl AuthenticationProvider {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct FieldNames {
     /// The name of the username field
