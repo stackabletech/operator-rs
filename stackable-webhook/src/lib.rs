@@ -43,19 +43,20 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// A generic webhook handler receiving a request and sending back a response.
 ///
-/// This trait is usually not implemented by external callers and this library
-/// provides various ready-to-use implementations for it. One such an
-pub trait WebhookHandler<Req, Res> {
+/// This trait is not intended to be implemented by external crates and this
+/// library provides various ready-to-use implementations for it. One such an
+/// /// implementation is part of the [`ConversionWebhookServer`].
+pub(crate) trait WebhookHandler<Req, Res> {
     fn call(self, req: Req) -> Res;
 }
 
 /// A generic webhook handler receiving a request and state and sending back
 /// a response.
 ///
-/// This trait is usually not implemented by external callers and this library
-/// provides various ready-to-use implementations for it. One such an
+/// This trait is not intended to be  implemented by external crates and this
+/// library provides various ready-to-use implementations for it. One such an
 /// implementation is part of the [`ConversionWebhookServer`].
-pub trait StatefulWebhookHandler<Req, Res, S> {
+pub(crate) trait StatefulWebhookHandler<Req, Res, S> {
     fn call(self, req: Req, state: S) -> Res;
 }
 
