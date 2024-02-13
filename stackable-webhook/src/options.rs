@@ -157,9 +157,9 @@ impl OptionsBuilder {
     /// [`OptionsBuilder::tls_autogenerate()`] function.
     pub fn tls_mount(
         mut self,
-        cert_path: impl Into<PathBuf>,
-        pk_path: impl Into<PathBuf>,
-        pk_encoding: PrivateKeyEncoding,
+        public_key_path: impl Into<PathBuf>,
+        private_key_path: impl Into<PathBuf>,
+        private_key_encoding: PrivateKeyEncoding,
     ) -> Self {
         self.tls = Some(TlsOption::Mount {
             cert_path: cert_path.into(),

@@ -75,7 +75,7 @@ pub enum Error {
 /// and their handlers are completely customizable by bringing your own
 /// Axum [`Router`].
 ///
-/// For complete complete end-to-end implementations, see
+/// For complete end-to-end implementations, see
 /// [`ConversionWebhookServer`].
 pub struct WebhookServer {
     options: Options,
