@@ -4,7 +4,9 @@ use std::{fs::File, io::BufReader, path::Path};
 
 use rustls_pemfile::{certs, ec_private_keys, pkcs8_private_keys, rsa_private_keys};
 use snafu::{ResultExt, Snafu};
-use tokio_rustls::rustls::{Certificate, PrivateKey};
+use tokio_rustls::rustls::pki_types::{CertificateDer, PrivateKeyDer};
+
+pub type Result<T, E = CertifacteError> = std::result::Result<T, E>;
 
 #[derive(Debug, Snafu)]
 pub enum CertifacteError {
@@ -22,8 +24,8 @@ pub enum CertifacteError {
 }
 
 pub struct CertificateChain {
-    chain: Vec<Certificate>,
-    private_key: PrivateKey,
+    chain: Vec<CertificateDer<'static>>,
+    private_key: PrivateKeyDer<'static>,
 }
 
 impl CertificateChain {
@@ -31,48 +33,60 @@ impl CertificateChain {
         cert_path: impl AsRef<Path>,
         pk_path: impl AsRef<Path>,
         pk_encoding: PrivateKeyEncoding,
-    ) -> Result<Self, CertifacteError> {
+    ) -> Result<Self> {
         let cert_file = File::open(cert_path).context(ReadCertFileSnafu)?;
-        let cert_reader = &mut BufReader::new(cert_file);
+        let mut cert_reader = BufReader::new(cert_file);
 
         let key_file = File::open(pk_path).context(ReadKeyFileSnafu)?;
-        let key_reader = &mut BufReader::new(key_file);
+        let mut pk_reader = BufReader::new(key_file);
 
-        Self::from_buffer(cert_reader, key_reader, pk_encoding)
-    }
+        let chain = certs(&mut cert_reader)
+            .collect::<Result<Vec<_>, _>>()
+            .context(ReadBufferedCertFileSnafu)?;
 
-    fn from_buffer(
-        cert_reader: &mut dyn std::io::BufRead,
-        pk_reader: &mut dyn std::io::BufRead,
-        pk_encoding: PrivateKeyEncoding,
-    ) -> Result<Self, CertifacteError> {
-        let chain = certs(cert_reader)
-            .context(ReadBufferedCertFileSnafu)?
-            .into_iter()
-            .map(Certificate)
-            .collect();
-
-        let pk_bytes = match pk_encoding {
-            PrivateKeyEncoding::Pkcs8 => pkcs8_private_keys(pk_reader),
-            PrivateKeyEncoding::Rsa => rsa_private_keys(pk_reader),
-            PrivateKeyEncoding::Ec => ec_private_keys(pk_reader),
+        let private_key = match pk_encoding {
+            PrivateKeyEncoding::Pkcs8 => Self::pkcs8_to_pk_der(&mut pk_reader)?,
+            PrivateKeyEncoding::Rsa => Self::rsa_to_pk_der(&mut pk_reader)?,
+            PrivateKeyEncoding::Ec => Self::ec_to_pk_der(&mut pk_reader)?,
         }
-        .context(ReadBufferedKeyFileSnafu)?
         .remove(0);
 
-        let private_key = PrivateKey(pk_bytes);
         Ok(Self { chain, private_key })
     }
 
-    pub fn chain(&self) -> &[Certificate] {
+    fn pkcs8_to_pk_der<'a>(pk_reader: &mut dyn std::io::BufRead) -> Result<Vec<PrivateKeyDer<'a>>> {
+        let ders = pkcs8_private_keys(pk_reader)
+            .collect::<Result<Vec<_>, _>>()
+            .context(ReadBufferedKeyFileSnafu)?;
+
+        Ok(ders.into_iter().map(PrivateKeyDer::from).collect())
+    }
+
+    fn rsa_to_pk_der<'a>(pk_reader: &mut dyn std::io::BufRead) -> Result<Vec<PrivateKeyDer<'a>>> {
+        let ders = rsa_private_keys(pk_reader)
+            .collect::<Result<Vec<_>, _>>()
+            .context(ReadBufferedKeyFileSnafu)?;
+
+        Ok(ders.into_iter().map(PrivateKeyDer::from).collect())
+    }
+
+    fn ec_to_pk_der<'a>(pk_reader: &mut dyn std::io::BufRead) -> Result<Vec<PrivateKeyDer<'a>>> {
+        let ders = ec_private_keys(pk_reader)
+            .collect::<Result<Vec<_>, _>>()
+            .context(ReadBufferedKeyFileSnafu)?;
+
+        Ok(ders.into_iter().map(PrivateKeyDer::from).collect())
+    }
+
+    pub fn chain(&self) -> &[CertificateDer] {
         &self.chain
     }
 
-    pub fn private_key(&self) -> &PrivateKey {
+    pub fn private_key(&self) -> &PrivateKeyDer {
         &self.private_key
     }
 
-    pub fn into_parts(self) -> (Vec<Certificate>, PrivateKey) {
+    pub fn into_parts(self) -> (Vec<CertificateDer<'static>>, PrivateKeyDer<'static>) {
         (self.chain, self.private_key)
     }
 }

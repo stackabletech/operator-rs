@@ -14,7 +14,7 @@ use tracing::{error, instrument, warn};
 
 use crate::{
     options::TlsOption,
-    tls::{CertifacteError, CertificateChain},
+    tls::certs::{CertifacteError, CertificateChain},
 };
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -68,7 +68,6 @@ impl TlsServer {
 
                 // TODO (@Techassi): Use the latest version of rustls related crates
                 let mut config = ServerConfig::builder()
-                    .with_safe_defaults()
                     .with_no_client_auth()
                     .with_single_cert(chain, private_key)
                     .context(InvalidTlsPrivateKeySnafu)?;

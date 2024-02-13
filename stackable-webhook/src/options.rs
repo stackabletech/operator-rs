@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     constants::{DEFAULT_HTTP_PORT, DEFAULT_SOCKET_ADDR},
-    tls::PrivateKeyEncoding,
+    tls::certs::PrivateKeyEncoding,
 };
 
 /// Specifies available webhook server options.
