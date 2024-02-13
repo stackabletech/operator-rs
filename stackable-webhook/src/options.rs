@@ -162,9 +162,9 @@ impl OptionsBuilder {
         private_key_encoding: PrivateKeyEncoding,
     ) -> Self {
         self.tls = Some(TlsOption::Mount {
-            cert_path: cert_path.into(),
-            pk_path: pk_path.into(),
-            pk_encoding,
+            public_key_path: public_key_path.into(),
+            private_key_path: private_key_path.into(),
+            private_key_encoding,
         });
         self
     }
@@ -196,9 +196,9 @@ impl Default for RedirectOption {
 pub enum TlsOption {
     AutoGenerate,
     Mount {
-        pk_encoding: PrivateKeyEncoding,
-        cert_path: PathBuf,
-        pk_path: PathBuf,
+        private_key_encoding: PrivateKeyEncoding,
+        public_key_path: PathBuf,
+        private_key_path: PathBuf,
     },
 }
 

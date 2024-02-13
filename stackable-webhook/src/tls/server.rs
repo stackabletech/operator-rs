@@ -57,16 +57,18 @@ impl TlsServer {
                 todo!()
             }
             TlsOption::Mount {
-                cert_path,
-                pk_path,
-                pk_encoding,
+                public_key_path,
+                private_key_path,
+                private_key_encoding,
             } => {
-                let (chain, private_key) =
-                    CertificateChain::from_files(cert_path, pk_path, pk_encoding)
-                        .context(TlsCertificateChainSnafu)?
-                        .into_parts();
+                let (chain, private_key) = CertificateChain::from_files(
+                    public_key_path,
+                    private_key_path,
+                    private_key_encoding,
+                )
+                .context(TlsCertificateChainSnafu)?
+                .into_parts();
 
-                // TODO (@Techassi): Use the latest version of rustls related crates
                 let mut config = ServerConfig::builder()
                     .with_no_client_auth()
                     .with_single_cert(chain, private_key)
