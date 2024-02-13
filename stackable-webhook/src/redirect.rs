@@ -68,7 +68,7 @@ impl Redirector {
             // print it in the trace?
             match http_to_https(host, uri.clone(), self.http_port, self.https_port) {
                 Ok(redirect_uri) => {
-                    info!("redirecting from {} to {}", uri, redirect_uri);
+                    debug!("redirecting from {} to {}", uri, redirect_uri);
                     Ok(Redirect::permanent(&redirect_uri.to_string()))
                 }
                 Err(err) => {

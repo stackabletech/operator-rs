@@ -24,7 +24,7 @@
 //! enable complete controll over these details if needed.
 use axum::Router;
 use snafu::{ResultExt, Snafu};
-use tracing::{debug, info, instrument, warn};
+use tracing::{debug, instrument};
 
 use crate::{options::RedirectOption, redirect::Redirector, tls::TlsServer};
 
@@ -141,11 +141,11 @@ impl WebhookServer {
                     http_port,
                 );
 
-                info!(http_port, "spawning redirector in separate task");
+                debug!(http_port, "spawning redirector in separate task");
                 tokio::spawn(redirector.run());
             }
             RedirectOption::Disabled => {
-                warn!("webhook runs without automatic HTTP to HTTPS redirect which is not recommended");
+                debug!("webhook runs without automatic HTTP to HTTPS redirect which is not recommended");
             }
         }
 
