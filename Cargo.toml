@@ -67,4 +67,4 @@ rstest = "0.18.1"
 tempfile = "3.7.1"
 
 [workspace]
-members = ["stackable-operator-derive"]
+members = [ "stackable-certs","stackable-operator-derive"]

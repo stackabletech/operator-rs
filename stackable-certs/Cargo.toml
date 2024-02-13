@@ -1,0 +1,12 @@
+[package]
+name = "stackable-certs"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[dependencies]
+tokio-rustls = "0.25.0"
+snafu = "0.8.0"
+rustls-pemfile = "2.0.0"
