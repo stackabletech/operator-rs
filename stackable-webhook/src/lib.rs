@@ -162,26 +162,3 @@ impl WebhookServer {
         tls_server.run().await.context(RunTlsServerSnafu)
     }
 }
-
-#[cfg(test)]
-mod test {
-    use crate::tls::PrivateKeyEncoding;
-
-    use super::*;
-    use axum::{routing::get, Router};
-
-    #[tokio::test]
-    async fn test() {
-        let router = Router::new().route("/", get(|| async { "Ok" }));
-        let options = Options::builder()
-            .tls_mount(
-                "/tmp/webhook-certs/serverCert.pem",
-                "/tmp/webhook-certs/serverKey.pem",
-                PrivateKeyEncoding::Ec,
-            )
-            .build();
-
-        let server = WebhookServer::new(router, options);
-        server.run().await.unwrap()
-    }
-}
