@@ -123,24 +123,24 @@ impl OptionsBuilder {
     }
 
     /// Sets the socket address the webhook server uses to bind for HTTPS.
-    pub fn socket_addr(mut self, socket_ip: impl Into<IpAddr>, socket_port: u16) -> Self {
-        self.socket_addr = Some(SocketAddr::new(socket_ip.into(), socket_port));
+    pub fn bind_address(mut self, bind_ip: impl Into<IpAddr>, bind_port: u16) -> Self {
+        self.socket_addr = Some(SocketAddr::new(bind_ip.into(), bind_port));
         self
     }
 
     /// Sets the IP address of the socket address the webhook server uses to
     /// bind for HTTPS.
-    pub fn socket_ip(mut self, socket_ip: impl Into<IpAddr>) -> Self {
+    pub fn bind_ip(mut self, bind_ip: impl Into<IpAddr>) -> Self {
         let addr = self.socket_addr.get_or_insert(DEFAULT_SOCKET_ADDR);
-        addr.set_ip(socket_ip.into());
+        addr.set_ip(bind_ip.into());
         self
     }
 
     /// Sets the port of the socket address the webhook server uses to bind
     /// for HTTPS.
-    pub fn socket_port(mut self, socket_port: u16) -> Self {
+    pub fn bind_port(mut self, bind_port: u16) -> Self {
         let addr = self.socket_addr.get_or_insert(DEFAULT_SOCKET_ADDR);
-        addr.set_port(socket_port);
+        addr.set_port(bind_port);
         self
     }
 
