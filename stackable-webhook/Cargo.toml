@@ -15,6 +15,7 @@ snafu = "0.8.0"
 tokio = "1.29.1"
 tokio-test = "0.4.3"
 tower = "0.4.13"
+tower-http = { version = "0.5.1", features = ["trace"] }
 tracing = "0.1.40"
 rustls-pemfile = "2.0.0"
 futures-util = "0.3.30"

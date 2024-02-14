@@ -22,9 +22,11 @@
 //!
 //! This library additionally also exposes lower-level structs and functions to
 //! enable complete controll over these details if needed.
-use axum::Router;
+use axum::{body::Body, http::Request, Router};
 use snafu::{ResultExt, Snafu};
-use tracing::{debug, instrument};
+use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
+use tracing::{debug, debug_span, instrument};
 
 use crate::{options::RedirectOption, redirect::Redirector, tls::TlsServer};
 
@@ -149,9 +151,21 @@ impl WebhookServer {
             }
         }
 
+        // TODO (@Techassi): Switch out for Otel compatible tracing
+        // https://github.com/davidB/tracing-opentelemetry-instrumentation-sdk
+
+        // Create a high-level tracing layer
+        debug!("create tracing service (layer)");
+        let layer = TraceLayer::new_for_http()
+            .make_span_with(|_: &Request<Body>| debug_span!("webhook_request"))
+            .on_body_chunk(())
+            .on_eos(());
+
+        let service = ServiceBuilder::new().layer(layer);
+
         // Create the root router and merge the provided router into it.
         debug!("create core couter and merge provided router");
-        let mut router = Router::new();
+        let mut router = Router::new().layer(service);
         router = router.merge(self.router);
 
         // Create server for TLS termination
@@ -159,7 +173,7 @@ impl WebhookServer {
         let tls_server = TlsServer::new(self.options.socket_addr, router, self.options.tls)
             .context(CreateTlsServerSnafu)?;
 
-        info!("running TLS server");
+        debug!("running TLS server");
         tls_server.run().await.context(RunTlsServerSnafu)
     }
 }
