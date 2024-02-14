@@ -47,7 +47,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 ///
 /// This trait is not intended to be implemented by external crates and this
 /// library provides various ready-to-use implementations for it. One such an
-/// /// implementation is part of the [`ConversionWebhookServer`].
+/// implementation is part of the [`ConversionWebhookServer`].
 pub(crate) trait WebhookHandler<Req, Res> {
     fn call(self, req: Req) -> Res;
 }
