@@ -7,6 +7,8 @@ edition.workspace = true
 repository.workspace = true
 
 [dependencies]
+stackable-certs = { path = "../stackable-certs" }
+
 axum = "0.7.4"
 kube = { version = "0.88.1", default-features = false }
 tokio-rustls = "0.25.0"

@@ -4,7 +4,9 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{constants::DEFAULT_SOCKET_ADDR, tls::certs::PrivateKeyEncoding};
+use stackable_certs::PrivateKeyEncoding;
+
+use crate::constants::DEFAULT_SOCKET_ADDR;
 
 /// Specifies available webhook server options.
 ///
@@ -38,7 +40,8 @@ use crate::{constants::DEFAULT_SOCKET_ADDR, tls::certs::PrivateKeyEncoding};
 /// ### Example with Mounted TLS Certificate
 ///
 /// ```
-/// use stackable_webhook::{Options, tls::certs::PrivateKeyEncoding};
+/// use stackable_certs::PrivateKeyEncoding;
+/// use stackable_webhook::{Options};
 ///
 /// let options = Options::builder()
 ///     .tls_mount(

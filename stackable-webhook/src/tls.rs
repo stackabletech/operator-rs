@@ -7,15 +7,13 @@ use futures_util::pin_mut;
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use snafu::{ResultExt, Snafu};
+use stackable_certs::{CertifacteError, CertificateChain};
 use tokio::net::TcpListener;
 use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
 use tower::Service;
 use tracing::{error, instrument, warn};
 
-use crate::{
-    options::TlsOption,
-    tls::certs::{CertifacteError, CertificateChain},
-};
+use crate::options::TlsOption;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
