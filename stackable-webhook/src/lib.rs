@@ -111,7 +111,7 @@ impl WebhookServer {
     /// use axum::Router;
     ///
     /// let options = Options::builder()
-    ///     .socket_addr(([127, 0, 0, 1], 8080))
+    ///     .bind_address([127, 0, 0, 1], 8080)
     ///     .build();
     ///
     /// let router = Router::new();

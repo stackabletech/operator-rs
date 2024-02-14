@@ -21,27 +21,31 @@ use crate::{constants::DEFAULT_SOCKET_ADDR, tls::certs::PrivateKeyEncoding};
 ///
 /// // Set IP address and port at the same time
 /// let options = Options::builder()
-///     .socket_addr([0, 0, 0, 0], 12345)
+///     .bind_address([0, 0, 0, 0], 12345)
 ///     .build();
 ///
 /// // Set IP address only
 /// let options = Options::builder()
-///     .socket_ip([0, 0, 0, 0])
+///     .bind_ip([0, 0, 0, 0])
 ///     .build();
 ///
 /// // Set port only
 /// let options = Options::builder()
-///     .socket_port(12345)
+///     .bind_port(12345)
 ///     .build();
 /// ```
 ///
 /// ### Example with Mounted TLS Certificate
 ///
 /// ```
-/// use stackable_webhook::Options;
+/// use stackable_webhook::{Options, tls::certs::PrivateKeyEncoding};
 ///
 /// let options = Options::builder()
-///     .tls_mount("path/to/pem/cert", "path/to/pem/key")
+///     .tls_mount(
+///         "path/to/pem/cert",
+///         "path/to/pem/key",
+///         PrivateKeyEncoding::Pkcs8,
+///     )
 ///     .build();
 /// ```
 #[derive(Debug)]
