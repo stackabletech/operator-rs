@@ -10,3 +10,4 @@ repository.workspace = true
 tokio-rustls = "0.25.0"
 snafu = "0.8.0"
 rustls-pemfile = "2.0.0"
+x509-cert = "0.2.5"

@@ -4,6 +4,8 @@ use rustls_pemfile::{certs, ec_private_keys, pkcs8_private_keys, rsa_private_key
 use snafu::{ResultExt, Snafu};
 use tokio_rustls::rustls::pki_types::{CertificateDer, PrivateKeyDer};
 
+pub mod ca;
+
 pub type Result<T, E = CertifacteError> = std::result::Result<T, E>;
 
 #[derive(Debug, Snafu)]
