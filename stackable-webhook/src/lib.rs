@@ -142,7 +142,7 @@ impl WebhookServer {
         let service = ServiceBuilder::new().layer(layer);
 
         // Create the root router and merge the provided router into it.
-        debug!("create core couter and merge provided router");
+        debug!("create core router and merge provided router");
         let mut router = Router::new().layer(service);
         router = router.merge(self.router);
 
