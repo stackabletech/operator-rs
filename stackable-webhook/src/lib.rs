@@ -1,8 +1,7 @@
 //! Utility types and functions to easily create ready-to-use webhook servers
 //! which can handle different tasks, for example CRD conversions. All webhook
-//! servers use HTTPS by default and provides options to enable HTTP to HTTPS
-//! redirection as well. This library is fully compatible with the [`tracing`]
-//! crate and emits multiple levels of tracing data.
+//! servers use HTTPS by defaultThis library is fully compatible with the
+//! [`tracing`] crate and emits debug level tracing data.
 //!
 //! Most users will only use the top-level exported generic [`WebhookServer`]
 //! which enables complete control over the [Router] which handles registering
@@ -28,11 +27,10 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing::{debug, debug_span, instrument};
 
-use crate::{options::RedirectOption, redirect::Redirector, tls::TlsServer};
+use crate::tls::TlsServer;
 
 pub mod constants;
 pub mod options;
-pub mod redirect;
 pub mod servers;
 pub mod tls;
 
@@ -113,7 +111,6 @@ impl WebhookServer {
     /// use axum::Router;
     ///
     /// let options = Options::builder()
-    ///     .disable_redirect()
     ///     .socket_addr(([127, 0, 0, 1], 8080))
     ///     .build();
     ///
@@ -131,25 +128,6 @@ impl WebhookServer {
     #[instrument(name = "run_webhook_server", skip(self), fields(self.options))]
     pub async fn run(self) -> Result<()> {
         debug!("run webhook server");
-
-        // Only run the auto redirector when enabled
-        match self.options.redirect {
-            RedirectOption::Enabled(http_port) => {
-                debug!("run webhook server with automatic HTTP to HTTPS redirect enabled");
-
-                let redirector = Redirector::new(
-                    self.options.socket_addr.ip(),
-                    self.options.socket_addr.port(),
-                    http_port,
-                );
-
-                debug!(http_port, "spawning redirector in separate task");
-                tokio::spawn(redirector.run());
-            }
-            RedirectOption::Disabled => {
-                debug!("webhook runs without automatic HTTP to HTTPS redirect which is not recommended");
-            }
-        }
 
         // TODO (@Techassi): Switch out for Otel compatible tracing
         // https://github.com/davidB/tracing-opentelemetry-instrumentation-sdk
@@ -175,5 +153,28 @@ impl WebhookServer {
 
         debug!("running TLS server");
         tls_server.run().await.context(RunTlsServerSnafu)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::tls::certs::PrivateKeyEncoding;
+
+    use super::*;
+    use axum::{routing::get, Router};
+
+    #[tokio::test]
+    async fn test() {
+        let router = Router::new().route("/", get(|| async { "Ok" }));
+        let options = Options::builder()
+            .tls_mount(
+                "/tmp/webhook-certs/serverCert.pem",
+                "/tmp/webhook-certs/serverKey.pem",
+                PrivateKeyEncoding::Pkcs8,
+            )
+            .build();
+
+        let server = WebhookServer::new(router, options);
+        server.run().await.unwrap()
     }
 }

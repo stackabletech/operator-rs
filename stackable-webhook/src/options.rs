@@ -4,17 +4,13 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{
-    constants::{DEFAULT_HTTP_PORT, DEFAULT_SOCKET_ADDR},
-    tls::certs::PrivateKeyEncoding,
-};
+use crate::{constants::DEFAULT_SOCKET_ADDR, tls::certs::PrivateKeyEncoding};
 
 /// Specifies available webhook server options.
 ///
 /// The [`Default`] implemention for this struct contains the following
 /// values:
 ///
-/// - Redirect from HTTP to HTTPS is enabled, HTTP listens on port 8080
 /// - The socket binds to 127.0.0.1 on port 8443 (HTTPS)
 /// - The TLS cert used gets auto-generated
 ///
@@ -39,22 +35,6 @@ use crate::{
 ///     .build();
 /// ```
 ///
-/// ### Example with Custom Redirects
-///
-/// ```
-/// use stackable_webhook::Options;
-///
-/// // Use a custom HTTP port
-/// let options = Options::builder()
-///     .enable_redirect(12345)
-///     .build();
-///
-/// // Disable auto-redirect
-/// let options = Options::builder()
-///     .disable_redirect()
-///     .build();
-/// ```
-///
 /// ### Example with Mounted TLS Certificate
 ///
 /// ```
@@ -66,14 +46,8 @@ use crate::{
 /// ```
 #[derive(Debug)]
 pub struct Options {
-    /// Enables or disables the automatic HTTP to HTTPS redirect. If enabled,
-    /// it is required to specify the HTTP port. If disabled, the webhook
-    /// server **only** listens on HTTPS.
-    pub redirect: RedirectOption,
-
     /// The default HTTPS socket address the [`TcpListener`][tokio::net::TcpListener]
-    /// binds to. The same IP adress is used for the auto HTTP to HTTPS redirect
-    /// handler.
+    /// binds to.
     pub socket_addr: SocketAddr,
 
     /// Either auto-generate or use an injected TLS certificate.
@@ -102,26 +76,11 @@ impl Options {
 /// [`Options::builder()`] or [`OptionsBuilder::default()`].
 #[derive(Debug, Default)]
 pub struct OptionsBuilder {
-    redirect: Option<RedirectOption>,
     socket_addr: Option<SocketAddr>,
     tls: Option<TlsOption>,
 }
 
 impl OptionsBuilder {
-    /// Disables HTPP to HTTPS auto-redirect entirely. The webhook server
-    /// will only listen on HTTPS.
-    pub fn disable_redirect(mut self) -> Self {
-        self.redirect = Some(RedirectOption::Disabled);
-        self
-    }
-
-    /// Enables HTTP to HTTPS auto-redirect on `http_port`. The webhook
-    /// server will listen on both HTTP and HTTPS.
-    pub fn enable_redirect(mut self, http_port: u16) -> Self {
-        self.redirect = Some(RedirectOption::Enabled(http_port));
-        self
-    }
-
     /// Sets the socket address the webhook server uses to bind for HTTPS.
     pub fn bind_address(mut self, bind_ip: impl Into<IpAddr>, bind_port: u16) -> Self {
         self.socket_addr = Some(SocketAddr::new(bind_ip.into(), bind_port));
@@ -173,22 +132,9 @@ impl OptionsBuilder {
     /// explicitly set option.
     pub fn build(self) -> Options {
         Options {
-            redirect: self.redirect.unwrap_or_default(),
             socket_addr: self.socket_addr.unwrap_or(DEFAULT_SOCKET_ADDR),
             tls: self.tls.unwrap_or_default(),
         }
-    }
-}
-
-#[derive(Debug)]
-pub enum RedirectOption {
-    Enabled(u16),
-    Disabled,
-}
-
-impl Default for RedirectOption {
-    fn default() -> Self {
-        Self::Enabled(DEFAULT_HTTP_PORT)
     }
 }
 
