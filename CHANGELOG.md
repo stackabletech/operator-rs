@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## Added
+
+- Add `stackable_webhook` crate which provides utilities to create webhooks with TLS termination ([#730]).
+
+[#730]: https://github.com/stackabletech/operator-rs/pull/730
+
 ## Changed
 
 - Remove `resources` key from `DynamicValues` struct ([#734]).
