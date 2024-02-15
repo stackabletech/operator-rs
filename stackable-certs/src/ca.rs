@@ -1,9 +1,23 @@
+use std::{str::FromStr, time::Duration};
+
+use ed25519_dalek::pkcs8::EncodePublicKey;
+use snafu::Snafu;
+use x509_cert::{
+    builder::{Builder, CertificateBuilder, Profile},
+    der::{pem::LineEnding, DecodePem},
+    name::Name,
+    serial_number::SerialNumber,
+    spki::SubjectPublicKeyInfoOwned,
+    time::Validity,
+    Certificate,
+};
+
+use crate::sign::{RsaSigningKey, Signer};
+
 // NOTE (@Techassi): Not all this code should live here, there will be other
 // modules which handle a subset of features. For now this mostly serves as
 // a rough scratch pad to sketch out the general pieces of code and get more
 // comfortable with the x509_cert crate.
-use snafu::Snafu;
-use x509_cert::{time::Validity, Certificate};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -16,17 +30,48 @@ pub enum Error {}
 /// A certificate authority (CA) which is used to generate and sign
 /// intermediate certificates.
 #[derive(Debug)]
-pub struct CertificateAuthority {
-    certificate: String,
-    private_key: String,
-    validity: Validity,
-    subject: String,
-    issuer: String,
+pub struct CertificateAuthority<S> {
+    serial_numbers: Vec<u64>,
+    certificate: Certificate,
+    signing_key: S,
 }
 
-impl CertificateAuthority {
+impl CertificateAuthority<RsaSigningKey> {
     pub fn new() -> Self {
-        todo!()
+        let signing_key = RsaSigningKey::new();
+        dbg!(&signing_key);
+
+        let serial_number = SerialNumber::from(rand::random::<u64>());
+        let validity = Validity::from_now(Duration::from_secs(3600)).unwrap();
+        let subject = Name::from_str("CN=Stackable Root CA,O=Stackable GmbH,C=DE").unwrap();
+        let spki = SubjectPublicKeyInfoOwned::from_pem(
+            signing_key
+                .public_key
+                .to_public_key_pem(LineEnding::default())
+                .unwrap()
+                .as_bytes(),
+        )
+        .unwrap();
+
+        let signer = signing_key.signing_key();
+
+        let certificate = CertificateBuilder::new(
+            Profile::Root,
+            serial_number,
+            validity,
+            subject,
+            spki,
+            &signer,
+        )
+        .unwrap()
+        .build()
+        .unwrap();
+
+        Self {
+            serial_numbers: Vec::new(),
+            certificate,
+            signing_key,
+        }
     }
 
     pub fn generate_intermediate_certificate(&self) -> Result<IntermediateCertificate> {
@@ -53,4 +98,14 @@ impl IntermediateCertificate {
 pub trait CertificateExt: Sized {
     fn from_file() -> Result<Self>;
     fn into_file(self) -> Result<()>;
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test() {
+        let ca = CertificateAuthority::new();
+    }
 }
