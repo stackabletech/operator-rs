@@ -7,7 +7,10 @@ edition.workspace = true
 repository.workspace = true
 
 [dependencies]
+ed25519-dalek = { version = "2.1.1", features = ["rand_core"] }
 tokio-rustls = "0.25.0"
-snafu = "0.8.0"
+rand = "0.8.5"
+rand_core = "0.6.4"
 rustls-pemfile = "2.0.0"
+snafu = "0.8.0"
 x509-cert = "0.2.5"

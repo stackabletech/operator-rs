@@ -5,6 +5,7 @@ use snafu::{ResultExt, Snafu};
 use tokio_rustls::rustls::pki_types::{CertificateDer, PrivateKeyDer};
 
 pub mod ca;
+pub mod sign;
 
 pub type Result<T, E = CertifacteError> = std::result::Result<T, E>;
 
