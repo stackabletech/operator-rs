@@ -1,100 +1,52 @@
-use std::{fs::File, io::BufReader, path::Path};
+use std::path::Path;
 
-use rustls_pemfile::{certs, ec_private_keys, pkcs8_private_keys, rsa_private_keys};
-use snafu::{ResultExt, Snafu};
-use tokio_rustls::rustls::pki_types::{CertificateDer, PrivateKeyDer};
+use x509_cert::der::pem::LineEnding;
 
 pub mod ca;
+pub mod chain;
 pub mod sign;
 
-pub type Result<T, E = CertifacteError> = std::result::Result<T, E>;
+pub use chain::*;
 
-#[derive(Debug, Snafu)]
-pub enum CertifacteError {
-    #[snafu(display("failed to read certificate file"))]
-    ReadCertFile { source: std::io::Error },
+// TODO (@Techassi): Maybe add functions to read/write certificates from/to K8s
+// secrets or separate those out into a K8s specific trait.
+pub trait CertificateExt: Sized {
+    const CERTIFICATE_FILE_EXT: &'static str = "pem";
+    const PRIVATE_KEY_FILE_EXT: &'static str = "pk8";
 
-    #[snafu(display("failed to read buffered certificate file"))]
-    ReadBufferedCertFile { source: std::io::Error },
+    type Error: std::error::Error;
 
-    #[snafu(display("failed to read private key file"))]
-    ReadKeyFile { source: std::io::Error },
+    /// Reads in a PEM-encoded certificate from `certificate_path` and private
+    /// key file from `private_key_path` and finally constructs a CA from the
+    /// contents.
+    fn from_files(
+        certificate_path: impl AsRef<Path>,
+        private_key_path: impl AsRef<Path>,
+    ) -> Result<Self, Self::Error>;
 
-    #[snafu(display("failed to read buffered private key file"))]
-    ReadBufferedKeyFile { source: std::io::Error },
+    /// Writes the certificate and private key as a PEM-encoded file to
+    /// `certificate_path` and `private_key_path` respectively.
+    ///
+    /// This function will always use [`Self::CERTIFICATE_FILE_EXT`] for the
+    /// certificate and [`Self::PRIVATE_KEY_FILE_EXT`] for the private key
+    /// file extension.
+    fn to_files(
+        &self,
+        certificate_path: impl AsRef<Path>,
+        private_key_path: impl AsRef<Path>,
+        line_ending: LineEnding,
+    ) -> Result<(), Self::Error>;
 }
 
-pub struct CertificateChain {
-    chain: Vec<CertificateDer<'static>>,
-    private_key: PrivateKeyDer<'static>,
+pub trait K8sCertificateExt: CertificateExt {
+    // TODO (@Techassi): Use SecretReference here, for that, we would need to
+    // move it out of secret-operator into a common place.
+    fn from_secret(client: (), secret_ref: &str);
 }
 
-impl CertificateChain {
-    pub fn from_files(
-        cert_path: impl AsRef<Path>,
-        pk_path: impl AsRef<Path>,
-        pk_encoding: PrivateKeyEncoding,
-    ) -> Result<Self> {
-        let cert_file = File::open(cert_path).context(ReadCertFileSnafu)?;
-        let mut cert_reader = BufReader::new(cert_file);
+pub trait SecretExt {
+    type Error: std::error::Error;
 
-        let key_file = File::open(pk_path).context(ReadKeyFileSnafu)?;
-        let mut pk_reader = BufReader::new(key_file);
-
-        let chain = certs(&mut cert_reader)
-            .collect::<Result<Vec<_>, _>>()
-            .context(ReadBufferedCertFileSnafu)?;
-
-        let private_key = match pk_encoding {
-            PrivateKeyEncoding::Pkcs8 => Self::pkcs8_to_pk_der(&mut pk_reader)?,
-            PrivateKeyEncoding::Rsa => Self::rsa_to_pk_der(&mut pk_reader)?,
-            PrivateKeyEncoding::Ec => Self::ec_to_pk_der(&mut pk_reader)?,
-        }
-        .remove(0);
-
-        Ok(Self { chain, private_key })
-    }
-
-    fn pkcs8_to_pk_der<'a>(pk_reader: &mut dyn std::io::BufRead) -> Result<Vec<PrivateKeyDer<'a>>> {
-        let ders = pkcs8_private_keys(pk_reader)
-            .collect::<Result<Vec<_>, _>>()
-            .context(ReadBufferedKeyFileSnafu)?;
-
-        Ok(ders.into_iter().map(PrivateKeyDer::from).collect())
-    }
-
-    fn rsa_to_pk_der<'a>(pk_reader: &mut dyn std::io::BufRead) -> Result<Vec<PrivateKeyDer<'a>>> {
-        let ders = rsa_private_keys(pk_reader)
-            .collect::<Result<Vec<_>, _>>()
-            .context(ReadBufferedKeyFileSnafu)?;
-
-        Ok(ders.into_iter().map(PrivateKeyDer::from).collect())
-    }
-
-    fn ec_to_pk_der<'a>(pk_reader: &mut dyn std::io::BufRead) -> Result<Vec<PrivateKeyDer<'a>>> {
-        let ders = ec_private_keys(pk_reader)
-            .collect::<Result<Vec<_>, _>>()
-            .context(ReadBufferedKeyFileSnafu)?;
-
-        Ok(ders.into_iter().map(PrivateKeyDer::from).collect())
-    }
-
-    pub fn chain(&self) -> &[CertificateDer] {
-        &self.chain
-    }
-
-    pub fn private_key(&self) -> &PrivateKeyDer {
-        &self.private_key
-    }
-
-    pub fn into_parts(self) -> (Vec<CertificateDer<'static>>, PrivateKeyDer<'static>) {
-        (self.chain, self.private_key)
-    }
-}
-
-#[derive(Debug)]
-pub enum PrivateKeyEncoding {
-    Pkcs8,
-    Rsa,
-    Ec,
+    fn requires_renewal(&self) -> bool;
+    fn renew(&mut self, renew_after: u64) -> Result<(), Self::Error>;
 }
