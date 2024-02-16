@@ -1,4 +1,21 @@
+//! This crate provides types, traits and functions to work with X.509 TLS
+//! certificates. It can be used to create certificate authorities (CAs)
+//! which can sign leaf certificates. These leaf certificates can be used
+//! for webhook servers or other components which need TLS certificates
+//! to encrypt connections.
+//!
+//! ## Features
+//!
+//! The crate allows to selectively enable additional features using
+//! different feature flags. Currently, these flags are supported:
+//!
+//! - `k8s`: This enables various traits and functions to work with
+//!   certificates and Kubernetes secrets.
+
 use std::path::Path;
+
+#[cfg(feature = "k8s")]
+use k8s_openapi::api::core::v1::Secret;
 
 use x509_cert::der::pem::LineEnding;
 
@@ -8,8 +25,6 @@ pub mod sign;
 
 pub use chain::*;
 
-// TODO (@Techassi): Maybe add functions to read/write certificates from/to K8s
-// secrets or separate those out into a K8s specific trait.
 pub trait CertificateExt: Sized {
     const CERTIFICATE_FILE_EXT: &'static str = "pem";
     const PRIVATE_KEY_FILE_EXT: &'static str = "pk8";
@@ -38,12 +53,20 @@ pub trait CertificateExt: Sized {
     ) -> Result<(), Self::Error>;
 }
 
-pub trait K8sCertificateExt: CertificateExt {
+/// Provides functions to:
+///
+/// - decode a certificate from a Kubernetes secret
+/// - encode a certificate as a Kubernetes secret
+#[cfg(feature = "k8s")]
+pub trait K8sCertificateExt: Sized {
+    type Error: std::error::Error;
     // TODO (@Techassi): Use SecretReference here, for that, we would need to
     // move it out of secret-operator into a common place.
-    fn from_secret(client: (), secret_ref: &str);
+    fn from_secret(secret: Secret) -> Result<Self, Self::Error>;
+    fn to_secret(&self) -> Result<Secret, Self::Error>;
 }
 
+#[cfg(feature = "k8s")]
 pub trait SecretExt {
     type Error: std::error::Error;
 

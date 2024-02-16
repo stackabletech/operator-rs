@@ -1,5 +1,8 @@
 use std::{path::Path, str::FromStr, time::Duration};
 
+#[cfg(feature = "k8s")]
+use k8s_openapi::api::core::v1::Secret;
+
 use p256::pkcs8::EncodePrivateKey;
 use snafu::Snafu;
 use x509_cert::{
@@ -12,6 +15,9 @@ use x509_cert::{
     time::Validity,
     Certificate,
 };
+
+#[cfg(feature = "k8s")]
+use crate::K8sCertificateExt;
 
 use crate::{sign::rsa::SigningKey, CertificateExt};
 
@@ -77,7 +83,23 @@ impl CertificateExt for CertificateAuthority {
     }
 }
 
+#[cfg(feature = "k8s")]
+impl K8sCertificateExt for CertificateAuthority {
+    type Error = Error;
+
+    fn from_secret(secret: Secret) -> crate::Result<Self, Self::Error> {
+        todo!()
+    }
+
+    fn to_secret(&self) -> crate::Result<Secret, Self::Error> {
+        todo!()
+    }
+}
+
 impl CertificateAuthority {
+    /// Creates a new CA certificate which embeds the public part of the randomly
+    /// generated signing key. The certificate is additionally signed by the
+    /// private part of the signing key.
     pub fn new() -> Self {
         let signing_key = SigningKey::new().unwrap();
         let serial_number = SerialNumber::from(rand::random::<u64>());

@@ -6,9 +6,19 @@ license.workspace = true
 edition.workspace = true
 repository.workspace = true
 
+[features]
+k8s = ["dep:kube", "dep:k8s-openapi"]
+
 [dependencies]
 ecdsa = { version = "0.16.9", features = ["digest", "pem"] }
 p256 = { version = "0.13.2", features = ["ecdsa"] }
+k8s-openapi = { version = "0.21.0", optional = true, default-features = false, features = [
+  "v1_28",
+] }
+kube = { version = "0.88.1", optional = true, default-features = false, features = [
+  "client",
+  "rustls-tls",
+] }
 tokio-rustls = "0.25.0"
 rand = "0.8.5"
 rand_core = "0.6.4"
