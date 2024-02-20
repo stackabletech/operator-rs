@@ -1,11 +1,9 @@
-use p256::pkcs8::{EncodePublicKey, LineEnding};
 use rand_core::{CryptoRngCore, OsRng};
-use rsa::{
-    pkcs8::{DecodePrivateKey, EncodePrivateKey},
-    RsaPrivateKey, RsaPublicKey,
-};
+use rsa::{pkcs8::DecodePrivateKey, RsaPrivateKey, RsaPublicKey};
 use snafu::{ResultExt, Snafu};
-use zeroize::Zeroizing;
+use tracing::instrument;
+
+use crate::sign::SigningKeyPair;
 
 pub const DEFAULT_RSA_BIT_SIZE: usize = 2048;
 
@@ -28,60 +26,58 @@ pub enum Error {
 
 #[derive(Debug)]
 pub struct SigningKey {
-    public_key: RsaPublicKey,
+    verifying_key: RsaPublicKey,
     signing_key: rsa::pkcs1v15::SigningKey<sha2::Sha256>,
 }
 
 impl SigningKey {
+    #[instrument(name = "create_rsa_signing_key")]
     pub fn new() -> Result<Self> {
         let mut csprng = OsRng;
         Self::new_with(&mut csprng)
     }
 
+    #[instrument(name = "create_rsa_signing_key_custom_rng", skip_all)]
     pub fn new_with<R>(csprng: &mut R) -> Result<Self>
     where
         R: CryptoRngCore + ?Sized,
     {
         let private_key =
             RsaPrivateKey::new(csprng, DEFAULT_RSA_BIT_SIZE).context(CreateKeySnafu)?;
-        let public_key = RsaPublicKey::from(&private_key);
+        let verifying_key = RsaPublicKey::from(&private_key);
         let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 
         Ok(Self {
             signing_key,
-            public_key,
+            verifying_key,
         })
     }
+}
 
-    pub fn from_pkcs8_pem(input: &str) -> Result<Self> {
-        let private_key =
-            RsaPrivateKey::from_pkcs8_pem(input).context(DeserializeSigningKeySnafu)?;
-        let public_key = RsaPublicKey::from(&private_key);
-        let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
+impl SigningKeyPair for SigningKey {
+    type SigningKey = rsa::pkcs1v15::SigningKey<sha2::Sha256>;
+    type Signature = rsa::pkcs1v15::Signature;
+    type VerifyingKey = rsa::RsaPublicKey;
+    type Error = Error;
 
-        Ok(Self {
-            public_key,
-            signing_key,
-        })
-    }
-
-    pub fn signing_key(&self) -> &rsa::pkcs1v15::SigningKey<sha2::Sha256> {
+    fn private_key(&self) -> &Self::SigningKey {
         &self.signing_key
     }
 
-    pub fn signing_key_pem(&self, line_ending: LineEnding) -> Result<Zeroizing<String>> {
-        self.signing_key()
-            .to_pkcs8_pem(line_ending)
-            .context(SerializeSigningKeyToPemSnafu)
+    fn public_key(&self) -> &Self::VerifyingKey {
+        &self.verifying_key
     }
 
-    pub fn verifying_key(&self) -> &RsaPublicKey {
-        &self.public_key
-    }
+    #[instrument(name = "create_rsa_signing_key_from_pkcs8_pem")]
+    fn from_pkcs8_pem(input: &str) -> Result<Self, Self::Error> {
+        let private_key =
+            RsaPrivateKey::from_pkcs8_pem(input).context(DeserializeSigningKeySnafu)?;
+        let verifying_key = RsaPublicKey::from(&private_key);
+        let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 
-    pub fn verifying_key_pem(&self, line_ending: LineEnding) -> Result<String> {
-        self.verifying_key()
-            .to_public_key_pem(line_ending)
-            .context(SerializeVerifyingKeyToPemSnafu)
+        Ok(Self {
+            verifying_key,
+            signing_key,
+        })
     }
 }

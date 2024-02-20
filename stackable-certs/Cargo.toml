@@ -21,6 +21,7 @@ kube = { version = "0.88.1", optional = true, default-features = false, features
   "client",
   "rustls-tls",
 ] }
+tracing = "0.1.40"
 tokio-rustls = "0.25.0"
 rand = "0.8.5"
 rand_core = "0.6.4"

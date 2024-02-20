@@ -11,14 +11,23 @@
 //!
 //! - `k8s`: This enables various traits and functions to work with
 //!   certificates and Kubernetes secrets.
+//!
+//! ## References
+//!
+//! - <https://cabforum.org/uploads/CA-Browser-Forum-TLS-BRs-v2.0.2.pdf>
+//! - <https://datatracker.ietf.org/doc/html/rfc5280>
+//! - <https://github.com/zmap/zlint>
 
 use std::path::{Path, PathBuf};
+
+use crate::sign::SigningKeyPair;
 
 #[cfg(feature = "k8s")]
 use {k8s_openapi::api::core::v1::Secret, stackable_operator::client::Client};
 
+use signature::Keypair;
 use stackable_operator::commons::secret::SecretReference;
-use x509_cert::der::pem::LineEnding;
+use x509_cert::{der::pem::LineEnding, spki::EncodePublicKey, Certificate};
 
 pub mod ca;
 pub mod chain;
@@ -68,10 +77,20 @@ pub trait PathBufExt {
 
 impl PathBufExt for PathBuf {}
 
+#[derive(Debug)]
+pub struct CertificatePair<S>
+where
+    S: SigningKeyPair,
+    <S::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
+{
+    certificate: Certificate,
+    signing_key: S,
+}
+
 /// This trait provides utilities to work with certificate pairs which contain
 /// a public certificate (with a public key embedded in it) and the private key
 /// used to sign it. This trait is useful for CAs and self-signed certificates.
-pub trait CertificatePair: Sized {
+pub trait CertificatePairExt: Sized {
     type Error: std::error::Error;
 
     /// Reads in a PEM-encoded certificate from `certificate_path` and private
@@ -95,13 +114,31 @@ pub trait CertificatePair: Sized {
         certificate_path: impl AsRef<Path>,
         private_key_path: impl AsRef<Path>,
         line_ending: LineEnding,
+    ) -> Result<(), Self::Error> {
+        self.to_certificate_file(certificate_path, line_ending)?;
+        self.to_private_key_file(private_key_path, line_ending)
+    }
+
+    fn to_certificate_file(
+        &self,
+        certificate_path: impl AsRef<Path>,
+        line_ending: LineEnding,
+    ) -> Result<(), Self::Error>;
+
+    fn to_private_key_file(
+        &self,
+        private_key_path: impl AsRef<Path>,
+        line_ending: LineEnding,
     ) -> Result<(), Self::Error>;
 }
 
-/// Provides functions to:
+/// This trait provides functions to work with CAs stored in Kubernetes
+/// secrets.
 ///
-/// - decode a certificate from a Kubernetes secret
-/// - encode a certificate as a Kubernetes secret
+/// Namely these function enable:
+///
+/// - decoding a certificate from a Kubernetes secret
+/// - encoding a certificate as a Kubernetes secret
 #[cfg(feature = "k8s")]
 pub trait K8sCertificatePair: Sized {
     type Error: std::error::Error;

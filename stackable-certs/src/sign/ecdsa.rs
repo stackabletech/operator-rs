@@ -1,8 +1,8 @@
-use std::ops::Deref;
-
-use p256::pkcs8::{EncodePublicKey, LineEnding};
+use p256::{pkcs8::DecodePrivateKey, NistP256};
 use rand_core::{CryptoRngCore, OsRng};
 use snafu::Snafu;
+
+use crate::sign::SigningKeyPair;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -12,14 +12,10 @@ pub enum Error {
     SerializeKeyToPem { source: x509_cert::spki::Error },
 }
 
-pub struct SigningKey(p256::ecdsa::SigningKey);
-
-impl Deref for SigningKey {
-    type Target = p256::ecdsa::SigningKey;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+#[derive(Debug)]
+pub struct SigningKey {
+    verifying_key: p256::ecdsa::VerifyingKey,
+    signing_key: p256::ecdsa::SigningKey,
 }
 
 impl SigningKey {
@@ -33,18 +29,38 @@ impl SigningKey {
         R: CryptoRngCore + Sized,
     {
         let signing_key = p256::ecdsa::SigningKey::random(csprng);
-        Ok(Self(signing_key))
+        let verifying_key = p256::ecdsa::VerifyingKey::from(&signing_key);
+
+        Ok(Self {
+            signing_key,
+            verifying_key,
+        })
+    }
+}
+
+impl SigningKeyPair for SigningKey {
+    type SigningKey = p256::ecdsa::SigningKey;
+    type Signature = ecdsa::der::Signature<NistP256>;
+    type VerifyingKey = p256::ecdsa::VerifyingKey;
+
+    type Error = Error;
+
+    fn private_key(&self) -> &Self::SigningKey {
+        &self.signing_key
     }
 
-    pub fn signing_key(&self) -> &Self {
-        self
+    fn public_key(&self) -> &Self::VerifyingKey {
+        &self.verifying_key
     }
 
-    pub fn verifying_key(&self) -> &p256::ecdsa::VerifyingKey {
-        todo!()
-    }
+    fn from_pkcs8_pem(input: &str) -> Result<Self, Self::Error> {
+        // TODO (@Techassi): Remove unwrap
+        let signing_key = p256::ecdsa::SigningKey::from_pkcs8_pem(input).unwrap();
+        let verifying_key = p256::ecdsa::VerifyingKey::from(&signing_key);
 
-    pub fn verifying_key_pem(&self, line_ending: LineEnding) -> Result<String> {
-        Ok(self.verifying_key().to_public_key_pem(line_ending)?)
+        Ok(Self {
+            verifying_key,
+            signing_key,
+        })
     }
 }
