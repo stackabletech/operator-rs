@@ -34,8 +34,8 @@ where
     InvalidKey { source: KeyError },
 
     /// Indicates that the value failed to parse.
-    #[snafu(display("failed to parse value of key/value pair"))]
-    InvalidValue { source: E },
+    #[snafu(display("failed to parse value [{value}] of key [{key}] "))]
+    InvalidValue { key: String, value: String, source: E },
 }
 
 /// A validated Kubernetes key/value pair.
@@ -105,7 +105,7 @@ where
 
     fn try_from(value: (K, V)) -> Result<Self, Self::Error> {
         let key = Key::from_str(value.0.as_ref()).context(InvalidKeySnafu)?;
-        let value = T::from_str(value.1.as_ref()).context(InvalidValueSnafu)?;
+        let value = T::from_str(value.1.as_ref()).context(InvalidValueSnafu {key: key.to_string(), value: value.1.as_ref().to_string()})?;
 
         Ok(Self { key, value })
     }
