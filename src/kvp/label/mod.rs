@@ -22,7 +22,8 @@ use crate::{
     kvp::{
         consts::{
             K8S_APP_COMPONENT_KEY, K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY,
-            K8S_APP_ROLE_GROUP_KEY, K8S_APP_VERSION_KEY,
+            K8S_APP_ROLE_GROUP_KEY, K8S_APP_VERSION_KEY, STACKABLE_VENDOR_KEY,
+            STACKABLE_VENDOR_VALUE,
         },
         Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError, ObjectLabels,
     },
@@ -260,7 +261,7 @@ impl Labels {
     }
 
     /// Returns the recommended set of labels. The set includes these well-known
-    /// labels:
+    /// Kubernetes labels:
     ///
     /// - `app.kubernetes.io/role-group`
     /// - `app.kubernetes.io/managed-by`
@@ -269,6 +270,10 @@ impl Labels {
     /// - `app.kubernetes.io/version`
     /// - `app.kubernetes.io/name`
     ///
+    /// Additionally, it includes Stackable-specific labels. These are:
+    ///
+    /// - `stackable.tech/vendor`
+    ///
     /// This function returns a result, because the parameter `object_labels`
     /// can contain invalid data or can exceed the maximum allowed number of
     /// characters.
@@ -276,6 +281,7 @@ impl Labels {
     where
         R: Resource,
     {
+        // Well-known Kubernetes labels
         let mut labels = Self::role_group_selector(
             object_labels.owner,
             object_labels.app_name,
@@ -289,6 +295,9 @@ impl Labels {
 
         labels.insert(managed_by);
         labels.insert(version);
+
+        // Stackable-specific labels
+        labels.parse_insert((STACKABLE_VENDOR_KEY, STACKABLE_VENDOR_VALUE))?;
 
         Ok(labels)
     }
@@ -374,7 +383,22 @@ impl Labels {
             /// Returns if the set of labels contains a label with the provided `key`.
             /// Failure to parse/validate the [`Key`] will return `false`.
             pub fn contains_key(&self, key: impl TryInto<Key>) -> bool;
+
+            /// Returns an [`Iterator`] over [`Labels`] yielding a reference to every [`Label`] contained within.
+            pub fn iter(&self) -> impl Iterator<Item = &KeyValuePair<LabelValue>>;
+
         }
+    }
+}
+
+impl IntoIterator for Labels {
+    type Item = KeyValuePair<LabelValue>;
+    type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
+
+    /// Returns a consuming [`Iterator`] over [`Labels`] moving every [`Label`] out.
+    /// The [`Labels`] cannot be used again after calling this.
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 

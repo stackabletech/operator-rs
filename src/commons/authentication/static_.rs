@@ -22,7 +22,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticationProvider {
     /// Secret providing the usernames and passwords.
@@ -31,7 +33,9 @@ pub struct AuthenticationProvider {
     pub user_credentials_secret: UserCredentialsSecretRef,
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[derive(
+    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub struct UserCredentialsSecretRef {
     /// Name of the Secret.

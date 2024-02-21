@@ -351,7 +351,7 @@ impl PodBuilder {
     ) -> Result<&mut Self> {
         let listener_reference = ListenerReference::ListenerClass(listener_class.to_string());
         let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference)
-            .build()
+            .build_ephemeral()
             .context(ListenerVolumeSnafu { name: volume_name })?;
 
         self.add_volume(Volume {
@@ -440,7 +440,7 @@ impl PodBuilder {
     ) -> Result<&mut Self> {
         let listener_reference = ListenerReference::ListenerName(listener_name.to_string());
         let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference)
-            .build()
+            .build_ephemeral()
             .context(ListenerVolumeSnafu { name: volume_name })?;
 
         self.add_volume(Volume {
@@ -691,13 +691,13 @@ mod tests {
             pod_spec
                 .init_containers
                 .as_ref()
-                .and_then(|containers| containers.get(0).as_ref().map(|c| c.name.clone())),
+                .and_then(|containers| containers.first().as_ref().map(|c| c.name.clone())),
             Some("init-containername".to_string())
         );
 
         assert_eq!(
             pod_spec.volumes.as_ref().and_then(|volumes| volumes
-                .get(0)
+                .first()
                 .as_ref()
                 .and_then(|volume| volume.config_map.as_ref()?.name.clone())),
             Some("configmap".to_string())

@@ -30,12 +30,16 @@ where
 {
     /// Indicates that the key failed to parse. See [`KeyError`] for more
     /// information about the error causes.
-    #[snafu(display("failed to parse key of key/value pair"))]
-    InvalidKey { source: KeyError },
+    #[snafu(display("failed to parse key {key:?} of key/value pair"))]
+    InvalidKey { source: KeyError, key: String },
 
     /// Indicates that the value failed to parse.
-    #[snafu(display("failed to parse value [{value}] of key [{key}] "))]
-    InvalidValue { key: String, value: String, source: E },
+    #[snafu(display("failed to parse value [{value:?}] of key [{key:?}] "))]
+    InvalidValue {
+        source: E,
+        key: String,
+        value: String,
+    },
 }
 
 /// A validated Kubernetes key/value pair.
@@ -104,8 +108,14 @@ where
     type Error = KeyValuePairError<T::Error>;
 
     fn try_from(value: (K, V)) -> Result<Self, Self::Error> {
-        let key = Key::from_str(value.0.as_ref()).context(InvalidKeySnafu)?;
-        let value = T::from_str(value.1.as_ref()).context(InvalidValueSnafu {key: key.to_string(), value: value.1.as_ref().to_string()})?;
+        let key = Key::from_str(value.0.as_ref()).context(InvalidKeySnafu {
+            key: value.0.as_ref(),
+        })?;
+
+        let value = T::from_str(value.1.as_ref()).context(InvalidValueSnafu {
+            key: key.to_string(),
+            value: value.1.as_ref(),
+        })?;
 
         Ok(Self { key, value })
     }
@@ -161,6 +171,12 @@ pub enum KeyValuePairsError {
 /// - `From<KeyValuePairs<T>> for BTreeMap<String, String>`
 ///
 /// See [`Labels`] and [`Annotations`] on how these traits can be used.
+///
+/// # Note
+///
+/// A [`BTreeSet`] is used as the inner collection to preserve order of items
+/// which ultimately prevent unncessary reconciliations due to changes
+/// in item order.
 #[derive(Clone, Debug, Default)]
 pub struct KeyValuePairs<T: Value>(BTreeSet<KeyValuePair<T>>);
 
@@ -295,13 +311,17 @@ where
 
     /// Returns if the list contains a specific [`KeyValuePair`].
     pub fn contains(&self, kvp: impl TryInto<KeyValuePair<T>>) -> bool {
-        let Ok(kvp) = kvp.try_into() else {return false};
+        let Ok(kvp) = kvp.try_into() else {
+            return false;
+        };
         self.0.contains(&kvp)
     }
 
     /// Returns if the list contains a key/value pair with a specific [`Key`].
     pub fn contains_key(&self, key: impl TryInto<Key>) -> bool {
-        let Ok(key) = key.try_into() else {return false};
+        let Ok(key) = key.try_into() else {
+            return false;
+        };
 
         for kvp in &self.0 {
             if kvp.key == key {
@@ -310,6 +330,25 @@ where
         }
 
         false
+    }
+
+    /// Returns an [`Iterator`] over [`KeyValuePairs`] yielding a reference to every [`KeyValuePair`] contained within.
+    pub fn iter(&self) -> impl Iterator<Item = &KeyValuePair<T>> {
+        self.0.iter()
+    }
+}
+
+impl<T> IntoIterator for KeyValuePairs<T>
+where
+    T: Value,
+{
+    type Item = KeyValuePair<T>;
+    type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
+
+    /// Returns a consuming [`Iterator`] over [`KeyValuePairs`] moving every [`KeyValuePair`] out.
+    /// The [`KeyValuePairs`] cannot be used again after calling this.
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 
@@ -356,6 +395,8 @@ pub struct ObjectLabels<'a, T> {
 
 #[cfg(test)]
 mod test {
+    use snafu::Report;
+
     use super::*;
 
     #[test]
@@ -432,5 +473,19 @@ mod test {
 
         let labels = Labels::try_from_iter(map).unwrap();
         assert_eq!(labels.len(), 2);
+    }
+
+    #[test]
+    fn key_error() {
+        let err = Label::try_from(("stäckable.tech/vendor", "Stackable")).unwrap_err();
+        let report = Report::from_error(err);
+        println!("{report}")
+    }
+
+    #[test]
+    fn value_error() {
+        let err = Label::try_from(("stackable.tech/vendor", "Stäckable")).unwrap_err();
+        let report = Report::from_error(err);
+        println!("{report}")
     }
 }

@@ -392,7 +392,7 @@ mod tests {
 
         assert_eq!(container.name, "testcontainer");
         assert!(
-            matches!(container.env.as_ref().unwrap().get(0), Some(EnvVar {name, value: Some(value), ..}) if name == "foo" && value == "bar")
+            matches!(container.env.as_ref().unwrap().first(), Some(EnvVar {name, value: Some(value), ..}) if name == "foo" && value == "bar")
         );
         assert!(
             matches!(container.env.as_ref().unwrap().get(1), Some(EnvVar {name, value_from: Some(EnvVarSource {config_map_key_ref: Some(ConfigMapKeySelector {name: Some(config_map_name), key: config_map_key, ..}), ..}), ..}) if name == "envFromConfigMap" && config_map_name == "my-configmap" && config_map_key == "my-key")
@@ -402,7 +402,7 @@ mod tests {
         );
         assert_eq!(container.volume_mounts.as_ref().unwrap().len(), 1);
         assert!(
-            matches!(container.volume_mounts.as_ref().unwrap().get(0), Some(VolumeMount {mount_path, name, ..}) if mount_path == "/mount" && name == "configmap")
+            matches!(container.volume_mounts.as_ref().unwrap().first(), Some(VolumeMount {mount_path, name, ..}) if mount_path == "/mount" && name == "configmap")
         );
         assert_eq!(container.ports.as_ref().unwrap().len(), 2);
         assert_eq!(

@@ -1,0 +1,15 @@
+---
+image:
+  repository: docker.stackable.tech/stackable/zookeeper-operator
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+nameOverride: ''
+fullnameOverride: ''
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ''
+labels:
+  stackable.tech/demo: logging
+  stackable.tech/managed-by: stackablectl
+  stackable.tech/vendor: Stackable

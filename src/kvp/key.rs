@@ -229,7 +229,7 @@ impl FromStr for KeyPrefix {
 }
 
 impl Deref for KeyPrefix {
-    type Target = String;
+    type Target = str;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -239,6 +239,15 @@ impl Deref for KeyPrefix {
 impl Display for KeyPrefix {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl<T> PartialEq<T> for KeyPrefix
+where
+    T: AsRef<str>,
+{
+    fn eq(&self, other: &T) -> bool {
+        self.deref() == other.as_ref()
     }
 }
 
@@ -302,7 +311,7 @@ impl FromStr for KeyName {
 }
 
 impl Deref for KeyName {
-    type Target = String;
+    type Target = str;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -315,10 +324,22 @@ impl Display for KeyName {
     }
 }
 
+impl<T> PartialEq<T> for KeyName
+where
+    T: AsRef<str>,
+{
+    fn eq(&self, other: &T) -> bool {
+        self.deref() == other.as_ref()
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::*;
     use rstest::rstest;
+
+    use crate::kvp::Label;
+
+    use super::*;
 
     #[test]
     fn key_with_prefix() {
@@ -336,6 +357,22 @@ mod test {
         assert_eq!(key.prefix, None);
         assert_eq!(key.name, KeyName("vendor".into()));
         assert_eq!(key.to_string(), "vendor");
+    }
+
+    #[test]
+    fn prefix_equality() {
+        const EXAMPLE_PREFIX_STR: &str = "stackable.tech";
+
+        let example_prefix = KeyPrefix::from_str(EXAMPLE_PREFIX_STR).expect("valid test prefix");
+        assert!(example_prefix == EXAMPLE_PREFIX_STR);
+    }
+
+    #[test]
+    fn name_equality() {
+        const EXAMPLE_NAME_STR: &str = "managed-by";
+
+        let example_name = KeyName::from_str(EXAMPLE_NAME_STR).expect("valid test name");
+        assert!(example_name == EXAMPLE_NAME_STR);
     }
 
     #[rstest]
@@ -364,5 +401,31 @@ mod test {
     fn invalid_key_name(#[case] input: String, #[case] error: KeyNameError) {
         let err = KeyName::from_str(&input).unwrap_err();
         assert_eq!(err, error);
+    }
+
+    #[rstest]
+    #[case("app.kubernetes.io/name", true)]
+    #[case("name", false)]
+    fn key_prefix_deref(#[case] key: &str, #[case] expected: bool) {
+        let label = Label::try_from((key, "zookeeper")).unwrap();
+
+        let is_valid = label
+            .key()
+            .prefix()
+            .is_some_and(|prefix| *prefix == "app.kubernetes.io");
+
+        assert_eq!(is_valid, expected)
+    }
+
+    #[rstest]
+    #[case("app.kubernetes.io/name", true)]
+    #[case("app.kubernetes.io/foo", false)]
+    #[case("name", true)]
+    #[case("foo", false)]
+    fn key_name_deref(#[case] key: &str, #[case] expected: bool) {
+        let label = Label::try_from((key, "zookeeper")).unwrap();
+        let is_valid = *label.key().name() == "name";
+
+        assert_eq!(is_valid, expected);
     }
 }

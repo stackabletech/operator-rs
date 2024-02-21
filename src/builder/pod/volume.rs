@@ -1,9 +1,10 @@
 use k8s_openapi::{
     api::core::v1::{
         CSIVolumeSource, ConfigMapVolumeSource, DownwardAPIVolumeSource, EmptyDirVolumeSource,
-        EphemeralVolumeSource, HostPathVolumeSource, PersistentVolumeClaimSpec,
-        PersistentVolumeClaimTemplate, PersistentVolumeClaimVolumeSource, ProjectedVolumeSource,
-        ResourceRequirements, SecretVolumeSource, Volume, VolumeMount,
+        EphemeralVolumeSource, HostPathVolumeSource, PersistentVolumeClaim,
+        PersistentVolumeClaimSpec, PersistentVolumeClaimTemplate,
+        PersistentVolumeClaimVolumeSource, ProjectedVolumeSource, ResourceRequirements,
+        SecretVolumeSource, Volume, VolumeMount,
     },
     apimachinery::pkg::api::resource::Quantity,
 };
@@ -461,8 +462,27 @@ impl ListenerOperatorVolumeSourceBuilder {
         }
     }
 
-    /// Build an [`EphemeralVolumeSource`] from the builder
+    fn build_spec(&self) -> PersistentVolumeClaimSpec {
+        PersistentVolumeClaimSpec {
+            storage_class_name: Some("listeners.stackable.tech".to_string()),
+            resources: Some(ResourceRequirements {
+                requests: Some([("storage".to_string(), Quantity("1".to_string()))].into()),
+                ..ResourceRequirements::default()
+            }),
+            access_modes: Some(vec!["ReadWriteMany".to_string()]),
+            ..PersistentVolumeClaimSpec::default()
+        }
+    }
+
+    #[deprecated(note = "renamed to `build_ephemeral`", since = "0.61.1")]
     pub fn build(&self) -> Result<EphemeralVolumeSource, ListenerOperatorVolumeSourceBuilderError> {
+        self.build_ephemeral()
+    }
+
+    /// Build an [`EphemeralVolumeSource`] from the builder.
+    pub fn build_ephemeral(
+        &self,
+    ) -> Result<EphemeralVolumeSource, ListenerOperatorVolumeSourceBuilderError> {
         let listener_reference_annotation = self
             .listener_reference
             .to_annotation()
@@ -475,16 +495,28 @@ impl ListenerOperatorVolumeSourceBuilder {
                         .with_annotation(listener_reference_annotation)
                         .build(),
                 ),
-                spec: PersistentVolumeClaimSpec {
-                    storage_class_name: Some("listeners.stackable.tech".to_string()),
-                    resources: Some(ResourceRequirements {
-                        requests: Some([("storage".to_string(), Quantity("1".to_string()))].into()),
-                        ..ResourceRequirements::default()
-                    }),
-                    access_modes: Some(vec!["ReadWriteMany".to_string()]),
-                    ..PersistentVolumeClaimSpec::default()
-                },
+                spec: self.build_spec(),
             }),
+        })
+    }
+
+    /// Build a [`PersistentVolumeClaim`] from the builder.
+    pub fn build_pvc(
+        &self,
+        name: impl Into<String>,
+    ) -> Result<PersistentVolumeClaim, ListenerOperatorVolumeSourceBuilderError> {
+        let listener_reference_annotation = self
+            .listener_reference
+            .to_annotation()
+            .context(ListenerReferenceAnnotationSnafu)?;
+
+        Ok(PersistentVolumeClaim {
+            metadata: ObjectMetaBuilder::new()
+                .name(name)
+                .with_annotation(listener_reference_annotation)
+                .build(),
+            spec: Some(self.build_spec()),
+            ..Default::default()
         })
     }
 }
@@ -556,7 +588,7 @@ mod tests {
             "public".into(),
         ));
 
-        let volume_source = builder.build().unwrap();
+        let volume_source = builder.build_ephemeral().unwrap();
 
         let volume_claim_template = volume_source.volume_claim_template;
         let annotations = volume_claim_template

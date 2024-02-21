@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.61.0"
+version = "0.64.0"
 authors = ["Stackable GmbH <info@stackable.de>"]
 license = "Apache-2.0"
 edition = "2021"
@@ -27,12 +27,12 @@ dockerfile-parser = "0.8.0"
 either = "1.9.0"
 futures = "0.3.28"
 json-patch = "1.0.0"
-k8s-openapi = { version = "0.20.0", default-features = false, features = [
+k8s-openapi = { version = "0.21.0", default-features = false, features = [
     "schemars",
     "v1_28",
 ] }
 # We use rustls instead of openssl for easier portablitly, e.g. so that we can build stackablectl without the need to vendor (build from source) openssl
-kube = { version = "0.87.1", default-features = false, features = [
+kube = { version = "0.88.1", default-features = false, features = [
     "client",
     "jsonpatch",
     "runtime",
@@ -51,9 +51,9 @@ semver = "1.0"
 serde = { version = "1.0.184", features = ["derive"] }
 serde_json = "1.0.104"
 serde_yaml = "0.9.25"
-snafu = "0.7.5"
+snafu = "0.8.0"
 stackable-operator-derive = { path = "stackable-operator-derive" }
-strum = { version = "0.25.0", features = ["derive"] }
+strum = { version = "0.26.1", features = ["derive"] }
 thiserror = "1.0.44"
 time = { version = "0.3.29", optional = true }
 tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread"] }
@@ -67,4 +67,4 @@ rstest = "0.18.1"
 tempfile = "3.7.1"
 
 [workspace]
-members = ["stackable-operator-derive"]
+members = ["stackable-operator-derive", "stackable-webhook"]

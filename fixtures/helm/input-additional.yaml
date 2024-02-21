@@ -1,0 +1,20 @@
+# Partly taken from https://github.com/stackabletech/zookeeper-operator/blob/main/deploy/helm/zookeeper-operator/values.yaml
+---
+image:
+  repository: docker.stackable.tech/stackable/zookeeper-operator
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+nameOverride: ''
+fullnameOverride: ''
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ''
+labels:
+  stackable.tech/vendor: Stackable
+  stackable.tech/managed-by: stackablectl
+podAnnotations: {}
+podSecurityContext: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

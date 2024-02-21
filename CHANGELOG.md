@@ -4,6 +4,71 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## Added
+
+- Add `stackable_webhook` crate which provides utilities to create webhooks with TLS termination ([#730]).
+
+[#730]: https://github.com/stackabletech/operator-rs/pull/730
+
+## Changed
+
+- Remove `resources` key from `DynamicValues` struct ([#734]).
+
+## Fixed
+
+- Fixed incorrect time calculation ([#735]).
+
+[#734]: https://github.com/stackabletech/operator-rs/pull/734
+[#735]: https://github.com/stackabletech/operator-rs/pull/735
+
+## [0.64.0] - 2024-01-31
+
+### Added
+
+- Derive `Hash` and `Ord` instances for `AuthenticationClassProvider`,
+  so that duplicates can be detected ([#731]).
+
+[#731]: https://github.com/stackabletech/operator-rs/pull/731
+
+## [0.63.0] - 2024-01-26
+
+### Added
+
+- Add Serde `Deserialize` and `Serialize` support for `CpuQuantity` and `MemoryQuantity` ([#724]).
+- Add `DynamicValues` struct to work with operator `values.yaml` files during runtime ([#723]).
+
+[#723]: https://github.com/stackabletech/operator-rs/pull/723
+[#724]: https://github.com/stackabletech/operator-rs/pull/724
+
+### Changed
+
+- Change Deref target of `KeyPrefix` and `KeyName` from `String` to `str` ([#725]).
+- Add Stackable vendor label `stackable.tech/vendor: Stackable` to recommended labels ([#728]).
+
+[#725]: https://github.com/stackabletech/operator-rs/pull/725
+[#728]: https://github.com/stackabletech/operator-rs/pull/728
+
+## [0.62.0] - 2024-01-19
+
+### Added
+
+- Added `Option::as_ref_or_else` to `utils` ([#717]).
+- Add `iter()` methods to `KeyValuePairs<T>`, and delegate iter() for `Labels`, and `Annotations` ([#720]).
+- Implement `IntoIterator` for `KeyValuePairs<T>`, `Labels` and `Annotations` ([#720]).
+- Added `ListenerOperatorVolumeSourceBuilder::build_pvc` ([#719]).
+- Added `Logging::for_container` ([#721]).
+
+### Changed
+
+- Split `utils` into submodules ([#717]).
+- Bump rust to 1.75.0 ([#720]).
+- Renamed `ListenerOperatorVolumeSourceBuilder::build` to `::build_ephemeral` ([#719]).
+
+[#717]: https://github.com/stackabletech/operator-rs/pull/717
+[#720]: https://github.com/stackabletech/operator-rs/pull/720
+[#719]: https://github.com/stackabletech/operator-rs/pull/719
+[#721]: https://github.com/stackabletech/operator-rs/pull/721
+
 ## [0.61.0] - 2024-01-15
 
 ### Added
