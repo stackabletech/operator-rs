@@ -34,7 +34,7 @@ where
     InvalidKey { source: KeyError, key: String },
 
     /// Indicates that the value failed to parse.
-    #[snafu(display("failed to parse value [{value:?}] of key [{key:?}] "))]
+    #[snafu(display("failed to parse value {value:?} of key {key:?}"))]
     InvalidValue {
         source: E,
         key: String,
