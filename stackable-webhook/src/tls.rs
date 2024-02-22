@@ -7,7 +7,7 @@ use futures_util::pin_mut;
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use snafu::{ResultExt, Snafu};
-use stackable_certs::{CertifacteError, CertificateChain};
+use stackable_certs::{CertificatePair, CertificatePairExt};
 use tokio::net::TcpListener;
 use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
 use tower::Service;
@@ -55,21 +55,15 @@ impl TlsServer {
                 todo!()
             }
             TlsOption::Mount {
-                public_key_path,
-                private_key_path,
                 private_key_encoding,
+                certificate_path,
+                private_key_path,
             } => {
-                let (chain, private_key) = CertificateChain::from_files(
-                    public_key_path,
-                    private_key_path,
-                    private_key_encoding,
-                )
-                .context(TlsCertificateChainSnafu)?
-                .into_parts();
+                let pair = CertificatePair::from_files(certificate_path, private_key_path).unwrap();
 
                 let mut config = ServerConfig::builder()
                     .with_no_client_auth()
-                    .with_single_cert(chain, private_key)
+                    .with_single_cert(vec![pair.certificate_der()], pair.private_key_der())
                     .context(InvalidTlsPrivateKeySnafu)?;
 
                 config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];

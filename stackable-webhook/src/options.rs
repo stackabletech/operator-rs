@@ -128,8 +128,8 @@ impl OptionsBuilder {
         private_key_encoding: PrivateKeyEncoding,
     ) -> Self {
         self.tls = Some(TlsOption::Mount {
-            public_key_path: public_key_path.into(),
-            private_key_path: private_key_path.into(),
+            private_key_path: public_key_path.into(),
+            certificate_path: private_key_path.into(),
             private_key_encoding,
         });
         self
@@ -150,8 +150,8 @@ pub enum TlsOption {
     AutoGenerate,
     Mount {
         private_key_encoding: PrivateKeyEncoding,
-        public_key_path: PathBuf,
         private_key_path: PathBuf,
+        certificate_path: PathBuf,
     },
 }
 

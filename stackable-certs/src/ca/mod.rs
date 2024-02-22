@@ -11,14 +11,13 @@ use {
 };
 
 use const_oid::db::rfc5280::{ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH};
-use p256::pkcs8::EncodePrivateKey;
 use signature::Keypair;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::time::Duration;
 use tracing::{info, instrument};
 use x509_cert::{
     builder::{Builder, CertificateBuilder, Profile},
-    der::{pem::LineEnding, referenced::OwnedToRef, DecodePem, EncodePem},
+    der::{pem::LineEnding, referenced::OwnedToRef, DecodePem},
     ext::pkix::{AuthorityKeyIdentifier, ExtendedKeyUsage},
     name::Name,
     serial_number::SerialNumber,
@@ -29,7 +28,7 @@ use x509_cert::{
 
 use crate::{
     sign::{ecdsa, rsa, SigningKeyPair},
-    CertificatePair, CertificatePairExt,
+    CertificatePair, CertificatePairError, CertificatePairExt,
 };
 
 mod consts;
@@ -44,15 +43,6 @@ pub enum Error {
 
     #[snafu(display("failed to generate ECDSA signign key"))]
     GenerateEcdsaSigningKey { source: ecdsa::Error },
-
-    #[snafu(display("failed to serialize certificate as PEM"))]
-    SerializeCertificate { source: x509_cert::der::Error },
-
-    #[snafu(display("failed to serialize private key as PEM"))]
-    SerializePrivateKey { source: p256::pkcs8::Error },
-
-    #[snafu(display("failed to write file"))]
-    WriteFile { source: std::io::Error },
 
     #[snafu(display("failed to generate a unique serial number after 5 tries"))]
     GenerateUniqueSerialNumber,
@@ -103,7 +93,7 @@ where
     S: SigningKeyPair,
     <S::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
 {
-    type Error = Error;
+    type Error = CertificatePairError;
 
     fn from_files(
         certificate_path: impl AsRef<Path>,
@@ -117,12 +107,8 @@ where
         certificate_path: impl AsRef<Path>,
         line_ending: LineEnding,
     ) -> Result<(), Self::Error> {
-        let certificate_pem = self
-            .certificate_pair
-            .certificate
-            .to_pem(line_ending)
-            .context(SerializeCertificateSnafu)?;
-        std::fs::write(certificate_path, certificate_pem).context(WriteFileSnafu)
+        self.certificate_pair
+            .to_certificate_file(certificate_path, line_ending)
     }
 
     fn to_private_key_file(
@@ -130,13 +116,8 @@ where
         private_key_path: impl AsRef<Path>,
         line_ending: LineEnding,
     ) -> Result<(), Self::Error> {
-        let private_key_pem = self
-            .certificate_pair
-            .key_pair
-            .private_key()
-            .to_pkcs8_pem(line_ending)
-            .context(SerializePrivateKeySnafu)?;
-        std::fs::write(private_key_path, private_key_pem).context(WriteFileSnafu)
+        self.certificate_pair
+            .to_private_key_file(private_key_path, line_ending)
     }
 }
 
@@ -379,9 +360,10 @@ mod test {
 
     #[test]
     fn test() {
-        let ca = CertificateAuthority::new_rsa().unwrap();
-        let (cert_path, pk_path) = PathBuf::certificate_pair_paths("ca");
-        ca.to_files(cert_path, pk_path, LineEnding::default())
+        let mut ca = CertificateAuthority::new_rsa().unwrap();
+        ca.generate_leaf_certificate(rsa::SigningKey::new(None).unwrap(), "Airflow", "pod")
+            .unwrap()
+            .to_certificate_file(PathBuf::certificate_path("tls"), LineEnding::default())
             .unwrap();
     }
 }

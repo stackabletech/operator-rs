@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 pub struct SecretReference {
     /// Namespace of the Secret being referred to.
     pub namespace: String,
+
     /// Name of the Secret being referred to.
     pub name: String,
 }
@@ -21,11 +22,13 @@ impl Display for SecretReference {
         ObjectRef::<Secret>::from(self).fmt(f)
     }
 }
+
 impl From<SecretReference> for ObjectRef<Secret> {
     fn from(val: SecretReference) -> Self {
         ObjectRef::<Secret>::from(&val)
     }
 }
+
 impl From<&SecretReference> for ObjectRef<Secret> {
     fn from(val: &SecretReference) -> Self {
         ObjectRef::<Secret>::new(&val.name).within(&val.namespace)
