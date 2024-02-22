@@ -1,5 +1,5 @@
 //! Contains primitives to create signing keys, which are used to sign CAs
-//! and other certificates.
+//! and bind to leaf certificates.
 //!
 //! This module currently provides the following algorithms:
 //!

@@ -77,6 +77,12 @@ pub trait PathBufExt {
 
 impl PathBufExt for PathBuf {}
 
+/// Contains the certificate and the (signing) key pair.
+///
+/// A [`CertificateAuthority`](crate::ca::CertificateAuthority) uses this struct
+/// internally to store the signing key pair which is used to sign the CA
+/// itself (self-signed) and all child leaf certificates. Leaf certificates on
+/// the other hand use this to store the bound keypair.
 #[derive(Debug)]
 pub struct CertificatePair<S>
 where
@@ -84,7 +90,23 @@ where
     <S::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
 {
     certificate: Certificate,
-    signing_key: S,
+    key_pair: S,
+}
+
+impl<S> CertificatePair<S>
+where
+    S: SigningKeyPair,
+    <S::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
+{
+    /// Returns a reference to the [`Certificate`].
+    pub fn certificate(&self) -> &Certificate {
+        &self.certificate
+    }
+
+    /// Returns a reference to the (signing) key pair.
+    pub fn key_pair(&self) -> &S {
+        &self.key_pair
+    }
 }
 
 /// This trait provides utilities to work with certificate pairs which contain

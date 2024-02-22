@@ -1,3 +1,7 @@
+//! Abstraction layer between this crate and the [`rsa`] crate. This module
+//! provides types which abstract away the generation of RSA keys used for
+//! signing of CAs and other certificates.
+
 use rand_core::{CryptoRngCore, OsRng};
 use rsa::{pkcs8::DecodePrivateKey, RsaPrivateKey, RsaPublicKey};
 use snafu::{ResultExt, Snafu};
@@ -25,25 +29,47 @@ pub enum Error {
 }
 
 #[derive(Debug)]
+pub struct Options {
+    pub bit_size: usize,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            bit_size: DEFAULT_RSA_BIT_SIZE,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct SigningKey {
     verifying_key: RsaPublicKey,
     signing_key: rsa::pkcs1v15::SigningKey<sha2::Sha256>,
 }
 
 impl SigningKey {
+    // NOTE (@Techassi): Should we maybe enfore bit sizes >= 2048?
+    /// Generates a new RSA key with the default random-number generator
+    /// [`OsRng`] with the given `bit_size`. Providing [`None`] will use
+    /// [`DEFAULT_RSA_BIT_SIZE`].
+    ///
+    /// Common values for `bit_size` are `2048` or `4096`. It should be noted
+    /// that the generation of the key takes longer for larger bit sizes. The
+    /// generation of an RSA key with a bit size of `4096` can take up to
+    /// multiple seconds.
     #[instrument(name = "create_rsa_signing_key")]
-    pub fn new() -> Result<Self> {
+    pub fn new(bit_size: Option<usize>) -> Result<Self> {
         let mut csprng = OsRng;
-        Self::new_with(&mut csprng)
+        Self::new_with(&mut csprng, bit_size)
     }
 
     #[instrument(name = "create_rsa_signing_key_custom_rng", skip_all)]
-    pub fn new_with<R>(csprng: &mut R) -> Result<Self>
+    pub fn new_with<R>(csprng: &mut R, bit_size: Option<usize>) -> Result<Self>
     where
         R: CryptoRngCore + ?Sized,
     {
-        let private_key =
-            RsaPrivateKey::new(csprng, DEFAULT_RSA_BIT_SIZE).context(CreateKeySnafu)?;
+        let private_key = RsaPrivateKey::new(csprng, bit_size.unwrap_or(DEFAULT_RSA_BIT_SIZE))
+            .context(CreateKeySnafu)?;
         let verifying_key = RsaPublicKey::from(&private_key);
         let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 

@@ -1,6 +1,6 @@
 //! Contains types and functions to generate and sign certificate authorities
 //! (CAs).
-use std::{path::Path, str::FromStr, time::Duration};
+use std::{collections::HashSet, path::Path, str::FromStr};
 
 #[cfg(feature = "k8s")]
 use {
@@ -10,14 +10,16 @@ use {
     stackable_operator::{client::Client, commons::secret::SecretReference},
 };
 
+use const_oid::db::rfc5280::{ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH};
 use p256::pkcs8::EncodePrivateKey;
 use signature::Keypair;
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::time::Duration;
 use tracing::{info, instrument};
 use x509_cert::{
     builder::{Builder, CertificateBuilder, Profile},
     der::{pem::LineEnding, referenced::OwnedToRef, DecodePem, EncodePem},
-    ext::pkix::AuthorityKeyIdentifier,
+    ext::pkix::{AuthorityKeyIdentifier, ExtendedKeyUsage},
     name::Name,
     serial_number::SerialNumber,
     spki::{EncodePublicKey, SubjectPublicKeyInfoOwned},
@@ -30,14 +32,19 @@ use crate::{
     CertificatePair, CertificatePairExt,
 };
 
-/// The root CA subject name containing the common name, organization name and
-/// country.
-pub const ROOT_CA_SUBJECT: &str = "CN=Stackable Root CA,O=Stackable GmbH,C=DE";
+mod consts;
+pub use consts::*;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
+    #[snafu(display("failed to generate RSA signing key"))]
+    GenerateRsaSigningKey { source: rsa::Error },
+
+    #[snafu(display("failed to generate ECDSA signign key"))]
+    GenerateEcdsaSigningKey { source: ecdsa::Error },
+
     #[snafu(display("failed to serialize certificate as PEM"))]
     SerializeCertificate { source: x509_cert::der::Error },
 
@@ -46,6 +53,15 @@ pub enum Error {
 
     #[snafu(display("failed to write file"))]
     WriteFile { source: std::io::Error },
+
+    #[snafu(display("failed to generate a unique serial number after 5 tries"))]
+    GenerateUniqueSerialNumber,
+
+    #[snafu(display("failed to parse {subject:?} as subject"))]
+    InvalidSubject {
+        source: x509_cert::der::Error,
+        subject: String,
+    },
 }
 
 #[derive(Debug, Snafu)]
@@ -66,10 +82,7 @@ pub enum SecretError {
     NoPrivateKeyData { secret: String },
 
     #[snafu(display("failed to read PEM-encoded signing (private) key from secret {secret:?}"))]
-    ReadSigningKey {
-        source: crate::sign::rsa::Error,
-        secret: String,
-    },
+    ReadSigningKey { source: rsa::Error, secret: String },
 }
 
 // TODO (@Techassi): Make this generic over the signing key used.
@@ -81,8 +94,8 @@ where
     S: SigningKeyPair,
     <S::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
 {
-    serial_numbers: Vec<u64>,
     certificate_pair: CertificatePair<S>,
+    serial_numbers: HashSet<u64>,
 }
 
 impl<S> CertificatePairExt for CertificateAuthority<S>
@@ -119,7 +132,7 @@ where
     ) -> Result<(), Self::Error> {
         let private_key_pem = self
             .certificate_pair
-            .signing_key
+            .key_pair
             .private_key()
             .to_pkcs8_pem(line_ending)
             .context(SerializePrivateKeySnafu)?;
@@ -160,14 +173,14 @@ where
         })?;
 
         // TODO (@Techassi): Remove unwrap
-        let signing_key =
+        let signing_key_pair =
             S::from_pkcs8_pem(std::str::from_utf8(&private_key_data.0).unwrap()).unwrap();
 
         Ok(Self {
-            serial_numbers: Vec::new(),
+            serial_numbers: HashSet::new(),
             certificate_pair: CertificatePair {
+                key_pair: signing_key_pair,
                 certificate,
-                signing_key,
             },
         })
     }
@@ -194,34 +207,29 @@ where
     S: SigningKeyPair,
     <S::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
 {
-    /// Creates a new CA certificate which embeds the public part of the randomly
-    /// generated signing key. The certificate is additionally signed by the
-    /// private part of the signing key.
-    #[instrument(name = "create_certificate_authority")]
-    pub fn new(signing_key: S) -> Self {
-        let serial_number = SerialNumber::from(rand::random::<u64>());
-        let validity = Validity::from_now(Duration::from_secs(3600)).unwrap();
+    // TODO (@Techassi): Add doc comment
+    #[instrument(name = "create_certificate_authority", skip(signing_key_pair))]
+    pub fn new(signing_key_pair: S) -> Result<Self> {
+        let serial_number = rand::random::<u64>();
+        let validity = Duration::from_secs(3600);
+
+        Self::new_with(signing_key_pair, serial_number, validity)
+    }
+
+    // TODO (@Techassi): Adjust doc comment
+    /// Creates a new CA certificate identified by a randomly generated serial
+    /// number. It contains the public half of the provided `signing_key`.
+    /// Furthermore, it is signed by the private half of the signing key.
+    #[instrument(name = "create_certificate_authority_with", skip(signing_key_pair))]
+    pub fn new_with(signing_key_pair: S, serial_number: u64, validity: Duration) -> Result<Self> {
+        let serial_number = SerialNumber::from(serial_number);
+        let validity = Validity::from_now(*validity).unwrap();
         let subject = Name::from_str(ROOT_CA_SUBJECT).unwrap();
-        let spki = SubjectPublicKeyInfoOwned::from_pem(
-            signing_key
-                .public_key()
-                .to_public_key_pem(LineEnding::default())
-                .unwrap()
-                .as_bytes(),
-        )
-        .unwrap();
-
-        let signer = signing_key.private_key();
-
-        let mut builder = CertificateBuilder::new(
-            Profile::Root,
-            serial_number,
-            validity,
-            subject,
-            spki.clone(),
-            signer,
-        )
-        .unwrap();
+        let spki_pem = signing_key_pair
+            .public_key()
+            .to_public_key_pem(LineEnding::default())
+            .unwrap();
+        let spki = SubjectPublicKeyInfoOwned::from_pem(spki_pem.as_bytes()).unwrap();
 
         // There are multiple default extensions included in the profile. For
         // the root profile, these are:
@@ -238,41 +246,127 @@ where
         // We manually add it below by using the 160-bit SHA-1 hash of the
         // subject pulic key. This conforms to one of the outlined methods for
         // generating key identifiers outlined in RFC 5280, section 4.2.1.2.
+        //
+        // Now first prepare extensions so we can avoid clones.
+        let aki = AuthorityKeyIdentifier::try_from(spki.owned_to_ref()).unwrap();
 
-        builder
-            .add_extension(&AuthorityKeyIdentifier::try_from(spki.owned_to_ref()).unwrap())
-            .unwrap();
+        let signer = signing_key_pair.private_key();
+        let mut builder = CertificateBuilder::new(
+            Profile::Root,
+            serial_number,
+            validity,
+            subject,
+            spki,
+            signer,
+        )
+        .unwrap();
+
+        // Add extension constructed above
+        builder.add_extension(&aki).unwrap();
 
         info!("create and sign CA certificate");
         let certificate = builder.build().unwrap();
 
-        Self {
-            serial_numbers: Vec::new(),
+        Ok(Self {
+            serial_numbers: HashSet::new(),
             certificate_pair: CertificatePair {
+                key_pair: signing_key_pair,
                 certificate,
-                signing_key,
             },
-        }
+        })
     }
 
-    #[instrument]
-    pub fn generate_leaf_certificate(&self) -> Result<Certificate> {
-        todo!()
+    #[instrument(skip_all)]
+    pub fn generate_leaf_certificate<T>(
+        &mut self,
+        key_pair: T,
+        name: &str,
+        scope: &str,
+    ) -> Result<CertificatePair<T>>
+    where
+        T: SigningKeyPair,
+        <T::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
+    {
+        // TODO (@Techassi): Remove all unwraps below
+        let serial_number = self.generate_serial_number()?;
+        let validity = Validity::from_now(*Duration::from_secs(3600)).unwrap(); // TODO (@Techassi): Make configurable
+        let subject = format_leaf_certificate_subject(name, scope)?;
+        let spki_pem = key_pair
+            .public_key()
+            .to_public_key_pem(LineEnding::default())
+            .unwrap();
+        let spki = SubjectPublicKeyInfoOwned::from_pem(spki_pem.as_bytes()).unwrap();
+
+        let eku = ExtendedKeyUsage(vec![ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH]);
+        let aki = AuthorityKeyIdentifier::try_from(spki.owned_to_ref()).unwrap();
+
+        let signer = self.certificate_pair.key_pair.private_key();
+        let mut builder = CertificateBuilder::new(
+            Profile::Leaf {
+                issuer: self
+                    .certificate_pair
+                    .certificate
+                    .tbs_certificate
+                    .issuer
+                    .clone(),
+                enable_key_agreement: false,
+                enable_key_encipherment: true,
+            },
+            serial_number,
+            validity,
+            subject,
+            spki,
+            signer,
+        )
+        .unwrap();
+
+        builder.add_extension(&eku).unwrap();
+        builder.add_extension(&aki).unwrap();
+
+        info!("create and sign leaf certificate");
+        let certificate = builder.build().unwrap();
+
+        Ok(CertificatePair {
+            certificate,
+            key_pair,
+        })
+    }
+
+    #[instrument(skip_all)]
+    fn generate_serial_number(&mut self) -> Result<SerialNumber> {
+        let mut serial_number = rand::random();
+        let mut tries = 0;
+
+        while self.serial_numbers.contains(&serial_number) {
+            if tries >= 5 {
+                return GenerateUniqueSerialNumberSnafu.fail();
+            }
+
+            serial_number = rand::random();
+            tries += 1;
+        }
+
+        Ok(SerialNumber::from(serial_number))
     }
 }
 
 impl CertificateAuthority<rsa::SigningKey> {
-    pub fn new_with_rsa() -> Self {
-        // TODO (@Techassi): Remove unwrap
-        CertificateAuthority::new(rsa::SigningKey::new().unwrap())
+    #[instrument(name = "create_certificate_authority_with_rsa")]
+    pub fn new_rsa() -> Result<Self> {
+        Self::new(rsa::SigningKey::new(None).context(GenerateRsaSigningKeySnafu)?)
     }
 }
 
 impl CertificateAuthority<ecdsa::SigningKey> {
-    pub fn new_with_ecdsa() -> Self {
-        // TODO (@Techassi): Remove unwrap
-        CertificateAuthority::new(ecdsa::SigningKey::new().unwrap())
+    #[instrument(name = "create_certificate_authority_with_ecdsa")]
+    pub fn new_ecdsa() -> Result<Self> {
+        Self::new(ecdsa::SigningKey::new().context(GenerateEcdsaSigningKeySnafu)?)
     }
+}
+
+fn format_leaf_certificate_subject(name: &str, scope: &str) -> Result<Name> {
+    let subject = format!("CN={name} Certificate for {scope},{ORGANIZATION_DN},{COUNTRY_DN}");
+    Name::from_str(&subject).context(InvalidSubjectSnafu { subject })
 }
 
 #[cfg(test)]
@@ -285,7 +379,7 @@ mod test {
 
     #[test]
     fn test() {
-        let ca = CertificateAuthority::new_with_rsa();
+        let ca = CertificateAuthority::new_rsa().unwrap();
         let (cert_path, pk_path) = PathBuf::certificate_pair_paths("ca");
         ca.to_files(cert_path, pk_path, LineEnding::default())
             .unwrap();

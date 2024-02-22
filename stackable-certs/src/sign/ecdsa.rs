@@ -1,6 +1,7 @@
 use p256::{pkcs8::DecodePrivateKey, NistP256};
 use rand_core::{CryptoRngCore, OsRng};
 use snafu::Snafu;
+use tracing::instrument;
 
 use crate::sign::SigningKeyPair;
 
@@ -19,11 +20,13 @@ pub struct SigningKey {
 }
 
 impl SigningKey {
+    #[instrument(name = "create_ecdsa_signing_key")]
     pub fn new() -> Result<Self> {
         let mut csprng = OsRng;
         Self::new_with(&mut csprng)
     }
 
+    #[instrument(name = "create_ecdsa_signing_key_custom_rng", skip_all)]
     pub fn new_with<R>(csprng: &mut R) -> Result<Self>
     where
         R: CryptoRngCore + Sized,
@@ -53,6 +56,7 @@ impl SigningKeyPair for SigningKey {
         &self.verifying_key
     }
 
+    #[instrument(name = "create_ecdsa_signing_key_from_pkcs8_pem")]
     fn from_pkcs8_pem(input: &str) -> Result<Self, Self::Error> {
         // TODO (@Techassi): Remove unwrap
         let signing_key = p256::ecdsa::SigningKey::from_pkcs8_pem(input).unwrap();
