@@ -1,4 +1,4 @@
-//! Contains primitives to create signing keys, which are used to sign CAs
+//! Contains primitives to create private keys, which are used to sign CAs
 //! and bind to leaf certificates.
 //!
 //! This module currently provides the following algorithms:
@@ -39,7 +39,9 @@ use x509_cert::spki::{EncodePublicKey, SignatureAlgorithmIdentifier, SignatureBi
 pub mod ecdsa;
 pub mod rsa;
 
-pub trait SigningKeyPair
+// NOTE (@Techassi): This can _maybe_ be slightly simplified by adjusting the
+// trait and using a blanket impl on types which implement Deref<Target = _>.
+pub trait KeypairExt
 where
     <Self::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
     Self: Debug + Sized,
@@ -53,11 +55,11 @@ where
 
     type Error: std::error::Error;
 
-    /// Returns the private (signing) key half of the keypair.
-    fn private_key(&self) -> &Self::SigningKey;
+    /// Returns the signing (private) key half of the keypair.
+    fn signing_key(&self) -> &Self::SigningKey;
 
-    /// Returns the public (verifying) half of the keypair.
-    fn public_key(&self) -> &Self::VerifyingKey;
+    /// Returns the verifying (public) half of the keypair.
+    fn verifying_key(&self) -> Self::VerifyingKey;
 
     /// Creates a signing key pair from the PEM-encoded private key.
     fn from_pkcs8_pem(input: &str) -> Result<Self, Self::Error>;

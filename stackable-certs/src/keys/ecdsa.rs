@@ -1,9 +1,13 @@
+//! Abstraction layer around the [`ecdsa`] crate. This module provides types
+//! which abstract away the generation of ECDSA keys used for signing of CAs
+//! and other certificates.
+
 use p256::{pkcs8::DecodePrivateKey, NistP256};
 use rand_core::{CryptoRngCore, OsRng};
 use snafu::Snafu;
 use tracing::instrument;
 
-use crate::sign::SigningKeyPair;
+use crate::keys::KeypairExt;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -14,10 +18,7 @@ pub enum Error {
 }
 
 #[derive(Debug)]
-pub struct SigningKey {
-    verifying_key: p256::ecdsa::VerifyingKey,
-    signing_key: p256::ecdsa::SigningKey,
-}
+pub struct SigningKey(p256::ecdsa::SigningKey);
 
 impl SigningKey {
     #[instrument(name = "create_ecdsa_signing_key")]
@@ -32,39 +33,29 @@ impl SigningKey {
         R: CryptoRngCore + Sized,
     {
         let signing_key = p256::ecdsa::SigningKey::random(csprng);
-        let verifying_key = p256::ecdsa::VerifyingKey::from(&signing_key);
-
-        Ok(Self {
-            signing_key,
-            verifying_key,
-        })
+        Ok(Self(signing_key))
     }
 }
 
-impl SigningKeyPair for SigningKey {
+impl KeypairExt for SigningKey {
     type SigningKey = p256::ecdsa::SigningKey;
     type Signature = ecdsa::der::Signature<NistP256>;
     type VerifyingKey = p256::ecdsa::VerifyingKey;
 
     type Error = Error;
 
-    fn private_key(&self) -> &Self::SigningKey {
-        &self.signing_key
+    fn signing_key(&self) -> &Self::SigningKey {
+        &self.0
     }
 
-    fn public_key(&self) -> &Self::VerifyingKey {
-        &self.verifying_key
+    fn verifying_key(&self) -> Self::VerifyingKey {
+        *self.0.verifying_key()
     }
 
     #[instrument(name = "create_ecdsa_signing_key_from_pkcs8_pem")]
     fn from_pkcs8_pem(input: &str) -> Result<Self, Self::Error> {
         // TODO (@Techassi): Remove unwrap
         let signing_key = p256::ecdsa::SigningKey::from_pkcs8_pem(input).unwrap();
-        let verifying_key = p256::ecdsa::VerifyingKey::from(&signing_key);
-
-        Ok(Self {
-            verifying_key,
-            signing_key,
-        })
+        Ok(Self(signing_key))
     }
 }

@@ -7,7 +7,10 @@ use futures_util::pin_mut;
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use snafu::{ResultExt, Snafu};
-use stackable_certs::{CertificatePair, CertificatePairExt};
+use stackable_certs::{
+    keys::{ecdsa, rsa},
+    CertificatePair, CertificatePairExt, PrivateKeyType,
+};
 use tokio::net::TcpListener;
 use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
 use tower::Service;
@@ -19,9 +22,6 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("failed to create TLS certificate chain"))]
-    TlsCertificateChain { source: CertifacteError },
-
     #[snafu(display("failed to construct TLS server config, bad certificate/key"))]
     InvalidTlsPrivateKey { source: tokio_rustls::rustls::Error },
 
@@ -55,15 +55,35 @@ impl TlsServer {
                 todo!()
             }
             TlsOption::Mount {
-                private_key_encoding,
                 certificate_path,
                 private_key_path,
+                private_key_type,
             } => {
-                let pair = CertificatePair::from_files(certificate_path, private_key_path).unwrap();
+                // TODO (@Techassi): Remove unwraps
+                let (cert, pk) = match private_key_type {
+                    PrivateKeyType::Ecdsa => {
+                        let pair = CertificatePair::<ecdsa::SigningKey>::from_files(
+                            certificate_path,
+                            private_key_path,
+                        )
+                        .unwrap();
+
+                        (pair.certificate_der(), pair.private_key_der())
+                    }
+                    PrivateKeyType::Rsa => {
+                        let pair = CertificatePair::<rsa::SigningKey>::from_files(
+                            certificate_path,
+                            private_key_path,
+                        )
+                        .unwrap();
+
+                        (pair.certificate_der(), pair.private_key_der())
+                    }
+                };
 
                 let mut config = ServerConfig::builder()
                     .with_no_client_auth()
-                    .with_single_cert(vec![pair.certificate_der()], pair.private_key_der())
+                    .with_single_cert(vec![cert], pk)
                     .context(InvalidTlsPrivateKeySnafu)?;
 
                 config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];

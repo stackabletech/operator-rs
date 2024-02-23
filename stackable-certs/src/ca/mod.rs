@@ -11,7 +11,6 @@ use {
 };
 
 use const_oid::db::rfc5280::{ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH};
-use signature::Keypair;
 use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::time::Duration;
 use tracing::{info, instrument};
@@ -27,7 +26,7 @@ use x509_cert::{
 };
 
 use crate::{
-    sign::{ecdsa, rsa, SigningKeyPair},
+    keys::{ecdsa, rsa, KeypairExt},
     CertificatePair, CertificatePairError, CertificatePairExt,
 };
 
@@ -81,8 +80,8 @@ pub enum SecretError {
 #[derive(Debug)]
 pub struct CertificateAuthority<S>
 where
-    S: SigningKeyPair,
-    <S::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
+    S: KeypairExt,
+    <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
     certificate_pair: CertificatePair<S>,
     serial_numbers: HashSet<u64>,
@@ -90,8 +89,8 @@ where
 
 impl<S> CertificatePairExt for CertificateAuthority<S>
 where
-    S: SigningKeyPair,
-    <S::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
+    S: KeypairExt,
+    <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
     type Error = CertificatePairError;
 
@@ -124,8 +123,8 @@ where
 #[cfg(feature = "k8s")]
 impl<S> K8sCertificatePair for CertificateAuthority<S>
 where
-    S: SigningKeyPair,
-    <S::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
+    S: KeypairExt,
+    <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
     type Error = SecretError;
 
@@ -185,8 +184,8 @@ where
 
 impl<S> CertificateAuthority<S>
 where
-    S: SigningKeyPair,
-    <S::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
+    S: KeypairExt,
+    <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
     // TODO (@Techassi): Add doc comment
     #[instrument(name = "create_certificate_authority", skip(signing_key_pair))]
@@ -207,7 +206,7 @@ where
         let validity = Validity::from_now(*validity).unwrap();
         let subject = Name::from_str(ROOT_CA_SUBJECT).unwrap();
         let spki_pem = signing_key_pair
-            .public_key()
+            .verifying_key()
             .to_public_key_pem(LineEnding::default())
             .unwrap();
         let spki = SubjectPublicKeyInfoOwned::from_pem(spki_pem.as_bytes()).unwrap();
@@ -231,7 +230,7 @@ where
         // Now first prepare extensions so we can avoid clones.
         let aki = AuthorityKeyIdentifier::try_from(spki.owned_to_ref()).unwrap();
 
-        let signer = signing_key_pair.private_key();
+        let signer = signing_key_pair.signing_key();
         let mut builder = CertificateBuilder::new(
             Profile::Root,
             serial_number,
@@ -265,15 +264,15 @@ where
         scope: &str,
     ) -> Result<CertificatePair<T>>
     where
-        T: SigningKeyPair,
-        <T::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
+        T: KeypairExt,
+        <T::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
     {
         // TODO (@Techassi): Remove all unwraps below
         let serial_number = self.generate_serial_number()?;
         let validity = Validity::from_now(*Duration::from_secs(3600)).unwrap(); // TODO (@Techassi): Make configurable
         let subject = format_leaf_certificate_subject(name, scope)?;
         let spki_pem = key_pair
-            .public_key()
+            .verifying_key()
             .to_public_key_pem(LineEnding::default())
             .unwrap();
         let spki = SubjectPublicKeyInfoOwned::from_pem(spki_pem.as_bytes()).unwrap();
@@ -281,7 +280,7 @@ where
         let eku = ExtendedKeyUsage(vec![ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH]);
         let aki = AuthorityKeyIdentifier::try_from(spki.owned_to_ref()).unwrap();
 
-        let signer = self.certificate_pair.key_pair.private_key();
+        let signer = self.certificate_pair.key_pair.signing_key();
         let mut builder = CertificateBuilder::new(
             Profile::Leaf {
                 issuer: self

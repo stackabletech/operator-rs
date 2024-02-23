@@ -1,13 +1,14 @@
-//! Abstraction layer between this crate and the [`rsa`] crate. This module
-//! provides types which abstract away the generation of RSA keys used for
-//! signing of CAs and other certificates.
+//! Abstraction layer around the [`rsa`] crate. This module provides types
+//! which abstract away the generation of RSA keys used for signing of CAs
+//! and other certificates.
 
 use rand_core::{CryptoRngCore, OsRng};
-use rsa::{pkcs8::DecodePrivateKey, RsaPrivateKey, RsaPublicKey};
+use rsa::{pkcs8::DecodePrivateKey, RsaPrivateKey};
+use signature::Keypair;
 use snafu::{ResultExt, Snafu};
 use tracing::instrument;
 
-use crate::sign::SigningKeyPair;
+use crate::keys::KeypairExt;
 
 pub const DEFAULT_RSA_BIT_SIZE: usize = 2048;
 
@@ -29,23 +30,7 @@ pub enum Error {
 }
 
 #[derive(Debug)]
-pub struct Options {
-    pub bit_size: usize,
-}
-
-impl Default for Options {
-    fn default() -> Self {
-        Self {
-            bit_size: DEFAULT_RSA_BIT_SIZE,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct SigningKey {
-    verifying_key: RsaPublicKey,
-    signing_key: rsa::pkcs1v15::SigningKey<sha2::Sha256>,
-}
+pub struct SigningKey(rsa::pkcs1v15::SigningKey<sha2::Sha256>);
 
 impl SigningKey {
     // NOTE (@Techassi): Should we maybe enfore bit sizes >= 2048?
@@ -70,40 +55,32 @@ impl SigningKey {
     {
         let private_key = RsaPrivateKey::new(csprng, bit_size.unwrap_or(DEFAULT_RSA_BIT_SIZE))
             .context(CreateKeySnafu)?;
-        let verifying_key = RsaPublicKey::from(&private_key);
         let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 
-        Ok(Self {
-            signing_key,
-            verifying_key,
-        })
+        Ok(Self(signing_key))
     }
 }
 
-impl SigningKeyPair for SigningKey {
+impl KeypairExt for SigningKey {
     type SigningKey = rsa::pkcs1v15::SigningKey<sha2::Sha256>;
     type Signature = rsa::pkcs1v15::Signature;
-    type VerifyingKey = rsa::RsaPublicKey;
+    type VerifyingKey = rsa::pkcs1v15::VerifyingKey<sha2::Sha256>;
     type Error = Error;
 
-    fn private_key(&self) -> &Self::SigningKey {
-        &self.signing_key
+    fn signing_key(&self) -> &Self::SigningKey {
+        &self.0
     }
 
-    fn public_key(&self) -> &Self::VerifyingKey {
-        &self.verifying_key
+    fn verifying_key(&self) -> Self::VerifyingKey {
+        self.0.verifying_key()
     }
 
     #[instrument(name = "create_rsa_signing_key_from_pkcs8_pem")]
     fn from_pkcs8_pem(input: &str) -> Result<Self, Self::Error> {
         let private_key =
             RsaPrivateKey::from_pkcs8_pem(input).context(DeserializeSigningKeySnafu)?;
-        let verifying_key = RsaPublicKey::from(&private_key);
         let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 
-        Ok(Self {
-            verifying_key,
-            signing_key,
-        })
+        Ok(Self(signing_key))
     }
 }

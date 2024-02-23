@@ -26,7 +26,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::sign::SigningKeyPair;
+use crate::keys::KeypairExt;
 
 #[cfg(feature = "k8s")]
 use {k8s_openapi::api::core::v1::Secret, stackable_operator::client::Client};
@@ -35,10 +35,9 @@ use {k8s_openapi::api::core::v1::Secret, stackable_operator::client::Client};
 use tokio_rustls::rustls::pki_types::CertificateDer;
 
 use p256::pkcs8::EncodePrivateKey;
-use signature::Keypair;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::commons::secret::SecretReference;
-use tokio_rustls::rustls::pki_types::PrivatePkcs8KeyDer;
+use tokio_rustls::rustls::pki_types::{PrivateKeyDer, PrivatePkcs8KeyDer};
 use x509_cert::{
     der::{pem::LineEnding, Encode, EncodePem},
     spki::EncodePublicKey,
@@ -46,8 +45,7 @@ use x509_cert::{
 };
 
 pub mod ca;
-pub mod chain;
-pub mod sign;
+pub mod keys;
 
 pub const CERTIFICATE_FILE_EXT: &str = "crt";
 pub const PRIVATE_KEY_FILE_EXT: &str = "key";
@@ -64,7 +62,7 @@ pub enum CertificatePairError {
     WriteFile { source: std::io::Error },
 }
 
-/// Contains the certificate and the (signing) key pair.
+/// Contains the certificate and the signing / embedded key pair.
 ///
 /// A [`CertificateAuthority`](crate::ca::CertificateAuthority) uses this struct
 /// internally to store the signing key pair which is used to sign the CA
@@ -73,8 +71,8 @@ pub enum CertificatePairError {
 #[derive(Debug)]
 pub struct CertificatePair<S>
 where
-    S: SigningKeyPair,
-    <S::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
+    S: KeypairExt,
+    <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
     certificate: Certificate,
     key_pair: S,
@@ -82,8 +80,8 @@ where
 
 impl<S> CertificatePairExt for CertificatePair<S>
 where
-    S: SigningKeyPair,
-    <S::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
+    S: KeypairExt,
+    <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
     type Error = CertificatePairError;
 
@@ -114,7 +112,7 @@ where
     ) -> Result<(), Self::Error> {
         let pem = self
             .key_pair
-            .private_key()
+            .signing_key()
             .to_pkcs8_pem(line_ending)
             .context(SerializePrivateKeySnafu)?;
 
@@ -124,8 +122,8 @@ where
 
 impl<S> CertificatePair<S>
 where
-    S: SigningKeyPair,
-    <S::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
+    S: KeypairExt,
+    <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
     /// Returns a reference to the [`Certificate`].
     pub fn certificate(&self) -> &Certificate {
@@ -141,31 +139,33 @@ where
 #[cfg(feature = "rustls")]
 impl<S> CertificatePair<S>
 where
-    S: SigningKeyPair + 'static,
-    <S::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
+    S: KeypairExt + 'static,
+    <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
-    pub fn certificate_der(&self) -> CertificateDer {
+    pub fn certificate_der(&self) -> CertificateDer<'static> {
         // TODO (@Techassi): Remove unwrap
         self.certificate.to_der().unwrap().into()
     }
 
-    pub fn private_key_der(&self) -> PrivatePkcs8KeyDer {
+    pub fn private_key_der(&self) -> PrivateKeyDer<'static> {
         // TODO (@Techassi): Remove unwrap
         // FIXME (@Techassi): Can we make this any more elegant?
-        self.key_pair
-            .private_key()
+        let bytes = self
+            .key_pair
+            .signing_key()
             .to_pkcs8_der()
             .unwrap()
             .to_bytes()
             .deref()
-            .to_owned()
-            .into()
+            .to_owned();
+
+        PrivateKeyDer::from(PrivatePkcs8KeyDer::from(bytes))
     }
 }
 
-/// This trait provides utilities to work with certificate pairs which contain
-/// a public certificate (with a public key embedded in it) and the private key
-/// used to sign it. This trait is useful for CAs and self-signed certificates.
+/// Provides utilities to work with certificate pairs which contain a public
+/// certificate (with a public key embedded in it) and the private key used to
+/// sign it. This trait is useful for CAs and self-signed certificates.
 pub trait CertificatePairExt: Sized {
     type Error: std::error::Error;
 
@@ -208,8 +208,7 @@ pub trait CertificatePairExt: Sized {
     ) -> Result<(), Self::Error>;
 }
 
-/// This trait provides functions to work with CAs stored in Kubernetes
-/// secrets.
+/// Provides functions to work with CAs stored in Kubernetes secrets.
 ///
 /// Namely these function enable:
 ///
@@ -237,9 +236,11 @@ pub trait K8sCertificatePair: Sized {
     fn requires_renewal(&self) -> bool;
 }
 
-/// This extension trait provides various helper methods to work with TLS
-/// certificate related file paths. One use-case is the creation of certificate
-/// and private key file paths with the default file extensions.
+/// Provides various helper methods to work with TLS certificate related file
+/// paths.
+///
+/// One use-case is the creation of certificate and private key file paths with
+/// the default file extensions.
 ///
 /// ```
 /// use std::path::PathBuf;
@@ -275,3 +276,11 @@ pub trait PathBufExt {
 }
 
 impl PathBufExt for PathBuf {}
+
+/// Supported private key types, currently [RSA](crate::keys::rsa) and
+/// [ECDSA](crate::keys::ecdsa).
+#[derive(Debug)]
+pub enum PrivateKeyType {
+    Ecdsa,
+    Rsa,
+}

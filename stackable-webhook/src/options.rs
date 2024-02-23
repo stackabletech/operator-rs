@@ -4,7 +4,7 @@ use std::{
     path::PathBuf,
 };
 
-use stackable_certs::PrivateKeyEncoding;
+use stackable_certs::PrivateKeyType;
 
 use crate::constants::DEFAULT_SOCKET_ADDR;
 
@@ -123,14 +123,14 @@ impl OptionsBuilder {
     /// [`OptionsBuilder::tls_autogenerate()`] function.
     pub fn tls_mount(
         mut self,
-        public_key_path: impl Into<PathBuf>,
+        certificate_path: impl Into<PathBuf>,
         private_key_path: impl Into<PathBuf>,
-        private_key_encoding: PrivateKeyEncoding,
+        private_key_type: PrivateKeyType,
     ) -> Self {
         self.tls = Some(TlsOption::Mount {
-            private_key_path: public_key_path.into(),
-            certificate_path: private_key_path.into(),
-            private_key_encoding,
+            private_key_path: private_key_path.into(),
+            certificate_path: certificate_path.into(),
+            private_key_type,
         });
         self
     }
@@ -149,7 +149,7 @@ impl OptionsBuilder {
 pub enum TlsOption {
     AutoGenerate,
     Mount {
-        private_key_encoding: PrivateKeyEncoding,
+        private_key_type: PrivateKeyType,
         private_key_path: PathBuf,
         certificate_path: PathBuf,
     },
