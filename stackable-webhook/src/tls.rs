@@ -68,7 +68,10 @@ impl TlsServer {
                         )
                         .unwrap();
 
-                        (pair.certificate_der(), pair.private_key_der())
+                        (
+                            pair.certificate_der().unwrap(),
+                            pair.private_key_der().unwrap(),
+                        )
                     }
                     PrivateKeyType::Rsa => {
                         let pair = CertificatePair::<rsa::SigningKey>::from_files(
@@ -77,7 +80,10 @@ impl TlsServer {
                         )
                         .unwrap();
 
-                        (pair.certificate_der(), pair.private_key_der())
+                        (
+                            pair.certificate_der().unwrap(),
+                            pair.private_key_der().unwrap(),
+                        )
                     }
                 };
 
@@ -90,6 +96,7 @@ impl TlsServer {
                 config
             }
         };
+
         let config = Arc::new(config);
 
         Ok(Self {

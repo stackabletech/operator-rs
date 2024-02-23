@@ -39,27 +39,52 @@ use snafu::{ResultExt, Snafu};
 use stackable_operator::commons::secret::SecretReference;
 use tokio_rustls::rustls::pki_types::{PrivateKeyDer, PrivatePkcs8KeyDer};
 use x509_cert::{
-    der::{pem::LineEnding, Encode, EncodePem},
+    der::{pem::LineEnding, DecodePem, Encode, EncodePem},
     spki::EncodePublicKey,
     Certificate,
 };
 
 pub mod ca;
 pub mod keys;
+pub mod manager;
 
 pub const CERTIFICATE_FILE_EXT: &str = "crt";
 pub const PRIVATE_KEY_FILE_EXT: &str = "key";
 
 #[derive(Debug, Snafu)]
-pub enum CertificatePairError {
-    #[snafu(display("failed to seralize certificate as PEM"))]
-    SerializeCertificate { source: x509_cert::der::Error },
+pub enum CertificatePairError<E>
+where
+    E: std::error::Error + 'static,
+{
+    #[snafu(display("failed to seralize certificate as {key_encoding}"))]
+    SerializeCertificate {
+        source: x509_cert::der::Error,
+        key_encoding: KeyEncoding,
+    },
 
-    #[snafu(display("failed to seralize private key as PKCS8 PEM"))]
-    SerializePrivateKey { source: p256::pkcs8::Error },
+    #[snafu(display("failed to deserialize certificate from {key_encoding}"))]
+    DeserializeCertificate {
+        source: x509_cert::der::Error,
+        key_encoding: KeyEncoding,
+    },
+
+    #[snafu(display("failed to serialize private key as PKCS8 {key_encoding}"))]
+    SerializePrivateKey {
+        source: p256::pkcs8::Error,
+        key_encoding: KeyEncoding,
+    },
+
+    #[snafu(display("failed to deserialize private key from PKCS8 {key_encoding}"))]
+    DeserializePrivateKey {
+        source: E,
+        key_encoding: KeyEncoding,
+    },
 
     #[snafu(display("failed to write file"))]
     WriteFile { source: std::io::Error },
+
+    #[snafu(display("failed to read file"))]
+    ReadFile { source: std::io::Error },
 }
 
 /// Contains the certificate and the signing / embedded key pair.
@@ -83,13 +108,27 @@ where
     S: KeypairExt,
     <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
-    type Error = CertificatePairError;
+    type Error = CertificatePairError<S::Error>;
 
     fn from_files(
         certificate_path: impl AsRef<Path>,
         private_key_path: impl AsRef<Path>,
     ) -> Result<Self, Self::Error> {
-        todo!()
+        let certificate_pem = std::fs::read(certificate_path).context(ReadFileSnafu)?;
+        let certificate =
+            Certificate::from_pem(&certificate_pem).context(DeserializeCertificateSnafu {
+                key_encoding: KeyEncoding::Pem,
+            })?;
+
+        let key_pair_pem = std::fs::read_to_string(private_key_path).context(ReadFileSnafu)?;
+        let key_pair = S::from_pkcs8_pem(&key_pair_pem).context(DeserializePrivateKeySnafu {
+            key_encoding: KeyEncoding::Pem,
+        })?;
+
+        Ok(Self {
+            certificate,
+            key_pair,
+        })
     }
 
     fn to_certificate_file(
@@ -100,7 +139,9 @@ where
         let pem = self
             .certificate
             .to_pem(line_ending)
-            .context(SerializeCertificateSnafu)?;
+            .context(SerializeCertificateSnafu {
+                key_encoding: KeyEncoding::Pem,
+            })?;
 
         std::fs::write(certificate_path, pem).context(WriteFileSnafu)
     }
@@ -114,7 +155,9 @@ where
             .key_pair
             .signing_key()
             .to_pkcs8_pem(line_ending)
-            .context(SerializePrivateKeySnafu)?;
+            .context(SerializePrivateKeySnafu {
+                key_encoding: KeyEncoding::Pem,
+            })?;
 
         std::fs::write(private_key_path, pem).context(WriteFileSnafu)
     }
@@ -142,24 +185,36 @@ where
     S: KeypairExt + 'static,
     <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
-    pub fn certificate_der(&self) -> CertificateDer<'static> {
-        // TODO (@Techassi): Remove unwrap
-        self.certificate.to_der().unwrap().into()
+    pub fn certificate_der(
+        &self,
+    ) -> Result<CertificateDer<'static>, CertificatePairError<S::Error>> {
+        let der = self
+            .certificate
+            .to_der()
+            .context(SerializeCertificateSnafu {
+                key_encoding: KeyEncoding::Der,
+            })?
+            .into();
+
+        Ok(der)
     }
 
-    pub fn private_key_der(&self) -> PrivateKeyDer<'static> {
-        // TODO (@Techassi): Remove unwrap
-        // FIXME (@Techassi): Can we make this any more elegant?
-        let bytes = self
+    pub fn private_key_der(
+        &self,
+    ) -> Result<PrivateKeyDer<'static>, CertificatePairError<S::Error>> {
+        // FIXME (@Techassi): Can we make this more elegant?
+        let doc = self
             .key_pair
             .signing_key()
             .to_pkcs8_der()
-            .unwrap()
-            .to_bytes()
-            .deref()
-            .to_owned();
+            .context(SerializePrivateKeySnafu {
+                key_encoding: KeyEncoding::Der,
+            })?;
 
-        PrivateKeyDer::from(PrivatePkcs8KeyDer::from(bytes))
+        let bytes = doc.to_bytes().deref().to_owned();
+        let der = PrivateKeyDer::from(PrivatePkcs8KeyDer::from(bytes));
+
+        Ok(der)
     }
 }
 
@@ -176,6 +231,18 @@ pub trait CertificatePairExt: Sized {
         certificate_path: impl AsRef<Path>,
         private_key_path: impl AsRef<Path>,
     ) -> Result<Self, Self::Error>;
+
+    fn to_certificate_file(
+        &self,
+        certificate_path: impl AsRef<Path>,
+        line_ending: LineEnding,
+    ) -> Result<(), Self::Error>;
+
+    fn to_private_key_file(
+        &self,
+        private_key_path: impl AsRef<Path>,
+        line_ending: LineEnding,
+    ) -> Result<(), Self::Error>;
 
     /// Writes the certificate and private key as a PEM-encoded file to
     /// `certificate_path` and `private_key_path` respectively.
@@ -194,18 +261,6 @@ pub trait CertificatePairExt: Sized {
         self.to_certificate_file(certificate_path, line_ending)?;
         self.to_private_key_file(private_key_path, line_ending)
     }
-
-    fn to_certificate_file(
-        &self,
-        certificate_path: impl AsRef<Path>,
-        line_ending: LineEnding,
-    ) -> Result<(), Self::Error>;
-
-    fn to_private_key_file(
-        &self,
-        private_key_path: impl AsRef<Path>,
-        line_ending: LineEnding,
-    ) -> Result<(), Self::Error>;
 }
 
 /// Provides functions to work with CAs stored in Kubernetes secrets.
@@ -283,4 +338,19 @@ impl PathBufExt for PathBuf {}
 pub enum PrivateKeyType {
     Ecdsa,
     Rsa,
+}
+
+#[derive(Debug)]
+pub enum KeyEncoding {
+    Pem,
+    Der,
+}
+
+impl std::fmt::Display for KeyEncoding {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KeyEncoding::Pem => write!(f, "PEM"),
+            KeyEncoding::Der => write!(f, "DER"),
+        }
+    }
 }

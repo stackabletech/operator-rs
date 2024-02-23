@@ -43,8 +43,8 @@ pub enum Error {
     #[snafu(display("failed to generate ECDSA signign key"))]
     GenerateEcdsaSigningKey { source: ecdsa::Error },
 
-    #[snafu(display("failed to generate a unique serial number after 5 tries"))]
-    GenerateUniqueSerialNumber,
+    #[snafu(display("failed to generate a unique serial number after {tries} tries"))]
+    GenerateUniqueSerialNumber { tries: usize },
 
     #[snafu(display("failed to parse {subject:?} as subject"))]
     InvalidSubject {
@@ -74,7 +74,6 @@ pub enum SecretError {
     ReadSigningKey { source: rsa::Error, secret: String },
 }
 
-// TODO (@Techassi): Make this generic over the signing key used.
 /// A certificate authority (CA) which is used to generate and sign
 /// intermidiate or leaf certificates.
 #[derive(Debug)]
@@ -92,13 +91,18 @@ where
     S: KeypairExt,
     <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
-    type Error = CertificatePairError;
+    type Error = CertificatePairError<S::Error>;
 
     fn from_files(
         certificate_path: impl AsRef<Path>,
         private_key_path: impl AsRef<Path>,
     ) -> Result<Self, Self::Error> {
-        todo!()
+        let certificate_pair = CertificatePair::from_files(certificate_path, private_key_path)?;
+
+        Ok(Self {
+            serial_numbers: HashSet::new(),
+            certificate_pair,
+        })
     }
 
     fn to_certificate_file(
@@ -187,7 +191,16 @@ where
     S: KeypairExt,
     <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
-    // TODO (@Techassi): Add doc comment
+    /// Creates a new CA certificate with many parameters set to their default
+    /// values.
+    ///
+    /// These parameters include:
+    ///
+    /// - a randomly generated serial number
+    /// - a default validity of one hour (3600 seconds)
+    ///
+    /// The CA contains the public half of the provided `signing_key` and is
+    /// signed by the private half of said key.
     #[instrument(name = "create_certificate_authority", skip(signing_key_pair))]
     pub fn new(signing_key_pair: S) -> Result<Self> {
         let serial_number = rand::random::<u64>();
@@ -315,11 +328,13 @@ where
     #[instrument(skip_all)]
     fn generate_serial_number(&mut self) -> Result<SerialNumber> {
         let mut serial_number = rand::random();
-        let mut tries = 0;
+        let mut tries = 0usize;
 
         while self.serial_numbers.contains(&serial_number) {
+            // Give up after 5 tries to avoid getting stuck in this function and
+            // dead-locking the application.
             if tries >= 5 {
-                return GenerateUniqueSerialNumberSnafu.fail();
+                return GenerateUniqueSerialNumberSnafu { tries }.fail();
             }
 
             serial_number = rand::random();

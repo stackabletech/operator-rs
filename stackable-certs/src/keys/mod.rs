@@ -53,7 +53,7 @@ where
     type Signature: SignatureBitStringEncoding;
     type VerifyingKey: EncodePublicKey;
 
-    type Error: std::error::Error;
+    type Error: std::error::Error + 'static;
 
     /// Returns the signing (private) key half of the keypair.
     fn signing_key(&self) -> &Self::SigningKey;
