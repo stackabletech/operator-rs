@@ -283,7 +283,7 @@ mod test {
 
         assert_eq!(
             oidc.endpoint_url().unwrap().as_str(),
-            "http://my.keycloak.server:12345/my-root-path"
+            "https://my.keycloak.server:12345/my-root-path"
         );
     }
 
@@ -328,7 +328,7 @@ mod test {
 
         assert_eq!(
             oidc.endpoint_url().unwrap().as_str(),
-            "http://[2606:2800:220:1:248:1893:25c8:1946]:12345/my-root-path"
+            "https://[2606:2800:220:1:248:1893:25c8:1946]:12345/my-root-path"
         );
     }
 
