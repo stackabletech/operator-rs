@@ -226,8 +226,8 @@ mod test {
         )
         .unwrap();
 
-        assert_eq!(ldap.port(), 389);
-        assert!(!ldap.tls.uses_tls());
+        assert_eq!(ldap.port(), 636);
+        assert!(ldap.tls.uses_tls());
         assert_eq!(ldap.tls.tls_ca_cert_secret_class(), None);
     }
 

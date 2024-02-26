@@ -35,7 +35,16 @@ pub enum TlsClientDetailsError {
 #[serde(rename_all = "camelCase")]
 pub struct TlsClientDetails {
     /// Use a TLS connection. If not specified no TLS will be used.
+    #[serde(default = "default_tls")]
     pub tls: Option<Tls>,
+}
+
+fn default_tls() -> Option<Tls> {
+    Some(Tls {
+        verification: TlsVerification::Server(TlsServerVerification {
+            ca_cert: CaCert::WebPki {},
+        }),
+    })
 }
 
 impl TlsClientDetails {
