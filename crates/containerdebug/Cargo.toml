@@ -1,0 +1,12 @@
+[package]
+name = "containerdebug"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+hickory-resolver = "0.24.0"
+local-ip-address = "0.6.1"
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.114"
+sysinfo = "0.30.5"
