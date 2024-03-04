@@ -46,7 +46,6 @@ use x509_cert::{
 
 pub mod ca;
 pub mod keys;
-pub mod manager;
 
 pub const CERTIFICATE_FILE_EXT: &str = "crt";
 pub const PRIVATE_KEY_FILE_EXT: &str = "key";
