@@ -2,16 +2,8 @@
 //! (CAs).
 use std::{collections::HashSet, path::Path, str::FromStr};
 
-#[cfg(feature = "k8s")]
-use {
-    crate::K8sCertificatePair,
-    k8s_openapi::api::core::v1::Secret,
-    kube::ResourceExt,
-    stackable_operator::{client::Client, commons::secret::SecretReference},
-};
-
 use const_oid::db::rfc5280::{ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH};
-use snafu::{OptionExt, ResultExt, Snafu};
+use snafu::{ResultExt, Snafu};
 use stackable_operator::time::Duration;
 use tracing::{info, instrument};
 use x509_cert::{
@@ -22,7 +14,6 @@ use x509_cert::{
     serial_number::SerialNumber,
     spki::{EncodePublicKey, SubjectPublicKeyInfoOwned},
     time::Validity,
-    Certificate,
 };
 
 use crate::{
@@ -31,7 +22,11 @@ use crate::{
 };
 
 mod consts;
+mod k8s;
 pub use consts::*;
+
+#[cfg(feature = "k8s")]
+pub use k8s::*;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -121,68 +116,6 @@ where
     ) -> Result<(), Self::Error> {
         self.certificate_pair
             .to_private_key_file(private_key_path, line_ending)
-    }
-}
-
-#[cfg(feature = "k8s")]
-impl<S> K8sCertificatePair for CertificateAuthority<S>
-where
-    S: KeypairExt,
-    <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
-{
-    type Error = SecretError;
-
-    fn from_secret(
-        secret: Secret,
-        key_certificate: &str,
-        key_private_key: &str,
-    ) -> Result<Self, Self::Error> {
-        let name = secret.name_any();
-        let data = secret.data.context(NoSecretDataSnafu {
-            secret: name.clone(),
-        })?;
-
-        let certificate_data = data.get(key_certificate).context(NoCertificateDataSnafu {
-            secret: name.clone(),
-        })?;
-
-        let certificate = Certificate::load_pem_chain(&certificate_data.0)
-            .context(ReadChainSnafu {
-                secret: name.clone(),
-            })?
-            .remove(0);
-
-        let private_key_data = data.get(key_private_key).context(NoPrivateKeyDataSnafu {
-            secret: name.clone(),
-        })?;
-
-        // TODO (@Techassi): Remove unwrap
-        let signing_key_pair =
-            S::from_pkcs8_pem(std::str::from_utf8(&private_key_data.0).unwrap()).unwrap();
-
-        Ok(Self {
-            serial_numbers: HashSet::new(),
-            certificate_pair: CertificatePair {
-                key_pair: signing_key_pair,
-                certificate,
-            },
-        })
-    }
-
-    async fn from_secret_ref(
-        secret_ref: &SecretReference,
-        key_certificate: &str,
-        key_private_key: &str,
-        client: &Client,
-    ) -> Result<Self, Self::Error> {
-        // TODO (@Techassi): Remove unwrap
-        let secret_api = client.get_api::<Secret>(&secret_ref.namespace);
-        let secret = secret_api.get(&secret_ref.name).await.unwrap();
-        Self::from_secret(secret, key_certificate, key_private_key)
-    }
-
-    fn requires_renewal(&self) -> bool {
-        todo!()
     }
 }
 
