@@ -50,6 +50,8 @@ pub mod keys;
 pub const CERTIFICATE_FILE_EXT: &str = "crt";
 pub const PRIVATE_KEY_FILE_EXT: &str = "key";
 
+/// Error variants which can be encountered when creating a new
+/// [`CertificatePair`].
 #[derive(Debug, Snafu)]
 pub enum CertificatePairError<E>
 where
@@ -338,6 +340,7 @@ pub enum PrivateKeyType {
     Rsa,
 }
 
+/// Private and public key encoding, either DER or PEM.
 #[derive(Debug)]
 pub enum KeyEncoding {
     Pem,

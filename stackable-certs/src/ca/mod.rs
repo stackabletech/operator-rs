@@ -232,7 +232,14 @@ where
         T: KeypairExt,
         <T::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
     {
+        // We generate a random serial number, but ensure the same CA didn't
+        // issue another certificate with the same serial number. We try to
+        // generate a unique serial number at max five times before giving up
+        // and returning an error.
         let serial_number = self.generate_serial_number()?;
+
+        // NOTE (@Techassi): Should we validate that the validity is shorter
+        // than the validity of the issuing CA?
         let validity = Validity::from_now(*validity).context(ParseValiditySnafu)?;
         let subject = format_leaf_certificate_subject(name, scope)?;
 
@@ -244,6 +251,8 @@ where
         let spki = SubjectPublicKeyInfoOwned::from_pem(spki_pem.as_bytes())
             .context(DecodeSpkiFromPemSnafu)?;
 
+        // The leaf certificate can be used for WWW client and server
+        // authentication. This is a base requirement for TLS certs.
         let eku = ExtendedKeyUsage(vec![ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH]);
         let aki = AuthorityKeyIdentifier::try_from(spki.owned_to_ref())
             .context(ParseAuthorityKeyIdentifierSnafu)?;
@@ -268,6 +277,7 @@ where
         )
         .context(CreateCertificateBuilderSnafu)?;
 
+        // Again, add the extension created above.
         builder
             .add_extension(&eku)
             .context(AddCertificateExtensionSnafu)?;
@@ -305,6 +315,7 @@ where
 }
 
 impl CertificateAuthority<rsa::SigningKey> {
+    /// High-level function to create a new CA using a RSA key pair.
     #[instrument(name = "create_certificate_authority_with_rsa")]
     pub fn new_rsa() -> Result<Self> {
         Self::new(rsa::SigningKey::new(None).context(GenerateRsaSigningKeySnafu)?)
@@ -312,6 +323,7 @@ impl CertificateAuthority<rsa::SigningKey> {
 }
 
 impl CertificateAuthority<ecdsa::SigningKey> {
+    /// High-level function to create a new CA using a ECDSA key pair.
     #[instrument(name = "create_certificate_authority_with_ecdsa")]
     pub fn new_ecdsa() -> Result<Self> {
         Self::new(ecdsa::SigningKey::new().context(GenerateEcdsaSigningKeySnafu)?)
