@@ -272,8 +272,7 @@ pub trait CertificatePairExt: Sized {
 #[cfg(feature = "k8s")]
 pub trait K8sCertificatePair: Sized {
     type Error: std::error::Error;
-    // TODO (@Techassi): Use SecretReference here, for that, we would need to
-    // move it out of secret-operator into a common place.
+
     fn from_secret(
         secret: Secret,
         key_certificate: &str,

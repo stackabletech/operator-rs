@@ -4,7 +4,7 @@
 
 use p256::{pkcs8::DecodePrivateKey, NistP256};
 use rand_core::{CryptoRngCore, OsRng};
-use snafu::Snafu;
+use snafu::{ResultExt, Snafu};
 use tracing::instrument;
 
 use crate::keys::KeypairExt;
@@ -15,6 +15,9 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub enum Error {
     #[snafu(context(false))]
     SerializeKeyToPem { source: x509_cert::spki::Error },
+
+    #[snafu(display("failed to deserialize ECDSA key from PEM"))]
+    DeserializeKeyFromPem { source: p256::pkcs8::Error },
 }
 
 #[derive(Debug)]
@@ -54,8 +57,9 @@ impl KeypairExt for SigningKey {
 
     #[instrument(name = "create_ecdsa_signing_key_from_pkcs8_pem")]
     fn from_pkcs8_pem(input: &str) -> Result<Self, Self::Error> {
-        // TODO (@Techassi): Remove unwrap
-        let signing_key = p256::ecdsa::SigningKey::from_pkcs8_pem(input).unwrap();
+        let signing_key =
+            p256::ecdsa::SigningKey::from_pkcs8_pem(input).context(DeserializeKeyFromPemSnafu)?;
+
         Ok(Self(signing_key))
     }
 }

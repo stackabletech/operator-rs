@@ -21,12 +21,6 @@ pub enum Error {
 
     #[snafu(display("failed to deserialize the signing (private) key from PEM-encoded PKCS8"))]
     DeserializeSigningKey { source: rsa::pkcs8::Error },
-
-    #[snafu(display("failed to serialize the signing (private) key as PEM-encoded PKCS8"))]
-    SerializeSigningKeyToPem { source: rsa::pkcs8::Error },
-
-    #[snafu(display("failed to serialize the verifying (public) key as PEM-encoded SPKI"))]
-    SerializeVerifyingKeyToPem { source: x509_cert::spki::Error },
 }
 
 #[derive(Debug)]
