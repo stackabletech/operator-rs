@@ -27,11 +27,11 @@ impl SigningKey {
     #[instrument(name = "create_ecdsa_signing_key")]
     pub fn new() -> Result<Self> {
         let mut csprng = OsRng;
-        Self::new_with(&mut csprng)
+        Self::new_with_rng(&mut csprng)
     }
 
     #[instrument(name = "create_ecdsa_signing_key_custom_rng", skip_all)]
-    pub fn new_with<R>(csprng: &mut R) -> Result<Self>
+    pub fn new_with_rng<R>(csprng: &mut R) -> Result<Self>
     where
         R: CryptoRngCore + Sized,
     {

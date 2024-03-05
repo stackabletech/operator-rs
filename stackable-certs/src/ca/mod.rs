@@ -5,7 +5,7 @@ use std::{collections::HashSet, path::Path, str::FromStr};
 use const_oid::db::rfc5280::{ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH};
 use snafu::{ResultExt, Snafu};
 use stackable_operator::time::Duration;
-use tracing::{info, instrument};
+use tracing::{debug, instrument};
 use x509_cert::{
     builder::{Builder, CertificateBuilder, Profile},
     der::{pem::LineEnding, referenced::OwnedToRef, DecodePem},
@@ -285,7 +285,7 @@ where
             .add_extension(&aki)
             .context(AddCertificateExtensionSnafu)?;
 
-        info!("create and sign leaf certificate");
+        debug!("create and sign leaf certificate");
         let certificate = builder.build().context(BuildCertificateSnafu)?;
 
         Ok(CertificatePair {

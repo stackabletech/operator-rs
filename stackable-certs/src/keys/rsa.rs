@@ -39,7 +39,7 @@ impl SigningKey {
     #[instrument(name = "create_rsa_signing_key")]
     pub fn new(bit_size: Option<usize>) -> Result<Self> {
         let mut csprng = OsRng;
-        Self::new_with(&mut csprng, bit_size)
+        Self::new_with_rng(&mut csprng, bit_size)
     }
 
     #[instrument(name = "create_rsa_signing_key_custom_rng", skip_all)]
