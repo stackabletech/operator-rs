@@ -130,7 +130,7 @@ where
     /// These parameters include:
     ///
     /// - a randomly generated serial number
-    /// - a default validity of one hour (see [`DEFAULT_CA_VALIDITY`])
+    /// - a default validity of one hour (see [`DEFAULT_CA_VALIDITY_SECONDS`])
     ///
     /// The CA contains the public half of the provided `signing_key` and is
     /// signed by the private half of said key.
@@ -141,7 +141,7 @@ where
     #[instrument(name = "create_certificate_authority", skip(signing_key_pair))]
     pub fn new(signing_key_pair: S) -> Result<Self> {
         let serial_number = rand::random::<u64>();
-        let validity = Duration::from_secs(DEFAULT_CA_VALIDITY);
+        let validity = Duration::from_secs(DEFAULT_CA_VALIDITY_SECONDS);
 
         Self::new_with(signing_key_pair, serial_number, validity)
     }
@@ -208,7 +208,7 @@ where
             .add_extension(&aki)
             .context(AddCertificateExtensionSnafu)?;
 
-        info!("create and sign CA certificate");
+        debug!("create and sign CA certificate");
         let certificate = builder.build().context(BuildCertificateSnafu)?;
 
         Ok(Self {

@@ -43,7 +43,7 @@ impl SigningKey {
     }
 
     #[instrument(name = "create_rsa_signing_key_custom_rng", skip_all)]
-    pub fn new_with<R>(csprng: &mut R, bit_size: Option<usize>) -> Result<Self>
+    pub fn new_with_rng<R>(csprng: &mut R, bit_size: Option<usize>) -> Result<Self>
     where
         R: CryptoRngCore + ?Sized,
     {

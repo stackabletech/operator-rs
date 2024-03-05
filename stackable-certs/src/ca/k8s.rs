@@ -33,7 +33,7 @@ where
     },
 
     #[snafu(display("failed to parse Base64 encoded byte string"))]
-    ParseBase64ByteString { source: std::str::Utf8Error },
+    DecodeUtf8String { source: std::str::Utf8Error },
 
     #[snafu(display("failed to deserialize private key from PEM"))]
     DeserializeKeyFromPem { source: E },
@@ -52,26 +52,26 @@ where
         key_private_key: &str,
     ) -> Result<Self, Self::Error> {
         let name = secret.name_any();
-        let data = secret.data.context(NoSecretDataSnafu {
+        let data = secret.data.with_context(|_| NoSecretDataSnafu {
             secret: name.clone(),
         })?;
 
-        let certificate_data = data.get(key_certificate).context(NoCertificateDataSnafu {
+        let certificate_data = data.get(key_certificate).with_context(|_| NoCertificateDataSnafu {
             secret: name.clone(),
         })?;
 
         let certificate = Certificate::load_pem_chain(&certificate_data.0)
-            .context(ReadChainSnafu {
+            .with_context(|_| ReadChainSnafu {
                 secret: name.clone(),
             })?
             .remove(0);
 
-        let private_key_data = data.get(key_private_key).context(NoPrivateKeyDataSnafu {
+        let private_key_data = data.get(key_private_key).with_context(|_| NoPrivateKeyDataSnafu {
             secret: name.clone(),
         })?;
 
         let private_key_data =
-            std::str::from_utf8(&private_key_data.0).context(ParseBase64ByteStringSnafu)?;
+            std::str::from_utf8(&private_key_data.0).context(DecodeUtf8StringSnafu)?;
 
         let signing_key_pair =
             S::from_pkcs8_pem(private_key_data).context(DeserializeKeyFromPemSnafu)?;
@@ -95,7 +95,7 @@ where
         let secret = secret_api
             .get(&secret_ref.name)
             .await
-            .context(GetSecretSnafu {
+            .with_context(|_| GetSecretSnafu {
                 secret: secret_ref.name.clone(),
             })?;
 

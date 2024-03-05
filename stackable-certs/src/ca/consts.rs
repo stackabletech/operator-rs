@@ -7,7 +7,7 @@ pub const ROOT_CA_COMMON_NAME_DN: &str = "CN=Stackable Root CA";
 pub const ORGANIZATION_DN: &str = "O=Stackable GmbH";
 
 /// The default CA validity time span of one hour (3600 seconds).
-pub const DEFAULT_CA_VALIDITY: u64 = 60 * 60;
+pub const DEFAULT_CA_VALIDITY_SECONDS: u64 = 3600;
 
 /// A common country DN `C=DE`.
 pub const COUNTRY_DN: &str = "C=DE";

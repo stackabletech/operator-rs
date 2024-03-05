@@ -60,7 +60,7 @@ impl TlsServer {
                 private_key_type,
             } => {
                 // TODO (@Techassi): Remove unwraps
-                let (cert, pk) = match private_key_type {
+                let (certificate, private_key) = match private_key_type {
                     PrivateKeyType::Ecdsa => {
                         let pair = CertificatePair::<ecdsa::SigningKey>::from_files(
                             certificate_path,
@@ -89,7 +89,7 @@ impl TlsServer {
 
                 let mut config = ServerConfig::builder()
                     .with_no_client_auth()
-                    .with_single_cert(vec![cert], pk)
+                    .with_single_cert(vec![certificate], private_key)
                     .context(InvalidTlsPrivateKeySnafu)?;
 
                 config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
