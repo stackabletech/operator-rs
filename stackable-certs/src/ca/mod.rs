@@ -88,11 +88,12 @@ where
 {
     type Error = CertificatePairError<S::Error>;
 
-    fn from_files(
+    async fn from_files(
         certificate_path: impl AsRef<Path>,
         private_key_path: impl AsRef<Path>,
     ) -> Result<Self, Self::Error> {
-        let certificate_pair = CertificatePair::from_files(certificate_path, private_key_path)?;
+        let certificate_pair =
+            CertificatePair::from_files(certificate_path, private_key_path).await?;
 
         Ok(Self {
             serial_numbers: HashSet::new(),
@@ -100,22 +101,24 @@ where
         })
     }
 
-    fn to_certificate_file(
+    async fn to_certificate_file(
         &self,
         certificate_path: impl AsRef<Path>,
         line_ending: LineEnding,
     ) -> Result<(), Self::Error> {
         self.certificate_pair
             .to_certificate_file(certificate_path, line_ending)
+            .await
     }
 
-    fn to_private_key_file(
+    async fn to_private_key_file(
         &self,
         private_key_path: impl AsRef<Path>,
         line_ending: LineEnding,
     ) -> Result<(), Self::Error> {
         self.certificate_pair
             .to_private_key_file(private_key_path, line_ending)
+            .await
     }
 }
 
@@ -321,7 +324,7 @@ where
         self.generate_leaf_certificate(key, name, scope, validity)
     }
 
-    /// Generates an ECDSA-based leaf certificate which is signed by this CA.
+    /// Generates an ECDSAasync -based leaf certificate which is signed by this CA.
     ///
     /// See [`CertificateAuthority::generate_leaf_certificate`] for more
     /// information.
@@ -385,8 +388,8 @@ mod test {
 
     use super::*;
 
-    #[test]
-    fn test() {
+    #[tokio::test]
+    async fn test() {
         let mut ca = CertificateAuthority::new_rsa().unwrap();
         ca.generate_leaf_certificate(
             rsa::SigningKey::new(None).unwrap(),
@@ -396,6 +399,7 @@ mod test {
         )
         .unwrap()
         .to_certificate_file(PathBuf::certificate_path("tls"), LineEnding::default())
+        .await
         .unwrap();
     }
 }

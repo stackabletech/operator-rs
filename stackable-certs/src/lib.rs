@@ -111,17 +111,23 @@ where
 {
     type Error = CertificatePairError<S::Error>;
 
-    fn from_files(
+    async fn from_files(
         certificate_path: impl AsRef<Path>,
         private_key_path: impl AsRef<Path>,
     ) -> Result<Self, Self::Error> {
-        let certificate_pem = std::fs::read(certificate_path).context(ReadFileSnafu)?;
+        let certificate_pem = tokio::fs::read(certificate_path)
+            .await
+            .context(ReadFileSnafu)?;
+
         let certificate =
             Certificate::from_pem(&certificate_pem).context(DeserializeCertificateSnafu {
                 key_encoding: KeyEncoding::Pem,
             })?;
 
-        let key_pair_pem = std::fs::read_to_string(private_key_path).context(ReadFileSnafu)?;
+        let key_pair_pem = tokio::fs::read_to_string(private_key_path)
+            .await
+            .context(ReadFileSnafu)?;
+
         let key_pair = S::from_pkcs8_pem(&key_pair_pem).context(DeserializePrivateKeySnafu {
             key_encoding: KeyEncoding::Pem,
         })?;
@@ -132,7 +138,7 @@ where
         })
     }
 
-    fn to_certificate_file(
+    async fn to_certificate_file(
         &self,
         certificate_path: impl AsRef<Path>,
         line_ending: LineEnding,
@@ -144,10 +150,12 @@ where
                 key_encoding: KeyEncoding::Pem,
             })?;
 
-        std::fs::write(certificate_path, pem).context(WriteFileSnafu)
+        tokio::fs::write(certificate_path, pem)
+            .await
+            .context(WriteFileSnafu)
     }
 
-    fn to_private_key_file(
+    async fn to_private_key_file(
         &self,
         private_key_path: impl AsRef<Path>,
         line_ending: LineEnding,
@@ -160,7 +168,9 @@ where
                 key_encoding: KeyEncoding::Pem,
             })?;
 
-        std::fs::write(private_key_path, pem).context(WriteFileSnafu)
+        tokio::fs::write(private_key_path, pem)
+            .await
+            .context(WriteFileSnafu)
     }
 }
 
@@ -222,13 +232,14 @@ where
 /// Provides utilities to work with certificate pairs which contain a public
 /// certificate (with a public key embedded in it) and the private key used to
 /// sign it. This trait is useful for CAs and self-signed certificates.
+#[allow(async_fn_in_trait)]
 pub trait CertificatePairExt: Sized {
     type Error: std::error::Error;
 
     /// Reads in a PEM-encoded certificate from `certificate_path` and private
     /// key file from `private_key_path` and finally constructs a CA from the
     /// contents.
-    fn from_files(
+    async fn from_files(
         certificate_path: impl AsRef<Path>,
         private_key_path: impl AsRef<Path>,
     ) -> Result<Self, Self::Error>;
@@ -239,7 +250,7 @@ pub trait CertificatePairExt: Sized {
     ///
     /// Use [`LineEnding::default()`] to always use the appropriate line ending
     /// depending on the operating system.
-    fn to_certificate_file(
+    async fn to_certificate_file(
         &self,
         certificate_path: impl AsRef<Path>,
         line_ending: LineEnding,
@@ -251,7 +262,7 @@ pub trait CertificatePairExt: Sized {
     ///
     /// Use [`LineEnding::default()`] to always use the appropriate line ending
     /// depending on the operating system.
-    fn to_private_key_file(
+    async fn to_private_key_file(
         &self,
         private_key_path: impl AsRef<Path>,
         line_ending: LineEnding,
@@ -265,14 +276,17 @@ pub trait CertificatePairExt: Sized {
     /// contants [`CERTIFICATE_FILE_EXT`] and [`PRIVATE_KEY_FILE_EXT`].
     /// Alternatively, the [`PathBufExt`] trait allows easy creation of correct
     /// paths.
-    fn to_files(
+    async fn to_files(
         &self,
         certificate_path: impl AsRef<Path>,
         private_key_path: impl AsRef<Path>,
         line_ending: LineEnding,
     ) -> Result<(), Self::Error> {
-        self.to_certificate_file(certificate_path, line_ending)?;
+        self.to_certificate_file(certificate_path, line_ending)
+            .await?;
+
         self.to_private_key_file(private_key_path, line_ending)
+            .await
     }
 }
 

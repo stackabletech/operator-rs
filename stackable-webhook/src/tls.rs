@@ -44,7 +44,7 @@ pub struct TlsServer {
 
 impl TlsServer {
     #[instrument(name = "create_tls_server", skip(router))]
-    pub fn new(socket_addr: SocketAddr, router: Router, tls: TlsOption) -> Result<Self> {
+    pub async fn new(socket_addr: SocketAddr, router: Router, tls: TlsOption) -> Result<Self> {
         let config = match tls {
             TlsOption::AutoGenerate => {
                 // let mut config = ServerConfig::builder()
@@ -66,6 +66,7 @@ impl TlsServer {
                             certificate_path,
                             private_key_path,
                         )
+                        .await
                         .unwrap();
 
                         (
@@ -78,6 +79,7 @@ impl TlsServer {
                             certificate_path,
                             private_key_path,
                         )
+                        .await
                         .unwrap();
 
                         (

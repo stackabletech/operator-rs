@@ -149,6 +149,7 @@ impl WebhookServer {
         // Create server for TLS termination
         debug!("create TLS server");
         let tls_server = TlsServer::new(self.options.socket_addr, router, self.options.tls)
+            .await
             .context(CreateTlsServerSnafu)?;
 
         debug!("running TLS server");
