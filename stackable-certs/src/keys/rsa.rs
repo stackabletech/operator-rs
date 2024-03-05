@@ -34,7 +34,7 @@ impl SigningKey {
     // NOTE (@Techassi): Should we maybe enfore bit sizes >= 2048?
     /// Generates a new RSA key with the default random-number generator
     /// [`OsRng`] with the given `bit_size`. Providing [`None`] will use
-    /// [`DEFAULT_RSA_BIT_SIZE`].
+    /// [`DEFAULT_BIT_SIZE`].
     ///
     /// Common values for `bit_size` are `2048` or `4096`. It should be noted
     /// that the generation of the key takes longer for larger bit sizes. The
