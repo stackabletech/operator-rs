@@ -299,8 +299,6 @@ pub trait K8sCertificatePair: Sized {
         key_private_key: &str,
         client: &Client,
     ) -> Result<Self, Self::Error>;
-
-    fn requires_renewal(&self) -> bool;
 }
 
 /// Provides various helper methods to work with TLS certificate related file

@@ -116,8 +116,4 @@ where
 
         Self::from_secret(secret, key_certificate, key_private_key)
     }
-
-    fn requires_renewal(&self) -> bool {
-        todo!()
-    }
 }
