@@ -11,7 +11,7 @@
 //!
 //! - `k8s`: This enables various traits and functions to work with
 //!   certificates and Kubernetes secrets.
-//! - `rustls`: This enables interoperability between this crates types
+//! - `webhook`: This enables interoperability between this crates types
 //!   and the certificate formats required for the `stackable-webhook`
 //!   crate.
 //!
@@ -31,7 +31,7 @@ use crate::keys::KeypairExt;
 #[cfg(feature = "k8s")]
 use {k8s_openapi::api::core::v1::Secret, stackable_operator::client::Client};
 
-#[cfg(feature = "rustls")]
+#[cfg(feature = "webhook")]
 use tokio_rustls::rustls::pki_types::CertificateDer;
 
 use p256::pkcs8::EncodePrivateKey;
@@ -180,7 +180,7 @@ where
     }
 }
 
-#[cfg(feature = "rustls")]
+#[cfg(feature = "webhook")]
 impl<S> CertificatePair<S>
 where
     S: KeypairExt + 'static,
