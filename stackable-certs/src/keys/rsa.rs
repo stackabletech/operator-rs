@@ -11,6 +11,7 @@ use tracing::instrument;
 use crate::keys::KeypairExt;
 
 pub const DEFAULT_BIT_SIZE: usize = 4096;
+pub const MINIMUM_BIT_SIZE: usize = 2048;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -21,6 +22,9 @@ pub enum Error {
 
     #[snafu(display("failed to deserialize the signing (private) key from PEM-encoded PKCS8"))]
     DeserializeSigningKey { source: rsa::pkcs8::Error },
+
+    #[snafu(display("invalid RSA bit size {bit_size}, expected >= {MINIMUM_BIT_SIZE}"))]
+    InvalidBitSize { bit_size: usize },
 }
 
 #[derive(Debug)]
@@ -47,8 +51,13 @@ impl SigningKey {
     where
         R: CryptoRngCore + ?Sized,
     {
-        let private_key = RsaPrivateKey::new(csprng, bit_size.unwrap_or(DEFAULT_RSA_BIT_SIZE))
-            .context(CreateKeySnafu)?;
+        let bit_size = bit_size.unwrap_or(DEFAULT_BIT_SIZE);
+
+        if bit_size < MINIMUM_BIT_SIZE {
+            return InvalidBitSizeSnafu { bit_size }.fail();
+        }
+
+        let private_key = RsaPrivateKey::new(csprng, bit_size).context(CreateKeySnafu)?;
         let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 
         Ok(Self(signing_key))
