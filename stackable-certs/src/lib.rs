@@ -233,12 +233,24 @@ pub trait CertificatePairExt: Sized {
         private_key_path: impl AsRef<Path>,
     ) -> Result<Self, Self::Error>;
 
+    /// Save the certificate of the certificate pair as a file at `certificate_path`
+    /// with `line_ending`. All implementations of this trait in this crate will use
+    /// PEM encoding.
+    ///
+    /// Use [`LineEnding::default()`] to always use the appropriate line ending
+    /// depending on the operating system.
     fn to_certificate_file(
         &self,
         certificate_path: impl AsRef<Path>,
         line_ending: LineEnding,
     ) -> Result<(), Self::Error>;
 
+    /// Save the private key of the certificate pair as a file at `certificate_path`
+    /// with `line_ending`.  All implementations of this trait in this crate will use
+    /// PEM encoding.
+    ///
+    /// Use [`LineEnding::default()`] to always use the appropriate line ending
+    /// depending on the operating system.
     fn to_private_key_file(
         &self,
         private_key_path: impl AsRef<Path>,
