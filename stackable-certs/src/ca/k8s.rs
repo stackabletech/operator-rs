@@ -17,6 +17,9 @@ where
     #[snafu(display("failed to retrieve secret {secret:?}"))]
     GetSecret { source: kube::Error, secret: String },
 
+    #[snafu(display("invalid secret type, expected kubernetes.io/tls"))]
+    InvalidSecretType,
+
     #[snafu(display("the secret {secret:?} does not contain any data"))]
     NoSecretData { secret: String },
 
@@ -51,6 +54,14 @@ where
         key_certificate: &str,
         key_private_key: &str,
     ) -> Result<Self, Self::Error> {
+        if !secret
+            .type_
+            .as_ref()
+            .is_some_and(|s| s == "kubernetes.io/tls")
+        {
+            return InvalidSecretTypeSnafu.fail();
+        }
+
         let name = secret.name_any();
         let data = secret.data.with_context(|| NoSecretDataSnafu {
             secret: name.clone(),
