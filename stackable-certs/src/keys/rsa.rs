@@ -10,7 +10,7 @@ use tracing::instrument;
 
 use crate::keys::KeypairExt;
 
-pub const DEFAULT_RSA_BIT_SIZE: usize = 2048;
+pub const DEFAULT_BIT_SIZE: usize = 4096;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
