@@ -220,6 +220,17 @@ where
         })
     }
 
+    /// Generates a leaf certificate which is signed by this CA.
+    ///
+    /// The certificate requires a `name` and a `scope`. Both these values
+    /// are part of the certificate subject. The format is: `{name} Certificate
+    /// for {scope}`. These leaf certificates can be used for client/server
+    /// authentication, because they include [`ID_KP_CLIENT_AUTH`] and
+    /// [`ID_KP_SERVER_AUTH`] in the extended key usage extension.
+    ///
+    /// It is also possible to directly greate RSA or ECDSA-based leaf
+    /// certificates using [`CertificateAuthority::generate_rsa_leaf_certificate`]
+    /// and [`CertificateAuthority::generate_ecdsa_leaf_certificate`].
     #[instrument(skip(key_pair))]
     pub fn generate_leaf_certificate<T>(
         &mut self,
@@ -292,6 +303,37 @@ where
             certificate,
             key_pair,
         })
+    }
+
+    /// Generates an RSA-based leaf certificate which is signed by this CA.
+    ///
+    /// See [`CertificateAuthority::generate_leaf_certificate`] for more
+    /// information.
+    #[instrument]
+    pub fn generate_rsa_leaf_certificate(
+        &mut self,
+        bit_size: Option<usize>,
+        name: &str,
+        scope: &str,
+        validity: Duration,
+    ) -> Result<CertificatePair<rsa::SigningKey>> {
+        let key = rsa::SigningKey::new(bit_size).context(GenerateRsaSigningKeySnafu)?;
+        self.generate_leaf_certificate(key, name, scope, validity)
+    }
+
+    /// Generates an ECDSA-based leaf certificate which is signed by this CA.
+    ///
+    /// See [`CertificateAuthority::generate_leaf_certificate`] for more
+    /// information.
+    #[instrument]
+    pub fn generate_ecdsa_leaf_certificate(
+        &mut self,
+        name: &str,
+        scope: &str,
+        validity: Duration,
+    ) -> Result<CertificatePair<ecdsa::SigningKey>> {
+        let key = ecdsa::SigningKey::new().context(GenerateEcdsaSigningKeySnafu)?;
+        self.generate_leaf_certificate(key, name, scope, validity)
     }
 
     #[instrument(skip_all)]
