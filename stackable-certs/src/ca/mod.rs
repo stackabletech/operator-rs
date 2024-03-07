@@ -97,20 +97,18 @@ where
     async fn to_certificate_file(
         &self,
         certificate_path: impl AsRef<Path>,
-        line_ending: LineEnding,
     ) -> Result<(), Self::Error> {
         self.certificate_pair
-            .to_certificate_file(certificate_path, line_ending)
+            .to_certificate_file(certificate_path)
             .await
     }
 
     async fn to_private_key_file(
         &self,
         private_key_path: impl AsRef<Path>,
-        line_ending: LineEnding,
     ) -> Result<(), Self::Error> {
         self.certificate_pair
-            .to_private_key_file(private_key_path, line_ending)
+            .to_private_key_file(private_key_path)
             .await
     }
 }
@@ -162,7 +160,7 @@ where
 
         let spki_pem = signing_key_pair
             .verifying_key()
-            .to_public_key_pem(LineEnding::default())
+            .to_public_key_pem(LineEnding::LF)
             .context(SerializePublicKeySnafu)?;
 
         let spki = SubjectPublicKeyInfoOwned::from_pem(spki_pem.as_bytes())
@@ -251,7 +249,7 @@ where
 
         let spki_pem = key_pair
             .verifying_key()
-            .to_public_key_pem(LineEnding::default())
+            .to_public_key_pem(LineEnding::LF)
             .context(SerializePublicKeySnafu)?;
 
         let spki = SubjectPublicKeyInfoOwned::from_pem(spki_pem.as_bytes())
@@ -371,7 +369,7 @@ mod test {
             Duration::from_secs(3600),
         )
         .unwrap()
-        .to_certificate_file(PathBuf::certificate_path("tls"), LineEnding::default())
+        .to_certificate_file(PathBuf::certificate_path("tls"))
         .await
         .unwrap();
     }

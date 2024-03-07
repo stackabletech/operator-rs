@@ -141,11 +141,10 @@ where
     async fn to_certificate_file(
         &self,
         certificate_path: impl AsRef<Path>,
-        line_ending: LineEnding,
     ) -> Result<(), Self::Error> {
         let pem = self
             .certificate
-            .to_pem(line_ending)
+            .to_pem(LineEnding::LF)
             .context(SerializeCertificateSnafu {
                 key_encoding: KeyEncoding::Pem,
             })?;
@@ -158,12 +157,11 @@ where
     async fn to_private_key_file(
         &self,
         private_key_path: impl AsRef<Path>,
-        line_ending: LineEnding,
     ) -> Result<(), Self::Error> {
         let pem = self
             .key_pair
             .signing_key()
-            .to_pkcs8_pem(line_ending)
+            .to_pkcs8_pem(LineEnding::LF)
             .context(SerializePrivateKeySnafu {
                 key_encoding: KeyEncoding::Pem,
             })?;
@@ -247,25 +245,17 @@ pub trait CertificatePairExt: Sized {
     /// Save the certificate of the certificate pair as a file at `certificate_path`
     /// with `line_ending`. All implementations of this trait in this crate will use
     /// PEM encoding.
-    ///
-    /// Use [`LineEnding::default()`] to always use the appropriate line ending
-    /// depending on the operating system.
     async fn to_certificate_file(
         &self,
         certificate_path: impl AsRef<Path>,
-        line_ending: LineEnding,
     ) -> Result<(), Self::Error>;
 
     /// Save the private key of the certificate pair as a file at `certificate_path`
     /// with `line_ending`.  All implementations of this trait in this crate will use
     /// PEM encoding.
-    ///
-    /// Use [`LineEnding::default()`] to always use the appropriate line ending
-    /// depending on the operating system.
     async fn to_private_key_file(
         &self,
         private_key_path: impl AsRef<Path>,
-        line_ending: LineEnding,
     ) -> Result<(), Self::Error>;
 
     /// Writes the certificate and private key as a PEM-encoded file to
@@ -280,13 +270,9 @@ pub trait CertificatePairExt: Sized {
         &self,
         certificate_path: impl AsRef<Path>,
         private_key_path: impl AsRef<Path>,
-        line_ending: LineEnding,
     ) -> Result<(), Self::Error> {
-        self.to_certificate_file(certificate_path, line_ending)
-            .await?;
-
-        self.to_private_key_file(private_key_path, line_ending)
-            .await
+        self.to_certificate_file(certificate_path).await?;
+        self.to_private_key_file(private_key_path).await
     }
 }
 
