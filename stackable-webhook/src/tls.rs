@@ -7,7 +7,7 @@ use futures_util::pin_mut;
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use snafu::{ResultExt, Snafu};
-use stackable_certs::{ca::CertificateAuthority, keys::rsa::BitSize};
+use stackable_certs::{ca::CertificateAuthority, keys::rsa, CertificatePairError};
 use stackable_operator::time::Duration;
 use tokio::net::TcpListener;
 use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
@@ -28,6 +28,22 @@ pub enum Error {
         source: std::io::Error,
         socket_addr: SocketAddr,
     },
+
+    #[snafu(display("failed to create CA to generate and sign webhook leaf certificate"))]
+    CreateCertificateAuthority { source: stackable_certs::ca::Error },
+
+    #[snafu(display("failed to generate webhook leaf certificate"))]
+    GenerateLeafCertificate { source: stackable_certs::ca::Error },
+
+    #[snafu(display("failed to encode leaf certificate as DER"))]
+    EncodeCertificateDer {
+        source: CertificatePairError<rsa::Error>,
+    },
+
+    #[snafu(display("failed to encode private key as DER"))]
+    EncodePrivateKeyDer {
+        source: CertificatePairError<rsa::Error>,
+    },
 }
 
 /// A server which terminates TLS connections and allows clients to commnunicate
@@ -41,26 +57,32 @@ pub struct TlsServer {
 impl TlsServer {
     #[instrument(name = "create_tls_server", skip(router))]
     pub async fn new(socket_addr: SocketAddr, router: Router) -> Result<Self> {
-        // TODO (@Techassi): Remove unwraps
-        let mut ca = CertificateAuthority::new_rsa().unwrap();
-        let leaf = ca
+        let mut certificate_authority =
+            CertificateAuthority::new_rsa().context(CreateCertificateAuthoritySnafu)?;
+
+        let leaf_certificate = certificate_authority
             .generate_rsa_leaf_certificate(
-                BitSize::Default,
-                "Webhook",
-                "dummy",
+                rsa::BitSize::Default,
+                "Leaf",
+                "webhook",
                 Duration::from_secs(3600),
             )
-            .unwrap();
+            .context(GenerateLeafCertificateSnafu)?;
+
+        let certificate_der = leaf_certificate
+            .certificate_der()
+            .context(EncodeCertificateDerSnafu)?;
+
+        let private_key_der = leaf_certificate
+            .private_key_der()
+            .context(EncodePrivateKeyDerSnafu)?;
 
         let mut config = ServerConfig::builder()
             .with_no_client_auth()
-            .with_single_cert(
-                vec![leaf.certificate_der().unwrap()],
-                leaf.private_key_der().unwrap(),
-            )
-            .unwrap();
-        config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+            .with_single_cert(vec![certificate_der], private_key_der)
+            .context(InvalidTlsPrivateKeySnafu)?;
 
+        config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
         let config = Arc::new(config);
 
         Ok(Self {
