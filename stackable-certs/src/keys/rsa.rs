@@ -10,9 +10,6 @@ use tracing::instrument;
 
 use crate::keys::KeypairExt;
 
-pub const DEFAULT_BIT_SIZE: usize = 4096;
-pub const MINIMUM_BIT_SIZE: usize = 2048;
-
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Snafu)]
@@ -22,16 +19,12 @@ pub enum Error {
 
     #[snafu(display("failed to deserialize the signing (private) key from PEM-encoded PKCS8"))]
     DeserializeSigningKey { source: rsa::pkcs8::Error },
-
-    #[snafu(display("invalid RSA bit size {bit_size}, expected >= {MINIMUM_BIT_SIZE}"))]
-    InvalidBitSize { bit_size: usize },
 }
 
 #[derive(Debug)]
 pub struct SigningKey(rsa::pkcs1v15::SigningKey<sha2::Sha256>);
 
 impl SigningKey {
-    // NOTE (@Techassi): Should we maybe enfore bit sizes >= 2048?
     /// Generates a new RSA key with the default random-number generator
     /// [`OsRng`] with the given `bit_size`. Providing [`None`] will use
     /// [`DEFAULT_BIT_SIZE`].
@@ -41,23 +34,17 @@ impl SigningKey {
     /// generation of an RSA key with a bit size of `4096` can take up to
     /// multiple seconds.
     #[instrument(name = "create_rsa_signing_key")]
-    pub fn new(bit_size: Option<usize>) -> Result<Self> {
+    pub fn new(bit_size: BitSize) -> Result<Self> {
         let mut csprng = OsRng;
         Self::new_with_rng(&mut csprng, bit_size)
     }
 
     #[instrument(name = "create_rsa_signing_key_custom_rng", skip_all)]
-    pub fn new_with_rng<R>(csprng: &mut R, bit_size: Option<usize>) -> Result<Self>
+    pub fn new_with_rng<R>(csprng: &mut R, bit_size: BitSize) -> Result<Self>
     where
         R: CryptoRngCore + ?Sized,
     {
-        let bit_size = bit_size.unwrap_or(DEFAULT_BIT_SIZE);
-
-        if bit_size < MINIMUM_BIT_SIZE {
-            return InvalidBitSizeSnafu { bit_size }.fail();
-        }
-
-        let private_key = RsaPrivateKey::new(csprng, bit_size).context(CreateKeySnafu)?;
+        let private_key = RsaPrivateKey::new(csprng, bit_size.into()).context(CreateKeySnafu)?;
         let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 
         Ok(Self(signing_key))
@@ -85,5 +72,28 @@ impl KeypairExt for SigningKey {
         let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 
         Ok(Self(signing_key))
+    }
+}
+
+/// The bit size of an RSA key pair. This enum implements
+/// `From<BitSize> for usize` to retrieve the bit size as an integer.
+///
+/// This can either be:
+///
+/// - [`BitSize::Default`], with a value of `4096`
+/// - [`BitSize::Minimum`], with a value of `2048`
+#[derive(Debug, Default)]
+pub enum BitSize {
+    #[default]
+    Default,
+    Minimum,
+}
+
+impl From<BitSize> for usize {
+    fn from(size: BitSize) -> Self {
+        match size {
+            BitSize::Default => 4096,
+            BitSize::Minimum => 2048,
+        }
     }
 }
