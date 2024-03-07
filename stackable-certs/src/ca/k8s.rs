@@ -5,7 +5,7 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{client::Client, commons::secret::SecretReference};
 use x509_cert::Certificate;
 
-use crate::{ca::CertificateAuthority, keys::KeypairExt, CertificatePair, K8sCertificatePair};
+use crate::{ca::CertificateAuthority, keys::KeypairExt, CertificatePair, CertificatePairExt};
 
 pub const TLS_SECRET_TYPE: &str = "kubernetes.io/tls";
 
@@ -42,7 +42,7 @@ where
     DeserializeKeyFromPem { source: E },
 }
 
-impl<S> K8sCertificatePair for CertificateAuthority<S>
+impl<S> CertificatePairExt for CertificateAuthority<S>
 where
     S: KeypairExt,
     <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,

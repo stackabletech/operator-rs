@@ -21,10 +21,7 @@
 //! - <https://datatracker.ietf.org/doc/html/rfc5280>
 //! - <https://github.com/zmap/zlint>
 
-use std::{
-    ops::Deref,
-    path::{Path, PathBuf},
-};
+use std::ops::Deref;
 
 use crate::keys::KeypairExt;
 
@@ -38,17 +35,10 @@ use p256::pkcs8::EncodePrivateKey;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::commons::secret::SecretReference;
 use tokio_rustls::rustls::pki_types::{PrivateKeyDer, PrivatePkcs8KeyDer};
-use x509_cert::{
-    der::{pem::LineEnding, DecodePem, Encode, EncodePem},
-    spki::EncodePublicKey,
-    Certificate,
-};
+use x509_cert::{der::Encode, spki::EncodePublicKey, Certificate};
 
 pub mod ca;
 pub mod keys;
-
-pub const CERTIFICATE_FILE_EXT: &str = "crt";
-pub const PRIVATE_KEY_FILE_EXT: &str = "key";
 
 /// Error variants which can be encountered when creating a new
 /// [`CertificatePair`].
@@ -102,74 +92,6 @@ where
 {
     certificate: Certificate,
     key_pair: S,
-}
-
-impl<S> CertificatePairExt for CertificatePair<S>
-where
-    S: KeypairExt,
-    <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
-{
-    type Error = CertificatePairError<S::Error>;
-
-    async fn from_files(
-        certificate_path: impl AsRef<Path>,
-        private_key_path: impl AsRef<Path>,
-    ) -> Result<Self, Self::Error> {
-        let certificate_pem = tokio::fs::read(certificate_path)
-            .await
-            .context(ReadFileSnafu)?;
-
-        let certificate =
-            Certificate::from_pem(&certificate_pem).context(DeserializeCertificateSnafu {
-                key_encoding: KeyEncoding::Pem,
-            })?;
-
-        let key_pair_pem = tokio::fs::read_to_string(private_key_path)
-            .await
-            .context(ReadFileSnafu)?;
-
-        let key_pair = S::from_pkcs8_pem(&key_pair_pem).context(DeserializePrivateKeySnafu {
-            key_encoding: KeyEncoding::Pem,
-        })?;
-
-        Ok(Self {
-            certificate,
-            key_pair,
-        })
-    }
-
-    async fn to_certificate_file(
-        &self,
-        certificate_path: impl AsRef<Path>,
-    ) -> Result<(), Self::Error> {
-        let pem = self
-            .certificate
-            .to_pem(LineEnding::LF)
-            .context(SerializeCertificateSnafu {
-                key_encoding: KeyEncoding::Pem,
-            })?;
-
-        tokio::fs::write(certificate_path, pem)
-            .await
-            .context(WriteFileSnafu)
-    }
-
-    async fn to_private_key_file(
-        &self,
-        private_key_path: impl AsRef<Path>,
-    ) -> Result<(), Self::Error> {
-        let pem = self
-            .key_pair
-            .signing_key()
-            .to_pkcs8_pem(LineEnding::LF)
-            .context(SerializePrivateKeySnafu {
-                key_encoding: KeyEncoding::Pem,
-            })?;
-
-        tokio::fs::write(private_key_path, pem)
-            .await
-            .context(WriteFileSnafu)
-    }
 }
 
 impl<S> CertificatePair<S>
@@ -227,55 +149,6 @@ where
     }
 }
 
-/// Provides utilities to work with certificate pairs which contain a public
-/// certificate (with a public key embedded in it) and the private key used to
-/// sign it. This trait is useful for CAs and self-signed certificates.
-#[allow(async_fn_in_trait)]
-pub trait CertificatePairExt: Sized {
-    type Error: std::error::Error;
-
-    /// Reads in a PEM-encoded certificate from `certificate_path` and private
-    /// key file from `private_key_path` and finally constructs a CA from the
-    /// contents.
-    async fn from_files(
-        certificate_path: impl AsRef<Path>,
-        private_key_path: impl AsRef<Path>,
-    ) -> Result<Self, Self::Error>;
-
-    /// Save the certificate of the certificate pair as a file at `certificate_path`
-    /// with `line_ending`. All implementations of this trait in this crate will use
-    /// PEM encoding.
-    async fn to_certificate_file(
-        &self,
-        certificate_path: impl AsRef<Path>,
-    ) -> Result<(), Self::Error>;
-
-    /// Save the private key of the certificate pair as a file at `certificate_path`
-    /// with `line_ending`.  All implementations of this trait in this crate will use
-    /// PEM encoding.
-    async fn to_private_key_file(
-        &self,
-        private_key_path: impl AsRef<Path>,
-    ) -> Result<(), Self::Error>;
-
-    /// Writes the certificate and private key as a PEM-encoded file to
-    /// `certificate_path` and `private_key_path` respectively.
-    ///
-    /// It is recommended to use the common file extensions for both the
-    /// certificate and private key. These extensions are available as the
-    /// contants [`CERTIFICATE_FILE_EXT`] and [`PRIVATE_KEY_FILE_EXT`].
-    /// Alternatively, the [`PathBufExt`] trait allows easy creation of correct
-    /// paths.
-    async fn to_files(
-        &self,
-        certificate_path: impl AsRef<Path>,
-        private_key_path: impl AsRef<Path>,
-    ) -> Result<(), Self::Error> {
-        self.to_certificate_file(certificate_path).await?;
-        self.to_private_key_file(private_key_path).await
-    }
-}
-
 /// Provides functions to work with CAs stored in Kubernetes secrets.
 ///
 /// Namely these function enable:
@@ -283,7 +156,7 @@ pub trait CertificatePairExt: Sized {
 /// - decoding a certificate from a Kubernetes secret
 /// - encoding a certificate as a Kubernetes secret
 #[cfg(feature = "k8s")]
-pub trait K8sCertificatePair: Sized {
+pub trait CertificatePairExt: Sized {
     type Error: std::error::Error;
 
     fn from_secret(
@@ -300,47 +173,6 @@ pub trait K8sCertificatePair: Sized {
         client: &Client,
     ) -> Result<Self, Self::Error>;
 }
-
-/// Provides various helper methods to work with TLS certificate related file
-/// paths.
-///
-/// One use-case is the creation of certificate and private key file paths with
-/// the default file extensions.
-///
-/// ```
-/// use std::path::PathBuf;
-/// use stackable_certs::PathBufExt;
-///
-/// let certificate_path = PathBuf::certificate_path("path/to/my/tls-cert");
-/// assert_eq!(certificate_path.display().to_string(), "path/to/my/tls-cert.crt");
-///
-/// let private_key_path = PathBuf::private_key_path("path/to/my/tls-pk");
-/// assert_eq!(private_key_path.display().to_string(), "path/to/my/tls-pk.key");
-/// ```
-pub trait PathBufExt {
-    /// Returns a path to `<path>.crt`.
-    ///
-    /// The default extension is defined by [`CERTIFICATE_FILE_EXT`].
-    fn certificate_path(path: impl AsRef<Path>) -> PathBuf {
-        PathBuf::from(path.as_ref()).with_extension(CERTIFICATE_FILE_EXT)
-    }
-
-    /// Returns a path to `<path>.key`.
-    ///
-    /// The default extension is defined by [`PRIVATE_KEY_FILE_EXT`].
-    fn private_key_path(path: impl AsRef<Path>) -> PathBuf {
-        PathBuf::from(path.as_ref()).with_extension(PRIVATE_KEY_FILE_EXT)
-    }
-
-    fn certificate_pair_paths(path: impl AsRef<Path>) -> (PathBuf, PathBuf) {
-        (
-            Self::certificate_path(path.as_ref()),
-            Self::private_key_path(path.as_ref()),
-        )
-    }
-}
-
-impl PathBufExt for PathBuf {}
 
 /// Supported private key types, currently [RSA](crate::keys::rsa) and
 /// [ECDSA](crate::keys::ecdsa).

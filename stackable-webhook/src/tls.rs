@@ -7,16 +7,12 @@ use futures_util::pin_mut;
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use snafu::{ResultExt, Snafu};
-use stackable_certs::{
-    keys::{ecdsa, rsa},
-    CertificatePair, CertificatePairExt, PrivateKeyType,
-};
+use stackable_certs::{ca::CertificateAuthority, keys::rsa::BitSize};
+use stackable_operator::time::Duration;
 use tokio::net::TcpListener;
 use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
 use tower::Service;
 use tracing::{error, instrument, warn};
-
-use crate::options::TlsOption;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -44,60 +40,26 @@ pub struct TlsServer {
 
 impl TlsServer {
     #[instrument(name = "create_tls_server", skip(router))]
-    pub async fn new(socket_addr: SocketAddr, router: Router, tls: TlsOption) -> Result<Self> {
-        let config = match tls {
-            TlsOption::AutoGenerate => {
-                // let mut config = ServerConfig::builder()
-                //     .with_safe_defaults()
-                //     .with_no_client_auth()
-                //     .with_cert_resolver(cert_resolver);
-                // config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
-                todo!()
-            }
-            TlsOption::Mount {
-                certificate_path,
-                private_key_path,
-                private_key_type,
-            } => {
-                // TODO (@Techassi): Remove unwraps
-                let (certificate, private_key) = match private_key_type {
-                    PrivateKeyType::Ecdsa => {
-                        let pair = CertificatePair::<ecdsa::SigningKey>::from_files(
-                            certificate_path,
-                            private_key_path,
-                        )
-                        .await
-                        .unwrap();
+    pub async fn new(socket_addr: SocketAddr, router: Router) -> Result<Self> {
+        // TODO (@Techassi): Remove unwraps
+        let mut ca = CertificateAuthority::new_rsa().unwrap();
+        let leaf = ca
+            .generate_rsa_leaf_certificate(
+                BitSize::Default,
+                "Webhook",
+                "dummy",
+                Duration::from_secs(3600),
+            )
+            .unwrap();
 
-                        (
-                            pair.certificate_der().unwrap(),
-                            pair.private_key_der().unwrap(),
-                        )
-                    }
-                    PrivateKeyType::Rsa => {
-                        let pair = CertificatePair::<rsa::SigningKey>::from_files(
-                            certificate_path,
-                            private_key_path,
-                        )
-                        .await
-                        .unwrap();
-
-                        (
-                            pair.certificate_der().unwrap(),
-                            pair.private_key_der().unwrap(),
-                        )
-                    }
-                };
-
-                let mut config = ServerConfig::builder()
-                    .with_no_client_auth()
-                    .with_single_cert(vec![certificate], private_key)
-                    .context(InvalidTlsPrivateKeySnafu)?;
-
-                config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
-                config
-            }
-        };
+        let mut config = ServerConfig::builder()
+            .with_no_client_auth()
+            .with_single_cert(
+                vec![leaf.certificate_der().unwrap()],
+                leaf.private_key_der().unwrap(),
+            )
+            .unwrap();
+        config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
 
         let config = Arc::new(config);
 

@@ -1,6 +1,6 @@
 //! Contains types and functions to generate and sign certificate authorities
 //! (CAs).
-use std::{path::Path, str::FromStr};
+use std::str::FromStr;
 
 use const_oid::db::rfc5280::{ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH};
 use snafu::{ResultExt, Snafu};
@@ -18,7 +18,7 @@ use x509_cert::{
 
 use crate::{
     keys::{ecdsa, rsa, KeypairExt},
-    CertificatePair, CertificatePairError, CertificatePairExt,
+    CertificatePair,
 };
 
 mod consts;
@@ -75,42 +75,6 @@ where
     <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
     certificate_pair: CertificatePair<S>,
-}
-
-impl<S> CertificatePairExt for CertificateAuthority<S>
-where
-    S: KeypairExt,
-    <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
-{
-    type Error = CertificatePairError<S::Error>;
-
-    async fn from_files(
-        certificate_path: impl AsRef<Path>,
-        private_key_path: impl AsRef<Path>,
-    ) -> Result<Self, Self::Error> {
-        let certificate_pair =
-            CertificatePair::from_files(certificate_path, private_key_path).await?;
-
-        Ok(Self { certificate_pair })
-    }
-
-    async fn to_certificate_file(
-        &self,
-        certificate_path: impl AsRef<Path>,
-    ) -> Result<(), Self::Error> {
-        self.certificate_pair
-            .to_certificate_file(certificate_path)
-            .await
-    }
-
-    async fn to_private_key_file(
-        &self,
-        private_key_path: impl AsRef<Path>,
-    ) -> Result<(), Self::Error> {
-        self.certificate_pair
-            .to_private_key_file(private_key_path)
-            .await
-    }
 }
 
 impl<S> CertificateAuthority<S>
@@ -353,9 +317,6 @@ fn format_leaf_certificate_subject(name: &str, scope: &str) -> Result<Name> {
 
 #[cfg(test)]
 mod test {
-    use std::path::PathBuf;
-
-    use crate::PathBufExt;
 
     use super::*;
 
@@ -368,9 +329,6 @@ mod test {
             "pod",
             Duration::from_secs(3600),
         )
-        .unwrap()
-        .to_certificate_file(PathBuf::certificate_path("tls"))
-        .await
         .unwrap();
     }
 }
