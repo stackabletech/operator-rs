@@ -347,7 +347,7 @@ impl CertificateAuthority<ecdsa::SigningKey> {
 }
 
 fn format_leaf_certificate_subject(name: &str, scope: &str) -> Result<Name> {
-    let subject = format!("CN={name} Certificate for {scope},{ORGANIZATION_DN},{COUNTRY_DN}");
+    let subject = format!("CN={name} Certificate for {scope}");
     Name::from_str(&subject).context(ParseSubjectSnafu { subject })
 }
 
