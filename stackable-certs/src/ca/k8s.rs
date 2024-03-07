@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use k8s_openapi::api::core::v1::Secret;
 use kube::ResourceExt;
 use p256::pkcs8::EncodePublicKey;
@@ -90,7 +88,6 @@ where
             S::from_pkcs8_pem(private_key_data).context(DeserializeKeyFromPemSnafu)?;
 
         Ok(Self {
-            serial_numbers: HashSet::new(),
             certificate_pair: CertificatePair {
                 key_pair: signing_key_pair,
                 certificate,

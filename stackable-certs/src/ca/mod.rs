@@ -1,6 +1,6 @@
 //! Contains types and functions to generate and sign certificate authorities
 //! (CAs).
-use std::{collections::HashSet, path::Path, str::FromStr};
+use std::{path::Path, str::FromStr};
 
 use const_oid::db::rfc5280::{ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH};
 use snafu::{ResultExt, Snafu};
@@ -37,9 +37,6 @@ pub enum Error {
 
     #[snafu(display("failed to generate ECDSA signign key"))]
     GenerateEcdsaSigningKey { source: ecdsa::Error },
-
-    #[snafu(display("failed to generate a unique serial number after {tries} tries"))]
-    GenerateUniqueSerialNumber { tries: usize },
 
     #[snafu(display("failed to parse {subject:?} as subject"))]
     ParseSubject {
@@ -78,7 +75,6 @@ where
     <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
     certificate_pair: CertificatePair<S>,
-    serial_numbers: HashSet<u64>,
 }
 
 impl<S> CertificatePairExt for CertificateAuthority<S>
@@ -95,10 +91,7 @@ where
         let certificate_pair =
             CertificatePair::from_files(certificate_path, private_key_path).await?;
 
-        Ok(Self {
-            serial_numbers: HashSet::new(),
-            certificate_pair,
-        })
+        Ok(Self { certificate_pair })
     }
 
     async fn to_certificate_file(
@@ -215,7 +208,6 @@ where
         let certificate = builder.build().context(BuildCertificateSnafu)?;
 
         Ok(Self {
-            serial_numbers: HashSet::new(),
             certificate_pair: CertificatePair {
                 key_pair: signing_key_pair,
                 certificate,
@@ -250,7 +242,7 @@ where
         // issue another certificate with the same serial number. We try to
         // generate a unique serial number at max five times before giving up
         // and returning an error.
-        let serial_number = self.generate_serial_number()?;
+        let serial_number = SerialNumber::from(rand::random::<u64>());
 
         // NOTE (@Techassi): Should we validate that the validity is shorter
         // than the validity of the issuing CA?
@@ -337,25 +329,6 @@ where
     ) -> Result<CertificatePair<ecdsa::SigningKey>> {
         let key = ecdsa::SigningKey::new().context(GenerateEcdsaSigningKeySnafu)?;
         self.generate_leaf_certificate(key, name, scope, validity)
-    }
-
-    #[instrument(skip_all)]
-    fn generate_serial_number(&mut self) -> Result<SerialNumber> {
-        let mut serial_number = rand::random();
-        let mut tries = 0usize;
-
-        while self.serial_numbers.contains(&serial_number) {
-            // Give up after 5 tries to avoid getting stuck in this function and
-            // dead-locking the application.
-            if tries >= 5 {
-                return GenerateUniqueSerialNumberSnafu { tries }.fail();
-            }
-
-            serial_number = rand::random();
-            tries += 1;
-        }
-
-        Ok(SerialNumber::from(serial_number))
     }
 }
 
