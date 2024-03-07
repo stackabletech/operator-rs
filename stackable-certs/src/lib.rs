@@ -11,7 +11,7 @@
 //!
 //! - `k8s`: This enables various traits and functions to work with
 //!   certificates and Kubernetes secrets.
-//! - `webhook`: This enables interoperability between this crates types
+//! - `rustls`: This enables interoperability between this crates types
 //!   and the certificate formats required for the `stackable-webhook`
 //!   crate.
 //!
@@ -21,21 +21,27 @@
 //! - <https://datatracker.ietf.org/doc/html/rfc5280>
 //! - <https://github.com/zmap/zlint>
 
+#[cfg(feature = "rustls")]
 use std::ops::Deref;
 
-use crate::keys::KeypairExt;
-
 #[cfg(feature = "k8s")]
-use {k8s_openapi::api::core::v1::Secret, stackable_operator::client::Client};
+use {
+    k8s_openapi::api::core::v1::Secret,
+    stackable_operator::{client::Client, commons::secret::SecretReference},
+};
 
-#[cfg(feature = "webhook")]
-use tokio_rustls::rustls::pki_types::CertificateDer;
+#[cfg(feature = "rustls")]
+use {
+    p256::pkcs8::EncodePrivateKey,
+    snafu::ResultExt,
+    tokio_rustls::rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer},
+    x509_cert::der::Encode,
+};
 
-use p256::pkcs8::EncodePrivateKey;
-use snafu::{ResultExt, Snafu};
-use stackable_operator::commons::secret::SecretReference;
-use tokio_rustls::rustls::pki_types::{PrivateKeyDer, PrivatePkcs8KeyDer};
-use x509_cert::{der::Encode, spki::EncodePublicKey, Certificate};
+use snafu::Snafu;
+use x509_cert::{spki::EncodePublicKey, Certificate};
+
+use crate::keys::KeypairExt;
 
 pub mod ca;
 pub mod keys;
@@ -110,7 +116,7 @@ where
     }
 }
 
-#[cfg(feature = "webhook")]
+#[cfg(feature = "rustls")]
 impl<S> CertificatePair<S>
 where
     S: KeypairExt + 'static,

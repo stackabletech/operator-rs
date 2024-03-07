@@ -7,7 +7,7 @@ edition.workspace = true
 repository.workspace = true
 
 [dependencies]
-stackable-certs = { path = "../stackable-certs", features = ["webhook"] }
+stackable-certs = { path = "../stackable-certs", features = ["rustls"] }
 stackable-operator = { path = ".." }
 
 axum = "0.7.4"

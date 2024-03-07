@@ -22,8 +22,10 @@ use crate::{
 };
 
 mod consts;
-mod k8s;
 pub use consts::*;
+
+#[cfg(feature = "k8s")]
+mod k8s;
 
 #[cfg(feature = "k8s")]
 pub use k8s::*;

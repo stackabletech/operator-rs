@@ -8,7 +8,7 @@ repository.workspace = true
 
 [features]
 default = []
-webhook = ["dep:tokio-rustls", "dep:rustls-pemfile"]
+rustls = ["dep:tokio-rustls", "dep:rustls-pemfile"]
 k8s = ["dep:kube", "dep:k8s-openapi"]
 
 [dependencies]
