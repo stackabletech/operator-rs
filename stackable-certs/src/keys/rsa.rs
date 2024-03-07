@@ -44,7 +44,7 @@ impl SigningKey {
     where
         R: CryptoRngCore + ?Sized,
     {
-        let private_key = RsaPrivateKey::new(csprng, bit_size.into()).context(CreateKeySnafu)?;
+        let private_key = RsaPrivateKey::new(csprng, bit_size as usize).context(CreateKeySnafu)?;
         let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 
         Ok(Self(signing_key))
@@ -75,8 +75,8 @@ impl KeypairExt for SigningKey {
     }
 }
 
-/// The bit size of an RSA key pair. This enum implements
-/// `From<BitSize> for usize` to retrieve the bit size as an integer.
+/// The bit size of an RSA key pair. To retrieve the bit size as an integer,
+/// use numeric casting via the `as` keyword.
 ///
 /// This can either be:
 ///
@@ -85,15 +85,6 @@ impl KeypairExt for SigningKey {
 #[derive(Debug, Default)]
 pub enum BitSize {
     #[default]
-    Default,
-    Minimum,
-}
-
-impl From<BitSize> for usize {
-    fn from(size: BitSize) -> Self {
-        match size {
-            BitSize::Default => 4096,
-            BitSize::Minimum => 2048,
-        }
-    }
+    Default = 4096,
+    Minimum = 2048,
 }
