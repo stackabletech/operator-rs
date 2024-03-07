@@ -9,6 +9,8 @@ use x509_cert::Certificate;
 
 use crate::{ca::CertificateAuthority, keys::KeypairExt, CertificatePair, K8sCertificatePair};
 
+pub const TLS_SECRET_TYPE: &str = "kubernetes.io/tls";
+
 #[derive(Debug, Snafu)]
 pub enum SecretError<E>
 where
@@ -17,7 +19,7 @@ where
     #[snafu(display("failed to retrieve secret {secret:?}"))]
     GetSecret { source: kube::Error, secret: String },
 
-    #[snafu(display("invalid secret type, expected kubernetes.io/tls"))]
+    #[snafu(display("invalid secret type, expected {TLS_SECRET_TYPE}"))]
     InvalidSecretType,
 
     #[snafu(display("the secret {secret:?} does not contain any data"))]
@@ -54,11 +56,7 @@ where
         key_certificate: &str,
         key_private_key: &str,
     ) -> Result<Self, Self::Error> {
-        if !secret
-            .type_
-            .as_ref()
-            .is_some_and(|s| s == "kubernetes.io/tls")
-        {
+        if !secret.type_.as_ref().is_some_and(|s| s == TLS_SECRET_TYPE) {
             return InvalidSecretTypeSnafu.fail();
         }
 
