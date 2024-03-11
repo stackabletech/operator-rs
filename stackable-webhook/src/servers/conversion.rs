@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use axum::{extract::State, routing::post, Json, Router};
-use kube::core::conversion::ConversionReview;
+pub use kube::core::conversion::ConversionReview;
 use tracing::{debug, instrument};
 
 use crate::{options::Options, StatefulWebhookHandler, WebhookHandler, WebhookServer};
