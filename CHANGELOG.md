@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 - Add `ConversionReview` re-export in `stackable_webhook` crate ([#749]).
 
 [#730]: https://github.com/stackabletech/operator-rs/pull/730
-[#730]: https://github.com/stackabletech/operator-rs/pull/749
+[#749]: https://github.com/stackabletech/operator-rs/pull/749
 
 ## Changed
 
