@@ -3,8 +3,10 @@
 use std::str::FromStr;
 
 use const_oid::db::rfc5280::{ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH};
-use snafu::{ResultExt, Snafu};
-use stackable_operator::time::Duration;
+use k8s_openapi::api::core::v1::Secret;
+use kube::runtime::reflector::ObjectRef;
+use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_operator::{client::Client, commons::secret::SecretReference, time::Duration};
 use tracing::{debug, instrument};
 use x509_cert::{
     builder::{Builder, CertificateBuilder, Profile},
@@ -24,14 +26,12 @@ use crate::{
 mod consts;
 pub use consts::*;
 
-#[cfg(feature = "k8s")]
-mod k8s;
-
-#[cfg(feature = "k8s")]
-pub use k8s::*;
+pub const TLS_SECRET_TYPE: &str = "kubernetes.io/tls";
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+/// Defines all error variants which can occur when creating a CA and/or leaf
+/// certificates.
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("failed to generate RSA signing key"))]
@@ -66,6 +66,41 @@ pub enum Error {
 
     #[snafu(display("failed to parse AuthorityKeyIdentifier"))]
     ParseAuthorityKeyIdentifier { source: x509_cert::der::Error },
+}
+
+/// Defines all error variants which can occur when loading a CA from a
+/// Kubernetes [`Secret`].
+#[derive(Debug, Snafu)]
+pub enum SecretError<E>
+where
+    E: std::error::Error + 'static,
+{
+    #[snafu(display("failed to retrieve secret {secret:?}"))]
+    GetSecret { source: kube::Error, secret: String },
+
+    #[snafu(display("invalid secret type, expected {TLS_SECRET_TYPE}"))]
+    InvalidSecretType,
+
+    #[snafu(display("the secret {secret:?} does not contain any data"))]
+    NoSecretData { secret: ObjectRef<Secret> },
+
+    #[snafu(display("the secret {secret:?} does not contain TLS certificate data"))]
+    NoCertificateData { secret: ObjectRef<Secret> },
+
+    #[snafu(display("the secret {secret:?} does not contain TLS private key data"))]
+    NoPrivateKeyData { secret: ObjectRef<Secret> },
+
+    #[snafu(display("failed to read PEM-encoded certificate chain from secret {secret:?}"))]
+    ReadChain {
+        source: x509_cert::der::Error,
+        secret: ObjectRef<Secret>,
+    },
+
+    #[snafu(display("failed to parse Base64 encoded byte string"))]
+    DecodeUtf8String { source: std::str::Utf8Error },
+
+    #[snafu(display("failed to deserialize private key from PEM"))]
+    DeserializeKeyFromPem { source: E },
 }
 
 /// A certificate authority (CA) which is used to generate and sign
@@ -293,6 +328,77 @@ where
     ) -> Result<CertificatePair<ecdsa::SigningKey>> {
         let key = ecdsa::SigningKey::new().context(GenerateEcdsaSigningKeySnafu)?;
         self.generate_leaf_certificate(key, name, scope, validity)
+    }
+
+    /// Create a [`CertificateAuthority`] from a Kubernetes [`Secret`].
+    #[instrument(name = "create_certificate_authority_from_k8s_secret", skip(secret))]
+    pub fn from_secret(
+        secret: Secret,
+        key_certificate: &str,
+        key_private_key: &str,
+    ) -> Result<Self, SecretError<S::Error>> {
+        if !secret.type_.as_ref().is_some_and(|s| s == TLS_SECRET_TYPE) {
+            return InvalidSecretTypeSnafu.fail();
+        }
+
+        let data = secret.data.as_ref().with_context(|| NoSecretDataSnafu {
+            secret: ObjectRef::from_obj(&secret),
+        })?;
+
+        debug!("retrieving certificate data from secret via key {key_certificate:?}");
+        let certificate_data =
+            data.get(key_certificate)
+                .with_context(|| NoCertificateDataSnafu {
+                    secret: ObjectRef::from_obj(&secret),
+                })?;
+
+        let certificate = x509_cert::Certificate::load_pem_chain(&certificate_data.0)
+            .with_context(|_| ReadChainSnafu {
+                secret: ObjectRef::from_obj(&secret),
+            })?
+            .remove(0);
+
+        debug!("retrieving private key data from secret via key {key_certificate:?}");
+        let private_key_data =
+            data.get(key_private_key)
+                .with_context(|| NoPrivateKeyDataSnafu {
+                    secret: ObjectRef::from_obj(&secret),
+                })?;
+
+        let private_key_data =
+            std::str::from_utf8(&private_key_data.0).context(DecodeUtf8StringSnafu)?;
+
+        let signing_key_pair =
+            S::from_pkcs8_pem(private_key_data).context(DeserializeKeyFromPemSnafu)?;
+
+        Ok(Self {
+            certificate_pair: CertificatePair {
+                key_pair: signing_key_pair,
+                certificate,
+            },
+        })
+    }
+
+    /// Create a [`CertificateAuthority`] from a Kubernetes [`SecretReference`].
+    #[instrument(
+        name = "create_certificate_authority_from_k8s_secret_ref",
+        skip(secret_ref, client)
+    )]
+    pub async fn from_secret_ref(
+        secret_ref: &SecretReference,
+        key_certificate: &str,
+        key_private_key: &str,
+        client: &Client,
+    ) -> Result<Self, SecretError<S::Error>> {
+        let secret_api = client.get_api::<Secret>(&secret_ref.namespace);
+        let secret = secret_api
+            .get(&secret_ref.name)
+            .await
+            .context(GetSecretSnafu {
+                secret: secret_ref.name.clone(),
+            })?;
+
+        Self::from_secret(secret, key_certificate, key_private_key)
     }
 }
 

@@ -9,8 +9,6 @@
 //! The crate allows to selectively enable additional features using
 //! different feature flags. Currently, these flags are supported:
 //!
-//! - `k8s`: This enables various traits and functions to work with
-//!   certificates and Kubernetes secrets.
 //! - `rustls`: This enables interoperability between this crates types
 //!   and the certificate formats required for the `stackable-webhook`
 //!   crate.
@@ -20,15 +18,8 @@
 //! - <https://cabforum.org/uploads/CA-Browser-Forum-TLS-BRs-v2.0.2.pdf>
 //! - <https://datatracker.ietf.org/doc/html/rfc5280>
 //! - <https://github.com/zmap/zlint>
-
 #[cfg(feature = "rustls")]
 use std::ops::Deref;
-
-#[cfg(feature = "k8s")]
-use {
-    k8s_openapi::api::core::v1::Secret,
-    stackable_operator::{client::Client, commons::secret::SecretReference},
-};
 
 #[cfg(feature = "rustls")]
 use {
@@ -153,31 +144,6 @@ where
 
         Ok(der)
     }
-}
-
-/// Provides functions to work with CAs stored in Kubernetes secrets.
-///
-/// Namely these function enable:
-///
-/// - decoding a certificate from a Kubernetes secret
-/// - encoding a certificate as a Kubernetes secret
-#[cfg(feature = "k8s")]
-pub trait CertificatePairExt: Sized {
-    type Error: std::error::Error;
-
-    fn from_secret(
-        secret: Secret,
-        key_certificate: &str,
-        key_private_key: &str,
-    ) -> Result<Self, Self::Error>;
-
-    #[allow(async_fn_in_trait)]
-    async fn from_secret_ref(
-        secret_ref: &SecretReference,
-        key_certificate: &str,
-        key_private_key: &str,
-        client: &Client,
-    ) -> Result<Self, Self::Error>;
 }
 
 /// Supported private key types, currently [RSA](crate::keys::rsa) and
