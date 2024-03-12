@@ -41,7 +41,7 @@ pub mod rsa;
 
 // NOTE (@Techassi): This can _maybe_ be slightly simplified by adjusting the
 // trait and using a blanket impl on types which implement Deref<Target = _>.
-pub trait Keypair
+pub trait KeypairExt
 where
     <Self::SigningKey as Keypair>::VerifyingKey: EncodePublicKey,
     Self: Debug + Sized,
