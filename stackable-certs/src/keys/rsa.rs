@@ -1,7 +1,6 @@
 //! Abstraction layer around the [`rsa`] crate. This module provides types
 //! which abstract away the generation of RSA keys used for signing of CAs
 //! and other certificates.
-
 use rand_core::{CryptoRngCore, OsRng};
 use rsa::{pkcs8::DecodePrivateKey, RsaPrivateKey};
 use signature::Keypair;

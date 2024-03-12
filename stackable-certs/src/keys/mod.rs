@@ -29,7 +29,6 @@
 //! - <https://people.redhat.com/~hkario/marvin/>
 //! - <https://rustsec.org/advisories/RUSTSEC-2023-0071.html>
 //! - <https://github.com/RustCrypto/RSA/issues/19>
-
 use std::fmt::Debug;
 
 use p256::pkcs8::EncodePrivateKey;

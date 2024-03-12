@@ -1,7 +1,6 @@
 //! Abstraction layer around the [`ecdsa`] crate. This module provides types
 //! which abstract away the generation of ECDSA keys used for signing of CAs
 //! and other certificates.
-
 use p256::{pkcs8::DecodePrivateKey, NistP256};
 use rand_core::{CryptoRngCore, OsRng};
 use snafu::{ResultExt, Snafu};
