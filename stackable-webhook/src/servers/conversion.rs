@@ -1,8 +1,10 @@
 use std::fmt::Debug;
 
 use axum::{extract::State, routing::post, Json, Router};
-pub use kube::core::conversion::ConversionReview;
 use tracing::{debug, instrument};
+
+// Selected re-exports
+pub use kube::core::conversion::ConversionReview;
 
 use crate::{options::Options, StatefulWebhookHandler, WebhookHandler, WebhookServer};
 
@@ -39,13 +41,16 @@ impl ConversionWebhookServer {
     ///
     /// Each request is handled by the provided `handler` function. Any function
     /// with the signature `(ConversionReview) -> ConversionReview` can be
-    /// provided.
+    /// provided. The [`ConversionReview`] type can be imported via a re-export at
+    /// [`stackable_webhook::server::ConversionReview`].
     ///
     /// # Example
     ///
     /// ```
-    /// use stackable_webhook::{servers::ConversionWebhookServer, Options};
-    /// use kube::core::conversion::ConversionReview;
+    /// use stackable_webhook::{
+    ///     servers::{ConversionReview, ConversionWebhookServer},
+    ///     Options
+    /// };
     ///
     /// // Construct the conversion webhook server
     /// let server = ConversionWebhookServer::new(handler, Options::default());
@@ -77,7 +82,8 @@ impl ConversionWebhookServer {
     ///
     /// Each request is handled by the provided `handler` function. Any function
     /// with the signature `(ConversionReview, S) -> ConversionReview` can be
-    /// provided.
+    /// provided. The [`ConversionReview`] type can be imported via a re-export at
+    /// [`stackable_webhook::server::ConversionReview`].
     ///
     /// It is recommended to wrap the state in an [`Arc`][std::sync::Arc] if it
     /// needs to be mutable, see
@@ -88,8 +94,10 @@ impl ConversionWebhookServer {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// use stackable_webhook::{servers::ConversionWebhookServer, Options};
-    /// use kube::core::conversion::ConversionReview;
+    /// use stackable_webhook::{
+    ///     servers::{ConversionReview, ConversionWebhookServer},
+    ///     Options
+    /// };
     ///
     /// #[derive(Debug, Clone)]
     /// struct State {}
