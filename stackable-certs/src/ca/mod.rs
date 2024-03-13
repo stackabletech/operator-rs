@@ -75,8 +75,11 @@ pub enum SecretError<E>
 where
     E: std::error::Error + 'static,
 {
-    #[snafu(display("failed to retrieve secret {secret:?}"))]
-    GetSecret { source: kube::Error, secret: String },
+    #[snafu(display("failed to retrieve secret \"{secret_ref}\""))]
+    GetSecret {
+        source: kube::Error,
+        secret_ref: SecretReference,
+    },
 
     #[snafu(display("invalid secret type, expected {TLS_SECRET_TYPE}"))]
     InvalidSecretType,
@@ -395,7 +398,7 @@ where
             .get(&secret_ref.name)
             .await
             .context(GetSecretSnafu {
-                secret: secret_ref.name.clone(),
+                secret_ref: secret_ref.to_owned(),
             })?;
 
         Self::from_secret(secret, key_certificate, key_private_key)

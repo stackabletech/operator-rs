@@ -5,7 +5,17 @@ use kube::runtime::reflector::ObjectRef;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-// Redefine SecretReference instead of reusing k8s-openapi's, in order to make name/namespace mandatory.
+/// [`SecretReference`] represents a Kubernetes [`Secret`] reference.
+///
+/// Because the `name` and `namespace` are mandatory, the following two
+/// requirements must be met:
+///
+/// - Must only be used in cluster-scoped objects
+/// - Namespaced objects must not be able to define cross-namespace secret
+///   references
+///
+/// This struct is a redefinition of the one provided by k8s-openapi to make
+/// name and namespace mandatory.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SecretReference {
