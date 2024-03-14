@@ -61,12 +61,7 @@ impl TlsServer {
             CertificateAuthority::new_rsa().context(CreateCertificateAuthoritySnafu)?;
 
         let leaf_certificate = certificate_authority
-            .generate_rsa_leaf_certificate(
-                rsa::KeySize::Default,
-                "Leaf",
-                "webhook",
-                Duration::from_secs(3600),
-            )
+            .generate_rsa_leaf_certificate("Leaf", "webhook", Duration::from_secs(3600))
             .context(GenerateLeafCertificateSnafu)?;
 
         let certificate_der = leaf_certificate

@@ -309,12 +309,11 @@ where
     #[instrument]
     pub fn generate_rsa_leaf_certificate(
         &mut self,
-        bit_size: rsa::KeySize,
         name: &str,
         scope: &str,
         validity: Duration,
     ) -> Result<CertificatePair<rsa::SigningKey>> {
-        let key = rsa::SigningKey::new(bit_size).context(GenerateRsaSigningKeySnafu)?;
+        let key = rsa::SigningKey::new().context(GenerateRsaSigningKeySnafu)?;
         self.generate_leaf_certificate(key, name, scope, validity)
     }
 
@@ -409,7 +408,7 @@ impl CertificateAuthority<rsa::SigningKey> {
     /// High-level function to create a new CA using a RSA key pair.
     #[instrument(name = "create_certificate_authority_with_rsa")]
     pub fn new_rsa() -> Result<Self> {
-        Self::new(rsa::SigningKey::new(rsa::KeySize::Default).context(GenerateRsaSigningKeySnafu)?)
+        Self::new(rsa::SigningKey::new().context(GenerateRsaSigningKeySnafu)?)
     }
 }
 
@@ -435,7 +434,7 @@ mod test {
     async fn test() {
         let mut ca = CertificateAuthority::new_rsa().unwrap();
         ca.generate_leaf_certificate(
-            rsa::SigningKey::new(rsa::KeySize::Default).unwrap(),
+            rsa::SigningKey::new().unwrap(),
             "Airflow",
             "pod",
             Duration::from_secs(3600),

@@ -25,24 +25,28 @@ pub struct SigningKey(rsa::pkcs1v15::SigningKey<sha2::Sha256>);
 
 impl SigningKey {
     /// Generates a new RSA key with the default random-number generator
-    /// [`OsRng`] with the given `key_size`.
+    /// [`OsRng`].
     ///
-    /// Common values for `key_size` are `2048` or `4096`. It should be noted
-    /// that the generation of the key takes longer for larger key sizes. The
-    /// generation of an RSA key with a key size of `4096` can take up to
-    /// multiple seconds.
+    /// It should be noted that the generation of the key takes longer for
+    /// larger key sizes. The generation of an RSA key with a key size of
+    /// `4096` (which is used) can take up to multiple seconds.
     #[instrument(name = "create_rsa_signing_key")]
-    pub fn new(key_size: KeySize) -> Result<Self> {
+    pub fn new() -> Result<Self> {
         let mut csprng = OsRng;
-        Self::new_with_rng(&mut csprng, key_size)
+        Self::new_with_rng(&mut csprng)
     }
 
+    /// Generates a new RSA key with a custom random-number generator.
+    ///
+    /// It should be noted that the generation of the key takes longer for
+    /// larger key sizes. The generation of an RSA key with a key size of
+    /// `4096` (which is used) can take up to multiple seconds.
     #[instrument(name = "create_rsa_signing_key_custom_rng", skip_all)]
-    pub fn new_with_rng<R>(csprng: &mut R, key_size: KeySize) -> Result<Self>
+    pub fn new_with_rng<R>(csprng: &mut R) -> Result<Self>
     where
         R: CryptoRngCore + ?Sized,
     {
-        let private_key = RsaPrivateKey::new(csprng, key_size.bits()).context(CreateKeySnafu)?;
+        let private_key = RsaPrivateKey::new(csprng, 4096).context(CreateKeySnafu)?;
         let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 
         Ok(Self(signing_key))
@@ -70,27 +74,5 @@ impl CertificateKeypair for SigningKey {
         let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 
         Ok(Self(signing_key))
-    }
-}
-
-/// The key size of an RSA key pair.
-///
-/// This can either be:
-///
-/// - [`KeySize::Default`], with a value of `4096`
-/// - [`KeySize::Minimum`], with a value of `2048`
-#[derive(Debug, Default, Clone, Copy)]
-pub enum KeySize {
-    #[default]
-    Default,
-    Minimum,
-}
-
-impl KeySize {
-    pub fn bits(self) -> usize {
-        match self {
-            KeySize::Default => 2048,
-            KeySize::Minimum => 4096,
-        }
     }
 }
