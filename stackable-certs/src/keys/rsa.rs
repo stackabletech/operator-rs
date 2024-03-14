@@ -9,6 +9,8 @@ use tracing::instrument;
 
 use crate::keys::CertificateKeypair;
 
+const KEY_SIZE: usize = 4096;
+
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Snafu)]
@@ -46,7 +48,7 @@ impl SigningKey {
     where
         R: CryptoRngCore + ?Sized,
     {
-        let private_key = RsaPrivateKey::new(csprng, 4096).context(CreateKeySnafu)?;
+        let private_key = RsaPrivateKey::new(csprng, KEY_SIZE).context(CreateKeySnafu)?;
         let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 
         Ok(Self(signing_key))
