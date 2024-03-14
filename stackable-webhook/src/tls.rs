@@ -62,7 +62,7 @@ impl TlsServer {
 
         let leaf_certificate = certificate_authority
             .generate_rsa_leaf_certificate(
-                rsa::BitSize::Default,
+                rsa::KeySize::Default,
                 "Leaf",
                 "webhook",
                 Duration::from_secs(3600),

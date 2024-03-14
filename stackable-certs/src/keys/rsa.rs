@@ -25,25 +25,24 @@ pub struct SigningKey(rsa::pkcs1v15::SigningKey<sha2::Sha256>);
 
 impl SigningKey {
     /// Generates a new RSA key with the default random-number generator
-    /// [`OsRng`] with the given `bit_size`. Providing [`None`] will use
-    /// [`DEFAULT_BIT_SIZE`].
+    /// [`OsRng`] with the given `key_size`.
     ///
-    /// Common values for `bit_size` are `2048` or `4096`. It should be noted
-    /// that the generation of the key takes longer for larger bit sizes. The
-    /// generation of an RSA key with a bit size of `4096` can take up to
+    /// Common values for `key_size` are `2048` or `4096`. It should be noted
+    /// that the generation of the key takes longer for larger key sizes. The
+    /// generation of an RSA key with a key size of `4096` can take up to
     /// multiple seconds.
     #[instrument(name = "create_rsa_signing_key")]
-    pub fn new(bit_size: BitSize) -> Result<Self> {
+    pub fn new(key_size: KeySize) -> Result<Self> {
         let mut csprng = OsRng;
-        Self::new_with_rng(&mut csprng, bit_size)
+        Self::new_with_rng(&mut csprng, key_size)
     }
 
     #[instrument(name = "create_rsa_signing_key_custom_rng", skip_all)]
-    pub fn new_with_rng<R>(csprng: &mut R, bit_size: BitSize) -> Result<Self>
+    pub fn new_with_rng<R>(csprng: &mut R, key_size: KeySize) -> Result<Self>
     where
         R: CryptoRngCore + ?Sized,
     {
-        let private_key = RsaPrivateKey::new(csprng, bit_size as usize).context(CreateKeySnafu)?;
+        let private_key = RsaPrivateKey::new(csprng, key_size.bits()).context(CreateKeySnafu)?;
         let signing_key = rsa::pkcs1v15::SigningKey::<sha2::Sha256>::new(private_key);
 
         Ok(Self(signing_key))
@@ -74,16 +73,24 @@ impl KeypairExt for SigningKey {
     }
 }
 
-/// The bit size of an RSA key pair. To retrieve the bit size as an integer,
-/// use numeric casting via the `as` keyword.
+/// The key size of an RSA key pair.
 ///
 /// This can either be:
 ///
-/// - [`BitSize::Default`], with a value of `4096`
-/// - [`BitSize::Minimum`], with a value of `2048`
-#[derive(Debug, Default)]
-pub enum BitSize {
+/// - [`KeySize::Default`], with a value of `4096`
+/// - [`KeySize::Minimum`], with a value of `2048`
+#[derive(Debug, Default, Clone, Copy)]
+pub enum KeySize {
     #[default]
-    Default = 4096,
-    Minimum = 2048,
+    Default,
+    Minimum,
+}
+
+impl KeySize {
+    pub fn bits(self) -> usize {
+        match self {
+            KeySize::Default => 2048,
+            KeySize::Minimum => 4096,
+        }
+    }
 }
