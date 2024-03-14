@@ -32,7 +32,7 @@ use {
 use snafu::Snafu;
 use x509_cert::{spki::EncodePublicKey, Certificate};
 
-use crate::keys::KeypairExt;
+use crate::keys::CertificateKeypair;
 
 pub mod ca;
 pub mod keys;
@@ -84,7 +84,7 @@ where
 #[derive(Debug)]
 pub struct CertificatePair<S>
 where
-    S: KeypairExt,
+    S: CertificateKeypair,
     <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
     certificate: Certificate,
@@ -93,7 +93,7 @@ where
 
 impl<S> CertificatePair<S>
 where
-    S: KeypairExt,
+    S: CertificateKeypair,
     <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
     /// Returns a reference to the [`Certificate`].
@@ -110,7 +110,7 @@ where
 #[cfg(feature = "rustls")]
 impl<S> CertificatePair<S>
 where
-    S: KeypairExt + 'static,
+    S: CertificateKeypair + 'static,
     <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
     pub fn certificate_der(

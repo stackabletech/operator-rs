@@ -19,7 +19,7 @@ use x509_cert::{
 };
 
 use crate::{
-    keys::{ecdsa, rsa, KeypairExt},
+    keys::{ecdsa, rsa, CertificateKeypair},
     CertificatePair,
 };
 
@@ -111,7 +111,7 @@ where
 #[derive(Debug)]
 pub struct CertificateAuthority<S>
 where
-    S: KeypairExt,
+    S: CertificateKeypair,
     <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
     certificate_pair: CertificatePair<S>,
@@ -119,7 +119,7 @@ where
 
 impl<S> CertificateAuthority<S>
 where
-    S: KeypairExt,
+    S: CertificateKeypair,
     <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
     /// Creates a new CA certificate with many parameters set to their default
@@ -237,7 +237,7 @@ where
         validity: Duration,
     ) -> Result<CertificatePair<T>>
     where
-        T: KeypairExt,
+        T: CertificateKeypair,
         <T::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
     {
         // We generate a random serial number, but ensure the same CA didn't

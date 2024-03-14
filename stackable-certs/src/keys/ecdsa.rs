@@ -6,7 +6,7 @@ use rand_core::{CryptoRngCore, OsRng};
 use snafu::{ResultExt, Snafu};
 use tracing::instrument;
 
-use crate::keys::KeypairExt;
+use crate::keys::CertificateKeypair;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -39,7 +39,7 @@ impl SigningKey {
     }
 }
 
-impl KeypairExt for SigningKey {
+impl CertificateKeypair for SigningKey {
     type SigningKey = p256::ecdsa::SigningKey;
     type Signature = ecdsa::der::Signature<NistP256>;
     type VerifyingKey = p256::ecdsa::VerifyingKey;

@@ -7,7 +7,7 @@ use signature::Keypair;
 use snafu::{ResultExt, Snafu};
 use tracing::instrument;
 
-use crate::keys::KeypairExt;
+use crate::keys::CertificateKeypair;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -49,7 +49,7 @@ impl SigningKey {
     }
 }
 
-impl KeypairExt for SigningKey {
+impl CertificateKeypair for SigningKey {
     type SigningKey = rsa::pkcs1v15::SigningKey<sha2::Sha256>;
     type Signature = rsa::pkcs1v15::Signature;
     type VerifyingKey = rsa::pkcs1v15::VerifyingKey<sha2::Sha256>;
