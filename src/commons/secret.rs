@@ -7,8 +7,7 @@ use serde::{Deserialize, Serialize};
 
 /// [`SecretReference`] represents a Kubernetes [`Secret`] reference.
 ///
-/// Because the `name` and `namespace` are mandatory, the following two
-/// requirements must be met:
+/// In order to use this struct, the following two requirements must be met:
 ///
 /// - Must only be used in cluster-scoped objects
 /// - Namespaced objects must not be able to define cross-namespace secret
