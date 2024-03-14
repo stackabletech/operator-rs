@@ -1,8 +1,13 @@
 use std::fmt::Debug;
 
 use axum::{extract::State, routing::post, Json, Router};
-use kube::core::conversion::ConversionReview;
 use tracing::{debug, instrument};
+
+// Re-export this type because users of the conversion webhook server require
+// this type to write the handler function. Instead of importing this type from
+// kube directly, consumers can use this type instead. This also eliminates
+// keeping the kube dependency version in sync between here and the operator.
+pub use kube::core::conversion::ConversionReview;
 
 use crate::{options::Options, StatefulWebhookHandler, WebhookHandler, WebhookServer};
 
@@ -39,13 +44,16 @@ impl ConversionWebhookServer {
     ///
     /// Each request is handled by the provided `handler` function. Any function
     /// with the signature `(ConversionReview) -> ConversionReview` can be
-    /// provided.
+    /// provided. The [`ConversionReview`] type can be imported via a re-export at
+    /// [`stackable_webhook::server::ConversionReview`].
     ///
     /// # Example
     ///
     /// ```
-    /// use stackable_webhook::{servers::ConversionWebhookServer, Options};
-    /// use kube::core::conversion::ConversionReview;
+    /// use stackable_webhook::{
+    ///     servers::{ConversionReview, ConversionWebhookServer},
+    ///     Options
+    /// };
     ///
     /// // Construct the conversion webhook server
     /// let server = ConversionWebhookServer::new(handler, Options::default());
@@ -77,7 +85,8 @@ impl ConversionWebhookServer {
     ///
     /// Each request is handled by the provided `handler` function. Any function
     /// with the signature `(ConversionReview, S) -> ConversionReview` can be
-    /// provided.
+    /// provided. The [`ConversionReview`] type can be imported via a re-export at
+    /// [`stackable_webhook::server::ConversionReview`].
     ///
     /// It is recommended to wrap the state in an [`Arc`][std::sync::Arc] if it
     /// needs to be mutable, see
@@ -88,8 +97,10 @@ impl ConversionWebhookServer {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// use stackable_webhook::{servers::ConversionWebhookServer, Options};
-    /// use kube::core::conversion::ConversionReview;
+    /// use stackable_webhook::{
+    ///     servers::{ConversionReview, ConversionWebhookServer},
+    ///     Options
+    /// };
     ///
     /// #[derive(Debug, Clone)]
     /// struct State {}

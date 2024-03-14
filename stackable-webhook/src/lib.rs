@@ -35,7 +35,7 @@ pub mod servers;
 pub mod tls;
 
 // Selected re-exports
-pub use crate::{options::Options, servers::ConversionWebhookServer};
+pub use crate::options::Options;
 
 /// A result type alias with the library-level [`Error`] type as teh default
 /// error type.
