@@ -99,7 +99,7 @@ where
         secret: ObjectRef<Secret>,
     },
 
-    #[snafu(display("failed to parse Base64 encoded byte string"))]
+    #[snafu(display("failed to parse UTF-8 encoded byte string"))]
     DecodeUtf8String { source: std::str::Utf8Error },
 
     #[snafu(display("failed to deserialize private key from PEM"))]
