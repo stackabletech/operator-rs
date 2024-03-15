@@ -7,23 +7,17 @@ use futures_util::pin_mut;
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use snafu::{ResultExt, Snafu};
+use stackable_certs::{ca::CertificateAuthority, keys::rsa, CertificatePairError};
+use stackable_operator::time::Duration;
 use tokio::net::TcpListener;
 use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
 use tower::Service;
 use tracing::{error, instrument, warn};
 
-use crate::{
-    options::TlsOption,
-    tls::certs::{CertifacteError, CertificateChain},
-};
-
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("failed to create TLS certificate chain"))]
-    TlsCertificateChain { source: CertifacteError },
-
     #[snafu(display("failed to construct TLS server config, bad certificate/key"))]
     InvalidTlsPrivateKey { source: tokio_rustls::rustls::Error },
 
@@ -33,6 +27,22 @@ pub enum Error {
     BindTcpListener {
         source: std::io::Error,
         socket_addr: SocketAddr,
+    },
+
+    #[snafu(display("failed to create CA to generate and sign webhook leaf certificate"))]
+    CreateCertificateAuthority { source: stackable_certs::ca::Error },
+
+    #[snafu(display("failed to generate webhook leaf certificate"))]
+    GenerateLeafCertificate { source: stackable_certs::ca::Error },
+
+    #[snafu(display("failed to encode leaf certificate as DER"))]
+    EncodeCertificateDer {
+        source: CertificatePairError<rsa::Error>,
+    },
+
+    #[snafu(display("failed to encode private key as DER"))]
+    EncodePrivateKeyDer {
+        source: CertificatePairError<rsa::Error>,
     },
 }
 
@@ -46,38 +56,28 @@ pub struct TlsServer {
 
 impl TlsServer {
     #[instrument(name = "create_tls_server", skip(router))]
-    pub fn new(socket_addr: SocketAddr, router: Router, tls: TlsOption) -> Result<Self> {
-        let config = match tls {
-            TlsOption::AutoGenerate => {
-                // let mut config = ServerConfig::builder()
-                //     .with_safe_defaults()
-                //     .with_no_client_auth()
-                //     .with_cert_resolver(cert_resolver);
-                // config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
-                todo!()
-            }
-            TlsOption::Mount {
-                public_key_path,
-                private_key_path,
-                private_key_encoding,
-            } => {
-                let (chain, private_key) = CertificateChain::from_files(
-                    public_key_path,
-                    private_key_path,
-                    private_key_encoding,
-                )
-                .context(TlsCertificateChainSnafu)?
-                .into_parts();
+    pub async fn new(socket_addr: SocketAddr, router: Router) -> Result<Self> {
+        let mut certificate_authority =
+            CertificateAuthority::new_rsa().context(CreateCertificateAuthoritySnafu)?;
 
-                let mut config = ServerConfig::builder()
-                    .with_no_client_auth()
-                    .with_single_cert(chain, private_key)
-                    .context(InvalidTlsPrivateKeySnafu)?;
+        let leaf_certificate = certificate_authority
+            .generate_rsa_leaf_certificate("Leaf", "webhook", Duration::from_secs(3600))
+            .context(GenerateLeafCertificateSnafu)?;
 
-                config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
-                config
-            }
-        };
+        let certificate_der = leaf_certificate
+            .certificate_der()
+            .context(EncodeCertificateDerSnafu)?;
+
+        let private_key_der = leaf_certificate
+            .private_key_der()
+            .context(EncodePrivateKeyDerSnafu)?;
+
+        let mut config = ServerConfig::builder()
+            .with_no_client_auth()
+            .with_single_cert(vec![certificate_der], private_key_der)
+            .context(InvalidTlsPrivateKeySnafu)?;
+
+        config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
         let config = Arc::new(config);
 
         Ok(Self {

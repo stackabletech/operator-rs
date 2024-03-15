@@ -11,4 +11,5 @@ pub mod product_image_selection;
 pub mod rbac;
 pub mod resources;
 pub mod s3;
+pub mod secret;
 pub mod secret_class;

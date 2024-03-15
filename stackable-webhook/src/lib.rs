@@ -148,33 +148,11 @@ impl WebhookServer {
 
         // Create server for TLS termination
         debug!("create TLS server");
-        let tls_server = TlsServer::new(self.options.socket_addr, router, self.options.tls)
+        let tls_server = TlsServer::new(self.options.socket_addr, router)
+            .await
             .context(CreateTlsServerSnafu)?;
 
         debug!("running TLS server");
         tls_server.run().await.context(RunTlsServerSnafu)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use crate::tls::certs::PrivateKeyEncoding;
-
-    use super::*;
-    use axum::{routing::get, Router};
-
-    #[tokio::test]
-    async fn test() {
-        let router = Router::new().route("/", get(|| async { "Ok" }));
-        let options = Options::builder()
-            .tls_mount(
-                "/tmp/webhook-certs/serverCert.pem",
-                "/tmp/webhook-certs/serverKey.pem",
-                PrivateKeyEncoding::Pkcs8,
-            )
-            .build();
-
-        let server = WebhookServer::new(router, options);
-        server.run().await.unwrap()
     }
 }

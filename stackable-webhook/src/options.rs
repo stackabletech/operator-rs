@@ -4,7 +4,9 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{constants::DEFAULT_SOCKET_ADDR, tls::certs::PrivateKeyEncoding};
+use stackable_certs::PrivateKeyType;
+
+use crate::constants::DEFAULT_SOCKET_ADDR;
 
 /// Specifies available webhook server options.
 ///
@@ -34,28 +36,11 @@ use crate::{constants::DEFAULT_SOCKET_ADDR, tls::certs::PrivateKeyEncoding};
 ///     .bind_port(12345)
 ///     .build();
 /// ```
-///
-/// ### Example with Mounted TLS Certificate
-///
-/// ```
-/// use stackable_webhook::{Options, tls::certs::PrivateKeyEncoding};
-///
-/// let options = Options::builder()
-///     .tls_mount(
-///         "path/to/pem/cert",
-///         "path/to/pem/key",
-///         PrivateKeyEncoding::Pkcs8,
-///     )
-///     .build();
-/// ```
 #[derive(Debug)]
 pub struct Options {
     /// The default HTTPS socket address the [`TcpListener`][tokio::net::TcpListener]
     /// binds to.
     pub socket_addr: SocketAddr,
-
-    /// Either auto-generate or use an injected TLS certificate.
-    pub tls: TlsOption,
 }
 
 impl Default for Options {
@@ -81,7 +66,6 @@ impl Options {
 #[derive(Debug, Default)]
 pub struct OptionsBuilder {
     socket_addr: Option<SocketAddr>,
-    tls: Option<TlsOption>,
 }
 
 impl OptionsBuilder {
@@ -107,37 +91,11 @@ impl OptionsBuilder {
         self
     }
 
-    /// Enables TLS certificate auto-generation instead of using a mounted
-    /// one. If instead a mounted TLS certificate is needed, use the
-    /// [`OptionsBuilder::tls_mount()`] function.
-    pub fn tls_autogenerate(mut self) -> Self {
-        self.tls = Some(TlsOption::AutoGenerate);
-        self
-    }
-
-    /// Uses a mounted TLS certificate instead of auto-generating one. If
-    /// instead a auto-generated TLS certificate is needed, us ethe
-    /// [`OptionsBuilder::tls_autogenerate()`] function.
-    pub fn tls_mount(
-        mut self,
-        public_key_path: impl Into<PathBuf>,
-        private_key_path: impl Into<PathBuf>,
-        private_key_encoding: PrivateKeyEncoding,
-    ) -> Self {
-        self.tls = Some(TlsOption::Mount {
-            public_key_path: public_key_path.into(),
-            private_key_path: private_key_path.into(),
-            private_key_encoding,
-        });
-        self
-    }
-
     /// Builds the final [`Options`] by using default values for any not
     /// explicitly set option.
     pub fn build(self) -> Options {
         Options {
             socket_addr: self.socket_addr.unwrap_or(DEFAULT_SOCKET_ADDR),
-            tls: self.tls.unwrap_or_default(),
         }
     }
 }
@@ -146,9 +104,9 @@ impl OptionsBuilder {
 pub enum TlsOption {
     AutoGenerate,
     Mount {
-        private_key_encoding: PrivateKeyEncoding,
-        public_key_path: PathBuf,
+        private_key_type: PrivateKeyType,
         private_key_path: PathBuf,
+        certificate_path: PathBuf,
     },
 }
 

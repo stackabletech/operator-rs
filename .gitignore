@@ -6,3 +6,7 @@ Cargo.lock
 .idea/
 *.iws
 *.iml
+
+# TLS certificates for testing
+*.crt
+*.key
