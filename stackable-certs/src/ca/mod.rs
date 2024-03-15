@@ -333,6 +333,10 @@ where
     }
 
     /// Create a [`CertificateAuthority`] from a Kubernetes [`Secret`].
+    ///
+    /// Both the  `key_certificate` and `key_private_key` parameters describe
+    /// the _key_ used to lookup the certificate and private key value in the
+    /// Kubernetes [`Secret`]. Common keys are `ca.crt` and `ca.key`.
     #[instrument(name = "create_certificate_authority_from_k8s_secret", skip(secret))]
     pub fn from_secret(
         secret: Secret,
