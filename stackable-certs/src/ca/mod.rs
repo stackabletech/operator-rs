@@ -396,7 +396,7 @@ where
         let secret = secret_api
             .get(&secret_ref.name)
             .await
-            .context(GetSecretSnafu {
+            .with_context(|_| GetSecretSnafu {
                 secret_ref: secret_ref.to_owned(),
             })?;
 
