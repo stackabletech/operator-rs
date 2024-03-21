@@ -1,6 +1,6 @@
 [package]
 name = "stackable-webhook"
-version.workspace = true
+version = "0.1.0"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -8,7 +8,7 @@ repository.workspace = true
 
 [dependencies]
 stackable-certs = { path = "../stackable-certs", features = ["rustls"] }
-stackable-operator = { path = ".." }
+stackable-operator = { path = "../stackable-operator" }
 
 axum = "0.7.4"
 k8s-openapi = { version = "0.21.0", default-features = false, features = [

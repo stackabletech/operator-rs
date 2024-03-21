@@ -1,29 +1,21 @@
+[workspace]
+members = ["crates/*"]
+
 [workspace.package]
-version = "0.64.0"
 authors = ["Stackable GmbH <info@stackable.de>"]
 license = "Apache-2.0"
 edition = "2021"
 repository = "https://github.com/stackabletech/operator-rs"
 
-[package]
-name = "stackable-operator"
-description = "Stackable Operator Framework"
-version.workspace = true
-authors.workspace = true
-license.workspace = true
-edition.workspace = true
-repository.workspace = true
-
-[features]
-time = ["dep:time"]
-
-[dependencies]
+[workspace.dependencies]
 chrono = { version = "0.4.26", default-features = false }
 clap = { version = "4.3.19", features = ["derive", "cargo", "env"] }
 const_format = "0.2.31"
+const-oid = "0.9.6"
 delegate = "0.12.0"
 derivative = "2.2.0"
 dockerfile-parser = "0.8.0"
+ecdsa = { version = "0.16.9", features = ["digest", "pem"] }
 either = "1.9.0"
 futures = "0.3.28"
 json-patch = "1.0.0"
@@ -43,28 +35,32 @@ lazy_static = "1.4.0"
 opentelemetry = "0.21.0"
 opentelemetry_sdk = { version = "0.21.0", features = ["rt-tokio"] }
 opentelemetry-jaeger = { version = "0.20.0", features = ["rt-tokio"] }
+p256 = { version = "0.13.2", features = ["ecdsa"] }
 product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.6.0" }
 rand = "0.8.5"
+rand_core = "0.6.4"
 regex = "1.9.3"
+rsa = { version = "0.9.6", features = ["sha2"] }
+rstest = "0.18.1"
+rustls-pemfile = "2.0.0"
 schemars = "0.8.12"
 semver = "1.0"
 serde = { version = "1.0.184", features = ["derive"] }
 serde_json = "1.0.104"
 serde_yaml = "0.9.25"
+sha2 = { version = "0.10.8", features = ["oid"] }
+signature = "2.2.0"
 snafu = "0.8.0"
 stackable-operator-derive = { path = "stackable-operator-derive" }
 strum = { version = "0.26.1", features = ["derive"] }
+tempfile = "3.7.1"
 thiserror = "1.0.44"
-time = { version = "0.3.29", optional = true }
-tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread"] }
+time = { version = "0.3.29" }
+tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread", "fs"] }
+tokio-rustls = "0.25.0"
 tracing = "0.1.37"
 tracing-opentelemetry = "0.22.0"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 url = "2.4.1"
-
-[dev-dependencies]
-rstest = "0.18.1"
-tempfile = "3.7.1"
-
-[workspace]
-members = ["stackable-certs", "stackable-operator-derive", "stackable-webhook"]
+x509-cert = { version = "0.2.5", features = ["builder"] }
+zeroize = "1.7.0"

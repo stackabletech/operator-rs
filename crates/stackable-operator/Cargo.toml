@@ -1,0 +1,49 @@
+[package]
+name = "stackable-operator"
+description = "Stackable Operator Framework"
+version = "0.64.0"
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[features]
+time = ["dep:time"]
+
+[dependencies]
+stackable-operator-derive = { path = "../stackable-operator-derive" }
+
+chrono.workspace = true
+clap.workspace = true
+const_format.workspace = true
+delegate.workspace = true
+derivative.workspace = true
+dockerfile-parser.workspace = true
+either.workspace = true
+futures.workspace = true
+json-patch.workspace = true
+k8s-openapi.workspace = true
+kube.workspace = true
+lazy_static.workspace = true
+opentelemetry_sdk.workspace = true
+opentelemetry-jaeger.workspace = true
+product-config.workspace = true
+regex.workspace = true
+schemars.workspace = true
+semver.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+serde.workspace = true
+snafu.workspace = true
+strum.workspace = true
+thiserror.workspace = true
+time = { workspace = true, optional = true }
+tokio.workspace = true
+tracing-opentelemetry.workspace = true
+tracing-subscriber.workspace = true
+tracing.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+rstest.workspace = true
+tempfile.workspace = true
