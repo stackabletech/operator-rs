@@ -6,7 +6,7 @@ use k8s_openapi::{
     },
     apimachinery::pkg::apis::meta::v1::LabelSelector,
 };
-use schemars::JsonSchema;
+use schemars::{schema::Schema, JsonSchema};
 use serde::{Deserialize, Serialize};
 use stackable_operator_derive::Fragment;
 
@@ -39,10 +39,19 @@ pub struct StackableAffinity {
     pub pod_affinity: Option<PodAffinity>,
     pub pod_anti_affinity: Option<PodAntiAffinity>,
     pub node_affinity: Option<NodeAffinity>,
+    #[schemars(schema_with = "stackable_node_selector_schema")]
+    #[fragment_attrs(schemars(schema_with = "stackable_node_selector_schema"))]
     pub node_selector: Option<StackableNodeSelector>,
 }
 
-#[derive(Clone, Debug, Eq, Deserialize, JsonSchema, PartialEq, Serialize)]
+/// We can not simply use [`BTreeMap<String, String>`] in [`StackableAffinity`], as the fields needs to be [`Atomic`].
+/// We can not mark it as [`Atomic`], as [`crate::config::fragment::FromFragment`] is already implemented for
+/// [`BTreeMap<String, String>`].
+///
+/// We `#[serde(flatten)]` the contained [`BTreeMap<String, String>`], so `serde_yaml` can deserialize everything as
+/// expected. However the generated JsonSchema will be wrong, so we need to provide our custom one (see
+/// <https://github.com/stackabletech/issues/issues/554> for details).
+#[derive(Clone, Debug, Eq, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StackableNodeSelector {
     #[serde(flatten)]
@@ -50,6 +59,10 @@ pub struct StackableNodeSelector {
 }
 
 impl Atomic for StackableNodeSelector {}
+
+pub fn stackable_node_selector_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
+    Option::<BTreeMap<String, String>>::json_schema(gen)
+}
 
 /// Creates a `WeightedPodAffinityTerm`, which expresses a affinity towards all Pods of the given product (`app_name`) instance (`cluster_name`) role (`role`).
 /// This affinity can be used to attract towards (affinity) or away (anti-affinity) from the specified role.
