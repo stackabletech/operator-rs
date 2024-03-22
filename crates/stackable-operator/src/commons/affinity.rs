@@ -39,8 +39,8 @@ pub struct StackableAffinity {
     pub pod_affinity: Option<PodAffinity>,
     pub pod_anti_affinity: Option<PodAntiAffinity>,
     pub node_affinity: Option<NodeAffinity>,
-    #[schemars(schema_with = "stackable_node_selector_schema")]
-    #[fragment_attrs(schemars(schema_with = "stackable_node_selector_schema"))]
+    #[schemars(schema_with = "optional_stackable_node_selector_schema")]
+    #[fragment_attrs(schemars(schema_with = "optional_stackable_node_selector_schema"))]
     pub node_selector: Option<StackableNodeSelector>,
 }
 
@@ -61,7 +61,7 @@ pub struct StackableNodeSelector {
 impl Atomic for StackableNodeSelector {}
 
 /// We need a custom JsonSchema for [`StackableNodeSelector`], please have a look at the documentation there.
-pub fn stackable_node_selector_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
+pub fn optional_stackable_node_selector_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
     Option::<BTreeMap<String, String>>::json_schema(gen)
 }
 
