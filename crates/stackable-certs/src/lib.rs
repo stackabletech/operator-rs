@@ -39,7 +39,7 @@ pub mod keys;
 
 /// Error variants which can be encountered when creating a new
 /// [`CertificatePair`].
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum CertificatePairError<E>
 where
     E: std::error::Error + 'static,

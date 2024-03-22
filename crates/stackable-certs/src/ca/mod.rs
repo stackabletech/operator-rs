@@ -32,7 +32,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// Defines all error variants which can occur when creating a CA and/or leaf
 /// certificates.
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
     #[snafu(display("failed to generate RSA signing key"))]
     GenerateRsaSigningKey { source: rsa::Error },
@@ -70,7 +70,7 @@ pub enum Error {
 
 /// Defines all error variants which can occur when loading a CA from a
 /// Kubernetes [`Secret`].
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum SecretError<E>
 where
     E: std::error::Error + 'static,

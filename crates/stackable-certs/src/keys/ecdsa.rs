@@ -10,7 +10,7 @@ use crate::keys::CertificateKeypair;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
     #[snafu(context(false))]
     SerializeKeyToPem { source: x509_cert::spki::Error },

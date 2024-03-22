@@ -150,7 +150,7 @@ where
     }
 }
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum KeyValuePairsError {
     #[snafu(display("key/value pair already exists"))]
     PairAlreadyExists,

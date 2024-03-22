@@ -16,7 +16,7 @@ use tracing::{error, instrument, warn};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
     #[snafu(display("failed to construct TLS server config, bad certificate/key"))]
     InvalidTlsPrivateKey { source: tokio_rustls::rustls::Error },

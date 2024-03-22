@@ -23,7 +23,7 @@ pub struct AuthenticationProvider {
     pub client_cert_secret_class: Option<String>,
 }
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum TlsClientDetailsError {
     #[snafu(display("failed to convert secret class volume into named Kubernetes volume"))]
     SecretClassVolume { source: SecretClassVolumeError },
