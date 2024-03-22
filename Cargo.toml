@@ -42,7 +42,6 @@ rand_core = "0.6.4"
 regex = "1.9.3"
 rsa = { version = "0.9.6", features = ["sha2"] }
 rstest = "0.18.1"
-rustls-pemfile = "2.0.0"
 schemars = "0.8.12"
 semver = "1.0"
 serde = { version = "1.0.184", features = ["derive"] }

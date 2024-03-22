@@ -10,7 +10,7 @@
 //! implements the NIST P-256 elliptic curve and supports ECDSA.
 //!
 //! ```
-//! use stackable_certs::sign::ecdsa::SigningKey;
+//! use stackable_certs::keys::ecdsa::SigningKey;
 //! let key = SigningKey::new().unwrap();
 //! ```
 //!
@@ -19,7 +19,7 @@
 //! In order to work with RSA keys, this crate requires the [`rsa`] dependency.
 //!
 //! ```
-//! use stackable_certs::sign::rsa::SigningKey;
+//! use stackable_certs::keys::rsa::SigningKey;
 //! let key = SigningKey::new().unwrap();
 //! ```
 //!

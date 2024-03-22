@@ -8,7 +8,7 @@ repository.workspace = true
 
 [features]
 default = []
-rustls = ["dep:tokio-rustls", "dep:rustls-pemfile"]
+rustls = ["dep:tokio-rustls"]
 
 [dependencies]
 stackable-operator = { path = "../stackable-operator" }
@@ -21,7 +21,6 @@ p256.workspace = true
 rand_core.workspace = true
 rand.workspace = true
 rsa.workspace = true
-rustls-pemfile = { workspace = true, optional = true }
 sha2.workspace = true
 signature.workspace = true
 snafu.workspace = true
