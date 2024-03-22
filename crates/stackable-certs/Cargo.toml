@@ -1,0 +1,31 @@
+[package]
+name = "stackable-certs"
+version = "0.1.0"
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[features]
+default = []
+rustls = ["dep:tokio-rustls"]
+
+[dependencies]
+stackable-operator = { path = "../stackable-operator" }
+
+const-oid.workspace = true
+ecdsa.workspace = true
+k8s-openapi.workspace = true
+kube.workspace = true
+p256.workspace = true
+rand_core.workspace = true
+rand.workspace = true
+rsa.workspace = true
+sha2.workspace = true
+signature.workspace = true
+snafu.workspace = true
+tokio-rustls = { workspace = true, optional = true }
+tokio.workspace = true
+tracing.workspace = true
+x509-cert.workspace = true
+zeroize.workspace = true

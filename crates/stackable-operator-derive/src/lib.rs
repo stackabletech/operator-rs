@@ -57,7 +57,7 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// This macro implements "deep optionality", meaning that each field is replaced by its `Fragment` variant. For example, this type:
 ///
-/// ```
+/// ```ignore
 /// #[derive(Fragment)]
 /// struct Foo {
 ///     atomic: u32,
@@ -67,7 +67,7 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// would generate the following output:
 ///
-/// ```
+/// ```ignore
 /// struct FooFragment {
 ///     atomic: u32::Fragment, // = Option<u32>
 ///     nested: Bar::Fragment, // = BarFragment, assuming that Bar is also #[derive(Fragment)]
@@ -127,7 +127,7 @@ pub fn derive_merge(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// Serde uses the `#[serde]` attribute to configure both `Serialize` and `Deserialize`. However, bounds must be configured separately for the two. Hence, the correct
 /// bound would be:
 ///
-/// ```
+/// ```ignore
 /// #[serde(bound(
 ///     serialize = "T::Fragment: Serialize",
 ///     deserialize = "T::Fragment: Deserialize<'de>",
