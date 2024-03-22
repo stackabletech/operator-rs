@@ -1,0 +1,25 @@
+[package]
+name = "stackable-webhook"
+version = "0.1.0"
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[dependencies]
+stackable-certs = { path = "../stackable-certs", features = ["rustls"] }
+stackable-operator = { path = "../stackable-operator" }
+
+axum.workspace = true
+futures-util.workspace = true
+hyper-util.workspace = true
+hyper.workspace = true
+k8s-openapi.workspace = true
+kube.workspace = true
+serde_json.workspace = true
+snafu.workspace = true
+tokio-rustls.workspace = true
+tokio.workspace = true
+tower-http.workspace = true
+tower.workspace = true
+tracing.workspace = true

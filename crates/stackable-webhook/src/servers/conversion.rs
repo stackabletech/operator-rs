@@ -45,7 +45,7 @@ impl ConversionWebhookServer {
     /// Each request is handled by the provided `handler` function. Any function
     /// with the signature `(ConversionReview) -> ConversionReview` can be
     /// provided. The [`ConversionReview`] type can be imported via a re-export at
-    /// [`stackable_webhook::server::ConversionReview`].
+    /// [`crate::servers::ConversionReview`].
     ///
     /// # Example
     ///
@@ -86,7 +86,7 @@ impl ConversionWebhookServer {
     /// Each request is handled by the provided `handler` function. Any function
     /// with the signature `(ConversionReview, S) -> ConversionReview` can be
     /// provided. The [`ConversionReview`] type can be imported via a re-export at
-    /// [`stackable_webhook::server::ConversionReview`].
+    /// [`crate::servers::ConversionReview`].
     ///
     /// It is recommended to wrap the state in an [`Arc`][std::sync::Arc] if it
     /// needs to be mutable, see

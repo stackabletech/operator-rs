@@ -16,11 +16,13 @@
 //! ```
 //!
 //! For some usages, complete end-to-end [`WebhookServer`] implementations
-//! exist. One such implementation is the [`ConversionWebhookServer`]. The
+//! exist. One such implementation is the [`ConversionWebhookServer`][1]. The
 //! only required parameters are a conversion handler function and [`Options`].
 //!
 //! This library additionally also exposes lower-level structs and functions to
 //! enable complete controll over these details if needed.
+//!
+//! [1]: crate::servers::ConversionWebhookServer
 use axum::{body::Body, http::Request, Router};
 use snafu::{ResultExt, Snafu};
 use tower::ServiceBuilder;
@@ -45,7 +47,9 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 ///
 /// This trait is not intended to be implemented by external crates and this
 /// library provides various ready-to-use implementations for it. One such an
-/// implementation is part of the [`ConversionWebhookServer`].
+/// implementation is part of the [`ConversionWebhookServer`][1].
+///
+/// [1]: crate::servers::ConversionWebhookServer
 pub(crate) trait WebhookHandler<Req, Res> {
     fn call(self, req: Req) -> Res;
 }
@@ -55,7 +59,9 @@ pub(crate) trait WebhookHandler<Req, Res> {
 ///
 /// This trait is not intended to be  implemented by external crates and this
 /// library provides various ready-to-use implementations for it. One such an
-/// implementation is part of the [`ConversionWebhookServer`].
+/// implementation is part of the [`ConversionWebhookServer`][1].
+///
+/// [1]: crate::servers::ConversionWebhookServer
 pub(crate) trait StatefulWebhookHandler<Req, Res, S> {
     fn call(self, req: Req, state: S) -> Res;
 }
@@ -76,8 +82,9 @@ pub enum Error {
 /// and their handlers are completely customizable by bringing your own
 /// Axum [`Router`].
 ///
-/// For complete end-to-end implementations, see
-/// [`ConversionWebhookServer`].
+/// For complete end-to-end implementations, see [`ConversionWebhookServer`][1].
+///
+/// [1]: crate::servers::ConversionWebhookServer
 pub struct WebhookServer {
     options: Options,
     router: Router,
