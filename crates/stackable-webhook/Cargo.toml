@@ -10,20 +10,18 @@ repository.workspace = true
 stackable-certs = { path = "../stackable-certs", features = ["rustls"] }
 stackable-operator = { path = "../stackable-operator" }
 
-axum = "0.7.4"
-k8s-openapi = { version = "0.21.0", default-features = false, features = [
-  "v1_28",
-] }
-kube = { version = "0.88.1", default-features = false }
-tokio-rustls = "0.25.0"
-serde_json = "1.0.104"
-snafu = "0.8.0"
-tokio = "1.29.1"
-tokio-test = "0.4.3"
-tower = "0.4.13"
-tower-http = { version = "0.5.1", features = ["trace"] }
-tracing = "0.1.40"
-rustls-pemfile = "2.0.0"
-futures-util = "0.3.30"
-hyper-util = "0.1.3"
-hyper = { version = "1.0.0", features = ["full"] }
+axum.workspace = true
+futures-util.workspace = true
+hyper-util.workspace = true
+hyper.workspace = true
+k8s-openapi.workspace = true
+kube.workspace = true
+rustls-pemfile.workspace = true
+serde_json.workspace = true
+snafu.workspace = true
+tokio-rustls.workspace = true
+tokio-test.workspace = true
+tokio.workspace = true
+tower-http.workspace = true
+tower.workspace = true
+tracing.workspace = true
