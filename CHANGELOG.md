@@ -15,6 +15,9 @@ All notable changes to this project will be documented in this file.
 ## Changed
 
 - Remove `resources` key from `DynamicValues` struct ([#734]).
+- Bump GitHub workflow actions ([#754]).
+
+[#754]: https://github.com/stackabletech/operator-rs/pull/754
 
 ## Fixed
 
