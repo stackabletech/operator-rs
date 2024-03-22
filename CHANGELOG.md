@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 
 ## Fixed
 
-- Fixed wrong schema (and thus CRD) for `config.affinity.nodeSelector`, making it unusable ([#752]).
+- Fix wrong schema (and thus CRD) for `config.affinity.nodeSelector` ([#752]).
 
 [#730]: https://github.com/stackabletech/operator-rs/pull/730
 [#749]: https://github.com/stackabletech/operator-rs/pull/749
