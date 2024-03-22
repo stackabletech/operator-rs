@@ -60,6 +60,7 @@ pub struct StackableNodeSelector {
 
 impl Atomic for StackableNodeSelector {}
 
+/// We need a custom JsonSchema for [`StackableNodeSelector`], please have a look at the documentation there.
 pub fn stackable_node_selector_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
     Option::<BTreeMap<String, String>>::json_schema(gen)
 }
