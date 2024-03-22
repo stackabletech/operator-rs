@@ -35,6 +35,8 @@ pub fn initialize_logging(env: &str, app_name: &str, tracing_target: TracingTarg
     match tracing_target {
         TracingTarget::None => registry.init(),
         TracingTarget::Jaeger => {
+            // FIXME (@Techassi): Replace with opentelemetry_otlp
+            #[allow(deprecated)]
             let jaeger = opentelemetry_jaeger::new_agent_pipeline()
                 .with_service_name(app_name)
                 .install_batch(opentelemetry_sdk::runtime::Tokio)

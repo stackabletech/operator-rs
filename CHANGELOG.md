@@ -15,12 +15,16 @@ All notable changes to this project will be documented in this file.
 ## Changed
 
 - Remove `resources` key from `DynamicValues` struct ([#734]).
+- Bump `opentelemetry`, `opentelemetry_sdk`, `opentelemetry-jaeger`, and `tracing-opentelemetry` Rust dependencies
+  ([#753]).
+
+[#734]: https://github.com/stackabletech/operator-rs/pull/734
+[#753]: https://github.com/stackabletech/operator-rs/pull/753
 
 ## Fixed
 
 - Fixed incorrect time calculation ([#735]).
 
-[#734]: https://github.com/stackabletech/operator-rs/pull/734
 [#735]: https://github.com/stackabletech/operator-rs/pull/735
 
 ## [0.64.0] - 2024-01-31
