@@ -39,7 +39,7 @@ pub mod keys;
 
 /// Error variants which can be encountered when creating a new
 /// [`CertificatePair`].
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, Snafu)]
 pub enum CertificatePairError<E>
 where
     E: std::error::Error + 'static,
@@ -73,6 +73,21 @@ where
 
     #[snafu(display("failed to read file"))]
     ReadFile { source: std::io::Error },
+}
+
+/// Custom implementation of [`std::cmp::PartialEq`] because [`std::io::Error`] doesn't implement it, but [`std::io::ErrorKind`] does.
+impl<E: snafu::Error + std::cmp::PartialEq> PartialEq for CertificatePairError<E> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::WriteFile { source: lhs_source }, Self::WriteFile { source: rhs_source }) => {
+                lhs_source.kind() == rhs_source.kind()
+            }
+            (Self::ReadFile { source: lhs_source }, Self::ReadFile { source: rhs_source }) => {
+                lhs_source.kind() == rhs_source.kind()
+            }
+            (lhs, rhs) => lhs == rhs,
+        }
+    }
 }
 
 /// Contains the certificate and the signing / embedded key pair.
@@ -155,7 +170,7 @@ pub enum PrivateKeyType {
 }
 
 /// Private and public key encoding, either DER or PEM.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum KeyEncoding {
     Pem,
     Der,

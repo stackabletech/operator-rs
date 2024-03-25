@@ -66,7 +66,7 @@ pub(crate) trait StatefulWebhookHandler<Req, Res, S> {
     fn call(self, req: Req, state: S) -> Res;
 }
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("failed to create TLS server"))]
     CreateTlsServer { source: tls::Error },

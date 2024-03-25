@@ -16,7 +16,7 @@ use tracing::{error, instrument, warn};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("failed to construct TLS server config, bad certificate/key"))]
     InvalidTlsPrivateKey { source: tokio_rustls::rustls::Error },
@@ -44,6 +44,31 @@ pub enum Error {
     EncodePrivateKeyDer {
         source: CertificatePairError<rsa::Error>,
     },
+}
+
+/// Custom implementation of [`std::cmp::PartialEq`] because some inner types
+/// don't implement it.
+///
+/// Note that this implementation is restritced to testing because there are
+/// variants that use [`stackable_certs::ca::Error`] which only implements
+/// [`PartialEq`] for tests.
+#[cfg(test)]
+impl PartialEq for Error {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                Self::BindTcpListener {
+                    source: lhs_source,
+                    socket_addr: lhs_socket_addr,
+                },
+                Self::BindTcpListener {
+                    source: rhs_source,
+                    socket_addr: rhs_socket_addr,
+                },
+            ) => lhs_socket_addr == rhs_socket_addr && lhs_source.kind() == rhs_source.kind(),
+            (lhs, rhs) => lhs == rhs,
+        }
+    }
 }
 
 /// A server which terminates TLS connections and allows clients to commnunicate
