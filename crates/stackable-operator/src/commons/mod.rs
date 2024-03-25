@@ -4,6 +4,7 @@ pub mod affinity;
 pub mod authentication;
 pub mod cluster_operation;
 pub mod listener;
+pub mod observability;
 pub mod opa;
 pub mod pdb;
 pub mod pod_overrides;
