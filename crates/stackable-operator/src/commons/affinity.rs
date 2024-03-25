@@ -48,9 +48,9 @@ pub struct StackableAffinity {
 ///
 /// We `#[serde(flatten)]` the contained [`BTreeMap<String, String>`], so `serde_yaml` can deserialize everything as
 /// expected.
-// FIXME: However, the generated JsonSchema will be wrong, so we need to use `#[schemars(deny_unknown_fields)]`.
-// See https://github.com/stackabletech/operator-rs/pull/752#issuecomment-2017630433 and
-// https://github.com/GREsau/schemars/issues/259 for details.
+// FIXME: The generated JsonSchema will be wrong, so until https://github.com/GREsau/schemars/issues/259 is fixed, we
+// need to use `#[schemars(deny_unknown_fields)]`.
+// See https://github.com/stackabletech/operator-rs/pull/752#issuecomment-2017630433 for details.
 #[derive(Clone, Debug, Eq, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[schemars(deny_unknown_fields)]
