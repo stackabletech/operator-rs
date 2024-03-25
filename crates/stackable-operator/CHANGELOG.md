@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.65.0] - 2024-03-25
+
 ## Added
 
 - Add `stackable_webhook` crate which provides utilities to create webhooks with TLS termination ([#730]).
