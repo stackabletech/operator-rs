@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## Fixed
+
+- Fix wrong schema (and thus CRD) for `config.affinity.nodeSelector` ([#752]).
+
+[#752]: https://github.com/stackabletech/operator-rs/pull/752
+
 ## [0.65.0] - 2024-03-25
 
 ## Added
@@ -11,13 +17,8 @@ All notable changes to this project will be documented in this file.
 - Add `stackable_webhook` crate which provides utilities to create webhooks with TLS termination ([#730]).
 - Add `ConversionReview` re-export in `stackable_webhook` crate ([#749]).
 
-## Fixed
-
-- Fix wrong schema (and thus CRD) for `config.affinity.nodeSelector` ([#752]).
-
 [#730]: https://github.com/stackabletech/operator-rs/pull/730
 [#749]: https://github.com/stackabletech/operator-rs/pull/749
-[#752]: https://github.com/stackabletech/operator-rs/pull/752
 
 ## Changed
 
