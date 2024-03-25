@@ -42,7 +42,7 @@ pub struct StackableAffinity {
     pub node_selector: Option<StackableNodeSelector>,
 }
 
-/// We can not simply use [`BTreeMap<String, String>`] in [`StackableAffinity`], as the fields needs to be [`Atomic`].
+/// We can not simply use [`BTreeMap<String, String>`] in [`StackableAffinity`], as the fields need to be [`Atomic`].
 /// We can not mark it as [`Atomic`], as [`crate::config::fragment::FromFragment`] is already implemented for
 /// [`BTreeMap<String, String>`].
 ///
