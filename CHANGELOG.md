@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 ## Changed
 
 - Remove `resources` key from `DynamicValues` struct ([#734]).
+- Implement `PartialEq` for most _Snafu_ Error enums ([#757]).
 
 ## Fixed
 
@@ -22,6 +23,7 @@ All notable changes to this project will be documented in this file.
 
 [#734]: https://github.com/stackabletech/operator-rs/pull/734
 [#735]: https://github.com/stackabletech/operator-rs/pull/735
+[#757]: https://github.com/stackabletech/operator-rs/pull/757
 
 ## [0.64.0] - 2024-01-31
 
