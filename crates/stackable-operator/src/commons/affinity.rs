@@ -6,7 +6,7 @@ use k8s_openapi::{
     },
     apimachinery::pkg::apis::meta::v1::LabelSelector,
 };
-use schemars::{schema::Schema, JsonSchema};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use stackable_operator_derive::Fragment;
 
@@ -39,8 +39,6 @@ pub struct StackableAffinity {
     pub pod_affinity: Option<PodAffinity>,
     pub pod_anti_affinity: Option<PodAntiAffinity>,
     pub node_affinity: Option<NodeAffinity>,
-    #[schemars(schema_with = "optional_stackable_node_selector_schema")]
-    #[fragment_attrs(schemars(schema_with = "optional_stackable_node_selector_schema"))]
     pub node_selector: Option<StackableNodeSelector>,
 }
 
@@ -49,21 +47,19 @@ pub struct StackableAffinity {
 /// [`BTreeMap<String, String>`].
 ///
 /// We `#[serde(flatten)]` the contained [`BTreeMap<String, String>`], so `serde_yaml` can deserialize everything as
-/// expected. However the generated JsonSchema will be wrong, so we need to provide our custom one (see
-/// <https://github.com/stackabletech/issues/issues/554> for details).
-#[derive(Clone, Debug, Eq, Deserialize, PartialEq, Serialize)]
+/// expected.
+// FIXME: However, the generated JsonSchema will be wrong, so we need to use `#[schemars(deny_unknown_fields)]`.
+// See https://github.com/stackabletech/operator-rs/pull/752#issuecomment-2017630433 and
+// https://github.com/GREsau/schemars/issues/259 for details.
+#[derive(Clone, Debug, Eq, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[schemars(deny_unknown_fields)]
 pub struct StackableNodeSelector {
     #[serde(flatten)]
     pub node_selector: BTreeMap<String, String>,
 }
 
 impl Atomic for StackableNodeSelector {}
-
-/// We need a custom JsonSchema for [`StackableNodeSelector`], please have a look at the documentation there.
-pub fn optional_stackable_node_selector_schema(gen: &mut schemars::gen::SchemaGenerator) -> Schema {
-    Option::<BTreeMap<String, String>>::json_schema(gen)
-}
 
 /// Creates a `WeightedPodAffinityTerm`, which expresses a affinity towards all Pods of the given product (`app_name`) instance (`cluster_name`) role (`role`).
 /// This affinity can be used to attract towards (affinity) or away (anti-affinity) from the specified role.
