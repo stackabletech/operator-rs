@@ -4,9 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Implement `PartialEq` for most _Snafu_ Error enums ([#757]).
+
+[#757]: https://github.com/stackabletech/operator-rs/pull/757
+
 ## [0.65.0] - 2024-03-25
 
-## Added
+### Added
 
 - Add `stackable_webhook` crate which provides utilities to create webhooks with TLS termination ([#730]).
 - Add `ConversionReview` re-export in `stackable_webhook` crate ([#749]).
@@ -14,7 +20,7 @@ All notable changes to this project will be documented in this file.
 [#730]: https://github.com/stackabletech/operator-rs/pull/730
 [#749]: https://github.com/stackabletech/operator-rs/pull/749
 
-## Changed
+### Changed
 
 - Remove `resources` key from `DynamicValues` struct ([#734]).
 - Bump `opentelemetry`, `opentelemetry_sdk`, `opentelemetry-jaeger`, and `tracing-opentelemetry` Rust dependencies

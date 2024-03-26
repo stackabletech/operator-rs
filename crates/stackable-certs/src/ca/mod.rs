@@ -68,6 +68,48 @@ pub enum Error {
     ParseAuthorityKeyIdentifier { source: x509_cert::der::Error },
 }
 
+/// Custom implementation of [`std::cmp::PartialEq`] because some inner types
+/// don't implement it.
+///
+/// Note that this implementation is restritced to testing because there is a
+/// variant that is impossible to compare, and will cause a panic if it is
+/// attemped.
+#[cfg(test)]
+impl PartialEq for Error {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                Self::CreateCertificateBuilder { source: lhs_source },
+                Self::CreateCertificateBuilder { source: rhs_source },
+            )
+            | (
+                Self::AddCertificateExtension { source: lhs_source },
+                Self::AddCertificateExtension { source: rhs_source },
+            )
+            | (
+                Self::BuildCertificate { source: lhs_source },
+                Self::BuildCertificate { source: rhs_source },
+            ) => match (lhs_source, rhs_source) {
+                (x509_cert::builder::Error::Asn1(lhs), x509_cert::builder::Error::Asn1(rhs)) => {
+                    lhs == rhs
+                }
+                (
+                    x509_cert::builder::Error::PublicKey(lhs),
+                    x509_cert::builder::Error::PublicKey(rhs),
+                ) => lhs == rhs,
+                (
+                    x509_cert::builder::Error::Signature(_),
+                    x509_cert::builder::Error::Signature(_),
+                ) => panic!(
+                    "it is impossible to compare the opaque Error contained witin signature::error::Error"
+                ),
+                _ => false,
+            },
+            (lhs, rhs) => lhs == rhs,
+        }
+    }
+}
+
 /// Defines all error variants which can occur when loading a CA from a
 /// Kubernetes [`Secret`].
 #[derive(Debug, Snafu)]
