@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Implement `PartialEq` for most _Snafu_ Error enums ([#757]).
+- Update Rust to 1.77 ([#759])
 
 ## Fixed
 
@@ -14,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 [#752]: https://github.com/stackabletech/operator-rs/pull/752
 [#757]: https://github.com/stackabletech/operator-rs/pull/757
+[#759]: https://github.com/stackabletech/operator-rs/pull/759
 
 ## [0.65.0] - 2024-03-25
 
