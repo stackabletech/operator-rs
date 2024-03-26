@@ -19,7 +19,7 @@ pub const DEFAULT_OIDC_WELLKNOWN_PATH: &str = ".well-known/openid-configuration"
 pub const CLIENT_ID_SECRET_KEY: &str = "clientId";
 pub const CLIENT_SECRET_SECRET_KEY: &str = "clientSecret";
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
     #[snafu(display("failed to parse OIDC endpoint url"))]
     ParseOidcEndpointUrl { source: ParseError },

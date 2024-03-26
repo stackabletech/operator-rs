@@ -11,7 +11,7 @@ use crate::{
     role_utils::{CommonConfiguration, Role},
 };
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum ConfigError {
     #[snafu(display("Invalid configuration found: {reason}"))]
     InvalidConfiguration { reason: String },

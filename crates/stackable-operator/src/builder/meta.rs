@@ -9,7 +9,7 @@ use crate::{
 };
 
 // NOTE (Techassi): Think about that name
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum ObjectMetaBuilderError {
     #[snafu(display("failed to set recommended labels"))]
     RecommendedLabels { source: LabelError },

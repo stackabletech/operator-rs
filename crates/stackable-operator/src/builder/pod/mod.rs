@@ -33,7 +33,7 @@ pub mod resources;
 pub mod security;
 pub mod volume;
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
     #[snafu(display("termination grace period is too long (got {duration}, maximum allowed is {max})", max = Duration::from_secs(i64::MAX as u64)))]
     TerminationGracePeriodTooLong {
