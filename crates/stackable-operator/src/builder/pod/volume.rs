@@ -262,7 +262,7 @@ impl VolumeMountBuilder {
     }
 }
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum SecretOperatorVolumeSourceBuilderError {
     #[snafu(display("failed to parse secret operator volume annotation"))]
     ParseAnnotation { source: AnnotationError },
@@ -414,7 +414,7 @@ impl ListenerReference {
 
 // NOTE (Techassi): We might want to think about these names and how long they
 // are getting.
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum ListenerOperatorVolumeSourceBuilderError {
     #[snafu(display("failed to convert listener reference into Kubernetes annotation"))]
     ListenerReferenceAnnotation { source: AnnotationError },

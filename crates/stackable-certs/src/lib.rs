@@ -75,6 +75,21 @@ where
     ReadFile { source: std::io::Error },
 }
 
+/// Custom implementation of [`std::cmp::PartialEq`] because [`std::io::Error`] doesn't implement it, but [`std::io::ErrorKind`] does.
+impl<E: snafu::Error + std::cmp::PartialEq> PartialEq for CertificatePairError<E> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::WriteFile { source: lhs_source }, Self::WriteFile { source: rhs_source }) => {
+                lhs_source.kind() == rhs_source.kind()
+            }
+            (Self::ReadFile { source: lhs_source }, Self::ReadFile { source: rhs_source }) => {
+                lhs_source.kind() == rhs_source.kind()
+            }
+            (lhs, rhs) => lhs == rhs,
+        }
+    }
+}
+
 /// Contains the certificate and the signing / embedded key pair.
 ///
 /// A [`CertificateAuthority`](crate::ca::CertificateAuthority) uses this struct
@@ -155,7 +170,7 @@ pub enum PrivateKeyType {
 }
 
 /// Private and public key encoding, either DER or PEM.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum KeyEncoding {
     Pem,
     Der,

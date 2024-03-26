@@ -7,7 +7,7 @@ use crate::builder::{
     SecretOperatorVolumeSourceBuilder, SecretOperatorVolumeSourceBuilderError, VolumeBuilder,
 };
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum SecretClassVolumeError {
     #[snafu(display("failed to build secret operator volume"))]
     SecretOperatorVolume {

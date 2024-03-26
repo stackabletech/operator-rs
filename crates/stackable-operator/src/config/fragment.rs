@@ -58,7 +58,7 @@ impl<'a> Validator<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct FieldPath {
     idents: Vec<String>,
 }
@@ -74,7 +74,7 @@ impl Display for FieldPath {
     }
 }
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 #[snafu(display("failed to validate {path}"))]
 /// An error that occurred when validating an object.
 ///
@@ -85,7 +85,7 @@ pub struct ValidationError {
     problem: ValidationProblem,
 }
 /// A problem that was discovered during validation, with no additional context.
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 enum ValidationProblem {
     #[snafu(display("field is required"))]
     FieldRequired,
