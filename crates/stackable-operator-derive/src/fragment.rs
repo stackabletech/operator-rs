@@ -2,7 +2,7 @@ use darling::{ast::Data, FromDeriveInput, FromField, FromMeta, FromVariant};
 use proc_macro2::{Ident, TokenStream, TokenTree};
 use quote::{format_ident, quote, ToTokens};
 use syn::{
-    parse_quote, Attribute, DeriveInput, Expr, Generics, Meta, MetaList, Path, Type, Visibility,
+    parse_quote, Attribute, DeriveInput, Generics, Meta, MetaList, Path, Type, Visibility,
     WherePredicate,
 };
 
@@ -103,25 +103,6 @@ struct FragmentField {
     ident: Option<Ident>,
     ty: Type,
     attrs: Vec<Attribute>,
-}
-
-enum Default {
-    None,
-    FromDefaultTrait,
-    Expr(Box<Expr>),
-}
-impl FromMeta for Default {
-    fn from_none() -> Option<Self> {
-        Some(Self::None)
-    }
-
-    fn from_word() -> darling::Result<Self> {
-        Ok(Self::FromDefaultTrait)
-    }
-
-    fn from_value(value: &syn::Lit) -> darling::Result<Self> {
-        Expr::from_value(value).map(Box::new).map(Self::Expr)
-    }
 }
 
 pub fn derive(input: DeriveInput) -> TokenStream {
