@@ -18,8 +18,12 @@ pub struct ObservabilityConfig {
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MetricsConfig {
+    /// Enables the export of metrics.
     #[serde(default = "default_metrics_enabled")]
     pub enabled: bool,
+
+    /// Overides the global exporter config.
+    pub exporter: Option<ExporterConfig>,
 }
 
 fn default_metrics_enabled() -> bool {
@@ -29,8 +33,12 @@ fn default_metrics_enabled() -> bool {
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TracesConfig {
+    /// Enables the export of traces.
     #[serde(default = "default_traces_enabled")]
     pub enabled: bool,
+
+    /// Overides the global exporter config.
+    pub exporter: Option<ExporterConfig>,
 }
 
 fn default_traces_enabled() -> bool {
@@ -40,8 +48,12 @@ fn default_traces_enabled() -> bool {
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LogsConfig {
+    /// Enables the export of logs.
     #[serde(default = "default_logs_enabled")]
     pub enabled: bool,
+
+    /// Overides the global exporter config.
+    pub exporter: Option<ExporterConfig>,
 }
 
 fn default_logs_enabled() -> bool {
@@ -59,5 +71,23 @@ pub struct ExporterConfig {
     /// The timeout when sending data to the collector.
     ///
     /// See <DOCS_BASE_URL_PLACEHOLDER/reference/duration> for more details.
+    #[serde(default = "default_exporter_timeout")]
     pub timeout: Duration,
+}
+
+fn default_exporter_timeout() -> Duration {
+    Duration::from_secs(2)
+}
+
+#[cfg(test)]
+mod test {
+    use schemars::schema_for;
+
+    use super::*;
+
+    #[test]
+    fn json_schema() {
+        let schema = schema_for!(ObservabilityConfig);
+        println!("{}", serde_json::to_string_pretty(&schema).unwrap())
+    }
 }
