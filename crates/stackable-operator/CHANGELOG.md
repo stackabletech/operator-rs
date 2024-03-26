@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 
 - Implement `PartialEq` for most _Snafu_ Error enums ([#757]).
 
+## Fixed
+
+- Fix wrong schema (and thus CRD) for `config.affinity.nodeSelector` ([#752]).
+
+[#752]: https://github.com/stackabletech/operator-rs/pull/752
 [#757]: https://github.com/stackabletech/operator-rs/pull/757
 
 ## [0.65.0] - 2024-03-25
