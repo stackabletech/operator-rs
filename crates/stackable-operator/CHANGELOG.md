@@ -4,12 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.66.0] - 2024-03-26
+
 ### Changed
 
 - Implement `PartialEq` for most _Snafu_ Error enums ([#757]).
 - Update Rust to 1.77 ([#759])
 
-## Fixed
+### Fixed
 
 - Fix wrong schema (and thus CRD) for `config.affinity.nodeSelector` ([#752]).
 
@@ -38,7 +40,7 @@ All notable changes to this project will be documented in this file.
 [#753]: https://github.com/stackabletech/operator-rs/pull/753
 [#754]: https://github.com/stackabletech/operator-rs/pull/754
 
-## Fixed
+### Fixed
 
 - Fixed incorrect time calculation ([#735]).
 
