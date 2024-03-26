@@ -72,7 +72,7 @@ pub enum Error {
 /// don't implement it.
 ///
 /// Note that this implementation is restritced to testing because there is a
-/// variant that is impossible to compare, and will cause a panic if it
+/// variant that is impossible to compare, and will cause a panic if it is
 /// attemped.
 #[cfg(test)]
 impl PartialEq for Error {
