@@ -10,3 +10,6 @@ repository.workspace = true
 axum.workspace = true
 tower.workspace = true
 tracing.workspace = true
+opentelemetry.workspace = true
+pin-project.workspace = true
+futures-util.workspace = true
