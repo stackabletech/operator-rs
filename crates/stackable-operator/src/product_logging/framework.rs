@@ -3,7 +3,7 @@
 use std::{cmp, fmt::Write, ops::Mul};
 
 use crate::{
-    builder::ContainerBuilder,
+    builder::pod::container::ContainerBuilder,
     commons::product_image_selection::ResolvedProductImage,
     k8s_openapi::{
         api::core::v1::{Container, ResourceRequirements},

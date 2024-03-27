@@ -12,10 +12,7 @@ use snafu::{ResultExt, Snafu};
 use tracing::warn;
 
 use crate::{
-    builder::{
-        meta::ObjectMetaBuilder, ListenerOperatorVolumeSourceBuilder,
-        ListenerOperatorVolumeSourceBuilderError, ListenerReference, VolumeBuilder,
-    },
+    builder::meta::ObjectMetaBuilder,
     commons::{
         affinity::StackableAffinity,
         product_image_selection::ResolvedProductImage,
@@ -27,6 +24,8 @@ use crate::{
     error::{self, OperatorResult},
     time::Duration,
 };
+
+use self::volume::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
 
 pub mod container;
 pub mod resources;
@@ -43,7 +42,7 @@ pub enum Error {
 
     #[snafu(display("failed to add listener volume '{name}' to the pod"))]
     ListenerVolume {
-        source: ListenerOperatorVolumeSourceBuilderError,
+        source: volume::ListenerOperatorVolumeSourceBuilderError,
         name: String,
     },
 }

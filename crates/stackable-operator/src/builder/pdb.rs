@@ -8,7 +8,7 @@ use k8s_openapi::{
 use kube::{Resource, ResourceExt};
 
 use crate::{
-    builder::ObjectMetaBuilder,
+    builder::meta::ObjectMetaBuilder,
     error::OperatorResult,
     kvp::{Label, Labels},
 };
@@ -191,7 +191,7 @@ mod test {
     use schemars::JsonSchema;
     use serde::{Deserialize, Serialize};
 
-    use crate::builder::{ObjectMetaBuilder, OwnerReferenceBuilder};
+    use crate::builder::meta::{ObjectMetaBuilder, OwnerReferenceBuilder};
 
     use super::PodDisruptionBudgetBuilder;
 

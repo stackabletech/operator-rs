@@ -12,7 +12,7 @@ use snafu::{ResultExt, Snafu};
 use tracing::warn;
 
 use crate::{
-    builder::ObjectMetaBuilder,
+    builder::meta::ObjectMetaBuilder,
     kvp::{Annotation, AnnotationError, Annotations},
 };
 

@@ -528,7 +528,7 @@ impl ResourceRequirementsExt for PodSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::builder::resources::ResourceRequirementsBuilder;
+    use crate::builder::pod::resources::ResourceRequirementsBuilder;
     use crate::commons::resources::{PvcConfig, PvcConfigFragment, Resources, ResourcesFragment};
     use crate::config::{
         fragment::{self, Fragment},

@@ -355,8 +355,8 @@ mod tests {
 
     use super::*;
     use crate::{
-        builder::{
-            pod::container::{ContainerBuilder, ContainerPortBuilder, FieldPathEnvVar},
+        builder::pod::{
+            container::{ContainerBuilder, ContainerPortBuilder, FieldPathEnvVar},
             resources::ResourceRequirementsBuilder,
         },
         commons::resources::ResourceRequirementsType,

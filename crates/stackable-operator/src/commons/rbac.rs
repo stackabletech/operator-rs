@@ -1,7 +1,7 @@
 use kube::{Resource, ResourceExt};
 
 use crate::{
-    builder::ObjectMetaBuilder,
+    builder::meta::ObjectMetaBuilder,
     error::OperatorResult,
     k8s_openapi::api::{
         core::v1::ServiceAccount,

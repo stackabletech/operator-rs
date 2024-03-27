@@ -5,7 +5,7 @@ use snafu::{ResultExt, Snafu};
 use url::{ParseError, Url};
 
 use crate::{
-    builder::{ContainerBuilder, PodBuilder, VolumeMountBuilder},
+    builder::pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
     commons::{
         authentication::{
             tls::{TlsClientDetails, TlsClientDetailsError},
