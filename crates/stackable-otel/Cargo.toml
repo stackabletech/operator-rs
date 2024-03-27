@@ -1,0 +1,15 @@
+[package]
+name = "stackable-otel"
+version = "0.1.0"
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[dependencies]
+axum.workspace = true
+tower.workspace = true
+tracing.workspace = true
+opentelemetry.workspace = true
+pin-project.workspace = true
+futures-util.workspace = true
