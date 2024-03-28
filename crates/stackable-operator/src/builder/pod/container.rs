@@ -15,7 +15,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
-    #[snafu(display("container name {container_name:?} is invalid: {violation}"))]
+    #[snafu(display("container name {container_name:?} is invalid: {violation:?}"))]
     InvalidContainerName {
         container_name: String,
         violation: String,
