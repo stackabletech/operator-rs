@@ -136,11 +136,10 @@ impl Client {
         T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
-        Ok(self
-            .get_api(namespace)
+        self.get_api(namespace)
             .get(resource_name)
             .await
-            .context(GetResourceSnafu { resource_name }))?
+            .context(GetResourceSnafu { resource_name })
     }
 
     /// Retrieves a single instance of the requested resource type with the given name, if it exists.
