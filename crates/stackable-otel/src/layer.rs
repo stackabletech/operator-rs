@@ -1,7 +1,7 @@
-use std::{future::Future, net::SocketAddr, task::Poll};
+use std::{future::Future, net::SocketAddr, str::FromStr, task::Poll};
 
 use axum::{
-    extract::{ConnectInfo, MatchedPath, Request},
+    extract::{ConnectInfo, Host, MatchedPath, Request},
     http::header::USER_AGENT,
     response::Response,
 };
@@ -105,16 +105,48 @@ where
 }
 
 pub trait RequestExt {
+    /// Returns the client socket address if available
     fn client_socket_address(&self) -> Option<SocketAddr>;
+
+    /// Returns the server socket address if available
+    ///
+    /// ### Value Selection Strategy
+    ///
+    /// The following value selection strategy is taken verbatim from [this][1]
+    /// section of the HTTP span semantic conventions:
+    ///
+    /// > HTTP server instrumentations SHOULD do the best effort when populating
+    ///   server.address and server.port attributes and SHOULD determine them by
+    ///   using the first of the following that applies:
+    /// >
+    /// > - The original host which may be passed by the reverse proxy in the
+    /// >  Forwarded#host, X-Forwarded-Host, or a similar header.
+    /// > - The :authority pseudo-header in case of HTTP/2 or HTTP/3
+    /// > - The Host header.
+    ///
+    /// [1]: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#setting-serveraddress-and-serverport-attributes
     fn server_socket_address(&self) -> Option<SocketAddr>;
+
+    /// Returns the matched path, like `/object/:object_id/tags`.
     fn matched_path(&self) -> Option<&MatchedPath>;
+
+    /// Retuns the span name.
+    ///
+    /// The format is either `{method} {http.route}` or `{method}` if
+    /// `http.route` is not available. Examples are:
+    ///
+    /// - `GET /object/:object_id/tags`
+    /// - `POST`
     fn span_name(&self) -> String;
-    fn user_agent(&self) -> &str;
+
+    /// Returns the user agent if available.
+    fn user_agent(&self) -> Option<&str>;
 }
 
 impl RequestExt for Request {
     fn server_socket_address(&self) -> Option<SocketAddr> {
-        todo!()
+        let host = self.extensions().get::<Host>()?;
+        SocketAddr::from_str(&host.0).ok()
     }
 
     fn client_socket_address(&self) -> Option<SocketAddr> {
@@ -136,10 +168,10 @@ impl RequestExt for Request {
         }
     }
 
-    fn user_agent(&self) -> &str {
+    fn user_agent(&self) -> Option<&str> {
         self.headers()
             .get(USER_AGENT)
-            .map_or("", |ua| ua.to_str().unwrap_or_default())
+            .map(|ua| ua.to_str().unwrap_or_default())
     }
 }
 
@@ -189,7 +221,6 @@ pub trait SpanExt {
 impl SpanExt for Span {
     fn from_request(req: &Request, opt_in: bool) -> Self {
         let http_method = req.method().as_str();
-        let user_agent = req.user_agent();
         let span_name = req.span_name();
         let url = req.uri();
 
@@ -217,15 +248,18 @@ impl SpanExt for Span {
             url.query = url.query(),
             url.scheme = url.scheme_str().unwrap_or_default(),
             // TODO (@Techassi): Add network.protocol.version
-            user_agent.original = user_agent,
         );
+
+        if let Some(user_agent) = req.user_agent() {
+            span.record("user_agent.original", user_agent);
+        }
 
         // Setting server.address and server.port
         // See https://opentelemetry.io/docs/specs/semconv/http/http-spans/#setting-serveraddress-and-serverport-attributes
 
         if let Some(server_socket_address) = req.server_socket_address() {
-            span.record("server.address", server_socket_address.ip().to_string());
-            span.record("server.port", server_socket_address.port());
+            span.record("server.address", server_socket_address.ip().to_string())
+                .record("server.port", server_socket_address.port());
         }
 
         // Setting fields according to the HTTP server semantic conventions
@@ -239,6 +273,9 @@ impl SpanExt for Span {
             }
         }
 
+        // Only include the headers if the user opted in, because this might
+        // potentially be an expensive operation when many different headers
+        // are present. The OpenTelemetry spec also marks this as opt-in.
         if opt_in {
             for (header_name, header_value) in req.headers() {
                 let header_name = header_name.as_str().to_lowercase();
@@ -277,9 +314,8 @@ impl SpanExt for Span {
     where
         E: std::error::Error,
     {
-        self.record("otel.status_code", "Error");
-
         // NOTE (@Techassi): This field might get renamed: https://github.com/tokio-rs/tracing-opentelemetry/issues/115
-        self.record("otel.status_message", error.to_string());
+        self.record("otel.status_code", "Error")
+            .record("otel.status_message", error.to_string());
     }
 }

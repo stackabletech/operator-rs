@@ -8,8 +8,8 @@ repository.workspace = true
 
 [dependencies]
 axum.workspace = true
-tower.workspace = true
-tracing.workspace = true
+futures-util.workspace = true
 opentelemetry.workspace = true
 pin-project.workspace = true
-futures-util.workspace = true
+tower.workspace = true
+tracing.workspace = true
