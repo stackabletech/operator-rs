@@ -21,45 +21,33 @@ pub struct TelemetryConfig {
 #[serde(rename_all = "camelCase")]
 pub struct MetricsConfig {
     /// Enables the export of metrics.
-    #[serde(default = "default_metrics_enabled")]
+    #[serde(default = "r#true")]
     pub enabled: bool,
 
     /// Overides the global exporter config.
     pub exporter: Option<ExporterConfig>,
-}
-
-const fn default_metrics_enabled() -> bool {
-    true
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TracesConfig {
     /// Enables the export of traces.
-    #[serde(default = "default_traces_enabled")]
+    #[serde(default = "r#true")]
     pub enabled: bool,
 
     /// Overides the global exporter config.
     pub exporter: Option<ExporterConfig>,
-}
-
-const fn default_traces_enabled() -> bool {
-    true
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LogsConfig {
     /// Enables the export of logs.
-    #[serde(default = "default_logs_enabled")]
+    #[serde(default = "r#true")]
     pub enabled: bool,
 
     /// Overides the global exporter config.
     pub exporter: Option<ExporterConfig>,
-}
-
-const fn default_logs_enabled() -> bool {
-    true
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -79,6 +67,10 @@ pub struct ExporterConfig {
 
 const fn default_exporter_timeout() -> Duration {
     Duration::from_secs(2)
+}
+
+const fn r#true() -> bool {
+    true
 }
 
 #[cfg(test)]
