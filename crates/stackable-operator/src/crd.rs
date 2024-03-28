@@ -25,10 +25,10 @@ pub enum Error {
     },
 
     #[snafu(display("error converting CRD byte array to UTF-8"))]
-    CrdFromUtf8 { source: std::string::FromUtf8Error },
+    ConvertByteArrayToUtf8 { source: std::string::FromUtf8Error },
 
     #[snafu(display("failed to serialize YAML"))]
-    YamlSerialization { source: yaml::Error },
+    SerializeYaml { source: yaml::Error },
 
     #[snafu(display("failed to write YAML"))]
     WriteYamlSchema { source: std::io::Error },
@@ -131,10 +131,10 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
     {
         let mut buffer = Vec::new();
         yaml::serialize_to_explicit_document(&mut buffer, &Self::crd())
-            .context(YamlSerializationSnafu)?;
+            .context(SerializeYamlSnafu)?;
 
         let yaml_schema = String::from_utf8(buffer)
-            .context(CrdFromUtf8Snafu)?
+            .context(ConvertByteArrayToUtf8Snafu)?
             .replace(
                 DOCS_HOME_URL_PLACEHOLDER,
                 &docs_home_versioned_base_url(operator_version)?,
@@ -167,7 +167,7 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
     fn yaml_schema(operator_version: &str) -> Result<String> {
         let mut writer = Vec::new();
         Self::generate_yaml_schema(&mut writer, operator_version)?;
-        String::from_utf8(writer).context(CrdFromUtf8Snafu)
+        String::from_utf8(writer).context(ConvertByteArrayToUtf8Snafu)
     }
 }
 
