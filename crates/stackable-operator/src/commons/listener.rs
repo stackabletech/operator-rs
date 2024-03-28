@@ -37,7 +37,7 @@ use k8s_openapi::api::core::v1::{
 };
 
 #[cfg(doc)]
-use crate::builder::ListenerOperatorVolumeSourceBuilder;
+use crate::builder::pod::volume::ListenerOperatorVolumeSourceBuilder;
 
 /// Defines a policy for how [Listeners](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listener) should be exposed.
 /// Read the [ListenerClass documentation](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listenerclass)

@@ -8,33 +8,3 @@ pub mod event;
 pub mod meta;
 pub mod pdb;
 pub mod pod;
-
-#[deprecated(since = "0.15.0", note = "Please use `builder::configmap::*` instead.")]
-pub use configmap::*;
-
-#[deprecated(since = "0.15.0", note = "Please use `builder::event::*` instead.")]
-pub use event::*;
-
-#[deprecated(since = "0.15.0", note = "Please use `builder::meta::*` instead.")]
-pub use meta::*;
-
-#[deprecated(
-    since = "0.15.0",
-    note = "Please use `builder::pod::container::*` instead."
-)]
-pub use pod::container::*;
-
-#[deprecated(
-    since = "0.15.0",
-    note = "Please use `builder::pod::security::*` instead."
-)]
-pub use pod::security::*;
-
-#[deprecated(
-    since = "0.15.0",
-    note = "Please use `builder::pod::volume::*` instead."
-)]
-pub use pod::volume::*;
-
-#[deprecated(since = "0.15.0", note = "Please use `builder::pod::*` instead.")]
-pub use pod::*;

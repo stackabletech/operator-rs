@@ -3,26 +3,31 @@ use std::collections::{BTreeMap, HashMap};
 use product_config::{types::PropertyNameKind, ProductConfigManager, PropertyValidationResult};
 use schemars::JsonSchema;
 use serde::Serialize;
-use snafu::Snafu;
+use snafu::{ResultExt, Snafu};
 use tracing::{debug, error, warn};
 
-use crate::{
-    error::{Error, OperatorResult},
-    role_utils::{CommonConfiguration, Role},
-};
+use crate::role_utils::{CommonConfiguration, Role};
+
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, PartialEq, Snafu)]
-pub enum ConfigError {
-    #[snafu(display("Invalid configuration found: {reason}"))]
-    InvalidConfiguration { reason: String },
+pub enum Error {
+    #[snafu(display("invalid configuration found"))]
+    InvalidConfiguration {
+        source: product_config::error::Error,
+    },
 
-    #[snafu(display("Collected product config validation errors: {collected_errors:?}"))]
+    #[snafu(display("collected product config validation errors: {collected_errors:?}"))]
     ProductConfigErrors {
         collected_errors: Vec<product_config::error::Error>,
     },
-}
 
-pub type ConfigResult<T> = std::result::Result<T, ConfigError>;
+    #[snafu(display("missing role {role:?}. This should not happen. Will requeue."))]
+    MissingRole { role: String },
+
+    #[snafu(display("missing roleGroup {role_group:?} for role {role:?}. This might happen after custom resource changes. Will requeue."))]
+    MissingRoleGroup { role: String, role_group: String },
+}
 
 /// This trait is used to compute configuration properties for products.
 ///
@@ -50,20 +55,20 @@ pub trait Configuration {
         &self,
         resource: &Self::Configurable,
         role_name: &str,
-    ) -> ConfigResult<BTreeMap<String, Option<String>>>;
+    ) -> Result<BTreeMap<String, Option<String>>>;
 
     fn compute_cli(
         &self,
         resource: &Self::Configurable,
         role_name: &str,
-    ) -> ConfigResult<BTreeMap<String, Option<String>>>;
+    ) -> Result<BTreeMap<String, Option<String>>>;
 
     fn compute_files(
         &self,
         resource: &Self::Configurable,
         role_name: &str,
         file: &str,
-    ) -> ConfigResult<BTreeMap<String, Option<String>>>;
+    ) -> Result<BTreeMap<String, Option<String>>>;
 }
 
 impl<T: Configuration + ?Sized> Configuration for Box<T> {
@@ -73,7 +78,7 @@ impl<T: Configuration + ?Sized> Configuration for Box<T> {
         &self,
         resource: &Self::Configurable,
         role_name: &str,
-    ) -> ConfigResult<BTreeMap<String, Option<String>>> {
+    ) -> Result<BTreeMap<String, Option<String>>> {
         T::compute_env(self, resource, role_name)
     }
 
@@ -81,7 +86,7 @@ impl<T: Configuration + ?Sized> Configuration for Box<T> {
         &self,
         resource: &Self::Configurable,
         role_name: &str,
-    ) -> ConfigResult<BTreeMap<String, Option<String>>> {
+    ) -> Result<BTreeMap<String, Option<String>>> {
         T::compute_cli(self, resource, role_name)
     }
 
@@ -90,7 +95,7 @@ impl<T: Configuration + ?Sized> Configuration for Box<T> {
         resource: &Self::Configurable,
         role_name: &str,
         file: &str,
-    ) -> ConfigResult<BTreeMap<String, Option<String>>> {
+    ) -> Result<BTreeMap<String, Option<String>>> {
         T::compute_files(self, resource, role_name, file)
     }
 }
@@ -120,19 +125,21 @@ pub fn config_for_role_and_group<'a>(
     role: &str,
     group: &str,
     role_config: &'a ValidatedRoleConfigByPropertyKind,
-) -> OperatorResult<&'a HashMap<PropertyNameKind, BTreeMap<String, String>>> {
+) -> Result<&'a HashMap<PropertyNameKind, BTreeMap<String, String>>> {
     let result = match role_config.get(role) {
         None => {
-            return Err(Error::MissingRole {
+            return MissingRoleSnafu {
                 role: role.to_string(),
-            })
+            }
+            .fail()
         }
         Some(group_config) => match group_config.get(group) {
             None => {
-                return Err(Error::MissingRoleGroup {
+                return MissingRoleGroupSnafu {
                     role: role.to_string(),
                     role_group: group.to_string(),
-                })
+                }
+                .fail()
             }
             Some(config_by_property_kind) => config_by_property_kind,
         },
@@ -154,7 +161,7 @@ pub fn config_for_role_and_group<'a>(
 pub fn transform_all_roles_to_config<T, U>(
     resource: &T::Configurable,
     roles: HashMap<String, (Vec<PropertyNameKind>, Role<T, U>)>,
-) -> ConfigResult<RoleConfigByPropertyKind>
+) -> Result<RoleConfigByPropertyKind>
 where
     T: Configuration,
     U: Default + JsonSchema + Serialize,
@@ -189,7 +196,7 @@ pub fn validate_all_roles_and_groups_config(
     product_config: &ProductConfigManager,
     ignore_warn: bool,
     ignore_err: bool,
-) -> OperatorResult<ValidatedRoleConfigByPropertyKind> {
+) -> Result<ValidatedRoleConfigByPropertyKind> {
     let mut result = HashMap::new();
     for (role, role_group) in role_config {
         result.insert(role.to_string(), HashMap::new());
@@ -234,7 +241,7 @@ fn validate_role_and_group_config(
     product_config: &ProductConfigManager,
     ignore_warn: bool,
     ignore_err: bool,
-) -> OperatorResult<HashMap<PropertyNameKind, BTreeMap<String, String>>> {
+) -> Result<HashMap<PropertyNameKind, BTreeMap<String, String>>> {
     let mut result = HashMap::new();
 
     for (property_name_kind, config) in properties_by_kind {
@@ -245,9 +252,7 @@ fn validate_role_and_group_config(
                 property_name_kind,
                 config.clone().into_iter().collect::<HashMap<_, _>>(),
             )
-            .map_err(|err| ConfigError::InvalidConfiguration {
-                reason: err.to_string(),
-            })?;
+            .context(InvalidConfigurationSnafu)?;
 
         let validated_config =
             process_validation_result(&validation_result, ignore_warn, ignore_err)?;
@@ -275,7 +280,7 @@ fn process_validation_result(
     validation_result: &BTreeMap<String, PropertyValidationResult>,
     ignore_warn: bool,
     ignore_err: bool,
-) -> Result<BTreeMap<String, String>, ConfigError> {
+) -> Result<BTreeMap<String, String>> {
     let mut properties = BTreeMap::new();
     let mut collected_errors = Vec::new();
 
@@ -321,7 +326,7 @@ fn process_validation_result(
     }
 
     if !collected_errors.is_empty() {
-        return Err(ConfigError::ProductConfigErrors { collected_errors });
+        return ProductConfigErrorsSnafu { collected_errors }.fail();
     }
 
     Ok(properties)
@@ -350,7 +355,7 @@ fn transform_role_to_config<T, U>(
     role_name: &str,
     role: &Role<T, U>,
     property_kinds: &[PropertyNameKind],
-) -> ConfigResult<RoleGroupConfigByPropertyKind>
+) -> Result<RoleGroupConfigByPropertyKind>
 where
     T: Configuration,
     U: Default + JsonSchema + Serialize,
@@ -395,7 +400,7 @@ fn parse_role_config<T>(
     role_name: &str,
     config: &CommonConfiguration<T>,
     property_kinds: &[PropertyNameKind],
-) -> ConfigResult<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
+) -> Result<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
     T: Configuration,
 {
@@ -425,7 +430,7 @@ fn parse_cli_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
     config: &CommonConfiguration<T>,
-) -> ConfigResult<BTreeMap<String, Option<String>>>
+) -> Result<BTreeMap<String, Option<String>>>
 where
     T: Configuration,
 {
@@ -444,7 +449,7 @@ fn parse_env_properties<T>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
     config: &CommonConfiguration<T>,
-) -> ConfigResult<BTreeMap<String, Option<String>>>
+) -> Result<BTreeMap<String, Option<String>>>
 where
     T: Configuration,
 {
@@ -464,7 +469,7 @@ fn parse_file_properties<T>(
     role_name: &str,
     config: &CommonConfiguration<T>,
     file: &str,
-) -> ConfigResult<BTreeMap<String, Option<String>>>
+) -> Result<BTreeMap<String, Option<String>>>
 where
     T: Configuration,
 {
@@ -537,7 +542,7 @@ mod tests {
             &self,
             _resource: &Self::Configurable,
             _role_name: &str,
-        ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
+        ) -> Result<BTreeMap<String, Option<String>>> {
             let mut result = BTreeMap::new();
             if let Some(env) = &self.env {
                 result.insert("env".to_string(), Some(env.to_string()));
@@ -549,7 +554,7 @@ mod tests {
             &self,
             _resource: &Self::Configurable,
             _role_name: &str,
-        ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
+        ) -> Result<BTreeMap<String, Option<String>>> {
             let mut result = BTreeMap::new();
             if let Some(cli) = &self.cli {
                 result.insert("cli".to_string(), Some(cli.to_string()));
@@ -562,7 +567,7 @@ mod tests {
             _resource: &Self::Configurable,
             _role_name: &str,
             _file: &str,
-        ) -> Result<BTreeMap<String, Option<String>>, ConfigError> {
+        ) -> Result<BTreeMap<String, Option<String>>> {
             let mut result = BTreeMap::new();
             if let Some(conf) = &self.conf {
                 result.insert("file".to_string(), Some(conf.to_string()));

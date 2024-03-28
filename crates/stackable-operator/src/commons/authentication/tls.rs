@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 
 use crate::{
-    builder::{ContainerBuilder, PodBuilder, VolumeMountBuilder},
+    builder::pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
     commons::{
         authentication::SECRET_BASE_PATH,
         secret_class::{SecretClassVolume, SecretClassVolumeError},

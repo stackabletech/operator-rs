@@ -154,24 +154,25 @@ mod message {
 mod tests {
     use k8s_openapi::api::core::v1::ConfigMap;
     use kube::runtime::reflector::ObjectRef;
+    use snafu::Snafu;
     use strum::EnumDiscriminants;
 
     use super::{error_to_event, ReconcilerError};
 
-    #[derive(Debug, thiserror::Error, EnumDiscriminants)]
+    #[derive(Snafu, Debug, EnumDiscriminants)]
     #[strum_discriminants(derive(strum::IntoStaticStr))]
     enum ErrorFoo {
-        #[error("bar failed")]
+        #[snafu(display("bar failed"))]
         Bar { source: ErrorBar },
     }
-    #[derive(Debug, thiserror::Error)]
+    #[derive(Snafu, Debug)]
     enum ErrorBar {
-        #[error("baz failed")]
+        #[snafu(display("baz failed"))]
         Baz { source: ErrorBaz },
     }
-    #[derive(Debug, thiserror::Error)]
+    #[derive(Snafu, Debug)]
     enum ErrorBaz {
-        #[error("couldn't find chocolate")]
+        #[snafu(display("couldn't find chocolate"))]
         NoChocolate { descriptor: ObjectRef<ConfigMap> },
     }
     impl ErrorFoo {

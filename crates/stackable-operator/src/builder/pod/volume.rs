@@ -12,7 +12,7 @@ use snafu::{ResultExt, Snafu};
 use tracing::warn;
 
 use crate::{
-    builder::ObjectMetaBuilder,
+    builder::meta::ObjectMetaBuilder,
     kvp::{Annotation, AnnotationError, Annotations},
 };
 
@@ -426,9 +426,9 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
 ///
 /// ```
 /// # use k8s_openapi::api::core::v1::Volume;
-/// # use stackable_operator::builder::ListenerReference;
-/// # use stackable_operator::builder::ListenerOperatorVolumeSourceBuilder;
-/// # use stackable_operator::builder::PodBuilder;
+/// # use stackable_operator::builder::pod::volume::ListenerReference;
+/// # use stackable_operator::builder::pod::volume::ListenerOperatorVolumeSourceBuilder;
+/// # use stackable_operator::builder::pod::PodBuilder;
 /// let mut pod_builder = PodBuilder::new();
 ///
 /// let volume_source =

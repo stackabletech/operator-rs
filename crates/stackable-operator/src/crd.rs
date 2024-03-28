@@ -4,8 +4,8 @@ use derivative::Derivative;
 use schemars::JsonSchema;
 use semver::Version;
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 
-use crate::error::{Error, OperatorResult};
 use crate::yaml;
 use std::fs::File;
 use std::io::Write;
@@ -13,6 +13,29 @@ use std::path::Path;
 
 const DOCS_HOME_URL_PLACEHOLDER: &str = "DOCS_BASE_URL_PLACEHOLDER";
 const DOCS_HOME_BASE_URL: &str = "https://docs.stackable.tech/home";
+
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("cannot parse version {version:?} as a semantic version"))]
+    InvalidSemverVersion {
+        source: semver::Error,
+        version: String,
+    },
+
+    #[snafu(display("error converting CRD byte array to UTF-8"))]
+    ConvertByteArrayToUtf8 { source: std::string::FromUtf8Error },
+
+    #[snafu(display("failed to serialize YAML"))]
+    SerializeYaml { source: yaml::Error },
+
+    #[snafu(display("failed to write YAML"))]
+    WriteYamlSchema { source: std::io::Error },
+
+    #[snafu(display("failed to create YAML file"))]
+    CreateYamlFile { source: std::io::Error },
+}
 
 /// A reference to a product cluster (for example, a `ZookeeperCluster`)
 ///
@@ -74,12 +97,11 @@ pub trait HasApplication {
 }
 
 /// Takes an operator version and returns a docs version
-fn docs_version(operator_version: &str) -> OperatorResult<String> {
+fn docs_version(operator_version: &str) -> Result<String> {
     if operator_version == "0.0.0-dev" {
         Ok("nightly".to_owned())
     } else {
-        let v = Version::parse(operator_version).map_err(|err| Error::InvalidSemverVersion {
-            source: err,
+        let v = Version::parse(operator_version).context(InvalidSemverVersionSnafu {
             version: operator_version.to_owned(),
         })?;
         Ok(format!("{}.{}", v.major, v.minor))
@@ -89,7 +111,7 @@ fn docs_version(operator_version: &str) -> OperatorResult<String> {
 /// Given an operator version like 0.0.0-dev or 23.1.1, generate a docs home
 /// component base URL like `https://docs.stackable.tech/home/nightly/` or
 /// `https://docs.stackable.tech/home/23.1/`.
-fn docs_home_versioned_base_url(operator_version: &str) -> OperatorResult<String> {
+fn docs_home_versioned_base_url(operator_version: &str) -> Result<String> {
     Ok(format!(
         "{}/{}",
         DOCS_HOME_BASE_URL,
@@ -103,35 +125,38 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
     /// Generates a YAML CustomResourceDefinition and writes it to a `Write`.
     ///
     /// The generated YAML string is an explicit document with leading dashes (`---`).
-    fn generate_yaml_schema<W>(mut writer: W, operator_version: &str) -> OperatorResult<()>
+    fn generate_yaml_schema<W>(mut writer: W, operator_version: &str) -> Result<()>
     where
         W: Write,
     {
         let mut buffer = Vec::new();
-        yaml::serialize_to_explicit_document(&mut buffer, &Self::crd())?;
+        yaml::serialize_to_explicit_document(&mut buffer, &Self::crd())
+            .context(SerializeYamlSnafu)?;
 
         let yaml_schema = String::from_utf8(buffer)
-            .map_err(Error::CrdFromUtf8Error)?
+            .context(ConvertByteArrayToUtf8Snafu)?
             .replace(
                 DOCS_HOME_URL_PLACEHOLDER,
                 &docs_home_versioned_base_url(operator_version)?,
             );
 
-        Ok(writer.write_all(yaml_schema.as_bytes())?)
+        writer
+            .write_all(yaml_schema.as_bytes())
+            .context(WriteYamlSchemaSnafu)
     }
 
     /// Generates a YAML CustomResourceDefinition and writes it to the specified file.
     ///
     /// The written YAML string is an explicit document with leading dashes (`---`).
-    fn write_yaml_schema<P: AsRef<Path>>(path: P, operator_version: &str) -> OperatorResult<()> {
-        let writer = File::create(path)?;
+    fn write_yaml_schema<P: AsRef<Path>>(path: P, operator_version: &str) -> Result<()> {
+        let writer = File::create(path).context(CreateYamlFileSnafu)?;
         Self::generate_yaml_schema(writer, operator_version)
     }
 
     /// Generates a YAML CustomResourceDefinition and prints it to stdout.
     ///
     /// The printed YAML string is an explicit document with leading dashes (`---`).
-    fn print_yaml_schema(operator_version: &str) -> OperatorResult<()> {
+    fn print_yaml_schema(operator_version: &str) -> Result<()> {
         let writer = std::io::stdout();
         Self::generate_yaml_schema(writer, operator_version)
     }
@@ -139,10 +164,10 @@ pub trait CustomResourceExt: kube::CustomResourceExt {
     /// Returns the YAML schema of this CustomResourceDefinition as a string.
     ///
     /// The written YAML string is an explicit document with leading dashes (`---`).
-    fn yaml_schema(operator_version: &str) -> OperatorResult<String> {
+    fn yaml_schema(operator_version: &str) -> Result<String> {
         let mut writer = Vec::new();
         Self::generate_yaml_schema(&mut writer, operator_version)?;
-        String::from_utf8(writer).map_err(Error::CrdFromUtf8Error)
+        String::from_utf8(writer).context(ConvertByteArrayToUtf8Snafu)
     }
 }
 

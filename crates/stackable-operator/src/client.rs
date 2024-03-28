@@ -1,4 +1,3 @@
-use crate::error::{Error, OperatorResult};
 use crate::kvp::LabelSelectorExt;
 
 use either::Either;
@@ -13,9 +12,72 @@ use kube::runtime::{watcher, WatchStreamExt};
 use kube::{Api, Config};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use snafu::{OptionExt, ResultExt, Snafu};
 use std::convert::TryFrom;
 use std::fmt::{Debug, Display};
 use tracing::trace;
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("unable to get resource {resource_name:?}"))]
+    GetResource {
+        source: kube::Error,
+        resource_name: String,
+    },
+
+    #[snafu(display("unable to list resources"))]
+    ListResources { source: kube::Error },
+
+    #[snafu(display("unable to convert selector to query string"))]
+    SelectorToQueryString { source: crate::kvp::SelectorError },
+
+    #[snafu(display("unable to create resource {resource_name:?}"))]
+    CreateResource {
+        source: kube::Error,
+        resource_name: String,
+    },
+
+    #[snafu(display("unable to patch resource {resource_name:?}"))]
+    PatchResource {
+        source: kube::Error,
+        resource_name: String,
+    },
+
+    #[snafu(display("unable to patch the status for resource {resource_name:?}"))]
+    PatchResourceStatus {
+        source: kube::Error,
+        resource_name: String,
+    },
+
+    #[snafu(display("unable to update resource {resource_name:?}"))]
+    UpdateResource {
+        source: kube::Error,
+        resource_name: String,
+    },
+
+    #[snafu(display("unable to delete resource {resource_name:?}"))]
+    DeleteResource {
+        source: kube::Error,
+        resource_name: String,
+    },
+
+    #[snafu(display("unable to delete and finalize resource {resource_name:?}"))]
+    DeleteAndFinalizeResource {
+        source: kube::runtime::wait::delete::Error,
+        resource_name: String,
+    },
+
+    #[snafu(display("object is missing key {key:?}"))]
+    MissingObjectKey { key: &'static str },
+
+    #[snafu(display("unable to infer kubernetes configuration"))]
+    InferKubeConfig { source: kube::Error },
+
+    #[snafu(display("unable to create kubernetes client"))]
+    CreateKubeClient { source: kube::Error },
+}
 
 /// This `Client` can be used to access Kubernetes.
 /// It wraps an underlying [kube::client::Client] and provides some common functionality.
@@ -69,12 +131,15 @@ impl Client {
     }
 
     /// Retrieves a single instance of the requested resource type with the given name.
-    pub async fn get<T>(&self, resource_name: &str, namespace: &T::Namespace) -> OperatorResult<T>
+    pub async fn get<T>(&self, resource_name: &str, namespace: &T::Namespace) -> Result<T>
     where
         T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
-        Ok(self.get_api(namespace).get(resource_name).await?)
+        self.get_api(namespace)
+            .get(resource_name)
+            .await
+            .context(GetResourceSnafu { resource_name })
     }
 
     /// Retrieves a single instance of the requested resource type with the given name, if it exists.
@@ -82,12 +147,15 @@ impl Client {
         &self,
         resource_name: &str,
         namespace: &T::Namespace,
-    ) -> OperatorResult<Option<T>>
+    ) -> Result<Option<T>>
     where
         T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
-        Ok(self.get_api(namespace).get_opt(resource_name).await?)
+        self.get_api(namespace)
+            .get_opt(resource_name)
+            .await
+            .context(GetResourceSnafu { resource_name })
     }
 
     /// Returns Ok(true) if the resource has been registered in Kubernetes, Ok(false) if it could
@@ -97,11 +165,7 @@ impl Client {
     /// exists method as soon as it becomes available (e.g. only returning Ok/Success) to reduce
     /// network traffic.
     #[deprecated(since = "0.24.0", note = "Replaced by `get_opt`")]
-    pub async fn exists<T>(
-        &self,
-        resource_name: &str,
-        namespace: &T::Namespace,
-    ) -> OperatorResult<bool>
+    pub async fn exists<T>(&self, resource_name: &str, namespace: &T::Namespace) -> Result<bool>
     where
         T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
@@ -118,12 +182,17 @@ impl Client {
         &self,
         namespace: &T::Namespace,
         list_params: &ListParams,
-    ) -> OperatorResult<Vec<T>>
+    ) -> Result<Vec<T>>
     where
         T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
-        Ok(self.get_api(namespace).list(list_params).await?.items)
+        let list = self
+            .get_api(namespace)
+            .list(list_params)
+            .await
+            .context(ListResourcesSnafu)?;
+        Ok(list.items)
     }
 
     /// Lists resources from the API using a LabelSelector.
@@ -138,12 +207,14 @@ impl Client {
         &self,
         namespace: &T::Namespace,
         selector: &LabelSelector,
-    ) -> OperatorResult<Vec<T>>
+    ) -> Result<Vec<T>>
     where
         T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
-        let selector_string = selector.to_query_string()?;
+        let selector_string = selector
+            .to_query_string()
+            .context(SelectorToQueryStringSnafu)?;
         trace!("Listing for LabelSelector [{}]", selector_string);
         let list_params = ListParams {
             label_selector: Some(selector_string),
@@ -153,21 +224,23 @@ impl Client {
     }
 
     /// Creates a new resource.
-    pub async fn create<T>(&self, resource: &T) -> OperatorResult<T>
+    pub async fn create<T>(&self, resource: &T) -> Result<T>
     where
         T: Clone + Debug + DeserializeOwned + Resource + Serialize + GetApi,
         <T as Resource>::DynamicType: Default,
     {
-        Ok(self
-            .get_api(resource.get_namespace())
+        self.get_api(resource.get_namespace())
             .create(&self.post_params, resource)
-            .await?)
+            .await
+            .context(CreateResourceSnafu {
+                resource_name: resource.name_any(),
+            })
     }
 
     /// Patches a resource using the `MERGE` patch strategy described
     /// in [JSON Merge Patch](https://tools.ietf.org/html/rfc7386)
     /// This will fail for objects that do not exist yet.
-    pub async fn merge_patch<T, P>(&self, resource: &T, patch: P) -> OperatorResult<T>
+    pub async fn merge_patch<T, P>(&self, resource: &T, patch: P) -> Result<T>
     where
         T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
@@ -187,7 +260,7 @@ impl Client {
         field_manager_scope: &str,
         resource: &T,
         patch: P,
-    ) -> OperatorResult<T>
+    ) -> Result<T>
     where
         T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
@@ -202,7 +275,7 @@ impl Client {
     }
 
     /// Patches a resource using the `JSON` patch strategy described in [JavaScript Object Notation (JSON) Patch](https://tools.ietf.org/html/rfc6902).
-    pub async fn json_patch<T>(&self, resource: &T, patch: json_patch::Patch) -> OperatorResult<T>
+    pub async fn json_patch<T>(&self, resource: &T, patch: json_patch::Patch) -> Result<T>
     where
         T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
@@ -221,16 +294,18 @@ impl Client {
         resource: &T,
         patch: Patch<P>,
         patch_params: &PatchParams,
-    ) -> OperatorResult<T>
+    ) -> Result<T>
     where
         T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
         P: Debug + Serialize,
     {
-        Ok(self
-            .get_api(resource.get_namespace())
+        self.get_api(resource.get_namespace())
             .patch(&resource.name_any(), patch_params, &patch)
-            .await?)
+            .await
+            .context(PatchResourceSnafu {
+                resource_name: resource.name_any(),
+            })
     }
 
     /// Patches subresource status in a given Resource using apply strategy.
@@ -240,7 +315,7 @@ impl Client {
         field_manager_scope: &str,
         resource: &T,
         status: &S,
-    ) -> OperatorResult<T>
+    ) -> Result<T>
     where
         T: Clone + Debug + DeserializeOwned + Resource<DynamicType = ()> + GetApi,
         <T as Resource>::DynamicType: Default,
@@ -267,7 +342,7 @@ impl Client {
 
     /// Patches subresource status in a given Resource using merge strategy.
     /// The subresource status must be defined beforehand in the Crd.
-    pub async fn merge_patch_status<T, S>(&self, resource: &T, status: &S) -> OperatorResult<T>
+    pub async fn merge_patch_status<T, S>(&self, resource: &T, status: &S) -> Result<T>
     where
         T: DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
@@ -282,11 +357,7 @@ impl Client {
     /// Patches subresource status in a given Resource using merge strategy.
     /// The subresource status must be defined beforehand in the Crd.
     /// Patches a resource using the `JSON` patch strategy described in [JavaScript Object Notation (JSON) Patch](https://tools.ietf.org/html/rfc6902).
-    pub async fn json_patch_status<T>(
-        &self,
-        resource: &T,
-        patch: json_patch::Patch,
-    ) -> OperatorResult<T>
+    pub async fn json_patch_status<T>(&self, resource: &T, patch: json_patch::Patch) -> Result<T>
     where
         T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
@@ -316,31 +387,35 @@ impl Client {
         resource: &T,
         patch: Patch<S>,
         patch_params: &PatchParams,
-    ) -> OperatorResult<T>
+    ) -> Result<T>
     where
         T: DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
         S: Debug + Serialize,
     {
         let api = self.get_api(resource.get_namespace());
-        Ok(api
-            .patch_status(&resource.name_any(), patch_params, &patch)
-            .await?)
+        api.patch_status(&resource.name_any(), patch_params, &patch)
+            .await
+            .context(PatchResourceStatusSnafu {
+                resource_name: resource.name_any(),
+            })
     }
 
     /// This will _update_ an existing resource.
     /// The operation is called `replace` in the Kubernetes API.
     /// While a `patch` can just update a partial object
     /// a `update` will always replace the full object.
-    pub async fn update<T>(&self, resource: &T) -> OperatorResult<T>
+    pub async fn update<T>(&self, resource: &T) -> Result<T>
     where
         T: Clone + Debug + DeserializeOwned + Resource + Serialize + GetApi,
         <T as Resource>::DynamicType: Default,
     {
-        Ok(self
-            .get_api(resource.get_namespace())
+        self.get_api(resource.get_namespace())
             .replace(&resource.name_any(), &self.post_params, resource)
-            .await?)
+            .await
+            .context(UpdateResourceSnafu {
+                resource_name: resource.name_any(),
+            })
     }
 
     /// This deletes a resource _if it is not deleted already_.
@@ -350,15 +425,17 @@ impl Client {
     /// Which of the two are returned depends on the API being called.
     /// Take a look at the Kubernetes API reference.
     /// Some `delete` endpoints return the object and others return a `Status` object.
-    pub async fn delete<T>(&self, resource: &T) -> OperatorResult<Either<T, Status>>
+    pub async fn delete<T>(&self, resource: &T) -> Result<Either<T, Status>>
     where
         T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
         let api: Api<T> = self.get_api(resource.get_namespace());
-        Ok(api
-            .delete(&resource.name_any(), &self.delete_params)
-            .await?)
+        api.delete(&resource.name_any(), &self.delete_params)
+            .await
+            .context(DeleteResourceSnafu {
+                resource_name: resource.name_any(),
+            })
     }
 
     /// This deletes a resource _if it is not deleted already_ and waits until the deletion is
@@ -368,23 +445,26 @@ impl Client {
     ///
     /// Afterwards it loops and checks regularly whether the resource has been deleted
     /// from Kubernetes
-    pub async fn ensure_deleted<T>(&self, resource: T) -> OperatorResult<()>
+    pub async fn ensure_deleted<T>(&self, resource: T) -> Result<()>
     where
         T: Clone + Debug + DeserializeOwned + Resource + GetApi + Send + 'static,
         <T as Resource>::DynamicType: Default,
     {
-        Ok(delete_and_finalize(
+        delete_and_finalize(
             self.get_api::<T>(resource.get_namespace()),
             resource
                 .meta()
                 .name
                 .as_deref()
-                .ok_or(Error::MissingObjectKey {
+                .context(MissingObjectKeySnafu {
                     key: "metadata.name",
                 })?,
             &self.delete_params,
         )
-        .await?)
+        .await
+        .context(DeleteAndFinalizeResourceSnafu {
+            resource_name: resource.name_any(),
+        })
     }
 
     /// Returns an [kube::Api] object which is either namespaced or not depending on whether
@@ -542,16 +622,14 @@ where
     }
 }
 
-pub async fn create_client(field_manager: Option<String>) -> OperatorResult<Client> {
+pub async fn create_client(field_manager: Option<String>) -> Result<Client> {
     let kubeconfig: Config = kube::Config::infer()
         .await
-        .map_err(kube::Error::InferConfig)?;
+        .map_err(kube::Error::InferConfig)
+        .context(InferKubeConfigSnafu)?;
     let default_namespace = kubeconfig.default_namespace.clone();
-    Ok(Client::new(
-        kube::Client::try_from(kubeconfig)?,
-        field_manager,
-        default_namespace,
-    ))
+    let client = kube::Client::try_from(kubeconfig).context(CreateKubeClientSnafu)?;
+    Ok(Client::new(client, field_manager, default_namespace))
 }
 
 #[cfg(test)]

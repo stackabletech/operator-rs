@@ -2,8 +2,18 @@
 use std::io::Write;
 
 use serde::ser;
+use snafu::{ResultExt, Snafu};
 
-use crate::error::OperatorResult;
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("failed to serialize YAML"))]
+    SerializeYaml { source: serde_yaml::Error },
+
+    #[snafu(display("failed to write YAML document separator"))]
+    WriteDocumentSeparator { source: std::io::Error },
+}
 
 /// Serializes the given data structure as an explicit YAML document and writes it to a [`Write`].
 ///
@@ -47,13 +57,16 @@ use crate::error::OperatorResult;
 /// # Errors
 ///
 /// Serialization can fail if `T`'s implementation of `Serialize` decides to return an error.
-pub fn serialize_to_explicit_document<T, W>(mut writer: W, value: &T) -> OperatorResult<()>
+pub fn serialize_to_explicit_document<T, W>(mut writer: W, value: &T) -> Result<()>
 where
     T: ser::Serialize,
     W: Write,
 {
-    writer.write_all(b"---\n")?;
+    writer
+        .write_all(b"---\n")
+        .context(WriteDocumentSeparatorSnafu)?;
     let mut serializer = serde_yaml::Serializer::new(writer);
-    serde_yaml::with::singleton_map_recursive::serialize(value, &mut serializer)?;
+    serde_yaml::with::singleton_map_recursive::serialize(value, &mut serializer)
+        .context(SerializeYamlSnafu)?;
     Ok(())
 }
