@@ -66,10 +66,10 @@ pub enum Error {
     },
 
     #[snafu(display("failed to get resource"))]
-    ClusterResourceApplyStrategyGetResource { source: crate::client::Error },
+    GetResource { source: crate::client::Error },
 
     #[snafu(display("failed to apply patch"))]
-    ClusterResourceApplyStrategyApplyPatch { source: crate::client::Error },
+    ApplyPatch { source: crate::client::Error },
 
     #[snafu(display("failed to delete orphaned resource"))]
     DeleteOrphanedResource { source: crate::client::Error },
@@ -161,7 +161,7 @@ impl ClusterResourceApplyStrategy {
                             .context(MissingObjectKeySnafu { key: "namespace" })?,
                     )
                     .await
-                    .context(ClusterResourceApplyStrategyGetResourceSnafu)
+                    .context(GetResourceSnafu)
             }
             Self::Default | Self::ClusterStopped => {
                 debug!(
@@ -172,7 +172,7 @@ impl ClusterResourceApplyStrategy {
                 client
                     .apply_patch(manager, resource, resource)
                     .await
-                    .context(ClusterResourceApplyStrategyApplyPatchSnafu)
+                    .context(ApplyPatchSnafu)
             }
             Self::NoApply => {
                 debug!(
