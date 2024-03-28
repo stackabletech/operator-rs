@@ -58,11 +58,7 @@ pub enum Error {
     #[snafu(display("label {label:?} is missing"))]
     MissingLabel { label: &'static str },
 
-    #[snafu(display(
-        "label contains unexpected content. \
-            expected: {label}={expected_content}, \
-            actual: {label}={actual_content}"
-    ))]
+    #[snafu(display("label {label:?} contains unexpected values - expected {expected_content:?}, got {actual_content:?}"))]
     UnexpectedLabelContent {
         label: &'static str,
         expected_content: String,
