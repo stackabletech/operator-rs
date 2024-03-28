@@ -20,8 +20,6 @@ pub enum SelectorError {
 /// Implementing this trait for any other type other than [`LabelSelector`]
 /// can result in unndefined behaviour.
 pub trait LabelSelectorExt {
-    type Error;
-
     /// Takes a [`LabelSelector`] and converts it to a String that can be used
     /// in Kubernetes API calls. It will return an error if the LabelSelector
     /// contains illegal things (e.g. an `Exists` operator with a value).
@@ -29,8 +27,6 @@ pub trait LabelSelectorExt {
 }
 
 impl LabelSelectorExt for LabelSelector {
-    type Error = SelectorError;
-
     fn to_query_string(&self) -> Result<String> {
         let mut query_string = String::new();
 
