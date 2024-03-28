@@ -288,21 +288,21 @@ impl OwnerReferenceBuilder {
     pub fn build(&self) -> Result<OwnerReference> {
         Ok(OwnerReference {
             api_version: match self.api_version {
-                None => return Err(Error::MissingObjectKey { key: "api_version" }),
+                None => return MissingObjectKeySnafu { key: "api_version" }.fail(),
                 Some(ref api_version) => api_version.clone(),
             },
             block_owner_deletion: self.block_owner_deletion,
             controller: self.controller,
             kind: match self.kind {
-                None => return Err(Error::MissingObjectKey { key: "kind" }),
+                None => return MissingObjectKeySnafu { key: "kind" }.fail(),
                 Some(ref kind) => kind.clone(),
             },
             name: match self.name {
-                None => return Err(Error::MissingObjectKey { key: "name" }),
+                None => return MissingObjectKeySnafu { key: "name" }.fail(),
                 Some(ref name) => name.clone(),
             },
             uid: match self.uid {
-                None => return Err(Error::MissingObjectKey { key: "uid" }),
+                None => return MissingObjectKeySnafu { key: "uid" }.fail(),
                 Some(ref uid) => uid.clone(),
             },
         })
