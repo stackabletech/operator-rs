@@ -51,7 +51,7 @@ pub const VECTOR_CONFIG_FILE: &str = "vector.yaml";
 /// ```
 /// use stackable_operator::{
 ///     builder::{
-///         PodBuilder,
+///         pod::PodBuilder,
 ///         meta::ObjectMetaBuilder,
 ///     },
 ///     memory::{
@@ -106,7 +106,7 @@ pub fn calculate_log_volume_size_limit(max_log_files_size: &[MemoryQuantity]) ->
 ///
 /// ```
 /// use stackable_operator::{
-///     builder::ContainerBuilder,
+///     builder::pod::container::ContainerBuilder,
 ///     config::fragment,
 ///     product_logging,
 ///     product_logging::spec::{
@@ -221,7 +221,7 @@ pub fn capture_shell_output(
 /// ```
 /// use stackable_operator::{
 ///     builder::{
-///         ConfigMapBuilder,
+///         configmap::ConfigMapBuilder,
 ///         meta::ObjectMetaBuilder,
 ///     },
 ///     config::fragment,
@@ -342,7 +342,7 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 /// ```
 /// use stackable_operator::{
 ///     builder::{
-///         ConfigMapBuilder,
+///         configmap::ConfigMapBuilder,
 ///         meta::ObjectMetaBuilder,
 ///     },
 ///     config::fragment,
@@ -489,7 +489,7 @@ rootLogger.appenderRef.FILE.ref = FILE"#,
 /// ```
 /// use stackable_operator::{
 ///     builder::{
-///         ConfigMapBuilder,
+///         configmap::ConfigMapBuilder,
 ///         meta::ObjectMetaBuilder,
 ///     },
 ///     product_logging,
@@ -627,7 +627,7 @@ pub fn create_logback_config(
 /// ```
 /// use stackable_operator::{
 ///     builder::{
-///         ConfigMapBuilder,
+///         configmap::ConfigMapBuilder,
 ///         meta::ObjectMetaBuilder,
 ///     },
 ///     product_logging,
@@ -1024,10 +1024,8 @@ sinks:
 /// ```
 /// use stackable_operator::{
 ///     builder::{
-///         ContainerBuilder,
 ///         meta::ObjectMetaBuilder,
-///         PodBuilder,
-///         resources::ResourceRequirementsBuilder
+///         pod::{container::ContainerBuilder, resources::ResourceRequirementsBuilder, PodBuilder},
 ///     },
 ///     product_logging::{self, framework:: {create_vector_shutdown_file_command, remove_vector_shutdown_file_command}},
 ///     utils::COMMON_BASH_TRAP_FUNCTIONS,
@@ -1156,7 +1154,7 @@ kill $vector_pid
 ///
 /// ```
 /// use stackable_operator::{
-///     builder::ContainerBuilder,
+///     builder::pod::container::ContainerBuilder,
 ///     product_logging,
 /// };
 ///

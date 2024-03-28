@@ -84,11 +84,14 @@ use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{LabelSelector, ObjectMeta};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 use std::{collections::BTreeMap, fmt::Debug};
 use strum::Display;
 
 pub const LIMIT_REQUEST_RATIO_CPU: f32 = 5.0;
 pub const LIMIT_REQUEST_RATIO_MEMORY: f32 = 1.0;
+
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// Resource usage is configured here, this includes CPU usage, memory usage and disk storage
 /// usage, if this role needs any.
@@ -336,25 +339,35 @@ impl<T, K> Into<ResourceRequirements> for Resources<T, K> {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum ResourceRequirementsError {
-    #[error("failed to parse quantity")]
-    ParseQuantity {
-        #[source]
-        error: crate::error::Error,
-    },
-    #[error("missing {resource_key} resource {resource_type} for container {container_name}")]
+#[derive(Debug, PartialEq, Snafu)]
+pub enum Error {
+    #[snafu(display(
+        "missing {resource_key:?} resource {resource_type:?} for container {container_name:?}"
+    ))]
     MissingResourceRequirements {
-        resource_type: ResourceRequirementsType,
         container_name: String,
         resource_key: String,
+        resource_type: ResourceRequirementsType,
     },
-    #[error("{resource_key} max limit to request ratio for Container {container_name} is {allowed_ration}, but ratio was exceeded or request and limit where not set explicitly")]
+
+    #[snafu(display("{resource_key:?} max limit to request ratio for Container {container_name:?} is {allowed_ration:?}, but ratio was exceeded or request and limit where not set explicitly"))]
     LimitToRequestRatioExceeded {
         container_name: String,
         resource_key: String,
         allowed_ration: f32,
     },
+
+    #[snafu(display("failed to convert Quantity to CpuQuantity for cpu limit"))]
+    CpuLimit { source: crate::cpu::Error },
+
+    #[snafu(display("failed to convert Quantity to CpuQuantity for cpu request"))]
+    CpuRequest { source: crate::cpu::Error },
+
+    #[snafu(display("failed to convert Quantity to MemoryQuantity for memory limit"))]
+    MemoryLimit { source: crate::memory::Error },
+
+    #[snafu(display("failed to convert Quantity to MemoryQuantity for memory request"))]
+    MemoryRequest { source: crate::memory::Error },
 }
 
 /// [`ResourceRequirementsType`] describes the available resource requirement
@@ -389,7 +402,7 @@ pub trait ResourceRequirementsExt {
         &self,
         rr_type: ResourceRequirementsType,
         resource: &str,
-    ) -> Result<(), ResourceRequirementsError>;
+    ) -> Result<()>;
 
     /// Returns wether the implementor has a [`ResourceRequirementsType`] set
     /// for a `resource`.
@@ -403,7 +416,7 @@ pub trait ResourceRequirementsExt {
         &self,
         rr_types: Vec<ResourceRequirementsType>,
         resource: &str,
-    ) -> Result<(), ResourceRequirementsError> {
+    ) -> Result<()> {
         for rr_type in rr_types {
             self.check_resource_requirement(rr_type, resource)?;
         }
@@ -426,7 +439,7 @@ pub trait ResourceRequirementsExt {
         resource: &ComputeResource,
         // We did choose a f32 instead of a usize here, as LimitRange ratios can be a floating point (Quantity - e.g. 1500m)
         ratio: f32,
-    ) -> Result<(), ResourceRequirementsError>;
+    ) -> Result<()>;
 }
 
 impl ResourceRequirementsExt for Container {
@@ -434,7 +447,7 @@ impl ResourceRequirementsExt for Container {
         &self,
         rr_type: ResourceRequirementsType,
         resource: &str,
-    ) -> Result<(), ResourceRequirementsError> {
+    ) -> Result<()> {
         let resources = match rr_type {
             ResourceRequirementsType::Limits => {
                 self.resources.as_ref().and_then(|rr| rr.limits.as_ref())
@@ -444,21 +457,18 @@ impl ResourceRequirementsExt for Container {
             }
         };
         if resources.and_then(|r| r.get(resource)).is_none() {
-            return Err(ResourceRequirementsError::MissingResourceRequirements {
+            return MissingResourceRequirementsSnafu {
                 container_name: self.name.clone(),
-                resource_key: resource.into(),
+                resource_key: resource,
                 resource_type: rr_type,
-            });
+            }
+            .fail();
         }
 
         Ok(())
     }
 
-    fn check_limit_to_request_ratio(
-        &self,
-        resource: &ComputeResource,
-        ratio: f32,
-    ) -> Result<(), ResourceRequirementsError> {
+    fn check_limit_to_request_ratio(&self, resource: &ComputeResource, ratio: f32) -> Result<()> {
         let limit = self
             .resources
             .as_ref()
@@ -472,19 +482,15 @@ impl ResourceRequirementsExt for Container {
         if let (Some(limit), Some(request)) = (limit, request) {
             match resource {
                 ComputeResource::Cpu => {
-                    let limit = CpuQuantity::try_from(limit)
-                        .map_err(|error| ResourceRequirementsError::ParseQuantity { error })?;
-                    let request = CpuQuantity::try_from(request)
-                        .map_err(|error| ResourceRequirementsError::ParseQuantity { error })?;
+                    let limit = CpuQuantity::try_from(limit).context(CpuLimitSnafu)?;
+                    let request = CpuQuantity::try_from(request).context(CpuRequestSnafu)?;
                     if limit / request <= ratio {
                         return Ok(());
                     }
                 }
                 ComputeResource::Memory => {
-                    let limit = MemoryQuantity::try_from(limit)
-                        .map_err(|error| ResourceRequirementsError::ParseQuantity { error })?;
-                    let request = MemoryQuantity::try_from(request)
-                        .map_err(|error| ResourceRequirementsError::ParseQuantity { error })?;
+                    let limit = MemoryQuantity::try_from(limit).context(MemoryLimitSnafu)?;
+                    let request = MemoryQuantity::try_from(request).context(MemoryRequestSnafu)?;
                     if limit / request <= ratio {
                         return Ok(());
                     }
@@ -492,11 +498,12 @@ impl ResourceRequirementsExt for Container {
             }
         }
 
-        Err(ResourceRequirementsError::LimitToRequestRatioExceeded {
+        LimitToRequestRatioExceededSnafu {
             container_name: self.name.clone(),
             resource_key: resource.to_string(),
             allowed_ration: ratio,
-        })
+        }
+        .fail()
     }
 }
 
@@ -505,7 +512,7 @@ impl ResourceRequirementsExt for PodSpec {
         &self,
         rr_type: ResourceRequirementsType,
         resource: &str,
-    ) -> Result<(), ResourceRequirementsError> {
+    ) -> Result<()> {
         for container in &self.containers {
             container.check_resource_requirement(rr_type, resource)?;
         }
@@ -513,11 +520,7 @@ impl ResourceRequirementsExt for PodSpec {
         Ok(())
     }
 
-    fn check_limit_to_request_ratio(
-        &self,
-        resource: &ComputeResource,
-        ratio: f32,
-    ) -> Result<(), ResourceRequirementsError> {
+    fn check_limit_to_request_ratio(&self, resource: &ComputeResource, ratio: f32) -> Result<()> {
         for container in &self.containers {
             container.check_limit_to_request_ratio(resource, ratio)?;
         }

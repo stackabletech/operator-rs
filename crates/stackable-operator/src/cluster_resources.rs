@@ -9,7 +9,6 @@ use crate::{
             LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
         },
     },
-    error::{Error, OperatorResult},
     kvp::{
         consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
         Label, LabelError, Labels,
@@ -32,6 +31,7 @@ use k8s_openapi::{
 };
 use kube::{core::ErrorResponse, Resource, ResourceExt};
 use serde::{de::DeserializeOwned, Serialize};
+use snafu::{OptionExt, ResultExt, Snafu};
 use std::{
     collections::{BTreeMap, HashSet},
     fmt::Debug,
@@ -44,6 +44,40 @@ use crate::k8s_openapi::api::{
     apps::v1::Deployment,
     core::v1::{NodeSelector, Pod},
 };
+
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("object is missing key {key:?}"))]
+    MissingObjectKey { key: &'static str },
+
+    #[snafu(display("failed to list cluster resources with label selector"))]
+    ListClusterResources { source: crate::client::Error },
+
+    #[snafu(display("label {label:?} is missing"))]
+    MissingLabel { label: &'static str },
+
+    #[snafu(display(
+        "label contains unexpected content. \
+            expected: {label}={expected_content}, \
+            actual: {label}={actual_content}"
+    ))]
+    UnexpectedLabelContent {
+        label: &'static str,
+        expected_content: String,
+        actual_content: String,
+    },
+
+    #[snafu(display("failed to get resource"))]
+    ClusterResourceApplyStrategyGetResource { source: crate::client::Error },
+
+    #[snafu(display("failed to apply patch"))]
+    ClusterResourceApplyStrategyApplyPatch { source: crate::client::Error },
+
+    #[snafu(display("failed to delete orphaned resource"))]
+    DeleteOrphanedResource { source: crate::client::Error },
+}
 
 /// A cluster resource handled by [`ClusterResources`].
 ///
@@ -114,7 +148,7 @@ impl ClusterResourceApplyStrategy {
         manager: &str,
         resource: &T,
         client: &Client,
-    ) -> OperatorResult<T> {
+    ) -> Result<T> {
         match self {
             Self::ReconciliationPaused => {
                 debug!(
@@ -128,9 +162,10 @@ impl ClusterResourceApplyStrategy {
                         resource
                             .namespace()
                             .as_deref()
-                            .ok_or(Error::MissingObjectKey { key: "namespace" })?,
+                            .context(MissingObjectKeySnafu { key: "namespace" })?,
                     )
                     .await
+                    .context(ClusterResourceApplyStrategyGetResourceSnafu)
             }
             Self::Default | Self::ClusterStopped => {
                 debug!(
@@ -138,7 +173,10 @@ impl ClusterResourceApplyStrategy {
                     resource.name_any(),
                     self
                 );
-                client.apply_patch(manager, resource, resource).await
+                client
+                    .apply_patch(manager, resource, resource)
+                    .await
+                    .context(ClusterResourceApplyStrategyApplyPatchSnafu)
             }
             Self::NoApply => {
                 debug!(
@@ -259,7 +297,7 @@ impl ClusterResource for DaemonSet {
 /// use schemars::JsonSchema;
 /// use serde::{Deserialize, Serialize};
 /// use stackable_operator::client::Client;
-/// use stackable_operator::cluster_resources::{ClusterResourceApplyStrategy, ClusterResources};
+/// use stackable_operator::cluster_resources::{self, ClusterResourceApplyStrategy, ClusterResources};
 /// use stackable_operator::product_config_utils::ValidatedRoleConfigByPropertyKind;
 /// use stackable_operator::role_utils::Role;
 /// use std::sync::Arc;
@@ -280,13 +318,13 @@ impl ClusterResource for DaemonSet {
 ///
 /// enum Error {
 ///     CreateClusterResources {
-///         source: stackable_operator::error::Error,
+///         source: cluster_resources::Error,
 ///     },
 ///     AddClusterResource {
-///         source: stackable_operator::error::Error,
+///         source: cluster_resources::Error,
 ///     },
 ///     DeleteOrphanedClusterResources {
-///         source: stackable_operator::error::Error,
+///         source: cluster_resources::Error,
 ///     },
 /// };
 ///
@@ -387,7 +425,7 @@ impl ClusterResources {
     ///
     /// # Errors
     ///
-    /// If `cluster` does not contain a namespace and a name then an `Error::MissingObjectKey` is
+    /// If `cluster` does not contain a namespace and a name then an [`Error::MissingObjectKey`] is
     /// returned.
     pub fn new(
         app_name: &str,
@@ -395,15 +433,15 @@ impl ClusterResources {
         controller_name: &str,
         cluster: &ObjectReference,
         apply_strategy: ClusterResourceApplyStrategy,
-    ) -> OperatorResult<Self> {
+    ) -> Result<Self> {
         let namespace = cluster
             .namespace
             .to_owned()
-            .ok_or(Error::MissingObjectKey { key: "namespace" })?;
+            .context(MissingObjectKeySnafu { key: "namespace" })?;
         let app_instance = cluster
             .name
             .to_owned()
-            .ok_or(Error::MissingObjectKey { key: "name" })?;
+            .context(MissingObjectKeySnafu { key: "name" })?;
 
         Ok(ClusterResources {
             namespace,
@@ -441,19 +479,19 @@ impl ClusterResources {
     ///
     /// # Errors
     ///
-    /// If the labels of the given resource are not set properly then an `Error::MissingLabel` or
-    /// `Error::UnexpectedLabelContent` is returned. The expected labels are:
+    /// If the labels of the given resource are not set properly then an [`Error::MissingLabel`] or
+    /// [`Error::UnexpectedLabelContent`] is returned. The expected labels are:
     /// * `app.kubernetes.io/instance = <cluster.name>`
     /// * `app.kubernetes.io/managed-by = <app_name>-operator`
     /// * `app.kubernetes.io/name = <app_name>`
     ///
-    /// If the patched resource does not contain a UID then an `Error::MissingObjectKey` is
+    /// If the patched resource does not contain a UID then an [`Error::MissingObjectKey`] is
     /// returned.
     pub async fn add<T: ClusterResource + Sync>(
         &mut self,
         client: &Client,
         resource: T,
-    ) -> OperatorResult<T> {
+    ) -> Result<T> {
         Self::check_labels(
             resource.labels(),
             &[
@@ -489,7 +527,7 @@ impl ClusterResources {
             .run(&self.manager, &mutated, client)
             .await?;
 
-        let resource_id = patched_resource.uid().ok_or(Error::MissingObjectKey {
+        let resource_id = patched_resource.uid().context(MissingObjectKeySnafu {
             key: "metadata/uid",
         })?;
 
@@ -519,7 +557,7 @@ impl ClusterResources {
         labels: &BTreeMap<String, String>,
         expected_label: &'static str,
         expected_content: &str,
-    ) -> OperatorResult<()> {
+    ) -> Result<()> {
         if let Some(actual_content) = labels.get(expected_label) {
             if expected_content == actual_content {
                 Ok(())
@@ -543,7 +581,7 @@ impl ClusterResources {
         labels: &BTreeMap<String, String>,
         expected_labels: &[&'static str],
         expected_contents: &[&str],
-    ) -> OperatorResult<()> {
+    ) -> Result<()> {
         for (label, content) in expected_labels.iter().zip(expected_contents) {
             Self::check_label(labels, label, content)?;
         }
@@ -566,7 +604,7 @@ impl ClusterResources {
     ///
     /// * `client` - The client which is used to access Kubernetes
     ///
-    pub async fn delete_orphaned_resources(self, client: &Client) -> OperatorResult<()> {
+    pub async fn delete_orphaned_resources(self, client: &Client) -> Result<()> {
         tokio::try_join!(
             self.delete_orphaned_resources_of_kind::<Service>(client),
             self.delete_orphaned_resources_of_kind::<StatefulSet>(client),
@@ -595,12 +633,12 @@ impl ClusterResources {
     ///
     /// # Errors
     ///
-    /// If a deployed resource does not contain a UID then an `Error::MissingObjectKey` is
+    /// If a deployed resource does not contain a UID then an [`Error::MissingObjectKey`] is
     /// returned.
     async fn delete_orphaned_resources_of_kind<T: ClusterResource>(
         &self,
         client: &Client,
-    ) -> OperatorResult<()> {
+    ) -> Result<()> {
         if !self.apply_strategy.delete_orphans() {
             debug!(
                 "Skip deleting orphaned resources because of [{}] strategy.",
@@ -614,7 +652,7 @@ impl ClusterResources {
                 let mut orphaned_resources = Vec::new();
 
                 for resource in deployed_cluster_resources {
-                    let resource_id = resource.uid().ok_or(Error::MissingObjectKey {
+                    let resource_id = resource.uid().context(MissingObjectKeySnafu {
                         key: "metadata/uid",
                     })?;
                     if !self.resource_ids.contains(&resource_id) {
@@ -629,13 +667,16 @@ impl ClusterResources {
                         ClusterResources::print_resources(&orphaned_resources),
                     );
                     for resource in orphaned_resources.iter() {
-                        client.delete(resource).await?;
+                        client
+                            .delete(resource)
+                            .await
+                            .context(DeleteOrphanedResourceSnafu)?;
                     }
                 }
 
                 Ok(())
             }
-            Err(Error::KubeError {
+            Err(crate::client::Error::ListResources {
                 source: kube::Error::Api(ErrorResponse { code: 403, .. }),
             }) => {
                 debug!(
@@ -645,7 +686,7 @@ impl ClusterResources {
                 );
                 Ok(())
             }
-            Err(error) => Err(error),
+            Err(error) => Err(error).context(ListClusterResourcesSnafu),
         }
     }
 
@@ -678,7 +719,7 @@ impl ClusterResources {
     async fn list_deployed_cluster_resources<T: ClusterResource>(
         &self,
         client: &Client,
-    ) -> OperatorResult<Vec<T>> {
+    ) -> crate::client::Result<Vec<T>> {
         let label_selector = LabelSelector {
             match_expressions: Some(vec![
                 LabelSelectorRequirement {

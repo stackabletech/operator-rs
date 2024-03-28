@@ -44,14 +44,33 @@
 //! assert_eq!(opa_config.full_document_url(&cluster, "http://localhost:8081", None, OpaApiVersion::V1), "http://localhost:8081/v1/data/test".to_string());
 //! ```
 use crate::client::{Client, GetApi};
-use crate::error;
-use crate::error::OperatorResult;
 use k8s_openapi::{api::core::v1::ConfigMap, NamespaceResourceScope};
 use kube::{Resource, ResourceExt};
 use lazy_static::lazy_static;
 use regex::Regex;
 use schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
+use snafu::{OptionExt, ResultExt, Snafu};
+
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("cannot find OPA configmap {configmap_name:?} in namespace {namespace:?}"))]
+    GetOpaConfigMap {
+        source: crate::client::Error,
+        configmap_name: String,
+        namespace: String,
+    },
+
+    #[snafu(display(
+        "missing OPA connect string in configmap {configmap_name:?} in namespace {namespace:?}"
+    ))]
+    MissingOpaConnectString {
+        configmap_name: String,
+        namespace: String,
+    },
+}
 
 lazy_static! {
     static ref DOT_REGEX: Regex = Regex::new("\\.").unwrap();
@@ -195,7 +214,7 @@ impl OpaConfig {
         resource: &T,
         rule: Option<&str>,
         api_version: OpaApiVersion,
-    ) -> OperatorResult<String>
+    ) -> Result<String>
     where
         T: Resource<Scope = NamespaceResourceScope>,
     {
@@ -212,18 +231,19 @@ impl OpaConfig {
     /// # Arguments
     /// * `client`       - The kubernetes client.
     /// * `namespace`    - The namespace of the config map.
-    async fn base_url_from_config_map(
-        &self,
-        client: &Client,
-        namespace: &str,
-    ) -> OperatorResult<String> {
+    async fn base_url_from_config_map(&self, client: &Client, namespace: &str) -> Result<String> {
         client
             .get::<ConfigMap>(&self.config_map_name, namespace)
-            .await?
+            .await
+            .with_context(|_| GetOpaConfigMapSnafu {
+                configmap_name: self.config_map_name.clone(),
+                namespace,
+            })?
             .data
             .and_then(|mut data| data.remove("OPA"))
-            .ok_or(error::Error::MissingOpaConnectString {
+            .with_context(|| MissingOpaConnectStringSnafu {
                 configmap_name: self.config_map_name.clone(),
+                namespace,
             })
     }
 

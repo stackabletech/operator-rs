@@ -6,7 +6,6 @@ pub mod commons;
 pub mod config;
 pub mod cpu;
 pub mod crd;
-pub mod error;
 pub mod helm;
 pub mod iter;
 pub mod kvp;

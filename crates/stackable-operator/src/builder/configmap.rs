@@ -1,6 +1,14 @@
-use crate::error::{Error, OperatorResult};
 use k8s_openapi::{api::core::v1::ConfigMap, apimachinery::pkg::apis::meta::v1::ObjectMeta};
+use snafu::Snafu;
 use std::collections::BTreeMap;
+
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Snafu, Debug)]
+pub enum Error {
+    #[snafu(display("object is missing key {key:?}"))]
+    MissingObjectKey { key: &'static str },
+}
 
 /// A builder to build [`ConfigMap`] objects.
 #[derive(Clone, Default)]
@@ -41,10 +49,10 @@ impl ConfigMapBuilder {
         self
     }
 
-    pub fn build(&self) -> OperatorResult<ConfigMap> {
+    pub fn build(&self) -> Result<ConfigMap> {
         Ok(ConfigMap {
             metadata: match self.metadata {
-                None => return Err(Error::MissingObjectKey { key: "metadata" }),
+                None => return MissingObjectKeySnafu { key: "metadata" }.fail(),
                 Some(ref metadata) => metadata.clone(),
             },
             data: self.data.clone(),

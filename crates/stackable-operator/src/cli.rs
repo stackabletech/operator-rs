@@ -14,8 +14,7 @@
 //! use kube::CustomResource;
 //! use schemars::JsonSchema;
 //! use serde::{Deserialize, Serialize};
-//! use stackable_operator::{CustomResourceExt, cli};
-//! use stackable_operator::error::OperatorResult;
+//! use stackable_operator::{CustomResourceExt, cli, crd};
 //!
 //! const OPERATOR_VERSION: &str = "23.1.1";
 //!
@@ -53,7 +52,7 @@
 //!     command: cli::Command,
 //! }
 //!
-//! # fn main() -> OperatorResult<()> {
+//! # fn main() -> Result<(), crd::Error> {
 //! let opts = Opts::parse();
 //!
 //! match opts.command {
@@ -74,7 +73,6 @@
 //! ```no_run
 //! use clap::{crate_version, Parser};
 //! use stackable_operator::cli;
-//! use stackable_operator::error::OperatorResult;
 //!
 //! #[derive(clap::Parser)]
 //! #[command(
@@ -88,7 +86,7 @@
 //!     command: cli::Command,
 //! }
 //!
-//! # fn main() -> OperatorResult<()> {
+//! # fn main() -> Result<(), cli::Error> {
 //! let opts = Opts::parse();
 //!
 //! match opts.command {
@@ -108,17 +106,32 @@
 //! ```
 //!
 //!
-use crate::error::OperatorResult;
+use crate::logging::TracingTarget;
 use crate::namespace::WatchNamespace;
-use crate::{error, logging::TracingTarget};
 use clap::Args;
 use product_config::ProductConfigManager;
+use snafu::Snafu;
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
 };
 
 pub const AUTHOR: &str = "Stackable GmbH - info@stackable.tech";
+
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, PartialEq, Snafu)]
+pub enum Error {
+    #[snafu(display("failed to load ProductConfig"))]
+    ProductConfigLoad {
+        source: Box<product_config::error::Error>,
+    },
+
+    #[snafu(display(
+        "a required File is missing. Not found in any of the following locations: {search_path:?}"
+    ))]
+    RequiredFileMissing { search_path: Vec<PathBuf> },
+}
 
 /// Framework-standardized commands
 ///
@@ -218,15 +231,12 @@ impl From<&OsStr> for ProductConfigPath {
 impl ProductConfigPath {
     /// Load the [`ProductConfigManager`] from the given path, falling back to the first
     /// path that exists from `default_search_paths` if none is given by the user.
-    pub fn load(
-        &self,
-        default_search_paths: &[impl AsRef<Path>],
-    ) -> OperatorResult<ProductConfigManager> {
+    pub fn load(&self, default_search_paths: &[impl AsRef<Path>]) -> Result<ProductConfigManager> {
         ProductConfigManager::from_yaml_file(resolve_path(
             self.path.as_deref(),
             default_search_paths,
         )?)
-        .map_err(|source| error::Error::ProductConfigLoadError {
+        .map_err(|source| Error::ProductConfigLoad {
             source: source.into(),
         })
     }
@@ -240,7 +250,7 @@ impl ProductConfigPath {
 fn resolve_path<'a>(
     user_provided_path: Option<&'a Path>,
     default_paths: &'a [impl AsRef<Path> + 'a],
-) -> OperatorResult<&'a Path> {
+) -> Result<&'a Path> {
     // Use override if specified by the user, otherwise search through defaults given
     let search_paths = if let Some(path) = user_provided_path {
         vec![path]
@@ -252,9 +262,13 @@ fn resolve_path<'a>(
             return Ok(path);
         }
     }
-    Err(error::Error::RequiredFileMissing {
-        search_path: search_paths.into_iter().map(PathBuf::from).collect(),
-    })
+    RequiredFileMissingSnafu {
+        search_path: search_paths
+            .into_iter()
+            .map(PathBuf::from)
+            .collect::<Vec<_>>(),
+    }
+    .fail()
 }
 
 #[cfg(test)]
@@ -296,8 +310,8 @@ mod tests {
         #[case] default_locations: Vec<&str>,
         #[case] path_to_create: &str,
         #[case] expected: &str,
-    ) -> OperatorResult<()> {
-        let temp_dir = tempdir()?;
+    ) -> Result<()> {
+        let temp_dir = tempdir().expect("create temporary directory");
         let full_path_to_create = temp_dir.path().join(path_to_create);
         let full_user_provided_path = user_provided_path.map(|p| temp_dir.path().join(p));
         let expected_path = temp_dir.path().join(expected);
@@ -314,7 +328,7 @@ mod tests {
             .map(String::as_str)
             .collect::<Vec<_>>();
 
-        let file = File::create(full_path_to_create)?;
+        let file = File::create(full_path_to_create).expect("create temporary file");
 
         let found_path = resolve_path(
             full_user_provided_path.as_deref(),
@@ -324,7 +338,7 @@ mod tests {
         assert_eq!(found_path, expected_path);
 
         drop(file);
-        temp_dir.close()?;
+        temp_dir.close().expect("clean up temporary directory");
 
         Ok(())
     }
@@ -337,7 +351,7 @@ mod tests {
 
     #[test]
     fn test_resolve_path_nothing_found_errors() {
-        if let Err(error::Error::RequiredFileMissing { search_path }) =
+        if let Err(Error::RequiredFileMissing { search_path }) =
             resolve_path(None, &[DEPLOY_FILE_PATH, DEFAULT_FILE_PATH])
         {
             assert_eq!(

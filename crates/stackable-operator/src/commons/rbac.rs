@@ -1,14 +1,31 @@
 use kube::{Resource, ResourceExt};
+use snafu::{ResultExt, Snafu};
 
 use crate::{
     builder::meta::ObjectMetaBuilder,
-    error::OperatorResult,
     k8s_openapi::api::{
         core::v1::ServiceAccount,
         rbac::v1::{RoleBinding, RoleRef, Subject},
     },
     kvp::Labels,
 };
+
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, PartialEq, Snafu)]
+pub enum Error {
+    #[snafu(display("failed to set owner reference from resource for Aervice Account {name:?}"))]
+    ServiceAccountOwnerReferenceFromResource {
+        source: crate::builder::meta::Error,
+        name: String,
+    },
+
+    #[snafu(display("failed to set owner reference from resource Role Binding {name:?}"))]
+    RoleBindingOwnerReferenceFromResource {
+        source: crate::builder::meta::Error,
+        name: String,
+    },
+}
 
 /// Build RBAC objects for the product workloads.
 /// The `rbac_prefix` is meant to be the product name, for example: zookeeper, airflow, etc.
@@ -17,13 +34,16 @@ pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     resource: &T,
     rbac_prefix: &str,
     labels: Labels,
-) -> OperatorResult<(ServiceAccount, RoleBinding)> {
+) -> Result<(ServiceAccount, RoleBinding)> {
     let sa_name = service_account_name(rbac_prefix);
     let service_account = ServiceAccount {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(resource)
             .name(sa_name.clone())
-            .ownerreference_from_resource(resource, None, Some(true))?
+            .ownerreference_from_resource(resource, None, Some(true))
+            .with_context(|_| ServiceAccountOwnerReferenceFromResourceSnafu {
+                name: sa_name.clone(),
+            })?
             .with_labels(labels.clone())
             .build(),
         ..ServiceAccount::default()
@@ -33,7 +53,10 @@ pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(resource)
             .name(role_binding_name(rbac_prefix))
-            .ownerreference_from_resource(resource, None, Some(true))?
+            .ownerreference_from_resource(resource, None, Some(true))
+            .context(RoleBindingOwnerReferenceFromResourceSnafu {
+                name: resource.name_any(),
+            })?
             .with_labels(labels)
             .build(),
         role_ref: RoleRef {

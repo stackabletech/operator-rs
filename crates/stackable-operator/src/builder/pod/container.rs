@@ -3,12 +3,23 @@ use k8s_openapi::api::core::v1::{
     LifecycleHandler, ObjectFieldSelector, Probe, ResourceRequirements, SecretKeySelector,
     SecurityContext, VolumeMount,
 };
+use snafu::Snafu;
 use std::fmt;
 
 use crate::{
-    commons::product_image_selection::ResolvedProductImage, error::Error,
-    validation::is_rfc_1123_label,
+    commons::product_image_selection::ResolvedProductImage, validation::is_rfc_1123_label,
 };
+
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, PartialEq, Snafu)]
+pub enum Error {
+    #[snafu(display("container name {container_name:?} is invalid: {violation}"))]
+    InvalidContainerName {
+        container_name: String,
+        violation: String,
+    },
+}
 
 /// A builder to build [`Container`] objects.
 ///
@@ -32,7 +43,7 @@ pub struct ContainerBuilder {
 }
 
 impl ContainerBuilder {
-    pub fn new(name: &str) -> Result<Self, Error> {
+    pub fn new(name: &str) -> Result<Self> {
         Self::validate_container_name(name)?;
         Ok(ContainerBuilder {
             name: name.to_string(),
@@ -264,7 +275,7 @@ impl ContainerBuilder {
 
     /// Validates a container name is according to the [RFC 1123](https://www.ietf.org/rfc/rfc1123.txt) standard.
     /// Returns [Ok] if the name is according to the standard, and [Err] if not.
-    fn validate_container_name(name: &str) -> Result<(), Error> {
+    fn validate_container_name(name: &str) -> Result<()> {
         let validation_result = is_rfc_1123_label(name);
 
         match validation_result {
@@ -490,15 +501,12 @@ mod tests {
                 panic!("Container name exceeding 63 characters should cause an error");
             }
             Err(error) => match error {
-                crate::error::Error::InvalidContainerName {
+                Error::InvalidContainerName {
                     container_name,
                     violation,
                 } => {
                     assert_eq!(container_name.as_str(), long_container_name);
                     assert_eq!(violation.as_str(), "must be no more than 63 characters")
-                }
-                _ => {
-                    panic!("InvalidContainerName error expected")
                 }
             },
         }
@@ -569,15 +577,12 @@ mod tests {
                 panic!("Container name exceeding 63 characters should cause an error");
             }
             Err(error) => match error {
-                crate::error::Error::InvalidContainerName {
+                Error::InvalidContainerName {
                     container_name: _,
                     violation,
                 } => {
                     println!("{violation}");
                     assert!(violation.contains(expected_err_contains));
-                }
-                _ => {
-                    panic!("InvalidContainerName error expected");
                 }
             },
         }

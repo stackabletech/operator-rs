@@ -7,12 +7,31 @@
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 
 use crate::{
     client::Client,
     commons::{authentication::tls::Tls, secret_class::SecretClassVolume},
-    error::{self, OperatorResult},
 };
+
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("missing S3 connection {resource_name:?} in namespace {namespace:?}"))]
+    MissingS3Connection {
+        source: crate::client::Error,
+        resource_name: String,
+        namespace: String,
+    },
+
+    #[snafu(display("missing S3 bucket {resource_name:?} in namespace {namespace:?}"))]
+    MissingS3Bucket {
+        source: crate::client::Error,
+        resource_name: String,
+        namespace: String,
+    },
+}
 
 /// S3 bucket specification containing the bucket name and an inlined or referenced connection specification.
 /// Learn more on the [S3 concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
@@ -50,22 +69,19 @@ impl S3BucketSpec {
         resource_name: &str,
         client: &Client,
         namespace: &str,
-    ) -> OperatorResult<S3BucketSpec> {
+    ) -> Result<S3BucketSpec> {
         client
             .get::<S3Bucket>(resource_name, namespace)
             .await
             .map(|crd| crd.spec)
-            .map_err(|_source| error::Error::MissingS3Bucket {
-                name: resource_name.to_string(),
+            .context(MissingS3BucketSnafu {
+                resource_name,
+                namespace,
             })
     }
 
     /// Map &self to an [InlinedS3BucketSpec] by obtaining connection spec from the K8S API service if necessary
-    pub async fn inlined(
-        &self,
-        client: &Client,
-        namespace: &str,
-    ) -> OperatorResult<InlinedS3BucketSpec> {
+    pub async fn inlined(&self, client: &Client, namespace: &str) -> Result<InlinedS3BucketSpec> {
         match self.connection.as_ref() {
             Some(connection_def) => Ok(InlinedS3BucketSpec {
                 connection: Some(connection_def.resolve(client, namespace).await?),
@@ -110,11 +126,7 @@ pub enum S3BucketDef {
 
 impl S3BucketDef {
     /// Returns an [InlinedS3BucketSpec].
-    pub async fn resolve(
-        &self,
-        client: &Client,
-        namespace: &str,
-    ) -> OperatorResult<InlinedS3BucketSpec> {
+    pub async fn resolve(&self, client: &Client, namespace: &str) -> Result<InlinedS3BucketSpec> {
         match self {
             S3BucketDef::Inline(s3_bucket) => s3_bucket.inlined(client, namespace).await,
             S3BucketDef::Reference(s3_bucket) => {
@@ -139,11 +151,7 @@ pub enum S3ConnectionDef {
 
 impl S3ConnectionDef {
     /// Returns an [S3ConnectionSpec].
-    pub async fn resolve(
-        &self,
-        client: &Client,
-        namespace: &str,
-    ) -> OperatorResult<S3ConnectionSpec> {
+    pub async fn resolve(&self, client: &Client, namespace: &str) -> Result<S3ConnectionSpec> {
         match self {
             S3ConnectionDef::Inline(s3_connection_spec) => Ok(s3_connection_spec.clone()),
             S3ConnectionDef::Reference(s3_conn_reference) => {
@@ -206,13 +214,14 @@ impl S3ConnectionSpec {
         resource_name: &str,
         client: &Client,
         namespace: &str,
-    ) -> OperatorResult<S3ConnectionSpec> {
+    ) -> Result<S3ConnectionSpec> {
         client
             .get::<S3Connection>(resource_name, namespace)
             .await
             .map(|conn| conn.spec)
-            .map_err(|_source| error::Error::MissingS3Connection {
-                name: resource_name.to_string(),
+            .context(MissingS3ConnectionSnafu {
+                resource_name,
+                namespace,
             })
     }
 

@@ -7,8 +7,27 @@ use std::{
 
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use serde::{de::Visitor, Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 
-use crate::error::{Error, OperatorResult};
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, PartialEq, Snafu)]
+pub enum Error {
+    #[snafu(display("unsupported Precision {value:?}. Kubernetes doesn't allow you to specify CPU resources with a precision finer than 1m. Because of this, it's useful to specify CPU units less than 1.0 or 1000m using the milliCPU form; for example, 5m rather than 0.005"))]
+    UnsupportedCpuQuantityPrecision { value: String },
+
+    #[snafu(display("invalid cpu integer quantity {value:?}"))]
+    InvalidCpuIntQuantity {
+        source: std::num::ParseIntError,
+        value: String,
+    },
+
+    #[snafu(display("invalid cpu float quantity {value:?}"))]
+    InvalidCpuFloatQuantity {
+        source: std::num::ParseFloatError,
+        value: String,
+    },
+}
 
 /// A representation of CPU quantities with milli precision.
 /// Supports conversion from [`Quantity`].
@@ -88,28 +107,30 @@ impl FromStr for CpuQuantity {
     /// For the float, only milli-precision is supported.
     /// Using more precise values will trigger an error, and using any other
     /// unit than 'm' or None will also trigger an error.
-    fn from_str(q: &str) -> OperatorResult<Self> {
+    fn from_str(q: &str) -> Result<Self> {
         let start_of_unit = q.find(|c: char| c != '.' && !c.is_numeric());
         if let Some(start_of_unit) = start_of_unit {
             let (value, unit) = q.split_at(start_of_unit);
             if unit != "m" {
-                return Err(Error::UnsupportedCpuQuantityPrecision {
+                return UnsupportedCpuQuantityPrecisionSnafu {
                     value: q.to_owned(),
-                });
+                }
+                .fail();
             }
-            let cpu_millis: usize = value.parse().map_err(|_| Error::InvalidCpuQuantity {
+            let cpu_millis: usize = value.parse().context(InvalidCpuIntQuantitySnafu {
                 value: q.to_owned(),
             })?;
             Ok(Self::from_millis(cpu_millis))
         } else {
-            let cpus = q.parse::<f32>().map_err(|_| Error::InvalidCpuQuantity {
+            let cpus = q.parse::<f32>().context(InvalidCpuFloatQuantitySnafu {
                 value: q.to_owned(),
             })?;
             let millis_float = cpus * 1000.;
             if millis_float != millis_float.round() {
-                return Err(Error::UnsupportedCpuQuantityPrecision {
+                return UnsupportedCpuQuantityPrecisionSnafu {
                     value: q.to_owned(),
-                });
+                }
+                .fail();
             }
             Ok(Self::from_millis(millis_float as usize))
         }

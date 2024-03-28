@@ -21,7 +21,6 @@ use crate::{
             LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
         },
     },
-    error::{self, OperatorResult},
     time::Duration,
 };
 
@@ -32,6 +31,8 @@ pub mod resources;
 pub mod security;
 pub mod volume;
 
+type Result<T, E = Error> = std::result::Result<T, E>;
+
 #[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
     #[snafu(display("termination grace period is too long (got {duration}, maximum allowed is {max})", max = Duration::from_secs(i64::MAX as u64)))]
@@ -40,13 +41,15 @@ pub enum Error {
         duration: Duration,
     },
 
-    #[snafu(display("failed to add listener volume '{name}' to the pod"))]
+    #[snafu(display("failed to add listener volume {name:?} to the pod"))]
     ListenerVolume {
         source: volume::ListenerOperatorVolumeSourceBuilderError,
         name: String,
     },
+
+    #[snafu(display("object is missing key {key:?}"))]
+    MissingObjectKey { key: &'static str },
 }
-pub type Result<T> = std::result::Result<T, Error>;
 
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -279,8 +282,8 @@ impl PodBuilder {
     /// # Example
     ///
     /// ```
-    /// # use stackable_operator::builder::PodBuilder;
-    /// # use stackable_operator::builder::ContainerBuilder;
+    /// # use stackable_operator::builder::pod::PodBuilder;
+    /// # use stackable_operator::builder::pod::container::ContainerBuilder;
     /// # use stackable_operator::builder::pod::resources::ResourceRequirementsBuilder;
     /// # use k8s_openapi::{
     ///     api::core::v1::ResourceRequirements,
@@ -368,8 +371,8 @@ impl PodBuilder {
     /// # Example
     ///
     /// ```
-    /// # use stackable_operator::builder::PodBuilder;
-    /// # use stackable_operator::builder::ContainerBuilder;
+    /// # use stackable_operator::builder::pod::PodBuilder;
+    /// # use stackable_operator::builder::pod::container::ContainerBuilder;
     /// # use stackable_operator::builder::pod::resources::ResourceRequirementsBuilder;
     /// # use k8s_openapi::{
     ///     api::core::v1::ResourceRequirements,
@@ -496,10 +499,10 @@ impl PodBuilder {
     }
 
     /// Consumes the Builder and returns a constructed [`Pod`]
-    pub fn build(&self) -> OperatorResult<Pod> {
+    pub fn build(&self) -> Result<Pod> {
         Ok(Pod {
             metadata: match self.metadata {
-                None => return Err(error::Error::MissingObjectKey { key: "metadata" }),
+                None => return MissingObjectKeySnafu { key: "metadata" }.fail(),
                 Some(ref metadata) => metadata.clone(),
             },
             spec: Some(self.build_spec()),

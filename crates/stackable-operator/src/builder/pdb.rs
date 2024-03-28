@@ -6,12 +6,26 @@ use k8s_openapi::{
     },
 };
 use kube::{Resource, ResourceExt};
+use snafu::{ResultExt, Snafu};
 
 use crate::{
     builder::meta::ObjectMetaBuilder,
-    error::OperatorResult,
     kvp::{Label, Labels},
 };
+
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, PartialEq, Snafu)]
+pub enum Error {
+    #[snafu(display("failed to create role selector labels"))]
+    RoleSelectorLabels { source: crate::kvp::LabelError },
+
+    #[snafu(display("failed to set owner reference from resource"))]
+    OwnerReferenceFromResource { source: crate::builder::meta::Error },
+
+    #[snafu(display("failed to create app.kubernetes.io/managed-by label"))]
+    ManagedByLabel { source: crate::kvp::LabelError },
+}
 
 /// This builder is used to construct [`PodDisruptionBudget`]s.
 /// If you are using this to create [`PodDisruptionBudget`]s according to [ADR 30 on Allowed Pod disruptions][adr],
@@ -70,14 +84,18 @@ impl PodDisruptionBudgetBuilder<(), (), ()> {
         role: &str,
         operator_name: &str,
         controller_name: &str,
-    ) -> OperatorResult<PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()>> {
-        let role_selector_labels = Labels::role_selector(owner, app_name, role)?;
+    ) -> Result<PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()>> {
+        let role_selector_labels =
+            Labels::role_selector(owner, app_name, role).context(RoleSelectorLabelsSnafu)?;
         let metadata = ObjectMetaBuilder::new()
             .namespace_opt(owner.namespace())
             .name(format!("{}-{}", owner.name_any(), role))
-            .ownerreference_from_resource(owner, None, Some(true))?
+            .ownerreference_from_resource(owner, None, Some(true))
+            .context(OwnerReferenceFromResourceSnafu)?
             .with_labels(role_selector_labels.clone())
-            .with_label(Label::managed_by(operator_name, controller_name)?)
+            .with_label(
+                Label::managed_by(operator_name, controller_name).context(ManagedByLabelSnafu)?,
+            )
             .build();
 
         Ok(PodDisruptionBudgetBuilder {

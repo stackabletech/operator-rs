@@ -1,12 +1,10 @@
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use snafu::{OptionExt, Snafu};
 use strum::Display;
 
-use crate::{
-    client::Client,
-    error::{Error, OperatorResult},
-};
+use crate::client::Client;
 
 pub mod ldap;
 pub mod oidc;
@@ -14,6 +12,14 @@ pub mod static_;
 pub mod tls;
 
 pub(crate) const SECRET_BASE_PATH: &str = "/stackable/secrets";
+
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, PartialEq, Snafu)]
+pub enum Error {
+    #[snafu(display("authentication details for OIDC were not specified. The AuthenticationClass {auth_class_name:?} uses an OIDC provider, you need to specify OIDC authentication details (such as client credentials) as well"))]
+    OidcAuthenticationDetailsNotSpecified { auth_class_name: String },
+}
 
 /// The Stackable Platform uses the AuthenticationClass as a central mechanism to handle user authentication across supported products.
 /// The authentication mechanism needs to be configured only in the AuthenticationClass which is then referenced in the product.
@@ -77,7 +83,7 @@ impl AuthenticationClass {
     pub async fn resolve(
         client: &Client,
         authentication_class_name: &str,
-    ) -> OperatorResult<AuthenticationClass> {
+    ) -> crate::client::Result<AuthenticationClass> {
         client
             .get::<AuthenticationClass>(authentication_class_name, &()) // AuthenticationClass has ClusterScope
             .await
@@ -137,8 +143,11 @@ pub struct ClientAuthenticationDetails<O = ()> {
 
 impl<O> ClientAuthenticationDetails<O> {
     /// Resolves this specific [`AuthenticationClass`]. Usually products support
-    /// a list of authentication classes, which individually need to be resolved.
-    pub async fn resolve_class(&self, client: &Client) -> OperatorResult<AuthenticationClass> {
+    /// a list of authentication classes, which individually need to be resolved.crate::client
+    pub async fn resolve_class(
+        &self,
+        client: &Client,
+    ) -> crate::client::Result<AuthenticationClass> {
         AuthenticationClass::resolve(client, &self.authentication_class_ref).await
     }
 
@@ -152,10 +161,10 @@ impl<O> ClientAuthenticationDetails<O> {
     pub fn oidc_or_error(
         &self,
         auth_class_name: &str,
-    ) -> OperatorResult<&oidc::ClientAuthenticationOptions<O>> {
+    ) -> Result<&oidc::ClientAuthenticationOptions<O>> {
         self.oidc
             .as_ref()
-            .ok_or(Error::OidcAuthenticationDetailsNotSpecified {
+            .with_context(|| OidcAuthenticationDetailsNotSpecifiedSnafu {
                 auth_class_name: auth_class_name.to_string(),
             })
     }
