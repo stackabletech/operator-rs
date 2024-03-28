@@ -1,10 +1,11 @@
+use std::fmt;
+
 use k8s_openapi::api::core::v1::{
     ConfigMapKeySelector, Container, ContainerPort, EnvVar, EnvVarSource, Lifecycle,
     LifecycleHandler, ObjectFieldSelector, Probe, ResourceRequirements, SecretKeySelector,
     SecurityContext, VolumeMount,
 };
 use snafu::Snafu;
-use std::fmt;
 
 use crate::{
     commons::product_image_selection::ResolvedProductImage, validation::is_rfc_1123_label,
