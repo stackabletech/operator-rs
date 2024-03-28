@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Removed
+
+- Remove `thiserror` dependency, and deprecated builder exports ([#761])
+
+[#761]: https://github.com/stackabletech/operator-rs/pull/761
+
 ## [0.66.0] - 2024-03-26
 
 ### Changed
