@@ -278,6 +278,10 @@ impl SpanExt for Span {
         // are present. The OpenTelemetry spec also marks this as opt-in.
         if opt_in {
             for (header_name, header_value) in req.headers() {
+                // NOTE (@Techassi): Make sure this is validated, and if not, remove
+                // illegal characters.
+                // TODO (@Techassi): Add an allow list for header names
+                // TODO (@Techassi): Handle multiple headers with the same name
                 let header_name = header_name.as_str().to_lowercase();
                 let field_name = format!("http.request.header.{header_name}");
 
