@@ -93,6 +93,37 @@ pub const LIMIT_REQUEST_RATIO_MEMORY: f32 = 1.0;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
+#[derive(Debug, PartialEq, Snafu)]
+pub enum Error {
+    #[snafu(display(
+        "missing {resource_key:?} resource {resource_type:?} for container {container_name:?}"
+    ))]
+    MissingResourceRequirements {
+        container_name: String,
+        resource_key: String,
+        resource_type: ResourceRequirementsType,
+    },
+
+    #[snafu(display("{resource_key:?} max limit to request ratio for Container {container_name:?} is {allowed_ration:?}, but ratio was exceeded or request and limit where not set explicitly"))]
+    LimitToRequestRatioExceeded {
+        container_name: String,
+        resource_key: String,
+        allowed_ration: f32,
+    },
+
+    #[snafu(display("failed to convert Quantity to CpuQuantity for cpu limit"))]
+    CpuLimit { source: crate::cpu::Error },
+
+    #[snafu(display("failed to convert Quantity to CpuQuantity for cpu request"))]
+    CpuRequest { source: crate::cpu::Error },
+
+    #[snafu(display("failed to convert Quantity to MemoryQuantity for memory limit"))]
+    MemoryLimit { source: crate::memory::Error },
+
+    #[snafu(display("failed to convert Quantity to MemoryQuantity for memory request"))]
+    MemoryRequest { source: crate::memory::Error },
+}
+
 /// Resource usage is configured here, this includes CPU usage, memory usage and disk storage
 /// usage, if this role needs any.
 #[derive(Clone, Debug, Default, Fragment, PartialEq, JsonSchema)]
@@ -337,37 +368,6 @@ impl<T, K> Into<ResourceRequirements> for Resources<T, K> {
             claims: None,
         }
     }
-}
-
-#[derive(Debug, PartialEq, Snafu)]
-pub enum Error {
-    #[snafu(display(
-        "missing {resource_key:?} resource {resource_type:?} for container {container_name:?}"
-    ))]
-    MissingResourceRequirements {
-        container_name: String,
-        resource_key: String,
-        resource_type: ResourceRequirementsType,
-    },
-
-    #[snafu(display("{resource_key:?} max limit to request ratio for Container {container_name:?} is {allowed_ration:?}, but ratio was exceeded or request and limit where not set explicitly"))]
-    LimitToRequestRatioExceeded {
-        container_name: String,
-        resource_key: String,
-        allowed_ration: f32,
-    },
-
-    #[snafu(display("failed to convert Quantity to CpuQuantity for cpu limit"))]
-    CpuLimit { source: crate::cpu::Error },
-
-    #[snafu(display("failed to convert Quantity to CpuQuantity for cpu request"))]
-    CpuRequest { source: crate::cpu::Error },
-
-    #[snafu(display("failed to convert Quantity to MemoryQuantity for memory limit"))]
-    MemoryLimit { source: crate::memory::Error },
-
-    #[snafu(display("failed to convert Quantity to MemoryQuantity for memory request"))]
-    MemoryRequest { source: crate::memory::Error },
 }
 
 /// [`ResourceRequirementsType`] describes the available resource requirement
