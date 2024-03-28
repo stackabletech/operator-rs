@@ -87,15 +87,15 @@ impl PodDisruptionBudgetBuilder<(), (), ()> {
     ) -> Result<PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()>> {
         let role_selector_labels =
             Labels::role_selector(owner, app_name, role).context(RoleSelectorLabelsSnafu)?;
+        let managed_by_label =
+            Label::managed_by(operator_name, controller_name).context(ManagedByLabelSnafu)?;
         let metadata = ObjectMetaBuilder::new()
             .namespace_opt(owner.namespace())
             .name(format!("{}-{}", owner.name_any(), role))
             .ownerreference_from_resource(owner, None, Some(true))
             .context(OwnerReferenceFromResourceSnafu)?
             .with_labels(role_selector_labels.clone())
-            .with_label(
-                Label::managed_by(operator_name, controller_name).context(ManagedByLabelSnafu)?,
-            )
+            .with_label(managed_by_label)
             .build();
 
         Ok(PodDisruptionBudgetBuilder {
