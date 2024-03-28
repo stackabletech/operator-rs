@@ -18,14 +18,14 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("missing S3 connection {resource_name:?} in namespace {namespace:?}"))]
+    #[snafu(display("missing S3Connection {resource_name:?} in namespace {namespace:?}"))]
     MissingS3Connection {
         source: crate::client::Error,
         resource_name: String,
         namespace: String,
     },
 
-    #[snafu(display("missing S3 bucket {resource_name:?} in namespace {namespace:?}"))]
+    #[snafu(display("missing S3Bucket {resource_name:?} in namespace {namespace:?}"))]
     MissingS3Bucket {
         source: crate::client::Error,
         resource_name: String,
