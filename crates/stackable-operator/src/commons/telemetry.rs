@@ -4,15 +4,17 @@ use url::Url;
 
 use crate::time::Duration;
 
+// NOTE (@Techassi): We might want to rename this to OpenTelemetryConfig to
+// avoid confusion about business telemetry.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ObservabilityConfig {
+pub struct TelemetryConfig {
     pub metrics: MetricsConfig,
     pub traces: TracesConfig,
     pub logs: LogsConfig,
 
-    /// Global exporter configuration.
-    pub exporter: ExporterConfig,
+    /// Global default exporter configuration.
+    pub defaults: ExporterConfig,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -26,7 +28,7 @@ pub struct MetricsConfig {
     pub exporter: Option<ExporterConfig>,
 }
 
-fn default_metrics_enabled() -> bool {
+const fn default_metrics_enabled() -> bool {
     true
 }
 
@@ -41,7 +43,7 @@ pub struct TracesConfig {
     pub exporter: Option<ExporterConfig>,
 }
 
-fn default_traces_enabled() -> bool {
+const fn default_traces_enabled() -> bool {
     true
 }
 
@@ -56,7 +58,7 @@ pub struct LogsConfig {
     pub exporter: Option<ExporterConfig>,
 }
 
-fn default_logs_enabled() -> bool {
+const fn default_logs_enabled() -> bool {
     true
 }
 
@@ -75,7 +77,7 @@ pub struct ExporterConfig {
     pub timeout: Duration,
 }
 
-fn default_exporter_timeout() -> Duration {
+const fn default_exporter_timeout() -> Duration {
     Duration::from_secs(2)
 }
 
@@ -87,7 +89,7 @@ mod test {
 
     #[test]
     fn json_schema() {
-        let schema = schema_for!(ObservabilityConfig);
+        let schema = schema_for!(TelemetryConfig);
         println!("{}", serde_json::to_string_pretty(&schema).unwrap())
     }
 }
