@@ -110,7 +110,7 @@ use crate::logging::TracingTarget;
 use crate::namespace::WatchNamespace;
 use clap::Args;
 use product_config::ProductConfigManager;
-use snafu::Snafu;
+use snafu::{ResultExt, Snafu};
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
@@ -124,7 +124,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 pub enum Error {
     #[snafu(display("failed to load ProductConfig"))]
     ProductConfigLoad {
-        source: Box<product_config::error::Error>,
+        source: product_config::error::Error,
     },
 
     #[snafu(display(
@@ -236,9 +236,7 @@ impl ProductConfigPath {
             self.path.as_deref(),
             default_search_paths,
         )?)
-        .map_err(|source| Error::ProductConfigLoad {
-            source: source.into(),
-        })
+        .context(ProductConfigLoadSnafu)
     }
 }
 
