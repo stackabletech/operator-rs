@@ -1,5 +1,5 @@
 use k8s_openapi::{api::core::v1::ConfigMap, apimachinery::pkg::apis::meta::v1::ObjectMeta};
-use snafu::Snafu;
+use snafu::{OptionExt, Snafu};
 use std::collections::BTreeMap;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -50,11 +50,12 @@ impl ConfigMapBuilder {
     }
 
     pub fn build(&self) -> Result<ConfigMap> {
+        let metadata = self
+            .metadata
+            .clone()
+            .context(MissingObjectKeySnafu { key: "metadata" })?;
         Ok(ConfigMap {
-            metadata: match self.metadata {
-                None => return MissingObjectKeySnafu { key: "metadata" }.fail(),
-                Some(ref metadata) => metadata.clone(),
-            },
+            metadata,
             data: self.data.clone(),
             ..ConfigMap::default()
         })

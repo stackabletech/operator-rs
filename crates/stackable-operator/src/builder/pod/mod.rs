@@ -8,7 +8,7 @@ use k8s_openapi::{
     },
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
 };
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 use tracing::warn;
 
 use crate::{
@@ -498,13 +498,14 @@ impl PodBuilder {
         Ok(self)
     }
 
-    /// Consumes the Builder and returns a constructed [`Pod`]
+    /// Returns a constructed [`Pod`]
     pub fn build(&self) -> Result<Pod> {
+        let metadata = self
+            .metadata
+            .clone()
+            .context(MissingObjectKeySnafu { key: "metadata" })?;
         Ok(Pod {
-            metadata: match self.metadata {
-                None => return MissingObjectKeySnafu { key: "metadata" }.fail(),
-                Some(ref metadata) => metadata.clone(),
-            },
+            metadata,
             spec: Some(self.build_spec()),
             status: self.status.clone(),
         })
