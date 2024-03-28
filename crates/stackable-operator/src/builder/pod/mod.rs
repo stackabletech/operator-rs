@@ -489,8 +489,7 @@ impl PodBuilder {
         let termination_grace_period_seconds = termination_grace_period
             .as_secs()
             .try_into()
-            .map_err(|err| Error::TerminationGracePeriodTooLong {
-                source: err,
+            .context(TerminationGracePeriodTooLongSnafu {
                 duration: *termination_grace_period,
             })?;
 
