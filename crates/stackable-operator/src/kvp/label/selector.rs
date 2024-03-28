@@ -5,7 +5,7 @@ type Result<T, E = SelectorError> = std::result::Result<T, E>;
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum SelectorError {
-    #[snafu(display("labelSelector with binary operator {operator:?} must have values"))]
+    #[snafu(display("label selector with binary operator {operator:?} must have values"))]
     LabelSelectorBinaryOperatorWithoutValues { operator: String },
 
     #[snafu(display("labelSelector with unary operator {operator:?} must not have values"))]

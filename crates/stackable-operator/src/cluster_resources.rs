@@ -481,6 +481,7 @@ impl ClusterResources {
     ///
     /// If the labels of the given resource are not set properly then an [`Error::MissingLabel`] or
     /// [`Error::UnexpectedLabelContent`] is returned. The expected labels are:
+    /// 
     /// * `app.kubernetes.io/instance = <cluster.name>`
     /// * `app.kubernetes.io/managed-by = <app_name>-operator`
     /// * `app.kubernetes.io/name = <app_name>`

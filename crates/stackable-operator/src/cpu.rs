@@ -13,7 +13,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
-    #[snafu(display("unsupported Precision {value:?}. Kubernetes doesn't allow you to specify CPU resources with a precision finer than 1m. Because of this, it's useful to specify CPU units less than 1.0 or 1000m using the milliCPU form; for example, 5m rather than 0.005"))]
+    #[snafu(display("unsupported precision {value:?}. Kubernetes doesn't allow you to specify CPU resources with a precision finer than 1m. Because of this, it's useful to specify CPU units less than 1.0 or 1000m using the milliCPU form; for example, 5m rather than 0.005"))]
     UnsupportedCpuQuantityPrecision { value: String },
 
     #[snafu(display("invalid cpu integer quantity {value:?}"))]

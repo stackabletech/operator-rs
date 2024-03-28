@@ -56,7 +56,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("cannot find OPA configmap {configmap_name:?} in namespace {namespace:?}"))]
+    #[snafu(display("cannot find OPA ConfigMap {configmap_name:?} in namespace {namespace:?}"))]
     GetOpaConfigMap {
         source: crate::client::Error,
         configmap_name: String,

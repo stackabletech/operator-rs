@@ -14,7 +14,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
-    #[snafu(display("failed to set owner reference from resource for Aervice Account {name:?}"))]
+    #[snafu(display("failed to set owner reference from resource for ServiceAccount {name:?}"))]
     ServiceAccountOwnerReferenceFromResource {
         source: crate::builder::meta::Error,
         name: String,

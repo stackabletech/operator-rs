@@ -122,13 +122,13 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
-    #[snafu(display("failed to load ProductConfig"))]
+    #[snafu(display("failed to load product config"))]
     ProductConfigLoad {
         source: product_config::error::Error,
     },
 
     #[snafu(display(
-        "a required File is missing. Not found in any of the following locations: {search_path:?}"
+        "failed to locate a required file in any of the following locations: {search_path:?}"
     ))]
     RequiredFileMissing { search_path: Vec<PathBuf> },
 }

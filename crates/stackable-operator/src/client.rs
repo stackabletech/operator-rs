@@ -187,12 +187,12 @@ impl Client {
         T: Clone + Debug + DeserializeOwned + Resource + GetApi,
         <T as Resource>::DynamicType: Default,
     {
-        Ok(self
+        let list = self
             .get_api(namespace)
             .list(list_params)
             .await
-            .context(ListResourcesSnafu)?
-            .items)
+            .context(ListResourcesSnafu)?;
+        Ok(list.items)
     }
 
     /// Lists resources from the API using a LabelSelector.
