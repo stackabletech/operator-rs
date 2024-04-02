@@ -245,6 +245,14 @@ impl SpanExt for Span {
         // - https://docs.rs/tracing-opentelemetry/latest/tracing_opentelemetry/#special-fields
         // - https://github.com/tokio-rs/tracing/issues/1047
         // - https://github.com/tokio-rs/tracing/pull/732
+        //
+        // Additionally we cannot use consts for field names. There was an
+        // upstream PR to add support for it, but it was unexpectingly closed.
+        // See https://github.com/tokio-rs/tracing/pull/2254.
+        //
+        // If this is eventually supported (maybe with our efforts), we can use
+        // the opentelemetry-semantic-conventions crate, see here:
+        // https://docs.rs/opentelemetry-semantic-conventions/latest/opentelemetry_semantic_conventions/index.html
 
         // Setting common fields first
         // See https://opentelemetry.io/docs/specs/semconv/http/http-spans/#common-attributes
