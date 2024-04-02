@@ -8,7 +8,7 @@ pub enum SelectorError {
     #[snafu(display("label selector with binary operator {operator:?} must have values"))]
     LabelSelectorBinaryOperatorWithoutValues { operator: String },
 
-    #[snafu(display("labelSelector with unary operator {operator:?} must not have values"))]
+    #[snafu(display("label selector with unary operator {operator:?} must not have values"))]
     LabelSelectorUnaryOperatorWithValues { operator: String },
 
     #[snafu(display("labelSelector has an invalid operator {operator:?}"))]
