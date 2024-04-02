@@ -11,7 +11,7 @@ use pin_project::pin_project;
 use tower::{Layer, Service};
 use tracing::{field::Empty, trace_span, Span};
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct TraceLayer {
     opt_in: bool,
 }
@@ -36,8 +36,9 @@ impl TraceLayer {
     ///
     /// This will require more computing power and will increase the latency.
     /// See <https://opentelemetry.io/docs/specs/semconv/http/http-spans/>
-    pub fn with_opt_in(&mut self) {
-        self.opt_in = true
+    pub fn with_opt_in(mut self) -> Self {
+        self.opt_in = true;
+        self
     }
 }
 
