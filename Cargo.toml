@@ -54,7 +54,6 @@ stackable-operator-derive = { path = "stackable-operator-derive" }
 strum = { version = "0.26.2", features = ["derive"] }
 syn = "2.0.55"
 tempfile = "3.10.1"
-thiserror = "1.0.58"
 time = { version = "0.3.34" }
 tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread", "fs"] }
 tokio-rustls = "0.26.0"

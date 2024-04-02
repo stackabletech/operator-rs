@@ -1,23 +1,33 @@
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
+use snafu::Snafu;
+
+type Result<T, E = SelectorError> = std::result::Result<T, E>;
+
+#[derive(Debug, PartialEq, Snafu)]
+pub enum SelectorError {
+    #[snafu(display("label selector with binary operator {operator:?} must have values"))]
+    LabelSelectorBinaryOperatorWithoutValues { operator: String },
+
+    #[snafu(display("label selector with unary operator {operator:?} must not have values"))]
+    LabelSelectorUnaryOperatorWithValues { operator: String },
+
+    #[snafu(display("labelSelector has an invalid operator {operator:?}"))]
+    LabelSelectorInvalidOperator { operator: String },
+}
 
 /// This trait extends the functionality of [`LabelSelector`].
 ///
 /// Implementing this trait for any other type other than [`LabelSelector`]
 /// can result in unndefined behaviour.
 pub trait LabelSelectorExt {
-    type Error: std::error::Error;
-
     /// Takes a [`LabelSelector`] and converts it to a String that can be used
     /// in Kubernetes API calls. It will return an error if the LabelSelector
     /// contains illegal things (e.g. an `Exists` operator with a value).
-    fn to_query_string(&self) -> Result<String, Self::Error>;
+    fn to_query_string(&self) -> Result<String>;
 }
 
 impl LabelSelectorExt for LabelSelector {
-    // NOTE (Techassi): This should be its own error
-    type Error = crate::error::Error;
-
-    fn to_query_string(&self) -> Result<String, Self::Error> {
+    fn to_query_string(&self) -> Result<String> {
         let mut query_string = String::new();
 
         // match_labels are the "old" part of LabelSelectors.
@@ -38,62 +48,58 @@ impl LabelSelectorExt for LabelSelector {
         // Match expressions are more complex than match labels, both can appear in the same API call
         // They support these operators: "In", "NotIn", "Exists" and "DoesNotExist"
         let expressions = self.match_expressions.as_ref().map(|requirements| {
-        // If we had match_labels AND we have match_expressions we need to separate those two
-        // with a comma.
-        if !requirements.is_empty() && !query_string.is_empty() {
-            query_string.push(',');
-        }
+            // If we had match_labels AND we have match_expressions we need to separate those two
+            // with a comma.
+            if !requirements.is_empty() && !query_string.is_empty() {
+                query_string.push(',');
+            }
 
-        // Here we map over all requirements (which might be empty) and for each of the requirements
-        // we create a Result<String, Error> with the Ok variant being the converted match expression
-        // We then collect those Results into a single Result with the Error being the _first_ error.
-        // This, unfortunately means, that we'll throw away all but one error.
-        // TODO: Return all errors in one go: https://github.com/stackabletech/operator-rs/issues/127
-        let expression_string: Result<Vec<String>, crate::error::Error> = requirements
-            .iter()
-            .map(|requirement| match requirement.operator.as_str() {
-                // In and NotIn can be handled the same, they both map to a simple "key OPERATOR (values)" string
-                operator @ "In" | operator @ "NotIn" => match &requirement.values {
-                    Some(values) if !values.is_empty() => Ok(format!(
-                        "{} {} ({})",
-                        requirement.key,
-                        operator.to_ascii_lowercase(),
-                        values.join(", ")
-                    )),
-                    _ => Err(crate::error::Error::InvalidLabelSelector {
-                        message: format!(
-                            "LabelSelector has no or empty values for [{operator}] operator"
-                        ),
-                    }),
-                },
-                // "Exists" is just the key and nothing else, if values have been specified it's an error
-                "Exists" => match &requirement.values {
-                    Some(values) if !values.is_empty() => Err(
-                        crate::error::Error::InvalidLabelSelector {
-                            message: "LabelSelector has [Exists] operator with values, this is not legal".to_string(),
-                    }),
-                    _ => Ok(requirement.key.to_string()),
-                },
-                // "DoesNotExist" is similar to "Exists" but it is preceded by an exclamation mark
-                "DoesNotExist" => match &requirement.values {
-                    Some(values) if !values.is_empty() => Err(
-                        crate::error::Error::InvalidLabelSelector {
-                            message: "LabelSelector has [DoesNotExist] operator with values, this is not legal".to_string(),
+            // Here we map over all requirements (which might be empty) and for each of the requirements
+            // we create a Result<String, Error> with the Ok variant being the converted match expression
+            // We then collect those Results into a single Result with the Error being the _first_ error.
+            // This, unfortunately means, that we'll throw away all but one error.
+            // TODO: Return all errors in one go: https://github.com/stackabletech/operator-rs/issues/127
+            let expression_string: Result<Vec<String>> = requirements
+                .iter()
+                .map(|requirement| match requirement.operator.as_str() {
+                    // In and NotIn can be handled the same, they both map to a simple "key OPERATOR (values)" string
+                    operator @ "In" | operator @ "NotIn" => match &requirement.values {
+                        Some(values) if !values.is_empty() => Ok(format!(
+                            "{} {} ({})",
+                            requirement.key,
+                            operator.to_ascii_lowercase(),
+                            values.join(", ")
+                        )),
+                        _ => Err(SelectorError::LabelSelectorBinaryOperatorWithoutValues {
+                            operator: operator.to_owned(),
                         }),
-                    _ => Ok(format!("!{}", requirement.key))
-                }
-                op => {
-                    Err(
-                        crate::error::Error::InvalidLabelSelector {
-                            message: format!("LabelSelector has illegal/unknown operator [{op}]")
-                        })
-                }
-            })
-            .collect();
+                    },
+                    // "Exists" is just the key and nothing else, if values have been specified it's an error
+                    operator @ "Exists" => match &requirement.values {
+                        Some(values) if !values.is_empty() => {
+                            Err(SelectorError::LabelSelectorUnaryOperatorWithValues {
+                                operator: operator.to_owned(),
+                            })
+                        }
+                        _ => Ok(requirement.key.to_string()),
+                    },
+                    // "DoesNotExist" is similar to "Exists" but it is preceded by an exclamation mark
+                    operator @ "DoesNotExist" => match &requirement.values {
+                        Some(values) if !values.is_empty() => {
+                            Err(SelectorError::LabelSelectorUnaryOperatorWithValues {
+                                operator: operator.to_owned(),
+                            })
+                        }
+                        _ => Ok(format!("!{key}", key = requirement.key)),
+                    },
+                    operator => Err(SelectorError::LabelSelectorInvalidOperator {
+                        operator: operator.to_owned(),
+                    }),
+                })
+                .collect();
 
-        expression_string
-
-    });
+            expression_string
+        });
 
         if let Some(expressions) = expressions.transpose()? {
             query_string.push_str(&expressions.join(","));

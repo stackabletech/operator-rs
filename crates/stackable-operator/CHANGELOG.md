@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 
 - Bump kube to 0.89.0 and update all dependencies ([#762]).
 
+### Removed
+
+- BREAKING: Remove `thiserror` dependency, and deprecated builder exports ([#761])
+
+[#761]: https://github.com/stackabletech/operator-rs/pull/761
 [#762]: https://github.com/stackabletech/operator-rs/pull/762
 
 ## [0.66.0] - 2024-03-26
