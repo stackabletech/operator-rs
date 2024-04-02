@@ -13,3 +13,4 @@ opentelemetry.workspace = true
 pin-project.workspace = true
 tower.workspace = true
 tracing.workspace = true
+tracing-opentelemetry.workspace = true

@@ -10,6 +10,11 @@ use opentelemetry::trace::SpanKind;
 use pin_project::pin_project;
 use tower::{Layer, Service};
 use tracing::{field::Empty, trace_span, Span};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
+
+mod injector;
+
+pub use injector::*;
 
 #[derive(Clone, Debug, Default)]
 pub struct TraceLayer {
@@ -65,7 +70,12 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, req: Request) -> Self::Future {
+    fn call(&mut self, mut req: Request) -> Self::Future {
+        // NOTE (@Techassi): Can we inject the current context here or do we
+        // need to inject it in a separate layer?
+        let mut injector = HeaderInjector::new(req.headers_mut());
+        injector.inject_context(&Span::current().context());
+
         let span = Span::from_request(&req, self.opt_in);
 
         let future = {
@@ -243,11 +253,21 @@ impl SpanExt for Span {
             "HTTP request",
             otel.name = span_name,
             otel.kind = ?SpanKind::Server,
+            otel.status_code = Empty,
+            otel.status_message = Empty,
             http.request.method = http_method,
             http.response.status_code = Empty,
             url.path = url.path(),
             url.query = url.query(),
             url.scheme = url.scheme_str().unwrap_or_default(),
+            user_agent.original = Empty,
+            server.address = Empty,
+            server.port = Empty,
+            client.address = Empty,
+            client.port = Empty,
+            http.request.header = Empty,
+            http.route = Empty,
+            http.response.status_code = Empty,
             // TODO (@Techassi): Add network.protocol.version
         );
 
