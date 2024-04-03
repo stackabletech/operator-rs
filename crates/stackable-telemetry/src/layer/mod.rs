@@ -1,3 +1,15 @@
+//! This module contains types which can be used as [`axum`] layers to produce
+//! [OpenTelemetry][1] compatible [HTTP spans][2].
+//!
+//! These spans include a wide variety of fields / attributes defined by the
+//! semantic conventions specification. A few examples are:
+//!
+//! - `http.request.method`
+//! - `http.response.status_code`
+//! - `user_agent.original`
+//!
+//! [1]: https://opentelemetry.io/
+//! [2]: https://opentelemetry.io/docs/specs/semconv/http/http-spans/
 use std::{future::Future, net::SocketAddr, str::FromStr, task::Poll};
 
 use axum::{
@@ -18,6 +30,33 @@ mod injector;
 pub use extractor::*;
 pub use injector::*;
 
+/// A layer which records HTTP spans.
+///
+/// ### Example with Axum
+///
+/// ```ignore
+/// use stackable_telemtry::layer::TraceLayer;
+/// use axum::{routing::get, Router};
+///
+/// let trace_layer = TraceLayer::new();
+/// let router = Router::new()
+///     .route("/", get(|| async { "Hello, World!" }))
+///     .layer(trace_layer);
+/// ```
+///
+/// ### Example with Webhook
+///
+/// The usage is even simpler when combined with the `stackable_webhook` crate.
+/// The webhook server has built-in support to automatically emit HTTP spans on
+/// every incoming request.
+///
+/// ```ignore
+/// use stackable_webhook::{WebhookServer, Options};
+/// use axum::Router;
+///
+/// let router = Router::new();
+/// let server = WebhookServer::new(router, Options::default());
+/// ```
 #[derive(Clone, Debug, Default)]
 pub struct TraceLayer {
     opt_in: bool,
@@ -35,6 +74,7 @@ impl<S> Layer<S> for TraceLayer {
 }
 
 impl TraceLayer {
+    /// Creates a new default trace layer.
     pub fn new() -> Self {
         Self::default()
     }
@@ -117,6 +157,8 @@ where
     }
 }
 
+/// This trait provides various helper functions to extract data from a
+/// [`Request`].
 pub trait RequestExt {
     /// Returns the client socket address if available
     fn client_socket_address(&self) -> Option<SocketAddr>;
@@ -188,6 +230,8 @@ impl RequestExt for Request {
     }
 }
 
+/// This trait provides various helper functions to create a [`Span`] out of
+/// an HTTP [`Request`].
 pub trait SpanExt {
     /// Create a span according to the semantic conventions for HTTP spans from
     /// an Axum [`Request`].
