@@ -2,7 +2,7 @@ use std::{future::Future, net::SocketAddr, str::FromStr, task::Poll};
 
 use axum::{
     extract::{ConnectInfo, Host, MatchedPath, Request},
-    http::header::USER_AGENT,
+    http::{header::USER_AGENT, HeaderMap},
     response::Response,
 };
 use futures_util::ready;
@@ -206,6 +206,13 @@ pub trait SpanExt {
     /// [1]: https://opentelemetry.io/docs/specs/semconv/http/http-spans/
     fn from_request(req: &Request, opt_in: bool) -> Self;
 
+    /// Adds HTTP request headers to the span as a `http.request.header.<key>`
+    /// field.
+    ///
+    /// NOTE: This is currently not supported, because [`tracing`] doesn't
+    /// support recording dynamic fields.
+    fn add_header_fields(&self, headers: &HeaderMap);
+
     /// Finalize the [`Span`] with an Axum [`Response`].
     fn finalize_with_response(&self, response: &Response);
 
@@ -275,7 +282,6 @@ impl SpanExt for Span {
             server.port = Empty,
             client.address = Empty,
             client.port = Empty,
-            http.request.header = Empty,
             http.route = Empty,
             http.response.status_code = Empty,
             // TODO (@Techassi): Add network.protocol.version
@@ -311,27 +317,40 @@ impl SpanExt for Span {
         // Only include the headers if the user opted in, because this might
         // potentially be an expensive operation when many different headers
         // are present. The OpenTelemetry spec also marks this as opt-in.
-        if opt_in {
-            for (header_name, header_value) in req.headers() {
-                // NOTE (@Techassi): Make sure this is validated, and if not, remove
-                // illegal characters.
-                // TODO (@Techassi): Add an allow list for header names
-                // TODO (@Techassi): Handle multiple headers with the same name
-                let header_name = header_name.as_str().to_lowercase();
-                let field_name = format!("http.request.header.{header_name}");
 
-                span.record(
-                    field_name.as_str(),
-                    header_value.to_str().unwrap_or_default(),
-                );
-            }
-        }
+        // NOTE (@Techassi): Currently, tracing doesn't support recording
+        // fields which are not registered at span creation which thus makes
+        // it impossible to record request headers at runtime.
+        // See: https://github.com/tokio-rs/tracing/issues/1343
+
+        // FIXME (@Techassi): Add support for this when tracing allows dynamic
+        // fields.
+        // if opt_in {
+        //     span.add_header_fields(req.headers())
+        // }
 
         if let Some(http_route) = req.matched_path() {
             span.record("http.route", http_route.as_str());
         }
 
         span
+    }
+
+    fn add_header_fields(&self, headers: &HeaderMap) {
+        for (header_name, header_value) in headers {
+            // TODO (@Techassi): Add an allow list for header names
+            // TODO (@Techassi): Handle multiple headers with the same name
+
+            // NOTE (@Techassi): header_name.as_str() always returns lowercase
+            // strings and thus we don't need to call to_lowercase on it.
+            let header_name = header_name.as_str();
+            let field_name = format!("http.request.header.{header_name}");
+
+            self.record(
+                field_name.as_str(),
+                header_value.to_str().unwrap_or_default(),
+            );
+        }
     }
 
     fn finalize_with_response(&self, response: &Response) {
