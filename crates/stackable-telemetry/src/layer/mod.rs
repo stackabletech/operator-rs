@@ -12,8 +12,10 @@ use tower::{Layer, Service};
 use tracing::{field::Empty, trace_span, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
+mod extractor;
 mod injector;
 
+pub use extractor::*;
 pub use injector::*;
 
 #[derive(Clone, Debug, Default)]
@@ -278,6 +280,10 @@ impl SpanExt for Span {
             http.response.status_code = Empty,
             // TODO (@Techassi): Add network.protocol.version
         );
+
+        // Set the parent span based on the extracted context
+        let parent = HeaderExtractor::new(req.headers()).extract_context();
+        span.set_parent(parent);
 
         if let Some(user_agent) = req.user_agent() {
             span.record("user_agent.original", user_agent);
