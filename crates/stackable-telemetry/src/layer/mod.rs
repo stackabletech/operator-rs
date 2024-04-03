@@ -421,3 +421,24 @@ impl SpanExt for Span {
             .record("otel.status_message", error.to_string());
     }
 }
+
+#[cfg(test)]
+mod test {
+    use axum::{routing::get, Router};
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test() {
+        let trace_layer = TraceLayer::new();
+        let router = Router::new()
+            .route("/", get(|| async { "Hello, World!" }))
+            .layer(trace_layer);
+
+        let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await.unwrap();
+        axum::serve(listener, router)
+            .with_graceful_shutdown(tokio::time::sleep(std::time::Duration::from_secs(1)))
+            .await
+            .unwrap();
+    }
+}
