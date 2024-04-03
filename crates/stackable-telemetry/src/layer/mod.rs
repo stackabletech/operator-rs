@@ -21,7 +21,7 @@ use futures_util::ready;
 use opentelemetry::trace::SpanKind;
 use pin_project::pin_project;
 use tower::{Layer, Service};
-use tracing::{field::Empty, trace_span, Span};
+use tracing::{debug, field::Empty, instrument, trace_span, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 mod extractor;
@@ -75,6 +75,7 @@ impl<S> Layer<S> for TraceLayer {
 
 impl TraceLayer {
     /// Creates a new default trace layer.
+    #[instrument(name = "create_trace_layer")]
     pub fn new() -> Self {
         Self::default()
     }
@@ -283,10 +284,18 @@ pub trait SpanExt {
 }
 
 impl SpanExt for Span {
+    #[instrument(name = "create_span_from_request")]
     fn from_request(req: &Request, opt_in: bool) -> Self {
         let http_method = req.method().as_str();
         let span_name = req.span_name();
         let url = req.uri();
+
+        debug!(
+            http_method,
+            span_name,
+            ?url,
+            "extracted http method, span name and request url"
+        );
 
         // The span name follows the format `{method} {http.route}` defined
         // by the semantic conventions spec from the OpenTelemetry project.
@@ -310,6 +319,7 @@ impl SpanExt for Span {
         // Setting common fields first
         // See https://opentelemetry.io/docs/specs/semconv/http/http-spans/#common-attributes
 
+        debug!("create http span");
         let span = trace_span!(
             "HTTP request",
             otel.name = span_name,
@@ -332,6 +342,7 @@ impl SpanExt for Span {
         );
 
         // Set the parent span based on the extracted context
+        debug!("set parent span based on extracted context");
         let parent = HeaderExtractor::new(req.headers()).extract_context();
         span.set_parent(parent);
 
