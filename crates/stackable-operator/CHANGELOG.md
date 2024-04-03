@@ -4,9 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Bump kube to 0.89.0 and update all dependencies ([#762]).
+
+### Removed
+
+- BREAKING: Remove `thiserror` dependency, and deprecated builder exports ([#761])
+
+[#761]: https://github.com/stackabletech/operator-rs/pull/761
+[#762]: https://github.com/stackabletech/operator-rs/pull/762
+
+## [0.66.0] - 2024-03-26
+
+### Changed
+
+- Implement `PartialEq` for most _Snafu_ Error enums ([#757]).
+- Update Rust to 1.77 ([#759])
+
+### Fixed
+
+- Fix wrong schema (and thus CRD) for `config.affinity.nodeSelector` ([#752]).
+
+[#752]: https://github.com/stackabletech/operator-rs/pull/752
+[#757]: https://github.com/stackabletech/operator-rs/pull/757
+[#759]: https://github.com/stackabletech/operator-rs/pull/759
+
 ## [0.65.0] - 2024-03-25
 
-## Added
+### Added
 
 - Add `stackable_webhook` crate which provides utilities to create webhooks with TLS termination ([#730]).
 - Add `ConversionReview` re-export in `stackable_webhook` crate ([#749]).
@@ -14,7 +40,7 @@ All notable changes to this project will be documented in this file.
 [#730]: https://github.com/stackabletech/operator-rs/pull/730
 [#749]: https://github.com/stackabletech/operator-rs/pull/749
 
-## Changed
+### Changed
 
 - Remove `resources` key from `DynamicValues` struct ([#734]).
 - Bump `opentelemetry`, `opentelemetry_sdk`, `opentelemetry-jaeger`, and `tracing-opentelemetry` Rust dependencies
@@ -25,7 +51,7 @@ All notable changes to this project will be documented in this file.
 [#753]: https://github.com/stackabletech/operator-rs/pull/753
 [#754]: https://github.com/stackabletech/operator-rs/pull/754
 
-## Fixed
+### Fixed
 
 - Fixed incorrect time calculation ([#735]).
 

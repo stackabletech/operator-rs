@@ -10,14 +10,42 @@
 
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use serde::{de::Visitor, Deserialize, Serialize};
+use snafu::{OptionExt, ResultExt, Snafu};
 
-use crate::error::{Error, OperatorResult};
 use std::{
     fmt::Display,
     iter::Sum,
     ops::{Add, AddAssign, Div, Mul, Sub, SubAssign},
     str::FromStr,
 };
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, PartialEq, Snafu)]
+pub enum Error {
+    #[snafu(display("cannot convert quantity {value:?} to Java heap"))]
+    CannotConvertToJavaHeap { value: String },
+
+    #[snafu(display(
+        "cannot convert quantity {value:?} to Java heap value with unit {target_unit:?}"
+    ))]
+    CannotConvertToJavaHeapValue { value: String, target_unit: String },
+
+    #[snafu(display("cannot scale down from kilobytes"))]
+    CannotScaleDownMemoryUnit,
+
+    #[snafu(display("invalid quantity {value:?}"))]
+    InvalidQuantity {
+        source: std::num::ParseFloatError,
+        value: String,
+    },
+
+    #[snafu(display("invalid quantity unit {value:?}"))]
+    InvalidQuantityUnit { value: String },
+
+    #[snafu(display("no quantity unit provided for {value:?}"))]
+    NoQuantityUnit { value: String },
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd)]
 pub enum BinaryMultiple {
@@ -62,7 +90,7 @@ impl BinaryMultiple {
 impl FromStr for BinaryMultiple {
     type Err = Error;
 
-    fn from_str(q: &str) -> OperatorResult<BinaryMultiple> {
+    fn from_str(q: &str) -> Result<BinaryMultiple> {
         match q {
             "Ki" => Ok(BinaryMultiple::Kibi),
             "Mi" => Ok(BinaryMultiple::Mebi),
@@ -104,7 +132,7 @@ impl Display for BinaryMultiple {
     since = "0.33.0",
     note = "use \"-Xmx\" + MemoryQuantity::try_from(quantity).scale_to(unit).format_for_java()"
 )]
-pub fn to_java_heap(q: &Quantity, factor: f32) -> OperatorResult<String> {
+pub fn to_java_heap(q: &Quantity, factor: f32) -> Result<String> {
     let scaled = (q.0.parse::<MemoryQuantity>()? * factor).scale_for_java();
     if scaled.value < 1.0 {
         Err(Error::CannotConvertToJavaHeap {
@@ -134,11 +162,7 @@ pub fn to_java_heap(q: &Quantity, factor: f32) -> OperatorResult<String> {
     since = "0.33.0",
     note = "use (MemoryQuantity::try_from(quantity).scale_to(target_unit) * factor)"
 )]
-pub fn to_java_heap_value(
-    q: &Quantity,
-    factor: f32,
-    target_unit: BinaryMultiple,
-) -> OperatorResult<u32> {
+pub fn to_java_heap_value(q: &Quantity, factor: f32, target_unit: BinaryMultiple) -> Result<u32> {
     let scaled = (q.0.parse::<MemoryQuantity>()? * factor)
         .scale_for_java()
         .scale_to(target_unit);
@@ -146,7 +170,7 @@ pub fn to_java_heap_value(
     if scaled.value < 1.0 {
         Err(Error::CannotConvertToJavaHeapValue {
             value: q.0.to_owned(),
-            target_unit: format!("{target_unit:?}"),
+            target_unit: target_unit.to_string(),
         })
     } else {
         Ok(scaled.value as u32)
@@ -189,7 +213,7 @@ impl MemoryQuantity {
     }
 
     /// Scale down the unit by one order of magnitude, i.e. GB to MB.
-    fn scale_down_unit(&self) -> OperatorResult<Self> {
+    fn scale_down_unit(&self) -> Result<Self> {
         match self.unit {
             BinaryMultiple::Kibi => Err(Error::CannotScaleDownMemoryUnit),
             BinaryMultiple::Mebi => Ok(self.scale_to(BinaryMultiple::Kibi)),
@@ -219,7 +243,7 @@ impl MemoryQuantity {
     /// If the MemoryQuantity value is smaller than 1 (starts with a zero), convert it to a smaller
     /// unit until the non fractional part of the value is not zero anymore.
     /// This can fail if the quantity is smaller than 1kB.
-    fn ensure_no_zero(&self) -> OperatorResult<Self> {
+    fn ensure_no_zero(&self) -> Result<Self> {
         if self.value < 1. {
             self.scale_down_unit()?.ensure_no_zero()
         } else {
@@ -231,7 +255,7 @@ impl MemoryQuantity {
     /// This is done by picking smaller units until the fractional part is smaller than the tolerated
     /// rounding loss, and then rounding down.
     /// This can fail if the tolerated rounding loss is less than 1kB.
-    fn ensure_integer(&self, tolerated_rounding_loss: MemoryQuantity) -> OperatorResult<Self> {
+    fn ensure_integer(&self, tolerated_rounding_loss: MemoryQuantity) -> Result<Self> {
         let fraction_memory = MemoryQuantity {
             value: self.value.fract(),
             unit: self.unit,
@@ -249,7 +273,7 @@ impl MemoryQuantity {
     /// The original quantity may be rounded down to achive a compact, natural number representation.
     /// This rounding may cause the quantity to shrink by up to 20MB.
     /// Useful to set memory quantities as JVM paramters.
-    pub fn format_for_java(&self) -> OperatorResult<String> {
+    pub fn format_for_java(&self) -> Result<String> {
         let m = self
             .scale_to_at_most_gb() // Java Heap only supports specifying kb, mb or gb
             .ensure_no_zero()? // We don't want 0.9 or 0.2
@@ -340,15 +364,15 @@ impl<'de> Deserialize<'de> for MemoryQuantity {
 impl FromStr for MemoryQuantity {
     type Err = Error;
 
-    fn from_str(q: &str) -> OperatorResult<Self> {
+    fn from_str(q: &str) -> Result<Self> {
         let start_of_unit =
             q.find(|c: char| c != '.' && !c.is_numeric())
-                .ok_or(Error::NoQuantityUnit {
+                .context(NoQuantityUnitSnafu {
                     value: q.to_owned(),
                 })?;
         let (value, unit) = q.split_at(start_of_unit);
         Ok(MemoryQuantity {
-            value: value.parse::<f32>().map_err(|_| Error::InvalidQuantity {
+            value: value.parse::<f32>().context(InvalidQuantitySnafu {
                 value: q.to_owned(),
             })?,
             unit: unit.parse()?,
@@ -459,7 +483,7 @@ impl Eq for MemoryQuantity {}
 impl TryFrom<Quantity> for MemoryQuantity {
     type Error = Error;
 
-    fn try_from(quantity: Quantity) -> OperatorResult<Self> {
+    fn try_from(quantity: Quantity) -> Result<Self> {
         Self::try_from(&quantity)
     }
 }
@@ -467,7 +491,7 @@ impl TryFrom<Quantity> for MemoryQuantity {
 impl TryFrom<&Quantity> for MemoryQuantity {
     type Error = Error;
 
-    fn try_from(quantity: &Quantity) -> OperatorResult<Self> {
+    fn try_from(quantity: &Quantity) -> Result<Self> {
         quantity.0.parse()
     }
 }

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 
 use crate::{
-    builder::{ContainerBuilder, PodBuilder, VolumeMountBuilder},
+    builder::pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
     commons::{
         authentication::SECRET_BASE_PATH,
         secret_class::{SecretClassVolume, SecretClassVolumeError},
@@ -23,7 +23,7 @@ pub struct AuthenticationProvider {
     pub client_cert_secret_class: Option<String>,
 }
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum TlsClientDetailsError {
     #[snafu(display("failed to convert secret class volume into named Kubernetes volume"))]
     SecretClassVolume { source: SecretClassVolumeError },

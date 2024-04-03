@@ -6,8 +6,9 @@ use k8s_openapi::{
 use tracing::warn;
 
 use crate::{
-    commons::resources::ResourceRequirementsType, cpu::CpuQuantity, error::OperatorResult,
-    memory::MemoryQuantity,
+    commons::resources::ResourceRequirementsType,
+    cpu::{self, CpuQuantity},
+    memory::{self, MemoryQuantity},
 };
 
 const RESOURCE_DENYLIST: &[&str] = &["cpu", "memory"];
@@ -53,7 +54,7 @@ impl<CL, MR, ML> ResourceRequirementsBuilder<(), CL, MR, ML> {
         self,
         request: impl Into<String>,
         factor: f32,
-    ) -> OperatorResult<ResourceRequirementsBuilder<Quantity, Quantity, MR, ML>> {
+    ) -> cpu::Result<ResourceRequirementsBuilder<Quantity, Quantity, MR, ML>> {
         let request = CpuQuantity::from_str(&request.into())?;
         let limit = request * factor;
 
@@ -123,7 +124,7 @@ impl<CR, CL, ML> ResourceRequirementsBuilder<CL, CR, (), ML> {
         self,
         request: impl Into<String>,
         factor: f32,
-    ) -> OperatorResult<ResourceRequirementsBuilder<CL, CR, Quantity, Quantity>> {
+    ) -> memory::Result<ResourceRequirementsBuilder<CL, CR, Quantity, Quantity>> {
         let request = MemoryQuantity::from_str(&request.into())?;
         let limit = request * factor;
 

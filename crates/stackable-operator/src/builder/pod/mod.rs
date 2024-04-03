@@ -8,14 +8,11 @@ use k8s_openapi::{
     },
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
 };
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 use tracing::warn;
 
 use crate::{
-    builder::{
-        meta::ObjectMetaBuilder, ListenerOperatorVolumeSourceBuilder,
-        ListenerOperatorVolumeSourceBuilderError, ListenerReference, VolumeBuilder,
-    },
+    builder::meta::ObjectMetaBuilder,
     commons::{
         affinity::StackableAffinity,
         product_image_selection::ResolvedProductImage,
@@ -24,16 +21,19 @@ use crate::{
             LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
         },
     },
-    error::{self, OperatorResult},
     time::Duration,
 };
+
+use self::volume::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
 
 pub mod container;
 pub mod resources;
 pub mod security;
 pub mod volume;
 
-#[derive(Debug, Snafu)]
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
     #[snafu(display("termination grace period is too long (got {duration}, maximum allowed is {max})", max = Duration::from_secs(i64::MAX as u64)))]
     TerminationGracePeriodTooLong {
@@ -41,13 +41,15 @@ pub enum Error {
         duration: Duration,
     },
 
-    #[snafu(display("failed to add listener volume '{name}' to the pod"))]
+    #[snafu(display("failed to add listener volume {name:?} to the pod"))]
     ListenerVolume {
-        source: ListenerOperatorVolumeSourceBuilderError,
+        source: volume::ListenerOperatorVolumeSourceBuilderError,
         name: String,
     },
+
+    #[snafu(display("object is missing key {key:?}"))]
+    MissingObjectKey { key: &'static str },
 }
-pub type Result<T> = std::result::Result<T, Error>;
 
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -280,8 +282,8 @@ impl PodBuilder {
     /// # Example
     ///
     /// ```
-    /// # use stackable_operator::builder::PodBuilder;
-    /// # use stackable_operator::builder::ContainerBuilder;
+    /// # use stackable_operator::builder::pod::PodBuilder;
+    /// # use stackable_operator::builder::pod::container::ContainerBuilder;
     /// # use stackable_operator::builder::pod::resources::ResourceRequirementsBuilder;
     /// # use k8s_openapi::{
     ///     api::core::v1::ResourceRequirements,
@@ -369,8 +371,8 @@ impl PodBuilder {
     /// # Example
     ///
     /// ```
-    /// # use stackable_operator::builder::PodBuilder;
-    /// # use stackable_operator::builder::ContainerBuilder;
+    /// # use stackable_operator::builder::pod::PodBuilder;
+    /// # use stackable_operator::builder::pod::container::ContainerBuilder;
     /// # use stackable_operator::builder::pod::resources::ResourceRequirementsBuilder;
     /// # use k8s_openapi::{
     ///     api::core::v1::ResourceRequirements,
@@ -487,8 +489,7 @@ impl PodBuilder {
         let termination_grace_period_seconds = termination_grace_period
             .as_secs()
             .try_into()
-            .map_err(|err| Error::TerminationGracePeriodTooLong {
-                source: err,
+            .context(TerminationGracePeriodTooLongSnafu {
                 duration: *termination_grace_period,
             })?;
 
@@ -496,13 +497,14 @@ impl PodBuilder {
         Ok(self)
     }
 
-    /// Consumes the Builder and returns a constructed [`Pod`]
-    pub fn build(&self) -> OperatorResult<Pod> {
+    /// Returns a constructed [`Pod`]
+    pub fn build(&self) -> Result<Pod> {
+        let metadata = self
+            .metadata
+            .clone()
+            .context(MissingObjectKeySnafu { key: "metadata" })?;
         Ok(Pod {
-            metadata: match self.metadata {
-                None => return Err(error::Error::MissingObjectKey { key: "metadata" }),
-                Some(ref metadata) => metadata.clone(),
-            },
+            metadata,
             spec: Some(self.build_spec()),
             status: self.status.clone(),
         })

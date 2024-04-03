@@ -5,7 +5,7 @@ use snafu::{ResultExt, Snafu};
 use url::{ParseError, Url};
 
 use crate::{
-    builder::{ContainerBuilder, PodBuilder, VolumeMountBuilder},
+    builder::pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
     commons::{
         authentication::{
             tls::{TlsClientDetails, TlsClientDetailsError},
@@ -17,7 +17,7 @@ use crate::{
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
     #[snafu(display(
         "failed to convert bind credentials (secret class volume) into named Kubernetes volume"

@@ -3,16 +3,17 @@ use kube::{Resource, ResourceExt};
 use snafu::{ResultExt, Snafu};
 use tracing::warn;
 
-use crate::{
-    error::{Error, OperatorResult},
-    kvp::{Annotation, Annotations, Label, LabelError, Labels, ObjectLabels},
-};
+use crate::kvp::{Annotation, Annotations, Label, LabelError, Labels, ObjectLabels};
 
-// NOTE (Techassi): Think about that name
-#[derive(Debug, Snafu)]
-pub enum ObjectMetaBuilderError {
+type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug, PartialEq, Snafu)]
+pub enum Error {
     #[snafu(display("failed to set recommended labels"))]
     RecommendedLabels { source: LabelError },
+
+    #[snafu(display("object is missing key {key:?}"))]
+    MissingObjectKey { key: &'static str },
 }
 
 /// A builder to build [`ObjectMeta`] objects.
@@ -89,7 +90,7 @@ impl ObjectMetaBuilder {
         resource: &T,
         block_owner_deletion: Option<bool>,
         controller: Option<bool>,
-    ) -> OperatorResult<&mut Self> {
+    ) -> Result<&mut Self> {
         self.ownerreference = Some(
             OwnerReferenceBuilder::new()
                 .initialize_from_resource(resource)
@@ -151,7 +152,7 @@ impl ObjectMetaBuilder {
     pub fn with_recommended_labels<T: Resource>(
         &mut self,
         object_labels: ObjectLabels<T>,
-    ) -> Result<&mut Self, ObjectMetaBuilderError> {
+    ) -> Result<&mut Self> {
         let recommended_labels =
             Labels::recommended(object_labels).context(RecommendedLabelsSnafu)?;
 
@@ -284,24 +285,24 @@ impl OwnerReferenceBuilder {
         self
     }
 
-    pub fn build(&self) -> OperatorResult<OwnerReference> {
+    pub fn build(&self) -> Result<OwnerReference> {
         Ok(OwnerReference {
             api_version: match self.api_version {
-                None => return Err(Error::MissingObjectKey { key: "api_version" }),
+                None => return MissingObjectKeySnafu { key: "api_version" }.fail(),
                 Some(ref api_version) => api_version.clone(),
             },
             block_owner_deletion: self.block_owner_deletion,
             controller: self.controller,
             kind: match self.kind {
-                None => return Err(Error::MissingObjectKey { key: "kind" }),
+                None => return MissingObjectKeySnafu { key: "kind" }.fail(),
                 Some(ref kind) => kind.clone(),
             },
             name: match self.name {
-                None => return Err(Error::MissingObjectKey { key: "name" }),
+                None => return MissingObjectKeySnafu { key: "name" }.fail(),
                 Some(ref name) => name.clone(),
             },
             uid: match self.uid {
-                None => return Err(Error::MissingObjectKey { key: "uid" }),
+                None => return MissingObjectKeySnafu { key: "uid" }.fail(),
                 Some(ref uid) => uid.clone(),
             },
         })

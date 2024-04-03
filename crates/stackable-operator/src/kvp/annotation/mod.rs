@@ -18,7 +18,7 @@ use std::{
 use delegate::delegate;
 
 use crate::{
-    builder::SecretOperatorVolumeScope,
+    builder::pod::volume::SecretOperatorVolumeScope,
     iter::TryFromIterator,
     kvp::{Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError},
 };
