@@ -66,3 +66,7 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 url = "2.5.0"
 x509-cert = { version = "0.2.5", features = ["builder"] }
 zeroize = "1.7.0"
+
+# Use O2 in tests to improve the RSA key generation speed in the stackable-certs crate
+[profile.test.package.stackable-certs]
+opt-level = 2

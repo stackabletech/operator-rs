@@ -9,7 +9,11 @@ use tracing::instrument;
 
 use crate::keys::CertificateKeypair;
 
+#[cfg(not(test))]
 const KEY_SIZE: usize = 4096;
+
+#[cfg(test)]
+const KEY_SIZE: usize = 2048;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
