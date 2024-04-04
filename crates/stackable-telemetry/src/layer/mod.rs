@@ -57,6 +57,10 @@ pub use injector::*;
 /// let router = Router::new();
 /// let server = WebhookServer::new(router, Options::default());
 /// ```
+///
+/// This layer is implemented based on [this][1] official Tower guide.
+///
+/// [1]: https://github.com/tower-rs/tower/blob/master/guides/building-a-middleware-from-scratch.md
 #[derive(Clone, Debug, Default)]
 pub struct TraceLayer {
     opt_in: bool,
