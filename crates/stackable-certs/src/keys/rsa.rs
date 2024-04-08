@@ -13,7 +13,7 @@ use crate::keys::CertificateKeypair;
 const KEY_SIZE: usize = 4096;
 
 #[cfg(test)]
-const KEY_SIZE: usize = 2048;
+const KEY_SIZE: usize = 512;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
