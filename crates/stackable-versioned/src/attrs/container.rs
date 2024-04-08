@@ -59,7 +59,9 @@ impl ContainerAttributes {
 pub struct VersionAttributes {
     pub(crate) name: SpannedValue<String>,
 
-    pub(crate) deprecated: Flag,
+    // TODO (@Techassi): Remove the rename when the field uses the correct name
+    #[darling(rename = "deprecated")]
+    pub(crate) _deprecated: Flag,
 
     #[darling(skip)]
     pub(crate) module_name: String,

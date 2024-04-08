@@ -1,9 +1,9 @@
-use darling::FromDeriveInput;
+use darling::{FromDeriveInput, FromField};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{spanned::Spanned, Data, DataEnum, DataStruct, DeriveInput, Error, Ident, Result};
 
-use crate::attrs::container::ContainerAttributes;
+use crate::attrs::{container::ContainerAttributes, field::FieldAttributes};
 
 pub(crate) mod version;
 
@@ -13,8 +13,8 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream> {
 
     // Validate container shape
     let expanded = match input.data {
-        Data::Struct(data) => expand_struct(input.ident, data, attributes)?,
-        Data::Enum(data) => expand_enum(input.ident, data, attributes)?,
+        Data::Struct(data) => expand_struct(&input.ident, data, attributes)?,
+        Data::Enum(data) => expand_enum(&input.ident, data, attributes)?,
         Data::Union(_) => {
             return Err(Error::new(
                 input.span(),
@@ -29,17 +29,23 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream> {
 }
 
 pub(crate) fn expand_struct(
-    ident: Ident,
+    _ident: &Ident,
     data: DataStruct,
-    attributes: ContainerAttributes,
+    _attributes: ContainerAttributes,
 ) -> Result<TokenStream> {
+    // Loop over each specified version and collect fields added, renamed
+    // and deprecated for that version.
+    for field in data.fields {
+        let _field_aatributes = FieldAttributes::from_field(&field)?;
+    }
+
     Ok(quote!())
 }
 
 pub(crate) fn expand_enum(
-    ident: Ident,
-    data: DataEnum,
-    attributes: ContainerAttributes,
+    _ident: &Ident,
+    _data: DataEnum,
+    _attributes: ContainerAttributes,
 ) -> Result<TokenStream> {
     Ok(quote!())
 }

@@ -1,5 +1,7 @@
 use syn::{Field, Ident};
 
+// TODO (@Techassi): Remove allow attribute
+#[allow(dead_code)]
 pub(crate) struct Version {
     struct_ident: Ident,
     version: String,
