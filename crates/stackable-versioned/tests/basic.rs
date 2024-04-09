@@ -1,12 +1,15 @@
 use stackable_versioned::Versioned;
 
+#[derive(Versioned)]
+#[allow(dead_code)]
+#[versioned(version(name = "v1alpha1", deprecated))]
+struct Foo {
+    #[versioned(added(since = "v1alpha1"))]
+    bar: usize,
+}
+
 #[test]
 fn basic() {
-    #[derive(Versioned)]
-    #[allow(dead_code)]
-    #[versioned(version(name = "1.2.3", deprecated))]
-    struct Foo {
-        #[versioned(added(since = "1.2.3"))]
-        bar: usize,
-    }
+    // let _ = v1alpha1::Foo {};
+    // let _ = latest::Foo {};
 }

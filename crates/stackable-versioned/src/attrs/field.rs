@@ -1,72 +1,77 @@
+use std::fmt;
+
 use darling::{util::SpannedValue, Error, FromField, FromMeta};
-use syn::Ident;
 
 #[derive(Debug, FromField)]
-#[darling(
-    attributes(versioned),
-    forward_attrs(allow, doc, cfg, serde),
-    and_then = FieldAttributes::validate
-)]
+#[darling(attributes(versioned), forward_attrs(allow, doc, cfg, serde))]
 pub(crate) struct FieldAttributes {
-    added: Option<SpannedValue<AddedAttributes>>,
-    renamed: Option<SpannedValue<RenamedAttributes>>,
-    deprecated: Option<SpannedValue<DeprecatedAttributes>>,
-
-    ident: Option<Ident>,
-
-    #[darling(skip)]
-    _action: FieldAction,
-}
-
-impl FieldAttributes {
-    fn validate(self) -> darling::Result<Self> {
-        match (&self.added, &self.renamed, &self.deprecated) {
-            (Some(_), Some(_), Some(_)) => {
-                return Err(Error::custom(
-                    "cannot specify fields `added`, `renamed`, and `deprecated` at the same time",
-                )
-                .with_span(&self.ident.unwrap().span()))
-            }
-            (Some(_), Some(_), None) => {
-                return Err(Error::custom(
-                    "cannot specify fields `added` and `renamed` at the same time",
-                )
-                .with_span(&self.ident.unwrap().span()))
-            }
-            (Some(_), None, Some(_)) => {
-                return Err(Error::custom(
-                    "cannot specify fields `added` and `deprecated` at the same time",
-                )
-                .with_span(&self.ident.unwrap().span()))
-            }
-            _ => (),
-        }
-
-        Ok(self)
-    }
+    added: Option<AddedAttributes>,
+    renamed: Option<RenamedAttributes>,
+    deprecated: Option<DeprecatedAttributes>,
 }
 
 #[derive(Debug, FromMeta)]
 pub(crate) struct AddedAttributes {
-    #[darling(rename = "since")]
-    _since: SpannedValue<String>,
+    since: SpannedValue<String>,
 }
 
 #[derive(Debug, FromMeta)]
 pub(crate) struct RenamedAttributes {
-    _since: SpannedValue<String>,
+    since: SpannedValue<String>,
     _to: SpannedValue<String>,
 }
 
 #[derive(Debug, FromMeta)]
 pub(crate) struct DeprecatedAttributes {
-    _since: SpannedValue<String>,
+    since: SpannedValue<String>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) enum FieldAction {
-    #[default]
-    Added,
-    // Renamed,
-    // Deprecated,
+    Added(AddedAttributes),
+    Renamed(RenamedAttributes),
+    Deprecated(DeprecatedAttributes),
+    None,
+}
+
+impl TryFrom<FieldAttributes> for FieldAction {
+    type Error = Error;
+
+    fn try_from(value: FieldAttributes) -> Result<Self, Self::Error> {
+        // NOTE (@Techassi): We sadly currently cannot use the attribute span
+        // when reporting errors. That's why the errors will be displayed at
+        // the #[derive(Versioned)] position.
+
+        match (value.added, value.renamed, value.deprecated) {
+            (Some(added), None, None) => Ok(FieldAction::Added(added)),
+            (None, Some(renamed), None) => Ok(FieldAction::Renamed(renamed)),
+            (None, None, Some(deprecated)) => Ok(FieldAction::Deprecated(deprecated)),
+            (None, None, None) => Ok(FieldAction::None),
+            _ => Err(Error::custom(
+                "cannot specifiy multiple field actions at once",
+            )),
+        }
+    }
+}
+
+impl fmt::Display for FieldAction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FieldAction::Added(_) => "added".fmt(f),
+            FieldAction::Renamed(_) => "renamed".fmt(f),
+            FieldAction::Deprecated(_) => "deprecated".fmt(f),
+            FieldAction::None => "".fmt(f),
+        }
+    }
+}
+
+impl FieldAction {
+    pub(crate) fn since(&self) -> Option<&str> {
+        match self {
+            FieldAction::Added(added) => Some(&*added.since),
+            FieldAction::Renamed(renamed) => Some(&*renamed.since),
+            FieldAction::Deprecated(deprecated) => Some(&*deprecated.since),
+            FieldAction::None => None,
+        }
+    }
 }

@@ -11,20 +11,20 @@ use darling::{
     and_then = ContainerAttributes::validate
 )]
 pub(crate) struct ContainerAttributes {
-    #[darling(multiple)]
-    pub(crate) version: SpannedValue<Vec<VersionAttributes>>,
+    #[darling(multiple, rename = "version")]
+    pub(crate) versions: SpannedValue<Vec<VersionAttributes>>,
 }
 
 impl ContainerAttributes {
     fn validate(mut self) -> darling::Result<Self> {
-        if self.version.is_empty() {
+        if self.versions.is_empty() {
             return Err(Error::custom(
                 "attribute `#[versioned()]` must contain at least one `version`",
             )
-            .with_span(&self.version.span()));
+            .with_span(&self.versions.span()));
         }
 
-        for version in &mut *self.version {
+        for version in &mut *self.versions {
             if version.name.is_empty() {
                 return Err(Error::custom("field `name` of `version` must not be empty")
                     .with_span(&version.name.span()));
@@ -40,15 +40,6 @@ impl ContainerAttributes {
                 )
                 .with_span(&version.name.span()));
             }
-
-            // TODO (@Techassi): Use Diagnostics API when stablizized to throw
-            // a warning when the input mismatches the generated module name.
-            // See https://github.com/rust-lang/rust/issues/54140
-            let module_name = version.name.to_lowercase();
-            if module_name != *version.name {
-                println!("the generated module name differs from the provided version name which might cause confusion around what the code seems to suggest")
-            }
-            version.module_name = module_name
         }
 
         Ok(self)
@@ -62,9 +53,4 @@ pub struct VersionAttributes {
     // TODO (@Techassi): Remove the rename when the field uses the correct name
     #[darling(rename = "deprecated")]
     pub(crate) _deprecated: Flag,
-
-    #[darling(skip)]
-    pub(crate) module_name: String,
-    // #[darling(default = default_visibility)]
-    // pub(crate) visibility: Visibility,
 }
