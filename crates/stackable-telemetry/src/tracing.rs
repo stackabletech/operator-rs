@@ -1,3 +1,11 @@
+//! This module contains functionality to initialise tracing Subscribers for
+//! console output, and OpenTelemetry OTLP export for traces and logs.
+//!
+//! It is intended to be used by the Stackable Data Platform operators and
+//! webhooks, but it should be generic enough to be used in any application.
+//!
+//! To get started, see [`Tracing`].
+
 use opentelemetry::KeyValue;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_sdk::{
@@ -36,7 +44,9 @@ pub enum Error {
     },
 }
 
-/// Usage:
+/// Easily initialize a set of preconfigured [`Subscriber`][1] layers.
+///
+/// # Usage:
 /// ```
 /// use stackable_telemetry::tracing::{Tracing, Error};
 /// use tracing_subscriber::filter::LevelFilter;
@@ -45,9 +55,9 @@ pub enum Error {
 /// async fn main() -> Result<(), Error> {
 ///     let _tracing_guard = Tracing::builder()
 ///         .service_name("test")
-///         .with_console_output(LevelFilter::TRACE)
+///         .with_console_output(LevelFilter::INFO)
 ///         .with_otlp_log_exporter(LevelFilter::DEBUG)
-///         .with_otlp_trace_exporter(LevelFilter::INFO)
+///         .with_otlp_trace_exporter(LevelFilter::TRACE)
 ///         .build()
 ///         .init()?;
 ///
@@ -57,26 +67,66 @@ pub enum Error {
 /// }
 /// ```
 ///
-/// You can configure the OTLP trace exports through the variables defined in the opentelemetry crates:
-/// - opentelemetry-otlp: `OTEL_EXPORTER_OTLP_COMPRESSION`
-/// - opentelemetry-otlp: `OTEL_EXPORTER_OTLP_ENDPOINT` (defaults to: `http://localhost:4317 `)
-/// - opentelemetry-otlp: `OTEL_EXPORTER_OTLP_TIMEOUT`
-/// - opentelemetry-otlp: `OTEL_EXPORTER_OTLP_HEADERS`
-/// - opentelemetry-sdk: `OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT`
-/// - opentelemetry-sdk: `OTEL_SPAN_EVENT_COUNT_LIMIT`
-/// - opentelemetry-sdk: `OTEL_SPAN_LINK_COUNT_LIMIT`
-/// - opentelemetry-sdk: `OTEL_TRACES_SAMPLER` (if "traceidratio" or "parentbased_traceidratio", then `OTEL_TRACES_SAMPLER_ARG`)
-/// - opentelemetry-sdk: `OTEL_BSP_MAX_QUEUE_SIZE`
-/// - opentelemetry-sdk: `OTEL_BSP_SCHEDULE_DELAY`
-/// - opentelemetry-sdk: `OTEL_BSP_MAX_EXPORT_BATCH_SIZE`
-/// - opentelemetry-sdk: `OTEL_BSP_EXPORT_TIMEOUT`
-/// - opentelemetry-sdk: `OTEL_BSP_MAX_CONCURRENT_EXPORTS`
-/// - opentelemetry-sdk: `OTEL_BLRP_MAX_QUEUE_SIZE`
-/// - opentelemetry-sdk: `OTEL_BLRP_SCHEDULE_DELAY`
-/// - opentelemetry-sdk: `OTEL_BLRP_MAX_EXPORT_BATCH_SIZE`
-/// - opentelemetry-sdk: `OTEL_BLRP_EXPORT_TIMEOUT`
+/// # Additional Configuration
 ///
-/// todo: add exporter specific vars here
+/// You can configure the OTLP trace and log exports through the variables defined in the opentelemetry crates:
+///
+/// - `OTEL_EXPORTER_OTLP_COMPRESSION` (defaults to none, but can be set to `gzip`).
+/// - `OTEL_EXPORTER_OTLP_ENDPOINT` (defaults to `http://localhost:4317`, with the `grpc-tonic` feature (default)).
+/// - `OTEL_EXPORTER_OTLP_TIMEOUT`
+/// - `OTEL_EXPORTER_OTLP_HEADERS`
+///
+/// _See the defaults in the [opentelemetry-otlp][2] crate._
+///
+/// ## Tracing exporter overrides
+///
+/// OTLP Exporter settings:
+///
+/// - `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`
+/// - `OTEL_EXPORTER_OTLP_TRACES_TIMEOUT`
+/// - `OTEL_EXPORTER_OTLP_TRACES_COMPRESSION`
+/// - `OTEL_EXPORTER_OTLP_TRACES_HEADERS`
+///
+/// General Span and Trace settings:
+///
+/// - `OTEL_SPAN_ATTRIBUTE_COUNT_LIMIT`
+/// - `OTEL_SPAN_EVENT_COUNT_LIMIT`
+/// - `OTEL_SPAN_LINK_COUNT_LIMIT`
+/// - `OTEL_TRACES_SAMPLER` (Defaults to `parentbased_always_on`. If "traceidratio" or "parentbased_traceidratio", then `OTEL_TRACES_SAMPLER_ARG`)
+///
+/// Batch Span Processor settings:
+///
+/// - `OTEL_BSP_MAX_QUEUE_SIZE`
+/// - `OTEL_BSP_SCHEDULE_DELAY`
+/// - `OTEL_BSP_MAX_EXPORT_BATCH_SIZE`
+/// - `OTEL_BSP_EXPORT_TIMEOUT`
+/// - `OTEL_BSP_MAX_CONCURRENT_EXPORTS`
+///
+/// _See defaults in the opentelemetry_sdk crate under [trace::config][3] and [trace::span_processor][4]._
+///
+/// ## Log exporter overrides
+///
+/// OTLP exporter settings:
+///
+/// - `OTEL_EXPORTER_OTLP_LOGS_COMPRESSION`
+/// - `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`
+/// - `OTEL_EXPORTER_OTLP_LOGS_TIMEOUT`
+/// - `OTEL_EXPORTER_OTLP_LOGS_HEADERS`
+///
+/// Batch Log Record Processor settings:
+///
+/// - `OTEL_BLRP_MAX_QUEUE_SIZE`
+/// - `OTEL_BLRP_SCHEDULE_DELAY`
+/// - `OTEL_BLRP_MAX_EXPORT_BATCH_SIZE`
+/// - `OTEL_BLRP_EXPORT_TIMEOUT`
+///
+/// _See defaults in the opentelemetry_sdk crate under [log::log_processor][5]._
+///
+/// [1]: tracing::Subscriber
+/// [2]: https://docs.rs/opentelemetry-otlp/latest/src/opentelemetry_otlp/exporter/mod.rs.html
+/// [3]: https://docs.rs/opentelemetry_sdk/latest/src/opentelemetry_sdk/trace/config.rs.html
+/// [4]: https://docs.rs/opentelemetry_sdk/latest/src/opentelemetry_sdk/trace/span_processor.rs.html
+/// [5]: https://docs.rs/opentelemetry_sdk/latest/src/opentelemetry_sdk/logs/log_processor.rs.html
 pub struct Tracing {
     service_name: &'static str,
     console_log_config: SubscriberConfig,
@@ -88,8 +138,6 @@ impl Tracing {
     pub fn builder() -> TracingBuilder<builder_state::PreServiceName> {
         TracingBuilder::default()
     }
-
-    // HDFS_LOG_LEVEL=trace,h2=warn
 
     /// Initialise the configured tracing subscribers, returning a guard that
     /// will shutdown the subscribers when dropped.
@@ -206,11 +254,13 @@ impl Drop for Tracing {
 #[doc(hidden)]
 pub trait BuilderState: private::Sealed {}
 
-/// This private module holds the [`Sealed`] trait that is used by the
+/// This private module holds the [`Sealed`][1] trait that is used by the
 /// [`BuilderState`], so that is cannot be implemented outside of this crate.
 ///
 /// We impl Sealed for any types that will use the trait that we want to
 /// restrict impls on. In this case, the [`BuilderState`] trait.
+///
+/// [1]: private::Sealed
 #[doc(hidden)]
 mod private {
     use super::*;
@@ -223,8 +273,8 @@ mod private {
 
 /// This module holds the possible states that the builder is in.
 ///
-/// Each state will implement [`super::BuilderState`] (with no methods), and the
-/// Builder struct ([`super::TracingBuilder`]) itself will be implemented with
+/// Each state will implement [`BuilderState`] (with no methods), and the
+/// Builder struct ([`TracingBuilder`]) itself will be implemented with
 /// each state as a generic parameter.
 /// This allows only the methods to be called when the builder is in the the
 /// applicable state.
@@ -249,7 +299,7 @@ mod builder_state {
     pub struct Config;
 }
 
-// Make the state valid
+// Make the states usable
 #[doc(hidden)]
 impl BuilderState for builder_state::PreServiceName {}
 
@@ -403,16 +453,16 @@ mod test {
     fn builder_with_all() {
         let trace_guard = Tracing::builder()
             .service_name("test")
-            .with_console_output(LevelFilter::TRACE)
+            .with_console_output(LevelFilter::INFO)
             .with_otlp_log_exporter(LevelFilter::DEBUG)
-            .with_otlp_trace_exporter(LevelFilter::INFO)
+            .with_otlp_trace_exporter(LevelFilter::TRACE)
             .build();
 
         assert_eq!(
             trace_guard.console_log_config,
             SubscriberConfig {
                 enabled: true,
-                level_filter: LevelFilter::TRACE
+                level_filter: LevelFilter::INFO
             }
         );
         assert_eq!(
@@ -426,7 +476,7 @@ mod test {
             trace_guard.otlp_trace_config,
             SubscriberConfig {
                 enabled: true,
-                level_filter: LevelFilter::INFO
+                level_filter: LevelFilter::TRACE
             }
         );
     }
