@@ -33,6 +33,7 @@ kube = { version = "0.89.0", default-features = false, features = ["client", "js
 lazy_static = "1.4.0"
 opentelemetry = "0.22.0"
 opentelemetry_sdk = { version = "0.22.1", features = ["rt-tokio"] }
+opentelemetry-appender-tracing = "0.3.0"
 opentelemetry-jaeger = { version = "0.21.0", features = ["rt-tokio"] }
 opentelemetry-otlp = "0.15.0"
 opentelemetry-semantic-conventions = "0.14.0"
@@ -64,6 +65,7 @@ tokio-test = "0.4.4"
 tower = "0.4.13"
 tower-http = { version = "0.5.2", features = ["trace"] }
 tracing = "0.1.40"
+tracing-log = "0.2.0"
 tracing-opentelemetry = "0.23.0"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 url = { version = "2.5.0", features = ["serde"] }
