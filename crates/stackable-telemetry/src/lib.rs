@@ -1,4 +1,4 @@
-//! This crate contains various OpenTelemtry primitives to make writing
-//! compatible code easier.
+//! This crate contains various Tracing, Logging, and OpenTelemtry primitives to
+//! instrumenting code easier.
 pub mod layer;
 pub mod tracing;
