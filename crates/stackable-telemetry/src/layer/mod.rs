@@ -30,7 +30,7 @@ mod injector;
 pub use extractor::*;
 pub use injector::*;
 
-/// A layer which records HTTP spans.
+/// A Tower [`Layer`][1] which decorates [`TraceService`].
 ///
 /// ### Example with Axum
 ///
@@ -94,6 +94,7 @@ impl TraceLayer {
     }
 }
 
+/// A Tower [`Service`] which injects Span Context into HTTP Response Headers.
 #[derive(Debug, Clone)]
 pub struct TraceService<S> {
     inner: S,
