@@ -477,14 +477,16 @@ mod test {
     use super::*;
 
     #[tokio::test]
-    async fn test() {
+    async fn test_rsa_key_generation() {
         let mut ca = CertificateAuthority::new_rsa().unwrap();
-        ca.generate_leaf_certificate(
-            rsa::SigningKey::new().unwrap(),
-            "Airflow",
-            "pod",
-            Duration::from_secs(3600),
-        )
-        .unwrap();
+        ca.generate_rsa_leaf_certificate("Airflow", "pod", Duration::from_secs(3600))
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_ecdsa_key_generation() {
+        let mut ca = CertificateAuthority::new_ecdsa().unwrap();
+        ca.generate_ecdsa_leaf_certificate("Airflow", "pod", Duration::from_secs(3600))
+            .unwrap();
     }
 }
