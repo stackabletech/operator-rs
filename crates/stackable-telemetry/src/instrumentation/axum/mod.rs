@@ -35,10 +35,10 @@ pub use injector::*;
 /// ### Example with Axum
 ///
 /// ```
-/// use stackable_telemetry::TraceLayer;
+/// use stackable_telemetry::AxumTraceLayer;
 /// use axum::{routing::get, Router};
 ///
-/// let trace_layer = TraceLayer::new();
+/// let trace_layer = AxumTraceLayer::new();
 /// let router = Router::new()
 ///     .route("/", get(|| async { "Hello, World!" }))
 ///     .layer(trace_layer);
