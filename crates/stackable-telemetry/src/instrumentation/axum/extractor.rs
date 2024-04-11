@@ -10,7 +10,6 @@ use opentelemetry::{propagation::Extractor, Context};
 ///
 /// [1]: opentelemetry::propagation::TextMapPropagator
 /// [2]: tower::Layer
-/// [3]: crate::layer::SpanExt::from_request
 pub struct HeaderExtractor<'a>(pub(crate) &'a HeaderMap);
 
 impl<'a> Extractor for HeaderExtractor<'a> {

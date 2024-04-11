@@ -12,7 +12,6 @@ use opentelemetry::{propagation::Injector, Context};
 /// [1]: opentelemetry::propagation::TextMapPropagator
 /// [2]: tower::Layer
 /// [3]: tower::Service::call
-/// [4]: crate::layer::TraceService
 pub struct HeaderInjector<'a>(pub(crate) &'a mut HeaderMap);
 
 impl<'a> Injector for HeaderInjector<'a> {

@@ -35,7 +35,7 @@ pub use injector::*;
 /// ### Example with Axum
 ///
 /// ```
-/// use stackable_telemetry::layer::TraceLayer;
+/// use stackable_telemetry::TraceLayer;
 /// use axum::{routing::get, Router};
 ///
 /// let trace_layer = TraceLayer::new();

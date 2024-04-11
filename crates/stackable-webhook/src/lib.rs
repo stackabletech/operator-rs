@@ -25,7 +25,7 @@
 //! [1]: crate::servers::ConversionWebhookServer
 use axum::Router;
 use snafu::{ResultExt, Snafu};
-use stackable_telemetry::layer::TraceLayer;
+use stackable_telemetry::AxumTraceLayer;
 use tower::ServiceBuilder;
 // use tower_http::trace::TraceLayer;
 use tracing::{debug, instrument};
@@ -139,7 +139,7 @@ impl WebhookServer {
 
         // Create a OpenTelemetry tracing layer
         debug!("create tracing service (layer)");
-        let trace_layer = TraceLayer::new().with_opt_in();
+        let trace_layer = AxumTraceLayer::new().with_opt_in();
 
         // Use a service builder to provide multiple layers at once. Recommended
         // by the Axum project.
