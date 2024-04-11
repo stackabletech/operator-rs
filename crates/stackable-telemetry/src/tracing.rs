@@ -16,10 +16,8 @@ use opentelemetry_sdk::{
 };
 use opentelemetry_semantic_conventions::resource;
 use snafu::{ResultExt as _, Snafu};
-use tracing::subscriber::SetGlobalDefaultError;
+use tracing::{level_filters::LevelFilter, subscriber::SetGlobalDefaultError};
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Layer, Registry};
-
-pub use tracing::level_filters::LevelFilter;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
