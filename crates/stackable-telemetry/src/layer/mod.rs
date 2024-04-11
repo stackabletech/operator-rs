@@ -34,14 +34,16 @@ pub use injector::*;
 ///
 /// ### Example with Axum
 ///
-/// ```ignore
-/// use stackable_telemtry::layer::TraceLayer;
+/// ```
+/// use stackable_telemetry::layer::TraceLayer;
 /// use axum::{routing::get, Router};
 ///
 /// let trace_layer = TraceLayer::new();
 /// let router = Router::new()
 ///     .route("/", get(|| async { "Hello, World!" }))
 ///     .layer(trace_layer);
+///
+/// # let _: Router = router;
 /// ```
 ///
 /// ### Example with Webhook
@@ -50,12 +52,14 @@ pub use injector::*;
 /// The webhook server has built-in support to automatically emit HTTP spans on
 /// every incoming request.
 ///
-/// ```ignore
+/// ```
 /// use stackable_webhook::{WebhookServer, Options};
 /// use axum::Router;
 ///
 /// let router = Router::new();
 /// let server = WebhookServer::new(router, Options::default());
+///
+/// # let _: WebhookServer = server;
 /// ```
 ///
 /// This layer is implemented based on [this][1] official Tower guide.
