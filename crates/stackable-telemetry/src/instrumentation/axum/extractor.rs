@@ -8,8 +8,14 @@ use opentelemetry::{propagation::Extractor, Context};
 /// which can be picked up by the Tower [`Layer`][2] to link both spans together.
 /// A concrete usage example is available in [`SpanExt::from_request`][3].
 ///
+/// This is pretty much a copy-pasted version of the [`HeaderExtractor`][4] from
+/// the `opentelemetry_http` crate. However, we cannot use this crate, as it
+/// uses an outdated version of the underlying `http` crate.
+///
 /// [1]: opentelemetry::propagation::TextMapPropagator
 /// [2]: tower::Layer
+/// [3]: crate::instrumentation::axum::SpanExt::from_request
+/// [4]: https://docs.rs/opentelemetry-http/latest/opentelemetry_http/struct.HeaderExtractor.html
 pub struct HeaderExtractor<'a>(pub(crate) &'a HeaderMap);
 
 impl<'a> Extractor for HeaderExtractor<'a> {

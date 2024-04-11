@@ -9,9 +9,15 @@ use opentelemetry::{propagation::Injector, Context};
 /// A concrete usage example is available in the [`TraceService::call`][3]
 /// implementation for [`TraceService`][4].
 ///
+/// This is pretty much a copy-pasted version of the [`HeaderInjector`][5] from
+/// the `opentelemetry_http` crate. However, we cannot use this crate, as it
+/// uses an outdated version of the underlying `http` crate.
+///
 /// [1]: opentelemetry::propagation::TextMapPropagator
 /// [2]: tower::Layer
 /// [3]: tower::Service::call
+/// [4]: crate::instrumentation::axum::TraceService
+/// [5]: https://docs.rs/opentelemetry-http/latest/opentelemetry_http/struct.HeaderInjector.html
 pub struct HeaderInjector<'a>(pub(crate) &'a mut HeaderMap);
 
 impl<'a> Injector for HeaderInjector<'a> {
