@@ -1,6 +1,18 @@
 use axum::http::{HeaderMap, HeaderName, HeaderValue};
 use opentelemetry::{propagation::Injector, Context};
 
+/// Injects the [`TextMapPropagator`][1] to propagate trace parent information
+/// in HTTP headers.
+///
+/// This propagation is useful when consumers of the HTTP response want to link
+/// up their span data with the data produced in the Tower [`Layer`][2].
+/// A concrete usage example is available in the [`TraceService::call`][3]
+/// implementation for [`TraceService`][4].
+///
+/// [1]: opentelemetry::propagation::TextMapPropagator
+/// [2]: tower::Layer
+/// [3]: tower::Service::call
+/// [4]: crate::layer::TraceService
 pub struct HeaderInjector<'a>(pub(crate) &'a mut HeaderMap);
 
 impl<'a> Injector for HeaderInjector<'a> {
@@ -14,10 +26,14 @@ impl<'a> Injector for HeaderInjector<'a> {
 }
 
 impl<'a> HeaderInjector<'a> {
+    /// Create a new header injecttor from a mutable reference to [`HeaderMap`].
     pub fn new(headers: &'a mut HeaderMap) -> Self {
         Self(headers)
     }
 
+    /// Inject the [`TextMapPropagator`][1] into the HTTP headers.
+    ///
+    /// [1]: opentelemetry::propagation::TextMapPropagator
     pub fn inject_context(&mut self, cx: &Context) {
         opentelemetry::global::get_text_map_propagator(|propagator| {
             propagator.inject_context(cx, self)

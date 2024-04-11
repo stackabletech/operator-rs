@@ -135,6 +135,7 @@ where
     }
 }
 
+/// This future contains the inner service future and the current [`Span`].
 #[pin_project]
 pub struct ResponseFuture<F> {
     #[pin]
@@ -164,12 +165,12 @@ where
 }
 
 /// This trait provides various helper functions to extract data from a
-/// [`Request`].
+/// HTTP [`Request`].
 pub trait RequestExt {
-    /// Returns the client socket address if available
+    /// Returns the client socket address, if available.
     fn client_socket_address(&self) -> Option<SocketAddr>;
 
-    /// Returns the server socket address if available
+    /// Returns the server socket address, if available.
     ///
     /// ### Value Selection Strategy
     ///
@@ -189,6 +190,10 @@ pub trait RequestExt {
     fn server_socket_address(&self) -> Option<SocketAddr>;
 
     /// Returns the matched path, like `/object/:object_id/tags`.
+    ///
+    /// The returned path has low cardinality. It will never contain any path
+    /// or query parameter. This behaviour is suggested by the conventions
+    /// specification.
     fn matched_path(&self) -> Option<&MatchedPath>;
 
     /// Retuns the span name.
@@ -197,10 +202,12 @@ pub trait RequestExt {
     /// `http.route` is not available. Examples are:
     ///
     /// - `GET /object/:object_id/tags`
-    /// - `POST`
+    /// - `PUT /upload/:file_id`
+    /// - `POST /convert`
+    /// - `OPTIONS`
     fn span_name(&self) -> String;
 
-    /// Returns the user agent if available.
+    /// Returns the user agent, if available.
     fn user_agent(&self) -> Option<&str>;
 }
 
