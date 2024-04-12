@@ -348,7 +348,7 @@ where
     ///
     /// See [`CertificateAuthority::generate_leaf_certificate`] for more
     /// information.
-    #[instrument]
+    #[instrument(skip(self))]
     pub fn generate_rsa_leaf_certificate(
         &mut self,
         name: &str,
@@ -363,7 +363,7 @@ where
     ///
     /// See [`CertificateAuthority::generate_leaf_certificate`] for more
     /// information.
-    #[instrument]
+    #[instrument(skip(self))]
     pub fn generate_ecdsa_leaf_certificate(
         &mut self,
         name: &str,
