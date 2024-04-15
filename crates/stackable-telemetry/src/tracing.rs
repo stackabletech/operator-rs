@@ -154,6 +154,7 @@ impl Tracing {
         }
 
         if self.otlp_log_config.enabled {
+            // Convert log::Record to tracing::Event
             tracing_log::LogTracer::init().context(InitLogTracerSnafu)?;
 
             let env_filter_layer = EnvFilter::builder()
@@ -228,7 +229,7 @@ impl Tracing {
 
         if !layers.is_empty() {
             // Add the layers to the tracing_subscriber Registry (console,
-            // tracing (OLTP), logging (OLTP))
+            // tracing (OTLP), logging (OTLP))
             tracing::subscriber::set_global_default(tracing_subscriber::registry().with(layers))
                 .context(SetGlobalDefaultSubscriberSnafu)?;
         }
