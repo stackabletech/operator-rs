@@ -77,5 +77,3 @@ zeroize = "1.7.0"
 opt-level = 3
 [profile.test.package."rsa"]
 opt-level = 3
-[profile.dev.package."rsa"]
-opt-level = 3
