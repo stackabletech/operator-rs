@@ -4,12 +4,13 @@ use stackable_versioned::Versioned;
 #[allow(dead_code)]
 #[versioned(version(name = "v1alpha1"), version(name = "v1beta1"))]
 struct Foo {
-    #[versioned(deprecated(since = "v1beta1", note = "was moved to some other field"))]
+    /// My docs
+    #[versioned(added(since = "v1beta1"))]
     bar: usize,
     baz: bool,
 }
 
 #[test]
 fn basic() {
-    // let _ = v1alpha1::Foo {};
+    let _foo = v1beta1::Foo { bar: 0, baz: true };
 }

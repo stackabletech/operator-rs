@@ -12,7 +12,7 @@ pub(crate) struct FieldAttributes {
 
 #[derive(Debug, FromMeta)]
 pub(crate) struct AddedAttributes {
-    since: SpannedValue<String>,
+    pub(crate) since: SpannedValue<String>,
 }
 
 #[derive(Debug, FromMeta)]

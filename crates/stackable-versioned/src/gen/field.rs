@@ -53,7 +53,7 @@ impl ToTokens for VersionedField {
 }
 
 impl VersionedField {
-    pub(crate) fn _new(field: Field, action: FieldAction) -> Self {
+    pub(crate) fn new(field: Field, action: FieldAction) -> Self {
         Self {
             inner: field,
             action,
