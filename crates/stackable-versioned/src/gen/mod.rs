@@ -10,7 +10,6 @@ use crate::{
 
 pub(crate) mod field;
 pub(crate) mod venum;
-pub(crate) mod version;
 pub(crate) mod vstruct;
 
 // NOTE (@Techassi): This derive macro cannot handle multiple structs / enums

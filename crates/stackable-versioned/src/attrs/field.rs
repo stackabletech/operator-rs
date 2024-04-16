@@ -18,12 +18,13 @@ pub(crate) struct AddedAttributes {
 #[derive(Debug, FromMeta)]
 pub(crate) struct RenamedAttributes {
     since: SpannedValue<String>,
-    _to: SpannedValue<String>,
+    pub(crate) to: SpannedValue<String>,
 }
 
 #[derive(Debug, FromMeta)]
 pub(crate) struct DeprecatedAttributes {
-    since: SpannedValue<String>,
+    pub(crate) since: SpannedValue<String>,
+    pub(crate) note: SpannedValue<String>,
 }
 
 #[derive(Debug)]
@@ -32,6 +33,20 @@ pub(crate) enum FieldAction {
     Renamed(RenamedAttributes),
     Deprecated(DeprecatedAttributes),
     None,
+}
+
+impl PartialEq for FieldAction {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Added(lhs), Self::Added(rhs)) => *lhs.since == *rhs.since,
+            (Self::Renamed(lhs), Self::Renamed(rhs)) => {
+                *lhs.since == *rhs.since && *lhs.to == *rhs.to
+            }
+            (Self::Deprecated(lhs), Self::Deprecated(rhs)) => *lhs.since == *rhs.since,
+            (Self::None, Self::None) => true,
+            _ => false,
+        }
+    }
 }
 
 impl TryFrom<FieldAttributes> for FieldAction {

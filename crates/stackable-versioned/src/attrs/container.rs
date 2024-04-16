@@ -1,9 +1,11 @@
+use std::{collections::HashSet, ops::Deref};
+
 use darling::{
     util::{Flag, SpannedValue},
     Error, FromDeriveInput, FromMeta,
 };
 
-#[derive(Debug, FromDeriveInput)]
+#[derive(Clone, Debug, FromDeriveInput)]
 #[darling(
     attributes(versioned),
     supports(struct_named),
@@ -17,6 +19,8 @@ pub(crate) struct ContainerAttributes {
 
 impl ContainerAttributes {
     fn validate(mut self) -> darling::Result<Self> {
+        // If there are no versions defined, the derive macro errors out. There
+        // should be at least one version if the derive macro is used.
         if self.versions.is_empty() {
             return Err(Error::custom(
                 "attribute `#[versioned()]` must contain at least one `version`",
@@ -25,11 +29,16 @@ impl ContainerAttributes {
         }
 
         for version in &mut *self.versions {
+            // Ensure that the version name is not empty, because we cannot use
+            // an empty name as the module name.
             if version.name.is_empty() {
                 return Err(Error::custom("field `name` of `version` must not be empty")
                     .with_span(&version.name.span()));
             }
 
+            // Ensure that the version name contains only a selection of valid
+            // characters, which can also be used as module identifiers (after
+            // minor replacements).
             if !version
                 .name
                 .chars()
@@ -42,15 +51,26 @@ impl ContainerAttributes {
             }
         }
 
+        // Ensure every version is unique and isn't declared multiple times. This
+        // is inspired by the itertools all_unique function.
+        let mut unique = HashSet::new();
+        if !self
+            .versions
+            .iter()
+            .all(move |elem| unique.insert(elem.name.deref()))
+        {
+            return Err(Error::custom(
+                "attribute `#[versioned()]` contains one or more `version`s with a duplicate `name`",
+            )
+            .with_span(&self.versions.span()));
+        }
+
         Ok(self)
     }
 }
 
-#[derive(Debug, FromMeta)]
+#[derive(Clone, Debug, FromMeta)]
 pub struct VersionAttributes {
     pub(crate) name: SpannedValue<String>,
-
-    // TODO (@Techassi): Remove the rename when the field uses the correct name
-    #[darling(rename = "deprecated")]
-    pub(crate) _deprecated: Flag,
+    pub(crate) deprecated: Flag,
 }
