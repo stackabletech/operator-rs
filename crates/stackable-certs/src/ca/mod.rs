@@ -304,8 +304,6 @@ where
         // The leaf certificate can be used for WWW client and server
         // authentication. This is a base requirement for TLS certs.
         let eku = ExtendedKeyUsage(vec![ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH]);
-        let aki = AuthorityKeyIdentifier::try_from(spki.owned_to_ref())
-            .context(ParseAuthorityKeyIdentifierSnafu)?;
 
         let signer = self.certificate_pair.key_pair.signing_key();
         let mut builder = CertificateBuilder::new(
@@ -330,9 +328,6 @@ where
         // Again, add the extension created above.
         builder
             .add_extension(&eku)
-            .context(AddCertificateExtensionSnafu)?;
-        builder
-            .add_extension(&aki)
             .context(AddCertificateExtensionSnafu)?;
 
         debug!("create and sign leaf certificate");
