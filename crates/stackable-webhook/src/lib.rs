@@ -23,7 +23,7 @@
 //! enable complete controll over these details if needed.
 //!
 //! [1]: crate::servers::ConversionWebhookServer
-use axum::Router;
+use axum::{routing::get, Router};
 use snafu::{ResultExt, Snafu};
 use stackable_telemetry::AxumTraceLayer;
 use tower::ServiceBuilder;
@@ -149,8 +149,10 @@ impl WebhookServer {
 
         // Create the root router and merge the provided router into it.
         debug!("create core router and merge provided router");
-        let mut router = Router::new().layer(service_builder);
-        router = router.merge(self.router);
+        let router = self
+            .router
+            .layer(service_builder)
+            .route("/health", get(|| async { "ok" }));
 
         // Create server for TLS termination
         debug!("create TLS server");
