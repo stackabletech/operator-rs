@@ -122,12 +122,7 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, mut req: Request) -> Self::Future {
-        // NOTE (@Techassi): Can we inject the current context here or do we
-        // need to inject it in a separate layer?
-        let mut injector = HeaderInjector::new(req.headers_mut());
-        injector.inject_context(&Span::current().context());
-
+    fn call(&mut self, req: Request) -> Self::Future {
         let span = Span::from_request(&req, self.opt_in);
 
         let future = {
@@ -161,8 +156,8 @@ where
         let this = self.project();
         let _guard = this.span.enter();
 
-        let result = ready!(this.future.poll(cx));
-        this.span.finalize(&result);
+        let mut result = ready!(this.future.poll(cx));
+        this.span.finalize(&mut result);
 
         Poll::Ready(result)
     }
@@ -275,10 +270,10 @@ pub trait SpanExt {
     fn add_header_fields(&self, headers: &HeaderMap);
 
     /// Finalize the [`Span`] with an Axum [`Response`].
-    fn finalize_with_response(&self, response: &Response);
+    fn finalize_with_response(&self, response: &mut Response);
 
     /// Finalize the [`Span`] with an error.
-    fn finalize_with_error<E>(&self, error: E)
+    fn finalize_with_error<E>(&self, error: &mut E)
     where
         E: std::error::Error;
 
@@ -288,7 +283,7 @@ pub trait SpanExt {
     ///
     /// - [`SpanExt::finalize_with_response`] when [`Ok`]
     /// - [`SpanExt::finalize_with_error`] when [`Err`]
-    fn finalize<E>(&self, result: &Result<Response, E>)
+    fn finalize<E>(&self, result: &mut Result<Response, E>)
     where
         E: std::error::Error,
     {
@@ -300,7 +295,6 @@ pub trait SpanExt {
 }
 
 impl SpanExt for Span {
-    #[instrument(name = "create_span_from_request")]
     fn from_request(req: &Request, opt_in: bool) -> Self {
         let http_method = req.method().as_str();
         let span_name = req.span_name();
@@ -424,7 +418,7 @@ impl SpanExt for Span {
         }
     }
 
-    fn finalize_with_response(&self, response: &Response) {
+    fn finalize_with_response(&self, response: &mut Response) {
         let status_code = response.status();
         self.record("http.response.status_code", status_code.as_u16());
 
@@ -437,9 +431,12 @@ impl SpanExt for Span {
             self.record("otel.status_code", "Error");
             // NOTE (@Techassi): Can we add a status_description here as well?
         }
+
+        let mut injector = HeaderInjector::new(response.headers_mut());
+        injector.inject_context(&Span::current().context());
     }
 
-    fn finalize_with_error<E>(&self, error: E)
+    fn finalize_with_error<E>(&self, error: &mut E)
     where
         E: std::error::Error,
     {
