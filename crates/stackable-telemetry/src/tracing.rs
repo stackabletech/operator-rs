@@ -256,7 +256,7 @@ impl Drop for Tracing {
 pub trait BuilderState: private::Sealed {}
 
 /// This private module holds the [`Sealed`][1] trait that is used by the
-/// [`BuilderState`], so that is cannot be implemented outside of this crate.
+/// [`BuilderState`], so that it cannot be implemented outside of this crate.
 ///
 /// We impl Sealed for any types that will use the trait that we want to
 /// restrict impls on. In this case, the [`BuilderState`] trait.
