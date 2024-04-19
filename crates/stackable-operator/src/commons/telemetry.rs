@@ -4,11 +4,20 @@ use url::Url;
 
 use crate::time::Duration;
 
-// NOTE (@Techassi): We might want to rename this to OpenTelemetryConfig to
-// avoid confusion about business telemetry.
+/// Configure [OpenTelemetry][1] related config fields for the operator.
+///
+/// It contains sub fields to individually configure [metrics][2], [traces][3],
+/// and [logs][4]. Additionally, configure global [exporter](ExporterConfig)
+/// settings. This is especially useful when all telemetry data is sent to a
+/// central collector.
+///
+/// [1]: https://opentelemetry.io/
+/// [2]: https://opentelemetry.io/docs/specs/otel/metrics/
+/// [3]: https://opentelemetry.io/docs/specs/otel/trace/
+/// [4]: https://opentelemetry.io/docs/specs/otel/logs/
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TelemetryConfig {
+pub struct OpenTelemetryConfig {
     pub metrics: MetricsConfig,
     pub traces: TracesConfig,
     pub logs: LogsConfig,
@@ -17,6 +26,9 @@ pub struct TelemetryConfig {
     pub defaults: ExporterConfig,
 }
 
+/// Configure OpenTelemetry [metrics][1] settings for the operator.
+///
+/// [1]: https://opentelemetry.io/docs/specs/otel/metrics/
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MetricsConfig {
@@ -28,6 +40,9 @@ pub struct MetricsConfig {
     pub exporter: Option<ExporterConfig>,
 }
 
+/// Configure OpenTelemetry [trace][1] settings for the operator.
+///
+/// [1]: https://opentelemetry.io/docs/specs/otel/trace/
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TracesConfig {
@@ -39,6 +54,9 @@ pub struct TracesConfig {
     pub exporter: Option<ExporterConfig>,
 }
 
+/// Configure OpenTelemetry [log][1] settings for the operator.
+///
+/// [1]: https://opentelemetry.io/docs/specs/otel/logs/
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LogsConfig {
@@ -50,6 +68,7 @@ pub struct LogsConfig {
     pub exporter: Option<ExporterConfig>,
 }
 
+/// Configure OpenTelemetry export settings, like endpoint and timeout.
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExporterConfig {
@@ -81,7 +100,7 @@ mod test {
 
     #[test]
     fn json_schema() {
-        let schema = schema_for!(TelemetryConfig);
+        let schema = schema_for!(OpenTelemetryConfig);
         println!("{}", serde_json::to_string_pretty(&schema).unwrap())
     }
 }
