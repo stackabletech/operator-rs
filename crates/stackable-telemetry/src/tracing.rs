@@ -172,8 +172,8 @@ impl Tracing {
                     .install_batch(opentelemetry_sdk::runtime::Tokio)
                     .context(InstallOtelLogExporterSnafu)?;
 
-            // Covert `tracing::Event` to OpenTelemetry logs. `log::Record`s
-            // will already be converted to `tracing::Event` by the `tacing-log`
+            // Convert `tracing::Event` to OpenTelemetry logs. `log::Record`s
+            // will already be converted to `tracing::Event` by the `tracing-log`
             // crate with the `log-tracer` feature.
             layers.push(
                 OpenTelemetryTracingBridge::new(otel_log.provider())
@@ -277,7 +277,7 @@ mod private {
 /// Each state will implement [`BuilderState`] (with no methods), and the
 /// Builder struct ([`TracingBuilder`]) itself will be implemented with
 /// each state as a generic parameter.
-/// This allows only the methods to be called when the builder is in the the
+/// This allows only the methods to be called when the builder is in the
 /// applicable state.
 #[doc(hidden)]
 mod builder_state {

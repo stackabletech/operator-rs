@@ -195,7 +195,7 @@ pub trait RequestExt {
     /// specification.
     fn matched_path(&self) -> Option<&MatchedPath>;
 
-    /// Retuns the span name.
+    /// Returns the span name.
     ///
     /// The format is either `{method} {http.route}` or `{method}` if
     /// `http.route` is not available. Examples are:

@@ -137,7 +137,7 @@ impl WebhookServer {
     pub async fn run(self) -> Result<()> {
         debug!("run webhook server");
 
-        // Create a OpenTelemetry tracing layer
+        // Create an OpenTelemetry tracing layer
         debug!("create tracing service (layer)");
         let trace_layer = AxumTraceLayer::new().with_opt_in();
 
