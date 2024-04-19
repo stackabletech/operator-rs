@@ -56,28 +56,23 @@ impl FromStr for Version {
             .parse::<u64>()
             .context(ParseMajorVersionSnafu)?;
 
-        let level = captures
-            .name("level")
-            .expect("internal error: check that the correct match label is specified")
-            .as_str();
+        if let Some(level) = captures.name("level") {
+            let level = Level::from_str(level.as_str()).context(ParseLevelSnafu)?;
 
-        if level.is_empty() {
-            return Ok(Self { major, level: None });
+            Ok(Self {
+                level: Some(level),
+                major,
+            })
+        } else {
+            Ok(Self { major, level: None })
         }
-
-        let level = Level::from_str(level).context(ParseLevelSnafu)?;
-
-        Ok(Self {
-            level: Some(level),
-            major,
-        })
     }
 }
 
 impl PartialOrd for Version {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match self.major.partial_cmp(&other.major) {
-            Some(core::cmp::Ordering::Equal) => {}
+            Some(Ordering::Equal) => {}
             ord => return ord,
         }
 
@@ -118,26 +113,47 @@ impl Version {
 #[cfg(test)]
 mod test {
     use super::*;
+
     use rstest::rstest;
 
-    #[rstest]
-    #[case("v1alpha12")]
-    #[case("v1alpha1")]
-    #[case("v1beta1")]
-    #[case("v1")]
-    fn valid_version(#[case] input: &str) {
-        let version = Version::from_str(input).unwrap();
-        assert_eq!(version.to_string(), input);
+    #[cfg(feature = "darling")]
+    use quote::quote;
+
+    #[cfg(feature = "darling")]
+    fn parse_meta(tokens: proc_macro2::TokenStream) -> ::std::result::Result<syn::Meta, String> {
+        let attribute: syn::Attribute = syn::parse_quote!(#[#tokens]);
+        Ok(attribute.meta)
     }
 
-    // #[rstest]
-    // #[case("v1gamma12", VersionParseError::ParseLevel { source: ParseLevelError::InvalidLevel })]
-    // #[case("v1betä1", VersionParseError::InvalidFormat)]
-    // #[case("1beta1", VersionParseError::InvalidStart)]
-    // #[case("", VersionParseError::InvalidFormat)]
-    // #[case("v0", VersionParseError::LeadingZero)]
-    // fn invalid_version(#[case] input: &str, #[case] error: VersionParseError) {
-    //     let err = Version::from_str(input).unwrap_err();
-    //     assert_eq!(err, error)
-    // }
+    #[rstest]
+    #[case("v1alpha12", Version { major: 1, level: Some(Level::Alpha(12)) })]
+    #[case("v1alpha1", Version { major: 1, level: Some(Level::Alpha(1)) })]
+    #[case("v1beta1", Version { major: 1, level: Some(Level::Beta(1)) })]
+    #[case("v1", Version { major: 1, level: None })]
+    fn valid_version(#[case] input: &str, #[case] expected: Version) {
+        let version = Version::from_str(input).expect("valid Kubernetes version");
+        assert_eq!(version, expected);
+    }
+
+    #[rstest]
+    #[case("v1gamma12", VersionParseError::ParseLevel { source: ParseLevelError::UnknownIdentifier })]
+    #[case("v1betä1", VersionParseError::InvalidFormat)]
+    #[case("1beta1", VersionParseError::InvalidFormat)]
+    #[case("", VersionParseError::InvalidFormat)]
+    fn invalid_version(#[case] input: &str, #[case] error: VersionParseError) {
+        let err = Version::from_str(input).expect_err("invalid Kubernetes version");
+        assert_eq!(err, error)
+    }
+
+    #[cfg(feature = "darling")]
+    #[rstest]
+    #[case(quote!("v1alpha12"), Version { major: 1, level: Some(Level::Alpha(12)) })]
+    #[case(quote!("v1alpha1"), Version { major: 1, level: Some(Level::Alpha(1)) })]
+    #[case(quote!("v1beta1"), Version { major: 1, level: Some(Level::Beta(1)) })]
+    #[case(quote!("v1"), Version { major: 1, level: None })]
+    fn from_meta(#[case] input: proc_macro2::TokenStream, #[case] expected: Version) {
+        let meta = parse_meta(input).expect("valid attribute tokens");
+        let version = Version::from_meta(&meta).expect("version must parse from attribute");
+        assert_eq!(version, expected);
+    }
 }

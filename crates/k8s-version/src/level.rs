@@ -161,7 +161,7 @@ mod test {
     #[case(Level::Beta(2), Level::Beta(1), Ordering::Greater)]
     #[case(Level::Beta(2), Level::Beta(2), Ordering::Equal)]
     #[case(Level::Beta(1), Level::Beta(2), Ordering::Less)]
-    fn partial_ord_level(#[case] input: Level, #[case] other: Level, #[case] expected: Ordering) {
+    fn partial_ord(#[case] input: Level, #[case] other: Level, #[case] expected: Ordering) {
         assert_eq!(input.partial_cmp(&other), Some(expected))
     }
 }

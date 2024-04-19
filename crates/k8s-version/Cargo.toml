@@ -17,3 +17,6 @@ snafu.workspace = true
 
 [dev-dependencies]
 rstest.workspace = true
+quote.workspace = true
+proc-macro2.workspace = true
+syn.workspace = true
