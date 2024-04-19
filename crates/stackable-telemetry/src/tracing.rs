@@ -35,13 +35,6 @@ pub enum Error {
 
     #[snafu(display("unable to set the global default subscriber"))]
     SetGlobalDefaultSubscriber { source: SetGlobalDefaultError },
-
-    #[snafu(display(
-        "unable to set the Log implementation that would convert log::Record as trace::Event"
-    ))]
-    InitLogTracer {
-        source: tracing_log::log::SetLoggerError,
-    },
 }
 
 /// Easily initialize a set of preconfigured [`Subscriber`][1] layers.
@@ -154,9 +147,6 @@ impl Tracing {
         }
 
         if self.otlp_log_config.enabled {
-            // Convert log::Record to tracing::Event
-            tracing_log::LogTracer::init().context(InitLogTracerSnafu)?;
-
             let env_filter_layer = EnvFilter::builder()
                 .with_default_directive(self.otlp_log_config.level_filter.into()) // TODO (@NickLarsenNZ): support Directives
                 .from_env_lossy();
@@ -172,9 +162,7 @@ impl Tracing {
                     .install_batch(opentelemetry_sdk::runtime::Tokio)
                     .context(InstallOtelLogExporterSnafu)?;
 
-            // Convert `tracing::Event` to OpenTelemetry logs. `log::Record`s
-            // will already be converted to `tracing::Event` by the `tracing-log`
-            // crate with the `log-tracer` feature.
+            // Convert `tracing::Event` to OpenTelemetry logs
             layers.push(
                 OpenTelemetryTracingBridge::new(otel_log.provider())
                     .with_filter(env_filter_layer)
