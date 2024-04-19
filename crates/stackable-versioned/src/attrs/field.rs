@@ -1,6 +1,7 @@
 use std::fmt;
 
 use darling::{util::SpannedValue, Error, FromField, FromMeta};
+use k8s_version::Version;
 
 #[derive(Debug, FromField)]
 #[darling(attributes(versioned), forward_attrs(allow, doc, cfg, serde))]
@@ -12,19 +13,19 @@ pub(crate) struct FieldAttributes {
 
 #[derive(Debug, FromMeta)]
 pub(crate) struct AddedAttributes {
-    pub(crate) since: SpannedValue<String>,
+    pub(crate) since: SpannedValue<Version>,
 }
 
 #[derive(Debug, FromMeta)]
 pub(crate) struct RenamedAttributes {
-    since: SpannedValue<String>,
+    since: SpannedValue<Version>,
     pub(crate) to: SpannedValue<String>,
 }
 
 #[derive(Debug, FromMeta)]
 pub(crate) struct DeprecatedAttributes {
-    pub(crate) since: SpannedValue<String>,
-    pub(crate) note: SpannedValue<String>,
+    pub(crate) since: SpannedValue<Version>,
+    pub(crate) _note: SpannedValue<String>,
 }
 
 #[derive(Debug)]
@@ -81,7 +82,7 @@ impl fmt::Display for FieldAction {
 }
 
 impl FieldAction {
-    pub(crate) fn since(&self) -> Option<&str> {
+    pub(crate) fn since(&self) -> Option<&Version> {
         match self {
             FieldAction::Added(added) => Some(&*added.since),
             FieldAction::Renamed(renamed) => Some(&*renamed.since),

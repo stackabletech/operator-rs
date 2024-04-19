@@ -5,11 +5,12 @@ use syn::{spanned::Spanned, Data, DeriveInput, Error, Result};
 
 use crate::{
     attrs::container::ContainerAttributes,
-    gen::{venum::VersionedEnum, vstruct::VersionedStruct},
+    gen::{venum::VersionedEnum, version::ContainerVersion, vstruct::VersionedStruct},
 };
 
 pub(crate) mod field;
 pub(crate) mod venum;
+pub(crate) mod version;
 pub(crate) mod vstruct;
 
 // NOTE (@Techassi): This derive macro cannot handle multiple structs / enums
@@ -43,4 +44,8 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream> {
     };
 
     Ok(expanded)
+}
+
+pub(crate) trait ToTokensExt {
+    fn to_tokens_for_version(&self, version: &ContainerVersion) -> Option<TokenStream>;
 }

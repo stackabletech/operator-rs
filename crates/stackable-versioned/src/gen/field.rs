@@ -1,8 +1,11 @@
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, ToTokens};
-use syn::Field;
+use quote::quote;
+use syn::{Attribute, Field};
 
-use crate::attrs::field::FieldAction;
+use crate::{
+    attrs::field::FieldAction,
+    gen::{version::ContainerVersion, ToTokensExt},
+};
 
 pub(crate) struct VersionedField {
     // TODO (@Techassi): There can be multiple actions for one field (in
@@ -11,40 +14,42 @@ pub(crate) struct VersionedField {
     pub(crate) inner: Field,
 }
 
-impl ToTokens for VersionedField {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+impl ToTokensExt for VersionedField {
+    fn to_tokens_for_version(&self, version: &ContainerVersion) -> Option<TokenStream> {
         match &self.action {
-            FieldAction::Renamed(renamed) => {
-                let field_name = format_ident!("{}", *renamed.to);
-                let field_type = &self.inner.ty;
+            FieldAction::Added(added) => {
+                // Skip generating the field, if the current generated
+                // version doesn't match the since field of the action.
+                if version.inner != *added.since {
+                    return None;
+                }
 
-                tokens.extend(quote! {
+                let field_name = &self.inner.ident;
+                let field_type = &self.inner.ty;
+                let doc = format!(" Added since `{}`.", *added.since);
+
+                // TODO (@Techassi): Also forward other attributes
+                let doc_attrs: Vec<&Attribute> = self
+                    .inner
+                    .attrs
+                    .iter()
+                    .filter(|a| a.path().is_ident("doc"))
+                    .collect();
+
+                Some(quote! {
+                    #(#doc_attrs)*
+                    #[doc = ""]
+                    #[doc = #doc]
                     pub #field_name: #field_type,
                 })
             }
-            FieldAction::Deprecated(deprecated) => {
-                // TODO (@Techassi): Is it save to unwrap here?
-                let field_name = format_ident!(
-                    "deprecated_{}",
-                    &self.inner.ident.as_ref().expect("field must have a name")
-                );
-                let field_type = &self.inner.ty;
-
-                let deprecation_note = format!(
-                    "{} (was deprecated in {})",
-                    &*deprecated.note, &*deprecated.since
-                );
-
-                tokens.extend(quote! {
-                    #[deprecated = #deprecation_note]
-                    pub #field_name: #field_type,
-                })
-            }
-            FieldAction::Added(_) | FieldAction::None => {
+            FieldAction::Renamed(_) => todo!(),
+            FieldAction::Deprecated(_) => todo!(),
+            FieldAction::None => {
                 let field_name = &self.inner.ident;
                 let field_type = &self.inner.ty;
 
-                tokens.extend(quote! {
+                Some(quote! {
                     pub #field_name: #field_type,
                 })
             }
