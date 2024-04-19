@@ -2,6 +2,9 @@ use std::{cmp::Ordering, fmt::Display, str::FromStr};
 
 use snafu::{ResultExt, Snafu};
 
+#[cfg(feature = "darling")]
+use darling::FromMeta;
+
 use crate::{Version, VersionParseError};
 
 #[derive(Debug, PartialEq, Snafu)]
@@ -63,5 +66,12 @@ impl Display for ApiVersion {
             Some(group) => write!(f, "{}/{}", group, self.version),
             None => write!(f, "{}", self.version),
         }
+    }
+}
+
+#[cfg(feature = "darling")]
+impl FromMeta for ApiVersion {
+    fn from_string(value: &str) -> darling::Result<Self> {
+        Self::from_str(value).map_err(darling::Error::custom)
     }
 }

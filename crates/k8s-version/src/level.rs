@@ -10,6 +10,9 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use snafu::{OptionExt, ResultExt, Snafu};
 
+#[cfg(feature = "darling")]
+use darling::FromMeta;
+
 lazy_static! {
     static ref LEVEL_REGEX: Regex =
         Regex::new(r"^(?P<identifier>[a-z]+)(?P<version>\d+)$").unwrap();
@@ -133,6 +136,13 @@ impl Display for Level {
             Level::Beta(beta) => write!(f, "beta{}", beta),
             Level::Alpha(alpha) => write!(f, "alpha{}", alpha),
         }
+    }
+}
+
+#[cfg(feature = "darling")]
+impl FromMeta for Level {
+    fn from_string(value: &str) -> darling::Result<Self> {
+        Self::from_str(value).map_err(darling::Error::custom)
     }
 }
 

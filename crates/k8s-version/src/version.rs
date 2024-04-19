@@ -4,6 +4,9 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use snafu::{OptionExt, ResultExt, Snafu};
 
+#[cfg(feature = "darling")]
+use darling::FromMeta;
+
 use crate::{Level, ParseLevelError};
 
 lazy_static! {
@@ -95,6 +98,14 @@ impl Display for Version {
         }
     }
 }
+
+#[cfg(feature = "darling")]
+impl FromMeta for Version {
+    fn from_string(value: &str) -> darling::Result<Self> {
+        Self::from_str(value).map_err(darling::Error::custom)
+    }
+}
+
 impl Version {
     pub fn new(major: u64, minor: Option<Level>) -> Self {
         Self {
