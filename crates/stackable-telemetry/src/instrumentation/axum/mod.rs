@@ -406,8 +406,8 @@ impl SpanExt for Span {
             // TODO (@Techassi): Add an allow list for header names
             // TODO (@Techassi): Handle multiple headers with the same name
 
-            // NOTE (@Techassi): header_name.as_str() always returns lowercase
-            // strings and thus we don't need to call to_lowercase on it.
+            // header_name.as_str() always returns lowercase strings and thus we
+            // don't need to call to_lowercase on it.
             let header_name = header_name.as_str();
             let field_name = format!("http.request.header.{header_name}");
 
