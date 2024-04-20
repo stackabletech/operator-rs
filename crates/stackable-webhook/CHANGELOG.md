@@ -6,12 +6,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Instrument `WebhookServer` with `AxumTraceLayer`, add static healthcheck without instrumentation ([#767]).
 - Add shutdown signal hander for the `WebhookServer` ([#767]).
 
 ### Changed
 
 - Bump kube to 0.89.0 and update all dependencies ([#762]).
 
+[#758]: https://github.com/stackabletech/operator-rs/pull/758
 [#762]: https://github.com/stackabletech/operator-rs/pull/762
 [#767]: https://github.com/stackabletech/operator-rs/pull/767
 
