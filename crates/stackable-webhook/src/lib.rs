@@ -188,6 +188,7 @@ impl WebhookServer {
         let router = self
             .router
             .layer(service_builder)
+            // The health route is below the AxumTraceLayer so as not to be instrumented
             .route("/health", get(|| async { "ok" }));
 
         // Create server for TLS termination
