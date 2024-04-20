@@ -12,7 +12,7 @@ use stackable_operator::time::Duration;
 use tokio::net::TcpListener;
 use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
 use tower::Service;
-use tracing::{error, instrument, warn};
+use tracing::{instrument, trace, warn};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -143,7 +143,7 @@ impl TlsServer {
             tokio::spawn(async move {
                 // Wait for tls handshake to happen
                 let Ok(tls_stream) = tls_acceptor.accept(tcp_stream).await else {
-                    error!(%remote_addr, "error during tls handshake connection");
+                    trace!(%remote_addr, "error during tls handshake connection");
                     return;
                 };
 

@@ -270,7 +270,7 @@ where
     /// It is also possible to directly greate RSA or ECDSA-based leaf
     /// certificates using [`CertificateAuthority::generate_rsa_leaf_certificate`]
     /// and [`CertificateAuthority::generate_ecdsa_leaf_certificate`].
-    #[instrument(skip(key_pair))]
+    #[instrument(skip(self, key_pair))]
     pub fn generate_leaf_certificate<T>(
         &mut self,
         key_pair: T,
@@ -343,7 +343,7 @@ where
     ///
     /// See [`CertificateAuthority::generate_leaf_certificate`] for more
     /// information.
-    #[instrument]
+    #[instrument(skip(self))]
     pub fn generate_rsa_leaf_certificate(
         &mut self,
         name: &str,
@@ -358,7 +358,7 @@ where
     ///
     /// See [`CertificateAuthority::generate_leaf_certificate`] for more
     /// information.
-    #[instrument]
+    #[instrument(skip(self))]
     pub fn generate_ecdsa_leaf_certificate(
         &mut self,
         name: &str,
