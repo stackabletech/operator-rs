@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Instrument `WebhookServer` with `AxumTraceLayer`, add static healthcheck without instrumentation ([#767]).
+- Instrument `WebhookServer` with `AxumTraceLayer`, add static healthcheck without instrumentation ([#758]).
 - Add shutdown signal hander for the `WebhookServer` ([#767]).
 
 ### Changed
