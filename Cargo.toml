@@ -16,7 +16,6 @@ chrono = { version = "0.4.37", default-features = false }
 clap = { version = "4.5.4", features = ["derive", "cargo", "env"] }
 const_format = "0.2.32"
 const-oid = "0.9.6"
-convert_case = "0.6.0"
 darling = "0.20.8"
 delegate = "0.12.0"
 derivative = "2.2.0"
