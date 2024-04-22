@@ -1,13 +1,18 @@
-use std::fmt;
-
 use darling::{util::SpannedValue, Error, FromField, FromMeta};
 use k8s_version::Version;
+use syn::{Field, Ident};
+
+use crate::gen::version::ContainerVersion;
 
 #[derive(Debug, FromField)]
 #[darling(attributes(versioned), forward_attrs(allow, doc, cfg, serde))]
 pub(crate) struct FieldAttributes {
+    ident: Option<Ident>,
     added: Option<AddedAttributes>,
-    renamed: Option<RenamedAttributes>,
+
+    #[darling(multiple)]
+    renamed: Vec<RenamedAttributes>,
+
     deprecated: Option<DeprecatedAttributes>,
 }
 
@@ -19,75 +24,100 @@ pub(crate) struct AddedAttributes {
 #[derive(Debug, FromMeta)]
 pub(crate) struct RenamedAttributes {
     pub(crate) since: SpannedValue<Version>,
-    pub(crate) from: SpannedValue<String>,
+    pub(crate) _from: SpannedValue<String>,
 }
 
 #[derive(Debug, FromMeta)]
 pub(crate) struct DeprecatedAttributes {
     pub(crate) since: SpannedValue<Version>,
-    pub(crate) note: SpannedValue<String>,
+    pub(crate) _note: SpannedValue<String>,
 }
 
+/// This struct describes all possible actions which can be attached to _one_
+/// field.
+///
+/// - A field can only ever be added once at most. A field not marked as 'added'
+///   is part of the struct in every version until renamed or deprecated.
+/// - A field can be renamed many times. That's why renames are stored in a
+///   [`Vec`].
+/// - A field can only be deprecated once. A field not marked as 'deprecated'
+///   will be included up until the latest version.
 #[derive(Debug)]
-pub(crate) enum FieldAction {
-    Added(AddedAttributes),
-    Renamed(RenamedAttributes),
-    Deprecated(DeprecatedAttributes),
-    None,
+pub(crate) struct FieldActions {
+    added: Option<AddedAttributes>,
+    renamed: Vec<RenamedAttributes>,
+    deprecated: Option<DeprecatedAttributes>,
 }
 
-impl PartialEq for FieldAction {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Added(lhs), Self::Added(rhs)) => *lhs.since == *rhs.since,
-            (Self::Renamed(lhs), Self::Renamed(rhs)) => {
-                *lhs.since == *rhs.since && *lhs.from == *rhs.from
-            }
-            (Self::Deprecated(lhs), Self::Deprecated(rhs)) => *lhs.since == *rhs.since,
-            (Self::None, Self::None) => true,
-            _ => false,
-        }
-    }
-}
-
-impl TryFrom<FieldAttributes> for FieldAction {
+impl TryFrom<FieldAttributes> for FieldActions {
     type Error = Error;
 
-    fn try_from(value: FieldAttributes) -> Result<Self, Self::Error> {
-        // NOTE (@Techassi): We sadly currently cannot use the attribute span
-        // when reporting errors. That's why the errors will be displayed at
-        // the #[derive(Versioned)] position.
-
-        match (value.added, value.renamed, value.deprecated) {
-            (Some(added), None, None) => Ok(FieldAction::Added(added)),
-            (None, Some(renamed), None) => Ok(FieldAction::Renamed(renamed)),
-            (None, None, Some(deprecated)) => Ok(FieldAction::Deprecated(deprecated)),
-            (None, None, None) => Ok(FieldAction::None),
-            _ => Err(Error::custom(
-                "cannot specifiy multiple field actions at once",
-            )),
+    fn try_from(attrs: FieldAttributes) -> Result<Self, Self::Error> {
+        match (&attrs.added, &attrs.renamed, &attrs.deprecated) {
+            (Some(added), _, Some(deprecated)) => {
+                if *added.since == *deprecated.since {
+                    return Err(Error::custom(
+                        "field cannot be marked as `added` and `deprecated` in the same version",
+                    )
+                    .with_span(&attrs.ident.expect("internal: field must have name").span()));
+                }
+            }
+            (Some(added), renamed, _) => {
+                if renamed.iter().any(|r| *r.since == *added.since) {
+                    return Err(Error::custom(
+                        "field cannot be marked as `added` and `renamed` in the same version",
+                    )
+                    .with_span(&attrs.ident.expect("internal: field must have name").span()));
+                }
+            }
+            (_, renamed, Some(deprecated)) => {
+                if renamed.iter().any(|r| *r.since == *deprecated.since) {
+                    return Err(Error::custom(
+                        "field cannot be marked as `deprecated` and `renamed` in the same version",
+                    )
+                    .with_span(&attrs.ident.expect("internal: field must have name").span()));
+                }
+            }
+            _ => {}
         }
+
+        Ok(Self {
+            added: attrs.added,
+            renamed: attrs.renamed,
+            deprecated: attrs.deprecated,
+        })
     }
 }
 
-impl fmt::Display for FieldAction {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FieldAction::Added(_) => "added".fmt(f),
-            FieldAction::Renamed(_) => "renamed".fmt(f),
-            FieldAction::Deprecated(_) => "deprecated".fmt(f),
-            FieldAction::None => "".fmt(f),
-        }
-    }
-}
+impl FieldActions {
+    pub(crate) fn is_in_version_set(
+        &self,
+        versions: &[ContainerVersion],
+        field: &Field,
+    ) -> Result<(), Error> {
+        // NOTE (@Techassi): Can we maybe optimize this a little?
 
-impl FieldAction {
-    pub(crate) fn since(&self) -> Option<&Version> {
-        match self {
-            FieldAction::Added(added) => Some(&*added.since),
-            FieldAction::Renamed(renamed) => Some(&*renamed.since),
-            FieldAction::Deprecated(deprecated) => Some(&*deprecated.since),
-            FieldAction::None => None,
+        if let Some(added) = &self.added {
+            if !versions.iter().any(|v| v.inner == *added.since) {
+                return Err(
+                    Error::custom("field action `added` uses version which was not declared via #[versioned(version)]")
+                    .with_span(&field.ident.as_ref().expect("internal: field must have name").span()
+                ));
+            }
         }
+
+        for rename in &self.renamed {
+            if !versions.iter().any(|v| v.inner == *rename.since) {
+                return Err(Error::custom("field action `renamed` uses version which was not declared via #[versioned(version)]"));
+            }
+        }
+
+        if let Some(deprecated) = &self.deprecated {
+            if !versions.iter().any(|v| v.inner == *deprecated.since) {
+                return Err(Error::custom("field action `deprecated` uses version which was not declared via #[versioned(version)]"));
+            }
+        }
+
+        Ok(())
     }
 }

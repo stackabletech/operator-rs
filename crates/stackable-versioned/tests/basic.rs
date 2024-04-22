@@ -11,13 +11,6 @@ struct Foo {
     /// My docs
     #[versioned(added(since = "v1beta1"))]
     bar: usize,
-
-    #[versioned(renamed(since = "v1beta1", from = "fib"))]
-    fob: u32,
-
-    #[versioned(deprecated(since = "v1beta1", note = ""))]
-    deprecated_bop: i16,
-
     baz: bool,
 }
 

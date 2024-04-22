@@ -1,12 +1,12 @@
 use darling::FromField;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
-use syn::{spanned::Spanned, DataStruct, Error, Ident, Result};
+use syn::{DataStruct, Ident, Result};
 
 use crate::{
     attrs::{
         container::ContainerAttributes,
-        field::{FieldAction, FieldAttributes},
+        field::{FieldActions, FieldAttributes},
     },
     gen::{field::VersionedField, version::ContainerVersion, ToTokensExt},
 };
@@ -90,28 +90,31 @@ impl VersionedStruct {
             // declared. Using the action and the field data, a VersionField
             // can be created.
             let field_attributes = FieldAttributes::from_field(&field)?;
-            let field_action = FieldAction::try_from(field_attributes)?;
+            let field_actions = FieldActions::try_from(field_attributes)?;
 
             // Validate, that the field action uses a version which is declared
             // by the container attribute. If there is no attribute attached to
             // the field, it is also valid.
-            match field_action.since() {
-                Some(since) => {
-                    if versions.iter().any(|v| v.inner == *since) {
-                        fields.push(VersionedField::new(field, field_action));
-                        continue;
-                    }
+            field_actions.is_in_version_set(&versions, &field)?;
+            fields.push(VersionedField::new(field, field_actions));
 
-                    // At this point the version specified in the action is not
-                    // in the set of declared versions and thus an error is
-                    // returned.
-                    return Err(Error::new(
-                        field.span(),
-                        format!("field action `{}` contains version which is not declared via `#[versioned(version)]`", field_action),
-                    ));
-                }
-                None => fields.push(VersionedField::new(field, field_action)),
-            }
+            // match field_action.since() {
+            //     Some(since) => {
+            //         if versions.iter().any(|v| v.inner == *since) {
+            //             fields.push(VersionedField::new(field, field_action));
+            //             continue;
+            //         }
+
+            //         // At this point the version specified in the action is not
+            //         // in the set of declared versions and thus an error is
+            //         // returned.
+            //         return Err(Error::new(
+            //             field.span(),
+            //             format!("field action `{}` contains version which is not declared via `#[versioned(version)]`", field_action),
+            //         ));
+            //     }
+            //     None => fields.push(VersionedField::new(field, field_action)),
+            // }
         }
 
         Ok(Self {
