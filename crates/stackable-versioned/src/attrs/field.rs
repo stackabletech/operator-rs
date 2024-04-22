@@ -18,8 +18,8 @@ pub(crate) struct AddedAttributes {
 
 #[derive(Debug, FromMeta)]
 pub(crate) struct RenamedAttributes {
-    since: SpannedValue<Version>,
-    pub(crate) to: SpannedValue<String>,
+    pub(crate) since: SpannedValue<Version>,
+    pub(crate) from: SpannedValue<String>,
 }
 
 #[derive(Debug, FromMeta)]
@@ -41,7 +41,7 @@ impl PartialEq for FieldAction {
         match (self, other) {
             (Self::Added(lhs), Self::Added(rhs)) => *lhs.since == *rhs.since,
             (Self::Renamed(lhs), Self::Renamed(rhs)) => {
-                *lhs.since == *rhs.since && *lhs.to == *rhs.to
+                *lhs.since == *rhs.since && *lhs.from == *rhs.from
             }
             (Self::Deprecated(lhs), Self::Deprecated(rhs)) => *lhs.since == *rhs.since,
             (Self::None, Self::None) => true,

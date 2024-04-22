@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{Attribute, Field};
 
 use crate::{
@@ -19,8 +19,8 @@ impl ToTokensExt for VersionedField {
         match &self.action {
             FieldAction::Added(added) => {
                 // Skip generating the field, if the current generated
-                // version doesn't match the since field of the action.
-                if version.inner != *added.since {
+                // version appears before the field action version.
+                if version.inner < *added.since {
                     return None;
                 }
 
@@ -43,9 +43,30 @@ impl ToTokensExt for VersionedField {
                     pub #field_name: #field_type,
                 })
             }
-            FieldAction::Renamed(_) => todo!(),
+            FieldAction::Renamed(renamed) => {
+                if version.inner < *renamed.since {
+                    // Use the original name for versions before the field action
+                    // version.
+                    let field_name = format_ident!("{}", *renamed.from);
+                    let field_type = &self.inner.ty;
+
+                    Some(quote! {
+                        pub #field_name: #field_type,
+                    })
+                } else {
+                    // Use the new name for versions equal or greater than the
+                    // field action version
+                    let field_name = &self.inner.ident;
+                    let field_type = &self.inner.ty;
+
+                    Some(quote! {
+                        pub #field_name: #field_type,
+                    })
+                }
+            }
             FieldAction::Deprecated(_) => todo!(),
             FieldAction::None => {
+                // Generate fields without any attributes in every version.
                 let field_name = &self.inner.ident;
                 let field_type = &self.inner.ty;
 
