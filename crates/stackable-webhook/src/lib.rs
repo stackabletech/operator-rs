@@ -23,11 +23,12 @@
 //! enable complete controll over these details if needed.
 //!
 //! [1]: crate::servers::ConversionWebhookServer
-use axum::{body::Body, http::Request, Router};
+use axum::{routing::get, Router};
 use snafu::{ResultExt, Snafu};
+use stackable_telemetry::AxumTraceLayer;
 use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
-use tracing::{debug, debug_span, instrument};
+// use tower_http::trace::TraceLayer;
+use tracing::{debug, instrument};
 
 use crate::tls::TlsServer;
 
@@ -136,22 +137,22 @@ impl WebhookServer {
     pub async fn run(self) -> Result<()> {
         debug!("run webhook server");
 
-        // TODO (@Techassi): Switch out for Otel compatible tracing
-        // https://github.com/davidB/tracing-opentelemetry-instrumentation-sdk
-
-        // Create a high-level tracing layer
+        // Create an OpenTelemetry tracing layer
         debug!("create tracing service (layer)");
-        let layer = TraceLayer::new_for_http()
-            .make_span_with(|_: &Request<Body>| debug_span!("webhook_request"))
-            .on_body_chunk(())
-            .on_eos(());
+        let trace_layer = AxumTraceLayer::new().with_opt_in();
 
-        let service = ServiceBuilder::new().layer(layer);
+        // Use a service builder to provide multiple layers at once. Recommended
+        // by the Axum project.
+        //
+        // See https://docs.rs/axum/latest/axum/middleware/index.html#applying-multiple-middleware
+        let service_builder = ServiceBuilder::new().layer(trace_layer);
 
         // Create the root router and merge the provided router into it.
         debug!("create core router and merge provided router");
-        let mut router = Router::new().layer(service);
-        router = router.merge(self.router);
+        let router = self
+            .router
+            .layer(service_builder)
+            .route("/health", get(|| async { "ok" }));
 
         // Create server for TLS termination
         debug!("create TLS server");

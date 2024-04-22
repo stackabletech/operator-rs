@@ -270,7 +270,7 @@ where
     /// It is also possible to directly greate RSA or ECDSA-based leaf
     /// certificates using [`CertificateAuthority::generate_rsa_leaf_certificate`]
     /// and [`CertificateAuthority::generate_ecdsa_leaf_certificate`].
-    #[instrument(skip(key_pair))]
+    #[instrument(skip(self, key_pair))]
     pub fn generate_leaf_certificate<T>(
         &mut self,
         key_pair: T,
@@ -304,8 +304,6 @@ where
         // The leaf certificate can be used for WWW client and server
         // authentication. This is a base requirement for TLS certs.
         let eku = ExtendedKeyUsage(vec![ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH]);
-        let aki = AuthorityKeyIdentifier::try_from(spki.owned_to_ref())
-            .context(ParseAuthorityKeyIdentifierSnafu)?;
 
         let signer = self.certificate_pair.key_pair.signing_key();
         let mut builder = CertificateBuilder::new(
@@ -331,9 +329,6 @@ where
         builder
             .add_extension(&eku)
             .context(AddCertificateExtensionSnafu)?;
-        builder
-            .add_extension(&aki)
-            .context(AddCertificateExtensionSnafu)?;
 
         debug!("create and sign leaf certificate");
         let certificate = builder.build().context(BuildCertificateSnafu)?;
@@ -348,7 +343,7 @@ where
     ///
     /// See [`CertificateAuthority::generate_leaf_certificate`] for more
     /// information.
-    #[instrument]
+    #[instrument(skip(self))]
     pub fn generate_rsa_leaf_certificate(
         &mut self,
         name: &str,
@@ -363,7 +358,7 @@ where
     ///
     /// See [`CertificateAuthority::generate_leaf_certificate`] for more
     /// information.
-    #[instrument]
+    #[instrument(skip(self))]
     pub fn generate_ecdsa_leaf_certificate(
         &mut self,
         name: &str,
@@ -477,14 +472,16 @@ mod test {
     use super::*;
 
     #[tokio::test]
-    async fn test() {
+    async fn test_rsa_key_generation() {
         let mut ca = CertificateAuthority::new_rsa().unwrap();
-        ca.generate_leaf_certificate(
-            rsa::SigningKey::new().unwrap(),
-            "Airflow",
-            "pod",
-            Duration::from_secs(3600),
-        )
-        .unwrap();
+        ca.generate_rsa_leaf_certificate("Airflow", "pod", Duration::from_secs(3600))
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_ecdsa_key_generation() {
+        let mut ca = CertificateAuthority::new_ecdsa().unwrap();
+        ca.generate_ecdsa_leaf_certificate("Airflow", "pod", Duration::from_secs(3600))
+            .unwrap();
     }
 }

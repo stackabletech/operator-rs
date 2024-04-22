@@ -1,0 +1,32 @@
+[package]
+name = "stackable-telemetry"
+version = "0.1.0"
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+repository.workspace = true
+
+[dependencies]
+axum.workspace = true
+futures-util.workspace = true
+opentelemetry = { workspace = true, features = ["logs"] }
+opentelemetry-appender-tracing.workspace = true
+opentelemetry-otlp = { workspace = true, features = ["gzip-tonic", "logs"] }
+opentelemetry-semantic-conventions.workspace = true
+opentelemetry_sdk = { workspace = true, features = ["logs", "rt-tokio"] }
+pin-project.workspace = true
+snafu.workspace = true
+tokio.workspace = true
+tower.workspace = true
+tracing.workspace = true
+tracing-opentelemetry.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+[dev-dependencies]
+tokio.workspace = true
+tracing-opentelemetry.workspace = true
+stackable-webhook = { path = "../stackable-webhook" }
+
+[package.metadata.cargo-udeps.ignore]
+# Required for doc tests in stackable-telemetry
+development = ["stackable-webhook"]
