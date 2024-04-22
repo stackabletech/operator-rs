@@ -54,8 +54,8 @@ impl ToTokensExt for VersionedField {
                         pub #field_name: #field_type,
                     })
                 } else {
-                    // Use the new name for versions equal or greater than the
-                    // field action version
+                    // If the version is greater than the field action version
+                    // (or equal), use the new field name.
                     let field_name = &self.inner.ident;
                     let field_type = &self.inner.ty;
 
@@ -64,7 +64,39 @@ impl ToTokensExt for VersionedField {
                     })
                 }
             }
-            FieldAction::Deprecated(_) => todo!(),
+            FieldAction::Deprecated(deprecated) => {
+                if version.inner < *deprecated.since {
+                    // Remove the deprecated_ prefix from the field name and use
+                    // it as the field name if the version is less than the
+                    // field action version.
+                    let field_name = format_ident!(
+                        "{}",
+                        &self
+                            .inner
+                            .ident
+                            .as_ref()
+                            .unwrap()
+                            .to_string()
+                            .replace("deprecated_", "")
+                    );
+                    let field_type = &self.inner.ty;
+
+                    Some(quote! {
+                        pub #field_name: #field_type,
+                    })
+                } else {
+                    // If the version is greater than the field action version
+                    // (or equal), use the prefixed field name.
+                    let field_name = &self.inner.ident;
+                    let field_type = &self.inner.ty;
+                    let deprecated_note = &*deprecated.note;
+
+                    Some(quote! {
+                        #[deprecated = #deprecated_note]
+                        pub #field_name: #field_type,
+                    })
+                }
+            }
             FieldAction::None => {
                 // Generate fields without any attributes in every version.
                 let field_name = &self.inner.ident;
