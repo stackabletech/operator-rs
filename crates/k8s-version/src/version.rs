@@ -37,7 +37,7 @@ pub enum VersionParseError {
 /// - <https://kubernetes.io/docs/reference/using-api/#api-versioning>
 ///
 /// [1]: https://github.com/kubernetes/design-proposals-archive/blob/main/architecture/identifiers.md#definitions
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct Version {
     pub major: u64,
     pub level: Option<Level>,

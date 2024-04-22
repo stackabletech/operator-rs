@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use darling::FromField;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
@@ -79,7 +77,7 @@ impl VersionedStruct {
 
                 ContainerVersion {
                     _deprecated: deprecated,
-                    inner: v.name.deref().clone(),
+                    inner: v.name,
                 }
             })
             .collect::<Vec<_>>();

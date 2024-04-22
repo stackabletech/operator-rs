@@ -31,7 +31,7 @@ pub enum ParseLevelError {
 }
 
 /// A minor Kubernetes resource version with the `beta/alpha<VERSION>` format.
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Level {
     Beta(u64),
     Alpha(u64),
