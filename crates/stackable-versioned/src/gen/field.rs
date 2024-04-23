@@ -2,14 +2,14 @@ use proc_macro2::TokenStream;
 use syn::Field;
 
 use crate::{
-    attrs::field::FieldActions,
+    attrs::field::FieldAttributes,
     gen::{version::ContainerVersion, ToTokensExt},
 };
 
 pub(crate) struct VersionedField {
     // TODO (@Techassi): There can be multiple actions for one field (in
     // different versions). Add support for that here.
-    pub(crate) _actions: FieldActions,
+    pub(crate) _attrs: FieldAttributes,
     pub(crate) _inner: Field,
 }
 
@@ -112,10 +112,10 @@ impl ToTokensExt for VersionedField {
 }
 
 impl VersionedField {
-    pub(crate) fn new(field: Field, actions: FieldActions) -> Self {
+    pub(crate) fn new(field: Field, attrs: FieldAttributes) -> Self {
         Self {
             _inner: field,
-            _actions: actions,
+            _attrs: attrs,
         }
     }
 }

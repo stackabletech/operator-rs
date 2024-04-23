@@ -4,10 +4,7 @@ use quote::{format_ident, quote, ToTokens};
 use syn::{DataStruct, Ident, Result};
 
 use crate::{
-    attrs::{
-        container::ContainerAttributes,
-        field::{FieldActions, FieldAttributes},
-    },
+    attrs::{container::ContainerAttributes, field::FieldAttributes},
     gen::{field::VersionedField, version::ContainerVersion, ToTokensExt},
 };
 
@@ -90,31 +87,12 @@ impl VersionedStruct {
             // declared. Using the action and the field data, a VersionField
             // can be created.
             let field_attributes = FieldAttributes::from_field(&field)?;
-            let field_actions = FieldActions::try_from(field_attributes)?;
 
             // Validate, that the field action uses a version which is declared
             // by the container attribute. If there is no attribute attached to
             // the field, it is also valid.
-            field_actions.is_in_version_set(&versions, &field)?;
-            fields.push(VersionedField::new(field, field_actions));
-
-            // match field_action.since() {
-            //     Some(since) => {
-            //         if versions.iter().any(|v| v.inner == *since) {
-            //             fields.push(VersionedField::new(field, field_action));
-            //             continue;
-            //         }
-
-            //         // At this point the version specified in the action is not
-            //         // in the set of declared versions and thus an error is
-            //         // returned.
-            //         return Err(Error::new(
-            //             field.span(),
-            //             format!("field action `{}` contains version which is not declared via `#[versioned(version)]`", field_action),
-            //         ));
-            //     }
-            //     None => fields.push(VersionedField::new(field, field_action)),
-            // }
+            field_attributes.check_versions(&versions, &field)?;
+            fields.push(VersionedField::new(field, field_attributes));
         }
 
         Ok(Self {
