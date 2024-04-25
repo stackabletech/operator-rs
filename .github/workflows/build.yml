@@ -94,7 +94,7 @@ jobs:
         uses: giraffate/clippy-action@13b9d32482f25d29ead141b79e7e04e7900281e0 # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: env.GITHUB_TOKEN != null
+        if: env.GITHUB_TOKEN != null && github.event.pull_request.draft == false
         with:
           clippy_flags: --all-targets -- -D warnings
           reporter: 'github-pr-review'
