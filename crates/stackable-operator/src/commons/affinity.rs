@@ -85,6 +85,8 @@ pub fn affinity_between_role_pods(
             namespace_selector: None,
             namespaces: None,
             topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
+            match_label_keys: None,
+            mismatch_label_keys: None,
         },
         weight,
     }
@@ -110,6 +112,8 @@ pub fn affinity_between_cluster_pods(
             namespace_selector: None,
             namespaces: None,
             topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
+            match_label_keys: None,
+            mismatch_label_keys: None,
         },
         weight,
     }
@@ -183,9 +187,8 @@ mod tests {
                                 }]),
                                 match_labels: None,
                             }),
-                            namespace_selector: None,
-                            namespaces: None,
                             topology_key: "".to_string(),
+                            ..Default::default()
                         }
                     ])
                 }),
@@ -207,9 +210,8 @@ mod tests {
                                         )
                                     ]))
                                 }),
-                                namespace_selector: None,
-                                namespaces: None,
                                 topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
+                                ..Default::default()
                             },
                             weight: 70
                         }
@@ -293,9 +295,8 @@ mod tests {
                                     )
                                 ]))
                             }),
-                            namespace_selector: None,
-                            namespaces: None,
                             topology_key: "topology.kubernetes.io/zone".to_string(),
+                            ..Default::default()
                         }
                     ]),
                 }),
@@ -330,9 +331,8 @@ mod tests {
                             )
                         ]))
                     }),
-                    namespace_selector: None,
-                    namespaces: None,
                     topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
+                    ..Default::default()
                 },
                 weight: 70
             }
@@ -359,9 +359,8 @@ mod tests {
                             )
                         ]))
                     }),
-                    namespace_selector: None,
-                    namespaces: None,
                     topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
+                    ..Default::default()
                 },
                 weight: 20
             }
