@@ -12,7 +12,7 @@ repository = "https://github.com/stackabletech/operator-rs"
 product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.6.0" }
 
 axum = "0.7.5"
-chrono = { version = "0.4.37", default-features = false }
+chrono = { version = "0.4.38", default-features = false }
 clap = { version = "4.5.4", features = ["derive", "cargo", "env"] }
 const_format = "0.2.32"
 const-oid = "0.9.6"
@@ -21,15 +21,15 @@ delegate = "0.12.0"
 derivative = "2.2.0"
 dockerfile-parser = "0.8.0"
 ecdsa = { version = "0.16.9", features = ["digest", "pem"] }
-either = "1.10.0"
+either = "1.11.0"
 futures = "0.3.30"
 futures-util = "0.3.30"
-hyper = { version = "1.2.0", features = ["full"] }
+hyper = { version = "1.3.1", features = ["full"] }
 hyper-util = "0.1.3"
 json-patch = "1.2.0"
-k8s-openapi = { version = "0.21.1", default-features = false, features = ["schemars", "v1_28"] }
+k8s-openapi = { version = "0.21.1", default-features = false, features = ["schemars", "v1_29"] }
 # We use rustls instead of openssl for easier portablitly, e.g. so that we can build stackablectl without the need to vendor (build from source) openssl
-kube = { version = "0.89.0", default-features = false, features = ["client", "jsonpatch", "runtime", "derive", "rustls-tls"] }
+kube = { version = "0.90.0", default-features = false, features = ["client", "jsonpatch", "runtime", "derive", "rustls-tls"] }
 lazy_static = "1.4.0"
 opentelemetry = "0.22.0"
 opentelemetry_sdk = { version = "0.22.1", features = ["rt-tokio"] }
@@ -39,27 +39,27 @@ opentelemetry-otlp = "0.15.0"
 opentelemetry-semantic-conventions = "0.14.0"
 p256 = { version = "0.13.2", features = ["ecdsa"] }
 pin-project = "1.1.5"
-proc-macro2 = "1.0.79"
-quote = "1.0.35"
+proc-macro2 = "1.0.81"
+quote = "1.0.36"
 rand = "0.8.5"
 rand_core = "0.6.4"
 regex = "1.10.4"
 rsa = { version = "0.9.6", features = ["sha2"] }
-rstest = "0.18.2"
+rstest = "0.19.0"
 schemars = { version = "0.8.16", features = ["url"] }
 semver = "1.0.22"
-serde = { version = "1.0.197", features = ["derive"] }
-serde_json = "1.0.115"
-serde_yaml = "0.9.34"
+serde = { version = "1.0.198", features = ["derive"] }
+serde_json = "1.0.116"
+serde_yaml = "0.9.34" # This is the last available version, see https://github.com/dtolnay/serde-yaml/releases/tag/0.9.34 for details
 sha2 = { version = "0.10.8", features = ["oid"] }
 signature = "2.2.0"
 snafu = "0.8.2"
 stackable-operator-derive = { path = "stackable-operator-derive" }
 strum = { version = "0.26.2", features = ["derive"] }
-syn = "2.0.55"
+syn = "2.0.60"
 tempfile = "3.10.1"
-time = { version = "0.3.34" }
-tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread", "fs"] }
+time = { version = "0.3.36" }
+tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread", "fs"] }
 tokio-rustls = "0.26.0"
 tokio-test = "0.4.4"
 tower = "0.4.13"
@@ -69,7 +69,7 @@ tracing-opentelemetry = "0.23.0"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 url = { version = "2.5.0", features = ["serde"] }
 x509-cert = { version = "0.2.5", features = ["builder"] }
-zeroize = "1.7.0"
+zeroize = "1.8.0"
 
 # Use O3 in tests to improve the RSA key generation speed in the stackable-certs crate
 [profile.test.package.stackable-certs]
