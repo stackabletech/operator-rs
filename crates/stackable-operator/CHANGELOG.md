@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.67.0] - 2024-04-25
+
 ### Changed
 
 - Bump kube to 0.89.0 and update all dependencies ([#762]).
