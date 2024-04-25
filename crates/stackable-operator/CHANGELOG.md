@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Bump kube to 0.89.0 and update all dependencies ([#762]).
+- Bump k8s compilation version to `1.29`. Also bump all dependencies ([#769]).
 
 ### Removed
 
@@ -14,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 [#761]: https://github.com/stackabletech/operator-rs/pull/761
 [#762]: https://github.com/stackabletech/operator-rs/pull/762
+[#769]: https://github.com/stackabletech/operator-rs/pull/769
 
 ## [0.66.0] - 2024-03-26
 
