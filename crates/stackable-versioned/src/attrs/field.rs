@@ -1,8 +1,10 @@
+use std::cmp::Ordering;
+
 use darling::{util::SpannedValue, Error, FromField, FromMeta};
 use k8s_version::Version;
 use syn::{spanned::Spanned, Field, Ident};
 
-use crate::gen::version::ContainerVersion;
+use crate::{attrs::container::ContainerAttributes, consts::DEPRECATED_PREFIX};
 
 /// This struct describes all available field attributes, as well as the field
 /// name to display better diagnostics.
@@ -28,35 +30,35 @@ use crate::gen::version::ContainerVersion;
     and_then = FieldAttributes::validate
 )]
 pub(crate) struct FieldAttributes {
-    ident: Option<Ident>,
-    added: Option<AddedAttributes>,
+    pub(crate) ident: Option<Ident>,
+    pub(crate) added: Option<AddedAttributes>,
 
-    #[darling(multiple)]
-    renamed: Vec<RenamedAttributes>,
+    #[darling(multiple, rename = "renamed")]
+    pub(crate) renames: Vec<RenamedAttributes>,
 
-    deprecated: Option<DeprecatedAttributes>,
+    pub(crate) deprecated: Option<DeprecatedAttributes>,
 }
 
-#[derive(Debug, FromMeta)]
+#[derive(Clone, Debug, FromMeta)]
 pub(crate) struct AddedAttributes {
     pub(crate) since: SpannedValue<Version>,
 }
 
-#[derive(Debug, FromMeta)]
+#[derive(Clone, Debug, FromMeta)]
 pub(crate) struct RenamedAttributes {
     pub(crate) since: SpannedValue<Version>,
-    pub(crate) _from: SpannedValue<String>,
+    pub(crate) from: SpannedValue<String>,
 }
 
-#[derive(Debug, FromMeta)]
+#[derive(Clone, Debug, FromMeta)]
 pub(crate) struct DeprecatedAttributes {
     pub(crate) since: SpannedValue<Version>,
     pub(crate) _note: SpannedValue<String>,
 }
 
 impl FieldAttributes {
-    pub fn validate(self) -> Result<Self, Error> {
-        match (&self.added, &self.renamed, &self.deprecated) {
+    fn validate(mut self) -> Result<Self, Error> {
+        match (&self.added, &self.renames, &self.deprecated) {
             // The derive macro prohibits the use of the 'added' and 'deprecated'
             // field action using the same version. This is because it doesn't
             // make sense to add a field and immediatly mark that field as
@@ -89,6 +91,30 @@ impl FieldAttributes {
             _ => {}
         }
 
+        // Validate that renamed action versions are sorted to ensure consistent
+        // code.
+        let original = self.renames.clone();
+        self.renames
+            .sort_by(|lhs, rhs| lhs.since.partial_cmp(&rhs.since).unwrap_or(Ordering::Equal));
+
+        for (index, version) in original.iter().enumerate() {
+            if *version.since == *self.renames.get(index).unwrap().since {
+                continue;
+            }
+
+            return Err(Error::custom(format!(
+                "version of renames must be defined in ascending order (version `{}` is misplaced)",
+                *version.since
+            ))
+            .with_span(&self.ident.span()));
+        }
+
+        // TODO (@Techassi): Add validation for renames so that renamed fields
+        // match up and form a continous chain (eg. foo -> bar -> baz).
+
+        // TODO (@Techassi): Add hint if a field is added in the first version
+        // that it might be clever to remove the 'added' attribute.
+
         // Validate that actions use chronologically valid versions. If the
         // field was added (not included from the start), the version must be
         // less than version from the renamed and deprecated actions.
@@ -96,7 +122,7 @@ impl FieldAttributes {
         let deprecated_version = self.deprecated.as_ref().map(|d| *d.since);
 
         if let Some(added_version) = added_version {
-            if !self.renamed.iter().all(|r| *r.since > added_version) {
+            if !self.renames.iter().all(|r| *r.since > added_version) {
                 return Err(Error::custom(format!(
                     "field was marked as `added` in version `{}` and thus all renames must use a higher version",
                     added_version
@@ -115,17 +141,28 @@ impl FieldAttributes {
             }
         }
 
-        // TODO (@Techassi): Add validation for renames so that renamed fields
-        // match up and form a continous chain (eg. foo -> bar -> baz).
-
         // The same rule applies to renamed fields. Versions of renames must be
         // less than the deprecation version (if any).
         if let Some(deprecated_version) = deprecated_version {
-            if !self.renamed.iter().all(|r| *r.since < deprecated_version) {
+            if !self.renames.iter().all(|r| *r.since < deprecated_version) {
                 return Err(Error::custom(format!(
                     "field was marked as `deprecated` in version `{}` and thus all renames must use a lower version",
                     deprecated_version
-                )));
+                )).with_span(&self.ident.span()));
+            }
+
+            // Also check if the field starts with the prefix 'deprecated_'.
+            if !self
+                .ident
+                .as_ref()
+                .unwrap()
+                .to_string()
+                .starts_with(DEPRECATED_PREFIX)
+            {
+                return Err(Error::custom(
+                    "field was marked as `deprecated` and thus must include the `deprecated_` prefix in its name",
+                )
+                .with_span(&self.ident.span()));
             }
         }
 
@@ -134,28 +171,39 @@ impl FieldAttributes {
 
     pub(crate) fn check_versions(
         &self,
-        versions: &[ContainerVersion],
+        container_attrs: &ContainerAttributes,
         field: &Field,
     ) -> Result<(), Error> {
         // NOTE (@Techassi): Can we maybe optimize this a little?
 
         if let Some(added) = &self.added {
-            if !versions.iter().any(|v| v.inner == *added.since) {
+            if !container_attrs
+                .versions
+                .iter()
+                .any(|v| v.name == *added.since)
+            {
                 return Err(
                     Error::custom("field action `added` uses version which was not declared via #[versioned(version)]")
-                    .with_span(&field.ident.as_ref().expect("internal: field must have name").span()
-                ));
+                    .with_span(&field.ident.span()));
             }
         }
 
-        for rename in &self.renamed {
-            if !versions.iter().any(|v| v.inner == *rename.since) {
+        for rename in &self.renames {
+            if !container_attrs
+                .versions
+                .iter()
+                .any(|v| v.name == *rename.since)
+            {
                 return Err(Error::custom("field action `renamed` uses version which was not declared via #[versioned(version)]"));
             }
         }
 
         if let Some(deprecated) = &self.deprecated {
-            if !versions.iter().any(|v| v.inner == *deprecated.since) {
+            if !container_attrs
+                .versions
+                .iter()
+                .any(|v| v.name == *deprecated.since)
+            {
                 return Err(Error::custom("field action `deprecated` uses version which was not declared via #[versioned(version)]"));
             }
         }

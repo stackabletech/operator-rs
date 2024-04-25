@@ -12,6 +12,7 @@ use crate::{
 /// actions, which describe if the field was added, renamed or deprecated in
 /// that version. Fields which are not versioned, are included in every
 /// version of the struct.
+#[derive(Debug)]
 pub(crate) struct VersionedStruct {
     pub(crate) _ident: Ident,
 
@@ -27,7 +28,7 @@ impl ToTokens for VersionedStruct {
             let mut fields = TokenStream::new();
 
             for field in &self._fields {
-                fields.extend(field.to_tokens_for_version(version))
+                fields.extend(field.to_tokens_for_version(version));
             }
 
             // TODO (@Techassi): Make the generation of the module optional to
@@ -37,22 +38,17 @@ impl ToTokens for VersionedStruct {
             let module_name = format_ident!("{}", version.inner.to_string());
             let struct_name = &self._ident;
 
-            _tokens.extend(quote! {
-                pub mod #module_name {
-                    pub struct #struct_name {
-                        #fields
-                    }
-                }
-            });
-
-            // If there is no next version, we know we just generated the latest
-            // version and thus we can add the 'latest' module.
-            if versions.peek().is_none() {
+            // Only genereate a module when there is at least one more version.
+            // This skips generating a module for the latest version, because
+            // the base struct always represents the latest version.
+            if versions.peek().is_some() {
                 _tokens.extend(quote! {
-                    pub mod latest {
-                        pub use super::#module_name::*;
+                    pub mod #module_name {
+                        pub struct #struct_name {
+                            #fields
+                        }
                     }
-                })
+                });
             }
         }
     }
@@ -64,41 +60,32 @@ impl VersionedStruct {
         data: DataStruct,
         attributes: ContainerAttributes,
     ) -> Result<Self> {
-        // First, collect all declared versions and map them into a Version
-        // struct.
+        let mut versioned_fields = Vec::new();
+
+        // Extract the field attributes for every field from the raw token
+        // stream and also validate that each field action version uses a
+        // version declared by the container attribute.
+        for field in data.fields {
+            let attrs = FieldAttributes::from_field(&field)?;
+            attrs.check_versions(&attributes, &field)?;
+
+            let versioned_field = VersionedField::new(field, attrs)?;
+            versioned_fields.push(versioned_field);
+        }
+
         let versions = attributes
             .versions
             .iter()
-            .map(|v| {
-                let deprecated = v.deprecated.is_present();
-
-                ContainerVersion {
-                    _deprecated: deprecated,
-                    inner: v.name,
-                }
+            .map(|v| ContainerVersion {
+                _deprecated: v.deprecated.is_present(),
+                inner: v.name,
             })
-            .collect::<Vec<_>>();
+            .collect();
 
-        let mut fields = Vec::new();
-
-        for field in data.fields {
-            // Iterate over all fields of the struct and gather field attributes.
-            // Next, make sure only valid combinations of field actions are
-            // declared. Using the action and the field data, a VersionField
-            // can be created.
-            let field_attributes = FieldAttributes::from_field(&field)?;
-
-            // Validate, that the field action uses a version which is declared
-            // by the container attribute. If there is no attribute attached to
-            // the field, it is also valid.
-            field_attributes.check_versions(&versions, &field)?;
-            fields.push(VersionedField::new(field, field_attributes));
-        }
-
-        Ok(Self {
-            _versions: versions,
-            _fields: fields,
+        return Ok(Self {
             _ident: ident,
-        })
+            _versions: versions,
+            _fields: versioned_fields,
+        });
     }
 }

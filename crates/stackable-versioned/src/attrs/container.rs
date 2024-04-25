@@ -37,6 +37,8 @@ impl ContainerAttributes {
             .with_span(&self.versions.span()));
         }
 
+        // NOTE (@Techassi): Do we even want to allow to opp-out of this?
+
         // Ensure that versions are defined in sorted (ascending) order to keep
         // code consistent.
         if !self.options.allow_unsorted.is_present() {

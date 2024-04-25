@@ -2,6 +2,7 @@ use proc_macro::TokenStream;
 use syn::{DeriveInput, Error};
 
 mod attrs;
+mod consts;
 mod gen;
 
 #[proc_macro_derive(Versioned, attributes(versioned))]
