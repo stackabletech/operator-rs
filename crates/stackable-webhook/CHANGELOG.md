@@ -12,7 +12,9 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Bump kube to 0.89.0 and update all dependencies ([#762]).
-- Bump k8s compilation version to `1.29`. Also bump all dependencies ([#769]).
+- BREAKING: Bump k8s compilation version to `1.29`. Also bump all dependencies.
+  There are some breaking changes in k8s-openapi, e.g. PVCs now have `VolumeResourceRequirements` instead of `ResourceRequirements`,
+  and `PodAffinityTerm` has two new fields `match_label_keys` and `mismatch_label_keys` ([#769]).
 
 [#758]: https://github.com/stackabletech/operator-rs/pull/758
 [#762]: https://github.com/stackabletech/operator-rs/pull/762
