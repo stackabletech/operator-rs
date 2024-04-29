@@ -69,7 +69,11 @@ tracing-opentelemetry = "0.23.0"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 url = { version = "2.5.0", features = ["serde"] }
 x509-cert = { version = "0.2.5", features = ["builder"] }
-zeroize = "1.8.0"
+# NOTE (@Techassi): This was previously bumped to 1.8.0 in 6d6615b, but that
+# version was since yanked from crates.io. This can be bumped again once 1.8.0
+# is re-released.
+# See https://github.com/RustCrypto/utils/issues/1067
+zeroize = "1.7.0"
 
 # Use O3 in tests to improve the RSA key generation speed in the stackable-certs crate
 [profile.test.package.stackable-certs]
