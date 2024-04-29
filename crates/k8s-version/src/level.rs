@@ -155,9 +155,11 @@ impl FromMeta for Level {
 #[cfg(test)]
 mod test {
     use rstest::rstest;
+    use rstest_reuse::*;
 
     use super::*;
 
+    #[template]
     #[rstest]
     #[case(Level::Beta(1), Level::Alpha(1), Ordering::Greater)]
     #[case(Level::Alpha(1), Level::Beta(1), Ordering::Less)]
@@ -167,7 +169,15 @@ mod test {
     #[case(Level::Beta(2), Level::Beta(1), Ordering::Greater)]
     #[case(Level::Beta(2), Level::Beta(2), Ordering::Equal)]
     #[case(Level::Beta(1), Level::Beta(2), Ordering::Less)]
-    fn partial_ord(#[case] input: Level, #[case] other: Level, #[case] expected: Ordering) {
+    fn ord_cases(#[case] input: Level, #[case] other: Level, #[case] expected: Ordering) {}
+
+    #[apply(ord_cases)]
+    fn ord(input: Level, other: Level, expected: Ordering) {
+        assert_eq!(input.cmp(&other), expected)
+    }
+
+    #[apply(ord_cases)]
+    fn partial_ord(input: Level, other: Level, expected: Ordering) {
         assert_eq!(input.partial_cmp(&other), Some(expected))
     }
 }

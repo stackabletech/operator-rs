@@ -118,9 +118,10 @@ impl Version {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
     use rstest::rstest;
+    use rstest_reuse::{apply, template};
+
+    use super::*;
 
     #[cfg(feature = "darling")]
     use quote::quote;
@@ -130,6 +131,13 @@ mod test {
         let attribute: syn::Attribute = syn::parse_quote!(#[#tokens]);
         Ok(attribute.meta)
     }
+
+    #[template]
+    #[rstest]
+    #[case(Version {major: 1, level: Some(Level::Beta(1))}, Version {major: 1, level: Some(Level::Alpha(1))}, Ordering::Greater)]
+    #[case(Version {major: 1, level: Some(Level::Alpha(1))}, Version {major: 1, level: Some(Level::Beta(1))}, Ordering::Less)]
+    #[case(Version {major: 1, level: Some(Level::Beta(1))}, Version {major: 1, level: Some(Level::Beta(1))}, Ordering::Equal)]
+    fn ord_cases(#[case] input: Version, #[case] other: Version, #[case] expected: Ordering) {}
 
     #[rstest]
     #[case("v1alpha12", Version { major: 1, level: Some(Level::Alpha(12)) })]
@@ -149,6 +157,16 @@ mod test {
     fn invalid_version(#[case] input: &str, #[case] error: VersionParseError) {
         let err = Version::from_str(input).expect_err("invalid Kubernetes version");
         assert_eq!(err, error)
+    }
+
+    #[apply(ord_cases)]
+    fn ord(input: Version, other: Version, expected: Ordering) {
+        assert_eq!(input.cmp(&other), expected)
+    }
+
+    #[apply(ord_cases)]
+    fn partial_ord(input: Version, other: Version, expected: Ordering) {
+        assert_eq!(input.partial_cmp(&other), Some(expected))
     }
 
     #[cfg(feature = "darling")]
