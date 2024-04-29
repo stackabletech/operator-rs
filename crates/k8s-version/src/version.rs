@@ -71,16 +71,22 @@ impl FromStr for Version {
 
 impl PartialOrd for Version {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match self.major.partial_cmp(&other.major) {
-            Some(Ordering::Equal) => {}
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Version {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.major.cmp(&other.major) {
+            Ordering::Equal => {}
             ord => return ord,
         }
 
         match (&self.level, &other.level) {
-            (Some(lhs), Some(rhs)) => lhs.partial_cmp(rhs),
-            (Some(_), None) => Some(Ordering::Less),
-            (None, Some(_)) => Some(Ordering::Greater),
-            (None, None) => Some(Ordering::Equal),
+            (Some(lhs), Some(rhs)) => lhs.cmp(rhs),
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => Ordering::Equal,
         }
     }
 }

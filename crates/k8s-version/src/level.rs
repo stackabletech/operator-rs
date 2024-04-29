@@ -65,14 +65,20 @@ impl FromStr for Level {
 
 impl PartialOrd for Level {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Level {
+    fn cmp(&self, other: &Self) -> Ordering {
         match self {
             Level::Beta(sb) => match other {
-                Level::Beta(ob) => sb.partial_cmp(ob),
-                Level::Alpha(_) => Some(Ordering::Greater),
+                Level::Beta(ob) => sb.cmp(ob),
+                Level::Alpha(_) => Ordering::Greater,
             },
             Level::Alpha(sa) => match other {
-                Level::Beta(_) => Some(Ordering::Less),
-                Level::Alpha(oa) => sa.partial_cmp(oa),
+                Level::Beta(_) => Ordering::Less,
+                Level::Alpha(oa) => sa.cmp(oa),
             },
         }
     }
