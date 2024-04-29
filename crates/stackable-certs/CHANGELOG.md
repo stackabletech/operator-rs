@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
   There are some breaking changes in k8s-openapi, e.g. PVCs now have `VolumeResourceRequirements` instead of `ResourceRequirements`,
   and `PodAffinityTerm` has two new fields `match_label_keys` and `mismatch_label_keys` ([#769]).
 - Bump GitHub workflow actions ([#CHANGEME]).
+- Revert `zeroize` version bump ([#CHANGEME]).
 
 [#762]: https://github.com/stackabletech/operator-rs/pull/762
 [#769]: https://github.com/stackabletech/operator-rs/pull/769
