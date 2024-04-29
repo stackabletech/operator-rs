@@ -24,8 +24,10 @@
 //!
 //! [1]: crate::servers::ConversionWebhookServer
 use axum::{routing::get, Router};
+use futures_util::{pin_mut, select, FutureExt as _};
 use snafu::{ResultExt, Snafu};
 use stackable_telemetry::AxumTraceLayer;
+use tokio::signal::unix::{signal, SignalKind};
 use tower::ServiceBuilder;
 // use tower_http::trace::TraceLayer;
 use tracing::{debug, instrument};
@@ -131,10 +133,44 @@ impl WebhookServer {
         Self { options, router }
     }
 
+    /// Runs the Webhook server and sets up signal handlers for shutting down.
+    ///
+    /// This does not implement graceful shutdown of the underlying server.
+    pub async fn run(self) -> Result<()> {
+        let future_server = self.run_server();
+        let future_signal = async {
+            let mut sigint = signal(SignalKind::interrupt()).expect("create SIGINT listener");
+            let mut sigterm = signal(SignalKind::terminate()).expect("create SIGTERM listener");
+
+            debug!("created unix signal handlers");
+
+            select! {
+                signal = sigint.recv().fuse() => {
+                    if signal.is_some() {
+                        debug!( "received SIGINT");
+                    }
+                },
+                signal = sigterm.recv().fuse() => {
+                    if signal.is_some() {
+                        debug!( "received SIGTERM");
+                    }
+                },
+            };
+        };
+
+        // select requires Future + Unpin
+        pin_mut!(future_server);
+        pin_mut!(future_signal);
+
+        futures_util::future::select(future_server, future_signal).await;
+
+        Ok(())
+    }
+
     /// Runs the webhook server by creating a TCP listener and binding it to
     /// the specified socket address.
     #[instrument(name = "run_webhook_server", skip(self), fields(self.options))]
-    pub async fn run(self) -> Result<()> {
+    async fn run_server(self) -> Result<()> {
         debug!("run webhook server");
 
         // Create an OpenTelemetry tracing layer
@@ -152,6 +188,7 @@ impl WebhookServer {
         let router = self
             .router
             .layer(service_builder)
+            // The health route is below the AxumTraceLayer so as not to be instrumented
             .route("/health", get(|| async { "ok" }));
 
         // Create server for TLS termination

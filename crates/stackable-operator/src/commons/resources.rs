@@ -79,6 +79,7 @@ use crate::{
 use derivative::Derivative;
 use k8s_openapi::api::core::v1::{
     Container, PersistentVolumeClaim, PersistentVolumeClaimSpec, PodSpec, ResourceRequirements,
+    VolumeResourceRequirements,
 };
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{LabelSelector, ObjectMeta};
@@ -316,7 +317,7 @@ impl PvcConfig {
                     .map(|modes| modes.into_iter().map(String::from).collect()),
                 selector: self.selectors.clone(),
                 storage_class_name: self.storage_class.clone(),
-                resources: Some(ResourceRequirements {
+                resources: Some(VolumeResourceRequirements {
                     requests: Some({
                         let mut map = BTreeMap::new();
                         if let Some(capacity) = &self.capacity {
@@ -324,7 +325,7 @@ impl PvcConfig {
                         }
                         map
                     }),
-                    ..ResourceRequirements::default()
+                    ..Default::default()
                 }),
                 ..PersistentVolumeClaimSpec::default()
             }),

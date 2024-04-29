@@ -3,8 +3,8 @@ use k8s_openapi::{
         CSIVolumeSource, ConfigMapVolumeSource, DownwardAPIVolumeSource, EmptyDirVolumeSource,
         EphemeralVolumeSource, HostPathVolumeSource, PersistentVolumeClaim,
         PersistentVolumeClaimSpec, PersistentVolumeClaimTemplate,
-        PersistentVolumeClaimVolumeSource, ProjectedVolumeSource, ResourceRequirements,
-        SecretVolumeSource, Volume, VolumeMount,
+        PersistentVolumeClaimVolumeSource, ProjectedVolumeSource, SecretVolumeSource, Volume,
+        VolumeMount, VolumeResourceRequirements,
     },
     apimachinery::pkg::api::resource::Quantity,
 };
@@ -358,9 +358,9 @@ impl SecretOperatorVolumeSourceBuilder {
                 metadata: Some(ObjectMetaBuilder::new().annotations(annotations).build()),
                 spec: PersistentVolumeClaimSpec {
                     storage_class_name: Some("secrets.stackable.tech".to_string()),
-                    resources: Some(ResourceRequirements {
+                    resources: Some(VolumeResourceRequirements {
                         requests: Some([("storage".to_string(), Quantity("1".to_string()))].into()),
-                        ..ResourceRequirements::default()
+                        ..Default::default()
                     }),
                     access_modes: Some(vec!["ReadWriteOnce".to_string()]),
                     ..PersistentVolumeClaimSpec::default()
@@ -465,9 +465,9 @@ impl ListenerOperatorVolumeSourceBuilder {
     fn build_spec(&self) -> PersistentVolumeClaimSpec {
         PersistentVolumeClaimSpec {
             storage_class_name: Some("listeners.stackable.tech".to_string()),
-            resources: Some(ResourceRequirements {
+            resources: Some(VolumeResourceRequirements {
                 requests: Some([("storage".to_string(), Quantity("1".to_string()))].into()),
-                ..ResourceRequirements::default()
+                ..Default::default()
             }),
             access_modes: Some(vec!["ReadWriteMany".to_string()]),
             ..PersistentVolumeClaimSpec::default()
