@@ -4,17 +4,19 @@ use stackable_versioned::Versioned;
 #[allow(dead_code)]
 #[versioned(
     version(name = "v1alpha1"),
-    version(name = "v1beta1"),
+    version(name = "v1beta1", deprecated),
+    version(name = "v1beta2"),
     version(name = "v1"),
-    version(name = "v2alpha1")
+    version(name = "v2alpha1"),
+    version(name = "v2")
 )]
 struct Foo {
     /// My docs
     #[versioned(
-        added(since = "v1alpha1"),
-        // renamed(since = "v1beta1", from = "jjj"),
-        // renamed(since = "v1", from = "yyy"),
-        // deprecated(since = "v2alpha1", _note = "")
+        added(since = "v1beta1"),
+        renamed(since = "v1beta2", from = "jjj"),
+        renamed(since = "v1", from = "ppp"),
+        deprecated(since = "v2alpha1", _note = "")
     )]
     deprecated_bar: usize,
     baz: bool,

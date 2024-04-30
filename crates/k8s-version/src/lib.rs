@@ -1,7 +1,7 @@
 // NOTE (@Techassi): Fixed in https://github.com/la10736/rstest/pull/244 but not
 // yet released.
 #[cfg(test)]
-use rstest_reuse;
+use rstest_reuse::{self};
 
 mod api_version;
 mod level;

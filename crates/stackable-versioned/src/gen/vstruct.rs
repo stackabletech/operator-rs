@@ -35,6 +35,7 @@ impl ToTokens for VersionedStruct {
             // enable the attribute macro to be applied to a module which
             // generates versioned versions of all contained containers.
 
+            let deprecated_attr = version.deprecated.then_some(quote! {#[deprecated]});
             let module_name = format_ident!("{}", version.inner.to_string());
             let struct_name = &self._ident;
 
@@ -43,7 +44,10 @@ impl ToTokens for VersionedStruct {
             // the base struct always represents the latest version.
             if versions.peek().is_some() {
                 _tokens.extend(quote! {
+                    #[automatically_derived]
+                    #deprecated_attr
                     pub mod #module_name {
+
                         pub struct #struct_name {
                             #fields
                         }
@@ -77,15 +81,15 @@ impl VersionedStruct {
             .versions
             .iter()
             .map(|v| ContainerVersion {
-                _deprecated: v.deprecated.is_present(),
+                deprecated: v.deprecated.is_present(),
                 inner: v.name,
             })
             .collect();
 
-        return Ok(Self {
+        Ok(Self {
             _ident: ident,
             _versions: versions,
             _fields: versioned_fields,
-        });
+        })
     }
 }
