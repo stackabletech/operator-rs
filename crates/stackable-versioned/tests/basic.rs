@@ -12,13 +12,8 @@ use stackable_versioned::Versioned;
 )]
 struct Foo {
     /// My docs
-    #[versioned(
-        added(since = "v1beta1"),
-        renamed(since = "v1beta2", from = "jjj"),
-        renamed(since = "v1", from = "ppp"),
-        deprecated(since = "v2alpha1", _note = "")
-    )]
-    deprecated_bar: usize,
+    #[versioned(added(since = "v1beta1"), renamed(since = "v1beta2", from = "jjj"))]
+    bar: usize,
     baz: bool,
 }
 

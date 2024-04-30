@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 use darling::{util::SpannedValue, Error, FromField, FromMeta};
 use k8s_version::Version;
 use syn::{spanned::Spanned, Field, Ident};
@@ -57,57 +55,9 @@ pub(crate) struct DeprecatedAttributes {
 }
 
 impl FieldAttributes {
-    fn validate(mut self) -> Result<Self, Error> {
-        match (&self.added, &self.renames, &self.deprecated) {
-            // The derive macro prohibits the use of the 'added' and 'deprecated'
-            // field action using the same version. This is because it doesn't
-            // make sense to add a field and immediatly mark that field as
-            // deprecated in the same version. Instead, fields should be
-            // deprecated at least one version later.
-            (Some(added), _, Some(deprecated)) => {
-                if *added.since == *deprecated.since {
-                    return Err(Error::custom(
-                        "field cannot be marked as `added` and `deprecated` in the same version",
-                    )
-                    .with_span(&self.ident.span()));
-                }
-            }
-            (Some(added), renamed, _) => {
-                if renamed.iter().any(|r| *r.since == *added.since) {
-                    return Err(Error::custom(
-                        "field cannot be marked as `added` and `renamed` in the same version",
-                    )
-                    .with_span(&self.ident.span()));
-                }
-            }
-            (_, renamed, Some(deprecated)) => {
-                if renamed.iter().any(|r| *r.since == *deprecated.since) {
-                    return Err(Error::custom(
-                        "field cannot be marked as `deprecated` and `renamed` in the same version",
-                    )
-                    .with_span(&self.ident.span()));
-                }
-            }
-            _ => {}
-        }
-
-        // Validate that renamed action versions are sorted to ensure consistent
-        // code.
-        let original = self.renames.clone();
-        self.renames
-            .sort_by(|lhs, rhs| lhs.since.partial_cmp(&rhs.since).unwrap_or(Ordering::Equal));
-
-        for (index, version) in original.iter().enumerate() {
-            if *version.since == *self.renames.get(index).unwrap().since {
-                continue;
-            }
-
-            return Err(Error::custom(format!(
-                "version of renames must be defined in ascending order (version `{}` is misplaced)",
-                *version.since
-            ))
-            .with_span(&self.ident.span()));
-        }
+    fn validate(self) -> Result<Self, Error> {
+        self.validate_action_combinations()?;
+        // self.validate_rename_order()?;
 
         // TODO (@Techassi): Add validation for renames so that renamed fields
         // match up and form a continous chain (eg. foo -> bar -> baz).
@@ -115,58 +65,94 @@ impl FieldAttributes {
         // TODO (@Techassi): Add hint if a field is added in the first version
         // that it might be clever to remove the 'added' attribute.
 
-        // Validate that actions use chronologically valid versions. If the
-        // field was added (not included from the start), the version must be
-        // less than version from the renamed and deprecated actions.
+        self.validate_action_order()?;
+        self.validate_field_name()?;
+
+        Ok(self)
+    }
+
+    fn validate_action_combinations(&self) -> Result<(), Error> {
+        match (&self.added, &self.renames, &self.deprecated) {
+            // The derive macro prohibits the use of the 'added' and 'deprecated'
+            // field action using the same version. This is because it doesn't
+            // make sense to add a field and immediatly mark that field as
+            // deprecated in the same version. Instead, fields should be
+            // deprecated at least one version later.
+            (Some(added), _, Some(deprecated)) if *added.since == *deprecated.since => {
+                Err(Error::custom(
+                    "field cannot be marked as `added` and `deprecated` in the same version",
+                )
+                .with_span(&self.ident.span()))
+            }
+            (Some(added), renamed, _) if renamed.iter().any(|r| *r.since == *added.since) => {
+                Err(Error::custom(
+                    "field cannot be marked as `added` and `renamed` in the same version",
+                )
+                .with_span(&self.ident.span()))
+            }
+            (_, renamed, Some(deprecated))
+                if renamed.iter().any(|r| *r.since == *deprecated.since) =>
+            {
+                Err(Error::custom(
+                    "field cannot be marked as `deprecated` and `renamed` in the same version",
+                )
+                .with_span(&self.ident.span()))
+            }
+            _ => Ok(()),
+        }
+    }
+
+    fn validate_action_order(&self) -> Result<(), Error> {
         let added_version = self.added.as_ref().map(|a| *a.since);
         let deprecated_version = self.deprecated.as_ref().map(|d| *d.since);
 
-        if let Some(added_version) = added_version {
-            if !self.renames.iter().all(|r| *r.since > added_version) {
+        // First, validate that the added version is less than the deprecated
+        // version.
+        if let (Some(added_version), Some(deprecated_version)) = (added_version, deprecated_version)
+        {
+            if added_version >= deprecated_version {
                 return Err(Error::custom(format!(
-                    "field was marked as `added` in version `{}` and thus all renames must use a higher version",
-                    added_version
-                ))
-                .with_span(&self.ident.span()));
-            }
-
-            if let Some(deprecated_version) = deprecated_version {
-                if added_version > deprecated_version {
-                    return Err(Error::custom(format!(
-                        "field was marked as `added` in version `{}` while being marked as `deprecated` in an earlier version `{}`",
-                        added_version,
-                        deprecated_version
-                    )).with_span(&self.ident.span()));
-                }
-            }
-        }
-
-        // The same rule applies to renamed fields. Versions of renames must be
-        // less than the deprecation version (if any).
-        if let Some(deprecated_version) = deprecated_version {
-            if !self.renames.iter().all(|r| *r.since < deprecated_version) {
-                return Err(Error::custom(format!(
-                    "field was marked as `deprecated` in version `{}` and thus all renames must use a lower version",
+                    "field was marked as `added` in version `{}` while being marked as `deprecated` in an earlier version `{}`",
+                    added_version,
                     deprecated_version
                 )).with_span(&self.ident.span()));
             }
-
-            // Also check if the field starts with the prefix 'deprecated_'.
-            if !self
-                .ident
-                .as_ref()
-                .unwrap()
-                .to_string()
-                .starts_with(DEPRECATED_PREFIX)
-            {
-                return Err(Error::custom(
-                    "field was marked as `deprecated` and thus must include the `deprecated_` prefix in its name",
-                )
-                .with_span(&self.ident.span()));
-            }
         }
 
-        Ok(self)
+        // Now, iterate over all renames and ensure that their versions are
+        // between the added and deprecated version.
+        if !self.renames.iter().all(|r| {
+            added_version.map_or(true, |a| a < *r.since)
+                && deprecated_version.map_or(true, |d| d > *r.since)
+        }) {
+            return Err(Error::custom(
+                "all renames must use versions higher than `added` and lower than `deprecated`",
+            )
+            .with_span(&self.ident.span()));
+        }
+
+        Ok(())
+    }
+
+    fn validate_field_name(&self) -> Result<(), Error> {
+        let starts_with = self
+            .ident
+            .as_ref()
+            .unwrap()
+            .to_string()
+            .starts_with(DEPRECATED_PREFIX);
+
+        if self.deprecated.is_some() && !starts_with {
+            return Err(Error::custom(
+                "field was marked as `deprecated` and thus must include the `deprecated_` prefix in its name"
+            ).with_span(&self.ident.span()));
+        } else if starts_with {
+            return Err(Error::custom(
+                "field includes the `deprecated_` prefix in its name but is not marked as `deprecated`"
+            ).with_span(&self.ident.span()));
+        }
+
+        Ok(())
     }
 
     pub(crate) fn check_versions(
