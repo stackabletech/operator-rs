@@ -1,6 +1,6 @@
 use darling::{util::SpannedValue, Error, FromField, FromMeta};
 use k8s_version::Version;
-use syn::{spanned::Spanned, Field, Ident};
+use syn::{Field, Ident};
 
 use crate::{attrs::container::ContainerAttributes, consts::DEPRECATED_PREFIX};
 
@@ -55,9 +55,18 @@ pub(crate) struct DeprecatedAttributes {
 }
 
 impl FieldAttributes {
+    /// This associated function is called by darling (see and_then attribute)
+    /// after it successfully parsed the attribute. This allows custom
+    /// validation of the attribute which extends the validation already in
+    /// place by darling.
+    ///
+    /// Internally, it calls out to other specialized validation functions.
     fn validate(self) -> Result<Self, Error> {
-        self.validate_action_combinations()?;
-        // self.validate_rename_order()?;
+        let mut errors = Error::accumulator();
+
+        errors.handle(self.validate_action_combinations());
+        errors.handle(self.validate_action_order());
+        errors.handle(self.validate_field_name());
 
         // TODO (@Techassi): Add validation for renames so that renamed fields
         // match up and form a continous chain (eg. foo -> bar -> baz).
@@ -65,30 +74,36 @@ impl FieldAttributes {
         // TODO (@Techassi): Add hint if a field is added in the first version
         // that it might be clever to remove the 'added' attribute.
 
-        self.validate_action_order()?;
-        self.validate_field_name()?;
-
+        errors.finish()?;
         Ok(self)
     }
 
+    /// This associated function is called by the top-level validation function
+    /// and validates that each field uses a valid combination of actions.
+    /// Invalid combinations are:
+    ///
+    /// - `added` and `deprecated` using the same version: A field cannot be
+    ///   marked as added in a particular version and then marked as deprecated
+    ///   immediately after. Fields must be included for at least one version
+    ///   before being marked deprecated.
+    /// - `added` and `renamed` using the same version: The same reasoning from
+    ///   above applies here as well. Fields must be included for at least one
+    ///   version before being renamed.
+    /// - `renamed` and `deprecated` using the same version: Again, the same
+    ///   rules from above apply here as well.
     fn validate_action_combinations(&self) -> Result<(), Error> {
         match (&self.added, &self.renames, &self.deprecated) {
-            // The derive macro prohibits the use of the 'added' and 'deprecated'
-            // field action using the same version. This is because it doesn't
-            // make sense to add a field and immediatly mark that field as
-            // deprecated in the same version. Instead, fields should be
-            // deprecated at least one version later.
             (Some(added), _, Some(deprecated)) if *added.since == *deprecated.since => {
                 Err(Error::custom(
                     "field cannot be marked as `added` and `deprecated` in the same version",
                 )
-                .with_span(&self.ident.span()))
+                .with_span(&self.ident))
             }
             (Some(added), renamed, _) if renamed.iter().any(|r| *r.since == *added.since) => {
                 Err(Error::custom(
                     "field cannot be marked as `added` and `renamed` in the same version",
                 )
-                .with_span(&self.ident.span()))
+                .with_span(&self.ident))
             }
             (_, renamed, Some(deprecated))
                 if renamed.iter().any(|r| *r.since == *deprecated.since) =>
@@ -96,12 +111,24 @@ impl FieldAttributes {
                 Err(Error::custom(
                     "field cannot be marked as `deprecated` and `renamed` in the same version",
                 )
-                .with_span(&self.ident.span()))
+                .with_span(&self.ident))
             }
             _ => Ok(()),
         }
     }
 
+    /// This associated function is called by the top-level validation function
+    /// and validates that actions use a chronologically sound chain of
+    /// versions.
+    ///
+    /// The following rules apply:
+    ///
+    /// - `deprecated` must use a greater version than `added`: This function
+    ///   ensures that these versions are chronologically sound, that means,
+    ///   that the version of the deprecated action must be greater than the
+    ///   version of the added action.
+    /// - All `renamed` actions must use a greater version than `added` but a
+    ///   lesser version than `deprecated`.
     fn validate_action_order(&self) -> Result<(), Error> {
         let added_version = self.added.as_ref().map(|a| *a.since);
         let deprecated_version = self.deprecated.as_ref().map(|d| *d.since);
@@ -115,7 +142,7 @@ impl FieldAttributes {
                     "field was marked as `added` in version `{}` while being marked as `deprecated` in an earlier version `{}`",
                     added_version,
                     deprecated_version
-                )).with_span(&self.ident.span()));
+                )).with_span(&self.ident));
             }
         }
 
@@ -128,12 +155,21 @@ impl FieldAttributes {
             return Err(Error::custom(
                 "all renames must use versions higher than `added` and lower than `deprecated`",
             )
-            .with_span(&self.ident.span()));
+            .with_span(&self.ident));
         }
 
         Ok(())
     }
 
+    /// This associated function is called by the top-level validation function
+    /// and validates that fields use correct names depending on attached
+    /// actions.
+    ///
+    /// The following naming rules apply:
+    ///
+    /// - Fields marked as deprecated need to include the 'deprecated_' prefix
+    ///   in their name. The prefix must not be included for fields which are
+    ///   not deprecated.
     fn validate_field_name(&self) -> Result<(), Error> {
         let starts_with = self
             .ident
@@ -145,11 +181,11 @@ impl FieldAttributes {
         if self.deprecated.is_some() && !starts_with {
             return Err(Error::custom(
                 "field was marked as `deprecated` and thus must include the `deprecated_` prefix in its name"
-            ).with_span(&self.ident.span()));
+            ).with_span(&self.ident));
         } else if starts_with {
             return Err(Error::custom(
                 "field includes the `deprecated_` prefix in its name but is not marked as `deprecated`"
-            ).with_span(&self.ident.span()));
+            ).with_span(&self.ident));
         }
 
         Ok(())
@@ -161,6 +197,7 @@ impl FieldAttributes {
         field: &Field,
     ) -> Result<(), Error> {
         // NOTE (@Techassi): Can we maybe optimize this a little?
+        let mut errors = Error::accumulator();
 
         if let Some(added) = &self.added {
             if !container_attrs
@@ -168,9 +205,10 @@ impl FieldAttributes {
                 .iter()
                 .any(|v| v.name == *added.since)
             {
-                return Err(
-                    Error::custom("field action `added` uses version which was not declared via #[versioned(version)]")
-                    .with_span(&field.ident.span()));
+                errors.push(Error::custom(
+                    "field action `added` uses version which was not declared via #[versioned(version)]")
+                    .with_span(&field.ident)
+                );
             }
         }
 
@@ -180,7 +218,10 @@ impl FieldAttributes {
                 .iter()
                 .any(|v| v.name == *rename.since)
             {
-                return Err(Error::custom("field action `renamed` uses version which was not declared via #[versioned(version)]"));
+                errors.push(
+                    Error::custom("field action `renamed` uses version which was not declared via #[versioned(version)]")
+                    .with_span(&field.ident)
+                );
             }
         }
 
@@ -190,10 +231,14 @@ impl FieldAttributes {
                 .iter()
                 .any(|v| v.name == *deprecated.since)
             {
-                return Err(Error::custom("field action `deprecated` uses version which was not declared via #[versioned(version)]"));
+                errors.push(Error::custom(
+                    "field action `deprecated` uses version which was not declared via #[versioned(version)]")
+                    .with_span(&field.ident)
+                );
             }
         }
 
+        errors.finish()?;
         Ok(())
     }
 }

@@ -2,7 +2,7 @@ use std::{cmp::Ordering, collections::HashSet, ops::Deref};
 
 use darling::{
     util::{Flag, SpannedValue},
-    Error, FromDeriveInput, FromMeta,
+    Error, FromDeriveInput, FromMeta, Result,
 };
 use k8s_version::Version;
 
@@ -22,7 +22,7 @@ pub(crate) struct ContainerAttributes {
 }
 
 impl ContainerAttributes {
-    fn validate(mut self) -> darling::Result<Self> {
+    fn validate(mut self) -> Result<Self> {
         // Most of the validation for individual version strings is done by the
         // k8s-version crate. That's why the code below only checks that at
         // least one version is defined, they are defined in order (to ensure
