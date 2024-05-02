@@ -14,6 +14,8 @@ lazy_static! {
         Regex::new(r"^v(?P<major>\d+)(?P<level>[a-z0-9][a-z0-9-]{0,60}[a-z0-9])?$").unwrap();
 }
 
+/// Error variants which can be encountered when creating a new [`Version`] from
+/// unparsed input.
 #[derive(Debug, PartialEq, Snafu)]
 pub enum ParseVersionError {
     #[snafu(display("invalid version format. Input is empty, contains non-ASCII characters or contains more than 63 characters"))]

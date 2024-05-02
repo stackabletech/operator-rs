@@ -11,6 +11,8 @@ lazy_static! {
         Regex::new(r"^(?:(?:[a-z0-9][a-z0-9-]{0,61}[a-z0-9])\.?)+$").unwrap();
 }
 
+/// Error variants which can be encountered when creating a new [`Group`] from
+/// unparsed input.
 #[derive(Debug, PartialEq, Snafu)]
 pub enum ParseGroupError {
     #[snafu(display("group must not be empty"))]

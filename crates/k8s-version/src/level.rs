@@ -18,6 +18,8 @@ lazy_static! {
         Regex::new(r"^(?P<identifier>[a-z]+)(?P<version>\d+)$").unwrap();
 }
 
+/// Error variants which can be encountered when creating a new [`Level`] from
+/// unparsed input.
 #[derive(Debug, PartialEq, Snafu)]
 pub enum ParseLevelError {
     #[snafu(display("invalid level format, expected beta<VERSION>/alpha<VERSION>"))]
@@ -33,7 +35,10 @@ pub enum ParseLevelError {
 /// A minor Kubernetes resource version with the `beta/alpha<VERSION>` format.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Level {
+    /// Beta-level minor version, `beta<VERSION>`.
     Beta(u64),
+
+    /// Alpha-level minor version, `alpha<VERSION>`.
     Alpha(u64),
 }
 

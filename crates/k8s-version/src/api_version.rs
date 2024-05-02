@@ -7,6 +7,8 @@ use darling::FromMeta;
 
 use crate::{Group, ParseGroupError, ParseVersionError, Version};
 
+/// Error variants which can be encountered when creating a new [`ApiVersion`]
+/// from unparsed input.
 #[derive(Debug, PartialEq, Snafu)]
 pub enum ParseApiVersionError {
     #[snafu(display("failed to parse version"))]
