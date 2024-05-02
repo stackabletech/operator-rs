@@ -15,7 +15,7 @@ lazy_static! {
 }
 
 #[derive(Debug, PartialEq, Snafu)]
-pub enum VersionParseError {
+pub enum ParseVersionError {
     #[snafu(display("invalid version format. Input is empty, contains non-ASCII characters or contains more than 63 characters"))]
     InvalidFormat,
 
@@ -26,8 +26,8 @@ pub enum VersionParseError {
     ParseLevel { source: ParseLevelError },
 }
 
-/// A Kubernetes resource version with the `v<MAJOR>(beta/alpha<LEVEL>)`
-/// format, for example `v1`, `v2beta1` or `v1alpha2`.
+/// A Kubernetes resource version, following the `v<MAJOR>(beta/alpha<LEVEL>)`
+/// format.
 ///
 /// The version must follow the DNS label format defined [here][1].
 ///
@@ -44,7 +44,7 @@ pub struct Version {
 }
 
 impl FromStr for Version {
-    type Err = VersionParseError;
+    type Err = ParseVersionError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let captures = VERSION_REGEX.captures(input).context(InvalidFormatSnafu)?;
@@ -150,11 +150,11 @@ mod test {
     }
 
     #[rstest]
-    #[case("v1gamma12", VersionParseError::ParseLevel { source: ParseLevelError::UnknownIdentifier })]
-    #[case("v1betä1", VersionParseError::InvalidFormat)]
-    #[case("1beta1", VersionParseError::InvalidFormat)]
-    #[case("", VersionParseError::InvalidFormat)]
-    fn invalid_version(#[case] input: &str, #[case] error: VersionParseError) {
+    #[case("v1gamma12", ParseVersionError::ParseLevel { source: ParseLevelError::UnknownIdentifier })]
+    #[case("v1betä1", ParseVersionError::InvalidFormat)]
+    #[case("1beta1", ParseVersionError::InvalidFormat)]
+    #[case("", ParseVersionError::InvalidFormat)]
+    fn invalid_version(#[case] input: &str, #[case] error: ParseVersionError) {
         let err = Version::from_str(input).expect_err("invalid Kubernetes version");
         assert_eq!(err, error)
     }

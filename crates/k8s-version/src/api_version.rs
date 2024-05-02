@@ -5,19 +5,18 @@ use snafu::{ResultExt, Snafu};
 #[cfg(feature = "darling")]
 use darling::FromMeta;
 
-use crate::{Version, VersionParseError};
+use crate::{Group, ParseGroupError, ParseVersionError, Version};
 
 #[derive(Debug, PartialEq, Snafu)]
-pub enum ApiVersionParseError {
+pub enum ParseApiVersionError {
     #[snafu(display("failed to parse version"))]
-    ParseVersion { source: VersionParseError },
+    ParseVersion { source: ParseVersionError },
 
-    #[snafu(display("group cannot be empty"))]
-    EmptyGroup,
+    #[snafu(display("failed to parse group"))]
+    ParseGroup { source: ParseGroupError },
 }
 
-/// A Kubernetes API version with the `(<GROUP>/)<VERSION>` format, for example
-/// `certificates.k8s.io/v1beta1`, `extensions/v1beta1` or `v1`.
+/// A Kubernetes API version, following the `(<GROUP>/)<VERSION>` format.
 ///
 /// The `<VERSION>` string must follow the DNS label format defined [here][1].
 /// The `<GROUP>` string must be lower case and must be a valid DNS subdomain.
@@ -31,23 +30,19 @@ pub enum ApiVersionParseError {
 /// [1]: https://github.com/kubernetes/design-proposals-archive/blob/main/architecture/identifiers.md#definitions
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct ApiVersion {
-    pub group: Option<String>,
+    pub group: Option<Group>,
     pub version: Version,
 }
 
 impl FromStr for ApiVersion {
-    type Err = ApiVersionParseError;
+    type Err = ParseApiVersionError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let (group, version) = if let Some((group, version)) = input.split_once('/') {
-            if group.is_empty() {
-                return EmptyGroupSnafu.fail();
-            }
-
-            // TODO (Techassi): Validate group
+            let group = Group::from_str(group).context(ParseGroupSnafu)?;
 
             (
-                Some(group.to_string()),
+                Some(group),
                 Version::from_str(version).context(ParseVersionSnafu)?,
             )
         } else {
@@ -84,6 +79,24 @@ impl FromMeta for ApiVersion {
     }
 }
 
+impl ApiVersion {
+    /// Create a new Kubernetes API version.
+    pub fn new(group: Option<Group>, version: Version) -> Self {
+        Self { group, version }
+    }
+
+    /// Try to create a new Kubernetes API version based on the unvalidated
+    /// `group` string.
+    pub fn try_new(group: Option<&str>, version: Version) -> Result<Self, ParseApiVersionError> {
+        let group = group
+            .map(|g| g.parse())
+            .transpose()
+            .context(ParseGroupSnafu)?;
+
+        Ok(Self { group, version })
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -101,7 +114,7 @@ mod test {
     }
 
     #[rstest]
-    #[case("extensions/v1beta1", ApiVersion { group: Some("extensions".into()), version: Version { major: 1, level: Some(Level::Beta(1)) } })]
+    #[case("extensions/v1beta1", ApiVersion { group: Some("extensions".parse().unwrap()), version: Version { major: 1, level: Some(Level::Beta(1)) } })]
     #[case("v1beta1", ApiVersion { group: None, version: Version { major: 1, level: Some(Level::Beta(1)) } })]
     #[case("v1", ApiVersion { group: None, version: Version { major: 1, level: None } })]
     fn valid_api_version(#[case] input: &str, #[case] expected: ApiVersion) {
@@ -110,9 +123,9 @@ mod test {
     }
 
     #[rstest]
-    #[case("extensions/beta1", ApiVersionParseError::ParseVersion { source: VersionParseError::InvalidFormat })]
-    #[case("/v1beta1", ApiVersionParseError::EmptyGroup)]
-    fn invalid_api_version(#[case] input: &str, #[case] error: ApiVersionParseError) {
+    #[case("extensions/beta1", ParseApiVersionError::ParseVersion { source: ParseVersionError::InvalidFormat })]
+    #[case("/v1beta1", ParseApiVersionError::ParseGroup { source: ParseGroupError::Empty })]
+    fn invalid_api_version(#[case] input: &str, #[case] error: ParseApiVersionError) {
         let err = ApiVersion::from_str(input).expect_err("invalid Kubernetes api versions");
         assert_eq!(err, error);
     }
@@ -131,7 +144,7 @@ mod test {
 
     #[cfg(feature = "darling")]
     #[rstest]
-    #[case(quote!(ignore = "extensions/v1beta1"), ApiVersion { group: Some("extensions".into()), version: Version { major: 1, level: Some(Level::Beta(1)) } })]
+    #[case(quote!(ignore = "extensions/v1beta1"), ApiVersion { group: Some("extensions".parse().unwrap()), version: Version { major: 1, level: Some(Level::Beta(1)) } })]
     #[case(quote!(ignore = "v1beta1"), ApiVersion { group: None, version: Version { major: 1, level: Some(Level::Beta(1)) } })]
     #[case(quote!(ignore = "v1"), ApiVersion { group: None, version: Version { major: 1, level: None } })]
     fn from_meta(#[case] input: proc_macro2::TokenStream, #[case] expected: ApiVersion) {
