@@ -6,6 +6,13 @@ use darling::{
 };
 use k8s_version::Version;
 
+/// This struct contains supported container attributes.
+///
+/// Currently supported atttributes are:
+///
+/// - `version`, which can occur one or more times. Details on supported options
+///   can be found [here](VersionAttributes).
+/// - `options`, which allow further customization of the generated code.
 #[derive(Clone, Debug, FromDeriveInput)]
 #[darling(
     attributes(versioned),
@@ -18,7 +25,7 @@ pub(crate) struct ContainerAttributes {
     pub(crate) versions: SpannedValue<Vec<VersionAttributes>>,
 
     #[darling(default)]
-    pub(crate) options: VersionOptions,
+    pub(crate) options: ContainerOptions,
 }
 
 impl ContainerAttributes {
@@ -76,13 +83,25 @@ impl ContainerAttributes {
     }
 }
 
+/// This struct contains supported version options.
+///
+/// Supported options are:
+///
+/// - `name` of the version, like `v1alpha1`.
+/// - `deprecated` flag to mark that version as deprecated.
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct VersionAttributes {
     pub(crate) deprecated: Flag,
     pub(crate) name: Version,
 }
 
+/// This struct contains supported container options.
+///
+/// Supported options are:
+///
+/// - `allow_unsorted`, which allows declaring versions in unsorted order,
+///   instead of enforcing ascending order.
 #[derive(Clone, Debug, Default, FromMeta)]
-pub(crate) struct VersionOptions {
+pub(crate) struct ContainerOptions {
     pub(crate) allow_unsorted: Flag,
 }

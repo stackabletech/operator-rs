@@ -14,20 +14,26 @@ use crate::{
 /// version of the struct.
 #[derive(Debug)]
 pub(crate) struct VersionedStruct {
-    pub(crate) _ident: Ident,
+    /// The ident, or name, of the versioned struct.
+    pub(crate) ident: Ident,
 
-    pub(crate) _versions: Vec<ContainerVersion>,
-    pub(crate) _fields: Vec<VersionedField>,
+    /// List of declared versions for this struct. Each version, except the
+    /// latest, generates a definition with appropriate fields.
+    pub(crate) versions: Vec<ContainerVersion>,
+
+    /// List of fields defined in the base struct. How, and if, a field should
+    /// generate code, is decided by the currently generated version.
+    pub(crate) fields: Vec<VersionedField>,
 }
 
 impl ToTokens for VersionedStruct {
     fn to_tokens(&self, _tokens: &mut TokenStream) {
-        let mut versions = self._versions.iter().peekable();
+        let mut versions = self.versions.iter().peekable();
 
         while let Some(version) = versions.next() {
             let mut fields = TokenStream::new();
 
-            for field in &self._fields {
+            for field in &self.fields {
                 fields.extend(field.to_tokens_for_version(version));
             }
 
@@ -37,7 +43,7 @@ impl ToTokens for VersionedStruct {
 
             let deprecated_attr = version.deprecated.then_some(quote! {#[deprecated]});
             let module_name = format_ident!("{}", version.inner.to_string());
-            let struct_name = &self._ident;
+            let struct_name = &self.ident;
 
             // Only genereate a module when there is at least one more version.
             // This skips generating a module for the latest version, because
@@ -64,7 +70,7 @@ impl VersionedStruct {
         data: DataStruct,
         attributes: ContainerAttributes,
     ) -> Result<Self> {
-        let mut versioned_fields = Vec::new();
+        let mut fields = Vec::new();
 
         // Extract the field attributes for every field from the raw token
         // stream and also validate that each field action version uses a
@@ -74,9 +80,10 @@ impl VersionedStruct {
             attrs.check_versions(&attributes, &field)?;
 
             let versioned_field = VersionedField::new(field, attrs)?;
-            versioned_fields.push(versioned_field);
+            fields.push(versioned_field);
         }
 
+        // Convert the raw version attributes into a container version.
         let versions = attributes
             .versions
             .iter()
@@ -87,9 +94,9 @@ impl VersionedStruct {
             .collect();
 
         Ok(Self {
-            _ident: ident,
-            _versions: versions,
-            _fields: versioned_fields,
+            ident,
+            versions,
+            fields,
         })
     }
 }

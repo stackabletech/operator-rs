@@ -12,6 +12,12 @@ use crate::{
     gen::{version::ContainerVersion, ToTokensExt},
 };
 
+/// A versioned field, which contains contains common [`Field`] data and a chain
+/// of actions.
+///
+/// The chain of action maps versions to an action and the appropriate field
+/// name. Additionally, the [`Field`] data can be used to forward attributes,
+/// generate documention, etc.
 #[derive(Debug)]
 pub(crate) struct VersionedField {
     chain: Option<BTreeMap<Version, FieldStatus>>,
@@ -29,6 +35,11 @@ impl ToTokensExt for VersionedField {
                 // If not, the provided version has no action attached to it.
                 // The code generation then depends on the relation to other
                 // versions (with actions).
+
+                // TODO (@Techassi): Make this more robust by also including
+                // the container versions in the action chain. I'm not happy
+                // with the follwoing code at all. It serves as a good first
+                // implementation to get something out of the door.
                 match chain.get(&container_version.inner) {
                     Some(action) => match action {
                         FieldStatus::Added(field_ident) => {
@@ -55,6 +66,9 @@ impl ToTokensExt for VersionedField {
                         }
                     },
                     None => {
+                        // Generate field if the container version is not
+                        // included in the action chain. First we check the
+                        // earliest field action version.
                         if let Some((version, action)) = chain.first_key_value() {
                             if container_version.inner < *version {
                                 match action {
@@ -77,6 +91,8 @@ impl ToTokensExt for VersionedField {
                             }
                         }
 
+                        // Check the container version against the latest
+                        // field action version.
                         if let Some((version, action)) = chain.last_key_value() {
                             if container_version.inner > *version {
                                 match action {
@@ -221,26 +237,6 @@ impl VersionedField {
                 inner: field,
             })
         }
-    }
-
-    /// Extend the already recorded actions with actions based on global
-    /// container versions to construct a complete chain of actions for each
-    /// field.
-    pub(crate) fn _extend_with_container_versions(&mut self, _versions: &[ContainerVersion]) {
-        // When creating this type via the new function, only directly attached
-        // action can be inserted into the chain of actions. It doesn't contain
-        // any actions based on the container versions. A quick example:
-        //
-        // Let's assume we have the following declared versions: v1, v2, v3, v4.
-        // One field, let's call it foo, has two actions attached: added in v2
-        // and deprecated in v3. So initially, the chain of actions only contains
-        // two actions: added(v2) and deprecated(v3). But what happened to the
-        // field in v1 and v4? This information can only be included in the
-        // chain by looking at the container versions. In this particular
-        // example the field wasn't present in v1 and isn't present from v4 and
-        // onward. This action (or state) needs to be included in the chain of
-        // actions. The resulting chain now looks like: not-present(v1),
-        // added(v2), deprecated(v3), not-present(v4).
     }
 }
 

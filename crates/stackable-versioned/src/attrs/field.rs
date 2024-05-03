@@ -139,9 +139,7 @@ impl FieldAttributes {
         {
             if added_version >= deprecated_version {
                 return Err(Error::custom(format!(
-                    "field was marked as `added` in version `{}` while being marked as `deprecated` in an earlier version `{}`",
-                    added_version,
-                    deprecated_version
+                    "field was marked as `added` in version `{added_version}` while being marked as `deprecated` in an earlier version `{deprecated_version}`"
                 )).with_span(&self.ident));
             }
         }
@@ -182,7 +180,9 @@ impl FieldAttributes {
             return Err(Error::custom(
                 "field was marked as `deprecated` and thus must include the `deprecated_` prefix in its name"
             ).with_span(&self.ident));
-        } else if starts_with {
+        }
+
+        if self.deprecated.is_none() && starts_with {
             return Err(Error::custom(
                 "field includes the `deprecated_` prefix in its name but is not marked as `deprecated`"
             ).with_span(&self.ident));
