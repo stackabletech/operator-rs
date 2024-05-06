@@ -6,6 +6,8 @@
 //!
 //! ## Usage
 //!
+//! ### Parsing from [`str`]
+//!
 //! Versions can be parsed and validated from [`str`] using Rust's standard
 //! [`FromStr`](std::str::FromStr) trait.
 //!
@@ -13,26 +15,37 @@
 //! # use std::str::FromStr;
 //! use k8s_version::ApiVersion;
 //!
-//! let api_version = ApiVersion::from_str("extensions/v1beta1")
-//!     .expect("valid Kubernetes API version");
+//! let api_version = ApiVersion::from_str("extensions/v1beta1");
+//! assert!(api_version.is_ok());
 //!
 //! // Or using .parse()
-//! let api_version: ApiVersion = "extensions/v1beta1".parse()
-//!     .expect("valid Kubernetes API version");
+//! let api_version: ApiVersion = "extensions/v1beta1".parse();
+//! assert!(api_version.is_ok());
 //! ```
+//!
+//! ### Constructing
 //!
 //! Alternatively, they can be constructed programatically using the
-//! [`new()`](ApiVersion::new) and [`try_new`](ApiVersion::try_new) function.
+//! [`ApiVersion::new()`] and [`ApiVersion::try_new()`] functions.
 //!
 //! ```
-//! use k8s_version::{ApiVersion, Version, Level};
+//! # use std::str::FromStr;
+//! use k8s_version::{ApiVersion, Version, Level, Group};
 //!
+//! let version = Version::new(1, Some(Level::Beta(1)));
+//! let group = Group::from_str().unwrap();
+//! let api_version = ApiVersion::new(Some(group), version);
+//!
+//! assert_eq!(api_version.to_string(), "extension/v1beta1");
+//!
+//! // Or using ::try_new()
+//! let version = Version::new(1, Some(Level::Beta(1)));
 //! let api_version = ApiVersion::try_new(
 //!     Some("extension"),
-//!     Version::new(1, Some(Level::Beta(1)))
-//! ).expect("valid Kubernetes API version");
+//!     version
+//! ).unwrap();
 //!
-//! assert_eq!(api_version.to_string(), "extension/v1beta1")
+//! assert_eq!(api_version.to_string(), "extension/v1beta1");
 //! ```
 
 // NOTE (@Techassi): Fixed in https://github.com/la10736/rstest/pull/244 but not
