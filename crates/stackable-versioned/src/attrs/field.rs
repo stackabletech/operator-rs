@@ -10,7 +10,7 @@ use crate::{attrs::container::ContainerAttributes, consts::DEPRECATED_PREFIX};
 /// Data stored in this struct is validated using darling's `and_then` attribute.
 /// During darlings validation, it is not possible to validate that action
 /// versions match up with declared versions on the container. This validation
-/// can be done using the associated [`FieldAttributes::check_versions`]
+/// can be done using the associated [`FieldAttributes::validate_versions`]
 /// function.
 ///
 /// ### Field Rules
