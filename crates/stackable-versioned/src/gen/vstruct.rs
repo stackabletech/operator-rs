@@ -77,7 +77,7 @@ impl VersionedStruct {
         // version declared by the container attribute.
         for field in data.fields {
             let attrs = FieldAttributes::from_field(&field)?;
-            attrs.check_versions(&attributes, &field)?;
+            attrs.validate_versions(&attributes, &field)?;
 
             let versioned_field = VersionedField::new(field, attrs)?;
             fields.push(versioned_field);

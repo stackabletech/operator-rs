@@ -191,7 +191,9 @@ impl FieldAttributes {
         Ok(())
     }
 
-    pub(crate) fn check_versions(
+    /// Validates that each field action version is present in the declared
+    /// container versions.
+    pub(crate) fn validate_versions(
         &self,
         container_attrs: &ContainerAttributes,
         field: &Field,
