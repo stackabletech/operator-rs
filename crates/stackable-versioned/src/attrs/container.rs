@@ -67,15 +67,15 @@ impl ContainerAttributes {
         // Ensure every version is unique and isn't declared multiple times. This
         // is inspired by the itertools all_unique function.
         let mut unique = HashSet::new();
-        if !self
-            .versions
-            .iter()
-            .all(move |elem| unique.insert(elem.name))
-        {
-            return Err(Error::custom(
-                "attribute `#[versioned()]` contains one or more `version`s with a duplicate `name`",
-            )
-            .with_span(&self.versions.span()));
+
+        for version in &*self.versions {
+            if !unique.insert(version.name) {
+                return Err(Error::custom(format!(
+                    "attribute `#[versioned()]` contains duplicate version `name`: {name}",
+                    name = version.name
+                ))
+                .with_span(&self.versions.span()));
+            }
         }
 
         Ok(self)
