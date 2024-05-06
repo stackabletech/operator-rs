@@ -10,9 +10,8 @@ use k8s_version::Version;
 ///
 /// Currently supported atttributes are:
 ///
-/// - `version`, which can occur one or more times. Details on supported options
-///   can be found [here](VersionAttributes).
-/// - `options`, which allow further customization of the generated code.
+/// - `version`, which can occur one or more times. See [`VersionAttributes`].
+/// - `options`, which allow further customization of the generated code. See [`ContainerOptions`].
 #[derive(Clone, Debug, FromDeriveInput)]
 #[darling(
     attributes(versioned),
@@ -44,7 +43,7 @@ impl ContainerAttributes {
             .with_span(&self.versions.span()));
         }
 
-        // NOTE (@Techassi): Do we even want to allow to opp-out of this?
+        // NOTE (@Techassi): Do we even want to allow to opt-out of this?
 
         // Ensure that versions are defined in sorted (ascending) order to keep
         // code consistent.
@@ -59,8 +58,8 @@ impl ContainerAttributes {
                 }
 
                 return Err(Error::custom(format!(
-                    "versions in `#[versioned()]` must be defined in ascending order (version `{}` is misplaced)",
-                    version.name
+                    "versions in `#[versioned()]` must be defined in ascending order (version `{name}` is misplaced)",
+                    name = version.name
                 )));
             }
         }

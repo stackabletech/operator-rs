@@ -35,11 +35,11 @@ pub enum ParseLevelError {
 /// A minor Kubernetes resource version with the `beta/alpha<VERSION>` format.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Level {
-    /// Beta-level minor version, `beta<VERSION>`.
-    Beta(u64),
-
     /// Alpha-level minor version, `alpha<VERSION>`.
     Alpha(u64),
+
+    /// Beta-level minor version, `beta<VERSION>`.
+    Beta(u64),
 }
 
 impl FromStr for Level {
@@ -77,13 +77,14 @@ impl PartialOrd for Level {
 impl Ord for Level {
     fn cmp(&self, other: &Self) -> Ordering {
         match self {
-            Level::Beta(sb) => match other {
-                Level::Beta(ob) => sb.cmp(ob),
-                Level::Alpha(_) => Ordering::Greater,
-            },
             Level::Alpha(sa) => match other {
-                Level::Beta(_) => Ordering::Less,
                 Level::Alpha(oa) => sa.cmp(oa),
+                Level::Beta(_) => Ordering::Less,
+
+            },
+            Level::Beta(sb) => match other {
+                Level::Alpha(_) => Ordering::Greater,
+                Level::Beta(ob) => sb.cmp(ob),
             },
         }
     }
@@ -97,8 +98,8 @@ where
 
     fn add(self, rhs: T) -> Self::Output {
         match self {
-            Level::Beta(b) => Level::Beta(b + rhs.into()),
             Level::Alpha(a) => Level::Alpha(a + rhs.into()),
+            Level::Beta(b) => Level::Beta(b + rhs.into()),
         }
     }
 }
@@ -109,8 +110,8 @@ where
 {
     fn add_assign(&mut self, rhs: T) {
         match self {
-            Level::Beta(b) => *b + rhs.into(),
             Level::Alpha(a) => *a + rhs.into(),
+            Level::Beta(b) => *b + rhs.into(),
         };
     }
 }
@@ -123,8 +124,8 @@ where
 
     fn sub(self, rhs: T) -> Self::Output {
         match self {
-            Level::Beta(b) => Level::Beta(b - rhs.into()),
             Level::Alpha(a) => Level::Alpha(a - rhs.into()),
+            Level::Beta(b) => Level::Beta(b - rhs.into()),
         }
     }
 }
@@ -135,8 +136,8 @@ where
 {
     fn sub_assign(&mut self, rhs: T) {
         match self {
-            Level::Beta(b) => *b - rhs.into(),
             Level::Alpha(a) => *a - rhs.into(),
+            Level::Beta(b) => *b - rhs.into(),
         };
     }
 }
@@ -144,8 +145,8 @@ where
 impl Display for Level {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Level::Beta(beta) => write!(f, "beta{}", beta),
             Level::Alpha(alpha) => write!(f, "alpha{}", alpha),
+            Level::Beta(beta) => write!(f, "beta{}", beta),
         }
     }
 }

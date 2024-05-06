@@ -31,7 +31,7 @@ pub enum ParseVersionError {
 /// A Kubernetes resource version, following the `v<MAJOR>(beta/alpha<LEVEL>)`
 /// format.
 ///
-/// The version must follow the DNS label format defined [here][1].
+/// The version must follow the DNS label format defined in the [Kubernetes design proposals archive][1].
 ///
 /// ### See
 ///
@@ -96,8 +96,8 @@ impl Ord for Version {
 impl Display for Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.level {
-            Some(minor) => write!(f, "v{}{}", self.major, minor),
-            None => write!(f, "v{}", self.major),
+            Some(minor) => write!(f, "v{major}{minor}", major = self.major, minor),
+            None => write!(f, "v{major}", major = self.major),
         }
     }
 }
@@ -110,10 +110,10 @@ impl FromMeta for Version {
 }
 
 impl Version {
-    pub fn new(major: u64, minor: Option<Level>) -> Self {
+    pub fn new(major: u64, level: Option<Level>) -> Self {
         Self {
             major,
-            level: minor,
+            level,
         }
     }
 }

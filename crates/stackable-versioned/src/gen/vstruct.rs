@@ -42,10 +42,10 @@ impl ToTokens for VersionedStruct {
             // generates versioned versions of all contained containers.
 
             let deprecated_attr = version.deprecated.then_some(quote! {#[deprecated]});
-            let module_name = format_ident!("{}", version.inner.to_string());
+            let module_name = format_ident!("{version}", version = version.inner.to_string());
             let struct_name = &self.ident;
 
-            // Only genereate a module when there is at least one more version.
+            // Only generate a module when there is at least one more version.
             // This skips generating a module for the latest version, because
             // the base struct always represents the latest version.
             if versions.peek().is_some() {

@@ -146,12 +146,12 @@ impl ToTokensExt for VersionedField {
 impl VersionedField {
     pub(crate) fn new(field: Field, attrs: FieldAttributes) -> Result<Self, Error> {
         // Constructing the change chain requires going through the actions from
-        // the end, because the base struct allways represents the latest (most
+        // the end, because the base struct always represents the latest (most
         // up-to-date) version of that struct. That's why the following code
         // needs to go through the changes in reverse order, as otherwise it is
         // impossible to extract the field ident for each version.
 
-        // Deprecating a field is always the last status a field can up in. For
+        // Deprecating a field is always the last state a field can end up in. For
         // fields which are not deprecated, the last change is either the latest
         // rename or addition, which is handled below.
         // The ident of the deprecated field is guaranteed to include the
@@ -165,10 +165,10 @@ impl VersionedField {
             // When the field is deprecated, any rename which occured beforehand
             // requires access to the field ident to infer the field ident for
             // the latest rename.
-            let mut ident = format_ident!("{}", ident.to_string().replace(DEPRECATED_PREFIX, ""));
+            let mut ident = format_ident!("{ident}", ident = ident.to_string().replace(DEPRECATED_PREFIX, ""));
 
             for rename in attrs.renames.iter().rev() {
-                let from = format_ident!("{}", *rename.from);
+                let from = format_ident!("{from}", from = *rename.from);
                 actions.insert(
                     *rename.since,
                     FieldStatus::Renamed {
@@ -194,7 +194,7 @@ impl VersionedField {
             let mut ident = field.ident.clone().unwrap();
 
             for rename in attrs.renames.iter().rev() {
-                let from = format_ident!("{}", *rename.from);
+                let from = format_ident!("{from}", from = *rename.from);
                 actions.insert(
                     *rename.since,
                     FieldStatus::Renamed {

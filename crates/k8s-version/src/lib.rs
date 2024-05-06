@@ -1,4 +1,4 @@
-//! This library provides strongly-typed and validated  Kubernetes API version
+//! This library provides strongly-typed and validated Kubernetes API version
 //! definitions. Versions consist of three major components: the optional group,
 //! the mandatory major version and the optional level. The format can be
 //! described by `(<GROUP>/)<VERSION>`, with `<VERSION>` being defined as

@@ -20,7 +20,7 @@ pub enum ParseApiVersionError {
 
 /// A Kubernetes API version, following the `(<GROUP>/)<VERSION>` format.
 ///
-/// The `<VERSION>` string must follow the DNS label format defined [here][1].
+/// The `<VERSION>` string must follow the DNS label format defined in the [Kubernetes design proposals archive][1].
 /// The `<GROUP>` string must be lower case and must be a valid DNS subdomain.
 ///
 /// ### See
@@ -68,8 +68,8 @@ impl PartialOrd for ApiVersion {
 impl Display for ApiVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.group {
-            Some(group) => write!(f, "{}/{}", group, self.version),
-            None => write!(f, "{}", self.version),
+            Some(group) => write!(f, "{group}/{version}", group, version = self.version),
+            None => write!(f, "{version}", version = self.version),
         }
     }
 }
