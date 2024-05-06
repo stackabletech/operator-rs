@@ -96,7 +96,7 @@ impl Ord for Version {
 impl Display for Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.level {
-            Some(minor) => write!(f, "v{major}{minor}", major = self.major, minor),
+            Some(level) => write!(f, "v{major}{level}", major = self.major),
             None => write!(f, "v{major}", major = self.major),
         }
     }
@@ -111,10 +111,7 @@ impl FromMeta for Version {
 
 impl Version {
     pub fn new(major: u64, level: Option<Level>) -> Self {
-        Self {
-            major,
-            level,
-        }
+        Self { major, level }
     }
 }
 

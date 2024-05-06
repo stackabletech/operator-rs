@@ -68,7 +68,7 @@ impl PartialOrd for ApiVersion {
 impl Display for ApiVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.group {
-            Some(group) => write!(f, "{group}/{version}", group, version = self.version),
+            Some(group) => write!(f, "{group}/{version}", version = self.version),
             None => write!(f, "{version}", version = self.version),
         }
     }

@@ -77,14 +77,13 @@ impl PartialOrd for Level {
 impl Ord for Level {
     fn cmp(&self, other: &Self) -> Ordering {
         match self {
-            Level::Alpha(sa) => match other {
-                Level::Alpha(oa) => sa.cmp(oa),
+            Level::Alpha(lhs) => match other {
+                Level::Alpha(rhs) => lhs.cmp(rhs),
                 Level::Beta(_) => Ordering::Less,
-
             },
-            Level::Beta(sb) => match other {
+            Level::Beta(lhs) => match other {
                 Level::Alpha(_) => Ordering::Greater,
-                Level::Beta(ob) => sb.cmp(ob),
+                Level::Beta(rhs) => lhs.cmp(rhs),
             },
         }
     }
@@ -98,8 +97,8 @@ where
 
     fn add(self, rhs: T) -> Self::Output {
         match self {
-            Level::Alpha(a) => Level::Alpha(a + rhs.into()),
-            Level::Beta(b) => Level::Beta(b + rhs.into()),
+            Level::Alpha(lhs) => Level::Alpha(lhs + rhs.into()),
+            Level::Beta(lhs) => Level::Beta(lhs + rhs.into()),
         }
     }
 }
@@ -110,8 +109,8 @@ where
 {
     fn add_assign(&mut self, rhs: T) {
         match self {
-            Level::Alpha(a) => *a + rhs.into(),
-            Level::Beta(b) => *b + rhs.into(),
+            Level::Alpha(lhs) => *lhs + rhs.into(),
+            Level::Beta(lhs) => *lhs + rhs.into(),
         };
     }
 }
@@ -124,8 +123,8 @@ where
 
     fn sub(self, rhs: T) -> Self::Output {
         match self {
-            Level::Alpha(a) => Level::Alpha(a - rhs.into()),
-            Level::Beta(b) => Level::Beta(b - rhs.into()),
+            Level::Alpha(lhs) => Level::Alpha(lhs - rhs.into()),
+            Level::Beta(lhs) => Level::Beta(lhs - rhs.into()),
         }
     }
 }
@@ -136,8 +135,8 @@ where
 {
     fn sub_assign(&mut self, rhs: T) {
         match self {
-            Level::Alpha(a) => *a - rhs.into(),
-            Level::Beta(b) => *b - rhs.into(),
+            Level::Alpha(lhs) => *lhs - rhs.into(),
+            Level::Beta(lhs) => *lhs - rhs.into(),
         };
     }
 }

@@ -165,7 +165,10 @@ impl VersionedField {
             // When the field is deprecated, any rename which occured beforehand
             // requires access to the field ident to infer the field ident for
             // the latest rename.
-            let mut ident = format_ident!("{ident}", ident = ident.to_string().replace(DEPRECATED_PREFIX, ""));
+            let mut ident = format_ident!(
+                "{ident}",
+                ident = ident.to_string().replace(DEPRECATED_PREFIX, "")
+            );
 
             for rename in attrs.renames.iter().rev() {
                 let from = format_ident!("{from}", from = *rename.from);
