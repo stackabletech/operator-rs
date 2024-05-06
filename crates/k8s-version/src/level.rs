@@ -14,8 +14,8 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use darling::FromMeta;
 
 lazy_static! {
-    static ref LEVEL_REGEX: Regex =
-        Regex::new(r"^(?P<identifier>[a-z]+)(?P<version>\d+)$").unwrap();
+    static ref LEVEL_REGEX: Regex = Regex::new(r"^(?P<identifier>[a-z]+)(?P<version>\d+)$")
+        .expect("failed to compile level regex");
 }
 
 /// Error variants which can be encountered when creating a new [`Level`] from

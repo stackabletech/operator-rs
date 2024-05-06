@@ -11,7 +11,8 @@ use crate::{Level, ParseLevelError};
 
 lazy_static! {
     static ref VERSION_REGEX: Regex =
-        Regex::new(r"^v(?P<major>\d+)(?P<level>[a-z0-9][a-z0-9-]{0,60}[a-z0-9])?$").unwrap();
+        Regex::new(r"^v(?P<major>\d+)(?P<level>[a-z0-9][a-z0-9-]{0,60}[a-z0-9])?$")
+            .expect("failed to compile version regex");
 }
 
 /// Error variants which can be encountered when creating a new [`Version`] from

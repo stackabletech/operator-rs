@@ -8,7 +8,8 @@ const MAX_GROUP_LENGTH: usize = 253;
 
 lazy_static! {
     static ref API_GROUP_REGEX: Regex =
-        Regex::new(r"^(?:(?:[a-z0-9][a-z0-9-]{0,61}[a-z0-9])\.?)+$").unwrap();
+        Regex::new(r"^(?:(?:[a-z0-9][a-z0-9-]{0,61}[a-z0-9])\.?)+$")
+            .expect("failed to compile API group regex");
 }
 
 /// Error variants which can be encountered when creating a new [`Group`] from
