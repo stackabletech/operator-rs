@@ -7,7 +7,7 @@ use snafu::{ensure, Snafu};
 const MAX_GROUP_LENGTH: usize = 253;
 
 lazy_static! {
-    static ref API_VERSION_REGEX: Regex =
+    static ref API_GROUP_REGEX: Regex =
         Regex::new(r"^(?:(?:[a-z0-9][a-z0-9-]{0,61}[a-z0-9])\.?)+$").unwrap();
 }
 
@@ -45,7 +45,7 @@ impl FromStr for Group {
     fn from_str(group: &str) -> Result<Self, Self::Err> {
         ensure!(!group.is_empty(), EmptySnafu);
         ensure!(group.len() <= MAX_GROUP_LENGTH, TooLongSnafu);
-        ensure!(API_VERSION_REGEX.is_match(group), InvalidFormatSnafu);
+        ensure!(API_GROUP_REGEX.is_match(group), InvalidFormatSnafu);
 
         Ok(Self(group.to_string()))
     }
