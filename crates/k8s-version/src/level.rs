@@ -22,13 +22,13 @@ lazy_static! {
 /// unparsed input.
 #[derive(Debug, PartialEq, Snafu)]
 pub enum ParseLevelError {
-    #[snafu(display("invalid level format, expected beta<VERSION>/alpha<VERSION>"))]
+    #[snafu(display("invalid level format, expected alpha<VERSION>|beta<VERSION>"))]
     InvalidFormat,
 
     #[snafu(display("failed to parse level version"))]
     ParseVersion { source: ParseIntError },
 
-    #[snafu(display("unknown level identifier"))]
+    #[snafu(display("unknown level identifier, expected alpha|beta"))]
     UnknownIdentifier,
 }
 

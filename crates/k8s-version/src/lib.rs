@@ -2,7 +2,7 @@
 //! definitions. Versions consist of three major components: the optional group,
 //! the mandatory major version and the optional level. The format can be
 //! described by `(<GROUP>/)<VERSION>`, with `<VERSION>` being defined as
-//! `v<MAJOR>(beta/alpha<LEVEL>)`.
+//! `v<MAJOR>(alpha<LEVEL>|beta<LEVEL>)`.
 //!
 //! ## Usage
 //!

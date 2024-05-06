@@ -20,8 +20,9 @@ pub enum ParseApiVersionError {
 
 /// A Kubernetes API version, following the `(<GROUP>/)<VERSION>` format.
 ///
-/// The `<VERSION>` string must follow the DNS label format defined in the [Kubernetes design proposals archive][1].
-/// The `<GROUP>` string must be lower case and must be a valid DNS subdomain.
+/// The `<VERSION>` string must follow the DNS label format defined in the
+/// [Kubernetes design proposals archive][1]. The `<GROUP>` string must be lower
+/// case and must be a valid DNS subdomain.
 ///
 /// ### See
 ///

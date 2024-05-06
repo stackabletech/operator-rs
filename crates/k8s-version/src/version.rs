@@ -29,10 +29,11 @@ pub enum ParseVersionError {
     ParseLevel { source: ParseLevelError },
 }
 
-/// A Kubernetes resource version, following the `v<MAJOR>(beta/alpha<LEVEL>)`
-/// format.
+/// A Kubernetes resource version, following the
+/// `v<MAJOR>(alpha<LEVEL|beta<LEVEL>)` format.
 ///
-/// The version must follow the DNS label format defined in the [Kubernetes design proposals archive][1].
+/// The version must follow the DNS label format defined in the
+/// [Kubernetes design proposals archive][1].
 ///
 /// ### See
 ///
