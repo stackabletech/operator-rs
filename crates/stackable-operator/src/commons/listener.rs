@@ -83,6 +83,7 @@ pub enum TrafficPolicy {
     /// Obscures the client source IP and may cause a second hop to another node, but allows Kubernetes to spread the load between all nodes.
     #[default]
     Cluster,
+
     /// Preserves the client source IP and avoid a second hop for LoadBalancer and NodePort type Services, but makes clients responsible for spreading the load.
     Local,
 }
