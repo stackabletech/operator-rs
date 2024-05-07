@@ -50,7 +50,7 @@ use crate::builder::pod::volume::ListenerOperatorVolumeSourceBuilder;
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ListenerClassSpec {
-    pub service_type: ServiceType,
+    pub service_type: KubernetesServiceType,
 
     /// Annotations that should be added to the Service object.
     #[serde(default)]
@@ -58,8 +58,11 @@ pub struct ListenerClassSpec {
 }
 
 /// The method used to access the services.
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, JsonSchema, PartialEq, Eq)]
-pub enum ServiceType {
+//
+// Please note that this represents a Kubernetes type, so the name of the enum variant needs to exactly match the
+// Kubernetes service type.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, JsonSchema, PartialEq, Eq, strum::Display)]
+pub enum KubernetesServiceType {
     /// Reserve a port on each node.
     NodePort,
     /// Provision a dedicated load balancer.
@@ -68,33 +71,23 @@ pub enum ServiceType {
     ClusterIP,
 }
 
-impl ServiceType {
-    pub fn to_kubernetes_literal(&self) -> String {
-        match self {
-            ServiceType::NodePort => "NodePort".to_owned(),
-            ServiceType::LoadBalancer => "LoadBalancer".to_owned(),
-            ServiceType::ClusterIP => "ClusterIP".to_owned(),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default, JsonSchema, PartialEq, Eq)]
-pub enum TrafficPolicy {
+/// Service Internal Traffic Policy enables internal traffic restrictions to only route internal traffic to endpoints
+/// within the node the traffic originated from. The "internal" traffic here refers to traffic originated from Pods in
+/// the current cluster. This can help to reduce costs and improve performance.
+/// See [Kubernetes docs](https://kubernetes.io/docs/concepts/services-networking/service-traffic-policy/).
+//
+// Please note that this represents a Kubernetes type, so the name of the enum variant needs to exactly match the
+// Kubernetes traffic policy.
+#[derive(
+    Serialize, Deserialize, Clone, Debug, Default, JsonSchema, PartialEq, Eq, strum::Display,
+)]
+pub enum KubernetesTrafficPolicy {
     /// Obscures the client source IP and may cause a second hop to another node, but allows Kubernetes to spread the load between all nodes.
     #[default]
     Cluster,
 
     /// Preserves the client source IP and avoid a second hop for LoadBalancer and NodePort type Services, but makes clients responsible for spreading the load.
     Local,
-}
-
-impl TrafficPolicy {
-    pub fn to_kubernetes_literal(&self) -> String {
-        match self {
-            TrafficPolicy::Cluster => "Cluster".to_string(),
-            TrafficPolicy::Local => "Local".to_string(),
-        }
-    }
 }
 
 /// Exposes a set of pods to the outside world.
@@ -134,7 +127,7 @@ pub struct ListenerSpec {
 
     /// `externalTrafficPolicy` that should be set on the [`Service`] object.
     #[serde(default)]
-    pub service_external_traffic_policy: TrafficPolicy,
+    pub service_external_traffic_policy: KubernetesTrafficPolicy,
 }
 
 impl ListenerSpec {
