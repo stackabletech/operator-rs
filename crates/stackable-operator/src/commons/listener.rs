@@ -65,8 +65,10 @@ pub struct ListenerClassSpec {
 pub enum KubernetesServiceType {
     /// Reserve a port on each node.
     NodePort,
+
     /// Provision a dedicated load balancer.
     LoadBalancer,
+
     /// Assigns an IP address from a pool of IP addresses that your cluster has reserved for that purpose.
     ClusterIP,
 }
