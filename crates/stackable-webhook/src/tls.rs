@@ -10,7 +10,10 @@ use snafu::{ResultExt, Snafu};
 use stackable_certs::{ca::CertificateAuthority, keys::rsa, CertificatePairError};
 use stackable_operator::time::Duration;
 use tokio::net::TcpListener;
-use tokio_rustls::{rustls::ServerConfig, TlsAcceptor};
+use tokio_rustls::{
+    rustls::{crypto::aws_lc_rs::default_provider, ServerConfig},
+    TlsAcceptor,
+};
 use tower::Service;
 use tracing::{instrument, trace, warn};
 
@@ -44,6 +47,9 @@ pub enum Error {
     EncodePrivateKeyDer {
         source: CertificatePairError<rsa::Error>,
     },
+
+    #[snafu(display("failed to set safe TLS protocol versions"))]
+    SetSafeTlsProtocolVersions { source: tokio_rustls::rustls::Error },
 }
 
 /// Custom implementation of [`std::cmp::PartialEq`] because some inner types
@@ -97,7 +103,10 @@ impl TlsServer {
             .private_key_der()
             .context(EncodePrivateKeyDerSnafu)?;
 
-        let mut config = ServerConfig::builder()
+        let tls_provider = default_provider();
+        let mut config = ServerConfig::builder_with_provider(tls_provider.into())
+            .with_safe_default_protocol_versions()
+            .context(SetSafeTlsProtocolVersionsSnafu)?
             .with_no_client_auth()
             .with_single_cert(vec![certificate_der], private_key_der)
             .context(InvalidTlsPrivateKeySnafu)?;
