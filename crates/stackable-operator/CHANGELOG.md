@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `InvalidProductSpecificConfiguration` variant in
+  `stackable_operator::product_config_util::Error` enum ([#782]).
+
 ### Changed
 
 - Bump Rust dependencies and GitHub Actions ([#782]).
