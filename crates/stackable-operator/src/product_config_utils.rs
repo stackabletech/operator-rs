@@ -27,6 +27,12 @@ pub enum Error {
 
     #[snafu(display("missing roleGroup {role_group:?} for role {role:?}. This might happen after custom resource changes. Will requeue."))]
     MissingRoleGroup { role: String, role_group: String },
+
+    // We need this for product specific errors that implement the Configuration trait and are not related to the
+    // product config. This allows us to e.g. error out when contradictory settings are provided that are not
+    // caught in the product config. This should be done via Validating Webhooks once available.
+    #[snafu(display("invalid product specific configuration found: {reason}"))]
+    InvalidProductSpecificConfiguration { reason: String },
 }
 
 /// This trait is used to compute configuration properties for products.

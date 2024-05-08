@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Bump Rust dependencies and GitHub Actions ([#782]).
+
+[#782]: https://github.com/stackabletech/operator-rs/pull/782
+
 ## [0.2.0] - 2024-03-26
 
 ### Changed

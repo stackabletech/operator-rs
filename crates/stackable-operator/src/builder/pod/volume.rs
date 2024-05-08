@@ -258,6 +258,10 @@ impl VolumeMountBuilder {
             read_only: self.read_only,
             sub_path: self.sub_path.clone(),
             sub_path_expr: self.sub_path_expr.clone(),
+            // This attribute is supported starting with Kubernetes 1.30.
+            // Because we support older Kubernetes versions as well, we can not
+            // use it for now, as we would not work on older Kubernetes clusters.
+            recursive_read_only: None,
         }
     }
 }

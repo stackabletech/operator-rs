@@ -229,14 +229,14 @@ impl Merge for AutomaticContainerLogConfigFragment {
                 console.merge(defaults_console);
             }
         } else {
-            self.console = defaults.console.clone();
+            self.console.clone_from(&defaults.console);
         }
         if let Some(file) = &mut self.file {
             if let Some(defaults_file) = &defaults.file {
                 file.merge(defaults_file);
             }
         } else {
-            self.file = defaults.file.clone();
+            self.file.clone_from(&defaults.file);
         }
     }
 }
