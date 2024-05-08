@@ -1,3 +1,5 @@
+use std::fmt;
+
 use chrono::Utc;
 use k8s_openapi::{
     api::core::v1::{Event, EventSource, ObjectReference},
@@ -13,11 +15,11 @@ pub enum EventType {
     Warning,
 }
 
-impl ToString for EventType {
-    fn to_string(&self) -> String {
+impl fmt::Display for EventType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            EventType::Normal => "Normal".to_string(),
-            EventType::Warning => "Warning".to_string(),
+            EventType::Normal => write!(f, "Normal"),
+            EventType::Warning => write!(f, "Warning"),
         }
     }
 }
