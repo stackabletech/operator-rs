@@ -6,6 +6,6 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Bump Rust dependencies and GitHub Actions ([#CHANGEME]).
+- Bump Rust dependencies and GitHub Actions ([#782]).
 
-[#CHANGEME]: https://github.com/stackabletech/operator-rs/pull/CHANGEME
+[#782]: https://github.com/stackabletech/operator-rs/pull/782
