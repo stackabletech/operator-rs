@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.67.1] - 2024-05-08
+
 ### Added
 
 - Add `InvalidProductSpecificConfiguration` variant in

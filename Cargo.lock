@@ -2813,7 +2813,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-certs"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "const-oid",
  "ecdsa",
@@ -2836,7 +2836,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.67.0"
+version = "0.67.1"
 dependencies = [
  "chrono",
  "clap",
@@ -2874,7 +2874,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator-derive"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -2917,7 +2917,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-webhook"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "axum 0.7.5",
  "futures-util",
