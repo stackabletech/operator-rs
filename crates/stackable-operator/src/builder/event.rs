@@ -1,5 +1,3 @@
-use std::fmt;
-
 use chrono::Utc;
 use k8s_openapi::{
     api::core::v1::{Event, EventSource, ObjectReference},
@@ -9,19 +7,10 @@ use kube::{Resource, ResourceExt};
 
 /// Type of Event.
 /// The restriction to these two values is not hardcoded in Kubernetes but by convention only.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, strum::Display)]
 pub enum EventType {
     Normal,
     Warning,
-}
-
-impl fmt::Display for EventType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            EventType::Normal => write!(f, "Normal"),
-            EventType::Warning => write!(f, "Warning"),
-        }
-    }
 }
 
 /// A builder to build [`Event`] objects.
