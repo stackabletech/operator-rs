@@ -145,10 +145,10 @@ impl ToTokensExt for VersionedField {
 
 impl VersionedField {
     pub(crate) fn new(field: Field, attrs: FieldAttributes) -> Result<Self, Error> {
-        // Constructing the change chain requires going through the actions from
+        // Constructing the action chain requires going through the actions from
         // the end, because the base struct always represents the latest (most
         // up-to-date) version of that struct. That's why the following code
-        // needs to go through the changes in reverse order, as otherwise it is
+        // needs to go through the actions in reverse order, as otherwise it is
         // impossible to extract the field ident for each version.
 
         // Deprecating a field is always the last state a field can end up in. For
