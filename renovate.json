@@ -1,25 +1,6 @@
 {
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "helpers:pinGitHubActionDigests"
-  ],
-  "labels": [
-    "dependencies"
-  ],
-  "prCreation": "not-pending",
-  "reviewers": [
-    "team:developers"
-  ],
-  "rollbackPrs": true,
-  "schedule": [
-    "after 5:00 and before 6:00 every weekday"
-  ],
-  "timezone": "Europe/Berlin",
-  "packageRules": [
-    {
-      "matchUpdateTypes": [
-        "patch"
-      ],
-      "groupName": "All dependencies (patch only)"
-    }
+    "local>stackabletech/.github:renovate-config"
   ]
 }
