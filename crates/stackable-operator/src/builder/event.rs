@@ -7,19 +7,10 @@ use kube::{Resource, ResourceExt};
 
 /// Type of Event.
 /// The restriction to these two values is not hardcoded in Kubernetes but by convention only.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, strum::Display)]
 pub enum EventType {
     Normal,
     Warning,
-}
-
-impl ToString for EventType {
-    fn to_string(&self) -> String {
-        match self {
-            EventType::Normal => "Normal".to_string(),
-            EventType::Warning => "Warning".to_string(),
-        }
-    }
 }
 
 /// A builder to build [`Event`] objects.
