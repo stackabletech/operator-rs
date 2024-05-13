@@ -80,12 +80,9 @@ pub enum KubernetesServiceType {
 //
 // Please note that this represents a Kubernetes type, so the name of the enum variant needs to exactly match the
 // Kubernetes traffic policy.
-#[derive(
-    Serialize, Deserialize, Clone, Debug, Default, JsonSchema, PartialEq, Eq, strum::Display,
-)]
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq, strum::Display)]
 pub enum KubernetesTrafficPolicy {
     /// Obscures the client source IP and may cause a second hop to another node, but allows Kubernetes to spread the load between all nodes.
-    #[default]
     Cluster,
 
     /// Preserves the client source IP and avoid a second hop for LoadBalancer and NodePort type Services, but makes clients responsible for spreading the load.
@@ -101,9 +98,7 @@ pub enum KubernetesTrafficPolicy {
 /// ["sticky" scheduling](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listener#_sticky_scheduling).
 ///
 /// Learn more in the [Listener documentation](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listener).
-#[derive(
-    CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, Default, PartialEq, Eq,
-)]
+#[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
 #[kube(
     group = "listeners.stackable.tech",
     version = "v1alpha1",
@@ -128,8 +123,14 @@ pub struct ListenerSpec {
     pub publish_not_ready_addresses: Option<bool>,
 
     /// `externalTrafficPolicy` that should be set on the [`Service`] object.
-    #[serde(default)]
+    #[serde(default = "default_service_external_traffic_policy")]
     pub service_external_traffic_policy: KubernetesTrafficPolicy,
+}
+
+/// We try pretty hard to shove traffic onto the right node, and we should keep testing that as the primary
+/// configuration. Cluster is a fallback option for providers that break Local mode (IONOS so far).
+fn default_service_external_traffic_policy() -> KubernetesTrafficPolicy {
+    KubernetesTrafficPolicy::Local
 }
 
 impl ListenerSpec {
