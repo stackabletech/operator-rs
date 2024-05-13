@@ -119,23 +119,23 @@ pub struct ListenerSpec {
     pub ports: Option<Vec<ListenerPort>>,
 
     /// Whether incoming traffic should also be directed to Pods that are not `Ready`.
-    #[schemars(default = "Self::default_publish_not_ready_addresses")]
+    #[serde(default = "ListenerSpec::default_publish_not_ready_addresses")]
     pub publish_not_ready_addresses: Option<bool>,
 
     /// `externalTrafficPolicy` that should be set on the [`Service`] object.
-    #[serde(default = "default_service_external_traffic_policy")]
+    #[serde(default = "ListenerSpec::default_service_external_traffic_policy")]
     pub service_external_traffic_policy: KubernetesTrafficPolicy,
-}
-
-/// We try pretty hard to shove traffic onto the right node, and we should keep testing that as the primary
-/// configuration. Cluster is a fallback option for providers that break Local mode (IONOS so far).
-fn default_service_external_traffic_policy() -> KubernetesTrafficPolicy {
-    KubernetesTrafficPolicy::Local
 }
 
 impl ListenerSpec {
     const fn default_publish_not_ready_addresses() -> Option<bool> {
         Some(true)
+    }
+
+    /// We try pretty hard to shove traffic onto the right node, and we should keep testing that as the primary
+    /// configuration. Cluster is a fallback option for providers that break Local mode (IONOS so far).
+    fn default_service_external_traffic_policy() -> KubernetesTrafficPolicy {
+        KubernetesTrafficPolicy::Local
     }
 }
 
