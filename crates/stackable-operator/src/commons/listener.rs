@@ -27,6 +27,7 @@
 
 use std::collections::BTreeMap;
 
+use derivative::Derivative;
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -98,7 +99,10 @@ pub enum KubernetesTrafficPolicy {
 /// ["sticky" scheduling](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listener#_sticky_scheduling).
 ///
 /// Learn more in the [Listener documentation](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listener).
-#[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
+#[derive(
+    CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq, Derivative,
+)]
+#[derivative(Default)]
 #[kube(
     group = "listeners.stackable.tech",
     version = "v1alpha1",
@@ -123,6 +127,11 @@ pub struct ListenerSpec {
     pub publish_not_ready_addresses: Option<bool>,
 
     /// `externalTrafficPolicy` that should be set on the [`Service`] object.
+    ///
+    /// The default is `Local` (in contrast to `Cluster`), as we try pretty hard to shove traffic onto the right node,
+    /// and we should keep testing that as the primary configuration. Cluster is a fallback option for providers that
+    /// break Local mode (IONOS so far).
+    #[derivative(Default(value = "KubernetesTrafficPolicy::Local"))]
     #[serde(default = "ListenerSpec::default_service_external_traffic_policy")]
     pub service_external_traffic_policy: KubernetesTrafficPolicy,
 }
@@ -132,10 +141,9 @@ impl ListenerSpec {
         Some(true)
     }
 
-    /// We try pretty hard to shove traffic onto the right node, and we should keep testing that as the primary
-    /// configuration. Cluster is a fallback option for providers that break Local mode (IONOS so far).
+    // `#[serde(default)]`` only supports functions, so we need to wrap the literal in a function :)
     fn default_service_external_traffic_policy() -> KubernetesTrafficPolicy {
-        KubernetesTrafficPolicy::Local
+        Self::default().service_external_traffic_policy
     }
 }
 

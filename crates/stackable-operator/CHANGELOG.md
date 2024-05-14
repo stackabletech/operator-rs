@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 - Support specifying externalTrafficPolicy in Services created by listener-operator ([#773]).
-- BREAKING: Remove `Default` impl for `ListenerSpec` ([#773]).
+- BREAKING: Rename `commons::listener::ServiceType` to `commons::listener::KubernetesServiceType` ([#773]).
 
 [#773]: https://github.com/stackabletech/operator-rs/pull/773
 
