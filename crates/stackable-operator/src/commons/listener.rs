@@ -141,7 +141,7 @@ impl ListenerSpec {
         Some(true)
     }
 
-    // `#[serde(default)]`` only supports functions, so we need to wrap the literal in a function :)
+    // `#[serde(default)]` only supports functions, so we need to wrap the literal in a function :)
     fn default_service_external_traffic_policy() -> KubernetesTrafficPolicy {
         Self::default().service_external_traffic_policy
     }
