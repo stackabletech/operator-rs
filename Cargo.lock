@@ -2912,6 +2912,7 @@ dependencies = [
  "k8s-version",
  "proc-macro2",
  "quote",
+ "rstest",
  "syn 2.0.61",
 ]
 
