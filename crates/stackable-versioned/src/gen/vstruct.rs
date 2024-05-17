@@ -70,19 +70,6 @@ impl VersionedStruct {
         data: DataStruct,
         attributes: ContainerAttributes,
     ) -> Result<Self> {
-        let mut fields = Vec::new();
-
-        // Extract the field attributes for every field from the raw token
-        // stream and also validate that each field action version uses a
-        // version declared by the container attribute.
-        for field in data.fields {
-            let attrs = FieldAttributes::from_field(&field)?;
-            attrs.validate_versions(&attributes, &field)?;
-
-            let versioned_field = VersionedField::new(field, attrs)?;
-            fields.push(versioned_field);
-        }
-
         // Convert the raw version attributes into a container version.
         let versions = attributes
             .versions
@@ -92,6 +79,20 @@ impl VersionedStruct {
                 inner: v.name,
             })
             .collect();
+
+        // Extract the field attributes for every field from the raw token
+        // stream and also validate that each field action version uses a
+        // version declared by the container attribute.
+        let mut fields = Vec::new();
+
+        for field in data.fields {
+            let attrs = FieldAttributes::from_field(&field)?;
+            attrs.validate_versions(&attributes, &field)?;
+
+            let mut versioned_field = VersionedField::new(field, attrs)?;
+            versioned_field.insert_container_versions(&versions);
+            fields.push(versioned_field);
+        }
 
         Ok(Self {
             ident,

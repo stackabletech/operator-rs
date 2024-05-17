@@ -9,7 +9,7 @@ use syn::{Field, Ident};
 use crate::{
     attrs::field::FieldAttributes,
     consts::DEPRECATED_PREFIX,
-    gen::{version::ContainerVersion, ToTokensExt},
+    gen::{version::ContainerVersion, Neighbors, ToTokensExt},
 };
 
 /// A versioned field, which contains contains common [`Field`] data and a chain
@@ -36,96 +36,24 @@ impl ToTokensExt for VersionedField {
                 // The code generation then depends on the relation to other
                 // versions (with actions).
 
-                // TODO (@Techassi): Make this more robust by also including
-                // the container versions in the action chain. I'm not happy
-                // with the follwoing code at all. It serves as a good first
-                // implementation to get something out of the door.
-                match chain.get(&container_version.inner) {
-                    Some(action) => match action {
-                        FieldStatus::Added(field_ident) => {
-                            let field_type = &self.inner.ty;
+                let field_type = &self.inner.ty;
 
-                            Some(quote! {
-                                pub #field_ident: #field_type,
-                            })
-                        }
-                        FieldStatus::Renamed { from: _, to } => {
-                            let field_type = &self.inner.ty;
-
-                            Some(quote! {
-                                pub #to: #field_type,
-                            })
-                        }
-                        FieldStatus::Deprecated(field_ident) => {
-                            let field_type = &self.inner.ty;
-
-                            Some(quote! {
-                                #[deprecated]
-                                pub #field_ident: #field_type,
-                            })
-                        }
-                    },
-                    None => {
-                        // Generate field if the container version is not
-                        // included in the action chain. First we check the
-                        // earliest field action version.
-                        if let Some((version, action)) = chain.first_key_value() {
-                            if container_version.inner < *version {
-                                match action {
-                                    FieldStatus::Added(_) => return None,
-                                    FieldStatus::Renamed { from, to: _ } => {
-                                        let field_type = &self.inner.ty;
-
-                                        return Some(quote! {
-                                            pub #from: #field_type,
-                                        });
-                                    }
-                                    FieldStatus::Deprecated(field_ident) => {
-                                        let field_type = &self.inner.ty;
-
-                                        return Some(quote! {
-                                            pub #field_ident: #field_type,
-                                        });
-                                    }
-                                }
-                            }
-                        }
-
-                        // Check the container version against the latest
-                        // field action version.
-                        if let Some((version, action)) = chain.last_key_value() {
-                            if container_version.inner > *version {
-                                match action {
-                                    FieldStatus::Added(field_ident) => {
-                                        let field_type = &self.inner.ty;
-
-                                        return Some(quote! {
-                                            pub #field_ident: #field_type,
-                                        });
-                                    }
-                                    FieldStatus::Renamed { from: _, to } => {
-                                        let field_type = &self.inner.ty;
-
-                                        return Some(quote! {
-                                            pub #to: #field_type,
-                                        });
-                                    }
-                                    FieldStatus::Deprecated(field_ident) => {
-                                        let field_type = &self.inner.ty;
-
-                                        return Some(quote! {
-                                            #[deprecated]
-                                            pub #field_ident: #field_type,
-                                        });
-                                    }
-                                }
-                            }
-                        }
-
-                        // TODO (@Techassi): Handle versions which are in between
-                        // versions defined in field actions.
-                        None
-                    }
+                match chain
+                    .get(&container_version.inner)
+                    .expect("internal error: chain must contain container version")
+                {
+                    FieldStatus::Added(field_ident) => Some(quote! {
+                        pub #field_ident: #field_type,
+                    }),
+                    FieldStatus::Renamed { _from: _, to } => Some(quote! {
+                        pub #to: #field_type,
+                    }),
+                    FieldStatus::Deprecated(field_ident) => Some(quote! {
+                        #[deprecated]
+                        pub #field_ident: #field_type,
+                    }),
+                    FieldStatus::NotPresent => None,
+                    FieldStatus::NoChange => todo!(),
                 }
             }
             None => {
@@ -175,7 +103,7 @@ impl VersionedField {
                 actions.insert(
                     *rename.since,
                     FieldStatus::Renamed {
-                        from: from.clone(),
+                        _from: from.clone(),
                         to: ident,
                     },
                 );
@@ -201,7 +129,7 @@ impl VersionedField {
                 actions.insert(
                     *rename.since,
                     FieldStatus::Renamed {
-                        from: from.clone(),
+                        _from: from.clone(),
                         to: ident,
                     },
                 );
@@ -241,11 +169,30 @@ impl VersionedField {
             })
         }
     }
+
+    pub(crate) fn insert_container_versions(&mut self, versions: &Vec<ContainerVersion>) {
+        if let Some(chain) = &mut self.chain {
+            for version in versions {
+                if chain.contains_key(&version.inner) {
+                    continue;
+                }
+
+                match chain.get_neighbors(&version.inner) {
+                    (None, Some(_)) => chain.insert(version.inner, FieldStatus::NotPresent),
+                    (Some(_), None) => chain.insert(version.inner, FieldStatus::NoChange),
+                    (Some(_), Some(_)) => chain.insert(version.inner, FieldStatus::NoChange),
+                    _ => unreachable!(),
+                };
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
 pub(crate) enum FieldStatus {
     Added(Ident),
-    Renamed { from: Ident, to: Ident },
+    Renamed { _from: Ident, to: Ident },
     Deprecated(Ident),
+    NoChange,
+    NotPresent,
 }
