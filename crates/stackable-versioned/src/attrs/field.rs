@@ -64,9 +64,13 @@ impl FieldAttributes {
     fn validate(self) -> Result<Self, Error> {
         let mut errors = Error::accumulator();
 
+        // Semantic validation
         errors.handle(self.validate_action_combinations());
         errors.handle(self.validate_action_order());
         errors.handle(self.validate_field_name());
+
+        // Code quality validation
+        errors.handle(self.validate_deprecated_options());
 
         // TODO (@Techassi): Add validation for renames so that renamed fields
         // match up and form a continous chain (eg. foo -> bar -> baz).
@@ -186,6 +190,19 @@ impl FieldAttributes {
             return Err(Error::custom(
                 "field includes the `deprecated_` prefix in its name but is not marked as `deprecated`"
             ).with_span(&self.ident));
+        }
+
+        Ok(())
+    }
+
+    fn validate_deprecated_options(&self) -> Result<(), Error> {
+        // TODO (@Techassi): Make note optional
+
+        if let Some(deprecated) = &self.deprecated {
+            if deprecated.note.is_empty() {
+                return Err(Error::custom("deprecation note must not be empty")
+                    .with_span(&deprecated.note.span()));
+            }
         }
 
         Ok(())

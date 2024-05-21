@@ -14,7 +14,7 @@ struct Foo {
     #[versioned(
         added(since = "v1alpha1"),
         renamed(since = "v1beta1", from = "jjj"),
-        deprecated(since = "v2", note = "")
+        deprecated(since = "v2", note = "not empty")
     )]
     deprecated_bar: usize,
     baz: bool,
