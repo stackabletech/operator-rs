@@ -27,7 +27,6 @@
 
 use std::collections::BTreeMap;
 
-use derivative::Derivative;
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -56,6 +55,20 @@ pub struct ListenerClassSpec {
     /// Annotations that should be added to the Service object.
     #[serde(default)]
     pub service_annotations: BTreeMap<String, String>,
+
+    /// `externalTrafficPolicy` that should be set on the created [`Service`] objects.
+    ///
+    /// The default is `Local` (in contrast to `Cluster`), as we aim to direct traffic to a node running the workload
+    /// and we should keep testing that as the primary configuration. Cluster is a fallback option for providers that
+    /// break Local mode (IONOS so far).
+    #[serde(default = "ListenerClassSpec::default_service_external_traffic_policy")]
+    pub service_external_traffic_policy: KubernetesTrafficPolicy,
+}
+
+impl ListenerClassSpec {
+    const fn default_service_external_traffic_policy() -> KubernetesTrafficPolicy {
+        KubernetesTrafficPolicy::Local
+    }
 }
 
 /// The method used to access the services.
@@ -100,9 +113,8 @@ pub enum KubernetesTrafficPolicy {
 ///
 /// Learn more in the [Listener documentation](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listener).
 #[derive(
-    CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq, Derivative,
+    CustomResource, Serialize, Deserialize, Default, Clone, Debug, JsonSchema, PartialEq, Eq,
 )]
-#[derivative(Default)]
 #[kube(
     group = "listeners.stackable.tech",
     version = "v1alpha1",
@@ -125,24 +137,11 @@ pub struct ListenerSpec {
     /// Whether incoming traffic should also be directed to Pods that are not `Ready`.
     #[serde(default = "ListenerSpec::default_publish_not_ready_addresses")]
     pub publish_not_ready_addresses: Option<bool>,
-
-    /// `externalTrafficPolicy` that should be set on the [`Service`] object.
-    ///
-    /// The default is `Local` (in contrast to `Cluster`), as we aim to direct traffic to a node running the workload
-    /// and we should keep testing that as the primary configuration. Cluster is a fallback option for providers that
-    /// break Local mode (IONOS so far).
-    #[derivative(Default(value = "ListenerSpec::default_service_external_traffic_policy()"))]
-    #[serde(default = "ListenerSpec::default_service_external_traffic_policy")]
-    pub service_external_traffic_policy: KubernetesTrafficPolicy,
 }
 
 impl ListenerSpec {
     const fn default_publish_not_ready_addresses() -> Option<bool> {
         Some(true)
-    }
-
-    const fn default_service_external_traffic_policy() -> KubernetesTrafficPolicy {
-        KubernetesTrafficPolicy::Local
     }
 }
 
