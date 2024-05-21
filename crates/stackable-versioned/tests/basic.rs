@@ -5,14 +5,16 @@ use stackable_versioned::Versioned;
 #[versioned(
     version(name = "v1alpha1"),
     version(name = "v1beta1"),
-    version(name = "v1")
+    version(name = "v1"),
+    version(name = "v2"),
+    version(name = "v3")
 )]
 struct Foo {
     /// My docs
     #[versioned(
         added(since = "v1alpha1"),
         renamed(since = "v1beta1", from = "jjj"),
-        deprecated(since = "v1", _note = "")
+        deprecated(since = "v2", note = "")
     )]
     deprecated_bar: usize,
     baz: bool,

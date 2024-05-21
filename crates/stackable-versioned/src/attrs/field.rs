@@ -51,7 +51,7 @@ pub(crate) struct RenamedAttributes {
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct DeprecatedAttributes {
     pub(crate) since: SpannedValue<Version>,
-    pub(crate) _note: SpannedValue<String>,
+    pub(crate) note: SpannedValue<String>,
 }
 
 impl FieldAttributes {

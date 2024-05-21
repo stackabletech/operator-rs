@@ -48,12 +48,17 @@ impl ToTokensExt for VersionedField {
                     FieldStatus::Renamed { _from: _, to } => Some(quote! {
                         pub #to: #field_type,
                     }),
-                    FieldStatus::Deprecated(field_ident) => Some(quote! {
-                        #[deprecated]
+                    FieldStatus::Deprecated {
+                        ident: field_ident,
+                        note,
+                    } => Some(quote! {
+                        #[deprecated = #note]
                         pub #field_ident: #field_type,
                     }),
                     FieldStatus::NotPresent => None,
-                    FieldStatus::NoChange => todo!(),
+                    FieldStatus::NoChange(field_ident) => Some(quote! {
+                        pub #field_ident: #field_type,
+                    }),
                 }
             }
             None => {
@@ -72,6 +77,11 @@ impl ToTokensExt for VersionedField {
 }
 
 impl VersionedField {
+    /// Create a new versioned field by creating a status chain for each version
+    /// defined in an action in the field attribute.
+    ///
+    /// This chain will get extended by the versions defined on the container by
+    /// calling the [`VersionedField::insert_container_versions`] function.
     pub(crate) fn new(field: Field, attrs: FieldAttributes) -> Result<Self, Error> {
         // Constructing the action chain requires going through the actions from
         // the end, because the base struct always represents the latest (most
@@ -88,7 +98,13 @@ impl VersionedField {
             let mut actions = BTreeMap::new();
 
             let ident = field.ident.as_ref().unwrap();
-            actions.insert(*deprecated.since, FieldStatus::Deprecated(ident.clone()));
+            actions.insert(
+                *deprecated.since,
+                FieldStatus::Deprecated {
+                    ident: ident.clone(),
+                    note: deprecated.note.to_string(),
+                },
+            );
 
             // When the field is deprecated, any rename which occured beforehand
             // requires access to the field ident to infer the field ident for
@@ -170,6 +186,15 @@ impl VersionedField {
         }
     }
 
+    /// Inserts container versions not yet present in the status chain.
+    ///
+    /// When intially creating a new [`VersionedField`], the code doesn't have
+    /// access to the versions defined on the container. This function inserts
+    /// all non-present container versions and decides which status and ident
+    /// is the right fit based on the status neighbors.
+    ///
+    /// This continous chain ensures that when generating code (tokens), each
+    /// field can lookup the status for a requested version.
     pub(crate) fn insert_container_versions(&mut self, versions: &Vec<ContainerVersion>) {
         if let Some(chain) = &mut self.chain {
             for version in versions {
@@ -179,8 +204,27 @@ impl VersionedField {
 
                 match chain.get_neighbors(&version.inner) {
                     (None, Some(_)) => chain.insert(version.inner, FieldStatus::NotPresent),
-                    (Some(_), None) => chain.insert(version.inner, FieldStatus::NoChange),
-                    (Some(_), Some(_)) => chain.insert(version.inner, FieldStatus::NoChange),
+                    (Some(status), None) => {
+                        let ident = match status {
+                            FieldStatus::Added(ident) => ident,
+                            FieldStatus::Renamed { _from: _, to } => to,
+                            FieldStatus::Deprecated { ident, note: _ } => ident,
+                            FieldStatus::NoChange(ident) => ident,
+                            FieldStatus::NotPresent => unreachable!(),
+                        };
+
+                        chain.insert(version.inner, FieldStatus::NoChange(ident.clone()))
+                    }
+                    (Some(status), Some(_)) => {
+                        let ident = match status {
+                            FieldStatus::Added(ident) => ident,
+                            FieldStatus::Renamed { _from: _, to } => to,
+                            FieldStatus::NoChange(ident) => ident,
+                            _ => unreachable!(),
+                        };
+
+                        chain.insert(version.inner, FieldStatus::NoChange(ident.clone()))
+                    }
                     _ => unreachable!(),
                 };
             }
@@ -192,7 +236,7 @@ impl VersionedField {
 pub(crate) enum FieldStatus {
     Added(Ident),
     Renamed { _from: Ident, to: Ident },
-    Deprecated(Ident),
-    NoChange,
+    Deprecated { ident: Ident, note: String },
+    NoChange(Ident),
     NotPresent,
 }
