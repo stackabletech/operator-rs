@@ -4,9 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- Improve action chain generation ([#764]).
+- Improve action chain generation ([#784]).
 
-[#764](ttps://github.com/stackabletech/operator-rs/pull/764)
+[#784](ttps://github.com/stackabletech/operator-rs/pull/784)
 
 ## [0.1.0] - 2024-05-08
 
