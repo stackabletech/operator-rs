@@ -1,6 +1,6 @@
 use darling::FromField;
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, ToTokens};
+use quote::{format_ident, quote};
 use syn::{DataStruct, Ident, Result};
 
 use crate::{
@@ -26,41 +26,82 @@ pub(crate) struct VersionedStruct {
     pub(crate) fields: Vec<VersionedField>,
 }
 
-impl ToTokens for VersionedStruct {
-    fn to_tokens(&self, _tokens: &mut TokenStream) {
-        let mut versions = self.versions.iter().peekable();
+impl ToTokensExt<bool> for VersionedStruct {
+    fn to_tokens(&self, generate_modules: bool) -> Option<TokenStream> {
+        // TODO (@Techassi): This unwrap should be fine, should we expect here?
+        let mut versions = self.versions.clone();
+        versions.pop().unwrap();
+        let mut versions = versions.iter().peekable();
 
+        let mut tokens = TokenStream::new();
+
+        // TODO (@Techassi): Move this into own functions
         while let Some(version) = versions.next() {
-            let mut fields = TokenStream::new();
+            let mut field_tokens = TokenStream::new();
 
             for field in &self.fields {
-                fields.extend(field.to_tokens_for_version(version));
+                field_tokens.extend(field.to_tokens(version));
             }
 
-            // TODO (@Techassi): Make the generation of the module optional to
-            // enable the attribute macro to be applied to a module which
-            // generates versioned versions of all contained containers.
-
-            let deprecated_attr = version.deprecated.then_some(quote! {#[deprecated]});
             let module_name = format_ident!("{version}", version = version.inner.to_string());
+            let deprecated_attr = version.deprecated.then_some(quote! {#[deprecated]});
             let struct_name = &self.ident;
 
-            // Only generate a module when there is at least one more version.
-            // This skips generating a module for the latest version, because
-            // the base struct always represents the latest version.
-            if versions.peek().is_some() {
-                _tokens.extend(quote! {
+            let struct_tokens = quote! {
+                pub struct #struct_name {
+                    #field_tokens
+                }
+            };
+
+            // Only generate modules when asked to do so by the caller. This
+            // enables us the support attribute macros to generate code for
+            // multiple versioned containers in a single file (no module name
+            // collition).
+            if generate_modules {
+                // Only generate a module when there is at least one more
+                // version. This skips generating a module for the latest
+                // version, because the base struct always represents the
+                // latest version.
+                tokens.extend(quote! {
                     #[automatically_derived]
                     #deprecated_attr
                     pub mod #module_name {
-
-                        pub struct #struct_name {
-                            #fields
-                        }
+                        #struct_tokens
                     }
                 });
+
+                if let Some(next) = versions.peek() {
+                    // Generate From<THIS> for NEXT impls
+                    let next_module = format_ident!("{}", next.inner.to_string());
+
+                    let from_impl_tokens = quote! {
+                        #[automatically_derived]
+                        impl From<#module_name::#struct_name> for #next_module::#struct_name {
+                            fn from(from: #module_name::#struct_name) -> Self {
+                                todo!();
+                            }
+                        }
+                    };
+
+                    tokens.extend(from_impl_tokens);
+                } else {
+                    let from_impl_tokens = quote! {
+                        #[automatically_derived]
+                        impl From<#module_name::#struct_name> for #struct_name {
+                            fn from(from: #module_name::#struct_name) -> Self {
+                                todo!();
+                            }
+                        }
+                    };
+
+                    tokens.extend(from_impl_tokens);
+                }
+            } else {
+                tokens.extend(struct_tokens)
             }
         }
+
+        Some(tokens)
     }
 }
 

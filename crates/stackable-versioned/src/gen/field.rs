@@ -24,8 +24,8 @@ pub(crate) struct VersionedField {
     inner: Field,
 }
 
-impl ToTokensExt for VersionedField {
-    fn to_tokens_for_version(&self, container_version: &ContainerVersion) -> Option<TokenStream> {
+impl ToTokensExt<&ContainerVersion> for VersionedField {
+    fn to_tokens(&self, container_version: &ContainerVersion) -> Option<TokenStream> {
         match &self.chain {
             Some(chain) => {
                 // Check if the provided container version is present in the map

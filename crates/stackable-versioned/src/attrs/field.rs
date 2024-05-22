@@ -1,6 +1,6 @@
 use darling::{util::SpannedValue, Error, FromField, FromMeta};
 use k8s_version::Version;
-use syn::{Field, Ident};
+use syn::{Field, Ident, Path};
 
 use crate::{attrs::container::ContainerAttributes, consts::DEPRECATED_PREFIX};
 
@@ -40,6 +40,7 @@ pub(crate) struct FieldAttributes {
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct AddedAttributes {
     pub(crate) since: SpannedValue<Version>,
+    pub(crate) default: Option<SpannedValue<Path>>,
 }
 
 #[derive(Clone, Debug, FromMeta)]

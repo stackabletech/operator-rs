@@ -5,7 +5,7 @@ use syn::{spanned::Spanned, Data, DeriveInput, Error, Result};
 
 use crate::{
     attrs::container::ContainerAttributes,
-    gen::{venum::VersionedEnum, version::ContainerVersion, vstruct::VersionedStruct},
+    gen::{venum::VersionedEnum, vstruct::VersionedStruct},
 };
 
 pub(crate) mod field;
@@ -32,9 +32,9 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream> {
 
     // Validate container shape and generate code
     let expanded = match input.data {
-        Data::Struct(data) => {
-            VersionedStruct::new(input.ident, data, attributes)?.to_token_stream()
-        }
+        Data::Struct(data) => VersionedStruct::new(input.ident, data, attributes)?
+            .to_tokens(true)
+            .expect("internal error: must produce tokens for versioned struct"),
         Data::Enum(data) => VersionedEnum::new(input.ident, data, attributes)?.to_token_stream(),
         Data::Union(_) => {
             return Err(Error::new(
@@ -47,6 +47,9 @@ pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream> {
     Ok(expanded)
 }
 
-pub(crate) trait ToTokensExt {
-    fn to_tokens_for_version(&self, version: &ContainerVersion) -> Option<TokenStream>;
+pub(crate) trait ToTokensExt<T>
+where
+    T: Copy,
+{
+    fn to_tokens(&self, state: T) -> Option<TokenStream>;
 }

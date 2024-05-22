@@ -103,4 +103,5 @@ pub(crate) struct VersionAttributes {
 #[derive(Clone, Debug, Default, FromMeta)]
 pub(crate) struct ContainerOptions {
     pub(crate) allow_unsorted: Flag,
+    pub(crate) skip_from: Flag,
 }
