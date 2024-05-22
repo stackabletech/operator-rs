@@ -196,7 +196,10 @@ impl FieldAttributes {
     }
 
     fn validate_deprecated_options(&self) -> Result<(), Error> {
-        // TODO (@Techassi): Make note optional
+        // TODO (@Techassi): Make the field 'note' optional, because in the
+        // future, the macro will generate parts of the deprecation note
+        // automatically. The user-provided note will then be appended to the
+        // auto-generated one.
 
         if let Some(deprecated) = &self.deprecated {
             if deprecated.note.is_empty() {
