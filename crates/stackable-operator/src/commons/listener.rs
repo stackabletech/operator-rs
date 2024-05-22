@@ -50,7 +50,7 @@ use crate::builder::pod::volume::ListenerOperatorVolumeSourceBuilder;
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ListenerClassSpec {
-    pub service_type: KubernetesServiceType,
+    pub service_type: ServiceType,
 
     /// Annotations that should be added to the Service object.
     #[serde(default)]
@@ -73,10 +73,11 @@ impl ListenerClassSpec {
 
 /// The method used to access the services.
 //
-// Please note that this represents a Kubernetes type, so the name of the enum variant needs to exactly match the
-// Kubernetes service type.
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, JsonSchema, PartialEq, Eq, strum::Display)]
-pub enum KubernetesServiceType {
+// Please note that this does not necessarely need to be restricted to the same Service types Kubernetes supports.
+// Listeners currently happens to support the same set of service types as upstream Kubernetes, but we still want to
+// have the freedom to add custom ones in the future (for example: Istio ingress?).
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, JsonSchema, PartialEq, Eq)]
+pub enum ServiceType {
     /// Reserve a port on each node.
     NodePort,
 
