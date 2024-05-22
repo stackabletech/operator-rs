@@ -9,7 +9,7 @@ use syn::{Field, Ident};
 use crate::{
     attrs::field::FieldAttributes,
     consts::DEPRECATED_PREFIX,
-    gen::{version::ContainerVersion, Neighbors, ToTokensExt},
+    gen::{neighbors::Neighbors, version::ContainerVersion, ToTokensExt},
 };
 
 /// A versioned field, which contains contains common [`Field`] data and a chain
