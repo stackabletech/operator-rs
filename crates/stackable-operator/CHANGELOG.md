@@ -4,8 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- Support specifying externalTrafficPolicy in Services created by listener-operator ([#773], [#789]).
-- BREAKING: Rename `commons::listener::ServiceType` to `commons::listener::KubernetesServiceType` ([#773]).
+- Support specifying externalTrafficPolicy in Services created by listener-operator ([#773], [#789], [#XXX]).
 
 [#773]: https://github.com/stackabletech/operator-rs/pull/773
 [#789]: https://github.com/stackabletech/operator-rs/pull/789
