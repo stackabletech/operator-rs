@@ -1,5 +1,8 @@
 use stackable_versioned::Versioned;
 
+// To expand the generated code (for debugging and testing), it is recommended
+// to first change directory via `cd crates/stackable-versioned` and to then
+// run `cargo expand --test basic --all-features`.
 #[derive(Versioned)]
 #[allow(dead_code)]
 #[versioned(
