@@ -2,7 +2,7 @@ use std::{cmp::Ordering, collections::HashSet, ops::Deref};
 
 use darling::{
     util::{Flag, SpannedValue},
-    Error, FromDeriveInput, FromMeta, Result,
+    Error, FromMeta, Result,
 };
 use k8s_version::Version;
 
@@ -12,13 +12,8 @@ use k8s_version::Version;
 ///
 /// - `version`, which can occur one or more times. See [`VersionAttributes`].
 /// - `options`, which allow further customization of the generated code. See [`ContainerOptions`].
-#[derive(Clone, Debug, FromDeriveInput)]
-#[darling(
-    attributes(versioned),
-    supports(struct_named),
-    forward_attrs(allow, doc, cfg, serde),
-    and_then = ContainerAttributes::validate
-)]
+#[derive(Debug, FromMeta)]
+#[darling(and_then = ContainerAttributes::validate)]
 pub(crate) struct ContainerAttributes {
     #[darling(multiple, rename = "version")]
     pub(crate) versions: SpannedValue<Vec<VersionAttributes>>,
