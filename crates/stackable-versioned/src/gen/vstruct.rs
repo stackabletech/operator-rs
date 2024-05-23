@@ -28,10 +28,10 @@ pub(crate) struct VersionedStruct {
 
 impl ToTokens for VersionedStruct {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let mut versions = self.versions.iter().peekable();
+        let versions = self.versions.iter().peekable();
         let struct_name = &self.ident;
 
-        while let Some(version) = versions.next() {
+        for version in versions {
             let mut fields = TokenStream::new();
 
             for field in &self.fields {

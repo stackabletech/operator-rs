@@ -9,7 +9,6 @@ use crate::{
 
 pub(crate) mod field;
 pub(crate) mod neighbors;
-pub(crate) mod venum;
 pub(crate) mod version;
 pub(crate) mod vstruct;
 
