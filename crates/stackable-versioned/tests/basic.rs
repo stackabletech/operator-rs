@@ -26,6 +26,16 @@ struct Foo {
 fn basic() {
     let _ = v1alpha1::Foo { jjj: 0, baz: false };
     let _ = v1beta1::Foo { bar: 0, baz: false };
+    let _ = v1::Foo { bar: 0, baz: false };
+
+    #[allow(deprecated)]
+    let _ = v2::Foo {
+        deprecated_bar: 0,
+        baz: false,
+    };
+
+    // The latest version (v3)
+    #[allow(deprecated)]
     let _ = Foo {
         deprecated_bar: 0,
         baz: false,

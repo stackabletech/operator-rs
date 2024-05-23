@@ -27,8 +27,9 @@ pub(crate) struct VersionedStruct {
 }
 
 impl ToTokens for VersionedStruct {
-    fn to_tokens(&self, _tokens: &mut TokenStream) {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
         let mut versions = self.versions.iter().peekable();
+        let struct_name = &self.ident;
 
         while let Some(version) = versions.next() {
             let mut fields = TokenStream::new();
@@ -43,24 +44,27 @@ impl ToTokens for VersionedStruct {
 
             let deprecated_attr = version.deprecated.then_some(quote! {#[deprecated]});
             let module_name = format_ident!("{version}", version = version.inner.to_string());
-            let struct_name = &self.ident;
 
-            // Only generate a module when there is at least one more version.
-            // This skips generating a module for the latest version, because
-            // the base struct always represents the latest version.
-            if versions.peek().is_some() {
-                _tokens.extend(quote! {
-                    #[automatically_derived]
-                    #deprecated_attr
-                    pub mod #module_name {
+            tokens.extend(quote! {
+                #[automatically_derived]
+                #deprecated_attr
+                pub mod #module_name {
 
-                        pub struct #struct_name {
-                            #fields
-                        }
+                    pub struct #struct_name {
+                        #fields
                     }
-                });
-            }
+                }
+            });
         }
+
+        // Special handling for the last (and thus latest) version
+        let module_name = format_ident!(
+            "{version}",
+            version = self.versions.last().unwrap().inner.to_string()
+        );
+        tokens.extend(quote! {
+            pub type #struct_name = #module_name::#struct_name;
+        })
     }
 }
 
