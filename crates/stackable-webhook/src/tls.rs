@@ -11,7 +11,11 @@ use stackable_certs::{ca::CertificateAuthority, keys::rsa, CertificatePairError}
 use stackable_operator::time::Duration;
 use tokio::net::TcpListener;
 use tokio_rustls::{
-    rustls::{crypto::aws_lc_rs::default_provider, ServerConfig},
+    rustls::{
+        crypto::aws_lc_rs::default_provider,
+        version::{TLS12, TLS13},
+        ServerConfig,
+    },
     TlsAcceptor,
 };
 use tower::Service;
@@ -105,7 +109,7 @@ impl TlsServer {
 
         let tls_provider = default_provider();
         let mut config = ServerConfig::builder_with_provider(tls_provider.into())
-            .with_safe_default_protocol_versions()
+            .with_protocol_versions(&[&TLS12, &TLS13])
             .context(SetSafeTlsProtocolVersionsSnafu)?
             .with_no_client_auth()
             .with_single_cert(vec![certificate_der], private_key_der)
