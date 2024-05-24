@@ -1,3 +1,4 @@
+use convert_case::{Case, Casing};
 use darling::FromField;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
@@ -29,41 +30,53 @@ pub(crate) struct VersionedStruct {
 impl ToTokens for VersionedStruct {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let versions = self.versions.iter().peekable();
-        let struct_name = &self.ident;
+
+        let module_name = self.ident.to_string().to_case(Case::Snake);
+        let module_name = format_ident!("{module_name}");
+        let alias_name = &self.ident;
+
+        let mut struct_tokens = TokenStream::new();
 
         for version in versions {
-            let mut fields = TokenStream::new();
+            let mut field_tokens = TokenStream::new();
 
             for field in &self.fields {
-                fields.extend(field.to_tokens_for_version(version));
+                field_tokens.extend(field.to_tokens_for_version(version));
             }
 
-            // TODO (@Techassi): Make the generation of the module optional to
-            // enable the attribute macro to be applied to a module which
-            // generates versioned versions of all contained containers.
-
             let deprecated_attr = version.deprecated.then_some(quote! {#[deprecated]});
-            let module_name = format_ident!("{version}", version = version.inner.to_string());
 
-            tokens.extend(quote! {
-                #[automatically_derived]
+            let struct_name = version.inner.to_string().to_case(Case::Pascal);
+            let struct_name = format_ident!("{struct_name}");
+
+            struct_tokens.extend(quote! {
                 #deprecated_attr
-                pub mod #module_name {
-
-                    pub struct #struct_name {
-                        #fields
-                    }
+                pub struct #struct_name {
+                    #field_tokens
                 }
-            });
+            })
         }
 
-        // Special handling for the last (and thus latest) version
-        let module_name = format_ident!(
-            "{version}",
-            version = self.versions.last().unwrap().inner.to_string()
-        );
+        // Generate module with contents
         tokens.extend(quote! {
-            pub type #struct_name = #module_name::#struct_name;
+            #[automatically_derived]
+            pub mod #module_name {
+                #struct_tokens
+            }
+        });
+
+        // Special handling for the last (and thus latest) version
+        let struct_name = self
+            .versions
+            .last()
+            .unwrap()
+            .inner
+            .to_string()
+            .to_case(Case::Pascal);
+        let struct_name = format_ident!("{struct_name}");
+
+        tokens.extend(quote! {
+            pub type #alias_name = #module_name::#struct_name;
         })
     }
 }

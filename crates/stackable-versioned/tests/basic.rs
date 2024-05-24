@@ -24,12 +24,12 @@ struct Foo {
 
 #[test]
 fn basic() {
-    let _ = v1alpha1::Foo { jjj: 0, baz: false };
-    let _ = v1beta1::Foo { bar: 0, baz: false };
-    let _ = v1::Foo { bar: 0, baz: false };
+    let _ = foo::V1Alpha1 { jjj: 0, baz: false };
+    let _ = foo::V1Beta1 { bar: 0, baz: false };
+    let _ = foo::V1 { bar: 0, baz: false };
 
     #[allow(deprecated)]
-    let _ = v2::Foo {
+    let _ = foo::V2 {
         deprecated_bar: 0,
         baz: false,
     };
