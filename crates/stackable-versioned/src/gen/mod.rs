@@ -1,16 +1,14 @@
-use darling::FromDeriveInput;
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::{spanned::Spanned, Data, DeriveInput, Error, Result};
 
 use crate::{
     attrs::container::ContainerAttributes,
-    gen::{venum::VersionedEnum, version::ContainerVersion, vstruct::VersionedStruct},
+    gen::{version::ContainerVersion, vstruct::VersionedStruct},
 };
 
 pub(crate) mod field;
 pub(crate) mod neighbors;
-pub(crate) mod venum;
 pub(crate) mod version;
 pub(crate) mod vstruct;
 
@@ -26,20 +24,13 @@ pub(crate) mod vstruct;
 // TODO (@Techassi): Think about how we can handle nested structs / enums which
 // are also versioned.
 
-pub(crate) fn expand(input: DeriveInput) -> Result<TokenStream> {
-    // Extract container attributes
-    let attributes = ContainerAttributes::from_derive_input(&input)?;
-
-    // Validate container shape and generate code
+pub(crate) fn expand(attrs: ContainerAttributes, input: DeriveInput) -> Result<TokenStream> {
     let expanded = match input.data {
-        Data::Struct(data) => {
-            VersionedStruct::new(input.ident, data, attributes)?.to_token_stream()
-        }
-        Data::Enum(data) => VersionedEnum::new(input.ident, data, attributes)?.to_token_stream(),
-        Data::Union(_) => {
+        Data::Struct(data) => VersionedStruct::new(input.ident, data, attrs)?.to_token_stream(),
+        _ => {
             return Err(Error::new(
                 input.span(),
-                "derive macro `Versioned` only supports structs and enums",
+                "attribute macro `versioned` only supports structs",
             ))
         }
     };

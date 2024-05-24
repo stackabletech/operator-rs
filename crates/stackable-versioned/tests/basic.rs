@@ -1,9 +1,8 @@
-use stackable_versioned::Versioned;
+use stackable_versioned::versioned;
 
 // To expand the generated code (for debugging and testing), it is recommended
 // to first change directory via `cd crates/stackable-versioned` and to then
 // run `cargo expand --test basic --all-features`.
-#[derive(Versioned)]
 #[allow(dead_code)]
 #[versioned(
     version(name = "v1alpha1"),
@@ -27,6 +26,16 @@ struct Foo {
 fn basic() {
     let _ = v1alpha1::Foo { jjj: 0, baz: false };
     let _ = v1beta1::Foo { bar: 0, baz: false };
+    let _ = v1::Foo { bar: 0, baz: false };
+
+    #[allow(deprecated)]
+    let _ = v2::Foo {
+        deprecated_bar: 0,
+        baz: false,
+    };
+
+    // The latest version (v3)
+    #[allow(deprecated)]
     let _ = Foo {
         deprecated_bar: 0,
         baz: false,
