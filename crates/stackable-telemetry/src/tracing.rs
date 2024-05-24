@@ -149,7 +149,9 @@ impl Tracing {
         if self.otlp_log_config.enabled {
             let env_filter_layer = EnvFilter::builder()
                 .with_default_directive(self.otlp_log_config.level_filter.into()) // TODO (@NickLarsenNZ): support Directives
-                .from_env_lossy();
+                .from_env_lossy()
+                // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
+                .add_directive("h2=off".parse().expect("invalid directive"));
 
             let log_exporter = opentelemetry_otlp::new_exporter().tonic();
             let otel_log =
@@ -173,13 +175,9 @@ impl Tracing {
         if self.otlp_trace_config.enabled {
             let env_filter_layer = EnvFilter::builder()
                 .with_default_directive(self.otlp_trace_config.level_filter.into()) // TODO (@NickLarsenNZ): support Directives
-                .from_env_lossy();
-            // .add_directive("hyper=info".parse().expect("invalid directive"))
-            // .add_directive("tonic=warn".parse().expect("invalid directive"))
-            // .add_directive("tokio_util=warn".parse().expect("invalid directive"))
-            // .add_directive("hyper=info".parse().expect("invalid directive"))
-            // .add_directive("h2=info".parse().expect("invalid directive"))
-            // .add_directive("tower=info".parse().expect("invalid directive"));
+                .from_env_lossy()
+                // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
+                .add_directive("h2=off".parse().expect("invalid directive"));
 
             let trace_exporter = opentelemetry_otlp::new_exporter().tonic();
             let otel_tracer = opentelemetry_otlp::new_pipeline()
