@@ -153,7 +153,7 @@ impl Atomic for NodeAffinity {}
 impl<T: Atomic> Merge for Option<T> {
     fn merge(&mut self, defaults: &Self) {
         if self.is_none() {
-            *self = defaults.clone();
+            self.clone_from(defaults);
         }
     }
 }

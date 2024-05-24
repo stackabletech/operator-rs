@@ -4,12 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.68.0] - 2024-05-22
+
+- Support specifying externalTrafficPolicy in Services created by listener-operator ([#773], [#789], [#791]).
+
+[#773]: https://github.com/stackabletech/operator-rs/pull/773
+[#789]: https://github.com/stackabletech/operator-rs/pull/789
+[#791]: https://github.com/stackabletech/operator-rs/pull/791
+
+## [0.67.1] - 2024-05-08
+
+### Added
+
+- Add `InvalidProductSpecificConfiguration` variant in
+  `stackable_operator::product_config_util::Error` enum ([#782]).
+
 ### Changed
 
+- Bump Rust dependencies and GitHub Actions ([#782]).
 - Bump GitHub workflow actions ([#772]).
 - Revert `zeroize` version bump ([#772]).
 
 [#772]: https://github.com/stackabletech/operator-rs/pull/772
+[#782]: https://github.com/stackabletech/operator-rs/pull/782
 
 ## [0.67.0] - 2024-04-25
 

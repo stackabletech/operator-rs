@@ -394,7 +394,12 @@ mod tests {
                     gmsa_credential_spec_name: Some("name".to_string()),
                     run_as_user_name: Some("winuser".to_string()),
                     ..Default::default()
-                })
+                }),
+                // This attribute is supported starting with Kubernetes 1.30.
+                // Because we support older Kubernetes versions as well, we can
+                // not use it for now, as we would not work on older Kubernetes
+                // clusters.
+                app_armor_profile: None
             }
         );
     }

@@ -55,17 +55,53 @@ pub struct ListenerClassSpec {
     /// Annotations that should be added to the Service object.
     #[serde(default)]
     pub service_annotations: BTreeMap<String, String>,
+
+    /// `externalTrafficPolicy` that should be set on the created [`Service`] objects.
+    ///
+    /// The default is `Local` (in contrast to `Cluster`), as we aim to direct traffic to a node running the workload
+    /// and we should keep testing that as the primary configuration. Cluster is a fallback option for providers that
+    /// break Local mode (IONOS so far).
+    #[serde(default = "ListenerClassSpec::default_service_external_traffic_policy")]
+    pub service_external_traffic_policy: KubernetesTrafficPolicy,
+}
+
+impl ListenerClassSpec {
+    const fn default_service_external_traffic_policy() -> KubernetesTrafficPolicy {
+        KubernetesTrafficPolicy::Local
+    }
 }
 
 /// The method used to access the services.
+//
+// Please note that this does not necessarely need to be restricted to the same Service types Kubernetes supports.
+// Listeners currently happens to support the same set of service types as upstream Kubernetes, but we still want to
+// have the freedom to add custom ones in the future (for example: Istio ingress?).
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, JsonSchema, PartialEq, Eq)]
 pub enum ServiceType {
     /// Reserve a port on each node.
     NodePort,
+
     /// Provision a dedicated load balancer.
     LoadBalancer,
+
     /// Assigns an IP address from a pool of IP addresses that your cluster has reserved for that purpose.
     ClusterIP,
+}
+
+/// Service Internal Traffic Policy enables internal traffic restrictions to only route internal traffic to endpoints
+/// within the node the traffic originated from. The "internal" traffic here refers to traffic originated from Pods in
+/// the current cluster. This can help to reduce costs and improve performance.
+/// See [Kubernetes docs](https://kubernetes.io/docs/concepts/services-networking/service-traffic-policy/).
+//
+// Please note that this represents a Kubernetes type, so the name of the enum variant needs to exactly match the
+// Kubernetes traffic policy.
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq, strum::Display)]
+pub enum KubernetesTrafficPolicy {
+    /// Obscures the client source IP and may cause a second hop to another node, but allows Kubernetes to spread the load between all nodes.
+    Cluster,
+
+    /// Preserves the client source IP and avoid a second hop for LoadBalancer and NodePort type Services, but makes clients responsible for spreading the load.
+    Local,
 }
 
 /// Exposes a set of pods to the outside world.
@@ -78,7 +114,7 @@ pub enum ServiceType {
 ///
 /// Learn more in the [Listener documentation](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listener).
 #[derive(
-    CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, Default, PartialEq, Eq,
+    CustomResource, Serialize, Deserialize, Default, Clone, Debug, JsonSchema, PartialEq, Eq,
 )]
 #[kube(
     group = "listeners.stackable.tech",
@@ -100,7 +136,7 @@ pub struct ListenerSpec {
     pub ports: Option<Vec<ListenerPort>>,
 
     /// Whether incoming traffic should also be directed to Pods that are not `Ready`.
-    #[schemars(default = "Self::default_publish_not_ready_addresses")]
+    #[serde(default = "ListenerSpec::default_publish_not_ready_addresses")]
     pub publish_not_ready_addresses: Option<bool>,
 }
 

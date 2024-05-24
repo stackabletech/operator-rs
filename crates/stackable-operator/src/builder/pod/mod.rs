@@ -162,9 +162,10 @@ impl PodBuilder {
     }
 
     pub fn affinity(&mut self, affinities: &StackableAffinity) -> &mut Self {
-        self.pod_affinity = affinities.pod_affinity.clone();
-        self.pod_anti_affinity = affinities.pod_anti_affinity.clone();
-        self.node_affinity = affinities.node_affinity.clone();
+        self.pod_affinity.clone_from(&affinities.pod_affinity);
+        self.pod_anti_affinity
+            .clone_from(&affinities.pod_anti_affinity);
+        self.node_affinity.clone_from(&affinities.node_affinity);
         self.node_selector = affinities.node_selector.clone().map(|ns| ns.node_selector);
         self
     }
