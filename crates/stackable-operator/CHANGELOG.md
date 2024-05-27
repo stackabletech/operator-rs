@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add functionality to convert LogLevel to an OPA log level ([#798])
+- Add functionality to convert LogLevel to an OPA log level ([#798]).
 
 [#798]: https://github.com/stackabletech/operator-rs/pull/798
 
