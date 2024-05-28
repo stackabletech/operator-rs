@@ -21,11 +21,16 @@ All notable changes to this project will be documented in this file.
 - Bump GitHub workflow actions ([#772]).
 - Revert `zeroize` version bump ([#772]).
 
+### Fixed
+
+- Explicitly set the TLS provider for the ServerConfig, and enable "safe" protocols ([#778]).
+
 [#758]: https://github.com/stackabletech/operator-rs/pull/758
 [#762]: https://github.com/stackabletech/operator-rs/pull/762
 [#767]: https://github.com/stackabletech/operator-rs/pull/767
 [#769]: https://github.com/stackabletech/operator-rs/pull/769
 [#772]: https://github.com/stackabletech/operator-rs/pull/772
+[#778]: https://github.com/stackabletech/operator-rs/pull/778
 [#782]: https://github.com/stackabletech/operator-rs/pull/782
 
 ## [0.2.0] - 2024-03-26

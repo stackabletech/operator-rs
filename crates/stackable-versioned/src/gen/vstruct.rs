@@ -1,6 +1,6 @@
 use darling::FromField;
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use syn::{DataStruct, Ident, Result};
 
 use crate::{
@@ -26,82 +26,45 @@ pub(crate) struct VersionedStruct {
     pub(crate) fields: Vec<VersionedField>,
 }
 
-impl ToTokensExt<bool> for VersionedStruct {
-    fn to_tokens(&self, generate_modules: bool) -> Option<TokenStream> {
-        // TODO (@Techassi): This unwrap should be fine, should we expect here?
-        let mut versions = self.versions.clone();
-        versions.pop().unwrap();
-        let mut versions = versions.iter().peekable();
+impl ToTokens for VersionedStruct {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let versions = self.versions.iter().peekable();
+        let struct_name = &self.ident;
 
-        let mut tokens = TokenStream::new();
-
-        // TODO (@Techassi): Move this into own functions
-        while let Some(version) = versions.next() {
-            let mut field_tokens = TokenStream::new();
+        for version in versions {
+            let mut fields = TokenStream::new();
 
             for field in &self.fields {
-                field_tokens.extend(field.to_tokens(version));
+                fields.extend(field.to_tokens(version));
             }
 
-            let module_name = format_ident!("{version}", version = version.inner.to_string());
+            // TODO (@Techassi): Make the generation of the module optional to
+            // enable the attribute macro to be applied to a module which
+            // generates versioned versions of all contained containers.
+
             let deprecated_attr = version.deprecated.then_some(quote! {#[deprecated]});
-            let struct_name = &self.ident;
+            let module_name = format_ident!("{version}", version = version.inner.to_string());
 
-            let struct_tokens = quote! {
-                pub struct #struct_name {
-                    #field_tokens
-                }
-            };
+            tokens.extend(quote! {
+                #[automatically_derived]
+                #deprecated_attr
+                pub mod #module_name {
 
-            // Only generate modules when asked to do so by the caller. This
-            // enables us the support attribute macros to generate code for
-            // multiple versioned containers in a single file (no module name
-            // collition).
-            if generate_modules {
-                // Only generate a module when there is at least one more
-                // version. This skips generating a module for the latest
-                // version, because the base struct always represents the
-                // latest version.
-                tokens.extend(quote! {
-                    #[automatically_derived]
-                    #deprecated_attr
-                    pub mod #module_name {
-                        #struct_tokens
+                    pub struct #struct_name {
+                        #fields
                     }
-                });
-
-                if let Some(next) = versions.peek() {
-                    // Generate From<THIS> for NEXT impls
-                    let next_module = format_ident!("{}", next.inner.to_string());
-
-                    let from_impl_tokens = quote! {
-                        #[automatically_derived]
-                        impl From<#module_name::#struct_name> for #next_module::#struct_name {
-                            fn from(from: #module_name::#struct_name) -> Self {
-                                todo!();
-                            }
-                        }
-                    };
-
-                    tokens.extend(from_impl_tokens);
-                } else {
-                    let from_impl_tokens = quote! {
-                        #[automatically_derived]
-                        impl From<#module_name::#struct_name> for #struct_name {
-                            fn from(from: #module_name::#struct_name) -> Self {
-                                todo!();
-                            }
-                        }
-                    };
-
-                    tokens.extend(from_impl_tokens);
                 }
-            } else {
-                tokens.extend(struct_tokens)
-            }
+            });
         }
 
-        Some(tokens)
+        // Special handling for the last (and thus latest) version
+        let module_name = format_ident!(
+            "{version}",
+            version = self.versions.last().unwrap().inner.to_string()
+        );
+        tokens.extend(quote! {
+            pub type #struct_name = #module_name::#struct_name;
+        })
     }
 }
 

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add functionality to convert LogLevel to an OPA log level ([#798]).
+
+[#798]: https://github.com/stackabletech/operator-rs/pull/798
+
 ## [0.68.0] - 2024-05-22
 
 - Support specifying externalTrafficPolicy in Services created by listener-operator ([#773], [#789], [#791]).

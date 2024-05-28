@@ -377,6 +377,21 @@ impl LogLevel {
         self.to_log4j_literal()
     }
 
+    /// Convert the log level to a string understood by OPA
+    // based on https://www.openpolicyagent.org/docs/latest/cli/#options-10 opa has only log levels {debug,info,error}
+    pub fn to_opa_literal(&self) -> String {
+        match self {
+            LogLevel::TRACE => "debug",
+            LogLevel::DEBUG => "debug",
+            LogLevel::INFO => "info",
+            LogLevel::WARN => "error",
+            LogLevel::ERROR => "error",
+            LogLevel::FATAL => "error",
+            LogLevel::NONE => "error",
+        }
+        .into()
+    }
+
     /// Convert the log level to a Python expression
     pub fn to_python_expression(&self) -> String {
         match self {
