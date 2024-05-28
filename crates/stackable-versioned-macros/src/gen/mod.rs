@@ -33,10 +33,3 @@ pub(crate) fn expand(attrs: ContainerAttributes, input: DeriveInput) -> Result<T
 
     Ok(expanded)
 }
-
-pub(crate) trait ToTokensExt<T>
-where
-    T: Copy,
-{
-    fn to_tokens(&self, state: T) -> Option<TokenStream>;
-}

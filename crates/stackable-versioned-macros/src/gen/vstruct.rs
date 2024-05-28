@@ -5,7 +5,7 @@ use syn::{DataStruct, Ident, Result};
 
 use crate::{
     attrs::{container::ContainerAttributes, field::FieldAttributes},
-    gen::{field::VersionedField, version::ContainerVersion, ToTokensExt},
+    gen::{field::VersionedField, version::ContainerVersion},
 };
 
 /// Stores individual versions of a single struct. Each version tracks field
@@ -16,6 +16,9 @@ use crate::{
 pub(crate) struct VersionedStruct {
     /// The ident, or name, of the versioned struct.
     pub(crate) ident: Ident,
+
+    /// The name of the struct used in `From` implementations.
+    pub(crate) from_ident: Ident,
 
     /// List of declared versions for this struct. Each version, except the
     /// latest, generates a definition with appropriate fields.
@@ -57,10 +60,13 @@ impl VersionedStruct {
             fields.push(versioned_field);
         }
 
+        let from_ident = format_ident!("__sv_{ident}", ident = ident.to_string().to_lowercase());
+
         Ok(Self {
-            ident,
+            from_ident,
             versions,
             fields,
+            ident,
         })
     }
 
@@ -81,7 +87,7 @@ impl VersionedStruct {
         token_stream
     }
 
-    pub(crate) fn generate_version(
+    fn generate_version(
         &self,
         version: &ContainerVersion,
         next_version: Option<&ContainerVersion>,
@@ -116,36 +122,57 @@ impl VersionedStruct {
         token_stream
     }
 
-    pub(crate) fn generate_struct_fields(&self, version: &ContainerVersion) -> TokenStream {
+    fn generate_struct_fields(&self, version: &ContainerVersion) -> TokenStream {
         let mut token_stream = TokenStream::new();
 
         for field in &self.fields {
-            token_stream.extend(field.to_tokens(version));
+            token_stream.extend(field.generate_for_struct(version));
         }
 
         token_stream
     }
 
-    pub(crate) fn generate_from_impl(
+    fn generate_from_impl(
         &self,
         version: &ContainerVersion,
         next_version: Option<&ContainerVersion>,
     ) -> TokenStream {
         if let Some(next_version) = next_version {
             let next_module_name = &next_version.ident;
+            let from_ident = &self.from_ident;
             let module_name = &version.ident;
             let struct_name = &self.ident;
 
+            let fields = self.generate_from_fields(version, next_version, from_ident);
+
             return quote! {
                 #[automatically_derived]
+                #[allow(deprecated)]
                 impl From<#module_name::#struct_name> for #next_module_name::#struct_name {
-                    fn from(from: #module_name::#struct_name) -> Self {
-                        todo!();
+                    fn from(#from_ident: #module_name::#struct_name) -> Self {
+                        Self {
+                            #fields
+                        }
                     }
                 }
             };
         }
 
         quote! {}
+    }
+
+    fn generate_from_fields(
+        &self,
+        version: &ContainerVersion,
+        next_version: &ContainerVersion,
+        from_ident: &Ident,
+    ) -> TokenStream {
+        let mut token_stream = TokenStream::new();
+
+        for field in &self.fields {
+            token_stream.extend(field.generate_for_from_impl(version, next_version, from_ident))
+        }
+
+        token_stream
     }
 }
