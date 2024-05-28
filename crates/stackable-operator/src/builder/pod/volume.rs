@@ -10,7 +10,7 @@ use k8s_openapi::{
 };
 use kube::Resource;
 
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 use tracing::warn;
 
 use crate::{
@@ -426,6 +426,8 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
     ListenerReferenceAnnotation { source: AnnotationError },
     #[snafu(display("invalid recommended labels"))]
     RecommendedLabels { source: LabelError },
+    #[snafu(display("missing recommended labels"))]
+    MissingRecommendedLabels,
 }
 
 /// Builder for an [`EphemeralVolumeSource`] containing the listener configuration
@@ -517,6 +519,7 @@ impl ListenerOperatorVolumeSourceBuilder {
                 metadata: Some(
                     ObjectMetaBuilder::new()
                         .with_annotation(listener_reference_annotation)
+                        .with_labels(self.labels.clone().context(MissingRecommendedLabelsSnafu)?)
                         .build(),
                 ),
                 spec: self.build_spec(),
