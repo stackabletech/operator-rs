@@ -10,7 +10,7 @@ use k8s_openapi::{
 };
 use kube::Resource;
 
-use snafu::{OptionExt, ResultExt, Snafu};
+use snafu::{ResultExt, Snafu};
 use tracing::warn;
 
 use crate::{
@@ -462,30 +462,19 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
 #[derive(Clone, Debug)]
 pub struct ListenerOperatorVolumeSourceBuilder {
     listener_reference: ListenerReference,
-    labels: Option<Labels>,
+    labels: Labels,
 }
 
 impl ListenerOperatorVolumeSourceBuilder {
     /// Create a builder for the given listener class or listener name
-    pub fn new(listener_reference: &ListenerReference) -> Self {
-        Self {
+    pub fn new<T: Resource>(
+        listener_reference: &ListenerReference,
+        labels: ObjectLabels<T>,
+    ) -> Result<ListenerOperatorVolumeSourceBuilder, ListenerOperatorVolumeSourceBuilderError> {
+        Ok(Self {
             listener_reference: listener_reference.to_owned(),
-            labels: None,
-        }
-    }
-
-    pub fn with_recommended_labels<T: Resource>(
-        &mut self,
-        object_labels: ObjectLabels<T>,
-    ) -> Result<&mut Self, ListenerOperatorVolumeSourceBuilderError> {
-        let recommended_labels =
-            Labels::recommended(object_labels).context(RecommendedLabelsSnafu)?;
-
-        self.labels
-            .get_or_insert(Labels::new())
-            .extend(recommended_labels);
-
-        Ok(self)
+            labels: Labels::recommended(labels).context(RecommendedLabelsSnafu)?,
+        })
     }
 
     fn build_spec(&self) -> PersistentVolumeClaimSpec {
@@ -519,7 +508,7 @@ impl ListenerOperatorVolumeSourceBuilder {
                 metadata: Some(
                     ObjectMetaBuilder::new()
                         .with_annotation(listener_reference_annotation)
-                        .with_labels(self.labels.clone().context(MissingRecommendedLabelsSnafu)?)
+                        .with_labels(self.labels.clone())
                         .build(),
                 ),
                 spec: self.build_spec(),
@@ -541,6 +530,7 @@ impl ListenerOperatorVolumeSourceBuilder {
             metadata: ObjectMetaBuilder::new()
                 .name(name)
                 .with_annotation(listener_reference_annotation)
+                .with_labels(self.labels.clone())
                 .build(),
             spec: Some(self.build_spec()),
             ..Default::default()
@@ -551,7 +541,10 @@ impl ListenerOperatorVolumeSourceBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::kvp::ObjectLabels;
+    use k8s_openapi::api::apps::v1::StatefulSet;
     use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+    use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 
     #[test]
     fn test_volume_builder() {
@@ -611,9 +604,29 @@ mod tests {
 
     #[test]
     fn test_listener_operator_volume_source_builder() {
-        let builder = ListenerOperatorVolumeSourceBuilder::new(&ListenerReference::ListenerClass(
-            "public".into(),
-        ));
+        let owner = StatefulSet {
+            metadata: ObjectMeta {
+                name: Some("test".to_string()),
+                namespace: Some("test".to_string()),
+                ..ObjectMeta::default()
+            },
+            ..StatefulSet::default()
+        };
+
+        let labels: ObjectLabels<StatefulSet> = ObjectLabels {
+            owner: &owner,
+            app_version: "0.0.0-dev",
+            app_name: "test",
+            operator_name: "test",
+            controller_name: "test",
+            role: "test-role",
+            role_group: "test-group",
+        };
+        let builder = ListenerOperatorVolumeSourceBuilder::new(
+            &ListenerReference::ListenerClass("public".into()),
+            labels,
+        )
+        .unwrap();
 
         let volume_source = builder.build_ephemeral().unwrap();
 

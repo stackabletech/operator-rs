@@ -1,3 +1,4 @@
+use kube::Resource;
 use std::{collections::BTreeMap, num::TryFromIntError};
 
 use k8s_openapi::{
@@ -21,6 +22,7 @@ use crate::{
             LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
         },
     },
+    kvp::ObjectLabels,
     time::Duration,
 };
 
@@ -347,13 +349,15 @@ impl PodBuilder {
     ///     name: listener
     /// ", serde_yaml::to_string(&pod).unwrap())
     /// ```
-    pub fn add_listener_volume_by_listener_class(
+    pub fn add_listener_volume_by_listener_class<T: Resource>(
         &mut self,
         volume_name: &str,
         listener_class: &str,
+        labels: ObjectLabels<T>,
     ) -> Result<&mut Self> {
         let listener_reference = ListenerReference::ListenerClass(listener_class.to_string());
-        let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference)
+        let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference, labels)
+            .context(ListenerVolumeSnafu { name: volume_name })?
             .build_ephemeral()
             .context(ListenerVolumeSnafu { name: volume_name })?;
 
@@ -436,13 +440,15 @@ impl PodBuilder {
     ///     name: listener
     /// ", serde_yaml::to_string(&pod).unwrap())
     /// ```
-    pub fn add_listener_volume_by_listener_name(
+    pub fn add_listener_volume_by_listener_name<T: Resource>(
         &mut self,
         volume_name: &str,
         listener_name: &str,
+        labels: ObjectLabels<T>,
     ) -> Result<&mut Self> {
         let listener_reference = ListenerReference::ListenerName(listener_name.to_string());
-        let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference)
+        let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference, labels)
+            .context(ListenerVolumeSnafu { name: volume_name })?
             .build_ephemeral()
             .context(ListenerVolumeSnafu { name: volume_name })?;
 
