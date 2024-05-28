@@ -2914,6 +2914,13 @@ dependencies = [
 name = "stackable-versioned"
 version = "0.1.0"
 dependencies = [
+ "stackable-versioned-macros",
+]
+
+[[package]]
+name = "stackable-versioned-macros"
+version = "0.1.0"
+dependencies = [
  "darling",
  "k8s-version",
  "proc-macro2",
