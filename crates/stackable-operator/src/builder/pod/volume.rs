@@ -8,12 +8,14 @@ use k8s_openapi::{
     },
     apimachinery::pkg::api::resource::Quantity,
 };
+use kube::Resource;
+
 use snafu::{ResultExt, Snafu};
 use tracing::warn;
 
 use crate::{
     builder::meta::ObjectMetaBuilder,
-    kvp::{Annotation, AnnotationError, Annotations},
+    kvp::{Annotation, AnnotationError, Annotations, LabelError, Labels, ObjectLabels},
 };
 
 /// A builder to build [`Volume`] objects. May only contain one `volume_source`
@@ -422,6 +424,8 @@ impl ListenerReference {
 pub enum ListenerOperatorVolumeSourceBuilderError {
     #[snafu(display("failed to convert listener reference into Kubernetes annotation"))]
     ListenerReferenceAnnotation { source: AnnotationError },
+    #[snafu(display("invalid recommended labels"))]
+    RecommendedLabels { source: LabelError },
 }
 
 /// Builder for an [`EphemeralVolumeSource`] containing the listener configuration
@@ -453,9 +457,10 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
 /// pod_builder
 ///     .add_listener_volume_by_listener_class("listener", "nodeport");
 /// ```
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct ListenerOperatorVolumeSourceBuilder {
     listener_reference: ListenerReference,
+    labels: Option<Labels>,
 }
 
 impl ListenerOperatorVolumeSourceBuilder {
@@ -463,7 +468,22 @@ impl ListenerOperatorVolumeSourceBuilder {
     pub fn new(listener_reference: &ListenerReference) -> Self {
         Self {
             listener_reference: listener_reference.to_owned(),
+            labels: None,
         }
+    }
+
+    pub fn with_recommended_labels<T: Resource>(
+        &mut self,
+        object_labels: ObjectLabels<T>,
+    ) -> Result<&mut Self, ListenerOperatorVolumeSourceBuilderError> {
+        let recommended_labels =
+            Labels::recommended(object_labels).context(RecommendedLabelsSnafu)?;
+
+        self.labels
+            .get_or_insert(Labels::new())
+            .extend(recommended_labels);
+
+        Ok(self)
     }
 
     fn build_spec(&self) -> PersistentVolumeClaimSpec {
