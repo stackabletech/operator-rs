@@ -287,21 +287,11 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::pod::PodBuilder;
     /// # use stackable_operator::builder::pod::container::ContainerBuilder;
-    /// # use stackable_operator::builder::pod::resources::ResourceRequirementsBuilder;
     /// # use stackable_operator::kvp::ObjectLabels;
     /// # use k8s_openapi::{
     /// #     api::apps::v1::StatefulSet,
-    /// #     api::core::v1::ResourceRequirements,
-    /// #     apimachinery::pkg::api::resource::Quantity,
     /// #     apimachinery::pkg::apis::meta::v1::ObjectMeta,
     /// # };
-    ///
-    /// let resources = ResourceRequirementsBuilder::new()
-    ///     .with_cpu_request("1")
-    ///     .with_cpu_limit("1")
-    ///     .with_memory_request("128Mi")
-    ///     .with_memory_limit("128Mi")
-    ///     .build();
     ///
     /// let owner = StatefulSet {
     ///        metadata: ObjectMeta {
@@ -328,7 +318,6 @@ impl PodBuilder {
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
-    ///             .resources(resources)
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_class("listener", "nodeport", labels)
@@ -344,13 +333,6 @@ impl PodBuilder {
     ///   affinity: {}
     ///   containers:
     ///   - name: container
-    ///     resources:
-    ///       limits:
-    ///         cpu: '1'
-    ///         memory: 128Mi
-    ///       requests:
-    ///         cpu: '1'
-    ///         memory: 128Mi
     ///     volumeMounts:
     ///     - mountPath: /path/to/volume
     ///       name: listener
@@ -408,21 +390,11 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::pod::PodBuilder;
     /// # use stackable_operator::builder::pod::container::ContainerBuilder;
-    /// # use stackable_operator::builder::pod::resources::ResourceRequirementsBuilder;
     /// # use stackable_operator::kvp::ObjectLabels;
     /// # use k8s_openapi::{
     /// #    api::apps::v1::StatefulSet,
-    /// #    api::core::v1::ResourceRequirements,
-    /// #    apimachinery::pkg::api::resource::Quantity,
     /// #    apimachinery::pkg::apis::meta::v1::ObjectMeta,
     /// # };
-    ///
-    /// let resources = ResourceRequirementsBuilder::new()
-    ///     .with_cpu_request("1")
-    ///     .with_cpu_limit("1")
-    ///     .with_memory_request("128Mi")
-    ///     .with_memory_limit("128Mi")
-    ///     .build();
     ///
     /// let owner = StatefulSet {
     ///        metadata: ObjectMeta {
@@ -449,7 +421,6 @@ impl PodBuilder {
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
-    ///             .resources(resources)
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener", labels)
@@ -465,13 +436,6 @@ impl PodBuilder {
     ///   affinity: {}
     ///   containers:
     ///   - name: container
-    ///     resources:
-    ///       limits:
-    ///         cpu: '1'
-    ///         memory: 128Mi
-    ///       requests:
-    ///         cpu: '1'
-    ///         memory: 128Mi
     ///     volumeMounts:
     ///     - mountPath: /path/to/volume
     ///       name: listener
