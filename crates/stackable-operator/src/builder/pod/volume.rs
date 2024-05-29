@@ -439,13 +439,39 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
 /// # use stackable_operator::builder::pod::volume::ListenerReference;
 /// # use stackable_operator::builder::pod::volume::ListenerOperatorVolumeSourceBuilder;
 /// # use stackable_operator::builder::pod::PodBuilder;
+/// # use stackable_operator::kvp::ObjectLabels;
+/// # use k8s_openapi::{
+/// #     api::apps::v1::StatefulSet,
+/// #     apimachinery::pkg::apis::meta::v1::ObjectMeta,
+/// # };
 /// let mut pod_builder = PodBuilder::new();
+///
+/// let owner = StatefulSet {
+///        metadata: ObjectMeta {
+///            name: Some("test".to_string()),
+///            namespace: Some("test".to_string()),
+///            ..ObjectMeta::default()
+///        },
+///        ..StatefulSet::default()
+/// };
+///
+/// let labels: ObjectLabels<StatefulSet> = ObjectLabels {
+///        owner: &owner,
+///        app_version: "0.0.0-dev",
+///        app_name: "test",
+///        operator_name: "test",
+///        controller_name: "test",
+///        role: "test-role",
+///        role_group: "test-group",
+/// };
 ///
 /// let volume_source =
 ///     ListenerOperatorVolumeSourceBuilder::new(
 ///         &ListenerReference::ListenerClass("nodeport".into()),
+///         labels.clone(),
 ///     )
-///     .build()
+///     .unwrap()
+///     .build_ephemeral()
 ///     .unwrap();
 ///
 /// pod_builder
@@ -457,7 +483,7 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
 ///
 /// // There is also a shortcut for the code above:
 /// pod_builder
-///     .add_listener_volume_by_listener_class("listener", "nodeport");
+///     .add_listener_volume_by_listener_class("listener", "nodeport", labels);
 /// ```
 #[derive(Clone, Debug)]
 pub struct ListenerOperatorVolumeSourceBuilder {

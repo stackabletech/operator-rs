@@ -288,10 +288,13 @@ impl PodBuilder {
     /// # use stackable_operator::builder::pod::PodBuilder;
     /// # use stackable_operator::builder::pod::container::ContainerBuilder;
     /// # use stackable_operator::builder::pod::resources::ResourceRequirementsBuilder;
+    /// # use stackable_operator::kvp::ObjectLabels;
     /// # use k8s_openapi::{
-    ///     api::core::v1::ResourceRequirements,
-    ///     apimachinery::pkg::api::resource::Quantity
-    /// };
+    /// #     api::apps::v1::StatefulSet,
+    /// #     api::core::v1::ResourceRequirements,
+    /// #     apimachinery::pkg::api::resource::Quantity,
+    /// #     apimachinery::pkg::apis::meta::v1::ObjectMeta,
+    /// # };
     ///
     /// let resources = ResourceRequirementsBuilder::new()
     ///     .with_cpu_request("1")
@@ -299,6 +302,25 @@ impl PodBuilder {
     ///     .with_memory_request("128Mi")
     ///     .with_memory_limit("128Mi")
     ///     .build();
+    ///
+    /// let owner = StatefulSet {
+    ///        metadata: ObjectMeta {
+    ///            name: Some("test".to_string()),
+    ///            namespace: Some("test".to_string()),
+    ///            ..ObjectMeta::default()
+    ///        },
+    ///        ..StatefulSet::default()
+    /// };
+    ///
+    /// let labels: ObjectLabels<StatefulSet> = ObjectLabels {
+    ///        owner: &owner,
+    ///        app_version: "0.0.0-dev",
+    ///        app_name: "test",
+    ///        operator_name: "test",
+    ///        controller_name: "test",
+    ///        role: "test-role",
+    ///        role_group: "test-group",
+    /// };
     ///
     /// let pod = PodBuilder::new()
     ///     .metadata_default()
@@ -309,7 +331,7 @@ impl PodBuilder {
     ///             .resources(resources)
     ///             .build(),
     ///     )
-    ///     .add_listener_volume_by_listener_class("listener", "nodeport")
+    ///     .add_listener_volume_by_listener_class("listener", "nodeport", labels)
     ///     .unwrap()
     ///     .build()
     ///     .unwrap();
@@ -339,6 +361,14 @@ impl PodBuilder {
     ///         metadata:
     ///           annotations:
     ///             listeners.stackable.tech/listener-class: nodeport
+    ///           labels:
+    ///             app.kubernetes.io/component: test-role
+    ///             app.kubernetes.io/instance: test
+    ///             app.kubernetes.io/managed-by: test_test
+    ///             app.kubernetes.io/name: test
+    ///             app.kubernetes.io/role-group: test-group
+    ///             app.kubernetes.io/version: 0.0.0-dev
+    ///             stackable.tech/vendor: Stackable
     ///         spec:
     ///           accessModes:
     ///           - ReadWriteMany
@@ -379,10 +409,13 @@ impl PodBuilder {
     /// # use stackable_operator::builder::pod::PodBuilder;
     /// # use stackable_operator::builder::pod::container::ContainerBuilder;
     /// # use stackable_operator::builder::pod::resources::ResourceRequirementsBuilder;
+    /// # use stackable_operator::kvp::ObjectLabels;
     /// # use k8s_openapi::{
-    ///     api::core::v1::ResourceRequirements,
-    ///     apimachinery::pkg::api::resource::Quantity
-    /// };
+    /// #    api::apps::v1::StatefulSet,
+    /// #    api::core::v1::ResourceRequirements,
+    /// #    apimachinery::pkg::api::resource::Quantity,
+    /// #    apimachinery::pkg::apis::meta::v1::ObjectMeta,
+    /// # };
     ///
     /// let resources = ResourceRequirementsBuilder::new()
     ///     .with_cpu_request("1")
@@ -390,6 +423,25 @@ impl PodBuilder {
     ///     .with_memory_request("128Mi")
     ///     .with_memory_limit("128Mi")
     ///     .build();
+    ///
+    /// let owner = StatefulSet {
+    ///        metadata: ObjectMeta {
+    ///            name: Some("test".to_string()),
+    ///            namespace: Some("test".to_string()),
+    ///            ..ObjectMeta::default()
+    ///        },
+    ///        ..StatefulSet::default()
+    /// };
+    ///
+    /// let labels: ObjectLabels<StatefulSet> = ObjectLabels {
+    ///        owner: &owner,
+    ///        app_version: "0.0.0-dev",
+    ///        app_name: "test",
+    ///        operator_name: "test",
+    ///        controller_name: "test",
+    ///        role: "test-role",
+    ///        role_group: "test-group",
+    /// };
     ///
     /// let pod = PodBuilder::new()
     ///     .metadata_default()
@@ -400,7 +452,7 @@ impl PodBuilder {
     ///             .resources(resources)
     ///             .build(),
     ///     )
-    ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener")
+    ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener", labels)
     ///     .unwrap()
     ///     .build()
     ///     .unwrap();
@@ -430,6 +482,14 @@ impl PodBuilder {
     ///         metadata:
     ///           annotations:
     ///             listeners.stackable.tech/listener-name: preprovisioned-listener
+    ///           labels:
+    ///             app.kubernetes.io/component: test-role
+    ///             app.kubernetes.io/instance: test
+    ///             app.kubernetes.io/managed-by: test_test
+    ///             app.kubernetes.io/name: test
+    ///             app.kubernetes.io/role-group: test-group
+    ///             app.kubernetes.io/version: 0.0.0-dev
+    ///             stackable.tech/vendor: Stackable
     ///         spec:
     ///           accessModes:
     ///           - ReadWriteMany
