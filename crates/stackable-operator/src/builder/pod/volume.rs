@@ -426,8 +426,6 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
     ListenerReferenceAnnotation { source: AnnotationError },
     #[snafu(display("invalid recommended labels"))]
     RecommendedLabels { source: LabelError },
-    #[snafu(display("missing recommended labels"))]
-    MissingRecommendedLabels,
 }
 
 /// Builder for an [`EphemeralVolumeSource`] containing the listener configuration
