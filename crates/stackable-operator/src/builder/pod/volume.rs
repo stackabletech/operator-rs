@@ -546,9 +546,9 @@ impl ListenerOperatorVolumeSourceBuilder {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
     use super::*;
     use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+    use std::collections::BTreeMap;
 
     #[test]
     fn test_volume_builder() {

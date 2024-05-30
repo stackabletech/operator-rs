@@ -11,19 +11,19 @@ use k8s_openapi::{
 use snafu::{OptionExt, ResultExt, Snafu};
 use tracing::warn;
 
+use crate::kvp::Labels;
 use crate::{
     builder::meta::ObjectMetaBuilder,
     commons::{
         affinity::StackableAffinity,
         product_image_selection::ResolvedProductImage,
         resources::{
-            ComputeResource, LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
-            ResourceRequirementsExt, ResourceRequirementsType,
+            ComputeResource, ResourceRequirementsExt, ResourceRequirementsType,
+            LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
         },
     },
     time::Duration,
 };
-use crate::kvp::Labels;
 
 use self::volume::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
 
