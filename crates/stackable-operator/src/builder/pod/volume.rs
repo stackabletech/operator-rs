@@ -8,14 +8,13 @@ use k8s_openapi::{
     },
     apimachinery::pkg::api::resource::Quantity,
 };
-use kube::Resource;
 
 use snafu::{ResultExt, Snafu};
 use tracing::warn;
 
 use crate::{
     builder::meta::ObjectMetaBuilder,
-    kvp::{Annotation, AnnotationError, Annotations, LabelError, Labels, ObjectLabels},
+    kvp::{Annotation, AnnotationError, Annotations, LabelError, Labels},
 };
 
 /// A builder to build [`Volume`] objects. May only contain one `volume_source`
@@ -437,36 +436,19 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
 /// # use stackable_operator::builder::pod::volume::ListenerReference;
 /// # use stackable_operator::builder::pod::volume::ListenerOperatorVolumeSourceBuilder;
 /// # use stackable_operator::builder::pod::PodBuilder;
-/// # use stackable_operator::kvp::ObjectLabels;
+/// # use stackable_operator::kvp::Labels;
 /// # use k8s_openapi::{
-/// #     api::apps::v1::StatefulSet,
 /// #     apimachinery::pkg::apis::meta::v1::ObjectMeta,
 /// # };
+/// # use std::collections::BTreeMap;
 /// let mut pod_builder = PodBuilder::new();
 ///
-/// let owner = StatefulSet {
-///        metadata: ObjectMeta {
-///            name: Some("test".to_string()),
-///            namespace: Some("test".to_string()),
-///            ..ObjectMeta::default()
-///        },
-///        ..StatefulSet::default()
-/// };
-///
-/// let labels: ObjectLabels<StatefulSet> = ObjectLabels {
-///        owner: &owner,
-///        app_version: "0.0.0-dev",
-///        app_name: "test",
-///        operator_name: "test",
-///        controller_name: "test",
-///        role: "test-role",
-///        role_group: "test-group",
-/// };
+/// let labels: Labels = Labels::try_from(BTreeMap::<String, String>::new()).unwrap();
 ///
 /// let volume_source =
 ///     ListenerOperatorVolumeSourceBuilder::new(
 ///         &ListenerReference::ListenerClass("nodeport".into()),
-///         labels.clone(),
+///         &labels,
 ///     )
 ///     .unwrap()
 ///     .build_ephemeral()
@@ -481,7 +463,7 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
 ///
 /// // There is also a shortcut for the code above:
 /// pod_builder
-///     .add_listener_volume_by_listener_class("listener", "nodeport", labels);
+///     .add_listener_volume_by_listener_class("listener", "nodeport", &labels);
 /// ```
 #[derive(Clone, Debug)]
 pub struct ListenerOperatorVolumeSourceBuilder {
@@ -491,13 +473,13 @@ pub struct ListenerOperatorVolumeSourceBuilder {
 
 impl ListenerOperatorVolumeSourceBuilder {
     /// Create a builder for the given listener class or listener name
-    pub fn new<T: Resource>(
+    pub fn new(
         listener_reference: &ListenerReference,
-        labels: ObjectLabels<T>,
+        labels: &Labels,
     ) -> Result<ListenerOperatorVolumeSourceBuilder, ListenerOperatorVolumeSourceBuilderError> {
         Ok(Self {
             listener_reference: listener_reference.to_owned(),
-            labels: Labels::recommended(labels).context(RecommendedLabelsSnafu)?,
+            labels: labels.to_owned(),
         })
     }
 
@@ -564,11 +546,9 @@ impl ListenerOperatorVolumeSourceBuilder {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use super::*;
-    use crate::kvp::ObjectLabels;
-    use k8s_openapi::api::apps::v1::StatefulSet;
     use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
-    use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 
     #[test]
     fn test_volume_builder() {
@@ -628,27 +608,11 @@ mod tests {
 
     #[test]
     fn test_listener_operator_volume_source_builder() {
-        let owner = StatefulSet {
-            metadata: ObjectMeta {
-                name: Some("test".to_string()),
-                namespace: Some("test".to_string()),
-                ..ObjectMeta::default()
-            },
-            ..StatefulSet::default()
-        };
+        let labels: Labels = Labels::try_from(BTreeMap::<String, String>::new()).unwrap();
 
-        let labels: ObjectLabels<StatefulSet> = ObjectLabels {
-            owner: &owner,
-            app_version: "0.0.0-dev",
-            app_name: "test",
-            operator_name: "test",
-            controller_name: "test",
-            role: "test-role",
-            role_group: "test-group",
-        };
         let builder = ListenerOperatorVolumeSourceBuilder::new(
             &ListenerReference::ListenerClass("public".into()),
-            labels,
+            &labels,
         )
         .unwrap();
 

@@ -1,4 +1,3 @@
-use kube::Resource;
 use std::{collections::BTreeMap, num::TryFromIntError};
 
 use k8s_openapi::{
@@ -18,13 +17,13 @@ use crate::{
         affinity::StackableAffinity,
         product_image_selection::ResolvedProductImage,
         resources::{
-            ComputeResource, ResourceRequirementsExt, ResourceRequirementsType,
-            LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
+            ComputeResource, LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
+            ResourceRequirementsExt, ResourceRequirementsType,
         },
     },
-    kvp::ObjectLabels,
     time::Duration,
 };
+use crate::kvp::Labels;
 
 use self::volume::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
 
@@ -287,30 +286,17 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::pod::PodBuilder;
     /// # use stackable_operator::builder::pod::container::ContainerBuilder;
-    /// # use stackable_operator::kvp::ObjectLabels;
+    /// # use stackable_operator::kvp::Labels;
     /// # use k8s_openapi::{
-    /// #     api::apps::v1::StatefulSet,
     /// #     apimachinery::pkg::apis::meta::v1::ObjectMeta,
     /// # };
+    /// # use std::collections::BTreeMap;
     ///
-    /// let owner = StatefulSet {
-    ///        metadata: ObjectMeta {
-    ///            name: Some("test".to_string()),
-    ///            namespace: Some("test".to_string()),
-    ///            ..ObjectMeta::default()
-    ///        },
-    ///        ..StatefulSet::default()
-    /// };
-    ///
-    /// let labels: ObjectLabels<StatefulSet> = ObjectLabels {
-    ///        owner: &owner,
-    ///        app_version: "0.0.0-dev",
-    ///        app_name: "test",
-    ///        operator_name: "test",
-    ///        controller_name: "test",
-    ///        role: "test-role",
-    ///        role_group: "test-group",
-    /// };
+    /// let labels: Labels = Labels::try_from(
+    ///        BTreeMap::from([("app.kubernetes.io/component", "test-role"),
+    ///             ("app.kubernetes.io/instance", "test"),
+    ///             ("app.kubernetes.io/name", "test")]))
+    /// .unwrap();
     ///
     /// let pod = PodBuilder::new()
     ///     .metadata_default()
@@ -320,7 +306,7 @@ impl PodBuilder {
     ///             .add_volume_mount("listener", "/path/to/volume")
     ///             .build(),
     ///     )
-    ///     .add_listener_volume_by_listener_class("listener", "nodeport", labels)
+    ///     .add_listener_volume_by_listener_class("listener", "nodeport", &labels)
     ///     .unwrap()
     ///     .build()
     ///     .unwrap();
@@ -346,11 +332,7 @@ impl PodBuilder {
     ///           labels:
     ///             app.kubernetes.io/component: test-role
     ///             app.kubernetes.io/instance: test
-    ///             app.kubernetes.io/managed-by: test_test
     ///             app.kubernetes.io/name: test
-    ///             app.kubernetes.io/role-group: test-group
-    ///             app.kubernetes.io/version: 0.0.0-dev
-    ///             stackable.tech/vendor: Stackable
     ///         spec:
     ///           accessModes:
     ///           - ReadWriteMany
@@ -361,11 +343,11 @@ impl PodBuilder {
     ///     name: listener
     /// ", serde_yaml::to_string(&pod).unwrap())
     /// ```
-    pub fn add_listener_volume_by_listener_class<T: Resource>(
+    pub fn add_listener_volume_by_listener_class(
         &mut self,
         volume_name: &str,
         listener_class: &str,
-        labels: ObjectLabels<T>,
+        labels: &Labels,
     ) -> Result<&mut Self> {
         let listener_reference = ListenerReference::ListenerClass(listener_class.to_string());
         let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference, labels)
@@ -390,30 +372,17 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::pod::PodBuilder;
     /// # use stackable_operator::builder::pod::container::ContainerBuilder;
-    /// # use stackable_operator::kvp::ObjectLabels;
+    /// # use stackable_operator::kvp::Labels;
     /// # use k8s_openapi::{
-    /// #    api::apps::v1::StatefulSet,
     /// #    apimachinery::pkg::apis::meta::v1::ObjectMeta,
     /// # };
+    /// # use std::collections::BTreeMap;
     ///
-    /// let owner = StatefulSet {
-    ///        metadata: ObjectMeta {
-    ///            name: Some("test".to_string()),
-    ///            namespace: Some("test".to_string()),
-    ///            ..ObjectMeta::default()
-    ///        },
-    ///        ..StatefulSet::default()
-    /// };
-    ///
-    /// let labels: ObjectLabels<StatefulSet> = ObjectLabels {
-    ///        owner: &owner,
-    ///        app_version: "0.0.0-dev",
-    ///        app_name: "test",
-    ///        operator_name: "test",
-    ///        controller_name: "test",
-    ///        role: "test-role",
-    ///        role_group: "test-group",
-    /// };
+    /// let labels: Labels = Labels::try_from(
+    ///        BTreeMap::from([("app.kubernetes.io/component", "test-role"),
+    ///             ("app.kubernetes.io/instance", "test"),
+    ///             ("app.kubernetes.io/name", "test")]))
+    /// .unwrap();
     ///
     /// let pod = PodBuilder::new()
     ///     .metadata_default()
@@ -423,7 +392,7 @@ impl PodBuilder {
     ///             .add_volume_mount("listener", "/path/to/volume")
     ///             .build(),
     ///     )
-    ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener", labels)
+    ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener", &labels)
     ///     .unwrap()
     ///     .build()
     ///     .unwrap();
@@ -449,11 +418,7 @@ impl PodBuilder {
     ///           labels:
     ///             app.kubernetes.io/component: test-role
     ///             app.kubernetes.io/instance: test
-    ///             app.kubernetes.io/managed-by: test_test
     ///             app.kubernetes.io/name: test
-    ///             app.kubernetes.io/role-group: test-group
-    ///             app.kubernetes.io/version: 0.0.0-dev
-    ///             stackable.tech/vendor: Stackable
     ///         spec:
     ///           accessModes:
     ///           - ReadWriteMany
@@ -464,11 +429,11 @@ impl PodBuilder {
     ///     name: listener
     /// ", serde_yaml::to_string(&pod).unwrap())
     /// ```
-    pub fn add_listener_volume_by_listener_name<T: Resource>(
+    pub fn add_listener_volume_by_listener_name(
         &mut self,
         volume_name: &str,
         listener_name: &str,
-        labels: ObjectLabels<T>,
+        labels: &Labels,
     ) -> Result<&mut Self> {
         let listener_reference = ListenerReference::ListenerName(listener_name.to_string());
         let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference, labels)
@@ -609,7 +574,12 @@ impl PodBuilder {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use k8s_openapi::{
+        api::core::v1::{LocalObjectReference, PodAffinity, PodAffinityTerm},
+        apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
+    };
+    use rstest::*;
+
     use crate::builder::{
         meta::ObjectMetaBuilder,
         pod::{
@@ -617,11 +587,8 @@ mod tests {
             volume::VolumeBuilder,
         },
     };
-    use k8s_openapi::{
-        api::core::v1::{LocalObjectReference, PodAffinity, PodAffinityTerm},
-        apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
-    };
-    use rstest::*;
+
+    use super::*;
 
     // A simple [`Container`] with a name and image.
     #[fixture]
