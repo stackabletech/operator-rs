@@ -1,10 +1,10 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, ops::Deref};
 
 use darling::Error;
 use k8s_version::Version;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Field, Ident};
+use syn::{Field, Ident, Path};
 
 use crate::{
     attrs::field::FieldAttributes,
@@ -77,7 +77,13 @@ impl VersionedField {
             // After the last iteration above (if any) we use the ident for the
             // added action if there is any.
             if let Some(added) = attrs.added {
-                actions.insert(*added.since, FieldStatus::Added(ident));
+                actions.insert(
+                    *added.since,
+                    FieldStatus::Added {
+                        default_fn: added.default_fn.deref().clone(),
+                        ident,
+                    },
+                );
             }
 
             Ok(Self {
@@ -103,7 +109,13 @@ impl VersionedField {
             // After the last iteration above (if any) we use the ident for the
             // added action if there is any.
             if let Some(added) = attrs.added {
-                actions.insert(*added.since, FieldStatus::Added(ident));
+                actions.insert(
+                    *added.since,
+                    FieldStatus::Added {
+                        default_fn: added.default_fn.deref().clone(),
+                        ident,
+                    },
+                );
             }
 
             Ok(Self {
@@ -116,7 +128,10 @@ impl VersionedField {
 
                 actions.insert(
                     *added.since,
-                    FieldStatus::Added(field.ident.clone().unwrap()),
+                    FieldStatus::Added {
+                        default_fn: added.default_fn.deref().clone(),
+                        ident: field.ident.clone().unwrap(),
+                    },
                 );
 
                 return Ok(Self {
@@ -152,7 +167,7 @@ impl VersionedField {
                     (None, Some(_)) => chain.insert(version.inner, FieldStatus::NotPresent),
                     (Some(status), None) => {
                         let ident = match status {
-                            FieldStatus::Added(ident) => ident,
+                            FieldStatus::Added { ident, .. } => ident,
                             FieldStatus::Renamed { _from: _, to } => to,
                             FieldStatus::Deprecated { ident, note: _ } => ident,
                             FieldStatus::NoChange(ident) => ident,
@@ -163,7 +178,7 @@ impl VersionedField {
                     }
                     (Some(status), Some(_)) => {
                         let ident = match status {
-                            FieldStatus::Added(ident) => ident,
+                            FieldStatus::Added { ident, .. } => ident,
                             FieldStatus::Renamed { _from: _, to } => to,
                             FieldStatus::NoChange(ident) => ident,
                             _ => unreachable!(),
@@ -197,8 +212,8 @@ impl VersionedField {
                     .get(&container_version.inner)
                     .expect("internal error: chain must contain container version")
                 {
-                    FieldStatus::Added(field_ident) => Some(quote! {
-                        pub #field_ident: #field_type,
+                    FieldStatus::Added { ident, .. } => Some(quote! {
+                        pub #ident: #field_type,
                     }),
                     FieldStatus::Renamed { _from: _, to } => Some(quote! {
                         pub #to: #field_type,
@@ -239,16 +254,24 @@ impl VersionedField {
         match &self.chain {
             Some(chain) => {
                 match (
-                    chain.get(&version.inner).expect("msg").get_ident(),
-                    chain.get(&next_version.inner).expect("msg").get_ident(),
+                    chain
+                        .get(&version.inner)
+                        .expect("internal error: chain must contain container version"),
+                    chain
+                        .get(&next_version.inner)
+                        .expect("internal error: chain must contain container version"),
                 ) {
-                    (None, Some(next_field_ident)) => quote! {
-                        #next_field_ident: Default::default(),
+                    (_, FieldStatus::Added { ident, default_fn }) => quote! {
+                        #ident: #default_fn(),
                     },
-                    (Some(old_field_ident), Some(next_field_ident)) => quote! {
-                        #next_field_ident: #from_ident.#old_field_ident,
-                    },
-                    _ => unreachable!(),
+                    (old, next) => {
+                        let old_field_ident = old.get_ident().unwrap();
+                        let next_field_ident = next.get_ident().unwrap();
+
+                        quote! {
+                            #next_field_ident: #from_ident.#old_field_ident,
+                        }
+                    }
                 }
             }
             None => {
@@ -263,7 +286,7 @@ impl VersionedField {
 
 #[derive(Debug)]
 pub(crate) enum FieldStatus {
-    Added(Ident),
+    Added { ident: Ident, default_fn: Path },
     Renamed { _from: Ident, to: Ident },
     Deprecated { ident: Ident, note: String },
     NoChange(Ident),
@@ -273,9 +296,9 @@ pub(crate) enum FieldStatus {
 impl FieldStatus {
     pub(crate) fn get_ident(&self) -> Option<&Ident> {
         match &self {
-            FieldStatus::Added(ident) => Some(ident),
+            FieldStatus::Added { ident, .. } => Some(ident),
             FieldStatus::Renamed { _from, to } => Some(to),
-            FieldStatus::Deprecated { ident, note: _ } => Some(ident),
+            FieldStatus::Deprecated { ident, .. } => Some(ident),
             FieldStatus::NoChange(ident) => Some(ident),
             FieldStatus::NotPresent => None,
         }
