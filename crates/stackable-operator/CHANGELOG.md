@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.68.1] - 2024-06-03
+
 ### Added
 
 - Add functionality to convert LogLevel to an OPA log level ([#798]).
