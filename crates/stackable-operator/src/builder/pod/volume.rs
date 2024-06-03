@@ -8,12 +8,13 @@ use k8s_openapi::{
     },
     apimachinery::pkg::api::resource::Quantity,
 };
+
 use snafu::{ResultExt, Snafu};
 use tracing::warn;
 
 use crate::{
     builder::meta::ObjectMetaBuilder,
-    kvp::{Annotation, AnnotationError, Annotations},
+    kvp::{Annotation, AnnotationError, Annotations, LabelError, Labels},
 };
 
 /// A builder to build [`Volume`] objects. May only contain one `volume_source`
@@ -422,6 +423,8 @@ impl ListenerReference {
 pub enum ListenerOperatorVolumeSourceBuilderError {
     #[snafu(display("failed to convert listener reference into Kubernetes annotation"))]
     ListenerReferenceAnnotation { source: AnnotationError },
+    #[snafu(display("invalid recommended labels"))]
+    RecommendedLabels { source: LabelError },
 }
 
 /// Builder for an [`EphemeralVolumeSource`] containing the listener configuration
@@ -433,13 +436,22 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
 /// # use stackable_operator::builder::pod::volume::ListenerReference;
 /// # use stackable_operator::builder::pod::volume::ListenerOperatorVolumeSourceBuilder;
 /// # use stackable_operator::builder::pod::PodBuilder;
+/// # use stackable_operator::kvp::Labels;
+/// # use k8s_openapi::{
+/// #     apimachinery::pkg::apis::meta::v1::ObjectMeta,
+/// # };
+/// # use std::collections::BTreeMap;
 /// let mut pod_builder = PodBuilder::new();
+///
+/// let labels: Labels = Labels::try_from(BTreeMap::<String, String>::new()).unwrap();
 ///
 /// let volume_source =
 ///     ListenerOperatorVolumeSourceBuilder::new(
 ///         &ListenerReference::ListenerClass("nodeport".into()),
+///         &labels,
 ///     )
-///     .build()
+///     .unwrap()
+///     .build_ephemeral()
 ///     .unwrap();
 ///
 /// pod_builder
@@ -451,19 +463,24 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
 ///
 /// // There is also a shortcut for the code above:
 /// pod_builder
-///     .add_listener_volume_by_listener_class("listener", "nodeport");
+///     .add_listener_volume_by_listener_class("listener", "nodeport", &labels);
 /// ```
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct ListenerOperatorVolumeSourceBuilder {
     listener_reference: ListenerReference,
+    labels: Labels,
 }
 
 impl ListenerOperatorVolumeSourceBuilder {
     /// Create a builder for the given listener class or listener name
-    pub fn new(listener_reference: &ListenerReference) -> Self {
-        Self {
+    pub fn new(
+        listener_reference: &ListenerReference,
+        labels: &Labels,
+    ) -> Result<ListenerOperatorVolumeSourceBuilder, ListenerOperatorVolumeSourceBuilderError> {
+        Ok(Self {
             listener_reference: listener_reference.to_owned(),
-        }
+            labels: labels.to_owned(),
+        })
     }
 
     fn build_spec(&self) -> PersistentVolumeClaimSpec {
@@ -497,6 +514,7 @@ impl ListenerOperatorVolumeSourceBuilder {
                 metadata: Some(
                     ObjectMetaBuilder::new()
                         .with_annotation(listener_reference_annotation)
+                        .with_labels(self.labels.clone())
                         .build(),
                 ),
                 spec: self.build_spec(),
@@ -518,6 +536,7 @@ impl ListenerOperatorVolumeSourceBuilder {
             metadata: ObjectMetaBuilder::new()
                 .name(name)
                 .with_annotation(listener_reference_annotation)
+                .with_labels(self.labels.clone())
                 .build(),
             spec: Some(self.build_spec()),
             ..Default::default()
@@ -529,6 +548,7 @@ impl ListenerOperatorVolumeSourceBuilder {
 mod tests {
     use super::*;
     use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+    use std::collections::BTreeMap;
 
     #[test]
     fn test_volume_builder() {
@@ -588,9 +608,13 @@ mod tests {
 
     #[test]
     fn test_listener_operator_volume_source_builder() {
-        let builder = ListenerOperatorVolumeSourceBuilder::new(&ListenerReference::ListenerClass(
-            "public".into(),
-        ));
+        let labels: Labels = Labels::try_from(BTreeMap::<String, String>::new()).unwrap();
+
+        let builder = ListenerOperatorVolumeSourceBuilder::new(
+            &ListenerReference::ListenerClass("public".into()),
+            &labels,
+        )
+        .unwrap();
 
         let volume_source = builder.build_ephemeral().unwrap();
 
