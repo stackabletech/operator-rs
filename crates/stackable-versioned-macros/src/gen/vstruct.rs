@@ -27,6 +27,8 @@ pub(crate) struct VersionedStruct {
     /// List of fields defined in the base struct. How, and if, a field should
     /// generate code, is decided by the currently generated version.
     pub(crate) fields: Vec<VersionedField>,
+
+    pub(crate) skip_from: bool,
 }
 
 impl VersionedStruct {
@@ -40,8 +42,9 @@ impl VersionedStruct {
             .versions
             .iter()
             .map(|v| ContainerVersion {
-                deprecated: v.deprecated.is_present(),
+                skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
                 ident: format_ident!("{version}", version = v.name.to_string()),
+                deprecated: v.deprecated.is_present(),
                 inner: v.name,
             })
             .collect();
@@ -63,6 +66,10 @@ impl VersionedStruct {
         let from_ident = format_ident!("__sv_{ident}", ident = ident.to_string().to_lowercase());
 
         Ok(Self {
+            skip_from: attributes
+                .options
+                .skip
+                .map_or(false, |s| s.from.is_present()),
             from_ident,
             versions,
             fields,
@@ -117,7 +124,9 @@ impl VersionedStruct {
         });
 
         // Generate the From impl between this `version` and the next one.
-        token_stream.extend(self.generate_from_impl(version, next_version));
+        if !self.skip_from && !version.skip_from {
+            token_stream.extend(self.generate_from_impl(version, next_version));
+        }
 
         token_stream
     }
