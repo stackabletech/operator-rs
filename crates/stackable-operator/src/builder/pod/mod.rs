@@ -11,6 +11,7 @@ use k8s_openapi::{
 use snafu::{OptionExt, ResultExt, Snafu};
 use tracing::warn;
 
+use crate::kvp::Labels;
 use crate::{
     builder::meta::ObjectMetaBuilder,
     commons::{
@@ -285,18 +286,17 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::pod::PodBuilder;
     /// # use stackable_operator::builder::pod::container::ContainerBuilder;
-    /// # use stackable_operator::builder::pod::resources::ResourceRequirementsBuilder;
+    /// # use stackable_operator::kvp::Labels;
     /// # use k8s_openapi::{
-    ///     api::core::v1::ResourceRequirements,
-    ///     apimachinery::pkg::api::resource::Quantity
-    /// };
+    /// #     apimachinery::pkg::apis::meta::v1::ObjectMeta,
+    /// # };
+    /// # use std::collections::BTreeMap;
     ///
-    /// let resources = ResourceRequirementsBuilder::new()
-    ///     .with_cpu_request("1")
-    ///     .with_cpu_limit("1")
-    ///     .with_memory_request("128Mi")
-    ///     .with_memory_limit("128Mi")
-    ///     .build();
+    /// let labels: Labels = Labels::try_from(
+    ///        BTreeMap::from([("app.kubernetes.io/component", "test-role"),
+    ///             ("app.kubernetes.io/instance", "test"),
+    ///             ("app.kubernetes.io/name", "test")]))
+    /// .unwrap();
     ///
     /// let pod = PodBuilder::new()
     ///     .metadata_default()
@@ -304,10 +304,9 @@ impl PodBuilder {
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
-    ///             .resources(resources)
     ///             .build(),
     ///     )
-    ///     .add_listener_volume_by_listener_class("listener", "nodeport")
+    ///     .add_listener_volume_by_listener_class("listener", "nodeport", &labels)
     ///     .unwrap()
     ///     .build()
     ///     .unwrap();
@@ -320,13 +319,6 @@ impl PodBuilder {
     ///   affinity: {}
     ///   containers:
     ///   - name: container
-    ///     resources:
-    ///       limits:
-    ///         cpu: '1'
-    ///         memory: 128Mi
-    ///       requests:
-    ///         cpu: '1'
-    ///         memory: 128Mi
     ///     volumeMounts:
     ///     - mountPath: /path/to/volume
     ///       name: listener
@@ -337,6 +329,10 @@ impl PodBuilder {
     ///         metadata:
     ///           annotations:
     ///             listeners.stackable.tech/listener-class: nodeport
+    ///           labels:
+    ///             app.kubernetes.io/component: test-role
+    ///             app.kubernetes.io/instance: test
+    ///             app.kubernetes.io/name: test
     ///         spec:
     ///           accessModes:
     ///           - ReadWriteMany
@@ -351,9 +347,11 @@ impl PodBuilder {
         &mut self,
         volume_name: &str,
         listener_class: &str,
+        labels: &Labels,
     ) -> Result<&mut Self> {
         let listener_reference = ListenerReference::ListenerClass(listener_class.to_string());
-        let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference)
+        let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference, labels)
+            .context(ListenerVolumeSnafu { name: volume_name })?
             .build_ephemeral()
             .context(ListenerVolumeSnafu { name: volume_name })?;
 
@@ -374,18 +372,17 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::pod::PodBuilder;
     /// # use stackable_operator::builder::pod::container::ContainerBuilder;
-    /// # use stackable_operator::builder::pod::resources::ResourceRequirementsBuilder;
+    /// # use stackable_operator::kvp::Labels;
     /// # use k8s_openapi::{
-    ///     api::core::v1::ResourceRequirements,
-    ///     apimachinery::pkg::api::resource::Quantity
-    /// };
+    /// #    apimachinery::pkg::apis::meta::v1::ObjectMeta,
+    /// # };
+    /// # use std::collections::BTreeMap;
     ///
-    /// let resources = ResourceRequirementsBuilder::new()
-    ///     .with_cpu_request("1")
-    ///     .with_cpu_limit("1")
-    ///     .with_memory_request("128Mi")
-    ///     .with_memory_limit("128Mi")
-    ///     .build();
+    /// let labels: Labels = Labels::try_from(
+    ///        BTreeMap::from([("app.kubernetes.io/component", "test-role"),
+    ///             ("app.kubernetes.io/instance", "test"),
+    ///             ("app.kubernetes.io/name", "test")]))
+    /// .unwrap();
     ///
     /// let pod = PodBuilder::new()
     ///     .metadata_default()
@@ -393,10 +390,9 @@ impl PodBuilder {
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
-    ///             .resources(resources)
     ///             .build(),
     ///     )
-    ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener")
+    ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener", &labels)
     ///     .unwrap()
     ///     .build()
     ///     .unwrap();
@@ -409,13 +405,6 @@ impl PodBuilder {
     ///   affinity: {}
     ///   containers:
     ///   - name: container
-    ///     resources:
-    ///       limits:
-    ///         cpu: '1'
-    ///         memory: 128Mi
-    ///       requests:
-    ///         cpu: '1'
-    ///         memory: 128Mi
     ///     volumeMounts:
     ///     - mountPath: /path/to/volume
     ///       name: listener
@@ -426,6 +415,10 @@ impl PodBuilder {
     ///         metadata:
     ///           annotations:
     ///             listeners.stackable.tech/listener-name: preprovisioned-listener
+    ///           labels:
+    ///             app.kubernetes.io/component: test-role
+    ///             app.kubernetes.io/instance: test
+    ///             app.kubernetes.io/name: test
     ///         spec:
     ///           accessModes:
     ///           - ReadWriteMany
@@ -440,9 +433,11 @@ impl PodBuilder {
         &mut self,
         volume_name: &str,
         listener_name: &str,
+        labels: &Labels,
     ) -> Result<&mut Self> {
         let listener_reference = ListenerReference::ListenerName(listener_name.to_string());
-        let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference)
+        let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference, labels)
+            .context(ListenerVolumeSnafu { name: volume_name })?
             .build_ephemeral()
             .context(ListenerVolumeSnafu { name: volume_name })?;
 
@@ -579,7 +574,12 @@ impl PodBuilder {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use k8s_openapi::{
+        api::core::v1::{LocalObjectReference, PodAffinity, PodAffinityTerm},
+        apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
+    };
+    use rstest::*;
+
     use crate::builder::{
         meta::ObjectMetaBuilder,
         pod::{
@@ -587,11 +587,8 @@ mod tests {
             volume::VolumeBuilder,
         },
     };
-    use k8s_openapi::{
-        api::core::v1::{LocalObjectReference, PodAffinity, PodAffinityTerm},
-        apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
-    };
-    use rstest::*;
+
+    use super::*;
 
     // A simple [`Container`] with a name and image.
     #[fixture]

@@ -7,8 +7,10 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add functionality to convert LogLevel to an OPA log level ([#798]).
+- Add labels to listener volume builder ([#799]).
 
 [#798]: https://github.com/stackabletech/operator-rs/pull/798
+[#799]: https://github.com/stackabletech/operator-rs/pull/799
 
 ## [0.68.0] - 2024-05-22
 
