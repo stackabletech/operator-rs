@@ -4,10 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.69.0] - 2024-06-03
+
 ### Added
 
 - Add functionality to convert LogLevel to an OPA log level ([#798]).
-- Add labels to listener volume builder ([#799]).
+- BREAKING: Add labels to listener volume builder. `PodBuilder::add_listener_volume_by_listener_class`, `PodBuilder::add_listener_volume_by_listener_name` and `ListenerOperatorVolumeSourceBuilder::new` now require you to pass the labels for the created volumes ([#799]).
 
 [#798]: https://github.com/stackabletech/operator-rs/pull/798
 [#799]: https://github.com/stackabletech/operator-rs/pull/799
