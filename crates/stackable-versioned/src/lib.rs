@@ -3,7 +3,7 @@
 //! data type. This will be extended to support SemVer versions, as well as
 //! custom version formats in the future.
 //!
-//! ## Basic Usage
+//! ## Usage Guide
 //!
 //! ```
 //! use stackable_versioned::versioned;
@@ -18,14 +18,17 @@
 //! struct Foo {
 //!     /// My docs
 //!     #[versioned(
-//!         added(since = "v1alpha1"),
-//!         renamed(since = "v1beta1", from = "gau"),
+//!         added(since = "v1beta1"),
+//!         renamed(since = "v1", from = "gau"),
 //!         deprecated(since = "v2", note = "not empty")
 //!     )]
 //!     deprecated_bar: usize,
 //!     baz: bool,
 //! }
 //! ```
+//!
+//! See [`versioned`] for an in-depth usage guide and a list of supported
+//! parameters.
 
 pub use stackable_versioned_macros::*;
 

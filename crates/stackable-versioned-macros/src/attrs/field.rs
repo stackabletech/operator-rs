@@ -150,6 +150,7 @@ impl FieldAttributes {
 
         // First, validate that the added version is less than the deprecated
         // version.
+        // NOTE (@Techassi): Is this already covered by the code below?
         if let (Some(added_version), Some(deprecated_version)) = (added_version, deprecated_version)
         {
             if added_version >= deprecated_version {
