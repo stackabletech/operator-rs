@@ -825,90 +825,155 @@ transforms:
       - files_log4j
     type: remap
     source: |
+      .errors = []
+
+      event = {{}}
       # Wrap the event so that the log4j namespace is defined when parsing the event
       wrapped_xml_event = "<root xmlns:log4j=\"http://jakarta.apache.org/log4j/\">" + string!(.message) + "</root>"
-      parsed_event = parse_xml(wrapped_xml_event) ?? {{ "root": {{ "event": {{ "message": .message }} }} }}
-      event = parsed_event.root.event
-
-      epoch_milliseconds = to_int(event.@timestamp) ?? 0
-      if epoch_milliseconds != 0 {{
-          .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
+      parsed_event, err = parse_xml(wrapped_xml_event)
+      if err != null {{
+        error = "XML not parsable: " + err
+        .errors = push(.errors, error)
+        log(error, level: "error")
+        event = {{ "message": .message }}
+      }} else {{
+        root = object!(parsed_event.root)
+        if !is_object(root.event) {{
+          error = "Parsed event contains no \"event\" tag."
+          .errors = push(.errors, error)
+          log(error, level: "error")
+          event = {{ "message": .message }}
+        }} else if keys(root) != ["event"] {{
+          .errors = push(.errors, "Parsed event contains multiple tags: " + join!(keys(root), ", "))
+          event = root.event
+        }} else {{
+          event = root.event
+        }}
       }}
-      if is_null(.timestamp) {{
-          .timestamp = now()
+
+      epoch_milliseconds, err = to_int(event.@timestamp)
+      if err != null || epoch_milliseconds == 0 {{
+        .timestamp = now()
+        .errors = push(.errors, "Timestamp not found, using current time instead.")
+      }} else {{
+        .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
       }}
 
-      .logger = to_string(event.@logger) ?? ""
+      .logger, err = to_string(event.@logger)
+      if err != null || is_empty(.logger) {{
+        .logger = ""
+        .errors = push(.errors, "Logger not found.")
+      }}
 
-      .level = to_string(event.@level) ?? ""
+      .level, err = to_string(event.@level)
+      if err != null || is_empty(.level) {{
+        .level = "INFO"
+        .errors = push(.errors, "Level not found, using level \"INFO\" instead.")
+      }}
 
-      .message = join(compact([event.message, event.throwable]), "\n") ?? .message
+      message, err = to_string(event.message)
+      if err != null || is_empty(message) {{
+        message = null
+        .errors = push(.errors, "Message not found.")
+      }}
+      throwable = to_string(event.throwable) ?? null
+      .message, err = join(compact([message, throwable]), "\n")
+      if err != null {{
+        error = "Could not join message and exception: " + err
+        .errors = push(.errors, error)
+        log(error, level: "error")
+        .message = message
+      }}
 
   processed_files_log4j2:
     inputs:
       - files_log4j2
     type: remap
     source: |
-      parsed_event = parse_xml!(.message).Event
+      .errors = []
+
+      event = {{}}
+      parsed_event, err = parse_xml(.message)
+      if err != null {{
+        error = "XML not parsable: " + err
+        .errors = push(.errors, error)
+        log(error, level: "error")
+        event = {{ "Message": .message }}
+      }} else if !is_object(parsed_event.Event) {{
+        error = "Parsed event contains no \"Event\" tag."
+        .errors = push(.errors, error)
+        log(error, level: "error")
+        event = {{ "Message": .message }}
+      }} else {{
+        event = parsed_event.Event
+      }}
 
       .timestamp = null
-      instant = parsed_event.Instant
-      if instant != null {{
-          epoch_nanoseconds = to_int(instant.@epochSecond) * 1_000_000_000 + to_int(instant.@nanoOfSecond) ?? null
-          if epoch_nanoseconds != null {{
-              .timestamp = from_unix_timestamp(epoch_nanoseconds, "nanoseconds") ?? null
-          }}
-      }}
-      if .timestamp == null && parsed_event.@timeMillis != null {{
-          epoch_milliseconds = to_int(parsed_event.@timeMillis) ?? null
-          if epoch_milliseconds != null {{
-              .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
-          }}
+      if is_object(event.Instant) {{
+        epoch_nanoseconds, err = to_int(event.Instant.@epochSecond) * 1_000_000_000 + to_int(event.Instant.@nanoOfSecond)
+        if err == null && epoch_nanoseconds != 0 {{
+          .timestamp = from_unix_timestamp(epoch_nanoseconds, "nanoseconds") ?? null
+        }}
       }}
       if .timestamp == null {{
-          .timestamp = now()
+        epoch_milliseconds, err = to_int(event.@timeMillis)
+        if err == null && epoch_milliseconds != 0 {{
+          .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
+        }}
+      }}
+      if .timestamp == null {{
+        .timestamp = now()
+        .errors = push(.errors, "Timestamp not found, using current time instead.")
       }}
 
-      .logger = parsed_event.@loggerName
+      .logger, err = to_string(event.@loggerName)
+      if err != null || is_empty(.logger) {{
+        .logger = ""
+        .errors = push(.errors, "Logger not found.")
+      }}
 
-      .level = parsed_event.@level
+      .level, err = to_string(event.@level)
+      if err != null || is_empty(.level) {{
+        .level = "INFO"
+        .errors = push(.errors, "Level not found, using \"INFO\" instead.")
+      }}
 
       exception = null
-      thrown = parsed_event.Thrown
+      thrown = event.Thrown
       if thrown != null {{
           exception = "Exception"
-          thread = to_string(parsed_event.@thread) ?? null
-          if thread != null {{
+          thread, err = to_string(event.@thread)
+          if err == null && !is_empty(thread) {{
               exception = exception + " in thread \"" + thread + "\""
           }}
-          thrown_name = to_string(thrown.@name) ?? null
-          if thrown_name != null {{
+          thrown_name, err = to_string(thrown.@name)
+          if err == null && !is_empty(exception) {{
               exception = exception + " " + thrown_name
           }}
           message = to_string(thrown.@localizedMessage) ??
               to_string(thrown.@message) ??
-              null
-          if message != null {{
+              ""
+          if !is_empty(message) {{
               exception = exception + ": " + message
           }}
           stacktrace_items = array(thrown.ExtendedStackTrace.ExtendedStackTraceItem) ?? []
           stacktrace = ""
           for_each(stacktrace_items) -> |_index, value| {{
               stacktrace = stacktrace + "        "
-              class = to_string(value.@class) ?? null
-              method = to_string(value.@method) ?? null
-              if class != null && method != null {{
+              class = to_string(value.@class) ?? ""
+              method = to_string(value.@method) ?? ""
+              if !is_empty(class) && !is_empty(method) {{
                   stacktrace = stacktrace + "at " + class + "." + method
               }}
-              file = to_string(value.@file) ?? null
-              line = to_string(value.@line) ?? null
-              if file != null && line != null {{
+              file = to_string(value.@file) ?? ""
+              line = to_string(value.@line) ?? ""
+              if !is_empty(file) && !is_empty(line) {{
                   stacktrace = stacktrace + "(" + file + ":" + line + ")"
               }}
               exact = to_bool(value.@exact) ?? false
-              location = to_string(value.@location) ?? null
-              version = to_string(value.@version) ?? null
-              if location != null && version != null {{
+              location = to_string(value.@location) ?? ""
+              version = to_string(value.@version) ?? ""
+              if !is_empty(location) && !is_empty(version) {{
                   stacktrace = stacktrace + " "
                   if !exact {{
                       stacktrace = stacktrace + "~"
@@ -921,7 +986,19 @@ transforms:
               exception = exception + "\n" + stacktrace
           }}
       }}
-      .message = join!(compact([parsed_event.Message, exception]), "\n")
+
+      message, err = to_string(event.Message)
+      if err != null || is_empty(message) {{
+        message = null
+        .errors = push(.errors, "Message not found.")
+      }}
+      .message, err = join(compact([message, exception]), "\n")
+      if err != null {{
+        error = "Could not join message and exception: " + err
+        .errors = push(.errors, error)
+        log(error, level: "error")
+        .message = message
+      }}
 
   processed_files_py:
     inputs:
@@ -961,8 +1038,11 @@ transforms:
       - processed_files_*
     type: remap
     source: |
-      . |= parse_regex!(.file, r'^{STACKABLE_LOG_DIR}/(?P<container>.*?)/(?P<file>.*?)$')
       del(.source_type)
+      if .errors == [] {{
+        del(.errors)
+      }}
+      . |= parse_regex!(.file, r'^{STACKABLE_LOG_DIR}/(?P<container>.*?)/(?P<file>.*?)$')
 
   filtered_logs_vector:
     inputs:
