@@ -48,9 +48,9 @@ pub enum Error {
 /// async fn main() -> Result<(), Error> {
 ///     let _tracing_guard = Tracing::builder()
 ///         .service_name("test")
-///         .with_console_output(LevelFilter::INFO)
-///         .with_otlp_log_exporter(LevelFilter::DEBUG)
-///         .with_otlp_trace_exporter(LevelFilter::TRACE)
+///         .with_console_output("TEST_CONSOLE", LevelFilter::INFO)
+///         .with_otlp_log_exporter("TEST_OTLP_LOG", LevelFilter::DEBUG)
+///         .with_otlp_trace_exporter("TEST_OTLP_LOG", LevelFilter::TRACE)
 ///         .build()
 ///         .init()?;
 ///
