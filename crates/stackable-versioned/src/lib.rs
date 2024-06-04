@@ -6,6 +6,8 @@
 //! ## Basic Usage
 //!
 //! ```
+//! use stackable_versioned::versioned;
+//!
 //! #[versioned(
 //!     version(name = "v1alpha1"),
 //!     version(name = "v1beta1"),
