@@ -17,7 +17,7 @@ use opentelemetry_sdk::{
 use opentelemetry_semantic_conventions::resource;
 use snafu::{ResultExt as _, Snafu};
 use tracing::{level_filters::LevelFilter, subscriber::SetGlobalDefaultError};
-use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Layer, Registry};
+use tracing_subscriber::{filter::Directive, layer::SubscriberExt, EnvFilter, Layer, Registry};
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -138,20 +138,22 @@ impl Tracing {
         let mut layers: Vec<Box<dyn Layer<Registry> + Sync + Send>> = Vec::new();
 
         if self.console_log_config.enabled {
-            let env_filter_layer = EnvFilter::builder()
-                .with_default_directive(self.console_log_config.level_filter.into()) // TODO (@NickLarsenNZ): support Directives
-                .from_env_lossy();
+            let env_filter_layer = env_filter_builder(
+                self.console_log_config.env_var,
+                self.console_log_config.default_level_filter,
+            );
             let console_output_layer =
                 tracing_subscriber::fmt::layer().with_filter(env_filter_layer);
             layers.push(console_output_layer.boxed());
         }
 
         if self.otlp_log_config.enabled {
-            let env_filter_layer = EnvFilter::builder()
-                .with_default_directive(self.otlp_log_config.level_filter.into()) // TODO (@NickLarsenNZ): support Directives
-                .from_env_lossy()
-                // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
-                .add_directive("h2=off".parse().expect("invalid directive"));
+            let env_filter_layer = env_filter_builder(
+                self.otlp_log_config.env_var,
+                self.otlp_log_config.default_level_filter,
+            )
+            // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
+            .add_directive("h2=off".parse().expect("invalid directive"));
 
             let log_exporter = opentelemetry_otlp::new_exporter().tonic();
             let otel_log =
@@ -173,11 +175,12 @@ impl Tracing {
         }
 
         if self.otlp_trace_config.enabled {
-            let env_filter_layer = EnvFilter::builder()
-                .with_default_directive(self.otlp_trace_config.level_filter.into()) // TODO (@NickLarsenNZ): support Directives
-                .from_env_lossy()
-                // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
-                .add_directive("h2=off".parse().expect("invalid directive"));
+            let env_filter_layer = env_filter_builder(
+                self.otlp_trace_config.env_var,
+                self.otlp_trace_config.default_level_filter,
+            )
+            // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
+            .add_directive("h2=off".parse().expect("invalid directive"));
 
             let trace_exporter = opentelemetry_otlp::new_exporter().tonic();
             let otel_tracer = opentelemetry_otlp::new_pipeline()
@@ -186,7 +189,7 @@ impl Tracing {
                 .with_trace_config(
                     trace::config()
                         .with_sampler(Sampler::AlwaysOn) // TODO (@NickLarsenNZ): Make this configurable. See also Sampler::ParentBased
-                        .with_id_generator(RandomIdGenerator::default()) // TODO (@NickLarsenNZ): Is there a more appropriate ID generator?
+                        .with_id_generator(RandomIdGenerator::default())
                         .with_resource(Resource::new(vec![KeyValue::new(
                             resource::SERVICE_NAME,
                             self.service_name,
@@ -297,6 +300,7 @@ impl BuilderState for builder_state::Config {}
 #[derive(Default)]
 pub struct TracingBuilder<S: BuilderState> {
     service_name: Option<&'static str>,
+    env_var: Option<&'static str>,
     console_log_config: SubscriberConfig,
     otlp_log_config: SubscriberConfig,
     otlp_trace_config: SubscriberConfig,
@@ -308,14 +312,16 @@ pub struct TracingBuilder<S: BuilderState> {
 #[derive(Clone, Debug, PartialEq)]
 struct SubscriberConfig {
     enabled: bool,
-    level_filter: LevelFilter,
+    env_var: &'static str,
+    default_level_filter: LevelFilter,
 }
 
 impl Default for SubscriberConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            level_filter: LevelFilter::OFF,
+            env_var: EnvFilter::DEFAULT_ENV,
+            default_level_filter: LevelFilter::OFF,
         }
     }
 }
@@ -333,16 +339,21 @@ impl TracingBuilder<builder_state::PreServiceName> {
 }
 
 impl TracingBuilder<builder_state::Config> {
-    /// Enable the console output tracing subscriber, and filter the log level.
+    /// Enable the console output tracing subscriber and set the default
+    /// [`LevelFilter`] which is overridable through the given environment
+    /// variable.
     pub fn with_console_output(
         self,
-        level_filter: LevelFilter,
+        env_var: &'static str,
+        default_level_filter: LevelFilter,
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
+            env_var: self.env_var,
             console_log_config: SubscriberConfig {
                 enabled: true,
-                level_filter,
+                env_var,
+                default_level_filter,
             },
             otlp_log_config: self.otlp_log_config,
             otlp_trace_config: self.otlp_trace_config,
@@ -350,41 +361,49 @@ impl TracingBuilder<builder_state::Config> {
         }
     }
 
-    /// Enable the OTLP logging subscriber, and filter the log level.
+    /// Enable the OTLP logging subscriber and set the default [`LevelFilter`]
+    /// which is overridable through the given environment variable.
     ///
     /// You can configure the OTLP log exports through the variables defined
     /// in the opentelemetry crates. See [`Tracing`].
     pub fn with_otlp_log_exporter(
         self,
-        level_filter: LevelFilter,
+        env_var: &'static str,
+        default_level_filter: LevelFilter,
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
+            env_var: self.env_var,
             console_log_config: self.console_log_config,
             otlp_log_config: SubscriberConfig {
                 enabled: true,
-                level_filter,
+                env_var,
+                default_level_filter,
             },
             otlp_trace_config: self.otlp_trace_config,
             _marker: self._marker,
         }
     }
 
-    /// Enable the OTLP tracing subscriber, and filter the log level.
+    /// Enable the OTLP tracing subscriber and set the default [`LevelFilter`]
+    /// which is overridable through the given environment variable.
     ///
     /// You can configure the OTLP trace exports through the variables defined
     /// in the opentelemetry crates. See [`Tracing`].
     pub fn with_otlp_trace_exporter(
         self,
-        level_filter: LevelFilter,
+        env_var: &'static str,
+        default_level_filter: LevelFilter,
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
+            env_var: self.env_var,
             console_log_config: self.console_log_config,
             otlp_log_config: self.otlp_log_config,
             otlp_trace_config: SubscriberConfig {
                 enabled: true,
-                level_filter,
+                env_var,
+                default_level_filter,
             },
             _marker: self._marker,
         }
@@ -406,6 +425,14 @@ impl TracingBuilder<builder_state::Config> {
     }
 }
 
+/// Create an [`EnvFilter`] configured with the given environment variable and default [`Directive`].
+fn env_filter_builder(env_var: &str, default_directive: impl Into<Directive>) -> EnvFilter {
+    EnvFilter::builder()
+        .with_env_var(env_var)
+        .with_default_directive(default_directive.into())
+        .from_env_lossy()
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -421,15 +448,16 @@ mod test {
     fn builder_with_console_output() {
         let trace_guard = Tracing::builder()
             .service_name("test")
-            .with_console_output(LevelFilter::TRACE)
-            .with_console_output(LevelFilter::DEBUG)
+            .with_console_output("ABC_A", LevelFilter::TRACE)
+            .with_console_output("ABC_B", LevelFilter::DEBUG)
             .build();
 
         assert_eq!(
             trace_guard.console_log_config,
             SubscriberConfig {
                 enabled: true,
-                level_filter: LevelFilter::DEBUG
+                env_var: "ABC_B",
+                default_level_filter: LevelFilter::DEBUG
             }
         );
         assert!(!trace_guard.otlp_log_config.enabled);
@@ -440,30 +468,33 @@ mod test {
     fn builder_with_all() {
         let trace_guard = Tracing::builder()
             .service_name("test")
-            .with_console_output(LevelFilter::INFO)
-            .with_otlp_log_exporter(LevelFilter::DEBUG)
-            .with_otlp_trace_exporter(LevelFilter::TRACE)
+            .with_console_output("ABC_CONSOLE", LevelFilter::INFO)
+            .with_otlp_log_exporter("ABC_OTLP_LOG", LevelFilter::DEBUG)
+            .with_otlp_trace_exporter("ABC_OTLP_TRACE", LevelFilter::TRACE)
             .build();
 
         assert_eq!(
             trace_guard.console_log_config,
             SubscriberConfig {
                 enabled: true,
-                level_filter: LevelFilter::INFO
+                env_var: "ABC_CONSOLE",
+                default_level_filter: LevelFilter::INFO
             }
         );
         assert_eq!(
             trace_guard.otlp_log_config,
             SubscriberConfig {
                 enabled: true,
-                level_filter: LevelFilter::DEBUG
+                env_var: "ABC_OTLP_LOG",
+                default_level_filter: LevelFilter::DEBUG
             }
         );
         assert_eq!(
             trace_guard.otlp_trace_config,
             SubscriberConfig {
                 enabled: true,
-                level_filter: LevelFilter::TRACE
+                env_var: "ABC_OTLP_TRACE",
+                default_level_filter: LevelFilter::TRACE
             }
         );
     }
