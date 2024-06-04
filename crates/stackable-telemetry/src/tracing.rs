@@ -50,7 +50,7 @@ pub enum Error {
 ///         .service_name("test")
 ///         .with_console_output("TEST_CONSOLE", LevelFilter::INFO)
 ///         .with_otlp_log_exporter("TEST_OTLP_LOG", LevelFilter::DEBUG)
-///         .with_otlp_trace_exporter("TEST_OTLP_LOG", LevelFilter::TRACE)
+///         .with_otlp_trace_exporter("TEST_OTLP_TRACE", LevelFilter::TRACE)
 ///         .build()
 ///         .init()?;
 ///
@@ -300,7 +300,6 @@ impl BuilderState for builder_state::Config {}
 #[derive(Default)]
 pub struct TracingBuilder<S: BuilderState> {
     service_name: Option<&'static str>,
-    env_var: Option<&'static str>,
     console_log_config: SubscriberConfig,
     otlp_log_config: SubscriberConfig,
     otlp_trace_config: SubscriberConfig,
@@ -349,7 +348,6 @@ impl TracingBuilder<builder_state::Config> {
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
-            env_var: self.env_var,
             console_log_config: SubscriberConfig {
                 enabled: true,
                 env_var,
@@ -373,7 +371,6 @@ impl TracingBuilder<builder_state::Config> {
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
-            env_var: self.env_var,
             console_log_config: self.console_log_config,
             otlp_log_config: SubscriberConfig {
                 enabled: true,
@@ -397,7 +394,6 @@ impl TracingBuilder<builder_state::Config> {
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
-            env_var: self.env_var,
             console_log_config: self.console_log_config,
             otlp_log_config: self.otlp_log_config,
             otlp_trace_config: SubscriberConfig {
