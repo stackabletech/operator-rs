@@ -59,6 +59,10 @@ impl ContainerAttributes {
             }
         }
 
+        // TODO (@Techassi): Add validation for skip(from) for last version,
+        // which will skip nothing, because nothing is generated in the first
+        // place.
+
         // Ensure every version is unique and isn't declared multiple times. This
         // is inspired by the itertools all_unique function.
         let mut unique = HashSet::new();

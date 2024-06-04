@@ -154,6 +154,8 @@ impl VersionedStruct {
 
             let fields = self.generate_from_fields(version, next_version, from_ident);
 
+            // TODO (@Techassi): Be a little bit more clever about when to include
+            // the #[allow(deprecated)] attribute.
             return quote! {
                 #[automatically_derived]
                 #[allow(deprecated)]
