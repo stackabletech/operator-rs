@@ -84,25 +84,6 @@ mod gen;
 /// - All field actions must use previously declared versions. Using versions
 ///   not present at the container level will result in an error.
 ///
-/// ```
-/// # use stackable_versioned_macros::versioned;
-/// #[versioned(
-///     version(name = "v1alpha1"),
-///     version(name = "v1beta1"),
-///     version(name = "v1"),
-///     version(name = "v2"),
-/// )]
-/// struct Foo {
-///     #[versioned(
-///         added(since = "v1beta1"),
-///         renamed(since = "v1", from = "gau"),
-///         deprecated(since = "v2", note = "not empty")
-///     )]
-///     deprecated_bar: usize,
-///     baz: bool,
-/// }
-/// ```
-///
 /// For fields marked as deprecated, two additional rules apply:
 ///
 /// - Fields must start with the `deprecated_` prefix.
