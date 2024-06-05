@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Add support for setting the environment variable for each configured tracing subscriber ([#801]).
+
+[#801]: https://github.com/stackabletech/operator-rs/pull/801
+
 ## [0.1.0] - 2024-05-08
 
 ### Changed
