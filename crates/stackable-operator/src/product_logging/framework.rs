@@ -756,11 +756,13 @@ sources:
     type: file
     include:
       - {STACKABLE_LOG_DIR}/bundle-builder/current
+      - {STACKABLE_LOG_DIR}/bundle-builder/test
 
   files_opa_json:
     type: file
     include:
       - {STACKABLE_LOG_DIR}/opa/current
+      - {STACKABLE_LOG_DIR}/opa/test
 
 transforms:
   processed_files_opa_bundle_builder:
@@ -768,41 +770,82 @@ transforms:
       - files_opa_bundle_builder
     type: remap
     source: |
-      parsed_event = parse_regex!(strip_whitespace(strip_ansi_escape_codes(string!(.message))), r'(?P<timestamp>[0-9]{{4}}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9].[0-9]{{6}}Z)[ ]+(?P<level>\w+)[ ]+(?P<logger>.+):[ ]+(?P<message>.*)')
-      .timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%6fZ")
-      .level = parsed_event.level
-      .logger = parsed_event.logger
-      .message = parsed_event.message
+      .errors = []
+
+      parsed_event, err = parse_regex(strip_whitespace(strip_ansi_escape_codes(string!(.message))), r'(?P<timestamp>[0-9]{{4}}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9].[0-9]{{6}}Z)[ ]+(?P<level>\w+)[ ]+(?P<logger>.+):[ ]+(?P<message>.*)')
+      if err != null {{
+        error = "Log message not parsable: " + err
+        .errors = push(.errors, error)
+        log(error, level: "error")
+
+        .timestamp = now()
+        .level = "INFO"
+        .logger = ""
+      }} else {{
+        .timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%6fZ")
+        .level = parsed_event.level
+        .logger = parsed_event.logger
+        .message = parsed_event.message
+      }}
 
   processed_files_opa_json:
     inputs:
       - files_opa_json
     type: remap
     source: |
-      parsed_event = parse_json!(string!(.message))
-      keys = keys!(parsed_event)
+      .errors = []
 
-      if includes(keys, "timestamp") {{
-        .timestamp = parse_timestamp!(parsed_event.timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+      event = {{}}
+      parsed_event, err = parse_json(string!(.message))
+      if err != null {{
+        error = "JSON not parsable: " + err
+        .errors = push(.errors, error)
+        log(error, level: "error")
+        event = {{ "msg": .message }}
       }} else {{
-        .timestamp = parse_timestamp!(parsed_event.time, "%Y-%m-%dT%H:%M:%SZ")
+        event = object!(parsed_event)
       }}
 
-      if includes(keys, "decision_id") {{
-        .logger = "decision"
-      }} else {{
-        .logger = "server"
+      .timestamp = null
+      timestamp_string, err = string(event.timestamp)
+      if err == null {{
+        .timestamp = parse_timestamp(timestamp_string, "%Y-%m-%dT%H:%M:%S.%fZ") ?? null
+      }}
+      if .timestamp == null {{
+        time_string, err = string(event.time)
+        if err == null {{
+          .timestamp = parse_timestamp(time_string, "%Y-%m-%dT%H:%M:%SZ") ?? null
+        }}
+      }}
+      if .timestamp == null {{
+        .timestamp = now()
+        .errors = push(.errors, "Timestamp not found, using current time instead.")
       }}
 
-      .level = upcase!(parsed_event.level)
-      .message = string!(parsed_event.msg)
+      .logger, err = string(event.logger)
+      if err != null || is_empty(.logger) {{
+        .errors = push(.errors, "Logger not found.")
+      }}
 
-      del(parsed_event.time)
-      del(parsed_event.timestamp)
-      del(parsed_event.level)
-      del(parsed_event.msg)
+      level, err = string(event.level)
+      if err != null || is_empty(level) {{
+        .level = "INFO"
+        .errors = push(.errors, "Level not found, using \"INFO\" instead.")
+      }} else {{
+        .level = upcase(level)
+      }}
 
-      .message = .message + "\n" + encode_key_value(object!(parsed_event), field_delimiter: "\n")
+      .message, err = string(event.msg)
+      if err != null || is_empty(.message) {{
+        .errors = push(.errors, "Message not found.")
+      }}
+
+      del(event.time)
+      del(event.timestamp)
+      del(event.level)
+      del(event.msg)
+
+      .message = .message + "\n" + encode_key_value(event, field_delimiter: "\n")
 
   processed_files_stdout:
     inputs:
@@ -859,24 +902,24 @@ transforms:
         .timestamp = from_unix_timestamp(epoch_milliseconds, "milliseconds") ?? null
       }}
 
-      .logger, err = to_string(event.@logger)
+      .logger, err = string(event.@logger)
       if err != null || is_empty(.logger) {{
         .logger = ""
         .errors = push(.errors, "Logger not found.")
       }}
 
-      .level, err = to_string(event.@level)
+      .level, err = string(event.@level)
       if err != null || is_empty(.level) {{
         .level = "INFO"
         .errors = push(.errors, "Level not found, using level \"INFO\" instead.")
       }}
 
-      message, err = to_string(event.message)
+      message, err = string(event.message)
       if err != null || is_empty(message) {{
         message = null
         .errors = push(.errors, "Message not found.")
       }}
-      throwable = to_string(event.throwable) ?? null
+      throwable = string(event.throwable) ?? null
       .message, err = join(compact([message, throwable]), "\n")
       if err != null {{
         error = "Could not join message and exception: " + err
@@ -905,12 +948,13 @@ transforms:
         log(error, level: "error")
         event = {{ "Message": .message }}
       }} else {{
-        event = parsed_event.Event
+        event = object!(parsed_event.Event)
       }}
 
       .timestamp = null
-      if is_object(event.Instant) {{
-        epoch_nanoseconds, err = to_int(event.Instant.@epochSecond) * 1_000_000_000 + to_int(event.Instant.@nanoOfSecond)
+      instant, err = object(event.Instant)
+      if err == null {{
+        epoch_nanoseconds, err = to_int(instant.@epochSecond) * 1_000_000_000 + to_int(instant.@nanoOfSecond)
         if err == null && epoch_nanoseconds != 0 {{
           .timestamp = from_unix_timestamp(epoch_nanoseconds, "nanoseconds") ?? null
         }}
@@ -926,13 +970,13 @@ transforms:
         .errors = push(.errors, "Timestamp not found, using current time instead.")
       }}
 
-      .logger, err = to_string(event.@loggerName)
+      .logger, err = string(event.@loggerName)
       if err != null || is_empty(.logger) {{
         .logger = ""
         .errors = push(.errors, "Logger not found.")
       }}
 
-      .level, err = to_string(event.@level)
+      .level, err = string(event.@level)
       if err != null || is_empty(.level) {{
         .level = "INFO"
         .errors = push(.errors, "Level not found, using \"INFO\" instead.")
@@ -942,16 +986,16 @@ transforms:
       thrown = event.Thrown
       if thrown != null {{
           exception = "Exception"
-          thread, err = to_string(event.@thread)
+          thread, err = string(event.@thread)
           if err == null && !is_empty(thread) {{
               exception = exception + " in thread \"" + thread + "\""
           }}
-          thrown_name, err = to_string(thrown.@name)
+          thrown_name, err = string(thrown.@name)
           if err == null && !is_empty(exception) {{
               exception = exception + " " + thrown_name
           }}
-          message = to_string(thrown.@localizedMessage) ??
-              to_string(thrown.@message) ??
+          message = string(thrown.@localizedMessage) ??
+              string(thrown.@message) ??
               ""
           if !is_empty(message) {{
               exception = exception + ": " + message
@@ -960,19 +1004,19 @@ transforms:
           stacktrace = ""
           for_each(stacktrace_items) -> |_index, value| {{
               stacktrace = stacktrace + "        "
-              class = to_string(value.@class) ?? ""
-              method = to_string(value.@method) ?? ""
+              class = string(value.@class) ?? ""
+              method = string(value.@method) ?? ""
               if !is_empty(class) && !is_empty(method) {{
                   stacktrace = stacktrace + "at " + class + "." + method
               }}
-              file = to_string(value.@file) ?? ""
-              line = to_string(value.@line) ?? ""
+              file = string(value.@file) ?? ""
+              line = string(value.@line) ?? ""
               if !is_empty(file) && !is_empty(line) {{
                   stacktrace = stacktrace + "(" + file + ":" + line + ")"
               }}
               exact = to_bool(value.@exact) ?? false
-              location = to_string(value.@location) ?? ""
-              version = to_string(value.@version) ?? ""
+              location = string(value.@location) ?? ""
+              version = string(value.@version) ?? ""
               if !is_empty(location) && !is_empty(version) {{
                   stacktrace = stacktrace + " "
                   if !exact {{
@@ -987,7 +1031,7 @@ transforms:
           }}
       }}
 
-      message, err = to_string(event.Message)
+      message, err = string(event.Message)
       if err != null || is_empty(message) {{
         message = null
         .errors = push(.errors, "Message not found.")
