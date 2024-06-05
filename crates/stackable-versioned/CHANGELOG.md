@@ -15,10 +15,6 @@ All notable changes to this project will be documented in this file.
 [#790]: https://github.com/stackabletech/operator-rs/pull/790
 [#793]: https://github.com/stackabletech/operator-rs/pull/793
 
-- Improve action chain generation ([#784]).
-
-[#784](ttps://github.com/stackabletech/operator-rs/pull/784)
-
 ## [0.1.0] - 2024-05-08
 
 ### Changed
