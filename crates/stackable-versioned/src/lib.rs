@@ -1,32 +1,41 @@
-use darling::{ast::NestedMeta, FromMeta};
-use proc_macro::TokenStream;
-use syn::{DeriveInput, Error};
+//! This crate enables versioning of structs (and enums in the future). It
+//! currently supports Kubernetes API versions while declaring versions on a
+//! data type. This will be extended to support SemVer versions, as well as
+//! custom version formats in the future.
+//!
+//! ## Usage Guide
+//!
+//! ```
+//! use stackable_versioned::versioned;
+//!
+//! #[versioned(
+//!     version(name = "v1alpha1"),
+//!     version(name = "v1beta1"),
+//!     version(name = "v1"),
+//!     version(name = "v2"),
+//!     version(name = "v3")
+//! )]
+//! struct Foo {
+//!     /// My docs
+//!     #[versioned(
+//!         added(since = "v1beta1"),
+//!         renamed(since = "v1", from = "gau"),
+//!         deprecated(since = "v2", note = "not empty")
+//!     )]
+//!     deprecated_bar: usize,
+//!     baz: bool,
+//! }
+//! ```
+//!
+//! See [`versioned`] for an in-depth usage guide and a list of supported
+//! parameters.
 
-use crate::attrs::container::ContainerAttributes;
+pub use stackable_versioned_macros::*;
 
-mod attrs;
-mod consts;
-mod gen;
+pub trait AsVersionStr {
+    const VERSION: &'static str;
 
-#[proc_macro_attribute]
-pub fn versioned(attrs: TokenStream, input: TokenStream) -> TokenStream {
-    let attrs = match NestedMeta::parse_meta_list(attrs.into()) {
-        Ok(attrs) => match ContainerAttributes::from_list(&attrs) {
-            Ok(attrs) => attrs,
-            Err(err) => return err.write_errors().into(),
-        },
-        Err(err) => return darling::Error::from(err).write_errors().into(),
-    };
-
-    // NOTE (@Techassi): For now, we can just use the DeriveInput type here,
-    // because we only support structs (and eventually enums) to be versioned.
-    // In the future - if we decide to support modules - this requires
-    // adjustments to also support modules. One possible solution might be to
-    // use an enum with two variants: Container(DeriveInput) and
-    // Module(ItemMod).
-    let input = syn::parse_macro_input!(input as DeriveInput);
-
-    gen::expand(attrs, input)
-        .unwrap_or_else(Error::into_compile_error)
-        .into()
+    fn as_version_str(&self) -> &'static str {
+        Self::VERSION
+    }
 }

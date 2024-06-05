@@ -4,12 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Add auto-generated `From<OLD> for NEW` implementations ([#790]).
 - Change from derive macro to attribute macro to be able to generate code
-  _in place_ instead of _appending_ new code ([#CHANGEME]).
+  _in place_ instead of _appending_ new code ([#793]).
 - Improve action chain generation ([#784]).
 
-[#784](https://github.com/stackabletech/operator-rs/pull/784)
-[#CHANGEME](https://github.com/stackabletech/operator-rs/pull/CHANGEME)
+[#784]: https://github.com/stackabletech/operator-rs/pull/784
+[#790]: https://github.com/stackabletech/operator-rs/pull/790
+[#793]: https://github.com/stackabletech/operator-rs/pull/793
 
 ## [0.1.0] - 2024-05-08
 
