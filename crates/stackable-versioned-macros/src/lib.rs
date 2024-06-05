@@ -15,8 +15,7 @@ mod gen;
 /// ### Quickstart
 ///
 /// ```
-/// use stackable_versioned::versioned;
-///
+/// # use stackable_versioned_macros::versioned;
 /// #[versioned(
 ///     version(name = "v1alpha1"),
 ///     version(name = "v1beta1"),
@@ -47,7 +46,7 @@ mod gen;
 /// the `#[deprecated]` attribute to the appropriate piece of code.
 ///
 /// ```
-/// # use stackable_versioned::versioned;
+/// # use stackable_versioned_macros::versioned;
 /// #[versioned(
 ///     version(name = "v1alpha1", deprecated)
 /// )]
@@ -60,7 +59,7 @@ mod gen;
 /// of this check by setting `options(allow_unsorted)`:
 ///
 /// ```
-/// # use stackable_versioned::versioned;
+/// # use stackable_versioned_macros::versioned;
 /// #[versioned(
 ///     version(name = "v1beta1"),
 ///     version(name = "v1alpha1"),
@@ -86,7 +85,7 @@ mod gen;
 ///   not present at the container level will result in an error.
 ///
 /// ```
-/// # use stackable_versioned::versioned;
+/// # use stackable_versioned_macros::versioned;
 /// #[versioned(
 ///     version(name = "v1alpha1"),
 ///     version(name = "v1beta1"),
@@ -182,7 +181,7 @@ mod gen;
 /// default implementation is not sufficient.
 ///
 /// ```
-/// # use stackable_versioned::versioned;
+/// # use stackable_versioned_macros::versioned;
 /// #[versioned(
 ///     version(name = "v1alpha1"),
 ///     version(name = "v1beta1"),
@@ -206,7 +205,7 @@ mod gen;
 /// [`Default::default()`] is used.
 ///
 /// ```
-/// # use stackable_versioned::versioned;
+/// # use stackable_versioned_macros::versioned;
 /// #[versioned(
 ///     version(name = "v1alpha1"),
 ///     version(name = "v1beta1"),
