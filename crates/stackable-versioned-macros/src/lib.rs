@@ -87,7 +87,6 @@ mod gen;
 ///
 /// ```
 /// # use stackable_versioned::versioned;
-///
 /// #[versioned(
 ///     version(name = "v1alpha1"),
 ///     version(name = "v1beta1"),
@@ -112,10 +111,9 @@ mod gen;
 ///
 /// ### Auto-generated [`From`] Implementations
 ///
-/// To enable smooth conversions between different versions of the same struct,
-/// the macro automatically generates [`From`] implementations. On a high level,
-/// code generated for two versions _a_ and _b_, with _a < b_ looks like this:
-/// `impl From<a> for b`.
+/// To enable smooth version upgrades of the same struct, the macro automatically
+/// generates [`From`] implementations. On a high level, code generated for two
+/// versions _a_ and _b_, with _a < b_ looks like this: `impl From<a> for b`.
 ///
 /// ```ignore
 /// #[versioned(
@@ -177,11 +175,14 @@ mod gen;
 /// }
 /// ```
 ///
+/// #### Skip [`From`] generation
+///
 /// Generation of these [`From`] implementations can be skipped at the container
 /// and version level. This enables customization of the implementations if the
 /// default implementation is not sufficient.
 ///
 /// ```
+/// # use stackable_versioned::versioned;
 /// #[versioned(
 ///     version(name = "v1alpha1"),
 ///     version(name = "v1beta1"),
@@ -195,6 +196,33 @@ mod gen;
 ///     )]
 ///     deprecated_bar: usize,
 ///     baz: bool,
+/// }
+/// ```
+///
+/// #### Customize Default Function for Added Fields
+///
+/// It is possible to customize the default function used in the generated
+/// [`From`] implementation for populating added fields. By default,
+/// [`Default::default()`] is used.
+///
+/// ```
+/// # use stackable_versioned::versioned;
+/// #[versioned(
+///     version(name = "v1alpha1"),
+///     version(name = "v1beta1"),
+///     version(name = "v1")
+/// )]
+/// pub struct Foo {
+///     #[versioned(
+///         added(since = "v1beta1", default = "default_bar"),
+///         deprecated(since = "v1", note = "not needed")
+///     )]
+///     deprecated_bar: usize,
+///     baz: bool,
+/// }
+///
+/// fn default_bar() -> usize {
+///     42
 /// }
 /// ```
 #[proc_macro_attribute]
