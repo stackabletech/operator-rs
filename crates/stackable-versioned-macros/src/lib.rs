@@ -55,7 +55,7 @@ mod gen;
 ///
 /// Additionally, it is ensured that each version is unique. Declaring the same
 /// version multiple times will result in an error. Furthermore, declaring the
-/// versions out-of-order ist prohibited by default. It is possible to opt-out
+/// versions out-of-order is prohibited by default. It is possible to opt-out
 /// of this check by setting `options(allow_unsorted)`:
 ///
 /// ```
