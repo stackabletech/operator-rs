@@ -59,6 +59,10 @@ impl ContainerAttributes {
             }
         }
 
+        // TODO (@Techassi): Add validation for skip(from) for last version,
+        // which will skip nothing, because nothing is generated in the first
+        // place.
+
         // Ensure every version is unique and isn't declared multiple times. This
         // is inspired by the itertools all_unique function.
         let mut unique = HashSet::new();
@@ -83,10 +87,12 @@ impl ContainerAttributes {
 ///
 /// - `name` of the version, like `v1alpha1`.
 /// - `deprecated` flag to mark that version as deprecated.
+/// - `skip` option to skip generating various pieces of code.
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct VersionAttributes {
     pub(crate) deprecated: Flag,
     pub(crate) name: Version,
+    pub(crate) skip: Option<SkipOptions>,
 }
 
 /// This struct contains supported container options.
@@ -95,7 +101,19 @@ pub(crate) struct VersionAttributes {
 ///
 /// - `allow_unsorted`, which allows declaring versions in unsorted order,
 ///   instead of enforcing ascending order.
+/// - `skip` option to skip generating various pieces of code.
 #[derive(Clone, Debug, Default, FromMeta)]
 pub(crate) struct ContainerOptions {
     pub(crate) allow_unsorted: Flag,
+    pub(crate) skip: Option<SkipOptions>,
+}
+
+/// This struct contains supported skip options.
+///
+/// Supported options are:
+///
+/// - `from` flag, which skips generating [`From`] implementations when provided.
+#[derive(Clone, Debug, Default, FromMeta)]
+pub(crate) struct SkipOptions {
+    pub(crate) from: Flag,
 }

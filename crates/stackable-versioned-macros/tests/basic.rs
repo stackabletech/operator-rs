@@ -1,4 +1,4 @@
-use stackable_versioned::versioned;
+use stackable_versioned_macros::versioned;
 
 // To expand the generated code (for debugging and testing), it is recommended
 // to first change directory via `cd crates/stackable-versioned` and to then
@@ -36,7 +36,7 @@ fn basic() {
 
     // The latest version (v3)
     #[allow(deprecated)]
-    let _ = Foo {
+    let _ = v3::Foo {
         deprecated_bar: 0,
         baz: false,
     };
