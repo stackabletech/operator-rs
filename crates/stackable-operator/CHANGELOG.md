@@ -6,7 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Derive `Display` for `LogLevel`.
+- Derive `Display` for `LogLevel`([#805]).
+
+[#805]: https://github.com/stackabletech/operator-rs/pull/805
 
 ## [0.69.0] - 2024-06-03
 
