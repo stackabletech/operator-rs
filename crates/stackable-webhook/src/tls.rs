@@ -142,6 +142,9 @@ impl TlsServer {
         pin_mut!(tcp_listener);
         loop {
             let tls_acceptor = tls_acceptor.clone();
+            // NOTE (@Techassi): Call into_make_service_with_connect_info here
+            // to get access to the ConnectInfo struct. See
+            // https://github.com/tokio-rs/axum/discussions/2397
             let router = self.router.clone();
 
             // Wait for new tcp connection
