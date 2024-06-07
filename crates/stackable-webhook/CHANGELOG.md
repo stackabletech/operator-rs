@@ -9,9 +9,9 @@ All notable changes to this project will be documented in this file.
 - Fix the extraction of `ConnectInfo` (data about the connection client) and
   the `Host` info (data about the server) in the `AxumTraceLayer`. This was
   previously not extracted correctly and thus not included in the OpenTelemetry
-  compatible traces ([#CHANGEME]).
+  compatible traces ([#806]).
 
-[#CHANGEME]: https://github.com/stackabletech/operator-rs/pull/CHANGEME
+[#806]: https://github.com/stackabletech/operator-rs/pull/806
 
 ## [0.3.0] - 2024-05-08
 
