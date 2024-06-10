@@ -313,8 +313,10 @@ pub struct AppenderConfig {
     PartialEq,
     PartialOrd,
     Serialize,
+    strum::Display,
 )]
 #[derivative(Default)]
+#[strum(serialize_all = "lowercase")]
 pub enum LogLevel {
     TRACE,
     DEBUG,
