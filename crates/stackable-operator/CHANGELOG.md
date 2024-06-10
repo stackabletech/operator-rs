@@ -8,9 +8,10 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Derive `strum::Display` for `LogLevel`([#805]).
+- Derive `strum::Display` for `LogLevel`([#805], [#808]).
 
 [#805]: https://github.com/stackabletech/operator-rs/pull/805
+[#808]: https://github.com/stackabletech/operator-rs/pull/808
 
 ## [0.69.0] - 2024-06-03
 
