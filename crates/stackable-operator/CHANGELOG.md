@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Processing of corrupted log events fixed; If errors occur, the error
+  messages are added to the log event ([#802]).
+
+[#802]: https://github.com/stackabletech/operator-rs/pull/802
+
 ## [0.69.0] - 2024-06-03
 
 ### Added
@@ -11,14 +18,8 @@ All notable changes to this project will be documented in this file.
 - Add functionality to convert LogLevel to an OPA log level ([#798]).
 - BREAKING: Add labels to listener volume builder. `PodBuilder::add_listener_volume_by_listener_class`, `PodBuilder::add_listener_volume_by_listener_name` and `ListenerOperatorVolumeSourceBuilder::new` now require you to pass the labels for the created volumes ([#799]).
 
-### Fixed
-
-- Processing of corrupted log events fixed; If errors occur, the error
-  messages are added to the log event ([#802]).
-
 [#798]: https://github.com/stackabletech/operator-rs/pull/798
 [#799]: https://github.com/stackabletech/operator-rs/pull/799
-[#802]: https://github.com/stackabletech/operator-rs/pull/802
 
 ## [0.68.0] - 2024-05-22
 
