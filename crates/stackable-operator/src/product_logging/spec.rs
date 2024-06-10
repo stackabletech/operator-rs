@@ -301,6 +301,7 @@ pub struct AppenderConfig {
 }
 
 /// Log levels
+// Caution: Changing the output format for strum::Display might break operators relying on this trait.
 #[derive(
     Clone,
     Copy,
@@ -316,7 +317,6 @@ pub struct AppenderConfig {
     strum::Display,
 )]
 #[derivative(Default)]
-#[strum(serialize_all = "lowercase")]
 pub enum LogLevel {
     TRACE,
     DEBUG,
