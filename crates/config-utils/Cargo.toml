@@ -1,0 +1,18 @@
+[package]
+name = "config-filler"
+version = "0.1.0"
+authors = ["Stackable GmbH <info@stackable.tech>"]
+license = "OSL-3.0"
+edition = "2021"
+repository = "https://github.com/stackabletech/config-filler"
+
+[dependencies]
+# We try hard to have a less dependencies as possible!
+clap = { version = "4.5", features = ["derive"] }
+lazy_static = "1.4"
+memchr = "2.7"
+snafu = "0.8"
+
+[dev-dependencies]
+rstest = "0.21"
+similar-asserts = "1.5"
