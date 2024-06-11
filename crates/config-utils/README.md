@@ -43,7 +43,7 @@ Afterwards the XML looks like
 2. Read the env var `EXAMPLE_USERNAME`, xml-escape it and insert it
 3. Read the contents of the file `example-password`, xml-escape it and insert it
 
-Please note that `config-utils` also supports nesting templating, so the name of the file to read can come from an env var (or even other file as well).
+Please note that `config-utils` also supports nested templating, so the name of the file to read can come from an env var (or even another file as well).
 This looks something like `${env:${env:ENV_TEST_PASSWORD_ENV_NAME}}`
 
 ## Currently supported file formats
