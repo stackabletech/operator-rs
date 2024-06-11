@@ -5,7 +5,7 @@
     <class>org.apache.nifi.ldap.LdapProvider</class>
     <property name="Authentication Strategy">LDAPS</property>
 
-    <property name="Manager DN">xxx_ldap_bind_username_xxx</property>
+    <property name="Manager DN">${env:ENV_TEST_USERNAME}</property>
     <property name="Manager Password">${env:ENV_TEST_PASSWORD}</property>
 
     <property name="Referral Strategy">THROW</property>
