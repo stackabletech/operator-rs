@@ -80,7 +80,7 @@ pub enum Error {
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 pub fn template(file_name: &PathBuf, file_type: Option<&FileType>) -> Result<()> {
-    let _file_type = match file_type {
+    let file_type = match file_type {
         Some(file_type) => file_type,
         None => {
             let extension = file_name
@@ -111,7 +111,7 @@ pub fn template(file_name: &PathBuf, file_type: Option<&FileType>) -> Result<()>
     for line in buf_reader.lines() {
         let mut line = line.context(ReadLineSnafu { file_name })?;
 
-        run_all_replacements_on_line(&mut line)?;
+        run_all_replacements_on_line(&mut line, file_type)?;
 
         temp_file
             .write_all(line.as_bytes())
@@ -133,7 +133,7 @@ pub fn template(file_name: &PathBuf, file_type: Option<&FileType>) -> Result<()>
     Ok(())
 }
 
-fn run_all_replacements_on_line(line: &mut String) -> Result<()> {
+fn run_all_replacements_on_line(line: &mut String, file_type: &FileType) -> Result<()> {
     loop {
         let mut changed = false;
         changed |= replace_thingy_in_line(
@@ -141,12 +141,14 @@ fn run_all_replacements_on_line(line: &mut String) -> Result<()> {
             ENV_VAR_PATTERN_START,
             ENV_VAR_PATTERN_END,
             replacement_action_for_env_var,
+            file_type,
         )?;
         changed |= replace_thingy_in_line(
             line,
             FILE_PATTERN_START,
             FILE_PATTERN_END,
             replacement_action_for_file,
+            file_type,
         )?;
 
         if !changed {
@@ -184,6 +186,7 @@ fn replace_thingy_in_line(
     start_pattern: &str,
     end_pattern: &str,
     replacement_action: fn(&str) -> Result<String>,
+    file_type: &FileType,
 ) -> Result<bool> {
     // We need to go back to forth to not destroy stuff while iterating.
     // Also this is needed to correctly handle nested cases.
@@ -208,6 +211,7 @@ fn replace_thingy_in_line(
             })?;
 
         let new_content = replacement_action(parameter)?;
+        let new_content = file_type.escape(new_content);
 
         line.replace_range(
             index..index + start_pattern.len() + parameter.len() + end_pattern.len(),
