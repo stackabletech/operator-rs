@@ -4,7 +4,7 @@ This utility currently only supports filling your config with contents from envi
 
 ## Templating
 
-Imaginge the following `example.xml`:
+Imagine the following `example.xml`:
 
 ```xml
 cat > example.xml << 'EOF'
