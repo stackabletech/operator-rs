@@ -7,7 +7,7 @@ edition = "2021"
 repository = "https://github.com/stackabletech/config-utils"
 
 [dependencies]
-# We try hard to have a less dependencies as possible!
+# We try hard to have as less dependencies as possible!
 clap = { version = "4.5", features = ["derive"] }
 lazy_static = "1.4"
 snafu = "0.8"
