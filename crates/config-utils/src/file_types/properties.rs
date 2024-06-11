@@ -20,10 +20,26 @@ impl Escape for PropertiesEscaper {
                 '!' => escaped.push_str("\\!"),
                 '#' => escaped.push_str("\\#"),
                 _ if c < ' ' => escaped.push_str(&format!("\\u{:x}", c as u16)),
-                _ => escaped.push(c), // We don't worry about other characters, since they're taken care of below.
+                _ => escaped.push(c),
             }
         }
 
         escaped
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use rstest::rstest;
+
+    #[rstest]
+    #[case("foo", "foo")]
+    #[case("foo bar", "foo\\ bar")]
+    #[case("<foo> bar", "<foo>\\ bar")]
+    #[case("foo<>'\"&\r\nbar", "foo<>'\"&\\r\\nbar")]
+    fn test_xml_escaping(#[case] input: String, #[case] expected: String) {
+        assert_eq!(PropertiesEscaper::escape(input), expected);
     }
 }

@@ -2,9 +2,9 @@ use clap::Parser;
 use config_utils::templating::{self, template};
 use snafu::{ResultExt, Snafu};
 
-use args::{Args, Command};
+use cli_args::{Args, Command};
 
-mod args;
+mod cli_args;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -19,8 +19,12 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     match args.command {
-        Command::Template { file, file_type } => {
-            template(&file, file_type.as_ref()).context(TemplateFileSnafu)?;
+        Command::Template {
+            file,
+            file_type,
+            dont_escape,
+        } => {
+            template(&file, file_type.as_ref(), !dont_escape).context(TemplateFileSnafu)?;
         }
     }
 
