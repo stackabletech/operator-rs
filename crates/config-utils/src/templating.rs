@@ -26,7 +26,7 @@ pub enum Error {
     #[snafu(display("Failed to convert file name {file_name:?} to string"))]
     ConvertFileNameToString { file_name: PathBuf },
 
-    #[snafu(display("The extension {extension} is not known, can not determine file type"))]
+    #[snafu(display("The extension {extension} is not known, can not determine file type. Please specify the file type manually."))]
     ExtensionUnkown { extension: String },
 
     #[snafu(display("Failed to create temporary file {tmp_file_name:?}"))]
