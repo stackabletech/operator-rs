@@ -1,3 +1,4 @@
 networkaddress.cache.negative.ttl=0
-networkaddress.cache.ttl=${env:DISPLAY}
-meine.suß.Pröpertie=42,3
+networkaddress.cache.ttl=${env:ENV_TEST}
+meine.suß.Pröpertie=42
+example-password=${env:ENV_TEST_PASSWORD}
