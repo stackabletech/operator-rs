@@ -1,1 +1,5 @@
 /target
+
+# The following files are mentioned as an example in the README, so let's exclude them
+example.xml
+example-password
