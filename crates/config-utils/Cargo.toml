@@ -1,10 +1,10 @@
 [package]
-name = "config-filler"
+name = "config-utils"
 version = "0.1.0"
 authors = ["Stackable GmbH <info@stackable.tech>"]
 license = "OSL-3.0"
 edition = "2021"
-repository = "https://github.com/stackabletech/config-filler"
+repository = "https://github.com/stackabletech/config-utils"
 
 [dependencies]
 # We try hard to have a less dependencies as possible!

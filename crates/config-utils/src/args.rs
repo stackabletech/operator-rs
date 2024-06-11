@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
-use config_filler::file_types::FileType;
+use config_utils::file_types::FileType;
 
 /// Utility to fill out missing variables in config files
 #[derive(Debug, Parser)]

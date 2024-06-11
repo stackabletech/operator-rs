@@ -2,7 +2,7 @@ use std::{env, fs, path::PathBuf};
 
 use rstest::rstest;
 
-use config_filler::templating::template;
+use config_utils::templating::template;
 
 #[rstest]
 fn test_file_templating(#[files("tests/resources/**/*.in")] test_file_in: PathBuf) {

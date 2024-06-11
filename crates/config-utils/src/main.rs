@@ -1,5 +1,5 @@
 use clap::Parser;
-use config_filler::templating::{self, template};
+use config_utils::templating::{self, template};
 use snafu::{ResultExt, Snafu};
 
 use args::{Args, Command};

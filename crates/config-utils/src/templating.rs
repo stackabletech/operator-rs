@@ -99,7 +99,7 @@ pub fn template(file_name: &PathBuf, file_type: Option<&FileType>) -> Result<()>
     let buf_reader = BufReader::new(file);
 
     let tmp_file_name = PathBuf::from(format!(
-        "{}.tmp_config_filler",
+        "{}.tmp_config_utils",
         file_name
             .to_str()
             .context(ConvertFileNameToStringSnafu { file_name })?
