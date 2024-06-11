@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 
 use config_utils::file_types::FileType;
 
-/// Utility to fill out missing variables in config files
+/// Utility that helps you handling config files.
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
 pub struct Args {
@@ -14,6 +14,7 @@ pub struct Args {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Fill out variables in config files from either env variables or files directly.
     Template {
         /// The path to the file that should be templated
         file: PathBuf,
