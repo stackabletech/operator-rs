@@ -139,9 +139,17 @@ impl TlsServer {
                     socket_addr: self.socket_addr,
                 })?;
 
+        // To be able to extract the connect info from incoming requests, it is
+        // required to turn the router into a Tower service which is capable of
+        // doing that. Calling `into_make_service_with_connect_info` returns a
+        // new struct `IntoMakeServiceWithConnectInfo` which implements the
+        // Tower Service trait. This service is called after the TCP connection
+        // has been accepted.
+        //
         // Inspired by:
         // - https://github.com/tokio-rs/axum/discussions/2397
         // - https://github.com/tokio-rs/axum/blob/b02ce307371a973039018a13fa012af14775948c/examples/serve-with-hyper/src/main.rs#L98
+
         let mut router = self
             .router
             .into_make_service_with_connect_info::<SocketAddr>();
@@ -159,6 +167,8 @@ impl TlsServer {
                 }
             };
 
+            // Here, the connect info is extracted by calling Tower's Service
+            // trait function on `IntoMakeServiceWithConnectInfo`
             let tower_service = router.call(remote_addr).await.unwrap();
 
             tokio::spawn(async move {

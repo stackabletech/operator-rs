@@ -10,11 +10,14 @@
 //!
 //! [1]: https://opentelemetry.io/
 //! [2]: https://opentelemetry.io/docs/specs/semconv/http/http-spans/
-use std::{future::Future, net::SocketAddr, str::FromStr, task::Poll};
+use std::{future::Future, net::SocketAddr, task::Poll};
 
 use axum::{
-    extract::{ConnectInfo, Host, MatchedPath, Request},
-    http::{header::USER_AGENT, HeaderMap},
+    extract::{ConnectInfo, MatchedPath, Request},
+    http::{
+        header::{HOST, USER_AGENT},
+        HeaderMap,
+    },
     response::Response,
 };
 use futures_util::ready;
@@ -29,6 +32,8 @@ mod injector;
 
 pub use extractor::*;
 pub use injector::*;
+
+const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 
 /// A Tower [`Layer`][1] which decorates [`TraceService`].
 ///
@@ -169,7 +174,7 @@ pub trait RequestExt {
     /// Returns the client socket address, if available.
     fn client_socket_address(&self) -> Option<SocketAddr>;
 
-    /// Returns the server socket address, if available.
+    /// Returns the server host, if available.
     ///
     /// ### Value Selection Strategy
     ///
@@ -186,7 +191,7 @@ pub trait RequestExt {
     /// > - The Host header.
     ///
     /// [1]: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#setting-serveraddress-and-serverport-attributes
-    fn server_socket_address(&self) -> Option<SocketAddr>;
+    fn server_host(&self) -> Option<String>;
 
     /// Returns the matched path, like `/object/:object_id/tags`.
     ///
@@ -211,9 +216,33 @@ pub trait RequestExt {
 }
 
 impl RequestExt for Request {
-    fn server_socket_address(&self) -> Option<SocketAddr> {
-        let host = self.extensions().get::<Host>()?;
-        SocketAddr::from_str(&host.0).ok()
+    fn server_host(&self) -> Option<String> {
+        // There is currently no obvious way to use the Host extractor from Axum
+        // directly. Using that extractor either requires impossible code (async
+        // in the Service's call function, unnecessary cloning or consuming self
+        // and returning a newly created request). That's why the following
+        // section mirrors the Axum extractor implementation. The implementation
+        // currently only looks for the X-Forwarded-Host / Host header and falls
+        // back to the request URI host. The Axum implementation also extracts
+        // data from the Forwarded header.
+
+        if let Some(host) = self
+            .headers()
+            .get(X_FORWARDED_HOST_HEADER_KEY)
+            .and_then(|host| host.to_str().ok())
+        {
+            return Some(host.to_owned());
+        }
+
+        if let Some(host) = self.headers().get(HOST).and_then(|host| host.to_str().ok()) {
+            return Some(host.to_owned());
+        }
+
+        if let Some(host) = self.uri().host() {
+            return Some(host.to_owned());
+        }
+
+        None
     }
 
     fn client_socket_address(&self) -> Option<SocketAddr> {
@@ -363,9 +392,11 @@ impl SpanExt for Span {
         // Setting server.address and server.port
         // See https://opentelemetry.io/docs/specs/semconv/http/http-spans/#setting-serveraddress-and-serverport-attributes
 
-        if let Some(server_socket_address) = req.server_socket_address() {
-            span.record("server.address", server_socket_address.ip().to_string())
-                .record("server.port", server_socket_address.port());
+        if let Some(host) = req.server_host() {
+            // TODO (@Techassi): Get a little more clever about parsing the host
+            // info as IP address and port
+            span.record("server.address", host);
+            // .record("server.port", server_addr.port());
         }
 
         // Setting fields according to the HTTP server semantic conventions
