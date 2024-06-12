@@ -172,15 +172,12 @@ where
 }
 
 #[derive(Debug, Snafu)]
-pub enum ServerHostError<'a> {
+pub enum ServerHostError {
     #[snafu(display("failed to parse port {port:?} as u16 from string"))]
-    ParsePort {
-        source: ParseIntError,
-        port: &'a str,
-    },
+    ParsePort { source: ParseIntError, port: String },
 
-    #[snafu(display("encountered invalid request scheme {scheme:?}", scheme = scheme.unwrap_or_default()))]
-    InvalidScheme { scheme: Option<&'a str> },
+    #[snafu(display("encountered invalid request scheme {scheme:?}"))]
+    InvalidScheme { scheme: String },
 
     #[snafu(display("failed to extract any host information from request"))]
     ExtractHost,
@@ -289,10 +286,10 @@ impl RequestExt for Request {
     }
 }
 
-fn server_host_to_tuple<'a>(
-    host: &'a str,
-    scheme: Option<&'a str>,
-) -> Result<(String, u16), ServerHostError<'a>> {
+fn server_host_to_tuple(
+    host: &str,
+    scheme: Option<&str>,
+) -> Result<(String, u16), ServerHostError> {
     if let Some((host, port)) = host.split_once(':') {
         // First, see if the host header value contains a colon indicating that
         // it includes a non-default port.
@@ -305,7 +302,7 @@ fn server_host_to_tuple<'a>(
             Some("https") => DEFAULT_HTTPS_PORT,
             Some("http") => DEFAULT_HTTP_PORT,
             Some(scheme) => return InvalidSchemeSnafu { scheme }.fail(),
-            _ => return InvalidSchemeSnafu { scheme: None }.fail(),
+            _ => return InvalidSchemeSnafu { scheme: "" }.fail(),
         };
 
         Ok((host.to_owned(), port))
