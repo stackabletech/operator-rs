@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.69.3] - 2024-06-12
+
 ### Fixed
 
 - Processing of corrupted log events fixed; If errors occur, the error
