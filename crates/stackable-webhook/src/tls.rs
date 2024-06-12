@@ -6,6 +6,7 @@ use axum::{extract::Request, Router};
 use futures_util::pin_mut;
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
+use opentelemetry::trace::FutureExt;
 use snafu::{ResultExt, Snafu};
 use stackable_certs::{ca::CertificateAuthority, keys::rsa, CertificatePairError};
 use stackable_operator::time::Duration;
@@ -19,7 +20,8 @@ use tokio_rustls::{
     TlsAcceptor,
 };
 use tower::Service;
-use tracing::instrument;
+use tracing::{instrument, Span};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -171,7 +173,9 @@ impl TlsServer {
                     // tower's `Service` requires `&mut self`.
                     //
                     // We don't need to call `poll_ready` since `Router` is always ready.
-                    router.clone().call(request)
+
+                    let otel_context = Span::current().context();
+                    router.clone().call(request).with_context(otel_context)
                 });
 
                 if let Err(err) = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())

@@ -18,7 +18,7 @@ use axum::{
     response::Response,
 };
 use futures_util::ready;
-use opentelemetry::trace::SpanKind;
+use opentelemetry::{trace::SpanKind, Context};
 use pin_project::pin_project;
 use tower::{Layer, Service};
 use tracing::{field::Empty, Span};
@@ -295,6 +295,8 @@ pub trait SpanExt {
 
 impl SpanExt for Span {
     fn from_request(req: &Request, opt_in: bool) -> Self {
+        let _otel_context_guard = Context::current();
+
         let http_method = req.method().as_str();
         let span_name = req.span_name();
         let url = req.uri();

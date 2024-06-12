@@ -2932,6 +2932,7 @@ dependencies = [
  "hyper-util",
  "k8s-openapi",
  "kube",
+ "opentelemetry",
  "serde_json",
  "snafu 0.8.2",
  "stackable-certs",
@@ -2942,6 +2943,7 @@ dependencies = [
  "tower",
  "tower-http",
  "tracing",
+ "tracing-opentelemetry",
 ]
 
 [[package]]
