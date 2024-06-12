@@ -19,7 +19,7 @@ use tokio_rustls::{
     },
     TlsAcceptor,
 };
-use tower::Service;
+use tower::{Service, ServiceExt};
 use tracing::{field::Empty, instrument, Instrument, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
@@ -140,10 +140,24 @@ impl TlsServer {
                     socket_addr: self.socket_addr,
                 })?;
 
+        // To be able to extract the connect info from incoming requests, it is
+        // required to turn the router into a Tower service which is capable of
+        // doing that. Calling `into_make_service_with_connect_info` returns a
+        // new struct `IntoMakeServiceWithConnectInfo` which implements the
+        // Tower Service trait. This service is called after the TCP connection
+        // has been accepted.
+        //
+        // Inspired by:
+        // - https://github.com/tokio-rs/axum/discussions/2397
+        // - https://github.com/tokio-rs/axum/blob/b02ce307371a973039018a13fa012af14775948c/examples/serve-with-hyper/src/main.rs#L98
+
+        let mut router = self
+            .router
+            .into_make_service_with_connect_info::<SocketAddr>();
+
         pin_mut!(tcp_listener);
         loop {
             let tls_acceptor = tls_acceptor.clone();
-            let router = self.router.clone();
 
             // Wait for new tcp connection
             let (tcp_stream, remote_addr) = match tcp_listener.accept().await {
@@ -153,6 +167,10 @@ impl TlsServer {
                     continue;
                 }
             };
+
+            // Here, the connect info is extracted by calling Tower's Service
+            // trait function on `IntoMakeServiceWithConnectInfo`
+            let tower_service = router.call(remote_addr).await.unwrap();
 
             let span = tracing::debug_span!("accept tcp connection");
             tokio::spawn(
@@ -208,19 +226,18 @@ impl TlsServer {
                     // Hyper also has its own `Service` trait and doesn't use tower. We can use
                     // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
                     // `tower::Service::call`.
-                    let service = service_fn(move |request: Request<Incoming>| {
-                        // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
-                        // tower's `Service` requires `&mut self`.
-                        //
-                        // We don't need to call `poll_ready` since `Router` is always ready.
-
+                    let hyper_service = service_fn(move |request: Request<Incoming>| {
                         let otel_context = Span::current().context();
-                        router.clone().call(request).with_context(otel_context)
+                        // We need to clone here, because oneshot consumes self
+                        tower_service
+                            .clone()
+                            .oneshot(request)
+                            .with_context(otel_context)
                     });
 
                     let span = tracing::debug_span!("serve connection");
                     hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
-                        .serve_connection_with_upgrades(tls_stream, service)
+                        .serve_connection_with_upgrades(tls_stream, hyper_service)
                         .instrument(span.clone())
                         .await
                         .unwrap_or_else(|err| {

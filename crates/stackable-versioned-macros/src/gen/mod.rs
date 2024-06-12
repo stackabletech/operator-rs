@@ -1,11 +1,7 @@
 use proc_macro2::TokenStream;
-use quote::ToTokens;
 use syn::{spanned::Spanned, Data, DeriveInput, Error, Result};
 
-use crate::{
-    attrs::container::ContainerAttributes,
-    gen::{version::ContainerVersion, vstruct::VersionedStruct},
-};
+use crate::{attrs::container::ContainerAttributes, gen::vstruct::VersionedStruct};
 
 pub(crate) mod field;
 pub(crate) mod neighbors;
@@ -26,7 +22,7 @@ pub(crate) mod vstruct;
 
 pub(crate) fn expand(attrs: ContainerAttributes, input: DeriveInput) -> Result<TokenStream> {
     let expanded = match input.data {
-        Data::Struct(data) => VersionedStruct::new(input.ident, data, attrs)?.to_token_stream(),
+        Data::Struct(data) => VersionedStruct::new(input.ident, data, attrs)?.generate_tokens(),
         _ => {
             return Err(Error::new(
                 input.span(),
@@ -36,8 +32,4 @@ pub(crate) fn expand(attrs: ContainerAttributes, input: DeriveInput) -> Result<T
     };
 
     Ok(expanded)
-}
-
-pub(crate) trait ToTokensExt {
-    fn to_tokens_for_version(&self, version: &ContainerVersion) -> Option<TokenStream>;
 }

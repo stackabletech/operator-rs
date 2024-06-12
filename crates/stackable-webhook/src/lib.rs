@@ -170,6 +170,7 @@ impl WebhookServer {
     async fn run_server(self) -> Result<()> {
         tracing::debug!("run webhook server");
 
+        // TODO (@Techassi): Make opt-in configurable from the outside
         // Create an OpenTelemetry tracing layer
         tracing::trace!("create tracing service (layer)");
         let trace_layer = AxumTraceLayer::new().with_opt_in();
