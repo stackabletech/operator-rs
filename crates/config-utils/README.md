@@ -4,6 +4,8 @@ This utility currently only supports filling your config with contents from envi
 
 ## Templating
 
+> **_TIP:_** The concept was heavily inspired by [Druids configuration interpolation](https://druid.apache.org/docs/latest/configuration/#configuration-interpolation).
+
 Imagine the following `example.xml`:
 
 ```xml
