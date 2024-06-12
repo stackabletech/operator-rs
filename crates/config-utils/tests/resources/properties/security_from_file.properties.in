@@ -1,3 +1,0 @@
-networkaddress.cache.negative.ttl=0
-networkaddress.cache.ttl=${file:UTF-8:/etc/hostname}
-meine.suß.Pröpertie=42,3
