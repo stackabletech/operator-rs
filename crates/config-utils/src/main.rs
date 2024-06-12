@@ -1,5 +1,5 @@
 use clap::Parser;
-use config_utils::templating::{self, template};
+use config_utils::template::{self, template};
 use snafu::{ResultExt, Snafu};
 
 use cli_args::{Args, Command};
@@ -9,7 +9,7 @@ mod cli_args;
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Failed to template file"))]
-    TemplateFile { source: templating::Error },
+    TemplateFile { source: template::Error },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;

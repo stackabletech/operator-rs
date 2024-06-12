@@ -1,5 +1,5 @@
 pub mod file_types;
-pub mod templating;
+pub mod template;
 
 pub const ENV_VAR_PATTERN_START: &str = "${env:";
 pub const ENV_VAR_PATTERN_END: &str = "}";

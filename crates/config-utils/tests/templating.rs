@@ -7,7 +7,7 @@ use std::{
 
 use rstest::rstest;
 
-use config_utils::templating::template;
+use config_utils::template::template;
 use tempfile::tempdir;
 
 #[rstest]
