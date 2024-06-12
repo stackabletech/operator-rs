@@ -8,12 +8,7 @@
 
 use opentelemetry::KeyValue;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
-use opentelemetry_sdk::{
-    logs,
-    propagation::TraceContextPropagator,
-    trace::{self, RandomIdGenerator, Sampler},
-    Resource,
-};
+use opentelemetry_sdk::{logs, propagation::TraceContextPropagator, trace, Resource};
 use opentelemetry_semantic_conventions::resource;
 use snafu::{ResultExt as _, Snafu};
 use tracing::{level_filters::LevelFilter, subscriber::SetGlobalDefaultError};
@@ -186,15 +181,9 @@ impl Tracing {
             let otel_tracer = opentelemetry_otlp::new_pipeline()
                 .tracing()
                 .with_exporter(trace_exporter)
-                .with_trace_config(
-                    trace::config()
-                        .with_sampler(Sampler::AlwaysOn) // TODO (@NickLarsenNZ): Make this configurable. See also Sampler::ParentBased
-                        .with_id_generator(RandomIdGenerator::default())
-                        .with_resource(Resource::new(vec![KeyValue::new(
-                            resource::SERVICE_NAME,
-                            self.service_name,
-                        )])),
-                )
+                .with_trace_config(trace::config().with_resource(Resource::new(vec![
+                    KeyValue::new(resource::SERVICE_NAME, self.service_name),
+                ])))
                 .install_batch(opentelemetry_sdk::runtime::Tokio)
                 .context(InstallOtelTraceExporterSnafu)?;
 
