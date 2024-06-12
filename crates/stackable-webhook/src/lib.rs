@@ -178,6 +178,7 @@ impl WebhookServer {
         // by the Axum project.
         //
         // See https://docs.rs/axum/latest/axum/middleware/index.html#applying-multiple-middleware
+        // TODO (@NickLarsenNZ): rename this server_builder and keep it specific to tracing, since it's placement in the chain is important
         let service_builder = ServiceBuilder::new().layer(trace_layer);
 
         // Create the root router and merge the provided router into it.
