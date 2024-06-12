@@ -152,7 +152,6 @@ impl ConversionWebhookServer {
 
     /// Starts the conversion webhook server by starting the underlying
     /// [`WebhookServer`].
-    #[instrument(name = "run_conversion_webhook_server", skip(self), fields(self.options))]
     pub async fn run(self) -> Result<(), crate::Error> {
         debug!("run conversion webhook server");
 

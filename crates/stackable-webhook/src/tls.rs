@@ -19,7 +19,7 @@ use tokio_rustls::{
     TlsAcceptor,
 };
 use tower::Service;
-use tracing::{instrument, trace, warn};
+use tracing::instrument;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -129,7 +129,6 @@ impl TlsServer {
     /// bound socket address. It only accepts TLS connections. Internally each
     /// TLS stream get handled by a Hyper service, which in turn is an Axum
     /// router.
-    #[instrument(name = "run_tls_server", skip(self), fields(self.socket_addr, self.config))]
     pub async fn run(self) -> Result<()> {
         let tls_acceptor = TlsAcceptor::from(self.config);
         let tcp_listener =
@@ -148,7 +147,7 @@ impl TlsServer {
             let (tcp_stream, remote_addr) = match tcp_listener.accept().await {
                 Ok((stream, addr)) => (stream, addr),
                 Err(err) => {
-                    warn!(%err, "failed to accept incoming TCP connection");
+                    tracing::warn!(%err, "failed to accept incoming TCP connection");
                     continue;
                 }
             };
@@ -156,7 +155,7 @@ impl TlsServer {
             tokio::spawn(async move {
                 // Wait for tls handshake to happen
                 let Ok(tls_stream) = tls_acceptor.accept(tcp_stream).await else {
-                    trace!(%remote_addr, "error during tls handshake connection");
+                    tracing::trace!(%remote_addr, "error during tls handshake connection");
                     return;
                 };
 
@@ -179,7 +178,7 @@ impl TlsServer {
                     .serve_connection_with_upgrades(tls_stream, service)
                     .await
                 {
-                    warn!(%err, %remote_addr, "failed to serve connection");
+                    tracing::warn!(%err, %remote_addr, "failed to serve connection");
                 }
             });
         }

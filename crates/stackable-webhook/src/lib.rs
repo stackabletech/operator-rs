@@ -30,7 +30,6 @@ use stackable_telemetry::AxumTraceLayer;
 use tokio::signal::unix::{signal, SignalKind};
 use tower::ServiceBuilder;
 // use tower_http::trace::TraceLayer;
-use tracing::{debug, instrument};
 
 use crate::tls::TlsServer;
 
@@ -141,17 +140,17 @@ impl WebhookServer {
             let mut sigint = signal(SignalKind::interrupt()).expect("create SIGINT listener");
             let mut sigterm = signal(SignalKind::terminate()).expect("create SIGTERM listener");
 
-            debug!("created unix signal handlers");
+            tracing::debug!("created unix signal handlers");
 
             select! {
                 signal = sigint.recv().fuse() => {
                     if signal.is_some() {
-                        debug!( "received SIGINT");
+                        tracing::debug!( "received SIGINT");
                     }
                 },
                 signal = sigterm.recv().fuse() => {
                     if signal.is_some() {
-                        debug!( "received SIGTERM");
+                        tracing::debug!( "received SIGTERM");
                     }
                 },
             };
@@ -168,12 +167,11 @@ impl WebhookServer {
 
     /// Runs the webhook server by creating a TCP listener and binding it to
     /// the specified socket address.
-    #[instrument(name = "run_webhook_server", skip(self), fields(self.options))]
     async fn run_server(self) -> Result<()> {
-        debug!("run webhook server");
+        tracing::debug!("run webhook server");
 
         // Create an OpenTelemetry tracing layer
-        debug!("create tracing service (layer)");
+        tracing::trace!("create tracing service (layer)");
         let trace_layer = AxumTraceLayer::new().with_opt_in();
 
         // Use a service builder to provide multiple layers at once. Recommended
@@ -183,7 +181,7 @@ impl WebhookServer {
         let service_builder = ServiceBuilder::new().layer(trace_layer);
 
         // Create the root router and merge the provided router into it.
-        debug!("create core router and merge provided router");
+        tracing::debug!("create core router and merge provided router");
         let router = self
             .router
             .layer(service_builder)
@@ -191,12 +189,12 @@ impl WebhookServer {
             .route("/health", get(|| async { "ok" }));
 
         // Create server for TLS termination
-        debug!("create TLS server");
+        tracing::debug!("create TLS server");
         let tls_server = TlsServer::new(self.options.socket_addr, router)
             .await
             .context(CreateTlsServerSnafu)?;
 
-        debug!("running TLS server");
+        tracing::info!("running TLS server");
         tls_server.run().await.context(RunTlsServerSnafu)
     }
 }
