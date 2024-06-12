@@ -7,8 +7,10 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Add support for setting the environment variable for each configured tracing subscriber ([#801]).
+- Use OpenTelemetry Context in Axum instrumentation layer, adjust log and span level, simplify trace config ([#811]).
 
 [#801]: https://github.com/stackabletech/operator-rs/pull/801
+[#811]: https://github.com/stackabletech/operator-rs/pull/811
 
 ## [0.1.0] - 2024-05-08
 
