@@ -10,7 +10,7 @@
 //!
 //! [1]: https://opentelemetry.io/
 //! [2]: https://opentelemetry.io/docs/specs/semconv/http/http-spans/
-use std::{future::Future, net::SocketAddr, task::Poll};
+use std::{future::Future, net::SocketAddr, num::ParseIntError, task::Poll};
 
 use axum::{
     extract::{ConnectInfo, MatchedPath, Request},
@@ -23,6 +23,7 @@ use axum::{
 use futures_util::ready;
 use opentelemetry::trace::SpanKind;
 use pin_project::pin_project;
+use snafu::{ResultExt, Snafu};
 use tower::{Layer, Service};
 use tracing::{debug, field::Empty, instrument, trace_span, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
@@ -34,6 +35,8 @@ pub use extractor::*;
 pub use injector::*;
 
 const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
+const DEFAULT_HTTPS_PORT: u16 = 443;
+const DEFAULT_HTTP_PORT: u16 = 80;
 
 /// A Tower [`Layer`][1] which decorates [`TraceService`].
 ///
@@ -168,6 +171,18 @@ where
     }
 }
 
+#[derive(Debug, Snafu)]
+pub enum ServerHostError {
+    #[snafu(display("failed to parse port as u16 from string"))]
+    ParsePort { source: ParseIntError },
+
+    #[snafu(display("encountered invalid request scheme"))]
+    InvalidScheme,
+
+    #[snafu(display("failed to extract any host information from request"))]
+    ExtractHost,
+}
+
 /// This trait provides various helper functions to extract data from a
 /// HTTP [`Request`].
 pub trait RequestExt {
@@ -191,7 +206,7 @@ pub trait RequestExt {
     /// > - The Host header.
     ///
     /// [1]: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#setting-serveraddress-and-serverport-attributes
-    fn server_host(&self) -> Option<String>;
+    fn server_host(&self) -> Result<(String, u16), ServerHostError>;
 
     /// Returns the matched path, like `/object/:object_id/tags`.
     ///
@@ -216,7 +231,7 @@ pub trait RequestExt {
 }
 
 impl RequestExt for Request {
-    fn server_host(&self) -> Option<String> {
+    fn server_host(&self) -> Result<(String, u16), ServerHostError> {
         // There is currently no obvious way to use the Host extractor from Axum
         // directly. Using that extractor either requires impossible code (async
         // in the Service's call function, unnecessary cloning or consuming self
@@ -231,18 +246,18 @@ impl RequestExt for Request {
             .get(X_FORWARDED_HOST_HEADER_KEY)
             .and_then(|host| host.to_str().ok())
         {
-            return Some(host.to_owned());
+            return server_host_to_tuple(host, self.uri().scheme_str());
         }
 
         if let Some(host) = self.headers().get(HOST).and_then(|host| host.to_str().ok()) {
-            return Some(host.to_owned());
+            return server_host_to_tuple(host, self.uri().scheme_str());
         }
 
-        if let Some(host) = self.uri().host() {
-            return Some(host.to_owned());
+        if let (Some(host), Some(port)) = (self.uri().host(), self.uri().port_u16()) {
+            return Ok((host.to_owned(), port));
         }
 
-        None
+        ExtractHostSnafu.fail()
     }
 
     fn client_socket_address(&self) -> Option<SocketAddr> {
@@ -268,6 +283,28 @@ impl RequestExt for Request {
         self.headers()
             .get(USER_AGENT)
             .map(|ua| ua.to_str().unwrap_or_default())
+    }
+}
+
+fn server_host_to_tuple(
+    host: &str,
+    scheme: Option<&str>,
+) -> Result<(String, u16), ServerHostError> {
+    if let Some((host, port)) = host.split_once(':') {
+        // First, see if the host header value contains a colon indicating that
+        // it includes a non-default port.
+        let port: u16 = port.parse().context(ParsePortSnafu)?;
+        Ok((host.to_owned(), port))
+    } else {
+        // If there is no port included in the header value, the port is implied.
+        // Port 443 for HTTPS and port 80 for HTTP.
+        let port = match scheme {
+            Some("https") => DEFAULT_HTTPS_PORT,
+            Some("http") => DEFAULT_HTTP_PORT,
+            _ => return InvalidSchemeSnafu.fail(),
+        };
+
+        Ok((host.to_owned(), port))
     }
 }
 
@@ -367,6 +404,7 @@ impl SpanExt for Span {
             otel.status_message = Empty,
             http.request.method = http_method,
             http.response.status_code = Empty,
+            http.route = Empty,
             url.path = url.path(),
             url.query = url.query(),
             url.scheme = url.scheme_str().unwrap_or_default(),
@@ -375,8 +413,6 @@ impl SpanExt for Span {
             server.port = Empty,
             client.address = Empty,
             client.port = Empty,
-            http.route = Empty,
-            http.response.status_code = Empty,
             // TODO (@Techassi): Add network.protocol.version
         );
 
@@ -392,11 +428,12 @@ impl SpanExt for Span {
         // Setting server.address and server.port
         // See https://opentelemetry.io/docs/specs/semconv/http/http-spans/#setting-serveraddress-and-serverport-attributes
 
-        if let Some(host) = req.server_host() {
-            // TODO (@Techassi): Get a little more clever about parsing the host
-            // info as IP address and port
-            span.record("server.address", host);
-            // .record("server.port", server_addr.port());
+        if let Ok((host, port)) = req.server_host() {
+            // NOTE (@Techassi): We cast to i64, because otherwise the field
+            // will NOT be recorded as a number but as a string. This is likely
+            // an issue in the tracing-opentelemetry crate.
+            span.record("server.address", host)
+                .record("server.port", port as i64);
         }
 
         // Setting fields according to the HTTP server semantic conventions
@@ -406,7 +443,10 @@ impl SpanExt for Span {
             span.record("client.address", client_socket_address.ip().to_string());
 
             if opt_in {
-                span.record("client.port", client_socket_address.port());
+                // NOTE (@Techassi): We cast to i64, because otherwise the field
+                // will NOT be recorded as a number but as a string. This is
+                // likely an issue in the tracing-opentelemetry crate.
+                span.record("client.port", client_socket_address.port() as i64);
             }
         }
 
@@ -414,16 +454,10 @@ impl SpanExt for Span {
         // potentially be an expensive operation when many different headers
         // are present. The OpenTelemetry spec also marks this as opt-in.
 
-        // NOTE (@Techassi): Currently, tracing doesn't support recording
-        // fields which are not registered at span creation which thus makes
-        // it impossible to record request headers at runtime.
+        // FIXME (@Techassi): Currently, tracing doesn't support recording
+        // fields which are not registered at span creation which thus makes it
+        // impossible to record request headers at runtime.
         // See: https://github.com/tokio-rs/tracing/issues/1343
-
-        // FIXME (@Techassi): Add support for this when tracing allows dynamic
-        // fields.
-        // if opt_in {
-        //     span.add_header_fields(req.headers())
-        // }
 
         if let Some(http_route) = req.matched_path() {
             span.record("http.route", http_route.as_str());
@@ -451,7 +485,11 @@ impl SpanExt for Span {
 
     fn finalize_with_response(&self, response: &mut Response) {
         let status_code = response.status();
-        self.record("http.response.status_code", status_code.as_u16());
+
+        // NOTE (@Techassi): We cast to i64, because otherwise the field will
+        // NOT be recorded as a number but as a string. This is likely an issue
+        // in the tracing-opentelemetry crate.
+        self.record("http.response.status_code", status_code.as_u16() as i64);
 
         // Only set the span status to "Error" when we encountered an server
         // error. See:
