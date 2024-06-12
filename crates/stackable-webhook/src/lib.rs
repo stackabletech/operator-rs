@@ -127,9 +127,8 @@ impl WebhookServer {
     /// let router = Router::new();
     /// let server = WebhookServer::new(router, options);
     /// ```
-    #[instrument(name = "create_webhook_server", skip(router))]
     pub fn new(router: Router, options: Options) -> Self {
-        debug!("create new webhook server");
+        tracing::trace!("create new webhook server");
         Self { options, router }
     }
 

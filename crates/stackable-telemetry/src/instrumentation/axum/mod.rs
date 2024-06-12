@@ -21,7 +21,7 @@ use futures_util::ready;
 use opentelemetry::trace::SpanKind;
 use pin_project::pin_project;
 use tower::{Layer, Service};
-use tracing::{debug, field::Empty, instrument, trace_span, Span};
+use tracing::{field::Empty, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 mod extractor;
@@ -83,7 +83,6 @@ impl<S> Layer<S> for TraceLayer {
 
 impl TraceLayer {
     /// Creates a new default trace layer.
-    #[instrument(name = "create_trace_layer")]
     pub fn new() -> Self {
         Self::default()
     }
@@ -300,7 +299,7 @@ impl SpanExt for Span {
         let span_name = req.span_name();
         let url = req.uri();
 
-        debug!(
+        tracing::trace!(
             http_method,
             span_name,
             ?url,
@@ -329,8 +328,7 @@ impl SpanExt for Span {
         // Setting common fields first
         // See https://opentelemetry.io/docs/specs/semconv/http/http-spans/#common-attributes
 
-        debug!("create http span");
-        let span = trace_span!(
+        let span = tracing::trace_span!(
             "HTTP request",
             otel.name = span_name,
             otel.kind = ?SpanKind::Server,
@@ -352,7 +350,7 @@ impl SpanExt for Span {
         );
 
         // Set the parent span based on the extracted context
-        debug!("set parent span based on extracted context");
+        tracing::trace!("set parent span based on extracted context");
         let parent = HeaderExtractor::new(req.headers()).extract_context();
         span.set_parent(parent);
 
