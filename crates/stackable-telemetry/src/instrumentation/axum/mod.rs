@@ -389,7 +389,7 @@ impl SpanExt for Span {
         // - https://github.com/tokio-rs/tracing/pull/732
         //
         // Additionally we cannot use consts for field names. There was an
-        // upstream PR to add support for it, but it was unexpectingly closed.
+        // upstream PR to add support for it, but it was unexpectedly closed.
         // See https://github.com/tokio-rs/tracing/pull/2254.
         //
         // If this is eventually supported (maybe with our efforts), we can use
