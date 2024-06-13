@@ -1,7 +1,8 @@
 use darling::FromField;
+use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{DataStruct, Ident, Result};
+use syn::{DataStruct, Error, Ident, Result};
 
 use crate::{
     attrs::{container::ContainerAttributes, field::FieldAttributes},
@@ -75,6 +76,30 @@ impl VersionedStruct {
             fields,
             ident,
         })
+    }
+
+    pub(crate) fn check_rename_collisions(&self) -> Result<()> {
+        for version in &self.versions {
+            let idents = self.get_all_field_idents_for_version(version);
+            if !idents.iter().all_unique() {
+                return Err(Error::new(
+                    self.ident.span(),
+                    "struct contains renamed fields which collide with other fields in version ...",
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn get_all_field_idents_for_version(&self, version: &ContainerVersion) -> Vec<Option<Ident>> {
+        let mut idents = Vec::new();
+
+        for field in &self.fields {
+            idents.push(field.get_ident(version).cloned());
+        }
+
+        idents
     }
 
     /// This generates the complete code for a single versioned struct.

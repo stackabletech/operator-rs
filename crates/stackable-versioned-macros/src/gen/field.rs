@@ -298,6 +298,16 @@ impl VersionedField {
             }
         }
     }
+
+    pub(crate) fn get_ident(&self, version: &ContainerVersion) -> Option<&Ident> {
+        match &self.chain {
+            Some(chain) => chain
+                .get(&version.inner)
+                .expect("internal error: chain must contain container version")
+                .get_ident(),
+            None => self.inner.ident.as_ref(),
+        }
+    }
 }
 
 #[derive(Debug)]
