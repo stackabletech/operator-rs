@@ -12,6 +12,8 @@ use crate::{
     ENV_VAR_PATTERN_END, ENV_VAR_PATTERN_START, FILE_PATTERN_END, FILE_PATTERN_START,
 };
 
+pub mod cli_args;
+
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Could not read file {file_name:?}"))]
@@ -125,7 +127,7 @@ pub fn template(file_name: &PathBuf, file_type: Option<&FileType>, escape: bool)
             })?;
     }
 
-    fs::rename(&tmp_file_name, &file_name).context(RenameTemporaryFileSnafu {
+    fs::rename(&tmp_file_name, file_name).context(RenameTemporaryFileSnafu {
         tmp_file_name,
         destination_file_name: file_name,
     })?;

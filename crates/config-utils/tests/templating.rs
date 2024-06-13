@@ -2,7 +2,7 @@ use std::{
     env,
     fs::{self, File},
     io::Write,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use rstest::rstest;
@@ -21,13 +21,13 @@ fn test_file_templating(#[files("tests/resources/**/*.in")] test_file_in: PathBu
     fs::copy(&test_file_in, &test_file).unwrap();
     template(&test_file, None, true).unwrap();
 
-    let actual = fs::read_to_string(&test_file).unwrap();
-    let expected = fs::read_to_string(&test_file_expected).unwrap();
+    let actual = fs::read_to_string(test_file).unwrap();
+    let expected = fs::read_to_string(test_file_expected).unwrap();
 
     similar_asserts::assert_eq!(actual, expected);
 }
 
-fn set_example_envs(example_dir: &PathBuf) {
+fn set_example_envs(example_dir: &Path) {
     // SAFETY: We only use a single thread to set this env vars
     env::set_var("ENV_TEST", "foo");
     env::set_var("ENV_TEST_USERNAME", "example user");

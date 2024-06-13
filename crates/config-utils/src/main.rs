@@ -1,5 +1,5 @@
 use clap::Parser;
-use config_utils::template::{self, template};
+use config_utils::template::{self, cli_args::TemplateCommand, template};
 use snafu::{ResultExt, Snafu};
 
 use cli_args::{Args, Command};
@@ -19,11 +19,11 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     match args.command {
-        Command::Template {
+        Command::Template(TemplateCommand {
             file,
             file_type,
             dont_escape,
-        } => {
+        }) => {
             template(&file, file_type.as_ref(), !dont_escape).context(TemplateFileSnafu)?;
         }
     }
