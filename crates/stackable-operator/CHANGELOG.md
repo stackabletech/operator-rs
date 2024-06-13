@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Product image selection pull request version override now only applies to pull requests ([#812]).
+
+[#812]: https://github.com/stackabletech/operator-rs/pull/812
+
 ## [0.69.3] - 2024-06-12
 
 ### Fixed
