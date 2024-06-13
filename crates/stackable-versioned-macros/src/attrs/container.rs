@@ -1,14 +1,15 @@
-use std::{cmp::Ordering, collections::HashSet, ops::Deref};
+use std::{cmp::Ordering, ops::Deref};
 
 use darling::{
     util::{Flag, SpannedValue},
     Error, FromMeta, Result,
 };
+use itertools::Itertools;
 use k8s_version::Version;
 
 /// This struct contains supported container attributes.
 ///
-/// Currently supported atttributes are:
+/// Currently supported attributes are:
 ///
 /// - `version`, which can occur one or more times. See [`VersionAttributes`].
 /// - `options`, which allow further customization of the generated code. See [`ContainerOptions`].
@@ -33,7 +34,7 @@ impl ContainerAttributes {
         // should be at least one version if the derive macro is used.
         if self.versions.is_empty() {
             return Err(Error::custom(
-                "attribute `#[versioned()]` must contain at least one `version`",
+                "attribute macro `#[versioned()]` must contain at least one `version`",
             )
             .with_span(&self.versions.span()));
         }
@@ -63,18 +64,19 @@ impl ContainerAttributes {
         // which will skip nothing, because nothing is generated in the first
         // place.
 
-        // Ensure every version is unique and isn't declared multiple times. This
-        // is inspired by the itertools all_unique function.
-        let mut unique = HashSet::new();
+        // Ensure every version is unique and isn't declared multiple times.
+        let duplicates = self
+            .versions
+            .iter()
+            .duplicates_by(|e| e.name)
+            .map(|e| e.name)
+            .join(", ");
 
-        for version in &*self.versions {
-            if !unique.insert(version.name) {
-                return Err(Error::custom(format!(
-                    "attribute `#[versioned()]` contains duplicate version `name`: {name}",
-                    name = version.name
-                ))
-                .with_span(&self.versions.span()));
-            }
+        if !duplicates.is_empty() {
+            return Err(Error::custom(format!(
+                "attribute macro `#[versioned()]` contains duplicate versions: {duplicates}",
+            ))
+            .with_span(&self.versions.span()));
         }
 
         Ok(self)
