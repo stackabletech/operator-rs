@@ -22,11 +22,7 @@ pub(crate) mod vstruct;
 
 pub(crate) fn expand(attrs: ContainerAttributes, input: DeriveInput) -> Result<TokenStream> {
     let expanded = match input.data {
-        Data::Struct(data) => {
-            let versioned_struct = VersionedStruct::new(input.ident, data, attrs)?;
-            versioned_struct.check_rename_collisions()?;
-            versioned_struct.generate_tokens()
-        }
+        Data::Struct(data) => VersionedStruct::new(input.ident, data, attrs)?.generate_tokens(),
         _ => {
             return Err(Error::new(
                 input.span(),

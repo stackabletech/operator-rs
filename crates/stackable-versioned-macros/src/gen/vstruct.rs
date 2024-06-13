@@ -64,6 +64,29 @@ impl VersionedStruct {
             fields.push(versioned_field);
         }
 
+        // Check for field ident collisions
+        for version in &versions {
+            // Collect the idents of all fields for a single version and then
+            // ensure that all idents are unique. If they are not, return an
+            // error.
+            let mut idents = Vec::new();
+
+            // TODO (@Techassi): Report which field(s) use a duplicate ident and
+            // also hint what can be done to fix it based on the field action /
+            // status.
+
+            for field in &fields {
+                idents.push(field.get_ident(version))
+            }
+
+            if !idents.iter().all_unique() {
+                return Err(Error::new(
+                    ident.span(),
+                    format!("struct contains renamed fields which collide with other fields in version {version}", version = version.inner),
+                ));
+            }
+        }
+
         let from_ident = format_ident!("__sv_{ident}", ident = ident.to_string().to_lowercase());
 
         Ok(Self {
@@ -76,30 +99,6 @@ impl VersionedStruct {
             fields,
             ident,
         })
-    }
-
-    pub(crate) fn check_rename_collisions(&self) -> Result<()> {
-        for version in &self.versions {
-            let idents = self.get_all_field_idents_for_version(version);
-            if !idents.iter().all_unique() {
-                return Err(Error::new(
-                    self.ident.span(),
-                    "struct contains renamed fields which collide with other fields in version ...",
-                ));
-            }
-        }
-
-        Ok(())
-    }
-
-    fn get_all_field_idents_for_version(&self, version: &ContainerVersion) -> Vec<Option<Ident>> {
-        let mut idents = Vec::new();
-
-        for field in &self.fields {
-            idents.push(field.get_ident(version).cloned());
-        }
-
-        idents
     }
 
     /// This generates the complete code for a single versioned struct.
