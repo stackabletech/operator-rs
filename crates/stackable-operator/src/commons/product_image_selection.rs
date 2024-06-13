@@ -130,8 +130,14 @@ impl ProductImage {
                 let stackable_version = match &image_selection.stackable_version {
                     Some(stackable_version) => stackable_version,
                     None => {
-                        if operator_version.starts_with("0.0.0-") {
-                            "0.0.0-dev"
+                        if operator_version.starts_with("0.0.0-pr") {
+                            let override_version = "0.0.0-dev";
+                            tracing::warn!(
+                                operator_version,
+                                override_version,
+                                "operator is built by pull request, using dev build of product image"
+                            );
+                            override_version
                         } else {
                             operator_version
                         }
