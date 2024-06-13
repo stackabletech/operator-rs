@@ -177,7 +177,6 @@ impl TlsServer {
                 async move {
                     let span = tracing::trace_span!(
                         "accept tls connection",
-                        // otel.name = "accept tls connection",
                         "otel.kind" = ?SpanKind::Server,
                         "otel.status_code" = Empty,
                         "otel.status_message" = Empty,
@@ -189,8 +188,6 @@ impl TlsServer {
                         "network.local.port" = Empty,
                         "network.peer.address" = Empty,
                         "network.peer.port" = Empty,
-                        // network.protocol.name = Empty, // at this layer, we don't know the application protocol
-                        // network.protocol.version = Empty, // doesn't make sense for tcp
                         "network.transport" = "tcp",
                         "network.type" = self.socket_addr.semantic_convention_network_type(),
                     );
