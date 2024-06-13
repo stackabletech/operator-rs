@@ -180,14 +180,14 @@ impl TlsServer {
                         "otel.kind" = ?SpanKind::Server,
                         "otel.status_code" = Empty,
                         "otel.status_message" = Empty,
-                        "server.address" = Empty,
-                        "server.port" = Empty,
                         "client.address" = Empty,
                         "client.port" = Empty,
-                        "network.local.address" = Empty,
-                        "network.local.port" = Empty,
+                        "server.address" = Empty,
+                        "server.port" = Empty,
                         "network.peer.address" = Empty,
                         "network.peer.port" = Empty,
+                        "network.local.address" = Empty,
+                        "network.local.port" = Empty,
                         "network.transport" = "tcp",
                         "network.type" = self.socket_addr.semantic_convention_network_type(),
                     );
@@ -196,9 +196,9 @@ impl TlsServer {
                         let addr = &local_addr.ip().to_string();
                         let port = local_addr.port();
                         span.record("server.address", addr)
-                            .record("server.port", port)
+                            .record("server.port", port as i64)
                             .record("network.local.address", addr)
-                            .record("network.local.port", port);
+                            .record("network.local.port", port as i64);
                     }
 
                     // Wait for tls handshake to happen
