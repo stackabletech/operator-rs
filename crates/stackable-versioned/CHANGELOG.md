@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Add support for versioned enums ([#CHANGEME]).
 - Add auto-generated `From<OLD> for NEW` implementations ([#790]).
 - Change from derive macro to attribute macro to be able to generate code
   _in place_ instead of _appending_ new code ([#793]).
@@ -14,6 +15,7 @@ All notable changes to this project will be documented in this file.
 [#784]: https://github.com/stackabletech/operator-rs/pull/784
 [#790]: https://github.com/stackabletech/operator-rs/pull/790
 [#793]: https://github.com/stackabletech/operator-rs/pull/793
+[#CHANGEME]: https://github.com/stackabletech/operator-rs/pull/CHANGEME
 
 ## [0.1.0] - 2024-05-08
 
