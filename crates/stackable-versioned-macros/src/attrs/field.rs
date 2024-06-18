@@ -48,7 +48,7 @@ pub(crate) struct AddedAttributes {
 
 fn default_default_fn() -> SpannedValue<Path> {
     SpannedValue::new(
-        syn::parse_str("std::default::Default::default").unwrap(),
+        syn::parse_str("std::default::Default::default").expect("internal error: path must parse"),
         Span::call_site(),
     )
 }
