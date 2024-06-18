@@ -13,6 +13,7 @@ proc-macro = true
 k8s-version = { path = "../k8s-version", features = ["darling"] }
 
 darling.workspace = true
+itertools.workspace = true
 proc-macro2.workspace = true
 syn.workspace = true
 quote.workspace = true

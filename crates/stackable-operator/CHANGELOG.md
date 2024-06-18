@@ -4,10 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Bump `kube` to 0.92.0. This required changes in a unit test, because
+  the `kube::runtime::watcher::Event` enum introduced new and renamed some
+  variants. Also see the following additional resources ([#804]).
+  - [Blog Post - Breaking Change](https://kube.rs/blog/2024/06/11/watcher-memory-improvements/#breaking-change)
+  - [kube#1494](https://github.com/kube-rs/kube/pull/1494)
+  - [kube#1504](https://github.com/kube-rs/kube/pull/1504)
+
 ### Fixed
 
 - Product image selection pull request version override now only applies to pull requests ([#812]).
 
+[#804]: https://github.com/stackabletech/operator-rs/pull/804
 [#812]: https://github.com/stackabletech/operator-rs/pull/812
 
 ## [0.69.3] - 2024-06-12
