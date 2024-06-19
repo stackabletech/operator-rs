@@ -6,8 +6,10 @@ use syn::{DataStruct, Error, Ident, Result};
 
 use crate::{
     attrs::{container::ContainerAttributes, field::FieldAttributes},
-    gen::{field::VersionedField, version::ContainerVersion},
+    gen::{common::ContainerVersion, vstruct::field::VersionedField},
 };
+
+mod field;
 
 /// Stores individual versions of a single struct. Each version tracks field
 /// actions, which describe if the field was added, renamed or deprecated in
@@ -39,7 +41,7 @@ impl VersionedStruct {
         attributes: ContainerAttributes,
     ) -> Result<Self> {
         // Convert the raw version attributes into a container version.
-        let versions = attributes
+        let versions: Vec<_> = attributes
             .versions
             .iter()
             .map(|v| ContainerVersion {
@@ -69,17 +71,12 @@ impl VersionedStruct {
             // Collect the idents of all fields for a single version and then
             // ensure that all idents are unique. If they are not, return an
             // error.
-            let mut idents = Vec::new();
 
             // TODO (@Techassi): Report which field(s) use a duplicate ident and
             // also hint what can be done to fix it based on the field action /
             // status.
 
-            for field in &fields {
-                idents.push(field.get_ident(version))
-            }
-
-            if !idents.iter().all_unique() {
+            if !fields.iter().map(|f| f.get_ident(version)).all_unique() {
                 return Err(Error::new(
                     ident.span(),
                     format!("struct contains renamed fields which collide with other fields in version {version}", version = version.inner),

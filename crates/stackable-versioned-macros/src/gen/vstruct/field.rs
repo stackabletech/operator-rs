@@ -9,7 +9,7 @@ use syn::{Field, Ident, Path};
 use crate::{
     attrs::field::FieldAttributes,
     consts::DEPRECATED_PREFIX,
-    gen::{neighbors::Neighbors, version::ContainerVersion},
+    gen::{common::ContainerVersion, neighbors::Neighbors},
 };
 
 /// A versioned field, which contains contains common [`Field`] data and a chain
@@ -158,7 +158,7 @@ impl VersionedField {
     ///
     /// This continuous chain ensures that when generating code (tokens), each
     /// field can lookup the status for a requested version.
-    pub(crate) fn insert_container_versions(&mut self, versions: &Vec<ContainerVersion>) {
+    pub(crate) fn insert_container_versions(&mut self, versions: &[ContainerVersion]) {
         if let Some(chain) = &mut self.chain {
             for version in versions {
                 if chain.contains_key(&version.inner) {

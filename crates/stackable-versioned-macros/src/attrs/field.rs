@@ -1,9 +1,13 @@
-use darling::{util::SpannedValue, Error, FromField, FromMeta};
-use k8s_version::Version;
-use proc_macro2::Span;
-use syn::{Field, Ident, Path};
+use darling::{Error, FromField};
+use syn::{Field, Ident};
 
-use crate::{attrs::container::ContainerAttributes, consts::DEPRECATED_PREFIX};
+use crate::{
+    attrs::{
+        common::{AddedAttributes, DeprecatedAttributes, RenamedAttributes},
+        container::ContainerAttributes,
+    },
+    consts::DEPRECATED_PREFIX,
+};
 
 /// This struct describes all available field attributes, as well as the field
 /// name to display better diagnostics.
@@ -36,33 +40,6 @@ pub(crate) struct FieldAttributes {
     pub(crate) renames: Vec<RenamedAttributes>,
 
     pub(crate) deprecated: Option<DeprecatedAttributes>,
-}
-
-#[derive(Clone, Debug, FromMeta)]
-pub(crate) struct AddedAttributes {
-    pub(crate) since: SpannedValue<Version>,
-
-    #[darling(rename = "default", default = "default_default_fn")]
-    pub(crate) default_fn: SpannedValue<Path>,
-}
-
-fn default_default_fn() -> SpannedValue<Path> {
-    SpannedValue::new(
-        syn::parse_str("std::default::Default::default").expect("internal error: path must parse"),
-        Span::call_site(),
-    )
-}
-
-#[derive(Clone, Debug, FromMeta)]
-pub(crate) struct RenamedAttributes {
-    pub(crate) since: SpannedValue<Version>,
-    pub(crate) from: SpannedValue<String>,
-}
-
-#[derive(Clone, Debug, FromMeta)]
-pub(crate) struct DeprecatedAttributes {
-    pub(crate) since: SpannedValue<Version>,
-    pub(crate) note: SpannedValue<String>,
 }
 
 impl FieldAttributes {
