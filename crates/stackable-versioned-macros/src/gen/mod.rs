@@ -3,7 +3,7 @@ use syn::{spanned::Spanned, Data, DeriveInput, Error, Result};
 
 use crate::{
     attrs::container::ContainerAttributes,
-    gen::{venum::VersionedEnum, vstruct::VersionedStruct},
+    gen::{common::Container, venum::VersionedEnum, vstruct::VersionedStruct},
 };
 
 pub(crate) mod common;

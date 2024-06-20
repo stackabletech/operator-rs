@@ -1,12 +1,14 @@
+use std::ops::Deref;
+
 use darling::FromField;
 use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{DataStruct, Error, Ident, Result};
+use syn::{DataStruct, Error, Ident};
 
 use crate::{
     attrs::{container::ContainerAttributes, field::FieldAttributes},
-    gen::{common::ContainerVersion, vstruct::field::VersionedField},
+    gen::common::{Container, ContainerVersion, Item, VersionedContainer, VersionedItem},
 };
 
 mod field;
@@ -16,30 +18,18 @@ mod field;
 /// that version. Fields which are not versioned, are included in every
 /// version of the struct.
 #[derive(Debug)]
-pub(crate) struct VersionedStruct {
-    /// The ident, or name, of the versioned struct.
-    pub(crate) ident: Ident,
+pub(crate) struct VersionedStruct(VersionedContainer);
 
-    /// The name of the struct used in `From` implementations.
-    pub(crate) from_ident: Ident,
+impl Deref for VersionedStruct {
+    type Target = VersionedContainer;
 
-    /// List of declared versions for this struct. Each version, except the
-    /// latest, generates a definition with appropriate fields.
-    pub(crate) versions: Vec<ContainerVersion>,
-
-    /// List of fields defined in the base struct. How, and if, a field should
-    /// generate code, is decided by the currently generated version.
-    pub(crate) fields: Vec<VersionedField>,
-
-    pub(crate) skip_from: bool,
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
-impl VersionedStruct {
-    pub(crate) fn new(
-        ident: Ident,
-        data: DataStruct,
-        attributes: ContainerAttributes,
-    ) -> Result<Self> {
+impl Container<DataStruct> for VersionedStruct {
+    fn new(ident: Ident, data: DataStruct, attributes: ContainerAttributes) -> syn::Result<Self> {
         // Convert the raw version attributes into a container version.
         let versions: Vec<_> = attributes
             .versions
@@ -55,15 +45,15 @@ impl VersionedStruct {
         // Extract the field attributes for every field from the raw token
         // stream and also validate that each field action version uses a
         // version declared by the container attribute.
-        let mut fields = Vec::new();
+        let mut items = Vec::new();
 
         for field in data.fields {
             let attrs = FieldAttributes::from_field(&field)?;
             attrs.validate_versions(&attributes, &field)?;
 
-            let mut versioned_field = VersionedField::new(field, attrs)?;
+            let mut versioned_field = VersionedItem::new(field, attrs);
             versioned_field.insert_container_versions(&versions);
-            fields.push(versioned_field);
+            items.push(versioned_field);
         }
 
         // Check for field ident collisions
@@ -76,7 +66,7 @@ impl VersionedStruct {
             // also hint what can be done to fix it based on the field action /
             // status.
 
-            if !fields.iter().map(|f| f.get_ident(version)).all_unique() {
+            if !items.iter().map(|f| f.get_ident(version)).all_unique() {
                 return Err(Error::new(
                     ident.span(),
                     format!("struct contains renamed fields which collide with other fields in version {version}", version = version.inner),
@@ -86,25 +76,19 @@ impl VersionedStruct {
 
         let from_ident = format_ident!("__sv_{ident}", ident = ident.to_string().to_lowercase());
 
-        Ok(Self {
+        Ok(Self(VersionedContainer {
             skip_from: attributes
                 .options
                 .skip
                 .map_or(false, |s| s.from.is_present()),
             from_ident,
             versions,
-            fields,
+            items,
             ident,
-        })
+        }))
     }
 
-    /// This generates the complete code for a single versioned struct.
-    ///
-    /// Internally, it will create a module for each declared version which
-    /// contains the struct with the appropriate fields. Additionally, it
-    /// generated `From` implementations, which enable conversion from an older
-    /// to a newer version.
-    pub(crate) fn generate_tokens(&self) -> TokenStream {
+    fn generate_tokens(&self) -> TokenStream {
         let mut token_stream = TokenStream::new();
         let mut versions = self.versions.iter().peekable();
 
@@ -114,7 +98,9 @@ impl VersionedStruct {
 
         token_stream
     }
+}
 
+impl VersionedStruct {
     fn generate_version(
         &self,
         version: &ContainerVersion,
@@ -155,8 +141,8 @@ impl VersionedStruct {
     fn generate_struct_fields(&self, version: &ContainerVersion) -> TokenStream {
         let mut token_stream = TokenStream::new();
 
-        for field in &self.fields {
-            token_stream.extend(field.generate_for_struct(version));
+        for item in &self.items {
+            token_stream.extend(item.generate_for_container(version));
         }
 
         token_stream
@@ -201,8 +187,8 @@ impl VersionedStruct {
     ) -> TokenStream {
         let mut token_stream = TokenStream::new();
 
-        for field in &self.fields {
-            token_stream.extend(field.generate_for_from_impl(version, next_version, from_ident))
+        for item in &self.items {
+            token_stream.extend(item.generate_for_from_impl(version, next_version, from_ident))
         }
 
         token_stream
