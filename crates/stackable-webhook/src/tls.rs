@@ -224,6 +224,7 @@ impl TlsServer {
                     // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
                     // `tower::Service::call`.
                     let hyper_service = service_fn(move |request: Request<Incoming>| {
+                        // This carries the current context with the trace id so that the TraceLayer can use that as a parent
                         let otel_context = Span::current().context();
                         // We need to clone here, because oneshot consumes self
                         tower_service
