@@ -12,7 +12,7 @@ All notable changes to this project will be documented in this file.
   - [Blog Post - Breaking Change](https://kube.rs/blog/2024/06/11/watcher-memory-improvements/#breaking-change)
   - [kube#1494](https://github.com/kube-rs/kube/pull/1494)
   - [kube#1504](https://github.com/kube-rs/kube/pull/1504)
-- Upgrade opentelemetry crates ([#811])
+- Upgrade opentelemetry crates ([#811]).
 
 ### Fixed
 
