@@ -12,12 +12,14 @@ All notable changes to this project will be documented in this file.
   - [Blog Post - Breaking Change](https://kube.rs/blog/2024/06/11/watcher-memory-improvements/#breaking-change)
   - [kube#1494](https://github.com/kube-rs/kube/pull/1494)
   - [kube#1504](https://github.com/kube-rs/kube/pull/1504)
+- Upgrade opentelemetry crates ([#811])
 
 ### Fixed
 
 - Product image selection pull request version override now only applies to pull requests ([#812]).
 
 [#804]: https://github.com/stackabletech/operator-rs/pull/804
+[#811]: https://github.com/stackabletech/operator-rs/pull/811
 [#812]: https://github.com/stackabletech/operator-rs/pull/812
 
 ## [0.69.3] - 2024-06-12
