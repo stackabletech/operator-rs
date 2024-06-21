@@ -445,14 +445,14 @@ impl SpanExt for Span {
         let new_parent = HeaderExtractor::new(req.headers()).extract_context();
         let new_span_context = new_parent.span().span_context().clone();
         let current_span_context = Context::current().span().span_context().clone();
-        
+
         if new_span_context != current_span_context {
             tracing::trace!(
                 opentelemetry.trace_id.from = ?current_span_context.trace_id(),
                 opentelemetry.trace_id.to = ?new_span_context.trace_id(),
                 "set parent span context based on context extracted from request headers"
             );
-            
+
             Span::current().add_link(new_parent.span().span_context().clone());
             span.add_link(Context::current().span().span_context().to_owned());
             span.set_parent(new_parent);
