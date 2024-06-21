@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## Changed
+
+- Remove instrumentation of long running functions, add more granular instrumentation of futures. Adjust span and event levels ([#811]).
+
 ### Fixed
 
 - Fix the extraction of `ConnectInfo` (data about the connection client) and
@@ -12,6 +16,7 @@ All notable changes to this project will be documented in this file.
   compatible traces ([#806]).
 
 [#806]: https://github.com/stackabletech/operator-rs/pull/806
+[#811]: https://github.com/stackabletech/operator-rs/pull/811
 
 ## [0.3.0] - 2024-05-08
 

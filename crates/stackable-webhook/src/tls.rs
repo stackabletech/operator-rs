@@ -6,6 +6,7 @@ use axum::{extract::Request, Router};
 use futures_util::pin_mut;
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
+use opentelemetry::trace::{FutureExt, SpanKind};
 use snafu::{ResultExt, Snafu};
 use stackable_certs::{ca::CertificateAuthority, keys::rsa, CertificatePairError};
 use stackable_operator::time::Duration;
@@ -19,7 +20,8 @@ use tokio_rustls::{
     TlsAcceptor,
 };
 use tower::{Service, ServiceExt};
-use tracing::{instrument, trace, warn};
+use tracing::{field::Empty, instrument, Instrument, Span};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -129,7 +131,6 @@ impl TlsServer {
     /// bound socket address. It only accepts TLS connections. Internally each
     /// TLS stream get handled by a Hyper service, which in turn is an Axum
     /// router.
-    #[instrument(name = "run_tls_server", skip(self), fields(self.socket_addr, self.config))]
     pub async fn run(self) -> Result<()> {
         let tls_acceptor = TlsAcceptor::from(self.config);
         let tcp_listener =
@@ -162,7 +163,7 @@ impl TlsServer {
             let (tcp_stream, remote_addr) = match tcp_listener.accept().await {
                 Ok((stream, addr)) => (stream, addr),
                 Err(err) => {
-                    warn!(%err, "failed to accept incoming TCP connection");
+                    tracing::trace!(%err, "failed to accept incoming TCP connection");
                     continue;
                 }
             };
@@ -171,32 +172,96 @@ impl TlsServer {
             // trait function on `IntoMakeServiceWithConnectInfo`
             let tower_service = router.call(remote_addr).await.unwrap();
 
-            tokio::spawn(async move {
-                // Wait for tls handshake to happen
-                let Ok(tls_stream) = tls_acceptor.accept(tcp_stream).await else {
-                    trace!(%remote_addr, "error during tls handshake connection");
-                    return;
-                };
+            let span = tracing::debug_span!("accept tcp connection");
+            tokio::spawn(
+                async move {
+                    let span = tracing::trace_span!(
+                        "accept tls connection",
+                        "otel.kind" = ?SpanKind::Server,
+                        "otel.status_code" = Empty,
+                        "otel.status_message" = Empty,
+                        "client.address" = remote_addr.ip().to_string(),
+                        "client.port" = remote_addr.port() as i64,
+                        "server.address" = Empty,
+                        "server.port" = Empty,
+                        "network.peer.address" = remote_addr.ip().to_string(),
+                        "network.peer.port" = remote_addr.port() as i64,
+                        "network.local.address" = Empty,
+                        "network.local.port" = Empty,
+                        "network.transport" = "tcp",
+                        "network.type" = self.socket_addr.semantic_convention_network_type(),
+                    );
 
-                // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
-                // `TokioIo` converts between them.
-                let tls_stream = TokioIo::new(tls_stream);
+                    if let Ok(local_addr) = tcp_stream.local_addr() {
+                        let addr = &local_addr.ip().to_string();
+                        let port = local_addr.port();
+                        span.record("server.address", addr)
+                            .record("server.port", port as i64)
+                            .record("network.local.address", addr)
+                            .record("network.local.port", port as i64);
+                    }
 
-                // Hyper also has its own `Service` trait and doesn't use tower. We can use
-                // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
-                // `tower::Service::call`.
-                let hyper_service = service_fn(move |request: Request<Incoming>| {
-                    // We need to clone here, because oneshot consumes self
-                    tower_service.clone().oneshot(request)
-                });
+                    // Wait for tls handshake to happen
+                    let tls_stream = match tls_acceptor
+                        .accept(tcp_stream)
+                        .instrument(span.clone())
+                        .await
+                    {
+                        Ok(tls_stream) => tls_stream,
+                        Err(err) => {
+                            span.record("otel.status_code", "Error")
+                                .record("otel.status_message", err.to_string());
+                            tracing::trace!(%remote_addr, "error during tls handshake connection");
+                            return;
+                        }
+                    };
 
-                if let Err(err) = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
-                    .serve_connection_with_upgrades(tls_stream, hyper_service)
-                    .await
-                {
-                    warn!(%err, %remote_addr, "failed to serve connection");
+                    // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
+                    // `TokioIo` converts between them.
+                    let tls_stream = TokioIo::new(tls_stream);
+
+                    // Hyper also has its own `Service` trait and doesn't use tower. We can use
+                    // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
+                    // `tower::Service::call`.
+                    let hyper_service = service_fn(move |request: Request<Incoming>| {
+                        // This carries the current context with the trace id so that the TraceLayer can use that as a parent
+                        let otel_context = Span::current().context();
+                        // We need to clone here, because oneshot consumes self
+                        tower_service
+                            .clone()
+                            .oneshot(request)
+                            .with_context(otel_context)
+                    });
+
+                    let span = tracing::debug_span!("serve connection");
+                    hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
+                        .serve_connection_with_upgrades(tls_stream, hyper_service)
+                        .instrument(span.clone())
+                        .await
+                        .unwrap_or_else(|err| {
+                            span.record("otel.status_code", "Error")
+                                .record("otel.status_message", err.to_string());
+                            tracing::warn!(%err, %remote_addr, "failed to serve connection");
+                        })
                 }
-            });
+                .instrument(span),
+            );
         }
     }
 }
+
+pub trait SocketAddrExt {
+    fn semantic_convention_network_type(&self) -> &'static str;
+}
+
+impl SocketAddrExt for SocketAddr {
+    fn semantic_convention_network_type(&self) -> &'static str {
+        match self {
+            SocketAddr::V4(_) => "ipv4",
+            SocketAddr::V6(_) => "ipv6",
+        }
+    }
+}
+
+// TODO (@NickLarsenNZ): impl record_error(err: impl Error) for Span as a shortcut to set otel.status_* fields
+// TODO (@NickLarsenNZ): wrap tracing::span macros to automatically add otel fields

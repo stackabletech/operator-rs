@@ -13,7 +13,7 @@ opentelemetry = { workspace = true, features = ["logs"] }
 opentelemetry-appender-tracing.workspace = true
 opentelemetry-otlp = { workspace = true, features = ["gzip-tonic", "logs"] }
 opentelemetry-semantic-conventions.workspace = true
-opentelemetry_sdk = { workspace = true, features = ["logs", "rt-tokio"] }
+opentelemetry_sdk = { workspace = true, features = ["logs", "rt-tokio", "logs_level_enabled"] }
 pin-project.workspace = true
 snafu.workspace = true
 tokio.workspace = true
