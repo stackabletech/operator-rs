@@ -698,17 +698,17 @@ mod tests {
         while let Some(result) = ready_watcher.next().await {
             match result {
                 Ok(event) => match event {
-                    Event::Applied(pod) => {
+                    Event::Apply(pod) => {
                         assert_eq!("test-wait-created-busybox", pod.name_any());
                     }
-                    Event::Restarted(pods) => {
-                        assert_eq!(1, pods.len());
-                        assert_eq!("test-wait-created-busybox", &pods[0].name_any());
+                    Event::InitApply(pod) => {
+                        assert_eq!("test-wait-created-busybox", pod.name_any());
                         break;
                     }
-                    Event::Deleted(_) => {
+                    Event::Delete(_) => {
                         panic!("Not expected the test_wait_created busybox pod to be deleted");
                     }
+                    Event::Init | Event::InitDone => continue,
                 },
                 Err(_) => {
                     panic!("Error while waiting for readiness.");

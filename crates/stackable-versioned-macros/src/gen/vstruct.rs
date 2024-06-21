@@ -1,7 +1,8 @@
 use darling::FromField;
+use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{DataStruct, Ident, Result};
+use syn::{DataStruct, Error, Ident, Result};
 
 use crate::{
     attrs::{container::ContainerAttributes, field::FieldAttributes},
@@ -61,6 +62,29 @@ impl VersionedStruct {
             let mut versioned_field = VersionedField::new(field, attrs)?;
             versioned_field.insert_container_versions(&versions);
             fields.push(versioned_field);
+        }
+
+        // Check for field ident collisions
+        for version in &versions {
+            // Collect the idents of all fields for a single version and then
+            // ensure that all idents are unique. If they are not, return an
+            // error.
+            let mut idents = Vec::new();
+
+            // TODO (@Techassi): Report which field(s) use a duplicate ident and
+            // also hint what can be done to fix it based on the field action /
+            // status.
+
+            for field in &fields {
+                idents.push(field.get_ident(version))
+            }
+
+            if !idents.iter().all_unique() {
+                return Err(Error::new(
+                    ident.span(),
+                    format!("struct contains renamed fields which collide with other fields in version {version}", version = version.inner),
+                ));
+            }
         }
 
         let from_ident = format_ident!("__sv_{ident}", ident = ident.to_string().to_lowercase());

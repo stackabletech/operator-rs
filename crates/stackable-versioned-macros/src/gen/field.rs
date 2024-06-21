@@ -43,23 +43,25 @@ impl VersionedField {
         // The ident of the deprecated field is guaranteed to include the
         // 'deprecated_' prefix. The ident can thus be used as is.
         if let Some(deprecated) = attrs.deprecated {
-            let ident = field.ident.as_ref().unwrap();
-            let mut actions = BTreeMap::new();
-
-            actions.insert(
-                *deprecated.since,
-                FieldStatus::Deprecated {
-                    ident: ident.clone(),
-                    note: deprecated.note.to_string(),
-                },
-            );
+            let deprecated_ident = field.ident.as_ref().unwrap();
 
             // When the field is deprecated, any rename which occurred beforehand
             // requires access to the field ident to infer the field ident for
             // the latest rename.
             let mut ident = format_ident!(
                 "{ident}",
-                ident = ident.to_string().replace(DEPRECATED_PREFIX, "")
+                ident = deprecated_ident.to_string().replace(DEPRECATED_PREFIX, "")
+            );
+
+            let mut actions = BTreeMap::new();
+
+            actions.insert(
+                *deprecated.since,
+                FieldStatus::Deprecated {
+                    previous_ident: ident.clone(),
+                    ident: deprecated_ident.clone(),
+                    note: deprecated.note.to_string(),
+                },
             );
 
             for rename in attrs.renames.iter().rev() {
@@ -67,7 +69,7 @@ impl VersionedField {
                 actions.insert(
                     *rename.since,
                     FieldStatus::Renamed {
-                        _from: from.clone(),
+                        from: from.clone(),
                         to: ident,
                     },
                 );
@@ -99,7 +101,7 @@ impl VersionedField {
                 actions.insert(
                     *rename.since,
                     FieldStatus::Renamed {
-                        _from: from.clone(),
+                        from: from.clone(),
                         to: ident,
                     },
                 );
@@ -164,12 +166,25 @@ impl VersionedField {
                 }
 
                 match chain.get_neighbors(&version.inner) {
-                    (None, Some(_)) => chain.insert(version.inner, FieldStatus::NotPresent),
+                    (None, Some(status)) => match status {
+                        FieldStatus::Added { .. } => {
+                            chain.insert(version.inner, FieldStatus::NotPresent)
+                        }
+                        FieldStatus::Renamed { from, .. } => {
+                            chain.insert(version.inner, FieldStatus::NoChange(from.clone()))
+                        }
+                        FieldStatus::Deprecated { previous_ident, .. } => chain
+                            .insert(version.inner, FieldStatus::NoChange(previous_ident.clone())),
+                        FieldStatus::NoChange(ident) => {
+                            chain.insert(version.inner, FieldStatus::NoChange(ident.clone()))
+                        }
+                        FieldStatus::NotPresent => unreachable!(),
+                    },
                     (Some(status), None) => {
                         let ident = match status {
                             FieldStatus::Added { ident, .. } => ident,
-                            FieldStatus::Renamed { _from: _, to } => to,
-                            FieldStatus::Deprecated { ident, note: _ } => ident,
+                            FieldStatus::Renamed { to, .. } => to,
+                            FieldStatus::Deprecated { ident, .. } => ident,
                             FieldStatus::NoChange(ident) => ident,
                             FieldStatus::NotPresent => unreachable!(),
                         };
@@ -179,7 +194,7 @@ impl VersionedField {
                     (Some(status), Some(_)) => {
                         let ident = match status {
                             FieldStatus::Added { ident, .. } => ident,
-                            FieldStatus::Renamed { _from: _, to } => to,
+                            FieldStatus::Renamed { to, .. } => to,
                             FieldStatus::NoChange(ident) => ident,
                             _ => unreachable!(),
                         };
@@ -215,12 +230,13 @@ impl VersionedField {
                     FieldStatus::Added { ident, .. } => Some(quote! {
                         pub #ident: #field_type,
                     }),
-                    FieldStatus::Renamed { _from: _, to } => Some(quote! {
+                    FieldStatus::Renamed { from: _, to } => Some(quote! {
                         pub #to: #field_type,
                     }),
                     FieldStatus::Deprecated {
                         ident: field_ident,
                         note,
+                        ..
                     } => Some(quote! {
                         #[deprecated = #note]
                         pub #field_ident: #field_type,
@@ -282,13 +298,33 @@ impl VersionedField {
             }
         }
     }
+
+    pub(crate) fn get_ident(&self, version: &ContainerVersion) -> Option<&Ident> {
+        match &self.chain {
+            Some(chain) => chain
+                .get(&version.inner)
+                .expect("internal error: chain must contain container version")
+                .get_ident(),
+            None => self.inner.ident.as_ref(),
+        }
+    }
 }
 
 #[derive(Debug)]
 pub(crate) enum FieldStatus {
-    Added { ident: Ident, default_fn: Path },
-    Renamed { _from: Ident, to: Ident },
-    Deprecated { ident: Ident, note: String },
+    Added {
+        ident: Ident,
+        default_fn: Path,
+    },
+    Renamed {
+        from: Ident,
+        to: Ident,
+    },
+    Deprecated {
+        previous_ident: Ident,
+        ident: Ident,
+        note: String,
+    },
     NoChange(Ident),
     NotPresent,
 }
@@ -297,7 +333,7 @@ impl FieldStatus {
     pub(crate) fn get_ident(&self) -> Option<&Ident> {
         match &self {
             FieldStatus::Added { ident, .. } => Some(ident),
-            FieldStatus::Renamed { _from, to } => Some(to),
+            FieldStatus::Renamed { to, .. } => Some(to),
             FieldStatus::Deprecated { ident, .. } => Some(ident),
             FieldStatus::NoChange(ident) => Some(ident),
             FieldStatus::NotPresent => None,
