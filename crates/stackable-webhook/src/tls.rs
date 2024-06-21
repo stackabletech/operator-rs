@@ -163,7 +163,7 @@ impl TlsServer {
             let (tcp_stream, remote_addr) = match tcp_listener.accept().await {
                 Ok((stream, addr)) => (stream, addr),
                 Err(err) => {
-                    tracing::warn!(%err, "failed to accept incoming TCP connection");
+                    tracing::trace!(%err, "failed to accept incoming TCP connection");
                     continue;
                 }
             };
@@ -211,7 +211,7 @@ impl TlsServer {
                         Err(err) => {
                             span.record("otel.status_code", "Error")
                                 .record("otel.status_message", err.to_string());
-                            tracing::warn!(%remote_addr, "error during tls handshake connection");
+                            tracing::trace!(%remote_addr, "error during tls handshake connection");
                             return;
                         }
                     };
