@@ -136,6 +136,9 @@ impl Tracing {
 
     /// Initialise the configured tracing subscribers, returning a guard that
     /// will shutdown the subscribers when dropped.
+    ///
+    /// IMPORTANT: Name the guard variable appropriately, do not just use
+    /// `let _ =`, as that will drop immediately.
     pub fn init(mut self) -> Result<Tracing> {
         let mut layers: Vec<Box<dyn Layer<Registry> + Sync + Send>> = Vec::new();
 
