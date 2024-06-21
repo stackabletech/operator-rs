@@ -45,6 +45,8 @@ pub enum Error {
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Error> {
+///     // IMPORTANT: Name the guard variable appropriately, do not just use
+///     // `let _ =`, as that will drop immediately.
 ///     let _tracing_guard = Tracing::builder()
 ///         .service_name("test")
 ///         .with_console_output("TEST_CONSOLE", LevelFilter::INFO)
@@ -226,6 +228,7 @@ impl Tracing {
 impl Drop for Tracing {
     fn drop(&mut self) {
         // NOTE (@NickLarsenNZ): This might eventually be replaced with something like SdkMeterProvider::shutdown(&self)
+        // as has been done with the LoggerProvider (further below)
         // see: https://github.com/open-telemetry/opentelemetry-rust/pull/1412/files#r1409608679
         opentelemetry::global::shutdown_tracer_provider();
 
