@@ -233,10 +233,12 @@ impl Drop for Tracing {
             "shutting down opentelemetry OTLP providers"
         );
 
-        // NOTE (@NickLarsenNZ): This might eventually be replaced with something like SdkMeterProvider::shutdown(&self)
-        // as has been done with the LoggerProvider (further below)
-        // see: https://github.com/open-telemetry/opentelemetry-rust/pull/1412/files#r1409608679
-        opentelemetry::global::shutdown_tracer_provider();
+        if self.otlp_trace_config.enabled {
+            // NOTE (@NickLarsenNZ): This might eventually be replaced with something like SdkMeterProvider::shutdown(&self)
+            // as has been done with the LoggerProvider (further below)
+            // see: https://github.com/open-telemetry/opentelemetry-rust/pull/1412/files#r1409608679
+            opentelemetry::global::shutdown_tracer_provider();
+        }
 
         if let Some(logger_provider) = &self.logger_provider {
             if let Err(error) = logger_provider.shutdown() {
