@@ -447,8 +447,8 @@ impl SpanExt for Span {
         let current_span_context = Context::current().span().span_context().clone();
         if new_span_context != current_span_context {
             tracing::trace!(
-                old_trace_id = ?current_span_context.trace_id(),
-                incoming_trace_id = ?new_span_context.trace_id(),
+                opentelemetry.trace_id.from = ?current_span_context.trace_id(),
+                opentelemetry.trace_id.to = ?new_span_context.trace_id(),
                 "set parent span context based on context extracted from request headers"
             );
             Span::current().add_link(new_parent.span().span_context().clone());
