@@ -227,6 +227,12 @@ impl Tracing {
 
 impl Drop for Tracing {
     fn drop(&mut self) {
+        tracing::debug!(
+            tracer_provider = self.otlp_trace_config.enabled,
+            logger_provider = self.otlp_log_config.enabled,
+            "shutting down opentelemetry OTLP providers"
+        );
+
         // NOTE (@NickLarsenNZ): This might eventually be replaced with something like SdkMeterProvider::shutdown(&self)
         // as has been done with the LoggerProvider (further below)
         // see: https://github.com/open-telemetry/opentelemetry-rust/pull/1412/files#r1409608679
