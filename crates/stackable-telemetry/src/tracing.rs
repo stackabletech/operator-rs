@@ -228,8 +228,8 @@ impl Tracing {
 impl Drop for Tracing {
     fn drop(&mut self) {
         tracing::debug!(
-            tracer_provider = self.otlp_trace_config.enabled,
-            logger_provider = self.otlp_log_config.enabled,
+            opentelemetry_provider.tracing.enabled = self.otlp_trace_config.enabled,
+            opentelemetry_provider.logger.enabled = self.otlp_log_config.enabled,
             "shutting down opentelemetry OTLP providers"
         );
 
