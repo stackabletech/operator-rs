@@ -3,7 +3,7 @@ use std::ops::Deref;
 use darling::FromField;
 use itertools::Itertools;
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use quote::quote;
 use syn::{DataStruct, Error, Ident};
 
 use crate::{
@@ -36,16 +36,7 @@ impl Deref for VersionedStruct {
 impl Container<DataStruct, VersionedField> for VersionedStruct {
     fn new(ident: Ident, data: DataStruct, attributes: ContainerAttributes) -> syn::Result<Self> {
         // Convert the raw version attributes into a container version.
-        let versions: Vec<_> = attributes
-            .versions
-            .iter()
-            .map(|v| ContainerVersion {
-                skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
-                ident: format_ident!("{version}", version = v.name.to_string()),
-                deprecated: v.deprecated.is_present(),
-                inner: v.name,
-            })
-            .collect();
+        let versions: Vec<_> = (&attributes).into();
 
         // Extract the field attributes for every field from the raw token
         // stream and also validate that each field action version uses a

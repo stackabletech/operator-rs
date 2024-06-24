@@ -3,15 +3,12 @@ use std::ops::Deref;
 use darling::FromVariant;
 use itertools::Itertools;
 use proc_macro2::TokenStream;
-use quote::format_ident;
 use syn::{DataEnum, Error, Ident};
 
 use crate::{
     attrs::{container::ContainerAttributes, variant::VariantAttributes},
     gen::{
-        common::{
-            format_container_from_ident, Container, ContainerVersion, Item, VersionedContainer,
-        },
+        common::{format_container_from_ident, Container, Item, VersionedContainer},
         venum::variant::VersionedVariant,
     },
 };
@@ -24,16 +21,7 @@ pub(crate) struct VersionedEnum(VersionedContainer<VersionedVariant>);
 impl Container<DataEnum, VersionedVariant> for VersionedEnum {
     fn new(ident: Ident, data: DataEnum, attributes: ContainerAttributes) -> syn::Result<Self> {
         // Convert the raw version attributes into a container version.
-        let versions: Vec<_> = attributes
-            .versions
-            .iter()
-            .map(|v| ContainerVersion {
-                skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
-                ident: format_ident!("{version}", version = v.name.to_string()),
-                deprecated: v.deprecated.is_present(),
-                inner: v.name,
-            })
-            .collect();
+        let versions: Vec<_> = (&attributes).into();
 
         // Extract the field attributes for every field from the raw token
         // stream and also validate that each field action version uses a
