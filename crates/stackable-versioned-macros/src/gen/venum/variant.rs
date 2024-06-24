@@ -1,27 +1,42 @@
-use syn::Ident;
+use syn::Variant;
 
-use crate::gen::common::ContainerVersion;
+use crate::{
+    attrs::variant::VariantAttributes,
+    gen::common::{Item, VersionChain},
+};
 
 #[derive(Debug)]
-pub(crate) struct VersionedVariant {}
+pub(crate) struct VersionedVariant {
+    chain: Option<VersionChain>,
+    inner: Variant,
+}
 
-impl VersionedVariant {
-    pub(crate) fn new() -> Self {
+impl Item<Variant, VariantAttributes> for VersionedVariant {
+    fn new(variant: Variant, attributes: VariantAttributes) -> Self {
         todo!()
     }
 
-    pub(crate) fn insert_container_versions(&mut self, versions: &[ContainerVersion]) {
+    fn insert_container_versions(&mut self, versions: &[crate::gen::common::ContainerVersion]) {
         todo!()
     }
 
-    pub(crate) fn get_ident(&self, version: &ContainerVersion) -> Option<&Ident> {
-        // match &self.chain {
-        //     Some(chain) => chain
-        //         .get(&version.inner)
-        //         .expect("internal error: chain must contain container version")
-        //         .get_ident(),
-        //     None => self.inner.ident.as_ref(),
-        // }
+    fn generate_for_container(
+        &self,
+        container_version: &crate::gen::common::ContainerVersion,
+    ) -> Option<proc_macro2::TokenStream> {
+        todo!()
+    }
+
+    fn generate_for_from_impl(
+        &self,
+        version: &crate::gen::common::ContainerVersion,
+        next_version: &crate::gen::common::ContainerVersion,
+        from_ident: &syn::Ident,
+    ) -> proc_macro2::TokenStream {
+        todo!()
+    }
+
+    fn get_ident(&self, version: &crate::gen::common::ContainerVersion) -> Option<&syn::Ident> {
         todo!()
     }
 }

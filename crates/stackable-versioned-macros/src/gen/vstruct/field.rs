@@ -2,13 +2,13 @@ use std::{collections::BTreeMap, ops::Deref};
 
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::Ident;
+use syn::{Field, Ident};
 
 use crate::{
     attrs::field::FieldAttributes,
-    consts::DEPRECATED_PREFIX,
+    consts::DEPRECATED_FIELD_PREFIX,
     gen::{
-        common::{ContainerVersion, Item, ItemStatus, VersionedItem},
+        common::{ContainerVersion, Item, ItemStatus, VersionChain},
         neighbors::Neighbors,
     },
 };
@@ -19,7 +19,13 @@ use crate::{
 /// The chain of action maps versions to an action and the appropriate field
 /// name. Additionally, the [`Field`] data can be used to forward attributes,
 /// generate documentation, etc.
-impl Item<FieldAttributes> for VersionedItem {
+#[derive(Debug)]
+pub(crate) struct VersionedField {
+    pub(crate) chain: Option<VersionChain>,
+    pub(crate) inner: Field,
+}
+
+impl Item<syn::Field, FieldAttributes> for VersionedField {
     fn new(field: syn::Field, attributes: FieldAttributes) -> Self {
         // Constructing the action chain requires going through the actions from
         // the end, because the base struct always represents the latest (most
@@ -40,7 +46,9 @@ impl Item<FieldAttributes> for VersionedItem {
             // the latest rename.
             let mut ident = format_ident!(
                 "{ident}",
-                ident = deprecated_ident.to_string().replace(DEPRECATED_PREFIX, "")
+                ident = deprecated_ident
+                    .to_string()
+                    .replace(DEPRECATED_FIELD_PREFIX, "")
             );
 
             let mut actions = BTreeMap::new();

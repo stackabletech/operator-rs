@@ -2,9 +2,12 @@ use std::{collections::BTreeMap, ops::Deref};
 
 use k8s_version::Version;
 use proc_macro2::{Span, TokenStream};
-use syn::{Field, Ident, Path};
+use quote::format_ident;
+use syn::{Ident, Path};
 
 use crate::attrs::container::ContainerAttributes;
+
+pub(crate) type VersionChain = BTreeMap<Version, ItemStatus>;
 
 #[derive(Debug, Clone)]
 pub(crate) struct ContainerVersion {
@@ -29,9 +32,9 @@ impl From<&ContainerAttributes> for Vec<ContainerVersion> {
     }
 }
 
-pub(crate) trait Container<D>
+pub(crate) trait Container<D, I>
 where
-    Self: Sized + Deref<Target = VersionedContainer>,
+    Self: Sized + Deref<Target = VersionedContainer<I>>,
 {
     fn new(ident: Ident, data: D, attributes: ContainerAttributes) -> syn::Result<Self>;
 
@@ -45,15 +48,16 @@ where
 }
 
 #[derive(Debug)]
-pub(crate) struct VersionedContainer {
-    pub(crate) ident: Ident,
+pub(crate) struct VersionedContainer<I> {
     pub(crate) versions: Vec<ContainerVersion>,
-    pub(crate) items: Vec<VersionedItem>,
+    pub(crate) items: Vec<I>,
+    pub(crate) ident: Ident,
+
     pub(crate) from_ident: Ident,
     pub(crate) skip_from: bool,
 }
 
-pub(crate) trait Item<A>
+pub(crate) trait Item<I, A>
 where
     Self: Sized,
 {
@@ -62,22 +66,34 @@ where
     ///
     /// This chain will get extended by the versions defined on the container by
     /// calling the [`Item::insert_container_versions`] function.
-    fn new(field: Field, attributes: A) -> Self;
+    fn new(item: I, attributes: A) -> Self;
+
+    /// Inserts container versions not yet present in the status chain.
+    ///
+    /// When initially creating a new versioned item, the code doesn't have
+    /// access to the versions defined on the container. This function inserts
+    /// all non-present container versions and decides which status and ident
+    /// is the right fit based on the status neighbors.
+    ///
+    /// This continuous chain ensures that when generating code (tokens), each
+    /// field can lookup the status (and ident) for a requested version.
     fn insert_container_versions(&mut self, versions: &[ContainerVersion]);
+
+    /// Generates tokens for the use inside the container definition, e.g.
+    /// a struct field or an enum variant.
     fn generate_for_container(&self, container_version: &ContainerVersion) -> Option<TokenStream>;
+
+    /// Generates tokens for the use inside [`From`] implementations for
+    /// conversion between versions.
     fn generate_for_from_impl(
         &self,
         version: &ContainerVersion,
         next_version: &ContainerVersion,
         from_ident: &Ident,
     ) -> TokenStream;
-    fn get_ident(&self, version: &ContainerVersion) -> Option<&Ident>;
-}
 
-#[derive(Debug)]
-pub(crate) struct VersionedItem {
-    pub(crate) chain: Option<BTreeMap<Version, ItemStatus>>,
-    pub(crate) inner: Field,
+    /// Returns the ident of the [`Item`] for a specific [`ContainerVersion`].
+    fn get_ident(&self, version: &ContainerVersion) -> Option<&Ident>;
 }
 
 #[derive(Debug)]
@@ -109,4 +125,9 @@ impl ItemStatus {
             ItemStatus::NotPresent => None,
         }
     }
+}
+
+/// Returns the container ident used in [`From`] implementations.
+pub(crate) fn format_container_from_ident(ident: &Ident) -> Ident {
+    format_ident!("__sv_{ident}", ident = ident.to_string().to_lowercase())
 }

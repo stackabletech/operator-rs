@@ -8,7 +8,12 @@ use syn::{DataStruct, Error, Ident};
 
 use crate::{
     attrs::{container::ContainerAttributes, field::FieldAttributes},
-    gen::common::{Container, ContainerVersion, Item, VersionedContainer, VersionedItem},
+    gen::{
+        common::{
+            format_container_from_ident, Container, ContainerVersion, Item, VersionedContainer,
+        },
+        vstruct::field::VersionedField,
+    },
 };
 
 mod field;
@@ -18,17 +23,17 @@ mod field;
 /// that version. Fields which are not versioned, are included in every
 /// version of the struct.
 #[derive(Debug)]
-pub(crate) struct VersionedStruct(VersionedContainer);
+pub(crate) struct VersionedStruct(VersionedContainer<VersionedField>);
 
 impl Deref for VersionedStruct {
-    type Target = VersionedContainer;
+    type Target = VersionedContainer<VersionedField>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl Container<DataStruct> for VersionedStruct {
+impl Container<DataStruct, VersionedField> for VersionedStruct {
     fn new(ident: Ident, data: DataStruct, attributes: ContainerAttributes) -> syn::Result<Self> {
         // Convert the raw version attributes into a container version.
         let versions: Vec<_> = attributes
@@ -51,7 +56,7 @@ impl Container<DataStruct> for VersionedStruct {
             let attrs = FieldAttributes::from_field(&field)?;
             attrs.validate_versions(&attributes, &field)?;
 
-            let mut versioned_field = VersionedItem::new(field, attrs);
+            let mut versioned_field = VersionedField::new(field, attrs);
             versioned_field.insert_container_versions(&versions);
             items.push(versioned_field);
         }
@@ -74,7 +79,7 @@ impl Container<DataStruct> for VersionedStruct {
             }
         }
 
-        let from_ident = format_ident!("__sv_{ident}", ident = ident.to_string().to_lowercase());
+        let from_ident = format_container_from_ident(&ident);
 
         Ok(Self(VersionedContainer {
             skip_from: attributes

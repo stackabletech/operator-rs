@@ -6,7 +6,7 @@ use crate::{
         common::{AddedAttributes, DeprecatedAttributes, RenamedAttributes},
         container::ContainerAttributes,
     },
-    consts::DEPRECATED_PREFIX,
+    consts::DEPRECATED_FIELD_PREFIX,
 };
 
 /// This struct describes all available field attributes, as well as the field
@@ -167,7 +167,7 @@ impl FieldAttributes {
             .as_ref()
             .unwrap()
             .to_string()
-            .starts_with(DEPRECATED_PREFIX);
+            .starts_with(DEPRECATED_FIELD_PREFIX);
 
         if self.deprecated.is_some() && !starts_with {
             return Err(Error::custom(
