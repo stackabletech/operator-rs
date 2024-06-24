@@ -97,6 +97,12 @@ pub struct TlsServer {
 impl TlsServer {
     #[instrument(name = "create_tls_server", skip(router))]
     pub async fn new(socket_addr: SocketAddr, router: Router) -> Result<Self> {
+        // NOTE(@NickLarsenNZ): This code is not async, and does take some
+        // non-negligable amount of time to complete (moreso in debug ).
+        // We run this in a thread reserved for blocking code so that the Tokio
+        // executor is able to make progress on other futures instead of being
+        // blocked.
+        // See https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html
         let task = tokio::task::spawn_blocking(move || {
             let mut certificate_authority =
                 CertificateAuthority::new_rsa().context(CreateCertificateAuthoritySnafu)?;
