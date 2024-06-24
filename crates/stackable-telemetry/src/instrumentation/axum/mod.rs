@@ -21,11 +21,14 @@ use axum::{
     response::Response,
 };
 use futures_util::ready;
-use opentelemetry::trace::SpanKind;
+use opentelemetry::{
+    trace::{SpanKind, TraceContextExt},
+    Context,
+};
 use pin_project::pin_project;
 use snafu::{ResultExt, Snafu};
 use tower::{Layer, Service};
-use tracing::{debug, field::Empty, instrument, trace_span, Span};
+use tracing::{field::Empty, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 mod extractor;
@@ -91,7 +94,6 @@ impl<S> Layer<S> for TraceLayer {
 
 impl TraceLayer {
     /// Creates a new default trace layer.
-    #[instrument(name = "create_trace_layer")]
     pub fn new() -> Self {
         Self::default()
     }
@@ -367,7 +369,7 @@ impl SpanExt for Span {
         let span_name = req.span_name();
         let url = req.uri();
 
-        debug!(
+        tracing::trace!(
             http_method,
             span_name,
             ?url,
@@ -396,8 +398,7 @@ impl SpanExt for Span {
         // Setting common fields first
         // See https://opentelemetry.io/docs/specs/semconv/http/http-spans/#common-attributes
 
-        debug!("create http span");
-        let span = trace_span!(
+        let span = tracing::trace_span!(
             "HTTP request",
             "otel.name" = span_name,
             "otel.kind" = ?SpanKind::Server,
@@ -418,9 +419,44 @@ impl SpanExt for Span {
         );
 
         // Set the parent span based on the extracted context
-        debug!("set parent span based on extracted context");
-        let parent = HeaderExtractor::new(req.headers()).extract_context();
-        span.set_parent(parent);
+        //
+        // The OpenTelemetry spec does not allow trace ids to be updated after
+        // a span has been created. Since the (optional) new trace id given by
+        // a client is only knowable after handling the request, it is not
+        // available to the existing parent spans for the lower layers (tcp/tls
+        // handling).
+        //
+        // Therefore, we have to made a decision about linking the two traces.
+        // These are the options:
+        // 1. Link to the trace id supplied in the incoming request, or
+        // 2. Link to the current trace id, then set the parent contex based on
+        //    trace information supplied in the incoming request.
+        //
+        // Neither is ideal, as it means there are (at least) two traces to look
+        // at to get a complete picture of what happened over the request.
+        //
+        // Option 1 is not viable, as the trace id in the response headers will
+        // not be the same as what the client sent. Yet we are supposed to pass
+        // their trace id in any further requests.
+        //
+        // We will go with option 2 as it at least keeps the higher layer spans
+        // in one trace, which is likely going to be more useful to the person
+        // visualising the traces.
+        let new_parent = HeaderExtractor::new(req.headers()).extract_context();
+        let new_span_context = new_parent.span().span_context().clone();
+        let current_span_context = Context::current().span().span_context().clone();
+
+        if new_span_context != current_span_context {
+            tracing::trace!(
+                opentelemetry.trace_id.from = ?current_span_context.trace_id(),
+                opentelemetry.trace_id.to = ?new_span_context.trace_id(),
+                "set parent span context based on context extracted from request headers"
+            );
+
+            Span::current().add_link(new_parent.span().span_context().clone());
+            span.add_link(Context::current().span().span_context().to_owned());
+            span.set_parent(new_parent);
+        }
 
         if let Some(user_agent) = req.user_agent() {
             span.record("user_agent.original", user_agent);

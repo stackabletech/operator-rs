@@ -9,10 +9,9 @@
 use opentelemetry::KeyValue;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_sdk::{
-    logs,
+    logs::{self, LoggerProvider},
     propagation::TraceContextPropagator,
-    trace::{self, RandomIdGenerator, Sampler},
-    Resource,
+    trace, Resource,
 };
 use opentelemetry_semantic_conventions::resource;
 use snafu::{ResultExt as _, Snafu};
@@ -46,6 +45,8 @@ pub enum Error {
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Error> {
+///     // IMPORTANT: Name the guard variable appropriately, do not just use
+///     // `let _ =`, as that will drop immediately.
 ///     let _tracing_guard = Tracing::builder()
 ///         .service_name("test")
 ///         .with_console_output("TEST_CONSOLE", LevelFilter::INFO)
@@ -125,6 +126,7 @@ pub struct Tracing {
     console_log_config: SubscriberConfig,
     otlp_log_config: SubscriberConfig,
     otlp_trace_config: SubscriberConfig,
+    logger_provider: Option<LoggerProvider>,
 }
 
 impl Tracing {
@@ -134,7 +136,10 @@ impl Tracing {
 
     /// Initialise the configured tracing subscribers, returning a guard that
     /// will shutdown the subscribers when dropped.
-    pub fn init(self) -> Result<Tracing> {
+    ///
+    /// IMPORTANT: Name the guard variable appropriately, do not just use
+    /// `let _ =`, as that will drop immediately.
+    pub fn init(mut self) -> Result<Tracing> {
         let mut layers: Vec<Box<dyn Layer<Registry> + Sync + Send>> = Vec::new();
 
         if self.console_log_config.enabled {
@@ -168,10 +173,11 @@ impl Tracing {
 
             // Convert `tracing::Event` to OpenTelemetry logs
             layers.push(
-                OpenTelemetryTracingBridge::new(otel_log.provider())
+                OpenTelemetryTracingBridge::new(&otel_log)
                     .with_filter(env_filter_layer)
                     .boxed(),
             );
+            self.logger_provider = Some(otel_log);
         }
 
         if self.otlp_trace_config.enabled {
@@ -186,15 +192,9 @@ impl Tracing {
             let otel_tracer = opentelemetry_otlp::new_pipeline()
                 .tracing()
                 .with_exporter(trace_exporter)
-                .with_trace_config(
-                    trace::config()
-                        .with_sampler(Sampler::AlwaysOn) // TODO (@NickLarsenNZ): Make this configurable. See also Sampler::ParentBased
-                        .with_id_generator(RandomIdGenerator::default())
-                        .with_resource(Resource::new(vec![KeyValue::new(
-                            resource::SERVICE_NAME,
-                            self.service_name,
-                        )])),
-                )
+                .with_trace_config(trace::config().with_resource(Resource::new(vec![
+                    KeyValue::new(resource::SERVICE_NAME, self.service_name),
+                ])))
                 .install_batch(opentelemetry_sdk::runtime::Tokio)
                 .context(InstallOtelTraceExporterSnafu)?;
 
@@ -223,16 +223,31 @@ impl Tracing {
                 .context(SetGlobalDefaultSubscriberSnafu)?;
         }
 
+        // IMPORTANT: we must return self, otherwise Drop will be called and uninitialise tracing
         Ok(self)
     }
 }
 
 impl Drop for Tracing {
     fn drop(&mut self) {
-        // NOTE (@NickLarsenNZ): These might eventually be replaced with something like SdkMeterProvider::shutdown(&self)
-        // see: https://github.com/open-telemetry/opentelemetry-rust/pull/1412/files#r1409608679
-        opentelemetry::global::shutdown_tracer_provider();
-        opentelemetry::global::shutdown_logger_provider();
+        tracing::debug!(
+            opentelemetry.tracing.enabled = self.otlp_trace_config.enabled,
+            opentelemetry.logger.enabled = self.otlp_log_config.enabled,
+            "shutting down opentelemetry OTLP providers"
+        );
+
+        if self.otlp_trace_config.enabled {
+            // NOTE (@NickLarsenNZ): This might eventually be replaced with something like SdkMeterProvider::shutdown(&self)
+            // as has been done with the LoggerProvider (further below)
+            // see: https://github.com/open-telemetry/opentelemetry-rust/pull/1412/files#r1409608679
+            opentelemetry::global::shutdown_tracer_provider();
+        }
+
+        if let Some(logger_provider) = &self.logger_provider {
+            if let Err(error) = logger_provider.shutdown() {
+                tracing::error!(%error, "unable to shutdown LoggerProvider");
+            }
+        }
     }
 }
 
@@ -417,6 +432,7 @@ impl TracingBuilder<builder_state::Config> {
             console_log_config: self.console_log_config,
             otlp_log_config: self.otlp_log_config,
             otlp_trace_config: self.otlp_trace_config,
+            logger_provider: None,
         }
     }
 }
