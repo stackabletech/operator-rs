@@ -4,7 +4,7 @@ use darling::Error;
 use k8s_version::Version;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Field, Ident, Path};
+use syn::{Attribute, Field, Ident, Path};
 
 use crate::{
     attrs::field::FieldAttributes,
@@ -22,6 +22,7 @@ use crate::{
 pub(crate) struct VersionedField {
     chain: Option<BTreeMap<Version, FieldStatus>>,
     inner: Field,
+    attrs: Vec<Attribute>,
 }
 
 impl VersionedField {
@@ -91,6 +92,7 @@ impl VersionedField {
             Ok(Self {
                 chain: Some(actions),
                 inner: field,
+                attrs: attrs.attrs,
             })
         } else if !attrs.renames.is_empty() {
             let mut actions = BTreeMap::new();
@@ -123,6 +125,7 @@ impl VersionedField {
             Ok(Self {
                 chain: Some(actions),
                 inner: field,
+                attrs: attrs.attrs,
             })
         } else {
             if let Some(added) = attrs.added {
@@ -139,12 +142,14 @@ impl VersionedField {
                 return Ok(Self {
                     chain: Some(actions),
                     inner: field,
+                    attrs: attrs.attrs,
                 });
             }
 
             Ok(Self {
                 chain: None,
                 inner: field,
+                attrs: attrs.attrs,
             })
         }
     }
@@ -211,6 +216,7 @@ impl VersionedField {
         &self,
         container_version: &ContainerVersion,
     ) -> Option<TokenStream> {
+        let attrs = &self.attrs;
         match &self.chain {
             Some(chain) => {
                 // Check if the provided container version is present in the map
@@ -228,9 +234,11 @@ impl VersionedField {
                     .expect("internal error: chain must contain container version")
                 {
                     FieldStatus::Added { ident, .. } => Some(quote! {
+                        #(#attrs)*
                         pub #ident: #field_type,
                     }),
                     FieldStatus::Renamed { from: _, to } => Some(quote! {
+                        #(#attrs)*
                         pub #to: #field_type,
                     }),
                     FieldStatus::Deprecated {
@@ -238,11 +246,13 @@ impl VersionedField {
                         note,
                         ..
                     } => Some(quote! {
+                        #(#attrs)*
                         #[deprecated = #note]
                         pub #field_ident: #field_type,
                     }),
                     FieldStatus::NotPresent => None,
                     FieldStatus::NoChange(field_ident) => Some(quote! {
+                        #(#attrs)*
                         pub #field_ident: #field_type,
                     }),
                 }
@@ -255,6 +265,7 @@ impl VersionedField {
                 let field_type = &self.inner.ty;
 
                 Some(quote! {
+                    #(#attrs)*
                     pub #field_ident: #field_type,
                 })
             }
@@ -292,7 +303,9 @@ impl VersionedField {
             }
             None => {
                 let field_ident = &self.inner.ident;
+                let attrs = &self.inner.attrs;
                 quote! {
+                    #(#attrs)*
                     #field_ident: #from_ident.#field_ident,
                 }
             }
