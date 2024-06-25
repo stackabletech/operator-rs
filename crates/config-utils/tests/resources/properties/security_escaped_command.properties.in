@@ -1,0 +1,3 @@
+# We must also recognize commands where the colon was escaped
+test.from.env=${env\:ENV_TEST}
+test.from.file=${file\:UTF-8\:${env\:${env\:FILE_TEST_42_FILE_ENV_NAME}}}
