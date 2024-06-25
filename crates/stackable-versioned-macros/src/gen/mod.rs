@@ -2,7 +2,7 @@ use proc_macro2::TokenStream;
 use syn::{spanned::Spanned, Data, DeriveInput, Error, Result};
 
 use crate::{
-    attrs::container::ContainerAttributes,
+    attrs::common::ContainerAttributes,
     gen::{common::Container, venum::VersionedEnum, vstruct::VersionedStruct},
 };
 

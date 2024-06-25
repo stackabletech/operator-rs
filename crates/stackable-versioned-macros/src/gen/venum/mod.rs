@@ -7,7 +7,7 @@ use quote::quote;
 use syn::{DataEnum, Error, Ident};
 
 use crate::{
-    attrs::{container::ContainerAttributes, variant::VariantAttributes},
+    attrs::{common::ContainerAttributes, variant::VariantAttributes},
     gen::{
         common::{
             format_container_from_ident, Container, ContainerVersion, Item, VersionedContainer,

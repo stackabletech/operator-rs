@@ -4,9 +4,8 @@
 use darling::{Error, FromVariant};
 use syn::{Ident, Variant};
 
-use crate::attrs::{
-    common::{AddedAttributes, DeprecatedAttributes, RenamedAttributes},
-    container::ContainerAttributes,
+use crate::attrs::common::{
+    AddedAttributes, ContainerAttributes, DeprecatedAttributes, RenamedAttributes,
 };
 
 #[derive(Debug, FromVariant)]
@@ -47,7 +46,7 @@ impl VariantAttributes {
                 .any(|v| v.name == *added.since)
             {
                 errors.push(Error::custom(
-                   "field action `added` uses version which was not declared via #[versioned(version)]")
+                   "variant action `added` uses version which was not declared via #[versioned(version)]")
                    .with_span(&variant.ident)
                );
             }
@@ -60,7 +59,7 @@ impl VariantAttributes {
                 .any(|v| v.name == *rename.since)
             {
                 errors.push(
-                   Error::custom("field action `renamed` uses version which was not declared via #[versioned(version)]")
+                   Error::custom("variant action `renamed` uses version which was not declared via #[versioned(version)]")
                    .with_span(&variant.ident)
                );
             }
@@ -73,7 +72,7 @@ impl VariantAttributes {
                 .any(|v| v.name == *deprecated.since)
             {
                 errors.push(Error::custom(
-                   "field action `deprecated` uses version which was not declared via #[versioned(version)]")
+                   "variant action `deprecated` uses version which was not declared via #[versioned(version)]")
                    .with_span(&variant.ident)
                );
             }

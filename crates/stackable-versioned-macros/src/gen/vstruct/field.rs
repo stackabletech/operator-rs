@@ -24,7 +24,7 @@ pub(crate) struct VersionedField {
 }
 
 impl Item<syn::Field, FieldAttributes> for VersionedField {
-    fn new(field: syn::Field, attributes: FieldAttributes) -> Self {
+    fn new(field: syn::Field, field_attrs: FieldAttributes) -> Self {
         // Constructing the action chain requires going through the actions from
         // the end, because the base struct always represents the latest (most
         // up-to-date) version of that struct. That's why the following code
@@ -36,7 +36,7 @@ impl Item<syn::Field, FieldAttributes> for VersionedField {
         // rename or addition, which is handled below.
         // The ident of the deprecated field is guaranteed to include the
         // 'deprecated_' prefix. The ident can thus be used as is.
-        if let Some(deprecated) = attributes.deprecated {
+        if let Some(deprecated) = field_attrs.common.deprecated {
             let deprecated_ident = field
                 .ident
                 .as_ref()
@@ -57,7 +57,7 @@ impl Item<syn::Field, FieldAttributes> for VersionedField {
                 },
             );
 
-            for rename in attributes.renames.iter().rev() {
+            for rename in field_attrs.common.renames.iter().rev() {
                 let from = format_ident!("{from}", from = *rename.from);
                 actions.insert(
                     *rename.since,
@@ -71,7 +71,7 @@ impl Item<syn::Field, FieldAttributes> for VersionedField {
 
             // After the last iteration above (if any) we use the ident for the
             // added action if there is any.
-            if let Some(added) = attributes.added {
+            if let Some(added) = field_attrs.common.added {
                 actions.insert(
                     *added.since,
                     ItemStatus::Added {
@@ -85,14 +85,14 @@ impl Item<syn::Field, FieldAttributes> for VersionedField {
                 chain: Some(actions),
                 inner: field,
             }
-        } else if !attributes.renames.is_empty() {
+        } else if !field_attrs.common.renames.is_empty() {
             let mut actions = BTreeMap::new();
             let mut ident = field
                 .ident
                 .clone()
                 .expect("internal error: field must have an ident");
 
-            for rename in attributes.renames.iter().rev() {
+            for rename in field_attrs.common.renames.iter().rev() {
                 let from = format_ident!("{from}", from = *rename.from);
                 actions.insert(
                     *rename.since,
@@ -106,7 +106,7 @@ impl Item<syn::Field, FieldAttributes> for VersionedField {
 
             // After the last iteration above (if any) we use the ident for the
             // added action if there is any.
-            if let Some(added) = attributes.added {
+            if let Some(added) = field_attrs.common.added {
                 actions.insert(
                     *added.since,
                     ItemStatus::Added {
@@ -121,7 +121,7 @@ impl Item<syn::Field, FieldAttributes> for VersionedField {
                 inner: field,
             }
         } else {
-            if let Some(added) = attributes.added {
+            if let Some(added) = field_attrs.common.added {
                 let mut actions = BTreeMap::new();
 
                 actions.insert(

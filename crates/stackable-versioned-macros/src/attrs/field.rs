@@ -2,10 +2,7 @@ use darling::{Error, FromField};
 use syn::{Field, Ident};
 
 use crate::{
-    attrs::{
-        common::{AddedAttributes, DeprecatedAttributes, RenamedAttributes},
-        container::ContainerAttributes,
-    },
+    attrs::common::{ContainerAttributes, ItemAttributes},
     consts::DEPRECATED_FIELD_PREFIX,
 };
 
@@ -33,13 +30,13 @@ use crate::{
     and_then = FieldAttributes::validate
 )]
 pub(crate) struct FieldAttributes {
+    #[darling(flatten)]
+    pub(crate) common: ItemAttributes,
+
+    // The ident (automatically extracted by darling) cannot be moved into the
+    // shared item attributes because for struct fields, the type is
+    // `Option<Ident>`, while for enum variants, the type is `Ident`.
     pub(crate) ident: Option<Ident>,
-    pub(crate) added: Option<AddedAttributes>,
-
-    #[darling(multiple, rename = "renamed")]
-    pub(crate) renames: Vec<RenamedAttributes>,
-
-    pub(crate) deprecated: Option<DeprecatedAttributes>,
 }
 
 impl FieldAttributes {
@@ -56,9 +53,6 @@ impl FieldAttributes {
         errors.handle(self.validate_action_combinations());
         errors.handle(self.validate_action_order());
         errors.handle(self.validate_field_name());
-
-        // Code quality validation
-        errors.handle(self.validate_deprecated_options());
 
         // TODO (@Techassi): Add validation for renames so that renamed fields
         // match up and form a continuous chain (eg. foo -> bar -> baz).
@@ -84,7 +78,11 @@ impl FieldAttributes {
     /// - `renamed` and `deprecated` using the same version: Again, the same
     ///   rules from above apply here as well.
     fn validate_action_combinations(&self) -> Result<(), Error> {
-        match (&self.added, &self.renames, &self.deprecated) {
+        match (
+            &self.common.added,
+            &self.common.renames,
+            &self.common.deprecated,
+        ) {
             (Some(added), _, Some(deprecated)) if *added.since == *deprecated.since => {
                 Err(Error::custom(
                     "field cannot be marked as `added` and `deprecated` in the same version",
@@ -122,8 +120,8 @@ impl FieldAttributes {
     /// - All `renamed` actions must use a greater version than `added` but a
     ///   lesser version than `deprecated`.
     fn validate_action_order(&self) -> Result<(), Error> {
-        let added_version = self.added.as_ref().map(|a| *a.since);
-        let deprecated_version = self.deprecated.as_ref().map(|d| *d.since);
+        let added_version = self.common.added.as_ref().map(|a| *a.since);
+        let deprecated_version = self.common.deprecated.as_ref().map(|d| *d.since);
 
         // First, validate that the added version is less than the deprecated
         // version.
@@ -139,7 +137,7 @@ impl FieldAttributes {
 
         // Now, iterate over all renames and ensure that their versions are
         // between the added and deprecated version.
-        if !self.renames.iter().all(|r| {
+        if !self.common.renames.iter().all(|r| {
             added_version.map_or(true, |a| a < *r.since)
                 && deprecated_version.map_or(true, |d| d > *r.since)
         }) {
@@ -169,32 +167,16 @@ impl FieldAttributes {
             .to_string()
             .starts_with(DEPRECATED_FIELD_PREFIX);
 
-        if self.deprecated.is_some() && !starts_with {
+        if self.common.deprecated.is_some() && !starts_with {
             return Err(Error::custom(
                 "field was marked as `deprecated` and thus must include the `deprecated_` prefix in its name"
             ).with_span(&self.ident));
         }
 
-        if self.deprecated.is_none() && starts_with {
+        if self.common.deprecated.is_none() && starts_with {
             return Err(Error::custom(
                 "field includes the `deprecated_` prefix in its name but is not marked as `deprecated`"
             ).with_span(&self.ident));
-        }
-
-        Ok(())
-    }
-
-    fn validate_deprecated_options(&self) -> Result<(), Error> {
-        // TODO (@Techassi): Make the field 'note' optional, because in the
-        // future, the macro will generate parts of the deprecation note
-        // automatically. The user-provided note will then be appended to the
-        // auto-generated one.
-
-        if let Some(deprecated) = &self.deprecated {
-            if deprecated.note.is_empty() {
-                return Err(Error::custom("deprecation note must not be empty")
-                    .with_span(&deprecated.note.span()));
-            }
         }
 
         Ok(())
@@ -210,7 +192,7 @@ impl FieldAttributes {
         // NOTE (@Techassi): Can we maybe optimize this a little?
         let mut errors = Error::accumulator();
 
-        if let Some(added) = &self.added {
+        if let Some(added) = &self.common.added {
             if !container_attrs
                 .versions
                 .iter()
@@ -223,7 +205,7 @@ impl FieldAttributes {
             }
         }
 
-        for rename in &self.renames {
+        for rename in &self.common.renames {
             if !container_attrs
                 .versions
                 .iter()
@@ -236,7 +218,7 @@ impl FieldAttributes {
             }
         }
 
-        if let Some(deprecated) = &self.deprecated {
+        if let Some(deprecated) = &self.common.deprecated {
             if !container_attrs
                 .versions
                 .iter()

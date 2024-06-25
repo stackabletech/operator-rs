@@ -7,7 +7,7 @@ use quote::quote;
 use syn::{DataStruct, Error, Ident};
 
 use crate::{
-    attrs::{container::ContainerAttributes, field::FieldAttributes},
+    attrs::{common::ContainerAttributes, field::FieldAttributes},
     gen::{
         common::{
             format_container_from_ident, Container, ContainerVersion, Item, VersionedContainer,

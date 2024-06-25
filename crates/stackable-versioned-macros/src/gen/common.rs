@@ -6,7 +6,7 @@ use quote::format_ident;
 use syn::{Field, Ident, Path, Variant};
 
 use crate::{
-    attrs::container::ContainerAttributes,
+    attrs::common::ContainerAttributes,
     consts::{DEPRECATED_FIELD_PREFIX, DEPRECATED_VARIANT_PREFIX},
     gen::neighbors::Neighbors,
 };
