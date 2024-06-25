@@ -2,7 +2,7 @@ use darling::FromField;
 use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{DataStruct, Error, Ident, Result};
+use syn::{Attribute, DataStruct, Error, Ident, Result};
 
 use crate::{
     attrs::{container::ContainerAttributes, field::FieldAttributes},
@@ -30,6 +30,9 @@ pub(crate) struct VersionedStruct {
     pub(crate) fields: Vec<VersionedField>,
 
     pub(crate) skip_from: bool,
+
+    /// The original attributes that were added to the struct.
+    pub(crate) original_attrs: Vec<Attribute>,
 }
 
 impl VersionedStruct {
@@ -37,6 +40,7 @@ impl VersionedStruct {
         ident: Ident,
         data: DataStruct,
         attributes: ContainerAttributes,
+        original_attrs: Vec<Attribute>,
     ) -> Result<Self> {
         // Convert the raw version attributes into a container version.
         let versions = attributes
@@ -98,6 +102,7 @@ impl VersionedStruct {
             versions,
             fields,
             ident,
+            original_attrs,
         })
     }
 
@@ -135,12 +140,14 @@ impl VersionedStruct {
 
         let deprecated_attr = version.deprecated.then_some(quote! {#[deprecated]});
         let module_name = &version.ident;
+        let attrs = &self.original_attrs;
 
         // Generate tokens for the module and the contained struct
         token_stream.extend(quote! {
             #[automatically_derived]
             #deprecated_attr
             pub mod #module_name {
+                #(#attrs)*
                 pub struct #struct_name {
                     #fields
                 }
