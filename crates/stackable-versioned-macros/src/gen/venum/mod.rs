@@ -3,12 +3,15 @@ use std::ops::Deref;
 use darling::FromVariant;
 use itertools::Itertools;
 use proc_macro2::TokenStream;
+use quote::quote;
 use syn::{DataEnum, Error, Ident};
 
 use crate::{
     attrs::{container::ContainerAttributes, variant::VariantAttributes},
     gen::{
-        common::{format_container_from_ident, Container, Item, VersionedContainer},
+        common::{
+            format_container_from_ident, Container, ContainerVersion, Item, VersionedContainer,
+        },
         venum::variant::VersionedVariant,
     },
 };
@@ -17,6 +20,14 @@ mod variant;
 
 #[derive(Debug)]
 pub(crate) struct VersionedEnum(VersionedContainer<VersionedVariant>);
+
+impl Deref for VersionedEnum {
+    type Target = VersionedContainer<VersionedVariant>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 impl Container<DataEnum, VersionedVariant> for VersionedEnum {
     fn new(ident: Ident, data: DataEnum, attributes: ContainerAttributes) -> syn::Result<Self> {
@@ -70,14 +81,57 @@ impl Container<DataEnum, VersionedVariant> for VersionedEnum {
     }
 
     fn generate_tokens(&self) -> TokenStream {
-        todo!()
+        let mut token_stream = TokenStream::new();
+        let mut versions = self.versions.iter().peekable();
+
+        while let Some(version) = versions.next() {
+            token_stream.extend(self.generate_version(version, versions.peek().copied()));
+        }
+
+        token_stream
     }
 }
 
-impl Deref for VersionedEnum {
-    type Target = VersionedContainer<VersionedVariant>;
+impl VersionedEnum {
+    fn generate_version(
+        &self,
+        version: &ContainerVersion,
+        next_version: Option<&ContainerVersion>,
+    ) -> TokenStream {
+        let mut token_stream = TokenStream::new();
+        let enum_name = &self.ident;
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
+        // Generate variants of the enum for `version`.
+        let variants = self.generate_enum_variants(version);
+
+        // TODO (@Techassi): Make the generation of the module optional to
+        // enable the attribute macro to be applied to a module which
+        // generates versioned versions of all contained containers.
+
+        let deprecated_attr = version.deprecated.then_some(quote! {#[deprecated]});
+        let module_name = &version.ident;
+
+        // Generate tokens for the module and the contained struct
+        token_stream.extend(quote! {
+            #[automatically_derived]
+            #deprecated_attr
+            pub mod #module_name {
+                pub enum #enum_name {
+                    #variants
+                }
+            }
+        });
+
+        token_stream
+    }
+
+    fn generate_enum_variants(&self, version: &ContainerVersion) -> TokenStream {
+        let mut token_stream = TokenStream::new();
+
+        for variant in &self.items {
+            token_stream.extend(variant.generate_for_container(version));
+        }
+
+        token_stream
     }
 }

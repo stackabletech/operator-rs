@@ -12,12 +12,12 @@ use stackable_versioned_macros::versioned;
     version(name = "v3")
 )]
 struct Foo {
-    /// My docs
     #[versioned(
         added(since = "v1alpha1"),
         renamed(since = "v1beta1", from = "jjj"),
         deprecated(since = "v2", note = "not empty")
     )]
+    /// Test
     deprecated_bar: usize,
     baz: bool,
 }

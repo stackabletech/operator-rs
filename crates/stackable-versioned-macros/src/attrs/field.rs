@@ -61,7 +61,7 @@ impl FieldAttributes {
         errors.handle(self.validate_deprecated_options());
 
         // TODO (@Techassi): Add validation for renames so that renamed fields
-        // match up and form a continous chain (eg. foo -> bar -> baz).
+        // match up and form a continuous chain (eg. foo -> bar -> baz).
 
         // TODO (@Techassi): Add hint if a field is added in the first version
         // that it might be clever to remove the 'added' attribute.

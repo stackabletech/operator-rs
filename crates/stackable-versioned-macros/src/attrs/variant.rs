@@ -32,9 +32,54 @@ impl VariantAttributes {
 
     pub(crate) fn validate_versions(
         &self,
-        attributes: &ContainerAttributes,
+        container_attrs: &ContainerAttributes,
         variant: &Variant,
     ) -> Result<(), Error> {
-        todo!()
+        // NOTE (@Techassi): Can we maybe optimize this a little?
+        // TODO (@Techassi): Unify this with the field impl, e.g. by introducing
+        // a T: Spanned bound for the second function parameter.
+        let mut errors = Error::accumulator();
+
+        if let Some(added) = &self.added {
+            if !container_attrs
+                .versions
+                .iter()
+                .any(|v| v.name == *added.since)
+            {
+                errors.push(Error::custom(
+                   "field action `added` uses version which was not declared via #[versioned(version)]")
+                   .with_span(&variant.ident)
+               );
+            }
+        }
+
+        for rename in &self.renames {
+            if !container_attrs
+                .versions
+                .iter()
+                .any(|v| v.name == *rename.since)
+            {
+                errors.push(
+                   Error::custom("field action `renamed` uses version which was not declared via #[versioned(version)]")
+                   .with_span(&variant.ident)
+               );
+            }
+        }
+
+        if let Some(deprecated) = &self.deprecated {
+            if !container_attrs
+                .versions
+                .iter()
+                .any(|v| v.name == *deprecated.since)
+            {
+                errors.push(Error::custom(
+                   "field action `deprecated` uses version which was not declared via #[versioned(version)]")
+                   .with_span(&variant.ident)
+               );
+            }
+        }
+
+        errors.finish()?;
+        Ok(())
     }
 }

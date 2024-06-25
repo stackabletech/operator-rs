@@ -6,10 +6,8 @@ use syn::{Field, Ident};
 
 use crate::{
     attrs::field::FieldAttributes,
-    consts::DEPRECATED_FIELD_PREFIX,
-    gen::{
-        common::{ContainerVersion, Item, ItemStatus, VersionChain},
-        neighbors::Neighbors,
+    gen::common::{
+        remove_deprecated_field_prefix, ContainerVersion, Item, ItemStatus, VersionChain,
     },
 };
 
@@ -39,18 +37,15 @@ impl Item<syn::Field, FieldAttributes> for VersionedField {
         // The ident of the deprecated field is guaranteed to include the
         // 'deprecated_' prefix. The ident can thus be used as is.
         if let Some(deprecated) = attributes.deprecated {
-            let deprecated_ident = field.ident.as_ref().unwrap();
+            let deprecated_ident = field
+                .ident
+                .as_ref()
+                .expect("internal error: field must have an ident");
 
             // When the field is deprecated, any rename which occurred beforehand
             // requires access to the field ident to infer the field ident for
             // the latest rename.
-            let mut ident = format_ident!(
-                "{ident}",
-                ident = deprecated_ident
-                    .to_string()
-                    .replace(DEPRECATED_FIELD_PREFIX, "")
-            );
-
+            let mut ident = remove_deprecated_field_prefix(&deprecated_ident);
             let mut actions = BTreeMap::new();
 
             actions.insert(
@@ -92,7 +87,10 @@ impl Item<syn::Field, FieldAttributes> for VersionedField {
             }
         } else if !attributes.renames.is_empty() {
             let mut actions = BTreeMap::new();
-            let mut ident = field.ident.clone().unwrap();
+            let mut ident = field
+                .ident
+                .clone()
+                .expect("internal error: field must have an ident");
 
             for rename in attributes.renames.iter().rev() {
                 let from = format_ident!("{from}", from = *rename.from);
@@ -147,55 +145,6 @@ impl Item<syn::Field, FieldAttributes> for VersionedField {
         }
     }
 
-    fn insert_container_versions(&mut self, versions: &[ContainerVersion]) {
-        if let Some(chain) = &mut self.chain {
-            for version in versions {
-                if chain.contains_key(&version.inner) {
-                    continue;
-                }
-
-                match chain.get_neighbors(&version.inner) {
-                    (None, Some(status)) => match status {
-                        ItemStatus::Added { .. } => {
-                            chain.insert(version.inner, ItemStatus::NotPresent)
-                        }
-                        ItemStatus::Renamed { from, .. } => {
-                            chain.insert(version.inner, ItemStatus::NoChange(from.clone()))
-                        }
-                        ItemStatus::Deprecated { previous_ident, .. } => chain
-                            .insert(version.inner, ItemStatus::NoChange(previous_ident.clone())),
-                        ItemStatus::NoChange(ident) => {
-                            chain.insert(version.inner, ItemStatus::NoChange(ident.clone()))
-                        }
-                        ItemStatus::NotPresent => unreachable!(),
-                    },
-                    (Some(status), None) => {
-                        let ident = match status {
-                            ItemStatus::Added { ident, .. } => ident,
-                            ItemStatus::Renamed { to, .. } => to,
-                            ItemStatus::Deprecated { ident, .. } => ident,
-                            ItemStatus::NoChange(ident) => ident,
-                            ItemStatus::NotPresent => unreachable!(),
-                        };
-
-                        chain.insert(version.inner, ItemStatus::NoChange(ident.clone()))
-                    }
-                    (Some(status), Some(_)) => {
-                        let ident = match status {
-                            ItemStatus::Added { ident, .. } => ident,
-                            ItemStatus::Renamed { to, .. } => to,
-                            ItemStatus::NoChange(ident) => ident,
-                            _ => unreachable!(),
-                        };
-
-                        chain.insert(version.inner, ItemStatus::NoChange(ident.clone()))
-                    }
-                    _ => unreachable!(),
-                };
-            }
-        }
-    }
-
     fn generate_for_container(&self, container_version: &ContainerVersion) -> Option<TokenStream> {
         match &self.chain {
             Some(chain) => {
@@ -216,7 +165,7 @@ impl Item<syn::Field, FieldAttributes> for VersionedField {
                     ItemStatus::Added { ident, .. } => Some(quote! {
                         pub #ident: #field_type,
                     }),
-                    ItemStatus::Renamed { from: _, to } => Some(quote! {
+                    ItemStatus::Renamed { to, .. } => Some(quote! {
                         pub #to: #field_type,
                     }),
                     ItemStatus::Deprecated {
@@ -293,5 +242,9 @@ impl Item<syn::Field, FieldAttributes> for VersionedField {
                 .get_ident(),
             None => self.inner.ident.as_ref(),
         }
+    }
+
+    fn chain(&mut self) -> Option<&mut VersionChain> {
+        self.chain.as_mut()
     }
 }
