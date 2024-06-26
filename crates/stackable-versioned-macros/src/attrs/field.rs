@@ -40,6 +40,14 @@ pub(crate) struct FieldAttributes {
 }
 
 impl FieldAttributes {
+    // NOTE (@Techassi): Ideally, these validations should be moved to the
+    // ItemAttributes impl, because common validation like action combinations
+    // and action order can be validated without taking the type of attribute
+    // into account (field vs variant). However, we would loose access to the
+    // field / variant ident and as such, cannot display the error directly on
+    // the affected field / variant. This is a significant decrease in DX.
+    // See https://github.com/TedDriggs/darling/discussions/294
+
     /// This associated function is called by darling (see and_then attribute)
     /// after it successfully parsed the attribute. This allows custom
     /// validation of the attribute which extends the validation already in
@@ -128,7 +136,7 @@ impl FieldAttributes {
         // NOTE (@Techassi): Is this already covered by the code below?
         if let (Some(added_version), Some(deprecated_version)) = (added_version, deprecated_version)
         {
-            if added_version >= deprecated_version {
+            if added_version > deprecated_version {
                 return Err(Error::custom(format!(
                     "field was marked as `added` in version `{added_version}` while being marked as `deprecated` in an earlier version `{deprecated_version}`"
                 )).with_span(&self.ident));

@@ -22,10 +22,10 @@ pub(crate) struct VersionedVariant {
 // identical.
 
 impl Item<Variant, VariantAttributes> for VersionedVariant {
-    fn new(variant: Variant, attributes: VariantAttributes) -> Self {
+    fn new(variant: Variant, variant_attrs: VariantAttributes) -> Self {
         // NOTE (@Techassi): This is straight up copied from the VersionedField
         // impl. As mentioned above, unify this.
-        if let Some(deprecated) = attributes.deprecated {
+        if let Some(deprecated) = variant_attrs.common.deprecated {
             let deprecated_ident = &variant.ident;
 
             // When the field is deprecated, any rename which occurred beforehand
@@ -43,7 +43,7 @@ impl Item<Variant, VariantAttributes> for VersionedVariant {
                 },
             );
 
-            for rename in attributes.renames.iter().rev() {
+            for rename in variant_attrs.common.renames.iter().rev() {
                 let from = format_ident!("{from}", from = *rename.from);
                 actions.insert(
                     *rename.since,
@@ -57,7 +57,7 @@ impl Item<Variant, VariantAttributes> for VersionedVariant {
 
             // After the last iteration above (if any) we use the ident for the
             // added action if there is any.
-            if let Some(added) = attributes.added {
+            if let Some(added) = variant_attrs.common.added {
                 actions.insert(
                     *added.since,
                     ItemStatus::Added {
@@ -71,11 +71,11 @@ impl Item<Variant, VariantAttributes> for VersionedVariant {
                 chain: Some(actions),
                 inner: variant,
             }
-        } else if !attributes.renames.is_empty() {
+        } else if !variant_attrs.common.renames.is_empty() {
             let mut actions = BTreeMap::new();
             let mut ident = variant.ident.clone();
 
-            for rename in attributes.renames.iter().rev() {
+            for rename in variant_attrs.common.renames.iter().rev() {
                 let from = format_ident!("{from}", from = *rename.from);
                 actions.insert(
                     *rename.since,
@@ -89,7 +89,7 @@ impl Item<Variant, VariantAttributes> for VersionedVariant {
 
             // After the last iteration above (if any) we use the ident for the
             // added action if there is any.
-            if let Some(added) = attributes.added {
+            if let Some(added) = variant_attrs.common.added {
                 actions.insert(
                     *added.since,
                     ItemStatus::Added {
@@ -104,7 +104,7 @@ impl Item<Variant, VariantAttributes> for VersionedVariant {
                 inner: variant,
             }
         } else {
-            if let Some(added) = attributes.added {
+            if let Some(added) = variant_attrs.common.added {
                 let mut actions = BTreeMap::new();
 
                 actions.insert(
@@ -137,14 +137,17 @@ impl Item<Variant, VariantAttributes> for VersionedVariant {
                 ItemStatus::Added { ident, .. } => Some(quote! {
                     #ident,
                 }),
-                ItemStatus::Renamed { from, to } => todo!(),
-                ItemStatus::Deprecated {
-                    previous_ident,
-                    ident,
-                    note,
-                } => todo!(),
-                ItemStatus::NoChange(_) => todo!(),
-                ItemStatus::NotPresent => todo!(),
+                ItemStatus::Renamed { to, .. } => Some(quote! {
+                    #to,
+                }),
+                ItemStatus::Deprecated { ident, .. } => Some(quote! {
+                    #[deprecated]
+                    #ident,
+                }),
+                ItemStatus::NoChange(ident) => Some(quote! {
+                    #ident,
+                }),
+                ItemStatus::NotPresent => None,
             },
             None => {
                 // If there is no chain of variant actions, the variant is not
