@@ -161,6 +161,14 @@ impl ProductImage {
             }
         }
     }
+
+    /// The product version is always known without having to resolve the image.
+    pub fn product_version(&self) -> &str {
+        match &self.image_selection {
+            ProductImageSelection::Custom(ProductImageCustom { product_version: pv, .. }) => { pv },
+            ProductImageSelection::StackableVersion(ProductImageStackableVersion { product_version: pv, .. }) => { pv }
+        }
+    }
 }
 
 #[cfg(test)]
