@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
   - [kube#1494](https://github.com/kube-rs/kube/pull/1494)
   - [kube#1504](https://github.com/kube-rs/kube/pull/1504)
 - Upgrade opentelemetry crates ([#811]).
+- Added `ProductImage.product_version()` utility function ([#817])
 
 ### Fixed
 
@@ -21,6 +22,7 @@ All notable changes to this project will be documented in this file.
 [#804]: https://github.com/stackabletech/operator-rs/pull/804
 [#811]: https://github.com/stackabletech/operator-rs/pull/811
 [#812]: https://github.com/stackabletech/operator-rs/pull/812
+[#817]: https://github.com/stackabletech/operator-rs/pull/817
 
 ## [0.69.3] - 2024-06-12
 
