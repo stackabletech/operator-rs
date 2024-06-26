@@ -75,7 +75,7 @@ pub fn initialize_logging(env: &str, app_name: &str, tracing_target: TracingTarg
 
     // need to delay logging until after tracing is initialized
     match file_appender_directory {
-        Some(dir) => tracing::info!(log.file.directory = %dir.display(), "file logging enabled"),
+        Some(dir) => tracing::info!(directory = %dir.display(), "file logging enabled"),
         None => tracing::debug!("file logging disabled, because no log directory set"),
     }
 }
