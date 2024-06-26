@@ -755,8 +755,7 @@ sources:
   files_opa_bundle_builder:
     type: file
     include:
-      - {STACKABLE_LOG_DIR}/bundle-builder/current
-      - {STACKABLE_LOG_DIR}/bundle-builder/test
+      - {STACKABLE_LOG_DIR}/bundle-builder/opa-bundle-builder.log
 
   files_opa_json:
     type: file
