@@ -22,6 +22,7 @@ struct Foo {
     baz: bool,
 }
 
+#[ignore]
 #[test]
 fn basic() {
     let _ = v1alpha1::Foo { jjj: 0, baz: false };

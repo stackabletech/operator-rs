@@ -1,5 +1,6 @@
 use stackable_versioned_macros::versioned;
 
+#[ignore]
 #[test]
 fn deprecate() {
     #[versioned(

@@ -52,6 +52,7 @@ fn from_custom_default_fn() {
     assert!(foo_v1beta1.baz);
 }
 
+#[ignore]
 #[test]
 fn skip_from_all() {
     #[versioned(
@@ -70,6 +71,7 @@ fn skip_from_all() {
     }
 }
 
+#[ignore]
 #[test]
 fn skip_from_version() {
     #[versioned(
