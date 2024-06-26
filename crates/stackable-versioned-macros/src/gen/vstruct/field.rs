@@ -128,7 +128,10 @@ impl Item<syn::Field, FieldAttributes> for VersionedField {
                     *added.since,
                     ItemStatus::Added {
                         default_fn: added.default_fn.deref().clone(),
-                        ident: field.ident.clone().unwrap(),
+                        ident: field
+                            .ident
+                            .clone()
+                            .expect("internal error: field must have a name"),
                     },
                 );
 
@@ -216,8 +219,13 @@ impl Item<syn::Field, FieldAttributes> for VersionedField {
                         #ident: #default_fn(),
                     },
                     (old, next) => {
-                        let old_field_ident = old.get_ident().unwrap();
-                        let next_field_ident = next.get_ident().unwrap();
+                        let old_field_ident = old
+                            .get_ident()
+                            .expect("internal error: old field must have a name");
+
+                        let next_field_ident = next
+                            .get_ident()
+                            .expect("internal error: new field must have a name");
 
                         quote! {
                             #next_field_ident: #from_ident.#old_field_ident,

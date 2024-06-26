@@ -163,7 +163,7 @@ impl FieldAttributes {
         let starts_with = self
             .ident
             .as_ref()
-            .unwrap()
+            .expect("internal error: to be validated fields must have a name")
             .to_string()
             .starts_with(DEPRECATED_FIELD_PREFIX);
 
