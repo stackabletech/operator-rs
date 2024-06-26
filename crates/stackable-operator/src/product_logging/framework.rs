@@ -755,7 +755,7 @@ sources:
   files_opa_bundle_builder:
     type: file
     include:
-      - {STACKABLE_LOG_DIR}/bundle-builder/opa-bundle-builder.log
+      - {STACKABLE_LOG_DIR}/bundle-builder/opa-bundle-builder.log.json
 
   files_opa_json:
     type: file
@@ -777,33 +777,58 @@ transforms:
       .message = ""
       .errors = []
 
-      event, err = parse_regex(strip_whitespace(strip_ansi_escape_codes(raw_message)), r'(?P<timestamp>[0-9-:.TZ]+)[ ]+(?P<level>\w+)[ ]+(?P<logger>.+):[ ]+(?P<message>.*)')
+      parsed_event, err = parse_json(raw_message)
       if err != null {{
-        error = "Log event not parsable: " + err
+        error = "JSON not parsable: " + err
+        .errors = push(.errors, error)
+        log(error, level: "warn")
+        .message = raw_message
+      }} else if !is_object(parsed_event) {{
+        error = "Parsed event is not a JSON object."
         .errors = push(.errors, error)
         log(error, level: "warn")
         .message = raw_message
       }} else {{
-        parsed_timestamp, err = parse_timestamp(event.timestamp, "%Y-%m-%dT%H:%M:%S.%6fZ")
+        event = object!(parsed_event)
+
+        timestamp_string, err = string(event.timestamp)
         if err == null {{
-          .timestamp = parsed_timestamp
-        }} else {{
-          .errors = push(.errors, "Timestamp not parsable, using current time instead: " + err)
+          parsed_timestamp, err = parse_timestamp(timestamp_string, "%+")
+          if err == null {{
+            .timestamp = parsed_timestamp
+          }} else {{
+            .errors = push(.errors, "Timestamp not parsable, trying current time instead: " + err)
+          }}
         }}
 
-        level = string!(event.level)
-        if includes(["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"], level) {{
-          .level = level
-        }} else {{
+        .logger, err = string(event.target)
+        if err != null || is_empty(.logger) {{
+          .errors = push(.errors, "Logger/target not found.")
+        }}
+
+        level, err = string(event.level)
+        if err != null {{
+          .errors = push(.errors, "Level not found, using \"" + .level + "\" instead.")
+        }} else if !includes(["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"], upcase(level)) {{
           .errors = push(.errors, "Level \"" + level + "\" unknown, using \"" + .level + "\" instead.")
+        }} else {{
+          .level = upcase(level)
         }}
 
-        .logger = string!(event.logger)
+        fields, err = object(event.fields)
+        if err != null {{
+          .errors = push(.errors, "Fields are not an object.")
+        }}
 
-        .message = string!(event.message)
-        if is_empty(.message) {{
+        .message, err = string(fields.message)
+        if err != null || is_empty(.message) {{
           .errors = push(.errors, "Message not found.")
         }}
+
+        del(fields.message)
+
+        other_fields = encode_key_value(fields, field_delimiter: "\n")
+        .message = join!(compact([.message, other_fields]), "\n\n")
       }}
 
   processed_files_opa_json:
