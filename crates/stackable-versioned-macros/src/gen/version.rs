@@ -7,4 +7,5 @@ pub(crate) struct ContainerVersion {
     pub(crate) skip_from: bool,
     pub(crate) inner: Version,
     pub(crate) ident: Ident,
+    pub(crate) doc: Option<String>,
 }

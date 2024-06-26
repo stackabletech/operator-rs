@@ -50,6 +50,7 @@ impl VersionedStruct {
                 skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
                 ident: format_ident!("{version}", version = v.name.to_string()),
                 deprecated: v.deprecated.is_present(),
+                doc: v.doc.clone(),
                 inner: v.name,
             })
             .collect();
@@ -141,6 +142,15 @@ impl VersionedStruct {
         let deprecated_attr = version.deprecated.then_some(quote! {#[deprecated]});
         let module_name = &version.ident;
         let attrs = &self.original_attrs;
+        let doc = if let Some(doc) = &version.doc {
+            let doc = format!("Docs for `{module_name}`: {doc}");
+            Some(quote! {
+                #[doc = ""]
+                #[doc = #doc]
+            })
+        } else {
+            None
+        };
 
         // Generate tokens for the module and the contained struct
         token_stream.extend(quote! {
@@ -148,6 +158,7 @@ impl VersionedStruct {
             #deprecated_attr
             pub mod #module_name {
                 #(#attrs)*
+                #doc
                 pub struct #struct_name {
                     #fields
                 }

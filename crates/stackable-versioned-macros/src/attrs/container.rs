@@ -95,6 +95,7 @@ pub(crate) struct VersionAttributes {
     pub(crate) deprecated: Flag,
     pub(crate) name: Version,
     pub(crate) skip: Option<SkipOptions>,
+    pub(crate) doc: Option<String>,
 }
 
 /// This struct contains supported container options.
