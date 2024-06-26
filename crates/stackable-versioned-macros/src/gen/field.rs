@@ -303,9 +303,7 @@ impl VersionedField {
             }
             None => {
                 let field_ident = &self.inner.ident;
-                let attrs = &self.inner.attrs;
                 quote! {
-                    #(#attrs)*
                     #field_ident: #from_ident.#field_ident,
                 }
             }
