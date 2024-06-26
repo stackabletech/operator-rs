@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Pass through struct and field comments and attributes. Add attribute for version specific docs. ([#816])
+
+[#816]: https://github.com/stackabletech/operator-rs/pull/816
+
 ## [0.3.0] - 2024-05-08
 
 ### Changed
