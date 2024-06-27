@@ -38,11 +38,11 @@ snafu.workspace = true
 strum.workspace = true
 time = { workspace = true, optional = true }
 tokio.workspace = true
+tracing.workspace = true
+tracing-appender.workspace = true
 tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
-tracing.workspace = true
 url.workspace = true
-tracing-appender = "0.2.3"
 
 [dev-dependencies]
 rstest.workspace = true
