@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use axum::{extract::State, routing::post, Json, Router};
-use tracing::{debug, instrument};
+use tracing::instrument;
 
 // Re-export this type because users of the conversion webhook server require
 // this type to write the handler function. Instead of importing this type from
@@ -69,7 +69,7 @@ impl ConversionWebhookServer {
     where
         H: WebhookHandler<ConversionReview, ConversionReview> + Clone + Send + Sync + 'static,
     {
-        debug!("create new conversion webhook server");
+        tracing::debug!("create new conversion webhook server");
 
         let handler_fn = |Json(review): Json<ConversionReview>| async {
             let review = handler.call(review);
@@ -128,7 +128,7 @@ impl ConversionWebhookServer {
             + 'static,
         S: Clone + Debug + Send + Sync + 'static,
     {
-        debug!("create new conversion webhook server with state");
+        tracing::debug!("create new conversion webhook server with state");
 
         // NOTE (@Techassi): Initially, after adding the state extractor, the
         // compiler kept throwing a trait error at me stating that the closure
@@ -142,7 +142,6 @@ impl ConversionWebhookServer {
             Json(review)
         };
 
-        debug!("create router");
         let router = Router::new()
             .route("/convert", post(handler_fn))
             .with_state(state);
@@ -152,9 +151,8 @@ impl ConversionWebhookServer {
 
     /// Starts the conversion webhook server by starting the underlying
     /// [`WebhookServer`].
-    #[instrument(name = "run_conversion_webhook_server", skip(self), fields(self.options))]
     pub async fn run(self) -> Result<(), crate::Error> {
-        debug!("run conversion webhook server");
+        tracing::info!("starting conversion webhook server");
 
         let server = WebhookServer::new(self.router, self.options);
         server.run().await
