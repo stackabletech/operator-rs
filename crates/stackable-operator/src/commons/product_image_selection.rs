@@ -105,17 +105,18 @@ impl ProductImage {
         let image_pull_policy = self.pull_policy.as_ref().to_string();
         let pull_secrets = self.pull_secrets.clone();
 
+        let product_version = self.product_version().to_owned();
+
         match &self.image_selection {
             ProductImageSelection::Custom(image_selection) => {
                 let image = ImageRef::parse(&image_selection.custom);
                 let image_tag_or_hash = image.tag.or(image.hash).unwrap_or("latest".to_string());
-                let mut app_version_label =
-                    format!("{}-{}", image_selection.product_version, image_tag_or_hash);
+                let mut app_version_label = format!("{}-{}", product_version, image_tag_or_hash);
                 // TODO Use new label mechanism once added
                 app_version_label.truncate(63);
 
                 ResolvedProductImage {
-                    product_version: image_selection.product_version.to_string(),
+                    product_version,
                     app_version_label,
                     image: image_selection.custom.clone(),
                     image_pull_policy,
@@ -145,14 +146,10 @@ impl ProductImage {
                 };
                 let image = format!(
                     "{repo}/{image_base_name}:{product_version}-stackable{stackable_version}",
-                    product_version = image_selection.product_version,
                 );
-                let app_version_label = format!(
-                    "{product_version}-stackable{stackable_version}",
-                    product_version = image_selection.product_version,
-                );
+                let app_version_label = format!("{product_version}-stackable{stackable_version}",);
                 ResolvedProductImage {
-                    product_version: image_selection.product_version.to_string(),
+                    product_version,
                     app_version_label,
                     image,
                     image_pull_policy,
@@ -163,6 +160,8 @@ impl ProductImage {
     }
 
     /// The product version is always known without having to resolve the image.
+    /// In the future we might have a more clever version, which let's the operator pick a recommended product version
+    /// automatically, e.g. from the LTS release line.
     pub fn product_version(&self) -> &str {
         match &self.image_selection {
             ProductImageSelection::Custom(ProductImageCustom {
