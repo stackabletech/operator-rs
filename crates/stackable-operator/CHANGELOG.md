@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added `ProductImage::product_version` utility function ([#817], [#XXX])
+
 ### Changed
 
 - BREAKING: Bump `kube` to 0.92.0. This required changes in a unit test, because
@@ -13,7 +17,6 @@ All notable changes to this project will be documented in this file.
   - [kube#1494](https://github.com/kube-rs/kube/pull/1494)
   - [kube#1504](https://github.com/kube-rs/kube/pull/1504)
 - Upgrade opentelemetry crates ([#811]).
-- Added `ProductImage.product_version()` utility function ([#817])
 
 ### Fixed
 
