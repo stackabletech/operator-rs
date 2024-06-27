@@ -2,12 +2,13 @@ use std::{collections::BTreeMap, ops::Deref};
 
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::Variant;
+use syn::{Ident, Variant};
 
 use crate::{
     attrs::variant::VariantAttributes,
-    gen::common::{
-        remove_deprecated_variant_prefix, ContainerVersion, Item, ItemStatus, VersionChain,
+    gen::{
+        common::{remove_deprecated_variant_prefix, ContainerVersion, ItemStatus, VersionChain},
+        neighbors::Neighbors,
     },
 };
 
@@ -21,8 +22,8 @@ pub(crate) struct VersionedVariant {
 // once for both a versioned field and variant, because the are practically
 // identical.
 
-impl Item<Variant, VariantAttributes> for VersionedVariant {
-    fn new(variant: Variant, variant_attrs: VariantAttributes) -> Self {
+impl VersionedVariant {
+    pub(crate) fn new(variant: Variant, variant_attrs: VariantAttributes) -> Self {
         // NOTE (@Techassi): This is straight up copied from the VersionedField
         // impl. As mentioned above, unify this.
         if let Some(deprecated) = variant_attrs.common.deprecated {
@@ -128,7 +129,68 @@ impl Item<Variant, VariantAttributes> for VersionedVariant {
         }
     }
 
-    fn generate_for_container(&self, container_version: &ContainerVersion) -> Option<TokenStream> {
+    /// Inserts container versions not yet present in the status chain.
+    ///
+    /// When initially creating a new versioned item, the code doesn't have
+    /// access to the versions defined on the container. This function inserts
+    /// all non-present container versions and decides which status and ident
+    /// is the right fit based on the status neighbors.
+    ///
+    /// This continuous chain ensures that when generating code (tokens), each
+    /// field can lookup the status (and ident) for a requested version.
+    pub(crate) fn insert_container_versions(&mut self, versions: &[ContainerVersion]) {
+        if let Some(chain) = &mut self.chain {
+            for version in versions {
+                if chain.contains_key(&version.inner) {
+                    continue;
+                }
+
+                match chain.get_neighbors(&version.inner) {
+                    (None, Some(status)) => match status {
+                        ItemStatus::Added { .. } => {
+                            chain.insert(version.inner, ItemStatus::NotPresent)
+                        }
+                        ItemStatus::Renamed { from, .. } => {
+                            chain.insert(version.inner, ItemStatus::NoChange(from.clone()))
+                        }
+                        ItemStatus::Deprecated { previous_ident, .. } => chain
+                            .insert(version.inner, ItemStatus::NoChange(previous_ident.clone())),
+                        ItemStatus::NoChange(ident) => {
+                            chain.insert(version.inner, ItemStatus::NoChange(ident.clone()))
+                        }
+                        ItemStatus::NotPresent => unreachable!(),
+                    },
+                    (Some(status), None) => {
+                        let ident = match status {
+                            ItemStatus::Added { ident, .. } => ident,
+                            ItemStatus::Renamed { to, .. } => to,
+                            ItemStatus::Deprecated { ident, .. } => ident,
+                            ItemStatus::NoChange(ident) => ident,
+                            ItemStatus::NotPresent => unreachable!(),
+                        };
+
+                        chain.insert(version.inner, ItemStatus::NoChange(ident.clone()))
+                    }
+                    (Some(status), Some(_)) => {
+                        let ident = match status {
+                            ItemStatus::Added { ident, .. } => ident,
+                            ItemStatus::Renamed { to, .. } => to,
+                            ItemStatus::NoChange(ident) => ident,
+                            _ => unreachable!(),
+                        };
+
+                        chain.insert(version.inner, ItemStatus::NoChange(ident.clone()))
+                    }
+                    _ => unreachable!(),
+                };
+            }
+        }
+    }
+
+    pub(crate) fn generate_for_container(
+        &self,
+        container_version: &ContainerVersion,
+    ) -> Option<TokenStream> {
         match &self.chain {
             Some(chain) => match chain
                 .get(&container_version.inner)
@@ -162,16 +224,30 @@ impl Item<Variant, VariantAttributes> for VersionedVariant {
         }
     }
 
-    fn generate_for_from_impl(
+    pub(crate) fn generate_for_from_impl(
         &self,
+        module_name: &Ident,
+        next_module_name: &Ident,
         version: &ContainerVersion,
         next_version: &ContainerVersion,
+        enum_ident: &Ident,
         from_ident: &syn::Ident,
     ) -> TokenStream {
-        todo!()
+        match &self.chain {
+            Some(_) => quote! {
+                _ => todo!(),
+            },
+            None => {
+                let variant_ident = &self.inner.ident;
+
+                quote! {
+                    #module_name::#enum_ident::#variant_ident => #next_module_name::#enum_ident::#variant_ident,
+                }
+            }
+        }
     }
 
-    fn get_ident(&self, version: &ContainerVersion) -> Option<&syn::Ident> {
+    pub(crate) fn get_ident(&self, version: &ContainerVersion) -> Option<&syn::Ident> {
         match &self.chain {
             Some(chain) => chain
                 .get(&version.inner)
@@ -179,9 +255,5 @@ impl Item<Variant, VariantAttributes> for VersionedVariant {
                 .get_ident(),
             None => Some(&self.inner.ident),
         }
-    }
-
-    fn chain(&mut self) -> Option<&mut VersionChain> {
-        self.chain.as_mut()
     }
 }

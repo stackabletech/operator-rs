@@ -9,9 +9,7 @@ use syn::{DataEnum, Error, Ident};
 use crate::{
     attrs::{common::ContainerAttributes, variant::VariantAttributes},
     gen::{
-        common::{
-            format_container_from_ident, Container, ContainerVersion, Item, VersionedContainer,
-        },
+        common::{format_container_from_ident, Container, ContainerVersion, VersionedContainer},
         venum::variant::VersionedVariant,
     },
 };
@@ -122,6 +120,11 @@ impl VersionedEnum {
             }
         });
 
+        // Generate the From impl between this `version` and the next one.
+        if !self.skip_from && !version.skip_from {
+            token_stream.extend(self.generate_from_impl(version, next_version));
+        }
+
         token_stream
     }
 
@@ -133,5 +136,48 @@ impl VersionedEnum {
         }
 
         token_stream
+    }
+
+    fn generate_from_impl(
+        &self,
+        version: &ContainerVersion,
+        next_version: Option<&ContainerVersion>,
+    ) -> TokenStream {
+        if let Some(next_version) = next_version {
+            let next_module_name = &next_version.ident;
+            let module_name = &version.ident;
+
+            let from_ident = &self.from_ident;
+            let enum_ident = &self.ident;
+
+            let mut variants = TokenStream::new();
+
+            for item in &self.items {
+                variants.extend(item.generate_for_from_impl(
+                    module_name,
+                    next_module_name,
+                    version,
+                    next_version,
+                    enum_ident,
+                    from_ident,
+                ))
+            }
+
+            // TODO (@Techassi): Be a little bit more clever about when to include
+            // the #[allow(deprecated)] attribute.
+            return quote! {
+                #[automatically_derived]
+                #[allow(deprecated)]
+                impl From<#module_name::#enum_ident> for #next_module_name::#enum_ident {
+                    fn from(#from_ident: #module_name::#enum_ident) -> Self {
+                        match #from_ident {
+                            #variants
+                        }
+                    }
+                }
+            };
+        }
+
+        quote! {}
     }
 }

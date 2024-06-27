@@ -9,9 +9,7 @@ use syn::{DataStruct, Error, Ident};
 use crate::{
     attrs::{common::ContainerAttributes, field::FieldAttributes},
     gen::{
-        common::{
-            format_container_from_ident, Container, ContainerVersion, Item, VersionedContainer,
-        },
+        common::{format_container_from_ident, Container, ContainerVersion, VersionedContainer},
         vstruct::field::VersionedField,
     },
 };
@@ -151,9 +149,10 @@ impl VersionedStruct {
     ) -> TokenStream {
         if let Some(next_version) = next_version {
             let next_module_name = &next_version.ident;
-            let from_ident = &self.from_ident;
             let module_name = &version.ident;
-            let struct_name = &self.ident;
+
+            let from_ident = &self.from_ident;
+            let struct_ident = &self.ident;
 
             let fields = self.generate_from_fields(version, next_version, from_ident);
 
@@ -162,8 +161,8 @@ impl VersionedStruct {
             return quote! {
                 #[automatically_derived]
                 #[allow(deprecated)]
-                impl From<#module_name::#struct_name> for #next_module_name::#struct_name {
-                    fn from(#from_ident: #module_name::#struct_name) -> Self {
+                impl From<#module_name::#struct_ident> for #next_module_name::#struct_ident {
+                    fn from(#from_ident: #module_name::#struct_ident) -> Self {
                         Self {
                             #fields
                         }
