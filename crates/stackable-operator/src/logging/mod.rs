@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use tracing;
-use tracing_appender::rolling::RollingFileAppender;
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
 
 pub mod controller;
@@ -40,6 +40,7 @@ pub fn initialize_logging(env: &str, app_name: &str, tracing_target: TracingTarg
     let file_appender_directory = std::env::var_os(format!("{env}_DIRECTORY")).map(PathBuf::from);
     let file_fmt = file_appender_directory.as_deref().map(|log_dir| {
         let file_appender = RollingFileAppender::builder()
+            .rotation(Rotation::HOURLY)
             .filename_suffix(format!("{app_name}.log.json"))
             .max_log_files(6)
             .build(log_dir)
