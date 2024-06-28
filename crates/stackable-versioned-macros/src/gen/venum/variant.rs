@@ -7,8 +7,8 @@ use syn::{Ident, Variant};
 use crate::{
     attrs::variant::VariantAttributes,
     gen::{
+        chain::{BTreeMapExt, Neighbors},
         common::{remove_deprecated_variant_prefix, ContainerVersion, ItemStatus, VersionChain},
-        neighbors::Neighbors,
     },
 };
 
@@ -32,7 +32,7 @@ impl VersionedVariant {
             // When the field is deprecated, any rename which occurred beforehand
             // requires access to the field ident to infer the field ident for
             // the latest rename.
-            let mut ident = remove_deprecated_variant_prefix(&deprecated_ident);
+            let mut ident = remove_deprecated_variant_prefix(deprecated_ident);
             let mut actions = BTreeMap::new();
 
             actions.insert(
@@ -231,11 +231,25 @@ impl VersionedVariant {
         version: &ContainerVersion,
         next_version: &ContainerVersion,
         enum_ident: &Ident,
-        from_ident: &syn::Ident,
     ) -> TokenStream {
         match &self.chain {
-            Some(_) => quote! {
-                _ => todo!(),
+            Some(chain) => match (
+                chain.get_expect(&version.inner),
+                chain.get_expect(&next_version.inner),
+            ) {
+                (_, ItemStatus::Added { .. }) => quote! {},
+                (old, next) => {
+                    let old_variant_ident = old
+                        .get_ident()
+                        .expect("internal error: old variant must have a name");
+                    let next_variant_ident = next
+                        .get_ident()
+                        .expect("internal error: next variant must have a name");
+
+                    quote! {
+                        #module_name::#enum_ident::#old_variant_ident => #next_module_name::#enum_ident::#next_variant_ident,
+                    }
+                }
             },
             None => {
                 let variant_ident = &self.inner.ident;

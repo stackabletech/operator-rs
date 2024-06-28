@@ -7,8 +7,8 @@ use syn::{Field, Ident};
 use crate::{
     attrs::field::FieldAttributes,
     gen::{
+        chain::Neighbors,
         common::{remove_deprecated_field_prefix, ContainerVersion, ItemStatus, VersionChain},
-        neighbors::Neighbors,
     },
 };
 
@@ -50,7 +50,7 @@ impl VersionedField {
             // When the field is deprecated, any rename which occurred beforehand
             // requires access to the field ident to infer the field ident for
             // the latest rename.
-            let mut ident = remove_deprecated_field_prefix(&deprecated_ident);
+            let mut ident = remove_deprecated_field_prefix(deprecated_ident);
             let mut actions = BTreeMap::new();
 
             actions.insert(

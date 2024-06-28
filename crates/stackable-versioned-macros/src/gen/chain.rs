@@ -51,6 +51,26 @@ where
     }
 }
 
+pub(crate) trait BTreeMapExt<K, V>
+where
+    K: Ord,
+{
+    const MESSAGE: &'static str;
+
+    fn get_expect(&self, key: &K) -> &V;
+}
+
+impl<K, V> BTreeMapExt<K, V> for BTreeMap<K, V>
+where
+    K: Ord,
+{
+    const MESSAGE: &'static str = "internal error: chain must contain version";
+
+    fn get_expect(&self, key: &K) -> &V {
+        self.get(key).expect(Self::MESSAGE)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

@@ -6,8 +6,8 @@ use crate::{
     gen::{common::Container, venum::VersionedEnum, vstruct::VersionedStruct},
 };
 
+pub(crate) mod chain;
 pub(crate) mod common;
-pub(crate) mod neighbors;
 pub(crate) mod venum;
 pub(crate) mod vstruct;
 

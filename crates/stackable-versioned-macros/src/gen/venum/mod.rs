@@ -159,7 +159,6 @@ impl VersionedEnum {
                     version,
                     next_version,
                     enum_ident,
-                    from_ident,
                 ))
             }
 

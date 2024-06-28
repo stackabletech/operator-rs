@@ -13,21 +13,10 @@ fn versioned_enum() {
         Baz,
     }
 
-    // There is only one variant in v1alpha1, so we can take a shortcut and thus
-    // don't need a match statement
-    // impl From<v1alpha1::Foo> for v1beta1::Foo {
-    //     fn from(__sv_value: v1alpha1::Foo) -> Self {
-    //         Self::Baz
-    //     }
-    // }
+    let v1alpha1_foo = v1alpha1::Foo::Baz;
+    let v1beta1_foo = v1beta1::Foo::from(v1alpha1_foo);
+    let v1_foo = v1::Foo::from(v1beta1_foo);
 
-    // We need to match, to do the proper conversion
-    // impl From<v1beta1::Foo> for v1::Foo {
-    //     fn from(__sv_value: v1beta1::Foo) -> Self {
-    //         match __sv_value {
-    //             v1beta1::Foo::Bar => Self::DeprecatedBar,
-    //             v1beta1::Foo::Baz => Self::Baz,
-    //         }
-    //     }
-    // }
+    // TODO (@Techassi): Forward derive PartialEq
+    assert!(matches!(v1_foo, v1::Foo::Baz))
 }
