@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Remove duplicated code and unified struct/enum and field/variant code ([#CHANGEME]).
 - Change from derive macro to attribute macro to be able to generate code
   _in place_ instead of _appending_ new code ([#793]).
 - Improve action chain generation ([#784]).
@@ -19,6 +20,7 @@ All notable changes to this project will be documented in this file.
 [#790]: https://github.com/stackabletech/operator-rs/pull/790
 [#793]: https://github.com/stackabletech/operator-rs/pull/793
 [#804]: https://github.com/stackabletech/operator-rs/pull/804
+[#CHANGEME]: https://github.com/stackabletech/operator-rs/pull/CHANGEME
 
 ## [0.1.0] - 2024-05-08
 
