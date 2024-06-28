@@ -778,7 +778,7 @@ transforms:
       .message = ""
       .errors = []
 
-      event, err = parse_regex(strip_whitespace(strip_ansi_escape_codes(raw_message)), r'(?P<timestamp>[0-9-:.TZ]+)[ ]+(?P<level>\w+)[ ]+(?P<logger>.+):[ ]+(?P<message>.*)')
+      event, err = parse_regex(strip_whitespace(strip_ansi_escape_codes(raw_message)), r'(?P<timestamp>[0-9-:.TZ]+)[ ]+(?P<level>\w+)[ ]+(?P<logger>.+):[ ]*(?P<message>.*)')
       if err != null {{
         error = "Log event not parsable: " + err
         .errors = push(.errors, error)
