@@ -21,12 +21,15 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Product image selection pull request version override now only applies to pull requests ([#812]).
+- OPA bundle builder logs without a log message are marked with the
+  error "Message not found." instead of "Log event not parsable" ([#819]).
 
 [#804]: https://github.com/stackabletech/operator-rs/pull/804
 [#811]: https://github.com/stackabletech/operator-rs/pull/811
 [#812]: https://github.com/stackabletech/operator-rs/pull/812
 [#817]: https://github.com/stackabletech/operator-rs/pull/817
 [#818]: https://github.com/stackabletech/operator-rs/pull/818
+[#819]: https://github.com/stackabletech/operator-rs/pull/819
 
 ## [0.69.3] - 2024-06-12
 
