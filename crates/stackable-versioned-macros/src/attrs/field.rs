@@ -25,7 +25,7 @@ use crate::{attrs::container::ContainerAttributes, consts::DEPRECATED_PREFIX};
 #[derive(Debug, FromField)]
 #[darling(
     attributes(versioned),
-    forward_attrs(allow, doc, cfg, serde),
+    forward_attrs,
     and_then = FieldAttributes::validate
 )]
 pub(crate) struct FieldAttributes {
@@ -36,6 +36,8 @@ pub(crate) struct FieldAttributes {
     pub(crate) renames: Vec<RenamedAttributes>,
 
     pub(crate) deprecated: Option<DeprecatedAttributes>,
+
+    pub(crate) attrs: Vec<syn::Attribute>,
 }
 
 #[derive(Clone, Debug, FromMeta)]
@@ -79,6 +81,7 @@ impl FieldAttributes {
         errors.handle(self.validate_action_combinations());
         errors.handle(self.validate_action_order());
         errors.handle(self.validate_field_name());
+        errors.handle(self.validate_field_attributes());
 
         // Code quality validation
         errors.handle(self.validate_deprecated_options());
@@ -204,6 +207,25 @@ impl FieldAttributes {
             ).with_span(&self.ident));
         }
 
+        Ok(())
+    }
+
+    /// This associated function is called by the top-level validation function
+    /// and validates that disallowed field attributes are not used.
+    ///
+    /// The following naming rules apply:
+    ///
+    /// - `deprecated` must not be set on fields. Instead, the Versioned
+    ///   method of deprecating fields should be used.
+    fn validate_field_attributes(&self) -> Result<(), Error> {
+        for attr in &self.attrs {
+            for segment in &attr.path().segments {
+                if segment.ident == "deprecated" {
+                    return Err(Error::custom("field deprecation must be done using #[versioned(deprecated(since = \"VERSION\"))]")
+                        .with_span(&segment.ident.span()));
+                }
+            }
+        }
         Ok(())
     }
 
