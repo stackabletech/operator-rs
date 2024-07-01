@@ -45,7 +45,7 @@ where
     ///
     /// Internally, it will create a module for each declared version which
     /// contains the container with the appropriate items (fields or variants)
-    ///  Additionally, it generates `From` implementations, which enable
+    /// Additionally, it generates `From` implementations, which enable
     /// conversion from an older to a newer version.
     fn generate_tokens(&self) -> TokenStream;
 }

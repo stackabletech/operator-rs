@@ -32,8 +32,8 @@ impl Container<DataEnum, VersionedVariant> for VersionedEnum {
         // Convert the raw version attributes into a container version.
         let versions: Vec<_> = (&attributes).into();
 
-        // Extract the field attributes for every field from the raw token
-        // stream and also validate that each field action version uses a
+        // Extract the attributes for every variant from the raw token
+        // stream and also validate that each variant action version uses a
         // version declared by the container attribute.
         let mut items = Vec::new();
 
@@ -48,12 +48,12 @@ impl Container<DataEnum, VersionedVariant> for VersionedEnum {
 
         // Check for field ident collisions
         for version in &versions {
-            // Collect the idents of all fields for a single version and then
+            // Collect the idents of all variants for a single version and then
             // ensure that all idents are unique. If they are not, return an
             // error.
 
-            // TODO (@Techassi): Report which field(s) use a duplicate ident and
-            // also hint what can be done to fix it based on the field action /
+            // TODO (@Techassi): Report which variant(s) use a duplicate ident and
+            // also hint what can be done to fix it based on the variant action /
             // status.
 
             if !items.iter().map(|f| f.get_ident(version)).all_unique() {

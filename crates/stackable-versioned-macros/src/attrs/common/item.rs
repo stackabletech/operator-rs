@@ -43,6 +43,11 @@ impl ItemAttributes {
     }
 }
 
+/// For the added() action
+///
+/// Example usage:
+/// - `added(since = "...")`
+/// - `added(since = "...", default_fn = "custom_fn")`
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct AddedAttributes {
     pub(crate) since: SpannedValue<Version>,
@@ -58,12 +63,20 @@ fn default_default_fn() -> SpannedValue<Path> {
     )
 }
 
+/// For the renamed() action
+///
+/// Example usage:
+/// - `renamed(since = "...", from = "...")`
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct RenamedAttributes {
     pub(crate) since: SpannedValue<Version>,
     pub(crate) from: SpannedValue<String>,
 }
 
+/// For the deprecated() action
+///
+/// Example usage:
+/// - `deprecated(since = "...", note = "...")`
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct DeprecatedAttributes {
     pub(crate) since: SpannedValue<Version>,
