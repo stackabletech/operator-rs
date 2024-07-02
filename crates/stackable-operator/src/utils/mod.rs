@@ -1,4 +1,5 @@
 pub mod bash;
+pub mod crds;
 pub mod logging;
 mod option;
 mod url;

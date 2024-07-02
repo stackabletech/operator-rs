@@ -86,12 +86,13 @@ use std::{
 };
 
 use crate::{
-    commons::{pdb::PdbConfig, pod_overrides::pod_overrides_schema},
+    commons::pdb::PdbConfig,
     config::{
         fragment::{self, FromFragment},
         merge::Merge,
     },
     product_config_utils::Configuration,
+    utils::crds::raw_object_schema,
 };
 use derivative::Derivative;
 use k8s_openapi::api::core::v1::PodTemplateSpec;
@@ -137,7 +138,7 @@ pub struct CommonConfiguration<T> {
     /// [Pod overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#pod-overrides)
     /// for more information.
     #[serde(default)]
-    #[schemars(schema_with = "pod_overrides_schema")]
+    #[schemars(schema_with = "raw_object_schema")]
     pub pod_overrides: PodTemplateSpec,
 }
 
