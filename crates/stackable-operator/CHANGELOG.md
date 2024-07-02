@@ -20,7 +20,8 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Convert `podOverrides` and `affinity` fields to take any arbitrary YAML input, rather than using the
   underlying schema. This reduces e.g. the Druid CRD size from `2.4MB` to `288K` (which is a 88% reduction). It has the
   downside that the users input is not validated to be a valid `PodTemplateSpec`/affinity any more. However, this can
-  later be re-added by using validation webhooks if needed. This change is a preparation for CRD versioning ([#XXX]).
+  later be re-added by using validation webhooks if needed. This change should not be breaking for the user and is a
+  preparation for CRD versioning. ([#XXX]).
 
 ### Fixed
 
