@@ -29,8 +29,8 @@ impl VersionedVariant {
         if let Some(deprecated) = variant_attrs.common.deprecated {
             let deprecated_ident = &variant.ident;
 
-            // When the field is deprecated, any rename which occurred beforehand
-            // requires access to the field ident to infer the field ident for
+            // When the variant is deprecated, any rename which occurred beforehand
+            // requires access to the variant ident to infer the variant ident for
             // the latest rename.
             let mut ident = remove_deprecated_variant_prefix(deprecated_ident);
             let mut actions = BTreeMap::new();
@@ -137,7 +137,7 @@ impl VersionedVariant {
     /// is the right fit based on the status neighbors.
     ///
     /// This continuous chain ensures that when generating code (tokens), each
-    /// field can lookup the status (and ident) for a requested version.
+    /// variant can lookup the status (and ident) for a requested version.
     pub(crate) fn insert_container_versions(&mut self, versions: &[ContainerVersion]) {
         if let Some(chain) = &mut self.chain {
             for version in versions {
