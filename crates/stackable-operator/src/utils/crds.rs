@@ -8,6 +8,17 @@ pub fn raw_object_schema(_: &mut schemars::gen::SchemaGenerator) -> Schema {
     .expect("Failed to parse JSON of custom raw object schema")
 }
 
+pub fn raw_object_list_schema(_: &mut schemars::gen::SchemaGenerator) -> Schema {
+    serde_json::from_value(serde_json::json!({
+        "type": "array",
+        "items": {
+            "type": "object",
+            "x-kubernetes-preserve-unknown-fields": true,
+        }
+    }))
+    .expect("Failed to parse JSON of custom raw object list schema")
+}
+
 #[cfg(test)]
 mod tests {
     use k8s_openapi::api::core::v1::PodTemplateSpec;
