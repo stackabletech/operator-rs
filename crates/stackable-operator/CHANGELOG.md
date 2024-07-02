@@ -21,7 +21,7 @@ All notable changes to this project will be documented in this file.
   underlying schema. This reduces e.g. the Druid CRD size from `2.4MB` to `288K` (which is a 88% reduction). It has the
   downside that the users input is not validated to be a valid `PodTemplateSpec`/affinity any more. However, this can
   later be re-added by using validation webhooks if needed. This change should not be breaking for the user and is a
-  preparation for CRD versioning. ([#XXX]).
+  preparation for CRD versioning. ([#821]).
 
 ### Fixed
 
@@ -35,6 +35,7 @@ All notable changes to this project will be documented in this file.
 [#817]: https://github.com/stackabletech/operator-rs/pull/817
 [#818]: https://github.com/stackabletech/operator-rs/pull/818
 [#819]: https://github.com/stackabletech/operator-rs/pull/819
+[#821]: https://github.com/stackabletech/operator-rs/pull/821
 
 ## [0.69.3] - 2024-06-12
 
