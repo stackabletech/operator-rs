@@ -5,7 +5,7 @@ use stackable_versioned_macros::versioned;
 // run `cargo expand --test basic --all-features`.
 #[allow(dead_code)]
 #[versioned(
-    version(name = "v1alpha1"),
+    version(name = "v1alpha1", deprecated),
     version(name = "v1beta1"),
     version(name = "v1"),
     version(name = "v2"),
@@ -24,6 +24,7 @@ struct Foo {
 
 #[test]
 fn basic() {
+    #[allow(deprecated)]
     let _ = v1alpha1::Foo { jjj: 0, baz: false };
     let _ = v1beta1::Foo { bar: 0, baz: false };
     let _ = v1::Foo { bar: 0, baz: false };

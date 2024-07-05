@@ -106,14 +106,18 @@ impl VersionedEnum {
         // enable the attribute macro to be applied to a module which
         // generates versioned versions of all contained containers.
 
-        let deprecated_attr = version.deprecated.then_some(quote! {#[deprecated]});
-        let module_name = &version.ident;
+        let version_ident = &version.ident;
+
+        let deprecated_note = format!("Version {version} is deprecated", version = version_ident);
+        let deprecated_attr = version
+            .deprecated
+            .then_some(quote! {#[deprecated = #deprecated_note]});
 
         // Generate tokens for the module and the contained struct
         token_stream.extend(quote! {
             #[automatically_derived]
             #deprecated_attr
-            pub mod #module_name {
+            pub mod #version_ident {
                 pub enum #enum_name {
                     #variants
                 }
