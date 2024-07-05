@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add support for versioned enums ([#813]).
 - Add collision check for renamed fields ([#804]).
 - Add auto-generated `From<OLD> for NEW` implementations ([#790]).
 
@@ -20,6 +21,7 @@ All notable changes to this project will be documented in this file.
 [#790]: https://github.com/stackabletech/operator-rs/pull/790
 [#793]: https://github.com/stackabletech/operator-rs/pull/793
 [#804]: https://github.com/stackabletech/operator-rs/pull/804
+[#813]: https://github.com/stackabletech/operator-rs/pull/813
 [#820]: https://github.com/stackabletech/operator-rs/pull/820
 
 ## [0.1.0] - 2024-05-08

@@ -2,7 +2,7 @@ use darling::{ast::NestedMeta, FromMeta};
 use proc_macro::TokenStream;
 use syn::{DeriveInput, Error};
 
-use crate::attrs::container::ContainerAttributes;
+use crate::attrs::common::ContainerAttributes;
 
 mod attrs;
 mod consts;
