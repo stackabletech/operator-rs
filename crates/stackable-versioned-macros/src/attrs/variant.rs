@@ -46,9 +46,6 @@ impl VariantAttributes {
         errors.handle(self.validate_action_order());
         errors.handle(self.validate_variant_name());
 
-        // TODO (@Techassi): Add validation for renames so that renamed items
-        // match up and form a continuous chain (eg. foo -> bar -> baz).
-
         // TODO (@Techassi): Add hint if a item is added in the first version
         // that it might be clever to remove the 'added' attribute.
 
