@@ -1,11 +1,12 @@
 use std::{collections::BTreeMap, ops::Deref};
 
+use darling::FromField;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Field, Ident};
 
 use crate::{
-    attrs::field::FieldAttributes,
+    attrs::{common::ContainerAttributes, field::FieldAttributes},
     gen::{
         chain::Neighbors,
         common::{remove_deprecated_field_prefix, ContainerVersion, ItemStatus, VersionChain},
@@ -29,7 +30,13 @@ pub(crate) struct VersionedField {
 // identical.
 
 impl VersionedField {
-    pub(crate) fn new(field: syn::Field, field_attrs: FieldAttributes) -> Self {
+    /// Create a new versioned field (of a versioned struct) by consuming the
+    /// parsed [Field] and validating the versions of field actions against
+    /// versions attached on the container.
+    pub(crate) fn new(field: Field, container_attrs: &ContainerAttributes) -> syn::Result<Self> {
+        let field_attrs = FieldAttributes::from_field(&field)?;
+        field_attrs.validate_versions(container_attrs, &field)?;
+
         // Constructing the action chain requires going through the actions from
         // the end, because the base struct always represents the latest (most
         // up-to-date) version of that struct. That's why the following code
@@ -86,10 +93,10 @@ impl VersionedField {
                 );
             }
 
-            Self {
+            Ok(Self {
                 chain: Some(actions),
                 inner: field,
-            }
+            })
         } else if !field_attrs.common.renames.is_empty() {
             let mut actions = BTreeMap::new();
             let mut ident = field
@@ -121,10 +128,10 @@ impl VersionedField {
                 );
             }
 
-            Self {
+            Ok(Self {
                 chain: Some(actions),
                 inner: field,
-            }
+            })
         } else {
             if let Some(added) = field_attrs.common.added {
                 let mut actions = BTreeMap::new();
@@ -140,16 +147,16 @@ impl VersionedField {
                     },
                 );
 
-                return Self {
+                return Ok(Self {
                     chain: Some(actions),
                     inner: field,
-                };
+                });
             }
 
-            Self {
+            Ok(Self {
                 chain: None,
                 inner: field,
-            }
+            })
         }
     }
 

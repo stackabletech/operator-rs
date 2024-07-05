@@ -1,13 +1,12 @@
 use std::ops::Deref;
 
-use darling::FromVariant;
 use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{DataEnum, Error, Ident};
 
 use crate::{
-    attrs::{common::ContainerAttributes, variant::VariantAttributes},
+    attrs::common::ContainerAttributes,
     gen::{
         common::{format_container_from_ident, Container, ContainerVersion, VersionedContainer},
         venum::variant::VersionedVariant,
@@ -38,10 +37,7 @@ impl Container<DataEnum, VersionedVariant> for VersionedEnum {
         let mut items = Vec::new();
 
         for variant in data.variants {
-            let attrs = VariantAttributes::from_variant(&variant)?;
-            attrs.validate_versions(&attributes, &variant)?;
-
-            let mut versioned_field = VersionedVariant::new(variant, attrs);
+            let mut versioned_field = VersionedVariant::new(variant, &attributes)?;
             versioned_field.insert_container_versions(&versions);
             items.push(versioned_field);
         }

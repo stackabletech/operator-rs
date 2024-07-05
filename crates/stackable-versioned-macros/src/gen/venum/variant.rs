@@ -1,11 +1,12 @@
 use std::{collections::BTreeMap, ops::Deref};
 
+use darling::FromVariant;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Ident, Variant};
 
 use crate::{
-    attrs::variant::VariantAttributes,
+    attrs::{common::ContainerAttributes, variant::VariantAttributes},
     gen::{
         chain::{BTreeMapExt, Neighbors},
         common::{remove_deprecated_variant_prefix, ContainerVersion, ItemStatus, VersionChain},
@@ -23,9 +24,16 @@ pub(crate) struct VersionedVariant {
 // identical.
 
 impl VersionedVariant {
-    pub(crate) fn new(variant: Variant, variant_attrs: VariantAttributes) -> Self {
+    pub(crate) fn new(
+        variant: Variant,
+        container_attrs: &ContainerAttributes,
+    ) -> syn::Result<Self> {
         // NOTE (@Techassi): This is straight up copied from the VersionedField
         // impl. As mentioned above, unify this.
+
+        let variant_attrs = VariantAttributes::from_variant(&variant)?;
+        variant_attrs.validate_versions(container_attrs, &variant)?;
+
         if let Some(deprecated) = variant_attrs.common.deprecated {
             let deprecated_ident = &variant.ident;
 
@@ -68,10 +76,10 @@ impl VersionedVariant {
                 );
             }
 
-            Self {
+            Ok(Self {
                 chain: Some(actions),
                 inner: variant,
-            }
+            })
         } else if !variant_attrs.common.renames.is_empty() {
             let mut actions = BTreeMap::new();
             let mut ident = variant.ident.clone();
@@ -100,10 +108,10 @@ impl VersionedVariant {
                 );
             }
 
-            Self {
+            Ok(Self {
                 chain: Some(actions),
                 inner: variant,
-            }
+            })
         } else {
             if let Some(added) = variant_attrs.common.added {
                 let mut actions = BTreeMap::new();
@@ -116,16 +124,16 @@ impl VersionedVariant {
                     },
                 );
 
-                return Self {
+                return Ok(Self {
                     chain: Some(actions),
                     inner: variant,
-                };
+                });
             }
 
-            Self {
+            Ok(Self {
                 chain: None,
                 inner: variant,
-            }
+            })
         }
     }
 

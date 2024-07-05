@@ -1,13 +1,12 @@
 use std::ops::Deref;
 
-use darling::FromField;
 use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{DataStruct, Error, Ident};
 
 use crate::{
-    attrs::{common::ContainerAttributes, field::FieldAttributes},
+    attrs::common::ContainerAttributes,
     gen::{
         common::{format_container_from_ident, Container, ContainerVersion, VersionedContainer},
         vstruct::field::VersionedField,
@@ -42,10 +41,7 @@ impl Container<DataStruct, VersionedField> for VersionedStruct {
         let mut items = Vec::new();
 
         for field in data.fields {
-            let attrs = FieldAttributes::from_field(&field)?;
-            attrs.validate_versions(&attributes, &field)?;
-
-            let mut versioned_field = VersionedField::new(field, attrs);
+            let mut versioned_field = VersionedField::new(field, &attributes)?;
             versioned_field.insert_container_versions(&versions);
             items.push(versioned_field);
         }
