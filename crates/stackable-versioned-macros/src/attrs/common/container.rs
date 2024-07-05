@@ -49,7 +49,13 @@ impl ContainerAttributes {
                 .sort_by(|lhs, rhs| lhs.name.partial_cmp(&rhs.name).unwrap_or(Ordering::Equal));
 
             for (index, version) in original.iter().enumerate() {
-                if version.name == self.versions.get(index).unwrap().name {
+                if version.name
+                    == self
+                        .versions
+                        .get(index)
+                        .expect("internal error: version at that index must exist")
+                        .name
+                {
                     continue;
                 }
 
