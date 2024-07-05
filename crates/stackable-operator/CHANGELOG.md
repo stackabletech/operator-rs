@@ -17,11 +17,14 @@ All notable changes to this project will be documented in this file.
   - [kube#1494](https://github.com/kube-rs/kube/pull/1494)
   - [kube#1504](https://github.com/kube-rs/kube/pull/1504)
 - Upgrade opentelemetry crates ([#811]).
-- BREAKING: Convert `podOverrides` and `affinity` fields to take any arbitrary YAML input, rather than using the
-  underlying schema. This reduces e.g. the Druid CRD size from `2.4MB` to `288K` (which is a 88% reduction). It has the
-  downside that the users input is not validated to be a valid `PodTemplateSpec`/affinity any more. However, this can
-  later be re-added by using validation webhooks if needed. This change should not be breaking for the user and is a
-  preparation for CRD versioning. ([#821]).
+- BREAKING: Convert `podOverrides` and `affinity` fields to take any arbitrary
+  YAML input, rather than using the underlying schema. With this change, one of
+  the larger CRDs, like the Druid CRD went down in size from `2.4MB` to `288K`
+  (a 88% reduction). One downside is that user input is not checked to be a
+  valid `PodTemplateSpec`, `PodAffinity`, `PodAntiAffinity` and `NodeAffinity`
+  any more. However, checks can be re-added by using validation webhooks if
+  needed. This change should not be breaking for the user and is a preparation
+  for CRD versioning. ([#821]).
 
 ### Fixed
 
