@@ -161,18 +161,18 @@ impl VariantAttributes {
             return Err(Error::custom("renamed variants must use PascalCase"));
         }
 
-        let starts_with = self
+        let starts_with_deprecated = self
             .ident
             .to_string()
             .starts_with(DEPRECATED_VARIANT_PREFIX);
 
-        if self.common.deprecated.is_some() && !starts_with {
+        if self.common.deprecated.is_some() && !starts_with_deprecated {
             return Err(Error::custom(
                 "variant was marked as `deprecated` and thus must include the `Deprecated` prefix in its name"
             ).with_span(&self.ident));
         }
 
-        if self.common.deprecated.is_none() && starts_with {
+        if self.common.deprecated.is_none() && starts_with_deprecated {
             return Err(Error::custom(
                 "variant includes the `Deprecated` prefix in its name but is not marked as `deprecated`"
             ).with_span(&self.ident));

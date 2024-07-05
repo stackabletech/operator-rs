@@ -168,20 +168,20 @@ impl FieldAttributes {
     ///   in their name. The prefix must not be included for fields which are
     ///   not deprecated.
     fn validate_field_name(&self) -> Result<(), Error> {
-        let starts_with = self
+        let starts_with_deprecated = self
             .ident
             .as_ref()
             .expect("internal error: to be validated fields must have a name")
             .to_string()
             .starts_with(DEPRECATED_FIELD_PREFIX);
 
-        if self.common.deprecated.is_some() && !starts_with {
+        if self.common.deprecated.is_some() && !starts_with_deprecated {
             return Err(Error::custom(
                 "field was marked as `deprecated` and thus must include the `deprecated_` prefix in its name"
             ).with_span(&self.ident));
         }
 
-        if self.common.deprecated.is_none() && starts_with {
+        if self.common.deprecated.is_none() && starts_with_deprecated {
             return Err(Error::custom(
                 "field includes the `deprecated_` prefix in its name but is not marked as `deprecated`"
             ).with_span(&self.ident));
