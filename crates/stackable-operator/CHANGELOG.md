@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.70.0] - 2024-07-09
+
 ### Added
 
 - Added `ProductImage::product_version` utility function ([#817], [#818])

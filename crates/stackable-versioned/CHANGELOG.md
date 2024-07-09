@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.1] - 2024-07-09
+
 ### Added
 
 - Add support for versioned enums ([#813]).
