@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
   - [kube#1494](https://github.com/kube-rs/kube/pull/1494)
   - [kube#1504](https://github.com/kube-rs/kube/pull/1504)
 - Upgrade opentelemetry crates ([#811]).
+- Bump rust-toolchain to 1.79.0 ([#xxx])
 
 ### Fixed
 
@@ -30,6 +31,7 @@ All notable changes to this project will be documented in this file.
 [#817]: https://github.com/stackabletech/operator-rs/pull/817
 [#818]: https://github.com/stackabletech/operator-rs/pull/818
 [#819]: https://github.com/stackabletech/operator-rs/pull/819
+[#xxx]: https://github.com/stackabletech/operator-rs/pull/xxx
 
 ## [0.69.3] - 2024-06-12
 
