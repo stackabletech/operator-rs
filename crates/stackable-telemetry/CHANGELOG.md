@@ -4,8 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [99.0.0] - 1970-01-01
-
 ## [0.2.0] - 2024-07-09
 
 ### Changed
