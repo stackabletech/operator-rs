@@ -33,3 +33,12 @@ repos:
     hooks:
       - id: shellcheck
         args: ["--severity=info"]
+
+  - repo: local
+    hooks:
+      - id: .scripts/verify-crate-versions
+        name: .scripts/verify-crate-versions
+        language: system
+        entry: .scripts/verify_crate_versions.sh
+        stages: [commit, merge-commit, manual]
+        pass_filenames: false
