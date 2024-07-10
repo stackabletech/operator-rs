@@ -12,7 +12,7 @@
 set -euo pipefail
 
 # You need fzf to run this
-type fzf &> /dev/null || (echo "This script requres fzf" >&2 && exit 1)
+type fzf &> /dev/null || (echo "This script requires fzf" >&2 && exit 1)
 
 # Update from remote
 git fetch origin
