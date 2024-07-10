@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.70.0] - 2024-07-09
+
 ### Added
 
 - Added `ProductImage::product_version` utility function ([#817], [#818])
@@ -31,7 +33,7 @@ All notable changes to this project will be documented in this file.
 [#817]: https://github.com/stackabletech/operator-rs/pull/817
 [#818]: https://github.com/stackabletech/operator-rs/pull/818
 [#819]: https://github.com/stackabletech/operator-rs/pull/819
-[#822]: https://github.com/stackabletech/operator-rs/pull/xxx
+[#822]: https://github.com/stackabletech/operator-rs/pull/822
 
 ## [0.69.3] - 2024-06-12
 

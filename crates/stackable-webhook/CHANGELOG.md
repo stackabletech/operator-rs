@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.1] - 2024-07-09
+
 ## Changed
 
 - Remove instrumentation of long running functions, add more granular instrumentation of futures. Adjust span and event levels ([#811]).
@@ -20,7 +22,7 @@ All notable changes to this project will be documented in this file.
 [#806]: https://github.com/stackabletech/operator-rs/pull/806
 [#811]: https://github.com/stackabletech/operator-rs/pull/811
 [#815]: https://github.com/stackabletech/operator-rs/pull/815
-[#822]: https://github.com/stackabletech/operator-rs/pull/xxx
+[#822]: https://github.com/stackabletech/operator-rs/pull/822
 
 ## [0.3.0] - 2024-05-08
 

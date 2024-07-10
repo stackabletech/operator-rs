@@ -4,11 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.1] - 2024-07-09
+
 ### Changed
 
 - Bump rust-toolchain to 1.79.0 ([#822])
 
-[#822]: https://github.com/stackabletech/operator-rs/pull/xxx
+[#822]: https://github.com/stackabletech/operator-rs/pull/822
 
 ## [0.3.0] - 2024-05-08
 
