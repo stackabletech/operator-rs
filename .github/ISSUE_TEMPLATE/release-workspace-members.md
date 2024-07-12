@@ -13,7 +13,7 @@ assignees: ''
 
 ## Update and Release Workspace Members for Stackable Release XX.(X)X
 
-> [!NOTE] Why we do this
+> [!NOTE]
 > During a Stackable release we update all dependencies in the `operator-rs`
 > repository. After these bumps, each workspace member is released using an
 > appropriate SemVer version. Later, each product operator repository can then
@@ -31,7 +31,7 @@ Replace the items in the task lists below with the applicable Pull Requests
 
 ### Update Rust Version and Workflow Actions
 
-> [!NOTE] Notice
+> [!NOTE]
 > The PR is usually titled: `chore: Bump Rust version and workflow actions`
 
 1. Adjust the version of the channel in the `rust-toolchain.toml` file. See
@@ -46,7 +46,7 @@ Replace the items in the task lists below with the applicable Pull Requests
 
 ### Update Rust Dependencies
 
-> [!NOTE] Notice
+> [!NOTE]
 > This PR is usually titled: `chore: Bump Rust dependencies`
 
 1. Bump minor versions of dependencies in the `Cargo.toml` manifest.
@@ -60,7 +60,7 @@ Replace the items in the task lists below with the applicable Pull Requests
 
 ### Adjust Crate Versions
 
-> [!WARNING] Notice about versioning
+> [!WARNING]
 > Currently, all workspace members use `0.X.Y` versions. This means we can
 > introduce breaking changes in any version without needing to bump the major
 > level. But we still have the following rules:
@@ -71,7 +71,7 @@ Replace the items in the task lists below with the applicable Pull Requests
 >   `0.X.Y` becomes `0.X.Y+1`.
 
 <!-- markdownlint-disable-next-line MD028 -->
-> [!NOTE] Notice
+> [!NOTE]
 > The PR is usually titled: `chore: Release workspace members`
 
 1. Bump the crate versions in their appropriate `Cargo.toml` manifests.
