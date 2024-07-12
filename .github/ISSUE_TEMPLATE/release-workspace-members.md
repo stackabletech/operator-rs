@@ -25,8 +25,8 @@ Replace the items in the task lists below with the applicable Pull Requests
 ### Tasks
 - [ ] Update Rust version and workflow actions, see below for more details.
 - [ ] Update Rust dependencies, see below for more details.
-- [ ] Adjust crate versions
-- [ ] Lastly, add and push the appropriate tags using `.scripts/tag_and_push_release.sh`.
+- [ ] Adjust and then verify crate versions using `.scripts/verify_crate_versions.sh`.
+- [ ] Push the release tags using `.scripts/tag_and_push_release.sh`.
 ```
 
 ### Update Rust Version and Workflow Actions
@@ -58,7 +58,7 @@ Replace the items in the task lists below with the applicable Pull Requests
        override the dependency.
 5. Add a changelog entry if required.
 
-### Adjust Crate Versions
+### Adjust and Verify Crate Versions
 
 > [!WARNING]
 > Currently, all workspace members use `0.X.Y` versions. This means we can
