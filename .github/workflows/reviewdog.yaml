@@ -34,6 +34,14 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: reviewdog/action-shellcheck@52f34f737a16c65b8caa8c51ae1b23036afe5685 # v1.23.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
   yamllint:
     runs-on: ubuntu-latest
     steps:

@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.70.0] - 2024-07-10
+
 ### Added
 
 - Added `ProductImage::product_version` utility function ([#817], [#818])
@@ -17,6 +19,7 @@ All notable changes to this project will be documented in this file.
   - [kube#1494](https://github.com/kube-rs/kube/pull/1494)
   - [kube#1504](https://github.com/kube-rs/kube/pull/1504)
 - Upgrade opentelemetry crates ([#811]).
+- Bump rust-toolchain to 1.79.0 ([#822])
 - BREAKING: Convert `podOverrides` and `affinity` fields to take any arbitrary
   YAML input, rather than using the underlying schema. With this change, one of
   the larger CRDs, like the Druid CRD went down in size from `2.4MB` to `288K`
@@ -39,6 +42,7 @@ All notable changes to this project will be documented in this file.
 [#818]: https://github.com/stackabletech/operator-rs/pull/818
 [#819]: https://github.com/stackabletech/operator-rs/pull/819
 [#821]: https://github.com/stackabletech/operator-rs/pull/821
+[#822]: https://github.com/stackabletech/operator-rs/pull/822
 
 ## [0.69.3] - 2024-06-12
 
