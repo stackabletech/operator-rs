@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.70.0] - 2024-07-10
+
 ### Added
 
 - Added `ProductImage::product_version` utility function ([#817], [#818])
@@ -19,10 +21,13 @@ All notable changes to this project will be documented in this file.
   - [kube#1504](https://github.com/kube-rs/kube/pull/1504)
 - Upgrade opentelemetry crates ([#811]).
 - Changed OPA Bundle Builder Vector config to read from the new log-to-file setup ([#814]).
+- Bump rust-toolchain to 1.79.0 ([#822])
 
 ### Fixed
 
 - Product image selection pull request version override now only applies to pull requests ([#812]).
+- OPA bundle builder logs without a log message are marked with the
+  error "Message not found." instead of "Log event not parsable" ([#819]).
 
 [#804]: https://github.com/stackabletech/operator-rs/pull/804
 [#811]: https://github.com/stackabletech/operator-rs/pull/811
@@ -30,6 +35,8 @@ All notable changes to this project will be documented in this file.
 [#814]: https://github.com/stackabletech/operator-rs/pull/814
 [#817]: https://github.com/stackabletech/operator-rs/pull/817
 [#818]: https://github.com/stackabletech/operator-rs/pull/818
+[#819]: https://github.com/stackabletech/operator-rs/pull/819
+[#822]: https://github.com/stackabletech/operator-rs/pull/822
 
 ## [0.69.3] - 2024-06-12
 
