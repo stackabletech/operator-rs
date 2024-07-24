@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Changed OPA Bundle Builder Vector config to read from the new log-to-file setup ([#814]).
+
+[#814]: https://github.com/stackabletech/operator-rs/pull/814
+
 ## [0.70.0] - 2024-07-10
 
 ### Added
@@ -20,7 +26,6 @@ All notable changes to this project will be documented in this file.
   - [kube#1494](https://github.com/kube-rs/kube/pull/1494)
   - [kube#1504](https://github.com/kube-rs/kube/pull/1504)
 - Upgrade opentelemetry crates ([#811]).
-- Changed OPA Bundle Builder Vector config to read from the new log-to-file setup ([#814]).
 - Bump rust-toolchain to 1.79.0 ([#822])
 
 ### Fixed
@@ -32,7 +37,6 @@ All notable changes to this project will be documented in this file.
 [#804]: https://github.com/stackabletech/operator-rs/pull/804
 [#811]: https://github.com/stackabletech/operator-rs/pull/811
 [#812]: https://github.com/stackabletech/operator-rs/pull/812
-[#814]: https://github.com/stackabletech/operator-rs/pull/814
 [#817]: https://github.com/stackabletech/operator-rs/pull/817
 [#818]: https://github.com/stackabletech/operator-rs/pull/818
 [#819]: https://github.com/stackabletech/operator-rs/pull/819
