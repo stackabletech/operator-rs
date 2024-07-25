@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added support for logging to files ([#814]).
+
 ### Changed
 
 - Changed OPA Bundle Builder Vector config to read from the new log-to-file setup ([#814]).
@@ -15,7 +19,6 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Added `ProductImage::product_version` utility function ([#817], [#818])
-- Added support for logging to files ([#814]).
 
 ### Changed
 
