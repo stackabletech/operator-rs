@@ -41,7 +41,8 @@ pub fn initialize_logging(env: &str, app_name: &str, tracing_target: TracingTarg
     let file_fmt = file_appender_directory.as_deref().map(|log_dir| {
         let file_appender = RollingFileAppender::builder()
             .rotation(Rotation::HOURLY)
-            .filename_suffix(format!("{app_name}.tracing-rs.json"))
+            .filename_prefix(app_name.to_string())
+            .filename_suffix("tracing-rs.json")
             .max_log_files(6)
             .build(log_dir)
             .expect("failed to initialize rolling file appender");
