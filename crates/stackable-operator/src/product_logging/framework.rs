@@ -752,10 +752,10 @@ sources:
     include:
       - {STACKABLE_LOG_DIR}/*/*.airlift.json
 
-  files_opa_bundle_builder:
+  files_tracing_rs:
     type: file
     include:
-      - {STACKABLE_LOG_DIR}/bundle-builder/opa-bundle-builder.log.json
+      - {STACKABLE_LOG_DIR}/*/*.tracing-rs.json
 
   files_opa_json:
     type: file
@@ -764,9 +764,9 @@ sources:
       - {STACKABLE_LOG_DIR}/opa/test
 
 transforms:
-  processed_files_opa_bundle_builder:
+  processed_files_tracing_rs:
     inputs:
-      - files_opa_bundle_builder
+      - files_tracing_rs
     type: remap
     source: |
       raw_message = string!(.message)
