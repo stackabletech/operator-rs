@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added support for logging to files ([#814]).
+
+### Changed
+
+- Changed OPA Bundle Builder Vector config to read from the new log-to-file setup ([#814]).
+
+[#814]: https://github.com/stackabletech/operator-rs/pull/814
+
 ## [0.70.0] - 2024-07-10
 
 ### Added
