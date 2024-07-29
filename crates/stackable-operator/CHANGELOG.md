@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Replace `lazy_static` with `std::cell::LazyCell` ([#827]).
+- BREAKING: Replace `lazy_static` with `std::cell::LazyCell` ([#827]).
 
 [#827](https://github.com/stackabletech/operator-rs/pull/827)
 
