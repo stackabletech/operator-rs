@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.71.0] - 2024-07-29
+
+### Added
+
+- Added support for logging to files ([#814]).
+
+### Changed
+
+- Changed OPA Bundle Builder Vector config to read from the new log-to-file setup ([#814]).
+
+[#814]: https://github.com/stackabletech/operator-rs/pull/814
+
+## [0.70.0] - 2024-07-10
+
 ### Added
 
 - Added `ProductImage::product_version` utility function ([#817], [#818])
@@ -17,6 +31,7 @@ All notable changes to this project will be documented in this file.
   - [kube#1494](https://github.com/kube-rs/kube/pull/1494)
   - [kube#1504](https://github.com/kube-rs/kube/pull/1504)
 - Upgrade opentelemetry crates ([#811]).
+- Bump rust-toolchain to 1.79.0 ([#822])
 
 ### Fixed
 
@@ -30,6 +45,7 @@ All notable changes to this project will be documented in this file.
 [#817]: https://github.com/stackabletech/operator-rs/pull/817
 [#818]: https://github.com/stackabletech/operator-rs/pull/818
 [#819]: https://github.com/stackabletech/operator-rs/pull/819
+[#822]: https://github.com/stackabletech/operator-rs/pull/822
 
 ## [0.69.3] - 2024-06-12
 
