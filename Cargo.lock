@@ -2986,6 +2986,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rstest",
+ "strum",
  "syn 2.0.70",
 ]
 
