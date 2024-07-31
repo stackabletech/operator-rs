@@ -4,19 +4,18 @@ use std::{
     num::ParseIntError,
     ops::{Add, AddAssign, Sub, SubAssign},
     str::FromStr,
+    sync::LazyLock,
 };
 
-use lazy_static::lazy_static;
 use regex::Regex;
 use snafu::{OptionExt, ResultExt, Snafu};
 
 #[cfg(feature = "darling")]
 use darling::FromMeta;
 
-lazy_static! {
-    static ref LEVEL_REGEX: Regex = Regex::new(r"^(?P<identifier>[a-z]+)(?P<version>\d+)$")
-        .expect("failed to compile level regex");
-}
+static LEVEL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(?P<identifier>[a-z]+)(?P<version>\d+)$").expect("failed to compile level regex")
+});
 
 /// Error variants which can be encountered when creating a new [`Level`] from
 /// unparsed input.

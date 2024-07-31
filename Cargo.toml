@@ -32,7 +32,6 @@ json-patch = "2.0.0"
 k8s-openapi = { version = "0.22.0", default-features = false, features = ["schemars", "v1_30"] }
 # We use rustls instead of openssl for easier portablitly, e.g. so that we can build stackablectl without the need to vendor (build from source) openssl
 kube = { version = "0.92.1", default-features = false, features = ["client", "jsonpatch", "runtime", "derive", "rustls-tls"] }
-lazy_static = "1.5.0"
 opentelemetry = "0.23.0"
 opentelemetry_sdk = { version = "0.23.0", features = ["rt-tokio"] }
 opentelemetry-appender-tracing = "0.4.0"
@@ -68,8 +67,9 @@ tokio-test = "0.4.4"
 tower = "0.4.13"
 tower-http = { version = "0.5.2", features = ["trace"] }
 tracing = "0.1.40"
+tracing-appender = "0.2.3"
 tracing-opentelemetry = "0.24.0"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json"] }
 url = { version = "2.5.2", features = ["serde"] }
 x509-cert = { version = "0.2.5", features = ["builder"] }
 zeroize = "1.8.1"
