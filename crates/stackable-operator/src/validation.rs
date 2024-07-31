@@ -9,8 +9,9 @@
 // This is adapted from Kubernetes.
 // See apimachinery/pkg/util/validation/validation.go, apimachinery/pkg/api/validation/generic.go and pkg/apis/core/validation/validation.go in the Kubernetes source
 
+use std::sync::LazyLock;
+
 use const_format::concatcp;
-use lazy_static::lazy_static;
 use regex::Regex;
 
 const RFC_1123_LABEL_FMT: &str = "[a-z0-9]([-a-z0-9]*[a-z0-9])?";
@@ -30,14 +31,15 @@ const RFC_1035_LABEL_ERR_MSG: &str = "a DNS-1035 label must consist of lower cas
 // This is a label's max length in DNS (RFC 1035)
 const RFC_1035_LABEL_MAX_LENGTH: usize = 63;
 
-lazy_static! {
-    static ref RFC_1123_SUBDOMAIN_REGEX: Regex =
-        Regex::new(&format!("^{RFC_1123_SUBDOMAIN_FMT}$")).unwrap();
-    static ref RFC_1123_LABEL_REGEX: Regex =
-        Regex::new(&format!("^{RFC_1123_SUBDOMAIN_FMT}$")).unwrap();
-    static ref RFC_1035_LABEL_REGEX: Regex =
-        Regex::new(&format!("^{RFC_1035_LABEL_FMT}$")).unwrap();
-}
+// Lazily initialized regular expressions
+static RFC_1123_SUBDOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(&format!("^{RFC_1123_SUBDOMAIN_FMT}$"))
+        .expect("failed to compile RFC 1123 subdomain regex")
+});
+
+static RFC_1035_LABEL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(&format!("^{RFC_1035_LABEL_FMT}$")).expect("failed to compile RFC 1035 label regex")
+});
 
 /// Returns a formatted error message for maximum length violations.
 fn max_len_error(length: usize) -> String {
