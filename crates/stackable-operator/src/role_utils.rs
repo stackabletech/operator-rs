@@ -86,12 +86,13 @@ use std::{
 };
 
 use crate::{
-    commons::{pdb::PdbConfig, pod_overrides::pod_overrides_schema},
+    commons::pdb::PdbConfig,
     config::{
         fragment::{self, FromFragment},
         merge::Merge,
     },
     product_config_utils::Configuration,
+    utils::crds::raw_object_schema,
 };
 use derivative::Derivative;
 use k8s_openapi::api::core::v1::PodTemplateSpec;
@@ -111,6 +112,7 @@ pub struct CommonConfiguration<T> {
     // does not support specifying custom bounds.
     #[schemars(default = "config_schema_default")]
     pub config: T,
+
     /// The `configOverrides` can be used to configure properties in product config files
     /// that are not exposed in the CRD. Read the
     /// [config overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#config-overrides)
@@ -118,6 +120,7 @@ pub struct CommonConfiguration<T> {
     /// available config files and settings for the specific product.
     #[serde(default)]
     pub config_overrides: HashMap<String, HashMap<String, String>>,
+
     /// `envOverrides` configure environment variables to be set in the Pods.
     /// It is a map from strings to strings - environment variables and the value to set.
     /// Read the
@@ -126,10 +129,12 @@ pub struct CommonConfiguration<T> {
     /// the product specific environment variables that are available.
     #[serde(default)]
     pub env_overrides: HashMap<String, String>,
+
     // BTreeMap to keep some order with the cli arguments.
     // TODO add documentation.
     #[serde(default)]
     pub cli_overrides: BTreeMap<String, String>,
+
     /// In the `podOverrides` property you can define a
     /// [PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core)
     /// to override any property that can be set on a Kubernetes Pod.
@@ -137,7 +142,7 @@ pub struct CommonConfiguration<T> {
     /// [Pod overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#pod-overrides)
     /// for more information.
     #[serde(default)]
-    #[schemars(schema_with = "pod_overrides_schema")]
+    #[schemars(schema_with = "raw_object_schema")]
     pub pod_overrides: PodTemplateSpec,
 }
 

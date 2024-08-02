@@ -7,7 +7,16 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: Replace `lazy_static` with `std::cell::LazyCell` ([#827]).
+- BREAKING: Convert `podOverrides` and `affinity` fields to take any arbitrary
+  YAML input, rather than using the underlying schema. With this change, one of
+  the larger CRDs, like the Druid CRD went down in size from `2.4MB` to `288K`
+  (a 88% reduction). One downside is that user input is not checked to be a
+  valid `PodTemplateSpec`, `PodAffinity`, `PodAntiAffinity` and `NodeAffinity`
+  any more. However, checks can be re-added by using validation webhooks if
+  needed. This change should not be breaking for the user and is a preparation
+  for CRD versioning. ([#821]).
 
+[#821]: https://github.com/stackabletech/operator-rs/pull/821
 [#827]: https://github.com/stackabletech/operator-rs/pull/827
 
 ## [0.71.0] - 2024-07-29
@@ -37,7 +46,7 @@ All notable changes to this project will be documented in this file.
   - [kube#1494](https://github.com/kube-rs/kube/pull/1494)
   - [kube#1504](https://github.com/kube-rs/kube/pull/1504)
 - Upgrade opentelemetry crates ([#811]).
-- Bump rust-toolchain to 1.79.0 ([#822])
+- Bump rust-toolchain to 1.79.0 ([#822]).
 
 ### Fixed
 

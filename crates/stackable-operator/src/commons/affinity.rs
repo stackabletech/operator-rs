@@ -13,6 +13,7 @@ use stackable_operator_derive::Fragment;
 use crate::{
     config::merge::{Atomic, Merge},
     kvp::consts::{K8S_APP_COMPONENT_KEY, K8S_APP_INSTANCE_KEY, K8S_APP_NAME_KEY},
+    utils::crds::raw_object_schema,
 };
 
 pub const TOPOLOGY_KEY_HOSTNAME: &str = "kubernetes.io/hostname";
@@ -36,9 +37,19 @@ pub const TOPOLOGY_KEY_HOSTNAME: &str = "kubernetes.io/hostname";
     serde(rename_all = "camelCase")
 )]
 pub struct StackableAffinity {
+    /// Same as the `spec.affinity.podAffinity` field on the Pod, see the [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node)
+    #[fragment_attrs(schemars(schema_with = "raw_object_schema"))]
     pub pod_affinity: Option<PodAffinity>,
+
+    /// Same as the `spec.affinity.podAntiAffinity` field on the Pod, see the [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node)
+    #[fragment_attrs(schemars(schema_with = "raw_object_schema"))]
     pub pod_anti_affinity: Option<PodAntiAffinity>,
+
+    /// Same as the `spec.affinity.nodeAffinity` field on the Pod, see the [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node)
+    #[fragment_attrs(schemars(schema_with = "raw_object_schema"))]
     pub node_affinity: Option<NodeAffinity>,
+
+    // This schema isn't big, so it can stay
     pub node_selector: Option<StackableNodeSelector>,
 }
 
@@ -51,6 +62,7 @@ pub struct StackableAffinity {
 // FIXME: The generated JsonSchema will be wrong, so until https://github.com/GREsau/schemars/issues/259 is fixed, we
 // need to use `#[schemars(deny_unknown_fields)]`.
 // See https://github.com/stackabletech/operator-rs/pull/752#issuecomment-2017630433 for details.
+/// Simple key-value pairs forming a nodeSelector, see the [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node)
 #[derive(Clone, Debug, Eq, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[schemars(deny_unknown_fields)]
