@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.72.0] - 2024-08-05
+
 ### Changed
 
 - BREAKING: Replace `lazy_static` with `std::cell::LazyCell` ([#827]).
