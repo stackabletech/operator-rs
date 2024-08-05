@@ -10,7 +10,6 @@ mod k8s_events;
 #[derive(Debug, Clone, clap::ValueEnum, PartialEq, Eq)]
 pub enum TracingTarget {
     None,
-    Jaeger,
 }
 
 impl Default for TracingTarget {
@@ -51,25 +50,15 @@ pub fn initialize_logging(env: &str, app_name: &str, tracing_target: TracingTarg
             .with_writer(file_appender)
     });
 
-    let jaeger = match tracing_target {
-        TracingTarget::Jaeger => {
-            // FIXME (@Techassi): Replace with opentelemetry_otlp
-            #[allow(deprecated)]
-            let jaeger = opentelemetry_jaeger::new_agent_pipeline()
-                .with_service_name(app_name)
-                .install_batch(opentelemetry_sdk::runtime::Tokio)
-                .expect("Failed to initialize Jaeger pipeline");
-            let opentelemetry = tracing_opentelemetry::layer().with_tracer(jaeger);
-            Some(opentelemetry)
-        }
-        TracingTarget::None => None,
-    };
+    // This match is here just to fail compilation once e.g. otlp is supported
+    match tracing_target {
+        TracingTarget::None => (),
+    }
 
     Registry::default()
         .with(filter)
         .with(terminal_fmt)
         .with(file_fmt)
-        .with(jaeger)
         .init();
 
     // need to delay logging until after tracing is initialized
