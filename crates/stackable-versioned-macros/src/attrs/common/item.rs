@@ -1,13 +1,21 @@
 use darling::{util::SpannedValue, Error, FromMeta};
 use k8s_version::Version;
 use proc_macro2::Span;
-use syn::Path;
+use syn::{Ident, Path};
+
+use crate::consts::{DEPRECATED_FIELD_PREFIX, DEPRECATED_VARIANT_PREFIX};
+
+#[derive(Debug, strum::Display)]
+#[strum(serialize_all = "lowercase")]
+pub(crate) enum ItemType {
+    Field,
+    Variant,
+}
 
 /// These attributes are meant to be used in super structs, which add
 /// [`Field`](syn::Field) or [`Variant`](syn::Variant) specific attributes via
 /// darling's flatten feature. This struct only provides shared attributes.
 #[derive(Debug, FromMeta)]
-#[darling(and_then = ItemAttributes::validate)]
 pub(crate) struct ItemAttributes {
     /// This parses the `added` attribute on items (fields or variants). It can
     /// only be present at most once.
@@ -24,8 +32,12 @@ pub(crate) struct ItemAttributes {
 }
 
 impl ItemAttributes {
-    fn validate(self) -> Result<Self, Error> {
-        // Validate deprecated options
+    pub(crate) fn validate(&self, item_ident: &Ident, item_type: &ItemType) -> Result<(), Error> {
+        // NOTE (@Techassi): This associated function is NOT called by darling's
+        // and_then attribute, but instead by the wrapper, FieldAttributes and
+        // VariantAttributes.
+
+        let mut errors = Error::accumulator();
 
         // TODO (@Techassi): Make the field 'note' optional, because in the
         // future, the macro will generate parts of the deprecation note
@@ -34,12 +46,142 @@ impl ItemAttributes {
 
         if let Some(deprecated) = &self.deprecated {
             if deprecated.note.is_empty() {
-                return Err(Error::custom("deprecation note must not be empty")
-                    .with_span(&deprecated.note.span()));
+                errors.push(
+                    Error::custom("deprecation note must not be empty")
+                        .with_span(&deprecated.note.span()),
+                );
             }
         }
 
-        Ok(self)
+        // Semantic validation
+        errors.handle(self.validate_action_combinations(item_ident, item_type));
+        errors.handle(self.validate_action_order(item_ident, item_type));
+        errors.handle(self.validate_field_name(item_ident, item_type));
+
+        // TODO (@Techassi): Add hint if a field is added in the first version
+        // that it might be clever to remove the 'added' attribute.
+
+        errors.finish()?;
+
+        Ok(())
+    }
+
+    /// This associated function is called by the top-level validation function
+    /// and validates that each item uses a valid combination of actions.
+    /// Invalid combinations are:
+    ///
+    /// - `added` and `deprecated` using the same version: A field cannot be
+    ///   marked as added in a particular version and then marked as deprecated
+    ///   immediately after. Fields must be included for at least one version
+    ///   before being marked deprecated.
+    /// - `added` and `renamed` using the same version: The same reasoning from
+    ///   above applies here as well. Fields must be included for at least one
+    ///   version before being renamed.
+    /// - `renamed` and `deprecated` using the same version: Again, the same
+    ///   rules from above apply here as well.
+    fn validate_action_combinations(
+        &self,
+        item_ident: &Ident,
+        item_type: &ItemType,
+    ) -> Result<(), Error> {
+        match (&self.added, &self.renames, &self.deprecated) {
+            (Some(added), _, Some(deprecated)) if *added.since == *deprecated.since => {
+                Err(Error::custom(format!(
+                    "{item_type} cannot be marked as `added` and `deprecated` in the same version"
+                ))
+                .with_span(item_ident))
+            }
+            (Some(added), renamed, _) if renamed.iter().any(|r| *r.since == *added.since) => {
+                Err(Error::custom(format!(
+                    "{item_type} cannot be marked as `added` and `renamed` in the same version"
+                ))
+                .with_span(item_ident))
+            }
+            (_, renamed, Some(deprecated))
+                if renamed.iter().any(|r| *r.since == *deprecated.since) =>
+            {
+                Err(Error::custom(
+                    "field cannot be marked as `deprecated` and `renamed` in the same version",
+                )
+                .with_span(item_ident))
+            }
+            _ => Ok(()),
+        }
+    }
+
+    /// This associated function is called by the top-level validation function
+    /// and validates that actions use a chronologically sound chain of
+    /// versions.
+    ///
+    /// The following rules apply:
+    ///
+    /// - `deprecated` must use a greater version than `added`: This function
+    ///   ensures that these versions are chronologically sound, that means,
+    ///   that the version of the deprecated action must be greater than the
+    ///   version of the added action.
+    /// - All `renamed` actions must use a greater version than `added` but a
+    ///   lesser version than `deprecated`.
+    fn validate_action_order(&self, item_ident: &Ident, item_type: &ItemType) -> Result<(), Error> {
+        let added_version = self.added.as_ref().map(|a| *a.since);
+        let deprecated_version = self.deprecated.as_ref().map(|d| *d.since);
+
+        // First, validate that the added version is less than the deprecated
+        // version.
+        // NOTE (@Techassi): Is this already covered by the code below?
+        if let (Some(added_version), Some(deprecated_version)) = (added_version, deprecated_version)
+        {
+            if added_version > deprecated_version {
+                return Err(Error::custom(format!(
+                    "{item_type} was marked as `added` in version `{added_version}` while being marked as `deprecated` in an earlier version `{deprecated_version}`"
+                )).with_span(item_ident));
+            }
+        }
+
+        // Now, iterate over all renames and ensure that their versions are
+        // between the added and deprecated version.
+        if !self.renames.iter().all(|r| {
+            added_version.map_or(true, |a| a < *r.since)
+                && deprecated_version.map_or(true, |d| d > *r.since)
+        }) {
+            return Err(Error::custom(
+                "all renames must use versions higher than `added` and lower than `deprecated`",
+            )
+            .with_span(item_ident));
+        }
+
+        Ok(())
+    }
+
+    /// This associated function is called by the top-level validation function
+    /// and validates that items use correct names depending on attached
+    /// actions.
+    ///
+    /// The following naming rules apply:
+    ///
+    /// - Fields marked as deprecated need to include the 'deprecated_' prefix
+    ///   in their name. The prefix must not be included for fields which are
+    ///   not deprecated.
+    fn validate_field_name(&self, item_ident: &Ident, item_type: &ItemType) -> Result<(), Error> {
+        let prefix = match item_type {
+            ItemType::Field => DEPRECATED_FIELD_PREFIX,
+            ItemType::Variant => DEPRECATED_VARIANT_PREFIX,
+        };
+
+        let starts_with_deprecated = item_ident.to_string().starts_with(prefix);
+
+        if self.deprecated.is_some() && !starts_with_deprecated {
+            return Err(Error::custom(
+                format!("{item_type} was marked as `deprecated` and thus must include the `{prefix}` prefix in its name")
+            ).with_span(item_ident));
+        }
+
+        if self.deprecated.is_none() && starts_with_deprecated {
+            return Err(Error::custom(
+                format!("{item_type} includes the `{prefix}` prefix in its name but is not marked as `deprecated`")
+            ).with_span(item_ident));
+        }
+
+        Ok(())
     }
 }
 
