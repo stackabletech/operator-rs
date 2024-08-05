@@ -24,6 +24,8 @@ futures.workspace = true
 json-patch.workspace = true
 k8s-openapi.workspace = true
 kube.workspace = true
+opentelemetry_sdk.workspace = true
+opentelemetry-jaeger.workspace = true
 product-config.workspace = true
 regex.workspace = true
 schemars.workspace = true
@@ -37,6 +39,7 @@ time = { workspace = true, optional = true }
 tokio.workspace = true
 tracing.workspace = true
 tracing-appender.workspace = true
+tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 url.workspace = true
 
