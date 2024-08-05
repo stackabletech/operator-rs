@@ -27,7 +27,7 @@ impl Default for TracingTarget {
 ///
 /// Log output can be copied to a file by setting `{env}_DIRECTORY` (e.g. `FOOBAR_OPERATOR_DIRECTORY`)
 /// to a directory path. This file will be rotated regularly.
-pub fn initialize_logging(env: &str, app_name: &str, _tracing_target: TracingTarget) {
+pub fn initialize_logging(env: &str, app_name: &str, tracing_target: TracingTarget) {
     let filter = match EnvFilter::try_from_env(env) {
         Ok(env_filter) => env_filter,
         _ => EnvFilter::try_new(tracing::Level::INFO.to_string())
@@ -49,6 +49,11 @@ pub fn initialize_logging(env: &str, app_name: &str, _tracing_target: TracingTar
             .json()
             .with_writer(file_appender)
     });
+
+    // This match is here just to fail compilation once e.g. otlp is supported
+    match tracing_target {
+        TracingTarget::None => (),
+    }
 
     Registry::default()
         .with(filter)
