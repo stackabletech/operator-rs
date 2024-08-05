@@ -6,12 +6,10 @@
 //!
 //! To get started, see [`Tracing`].
 
-use opentelemetry::KeyValue;
+use opentelemetry::{trace::TracerProvider, KeyValue};
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_sdk::{
-    logs::{self, LoggerProvider},
-    propagation::TraceContextPropagator,
-    trace, Resource,
+    logs::LoggerProvider, propagation::TraceContextPropagator, trace::Config, Resource,
 };
 use opentelemetry_semantic_conventions::resource;
 use snafu::{ResultExt as _, Snafu};
@@ -161,15 +159,15 @@ impl Tracing {
             .add_directive("h2=off".parse().expect("invalid directive"));
 
             let log_exporter = opentelemetry_otlp::new_exporter().tonic();
-            let otel_log =
-                opentelemetry_otlp::new_pipeline()
-                    .logging()
-                    .with_exporter(log_exporter)
-                    .with_log_config(logs::config().with_resource(Resource::new(vec![
-                        KeyValue::new(resource::SERVICE_NAME, self.service_name),
-                    ])))
-                    .install_batch(opentelemetry_sdk::runtime::Tokio)
-                    .context(InstallOtelLogExporterSnafu)?;
+            let otel_log = opentelemetry_otlp::new_pipeline()
+                .logging()
+                .with_exporter(log_exporter)
+                .with_resource(Resource::new(vec![KeyValue::new(
+                    resource::SERVICE_NAME,
+                    self.service_name,
+                )]))
+                .install_batch(opentelemetry_sdk::runtime::Tokio)
+                .context(InstallOtelLogExporterSnafu)?;
 
             // Convert `tracing::Event` to OpenTelemetry logs
             layers.push(
@@ -189,14 +187,15 @@ impl Tracing {
             .add_directive("h2=off".parse().expect("invalid directive"));
 
             let trace_exporter = opentelemetry_otlp::new_exporter().tonic();
-            let otel_tracer = opentelemetry_otlp::new_pipeline()
+            let otel_tracer_provider = opentelemetry_otlp::new_pipeline()
                 .tracing()
                 .with_exporter(trace_exporter)
-                .with_trace_config(trace::config().with_resource(Resource::new(vec![
+                .with_trace_config(Config::default().with_resource(Resource::new(vec![
                     KeyValue::new(resource::SERVICE_NAME, self.service_name),
                 ])))
                 .install_batch(opentelemetry_sdk::runtime::Tokio)
                 .context(InstallOtelTraceExporterSnafu)?;
+            let otel_tracer = otel_tracer_provider.tracer(self.service_name);
 
             layers.push(
                 tracing_opentelemetry::layer()

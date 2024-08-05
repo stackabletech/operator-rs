@@ -15,6 +15,9 @@ All notable changes to this project will be documented in this file.
   any more. However, checks can be re-added by using validation webhooks if
   needed. This change should not be breaking for the user and is a preparation
   for CRD versioning. ([#821]).
+- BREAKING: Remove support for Jaeger as a `TracingTarget`. This is due to stopped development of the
+  [`opentelemetry-jaeger`](https://crates.io/crates/opentelemetry-jaeger) crate. We plan to support tracing to OTLP
+  instead in the future ([#XXX]).
 
 [#821]: https://github.com/stackabletech/operator-rs/pull/821
 [#827]: https://github.com/stackabletech/operator-rs/pull/827

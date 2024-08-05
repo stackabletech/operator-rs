@@ -25,7 +25,6 @@ json-patch.workspace = true
 k8s-openapi.workspace = true
 kube.workspace = true
 opentelemetry_sdk.workspace = true
-opentelemetry-jaeger.workspace = true
 product-config.workspace = true
 regex.workspace = true
 schemars.workspace = true

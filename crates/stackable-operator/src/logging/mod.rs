@@ -10,7 +10,6 @@ mod k8s_events;
 #[derive(Debug, Clone, clap::ValueEnum, PartialEq, Eq)]
 pub enum TracingTarget {
     None,
-    Jaeger,
 }
 
 impl Default for TracingTarget {
@@ -28,7 +27,7 @@ impl Default for TracingTarget {
 ///
 /// Log output can be copied to a file by setting `{env}_DIRECTORY` (e.g. `FOOBAR_OPERATOR_DIRECTORY`)
 /// to a directory path. This file will be rotated regularly.
-pub fn initialize_logging(env: &str, app_name: &str, tracing_target: TracingTarget) {
+pub fn initialize_logging(env: &str, app_name: &str, _tracing_target: &TracingTarget) {
     let filter = match EnvFilter::try_from_env(env) {
         Ok(env_filter) => env_filter,
         _ => EnvFilter::try_new(tracing::Level::INFO.to_string())
@@ -51,25 +50,10 @@ pub fn initialize_logging(env: &str, app_name: &str, tracing_target: TracingTarg
             .with_writer(file_appender)
     });
 
-    let jaeger = match tracing_target {
-        TracingTarget::Jaeger => {
-            // FIXME (@Techassi): Replace with opentelemetry_otlp
-            #[allow(deprecated)]
-            let jaeger = opentelemetry_jaeger::new_agent_pipeline()
-                .with_service_name(app_name)
-                .install_batch(opentelemetry_sdk::runtime::Tokio)
-                .expect("Failed to initialize Jaeger pipeline");
-            let opentelemetry = tracing_opentelemetry::layer().with_tracer(jaeger);
-            Some(opentelemetry)
-        }
-        TracingTarget::None => None,
-    };
-
     Registry::default()
         .with(filter)
         .with(terminal_fmt)
         .with(file_fmt)
-        .with(jaeger)
         .init();
 
     // need to delay logging until after tracing is initialized
@@ -95,7 +79,7 @@ mod test {
     // to see them all.
     #[test]
     pub fn test_default_tracing_level_is_set_to_info() {
-        super::initialize_logging("NOT_SET", "test", TracingTarget::None);
+        super::initialize_logging("NOT_SET", "test", &TracingTarget::None);
 
         error!("ERROR level messages should be seen.");
         info!("INFO level messages should also be seen by default.");
