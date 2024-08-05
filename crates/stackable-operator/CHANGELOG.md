@@ -17,10 +17,11 @@ All notable changes to this project will be documented in this file.
   for CRD versioning. ([#821]).
 - BREAKING: Remove support for Jaeger as a `TracingTarget`. This is due to stopped development of the
   [`opentelemetry-jaeger`](https://crates.io/crates/opentelemetry-jaeger) crate. We plan to support tracing to OTLP
-  instead in the future ([#XXX]).
+  instead in the future ([#830]).
 
 [#821]: https://github.com/stackabletech/operator-rs/pull/821
 [#827]: https://github.com/stackabletech/operator-rs/pull/827
+[#8330]: https://github.com/stackabletech/operator-rs/pull/830
 
 ## [0.71.0] - 2024-07-29
 
