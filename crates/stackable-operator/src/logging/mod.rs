@@ -27,7 +27,7 @@ impl Default for TracingTarget {
 ///
 /// Log output can be copied to a file by setting `{env}_DIRECTORY` (e.g. `FOOBAR_OPERATOR_DIRECTORY`)
 /// to a directory path. This file will be rotated regularly.
-pub fn initialize_logging(env: &str, app_name: &str, _tracing_target: &TracingTarget) {
+pub fn initialize_logging(env: &str, app_name: &str, _tracing_target: TracingTarget) {
     let filter = match EnvFilter::try_from_env(env) {
         Ok(env_filter) => env_filter,
         _ => EnvFilter::try_new(tracing::Level::INFO.to_string())
@@ -79,7 +79,7 @@ mod test {
     // to see them all.
     #[test]
     pub fn test_default_tracing_level_is_set_to_info() {
-        super::initialize_logging("NOT_SET", "test", &TracingTarget::None);
+        super::initialize_logging("NOT_SET", "test", TracingTarget::None);
 
         error!("ERROR level messages should be seen.");
         info!("INFO level messages should also be seen by default.");
