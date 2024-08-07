@@ -16,6 +16,7 @@ pub mod pod_utils;
 pub mod product_config_utils;
 pub mod product_logging;
 pub mod role_utils;
+pub mod rollout;
 pub mod status;
 pub mod time;
 pub mod utils;
