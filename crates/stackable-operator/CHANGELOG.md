@@ -10,9 +10,10 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Reverted [#827].
+- Reverted [#827], in order to restore Rust 1.79 compatibility for now ([#835]).
 
 [#833]: https://github.com/stackabletech/operator-rs/pull/833
+[#835]: https://github.com/stackabletech/operator-rs/pull/835
 
 ## [0.72.0] - 2024-08-05
 
