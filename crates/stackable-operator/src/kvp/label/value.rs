@@ -1,5 +1,6 @@
-use std::{fmt::Display, ops::Deref, str::FromStr, sync::LazyLock};
+use std::{fmt::Display, ops::Deref, str::FromStr};
 
+use lazy_static::lazy_static;
 use regex::Regex;
 use snafu::{ensure, Snafu};
 
@@ -7,11 +8,10 @@ use crate::kvp::Value;
 
 const LABEL_VALUE_MAX_LEN: usize = 63;
 
-// Lazily initialized regular expressions
-static LABEL_VALUE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^[a-z0-9A-Z]([a-z0-9A-Z-_.]*[a-z0-9A-Z]+)?$")
-        .expect("failed to compile value regex")
-});
+lazy_static! {
+    static ref LABEL_VALUE_REGEX: Regex =
+        Regex::new(r"^[a-z0-9A-Z]([a-z0-9A-Z-_.]*[a-z0-9A-Z]+)?$").unwrap();
+}
 
 /// The error type for label value parse/validation operations.
 #[derive(Debug, PartialEq, Snafu)]

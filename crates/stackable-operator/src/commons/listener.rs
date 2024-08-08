@@ -110,7 +110,7 @@ pub enum KubernetesTrafficPolicy {
 /// 1. It uses a cluster-level policy object (ListenerClass) to define how exactly the exposure works
 /// 2. It has a consistent API for reading back the exposed address(es) of the service
 /// 3. The Pod must mount a Volume referring to the Listener, which also allows
-///    ["sticky" scheduling](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listener#_sticky_scheduling).
+/// ["sticky" scheduling](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listener#_sticky_scheduling).
 ///
 /// Learn more in the [Listener documentation](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listener).
 #[derive(

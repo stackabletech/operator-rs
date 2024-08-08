@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - Rollout tracker for `StatefulSet` ([#833]).
 
+### Changed
+
+- Reverted [#827].
+
 [#833]: https://github.com/stackabletech/operator-rs/pull/833
 
 ## [0.72.0] - 2024-08-05
