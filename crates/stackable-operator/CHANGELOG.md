@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.73.0] - 2024-08-09
+
 ### Added
 
 - Rollout tracker for `StatefulSet` ([#833]).
