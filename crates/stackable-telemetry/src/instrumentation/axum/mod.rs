@@ -199,8 +199,8 @@ pub trait RequestExt {
     /// section of the HTTP span semantic conventions:
     ///
     /// > HTTP server instrumentations SHOULD do the best effort when populating
-    /// > server.address and server.port attributes and SHOULD determine them by
-    /// > using the first of the following that applies:
+    ///   server.address and server.port attributes and SHOULD determine them by
+    ///   using the first of the following that applies:
     /// >
     /// > - The original host which may be passed by the reverse proxy in the
     /// >  Forwarded#host, X-Forwarded-Host, or a similar header.

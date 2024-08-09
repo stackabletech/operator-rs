@@ -43,22 +43,14 @@
 //! assert_eq!(opa_config.document_url(&cluster, Some("allow"), OpaApiVersion::V1), "v1/data/test/allow".to_string());
 //! assert_eq!(opa_config.full_document_url(&cluster, "http://localhost:8081", None, OpaApiVersion::V1), "http://localhost:8081/v1/data/test".to_string());
 //! ```
-use std::sync::LazyLock;
-
 use crate::client::{Client, GetApi};
 use k8s_openapi::{api::core::v1::ConfigMap, NamespaceResourceScope};
 use kube::{Resource, ResourceExt};
+use lazy_static::lazy_static;
 use regex::Regex;
 use schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
-
-static DOT_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new("\\.").expect("failed to compile OPA dot regex"));
-
-/// To remove leading slashes from OPA package name (if present)
-static LEADING_SLASH_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new("(/*)(.*)").expect("failed to compile OPA leasing slash regex"));
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -80,6 +72,11 @@ pub enum Error {
     },
 }
 
+lazy_static! {
+    static ref DOT_REGEX: Regex = Regex::new("\\.").unwrap();
+    /// To remove leading slashes from OPA package name (if present)
+    static ref LEADING_SLASH_REGEX: Regex = Regex::new("(/*)(.*)").unwrap();
+}
 /// Indicates the OPA API version. This is required to choose the correct
 /// path when constructing the OPA urls to query.
 pub enum OpaApiVersion {

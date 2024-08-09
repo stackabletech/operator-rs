@@ -1541,6 +1541,7 @@ name = "k8s-version"
 version = "0.1.1"
 dependencies = [
  "darling",
+ "lazy_static",
  "proc-macro2",
  "quote",
  "regex",
@@ -2915,6 +2916,7 @@ dependencies = [
  "json-patch",
  "k8s-openapi",
  "kube",
+ "lazy_static",
  "opentelemetry-jaeger",
  "opentelemetry_sdk",
  "product-config",
