@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `iter::reverse_if` helper ([#838]).
+
+[#838]: https://github.com/stackabletech/operator-rs/pull/838
+
 ## [0.73.0] - 2024-08-09
 
 ### Added
