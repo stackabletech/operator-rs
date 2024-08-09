@@ -8,7 +8,12 @@ All notable changes to this project will be documented in this file.
 
 - Rollout tracker for `StatefulSet` ([#833]).
 
+### Fixed
+
+- Invalid CRD schema for `StackableAffinity` contents. This was caused by the fields being optional and defaulting to `null`, while the custom schema marked the field as required ([#836]).
+
 [#833]: https://github.com/stackabletech/operator-rs/pull/833
+[#836]: https://github.com/stackabletech/operator-rs/pull/836
 
 ## [0.72.0] - 2024-08-05
 
