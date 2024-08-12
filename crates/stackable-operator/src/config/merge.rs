@@ -1,5 +1,7 @@
 use k8s_openapi::{
-    api::core::v1::{NodeAffinity, PodAffinity, PodAntiAffinity, PodTemplateSpec},
+    api::core::v1::{
+        Container, NodeAffinity, PodAffinity, PodAntiAffinity, PodTemplateSpec, VolumeMount,
+    },
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
     DeepMerge,
 };
@@ -91,6 +93,23 @@ impl Merge for PodTemplateSpec {
         self.merge_from(defaults.clone())
     }
 }
+impl Merge for Vec<VolumeMount> {
+    fn merge(&mut self, defaults: &Self) {
+        // Let's construct two containers with the given volumeMounts and let k8s-openapi do the heavy lifting
+        let mut current = Container {
+            volume_mounts: Some(self.clone()),
+            ..Default::default()
+        };
+        let defaults = Container {
+            volume_mounts: Some(defaults.clone()),
+            ..Default::default()
+        };
+        current.merge_from(defaults);
+        *self = current
+            .volume_mounts
+            .expect("The created container must have volumeMounts, as we did crate them above");
+    }
+}
 
 /// Moving version of [`Merge::merge`], to produce slightly nicer test output
 pub fn merge<T: Merge>(mut overrides: T, defaults: &T) -> T {
@@ -160,7 +179,7 @@ impl<T: Atomic> Merge for Option<T> {
 
 #[cfg(test)]
 mod tests {
-    use k8s_openapi::api::core::v1::{PodSpec, PodTemplateSpec};
+    use k8s_openapi::api::core::v1::{PodSpec, PodTemplateSpec, VolumeMount};
     use std::collections::{BTreeMap, HashMap};
 
     use super::{merge, Merge};
@@ -488,6 +507,56 @@ mod tests {
                 }),
                 ..PodTemplateSpec::default()
             }
+        );
+    }
+
+    #[test]
+    fn merge_volume_mounts() {
+        assert_eq!(merge(vec![], &vec![]), vec![]);
+        assert_eq!(
+            merge(vec![VolumeMount::default()], &vec![]),
+            vec![VolumeMount::default()]
+        );
+        assert_eq!(
+            merge(vec![], &vec![VolumeMount::default()]),
+            vec![VolumeMount::default()]
+        );
+        assert_eq!(
+            merge(vec![VolumeMount::default()], &vec![VolumeMount::default()]),
+            vec![VolumeMount::default()]
+        );
+        assert_eq!(
+            merge(
+                vec![
+                    VolumeMount {
+                        mount_path: "/unchanged".to_owned(),
+                        name: "unchanged".to_owned(),
+                        ..Default::default()
+                    },
+                    VolumeMount {
+                        mount_path: "/overwritten".to_owned(),
+                        name: "hello-from-1".to_owned(),
+                        ..Default::default()
+                    }
+                ],
+                &vec![VolumeMount {
+                    mount_path: "/overwritten".to_owned(),
+                    name: "hello-from-2".to_owned(),
+                    ..Default::default()
+                }]
+            ),
+            vec![
+                VolumeMount {
+                    mount_path: "/unchanged".to_owned(),
+                    name: "unchanged".to_owned(),
+                    ..Default::default()
+                },
+                VolumeMount {
+                    mount_path: "/overwritten".to_owned(),
+                    name: "hello-from-2".to_owned(),
+                    ..Default::default()
+                }
+            ]
         );
     }
 }
