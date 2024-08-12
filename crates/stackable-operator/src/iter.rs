@@ -1,5 +1,51 @@
 //! Extensions for use cases that [`Iterator`] doesn't handle natively quite yet
 
+use std::iter::Rev;
+
+/// Either an `A` or `B`, and forwards all iterator methods accordingly.
+pub enum Either<A, B> {
+    Left(A),
+    Right(B),
+}
+
+impl<A, B> Iterator for Either<A, B>
+where
+    A: Iterator,
+    B: Iterator<Item = A::Item>,
+{
+    type Item = A::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Left(left) => left.next(),
+            Self::Right(right) => right.next(),
+        }
+    }
+}
+
+impl<A, B> DoubleEndedIterator for Either<A, B>
+where
+    Self: Iterator,
+    A: DoubleEndedIterator<Item = Self::Item>,
+    B: DoubleEndedIterator<Item = Self::Item>,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Left(left) => left.next_back(),
+            Self::Right(right) => right.next_back(),
+        }
+    }
+}
+
+/// Returns a reversed version of `iter` if `cond` is `true`, otherwise returns it as-is.
+pub fn reverse_if<I: DoubleEndedIterator>(cond: bool, iter: I) -> Either<I, Rev<I>> {
+    if cond {
+        Either::Right(iter.rev())
+    } else {
+        Either::Left(iter)
+    }
+}
+
 /// Fallible version of [`Iterator::flatten`]
 ///
 /// If the outer [`Iterator`] returns [`Ok`] then each item in the inner iterator is emitted,
@@ -60,6 +106,19 @@ pub trait TryFromIterator<T>: Sized {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reverse_if_marble_test() {
+        let values = [0, 1, 2, 3];
+        assert_eq!(
+            reverse_if(false, values.iter()).collect::<Vec<_>>(),
+            [&0, &1, &2, &3]
+        );
+        assert_eq!(
+            reverse_if(true, values.iter()).collect::<Vec<_>>(),
+            [&3, &2, &1, &0]
+        );
+    }
 
     #[test]
     fn try_flatten_marble_test() {
