@@ -7,14 +7,20 @@ use syn::{DataEnum, Error, Ident};
 
 use crate::{
     attrs::common::ContainerAttributes,
-    gen::{
-        common::{format_container_from_ident, Container, ContainerVersion, VersionedContainer},
+    codegen::{
+        common::{
+            format_container_from_ident, Container, ContainerVersion, Item, VersionedContainer,
+        },
         venum::variant::VersionedVariant,
     },
 };
 
-mod variant;
+pub(crate) mod variant;
 
+/// Stores individual versions of a single enum. Each version tracks variant
+/// actions, which describe if the variant was added, renamed or deprecated in
+/// that version. Variants which are not versioned, are included in every
+/// version of the struct.
 #[derive(Debug)]
 pub(crate) struct VersionedEnum(VersionedContainer<VersionedVariant>);
 

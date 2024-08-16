@@ -1,7 +1,7 @@
 use darling::{Error, FromField};
-use syn::{Field, Ident};
+use syn::Ident;
 
-use crate::attrs::common::{ContainerAttributes, ItemAttributes, ItemType};
+use crate::attrs::common::{ItemAttributes, ItemType};
 
 /// This struct describes all available field attributes, as well as the field
 /// name to display better diagnostics.
@@ -56,58 +56,5 @@ impl FieldAttributes {
             .validate(self.ident.as_ref().unwrap(), &ItemType::Field)?;
 
         Ok(self)
-    }
-
-    /// Validates that each field action version is present in the declared
-    /// container versions.
-    pub(crate) fn validate_versions(
-        &self,
-        container_attrs: &ContainerAttributes,
-        field: &Field,
-    ) -> Result<(), Error> {
-        // NOTE (@Techassi): Can we maybe optimize this a little?
-        let mut errors = Error::accumulator();
-
-        if let Some(added) = &self.common.added {
-            if !container_attrs
-                .versions
-                .iter()
-                .any(|v| v.name == *added.since)
-            {
-                errors.push(Error::custom(
-                    "field action `added` uses version which was not declared via #[versioned(version)]")
-                    .with_span(&field.ident)
-                );
-            }
-        }
-
-        for rename in &self.common.renames {
-            if !container_attrs
-                .versions
-                .iter()
-                .any(|v| v.name == *rename.since)
-            {
-                errors.push(
-                    Error::custom("field action `renamed` uses version which was not declared via #[versioned(version)]")
-                    .with_span(&field.ident)
-                );
-            }
-        }
-
-        if let Some(deprecated) = &self.common.deprecated {
-            if !container_attrs
-                .versions
-                .iter()
-                .any(|v| v.name == *deprecated.since)
-            {
-                errors.push(Error::custom(
-                    "field action `deprecated` uses version which was not declared via #[versioned(version)]")
-                    .with_span(&field.ident)
-                );
-            }
-        }
-
-        errors.finish()?;
-        Ok(())
     }
 }

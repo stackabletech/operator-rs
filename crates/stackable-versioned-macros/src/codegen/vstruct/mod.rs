@@ -7,13 +7,15 @@ use syn::{DataStruct, Error, Ident};
 
 use crate::{
     attrs::common::ContainerAttributes,
-    gen::{
-        common::{format_container_from_ident, Container, ContainerVersion, VersionedContainer},
+    codegen::{
+        common::{
+            format_container_from_ident, Container, ContainerVersion, Item, VersionedContainer,
+        },
         vstruct::field::VersionedField,
     },
 };
 
-mod field;
+pub(crate) mod field;
 
 /// Stores individual versions of a single struct. Each version tracks field
 /// actions, which describe if the field was added, renamed or deprecated in

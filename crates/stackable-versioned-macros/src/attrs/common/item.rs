@@ -1,9 +1,83 @@
 use darling::{util::SpannedValue, Error, FromMeta};
 use k8s_version::Version;
 use proc_macro2::Span;
-use syn::{Ident, Path};
+use syn::{spanned::Spanned, Ident, Path};
 
-use crate::consts::{DEPRECATED_FIELD_PREFIX, DEPRECATED_VARIANT_PREFIX};
+use crate::{
+    attrs::common::ContainerAttributes,
+    codegen::common::Attributes,
+    consts::{DEPRECATED_FIELD_PREFIX, DEPRECATED_VARIANT_PREFIX},
+};
+
+pub(crate) trait ValidateVersions<I>
+where
+    I: Spanned,
+{
+    /// Validates that each field action version is present in the declared
+    /// container versions.
+    fn validate_versions(
+        &self,
+        container_attrs: &ContainerAttributes,
+        item: &I,
+    ) -> Result<(), darling::Error>;
+}
+
+impl<I, T> ValidateVersions<I> for T
+where
+    T: Attributes,
+    I: Spanned,
+{
+    fn validate_versions(
+        &self,
+        container_attrs: &ContainerAttributes,
+        item: &I,
+    ) -> Result<(), darling::Error> {
+        // NOTE (@Techassi): Can we maybe optimize this a little?
+        let mut errors = Error::accumulator();
+
+        if let Some(added) = &self.common_attrs().added {
+            if !container_attrs
+                .versions
+                .iter()
+                .any(|v| v.name == *added.since)
+            {
+                errors.push(Error::custom(
+                   "variant action `added` uses version which was not declared via #[versioned(version)]")
+                   .with_span(item)
+               );
+            }
+        }
+
+        for rename in &*self.common_attrs().renames {
+            if !container_attrs
+                .versions
+                .iter()
+                .any(|v| v.name == *rename.since)
+            {
+                errors.push(
+                   Error::custom("variant action `renamed` uses version which was not declared via #[versioned(version)]")
+                   .with_span(item)
+               );
+            }
+        }
+
+        if let Some(deprecated) = &self.common_attrs().deprecated {
+            if !container_attrs
+                .versions
+                .iter()
+                .any(|v| v.name == *deprecated.since)
+            {
+                errors.push(Error::custom(
+                   "variant action `deprecated` uses version which was not declared via #[versioned(version)]")
+                   .with_span(item)
+               );
+            }
+        }
+
+        errors.finish()?;
+        Ok(())
+    }
+}
 
 #[derive(Debug, strum::Display)]
 #[strum(serialize_all = "lowercase")]

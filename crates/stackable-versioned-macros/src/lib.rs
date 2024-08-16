@@ -5,8 +5,8 @@ use syn::{DeriveInput, Error};
 use crate::attrs::common::ContainerAttributes;
 
 mod attrs;
+mod codegen;
 mod consts;
-mod gen;
 
 /// This macro enables generating versioned structs.
 ///
@@ -223,7 +223,7 @@ pub fn versioned(attrs: TokenStream, input: TokenStream) -> TokenStream {
     // Module(ItemMod).
     let input = syn::parse_macro_input!(input as DeriveInput);
 
-    gen::expand(attrs, input)
+    codegen::expand(attrs, input)
         .unwrap_or_else(Error::into_compile_error)
         .into()
 }
