@@ -9,17 +9,13 @@ use crate::attrs::common::{ItemAttributes, ItemType};
 /// Data stored in this struct is validated using darling's `and_then` attribute.
 /// During darlings validation, it is not possible to validate that action
 /// versions match up with declared versions on the container. This validation
-/// can be done using the associated [`FieldAttributes::validate_versions`]
+/// can be done using the associated [`ValidateVersions::validate_versions`][1]
 /// function.
 ///
-/// ### Field Rules
+/// Rules shared across fields and variants can be found [here][2].
 ///
-/// - A field can only ever be added once at most. A field not marked as 'added'
-///   is part of the struct in every version until renamed or deprecated.
-/// - A field can be renamed many times. That's why renames are stored in a
-///   [`Vec`].
-/// - A field can only be deprecated once. A field not marked as 'deprecated'
-///   will be included up until the latest version.
+/// [1]: crate::attrs::common::ValidateVersions::validate_versions
+/// [2]: crate::attrs::common::ItemAttributes
 #[derive(Debug, FromField)]
 #[darling(
     attributes(versioned),
@@ -37,14 +33,6 @@ pub(crate) struct FieldAttributes {
 }
 
 impl FieldAttributes {
-    // NOTE (@Techassi): Ideally, these validations should be moved to the
-    // ItemAttributes impl, because common validation like action combinations
-    // and action order can be validated without taking the type of attribute
-    // into account (field vs variant). However, we would loose access to the
-    // field / variant ident and as such, cannot display the error directly on
-    // the affected field / variant. This is a significant decrease in DX.
-    // See https://github.com/TedDriggs/darling/discussions/294
-
     /// This associated function is called by darling (see and_then attribute)
     /// after it successfully parsed the attribute. This allows custom
     /// validation of the attribute which extends the validation already in
@@ -52,8 +40,11 @@ impl FieldAttributes {
     ///
     /// Internally, it calls out to other specialized validation functions.
     fn validate(self) -> Result<Self, Error> {
-        self.common
-            .validate(self.ident.as_ref().unwrap(), &ItemType::Field)?;
+        let ident = self
+            .ident
+            .as_ref()
+            .expect("internal error: field must have an ident");
+        self.common.validate(ident, &ItemType::Field)?;
 
         Ok(self)
     }

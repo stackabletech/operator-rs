@@ -9,6 +9,12 @@ use crate::{
     consts::{DEPRECATED_FIELD_PREFIX, DEPRECATED_VARIANT_PREFIX},
 };
 
+/// This trait helps to unify attribute validation for both field and variant
+/// attributes.
+///
+/// This trait is implemented using a blanket implementation on types
+/// `T: Attributes`. The [`Attributes`] trait allows access to the common
+/// attributes shared across field and variant attributes.
 pub(crate) trait ValidateVersions<I>
 where
     I: Spanned,
@@ -79,6 +85,10 @@ where
     }
 }
 
+// NOTE (@Techassi): It might be possible (but is it required) to move this
+// functionality into a shared trait, which knows what type of item 'Self' is.
+
+/// This enum is used to run different validation based on the type of item.
 #[derive(Debug, strum::Display)]
 #[strum(serialize_all = "lowercase")]
 pub(crate) enum ItemType {
@@ -89,6 +99,15 @@ pub(crate) enum ItemType {
 /// These attributes are meant to be used in super structs, which add
 /// [`Field`](syn::Field) or [`Variant`](syn::Variant) specific attributes via
 /// darling's flatten feature. This struct only provides shared attributes.
+///
+/// ### Shared Item Rules
+///
+/// - An item can only ever be added once at most. An item not marked as 'added'
+///   is part of the container in every version until renamed or deprecated.
+/// - An item can be renamed many times. That's why renames are stored in a
+///   [`Vec`].
+/// - An item can only be deprecated once. A field not marked as 'deprecated'
+///   will be included up until the latest version.
 #[derive(Debug, FromMeta)]
 pub(crate) struct ItemAttributes {
     /// This parses the `added` attribute on items (fields or variants). It can

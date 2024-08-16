@@ -4,6 +4,19 @@ use syn::Ident;
 
 use crate::attrs::common::{ItemAttributes, ItemType};
 
+/// This struct describes all available variant attributes, as well as the
+/// variant name to display better diagnostics.
+///
+/// Data stored in this struct is validated using darling's `and_then` attribute.
+/// During darlings validation, it is not possible to validate that action
+/// versions match up with declared versions on the container. This validation
+/// can be done using the associated [`FieldAttributes::validate_versions`][1]
+/// function.
+///
+/// Rules shared across fields and variants can be found [here][2].
+///
+/// [1]: crate::attrs::common::ValidateVersions::validate_versions
+/// [2]: crate::attrs::common::ItemAttributes
 #[derive(Debug, FromVariant)]
 #[darling(
     attributes(versioned),
@@ -21,14 +34,6 @@ pub(crate) struct VariantAttributes {
 }
 
 impl VariantAttributes {
-    // NOTE (@Techassi): Ideally, these validations should be moved to the
-    // ItemAttributes impl, because common validation like action combinations
-    // and action order can be validated without taking the type of attribute
-    // into account (field vs variant). However, we would loose access to the
-    // field / variant ident and as such, cannot display the error directly on
-    // the affected field / variant. This is a significant decrease in DX.
-    // See https://github.com/TedDriggs/darling/discussions/294
-
     /// This associated function is called by darling (see and_then attribute)
     /// after it successfully parsed the attribute. This allows custom
     /// validation of the attribute which extends the validation already in
