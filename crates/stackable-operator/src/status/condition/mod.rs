@@ -290,20 +290,16 @@ impl ClusterConditionSet {
         self.conditions[index] = Some(condition);
     }
 
-    /// Merges two [`ClusterConditionSet`]s.
-    ///
-    /// The condition_combiner implements the strategy used to merge two
-    /// conditions of the same `type_`.
+    /// Merges two [`ClusterConditionSet`]s. The condition_combiner implements the strategy used to
+    /// merge two conditions of the same `type_`.
     ///
     /// # Arguments
     ///
     /// * `other` - The [`ClusterConditionSet`] to be merged
-    /// * `condition_combiner` - This is either be `update_message` or
-    ///   `update_timestamps`. The `update_message` is used to concatenate
-    ///   messages of the same [`ClusterConditionStatus`] and the same
-    ///   [`ClusterConditionType`]. The `update_timestamps` is required to merge
-    ///   the old cluster status with the new one and update transition
-    ///   timestamps correctly.
+    /// * `condition_combiner` - This is either be `update_message` or `update_timestamps`. The
+    /// `update_message` is used to concatenate messages of the same [`ClusterConditionStatus`] and
+    /// the same [`ClusterConditionType`]. The `update_timestamps` is required to merge the old
+    /// cluster status with the new one and update transition timestamps correctly.
     fn merge(
         self,
         other: ClusterConditionSet,
@@ -365,7 +361,7 @@ fn update_timestamps(
 /// A condition combiner strategy with the following properties:
 /// 1. It preserves the condition with the highest status.
 /// 2. It joins the previous messages to the current one if both conditions
-///    have the same status.
+/// have the same status.
 fn update_message(
     old_condition: ClusterCondition,
     new_condition: ClusterCondition,

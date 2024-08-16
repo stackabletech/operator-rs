@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 ## Changed
 
 - Remove instrumentation of long running functions, add more granular instrumentation of futures. Adjust span and event levels ([#811]).
-- Bump rust-toolchain to 1.79.0 ([#822])
+- Bump rust-toolchain to 1.79.0 ([#822]).
 
 ### Fixed
 
@@ -58,7 +58,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Implement `PartialEq` for most _Snafu_ Error enums ([#757]).
-- Update Rust to 1.77 ([#759])
+- Update Rust to 1.77 ([#759]).
 
 [#757]: https://github.com/stackabletech/operator-rs/pull/757
 [#759]: https://github.com/stackabletech/operator-rs/pull/759

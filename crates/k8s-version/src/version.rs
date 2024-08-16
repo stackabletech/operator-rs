@@ -1,5 +1,6 @@
-use std::{cmp::Ordering, fmt::Display, num::ParseIntError, str::FromStr, sync::LazyLock};
+use std::{cmp::Ordering, fmt::Display, num::ParseIntError, str::FromStr};
 
+use lazy_static::lazy_static;
 use regex::Regex;
 use snafu::{OptionExt, ResultExt, Snafu};
 
@@ -8,10 +9,11 @@ use darling::FromMeta;
 
 use crate::{Level, ParseLevelError};
 
-static VERSION_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^v(?P<major>\d+)(?P<level>[a-z0-9][a-z0-9-]{0,60}[a-z0-9])?$")
-        .expect("failed to compile version regex")
-});
+lazy_static! {
+    static ref VERSION_REGEX: Regex =
+        Regex::new(r"^v(?P<major>\d+)(?P<level>[a-z0-9][a-z0-9-]{0,60}[a-z0-9])?$")
+            .expect("failed to compile version regex");
+}
 
 /// Error variants which can be encountered when creating a new [`Version`] from
 /// unparsed input.

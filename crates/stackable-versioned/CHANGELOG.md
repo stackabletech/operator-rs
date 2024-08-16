@@ -18,7 +18,7 @@ All notable changes to this project will be documented in this file.
 - Change from derive macro to attribute macro to be able to generate code
   _in place_ instead of _appending_ new code ([#793]).
 - Improve action chain generation ([#784]).
-- Bump rust-toolchain to 1.79.0 ([#822])
+- Bump rust-toolchain to 1.79.0 ([#822]).
 
 [#784]: https://github.com/stackabletech/operator-rs/pull/784
 [#790]: https://github.com/stackabletech/operator-rs/pull/790

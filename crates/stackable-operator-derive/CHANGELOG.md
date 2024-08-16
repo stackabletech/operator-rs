@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Bump rust-toolchain to 1.79.0 ([#822])
+- Bump rust-toolchain to 1.79.0 ([#822]).
 
 [#822]: https://github.com/stackabletech/operator-rs/pull/822
 
@@ -24,7 +24,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Update Rust to 1.77 ([#759])
+- Update Rust to 1.77 ([#759]).
 - Bump GitHub workflow actions ([#772]).
 - Revert `zeroize` version bump ([#772]).
 

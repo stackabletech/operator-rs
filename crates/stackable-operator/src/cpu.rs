@@ -101,14 +101,12 @@ impl Display for CpuQuantity {
 impl FromStr for CpuQuantity {
     type Err = Error;
 
-    /// Only two formats can be parsed:
-    ///
+    /// Only two formats can be parsed
     /// - {usize}m
     /// - {f32}
-    ///
-    /// For the float, only milli-precision is supported. Using more precise
-    /// values will trigger an error, and using any other unit than 'm' or None
-    /// will also trigger an error.
+    /// For the float, only milli-precision is supported.
+    /// Using more precise values will trigger an error, and using any other
+    /// unit than 'm' or None will also trigger an error.
     fn from_str(q: &str) -> Result<Self> {
         let start_of_unit = q.find(|c: char| c != '.' && !c.is_numeric());
         if let Some(start_of_unit) = start_of_unit {

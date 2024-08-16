@@ -4,10 +4,45 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `iter::reverse_if` helper ([#838]).
+
+[#838]: https://github.com/stackabletech/operator-rs/pull/838
+
+## [0.73.0] - 2024-08-09
+
+### Added
+
+- Rollout tracker for `StatefulSet` ([#833]).
+
+### Changed
+
+- Reverted [#827], in order to restore Rust 1.79 compatibility for now ([#835]).
+
+### Fixed
+
+- Invalid CRD schema for `StackableAffinity` contents. This was caused by the fields being optional and defaulting to `null`, while the custom schema marked the field as required ([#836]).
+
+[#833]: https://github.com/stackabletech/operator-rs/pull/833
+[#835]: https://github.com/stackabletech/operator-rs/pull/835
+[#836]: https://github.com/stackabletech/operator-rs/pull/836
+
+## [0.72.0] - 2024-08-05
+
 ### Changed
 
 - BREAKING: Replace `lazy_static` with `std::cell::LazyCell` ([#827]).
+- BREAKING: Convert `podOverrides` and `affinity` fields to take any arbitrary
+  YAML input, rather than using the underlying schema. With this change, one of
+  the larger CRDs, like the Druid CRD went down in size from `2.4MB` to `288K`
+  (a 88% reduction). One downside is that user input is not checked to be a
+  valid `PodTemplateSpec`, `PodAffinity`, `PodAntiAffinity` and `NodeAffinity`
+  any more. However, checks can be re-added by using validation webhooks if
+  needed. This change should not be breaking for the user and is a preparation
+  for CRD versioning. ([#821]).
 
+[#821]: https://github.com/stackabletech/operator-rs/pull/821
 [#827]: https://github.com/stackabletech/operator-rs/pull/827
 
 ## [0.71.0] - 2024-07-29
@@ -37,7 +72,7 @@ All notable changes to this project will be documented in this file.
   - [kube#1494](https://github.com/kube-rs/kube/pull/1494)
   - [kube#1504](https://github.com/kube-rs/kube/pull/1504)
 - Upgrade opentelemetry crates ([#811]).
-- Bump rust-toolchain to 1.79.0 ([#822])
+- Bump rust-toolchain to 1.79.0 ([#822]).
 
 ### Fixed
 
