@@ -6,7 +6,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_TOOLCHAIN_VERSION: "1.80.0"
+  RUST_TOOLCHAIN_VERSION: "1.80.1"
 
 jobs:
   pre-commit:
