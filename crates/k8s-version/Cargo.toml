@@ -11,7 +11,6 @@ darling = ["dep:darling"]
 
 [dependencies]
 darling = { workspace = true, optional = true }
-lazy_static.workspace = true
 regex.workspace = true
 snafu.workspace = true
 
