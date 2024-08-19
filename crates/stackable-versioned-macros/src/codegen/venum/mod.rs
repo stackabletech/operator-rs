@@ -7,14 +7,20 @@ use syn::{DataEnum, Error, Ident};
 
 use crate::{
     attrs::common::ContainerAttributes,
-    gen::{
-        common::{format_container_from_ident, Container, ContainerVersion, VersionedContainer},
+    codegen::{
+        common::{
+            format_container_from_ident, Container, ContainerVersion, Item, VersionedContainer,
+        },
         venum::variant::VersionedVariant,
     },
 };
 
-mod variant;
+pub(crate) mod variant;
 
+/// Stores individual versions of a single enum. Each version tracks variant
+/// actions, which describe if the variant was added, renamed or deprecated in
+/// that version. Variants which are not versioned, are included in every
+/// version of the enum.
 #[derive(Debug)]
 pub(crate) struct VersionedEnum(VersionedContainer<VersionedVariant>);
 
@@ -55,7 +61,7 @@ impl Container<DataEnum, VersionedVariant> for VersionedEnum {
             if !items.iter().map(|f| f.get_ident(version)).all_unique() {
                 return Err(Error::new(
                     ident.span(),
-                    format!("struct contains renamed fields which collide with other fields in version {version}", version = version.inner),
+                    format!("Enum contains renamed variants which collide with other variants in version {version}", version = version.inner),
                 ));
             }
         }
@@ -109,7 +115,7 @@ impl VersionedEnum {
             .deprecated
             .then_some(quote! {#[deprecated = #deprecated_note]});
 
-        // Generate tokens for the module and the contained struct
+        // Generate tokens for the module and the contained enum
         token_stream.extend(quote! {
             #[automatically_derived]
             #deprecated_attr
