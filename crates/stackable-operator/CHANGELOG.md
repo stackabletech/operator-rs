@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- BREAKING: Replace `lazy_static` with `std::cell::LazyCell` (the original implementation was done in [#827] and reverted in [#835]) ([#XXX]).
+- BREAKING: Replace `lazy_static` with `std::cell::LazyCell` (the original implementation was done in [#827] and reverted in [#835]) ([#840]).
 
 ### Added
 
@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Reverted [#827], in order to restore Rust 1.79 compatibility for now ([#835]).
+- Reverted [#827], in order to restore Rust 1.79 compatibility for now ([#835]), re-opened in ([#840]).
 
 ### Fixed
 
@@ -34,7 +34,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: Replace `lazy_static` with `std::cell::LazyCell` ([#827]).
+- BREAKING: Replace `lazy_static` with `std::cell::LazyCell` ([#827], [#835], [#840]).
 - BREAKING: Convert `podOverrides` and `affinity` fields to take any arbitrary
   YAML input, rather than using the underlying schema. With this change, one of
   the larger CRDs, like the Druid CRD went down in size from `2.4MB` to `288K`
@@ -46,6 +46,7 @@ All notable changes to this project will be documented in this file.
 
 [#821]: https://github.com/stackabletech/operator-rs/pull/821
 [#827]: https://github.com/stackabletech/operator-rs/pull/827
+[#840]: https://github.com/stackabletech/operator-rs/pull/840
 
 ## [0.71.0] - 2024-07-29
 
