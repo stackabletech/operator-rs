@@ -71,6 +71,10 @@ impl Named for Field {
 }
 
 impl VersionedField {
+    /// Creates a new versioned field.
+    ///
+    /// Internally this calls [`VersionedItem::new`] to handle most of the
+    /// common creation code.
     pub(crate) fn new(
         field: Field,
         container_attributes: &ContainerAttributes,
@@ -79,6 +83,7 @@ impl VersionedField {
         Ok(Self(item))
     }
 
+    /// Generates tokens to be used in a container definition.
     pub(crate) fn generate_for_container(
         &self,
         container_version: &ContainerVersion,
@@ -95,10 +100,13 @@ impl VersionedField {
 
                 let field_type = &self.inner.ty;
 
-                match chain
-                    .get(&container_version.inner)
-                    .expect("internal error: chain must contain container version")
-                {
+                // NOTE (@Techassi): https://rust-lang.github.io/rust-clippy/master/index.html#/expect_fun_call
+                match chain.get(&container_version.inner).unwrap_or_else(|| {
+                    panic!(
+                        "internal error: chain must contain container version {}",
+                        container_version.inner
+                    )
+                }) {
                     ItemStatus::Added { ident, .. } => Some(quote! {
                         pub #ident: #field_type,
                     }),
@@ -133,6 +141,7 @@ impl VersionedField {
         }
     }
 
+    /// Generates tokens to be used in a [`From`] implementation.
     pub(crate) fn generate_for_from_impl(
         &self,
         version: &ContainerVersion,

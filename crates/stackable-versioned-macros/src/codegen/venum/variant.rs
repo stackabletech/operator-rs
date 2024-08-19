@@ -19,6 +19,12 @@ use crate::{
     },
 };
 
+/// A versioned variant, which contains contains common [`Variant`] data and a
+/// chain of actions.
+///
+/// The chain of action maps versions to an action and the appropriate variant
+/// name. Additionally, the [`Variant`] data can be used to forward attributes,
+/// generate documentation, etc.
 #[derive(Debug)]
 pub(crate) struct VersionedVariant(VersionedItem<Variant, VariantAttributes>);
 
@@ -56,8 +62,7 @@ impl Attributes for VariantAttributes {
 
 impl Named for Variant {
     fn cleaned_ident(&self) -> Ident {
-        let ident = self.ident();
-        remove_deprecated_variant_prefix(ident)
+        remove_deprecated_variant_prefix(self.ident())
     }
 
     fn ident(&self) -> &Ident {
@@ -65,11 +70,11 @@ impl Named for Variant {
     }
 }
 
-// TODO (@Techassi): Figure out a way to be able to only write the following code
-// once for both a versioned field and variant, because the are practically
-// identical.
-
 impl VersionedVariant {
+    /// Creates a new versioned variant.
+    ///
+    /// Internally this calls [`VersionedItem::new`] to handle most of the
+    /// common creation code.
     pub(crate) fn new(
         variant: Variant,
         container_attributes: &ContainerAttributes,
@@ -78,15 +83,19 @@ impl VersionedVariant {
         Ok(Self(item))
     }
 
+    /// Generates tokens to be used in a container definition.
     pub(crate) fn generate_for_container(
         &self,
         container_version: &ContainerVersion,
     ) -> Option<TokenStream> {
         match &self.chain {
-            Some(chain) => match chain
-                .get(&container_version.inner)
-                .expect("internal error: chain must contain container version")
-            {
+            // NOTE (@Techassi): https://rust-lang.github.io/rust-clippy/master/index.html#/expect_fun_call
+            Some(chain) => match chain.get(&container_version.inner).unwrap_or_else(|| {
+                panic!(
+                    "internal error: chain must contain container version {}",
+                    container_version.inner
+                )
+            }) {
                 ItemStatus::Added { ident, .. } => Some(quote! {
                     #ident,
                 }),
@@ -115,6 +124,7 @@ impl VersionedVariant {
         }
     }
 
+    /// Generates tokens to be used in a [`From`] implementation.
     pub(crate) fn generate_for_from_impl(
         &self,
         module_name: &Ident,
@@ -149,16 +159,6 @@ impl VersionedVariant {
                     #module_name::#enum_ident::#variant_ident => #next_module_name::#enum_ident::#variant_ident,
                 }
             }
-        }
-    }
-
-    pub(crate) fn get_ident(&self, version: &ContainerVersion) -> Option<&syn::Ident> {
-        match &self.chain {
-            Some(chain) => chain
-                .get(&version.inner)
-                .expect("internal error: chain must contain container version")
-                .get_ident(),
-            None => Some(&self.inner.ident),
         }
     }
 }

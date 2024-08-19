@@ -43,16 +43,40 @@ where
     fn get_ident(&self, version: &ContainerVersion) -> Option<&Ident>;
 }
 
+/// This trait enables access to the ident of named items, like fields and
+/// variants.
+///
+/// It additionally provides a function to retrieve the cleaned ident, which
+/// removes the deprecation prefixes.
 pub(crate) trait Named {
     fn cleaned_ident(&self) -> Ident;
     fn ident(&self) -> &Ident;
 }
 
+/// This trait enables access to the common attributes across field and variant
+/// attributes.
 pub(crate) trait Attributes {
     fn common_attrs_owned(self) -> ItemAttributes;
     fn common_attrs(&self) -> &ItemAttributes;
 }
 
+/// This struct combines common common code for versioned fields and variants.
+///
+/// Most of the initial creation of a versioned field and variant are identical.
+/// Currently, the following steps are unified:
+///
+/// - Initial creation of the action chain based on item attributes.
+/// - Insertion of container versions into the chain.
+///
+/// The generic type parameter `I` describes the type of the versioned item,
+/// usually [`Field`](syn::Field) or [`Variant`](syn::Variant). The parameter
+/// `A` indicates the type of item attributes, usually [`FieldAttributes`][1] or
+/// [`VariantAttributes`][2] depending on the used item type. As this type is
+/// only needed during creation of [`Self`](VersionedItem), we must use a
+/// [`PhantomData`] marker.
+///
+/// [1]: crate::attrs::field::FieldAttributes
+/// [2]: crate::attrs::variant::VariantAttributes
 #[derive(Debug)]
 pub(crate) struct VersionedItem<I, A>
 where
@@ -71,6 +95,11 @@ where
     I: Named + Spanned,
 {
     fn new(item: I, container_attrs: &ContainerAttributes) -> syn::Result<Self> {
+        // We use the TryFrom trait here, because the type parameter `A` can use
+        // it as a trait bound. Internally this then calls either `from_field`
+        // for field attributes or `from_variant` for variant attributes. Sadly
+        // darling doesn't provide a "generic" trait which abstracts over the
+        // different `from_` functions.
         let attrs = A::try_from(&item)?;
         attrs.validate_versions(container_attrs, &item)?;
 

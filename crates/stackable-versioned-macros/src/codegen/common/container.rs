@@ -5,10 +5,22 @@ use syn::Ident;
 
 use crate::{attrs::common::ContainerAttributes, codegen::common::ContainerVersion};
 
+/// This trait helps to unify versioned containers, like structs and enums.
+///
+/// This trait is implemented by wrapper structs, which wrap the generic
+/// [`VersionedContainer`] struct. The generic type parameter `D` describes the
+/// kind of data, like [`DataStruct`](syn::DataStruct) in case of a struct and
+/// [`DataEnum`](syn::DataEnum) in case of an enum.
+/// The type parameter `I` describes the type of the versioned items, like
+/// [`VersionedField`][1] and [`VersionedVariant`][2].
+///
+/// [1]: crate::codegen::vstruct::field::VersionedField
+/// [2]: crate::codegen::venum::variant::VersionedVariant
 pub(crate) trait Container<D, I>
 where
     Self: Sized + Deref<Target = VersionedContainer<I>>,
 {
+    /// Creates a new versioned container.
     fn new(ident: Ident, data: D, attributes: ContainerAttributes) -> syn::Result<Self>;
 
     /// This generates the complete code for a single versioned container.

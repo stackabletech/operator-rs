@@ -14,6 +14,15 @@ impl<K, V> Neighbors<K, V> for BTreeMap<K, V>
 where
     K: Ord + Eq,
 {
+    /// Returns the values of keys which are neighbors of `key`.
+    ///
+    /// Imagine a map which contains the following keys: 1, 3, 5. Calling this
+    /// function with these keys, results in the following return values:
+    ///
+    /// - Key **0**: `(None, Some(1))`
+    /// - Key **2**: `(Some(1), Some(3))`
+    /// - Key **4**: `(Some(3), Some(5))`
+    /// - Key **6**: `(Some(5), None)`
     fn get_neighbors(&self, key: &K) -> (Option<&V>, Option<&V>) {
         // NOTE (@Techassi): These functions might get added to the standard
         // library at some point. If that's the case, we can use the ones

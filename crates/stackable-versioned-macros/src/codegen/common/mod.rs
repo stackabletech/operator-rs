@@ -16,6 +16,7 @@ mod item;
 pub(crate) use container::*;
 pub(crate) use item::*;
 
+/// Type alias to make the type of the version chain easier to handle.
 pub(crate) type VersionChain = BTreeMap<Version, ItemStatus>;
 
 #[derive(Debug, Clone)]
@@ -53,15 +54,22 @@ pub(crate) fn format_container_from_ident(ident: &Ident) -> Ident {
     format_ident!("__sv_{ident}", ident = ident.to_string().to_lowercase())
 }
 
-/// Removes the deprecated prefix from field ident.
+/// Removes the deprecated prefix from a field ident.
+///
+/// See [`DEPRECATED_FIELD_PREFIX`].
 pub(crate) fn remove_deprecated_field_prefix(ident: &Ident) -> Ident {
     remove_ident_prefix(ident, DEPRECATED_FIELD_PREFIX)
 }
 
+/// Removes the deprecated prefix from a variant ident.
+///
+/// See [`DEPRECATED_VARIANT_PREFIX`].
 pub(crate) fn remove_deprecated_variant_prefix(ident: &Ident) -> Ident {
     remove_ident_prefix(ident, DEPRECATED_VARIANT_PREFIX)
 }
 
+/// Removes the provided prefix from an ident and returns the newly created
+/// ident.
 pub(crate) fn remove_ident_prefix(ident: &Ident, prefix: &str) -> Ident {
     format_ident!("{}", ident.to_string().trim_start_matches(prefix))
 }
