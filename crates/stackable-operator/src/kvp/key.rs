@@ -1,18 +1,21 @@
-use std::{fmt::Display, ops::Deref, str::FromStr};
+use std::{fmt::Display, ops::Deref, str::FromStr, sync::LazyLock};
 
-use lazy_static::lazy_static;
 use regex::Regex;
 use snafu::{ensure, ResultExt, Snafu};
 
 const KEY_PREFIX_MAX_LEN: usize = 253;
 const KEY_NAME_MAX_LEN: usize = 63;
 
-lazy_static! {
-    static ref KEY_PREFIX_REGEX: Regex =
-        Regex::new(r"^[a-zA-Z](\.?[a-zA-Z0-9-])*\.[a-zA-Z]{2,}\.?$").unwrap();
-    static ref KEY_NAME_REGEX: Regex =
-        Regex::new(r"^[a-z0-9A-Z]([a-z0-9A-Z-_.]*[a-z0-9A-Z]+)?$").unwrap();
-}
+// Lazily initialized regular expressions
+static KEY_PREFIX_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^[a-zA-Z](\.?[a-zA-Z0-9-])*\.[a-zA-Z]{2,}\.?$")
+        .expect("failed to compile key prefix regex")
+});
+
+static KEY_NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^[a-z0-9A-Z]([a-z0-9A-Z-_.]*[a-z0-9A-Z]+)?$")
+        .expect("failed to compile key name regex")
+});
 
 /// The error type for key parsing/validation operations.
 ///

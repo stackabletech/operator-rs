@@ -1,16 +1,14 @@
-use std::{fmt, ops::Deref, str::FromStr};
+use std::{fmt, ops::Deref, str::FromStr, sync::LazyLock};
 
-use lazy_static::lazy_static;
 use regex::Regex;
 use snafu::{ensure, Snafu};
 
 const MAX_GROUP_LENGTH: usize = 253;
 
-lazy_static! {
-    static ref API_GROUP_REGEX: Regex =
-        Regex::new(r"^(?:(?:[a-z0-9][a-z0-9-]{0,61}[a-z0-9])\.?)+$")
-            .expect("failed to compile API group regex");
-}
+static API_GROUP_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(?:(?:[a-z0-9][a-z0-9-]{0,61}[a-z0-9])\.?)+$")
+        .expect("failed to compile API group regex")
+});
 
 /// Error variants which can be encountered when creating a new [`Group`] from
 /// unparsed input.
