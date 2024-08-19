@@ -16,7 +16,7 @@ where
 {
     /// Returns the values of keys which are neighbors of `key`.
     ///
-    /// Imagine a map which contains the following keys: 1, 3, 5. Calling this
+    /// Given a map which contains the following keys: 1, 3, 5. Calling this
     /// function with these keys, results in the following return values:
     ///
     /// - Key **0**: `(None, Some(1))`

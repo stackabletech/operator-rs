@@ -16,12 +16,14 @@ use crate::{
     },
 };
 
-/// A versioned field, which contains contains common [`Field`] data and a chain
-/// of actions.
+/// A versioned field, which contains common [`Field`] data and a chain of
+/// actions.
 ///
-/// The chain of action maps versions to an action and the appropriate field
-/// name. Additionally, the [`Field`] data can be used to forward attributes,
-/// generate documentation, etc.
+/// The chain of actions maps versions to an action and the appropriate field
+/// name.
+///
+/// Additionally, the [`Field`] data can be used to forward attributes, generate
+/// documentation, etc.
 #[derive(Debug)]
 pub(crate) struct VersionedField(VersionedItem<Field, FieldAttributes>);
 
@@ -129,8 +131,7 @@ impl VersionedField {
             }
             None => {
                 // If there is no chain of field actions, the field is not
-                // versioned and code generation is straight forward.
-                // Unversioned fields are always included in versioned structs.
+                // versioned and therefore included in all versions.
                 let field_ident = &self.inner.ident;
                 let field_type = &self.inner.ty;
 

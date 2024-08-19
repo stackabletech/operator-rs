@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-/// This trait describes versioned container items, fields ans variants in a
+/// This trait describes versioned container items, fields and variants in a
 /// common way.
 ///
 /// Shared functionality is implemented in a single place. Code which cannot be
@@ -60,7 +60,7 @@ pub(crate) trait Attributes {
     fn common_attrs(&self) -> &ItemAttributes;
 }
 
-/// This struct combines common common code for versioned fields and variants.
+/// This struct combines common code for versioned fields and variants.
 ///
 /// Most of the initial creation of a versioned field and variant are identical.
 /// Currently, the following steps are unified:
@@ -106,10 +106,11 @@ where
         let item_attrs = attrs.common_attrs_owned();
 
         // Constructing the action chain requires going through the actions
-        // starting at the end, because the base container always represents the
-        // latest (most up-to-date) version of that struct. That's why the
-        // following code needs to go through the actions in reverse order, as
-        // otherwise it is impossible to extract the item ident for each version.
+        // starting at the end, because the container definition always
+        // represents the latest (most up-to-date) version of that struct.
+        // That's why the following code needs to go through the actions in
+        // reverse order, as otherwise it is impossible to extract the item
+        // ident for each version.
 
         // Deprecating an item is always the last state an item can end up in.
         // For items which are not deprecated, the last change is either the

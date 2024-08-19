@@ -39,6 +39,7 @@ where
         item: &I,
     ) -> Result<(), darling::Error> {
         // NOTE (@Techassi): Can we maybe optimize this a little?
+
         let mut errors = Error::accumulator();
 
         if let Some(added) = &self.common_attrs().added {
