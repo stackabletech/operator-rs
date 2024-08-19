@@ -345,7 +345,7 @@ fn process_validation_result(
 /// with the highest priority. The merge priority chain looks like this where '->' means
 /// "overwrites if existing or adds":
 ///
-/// group overrides -> group config -> role overrides -> role config (TODO: -> common_config)
+/// group overrides -> role overrides -> group config -> role config (TODO: -> common_config)
 ///
 /// The output is a map where the [`crate::role_utils::RoleGroup] name points to another map of
 /// [`product_config::types::PropertyValidationResult`] that points to the mapped configuration
@@ -368,24 +368,43 @@ where
 {
     let mut result = HashMap::new();
 
+    // Properties from the role have the lowest priority, so they are computed first...
     let role_properties = parse_role_config(resource, role_name, &role.config, property_kinds)?;
+    let role_overrides = parse_role_overrides(&role.config, property_kinds)?;
 
     // for each role group ...
     for (role_group_name, role_group) in &role.role_groups {
-        // ... compute the group properties ...
+        let mut rg_properties_merged = role_properties.clone();
+
+        // ... compute the group properties and merge them into role properties.
         let role_group_properties =
             parse_role_config(resource, role_name, &role_group.config, property_kinds)?;
-
-        // ... and merge them with the role properties.
-        let mut role_properties_copy = role_properties.clone();
         for (property_kind, properties) in role_group_properties {
-            role_properties_copy
+            rg_properties_merged
                 .entry(property_kind)
                 .or_default()
                 .extend(properties);
         }
 
-        result.insert(role_group_name.clone(), role_properties_copy);
+        // ... copy role overrides and merge them into `rg_properties_merged`.
+        let role_overrides_copy = role_overrides.clone();
+        for (property_kind, property_overrides) in role_overrides_copy {
+            rg_properties_merged
+                .entry(property_kind)
+                .or_default()
+                .extend(property_overrides);
+        }
+
+        // ... compute the role group overrides and merge them into `rg_properties_merged`.
+        let role_group_overrides = parse_role_overrides(&role_group.config, property_kinds)?;
+        for (property_kind, property_overrides) in role_group_overrides {
+            rg_properties_merged
+                .entry(property_kind)
+                .or_default()
+                .extend(property_overrides);
+        }
+
+        result.insert(role_group_name.clone(), rg_properties_merged);
     }
 
     Ok(result)
@@ -411,20 +430,19 @@ where
     T: Configuration,
 {
     let mut result = HashMap::new();
-
     for property_kind in property_kinds {
         match property_kind {
             PropertyNameKind::File(file) => result.insert(
                 property_kind.clone(),
-                parse_file_properties(resource, role_name, config, file)?,
+                config.config.compute_files(resource, role_name, file)?,
             ),
             PropertyNameKind::Env => result.insert(
                 property_kind.clone(),
-                parse_env_properties(resource, role_name, config)?,
+                config.config.compute_env(resource, role_name)?,
             ),
             PropertyNameKind::Cli => result.insert(
                 property_kind.clone(),
-                parse_cli_properties(resource, role_name, config)?,
+                config.config.compute_cli(resource, role_name)?,
             ),
         };
     }
@@ -432,65 +450,60 @@ where
     Ok(result)
 }
 
-fn parse_cli_properties<T>(
-    resource: &<T as Configuration>::Configurable,
-    role_name: &str,
+fn parse_role_overrides<T>(
     config: &CommonConfiguration<T>,
-) -> Result<BTreeMap<String, Option<String>>>
+    property_kinds: &[PropertyNameKind],
+) -> Result<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
     T: Configuration,
 {
-    // Properties from the role have the lowest priority, so they are computed and added first...
-    let mut final_properties = config.config.compute_cli(resource, role_name)?;
-
-    // ...followed by config_overrides from the role
-    for (key, value) in &config.cli_overrides {
-        final_properties.insert(key.clone(), Some(value.clone()));
+    let mut result = HashMap::new();
+    for property_kind in property_kinds {
+        match property_kind {
+            PropertyNameKind::File(file) => {
+                result.insert(property_kind.clone(), parse_file_overrides(config, file)?)
+            }
+            PropertyNameKind::Env => result.insert(
+                property_kind.clone(),
+                config
+                    .env_overrides
+                    .clone()
+                    .into_iter()
+                    .map(|(k, v)| (k, Some(v)))
+                    .collect(),
+            ),
+            PropertyNameKind::Cli => result.insert(
+                property_kind.clone(),
+                config
+                    .cli_overrides
+                    .clone()
+                    .into_iter()
+                    .map(|(k, v)| (k, Some(v)))
+                    .collect(),
+            ),
+        };
     }
 
-    Ok(final_properties)
+    Ok(result)
 }
 
-fn parse_env_properties<T>(
-    resource: &<T as Configuration>::Configurable,
-    role_name: &str,
-    config: &CommonConfiguration<T>,
-) -> Result<BTreeMap<String, Option<String>>>
-where
-    T: Configuration,
-{
-    // Properties from the role have the lowest priority, so they are computed and added first...
-    let mut final_properties = config.config.compute_env(resource, role_name)?;
-
-    // ...followed by config_overrides from the role
-    for (key, value) in &config.env_overrides {
-        final_properties.insert(key.clone(), Some(value.clone()));
-    }
-
-    Ok(final_properties)
-}
-
-fn parse_file_properties<T>(
-    resource: &<T as Configuration>::Configurable,
-    role_name: &str,
+fn parse_file_overrides<T>(
     config: &CommonConfiguration<T>,
     file: &str,
 ) -> Result<BTreeMap<String, Option<String>>>
 where
     T: Configuration,
 {
-    // Properties from the role have the lowest priority, so they are computed and added first...
-    let mut final_properties = config.config.compute_files(resource, role_name, file)?;
+    let mut final_overrides: BTreeMap<String, Option<String>> = BTreeMap::new();
 
-    // ...followed by config_overrides from the role
     // For Conf files only process overrides that match our file name
     if let Some(config) = config.config_overrides.get(file) {
         for (key, value) in config {
-            final_properties.insert(key.clone(), Some(value.clone()));
+            final_overrides.insert(key.clone(), Some(value.clone()));
         }
     }
 
-    Ok(final_properties)
+    Ok(final_overrides)
 }
 
 #[cfg(test)]
@@ -1085,7 +1098,7 @@ mod tests {
                     ),
                 PropertyNameKind::Cli =>
                     collection!(
-                        "cli".to_string() => Some(GROUP_CLI.to_string()),
+                        "cli".to_string() => Some("cli".to_string()),
                     ),
             }
         };
