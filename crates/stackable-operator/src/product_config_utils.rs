@@ -374,37 +374,36 @@ where
 
     // for each role group ...
     for (role_group_name, role_group) in &role.role_groups {
-        let mut rg_properties_merged = role_properties.clone();
+        let mut role_group_properties_merged = role_properties.clone();
 
         // ... compute the group properties and merge them into role properties.
         let role_group_properties =
             parse_role_config(resource, role_name, &role_group.config, property_kinds)?;
         for (property_kind, properties) in role_group_properties {
-            rg_properties_merged
+            role_group_properties_merged
                 .entry(property_kind)
                 .or_default()
                 .extend(properties);
         }
 
-        // ... copy role overrides and merge them into `rg_properties_merged`.
-        let role_overrides_copy = role_overrides.clone();
-        for (property_kind, property_overrides) in role_overrides_copy {
-            rg_properties_merged
+        // ... copy role overrides and merge them into `role_group_properties_merged`.
+        for (property_kind, property_overrides) in role_overrides.clone() {
+            role_group_properties_merged
                 .entry(property_kind)
                 .or_default()
                 .extend(property_overrides);
         }
 
-        // ... compute the role group overrides and merge them into `rg_properties_merged`.
+        // ... compute the role group overrides and merge them into `role_group_properties_merged`.
         let role_group_overrides = parse_role_overrides(&role_group.config, property_kinds)?;
         for (property_kind, property_overrides) in role_group_overrides {
-            rg_properties_merged
+            role_group_properties_merged
                 .entry(property_kind)
                 .or_default()
                 .extend(property_overrides);
         }
 
-        result.insert(role_group_name.clone(), rg_properties_merged);
+        result.insert(role_group_name.clone(), role_group_properties_merged);
     }
 
     Ok(result)
