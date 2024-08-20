@@ -26,9 +26,11 @@ pub(crate) mod vstruct;
 pub(crate) fn expand(attributes: ContainerAttributes, input: DeriveInput) -> Result<TokenStream> {
     let expanded = match input.data {
         Data::Struct(data) => {
-            VersionedStruct::new(input.ident, data, attributes)?.generate_tokens()
+            VersionedStruct::new(input.ident, data, attributes, input.attrs)?.generate_tokens()
         }
-        Data::Enum(data) => VersionedEnum::new(input.ident, data, attributes)?.generate_tokens(),
+        Data::Enum(data) => {
+            VersionedEnum::new(input.ident, data, attributes, input.attrs)?.generate_tokens()
+        }
         _ => {
             return Err(Error::new(
                 input.span(),
