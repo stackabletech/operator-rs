@@ -32,12 +32,28 @@ where
     fn generate_tokens(&self) -> TokenStream;
 }
 
+/// Stores individual versions of a single container.
+///
+/// Each version tracks item actions, which describe if the item was added,
+/// renamed or deprecated in that particular version. Items which are not
+/// versioned are included in every version of the container.
 #[derive(Debug)]
 pub(crate) struct VersionedContainer<I> {
+    /// List of declared versions for this container. Each version generates a
+    /// definition with appropriate items.
     pub(crate) versions: Vec<ContainerVersion>,
+
+    /// List of items defined in the original container. How, and if, an item
+    /// should generate code, is decided by the currently generated version.
     pub(crate) items: Vec<I>,
+
+    /// The ident, or name, of the versioned container.
     pub(crate) ident: Ident,
 
+    /// The name of the container used in `From` implementations.
     pub(crate) from_ident: Ident,
+
+    /// Whether the [`From`] implementation generation should be skipped for all
+    /// versions of this container.
     pub(crate) skip_from: bool,
 }
