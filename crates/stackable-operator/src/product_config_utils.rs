@@ -1058,6 +1058,140 @@ mod tests {
         assert_eq!(config, expected);
     }
 
+    #[rstest]
+    #[case(
+        HashMap::from([
+            ("env".to_string(), ROLE_ENV_OVERRIDE.to_string()),
+        ]),
+        HashMap::from([
+            ("env".to_string(), GROUP_ENV_OVERRIDE.to_string()),
+        ]),
+        BTreeMap::from([
+            ("cli".to_string(), ROLE_CLI_OVERRIDE.to_string()),
+        ]),
+        BTreeMap::from([
+            ("cli".to_string(), GROUP_CLI_OVERRIDE.to_string()),
+        ]),
+        HashMap::from([
+            ("file".to_string(), HashMap::from([
+                ("file".to_string(), ROLE_CONF_OVERRIDE.to_string())
+            ]))
+        ]),
+        HashMap::from([
+            ("file".to_string(), HashMap::from([
+                ("file".to_string(), GROUP_CONF_OVERRIDE.to_string())
+            ]))
+        ]),
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    "env".to_string() => Some(GROUP_ENV_OVERRIDE.to_string()),
+                },
+                PropertyNameKind::Cli => collection ! {
+                    "cli".to_string() => Some(GROUP_CLI_OVERRIDE.to_string()),
+                },
+                PropertyNameKind::File("file".to_string()) => collection ! {
+                    "file".to_string() => Some(GROUP_CONF_OVERRIDE.to_string()),
+                }
+            }
+        }
+    )]
+    #[case(
+        HashMap::from([
+            ("env".to_string(), ROLE_ENV_OVERRIDE.to_string()),
+        ]),
+        HashMap::from([]),
+        BTreeMap::from([
+            ("cli".to_string(), ROLE_CLI_OVERRIDE.to_string()),
+        ]),
+        BTreeMap::from([]),
+        HashMap::from([
+            ("file".to_string(), HashMap::from([
+                ("file".to_string(), ROLE_CONF_OVERRIDE.to_string())
+            ]))
+        ]),
+        HashMap::from([]),
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    "env".to_string() => Some(ROLE_ENV_OVERRIDE.to_string()),
+                },
+                PropertyNameKind::Cli => collection ! {
+                    "cli".to_string() => Some(ROLE_CLI_OVERRIDE.to_string()),
+                },
+                PropertyNameKind::File("file".to_string()) => collection ! {
+                    "file".to_string() => Some(ROLE_CONF_OVERRIDE.to_string()),
+                }
+            }
+        }
+    )]
+    #[case(
+        HashMap::from([]),
+        HashMap::from([]),
+        BTreeMap::from([]),
+        BTreeMap::from([]),
+        HashMap::from([]),
+        HashMap::from([]),
+        collection ! {
+            ROLE_GROUP.to_string() => collection ! {
+                PropertyNameKind::Env => collection ! {
+                    "env".to_string() => Some(GROUP_ENV.to_string()),
+                },
+                PropertyNameKind::Cli => collection ! {
+                    "cli".to_string() => Some(GROUP_CLI.to_string()),
+                },
+                PropertyNameKind::File("file".to_string()) => collection ! {
+                    "file".to_string() => Some(GROUP_CONFIG.to_string()),
+                }
+            }
+        }
+    )]
+    fn test_order_in_transform_role_to_config(
+        #[case] role_env_override: HashMap<String, String>,
+        #[case] group_env_override: HashMap<String, String>,
+        #[case] role_cli_override: BTreeMap<String, String>,
+        #[case] group_cli_override: BTreeMap<String, String>,
+        #[case] role_conf_override: HashMap<String, HashMap<String, String>>,
+        #[case] group_conf_override: HashMap<String, HashMap<String, String>>,
+        #[case] expected: HashMap<
+            String,
+            HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>,
+        >,
+    ) {
+        let role: Role<Box<TestConfig>, TestRoleConfig> = Role {
+            config: build_common_config(
+                Some(Box::new(TestConfig {
+                    conf: Some(ROLE_CONFIG.to_string()),
+                    env: Some(ROLE_ENV.to_string()),
+                    cli: Some(ROLE_CLI.to_string()),
+                })),
+                Some(role_conf_override),
+                Some(role_env_override),
+                Some(role_cli_override),
+            ),
+            role_config: Default::default(),
+            role_groups: collection! {"role_group".to_string() => RoleGroup {
+                replicas: Some(1),
+                config: build_common_config(
+                    build_test_config(GROUP_CONFIG, GROUP_ENV, GROUP_CLI),
+                    Some(group_conf_override),
+                    Some(group_env_override),
+                    Some(group_cli_override)),
+            }},
+        };
+
+        let property_kinds = vec![
+            PropertyNameKind::Env,
+            PropertyNameKind::Cli,
+            PropertyNameKind::File("file".to_string()),
+        ];
+
+        let config =
+            transform_role_to_config(&String::new(), ROLE_GROUP, &role, &property_kinds).unwrap();
+
+        assert_eq!(config, expected);
+    }
+
     #[test]
     fn test_transform_role_to_config_overrides() {
         let role_group = "role_group";
