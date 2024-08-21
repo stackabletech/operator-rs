@@ -70,7 +70,8 @@ pub(crate) fn remove_deprecated_field_prefix(ident: &Ident) -> Ident {
 pub(crate) fn remove_deprecated_variant_prefix(ident: &Ident) -> Ident {
     // NOTE (@Techassi): Currently Clippy only issues a warning for variants
     // with underscores in their name. That's why we additionally remove the
-    // underscore from the ident to use the expected name during code generation.
+    // leading underscore from the ident to use the expected name during code
+    // generation.
     let ident = ident.to_string();
     let ident = ident
         .trim_start_matches(DEPRECATED_VARIANT_PREFIX)
