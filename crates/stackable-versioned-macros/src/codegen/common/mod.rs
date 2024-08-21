@@ -61,7 +61,7 @@ pub(crate) fn remove_deprecated_field_prefix(ident: &Ident) -> Ident {
     let ident = ident.to_string();
     let ident = ident.trim_start_matches(DEPRECATED_FIELD_PREFIX);
 
-    format_ident!("{ident}",)
+    format_ident!("{ident}")
 }
 
 /// Removes the deprecated prefix from a variant ident.
@@ -77,5 +77,5 @@ pub(crate) fn remove_deprecated_variant_prefix(ident: &Ident) -> Ident {
         .trim_start_matches(DEPRECATED_VARIANT_PREFIX)
         .trim_start_matches('_');
 
-    format_ident!("{ident}",)
+    format_ident!("{ident}")
 }
