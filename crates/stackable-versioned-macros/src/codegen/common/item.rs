@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, marker::PhantomData, ops::Deref};
 
 use quote::format_ident;
-use syn::{spanned::Spanned, Ident, Path};
+use syn::{spanned::Spanned, Attribute, Ident, Path};
 
 use crate::{
     attrs::common::{ContainerAttributes, ItemAttributes, ValidateVersions},
@@ -53,11 +53,17 @@ pub(crate) trait Named {
     fn ident(&self) -> &Ident;
 }
 
-/// This trait enables access to the common attributes across field and variant
-/// attributes.
+/// This trait enables access to the common and original attributes across field
+/// and variant attributes.
 pub(crate) trait Attributes {
-    fn common_attrs_owned(self) -> ItemAttributes;
-    fn common_attrs(&self) -> &ItemAttributes;
+    /// The common attributes defined by the versioned macro.
+    fn common_attributes_owned(self) -> ItemAttributes;
+
+    /// The common attributes defined by the versioned macro.
+    fn common_attributes(&self) -> &ItemAttributes;
+
+    /// The attributes applied to the item outside of the versioned macro.
+    fn original_attributes(&self) -> &Vec<Attribute>;
 }
 
 /// This struct combines common code for versioned fields and variants.
@@ -85,6 +91,7 @@ where
 {
     pub(crate) chain: Option<VersionChain>,
     pub(crate) inner: I,
+    pub(crate) original_attributes: Vec<Attribute>,
     _marker: PhantomData<A>,
 }
 
@@ -103,7 +110,11 @@ where
         let attrs = A::try_from(&item)?;
         attrs.validate_versions(container_attrs, &item)?;
 
-        let item_attrs = attrs.common_attrs_owned();
+        // These are the attributes addde to the item outside of the macro.
+        let original_attributes = attrs.original_attributes().clone();
+
+        // These are the versioned macro attrs that are common to all items.
+        let common_attributes = attrs.common_attributes_owned();
 
         // Constructing the action chain requires going through the actions
         // starting at the end, because the container definition always
@@ -117,7 +128,7 @@ where
         // latest rename or addition, which is handled below. The ident of the
         // deprecated item is guaranteed to include the 'deprecated_' or
         // 'DEPRECATED_' prefix. The ident can thus be used as is.
-        if let Some(deprecated) = item_attrs.deprecated {
+        if let Some(deprecated) = common_attributes.deprecated {
             let deprecated_ident = item.ident();
 
             // When the item is deprecated, any rename which occurred beforehand
@@ -135,7 +146,7 @@ where
                 },
             );
 
-            for rename in item_attrs.renames.iter().rev() {
+            for rename in common_attributes.renames.iter().rev() {
                 let from = format_ident!("{from}", from = *rename.from);
                 actions.insert(
                     *rename.since,
@@ -149,7 +160,7 @@ where
 
             // After the last iteration above (if any) we use the ident for the
             // added action if there is any.
-            if let Some(added) = item_attrs.added {
+            if let Some(added) = common_attributes.added {
                 actions.insert(
                     *added.since,
                     ItemStatus::Added {
@@ -163,12 +174,13 @@ where
                 _marker: PhantomData,
                 chain: Some(actions),
                 inner: item,
+                original_attributes,
             })
-        } else if !item_attrs.renames.is_empty() {
+        } else if !common_attributes.renames.is_empty() {
             let mut actions = BTreeMap::new();
             let mut ident = item.ident().clone();
 
-            for rename in item_attrs.renames.iter().rev() {
+            for rename in common_attributes.renames.iter().rev() {
                 let from = format_ident!("{from}", from = *rename.from);
                 actions.insert(
                     *rename.since,
@@ -182,7 +194,7 @@ where
 
             // After the last iteration above (if any) we use the ident for the
             // added action if there is any.
-            if let Some(added) = item_attrs.added {
+            if let Some(added) = common_attributes.added {
                 actions.insert(
                     *added.since,
                     ItemStatus::Added {
@@ -196,9 +208,10 @@ where
                 _marker: PhantomData,
                 chain: Some(actions),
                 inner: item,
+                original_attributes,
             })
         } else {
-            if let Some(added) = item_attrs.added {
+            if let Some(added) = common_attributes.added {
                 let mut actions = BTreeMap::new();
 
                 actions.insert(
@@ -213,6 +226,7 @@ where
                     _marker: PhantomData,
                     chain: Some(actions),
                     inner: item,
+                    original_attributes,
                 });
             }
 
@@ -220,6 +234,7 @@ where
                 _marker: PhantomData,
                 chain: None,
                 inner: item,
+                original_attributes,
             })
         }
     }

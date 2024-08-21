@@ -13,14 +13,18 @@ fn pass_container_attributes() {
         options(skip(from)),
     )]
     struct Foo {
+        /// This field is available in every version (so far).
         foo: String,
 
+        /// Keep the main field docs the same, even after the field is deprecated.
         #[versioned(deprecated(since = "v1beta1", note = "gone"))]
         deprecated_bar: String,
 
+        /// This is for baz
         #[versioned(added(since = "v1beta1"))]
         baz: String,
 
+        /// This is will keep changing over time.
         #[versioned(renamed(since = "v1beta1", from = "qoox"))]
         #[versioned(renamed(since = "v1", from = "qaax"))]
         quux: String,

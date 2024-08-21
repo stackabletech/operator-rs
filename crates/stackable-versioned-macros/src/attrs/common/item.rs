@@ -1,7 +1,7 @@
 use darling::{util::SpannedValue, Error, FromMeta};
 use k8s_version::Version;
 use proc_macro2::Span;
-use syn::{spanned::Spanned, Ident, Path};
+use syn::{spanned::Spanned, Attribute, Ident, Path};
 
 use crate::{
     attrs::common::ContainerAttributes,
@@ -42,7 +42,7 @@ where
 
         let mut errors = Error::accumulator();
 
-        if let Some(added) = &self.common_attrs().added {
+        if let Some(added) = &self.common_attributes().added {
             if !container_attrs
                 .versions
                 .iter()
@@ -55,7 +55,7 @@ where
             }
         }
 
-        for rename in &*self.common_attrs().renames {
+        for rename in &*self.common_attributes().renames {
             if !container_attrs
                 .versions
                 .iter()
@@ -68,7 +68,7 @@ where
             }
         }
 
-        if let Some(deprecated) = &self.common_attrs().deprecated {
+        if let Some(deprecated) = &self.common_attributes().deprecated {
             if !container_attrs
                 .versions
                 .iter()
@@ -126,7 +126,12 @@ pub(crate) struct ItemAttributes {
 }
 
 impl ItemAttributes {
-    pub(crate) fn validate(&self, item_ident: &Ident, item_type: &ItemType) -> Result<(), Error> {
+    pub(crate) fn validate(
+        &self,
+        item_ident: &Ident,
+        item_type: &ItemType,
+        item_attrs: &Vec<Attribute>,
+    ) -> Result<(), Error> {
         // NOTE (@Techassi): This associated function is NOT called by darling's
         // and_then attribute, but instead by the wrapper, FieldAttributes and
         // VariantAttributes.
@@ -151,6 +156,7 @@ impl ItemAttributes {
         errors.handle(self.validate_action_combinations(item_ident, item_type));
         errors.handle(self.validate_action_order(item_ident, item_type));
         errors.handle(self.validate_field_name(item_ident, item_type));
+        errors.handle(self.validate_item_attributes(item_attrs));
 
         // TODO (@Techassi): Add hint if a field is added in the first version
         // that it might be clever to remove the 'added' attribute.
@@ -275,6 +281,25 @@ impl ItemAttributes {
             ).with_span(item_ident));
         }
 
+        Ok(())
+    }
+
+    /// This associated function is called by the top-level validation function
+    /// and validates that disallowed item attributes are not used.
+    ///
+    /// The following naming rules apply:
+    ///
+    /// - `deprecated` must not be set on items. Instead, the
+    ///   stackable-versioned method of deprecating items should be used.
+    fn validate_item_attributes(&self, item_attrs: &Vec<Attribute>) -> Result<(), Error> {
+        for attr in item_attrs {
+            for segment in &attr.path().segments {
+                if segment.ident == "deprecated" {
+                    return Err(Error::custom("deprecation must be done using #[versioned(deprecated(since = \"VERSION\"))]")
+                        .with_span(&segment.ident.span()));
+                }
+            }
+        }
         Ok(())
     }
 }
