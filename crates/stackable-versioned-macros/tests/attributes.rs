@@ -6,12 +6,20 @@ fn pass_container_attributes() {
     /// General struct docs that cover all versions.
     #[versioned(
         version(name = "v1alpha1"),
-        version(name = "v1beta1"),
+        version(
+            name = "v1beta1",
+            doc = r#"
+                Additional docs for this version which are purposefully long to
+                show how manual line wrapping works. \
+                Multi-line docs are also supported, as per regular doc-comments.
+            "#
+        ),
         version(name = "v1beta2"),
         version(name = "v1"),
         version(name = "v2"),
-        options(skip(from)),
+        options(skip(from))
     )]
+    #[derive(Default)]
     struct Foo {
         /// This field is available in every version (so far).
         foo: String,
