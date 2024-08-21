@@ -8,6 +8,9 @@ use tracing::{debug, error, warn};
 
 use crate::role_utils::{CommonConfiguration, Role};
 
+pub const FILE_HEADER_KEY: &str = "EXPERIMENTAL_FILE_HEADER";
+pub const FILE_FOOTER_KEY: &str = "EXPERIMENTAL_FILE_FOOTER";
+
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, PartialEq, Snafu)]

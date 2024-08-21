@@ -18,9 +18,6 @@ use crate::role_utils::{Role, RoleGroup};
 use k8s_openapi::api::core::v1::PodTemplateSpec;
 use snafu::Snafu;
 
-pub const FILE_HEADER_KEY: &str = "EXPERIMENTAL_FILE_HEADER";
-pub const FILE_FOOTER_KEY: &str = "EXPERIMENTAL_FILE_FOOTER";
-
 pub use stackable_operator_derive::Fragment;
 
 /// Contains context used for generating validation errors
