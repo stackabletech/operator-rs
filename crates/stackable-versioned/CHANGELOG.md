@@ -7,9 +7,9 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Report variant rename validation error at the correct span and trim underscores
-  from variants not using PascalCase (#[xxx]).
+  from variants not using PascalCase (#[842]).
 
-[#xxx]: https://github.com/stackabletech/operator-rs/pull/xxx
+[#842]: https://github.com/stackabletech/operator-rs/pull/842
 
 ## [0.1.1] - 2024-07-10
 
