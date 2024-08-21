@@ -52,7 +52,8 @@ impl VariantAttributes {
             .iter()
             .all(|r| r.from.is_case(Case::Pascal))
         {
-            errors.push(Error::custom("renamed variants must use PascalCase"));
+            errors
+                .push(Error::custom("renamed variants must use PascalCase").with_span(&self.ident));
         }
 
         errors.finish()?;
