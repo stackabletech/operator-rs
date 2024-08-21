@@ -58,18 +58,26 @@ pub(crate) fn format_container_from_ident(ident: &Ident) -> Ident {
 ///
 /// See [`DEPRECATED_FIELD_PREFIX`].
 pub(crate) fn remove_deprecated_field_prefix(ident: &Ident) -> Ident {
-    remove_ident_prefix(ident, DEPRECATED_FIELD_PREFIX)
+    format_ident!(
+        "{}",
+        ident
+            .to_string()
+            .trim_start_matches(DEPRECATED_FIELD_PREFIX)
+    )
 }
 
 /// Removes the deprecated prefix from a variant ident.
 ///
 /// See [`DEPRECATED_VARIANT_PREFIX`].
 pub(crate) fn remove_deprecated_variant_prefix(ident: &Ident) -> Ident {
-    remove_ident_prefix(ident, DEPRECATED_VARIANT_PREFIX)
-}
-
-/// Removes the provided prefix from an ident and returns the newly created
-/// ident.
-pub(crate) fn remove_ident_prefix(ident: &Ident, prefix: &str) -> Ident {
-    format_ident!("{}", ident.to_string().trim_start_matches(prefix))
+    // NOTE (@Techassi): Currently Clippy only issues a warning for variants
+    // with underscores in their name. That's why we additionally remove the
+    // underscore from the ident to use the expected name during code generation.
+    format_ident!(
+        "{}",
+        ident
+            .to_string()
+            .trim_start_matches(DEPRECATED_VARIANT_PREFIX)
+            .trim_start_matches('_')
+    )
 }
