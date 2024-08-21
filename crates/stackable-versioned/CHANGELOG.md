@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `changed()` action and support for the `ty` parameter in the `renamed()`
+  action ([#xxx]).
+
+[#xxx]: https://github.com/stackabletech/operator-rs/pull/xxx
+
 ### Fixed
 
 - Report variant rename validation error at the correct span and trim underscores
