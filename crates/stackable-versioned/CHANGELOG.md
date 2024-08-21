@@ -7,9 +7,9 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add `changed()` action and support for the `ty` parameter in the `renamed()`
-  action ([#xxx]).
+  action ([#844]).
 
-[#xxx]: https://github.com/stackabletech/operator-rs/pull/xxx
+[#844]: https://github.com/stackabletech/operator-rs/pull/844
 
 ### Fixed
 
