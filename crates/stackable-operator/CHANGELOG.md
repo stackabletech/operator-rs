@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.74.0] - 2024-08-22
+
 ### Added
 
 - `iter::reverse_if` helper ([#838]).
@@ -15,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Swap priority order of role group config and role overrides in configuration merging to prioritize overrides in general ([#841]).
 
 [#838]: https://github.com/stackabletech/operator-rs/pull/838
+[#840]: https://github.com/stackabletech/operator-rs/pull/840
 [#841]: https://github.com/stackabletech/operator-rs/pull/841
 [#843]: https://github.com/stackabletech/operator-rs/pull/843
 
