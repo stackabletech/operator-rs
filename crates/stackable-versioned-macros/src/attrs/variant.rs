@@ -55,14 +55,13 @@ impl VariantAttributes {
         );
 
         // Validate names of renames
-        if !self
-            .common
-            .renames
-            .iter()
-            .all(|r| r.from.is_case(Case::Pascal))
-        {
-            errors
-                .push(Error::custom("renamed variants must use PascalCase").with_span(&self.ident));
+        for rename in &self.common.renames {
+            if !rename.from.is_case(Case::Pascal) {
+                errors.push(
+                    Error::custom("renamed variant must use PascalCase")
+                        .with_span(&rename.from.span()),
+                )
+            }
         }
 
         errors.finish()?;
