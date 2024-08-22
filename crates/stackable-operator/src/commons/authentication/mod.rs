@@ -125,14 +125,16 @@ impl AuthenticationClass {
 #[serde(rename_all = "camelCase")]
 #[schemars(description = "")]
 pub struct ClientAuthenticationDetails<O = ()> {
-    /// A name/key which references an authentication class. To get the concrete
-    /// [`AuthenticationClass`], we must resolve it. This resolution can be
-    /// achieved by using [`ClientAuthenticationDetails::resolve_class`].
+    /// Name of the [AuthenticationClass](https://docs.stackable.tech/home/nightly/concepts/authentication) used to
+    /// authenticate users.
+    //
+    // To get the concrete [`AuthenticationClass`], we must resolve it. This resolution can be achieved by using
+    // [`ClientAuthenticationDetails::resolve_class`].
     #[serde(rename = "authenticationClass")]
     authentication_class_ref: String,
 
-    /// This field contains authentication provider specific configuration.
-    ///
+    /// This field contains OIDC-specific configuration. It is only required in case OIDC is used.
+    //
     /// Use [`ClientAuthenticationDetails::oidc_or_error`] to get the value or report an error to the user.
     // TODO: Ideally we want this to be an enum once other `ClientAuthenticationOptions` are added, so
     // that user can not configure multiple options at the same time (yes we are aware that this makes a
