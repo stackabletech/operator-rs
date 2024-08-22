@@ -4,13 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- BREAKING: Replace `lazy_static` with `std::cell::LazyCell` (the original implementation was done in [#827] and reverted in [#835]) ([#840]).
+### Fixed
+
+- Fix the CRD description of `ClientAuthenticationDetails` to not contain internal Rust doc, but a public CRD description ([#846]).
+
+[#846]: https://github.com/stackabletech/operator-rs/pull/846
+
+## [0.74.0] - 2024-08-22
 
 ### Added
 
-- `iter::reverse_if` helper ([#838]).
+- Add `iter::reverse_if` helper ([#838]).
+- Add two new constants `CONFIG_OVERRIDE_FILE_HEADER_KEY` and `CONFIG_OVERRIDE_FILE_FOOTER_KEY` ([#843]).
+
+### Changed
+
+- BREAKING: Replace `lazy_static` with `std::cell::LazyCell` (the original implementation was done in [#827] and reverted in [#835]) ([#840]).
+- BREAKING: Swap priority order of role group config and role overrides in configuration merging to prioritize overrides in general ([#841]).
 
 [#838]: https://github.com/stackabletech/operator-rs/pull/838
+[#840]: https://github.com/stackabletech/operator-rs/pull/840
+[#841]: https://github.com/stackabletech/operator-rs/pull/841
+[#843]: https://github.com/stackabletech/operator-rs/pull/843
 
 ## [0.73.0] - 2024-08-09
 
