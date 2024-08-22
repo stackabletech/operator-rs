@@ -50,12 +50,16 @@ impl TryFrom<&Field> for FieldAttributes {
 }
 
 impl Attributes for FieldAttributes {
-    fn common_attrs_owned(self) -> ItemAttributes {
+    fn common_attributes_owned(self) -> ItemAttributes {
         self.common
     }
 
-    fn common_attrs(&self) -> &ItemAttributes {
+    fn common_attributes(&self) -> &ItemAttributes {
         &self.common
+    }
+
+    fn original_attributes(&self) -> &Vec<syn::Attribute> {
+        &self.attrs
     }
 }
 
@@ -90,6 +94,8 @@ impl VersionedField {
         &self,
         container_version: &ContainerVersion,
     ) -> Option<TokenStream> {
+        let original_attributes = &self.original_attributes;
+
         match &self.chain {
             Some(chain) => {
                 // Check if the provided container version is present in the map
@@ -110,9 +116,11 @@ impl VersionedField {
                     )
                 }) {
                     ItemStatus::Added { ident, .. } => Some(quote! {
+                        #(#original_attributes)*
                         pub #ident: #field_type,
                     }),
                     ItemStatus::Renamed { to, .. } => Some(quote! {
+                        #(#original_attributes)*
                         pub #to: #field_type,
                     }),
                     ItemStatus::Deprecated {
@@ -120,11 +128,13 @@ impl VersionedField {
                         note,
                         ..
                     } => Some(quote! {
+                        #(#original_attributes)*
                         #[deprecated = #note]
                         pub #field_ident: #field_type,
                     }),
                     ItemStatus::NotPresent => None,
                     ItemStatus::NoChange(field_ident) => Some(quote! {
+                        #(#original_attributes)*
                         pub #field_ident: #field_type,
                     }),
                 }
@@ -136,6 +146,7 @@ impl VersionedField {
                 let field_type = &self.inner.ty;
 
                 Some(quote! {
+                    #(#original_attributes)*
                     pub #field_ident: #field_type,
                 })
             }

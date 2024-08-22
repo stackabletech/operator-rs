@@ -51,12 +51,16 @@ impl TryFrom<&Variant> for VariantAttributes {
 }
 
 impl Attributes for VariantAttributes {
-    fn common_attrs_owned(self) -> ItemAttributes {
+    fn common_attributes_owned(self) -> ItemAttributes {
         self.common
     }
 
-    fn common_attrs(&self) -> &ItemAttributes {
+    fn common_attributes(&self) -> &ItemAttributes {
         &self.common
+    }
+
+    fn original_attributes(&self) -> &Vec<syn::Attribute> {
+        &self.attrs
     }
 }
 
@@ -88,6 +92,8 @@ impl VersionedVariant {
         &self,
         container_version: &ContainerVersion,
     ) -> Option<TokenStream> {
+        let original_attributes = &self.original_attributes;
+
         match &self.chain {
             // NOTE (@Techassi): https://rust-lang.github.io/rust-clippy/master/index.html#/expect_fun_call
             Some(chain) => match chain.get(&container_version.inner).unwrap_or_else(|| {
@@ -97,16 +103,20 @@ impl VersionedVariant {
                 )
             }) {
                 ItemStatus::Added { ident, .. } => Some(quote! {
+                    #(#original_attributes)*
                     #ident,
                 }),
                 ItemStatus::Renamed { to, .. } => Some(quote! {
+                    #(#original_attributes)*
                     #to,
                 }),
                 ItemStatus::Deprecated { ident, .. } => Some(quote! {
+                    #(#original_attributes)*
                     #[deprecated]
                     #ident,
                 }),
                 ItemStatus::NoChange(ident) => Some(quote! {
+                    #(#original_attributes)*
                     #ident,
                 }),
                 ItemStatus::NotPresent => None,
@@ -118,6 +128,7 @@ impl VersionedVariant {
                 let variant_ident = &self.inner.ident;
 
                 Some(quote! {
+                    #(#original_attributes)*
                     #variant_ident,
                 })
             }

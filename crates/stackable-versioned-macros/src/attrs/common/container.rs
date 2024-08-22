@@ -96,11 +96,13 @@ impl ContainerAttributes {
 /// - `name` of the version, like `v1alpha1`.
 /// - `deprecated` flag to mark that version as deprecated.
 /// - `skip` option to skip generating various pieces of code.
+/// - `doc` option to add version-specific documentation.
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct VersionAttributes {
     pub(crate) deprecated: Flag,
     pub(crate) name: Version,
     pub(crate) skip: Option<SkipOptions>,
+    pub(crate) doc: Option<String>,
 }
 
 /// This struct contains supported container options.
