@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
 use proc_macro2::TokenStream;
-use syn::Ident;
+use syn::{Attribute, Ident};
 
 use crate::{attrs::common::ContainerAttributes, codegen::common::ContainerVersion};
 
@@ -21,7 +21,12 @@ where
     Self: Sized + Deref<Target = VersionedContainer<I>>,
 {
     /// Creates a new versioned container.
-    fn new(ident: Ident, data: D, attributes: ContainerAttributes) -> syn::Result<Self>;
+    fn new(
+        ident: Ident,
+        data: D,
+        attributes: ContainerAttributes,
+        original_attributes: Vec<Attribute>,
+    ) -> syn::Result<Self>;
 
     /// This generates the complete code for a single versioned container.
     ///
@@ -32,12 +37,31 @@ where
     fn generate_tokens(&self) -> TokenStream;
 }
 
+/// Stores individual versions of a single container.
+///
+/// Each version tracks item actions, which describe if the item was added,
+/// renamed or deprecated in that particular version. Items which are not
+/// versioned are included in every version of the container.
 #[derive(Debug)]
 pub(crate) struct VersionedContainer<I> {
+    /// List of declared versions for this container. Each version generates a
+    /// definition with appropriate items.
     pub(crate) versions: Vec<ContainerVersion>,
+
+    /// List of items defined in the original container. How, and if, an item
+    /// should generate code, is decided by the currently generated version.
     pub(crate) items: Vec<I>,
+
+    /// The ident, or name, of the versioned container.
     pub(crate) ident: Ident,
 
+    /// The name of the container used in `From` implementations.
     pub(crate) from_ident: Ident,
+
+    /// Whether the [`From`] implementation generation should be skipped for all
+    /// versions of this container.
     pub(crate) skip_from: bool,
+
+    /// The original attributes that were added to the container.
+    pub(crate) original_attributes: Vec<Attribute>,
 }
