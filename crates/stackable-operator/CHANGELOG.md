@@ -12,8 +12,10 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: Replace `lazy_static` with `std::cell::LazyCell` (the original implementation was done in [#827] and reverted in [#835]) ([#840]).
+- BREAKING: Swap priority order of role group config and role overrides in configuration merging to prioritize overrides in general ([#841]).
 
 [#838]: https://github.com/stackabletech/operator-rs/pull/838
+[#841]: https://github.com/stackabletech/operator-rs/pull/841
 [#843]: https://github.com/stackabletech/operator-rs/pull/843
 
 ## [0.73.0] - 2024-08-09
