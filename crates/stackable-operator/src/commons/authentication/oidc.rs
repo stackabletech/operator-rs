@@ -232,8 +232,8 @@ pub struct ClientAuthenticationOptions<T = ()> {
     #[serde(default)]
     pub extra_scopes: Vec<String>,
 
-    /// If desired, operators can add custom fields that are only needed for this specific product.
-    /// They need to create a struct holding them and pass that as `T`.
+    // If desired, operators can add custom fields that are only needed for this specific product.
+    // They need to create a struct holding them and pass that as `T`.
     #[serde(flatten)]
     pub product_specific_fields: T,
 }
