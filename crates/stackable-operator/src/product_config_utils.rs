@@ -1163,11 +1163,7 @@ mod tests {
     ) {
         let role: Role<Box<TestConfig>, TestRoleConfig> = Role {
             config: build_common_config(
-                Some(Box::new(TestConfig {
-                    conf: Some(ROLE_CONFIG.to_string()),
-                    env: Some(ROLE_ENV.to_string()),
-                    cli: Some(ROLE_CLI.to_string()),
-                })),
+                build_test_config(ROLE_CONFIG, ROLE_ENV, ROLE_CLI),
                 Some(role_conf_override),
                 Some(role_env_override),
                 Some(role_cli_override),
