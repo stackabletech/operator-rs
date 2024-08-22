@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- `iter::reverse_if` helper ([#838]).
+- Add `iter::reverse_if` helper ([#838]).
 - Add two new constants `CONFIG_OVERRIDE_FILE_HEADER_KEY` and `CONFIG_OVERRIDE_FILE_FOOTER_KEY` ([#843]).
 
 ### Changed
