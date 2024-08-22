@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Report variant rename validation error at the correct span and trim underscores
+  from variants not using PascalCase (#[842]).
+
+[#842]: https://github.com/stackabletech/operator-rs/pull/842
+
 ## [0.1.1] - 2024-07-10
 
 ### Added
@@ -14,6 +21,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Remove duplicated code and unified struct/enum and field/variant code ([#820]).
 - Change from derive macro to attribute macro to be able to generate code
   _in place_ instead of _appending_ new code ([#793]).
 - Improve action chain generation ([#784]).
@@ -24,6 +32,7 @@ All notable changes to this project will be documented in this file.
 [#793]: https://github.com/stackabletech/operator-rs/pull/793
 [#804]: https://github.com/stackabletech/operator-rs/pull/804
 [#813]: https://github.com/stackabletech/operator-rs/pull/813
+[#820]: https://github.com/stackabletech/operator-rs/pull/820
 [#822]: https://github.com/stackabletech/operator-rs/pull/822
 
 ## [0.1.0] - 2024-05-08

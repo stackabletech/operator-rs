@@ -1,7 +1,7 @@
 //! Utilities for converting Kubernetes quantities to Java heap settings.
 //! Since Java heap sizes are a subset of Kubernetes quantities, the conversion
-//! might lose precision or fail completely.
-//! In addition:
+//! might lose precision or fail completely. In addition:
+//!
 //! - decimal quantities are not supported ("2G" is invalid)
 //! - units are case sensitive ("2gi" is invalid)
 //! - exponential notation is not supported.
@@ -121,12 +121,15 @@ impl Display for BinaryMultiple {
 }
 
 /// Convert a (memory) [`Quantity`] to Java heap settings.
+///
 /// Quantities are usually passed on to container resources while Java heap
-/// sizes need to be scaled accordingly.
-/// This implements a very simple heuristic to ensure that:
+/// sizes need to be scaled accordingly. This implements a very simple heuristic
+/// to ensure that:
+///
 /// - the quantity unit has been mapped to a java supported heap unit. Java only
 ///   supports up to Gibibytes while K8S quantities can be expressed in Exbibytes.
 /// - the heap size has a non-zero value.
+///
 /// Fails if it can't enforce the above restrictions.
 #[deprecated(
     since = "0.33.0",
@@ -148,15 +151,17 @@ pub fn to_java_heap(q: &Quantity, factor: f32) -> Result<String> {
 }
 
 /// Convert a (memory) [`Quantity`] to a raw Java heap value of the desired `target_unit`.
+///
 /// Quantities are usually passed on to container resources while Java heap
-/// sizes need to be scaled accordingly.
-/// The raw heap value is converted to the specified `target_unit` (this conversion
-/// is done even if specified a unit greater that Gibibytes. It is not recommended to scale
-/// to anything bigger than Gibibytes.
-/// This implements a very simple heuristic to ensure that:
+/// sizes need to be scaled accordingly. The raw heap value is converted to the
+/// specified `target_unit` (this conversion is done even if specified a unit
+/// greater that Gibibytes. It is not recommended to scale to anything bigger
+/// than Gibibytes. This implements a very simple heuristic to ensure that:
+///
 /// - the quantity unit has been mapped to a java supported heap unit. Java only
 ///   supports up to Gibibytes while K8S quantities can be expressed in Exbibytes.
 /// - the heap size has a non-zero value.
+///
 /// Fails if it can't enforce the above restrictions.
 #[deprecated(
     since = "0.33.0",

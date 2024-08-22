@@ -7,6 +7,11 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - `iter::reverse_if` helper ([#838]).
+- Add two new constants `CONFIG_OVERRIDE_FILE_HEADER_KEY` and `CONFIG_OVERRIDE_FILE_FOOTER_KEY` ([#843]).
+
+### Changed
+
+- BREAKING: Replace `lazy_static` with `std::cell::LazyCell` (the original implementation was done in [#827] and reverted in [#835]) ([#840]).
 
 ### Changed
 
@@ -14,6 +19,7 @@ All notable changes to this project will be documented in this file.
 
 [#838]: https://github.com/stackabletech/operator-rs/pull/838
 [#841]: https://github.com/stackabletech/operator-rs/pull/841
+[#843]: https://github.com/stackabletech/operator-rs/pull/843
 
 ## [0.73.0] - 2024-08-09
 
@@ -23,7 +29,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Reverted [#827], in order to restore Rust 1.79 compatibility for now ([#835]).
+- Reverted [#827], in order to restore Rust 1.79 compatibility for now ([#835]), re-opened in ([#840]).
 
 ### Fixed
 
@@ -37,7 +43,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: Replace `lazy_static` with `std::cell::LazyCell` ([#827]).
+- BREAKING: Replace `lazy_static` with `std::cell::LazyCell` ([#827], [#835], [#840]).
 - BREAKING: Convert `podOverrides` and `affinity` fields to take any arbitrary
   YAML input, rather than using the underlying schema. With this change, one of
   the larger CRDs, like the Druid CRD went down in size from `2.4MB` to `288K`
@@ -49,6 +55,7 @@ All notable changes to this project will be documented in this file.
 
 [#821]: https://github.com/stackabletech/operator-rs/pull/821
 [#827]: https://github.com/stackabletech/operator-rs/pull/827
+[#840]: https://github.com/stackabletech/operator-rs/pull/840
 
 ## [0.71.0] - 2024-07-29
 
