@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix the CRD description of `ClientAuthenticationDetails` to not contain internal Rust doc, but a public CRD description ([#846]).
+
+[#846]: https://github.com/stackabletech/operator-rs/pull/846
+
 ## [0.74.0] - 2024-08-22
 
 ### Added
