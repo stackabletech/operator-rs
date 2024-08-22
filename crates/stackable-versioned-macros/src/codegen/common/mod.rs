@@ -33,7 +33,7 @@ pub(crate) struct ContainerVersion {
     /// The ident of the container.
     pub(crate) ident: Ident,
 
-    /// Store an additional doc-comment lines for this version.
+    /// Store additional doc-comment lines for this version.
     pub(crate) version_specific_docs: Vec<String>,
 }
 

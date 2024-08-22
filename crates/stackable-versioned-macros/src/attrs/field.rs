@@ -31,10 +31,10 @@ pub(crate) struct FieldAttributes {
     // `Option<Ident>`, while for enum variants, the type is `Ident`.
     pub(crate) ident: Option<Ident>,
 
-    /// The original attributes for the field.
     // This must be named `attrs` for darling to populate it accordingly, and
     // cannot live in common because Vec<Attribute> is not implemented for
     // FromMeta.
+    /// The original attributes for the field.
     pub(crate) attrs: Vec<Attribute>,
 }
 

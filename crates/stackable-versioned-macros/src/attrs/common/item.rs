@@ -202,7 +202,7 @@ impl ItemAttributes {
                 if renamed.iter().any(|r| *r.since == *deprecated.since) =>
             {
                 Err(Error::custom(
-                    "cannot be marked as `deprecated` and `renamed` in the same version",
+                    format!("{item_type} cannot be marked as `deprecated` and `renamed` in the same version"),
                 )
                 .with_span(item_ident))
             }
@@ -260,8 +260,8 @@ impl ItemAttributes {
     /// The following naming rules apply:
     ///
     /// - Fields or variants marked as deprecated need to include the
-    ///   'deprecated_' prefix in their name. The prefix must not be included
-    ///   for fields or variants which are not deprecated.
+    ///   deprecation prefix in their name. The prefix must not be included for
+    ///   fields or variants which are not deprecated.
     fn validate_item_name(&self, item_ident: &Ident, item_type: &ItemType) -> Result<(), Error> {
         let prefix = match item_type {
             ItemType::Field => DEPRECATED_FIELD_PREFIX,
@@ -290,14 +290,14 @@ impl ItemAttributes {
     ///
     /// The following naming rules apply:
     ///
-    /// - `deprecated` must not be set on items. Instead, the
-    ///   stackable-versioned method of deprecating items should be used.
+    /// - `deprecated` must not be set on items. Instead, use the `deprecated()`
+    ///   action of the `#[versioned()]` macro.
     fn validate_item_attributes(&self, item_attrs: &Vec<Attribute>) -> Result<(), Error> {
         for attr in item_attrs {
             for segment in &attr.path().segments {
                 if segment.ident == "deprecated" {
                     return Err(Error::custom("deprecation must be done using #[versioned(deprecated(since = \"VERSION\"))]")
-                        .with_span(&segment.ident.span()));
+                        .with_span(&attr.span()));
                 }
             }
         }

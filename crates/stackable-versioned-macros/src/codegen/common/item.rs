@@ -110,7 +110,7 @@ where
         let attrs = A::try_from(&item)?;
         attrs.validate_versions(container_attrs, &item)?;
 
-        // These are the attributes addde to the item outside of the macro.
+        // These are the attributes added to the item outside of the macro.
         let original_attributes = attrs.original_attributes().clone();
 
         // These are the versioned macro attrs that are common to all items.
