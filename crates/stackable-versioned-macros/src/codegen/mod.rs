@@ -3,7 +3,11 @@ use syn::{spanned::Spanned, Data, DeriveInput, Error, Result};
 
 use crate::{
     attrs::common::ContainerAttributes,
-    codegen::{common::Container, venum::VersionedEnum, vstruct::VersionedStruct},
+    codegen::{
+        common::{Container, ContainerInput},
+        venum::VersionedEnum,
+        vstruct::VersionedStruct,
+    },
 };
 
 pub(crate) mod chain;
@@ -26,10 +30,22 @@ pub(crate) mod vstruct;
 pub(crate) fn expand(attributes: ContainerAttributes, input: DeriveInput) -> Result<TokenStream> {
     let expanded = match input.data {
         Data::Struct(data) => {
-            VersionedStruct::new(input.ident, data, attributes, input.attrs)?.generate_tokens()
+            let input = ContainerInput {
+                original_attributes: input.attrs,
+                visibility: input.vis,
+                ident: input.ident,
+            };
+
+            VersionedStruct::new(input, data, attributes)?.generate_tokens()
         }
         Data::Enum(data) => {
-            VersionedEnum::new(input.ident, data, attributes, input.attrs)?.generate_tokens()
+            let input = ContainerInput {
+                original_attributes: input.attrs,
+                visibility: input.vis,
+                ident: input.ident,
+            };
+
+            VersionedEnum::new(input, data, attributes)?.generate_tokens()
         }
         _ => {
             return Err(Error::new(

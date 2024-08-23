@@ -3,13 +3,14 @@ use std::ops::Deref;
 use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Attribute, DataEnum, Error, Ident};
+use syn::{DataEnum, Error};
 
 use crate::{
     attrs::common::ContainerAttributes,
     codegen::{
         common::{
-            format_container_from_ident, Container, ContainerVersion, Item, VersionedContainer,
+            format_container_from_ident, Container, ContainerInput, ContainerVersion, Item,
+            VersionedContainer,
         },
         venum::variant::VersionedVariant,
     },
@@ -34,11 +35,16 @@ impl Deref for VersionedEnum {
 
 impl Container<DataEnum, VersionedVariant> for VersionedEnum {
     fn new(
-        ident: Ident,
+        input: ContainerInput,
         data: DataEnum,
         attributes: ContainerAttributes,
-        original_attributes: Vec<Attribute>,
     ) -> syn::Result<Self> {
+        let ContainerInput {
+            original_attributes,
+            visibility,
+            ident,
+        } = input;
+
         // Convert the raw version attributes into a container version.
         let versions: Vec<_> = (&attributes).into();
 
@@ -78,11 +84,12 @@ impl Container<DataEnum, VersionedVariant> for VersionedEnum {
                 .options
                 .skip
                 .map_or(false, |s| s.from.is_present()),
+            original_attributes,
+            visibility,
             from_ident,
             versions,
             items,
             ident,
-            original_attributes,
         }))
     }
 
@@ -105,8 +112,10 @@ impl VersionedEnum {
         next_version: Option<&ContainerVersion>,
     ) -> TokenStream {
         let mut token_stream = TokenStream::new();
-        let enum_name = &self.ident;
+
         let original_attributes = &self.original_attributes;
+        let visibility = &self.visibility;
+        let enum_name = &self.ident;
 
         // Generate variants of the enum for `version`.
         let variants = self.generate_enum_variants(version);
@@ -140,7 +149,7 @@ impl VersionedEnum {
         token_stream.extend(quote! {
             #[automatically_derived]
             #deprecated_attr
-            pub mod #version_ident {
+            #visibility mod #version_ident {
                 #(#original_attributes)*
                 #version_specific_docs
                 pub enum #enum_name {
