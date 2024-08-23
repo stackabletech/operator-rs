@@ -11,7 +11,7 @@ set -euo pipefail
 # stackable-versioned-0.1.1
 # stackable-webhook-0.3.1
 
-for CRATE in $(find . -mindepth 2 -name Cargo.toml | sed -e 's|^./crates/\([a-z0-9_\-]\+\).*|\1|' | sort); do
+for CRATE in $(find ./crates/ -mindepth 2 -name Cargo.toml -print0 | xargs -0 -n 1 dirname | xargs -n 1 basename | sort); do
     # Get the version in Cargo.toml
     CRATE_VERSION=$(grep 'version' "./crates/$CRATE/Cargo.toml" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
     [ -n "$CRATE_VERSION" ] || (
