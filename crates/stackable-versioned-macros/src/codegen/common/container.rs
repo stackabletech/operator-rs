@@ -32,6 +32,15 @@ where
     fn generate_tokens(&self) -> TokenStream;
 }
 
+/// This struct bundles values from [`DeriveInput`][1].
+///
+/// [`DeriveInput`][1] cannot be used directly when constructing a
+/// [`VersionedStruct`][2] or [`VersionedEnum`][3] because we run into borrow
+/// issues caused by the match statement which extracts the data.
+///
+/// [1]: syn::DeriveInput
+/// [2]: crate::codegen::vstruct::VersionedStruct
+/// [3]: crate::codegen::venum::VersionedEnum
 pub(crate) struct ContainerInput {
     pub(crate) original_attributes: Vec<Attribute>,
     pub(crate) visibility: Visibility,
@@ -56,6 +65,8 @@ pub(crate) struct VersionedContainer<I> {
     /// The ident, or name, of the versioned container.
     pub(crate) ident: Ident,
 
+    /// The visibility of the versioned container. Used to forward the
+    /// visibility during code generation.
     pub(crate) visibility: Visibility,
 
     /// The original attributes that were added to the container.
