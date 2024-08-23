@@ -135,6 +135,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN_VERSION }}
+          # rust-src is required for trybuild stderr output comparison to work
+          # for our cases.
+          # See: https://github.com/dtolnay/trybuild/issues/236#issuecomment-1620950759
+          components: rust-src
       - uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
         with:
           key: test
