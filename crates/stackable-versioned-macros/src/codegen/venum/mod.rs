@@ -3,7 +3,7 @@ use std::ops::Deref;
 use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DataEnum, Error, Ident};
+use syn::{Attribute, DataEnum, Error, Ident};
 
 use crate::{
     attrs::common::ContainerAttributes,
@@ -33,7 +33,12 @@ impl Deref for VersionedEnum {
 }
 
 impl Container<DataEnum, VersionedVariant> for VersionedEnum {
-    fn new(ident: Ident, data: DataEnum, attributes: ContainerAttributes) -> syn::Result<Self> {
+    fn new(
+        ident: Ident,
+        data: DataEnum,
+        attributes: ContainerAttributes,
+        original_attributes: Vec<Attribute>,
+    ) -> syn::Result<Self> {
         // Convert the raw version attributes into a container version.
         let versions: Vec<_> = (&attributes).into();
 
@@ -77,6 +82,7 @@ impl Container<DataEnum, VersionedVariant> for VersionedEnum {
             versions,
             items,
             ident,
+            original_attributes,
         }))
     }
 
@@ -100,6 +106,7 @@ impl VersionedEnum {
     ) -> TokenStream {
         let mut token_stream = TokenStream::new();
         let enum_name = &self.ident;
+        let original_attributes = &self.original_attributes;
 
         // Generate variants of the enum for `version`.
         let variants = self.generate_enum_variants(version);
@@ -115,11 +122,27 @@ impl VersionedEnum {
             .deprecated
             .then_some(quote! {#[deprecated = #deprecated_note]});
 
+        let mut version_specific_docs = TokenStream::new();
+        for (i, doc) in version.version_specific_docs.iter().enumerate() {
+            if i == 0 {
+                // Prepend an empty line to clearly separate the version
+                // specific docs.
+                version_specific_docs.extend(quote! {
+                    #[doc = ""]
+                })
+            }
+            version_specific_docs.extend(quote! {
+                #[doc = #doc]
+            })
+        }
+
         // Generate tokens for the module and the contained enum
         token_stream.extend(quote! {
             #[automatically_derived]
             #deprecated_attr
             pub mod #version_ident {
+                #(#original_attributes)*
+                #version_specific_docs
                 pub enum #enum_name {
                     #variants
                 }

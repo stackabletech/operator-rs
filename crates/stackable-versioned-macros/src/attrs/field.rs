@@ -1,5 +1,5 @@
 use darling::{Error, FromField};
-use syn::Ident;
+use syn::{Attribute, Ident};
 
 use crate::attrs::common::{ItemAttributes, ItemType};
 
@@ -19,7 +19,7 @@ use crate::attrs::common::{ItemAttributes, ItemType};
 #[derive(Debug, FromField)]
 #[darling(
     attributes(versioned),
-    forward_attrs(allow, doc, cfg, serde),
+    forward_attrs,
     and_then = FieldAttributes::validate
 )]
 pub(crate) struct FieldAttributes {
@@ -30,6 +30,12 @@ pub(crate) struct FieldAttributes {
     // shared item attributes because for struct fields, the type is
     // `Option<Ident>`, while for enum variants, the type is `Ident`.
     pub(crate) ident: Option<Ident>,
+
+    // This must be named `attrs` for darling to populate it accordingly, and
+    // cannot live in common because Vec<Attribute> is not implemented for
+    // FromMeta.
+    /// The original attributes for the field.
+    pub(crate) attrs: Vec<Attribute>,
 }
 
 impl FieldAttributes {
@@ -44,7 +50,7 @@ impl FieldAttributes {
             .ident
             .as_ref()
             .expect("internal error: field must have an ident");
-        self.common.validate(ident, &ItemType::Field)?;
+        self.common.validate(ident, &ItemType::Field, &self.attrs)?;
 
         Ok(self)
     }

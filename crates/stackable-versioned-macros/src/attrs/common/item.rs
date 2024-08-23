@@ -1,7 +1,7 @@
 use darling::{util::SpannedValue, Error, FromMeta};
 use k8s_version::Version;
 use proc_macro2::Span;
-use syn::{spanned::Spanned, Ident, Path};
+use syn::{spanned::Spanned, Attribute, Ident, Path};
 
 use crate::{
     attrs::common::ContainerAttributes,
@@ -19,8 +19,8 @@ pub(crate) trait ValidateVersions<I>
 where
     I: Spanned,
 {
-    /// Validates that each field action version is present in the declared
-    /// container versions.
+    /// Validates that each field or variant action version is present in the
+    /// declared container versions.
     fn validate_versions(
         &self,
         container_attrs: &ContainerAttributes,
@@ -42,7 +42,7 @@ where
 
         let mut errors = Error::accumulator();
 
-        if let Some(added) = &self.common_attrs().added {
+        if let Some(added) = &self.common_attributes().added {
             if !container_attrs
                 .versions
                 .iter()
@@ -55,7 +55,7 @@ where
             }
         }
 
-        for rename in &*self.common_attrs().renames {
+        for rename in &*self.common_attributes().renames {
             if !container_attrs
                 .versions
                 .iter()
@@ -68,7 +68,7 @@ where
             }
         }
 
-        if let Some(deprecated) = &self.common_attrs().deprecated {
+        if let Some(deprecated) = &self.common_attributes().deprecated {
             if !container_attrs
                 .versions
                 .iter()
@@ -107,8 +107,8 @@ pub(crate) enum ItemType {
 ///   is part of the container in every version until renamed or deprecated.
 /// - An item can be renamed many times. That's why renames are stored in a
 ///   [`Vec`].
-/// - An item can only be deprecated once. A field not marked as 'deprecated'
-///   will be included up until the latest version.
+/// - An item can only be deprecated once. A field or variant not marked as
+///   'deprecated' will be included up until the latest version.
 #[derive(Debug, FromMeta)]
 pub(crate) struct ItemAttributes {
     /// This parses the `added` attribute on items (fields or variants). It can
@@ -126,15 +126,20 @@ pub(crate) struct ItemAttributes {
 }
 
 impl ItemAttributes {
-    pub(crate) fn validate(&self, item_ident: &Ident, item_type: &ItemType) -> Result<(), Error> {
+    pub(crate) fn validate(
+        &self,
+        item_ident: &Ident,
+        item_type: &ItemType,
+        item_attrs: &Vec<Attribute>,
+    ) -> Result<(), Error> {
         // NOTE (@Techassi): This associated function is NOT called by darling's
         // and_then attribute, but instead by the wrapper, FieldAttributes and
         // VariantAttributes.
 
         let mut errors = Error::accumulator();
 
-        // TODO (@Techassi): Make the field 'note' optional, because in the
-        // future, the macro will generate parts of the deprecation note
+        // TODO (@Techassi): Make the field or variant 'note' optional, because
+        // in the future, the macro will generate parts of the deprecation note
         // automatically. The user-provided note will then be appended to the
         // auto-generated one.
 
@@ -150,10 +155,12 @@ impl ItemAttributes {
         // Semantic validation
         errors.handle(self.validate_action_combinations(item_ident, item_type));
         errors.handle(self.validate_action_order(item_ident, item_type));
-        errors.handle(self.validate_field_name(item_ident, item_type));
+        errors.handle(self.validate_item_name(item_ident, item_type));
+        errors.handle(self.validate_item_attributes(item_attrs));
 
-        // TODO (@Techassi): Add hint if a field is added in the first version
-        // that it might be clever to remove the 'added' attribute.
+        // TODO (@Techassi): Add hint if a field or variant is added in the
+        // first version that it might be clever to remove the 'added'
+        // attribute.
 
         errors.finish()?;
 
@@ -164,13 +171,13 @@ impl ItemAttributes {
     /// and validates that each item uses a valid combination of actions.
     /// Invalid combinations are:
     ///
-    /// - `added` and `deprecated` using the same version: A field cannot be
-    ///   marked as added in a particular version and then marked as deprecated
-    ///   immediately after. Fields must be included for at least one version
-    ///   before being marked deprecated.
+    /// - `added` and `deprecated` using the same version: A field or variant
+    ///   cannot be marked as added in a particular version and then marked as
+    ///   deprecated immediately after. Fields and variants must be included for
+    ///   at least one version before being marked deprecated.
     /// - `added` and `renamed` using the same version: The same reasoning from
-    ///   above applies here as well. Fields must be included for at least one
-    ///   version before being renamed.
+    ///   above applies here as well. Fields and variants must be included for
+    ///   at least one version before being renamed.
     /// - `renamed` and `deprecated` using the same version: Again, the same
     ///   rules from above apply here as well.
     fn validate_action_combinations(
@@ -195,7 +202,7 @@ impl ItemAttributes {
                 if renamed.iter().any(|r| *r.since == *deprecated.since) =>
             {
                 Err(Error::custom(
-                    "field cannot be marked as `deprecated` and `renamed` in the same version",
+                    format!("{item_type} cannot be marked as `deprecated` and `renamed` in the same version"),
                 )
                 .with_span(item_ident))
             }
@@ -252,10 +259,10 @@ impl ItemAttributes {
     ///
     /// The following naming rules apply:
     ///
-    /// - Fields marked as deprecated need to include the 'deprecated_' prefix
-    ///   in their name. The prefix must not be included for fields which are
-    ///   not deprecated.
-    fn validate_field_name(&self, item_ident: &Ident, item_type: &ItemType) -> Result<(), Error> {
+    /// - Fields or variants marked as deprecated need to include the
+    ///   deprecation prefix in their name. The prefix must not be included for
+    ///   fields or variants which are not deprecated.
+    fn validate_item_name(&self, item_ident: &Ident, item_type: &ItemType) -> Result<(), Error> {
         let prefix = match item_type {
             ItemType::Field => DEPRECATED_FIELD_PREFIX,
             ItemType::Variant => DEPRECATED_VARIANT_PREFIX,
@@ -275,6 +282,25 @@ impl ItemAttributes {
             ).with_span(item_ident));
         }
 
+        Ok(())
+    }
+
+    /// This associated function is called by the top-level validation function
+    /// and validates that disallowed item attributes are not used.
+    ///
+    /// The following naming rules apply:
+    ///
+    /// - `deprecated` must not be set on items. Instead, use the `deprecated()`
+    ///   action of the `#[versioned()]` macro.
+    fn validate_item_attributes(&self, item_attrs: &Vec<Attribute>) -> Result<(), Error> {
+        for attr in item_attrs {
+            for segment in &attr.path().segments {
+                if segment.ident == "deprecated" {
+                    return Err(Error::custom("deprecation must be done using #[versioned(deprecated(since = \"VERSION\"))]")
+                        .with_span(&attr.span()));
+                }
+            }
+        }
         Ok(())
     }
 }

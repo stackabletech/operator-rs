@@ -32,6 +32,26 @@ pub(crate) struct ContainerVersion {
 
     /// The ident of the container.
     pub(crate) ident: Ident,
+
+    /// Store additional doc-comment lines for this version.
+    pub(crate) version_specific_docs: Vec<String>,
+}
+
+/// Converts lines of doc-comments into a trimmed list.
+fn process_docs(input: &Option<String>) -> Vec<String> {
+    if let Some(input) = input {
+        input
+            // Trim the leading and trailing whitespace, deleting suprefluous
+            // empty lines.
+            .trim()
+            .lines()
+            // Trim the leading and trailing whitespace on each line that can be
+            // introduced when the developer indents multi-line comments.
+            .map(|line| line.trim().to_owned())
+            .collect()
+    } else {
+        Vec::new()
+    }
 }
 
 impl From<&ContainerAttributes> for Vec<ContainerVersion> {
@@ -44,6 +64,7 @@ impl From<&ContainerAttributes> for Vec<ContainerVersion> {
                 ident: Ident::new(&v.name.to_string(), Span::call_site()),
                 deprecated: v.deprecated.is_present(),
                 inner: v.name,
+                version_specific_docs: process_docs(&v.doc),
             })
             .collect()
     }

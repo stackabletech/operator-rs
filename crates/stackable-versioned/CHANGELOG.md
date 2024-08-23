@@ -8,8 +8,8 @@ All notable changes to this project will be documented in this file.
 
 - Add `changed()` action and support for the `ty` parameter in the `renamed()`
   action ([#844]).
-
-[#844]: https://github.com/stackabletech/operator-rs/pull/844
+- Pass through container and item attributes (including doc-comments). Add
+  attribute for version specific docs. ([#847])
 
 ### Fixed
 
@@ -17,6 +17,8 @@ All notable changes to this project will be documented in this file.
   from variants not using PascalCase (#[842]).
 
 [#842]: https://github.com/stackabletech/operator-rs/pull/842
+[#844]: https://github.com/stackabletech/operator-rs/pull/844
+[#847]: https://github.com/stackabletech/operator-rs/pull/847
 
 ## [0.1.1] - 2024-07-10
 
