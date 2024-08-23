@@ -22,8 +22,7 @@ struct Foo {
     baz: bool,
 }
 
-#[test]
-fn basic() {
+fn main() {
     #[allow(deprecated)]
     let _ = v1alpha1::Foo { jjj: 0, baz: false };
     let _ = v1beta1::Foo { bar: 0, baz: false };

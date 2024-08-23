@@ -51,38 +51,3 @@ fn from_custom_default_fn() {
     assert_eq!(foo_v1beta1.bar, 42);
     assert!(foo_v1beta1.baz);
 }
-
-#[test]
-fn skip_from_all() {
-    #[versioned(
-        version(name = "v1alpha1"),
-        version(name = "v1beta1"),
-        version(name = "v1"),
-        options(skip(from))
-    )]
-    pub struct Foo {
-        #[versioned(
-            added(since = "v1beta1"),
-            deprecated(since = "v1", note = "not needed")
-        )]
-        deprecated_bar: usize,
-        baz: bool,
-    }
-}
-
-#[test]
-fn skip_from_version() {
-    #[versioned(
-        version(name = "v1alpha1"),
-        version(name = "v1beta1", skip(from)),
-        version(name = "v1")
-    )]
-    pub struct Foo {
-        #[versioned(
-            added(since = "v1beta1"),
-            deprecated(since = "v1", note = "not needed")
-        )]
-        deprecated_bar: usize,
-        baz: bool,
-    }
-}
