@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
 use proc_macro2::TokenStream;
-use syn::{Attribute, Ident};
+use syn::{Attribute, Ident, Visibility};
 
 use crate::{attrs::common::ContainerAttributes, codegen::common::ContainerVersion};
 
@@ -21,12 +21,7 @@ where
     Self: Sized + Deref<Target = VersionedContainer<I>>,
 {
     /// Creates a new versioned container.
-    fn new(
-        ident: Ident,
-        data: D,
-        attributes: ContainerAttributes,
-        original_attributes: Vec<Attribute>,
-    ) -> syn::Result<Self>;
+    fn new(input: ContainerInput, data: D, attributes: ContainerAttributes) -> syn::Result<Self>;
 
     /// This generates the complete code for a single versioned container.
     ///
@@ -35,6 +30,21 @@ where
     /// Additionally, it generates `From` implementations, which enable
     /// conversion from an older to a newer version.
     fn generate_tokens(&self) -> TokenStream;
+}
+
+/// This struct bundles values from [`DeriveInput`][1].
+///
+/// [`DeriveInput`][1] cannot be used directly when constructing a
+/// [`VersionedStruct`][2] or [`VersionedEnum`][3] because we run into borrow
+/// issues caused by the match statement which extracts the data.
+///
+/// [1]: syn::DeriveInput
+/// [2]: crate::codegen::vstruct::VersionedStruct
+/// [3]: crate::codegen::venum::VersionedEnum
+pub(crate) struct ContainerInput {
+    pub(crate) original_attributes: Vec<Attribute>,
+    pub(crate) visibility: Visibility,
+    pub(crate) ident: Ident,
 }
 
 /// Stores individual versions of a single container.
@@ -55,13 +65,17 @@ pub(crate) struct VersionedContainer<I> {
     /// The ident, or name, of the versioned container.
     pub(crate) ident: Ident,
 
+    /// The visibility of the versioned container. Used to forward the
+    /// visibility during code generation.
+    pub(crate) visibility: Visibility,
+
+    /// The original attributes that were added to the container.
+    pub(crate) original_attributes: Vec<Attribute>,
+
     /// The name of the container used in `From` implementations.
     pub(crate) from_ident: Ident,
 
     /// Whether the [`From`] implementation generation should be skipped for all
     /// versions of this container.
     pub(crate) skip_from: bool,
-
-    /// The original attributes that were added to the container.
-    pub(crate) original_attributes: Vec<Attribute>,
 }
