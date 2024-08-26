@@ -1,7 +1,6 @@
 use stackable_versioned_macros::versioned;
 
-#[test]
-fn rename() {
+fn main() {
     #[versioned(
         version(name = "v1alpha1"),
         version(name = "v1beta1"),
