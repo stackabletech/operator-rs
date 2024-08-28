@@ -121,7 +121,6 @@ fn validate_str_length(value: &str, max_length: usize) -> Result<(), ValidationE
 fn validate_str_regex(
     value: &str,
     regex: &'static Regex,
-    regex_str: &'static str,
     error_msg: &'static str,
     examples: &'static [&'static str],
 ) -> Result<(), ValidationError> {
@@ -130,7 +129,11 @@ fn validate_str_regex(
     } else {
         Err(RegexError {
             msg: error_msg,
-            regex: regex_str,
+            regex: regex
+                .as_str()
+                // Clean up start/end-of-line markers
+                .trim_start_matches('^')
+                .trim_end_matches('$'),
             examples,
         }
         .into())
@@ -159,7 +162,6 @@ pub fn is_rfc_1123_subdomain(value: &str) -> Result<(), ValidationErrors> {
         validate_str_regex(
             value,
             &RFC_1123_SUBDOMAIN_REGEX,
-            RFC_1123_SUBDOMAIN_FMT,
             RFC_1123_SUBDOMAIN_ERROR_MSG,
             &["example.com"],
         ),
@@ -174,7 +176,6 @@ pub fn is_rfc_1123_label(value: &str) -> Result<(), ValidationErrors> {
         validate_str_regex(
             value,
             &RFC_1123_LABEL_REGEX,
-            RFC_1123_LABEL_FMT,
             RFC_1123_LABEL_ERROR_MSG,
             &["example-label", "1-label-1"],
         ),
@@ -188,7 +189,6 @@ pub fn is_rfc_1035_label(value: &str) -> Result<(), ValidationErrors> {
         validate_str_regex(
             value,
             &RFC_1035_LABEL_REGEX,
-            RFC_1035_LABEL_FMT,
             RFC_1035_LABEL_ERROR_MSG,
             &["my-name", "abc-123"],
         ),
