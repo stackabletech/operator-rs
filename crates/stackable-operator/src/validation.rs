@@ -33,7 +33,7 @@ const RFC_1035_LABEL_ERROR_MSG: &str = "a DNS-1035 label must consist of lower c
 const RFC_1035_LABEL_MAX_LENGTH: usize = 63;
 
 // Lazily initialized regular expressions
-static RFC_1123_SUBDOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+pub(crate) static RFC_1123_SUBDOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(&format!("^{RFC_1123_SUBDOMAIN_FMT}$"))
         .expect("failed to compile RFC 1123 subdomain regex")
 });

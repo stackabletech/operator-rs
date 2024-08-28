@@ -12,3 +12,4 @@ pub mod resources;
 pub mod s3;
 pub mod secret;
 pub mod secret_class;
+pub mod networking;
