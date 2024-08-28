@@ -9,10 +9,11 @@
 // This is adapted from Kubernetes.
 // See apimachinery/pkg/util/validation/validation.go, apimachinery/pkg/api/validation/generic.go and pkg/apis/core/validation/validation.go in the Kubernetes source
 
-use std::sync::LazyLock;
+use std::{fmt::Display, sync::LazyLock};
 
 use const_format::concatcp;
 use regex::Regex;
+use snafu::Snafu;
 
 const RFC_1123_LABEL_FMT: &str = "[a-z0-9]([-a-z0-9]*[a-z0-9])?";
 const RFC_1123_SUBDOMAIN_FMT: &str =
@@ -26,7 +27,7 @@ const RFC_1123_SUBDOMAIN_MAX_LENGTH: usize = 253;
 const RFC_1123_LABEL_MAX_LENGTH: usize = 63;
 
 const RFC_1035_LABEL_FMT: &str = "[a-z]([-a-z0-9]*[a-z0-9])?";
-const RFC_1035_LABEL_ERR_MSG: &str = "a DNS-1035 label must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character";
+const RFC_1035_LABEL_ERROR_MSG: &str = "a DNS-1035 label must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character";
 
 // This is a label's max length in DNS (RFC 1035)
 const RFC_1035_LABEL_MAX_LENGTH: usize = 63;
@@ -37,110 +38,161 @@ static RFC_1123_SUBDOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
         .expect("failed to compile RFC 1123 subdomain regex")
 });
 
+static RFC_1123_LABEL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(&format!("^{RFC_1123_LABEL_FMT}$")).expect("failed to compile RFC 1123 label regex")
+});
+
 static RFC_1035_LABEL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(&format!("^{RFC_1035_LABEL_FMT}$")).expect("failed to compile RFC 1035 label regex")
 });
 
-/// Returns a formatted error message for maximum length violations.
-fn max_len_error(length: usize) -> String {
-    format!("must be no more than {length} characters")
-}
+#[derive(Debug)]
+pub struct ValidationErrors(Vec<ValidationError>);
 
-/// Returns a formatted error message for regex violations.
-///
-/// # Arguments
-///
-/// * `msg` - this is the main error message to return
-/// * `fmt` - this is the regular expression that did not match the input
-/// * `examples` - are optional well, formed examples that would match the regex
-fn regex_error(msg: &str, fmt: &str, examples: &[&str]) -> String {
-    if examples.is_empty() {
-        return format!("{msg} (regex used for validation is '{fmt}')");
-    }
-
-    let mut msg = msg.to_string();
-    msg.push_str(" (e.g. ");
-    for (i, example) in examples.iter().enumerate() {
-        if i > 0 {
-            msg.push_str(" or ");
+impl Display for ValidationErrors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (i, error) in self.0.iter().enumerate() {
+            let prefix = match i {
+                0 => "",
+                _ => ", ",
+            };
+            write!(f, "{prefix}{error}")?;
         }
-        msg.push('\'');
-        msg.push_str(example);
-        msg.push_str("', ");
+        Ok(())
     }
+}
+impl std::error::Error for ValidationErrors {}
 
-    msg.push_str("regex used for validation is '");
-    msg.push_str(fmt);
-    msg.push_str("')");
-    msg
+#[derive(Debug, Snafu)]
+pub enum ValidationError {
+    #[snafu(transparent)]
+    Regex { source: RegexError },
+    #[snafu(display("input is {length} bytes long but must be no more than {max_length}"))]
+    TooLong { length: usize, max_length: usize },
 }
 
-/// Tests for a string that conforms to the definition of a subdomain in DNS (RFC 1123).
-pub fn is_rfc_1123_subdomain(value: &str) -> Result<(), Vec<String>> {
-    let mut errors = vec![];
-    if value.len() > RFC_1123_SUBDOMAIN_MAX_LENGTH {
-        errors.push(max_len_error(RFC_1123_SUBDOMAIN_MAX_LENGTH))
-    }
+#[derive(Debug)]
+pub struct RegexError {
+    /// The primary error message.
+    msg: &'static str,
+    /// The regex that the input must match.
+    regex: &'static str,
+    /// Examples of valid inputs (if non-empty).
+    examples: &'static [&'static str],
+}
 
-    if !RFC_1123_SUBDOMAIN_REGEX.is_match(value) {
-        errors.push(regex_error(
-            RFC_1123_SUBDOMAIN_ERROR_MSG,
-            RFC_1123_SUBDOMAIN_FMT,
-            &["example.com"],
-        ))
+impl Display for RegexError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            msg,
+            regex,
+            examples,
+        } = self;
+        write!(f, "{msg} (")?;
+        if !examples.is_empty() {
+            for (i, example) in examples.iter().enumerate() {
+                let prefix = match i {
+                    0 => "e.g.",
+                    _ => "or",
+                };
+                write!(f, "{prefix} {example:?}, ")?;
+            }
+        }
+        write!(f, "regex used for validation is {regex:?})")
     }
+}
 
+impl std::error::Error for RegexError {}
+
+/// Returns [`Ok`] if `value`'s length fits within `max_length`.
+fn validate_str_length(value: &str, max_length: usize) -> Result<(), ValidationError> {
+    if value.len() > max_length {
+        TooLongSnafu {
+            length: value.len(),
+            max_length,
+        }
+        .fail()
+    } else {
+        Ok(())
+    }
+}
+
+/// Returns [`Ok`] if `value` matches `regex`.
+fn validate_str_regex(
+    value: &str,
+    regex: &'static Regex,
+    regex_str: &'static str,
+    error_msg: &'static str,
+    examples: &'static [&'static str],
+) -> Result<(), ValidationError> {
+    if regex.is_match(value) {
+        Ok(())
+    } else {
+        Err(RegexError {
+            msg: error_msg,
+            regex: regex_str,
+            examples,
+        }
+        .into())
+    }
+}
+
+/// Returns [`Ok`] if *all* validations are [`Ok`], otherwise returns all errors.
+fn validate_all(
+    validations: impl IntoIterator<Item = Result<(), ValidationError>>,
+) -> Result<(), ValidationErrors> {
+    let errors = validations
+        .into_iter()
+        .filter_map(|res| res.err())
+        .collect::<Vec<_>>();
     if errors.is_empty() {
         Ok(())
     } else {
-        Err(errors)
+        Err(ValidationErrors(errors))
     }
+}
+
+/// Tests for a string that conforms to the definition of a subdomain in DNS (RFC 1123).
+pub fn is_rfc_1123_subdomain(value: &str) -> Result<(), ValidationErrors> {
+    validate_all([
+        validate_str_length(value, RFC_1123_SUBDOMAIN_MAX_LENGTH),
+        validate_str_regex(
+            value,
+            &RFC_1123_SUBDOMAIN_REGEX,
+            RFC_1123_SUBDOMAIN_FMT,
+            RFC_1123_SUBDOMAIN_ERROR_MSG,
+            &["example.com"],
+        ),
+    ])
 }
 
 /// Tests for a string that conforms to the definition of a label in DNS (RFC 1123).
 /// Maximum label length supported by k8s is 63 characters (minimum required).
-pub fn is_rfc_1123_label(value: &str) -> Result<(), Vec<String>> {
-    let mut errors = vec![];
-    if value.len() > RFC_1123_LABEL_MAX_LENGTH {
-        errors.push(max_len_error(RFC_1123_LABEL_MAX_LENGTH))
-    }
-
-    // Regex is identical to RFC 1123 subdomain
-    if !RFC_1123_SUBDOMAIN_REGEX.is_match(value) {
-        errors.push(regex_error(
+pub fn is_rfc_1123_label(value: &str) -> Result<(), ValidationErrors> {
+    validate_all([
+        validate_str_length(value, RFC_1123_LABEL_MAX_LENGTH),
+        validate_str_regex(
+            value,
+            &RFC_1123_LABEL_REGEX,
+            RFC_1123_LABEL_FMT,
             RFC_1123_LABEL_ERROR_MSG,
-            RFC_1123_SUBDOMAIN_FMT,
             &["example-label", "1-label-1"],
-        ))
-    }
-
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+        ),
+    ])
 }
 
 /// Tests for a string that conforms to the definition of a label in DNS (RFC 1035).
-pub fn is_rfc_1035_label(value: &str) -> Result<(), Vec<String>> {
-    let mut errors = vec![];
-    if value.len() > RFC_1035_LABEL_MAX_LENGTH {
-        errors.push(max_len_error(RFC_1035_LABEL_MAX_LENGTH))
-    }
-
-    if !RFC_1035_LABEL_REGEX.is_match(value) {
-        errors.push(regex_error(
-            RFC_1035_LABEL_ERR_MSG,
+pub fn is_rfc_1035_label(value: &str) -> Result<(), ValidationErrors> {
+    validate_all([
+        validate_str_length(value, RFC_1035_LABEL_MAX_LENGTH),
+        validate_str_regex(
+            value,
+            &RFC_1035_LABEL_REGEX,
             RFC_1035_LABEL_FMT,
+            RFC_1035_LABEL_ERROR_MSG,
             &["my-name", "abc-123"],
-        ))
-    }
-
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+        ),
+    ])
 }
 
 // mask_trailing_dash replaces the final character of a string with a subdomain safe
@@ -161,7 +213,7 @@ fn mask_trailing_dash(mut name: String) -> String {
 ///
 /// * `name` - is the name to check for validity
 /// * `prefix` - indicates whether `name` is just a prefix (ending in a dash, which would otherwise not be legal at the end)
-pub fn name_is_dns_subdomain(name: &str, prefix: bool) -> Result<(), Vec<String>> {
+pub fn name_is_dns_subdomain(name: &str, prefix: bool) -> Result<(), ValidationErrors> {
     let mut name = name.to_string();
     if prefix {
         name = mask_trailing_dash(name);
@@ -177,7 +229,7 @@ pub fn name_is_dns_subdomain(name: &str, prefix: bool) -> Result<(), Vec<String>
 ///
 /// * `name` - is the name to check for validity
 /// * `prefix` - indicates whether `name` is just a prefix (ending in a dash, which would otherwise not be legal at the end)
-pub fn name_is_dns_label(name: &str, prefix: bool) -> Result<(), Vec<String>> {
+pub fn name_is_dns_label(name: &str, prefix: bool) -> Result<(), ValidationErrors> {
     let mut name = name.to_string();
     if prefix {
         name = mask_trailing_dash(name);
@@ -189,7 +241,7 @@ pub fn name_is_dns_label(name: &str, prefix: bool) -> Result<(), Vec<String>> {
 /// Validates a namespace name.
 ///
 /// See [`name_is_dns_label`] for more information.
-pub fn validate_namespace_name(name: &str, prefix: bool) -> Result<(), Vec<String>> {
+pub fn validate_namespace_name(name: &str, prefix: bool) -> Result<(), ValidationErrors> {
     name_is_dns_label(name, prefix)
 }
 
