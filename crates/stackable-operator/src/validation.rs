@@ -32,6 +32,17 @@ const RFC_1035_LABEL_ERROR_MSG: &str = "a DNS-1035 label must consist of lower c
 // This is a label's max length in DNS (RFC 1035)
 const RFC_1035_LABEL_MAX_LENGTH: usize = 63;
 
+// Technically Kerberos allows more realm names
+// (https://web.mit.edu/kerberos/krb5-1.21/doc/admin/realm_config.html#realm-name),
+// however, these are embedded in a lot of configuration files and other strings,
+// and will not always be quoted properly.
+//
+// Hence, restrict them to a reasonable subset. The convention is to use upper-case
+// DNS hostnames, so allow all characters used there.
+const KERBEROS_REALM_NAME_FMT: &str = "[-.a-zA-Z0-9]+";
+const KERBEROS_REALM_NAME_ERROR_MSG: &str =
+    "Kerberos realm name must only contain alphanumeric characters, '-', and '.'";
+
 // Lazily initialized regular expressions
 pub(crate) static RFC_1123_SUBDOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(&format!("^{RFC_1123_SUBDOMAIN_FMT}$"))
@@ -44,6 +55,11 @@ static RFC_1123_LABEL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 
 static RFC_1035_LABEL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(&format!("^{RFC_1035_LABEL_FMT}$")).expect("failed to compile RFC 1035 label regex")
+});
+
+pub(crate) static KERBEROS_REALM_NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(&format!("^{KERBEROS_REALM_NAME_FMT}$"))
+        .expect("failed to compile Kerberos realm name regex")
 });
 
 #[derive(Debug)]
@@ -193,6 +209,15 @@ pub fn is_rfc_1035_label(value: &str) -> Result<(), ValidationErrors> {
             &["my-name", "abc-123"],
         ),
     ])
+}
+
+pub fn is_kerberos_realm_name(value: &str) -> Result<(), ValidationErrors> {
+    validate_all([validate_str_regex(
+        value,
+        &KERBEROS_REALM_NAME_REGEX,
+        KERBEROS_REALM_NAME_ERROR_MSG,
+        &["EXAMPLE.COM"],
+    )])
 }
 
 // mask_trailing_dash replaces the final character of a string with a subdomain safe

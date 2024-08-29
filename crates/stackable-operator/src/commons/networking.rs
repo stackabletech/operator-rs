@@ -35,3 +35,36 @@ impl Deref for Hostname {
         &self.0
     }
 }
+
+/// A validated kerberos realm name type, for use in CRDs.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(try_from = "String", into = "String")]
+pub struct KerberosRealmName(
+    #[validate(regex(path = "validation::KERBEROS_REALM_NAME_REGEX"))] String,
+);
+
+impl TryFrom<String> for KerberosRealmName {
+    type Error = ValidationErrors;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        validation::is_kerberos_realm_name(&value)?;
+        Ok(KerberosRealmName(value))
+    }
+}
+impl From<KerberosRealmName> for String {
+    fn from(value: KerberosRealmName) -> Self {
+        value.0
+    }
+}
+impl Display for KerberosRealmName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+impl Deref for KerberosRealmName {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
