@@ -62,10 +62,13 @@ pub(crate) static KERBEROS_REALM_NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| 
         .expect("failed to compile Kerberos realm name regex")
 });
 
-#[derive(Debug)]
-pub struct ValidationErrors(Vec<ValidationError>);
+type Result<T = (), E = Errors> = std::result::Result<T, E>;
 
-impl Display for ValidationErrors {
+/// A collection of errors discovered during validation.
+#[derive(Debug)]
+pub struct Errors(Vec<Error>);
+
+impl Display for Errors {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (i, error) in self.0.iter().enumerate() {
             let prefix = match i {
@@ -77,10 +80,11 @@ impl Display for ValidationErrors {
         Ok(())
     }
 }
-impl std::error::Error for ValidationErrors {}
+impl std::error::Error for Errors {}
 
+/// A single validation error.
 #[derive(Debug, Snafu)]
-pub enum ValidationError {
+pub enum Error {
     #[snafu(transparent)]
     Regex { source: RegexError },
     #[snafu(display("input is {length} bytes long but must be no more than {max_length}"))]
@@ -121,7 +125,7 @@ impl Display for RegexError {
 impl std::error::Error for RegexError {}
 
 /// Returns [`Ok`] if `value`'s length fits within `max_length`.
-fn validate_str_length(value: &str, max_length: usize) -> Result<(), ValidationError> {
+fn validate_str_length(value: &str, max_length: usize) -> Result<(), Error> {
     if value.len() > max_length {
         TooLongSnafu {
             length: value.len(),
@@ -139,7 +143,7 @@ fn validate_str_regex(
     regex: &'static Regex,
     error_msg: &'static str,
     examples: &'static [&'static str],
-) -> Result<(), ValidationError> {
+) -> Result<(), Error> {
     if regex.is_match(value) {
         Ok(())
     } else {
@@ -157,9 +161,7 @@ fn validate_str_regex(
 }
 
 /// Returns [`Ok`] if *all* validations are [`Ok`], otherwise returns all errors.
-fn validate_all(
-    validations: impl IntoIterator<Item = Result<(), ValidationError>>,
-) -> Result<(), ValidationErrors> {
+fn validate_all(validations: impl IntoIterator<Item = Result<(), Error>>) -> Result {
     let errors = validations
         .into_iter()
         .filter_map(|res| res.err())
@@ -167,12 +169,12 @@ fn validate_all(
     if errors.is_empty() {
         Ok(())
     } else {
-        Err(ValidationErrors(errors))
+        Err(Errors(errors))
     }
 }
 
 /// Tests for a string that conforms to the definition of a subdomain in DNS (RFC 1123).
-pub fn is_rfc_1123_subdomain(value: &str) -> Result<(), ValidationErrors> {
+pub fn is_rfc_1123_subdomain(value: &str) -> Result {
     validate_all([
         validate_str_length(value, RFC_1123_SUBDOMAIN_MAX_LENGTH),
         validate_str_regex(
@@ -186,7 +188,7 @@ pub fn is_rfc_1123_subdomain(value: &str) -> Result<(), ValidationErrors> {
 
 /// Tests for a string that conforms to the definition of a label in DNS (RFC 1123).
 /// Maximum label length supported by k8s is 63 characters (minimum required).
-pub fn is_rfc_1123_label(value: &str) -> Result<(), ValidationErrors> {
+pub fn is_rfc_1123_label(value: &str) -> Result {
     validate_all([
         validate_str_length(value, RFC_1123_LABEL_MAX_LENGTH),
         validate_str_regex(
@@ -199,7 +201,7 @@ pub fn is_rfc_1123_label(value: &str) -> Result<(), ValidationErrors> {
 }
 
 /// Tests for a string that conforms to the definition of a label in DNS (RFC 1035).
-pub fn is_rfc_1035_label(value: &str) -> Result<(), ValidationErrors> {
+pub fn is_rfc_1035_label(value: &str) -> Result {
     validate_all([
         validate_str_length(value, RFC_1035_LABEL_MAX_LENGTH),
         validate_str_regex(
@@ -211,7 +213,10 @@ pub fn is_rfc_1035_label(value: &str) -> Result<(), ValidationErrors> {
     ])
 }
 
-pub fn is_kerberos_realm_name(value: &str) -> Result<(), ValidationErrors> {
+/// Tests whether a string looks like a reasonable Kerberos realm name.
+///
+/// This check is much stricter than krb5's own validation,
+pub fn is_kerberos_realm_name(value: &str) -> Result {
     validate_all([validate_str_regex(
         value,
         &KERBEROS_REALM_NAME_REGEX,
@@ -238,7 +243,7 @@ fn mask_trailing_dash(mut name: String) -> String {
 ///
 /// * `name` - is the name to check for validity
 /// * `prefix` - indicates whether `name` is just a prefix (ending in a dash, which would otherwise not be legal at the end)
-pub fn name_is_dns_subdomain(name: &str, prefix: bool) -> Result<(), ValidationErrors> {
+pub fn name_is_dns_subdomain(name: &str, prefix: bool) -> Result {
     let mut name = name.to_string();
     if prefix {
         name = mask_trailing_dash(name);
@@ -254,7 +259,7 @@ pub fn name_is_dns_subdomain(name: &str, prefix: bool) -> Result<(), ValidationE
 ///
 /// * `name` - is the name to check for validity
 /// * `prefix` - indicates whether `name` is just a prefix (ending in a dash, which would otherwise not be legal at the end)
-pub fn name_is_dns_label(name: &str, prefix: bool) -> Result<(), ValidationErrors> {
+pub fn name_is_dns_label(name: &str, prefix: bool) -> Result {
     let mut name = name.to_string();
     if prefix {
         name = mask_trailing_dash(name);
@@ -266,7 +271,7 @@ pub fn name_is_dns_label(name: &str, prefix: bool) -> Result<(), ValidationError
 /// Validates a namespace name.
 ///
 /// See [`name_is_dns_label`] for more information.
-pub fn validate_namespace_name(name: &str, prefix: bool) -> Result<(), ValidationErrors> {
+pub fn validate_namespace_name(name: &str, prefix: bool) -> Result {
     name_is_dns_label(name, prefix)
 }
 

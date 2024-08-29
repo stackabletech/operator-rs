@@ -3,7 +3,7 @@ use std::{fmt::Display, ops::Deref};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::validation::{self, ValidationErrors};
+use crate::validation;
 
 /// A validated hostname type, for use in CRDs.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -11,7 +11,7 @@ use crate::validation::{self, ValidationErrors};
 pub struct Hostname(#[validate(regex(path = "validation::RFC_1123_SUBDOMAIN_REGEX"))] String);
 
 impl TryFrom<String> for Hostname {
-    type Error = ValidationErrors;
+    type Error = validation::Errors;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         validation::is_rfc_1123_subdomain(&value)?;
@@ -44,7 +44,7 @@ pub struct KerberosRealmName(
 );
 
 impl TryFrom<String> for KerberosRealmName {
-    type Error = ValidationErrors;
+    type Error = validation::Errors;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         validation::is_kerberos_realm_name(&value)?;

@@ -9,7 +9,7 @@ use snafu::{ResultExt as _, Snafu};
 
 use crate::{
     commons::product_image_selection::ResolvedProductImage,
-    validation::{is_rfc_1123_label, ValidationErrors},
+    validation::{self, is_rfc_1123_label},
 };
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -18,7 +18,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 pub enum Error {
     #[snafu(display("container name {container_name:?} is invalid"))]
     InvalidContainerName {
-        source: ValidationErrors,
+        source: validation::Errors,
         container_name: String,
     },
 }
