@@ -11,8 +11,8 @@ use crate::{
         field::FieldAttributes,
     },
     codegen::common::{
-        remove_deprecated_field_prefix, Attributes, ContainerVersion, Item, ItemStatus, Named,
-        VersionedItem,
+        remove_deprecated_field_prefix, Attributes, ContainerVersion, InnerItem, Item, ItemStatus,
+        Named, VersionedItem,
     },
 };
 
@@ -60,6 +60,12 @@ impl Attributes for FieldAttributes {
 
     fn original_attributes(&self) -> &Vec<syn::Attribute> {
         &self.attrs
+    }
+}
+
+impl InnerItem for Field {
+    fn ty(&self) -> syn::Type {
+        self.ty.clone()
     }
 }
 
@@ -115,13 +121,15 @@ impl VersionedField {
                         container_version.inner
                     )
                 }) {
-                    ItemStatus::Addition { ident, .. } => Some(quote! {
+                    ItemStatus::Addition { ident, ty, .. } => Some(quote! {
                         #(#original_attributes)*
-                        pub #ident: #field_type,
+                        pub #ident: #ty,
                     }),
-                    ItemStatus::Change { to_ident, .. } => Some(quote! {
+                    ItemStatus::Change {
+                        to_ident, to_type, ..
+                    } => Some(quote! {
                         #(#original_attributes)*
-                        pub #to_ident: #field_type,
+                        pub #to_ident: #to_type,
                     }),
                     ItemStatus::Deprecation {
                         ident: field_ident,
@@ -170,7 +178,12 @@ impl VersionedField {
                         .get(&next_version.inner)
                         .expect("internal error: chain must contain container version"),
                 ) {
-                    (_, ItemStatus::Addition { ident, default_fn }) => quote! {
+                    (
+                        _,
+                        ItemStatus::Addition {
+                            ident, default_fn, ..
+                        },
+                    ) => quote! {
                         #ident: #default_fn(),
                     },
                     (old, next) => {

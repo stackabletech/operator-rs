@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, marker::PhantomData, ops::Deref};
 
 use quote::format_ident;
-use syn::{spanned::Spanned, Attribute, Ident, Path};
+use syn::{spanned::Spanned, Attribute, Ident, Path, Type};
 
 use crate::{
     attrs::common::{ContainerAttributes, ItemAttributes, ValidateVersions},
@@ -21,7 +21,7 @@ use crate::{
 pub(crate) trait Item<I, A>: Sized
 where
     A: for<'i> TryFrom<&'i I> + Attributes,
-    I: Named + Spanned,
+    I: InnerItem,
 {
     /// Creates a new versioned item (struct field or enum variant) by consuming
     /// the parsed [Field](syn::Field) or [Variant](syn::Variant) and validating
@@ -41,6 +41,10 @@ where
 
     /// Returns the ident of the item based on the provided container version.
     fn get_ident(&self, version: &ContainerVersion) -> Option<&Ident>;
+}
+
+pub(crate) trait InnerItem: Named + Spanned {
+    fn ty(&self) -> Type;
 }
 
 /// This trait enables access to the ident of named items, like fields and
@@ -87,7 +91,7 @@ pub(crate) trait Attributes {
 pub(crate) struct VersionedItem<I, A>
 where
     A: for<'i> TryFrom<&'i I> + Attributes,
-    I: Named + Spanned,
+    I: InnerItem,
 {
     pub(crate) original_attributes: Vec<Attribute>,
     pub(crate) chain: Option<VersionChain>,
@@ -99,7 +103,7 @@ impl<I, A> Item<I, A> for VersionedItem<I, A>
 where
     syn::Error: for<'i> From<<A as TryFrom<&'i I>>::Error>,
     A: for<'i> TryFrom<&'i I> + Attributes + ValidateVersions<I>,
-    I: Named + Spanned,
+    I: InnerItem,
 {
     fn new(item: I, container_attrs: &ContainerAttributes) -> syn::Result<Self> {
         // We use the TryFrom trait here, because the type parameter `A` can use
@@ -135,6 +139,8 @@ where
             // requires access to the item ident to infer the item ident for
             // the latest change.
             let mut ident = item.cleaned_ident();
+            let mut ty = item.ty();
+
             let mut actions = BTreeMap::new();
 
             actions.insert(
@@ -147,20 +153,33 @@ where
             );
 
             for change in common_attributes.changes.iter().rev() {
-                let from = if let Some(from) = change.from_name.as_deref() {
+                dbg!(&ty, &change.since);
+                let from_ident = if let Some(from) = change.from_name.as_deref() {
                     format_ident!("{from}")
                 } else {
                     ident.clone()
                 };
 
+                // TODO (@Techassi): This is an awful lot of cloning, can we get
+                // rid of it?
+                let from_ty = change
+                    .from_type
+                    .as_ref()
+                    .map(|sv| sv.deref().clone())
+                    .unwrap_or(ty.clone());
+
                 actions.insert(
                     *change.since,
                     ItemStatus::Change {
-                        from_ident: from.clone(),
+                        from_ident: from_ident.clone(),
                         to_ident: ident,
+                        from_type: from_ty.clone(),
+                        to_type: ty,
                     },
                 );
-                ident = from;
+
+                ident = from_ident;
+                ty = from_ty;
             }
 
             // After the last iteration above (if any) we use the ident for the
@@ -171,6 +190,7 @@ where
                     ItemStatus::Addition {
                         default_fn: added.default_fn.deref().clone(),
                         ident,
+                        ty,
                     },
                 );
             }
@@ -182,24 +202,39 @@ where
                 inner: item,
             })
         } else if !common_attributes.changes.is_empty() {
-            let mut actions = BTreeMap::new();
             let mut ident = item.ident().clone();
+            let mut ty = item.ty();
+
+            let mut actions = BTreeMap::new();
 
             for change in common_attributes.changes.iter().rev() {
-                let from = if let Some(from) = change.from_name.as_deref() {
+                dbg!(&ty, &change.since);
+                let from_ident = if let Some(from) = change.from_name.as_deref() {
                     format_ident!("{from}")
                 } else {
                     ident.clone()
                 };
 
+                // TODO (@Techassi): This is an awful lot of cloning, can we get
+                // rid of it?
+                let from_ty = change
+                    .from_type
+                    .as_ref()
+                    .map(|sv| sv.deref().clone())
+                    .unwrap_or(ty.clone());
+
                 actions.insert(
                     *change.since,
                     ItemStatus::Change {
-                        from_ident: from.clone(),
+                        from_ident: from_ident.clone(),
                         to_ident: ident,
+                        from_type: from_ty.clone(),
+                        to_type: ty,
                     },
                 );
-                ident = from;
+
+                ident = from_ident;
+                ty = from_ty;
             }
 
             // After the last iteration above (if any) we use the ident for the
@@ -210,6 +245,7 @@ where
                     ItemStatus::Addition {
                         default_fn: added.default_fn.deref().clone(),
                         ident,
+                        ty,
                     },
                 );
             }
@@ -229,6 +265,7 @@ where
                     ItemStatus::Addition {
                         default_fn: added.default_fn.deref().clone(),
                         ident: item.ident().clone(),
+                        ty: item.ty(),
                     },
                 );
 
@@ -314,10 +351,15 @@ pub(crate) enum ItemStatus {
     Addition {
         ident: Ident,
         default_fn: Path,
+        // NOTE (@Techassi): We need to carry idents and type information in
+        // nearly every status. Ideally, we would store this in separate maps.
+        ty: Type,
     },
     Change {
         from_ident: Ident,
         to_ident: Ident,
+        from_type: Type,
+        to_type: Type,
     },
     Deprecation {
         previous_ident: Ident,

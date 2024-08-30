@@ -97,6 +97,11 @@ pub(crate) enum ItemType {
     Variant,
 }
 
+// TODO (@Techassi): Shower thought: Track actions as a Vec of an ActionAttribute
+// enum and implement Ord on it. This would allow us to order the items by type
+// of action (added < changed < deprecated) as well as sort changed action to
+// each other by specified version (which already implements Ord)
+
 /// These attributes are meant to be used in super structs, which add
 /// [`Field`](syn::Field) or [`Variant`](syn::Variant) specific attributes via
 /// darling's flatten feature. This struct only provides shared attributes.

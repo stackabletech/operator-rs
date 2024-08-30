@@ -1,9 +1,9 @@
 use std::ops::{Deref, DerefMut};
 
 use darling::FromVariant;
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{Ident, Variant};
+use syn::{token::Not, Ident, Type, TypeNever, Variant};
 
 use crate::{
     attrs::{
@@ -13,8 +13,8 @@ use crate::{
     codegen::{
         chain::BTreeMapExt,
         common::{
-            remove_deprecated_variant_prefix, Attributes, ContainerVersion, Item, ItemStatus,
-            Named, VersionedItem,
+            remove_deprecated_variant_prefix, Attributes, ContainerVersion, InnerItem, Item,
+            ItemStatus, Named, VersionedItem,
         },
     },
 };
@@ -61,6 +61,17 @@ impl Attributes for VariantAttributes {
 
     fn original_attributes(&self) -> &Vec<syn::Attribute> {
         &self.attrs
+    }
+}
+
+impl InnerItem for Variant {
+    fn ty(&self) -> syn::Type {
+        // FIXME (@Techassi): As we currently don't support enum variants with
+        // data, we just return the Never type as the code generation code for
+        // enum variants won't use this type information.
+        Type::Never(TypeNever {
+            bang_token: Not([Span::call_site()]),
+        })
     }
 }
 
