@@ -19,7 +19,7 @@
 //!     /// My docs
 //!     #[versioned(
 //!         added(since = "v1beta1"),
-//!         renamed(since = "v1", from = "gau"),
+//!         changed(since = "v1", from_name = "gau"),
 //!         deprecated(since = "v2", note = "not empty")
 //!     )]
 //!     deprecated_bar: usize,
