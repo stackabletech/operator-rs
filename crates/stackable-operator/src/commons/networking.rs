@@ -18,16 +18,19 @@ impl TryFrom<String> for Hostname {
         Ok(Hostname(value))
     }
 }
+
 impl From<Hostname> for String {
     fn from(value: Hostname) -> Self {
         value.0
     }
 }
+
 impl Display for Hostname {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0)
     }
 }
+
 impl Deref for Hostname {
     type Target = str;
 
