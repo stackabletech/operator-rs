@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Added `Hostname` and `KerberosRealmName` types extracted from secret-operator ([#851]).
+- Add `Hostname` and `KerberosRealmName` types extracted from secret-operator ([#851]).
 
 ### Changed
 
