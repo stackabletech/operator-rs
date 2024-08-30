@@ -87,6 +87,7 @@ impl std::error::Error for Errors {}
 pub enum Error {
     #[snafu(transparent)]
     Regex { source: RegexError },
+
     #[snafu(display("input is {length} bytes long but must be no more than {max_length}"))]
     TooLong { length: usize, max_length: usize },
 }
