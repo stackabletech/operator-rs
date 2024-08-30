@@ -89,9 +89,9 @@ where
     A: for<'i> TryFrom<&'i I> + Attributes,
     I: Named + Spanned,
 {
+    pub(crate) original_attributes: Vec<Attribute>,
     pub(crate) chain: Option<VersionChain>,
     pub(crate) inner: I,
-    pub(crate) original_attributes: Vec<Attribute>,
     _marker: PhantomData<A>,
 }
 
@@ -125,34 +125,39 @@ where
 
         // Deprecating an item is always the last state an item can end up in.
         // For items which are not deprecated, the last change is either the
-        // latest rename or addition, which is handled below. The ident of the
+        // latest change or addition, which is handled below. The ident of the
         // deprecated item is guaranteed to include the 'deprecated_' or
         // 'DEPRECATED_' prefix. The ident can thus be used as is.
         if let Some(deprecated) = common_attributes.deprecated {
             let deprecated_ident = item.ident();
 
-            // When the item is deprecated, any rename which occurred beforehand
+            // When the item is deprecated, any change which occurred beforehand
             // requires access to the item ident to infer the item ident for
-            // the latest rename.
+            // the latest change.
             let mut ident = item.cleaned_ident();
             let mut actions = BTreeMap::new();
 
             actions.insert(
                 *deprecated.since,
-                ItemStatus::Deprecated {
+                ItemStatus::Deprecation {
                     previous_ident: ident.clone(),
                     ident: deprecated_ident.clone(),
                     note: deprecated.note.to_string(),
                 },
             );
 
-            for rename in common_attributes.renames.iter().rev() {
-                let from = format_ident!("{from}", from = *rename.from);
+            for change in common_attributes.changes.iter().rev() {
+                let from = if let Some(from) = change.from_name.as_deref() {
+                    format_ident!("{from}")
+                } else {
+                    ident.clone()
+                };
+
                 actions.insert(
-                    *rename.since,
-                    ItemStatus::Renamed {
-                        from: from.clone(),
-                        to: ident,
+                    *change.since,
+                    ItemStatus::Change {
+                        from_ident: from.clone(),
+                        to_ident: ident,
                     },
                 );
                 ident = from;
@@ -163,7 +168,7 @@ where
             if let Some(added) = common_attributes.added {
                 actions.insert(
                     *added.since,
-                    ItemStatus::Added {
+                    ItemStatus::Addition {
                         default_fn: added.default_fn.deref().clone(),
                         ident,
                     },
@@ -173,20 +178,25 @@ where
             Ok(Self {
                 _marker: PhantomData,
                 chain: Some(actions),
-                inner: item,
                 original_attributes,
+                inner: item,
             })
-        } else if !common_attributes.renames.is_empty() {
+        } else if !common_attributes.changes.is_empty() {
             let mut actions = BTreeMap::new();
             let mut ident = item.ident().clone();
 
-            for rename in common_attributes.renames.iter().rev() {
-                let from = format_ident!("{from}", from = *rename.from);
+            for change in common_attributes.changes.iter().rev() {
+                let from = if let Some(from) = change.from_name.as_deref() {
+                    format_ident!("{from}")
+                } else {
+                    ident.clone()
+                };
+
                 actions.insert(
-                    *rename.since,
-                    ItemStatus::Renamed {
-                        from: from.clone(),
-                        to: ident,
+                    *change.since,
+                    ItemStatus::Change {
+                        from_ident: from.clone(),
+                        to_ident: ident,
                     },
                 );
                 ident = from;
@@ -197,7 +207,7 @@ where
             if let Some(added) = common_attributes.added {
                 actions.insert(
                     *added.since,
-                    ItemStatus::Added {
+                    ItemStatus::Addition {
                         default_fn: added.default_fn.deref().clone(),
                         ident,
                     },
@@ -207,8 +217,8 @@ where
             Ok(Self {
                 _marker: PhantomData,
                 chain: Some(actions),
-                inner: item,
                 original_attributes,
+                inner: item,
             })
         } else {
             if let Some(added) = common_attributes.added {
@@ -216,7 +226,7 @@ where
 
                 actions.insert(
                     *added.since,
-                    ItemStatus::Added {
+                    ItemStatus::Addition {
                         default_fn: added.default_fn.deref().clone(),
                         ident: item.ident().clone(),
                     },
@@ -225,16 +235,16 @@ where
                 return Ok(Self {
                     _marker: PhantomData,
                     chain: Some(actions),
-                    inner: item,
                     original_attributes,
+                    inner: item,
                 });
             }
 
             Ok(Self {
                 _marker: PhantomData,
+                original_attributes,
                 chain: None,
                 inner: item,
-                original_attributes,
             })
         }
     }
@@ -248,13 +258,13 @@ where
 
                 match chain.get_neighbors(&version.inner) {
                     (None, Some(status)) => match status {
-                        ItemStatus::Added { .. } => {
+                        ItemStatus::Addition { .. } => {
                             chain.insert(version.inner, ItemStatus::NotPresent)
                         }
-                        ItemStatus::Renamed { from, .. } => {
-                            chain.insert(version.inner, ItemStatus::NoChange(from.clone()))
+                        ItemStatus::Change { from_ident, .. } => {
+                            chain.insert(version.inner, ItemStatus::NoChange(from_ident.clone()))
                         }
-                        ItemStatus::Deprecated { previous_ident, .. } => chain
+                        ItemStatus::Deprecation { previous_ident, .. } => chain
                             .insert(version.inner, ItemStatus::NoChange(previous_ident.clone())),
                         ItemStatus::NoChange(ident) => {
                             chain.insert(version.inner, ItemStatus::NoChange(ident.clone()))
@@ -263,9 +273,9 @@ where
                     },
                     (Some(status), None) => {
                         let ident = match status {
-                            ItemStatus::Added { ident, .. } => ident,
-                            ItemStatus::Renamed { to, .. } => to,
-                            ItemStatus::Deprecated { ident, .. } => ident,
+                            ItemStatus::Addition { ident, .. } => ident,
+                            ItemStatus::Change { to_ident, .. } => to_ident,
+                            ItemStatus::Deprecation { ident, .. } => ident,
                             ItemStatus::NoChange(ident) => ident,
                             ItemStatus::NotPresent => unreachable!(),
                         };
@@ -274,8 +284,8 @@ where
                     }
                     (Some(status), Some(_)) => {
                         let ident = match status {
-                            ItemStatus::Added { ident, .. } => ident,
-                            ItemStatus::Renamed { to, .. } => to,
+                            ItemStatus::Addition { ident, .. } => ident,
+                            ItemStatus::Change { to_ident, .. } => to_ident,
                             ItemStatus::NoChange(ident) => ident,
                             _ => unreachable!(),
                         };
@@ -299,17 +309,17 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) enum ItemStatus {
-    Added {
+    Addition {
         ident: Ident,
         default_fn: Path,
     },
-    Renamed {
-        from: Ident,
-        to: Ident,
+    Change {
+        from_ident: Ident,
+        to_ident: Ident,
     },
-    Deprecated {
+    Deprecation {
         previous_ident: Ident,
         ident: Ident,
         note: String,
@@ -321,9 +331,9 @@ pub(crate) enum ItemStatus {
 impl ItemStatus {
     pub(crate) fn get_ident(&self) -> Option<&Ident> {
         match &self {
-            ItemStatus::Added { ident, .. } => Some(ident),
-            ItemStatus::Renamed { to, .. } => Some(to),
-            ItemStatus::Deprecated { ident, .. } => Some(ident),
+            ItemStatus::Addition { ident, .. } => Some(ident),
+            ItemStatus::Change { to_ident, .. } => Some(to_ident),
+            ItemStatus::Deprecation { ident, .. } => Some(ident),
             ItemStatus::NoChange(ident) => Some(ident),
             ItemStatus::NotPresent => None,
         }

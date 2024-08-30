@@ -115,15 +115,15 @@ impl VersionedField {
                         container_version.inner
                     )
                 }) {
-                    ItemStatus::Added { ident, .. } => Some(quote! {
+                    ItemStatus::Addition { ident, .. } => Some(quote! {
                         #(#original_attributes)*
                         pub #ident: #field_type,
                     }),
-                    ItemStatus::Renamed { to, .. } => Some(quote! {
+                    ItemStatus::Change { to_ident, .. } => Some(quote! {
                         #(#original_attributes)*
-                        pub #to: #field_type,
+                        pub #to_ident: #field_type,
                     }),
-                    ItemStatus::Deprecated {
+                    ItemStatus::Deprecation {
                         ident: field_ident,
                         note,
                         ..
@@ -170,7 +170,7 @@ impl VersionedField {
                         .get(&next_version.inner)
                         .expect("internal error: chain must contain container version"),
                 ) {
-                    (_, ItemStatus::Added { ident, default_fn }) => quote! {
+                    (_, ItemStatus::Addition { ident, default_fn }) => quote! {
                         #ident: #default_fn(),
                     },
                     (old, next) => {

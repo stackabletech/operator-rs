@@ -91,7 +91,7 @@ mod test {
     #[case(2, (Some(&"test1"), Some(&"test3")))]
     #[case(3, (Some(&"test1"), None))]
     #[case(4, (Some(&"test3"), None))]
-    fn test(#[case] key: i32, #[case] expected: (Option<&&str>, Option<&&str>)) {
+    fn neighbors(#[case] key: i32, #[case] expected: (Option<&&str>, Option<&&str>)) {
         let map = BTreeMap::from([(1, "test1"), (3, "test3")]);
         let neigbors = map.get_neighbors(&key);
 

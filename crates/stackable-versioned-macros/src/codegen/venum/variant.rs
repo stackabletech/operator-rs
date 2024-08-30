@@ -102,15 +102,15 @@ impl VersionedVariant {
                     container_version.inner
                 )
             }) {
-                ItemStatus::Added { ident, .. } => Some(quote! {
+                ItemStatus::Addition { ident, .. } => Some(quote! {
                     #(#original_attributes)*
                     #ident,
                 }),
-                ItemStatus::Renamed { to, .. } => Some(quote! {
+                ItemStatus::Change { to_ident, .. } => Some(quote! {
                     #(#original_attributes)*
-                    #to,
+                    #to_ident,
                 }),
-                ItemStatus::Deprecated { ident, .. } => Some(quote! {
+                ItemStatus::Deprecation { ident, .. } => Some(quote! {
                     #(#original_attributes)*
                     #[deprecated]
                     #ident,
@@ -149,7 +149,7 @@ impl VersionedVariant {
                 chain.get_expect(&version.inner),
                 chain.get_expect(&next_version.inner),
             ) {
-                (_, ItemStatus::Added { .. }) => quote! {},
+                (_, ItemStatus::Addition { .. }) => quote! {},
                 (old, next) => {
                     let old_variant_ident = old
                         .get_ident()
