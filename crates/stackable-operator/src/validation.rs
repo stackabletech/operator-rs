@@ -96,8 +96,10 @@ pub enum Error {
 pub struct RegexError {
     /// The primary error message.
     msg: &'static str,
+
     /// The regex that the input must match.
     regex: &'static str,
+
     /// Examples of valid inputs (if non-empty).
     examples: &'static [&'static str],
 }
