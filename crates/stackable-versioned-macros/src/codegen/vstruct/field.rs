@@ -135,11 +135,27 @@ impl VersionedField {
                         ident: field_ident,
                         note,
                         ..
-                    } => Some(quote! {
-                        #(#original_attributes)*
-                        #[deprecated = #note]
-                        pub #field_ident: #field_type,
-                    }),
+                    } => {
+                        // FIXME (@Techassi): Emitting the deprecated attribute
+                        // should cary over even when the item status is
+                        // 'NoChange'.
+                        // TODO (@Techassi): Make the generation of deprecated
+                        // items customizable. When a container is used as a K8s
+                        // CRD, the item must continue to exist, even when
+                        // deprecated. For other versioning use-cases, that
+                        // might not be the case.
+                        let deprecated_attr = if let Some(note) = note {
+                            quote! {#[deprecated = #note]}
+                        } else {
+                            quote! {#[deprecated]}
+                        };
+
+                        Some(quote! {
+                            #(#original_attributes)*
+                            #deprecated_attr
+                            pub #field_ident: #field_type,
+                        })
+                    }
                     ItemStatus::NotPresent => None,
                     ItemStatus::NoChange(field_ident) => Some(quote! {
                         #(#original_attributes)*

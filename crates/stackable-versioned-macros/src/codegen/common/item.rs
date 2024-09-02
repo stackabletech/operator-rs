@@ -148,7 +148,7 @@ where
                 ItemStatus::Deprecation {
                     previous_ident: ident.clone(),
                     ident: deprecated_ident.clone(),
-                    note: deprecated.note.to_string(),
+                    note: deprecated.note.as_deref().cloned(),
                 },
             );
 
@@ -363,8 +363,8 @@ pub(crate) enum ItemStatus {
     },
     Deprecation {
         previous_ident: Ident,
+        note: Option<String>,
         ident: Ident,
-        note: String,
     },
     NoChange(Ident),
     NotPresent,

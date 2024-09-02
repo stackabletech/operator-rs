@@ -143,20 +143,6 @@ impl ItemAttributes {
 
         let mut errors = Error::accumulator();
 
-        // TODO (@Techassi): Make the field or variant 'note' optional, because
-        // in the future, the macro will generate parts of the deprecation note
-        // automatically. The user-provided note will then be appended to the
-        // auto-generated one.
-
-        if let Some(deprecated) = &self.deprecated {
-            if deprecated.note.is_empty() {
-                errors.push(
-                    Error::custom("deprecation note must not be empty")
-                        .with_span(&deprecated.note.span()),
-                );
-            }
-        }
-
         // Semantic validation
         errors.handle(self.validate_action_combinations(item_ident, item_type));
         errors.handle(self.validate_action_order(item_ident, item_type));
@@ -348,9 +334,10 @@ pub(crate) struct ChangedAttributes {
 /// For the deprecated() action
 ///
 /// Example usage:
+/// - `deprecated(since = "...")`
 /// - `deprecated(since = "...", note = "...")`
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct DeprecatedAttributes {
     pub(crate) since: SpannedValue<Version>,
-    pub(crate) note: SpannedValue<String>,
+    pub(crate) note: Option<SpannedValue<String>>,
 }
