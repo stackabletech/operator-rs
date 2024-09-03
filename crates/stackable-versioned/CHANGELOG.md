@@ -6,11 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add `changed()` action and support for the `ty` parameter in the `renamed()`
-  action ([#844]).
+- Add new `from_type` parameter to `changed()` action ([#844]).
 - Pass through container and item attributes (including doc-comments). Add
   attribute for version specific docs ([#847]).
 - Forward container visibility to generated modules ([#850]).
+
+### Changed
+
+- BREAKING: Rename `renamed()` action to `changed()` and renamed `from`
+  parameter to `from_name` ([#844]).
 
 ### Fixed
 
