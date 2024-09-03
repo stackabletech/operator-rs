@@ -9,8 +9,7 @@ use stackable_versioned_macros::versioned;
     version(name = "v1beta1"),
     version(name = "v1"),
     version(name = "v2"),
-    version(name = "v3"),
-    options(skip(from))
+    version(name = "v3")
 )]
 pub(crate) struct Foo {
     #[versioned(

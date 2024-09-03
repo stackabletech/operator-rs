@@ -202,6 +202,25 @@ impl VersionedField {
                     ) => quote! {
                         #ident: #default_fn(),
                     },
+                    (
+                        _,
+                        ItemStatus::Change {
+                            from_ident: old_field_ident,
+                            to_ident,
+                            from_type,
+                            to_type,
+                        },
+                    ) => {
+                        if from_type == to_type {
+                            quote! {
+                                #to_ident: #from_ident.#old_field_ident,
+                            }
+                        } else {
+                            quote! {
+                                #to_ident: #from_ident.#old_field_ident.into(),
+                            }
+                        }
+                    }
                     (old, next) => {
                         let old_field_ident = old
                             .get_ident()
