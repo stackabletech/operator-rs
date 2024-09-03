@@ -153,7 +153,6 @@ where
             );
 
             for change in common_attributes.changes.iter().rev() {
-                dbg!(&ty, &change.since);
                 let from_ident = if let Some(from) = change.from_name.as_deref() {
                     format_ident!("{from}")
                 } else {

@@ -327,7 +327,6 @@ pub(crate) struct ChangedAttributes {
     pub(crate) since: SpannedValue<Version>,
     pub(crate) from_name: Option<SpannedValue<String>>,
 
-    #[allow(dead_code)]
     pub(crate) from_type: Option<SpannedValue<Type>>,
 }
 
