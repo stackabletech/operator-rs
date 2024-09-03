@@ -5,20 +5,21 @@ use k8s_openapi::api::core::v1::{
     LifecycleHandler, ObjectFieldSelector, Probe, ResourceRequirements, SecretKeySelector,
     SecurityContext, VolumeMount,
 };
-use snafu::Snafu;
+use snafu::{ResultExt as _, Snafu};
 
 use crate::{
-    commons::product_image_selection::ResolvedProductImage, validation::is_rfc_1123_label,
+    commons::product_image_selection::ResolvedProductImage,
+    validation::{self, is_rfc_1123_label},
 };
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("container name {container_name:?} is invalid: {violation:?}"))]
+    #[snafu(display("container name {container_name:?} is invalid"))]
     InvalidContainerName {
+        source: validation::Errors,
         container_name: String,
-        violation: String,
     },
 }
 
@@ -276,16 +277,8 @@ impl ContainerBuilder {
 
     /// Validates a container name is according to the [RFC 1123](https://www.ietf.org/rfc/rfc1123.txt) standard.
     /// Returns [Ok] if the name is according to the standard, and [Err] if not.
-    fn validate_container_name(name: &str) -> Result<()> {
-        let validation_result = is_rfc_1123_label(name);
-
-        match validation_result {
-            Ok(_) => Ok(()),
-            Err(err) => Err(Error::InvalidContainerName {
-                container_name: name.to_owned(),
-                violation: err.join(", "),
-            }),
-        }
+    fn validate_container_name(container_name: &str) -> Result<()> {
+        is_rfc_1123_label(container_name).context(InvalidContainerNameSnafu { container_name })
     }
 }
 
@@ -497,19 +490,20 @@ mod tests {
             "lengthexceededlengthexceededlengthexceededlengthexceededlengthex";
         assert_eq!(long_container_name.len(), 64); // 63 characters is the limit for container names
         let result = ContainerBuilder::new(long_container_name);
-        match result {
-            Ok(_) => {
-                panic!("Container name exceeding 63 characters should cause an error");
+        match result
+            .err()
+            .expect("Container name exceeding 63 characters should cause an error")
+        {
+            Error::InvalidContainerName {
+                container_name,
+                source,
+            } => {
+                assert_eq!(container_name, long_container_name);
+                assert_eq!(
+                    source.to_string(),
+                    "input is 64 bytes long but must be no more than 63"
+                )
             }
-            Err(error) => match error {
-                Error::InvalidContainerName {
-                    container_name,
-                    violation,
-                } => {
-                    assert_eq!(container_name.as_str(), long_container_name);
-                    assert_eq!(violation.as_str(), "must be no more than 63 characters")
-                }
-            },
         }
         // One characters shorter name is valid
         let max_len_container_name: String = long_container_name.chars().skip(1).collect();
@@ -527,11 +521,11 @@ mod tests {
         assert!(ContainerBuilder::new("name-with-hyphen").is_ok());
         assert_container_builder_err(
             ContainerBuilder::new("ends-with-hyphen-"),
-            "regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?",
+            "regex used for validation is \"[a-z0-9]([-a-z0-9]*[a-z0-9])?\"",
         );
         assert_container_builder_err(
             ContainerBuilder::new("-starts-with-hyphen"),
-            "regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?",
+            "regex used for validation is \"[a-z0-9]([-a-z0-9]*[a-z0-9])?\"",
         );
     }
 
@@ -545,7 +539,7 @@ mod tests {
         assert!(ContainerBuilder::new("name_name").is_err());
         assert_container_builder_err(
             ContainerBuilder::new("name_name"),
-            "(e.g. 'example-label',  or '1-label-1', regex used for validation is '[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*')",
+            "(e.g. \"example-label\", or \"1-label-1\", regex used for validation is \"[a-z0-9]([-a-z0-9]*[a-z0-9])?\")",
         );
     }
 
@@ -573,19 +567,16 @@ mod tests {
         result: Result<ContainerBuilder, Error>,
         expected_err_contains: &str,
     ) {
-        match result {
-            Ok(_) => {
-                panic!("Container name exceeding 63 characters should cause an error");
+        match result
+            .err()
+            .expect("Container name exceeding 63 characters should cause an error")
+        {
+            Error::InvalidContainerName {
+                container_name: _,
+                source,
+            } => {
+                assert!(dbg!(source.to_string()).contains(dbg!(expected_err_contains)));
             }
-            Err(error) => match error {
-                Error::InvalidContainerName {
-                    container_name: _,
-                    violation,
-                } => {
-                    println!("{violation}");
-                    assert!(violation.contains(expected_err_contains));
-                }
-            },
         }
     }
 }

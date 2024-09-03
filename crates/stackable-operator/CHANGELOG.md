@@ -4,11 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `Hostname` and `KerberosRealmName` types extracted from secret-operator ([#851]).
+
+### Changed
+
+- BREAKING: `validation` module now uses typed errors ([#851]).
+
 ### Fixed
 
 - Fix the CRD description of `ClientAuthenticationDetails` to not contain internal Rust doc, but a public CRD description ([#846]).
 
 [#846]: https://github.com/stackabletech/operator-rs/pull/846
+[#851]: https://github.com/stackabletech/operator-rs/pull/851
 
 ## [0.74.0] - 2024-08-22
 
