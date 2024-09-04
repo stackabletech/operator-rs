@@ -38,15 +38,15 @@ pub const TOPOLOGY_KEY_HOSTNAME: &str = "kubernetes.io/hostname";
 )]
 pub struct StackableAffinity {
     /// Same as the `spec.affinity.podAffinity` field on the Pod, see the [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node)
-    #[fragment_attrs(schemars(schema_with = "raw_optional_object_schema"))]
+    #[fragment_attrs(serde(default), schemars(schema_with = "raw_optional_object_schema"))]
     pub pod_affinity: Option<PodAffinity>,
 
     /// Same as the `spec.affinity.podAntiAffinity` field on the Pod, see the [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node)
-    #[fragment_attrs(schemars(schema_with = "raw_optional_object_schema"))]
+    #[fragment_attrs(serde(default), schemars(schema_with = "raw_optional_object_schema"))]
     pub pod_anti_affinity: Option<PodAntiAffinity>,
 
     /// Same as the `spec.affinity.nodeAffinity` field on the Pod, see the [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node)
-    #[fragment_attrs(schemars(schema_with = "raw_optional_object_schema"))]
+    #[fragment_attrs(serde(default), schemars(schema_with = "raw_optional_object_schema"))]
     pub node_affinity: Option<NodeAffinity>,
 
     // This schema isn't big, so it can stay

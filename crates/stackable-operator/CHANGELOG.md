@@ -15,9 +15,11 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Fix the CRD description of `ClientAuthenticationDetails` to not contain internal Rust doc, but a public CRD description ([#846]).
+- `StackableAffinity` fields are no longer erroneously marked as required ([#855]).
 
 [#846]: https://github.com/stackabletech/operator-rs/pull/846
 [#851]: https://github.com/stackabletech/operator-rs/pull/851
+[#855]: https://github.com/stackabletech/operator-rs/pull/855
 
 ## [0.74.0] - 2024-08-22
 
