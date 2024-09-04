@@ -1,7 +1,7 @@
 use darling::{util::SpannedValue, Error, FromMeta};
 use k8s_version::Version;
 use proc_macro2::Span;
-use syn::{spanned::Spanned, Attribute, Ident, Path};
+use syn::{spanned::Spanned, Attribute, Ident, Path, Type};
 
 use crate::{
     attrs::common::ContainerAttributes,
@@ -55,14 +55,14 @@ where
             }
         }
 
-        for rename in &*self.common_attributes().renames {
+        for change in &*self.common_attributes().changes {
             if !container_attrs
                 .versions
                 .iter()
-                .any(|v| v.name == *rename.since)
+                .any(|v| v.name == *change.since)
             {
                 errors.push(
-                   Error::custom("variant action `renamed` uses version which was not declared via #[versioned(version)]")
+                   Error::custom("variant action `changed` uses version which was not declared via #[versioned(version)]")
                    .with_span(item)
                );
             }
@@ -97,6 +97,11 @@ pub(crate) enum ItemType {
     Variant,
 }
 
+// TODO (@Techassi): Shower thought: Track actions as a Vec of an ActionAttribute
+// enum and implement Ord on it. This would allow us to order the items by type
+// of action (added < changed < deprecated) as well as sort changed action to
+// each other by specified version (which already implements Ord)
+
 /// These attributes are meant to be used in super structs, which add
 /// [`Field`](syn::Field) or [`Variant`](syn::Variant) specific attributes via
 /// darling's flatten feature. This struct only provides shared attributes.
@@ -104,8 +109,8 @@ pub(crate) enum ItemType {
 /// ### Shared Item Rules
 ///
 /// - An item can only ever be added once at most. An item not marked as 'added'
-///   is part of the container in every version until renamed or deprecated.
-/// - An item can be renamed many times. That's why renames are stored in a
+///   is part of the container in every version until changed or deprecated.
+/// - An item can be changed many times. That's why changes are stored in a
 ///   [`Vec`].
 /// - An item can only be deprecated once. A field or variant not marked as
 ///   'deprecated' will be included up until the latest version.
@@ -115,10 +120,10 @@ pub(crate) struct ItemAttributes {
     /// only be present at most once.
     pub(crate) added: Option<AddedAttributes>,
 
-    /// This parses the `renamed` attribute on items (fields or variants). It
+    /// This parses the `changed` attribute on items (fields or variants). It
     /// can be present 0..n times.
-    #[darling(multiple, rename = "renamed")]
-    pub(crate) renames: Vec<RenamedAttributes>,
+    #[darling(multiple, rename = "changed")]
+    pub(crate) changes: Vec<ChangedAttributes>,
 
     /// This parses the `deprecated` attribute on items (fields or variants). It
     /// can only be present at most once.
@@ -137,20 +142,6 @@ impl ItemAttributes {
         // VariantAttributes.
 
         let mut errors = Error::accumulator();
-
-        // TODO (@Techassi): Make the field or variant 'note' optional, because
-        // in the future, the macro will generate parts of the deprecation note
-        // automatically. The user-provided note will then be appended to the
-        // auto-generated one.
-
-        if let Some(deprecated) = &self.deprecated {
-            if deprecated.note.is_empty() {
-                errors.push(
-                    Error::custom("deprecation note must not be empty")
-                        .with_span(&deprecated.note.span()),
-                );
-            }
-        }
 
         // Semantic validation
         errors.handle(self.validate_action_combinations(item_ident, item_type));
@@ -175,34 +166,34 @@ impl ItemAttributes {
     ///   cannot be marked as added in a particular version and then marked as
     ///   deprecated immediately after. Fields and variants must be included for
     ///   at least one version before being marked deprecated.
-    /// - `added` and `renamed` using the same version: The same reasoning from
+    /// - `added` and `changed` using the same version: The same reasoning from
     ///   above applies here as well. Fields and variants must be included for
-    ///   at least one version before being renamed.
-    /// - `renamed` and `deprecated` using the same version: Again, the same
+    ///   at least one version before being changed.
+    /// - `changed` and `deprecated` using the same version: Again, the same
     ///   rules from above apply here as well.
     fn validate_action_combinations(
         &self,
         item_ident: &Ident,
         item_type: &ItemType,
     ) -> Result<(), Error> {
-        match (&self.added, &self.renames, &self.deprecated) {
+        match (&self.added, &self.changes, &self.deprecated) {
             (Some(added), _, Some(deprecated)) if *added.since == *deprecated.since => {
                 Err(Error::custom(format!(
                     "{item_type} cannot be marked as `added` and `deprecated` in the same version"
                 ))
                 .with_span(item_ident))
             }
-            (Some(added), renamed, _) if renamed.iter().any(|r| *r.since == *added.since) => {
+            (Some(added), changed, _) if changed.iter().any(|r| *r.since == *added.since) => {
                 Err(Error::custom(format!(
-                    "{item_type} cannot be marked as `added` and `renamed` in the same version"
+                    "{item_type} cannot be marked as `added` and `changed` in the same version"
                 ))
                 .with_span(item_ident))
             }
-            (_, renamed, Some(deprecated))
-                if renamed.iter().any(|r| *r.since == *deprecated.since) =>
+            (_, changed, Some(deprecated))
+                if changed.iter().any(|r| *r.since == *deprecated.since) =>
             {
                 Err(Error::custom(
-                    format!("{item_type} cannot be marked as `deprecated` and `renamed` in the same version"),
+                    format!("{item_type} cannot be marked as `deprecated` and `changed` in the same version"),
                 )
                 .with_span(item_ident))
             }
@@ -220,7 +211,7 @@ impl ItemAttributes {
     ///   ensures that these versions are chronologically sound, that means,
     ///   that the version of the deprecated action must be greater than the
     ///   version of the added action.
-    /// - All `renamed` actions must use a greater version than `added` but a
+    /// - All `changed` actions must use a greater version than `added` but a
     ///   lesser version than `deprecated`.
     fn validate_action_order(&self, item_ident: &Ident, item_type: &ItemType) -> Result<(), Error> {
         let added_version = self.added.as_ref().map(|a| *a.since);
@@ -238,14 +229,14 @@ impl ItemAttributes {
             }
         }
 
-        // Now, iterate over all renames and ensure that their versions are
+        // Now, iterate over all changes and ensure that their versions are
         // between the added and deprecated version.
-        if !self.renames.iter().all(|r| {
+        if !self.changes.iter().all(|r| {
             added_version.map_or(true, |a| a < *r.since)
                 && deprecated_version.map_or(true, |d| d > *r.since)
         }) {
             return Err(Error::custom(
-                "all renames must use versions higher than `added` and lower than `deprecated`",
+                "all changes must use versions higher than `added` and lower than `deprecated`",
             )
             .with_span(item_ident));
         }
@@ -320,27 +311,32 @@ pub(crate) struct AddedAttributes {
 
 fn default_default_fn() -> SpannedValue<Path> {
     SpannedValue::new(
-        syn::parse_str("std::default::Default::default").expect("internal error: path must parse"),
+        syn::parse_str("::std::default::Default::default")
+            .expect("internal error: path must parse"),
         Span::call_site(),
     )
 }
 
-/// For the renamed() action
+/// For the changed() action
 ///
 /// Example usage:
-/// - `renamed(since = "...", from = "...")`
+/// - `changed(since = "...", from_name = "...")`
+/// - `changed(since = "...", from_name = "..." from_type="...")`
 #[derive(Clone, Debug, FromMeta)]
-pub(crate) struct RenamedAttributes {
+pub(crate) struct ChangedAttributes {
     pub(crate) since: SpannedValue<Version>,
-    pub(crate) from: SpannedValue<String>,
+    pub(crate) from_name: Option<SpannedValue<String>>,
+
+    pub(crate) from_type: Option<SpannedValue<Type>>,
 }
 
 /// For the deprecated() action
 ///
 /// Example usage:
+/// - `deprecated(since = "...")`
 /// - `deprecated(since = "...", note = "...")`
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct DeprecatedAttributes {
     pub(crate) since: SpannedValue<Version>,
-    pub(crate) note: SpannedValue<String>,
+    pub(crate) note: Option<SpannedValue<String>>,
 }

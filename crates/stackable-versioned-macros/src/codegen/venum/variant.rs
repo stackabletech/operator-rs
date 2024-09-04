@@ -1,9 +1,9 @@
 use std::ops::{Deref, DerefMut};
 
 use darling::FromVariant;
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{Ident, Variant};
+use syn::{token::Not, Ident, Type, TypeNever, Variant};
 
 use crate::{
     attrs::{
@@ -13,8 +13,8 @@ use crate::{
     codegen::{
         chain::BTreeMapExt,
         common::{
-            remove_deprecated_variant_prefix, Attributes, ContainerVersion, Item, ItemStatus,
-            Named, VersionedItem,
+            remove_deprecated_variant_prefix, Attributes, ContainerVersion, InnerItem, Item,
+            ItemStatus, Named, VersionedItem,
         },
     },
 };
@@ -64,6 +64,17 @@ impl Attributes for VariantAttributes {
     }
 }
 
+impl InnerItem for Variant {
+    fn ty(&self) -> syn::Type {
+        // FIXME (@Techassi): As we currently don't support enum variants with
+        // data, we just return the Never type as the code generation code for
+        // enum variants won't use this type information.
+        Type::Never(TypeNever {
+            bang_token: Not([Span::call_site()]),
+        })
+    }
+}
+
 impl Named for Variant {
     fn cleaned_ident(&self) -> Ident {
         remove_deprecated_variant_prefix(self.ident())
@@ -102,19 +113,35 @@ impl VersionedVariant {
                     container_version.inner
                 )
             }) {
-                ItemStatus::Added { ident, .. } => Some(quote! {
+                ItemStatus::Addition { ident, .. } => Some(quote! {
                     #(#original_attributes)*
                     #ident,
                 }),
-                ItemStatus::Renamed { to, .. } => Some(quote! {
+                ItemStatus::Change { to_ident, .. } => Some(quote! {
                     #(#original_attributes)*
-                    #to,
+                    #to_ident,
                 }),
-                ItemStatus::Deprecated { ident, .. } => Some(quote! {
-                    #(#original_attributes)*
-                    #[deprecated]
-                    #ident,
-                }),
+                ItemStatus::Deprecation { ident, note, .. } => {
+                    // FIXME (@Techassi): Emitting the deprecated attribute
+                    // should cary over even when the item status is
+                    // 'NoChange'.
+                    // TODO (@Techassi): Make the generation of deprecated
+                    // items customizable. When a container is used as a K8s
+                    // CRD, the item must continue to exist, even when
+                    // deprecated. For other versioning use-cases, that
+                    // might not be the case.
+                    let deprecated_attr = if let Some(note) = note {
+                        quote! {#[deprecated = #note]}
+                    } else {
+                        quote! {#[deprecated]}
+                    };
+
+                    Some(quote! {
+                        #(#original_attributes)*
+                        #deprecated_attr
+                        #ident,
+                    })
+                }
                 ItemStatus::NoChange(ident) => Some(quote! {
                     #(#original_attributes)*
                     #ident,
@@ -149,7 +176,7 @@ impl VersionedVariant {
                 chain.get_expect(&version.inner),
                 chain.get_expect(&next_version.inner),
             ) {
-                (_, ItemStatus::Added { .. }) => quote! {},
+                (_, ItemStatus::Addition { .. }) => quote! {},
                 (old, next) => {
                     let old_variant_ident = old
                         .get_ident()

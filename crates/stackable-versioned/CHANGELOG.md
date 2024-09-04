@@ -6,9 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add new `from_type` parameter to `changed()` action ([#844]).
 - Pass through container and item attributes (including doc-comments). Add
   attribute for version specific docs ([#847]).
 - Forward container visibility to generated modules ([#850]).
+
+### Changed
+
+- BREAKING: Rename `renamed()` action to `changed()` and renamed `from`
+  parameter to `from_name` ([#844]).
 
 ### Fixed
 
@@ -16,6 +22,7 @@ All notable changes to this project will be documented in this file.
   from variants not using PascalCase (#[842]).
 
 [#842]: https://github.com/stackabletech/operator-rs/pull/842
+[#844]: https://github.com/stackabletech/operator-rs/pull/844
 [#847]: https://github.com/stackabletech/operator-rs/pull/847
 [#850]: https://github.com/stackabletech/operator-rs/pull/850
 

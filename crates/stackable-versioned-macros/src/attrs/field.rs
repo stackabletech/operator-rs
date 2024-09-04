@@ -50,8 +50,8 @@ impl FieldAttributes {
             .ident
             .as_ref()
             .expect("internal error: field must have an ident");
-        self.common.validate(ident, &ItemType::Field, &self.attrs)?;
 
+        self.common.validate(ident, &ItemType::Field, &self.attrs)?;
         Ok(self)
     }
 }

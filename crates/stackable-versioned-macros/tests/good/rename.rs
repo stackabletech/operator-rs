@@ -7,7 +7,7 @@ fn main() {
         version(name = "v1")
     )]
     struct Foo {
-        #[versioned(renamed(since = "v1beta1", from = "bat"))]
+        #[versioned(changed(since = "v1beta1", from_name = "bat"))]
         bar: usize,
         baz: bool,
     }
