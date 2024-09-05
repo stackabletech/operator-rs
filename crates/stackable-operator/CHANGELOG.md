@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add `Hostname` and `KerberosRealmName` types extracted from secret-operator ([#851]).
-- Add support for listener volume scopes to `SecretOperatorVolumeSourceBuilder` ([#855]).
+- Add support for listener volume scopes to `SecretOperatorVolumeSourceBuilder` ([#858]).
 
 ### Changed
 
@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 [#846]: https://github.com/stackabletech/operator-rs/pull/846
 [#851]: https://github.com/stackabletech/operator-rs/pull/851
 [#855]: https://github.com/stackabletech/operator-rs/pull/855
+[#858]: https://github.com/stackabletech/operator-rs/pull/858
 
 ## [0.74.0] - 2024-08-22
 
