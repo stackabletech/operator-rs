@@ -52,6 +52,9 @@ impl SecretClassVolume {
             for service in &scope.services {
                 secret_operator_volume_builder.with_service_scope(service);
             }
+            for listener_volume in &scope.listener_volumes {
+                secret_operator_volume_builder.with_listener_volume_scope(listener_volume);
+            }
         }
 
         secret_operator_volume_builder
@@ -84,6 +87,11 @@ pub struct SecretClassVolumeScope {
     /// This should typically correspond to Service objects that the Pod participates in.
     #[serde(default)]
     pub services: Vec<String>,
+
+    /// The listener volume scope allows Node and Service scopes to be inferred from the applicable listeners.
+    /// This must correspond to Volume names in the Pod that mount Listeners.
+    #[serde(default)]
+    pub listener_volumes: Vec<String>,
 }
 
 #[cfg(test)]
@@ -99,6 +107,7 @@ mod tests {
                 pod: true,
                 node: false,
                 services: vec!["myservice".to_string()],
+                listener_volumes: vec!["mylistener".to_string()],
             }),
         }
         .to_ephemeral_volume_source()
@@ -111,7 +120,7 @@ mod tests {
             ),
             (
                 "secrets.stackable.tech/scope".to_string(),
-                "pod,service=myservice".to_string(),
+                "pod,service=myservice,listener-volume=mylistener".to_string(),
             ),
         ]);
 
