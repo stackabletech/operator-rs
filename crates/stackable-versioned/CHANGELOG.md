@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Pass through container and item attributes (including doc-comments). Add
   attribute for version specific docs ([#847]).
 - Forward container visibility to generated modules ([#850]).
+- Add support for Kubernetes-specific features ([#xxx]).
 
 ### Fixed
 
@@ -18,6 +19,7 @@ All notable changes to this project will be documented in this file.
 [#842]: https://github.com/stackabletech/operator-rs/pull/842
 [#847]: https://github.com/stackabletech/operator-rs/pull/847
 [#850]: https://github.com/stackabletech/operator-rs/pull/850
+[#xxx]: https://github.com/stackabletech/operator-rs/pull/xxx
 
 ## [0.1.1] - 2024-07-10
 
