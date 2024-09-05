@@ -36,8 +36,8 @@ fn main() {
         Baz,
 
         /// This is will keep changing over time.
-        #[versioned(renamed(since = "v1beta1", from = "Qoox"))]
-        #[versioned(renamed(since = "v1", from = "Qaax"))]
+        #[versioned(changed(since = "v1beta1", from_name = "Qoox"))]
+        #[versioned(changed(since = "v1", from_name = "Qaax"))]
         Quux,
     }
 }
