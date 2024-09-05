@@ -7,6 +7,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_TOOLCHAIN_VERSION: "1.80.1"
+  HADOLINT_VERSION: "v1.17.6"
 
 jobs:
   pre-commit:
@@ -22,6 +23,22 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN_VERSION }}
           components: rustfmt,clippy
+      - name: Setup Hadolint
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          LOCATION_DIR="$HOME/.local/bin"
+          LOCATION_BIN="$LOCATION_DIR/hadolint"
+
+          SYSTEM=$(uname -s)
+          ARCH=$(uname -m)
+
+          mkdir -p "$LOCATION_DIR"
+          curl -sL -o "${LOCATION_BIN}" "https://github.com/hadolint/hadolint/releases/download/${{ env.HADOLINT_VERSION }}/hadolint-$SYSTEM-$ARCH"
+          chmod 700 "${LOCATION_BIN}"
+
+          echo "$LOCATION_DIR" >> "$GITHUB_PATH"
       - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
         with:
           extra_args: "--from-ref ${{ github.event.pull_request.base.sha }} --to-ref ${{ github.event.pull_request.head.sha }}"
