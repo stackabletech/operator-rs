@@ -38,6 +38,8 @@ syn.workspace = true
 quote.workspace = true
 
 [dev-dependencies]
+stackable-operator = { path = "../stackable-operator" }
+
 rstest.workspace = true
 schemars.workspace = true
 serde.workspace = true
