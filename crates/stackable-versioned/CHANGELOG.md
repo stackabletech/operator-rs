@@ -10,6 +10,8 @@ All notable changes to this project will be documented in this file.
 - Pass through container and item attributes (including doc-comments). Add
   attribute for version specific docs ([#847]).
 - Forward container visibility to generated modules ([#850]).
+- Add `use super::*` to version modules to be able to use imported types
+  ([#xxx]).
 
 ### Changed
 
@@ -19,12 +21,13 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Report variant rename validation error at the correct span and trim underscores
-  from variants not using PascalCase (#[842]).
+  from variants not using PascalCase ([#842]).
 
 [#842]: https://github.com/stackabletech/operator-rs/pull/842
 [#844]: https://github.com/stackabletech/operator-rs/pull/844
 [#847]: https://github.com/stackabletech/operator-rs/pull/847
 [#850]: https://github.com/stackabletech/operator-rs/pull/850
+[#xxx]: https://github.com/stackabletech/operator-rs/pull/xxx
 
 ## [0.1.1] - 2024-07-10
 
