@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
   attribute for version specific docs ([#847]).
 - Forward container visibility to generated modules ([#850]).
 - Add `use super::*` to version modules to be able to use imported types
-  ([#xxx]).
+  ([#859]).
 
 ### Changed
 
@@ -27,7 +27,7 @@ All notable changes to this project will be documented in this file.
 [#844]: https://github.com/stackabletech/operator-rs/pull/844
 [#847]: https://github.com/stackabletech/operator-rs/pull/847
 [#850]: https://github.com/stackabletech/operator-rs/pull/850
-[#xxx]: https://github.com/stackabletech/operator-rs/pull/xxx
+[#859]: https://github.com/stackabletech/operator-rs/pull/859
 
 ## [0.1.1] - 2024-07-10
 
