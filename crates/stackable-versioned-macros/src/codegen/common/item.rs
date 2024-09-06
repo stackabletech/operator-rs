@@ -297,36 +297,69 @@ where
                         ItemStatus::Addition { .. } => {
                             chain.insert(version.inner, ItemStatus::NotPresent)
                         }
-                        ItemStatus::Change { from_ident, .. } => {
-                            chain.insert(version.inner, ItemStatus::NoChange(from_ident.clone()))
-                        }
-                        ItemStatus::Deprecation { previous_ident, .. } => chain
-                            .insert(version.inner, ItemStatus::NoChange(previous_ident.clone())),
-                        ItemStatus::NoChange(ident) => {
-                            chain.insert(version.inner, ItemStatus::NoChange(ident.clone()))
-                        }
+                        ItemStatus::Change {
+                            from_ident,
+                            from_type,
+                            ..
+                        } => chain.insert(
+                            version.inner,
+                            ItemStatus::NoChange {
+                                ident: from_ident.clone(),
+                                ty: from_type.clone(),
+                            },
+                        ),
+                        ItemStatus::Deprecation { previous_ident, .. } => chain.insert(
+                            version.inner,
+                            ItemStatus::NoChange {
+                                ident: previous_ident.clone(),
+                                ty: self.inner.ty(),
+                            },
+                        ),
+                        ItemStatus::NoChange { ident, ty } => chain.insert(
+                            version.inner,
+                            ItemStatus::NoChange {
+                                ident: ident.clone(),
+                                ty: ty.clone(),
+                            },
+                        ),
                         ItemStatus::NotPresent => unreachable!(),
                     },
                     (Some(status), None) => {
-                        let ident = match status {
-                            ItemStatus::Addition { ident, .. } => ident,
-                            ItemStatus::Change { to_ident, .. } => to_ident,
-                            ItemStatus::Deprecation { ident, .. } => ident,
-                            ItemStatus::NoChange(ident) => ident,
+                        let (ident, ty) = match status {
+                            ItemStatus::Addition { ident, ty, .. } => (ident, ty),
+                            ItemStatus::Change {
+                                to_ident, to_type, ..
+                            } => (to_ident, to_type),
+                            ItemStatus::Deprecation { ident, .. } => (ident, &self.inner.ty()),
+                            ItemStatus::NoChange { ident, ty } => (ident, ty),
                             ItemStatus::NotPresent => unreachable!(),
                         };
 
-                        chain.insert(version.inner, ItemStatus::NoChange(ident.clone()))
+                        chain.insert(
+                            version.inner,
+                            ItemStatus::NoChange {
+                                ident: ident.clone(),
+                                ty: ty.clone(),
+                            },
+                        )
                     }
                     (Some(status), Some(_)) => {
-                        let ident = match status {
-                            ItemStatus::Addition { ident, .. } => ident,
-                            ItemStatus::Change { to_ident, .. } => to_ident,
-                            ItemStatus::NoChange(ident) => ident,
+                        let (ident, ty) = match status {
+                            ItemStatus::Addition { ident, ty, .. } => (ident, ty),
+                            ItemStatus::Change {
+                                to_ident, to_type, ..
+                            } => (to_ident, to_type),
+                            ItemStatus::NoChange { ident, ty, .. } => (ident, ty),
                             _ => unreachable!(),
                         };
 
-                        chain.insert(version.inner, ItemStatus::NoChange(ident.clone()))
+                        chain.insert(
+                            version.inner,
+                            ItemStatus::NoChange {
+                                ident: ident.clone(),
+                                ty: ty.clone(),
+                            },
+                        )
                     }
                     _ => unreachable!(),
                 };
@@ -365,7 +398,10 @@ pub(crate) enum ItemStatus {
         note: Option<String>,
         ident: Ident,
     },
-    NoChange(Ident),
+    NoChange {
+        ident: Ident,
+        ty: Type,
+    },
     NotPresent,
 }
 
@@ -375,7 +411,7 @@ impl ItemStatus {
             ItemStatus::Addition { ident, .. } => Some(ident),
             ItemStatus::Change { to_ident, .. } => Some(to_ident),
             ItemStatus::Deprecation { ident, .. } => Some(ident),
-            ItemStatus::NoChange(ident) => Some(ident),
+            ItemStatus::NoChange { ident, .. } => Some(ident),
             ItemStatus::NotPresent => None,
         }
     }

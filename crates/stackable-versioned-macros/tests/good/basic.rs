@@ -13,7 +13,7 @@ use stackable_versioned_macros::versioned;
 )]
 pub(crate) struct Foo {
     #[versioned(
-        added(since = "v1alpha1"),
+        // added(since = "v1alpha1"),
         changed(since = "v1beta1", from_name = "jjj", from_type = "u8"),
         changed(since = "v1", from_type = "u16"),
         deprecated(since = "v2", note = "not empty")
