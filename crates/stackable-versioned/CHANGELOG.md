@@ -22,12 +22,14 @@ All notable changes to this project will be documented in this file.
 
 - Report variant rename validation error at the correct span and trim underscores
   from variants not using PascalCase ([#842]).
+- Emit correct struct field types for fields with no changes (NoChange) ([#860]).
 
 [#842]: https://github.com/stackabletech/operator-rs/pull/842
 [#844]: https://github.com/stackabletech/operator-rs/pull/844
 [#847]: https://github.com/stackabletech/operator-rs/pull/847
 [#850]: https://github.com/stackabletech/operator-rs/pull/850
 [#859]: https://github.com/stackabletech/operator-rs/pull/859
+[#860]: https://github.com/stackabletech/operator-rs/pull/860
 
 ## [0.1.1] - 2024-07-10
 

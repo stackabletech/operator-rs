@@ -142,7 +142,7 @@ impl VersionedVariant {
                         #ident,
                     })
                 }
-                ItemStatus::NoChange(ident) => Some(quote! {
+                ItemStatus::NoChange { ident, .. } => Some(quote! {
                     #(#original_attributes)*
                     #ident,
                 }),
