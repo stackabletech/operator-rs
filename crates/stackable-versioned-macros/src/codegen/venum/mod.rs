@@ -150,6 +150,8 @@ impl VersionedEnum {
             #[automatically_derived]
             #deprecated_attr
             #visibility mod #version_ident {
+                use super::*;
+
                 #(#original_attributes)*
                 #version_specific_docs
                 pub enum #enum_name {

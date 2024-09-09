@@ -157,9 +157,9 @@ impl VersionedField {
                         })
                     }
                     ItemStatus::NotPresent => None,
-                    ItemStatus::NoChange(field_ident) => Some(quote! {
+                    ItemStatus::NoChange { ident, ty } => Some(quote! {
                         #(#original_attributes)*
-                        pub #field_ident: #field_type,
+                        pub #ident: #ty,
                     }),
                 }
             }

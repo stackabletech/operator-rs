@@ -150,6 +150,8 @@ impl VersionedStruct {
             #[automatically_derived]
             #deprecated_attr
             #visibility mod #version_ident {
+                use super::*;
+
                 #(#original_attributes)*
                 #version_specific_docs
                 pub struct #struct_name {
