@@ -11,7 +11,7 @@ use snafu::{ResultExt, Snafu};
 
 use crate::{
     client::Client,
-    commons::{authentication::tls::Tls, secret_class::SecretClassVolume},
+    commons::{authentication::tls::Tls, networking::Host, secret_class::SecretClassVolume},
 };
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -35,9 +35,7 @@ pub enum Error {
 
 /// S3 bucket specification containing the bucket name and an inlined or referenced connection specification.
 /// Learn more on the [S3 concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
-#[derive(
-    Clone, CustomResource, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize,
-)]
+#[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[kube(
     group = "s3.stackable.tech",
     version = "v1alpha1",
@@ -53,14 +51,10 @@ pub enum Error {
 #[serde(rename_all = "camelCase")]
 pub struct S3BucketSpec {
     /// The name of the S3 bucket.
-    // FIXME: Try to remove the Option<>, as this field should be mandatory
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub bucket_name: Option<String>,
+    pub bucket_name: String,
 
     /// The definition of an S3 connection, either inline or as a reference.
-    // FIXME: Try to remove the Option<>, as this field should be mandatory
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub connection: Option<S3ConnectionDef>,
+    pub connection: S3ConnectionDef,
 }
 
 impl S3BucketSpec {
@@ -82,31 +76,26 @@ impl S3BucketSpec {
 
     /// Map &self to an [InlinedS3BucketSpec] by obtaining connection spec from the K8S API service if necessary
     pub async fn inlined(&self, client: &Client, namespace: &str) -> Result<InlinedS3BucketSpec> {
-        match self.connection.as_ref() {
-            Some(connection_def) => Ok(InlinedS3BucketSpec {
-                connection: Some(connection_def.resolve(client, namespace).await?),
-                bucket_name: self.bucket_name.clone(),
-            }),
-            None => Ok(InlinedS3BucketSpec {
-                bucket_name: self.bucket_name.clone(),
-                connection: None,
-            }),
-        }
+        Ok(InlinedS3BucketSpec {
+            connection: self.connection.resolve(client, namespace).await?,
+            bucket_name: self.bucket_name.clone(),
+        })
     }
 }
 
 /// Convenience struct with the connection spec inlined.
 pub struct InlinedS3BucketSpec {
-    pub bucket_name: Option<String>,
-    pub connection: Option<S3ConnectionSpec>,
+    /// Name of the S3 bucket
+    pub bucket_name: String,
+
+    // docs are on the struct
+    pub connection: S3ConnectionSpec,
 }
 
 impl InlinedS3BucketSpec {
     /// Build the endpoint URL from [S3ConnectionSpec::host] and [S3ConnectionSpec::port] and the S3 implementation to use
-    pub fn endpoint(&self) -> Option<String> {
-        self.connection
-            .as_ref()
-            .and_then(|connection| connection.endpoint())
+    pub fn endpoint(&self) -> String {
+        self.connection.endpoint()
     }
 }
 
@@ -163,9 +152,7 @@ impl S3ConnectionDef {
 
 /// S3 connection definition as a resource.
 /// Learn more on the [S3 concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
-#[derive(
-    CustomResource, Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize,
-)]
+#[derive(CustomResource, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[kube(
     group = "s3.stackable.tech",
     version = "v1alpha1",
@@ -180,22 +167,19 @@ impl S3ConnectionDef {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct S3ConnectionSpec {
-    /// Hostname of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.
-    // FIXME: Try to remove the Option<>, as this field should be mandatory
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub host: Option<String>,
+    /// Host of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.
+    pub host: Host,
 
     /// Port the S3 server listens on.
     /// If not specified the product will determine the port to use.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub port: Option<u16>,
 
-    // FIXME: Try to remove the Option<>, as this field should be mandatory
     /// Which access style to use.
     /// Defaults to virtual hosted-style as most of the data products out there.
     /// Have a look at the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub access_style: Option<S3AccessStyle>,
+    #[serde(default)]
+    pub access_style: S3AccessStyle,
 
     /// If the S3 uses authentication you have to specify you S3 credentials.
     /// In the most cases a [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass)
@@ -226,15 +210,15 @@ impl S3ConnectionSpec {
     }
 
     /// Build the endpoint URL from this connection
-    pub fn endpoint(&self) -> Option<String> {
+    pub fn endpoint(&self) -> String {
         let protocol = match self.tls.as_ref() {
             Some(_tls) => "https",
             _ => "http",
         };
-        self.host.as_ref().map(|h| match self.port {
-            Some(p) => format!("{protocol}://{h}:{p}"),
-            None => format!("{protocol}://{h}"),
-        })
+        match self.port {
+            Some(p) => format!("{protocol}://{host}:{p}", host = self.host),
+            None => format!("{protocol}://{host}", host = self.host),
+        }
     }
 }
 
@@ -245,6 +229,7 @@ impl S3ConnectionSpec {
 pub enum S3AccessStyle {
     /// Use path-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access>
     Path,
+
     /// Use as virtual hosted-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#virtual-hosted-style-access>
     #[default]
     VirtualHosted,
@@ -252,28 +237,24 @@ pub enum S3AccessStyle {
 
 #[cfg(test)]
 mod test {
-    use std::str;
-
-    use crate::commons::s3::{S3AccessStyle, S3ConnectionDef};
-    use crate::commons::s3::{S3BucketSpec, S3ConnectionSpec};
-    use crate::yaml;
+    use super::*;
 
     #[test]
     fn test_ser_inline() {
         let bucket = S3BucketSpec {
-            bucket_name: Some("test-bucket-name".to_owned()),
-            connection: Some(S3ConnectionDef::Inline(S3ConnectionSpec {
-                host: Some("host".to_owned()),
+            bucket_name: "test-bucket-name".to_owned(),
+            connection: S3ConnectionDef::Inline(S3ConnectionSpec {
+                host: "host".to_string().try_into().unwrap(),
                 port: Some(8080),
                 credentials: None,
-                access_style: Some(S3AccessStyle::VirtualHosted),
+                access_style: S3AccessStyle::VirtualHosted,
                 tls: None,
-            })),
+            }),
         };
 
         let mut buf = Vec::new();
-        yaml::serialize_to_explicit_document(&mut buf, &bucket).expect("serializable value");
-        let actual_yaml = str::from_utf8(&buf).expect("UTF-8 encoded document");
+        crate::yaml::serialize_to_explicit_document(&mut buf, &bucket).expect("serializable value");
+        let actual_yaml = std::str::from_utf8(&buf).expect("UTF-8 encoded document");
 
         let expected_yaml = "---
 bucketName: test-bucket-name

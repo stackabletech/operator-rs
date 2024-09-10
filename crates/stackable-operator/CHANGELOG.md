@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add `Hostname` and `KerberosRealmName` types extracted from secret-operator ([#851]).
+- BREAKING: Add `Host` type and use it within LDAP and OIDC AuthenticationClass as well as S3Connection ([#XXX]).
 - Add support for listener volume scopes to `SecretOperatorVolumeSourceBuilder` ([#858]).
 
 ### Changed
@@ -15,6 +16,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- BREAKING: The fields on `S3BucketSpec`, `InlinedS3BucketSpec` and `S3ConnectionSpec` are now mandatory (as they should be) ([#XXX]).
 - Fix the CRD description of `ClientAuthenticationDetails` to not contain internal Rust doc, but a public CRD description ([#846]).
 - `StackableAffinity` fields are no longer erroneously marked as required ([#855]).
 

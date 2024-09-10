@@ -23,7 +23,7 @@ const RFC_1123_LABEL_ERROR_MSG: &str = "a lowercase RFC 1123 label must consist 
 
 // This is a subdomain's max length in DNS (RFC 1123)
 const RFC_1123_SUBDOMAIN_MAX_LENGTH: usize = 253;
-// Minimal length reuquired by RFC 1123 is 63. Up to 255 allowed, unsupported by k8s.
+// Minimal length required by RFC 1123 is 63. Up to 255 allowed, unsupported by k8s.
 const RFC_1123_LABEL_MAX_LENGTH: usize = 63;
 
 const RFC_1035_LABEL_FMT: &str = "[a-z]([-a-z0-9]*[a-z0-9])?";
@@ -90,6 +90,11 @@ pub enum Error {
 
     #[snafu(display("input is {length} bytes long but must be no more than {max_length}"))]
     TooLong { length: usize, max_length: usize },
+
+    #[snafu(display(
+        "input is not a valid host, which needs to be either a hostname or IP address"
+    ))]
+    NotAHost {},
 }
 
 #[derive(Debug)]
