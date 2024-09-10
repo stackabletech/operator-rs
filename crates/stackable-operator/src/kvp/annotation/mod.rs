@@ -104,6 +104,10 @@ impl Annotation {
                     value.push_str("service=");
                     value.push_str(name);
                 }
+                SecretOperatorVolumeScope::ListenerVolume { name } => {
+                    value.push_str("listener-volume=");
+                    value.push_str(name);
+                }
             }
         }
 

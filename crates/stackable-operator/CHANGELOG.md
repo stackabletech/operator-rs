@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add `Hostname` and `KerberosRealmName` types extracted from secret-operator ([#851]).
+- Add support for listener volume scopes to `SecretOperatorVolumeSourceBuilder` ([#858]).
 
 ### Changed
 
@@ -20,6 +21,7 @@ All notable changes to this project will be documented in this file.
 [#846]: https://github.com/stackabletech/operator-rs/pull/846
 [#851]: https://github.com/stackabletech/operator-rs/pull/851
 [#855]: https://github.com/stackabletech/operator-rs/pull/855
+[#858]: https://github.com/stackabletech/operator-rs/pull/858
 
 ## [0.74.0] - 2024-08-22
 
@@ -72,7 +74,6 @@ All notable changes to this project will be documented in this file.
 
 [#821]: https://github.com/stackabletech/operator-rs/pull/821
 [#827]: https://github.com/stackabletech/operator-rs/pull/827
-[#840]: https://github.com/stackabletech/operator-rs/pull/840
 
 ## [0.71.0] - 2024-07-29
 
@@ -515,9 +516,6 @@ Only rust documentation was changed.
 
 - `PodListeners` CRD ([#644]).
 - Add support for tls pkcs12 password to secret operator volume builder ([#645]).
-
-[#644]: https://github.com/stackabletech/operator-rs/pull/644
-[#645]: https://github.com/stackabletech/operator-rs/pull/645
 
 ### Changed
 
@@ -1185,7 +1183,7 @@ This is a rerelease of 0.25.1 which some last-minute incompatible API changes to
 
 ### Changed
 
-- BREAKING: kube 0.68 -> 0.69.1 ([#319, [#322]]).
+- BREAKING: kube 0.68 -> 0.69.1 ([#319], [#322]).
 
 ### Removed
 

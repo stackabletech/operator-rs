@@ -309,6 +309,12 @@ impl SecretOperatorVolumeSourceBuilder {
         self
     }
 
+    pub fn with_listener_volume_scope(&mut self, name: impl Into<String>) -> &mut Self {
+        self.scopes
+            .push(SecretOperatorVolumeScope::ListenerVolume { name: name.into() });
+        self
+    }
+
     pub fn with_format(&mut self, format: SecretFormat) -> &mut Self {
         self.format = Some(format);
         self
@@ -394,6 +400,7 @@ pub enum SecretOperatorVolumeScope {
     Node,
     Pod,
     Service { name: String },
+    ListenerVolume { name: String },
 }
 
 /// Reference to a listener class or listener name
