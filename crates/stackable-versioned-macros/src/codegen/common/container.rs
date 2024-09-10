@@ -1,6 +1,7 @@
 use std::ops::Deref;
 
 use proc_macro2::TokenStream;
+use quote::format_ident;
 use syn::{Attribute, Ident, Visibility};
 
 use crate::{attrs::common::ContainerAttributes, codegen::common::ContainerVersion};
@@ -32,6 +33,25 @@ where
     fn generate_tokens(&self) -> TokenStream;
 }
 
+/// Provides extra functionality on top of [`Ident`]s.
+pub(crate) trait IdentExt {
+    /// Removes the 'Spec' suffix from the [`Ident`].
+    fn as_cleaned_kubernetes_ident(&self) -> Ident;
+
+    /// Transforms the [`Ident`] into one usable in the [`From`] impl.
+    fn as_from_impl_ident(&self) -> Ident;
+}
+
+impl IdentExt for Ident {
+    fn as_cleaned_kubernetes_ident(&self) -> Ident {
+        format_ident!("{}", self.to_string().trim_end_matches("Spec"))
+    }
+
+    fn as_from_impl_ident(&self) -> Ident {
+        format_ident!("__sv_{}", self.to_string().to_lowercase())
+    }
+}
+
 /// This struct bundles values from [`DeriveInput`][1].
 ///
 /// [`DeriveInput`][1] cannot be used directly when constructing a
@@ -58,24 +78,95 @@ pub(crate) struct VersionedContainer<I> {
     /// definition with appropriate items.
     pub(crate) versions: Vec<ContainerVersion>,
 
-    /// List of items defined in the original container. How, and if, an item
-    /// should generate code, is decided by the currently generated version.
-    pub(crate) items: Vec<I>,
-
-    /// The ident, or name, of the versioned container.
-    pub(crate) ident: Ident,
+    /// The original attributes that were added to the container.
+    pub(crate) original_attributes: Vec<Attribute>,
 
     /// The visibility of the versioned container. Used to forward the
     /// visibility during code generation.
     pub(crate) visibility: Visibility,
 
-    /// The original attributes that were added to the container.
-    pub(crate) original_attributes: Vec<Attribute>,
+    /// List of items defined in the original container. How, and if, an item
+    /// should generate code, is decided by the currently generated version.
+    pub(crate) items: Vec<I>,
 
-    /// The name of the container used in `From` implementations.
-    pub(crate) from_ident: Ident,
+    /// Different options which influence code generation.
+    pub(crate) options: VersionedContainerOptions,
 
-    /// Whether the [`From`] implementation generation should be skipped for all
-    /// versions of this container.
+    /// A collection of container idents used for different purposes.
+    pub(crate) idents: VersionedContainerIdents,
+}
+
+impl<I> VersionedContainer<I> {
+    /// Creates a new versioned Container which contains common data shared
+    /// across structs and enums.
+    pub(crate) fn new(
+        input: ContainerInput,
+        attributes: ContainerAttributes,
+        versions: Vec<ContainerVersion>,
+        items: Vec<I>,
+    ) -> Self {
+        let ContainerInput {
+            original_attributes,
+            visibility,
+            ident,
+        } = input;
+
+        let skip_from = attributes
+            .common_option_attrs
+            .skip
+            .map_or(false, |s| s.from.is_present());
+
+        let kubernetes_options = attributes.kubernetes_attrs.map(|a| KubernetesOptions {
+            skip_merged_crd: a.skip.map_or(false, |s| s.merged_crd.is_present()),
+            group: a.group,
+            kind: a.kind,
+        });
+
+        let options = VersionedContainerOptions {
+            kubernetes_options,
+            skip_from,
+        };
+
+        let idents = VersionedContainerIdents {
+            kubernetes: ident.as_cleaned_kubernetes_ident(),
+            from: ident.as_from_impl_ident(),
+            original: ident,
+        };
+
+        VersionedContainer {
+            original_attributes,
+            visibility,
+            versions,
+            options,
+            idents,
+            items,
+        }
+    }
+}
+
+/// A collection of container idents used for different purposes.
+#[derive(Debug)]
+pub(crate) struct VersionedContainerIdents {
+    /// The ident used in the context of Kubernetes specific code. This ident
+    /// removes the 'Spec' suffix present in the definition container.
+    pub(crate) kubernetes: Ident,
+
+    /// The original ident, or name, of the versioned container.
+    pub(crate) original: Ident,
+
+    /// The ident used in the [`From`] impl.
+    pub(crate) from: Ident,
+}
+
+#[derive(Debug)]
+pub(crate) struct VersionedContainerOptions {
+    pub(crate) kubernetes_options: Option<KubernetesOptions>,
     pub(crate) skip_from: bool,
+}
+
+#[derive(Debug)]
+pub(crate) struct KubernetesOptions {
+    pub(crate) skip_merged_crd: bool,
+    pub(crate) kind: Option<String>,
+    pub(crate) group: String,
 }
