@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: `validation` module now uses typed errors ([#851]).
+- BREAKING: TLS verification struct now reside top-level in the `commons` module, instead of being placed below `commons::authentication::tls` ([#XXX]).
 
 ### Fixed
 

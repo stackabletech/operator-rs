@@ -12,8 +12,7 @@ use url::{ParseError, Url};
 #[cfg(doc)]
 use crate::commons::authentication::AuthenticationClass;
 use crate::commons::{
-    authentication::{tls::TlsClientDetails, SECRET_BASE_PATH},
-    networking::Host,
+    authentication::SECRET_BASE_PATH, networking::Host, tls_verification::TlsClientDetails,
 };
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

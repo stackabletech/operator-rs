@@ -7,12 +7,10 @@ use url::{ParseError, Url};
 use crate::{
     builder::pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
     commons::{
-        authentication::{
-            tls::{TlsClientDetails, TlsClientDetailsError},
-            SECRET_BASE_PATH,
-        },
+        authentication::SECRET_BASE_PATH,
         networking::Host,
         secret_class::{SecretClassVolume, SecretClassVolumeError},
+        tls_verification::{TlsClientDetails, TlsClientDetailsError},
     },
 };
 

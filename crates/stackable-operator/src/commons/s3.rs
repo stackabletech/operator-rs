@@ -11,7 +11,7 @@ use snafu::{ResultExt, Snafu};
 
 use crate::{
     client::Client,
-    commons::{authentication::tls::Tls, networking::Host, secret_class::SecretClassVolume},
+    commons::{networking::Host, secret_class::SecretClassVolume, tls_verification::Tls},
 };
 
 type Result<T, E = Error> = std::result::Result<T, E>;
