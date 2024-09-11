@@ -6,8 +6,19 @@ license.workspace = true
 edition.workspace = true
 repository.workspace = true
 
+# cargo-udeps throws an error that these dependencies are unused. They are,
+# however, used in K8s specific test cases. This is a false-positive and an
+# apparent limitation of cargo-udeps. These entries can be removed once
+# cargo-udeps supports detecting usage of such dependencies.
+[package.metadata.cargo-udeps.ignore]
+development = ["schemars", "serde_yaml"]
+
 [lib]
 proc-macro = true
+
+[features]
+full = ["k8s"]
+k8s = ["dep:kube", "dep:k8s-openapi"]
 
 [dependencies]
 k8s-version = { path = "../k8s-version", features = ["darling"] }
@@ -15,6 +26,8 @@ k8s-version = { path = "../k8s-version", features = ["darling"] }
 convert_case.workspace = true
 darling.workspace = true
 itertools.workspace = true
+k8s-openapi = { workspace = true, optional = true }
+kube = { workspace = true, optional = true }
 proc-macro2.workspace = true
 strum.workspace = true
 syn.workspace = true
@@ -22,4 +35,8 @@ quote.workspace = true
 
 [dev-dependencies]
 rstest.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
 trybuild.workspace = true
