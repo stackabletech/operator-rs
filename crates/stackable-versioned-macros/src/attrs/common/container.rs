@@ -134,6 +134,7 @@ pub(crate) struct OptionAttributes {
 ///
 /// Supported attributes are:
 ///
+/// - `skip`, which controls skipping parts of the generation.
 /// - `kind`, which allows overwriting the kind field of the CRD. This defaults
 ///    to the struct name (without the 'Spec' suffix).
 /// - `group`, which sets the CRD group, usually the domain of the company.
@@ -144,8 +145,16 @@ pub(crate) struct KubernetesAttributes {
     pub(crate) group: String,
 }
 
+/// This struct contains supported kubernetes skip attributes.
+///
+/// Supported attributes are:
+///
+/// - `merged_crd` flag, which skips generating the `crd()` and `merged_crd()`
+///   functions are generated.
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct KubernetesSkipAttributes {
+    /// Whether the `crd()` and `merged_crd()` generation should be skipped for
+    /// this container.
     pub(crate) merged_crd: Flag,
 }
 
