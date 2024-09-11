@@ -13,11 +13,11 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: `validation` module now uses typed errors ([#851]).
-- BREAKING: TLS verification struct now reside top-level in the `commons` module, instead of being placed below `commons::authentication::tls` ([#XXX]).
+- BREAKING: TLS verification struct now reside in the `commons::tls_verification` module, instead of being placed below `commons::authentication::tls` ([#XXX]).
 
 ### Fixed
 
-- BREAKING: The fields on `S3BucketSpec`, `InlinedS3BucketSpec` and `S3ConnectionSpec` are now mandatory (as they should be) ([#XXX]).
+- BREAKING: The fields `bucketName`, `connection` and `host` on `S3BucketSpec`, `InlinedS3BucketSpec` and `S3ConnectionSpec` are now mandatory. Previously operators probably errored out in case they where missing, so this should not affect users, but make the errors much clearer ([#XXX]).
 - Fix the CRD description of `ClientAuthenticationDetails` to not contain internal Rust doc, but a public CRD description ([#846]).
 - `StackableAffinity` fields are no longer erroneously marked as required ([#855]).
 
