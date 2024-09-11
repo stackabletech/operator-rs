@@ -589,7 +589,7 @@ pub fn create_logback_config(
     </rollingPolicy>
     <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
       <MaxFileSize>{max_log_file_size_in_mib}MB</MaxFileSize>
-      <checkIncrement>5s</checkIncrement>
+      <checkIncrement>5 seconds</checkIncrement>
     </triggeringPolicy>
   </appender>
 
