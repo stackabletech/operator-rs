@@ -33,12 +33,12 @@ where
     fn generate_tokens(&self) -> TokenStream;
 }
 
-/// Provides extra functionality on top of [`Ident`]s.
+/// Provides extra functionality on top of [`struct@Ident`]s.
 pub(crate) trait IdentExt {
-    /// Removes the 'Spec' suffix from the [`Ident`].
+    /// Removes the 'Spec' suffix from the [`struct@Ident`].
     fn as_cleaned_kubernetes_ident(&self) -> Ident;
 
-    /// Transforms the [`Ident`] into one usable in the [`From`] impl.
+    /// Transforms the [`struct@Ident`] into one usable in the [`From`] impl.
     fn as_from_impl_ident(&self) -> Ident;
 }
 
