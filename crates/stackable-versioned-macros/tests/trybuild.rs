@@ -16,6 +16,9 @@
 //     mod attributes_enum;
 //     mod attributes_struct;
 //     mod basic;
+
+//     #[cfg(feature = "k8s")]
+//     mod crd;
 //     mod deprecate;
 //     mod rename;
 //     mod skip_from_version;

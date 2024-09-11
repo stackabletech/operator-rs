@@ -1,16 +1,10 @@
-#[cfg(feature = "k8s")]
 use schemars::JsonSchema;
-
-#[cfg(feature = "k8s")]
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "k8s")]
 use stackable_versioned_macros::versioned;
 
-#[cfg(feature = "k8s")]
 #[allow(deprecated)]
-#[test]
-fn crd() {
+fn main() {
     #[versioned(
         version(name = "v1alpha1"),
         version(name = "v1beta1"),
