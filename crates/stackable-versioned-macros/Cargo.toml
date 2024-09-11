@@ -6,6 +6,9 @@ license.workspace = true
 edition.workspace = true
 repository.workspace = true
 
+[package.metadata.cargo-udeps.ignore]
+development = ["schemars", "serde_yaml"]
+
 [lib]
 proc-macro = true
 
