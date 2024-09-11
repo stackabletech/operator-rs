@@ -12,7 +12,8 @@ use k8s_version::Version;
 /// Currently supported attributes are:
 ///
 /// - `version`, which can occur one or more times. See [`VersionAttributes`].
-/// - `options`, which allow further customization of the generated code. See [`ContainerOptions`].
+/// - `options`, which allow further customization of the generated code.
+///    See [`ContainerAttributes`].
 #[derive(Debug, FromMeta)]
 #[darling(and_then = ContainerAttributes::validate)]
 pub(crate) struct ContainerAttributes {
