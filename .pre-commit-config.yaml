@@ -1,9 +1,10 @@
 ---
-# See https://pre-commit.com for more information
-# See https://pre-commit.com/hooks.html for more hooks
+default_language_version:
+  node: system
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.2.0
+    rev: 2c9f875913ee60ca25ce70243dc24d5b6415598c # 4.6.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -12,27 +13,37 @@ repos:
       - id: detect-private-key
 
   - repo: https://github.com/doublify/pre-commit-rust
-    rev: v1.0
+    rev: eeee35a89e69d5772bdee97db1a6a898467b686e # 1.0
     hooks:
       - id: fmt
         args: ["--all", "--", "--check"]
       - id: clippy
         args: ["--all-targets", "--", "-D", "warnings"]
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.26.3
+    rev: 81e9f98ffd059efe8aa9c1b1a42e5cce61b640c6 # 1.35.1
     hooks:
       - id: yamllint
 
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.31.1
+    rev: f295829140d25717bc79368d3f966fc1f67a824f # 0.41.0
     hooks:
       - id: markdownlint
 
   - repo: https://github.com/koalaman/shellcheck-precommit
-    rev: v0.10.0
+    rev: 2491238703a5d3415bb2b7ff11388bf775372f29 # 0.10.0
     hooks:
       - id: shellcheck
         args: ["--severity=info"]
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: 62dc61a45fc95efe8c800af7a557ab0b9165d63b # 1.7.1
+    hooks:
+      - id: actionlint
+
+  - repo: https://github.com/hadolint/hadolint
+    rev: b3555ba9c2bfd9401e79f2f0da68dd1ae38e10c7 # 2.12.0
+    hooks:
+      - id: hadolint
 
   - repo: local
     hooks:

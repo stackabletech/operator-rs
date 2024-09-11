@@ -6,18 +6,33 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add new `from_type` parameter to `changed()` action ([#844]).
 - Pass through container and item attributes (including doc-comments). Add
   attribute for version specific docs ([#847]).
 - Forward container visibility to generated modules ([#850]).
+- Add support for Kubernetes-specific features ([#857]).
+- Add `use super::*` to version modules to be able to use imported types
+  ([#859]).
+
+### Changed
+
+- BREAKING: Rename `renamed()` action to `changed()` and renamed `from`
+  parameter to `from_name` ([#844]).
+- Bump syn to 2.0.77 ([#857]).
 
 ### Fixed
 
 - Report variant rename validation error at the correct span and trim underscores
-  from variants not using PascalCase (#[842]).
+  from variants not using PascalCase ([#842]).
+- Emit correct struct field types for fields with no changes (NoChange) ([#860]).
 
 [#842]: https://github.com/stackabletech/operator-rs/pull/842
+[#844]: https://github.com/stackabletech/operator-rs/pull/844
 [#847]: https://github.com/stackabletech/operator-rs/pull/847
 [#850]: https://github.com/stackabletech/operator-rs/pull/850
+[#857]: https://github.com/stackabletech/operator-rs/pull/857
+[#859]: https://github.com/stackabletech/operator-rs/pull/859
+[#860]: https://github.com/stackabletech/operator-rs/pull/860
 
 ## [0.1.1] - 2024-07-10
 

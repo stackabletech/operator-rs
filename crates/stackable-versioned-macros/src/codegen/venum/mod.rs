@@ -8,10 +8,7 @@ use syn::{DataEnum, Error};
 use crate::{
     attrs::common::ContainerAttributes,
     codegen::{
-        common::{
-            format_container_from_ident, Container, ContainerInput, ContainerVersion, Item,
-            VersionedContainer,
-        },
+        common::{Container, ContainerInput, ContainerVersion, Item, VersionedContainer},
         venum::variant::VersionedVariant,
     },
 };
@@ -39,11 +36,7 @@ impl Container<DataEnum, VersionedVariant> for VersionedEnum {
         data: DataEnum,
         attributes: ContainerAttributes,
     ) -> syn::Result<Self> {
-        let ContainerInput {
-            original_attributes,
-            visibility,
-            ident,
-        } = input;
+        let ident = &input.ident;
 
         // Convert the raw version attributes into a container version.
         let versions: Vec<_> = (&attributes).into();
@@ -77,20 +70,9 @@ impl Container<DataEnum, VersionedVariant> for VersionedEnum {
             }
         }
 
-        let from_ident = format_container_from_ident(&ident);
-
-        Ok(Self(VersionedContainer {
-            skip_from: attributes
-                .options
-                .skip
-                .map_or(false, |s| s.from.is_present()),
-            original_attributes,
-            visibility,
-            from_ident,
-            versions,
-            items,
-            ident,
-        }))
+        Ok(Self(VersionedContainer::new(
+            input, attributes, versions, items,
+        )))
     }
 
     fn generate_tokens(&self) -> TokenStream {
@@ -114,8 +96,8 @@ impl VersionedEnum {
         let mut token_stream = TokenStream::new();
 
         let original_attributes = &self.original_attributes;
+        let enum_name = &self.idents.original;
         let visibility = &self.visibility;
-        let enum_name = &self.ident;
 
         // Generate variants of the enum for `version`.
         let variants = self.generate_enum_variants(version);
@@ -131,27 +113,18 @@ impl VersionedEnum {
             .deprecated
             .then_some(quote! {#[deprecated = #deprecated_note]});
 
-        let mut version_specific_docs = TokenStream::new();
-        for (i, doc) in version.version_specific_docs.iter().enumerate() {
-            if i == 0 {
-                // Prepend an empty line to clearly separate the version
-                // specific docs.
-                version_specific_docs.extend(quote! {
-                    #[doc = ""]
-                })
-            }
-            version_specific_docs.extend(quote! {
-                #[doc = #doc]
-            })
-        }
+        // Generate doc comments for the container (enum)
+        let version_specific_docs = self.generate_enum_docs(version);
 
         // Generate tokens for the module and the contained enum
         token_stream.extend(quote! {
             #[automatically_derived]
             #deprecated_attr
             #visibility mod #version_ident {
-                #(#original_attributes)*
+                use super::*;
+
                 #version_specific_docs
+                #(#original_attributes)*
                 pub enum #enum_name {
                     #variants
                 }
@@ -159,11 +132,31 @@ impl VersionedEnum {
         });
 
         // Generate the From impl between this `version` and the next one.
-        if !self.skip_from && !version.skip_from {
+        if !self.options.skip_from && !version.skip_from {
             token_stream.extend(self.generate_from_impl(version, next_version));
         }
 
         token_stream
+    }
+
+    /// Generates version specific doc comments for the enum.
+    fn generate_enum_docs(&self, version: &ContainerVersion) -> TokenStream {
+        let mut tokens = TokenStream::new();
+
+        for (i, doc) in version.version_specific_docs.iter().enumerate() {
+            if i == 0 {
+                // Prepend an empty line to clearly separate the version
+                // specific docs.
+                tokens.extend(quote! {
+                    #[doc = ""]
+                })
+            }
+            tokens.extend(quote! {
+                #[doc = #doc]
+            })
+        }
+
+        tokens
     }
 
     fn generate_enum_variants(&self, version: &ContainerVersion) -> TokenStream {
@@ -185,8 +178,8 @@ impl VersionedEnum {
             let next_module_name = &next_version.ident;
             let module_name = &version.ident;
 
-            let from_ident = &self.from_ident;
-            let enum_ident = &self.ident;
+            let enum_ident = &self.idents.original;
+            let from_ident = &self.idents.from;
 
             let mut variants = TokenStream::new();
 

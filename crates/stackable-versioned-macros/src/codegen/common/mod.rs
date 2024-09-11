@@ -70,11 +70,6 @@ impl From<&ContainerAttributes> for Vec<ContainerVersion> {
     }
 }
 
-/// Returns the container ident used in [`From`] implementations.
-pub(crate) fn format_container_from_ident(ident: &Ident) -> Ident {
-    format_ident!("__sv_{ident}", ident = ident.to_string().to_lowercase())
-}
-
 /// Removes the deprecated prefix from a field ident.
 ///
 /// See [`DEPRECATED_FIELD_PREFIX`].
