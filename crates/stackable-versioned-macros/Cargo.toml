@@ -6,6 +6,10 @@ license.workspace = true
 edition.workspace = true
 repository.workspace = true
 
+# cargo-udeps throws an error that these dependencies are unused. They are,
+# however, used in K8s specific test cases. This is a false-positive and a known
+# limitation of cargo-udeps. These entries can be removed once cargo-udeps
+# supports detecting usage of such dependencies.
 [package.metadata.cargo-udeps.ignore]
 development = ["schemars", "serde_yaml"]
 
