@@ -36,8 +36,15 @@
 // }
 
 #[test]
-fn macros() {
+fn default_macros() {
     let t = trybuild::TestCases::new();
-    t.pass("tests/good/*.rs");
-    t.compile_fail("tests/bad/*.rs");
+    t.pass("tests/default/pass/*.rs");
+    t.compile_fail("tests/default/fail/*.rs");
+}
+
+#[cfg(feature = "k8s")]
+#[test]
+fn k8s_macros() {
+    let t = trybuild::TestCases::new();
+    t.pass("tests/k8s/*.rs");
 }
