@@ -50,13 +50,21 @@ impl Deref for Hostname {
 }
 
 /// A validated host (either a [`Hostname`] or IP address) type.
-#[derive(
-    Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 #[serde(try_from = "String", into = "String")]
 pub enum Host {
     IpAddress(IpAddr),
     Hostname(Hostname),
+}
+
+impl JsonSchema for Host {
+    fn schema_name() -> String {
+        "Host".to_owned()
+    }
+
+    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        String::json_schema(gen)
+    }
 }
 
 impl FromStr for Host {
