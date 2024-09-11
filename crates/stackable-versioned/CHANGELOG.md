@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: Rename `renamed()` action to `changed()` and renamed `from`
   parameter to `from_name` ([#844]).
+- Bump syn to 2.0.77 ([#857]).
 
 ### Fixed
 

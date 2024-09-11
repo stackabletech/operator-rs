@@ -58,7 +58,7 @@ signature = "2.2.0"
 snafu = "0.8.4"
 stackable-operator-derive = { path = "stackable-operator-derive" }
 strum = { version = "0.26.3", features = ["derive"] }
-syn = "2.0.72"
+syn = "2.0.77"
 tempfile = "3.11.0"
 time = { version = "0.3.36" }
 tokio = { version = "1.39.2", features = ["macros", "rt-multi-thread", "fs"] }
