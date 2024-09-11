@@ -6,18 +6,31 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- BREAKING: Add `Host` type and use it within LDAP and OIDC AuthenticationClass as well as S3Connection ([#863]).
+
+### Changed
+
+- BREAKING: TLS verification struct now reside in the `commons::tls_verification` module, instead of being placed below `commons::authentication::tls` ([#863]).
+
+### Fixed
+
+- BREAKING: The fields `bucketName`, `connection` and `host` on `S3BucketSpec`, `InlinedS3BucketSpec` and `S3ConnectionSpec` are now mandatory. Previously operators probably errored out in case they where missing, so this should not affect users, but make the errors much clearer ([#863]).
+
+[#863]: https://github.com/stackabletech/operator-rs/pull/863
+
+## TODO: Create a release before #863, as it's majorly breaking
+
+### Added
+
 - Add `Hostname` and `KerberosRealmName` types extracted from secret-operator ([#851]).
-- BREAKING: Add `Host` type and use it within LDAP and OIDC AuthenticationClass as well as S3Connection ([#XXX]).
 - Add support for listener volume scopes to `SecretOperatorVolumeSourceBuilder` ([#858]).
 
 ### Changed
 
 - BREAKING: `validation` module now uses typed errors ([#851]).
-- BREAKING: TLS verification struct now reside in the `commons::tls_verification` module, instead of being placed below `commons::authentication::tls` ([#XXX]).
 
 ### Fixed
 
-- BREAKING: The fields `bucketName`, `connection` and `host` on `S3BucketSpec`, `InlinedS3BucketSpec` and `S3ConnectionSpec` are now mandatory. Previously operators probably errored out in case they where missing, so this should not affect users, but make the errors much clearer ([#XXX]).
 - Fix the CRD description of `ClientAuthenticationDetails` to not contain internal Rust doc, but a public CRD description ([#846]).
 - `StackableAffinity` fields are no longer erroneously marked as required ([#855]).
 
