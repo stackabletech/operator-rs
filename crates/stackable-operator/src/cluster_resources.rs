@@ -388,6 +388,9 @@ pub struct ClusterResources {
     /// The name of the application
     app_name: String,
 
+    /// The uid of the cluster object
+    cluster_uid: String,
+
     // TODO (Techassi): Add doc comments
     operator_name: String,
 
@@ -434,17 +437,22 @@ impl ClusterResources {
     ) -> Result<Self> {
         let namespace = cluster
             .namespace
-            .to_owned()
+            .clone()
             .context(MissingObjectKeySnafu { key: "namespace" })?;
         let app_instance = cluster
             .name
-            .to_owned()
+            .clone()
             .context(MissingObjectKeySnafu { key: "name" })?;
+        let cluster_uid = cluster
+            .uid
+            .clone()
+            .context(MissingObjectKeySnafu { key: "uid" })?;
 
         Ok(ClusterResources {
             namespace,
             app_instance,
             app_name: app_name.into(),
+            cluster_uid,
             operator_name: operator_name.into(),
             controller_name: controller_name.into(),
             manager: format_full_controller_name(operator_name, controller_name),
@@ -741,9 +749,21 @@ impl ClusterResources {
             ..Default::default()
         };
 
-        let resources = client
+        let mut resources = client
             .list_with_label_selector::<T>(&self.namespace, &label_selector)
             .await?;
+
+        // filter out objects without a direct ownership relationship, for example:
+        // - indirect ownership where the labels are still propagated
+        // - objects owned by versions of the cluster recreated before/after the current snapshot
+        resources.retain(|resource| {
+            resource
+                .meta()
+                .owner_references
+                .iter()
+                .flatten()
+                .any(|reference| reference.uid == self.cluster_uid)
+        });
 
         Ok(resources)
     }
