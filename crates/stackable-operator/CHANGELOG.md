@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: `validation` module now uses typed errors ([#851]).
+- Set `checkIncrement` to 5 seconds in Logback config ([#853]).
 
 ### Fixed
 
@@ -21,6 +22,7 @@ All notable changes to this project will be documented in this file.
 
 [#846]: https://github.com/stackabletech/operator-rs/pull/846
 [#851]: https://github.com/stackabletech/operator-rs/pull/851
+[#853]: https://github.com/stackabletech/operator-rs/pull/853
 [#855]: https://github.com/stackabletech/operator-rs/pull/855
 [#858]: https://github.com/stackabletech/operator-rs/pull/858
 [#862]: https://github.com/stackabletech/operator-rs/pull/862
