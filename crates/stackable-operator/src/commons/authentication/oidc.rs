@@ -116,9 +116,9 @@ impl AuthenticationProvider {
     /// path at [`DEFAULT_OIDC_WELLKNOWN_PATH`].
     pub fn endpoint_url(&self) -> Result<Url> {
         let mut url = Url::parse(&format!(
-            "http://{}:{}",
-            self.hostname.as_url_host(),
-            self.port()
+            "http://{host}:{port}",
+            host = self.hostname.as_url_host(),
+            port = self.port()
         ))
         .context(ParseOidcEndpointUrlSnafu)?;
 

@@ -48,9 +48,9 @@ impl ResolvedS3Connection {
     /// Build the endpoint URL from this connection
     pub fn endpoint(&self) -> Result<Url, S3Error> {
         let mut url = Url::parse(&format!(
-            "http://{}:{}",
-            self.host.as_url_host(),
-            self.port()
+            "http://{host}:{port}",
+            host = self.host.as_url_host(),
+            port = self.port()
         ))
         .context(ParseS3EndpointSnafu)?;
 
