@@ -79,10 +79,11 @@ impl ResolvedS3Connection {
     /// * Needed TLS volumes
     pub fn add_volumes_and_mounts(
         &self,
+        unique_identifier: &str,
         pod_builder: &mut PodBuilder,
         container_builders: Vec<&mut ContainerBuilder>,
     ) -> Result<(), S3Error> {
-        let (volumes, mounts) = self.volumes_and_mounts()?;
+        let (volumes, mounts) = self.volumes_and_mounts(unique_identifier)?;
         pod_builder.add_volumes(volumes);
         for cb in container_builders {
             cb.add_volume_mounts(mounts.clone());
@@ -93,13 +94,16 @@ impl ResolvedS3Connection {
 
     /// It is recommended to use [`Self::add_volumes_and_mounts`], this function returns you the
     /// volumes and mounts in case you need to add them by yourself.
-    pub fn volumes_and_mounts(&self) -> Result<(Vec<Volume>, Vec<VolumeMount>), S3Error> {
+    pub fn volumes_and_mounts(
+        &self,
+        unique_identifier: &str,
+    ) -> Result<(Vec<Volume>, Vec<VolumeMount>), S3Error> {
         let mut volumes = Vec::new();
         let mut mounts = Vec::new();
 
         if let Some(credentials) = &self.credentials {
             let secret_class = &credentials.secret_class;
-            let volume_name = format!("{secret_class}-s3-credentials");
+            let volume_name = format!("{secret_class}-s3-credentials-{unique_identifier}");
 
             volumes.push(
                 credentials
@@ -107,8 +111,11 @@ impl ResolvedS3Connection {
                     .context(AddS3CredentialVolumesSnafu)?,
             );
             mounts.push(
-                VolumeMountBuilder::new(volume_name, format!("{SECRET_BASE_PATH}/{secret_class}"))
-                    .build(),
+                VolumeMountBuilder::new(
+                    volume_name,
+                    format!("{SECRET_BASE_PATH}/{secret_class}-{unique_identifier}"),
+                )
+                .build(),
             );
         }
 
@@ -125,12 +132,12 @@ impl ResolvedS3Connection {
 
     /// Returns the path of the files containing bind user and password.
     /// This will be None if there are no credentials for this LDAP connection.
-    pub fn credentials_mount_paths(&self) -> Option<(String, String)> {
+    pub fn credentials_mount_paths(&self, unique_identifier: &str) -> Option<(String, String)> {
         self.credentials.as_ref().map(|bind_credentials| {
             let secret_class = &bind_credentials.secret_class;
             (
-                format!("{SECRET_BASE_PATH}/{secret_class}/accessKey"),
-                format!("{SECRET_BASE_PATH}/{secret_class}/secretKey"),
+                format!("{SECRET_BASE_PATH}/{secret_class}-{unique_identifier}/accessKey"),
+                format!("{SECRET_BASE_PATH}/{secret_class}-{unique_identifier}/secretKey"),
             )
         })
     }
@@ -198,7 +205,7 @@ mod test {
             credentials: None,
             tls: TlsClientDetails { tls: None },
         };
-        let (volumes, mounts) = s3.volumes_and_mounts().unwrap();
+        let (volumes, mounts) = s3.volumes_and_mounts("lakehouse").unwrap();
 
         assert_eq!(s3.endpoint().unwrap(), Url::parse("http://minio").unwrap());
         assert_eq!(volumes, vec![]);
@@ -223,7 +230,7 @@ mod test {
                 }),
             },
         };
-        let (mut volumes, mut mounts) = s3.volumes_and_mounts().unwrap();
+        let (mut volumes, mut mounts) = s3.volumes_and_mounts("lakehouse").unwrap();
 
         assert_eq!(
             s3.endpoint().unwrap(),
@@ -234,7 +241,10 @@ mod test {
         assert_eq!(mounts.len(), 1);
         let mount = mounts.remove(0);
 
-        assert_eq!(&volume.name, "ionos-s3-credentials-s3-credentials");
+        assert_eq!(
+            &volume.name,
+            "ionos-s3-credentials-s3-credentials-lakehouse"
+        );
         assert_eq!(
             &volume
                 .ephemeral
@@ -252,12 +262,15 @@ mod test {
         );
 
         assert_eq!(mount.name, volume.name);
-        assert_eq!(mount.mount_path, "/stackable/secrets/ionos-s3-credentials");
         assert_eq!(
-            s3.credentials_mount_paths(),
+            mount.mount_path,
+            "/stackable/secrets/ionos-s3-credentials-lakehouse"
+        );
+        assert_eq!(
+            s3.credentials_mount_paths("lakehouse"),
             Some((
-                "/stackable/secrets/ionos-s3-credentials/accessKey".to_string(),
-                "/stackable/secrets/ionos-s3-credentials/secretKey".to_string()
+                "/stackable/secrets/ionos-s3-credentials-lakehouse/accessKey".to_string(),
+                "/stackable/secrets/ionos-s3-credentials-lakehouse/secretKey".to_string()
             ))
         );
     }
@@ -275,7 +288,7 @@ mod test {
                 }),
             },
         };
-        let (volumes, mounts) = s3.volumes_and_mounts().unwrap();
+        let (volumes, mounts) = s3.volumes_and_mounts("lakehouse").unwrap();
 
         assert_eq!(
             s3.endpoint().unwrap(),
