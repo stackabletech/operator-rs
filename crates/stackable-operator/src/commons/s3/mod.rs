@@ -14,9 +14,6 @@ pub enum S3Error {
     #[snafu(display("failed to retrieve S3 connection"))]
     RetrieveS3Connection { source: crate::client::Error },
 
-    #[snafu(display("failed to retrieve S3 bucket"))]
-    RetrieveS3Bucket { source: crate::client::Error },
-
     #[snafu(display("failed to parse S3 endpoint"))]
     ParseS3Endpoint { source: url::ParseError },
 
