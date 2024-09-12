@@ -20,8 +20,8 @@ All notable changes to this project will be documented in this file.
 - `StackableAffinity` fields are no longer erroneously marked as required ([#855]).
 
 [#846]: https://github.com/stackabletech/operator-rs/pull/846
-[#853]: https://github.com/stackabletech/operator-rs/pull/853
 [#851]: https://github.com/stackabletech/operator-rs/pull/851
+[#853]: https://github.com/stackabletech/operator-rs/pull/853
 [#855]: https://github.com/stackabletech/operator-rs/pull/855
 [#858]: https://github.com/stackabletech/operator-rs/pull/858
 
