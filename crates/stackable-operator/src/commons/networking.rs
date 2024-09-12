@@ -168,7 +168,7 @@ mod tests {
     #[case("1.2.3.4")]
     fn test_host_and_hostname_parsing_success(#[case] hostname: String) {
         let parsed_hostname: Hostname = hostname.parse().expect("hostname can not be parsed");
-        // Every host is also a valid hostname
+        // Every hostname is also a valid host
         let parsed_host: Host = hostname.parse().expect("host can not be parsed");
 
         // Also test the round-trip
@@ -190,7 +190,6 @@ mod tests {
     #[case("1.2.3.4", "1.2.3.4")]
     #[case("fe80::1", "[fe80::1]")]
     fn test_host_parsing_success(#[case] host: &str, #[case] expected_url_host: &str) {
-        // Every host is also a valid hostname
         let parsed_host: Host = host.parse().expect("host can not be parsed");
 
         // Also test the round-trip
