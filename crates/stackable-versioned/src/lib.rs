@@ -14,6 +14,8 @@
 
 pub use stackable_versioned_macros::*;
 
+// Unused for now, might get picked up again in the future.
+#[doc(hidden)]
 pub trait AsVersionStr {
     const VERSION: &'static str;
 
