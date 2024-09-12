@@ -296,6 +296,7 @@ impl ItemAttributes {
     }
 }
 
+// TODO (@Techassi): Add validation for when default_fn is "" (empty path).
 /// For the added() action
 ///
 /// Example usage:
@@ -317,6 +318,10 @@ fn default_default_fn() -> SpannedValue<Path> {
     )
 }
 
+// TODO (@Techassi): Add validation for when from_name AND from_type are both
+// none => is this action needed in the first place?
+// TODO (@Techassi): Add validation that the from_name mustn't include the
+// deprecated prefix.
 /// For the changed() action
 ///
 /// Example usage:

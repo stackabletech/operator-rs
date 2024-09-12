@@ -1,37 +1,21 @@
-//! This crate enables versioning of structs (and enums in the future). It
-//! currently supports Kubernetes API versions while declaring versions on a
-//! data type. This will be extended to support SemVer versions, as well as
-//! custom version formats in the future.
+//! This crate enables versioning of structs and enums through procedural
+//! macros.
 //!
-//! ## Usage Guide
+//! Currently supported versioning schemes:
 //!
-//! ```
-//! use stackable_versioned::versioned;
+//! - Kubernetes API versions (eg: `v1alpha1`, `v1beta1`, `v1`, `v2`), with
+//!   optional support for generating CRDs.
 //!
-//! #[versioned(
-//!     version(name = "v1alpha1"),
-//!     version(name = "v1beta1"),
-//!     version(name = "v1"),
-//!     version(name = "v2"),
-//!     version(name = "v3")
-//! )]
-//! struct Foo {
-//!     /// My docs
-//!     #[versioned(
-//!         added(since = "v1beta1"),
-//!         changed(since = "v1", from_name = "gau"),
-//!         deprecated(since = "v2", note = "not empty")
-//!     )]
-//!     deprecated_bar: usize,
-//!     baz: bool,
-//! }
-//! ```
+//! Support will be extended to SemVer versions, as well as custom version
+//! formats in the future.
 //!
 //! See [`versioned`] for an in-depth usage guide and a list of supported
 //! parameters.
 
 pub use stackable_versioned_macros::*;
 
+// Unused for now, might get picked up again in the future.
+#[doc(hidden)]
 pub trait AsVersionStr {
     const VERSION: &'static str;
 
