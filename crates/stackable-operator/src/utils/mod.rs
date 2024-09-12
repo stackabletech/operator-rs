@@ -1,5 +1,6 @@
 pub mod bash;
 pub mod crds;
+mod k8s_version_check;
 pub mod logging;
 mod option;
 mod url;
@@ -16,6 +17,8 @@ pub use self::bash::COMMON_BASH_TRAP_FUNCTIONS;
 pub use self::logging::print_startup_string;
 
 pub use self::{option::OptionExt, url::UrlExt};
+
+pub use k8s_version_check::warn_if_unsupported_k8s_version;
 
 /// Returns the fully qualified controller name, which should be used when a single controller needs to be referred to uniquely.
 ///

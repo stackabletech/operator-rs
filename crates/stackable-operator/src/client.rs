@@ -627,8 +627,10 @@ pub async fn create_client(field_manager: Option<String>) -> Result<Client> {
         .await
         .map_err(kube::Error::InferConfig)
         .context(InferKubeConfigSnafu)?;
+
     let default_namespace = kubeconfig.default_namespace.clone();
     let client = kube::Client::try_from(kubeconfig).context(CreateKubeClientSnafu)?;
+
     Ok(Client::new(client, field_manager, default_namespace))
 }
 
