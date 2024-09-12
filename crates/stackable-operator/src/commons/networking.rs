@@ -16,7 +16,7 @@ impl FromStr for Hostname {
     type Err = validation::Errors;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        validation::is_rfc_1123_subdomain(&value)?;
+        validation::is_rfc_1123_subdomain(value)?;
         Ok(Hostname(value.to_owned()))
     }
 }
