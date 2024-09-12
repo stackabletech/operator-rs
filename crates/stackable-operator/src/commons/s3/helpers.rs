@@ -38,7 +38,9 @@ impl S3ConnectionInlineOrReference {
             Self::Reference(reference) => Ok(client
                 .get::<S3Connection>(&reference, namespace)
                 .await
-                .context(RetrieveS3ConnectionSnafu)?
+                .context(RetrieveS3ConnectionSnafu {
+                    s3_connection: reference,
+                })?
                 .spec),
         }
     }
@@ -47,12 +49,12 @@ impl S3ConnectionInlineOrReference {
 impl ResolvedS3Connection {
     /// Build the endpoint URL from this connection
     pub fn endpoint(&self) -> Result<Url, S3Error> {
-        let mut url = Url::parse(&format!(
+        let endpoint = format!(
             "http://{host}:{port}",
             host = self.host.as_url_host(),
             port = self.port()
-        ))
-        .context(ParseS3EndpointSnafu)?;
+        );
+        let mut url = Url::parse(&endpoint).context(ParseS3EndpointSnafu { endpoint })?;
 
         if self.tls.uses_tls() {
             url.set_scheme("https").map_err(|_| {
@@ -172,7 +174,9 @@ impl S3BucketInlineOrReference {
                 let bucket = client
                     .get::<S3Bucket>(&reference, namespace)
                     .await
-                    .context(RetrieveS3ConnectionSnafu)?
+                    .context(RetrieveS3ConnectionSnafu {
+                        s3_connection: reference,
+                    })?
                     .spec;
                 Ok(ResolvedS3Bucket {
                     bucket_name: bucket.bucket_name,

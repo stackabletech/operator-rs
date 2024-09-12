@@ -11,11 +11,17 @@ use super::{secret_class::SecretClassVolumeError, tls_verification::TlsClientDet
 
 #[derive(Debug, Snafu)]
 pub enum S3Error {
-    #[snafu(display("failed to retrieve S3 connection"))]
-    RetrieveS3Connection { source: crate::client::Error },
+    #[snafu(display("failed to retrieve S3 connection '{s3_connection}'"))]
+    RetrieveS3Connection {
+        source: crate::client::Error,
+        s3_connection: String,
+    },
 
-    #[snafu(display("failed to parse S3 endpoint"))]
-    ParseS3Endpoint { source: url::ParseError },
+    #[snafu(display("failed to parse S3 endpoint '{endpoint}'"))]
+    ParseS3Endpoint {
+        source: url::ParseError,
+        endpoint: String,
+    },
 
     #[snafu(display("failed to set S3 endpoint scheme '{scheme}' for endpoint '{endpoint}'"))]
     SetS3EndpointScheme { endpoint: Url, scheme: String },
