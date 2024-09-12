@@ -3,15 +3,12 @@ use std::ops::Deref;
 use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DataStruct, Error, Ident};
+use syn::{parse_quote, DataStruct, Error, Ident};
 
 use crate::{
     attrs::common::ContainerAttributes,
     codegen::{
-        common::{
-            format_container_from_ident, Container, ContainerInput, ContainerVersion, Item,
-            VersionedContainer,
-        },
+        common::{Container, ContainerInput, ContainerVersion, Item, VersionedContainer},
         vstruct::field::VersionedField,
     },
 };
@@ -39,11 +36,7 @@ impl Container<DataStruct, VersionedField> for VersionedStruct {
         data: DataStruct,
         attributes: ContainerAttributes,
     ) -> syn::Result<Self> {
-        let ContainerInput {
-            original_attributes,
-            visibility,
-            ident,
-        } = input;
+        let ident = &input.ident;
 
         // Convert the raw version attributes into a container version.
         let versions: Vec<_> = (&attributes).into();
@@ -77,35 +70,44 @@ impl Container<DataStruct, VersionedField> for VersionedStruct {
             }
         }
 
-        let from_ident = format_container_from_ident(&ident);
+        // Validate K8s specific requirements
+        // Ensure that the struct name includes the 'Spec' suffix.
+        if attributes.kubernetes_attrs.is_some() && !ident.to_string().ends_with("Spec") {
+            return Err(Error::new(
+                ident.span(),
+                "struct name needs to include the `Spec` suffix if Kubernetes features are enabled via `#[versioned(k8s())]`"
+            ));
+        }
 
-        Ok(Self(VersionedContainer {
-            skip_from: attributes
-                .options
-                .skip
-                .map_or(false, |s| s.from.is_present()),
-            original_attributes,
-            visibility,
-            from_ident,
-            versions,
-            items,
-            ident,
-        }))
+        Ok(Self(VersionedContainer::new(
+            input, attributes, versions, items,
+        )))
     }
 
     fn generate_tokens(&self) -> TokenStream {
-        let mut token_stream = TokenStream::new();
+        let mut kubernetes_crd_fn_calls = TokenStream::new();
+        let mut container_definition = TokenStream::new();
+
         let mut versions = self.versions.iter().peekable();
 
         while let Some(version) = versions.next() {
-            token_stream.extend(self.generate_version(version, versions.peek().copied()));
+            container_definition.extend(self.generate_version(version, versions.peek().copied()));
+            kubernetes_crd_fn_calls.extend(self.generate_kubernetes_crd_fn_call(version));
         }
 
-        token_stream
+        // If tokens for the 'crd()' function calls were generated, also generate
+        // the 'merge_crds' call.
+        if !kubernetes_crd_fn_calls.is_empty() {
+            container_definition
+                .extend(self.generate_kubernetes_merge_crds(kubernetes_crd_fn_calls));
+        }
+
+        container_definition
     }
 }
 
 impl VersionedStruct {
+    /// Generates all tokens for a single instance of a versioned struct.
     fn generate_version(
         &self,
         version: &ContainerVersion,
@@ -114,8 +116,8 @@ impl VersionedStruct {
         let mut token_stream = TokenStream::new();
 
         let original_attributes = &self.original_attributes;
+        let struct_name = &self.idents.original;
         let visibility = &self.visibility;
-        let struct_name = &self.ident;
 
         // Generate fields of the struct for `version`.
         let fields = self.generate_struct_fields(version);
@@ -131,19 +133,11 @@ impl VersionedStruct {
             .deprecated
             .then_some(quote! {#[deprecated = #deprecated_note]});
 
-        let mut version_specific_docs = TokenStream::new();
-        for (i, doc) in version.version_specific_docs.iter().enumerate() {
-            if i == 0 {
-                // Prepend an empty line to clearly separate the version
-                // specific docs.
-                version_specific_docs.extend(quote! {
-                    #[doc = ""]
-                })
-            }
-            version_specific_docs.extend(quote! {
-                #[doc = #doc]
-            })
-        }
+        // Generate doc comments for the container (struct)
+        let version_specific_docs = self.generate_struct_docs(version);
+
+        // Generate K8s specific code
+        let kubernetes_cr_derive = self.generate_kubernetes_cr_derive(version);
 
         // Generate tokens for the module and the contained struct
         token_stream.extend(quote! {
@@ -152,8 +146,9 @@ impl VersionedStruct {
             #visibility mod #version_ident {
                 use super::*;
 
-                #(#original_attributes)*
                 #version_specific_docs
+                #(#original_attributes)*
+                #kubernetes_cr_derive
                 pub struct #struct_name {
                     #fields
                 }
@@ -161,40 +156,64 @@ impl VersionedStruct {
         });
 
         // Generate the From impl between this `version` and the next one.
-        if !self.skip_from && !version.skip_from {
+        if !self.options.skip_from && !version.skip_from {
             token_stream.extend(self.generate_from_impl(version, next_version));
         }
 
         token_stream
     }
 
-    fn generate_struct_fields(&self, version: &ContainerVersion) -> TokenStream {
-        let mut token_stream = TokenStream::new();
+    /// Generates version specific doc comments for the struct.
+    fn generate_struct_docs(&self, version: &ContainerVersion) -> TokenStream {
+        let mut tokens = TokenStream::new();
 
-        for item in &self.items {
-            token_stream.extend(item.generate_for_container(version));
+        for (i, doc) in version.version_specific_docs.iter().enumerate() {
+            if i == 0 {
+                // Prepend an empty line to clearly separate the version
+                // specific docs.
+                tokens.extend(quote! {
+                    #[doc = ""]
+                })
+            }
+            tokens.extend(quote! {
+                #[doc = #doc]
+            })
         }
 
-        token_stream
+        tokens
     }
 
+    /// Generates struct fields following the `name: type` format which includes
+    /// a trailing comma.
+    fn generate_struct_fields(&self, version: &ContainerVersion) -> TokenStream {
+        let mut tokens = TokenStream::new();
+
+        for item in &self.items {
+            tokens.extend(item.generate_for_container(version));
+        }
+
+        tokens
+    }
+
+    /// Generates the [`From`] impl which enables conversion between a version
+    /// and the next one.
     fn generate_from_impl(
         &self,
         version: &ContainerVersion,
         next_version: Option<&ContainerVersion>,
-    ) -> TokenStream {
+    ) -> Option<TokenStream> {
         if let Some(next_version) = next_version {
             let next_module_name = &next_version.ident;
             let module_name = &version.ident;
 
-            let from_ident = &self.from_ident;
-            let struct_ident = &self.ident;
+            let struct_ident = &self.idents.original;
+            let from_ident = &self.idents.from;
 
             let fields = self.generate_from_fields(version, next_version, from_ident);
 
             // TODO (@Techassi): Be a little bit more clever about when to include
             // the #[allow(deprecated)] attribute.
-            return quote! {
+            return Some(quote! {
                 #[automatically_derived]
                 #[allow(deprecated)]
                 impl From<#module_name::#struct_ident> for #next_module_name::#struct_ident {
@@ -204,12 +223,14 @@ impl VersionedStruct {
                         }
                     }
                 }
-            };
+            });
         }
 
-        quote! {}
+        None
     }
 
+    /// Generates fields used in the [`From`] impl following the
+    /// `new_name: struct_name.old_name` format which includes a trailing comma.
     fn generate_from_fields(
         &self,
         version: &ContainerVersion,
@@ -223,5 +244,70 @@ impl VersionedStruct {
         }
 
         token_stream
+    }
+}
+
+// Kubernetes specific code generation
+impl VersionedStruct {
+    /// Generates the `kube::CustomResource` derive with the appropriate macro
+    /// attributes.
+    fn generate_kubernetes_cr_derive(&self, version: &ContainerVersion) -> Option<TokenStream> {
+        if let Some(kubernetes_options) = &self.options.kubernetes_options {
+            let group = &kubernetes_options.group;
+            let version = version.inner.to_string();
+            let kind = kubernetes_options
+                .kind
+                .as_ref()
+                .map_or(self.idents.kubernetes.to_string(), |kind| kind.clone());
+
+            return Some(quote! {
+                #[derive(::kube::CustomResource)]
+                #[kube(group = #group, version = #version, kind = #kind)]
+            });
+        }
+
+        None
+    }
+
+    /// Generates the `merge_crds` function call.
+    fn generate_kubernetes_merge_crds(&self, fn_calls: TokenStream) -> TokenStream {
+        let ident = &self.idents.kubernetes;
+
+        quote! {
+            #[automatically_derived]
+            pub struct #ident;
+
+            #[automatically_derived]
+            impl #ident {
+                /// Generates a merged CRD which contains all versions defined using the
+                /// `#[versioned()]` macro.
+                pub fn merged_crd(
+                    stored_apiversion: &str
+                ) -> ::std::result::Result<::k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition, ::kube::core::crd::MergeError> {
+                    ::kube::core::crd::merge_crds(vec![#fn_calls], stored_apiversion)
+                }
+            }
+        }
+    }
+
+    /// Generates the inner `crd()` functions calls which get used in the
+    /// `merge_crds` function.
+    fn generate_kubernetes_crd_fn_call(&self, version: &ContainerVersion) -> Option<TokenStream> {
+        if self
+            .options
+            .kubernetes_options
+            .as_ref()
+            .is_some_and(|o| !o.skip_merged_crd)
+        {
+            let struct_ident = &self.idents.kubernetes;
+            let version_ident = &version.ident;
+
+            let path: syn::Path = parse_quote!(#version_ident::#struct_ident);
+            return Some(quote! {
+                <#path as ::kube::CustomResourceExt>::crd(),
+            });
+        }
+
+        None
     }
 }

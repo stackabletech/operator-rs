@@ -7,34 +7,55 @@
 //!
 //! [1]: https://github.com/dtolnay/trybuild?tab=readme-ov-file#workflow
 
-// Enable the module below to get syntax highlighting and code completion.
+// Enable the 'pass' module below to get syntax highlighting and code completion.
 // Adjust the list of modules to enable syntax highlighting and code completion.
-// Unfortunately tests in subfolders aren't automatically included.
+// Unfortunately tests in sub-folders aren't automatically included.
 //
-// #[allow(dead_code)]
-// mod good {
-//     mod attributes_enum;
-//     mod attributes_struct;
-//     mod basic;
-//     mod deprecate;
-//     mod rename;
-//     mod skip_from_version;
-// }
+// Similar to the above 'pass' module, enable the 'fail' module below to get
+// syntax highlighting and code completion. You will need to comment them out
+// again but before running tests, otherwise compilation will fail (as expected).
+#[allow(dead_code)]
+mod default {
+    // mod pass {
+    //     mod attributes_enum;
+    //     mod attributes_struct;
+    //     mod basic;
 
-// Similar to the above module, enable the module below to get syntax
-// highlighting and code completion. You will need to comment them out again but
-// before running tests, orherwise compilation will fail (as expected).
-//
-// #[allow(dead_code)]
-// mod bad {
-//     mod deprecate;
-//     mod skip_from_all;
-//     mod skip_from_version;
-// }
+    //     mod deprecate;
+    //     mod rename;
+    //     mod skip_from_version;
+    // }
+
+    // mod fail {
+    //     mod deprecate;
+    //     mod skip_from_all;
+    //     mod skip_from_version;
+    // }
+}
 
 #[test]
-fn macros() {
+fn default_macros() {
     let t = trybuild::TestCases::new();
-    t.pass("tests/good/*.rs");
-    t.compile_fail("tests/bad/*.rs");
+    t.pass("tests/default/pass/*.rs");
+    t.compile_fail("tests/default/fail/*.rs");
+}
+
+#[cfg(feature = "k8s")]
+#[allow(dead_code)]
+mod k8s {
+    // mod pass {
+    //     mod crd;
+    // }
+
+    // mod fail {
+    //     mod crd;
+    // }
+}
+
+#[cfg(feature = "k8s")]
+#[test]
+fn k8s_macros() {
+    let t = trybuild::TestCases::new();
+    t.pass("tests/k8s/pass/*.rs");
+    t.compile_fail("tests/k8s/fail/*.rs");
 }

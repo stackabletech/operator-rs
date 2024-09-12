@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Pass through container and item attributes (including doc-comments). Add
   attribute for version specific docs ([#847]).
 - Forward container visibility to generated modules ([#850]).
+- Add support for Kubernetes-specific features ([#857]).
 - Add `use super::*` to version modules to be able to use imported types
   ([#859]).
 
@@ -17,6 +18,7 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: Rename `renamed()` action to `changed()` and renamed `from`
   parameter to `from_name` ([#844]).
+- Bump syn to 2.0.77 ([#857]).
 
 ### Fixed
 
@@ -28,6 +30,7 @@ All notable changes to this project will be documented in this file.
 [#844]: https://github.com/stackabletech/operator-rs/pull/844
 [#847]: https://github.com/stackabletech/operator-rs/pull/847
 [#850]: https://github.com/stackabletech/operator-rs/pull/850
+[#857]: https://github.com/stackabletech/operator-rs/pull/857
 [#859]: https://github.com/stackabletech/operator-rs/pull/859
 [#860]: https://github.com/stackabletech/operator-rs/pull/860
 
