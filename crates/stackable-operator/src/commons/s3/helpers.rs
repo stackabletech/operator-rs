@@ -79,6 +79,9 @@ impl ResolvedS3Connection {
     ///
     /// * Credentials needed to connect to S3
     /// * Needed TLS volumes
+    ///
+    /// `unique_identifier` needs to be a unique identifier (e.g. in case of trino-operator the name of the catalog),
+    /// so that multiple mounts of the same SecretClass do not produce clashing volumes and volumeMounts.
     pub fn add_volumes_and_mounts(
         &self,
         unique_identifier: &str,
@@ -134,6 +137,9 @@ impl ResolvedS3Connection {
 
     /// Returns the path of the files containing bind user and password.
     /// This will be None if there are no credentials for this LDAP connection.
+    ///
+    /// `unique_identifier` needs to be a unique identifier (e.g. in case of trino-operator the name of the catalog),
+    /// so that multiple mounts of the same SecretClass do not produce clashing volumes and volumeMounts.
     pub fn credentials_mount_paths(&self, unique_identifier: &str) -> Option<(String, String)> {
         self.credentials.as_ref().map(|bind_credentials| {
             let secret_class = &bind_credentials.secret_class;
@@ -199,7 +205,6 @@ mod test {
     use super::*;
 
     // We cant test the correct resolve, as we can't mock the k8s API.
-
     #[test]
     fn test_http() {
         let s3 = ResolvedS3Connection {
