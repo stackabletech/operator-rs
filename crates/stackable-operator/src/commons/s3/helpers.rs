@@ -103,7 +103,7 @@ impl ResolvedS3Connection {
 
         if let Some(credentials) = &self.credentials {
             let secret_class = &credentials.secret_class;
-            let volume_name = format!("{secret_class}-s3-credentials-{unique_identifier}");
+            let volume_name = format!("{unique_identifier}-{secret_class}-s3-credentials");
 
             volumes.push(
                 credentials
@@ -113,7 +113,7 @@ impl ResolvedS3Connection {
             mounts.push(
                 VolumeMountBuilder::new(
                     volume_name,
-                    format!("{SECRET_BASE_PATH}/{secret_class}-{unique_identifier}"),
+                    format!("{SECRET_BASE_PATH}/{unique_identifier}-{secret_class}"),
                 )
                 .build(),
             );
@@ -136,8 +136,8 @@ impl ResolvedS3Connection {
         self.credentials.as_ref().map(|bind_credentials| {
             let secret_class = &bind_credentials.secret_class;
             (
-                format!("{SECRET_BASE_PATH}/{secret_class}-{unique_identifier}/accessKey"),
-                format!("{SECRET_BASE_PATH}/{secret_class}-{unique_identifier}/secretKey"),
+                format!("{SECRET_BASE_PATH}/{unique_identifier}-{secret_class}/accessKey"),
+                format!("{SECRET_BASE_PATH}/{unique_identifier}-{secret_class}/secretKey"),
             )
         })
     }
@@ -243,7 +243,7 @@ mod test {
 
         assert_eq!(
             &volume.name,
-            "ionos-s3-credentials-s3-credentials-lakehouse"
+            "lakehouse-ionos-s3-credentials-s3-credentials"
         );
         assert_eq!(
             &volume
@@ -264,13 +264,13 @@ mod test {
         assert_eq!(mount.name, volume.name);
         assert_eq!(
             mount.mount_path,
-            "/stackable/secrets/ionos-s3-credentials-lakehouse"
+            "/stackable/secrets/lakehouse-ionos-s3-credentials"
         );
         assert_eq!(
             s3.credentials_mount_paths("lakehouse"),
             Some((
-                "/stackable/secrets/ionos-s3-credentials-lakehouse/accessKey".to_string(),
-                "/stackable/secrets/ionos-s3-credentials-lakehouse/secretKey".to_string()
+                "/stackable/secrets/lakehouse-ionos-s3-credentials/accessKey".to_string(),
+                "/stackable/secrets/lakehouse-ionos-s3-credentials/secretKey".to_string()
             ))
         );
     }
