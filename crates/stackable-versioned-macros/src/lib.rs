@@ -368,15 +368,14 @@ mod consts;
 ///
 /// ## Auto-generated `From` Implementations
 ///
-/// To enable smooth version upgrades of the same container, the macro
-/// automatically generates `From` implementations. On a high level, code
-/// generated for two versions _a_ and _b_, with _a < b_ looks like this:
-/// `impl From<a> for b`. As you can see, only upgrading is currently supported.
-/// Downgrading from a higher version to a lower one is not supported at the
-/// moment.
+/// To enable smooth container version upgrades, the macro automatically
+/// generates `From` implementations. On a high level, code generated for two
+/// versions _a_ and _b_, with _a < b_ looks like this: `impl From<a> for b`.
+/// As you can see, only upgrading is currently supported. Downgrading from a
+/// higher version to a lower one is not supported at the moment.
 ///
-/// This automatic generation can be skipped to for example enable a custom
-/// implementation for more complex conversions.
+/// This automatic generation can be skipped to enable a custom implementation
+/// for more complex conversions.
 ///
 /// ### Skipping at the Container Level
 ///
@@ -428,7 +427,7 @@ mod consts;
 /// ## Kubernetes-specific Features
 ///
 /// This macro also offers support for Kubernetes-specific versioning,
-/// especially for CustomResourceDefinitions, short CRDs. These features are
+/// especially for CustomResourceDefinitions (CRDs). These features are
 /// completely opt-in. You need to enable the `k8s` feature (which enables
 /// optional dependencies) and use the `k8s()` parameter in the macro.
 ///
