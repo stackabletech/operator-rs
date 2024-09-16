@@ -6,6 +6,10 @@ license.workspace = true
 edition.workspace = true
 repository.workspace = true
 
+# Enable all features to ensure content appears in the online documentation.
+[package.metadata."docs.rs"]
+all-features = true
+
 # cargo-udeps throws an error that these dependencies are unused. They are,
 # however, used in K8s specific test cases. This is a false-positive and an
 # apparent limitation of cargo-udeps. These entries can be removed once
