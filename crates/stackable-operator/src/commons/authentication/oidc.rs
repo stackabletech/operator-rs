@@ -42,7 +42,7 @@ pub enum Error {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticationProvider {
-    /// Host of the identity provider, e.g. `my.keycloak.corp`.
+    /// Host of the identity provider, e.g. `my.keycloak.corp` or `127.0.0.1`.
     hostname: Host,
 
     /// Port of the identity provider. If TLS is used defaults to 443,

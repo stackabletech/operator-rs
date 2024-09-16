@@ -35,7 +35,7 @@ pub enum Error {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticationProvider {
-    /// Host of the LDAP server, for example: `my.ldap.server`.
+    /// Host of the LDAP server, for example: `my.ldap.server` or `127.0.0.1`.
     pub hostname: Host,
 
     /// Port of the LDAP server. If TLS is used defaults to 636 otherwise to 389.

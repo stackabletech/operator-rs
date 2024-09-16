@@ -93,7 +93,7 @@ impl TryFrom<String> for Host {
 
 impl From<Host> for String {
     fn from(value: Host) -> Self {
-        format!("{value}")
+        value.to_string()
     }
 }
 
