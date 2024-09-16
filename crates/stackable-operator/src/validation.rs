@@ -94,7 +94,7 @@ pub enum Error {
     #[snafu(display(
         "input is not a valid host, which needs to be either a hostname or IP address"
     ))]
-    NotAHost {},
+    InvalidHost {},
 }
 
 #[derive(Debug)]

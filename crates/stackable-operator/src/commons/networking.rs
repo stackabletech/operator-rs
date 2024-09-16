@@ -79,7 +79,7 @@ impl FromStr for Host {
             return Ok(Host::Hostname(hostname));
         };
 
-        Err(validation::Error::NotAHost {})
+        Err(validation::Error::InvalidHost {})
     }
 }
 
