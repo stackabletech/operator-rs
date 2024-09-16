@@ -6,11 +6,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- BREAKING: Add `Host` type and use it within LDAP and OIDC AuthenticationClass as well as S3Connection ([#863]).
+- BREAKING: Add `HostName` type and use it within LDAP and OIDC AuthenticationClass as well as S3Connection ([#863]).
 
 ### Changed
 
 - BREAKING: TLS verification struct now reside in the `commons::tls_verification` module, instead of being placed below `commons::authentication::tls` ([#863]).
+- BREAKING: Rename the `Hostname` type to `DomainName` to be consistent with RFC 1123 ([#863]).
 
 ### Fixed
 

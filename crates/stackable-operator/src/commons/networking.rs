@@ -6,23 +6,23 @@ use snafu::Snafu;
 
 use crate::validation;
 
-/// A validated hostname type conforming to RFC 1123, e.g. not an IPv6 address.
+/// A validated domain name type conforming to RFC 1123, e.g. an IPv4, but not an IPv6 address.
 #[derive(
     Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, JsonSchema,
 )]
 #[serde(try_from = "String", into = "String")]
-pub struct Hostname(#[validate(regex(path = "validation::RFC_1123_SUBDOMAIN_REGEX"))] String);
+pub struct DomainName(#[validate(regex(path = "validation::RFC_1123_SUBDOMAIN_REGEX"))] String);
 
-impl FromStr for Hostname {
+impl FromStr for DomainName {
     type Err = validation::Errors;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         validation::is_rfc_1123_subdomain(value)?;
-        Ok(Hostname(value.to_owned()))
+        Ok(DomainName(value.to_owned()))
     }
 }
 
-impl TryFrom<String> for Hostname {
+impl TryFrom<String> for DomainName {
     type Error = validation::Errors;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
@@ -30,19 +30,19 @@ impl TryFrom<String> for Hostname {
     }
 }
 
-impl From<Hostname> for String {
-    fn from(value: Hostname) -> Self {
+impl From<DomainName> for String {
+    fn from(value: DomainName) -> Self {
         value.0
     }
 }
 
-impl Display for Hostname {
+impl Display for DomainName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0)
     }
 }
 
-impl Deref for Hostname {
+impl Deref for DomainName {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
@@ -51,24 +51,24 @@ impl Deref for Hostname {
 }
 
 #[derive(Debug, Snafu)]
-pub enum HostParseError {
+pub enum HostNameParseError {
     #[snafu(display(
-        "the given host '{host}' is not a valid host, which needs to be either a hostname or IP address"
+        "the given hostname '{hostname}' is not a valid hostname, which needs to be either a domain name or IP address"
     ))]
-    InvalidHost { host: String },
+    InvalidHostname { hostname: String },
 }
 
-/// A validated host (either a [`Hostname`] or IP address) type.
+/// A validated hostname (either a [`DomainName`] or IP address) type.
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 #[serde(try_from = "String", into = "String")]
-pub enum Host {
+pub enum HostName {
     IpAddress(IpAddr),
-    Hostname(Hostname),
+    DomainName(DomainName),
 }
 
-impl JsonSchema for Host {
+impl JsonSchema for HostName {
     fn schema_name() -> String {
-        "Host".to_owned()
+        "HostName".to_owned()
     }
 
     fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
@@ -76,57 +76,57 @@ impl JsonSchema for Host {
     }
 }
 
-impl FromStr for Host {
-    type Err = HostParseError;
+impl FromStr for HostName {
+    type Err = HostNameParseError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         if let Ok(ip) = value.parse::<IpAddr>() {
-            return Ok(Host::IpAddress(ip));
+            return Ok(HostName::IpAddress(ip));
         }
 
-        if let Ok(hostname) = value.parse() {
-            return Ok(Host::Hostname(hostname));
+        if let Ok(domain_name) = value.parse() {
+            return Ok(HostName::DomainName(domain_name));
         };
 
-        InvalidHostSnafu {
-            host: value.to_owned(),
+        InvalidHostnameSnafu {
+            hostname: value.to_owned(),
         }
         .fail()
     }
 }
 
-impl TryFrom<String> for Host {
-    type Error = HostParseError;
+impl TryFrom<String> for HostName {
+    type Error = HostNameParseError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         value.parse()
     }
 }
 
-impl From<Host> for String {
-    fn from(value: Host) -> Self {
+impl From<HostName> for String {
+    fn from(value: HostName) -> Self {
         value.to_string()
     }
 }
 
-impl Display for Host {
+impl Display for HostName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Host::IpAddress(ip) => write!(f, "{ip}"),
-            Host::Hostname(hostname) => write!(f, "{hostname}"),
+            HostName::IpAddress(ip) => write!(f, "{ip}"),
+            HostName::DomainName(domain_name) => write!(f, "{domain_name}"),
         }
     }
 }
 
-impl Host {
+impl HostName {
     /// Formats the host in such a way that it can be used in URLs.
     pub fn as_url_host(&self) -> String {
         match self {
-            Host::IpAddress(ip) => match ip {
+            HostName::IpAddress(ip) => match ip {
                 IpAddr::V4(ip) => ip.to_string(),
                 IpAddr::V6(ip) => format!("[{ip}]"),
             },
-            Host::Hostname(hostname) => hostname.to_string(),
+            HostName::DomainName(domain_name) => domain_name.to_string(),
         }
     }
 }
@@ -176,24 +176,25 @@ mod tests {
     #[rstest]
     #[case("foo")]
     #[case("foo.bar")]
-    // Well this is also a valid hostname I guess
+    // This is also a valid domain name
     #[case("1.2.3.4")]
-    fn test_host_and_hostname_parsing_success(#[case] hostname: String) {
-        let parsed_hostname: Hostname = hostname.parse().expect("hostname can not be parsed");
-        // Every hostname is also a valid host
-        let parsed_host: Host = hostname.parse().expect("host can not be parsed");
+    fn test_domain_name_and_host_name_parsing_success(#[case] domain_name: String) {
+        let parsed_domain_name: DomainName =
+            domain_name.parse().expect("domain name can not be parsed");
+        // Every domain name is also a valid host name
+        let parsed_host_name: HostName = domain_name.parse().expect("host name can not be parsed");
 
         // Also test the round-trip
-        assert_eq!(parsed_hostname.to_string(), hostname);
-        assert_eq!(parsed_host.to_string(), hostname);
+        assert_eq!(parsed_domain_name.to_string(), domain_name);
+        assert_eq!(parsed_host_name.to_string(), domain_name);
     }
 
     #[rstest]
     #[case("")]
     #[case("foo.bar:1234")]
     #[case("fe80::1")]
-    fn test_hostname_parsing_invalid_input(#[case] hostname: &str) {
-        assert!(hostname.parse::<Hostname>().is_err());
+    fn test_domain_name_parsing_invalid_input(#[case] domain_name: &str) {
+        assert!(domain_name.parse::<DomainName>().is_err());
     }
 
     #[rstest]
@@ -201,12 +202,12 @@ mod tests {
     #[case("foo.bar", "foo.bar")]
     #[case("1.2.3.4", "1.2.3.4")]
     #[case("fe80::1", "[fe80::1]")]
-    fn test_host_parsing_success(#[case] host: &str, #[case] expected_url_host: &str) {
-        let parsed_host: Host = host.parse().expect("host can not be parsed");
+    fn test_host_name_parsing_success(#[case] host: &str, #[case] expected_url_host: &str) {
+        let parsed_host_name: HostName = host.parse().expect("host can not be parsed");
 
         // Also test the round-trip
-        assert_eq!(parsed_host.to_string(), host);
+        assert_eq!(parsed_host_name.to_string(), host);
 
-        assert_eq!(parsed_host.as_url_host(), expected_url_host);
+        assert_eq!(parsed_host_name.as_url_host(), expected_url_host);
     }
 }

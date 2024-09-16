@@ -3,7 +3,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::commons::{
-    networking::Host, secret_class::SecretClassVolume, tls_verification::TlsClientDetails,
+    networking::HostName, secret_class::SecretClassVolume, tls_verification::TlsClientDetails,
 };
 
 use super::S3ConnectionInlineOrReference;
@@ -50,7 +50,7 @@ pub struct S3BucketSpec {
 #[serde(rename_all = "camelCase")]
 pub struct S3ConnectionSpec {
     /// Host of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.
-    pub host: Host,
+    pub host: HostName,
 
     /// Port the S3 server listens on.
     /// If not specified the product will determine the port to use.

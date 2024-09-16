@@ -12,7 +12,7 @@ use url::{ParseError, Url};
 #[cfg(doc)]
 use crate::commons::authentication::AuthenticationClass;
 use crate::commons::{
-    authentication::SECRET_BASE_PATH, networking::Host, tls_verification::TlsClientDetails,
+    authentication::SECRET_BASE_PATH, networking::HostName, tls_verification::TlsClientDetails,
 };
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -43,7 +43,7 @@ pub enum Error {
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticationProvider {
     /// Host of the identity provider, e.g. `my.keycloak.corp` or `127.0.0.1`.
-    hostname: Host,
+    hostname: HostName,
 
     /// Port of the identity provider. If TLS is used defaults to 443,
     /// otherwise to 80.
@@ -92,7 +92,7 @@ fn default_root_path() -> String {
 
 impl AuthenticationProvider {
     pub fn new(
-        hostname: Host,
+        hostname: HostName,
         port: Option<u16>,
         root_path: String,
         tls: TlsClientDetails,
