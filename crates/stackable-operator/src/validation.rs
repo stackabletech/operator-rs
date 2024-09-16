@@ -92,9 +92,9 @@ pub enum Error {
     TooLong { length: usize, max_length: usize },
 
     #[snafu(display(
-        "input is not a valid host, which needs to be either a hostname or IP address"
+        "The input '{host}' is not a valid host, which needs to be either a hostname or IP address"
     ))]
-    InvalidHost {},
+    InvalidHost { host: String },
 }
 
 #[derive(Debug)]

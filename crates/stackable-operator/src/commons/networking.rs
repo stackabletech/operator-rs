@@ -79,7 +79,9 @@ impl FromStr for Host {
             return Ok(Host::Hostname(hostname));
         };
 
-        Err(validation::Error::InvalidHost {})
+        Err(validation::Error::InvalidHost {
+            host: value.to_owned(),
+        })
     }
 }
 
