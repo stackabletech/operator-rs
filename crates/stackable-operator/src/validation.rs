@@ -90,11 +90,6 @@ pub enum Error {
 
     #[snafu(display("input is {length} bytes long but must be no more than {max_length}"))]
     TooLong { length: usize, max_length: usize },
-
-    #[snafu(display(
-        "The input '{host}' is not a valid host, which needs to be either a hostname or IP address"
-    ))]
-    InvalidHost { host: String },
 }
 
 #[derive(Debug)]

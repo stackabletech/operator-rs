@@ -2,6 +2,7 @@ use std::{fmt::Display, net::IpAddr, ops::Deref, str::FromStr};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use snafu::Snafu;
 
 use crate::validation;
 
@@ -49,6 +50,14 @@ impl Deref for Hostname {
     }
 }
 
+#[derive(Debug, Snafu)]
+pub enum HostParseError {
+    #[snafu(display(
+        "the given host '{host}' is not a valid host, which needs to be either a hostname or IP address"
+    ))]
+    InvalidHost { host: String },
+}
+
 /// A validated host (either a [`Hostname`] or IP address) type.
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 #[serde(try_from = "String", into = "String")]
@@ -68,7 +77,7 @@ impl JsonSchema for Host {
 }
 
 impl FromStr for Host {
-    type Err = validation::Error;
+    type Err = HostParseError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         if let Ok(ip) = value.parse::<IpAddr>() {
@@ -79,14 +88,15 @@ impl FromStr for Host {
             return Ok(Host::Hostname(hostname));
         };
 
-        Err(validation::Error::InvalidHost {
+        InvalidHostSnafu {
             host: value.to_owned(),
-        })
+        }
+        .fail()
     }
 }
 
 impl TryFrom<String> for Host {
-    type Error = validation::Error;
+    type Error = HostParseError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         value.parse()
