@@ -1,3 +1,6 @@
+use std::fmt::Display;
+
+use itertools::Itertools;
 use serde::Deserialize;
 use snafu::{ResultExt, Snafu};
 
@@ -13,17 +16,33 @@ pub enum Error {
 }
 
 /// [`k8s_openapi::apimachinery::pkg::version::Info`] tracks these fields as Strings, so let's stick to that
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Deserialize, PartialEq)]
 struct K8sVersion {
     major: String,
     minor: String,
+}
+
+impl Display for K8sVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{major}.{minor}", major = self.major, minor = self.minor)
+    }
+}
+
+/// We only have this struct, so that we can implement [`Display] on it
+#[derive(Deserialize, PartialEq)]
+struct K8sVersionList(Vec<K8sVersion>);
+
+impl Display for K8sVersionList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.iter().join(","))
+    }
 }
 
 pub async fn warn_if_unsupported_k8s_version(
     client: &Client,
     supported_versions_json: &str,
 ) -> Result<(), Error> {
-    let supported_versions: Vec<K8sVersion> = serde_json::from_str(supported_versions_json)
+    let supported_versions: K8sVersionList = serde_json::from_str(supported_versions_json)
         .context(ParseSupportedKubernetesVersionsSnafu)?;
 
     let current_version = client
@@ -37,13 +56,35 @@ pub async fn warn_if_unsupported_k8s_version(
         minor: current_version.minor,
     };
 
-    if !supported_versions.contains(&current_version) {
+    if !supported_versions.0.contains(&current_version) {
         tracing::warn!(
-            ?current_version,
-            ?supported_versions,
+            %current_version,
+            %supported_versions,
             "You are running an unsupported Kubernetes version. Things might work - but are not guaranteed to! Please consider switching to a supported Kubernetes version"
         );
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_formatting() {
+        let version_list: K8sVersionList = serde_json::from_str(
+            r#"
+[
+    { "major": "1", "minor": "27"},
+    { "major": "1", "minor": "28"},
+    { "major": "1", "minor": "29"},
+    { "major": "1", "minor": "30"},
+    { "major": "1", "minor": "31"}
+]"#,
+        )
+        .expect("failed to parse k8s version list");
+
+        assert_eq!(format!("{version_list}"), "1.27,1.28,1.29,1.30,1.31");
+    }
 }

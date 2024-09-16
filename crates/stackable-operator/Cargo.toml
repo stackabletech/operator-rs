@@ -21,6 +21,7 @@ derivative.workspace = true
 dockerfile-parser.workspace = true
 either.workspace = true
 futures.workspace = true
+itertools.workspace = true
 json-patch.workspace = true
 k8s-openapi.workspace = true
 kube.workspace = true
