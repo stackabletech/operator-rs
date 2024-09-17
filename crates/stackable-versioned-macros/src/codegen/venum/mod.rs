@@ -106,15 +106,13 @@ impl VersionedEnum {
         // enable the attribute macro to be applied to a module which
         // generates versioned versions of all contained containers.
 
+        let version_specific_docs = &version.docs;
         let version_ident = &version.ident;
 
         let deprecated_note = format!("Version {version} is deprecated", version = version_ident);
         let deprecated_attr = version
             .deprecated
             .then_some(quote! {#[deprecated = #deprecated_note]});
-
-        // Generate doc comments for the container (enum)
-        let version_specific_docs = self.generate_enum_docs(version);
 
         // Generate tokens for the module and the contained enum
         token_stream.extend(quote! {
@@ -123,8 +121,8 @@ impl VersionedEnum {
             #visibility mod #version_ident {
                 use super::*;
 
-                #version_specific_docs
                 #(#original_attributes)*
+                #version_specific_docs
                 pub enum #enum_name {
                     #variants
                 }
@@ -137,26 +135,6 @@ impl VersionedEnum {
         }
 
         token_stream
-    }
-
-    /// Generates version specific doc comments for the enum.
-    fn generate_enum_docs(&self, version: &ContainerVersion) -> TokenStream {
-        let mut tokens = TokenStream::new();
-
-        for (i, doc) in version.version_specific_docs.iter().enumerate() {
-            if i == 0 {
-                // Prepend an empty line to clearly separate the version
-                // specific docs.
-                tokens.extend(quote! {
-                    #[doc = ""]
-                })
-            }
-            tokens.extend(quote! {
-                #[doc = #doc]
-            })
-        }
-
-        tokens
     }
 
     fn generate_enum_variants(&self, version: &ContainerVersion) -> TokenStream {
