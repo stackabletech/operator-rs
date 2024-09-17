@@ -147,6 +147,7 @@ impl ItemAttributes {
         errors.handle(self.validate_action_combinations(item_ident, item_type));
         errors.handle(self.validate_action_order(item_ident, item_type));
         errors.handle(self.validate_item_name(item_ident, item_type));
+        errors.handle(self.validate_changed_item_name(item_type));
         errors.handle(self.validate_item_attributes(item_attrs));
 
         // TODO (@Techassi): Add hint if a field or variant is added in the
@@ -293,6 +294,34 @@ impl ItemAttributes {
             }
         }
         Ok(())
+    }
+
+    /// This associated function is called by the top-level validation function
+    /// and validates that parameters provided to the `changed` actions are
+    /// valid.
+    fn validate_changed_item_name(&self, item_type: &ItemType) -> Result<(), Error> {
+        let prefix = match item_type {
+            ItemType::Field => DEPRECATED_FIELD_PREFIX,
+            ItemType::Variant => DEPRECATED_VARIANT_PREFIX,
+        };
+
+        let mut errors = Error::accumulator();
+
+        // This ensures that `from_name` doesn't include the deprecation prefix.
+        for change in &self.changes {
+            if let Some(from_name) = change.from_name.as_ref() {
+                if from_name.starts_with(prefix) {
+                    errors.push(
+                        Error::custom(format!(
+                            "the previous {item_type} name must not start with the deprecation prefix"
+                        ))
+                        .with_span(&from_name.span()),
+                    );
+                }
+            }
+        }
+
+        errors.finish()
     }
 }
 

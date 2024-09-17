@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add `from_name` parameter validation ([#865]).
 - Add new `from_type` parameter to `changed()` action ([#844]).
 - Pass through container and item attributes (including doc-comments). Add
   attribute for version specific docs ([#847]).
@@ -33,6 +34,7 @@ All notable changes to this project will be documented in this file.
 [#857]: https://github.com/stackabletech/operator-rs/pull/857
 [#859]: https://github.com/stackabletech/operator-rs/pull/859
 [#860]: https://github.com/stackabletech/operator-rs/pull/860
+[#865]: https://github.com/stackabletech/operator-rs/pull/865
 
 ## [0.1.1] - 2024-07-10
 
