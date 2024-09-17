@@ -4,8 +4,8 @@ error: the previous field name must not start with the deprecation prefix
 11 |             changed(since = "v1beta1", from_name = "deprecated_bar"),
    |                                                    ^^^^^^^^^^^^^^^^
 
-error: the previous field name must not start with the deprecation prefix
-  --> tests/default/fail/changed.rs:12:47
+error: field was marked as `changed`, but both `from_name` and `from_type` are unset
+  --> tests/default/fail/changed.rs:14:9
    |
-12 |             changed(since = "v1", from_name = "deprecated_baz")
-   |                                               ^^^^^^^^^^^^^^^^
+14 |         bar: usize,
+   |         ^^^

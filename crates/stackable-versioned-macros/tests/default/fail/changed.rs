@@ -9,7 +9,7 @@ fn main() {
     struct Foo {
         #[versioned(
             changed(since = "v1beta1", from_name = "deprecated_bar"),
-            changed(since = "v1", from_name = "deprecated_baz")
+            changed(since = "v1")
         )]
         bar: usize,
     }
