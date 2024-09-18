@@ -207,7 +207,7 @@ dependencies = [
  "rustversion",
  "serde",
  "sync_wrapper 0.1.2",
- "tower",
+ "tower 0.4.13",
  "tower-layer",
  "tower-service",
 ]
@@ -240,7 +240,7 @@ dependencies = [
  "serde_urlencoded",
  "sync_wrapper 1.0.1",
  "tokio",
- "tower",
+ "tower 0.4.13",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -665,9 +665,9 @@ dependencies = [
 
 [[package]]
 name = "delegate"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e018fccbeeb50ff26562ece792ed06659b9c2dae79ece77c4456bb10d9bf79b"
+checksum = "5060bb0febb73fa907273f8a7ed17ab4bf831d585eac835b28ec24a1e2460956"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1370,7 +1370,7 @@ dependencies = [
  "pin-project-lite",
  "socket2",
  "tokio",
- "tower",
+ "tower 0.4.13",
  "tower-service",
  "tracing",
 ]
@@ -1597,7 +1597,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-util",
- "tower",
+ "tower 0.4.13",
  "tower-http",
  "tracing",
 ]
@@ -2988,7 +2988,7 @@ dependencies = [
  "snafu 0.8.4",
  "stackable-webhook",
  "tokio",
- "tower",
+ "tower 0.5.1",
  "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
@@ -3041,7 +3041,7 @@ dependencies = [
  "stackable-telemetry",
  "tokio",
  "tokio-rustls",
- "tower",
+ "tower 0.5.1",
  "tower-http",
  "tracing",
  "tracing-opentelemetry",
@@ -3386,7 +3386,7 @@ dependencies = [
  "prost",
  "tokio",
  "tokio-stream",
- "tower",
+ "tower 0.4.13",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -3410,6 +3410,20 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
+]
+
+[[package]]
+name = "tower"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2873938d487c3cfb9aed7546dc9f2711d867c9f90c46b889989a2cb84eba6b4f"
+dependencies = [
+ "futures-core",
+ "futures-util",
+ "pin-project-lite",
+ "sync_wrapper 0.1.2",
+ "tower-layer",
+ "tower-service",
 ]
 
 [[package]]
