@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: TLS verification struct now reside in the `commons::tls_verification` module, instead of being placed below `commons::authentication::tls` ([#863]).
+- BREAKING: The TLS verification struct now resides in the `commons::tls_verification` module, instead of being placed below `commons::authentication::tls` ([#863]).
 - BREAKING: Rename the `Hostname` type to `DomainName` to be consistent with RFC 1123 ([#863]).
 
 ### Fixed
