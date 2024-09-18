@@ -1,7 +1,7 @@
 use stackable_versioned_macros::versioned;
 
 // To expand the generated code (for debugging and testing), it is recommended
-// to first change directory via `cd crates/stackable-versioned` and to then
+// to first change directory via `cd crates/stackable-versioned-macros` and to then
 // run `cargo expand --test basic --all-features`.
 #[allow(dead_code)]
 #[versioned(
