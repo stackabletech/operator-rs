@@ -53,7 +53,7 @@ impl Deref for DomainName {
 #[derive(Debug, Snafu)]
 pub enum HostNameParseError {
     #[snafu(display(
-        "the given hostname '{hostname}' is not a valid hostname, which needs to be either a domain name or IP address"
+        "the given hostname {hostname:?} is not a valid hostname, which needs to be either a domain name or IP address"
     ))]
     InvalidHostname { hostname: String },
 }
