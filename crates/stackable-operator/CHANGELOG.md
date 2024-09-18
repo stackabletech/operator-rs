@@ -15,7 +15,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- BREAKING: The fields `bucketName`, `connection` and `host` on `S3BucketSpec`, `InlinedS3BucketSpec` and `S3ConnectionSpec` are now mandatory. Previously operators probably errored out in case they where missing, so this should not affect users, but make the errors much clearer ([#863]).
+- BREAKING: The fields `bucketName`, `connection` and `host` on `S3BucketSpec`, `InlinedS3BucketSpec` and `S3ConnectionSpec` are now mandatory. Previously operators errored out in case these fields where missing ([#863]).
 
 [#863]: https://github.com/stackabletech/operator-rs/pull/863
 
