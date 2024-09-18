@@ -43,9 +43,10 @@ fn default_macros() {
 #[cfg(feature = "k8s")]
 #[allow(dead_code)]
 mod k8s {
-    // mod pass {
-    //     mod crd;
-    // }
+    mod pass {
+        mod crd;
+        mod role_group;
+    }
 
     // mod fail {
     //     mod crd;
