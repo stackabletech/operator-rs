@@ -181,7 +181,7 @@ impl AuthenticationProvider {
                 value_from: Some(EnvVarSource {
                     secret_key_ref: Some(SecretKeySelector {
                         key: CLIENT_ID_SECRET_KEY.to_string(),
-                        name: Some(secret_name.clone()),
+                        name: secret_name.clone(),
                         ..Default::default()
                     }),
                     ..Default::default()
@@ -193,7 +193,7 @@ impl AuthenticationProvider {
                 value_from: Some(EnvVarSource {
                     secret_key_ref: Some(SecretKeySelector {
                         key: CLIENT_SECRET_SECRET_KEY.to_string(),
-                        name: Some(secret_name),
+                        name: secret_name,
                         ..Default::default()
                     }),
                     ..Default::default()
@@ -360,12 +360,12 @@ mod test {
             vec![
                 SecretKeySelector {
                     key: CLIENT_ID_SECRET_KEY.to_string(),
-                    name: Some(secret_name.to_string()),
+                    name: secret_name.to_string(),
                     optional: None,
                 },
                 SecretKeySelector {
                     key: CLIENT_SECRET_SECRET_KEY.to_string(),
-                    name: Some(secret_name.to_string()),
+                    name: secret_name.to_string(),
                     optional: None,
                 }
             ],

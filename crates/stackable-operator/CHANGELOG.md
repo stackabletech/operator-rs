@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: `validation` module now uses typed errors ([#851]).
 - Set `checkIncrement` to 5 seconds in Logback config ([#853]).
+- Bump to `kube` 0.95.0 and Kubernetes 1.31 ([#XXX]).
 
 ### Fixed
 
