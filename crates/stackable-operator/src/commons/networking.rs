@@ -6,7 +6,7 @@ use snafu::Snafu;
 
 use crate::validation;
 
-/// A validated domain name type conforming to RFC 1123, e.g. an IPv4, but not an IPv6 address.
+/// A validated domain name type conforming to RFC 1123, so e.g. not an IP addresses
 #[derive(
     Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, JsonSchema,
 )]
@@ -176,8 +176,6 @@ mod tests {
     #[rstest]
     #[case("foo")]
     #[case("foo.bar")]
-    // This is also a valid domain name
-    #[case("1.2.3.4")]
     fn test_domain_name_and_host_name_parsing_success(#[case] domain_name: String) {
         let parsed_domain_name: DomainName =
             domain_name.parse().expect("domain name can not be parsed");
@@ -192,6 +190,8 @@ mod tests {
     #[rstest]
     #[case("")]
     #[case("foo.bar:1234")]
+    // FIXME: This should not be an valid domain name!
+    // #[case("1.2.3.4")]
     #[case("fe80::1")]
     fn test_domain_name_parsing_invalid_input(#[case] domain_name: &str) {
         assert!(domain_name.parse::<DomainName>().is_err());
