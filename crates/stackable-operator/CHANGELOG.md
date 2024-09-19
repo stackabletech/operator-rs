@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.75.0] - 2024-09-19
+## [0.76.0] - 2024-09-19
 
 ### Added
 
@@ -21,7 +21,7 @@ All notable changes to this project will be documented in this file.
 
 [#863]: https://github.com/stackabletech/operator-rs/pull/863
 
-## TODO: Create a release before #863, as it's majorly breaking
+## [0.75.0] - 2024-09-19
 
 ### Added
 
