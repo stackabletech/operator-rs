@@ -411,7 +411,7 @@ mod tests {
             app_version_label: "1.4.1-latest-and-greatest".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
-            pull_secrets: Some(vec![LocalObjectReference{name: Some("myPullSecrets1".to_string())}, LocalObjectReference{name: Some("myPullSecrets2".to_string())}]),
+            pull_secrets: Some(vec![LocalObjectReference{name: "myPullSecrets1".to_string()}, LocalObjectReference{name: "myPullSecrets2".to_string()}]),
         }
     )]
     fn test_correct_resolved_image(

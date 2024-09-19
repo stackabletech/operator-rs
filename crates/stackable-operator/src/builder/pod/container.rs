@@ -124,7 +124,7 @@ impl ContainerBuilder {
             name,
             EnvVarSource {
                 secret_key_ref: Some(SecretKeySelector {
-                    name: Some(secret_name.into()),
+                    name: secret_name.into(),
                     key: secret_key.into(),
                     ..Default::default()
                 }),
@@ -145,7 +145,7 @@ impl ContainerBuilder {
             name,
             EnvVarSource {
                 config_map_key_ref: Some(ConfigMapKeySelector {
-                    name: Some(config_map_name.into()),
+                    name: config_map_name.into(),
                     key: config_map_key.into(),
                     ..Default::default()
                 }),
@@ -400,10 +400,10 @@ mod tests {
             matches!(container.env.as_ref().unwrap().first(), Some(EnvVar {name, value: Some(value), ..}) if name == "foo" && value == "bar")
         );
         assert!(
-            matches!(container.env.as_ref().unwrap().get(1), Some(EnvVar {name, value_from: Some(EnvVarSource {config_map_key_ref: Some(ConfigMapKeySelector {name: Some(config_map_name), key: config_map_key, ..}), ..}), ..}) if name == "envFromConfigMap" && config_map_name == "my-configmap" && config_map_key == "my-key")
+            matches!(container.env.as_ref().unwrap().get(1), Some(EnvVar {name, value_from: Some(EnvVarSource {config_map_key_ref: Some(ConfigMapKeySelector {name: config_map_name, key: config_map_key, ..}), ..}), ..}) if name == "envFromConfigMap" && config_map_name == "my-configmap" && config_map_key == "my-key")
         );
         assert!(
-            matches!(container.env.as_ref().unwrap().get(2), Some(EnvVar {name, value_from: Some(EnvVarSource {secret_key_ref: Some(SecretKeySelector {name: Some(secret_name), key: secret_key, ..}), ..}), ..}) if name == "envFromSecret" && secret_name == "my-secret" && secret_key == "my-key")
+            matches!(container.env.as_ref().unwrap().get(2), Some(EnvVar {name, value_from: Some(EnvVarSource {secret_key_ref: Some(SecretKeySelector {name: secret_name, key: secret_key, ..}), ..}), ..}) if name == "envFromSecret" && secret_name == "my-secret" && secret_key == "my-key")
         );
         assert_eq!(container.volume_mounts.as_ref().unwrap().len(), 1);
         assert!(
