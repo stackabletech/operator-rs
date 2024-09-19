@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.76.0] - 2024-09-19
+
+### Added
+
+- BREAKING: Add `HostName` type and use it within LDAP and OIDC AuthenticationClass as well as S3Connection ([#863]).
+
+### Changed
+
+- BREAKING: The TLS verification struct now resides in the `commons::tls_verification` module, instead of being placed below `commons::authentication::tls` ([#863]).
+- BREAKING: Rename the `Hostname` type to `DomainName` to be consistent with RFC 1123 ([#863]).
+
+### Fixed
+
+- BREAKING: The fields `bucketName`, `connection` and `host` on `S3BucketSpec`, `InlinedS3BucketSpec` and `S3ConnectionSpec` are now mandatory. Previously operators errored out in case these fields where missing ([#863]).
+
+[#863]: https://github.com/stackabletech/operator-rs/pull/863
+
 ## [0.75.0] - 2024-09-19
 
 ### Added

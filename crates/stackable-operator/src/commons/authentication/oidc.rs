@@ -11,7 +11,9 @@ use url::{ParseError, Url};
 
 #[cfg(doc)]
 use crate::commons::authentication::AuthenticationClass;
-use crate::commons::authentication::{tls::TlsClientDetails, SECRET_BASE_PATH};
+use crate::commons::{
+    authentication::SECRET_BASE_PATH, networking::HostName, tls_verification::TlsClientDetails,
+};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -40,8 +42,8 @@ pub enum Error {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticationProvider {
-    /// Hostname of the identity provider, e.g. `my.keycloak.corp`.
-    hostname: String,
+    /// Host of the identity provider, e.g. `my.keycloak.corp` or `127.0.0.1`.
+    hostname: HostName,
 
     /// Port of the identity provider. If TLS is used defaults to 443,
     /// otherwise to 80.
@@ -90,7 +92,7 @@ fn default_root_path() -> String {
 
 impl AuthenticationProvider {
     pub fn new(
-        hostname: String,
+        hostname: HostName,
         port: Option<u16>,
         root_path: String,
         tls: TlsClientDetails,
@@ -113,8 +115,12 @@ impl AuthenticationProvider {
     /// configuration path, use `url.join()`. This module provides the default
     /// path at [`DEFAULT_OIDC_WELLKNOWN_PATH`].
     pub fn endpoint_url(&self) -> Result<Url> {
-        let mut url = Url::parse(&format!("http://{}:{}", self.hostname, self.port()))
-            .context(ParseOidcEndpointUrlSnafu)?;
+        let mut url = Url::parse(&format!(
+            "http://{host}:{port}",
+            host = self.hostname.as_url_host(),
+            port = self.port()
+        ))
+        .context(ParseOidcEndpointUrlSnafu)?;
 
         if self.tls.uses_tls() {
             url.set_scheme("https").map_err(|_| {
@@ -317,7 +323,7 @@ mod test {
     fn test_oidc_ipv6_endpoint_url() {
         let oidc = serde_yaml::from_str::<AuthenticationProvider>(
             "
-            hostname: '[2606:2800:220:1:248:1893:25c8:1946]'
+            hostname: 2606:2800:220:1:248:1893:25c8:1946
             rootPath: my-root-path
             port: 12345
             scopes: [openid]

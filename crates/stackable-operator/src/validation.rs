@@ -15,6 +15,8 @@ use const_format::concatcp;
 use regex::Regex;
 use snafu::Snafu;
 
+// FIXME: According to https://www.rfc-editor.org/rfc/rfc1035#section-2.3.1 domain names must start with a letter
+// (and not a number).
 const RFC_1123_LABEL_FMT: &str = "[a-z0-9]([-a-z0-9]*[a-z0-9])?";
 const RFC_1123_SUBDOMAIN_FMT: &str =
     concatcp!(RFC_1123_LABEL_FMT, "(\\.", RFC_1123_LABEL_FMT, ")*");
@@ -23,7 +25,7 @@ const RFC_1123_LABEL_ERROR_MSG: &str = "a lowercase RFC 1123 label must consist 
 
 // This is a subdomain's max length in DNS (RFC 1123)
 const RFC_1123_SUBDOMAIN_MAX_LENGTH: usize = 253;
-// Minimal length reuquired by RFC 1123 is 63. Up to 255 allowed, unsupported by k8s.
+// Minimal length required by RFC 1123 is 63. Up to 255 allowed, unsupported by k8s.
 const RFC_1123_LABEL_MAX_LENGTH: usize = 63;
 
 const RFC_1035_LABEL_FMT: &str = "[a-z]([-a-z0-9]*[a-z0-9])?";
