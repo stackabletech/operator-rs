@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.75.0] - 2024-09-19
+
 ### Added
 
 - Add `Hostname` and `KerberosRealmName` types extracted from secret-operator ([#851]).
