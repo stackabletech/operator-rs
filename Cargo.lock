@@ -1539,7 +1539,7 @@ dependencies = [
 
 [[package]]
 name = "k8s-version"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -2996,14 +2996,14 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "stackable-versioned-macros",
 ]
 
 [[package]]
 name = "stackable-versioned-macros"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "convert_case",
  "darling",
