@@ -456,7 +456,7 @@ impl PodBuilder {
     ) -> &mut Self {
         self.image_pull_secrets
             .get_or_insert_with(Vec::new)
-            .extend(secrets.map(|s| LocalObjectReference { name: Some(s) }));
+            .extend(secrets.map(|name| LocalObjectReference { name }));
         self
     }
 
@@ -699,7 +699,8 @@ mod tests {
             pod_spec.volumes.as_ref().and_then(|volumes| volumes
                 .first()
                 .as_ref()
-                .and_then(|volume| volume.config_map.as_ref()?.name.clone())),
+                .and_then(|volume| volume.config_map.as_ref())
+                .map(|cm| cm.name.clone())),
             Some("configmap".to_string())
         );
         assert_eq!(pod_spec.termination_grace_period_seconds, Some(42));
@@ -715,7 +716,7 @@ mod tests {
         assert_eq!(
             pod.spec.unwrap().image_pull_secrets.unwrap(),
             vec![LocalObjectReference {
-                name: Some("company-registry-secret".to_string())
+                name: "company-registry-secret".to_string()
             }]
         );
     }

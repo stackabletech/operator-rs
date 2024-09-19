@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: `validation` module now uses typed errors ([#851]).
 - Set `checkIncrement` to 5 seconds in Logback config ([#853]).
+- Bump Rust dependencies and enable Kubernetes 1.31 (via `kube` 0.95.0) ([#867]).
 
 ### Fixed
 
@@ -26,6 +27,7 @@ All notable changes to this project will be documented in this file.
 [#855]: https://github.com/stackabletech/operator-rs/pull/855
 [#858]: https://github.com/stackabletech/operator-rs/pull/858
 [#862]: https://github.com/stackabletech/operator-rs/pull/862
+[#867]: https://github.com/stackabletech/operator-rs/pull/867
 
 ## [0.74.0] - 2024-08-22
 
