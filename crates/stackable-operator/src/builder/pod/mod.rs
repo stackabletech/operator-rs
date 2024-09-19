@@ -456,7 +456,7 @@ impl PodBuilder {
     ) -> &mut Self {
         self.image_pull_secrets
             .get_or_insert_with(Vec::new)
-            .extend(secrets.map(|s| LocalObjectReference { name: s }));
+            .extend(secrets.map(|name| LocalObjectReference { name }));
         self
     }
 
