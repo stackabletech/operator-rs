@@ -62,7 +62,7 @@ impl VolumeBuilder {
 
     pub fn with_config_map(&mut self, name: impl Into<String>) -> &mut Self {
         self.volume_source = VolumeSource::ConfigMap(ConfigMapVolumeSource {
-            name: Some(name.into()),
+            name: name.into(),
             ..ConfigMapVolumeSource::default()
         });
         self
@@ -565,7 +565,7 @@ mod tests {
 
         assert_eq!(vol.name, "name".to_string());
         assert_eq!(
-            vol.config_map.and_then(|cm| cm.name),
+            vol.config_map.map(|cm| cm.name),
             Some("configmap".to_string())
         );
 

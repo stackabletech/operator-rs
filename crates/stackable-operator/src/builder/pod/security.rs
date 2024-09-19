@@ -399,7 +399,9 @@ mod tests {
                 // Because we support older Kubernetes versions as well, we can
                 // not use it for now, as we would not work on older Kubernetes
                 // clusters.
-                app_armor_profile: None
+                app_armor_profile: None,
+                // This attribute is supported starting with Kubernetes 1.31.
+                supplemental_groups_policy: None,
             }
         );
     }
