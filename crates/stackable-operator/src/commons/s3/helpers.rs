@@ -127,7 +127,7 @@ impl ResolvedS3Connection {
         // Add needed TLS volumes
         let (tls_volumes, tls_mounts) = self
             .tls
-            .volumes_and_mounts()
+            .volumes_and_mounts(unique_identifier)
             .context(AddS3TlsClientDetailsVolumesSnafu)?;
         volumes.extend(tls_volumes);
         mounts.extend(tls_mounts);
@@ -137,9 +137,6 @@ impl ResolvedS3Connection {
 
     /// Returns the path of the files containing bind user and password.
     /// This will be None if there are no credentials for this LDAP connection.
-    ///
-    /// `unique_identifier` needs to be a unique identifier (e.g. in case of trino-operator the name of the catalog),
-    /// so that multiple mounts of the same SecretClass do not produce clashing volumes and volumeMounts.
     pub fn credentials_mount_paths(&self, unique_identifier: &str) -> Option<(String, String)> {
         self.credentials.as_ref().map(|bind_credentials| {
             let secret_class = &bind_credentials.secret_class;

@@ -37,10 +37,11 @@ impl TlsClientDetails {
     /// * Tls secret class used to verify the cert of the LDAP server
     pub fn add_volumes_and_mounts(
         &self,
+        unique_identifier: &str,
         pod_builder: &mut PodBuilder,
         container_builders: Vec<&mut ContainerBuilder>,
     ) -> Result<(), TlsClientDetailsError> {
-        let (volumes, mounts) = self.volumes_and_mounts()?;
+        let (volumes, mounts) = self.volumes_and_mounts(unique_identifier)?;
         pod_builder.add_volumes(volumes);
 
         for cb in container_builders {
@@ -54,12 +55,13 @@ impl TlsClientDetails {
     /// volumes and mounts in case you need to add them by yourself.
     pub fn volumes_and_mounts(
         &self,
+        unique_identifier: &str,
     ) -> Result<(Vec<Volume>, Vec<VolumeMount>), TlsClientDetailsError> {
         let mut volumes = Vec::new();
         let mut mounts = Vec::new();
 
         if let Some(secret_class) = self.tls_ca_cert_secret_class() {
-            let volume_name = format!("{secret_class}-ca-cert");
+            let volume_name = format!("{unique_identifier}-{secret_class}-ca-cert");
             let secret_class_volume = SecretClassVolume::new(secret_class.clone(), None);
             let volume = secret_class_volume
                 .to_volume(&volume_name)
@@ -67,8 +69,11 @@ impl TlsClientDetails {
 
             volumes.push(volume);
             mounts.push(
-                VolumeMountBuilder::new(volume_name, format!("{SECRET_BASE_PATH}/{secret_class}"))
-                    .build(),
+                VolumeMountBuilder::new(
+                    volume_name,
+                    format!("{SECRET_BASE_PATH}/{unique_identifier}-{secret_class}"),
+                )
+                .build(),
             );
         }
 
@@ -90,9 +95,10 @@ impl TlsClientDetails {
 
     /// Returns the path of the ca.crt that should be used to verify the LDAP server certificate
     /// if TLS verification with a CA cert from a SecretClass is configured.
-    pub fn tls_ca_cert_mount_path(&self) -> Option<String> {
-        self.tls_ca_cert_secret_class()
-            .map(|secret_class| format!("{SECRET_BASE_PATH}/{secret_class}/ca.crt"))
+    pub fn tls_ca_cert_mount_path(&self, unique_identifier: &str) -> Option<String> {
+        self.tls_ca_cert_secret_class().map(|secret_class| {
+            format!("{SECRET_BASE_PATH}/{unique_identifier}-{secret_class}/ca.crt")
+        })
     }
 
     /// Extracts the SecretClass that provides the CA cert used to verify the server certificate.

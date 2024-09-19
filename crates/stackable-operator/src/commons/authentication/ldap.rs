@@ -95,10 +95,11 @@ impl AuthenticationProvider {
     /// * Tls secret class used to verify the cert of the LDAP server
     pub fn add_volumes_and_mounts(
         &self,
+        unique_identifier: &str,
         pod_builder: &mut PodBuilder,
         container_builders: Vec<&mut ContainerBuilder>,
     ) -> Result<()> {
-        let (volumes, mounts) = self.volumes_and_mounts()?;
+        let (volumes, mounts) = self.volumes_and_mounts(unique_identifier)?;
         pod_builder.add_volumes(volumes);
 
         for cb in container_builders {
@@ -110,28 +111,34 @@ impl AuthenticationProvider {
 
     /// It is recommended to use [`Self::add_volumes_and_mounts`], this function returns you the
     /// volumes and mounts in case you need to add them by yourself.
-    pub fn volumes_and_mounts(&self) -> Result<(Vec<Volume>, Vec<VolumeMount>)> {
+    pub fn volumes_and_mounts(
+        &self,
+        unique_identifier: &str,
+    ) -> Result<(Vec<Volume>, Vec<VolumeMount>)> {
         let mut volumes = Vec::new();
         let mut mounts = Vec::new();
 
         if let Some(bind_credentials) = &self.bind_credentials {
             let secret_class = &bind_credentials.secret_class;
-            let volume_name = format!("{secret_class}-bind-credentials");
+            let volume_name = format!("{unique_identifier}-{secret_class}-bind-credentials");
             let volume = bind_credentials
                 .to_volume(&volume_name)
                 .context(BindCredentialsSnafu)?;
 
             volumes.push(volume);
             mounts.push(
-                VolumeMountBuilder::new(volume_name, format!("{SECRET_BASE_PATH}/{secret_class}"))
-                    .build(),
+                VolumeMountBuilder::new(
+                    volume_name,
+                    format!("{SECRET_BASE_PATH}/{unique_identifier}-{secret_class}"),
+                )
+                .build(),
             );
         }
 
         // Add needed TLS volumes
         let (tls_volumes, tls_mounts) = self
             .tls
-            .volumes_and_mounts()
+            .volumes_and_mounts(unique_identifier)
             .context(AddLdapTlsClientDetailsVolumesSnafu)?;
         volumes.extend(tls_volumes);
         mounts.extend(tls_mounts);
@@ -141,12 +148,15 @@ impl AuthenticationProvider {
 
     /// Returns the path of the files containing bind user and password.
     /// This will be None if there are no credentials for this LDAP connection.
-    pub fn bind_credentials_mount_paths(&self) -> Option<(String, String)> {
+    pub fn bind_credentials_mount_paths(
+        &self,
+        unique_identifier: &str,
+    ) -> Option<(String, String)> {
         self.bind_credentials.as_ref().map(|bind_credentials| {
             let secret_class = &bind_credentials.secret_class;
             (
-                format!("{SECRET_BASE_PATH}/{secret_class}/user"),
-                format!("{SECRET_BASE_PATH}/{secret_class}/password"),
+                format!("{SECRET_BASE_PATH}/{unique_identifier}-{secret_class}/user"),
+                format!("{SECRET_BASE_PATH}/{unique_identifier}-{secret_class}/password"),
             )
         })
     }
@@ -269,37 +279,37 @@ mod test {
             Some("ldap-ca-cert".to_string())
         );
         assert_eq!(
-            ldap.tls.tls_ca_cert_mount_path(),
-            Some("/stackable/secrets/ldap-ca-cert/ca.crt".to_string())
+            ldap.tls.tls_ca_cert_mount_path("myldap"),
+            Some("/stackable/secrets/myldap-ldap-ca-cert/ca.crt".to_string())
         );
-        let (tls_volumes, tls_mounts) = ldap.tls.volumes_and_mounts().unwrap();
+        let (tls_volumes, tls_mounts) = ldap.tls.volumes_and_mounts("myldap").unwrap();
         assert_eq!(
             tls_volumes,
             vec![SecretClassVolume {
                 secret_class: "ldap-ca-cert".to_string(),
                 scope: None,
             }
-            .to_volume("ldap-ca-cert-ca-cert")
+            .to_volume("myldap-ldap-ca-cert-ca-cert")
             .unwrap()]
         );
         assert_eq!(
             tls_mounts,
             vec![VolumeMountBuilder::new(
-                "ldap-ca-cert-ca-cert",
-                "/stackable/secrets/ldap-ca-cert"
+                "myldap-ldap-ca-cert-ca-cert",
+                "/stackable/secrets/myldap-ldap-ca-cert"
             )
             .build()]
         );
 
         assert!(ldap.has_bind_credentials());
         assert_eq!(
-            ldap.bind_credentials_mount_paths(),
+            ldap.bind_credentials_mount_paths("myldap"),
             Some((
-                "/stackable/secrets/openldap-bind-credentials/user".to_string(),
-                "/stackable/secrets/openldap-bind-credentials/password".to_string()
+                "/stackable/secrets/myldap-openldap-bind-credentials/user".to_string(),
+                "/stackable/secrets/myldap-openldap-bind-credentials/password".to_string()
             ))
         );
-        let (ldap_volumes, ldap_mounts) = ldap.volumes_and_mounts().unwrap();
+        let (ldap_volumes, ldap_mounts) = ldap.volumes_and_mounts("myldap").unwrap();
         assert_eq!(
             ldap_volumes,
             vec![
@@ -307,13 +317,13 @@ mod test {
                     secret_class: "openldap-bind-credentials".to_string(),
                     scope: None,
                 }
-                .to_volume("openldap-bind-credentials-bind-credentials")
+                .to_volume("myldap-openldap-bind-credentials-bind-credentials")
                 .unwrap(),
                 SecretClassVolume {
                     secret_class: "ldap-ca-cert".to_string(),
                     scope: None,
                 }
-                .to_volume("ldap-ca-cert-ca-cert")
+                .to_volume("myldap-ldap-ca-cert-ca-cert")
                 .unwrap()
             ]
         );
@@ -321,12 +331,15 @@ mod test {
             ldap_mounts,
             vec![
                 VolumeMountBuilder::new(
-                    "openldap-bind-credentials-bind-credentials",
-                    "/stackable/secrets/openldap-bind-credentials"
+                    "myldap-openldap-bind-credentials-bind-credentials",
+                    "/stackable/secrets/myldap-openldap-bind-credentials"
                 )
                 .build(),
-                VolumeMountBuilder::new("ldap-ca-cert-ca-cert", "/stackable/secrets/ldap-ca-cert")
-                    .build()
+                VolumeMountBuilder::new(
+                    "myldap-ldap-ca-cert-ca-cert",
+                    "/stackable/secrets/myldap-ldap-ca-cert"
+                )
+                .build()
             ]
         );
     }
