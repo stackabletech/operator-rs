@@ -58,7 +58,7 @@ pub enum HostNameParseError {
     InvalidHostname { hostname: String },
 }
 
-/// A validated hostname (either a [`DomainName`] or IP address) type.
+/// A validated hostname, which is either a [`DomainName`] or [`IpAddr`].
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 #[serde(try_from = "String", into = "String")]
 pub enum HostName {
