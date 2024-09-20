@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Avoid clashing volumes and mounts by only adding volumes if they do not already exist ([#871]).
+- Avoid clashing volumes and mounts by only adding volumes or mounts if they do not already exist ([#871]).
 
 ### Changed
 
