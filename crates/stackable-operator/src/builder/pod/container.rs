@@ -28,8 +28,8 @@ pub enum Error {
             The existing volumeMount is {existing_volume_mount:?}, the new one is {new_volume_mount:?}"
     ))]
     ClashingVolumeMountMountPath {
-        existing_volume_mount: VolumeMount,
-        new_volume_mount: VolumeMount,
+        existing_volume_mount: Box<VolumeMount>,
+        new_volume_mount: Box<VolumeMount>,
     },
 }
 
@@ -539,21 +539,17 @@ mod tests {
             "lengthexceededlengthexceededlengthexceededlengthexceededlengthex";
         assert_eq!(long_container_name.len(), 64); // 63 characters is the limit for container names
         let result = ContainerBuilder::new(long_container_name);
-        match result
-            .err()
-            .expect("Container name exceeding 63 characters should cause an error")
-        {
-            Error::InvalidContainerName {
+        if let Error::InvalidContainerName {
                 container_name,
                 source,
-            } => {
-                assert_eq!(container_name, long_container_name);
-                assert_eq!(
-                    source.to_string(),
-                    "input is 64 bytes long but must be no more than 63"
-                )
-            }
-            _ => {}
+            } = result
+            .err()
+            .expect("Container name exceeding 63 characters should cause an error") {
+            assert_eq!(container_name, long_container_name);
+            assert_eq!(
+                source.to_string(),
+                "input is 64 bytes long but must be no more than 63"
+            )
         }
         // One characters shorter name is valid
         let max_len_container_name: String = long_container_name.chars().skip(1).collect();
@@ -617,17 +613,13 @@ mod tests {
         result: Result<ContainerBuilder, Error>,
         expected_err_contains: &str,
     ) {
-        match result
-            .err()
-            .expect("Container name exceeding 63 characters should cause an error")
-        {
-            Error::InvalidContainerName {
+        if let Error::InvalidContainerName {
                 container_name: _,
                 source,
-            } => {
-                assert!(dbg!(source.to_string()).contains(dbg!(expected_err_contains)));
-            }
-            _ => {}
+            } = result
+            .err()
+            .expect("Container name exceeding 63 characters should cause an error") {
+            assert!(dbg!(source.to_string()).contains(dbg!(expected_err_contains)));
         }
     }
 }
