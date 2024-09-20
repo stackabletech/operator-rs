@@ -1,5 +1,6 @@
 use std::fmt;
 
+use indexmap::IndexMap;
 use k8s_openapi::api::core::v1::{
     ConfigMapKeySelector, Container, ContainerPort, EnvVar, EnvVarSource, Lifecycle,
     LifecycleHandler, ObjectFieldSelector, Probe, ResourceRequirements, SecretKeySelector,
@@ -26,6 +27,11 @@ pub enum Error {
 /// A builder to build [`Container`] objects.
 ///
 /// This will automatically create the necessary volumes and mounts for each `ConfigMap` which is added.
+///
+/// This struct is often times using an [`IndexMap`] to have consistent ordering (so we don't produce reconcile loops).
+/// We are also choosing it over an [`std::collections::BTreeMap`], as it's easier to debug for users, as logically
+/// grouped volumeMounts (e.g. all volumeMounts related to S3) are near each other in the list instead of "just" being
+/// sorted alphabetically.
 #[derive(Clone, Default)]
 pub struct ContainerBuilder {
     args: Option<Vec<String>>,
@@ -36,7 +42,9 @@ pub struct ContainerBuilder {
     image_pull_policy: Option<String>,
     name: String,
     resources: Option<ResourceRequirements>,
-    volume_mounts: Option<Vec<VolumeMount>>,
+
+    /// The key is the volumeMount mountPath.
+    volume_mounts: IndexMap<String, VolumeMount>,
     readiness_probe: Option<Probe>,
     liveness_probe: Option<Probe>,
     startup_probe: Option<Probe>,
@@ -188,28 +196,55 @@ impl ContainerBuilder {
         self
     }
 
+    /// This function only adds the [`VolumeMount`] in case there is no volumeMount with the same mountPath already.
+    /// In case there already was a volumeMount with the same path already, an [`tracing::error`] is raised in case the
+    /// contents of the volumeMounts differ.
+    ///
+    /// Historically this function unconditionally added volumeMounts, which resulted in invalid
+    /// [`k8s_openapi::api::core::v1::PodSpec`]s, as volumeMounts where added multiple times - think of Trino using the same [`crate::commons::s3::S3Connection`]
+    /// two times, resulting in e.g. the s3 credentials being mounted twice as the same volumeMount.
+    ///
+    /// We could have made this function fallible, but decided not to do so for now, as it would be a bigger breaking
+    /// change.
+    pub fn add_volume_mount_struct(&mut self, volume_mount: VolumeMount) -> &mut Self {
+        if let Some(existing_volume_mount) = self.volume_mounts.get(&volume_mount.mount_path) {
+            if !existing_volume_mount.eq(&volume_mount) {
+                tracing::error!(
+                    ?existing_volume_mount,
+                    new_volume_mount = ?volume_mount,
+                    "The operator tried to add a volumeMount to Container, which was already added with a different content! \
+                        The new volumeMount will be ignored."
+                );
+            }
+        } else {
+            self.volume_mounts
+                .insert(volume_mount.mount_path.clone(), volume_mount);
+        }
+
+        self
+    }
+
+    /// See [`Self::add_volume_mount_struct`] for details
     pub fn add_volume_mount(
         &mut self,
         name: impl Into<String>,
         path: impl Into<String>,
     ) -> &mut Self {
-        self.volume_mounts
-            .get_or_insert_with(Vec::new)
-            .push(VolumeMount {
-                name: name.into(),
-                mount_path: path.into(),
-                ..VolumeMount::default()
-            });
-        self
+        self.add_volume_mount_struct(VolumeMount {
+            name: name.into(),
+            mount_path: path.into(),
+            ..VolumeMount::default()
+        })
     }
 
+    /// See [`Self::add_volume_mount_struct`] for details
     pub fn add_volume_mounts(
         &mut self,
         volume_mounts: impl IntoIterator<Item = VolumeMount>,
     ) -> &mut Self {
-        self.volume_mounts
-            .get_or_insert_with(Vec::new)
-            .extend(volume_mounts);
+        for volume_mount in volume_mounts {
+            self.add_volume_mount_struct(volume_mount);
+        }
         self
     }
 
@@ -265,7 +300,11 @@ impl ContainerBuilder {
             resources: self.resources.clone(),
             name: self.name.clone(),
             ports: self.container_ports.clone(),
-            volume_mounts: self.volume_mounts.clone(),
+            volume_mounts: if self.volume_mounts.is_empty() {
+                None
+            } else {
+                Some(self.volume_mounts.clone().into_values().collect())
+            },
             readiness_probe: self.readiness_probe.clone(),
             liveness_probe: self.liveness_probe.clone(),
             startup_probe: self.startup_probe.clone(),

@@ -2936,6 +2936,7 @@ dependencies = [
  "dockerfile-parser",
  "either",
  "futures",
+ "indexmap 2.5.0",
  "json-patch",
  "k8s-openapi",
  "kube",

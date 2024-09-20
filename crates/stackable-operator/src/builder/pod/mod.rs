@@ -1,5 +1,6 @@
 use std::{collections::BTreeMap, num::TryFromIntError};
 
+use indexmap::IndexMap;
 use k8s_openapi::{
     api::core::v1::{
         Affinity, Container, LocalObjectReference, NodeAffinity, Pod, PodAffinity, PodAntiAffinity,
@@ -53,6 +54,10 @@ pub enum Error {
 }
 
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
+///
+/// This struct is often times using an [`IndexMap`] to have consistent ordering (so we don't produce reconcile loops).
+/// We are also choosing it over an [`BTreeMap`], as it's easier to debug for users, as logically grouped volumes
+/// (e.g. all volumes related to S3) are near each other in the list instead of "just" being sorted alphabetically.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PodBuilder {
     containers: Vec<Container>,
@@ -67,7 +72,9 @@ pub struct PodBuilder {
     status: Option<PodStatus>,
     security_context: Option<PodSecurityContext>,
     tolerations: Option<Vec<Toleration>>,
-    volumes: Option<Vec<Volume>>,
+
+    /// The key is the volume name.
+    volumes: IndexMap<String, Volume>,
     service_account_name: Option<String>,
     image_pull_secrets: Option<Vec<LocalObjectReference>>,
     restart_policy: Option<String>,
@@ -254,11 +261,6 @@ impl PodBuilder {
         self
     }
 
-    pub fn add_volume(&mut self, volume: Volume) -> &mut Self {
-        self.volumes.get_or_insert_with(Vec::new).push(volume);
-        self
-    }
-
     /// Utility function for the common case of adding an emptyDir Volume
     /// with the given name and no medium and no quantity.
     pub fn add_empty_dir_volume(
@@ -273,8 +275,39 @@ impl PodBuilder {
         )
     }
 
+    /// This function only adds the [`Volume`] in case there is no volume with the same name already.
+    /// In case there already was a volume with the same name already, an [`tracing::error`] is raised in case the
+    /// contents of the volumes differ.
+    ///
+    /// Historically this function unconditionally added volumes, which resulted in invalid [`PodSpec`]s, as volumes
+    /// where added multiple times - think of Trino using the same [`crate::commons::s3::S3Connection`] two times,
+    /// resulting in e.g. the s3 credentials being mounted twice as the sake volume.
+    ///
+    /// We could have made this function fallible, but decided not to do so for now, as it would be a bigger breaking
+    /// change.
+    pub fn add_volume(&mut self, volume: Volume) -> &mut Self {
+        if let Some(existing_volume) = self.volumes.get(&volume.name) {
+            if !existing_volume.eq(&volume) {
+                tracing::error!(
+                    ?existing_volume,
+                    new_volume = ?volume,
+                    "The operator tried to add a volume to Pod, which was already added with a different content! \
+                        The new volume will be ignored."
+                );
+            }
+        } else {
+            self.volumes.insert(volume.name.clone(), volume);
+        }
+
+        self
+    }
+
+    /// See [`Self::add_volume`] for details
     pub fn add_volumes(&mut self, volumes: Vec<Volume>) -> &mut Self {
-        self.volumes.get_or_insert_with(Vec::new).extend(volumes);
+        for volume in volumes {
+            self.add_volume(volume);
+        }
+
         self
     }
 
@@ -533,7 +566,11 @@ impl PodBuilder {
             }),
             security_context: self.security_context.clone(),
             tolerations: self.tolerations.clone(),
-            volumes: self.volumes.clone(),
+            volumes: if self.volumes.is_empty() {
+                None
+            } else {
+                Some(self.volumes.clone().into_values().collect())
+            },
             // Legacy feature for ancient Docker images
             // In practice, this just causes a bunch of unused environment variables that may conflict with other uses,
             // such as https://github.com/stackabletech/spark-operator/pull/256.
