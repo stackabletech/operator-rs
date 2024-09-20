@@ -7,11 +7,10 @@ use url::{ParseError, Url};
 use crate::{
     builder::pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
     commons::{
-        authentication::{
-            tls::{TlsClientDetails, TlsClientDetailsError},
-            SECRET_BASE_PATH,
-        },
+        authentication::SECRET_BASE_PATH,
+        networking::HostName,
         secret_class::{SecretClassVolume, SecretClassVolumeError},
+        tls_verification::{TlsClientDetails, TlsClientDetailsError},
     },
 };
 
@@ -36,8 +35,8 @@ pub enum Error {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct AuthenticationProvider {
-    /// Hostname of the LDAP server, for example: `my.ldap.server`.
-    pub hostname: String,
+    /// Host of the LDAP server, for example: `my.ldap.server` or `127.0.0.1`.
+    pub hostname: HostName,
 
     /// Port of the LDAP server. If TLS is used defaults to 636 otherwise to 389.
     port: Option<u16>,
