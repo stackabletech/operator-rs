@@ -87,12 +87,13 @@ impl DaemonSetConditionBuilder {
 }
 
 #[cfg(test)]
-mod test {
-    use crate::status::condition::daemonset::DaemonSetConditionBuilder;
-    use crate::status::condition::{
-        ClusterCondition, ClusterConditionStatus, ClusterConditionType, ConditionBuilder,
-    };
+mod tests {
     use k8s_openapi::api::apps::v1::{DaemonSet, DaemonSetStatus};
+
+    use crate::status::condition::{
+        daemonset::DaemonSetConditionBuilder, ClusterCondition, ClusterConditionStatus,
+        ClusterConditionType, ConditionBuilder,
+    };
 
     fn build_ds(number_ready: i32) -> DaemonSet {
         DaemonSet {
@@ -105,7 +106,7 @@ mod test {
     }
 
     #[test]
-    fn test_daemon_set_available_true() {
+    fn daemon_set_available() {
         let ds = build_ds(1);
 
         assert_eq!(
@@ -115,7 +116,7 @@ mod test {
     }
 
     #[test]
-    fn test_daemon_set_available_false() {
+    fn daemon_set_unavailable() {
         let ds = build_ds(0);
         assert_eq!(
             DaemonSetConditionBuilder::daemon_set_available(&ds),
@@ -124,7 +125,7 @@ mod test {
     }
 
     #[test]
-    fn test_daemon_set_available_condition_true() {
+    fn daemon_set_condition_available() {
         let mut ds_condition_builder = DaemonSetConditionBuilder::default();
         ds_condition_builder.add(build_ds(1));
 
@@ -148,7 +149,7 @@ mod test {
     }
 
     #[test]
-    fn test_daemon_set_available_condition_false() {
+    fn daemon_set_condition_unavailable() {
         let mut ds_condition_builder = DaemonSetConditionBuilder::default();
         ds_condition_builder.add(build_ds(0));
 

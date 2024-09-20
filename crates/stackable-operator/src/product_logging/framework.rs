@@ -1505,7 +1505,7 @@ mod tests {
     #[case("5Mi", &["1.5Mi"])]
     #[case("1Mi", &["100Ki"])]
     #[case("3076Mi", &["1Ki", "1Mi", "1Gi"])]
-    fn test_calculate_log_volume_size_limit(
+    fn log_volume_size_limit(
         #[case] expected_log_volume_size_limit: &str,
         #[case] max_log_files_sizes: &[&str],
     ) {
@@ -1521,7 +1521,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_log4j2_config() {
+    fn log4j2_config() {
         let log_config = AutomaticContainerLogConfig {
             loggers: vec![(
                 "ROOT".to_string(),
@@ -1555,7 +1555,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_log4j2_config_with_additional_loggers() {
+    fn log4j2_config_with_additional_loggers() {
         let log_config = AutomaticContainerLogConfig {
             loggers: vec![
                 (

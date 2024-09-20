@@ -467,19 +467,18 @@ fn format_leaf_certificate_subject(name: &str, scope: &str) -> Result<Name> {
 }
 
 #[cfg(test)]
-mod test {
-
+mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_rsa_key_generation() {
+    async fn rsa_key_generation() {
         let mut ca = CertificateAuthority::new_rsa().unwrap();
         ca.generate_rsa_leaf_certificate("Airflow", "pod", Duration::from_secs(3600))
             .unwrap();
     }
 
     #[tokio::test]
-    async fn test_ecdsa_key_generation() {
+    async fn ecdsa_key_generation() {
         let mut ca = CertificateAuthority::new_ecdsa().unwrap();
         ca.generate_ecdsa_leaf_certificate("Airflow", "pod", Duration::from_secs(3600))
             .unwrap();

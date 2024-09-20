@@ -316,7 +316,7 @@ mod tests {
     use k8s_openapi::api::core::v1::Pod;
 
     #[test]
-    fn test_objectmeta_builder() {
+    fn objectmeta_builder() {
         let mut pod = Pod::default();
         pod.metadata.name = Some("pod".to_string());
         pod.metadata.uid = Some("uid".to_string());

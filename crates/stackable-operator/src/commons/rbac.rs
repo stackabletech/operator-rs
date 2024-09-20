@@ -124,7 +124,7 @@ mod tests {
     }
 
     #[test]
-    fn test_build_rbac() {
+    fn build() {
         let cluster = build_test_resource();
         let (rbac_sa, rbac_rolebinding) =
             build_rbac_resources(&cluster, RESOURCE_NAME, Labels::new()).unwrap();

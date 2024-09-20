@@ -198,7 +198,7 @@ impl PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, PodDisruptionBudgetCo
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::collections::BTreeMap;
 
     use k8s_openapi::{
@@ -214,7 +214,7 @@ mod test {
     use super::PodDisruptionBudgetBuilder;
 
     #[test]
-    pub fn test_normal_build() {
+    pub fn normal_build() {
         #[allow(deprecated)]
         let pdb = PodDisruptionBudgetBuilder::new()
             .new_with_metadata(
@@ -255,7 +255,7 @@ mod test {
     }
 
     #[test]
-    pub fn test_build_from_role() {
+    pub fn build_from_role() {
         #[derive(
             Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize,
         )]
@@ -273,10 +273,12 @@ mod test {
             ",
         )
         .unwrap();
+
         let app_name = "trino";
         let role = "worker";
         let operator_name = "trino.stackable.tech";
         let controller_name = "trino-operator-trino-controller";
+
         let pdb = PodDisruptionBudgetBuilder::new_with_role(
             &trino,
             app_name,

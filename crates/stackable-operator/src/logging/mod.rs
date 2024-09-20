@@ -80,7 +80,7 @@ pub fn initialize_logging(env: &str, app_name: &str, tracing_target: TracingTarg
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
 
     use tracing::{debug, error, info};
 
@@ -94,7 +94,7 @@ mod test {
     //      NOT_SET=debug cargo test default_tracing -- --nocapture
     // to see them all.
     #[test]
-    pub fn test_default_tracing_level_is_set_to_info() {
+    fn default_tracing_level_is_set_to_info() {
         super::initialize_logging("NOT_SET", "test", TracingTarget::None);
 
         error!("ERROR level messages should be seen.");

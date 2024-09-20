@@ -86,7 +86,7 @@ impl<'a> ClusterOperationsConditionBuilder<'a> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use rstest::*;
 
@@ -115,7 +115,7 @@ mod test {
         ClusterConditionStatus::True,
         ClusterConditionStatus::Unknown
     )]
-    fn test_cluster_operation_condition(
+    fn cluster_operation_condition(
         #[case] reconciliation_paused: bool,
         #[case] stopped: bool,
         #[case] expected_paused_status: ClusterConditionStatus,

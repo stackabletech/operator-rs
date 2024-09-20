@@ -558,7 +558,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     #[test]
-    fn test_volume_builder() {
+    fn builder() {
         let mut volume_builder = VolumeBuilder::new("name");
         volume_builder.with_config_map("configmap");
         let vol = volume_builder.build();
@@ -595,7 +595,7 @@ mod tests {
     }
 
     #[test]
-    fn test_volume_mount_builder() {
+    fn mount_builder() {
         let mut volume_mount_builder = VolumeMountBuilder::new("name", "mount_path");
         volume_mount_builder
             .mount_propagation("mount_propagation")
@@ -614,7 +614,7 @@ mod tests {
     }
 
     #[test]
-    fn test_listener_operator_volume_source_builder() {
+    fn listener_operator_volume_source_builder() {
         let labels: Labels = Labels::try_from(BTreeMap::<String, String>::new()).unwrap();
 
         let builder = ListenerOperatorVolumeSourceBuilder::new(
