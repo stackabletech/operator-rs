@@ -243,7 +243,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_oidc_minimal() {
+    fn minimal() {
         let oidc = serde_yaml::from_str::<AuthenticationProvider>(
             "
             hostname: my.keycloak.server
@@ -255,7 +255,7 @@ mod test {
     }
 
     #[test]
-    fn test_oidc_full() {
+    fn full() {
         let oidc = serde_yaml::from_str::<AuthenticationProvider>(
             "
             hostname: my.keycloak.server
@@ -269,7 +269,7 @@ mod test {
     }
 
     #[test]
-    fn test_oidc_http_endpoint_url() {
+    fn http_endpoint_url() {
         let oidc = serde_yaml::from_str::<AuthenticationProvider>(
             "
             hostname: my.keycloak.server
@@ -288,7 +288,7 @@ mod test {
     }
 
     #[test]
-    fn test_oidc_https_endpoint_url() {
+    fn https_endpoint_url() {
         let oidc = serde_yaml::from_str::<AuthenticationProvider>(
             "
             hostname: my.keycloak.server
@@ -314,7 +314,7 @@ mod test {
     }
 
     #[test]
-    fn test_oidc_ipv6_endpoint_url() {
+    fn ipv6_endpoint_url() {
         let oidc = serde_yaml::from_str::<AuthenticationProvider>(
             "
             hostname: '[2606:2800:220:1:248:1893:25c8:1946]'
@@ -333,7 +333,7 @@ mod test {
     }
 
     #[test]
-    fn test_oidc_client_env_vars() {
+    fn client_env_vars() {
         let secret_name = "my-keycloak-client";
         let env_names = AuthenticationProvider::client_credentials_env_names(secret_name);
         assert_eq!(

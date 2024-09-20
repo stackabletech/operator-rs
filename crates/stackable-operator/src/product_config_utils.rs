@@ -1041,7 +1041,7 @@ mod tests {
             }
         }
     )]
-    fn test_transform_role_to_config(
+    fn role_to_config(
         #[case] role_config: bool,
         #[case] group_config: bool,
         #[case] role_overrides: bool,
@@ -1149,7 +1149,7 @@ mod tests {
             }
         }
     )]
-    fn test_order_in_transform_role_to_config(
+    fn order_in_transform_role_to_config(
         #[case] role_env_override: HashMap<String, String>,
         #[case] group_env_override: HashMap<String, String>,
         #[case] role_cli_override: BTreeMap<String, String>,
@@ -1192,7 +1192,7 @@ mod tests {
     }
 
     #[test]
-    fn test_transform_role_to_config_overrides() {
+    fn role_to_config_overrides() {
         let role_group = "role_group";
         let file_name = "foo.bar";
         let role = Role {
@@ -1248,7 +1248,7 @@ mod tests {
     }
 
     #[test]
-    fn test_transform_all_roles_to_config() {
+    fn all_roles_to_config() {
         let role_1 = "role_1";
         let role_2 = "role_2";
         let role_group_1 = "role_group_1";

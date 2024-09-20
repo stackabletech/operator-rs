@@ -303,7 +303,7 @@ mod tests {
         DEPLOY_FILE_PATH
     )]
     #[case(None, vec!["bad", DEFAULT_FILE_PATH], DEFAULT_FILE_PATH, DEFAULT_FILE_PATH)]
-    fn test_resolve_path_good(
+    fn resolve_path_good(
         #[case] user_provided_path: Option<&str>,
         #[case] default_locations: Vec<&str>,
         #[case] path_to_create: &str,
@@ -343,12 +343,12 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn test_resolve_path_user_path_not_existing() {
+    fn resolve_path_user_path_not_existing() {
         resolve_path(Some(USER_PROVIDED_PATH.as_ref()), &[DEPLOY_FILE_PATH]).unwrap();
     }
 
     #[test]
-    fn test_resolve_path_nothing_found_errors() {
+    fn resolve_path_nothing_found_errors() {
         if let Err(Error::RequiredFileMissing { search_path }) =
             resolve_path(None, &[DEPLOY_FILE_PATH, DEFAULT_FILE_PATH])
         {
@@ -365,7 +365,7 @@ mod tests {
     }
 
     #[test]
-    fn test_product_operator_run_watch_namespace() {
+    fn product_operator_run_watch_namespace() {
         // clean env var to not interfere if already set
         env::remove_var(WATCH_NAMESPACE);
 

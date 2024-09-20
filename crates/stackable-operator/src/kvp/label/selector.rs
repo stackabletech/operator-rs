@@ -116,7 +116,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     #[test]
-    fn test_label_selector() {
+    fn label_selector() {
         let mut match_labels = BTreeMap::new();
         match_labels.insert("foo".to_string(), "bar".to_string());
         match_labels.insert("hui".to_string(), "buh".to_string());
@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn test_invalid_label_in_selector() {
+    fn invalid_label_in_selector() {
         let match_expressions = vec![LabelSelectorRequirement {
             key: "foo".to_string(),
             operator: "In".to_string(),
@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn test_invalid_operator_in_selector() {
+    fn invalid_operator_in_selector() {
         let match_expressions = vec![LabelSelectorRequirement {
             key: "foo".to_string(),
             operator: "IllegalOperator".to_string(),
@@ -207,7 +207,7 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn test_invalid_exists_operator_in_selector() {
+    fn invalid_exists_operator_in_selector() {
         let match_expressions = vec![LabelSelectorRequirement {
             key: "foo".to_string(),
             operator: "Exists".to_string(),

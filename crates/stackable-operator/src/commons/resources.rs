@@ -643,7 +643,7 @@ mod tests {
                 matchLabels:
                     nodeType: directstorage"#
     )]
-    fn test_build_pvc(
+    fn build_pvc(
         #[case] name: String,
         #[case] access_modes: Option<Vec<&str>>,
         #[case] input: String,
@@ -699,7 +699,7 @@ mod tests {
             memory: 20Gi
             cpu: 1000"#
     )]
-    fn test_into_resourcelimits(#[case] input: String, #[case] expected: String) {
+    fn into_resourcelimits(#[case] input: String, #[case] expected: String) {
         let input_resources_fragment: ResourcesFragment<TestStorageConfig> =
             serde_yaml::from_str(&input).expect("illegal test input");
         let input_resources: Resources<TestStorageConfig> =
@@ -717,7 +717,7 @@ mod tests {
     #[case::cpu_ratio_invalid("100m", "1", "4Gi", "4Gi", false, true)]
     #[case::memory_ratio_invalid("1", "1", "2Gi", "4Gi", true, false)]
     #[case::both_ratios_invalid("100m", "1", "2Gi", "4Gi", false, false)]
-    fn test_resource_requirements_checks(
+    fn resource_requirements_checks(
         #[case] cr: String,
         #[case] cl: String,
         #[case] mr: String,

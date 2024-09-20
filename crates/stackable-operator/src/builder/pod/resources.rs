@@ -252,11 +252,11 @@ impl ResourceRequirementsBuilder<Quantity, Quantity, Quantity, Quantity> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
-    fn test_builder() {
+    fn builder() {
         let resources = ResourceRequirements {
             limits: Some(
                 [

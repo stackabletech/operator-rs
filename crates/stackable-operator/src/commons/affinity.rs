@@ -143,7 +143,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_affinity_merge_new_attributes() {
+    fn merge_new_attributes() {
         let default_affinity = StackableAffinityFragment {
             pod_affinity: None,
             pod_anti_affinity: Some(PodAntiAffinity {
@@ -254,7 +254,7 @@ mod tests {
     }
 
     #[test]
-    fn test_affinity_merge_overwrite_existing_attribute() {
+    fn merge_overwrite_existing_attribute() {
         let default_affinity = StackableAffinityFragment {
             pod_affinity: None,
             pod_anti_affinity: Some(PodAntiAffinity {
@@ -319,7 +319,7 @@ mod tests {
     }
 
     #[test]
-    fn test_affinity_between_role_pods() {
+    fn between_role_pods() {
         let app_name = "kafka";
         let cluster_name = "simple-kafka";
         let role = "broker";
@@ -352,7 +352,7 @@ mod tests {
     }
 
     #[test]
-    fn test_affinity_between_cluster_pods() {
+    fn between_cluster_pods() {
         let app_name = "kafka";
         let cluster_name = "simple-kafka";
 

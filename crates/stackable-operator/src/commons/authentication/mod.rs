@@ -173,13 +173,13 @@ impl<O> ClientAuthenticationDetails<O> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::commons::authentication::{
         tls::AuthenticationProvider, AuthenticationClassProvider,
     };
 
     #[test]
-    fn test_authentication_class_provider_to_string() {
+    fn provider_to_string() {
         let tls_provider = AuthenticationClassProvider::Tls(AuthenticationProvider {
             client_cert_secret_class: None,
         });

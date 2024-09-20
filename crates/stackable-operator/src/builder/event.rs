@@ -130,7 +130,7 @@ mod tests {
     use crate::builder::pod::PodBuilder;
 
     #[test]
-    fn test_event_builder() {
+    fn event_builder() {
         let pod = PodBuilder::new()
             .metadata_builder(|builder| builder.name("testpod"))
             .build()

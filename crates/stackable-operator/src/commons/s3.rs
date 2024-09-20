@@ -251,15 +251,14 @@ pub enum S3AccessStyle {
 }
 
 #[cfg(test)]
-mod test {
-    use std::str;
-
-    use crate::commons::s3::{S3AccessStyle, S3ConnectionDef};
-    use crate::commons::s3::{S3BucketSpec, S3ConnectionSpec};
-    use crate::yaml;
+mod tests {
+    use crate::{
+        commons::s3::{S3AccessStyle, S3BucketSpec, S3ConnectionDef, S3ConnectionSpec},
+        yaml::serialize_to_explicit_document,
+    };
 
     #[test]
-    fn test_ser_inline() {
+    fn serialize_inline() {
         let bucket = S3BucketSpec {
             bucket_name: Some("test-bucket-name".to_owned()),
             connection: Some(S3ConnectionDef::Inline(S3ConnectionSpec {
@@ -272,8 +271,8 @@ mod test {
         };
 
         let mut buf = Vec::new();
-        yaml::serialize_to_explicit_document(&mut buf, &bucket).expect("serializable value");
-        let actual_yaml = str::from_utf8(&buf).expect("UTF-8 encoded document");
+        serialize_to_explicit_document(&mut buf, &bucket).expect("serializable value");
+        let actual_yaml = std::str::from_utf8(&buf).expect("UTF-8 encoded document");
 
         let expected_yaml = "---
 bucketName: test-bucket-name
