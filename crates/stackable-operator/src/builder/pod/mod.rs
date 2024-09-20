@@ -56,8 +56,8 @@ pub enum Error {
         The existing volume is {existing_volume:?}, the new one is {new_volume:?}"))]
     ClashingVolumeName {
         volume_name: String,
-        existing_volume: Volume,
-        new_volume: Volume,
+        existing_volume: Box<Volume>,
+        new_volume: Box<Volume>,
     },
 }
 
