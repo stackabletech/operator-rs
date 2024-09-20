@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Avoid clashing volumes and mounts by only adding volumes if they do not already exist ([#871]).
+
+### Changed
+
+- BREAKING: Remove the `unique_identifier` argument from `ResolvedS3Connection::add_volumes_and_mounts`, `ResolvedS3Connection::volumes_and_mounts` and `ResolvedS3Connection::credentials_mount_paths` as it is not needed anymore ([#871]).
+
+[#871]: https://github.com/stackabletech/operator-rs/pull/871
+
 ## [0.76.0] - 2024-09-19
 
 ### Added
