@@ -9,7 +9,7 @@ use k8s_openapi::{
     },
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
 };
-use snafu::{OptionExt, ResultExt, Snafu};
+use snafu::{ensure, OptionExt, ResultExt, Snafu};
 use tracing::warn;
 
 use crate::kvp::Labels;
@@ -51,6 +51,14 @@ pub enum Error {
 
     #[snafu(display("object is missing key {key:?}"))]
     MissingObjectKey { key: &'static str },
+
+    #[snafu(display("The volume {volume_name:?} is clashing with an already existing volume with the same name but a different content. \
+        The existing volume is {existing_volume:?}, the new one is {new_volume:?}"))]
+    ClashingVolumeName {
+        volume_name: String,
+        existing_volume: Volume,
+        new_volume: Volume,
+    },
 }
 
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
@@ -267,7 +275,7 @@ impl PodBuilder {
         &mut self,
         name: impl Into<String>,
         quantity: Option<Quantity>,
-    ) -> &mut Self {
+    ) -> Result<&mut Self> {
         self.add_volume(
             VolumeBuilder::new(name)
                 .with_empty_dir(None::<String>, quantity)
@@ -285,30 +293,30 @@ impl PodBuilder {
     ///
     /// We could have made this function fallible, but decided not to do so for now, as it would be a bigger breaking
     /// change.
-    pub fn add_volume(&mut self, volume: Volume) -> &mut Self {
+    pub fn add_volume(&mut self, volume: Volume) -> Result<&mut Self> {
         if let Some(existing_volume) = self.volumes.get(&volume.name) {
-            if !existing_volume.eq(&volume) {
-                tracing::error!(
-                    ?existing_volume,
-                    new_volume = ?volume,
-                    "The operator tried to add a volume to Pod, which was already added with a different content! \
-                        The new volume will be ignored."
-                );
-            }
+            ensure!(
+                existing_volume.eq(&volume),
+                ClashingVolumeNameSnafu {
+                    volume_name: volume.name.clone(),
+                    existing_volume: existing_volume.clone(),
+                    new_volume: volume
+                }
+            );
         } else {
             self.volumes.insert(volume.name.clone(), volume);
         }
 
-        self
+        Ok(self)
     }
 
     /// See [`Self::add_volume`] for details
-    pub fn add_volumes(&mut self, volumes: Vec<Volume>) -> &mut Self {
+    pub fn add_volumes(&mut self, volumes: Vec<Volume>) -> Result<&mut Self> {
         for volume in volumes {
-            self.add_volume(volume);
+            self.add_volume(volume)?;
         }
 
-        self
+        Ok(self)
     }
 
     /// Add a [`Volume`] for the storage class `listeners.stackable.tech` with the given listener
@@ -337,6 +345,7 @@ impl PodBuilder {
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
+    ///             .unwrap()
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_class("listener", "nodeport", &labels)
@@ -392,7 +401,7 @@ impl PodBuilder {
             name: volume_name.into(),
             ephemeral: Some(volume),
             ..Volume::default()
-        });
+        })?;
 
         Ok(self)
     }
@@ -423,6 +432,7 @@ impl PodBuilder {
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
+    ///             .unwrap()
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener", &labels)
@@ -478,7 +488,7 @@ impl PodBuilder {
             name: volume_name.into(),
             ephemeral: Some(volume),
             ..Volume::default()
-        });
+        })?;
 
         Ok(self)
     }
@@ -710,6 +720,7 @@ mod tests {
                     .with_config_map("configmap")
                     .build(),
             )
+            .unwrap()
             .termination_grace_period(&Duration::from_secs(42))
             .unwrap()
             .build()

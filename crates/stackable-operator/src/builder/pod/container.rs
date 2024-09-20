@@ -6,7 +6,7 @@ use k8s_openapi::api::core::v1::{
     LifecycleHandler, ObjectFieldSelector, Probe, ResourceRequirements, SecretKeySelector,
     SecurityContext, VolumeMount,
 };
-use snafu::{ResultExt as _, Snafu};
+use snafu::{ensure, ResultExt as _, Snafu};
 
 use crate::{
     commons::product_image_selection::ResolvedProductImage,
@@ -21,6 +21,15 @@ pub enum Error {
     InvalidContainerName {
         source: validation::Errors,
         container_name: String,
+    },
+
+    #[snafu(display(
+        "The volumeMount is clashing with an already existing volumeMount with the same mountPath but a different content. \
+            The existing volumeMount is {existing_volume_mount:?}, the new one is {new_volume_mount:?}"
+    ))]
+    ClashingVolumeMountMountPath {
+        existing_volume_mount: VolumeMount,
+        new_volume_mount: VolumeMount,
     },
 }
 
@@ -206,22 +215,21 @@ impl ContainerBuilder {
     ///
     /// We could have made this function fallible, but decided not to do so for now, as it would be a bigger breaking
     /// change.
-    pub fn add_volume_mount_struct(&mut self, volume_mount: VolumeMount) -> &mut Self {
+    pub fn add_volume_mount_struct(&mut self, volume_mount: VolumeMount) -> Result<&mut Self> {
         if let Some(existing_volume_mount) = self.volume_mounts.get(&volume_mount.mount_path) {
-            if !existing_volume_mount.eq(&volume_mount) {
-                tracing::error!(
-                    ?existing_volume_mount,
-                    new_volume_mount = ?volume_mount,
-                    "The operator tried to add a volumeMount to Container, which was already added with a different content! \
-                        The new volumeMount will be ignored."
-                );
-            }
+            ensure!(
+                existing_volume_mount.eq(&volume_mount),
+                ClashingVolumeMountMountPathSnafu {
+                    existing_volume_mount: existing_volume_mount.clone(),
+                    new_volume_mount: volume_mount,
+                }
+            );
         } else {
             self.volume_mounts
                 .insert(volume_mount.mount_path.clone(), volume_mount);
         }
 
-        self
+        Ok(self)
     }
 
     /// See [`Self::add_volume_mount_struct`] for details
@@ -229,7 +237,7 @@ impl ContainerBuilder {
         &mut self,
         name: impl Into<String>,
         path: impl Into<String>,
-    ) -> &mut Self {
+    ) -> Result<&mut Self> {
         self.add_volume_mount_struct(VolumeMount {
             name: name.into(),
             mount_path: path.into(),
@@ -241,11 +249,12 @@ impl ContainerBuilder {
     pub fn add_volume_mounts(
         &mut self,
         volume_mounts: impl IntoIterator<Item = VolumeMount>,
-    ) -> &mut Self {
+    ) -> Result<&mut Self> {
         for volume_mount in volume_mounts {
-            self.add_volume_mount_struct(volume_mount);
+            self.add_volume_mount_struct(volume_mount)?;
         }
-        self
+
+        Ok(self)
     }
 
     pub fn readiness_probe(&mut self, probe: Probe) -> &mut Self {
@@ -427,6 +436,7 @@ mod tests {
             .add_env_var_from_config_map("envFromConfigMap", "my-configmap", "my-key")
             .add_env_var_from_secret("envFromSecret", "my-secret", "my-key")
             .add_volume_mount("configmap", "/mount")
+            .unwrap()
             .add_container_port(container_port_name, container_port)
             .resources(resources.clone())
             .add_container_ports(vec![ContainerPortBuilder::new(container_port_1)
@@ -543,6 +553,7 @@ mod tests {
                     "input is 64 bytes long but must be no more than 63"
                 )
             }
+            _ => {}
         }
         // One characters shorter name is valid
         let max_len_container_name: String = long_container_name.chars().skip(1).collect();
@@ -616,6 +627,7 @@ mod tests {
             } => {
                 assert!(dbg!(source.to_string()).contains(dbg!(expected_err_contains)));
             }
+            _ => {}
         }
     }
 }

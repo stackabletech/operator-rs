@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Avoid clashing volumes and mounts by only adding volumes or mounts if they do not already exist ([#871]).
+- BREAKING: Avoid clashing volumes and mounts by only adding volumes or mounts if they do not already exist. This makes functions such as `PodBuilder::add_volume` or `ContainerBuilder::add_volume_mount` as well as related ones fallible ([#871]).
 
 ### Changed
 

@@ -5,7 +5,10 @@ use snafu::{ResultExt, Snafu};
 use url::{ParseError, Url};
 
 use crate::{
-    builder::pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
+    builder::{
+        self,
+        pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
+    },
     commons::{
         authentication::SECRET_BASE_PATH,
         networking::HostName,
@@ -16,7 +19,7 @@ use crate::{
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display(
         "failed to convert bind credentials (secret class volume) into named Kubernetes volume"
@@ -28,6 +31,14 @@ pub enum Error {
 
     #[snafu(display("failed to add LDAP TLS client details volumes and volume mounts"))]
     AddLdapTlsClientDetailsVolumes { source: TlsClientDetailsError },
+
+    #[snafu(display("failed to add needed volumes"))]
+    AddVolumes { source: builder::pod::Error },
+
+    #[snafu(display("failed to add needed volumeMounts"))]
+    AddVolumeMounts {
+        source: builder::pod::container::Error,
+    },
 }
 
 #[derive(
@@ -99,10 +110,11 @@ impl AuthenticationProvider {
         container_builders: Vec<&mut ContainerBuilder>,
     ) -> Result<()> {
         let (volumes, mounts) = self.volumes_and_mounts()?;
-        pod_builder.add_volumes(volumes);
+        pod_builder.add_volumes(volumes).context(AddVolumesSnafu)?;
 
         for cb in container_builders {
-            cb.add_volume_mounts(mounts.clone());
+            cb.add_volume_mounts(mounts.clone())
+                .context(AddVolumeMountsSnafu)?;
         }
 
         Ok(())

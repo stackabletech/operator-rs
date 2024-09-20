@@ -11,9 +11,9 @@ use crate::{
 };
 
 use super::{
-    AddS3CredentialVolumesSnafu, AddS3TlsClientDetailsVolumesSnafu, ParseS3EndpointSnafu,
-    RetrieveS3ConnectionSnafu, S3Bucket, S3BucketSpec, S3Connection, S3ConnectionSpec, S3Error,
-    SetS3EndpointSchemeSnafu,
+    AddS3CredentialVolumesSnafu, AddS3TlsClientDetailsVolumesSnafu, AddVolumeMountsSnafu,
+    AddVolumesSnafu, ParseS3EndpointSnafu, RetrieveS3ConnectionSnafu, S3Bucket, S3BucketSpec,
+    S3Connection, S3ConnectionSpec, S3Error, SetS3EndpointSchemeSnafu,
 };
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -85,9 +85,10 @@ impl ResolvedS3Connection {
         container_builders: Vec<&mut ContainerBuilder>,
     ) -> Result<(), S3Error> {
         let (volumes, mounts) = self.volumes_and_mounts()?;
-        pod_builder.add_volumes(volumes);
+        pod_builder.add_volumes(volumes).context(AddVolumesSnafu)?;
         for cb in container_builders {
-            cb.add_volume_mounts(mounts.clone());
+            cb.add_volume_mounts(mounts.clone())
+                .context(AddVolumeMountsSnafu)?;
         }
 
         Ok(())
