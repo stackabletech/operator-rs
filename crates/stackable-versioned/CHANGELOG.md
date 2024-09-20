@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Generate a `Version` enum containing all declared versions as variants
+  ([#872]).
+
+### Changed
+
+- The `merged_crd` associated function now takes `Version` instead of `&str` as
+  input ([#872]).
+
+[#872]: https://github.com/stackabletech/operator-rs/pull/872
+
 ## [0.2.0] - 2024-09-19
 
 ### Added
