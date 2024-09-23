@@ -1,5 +1,8 @@
 use std::fmt;
 
+#[cfg(doc)]
+use std::collections::BTreeMap;
+
 use indexmap::IndexMap;
 use k8s_openapi::api::core::v1::{
     ConfigMapKeySelector, Container, ContainerPort, EnvVar, EnvVarSource, Lifecycle,
