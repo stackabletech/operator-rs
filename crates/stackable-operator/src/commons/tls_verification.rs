@@ -19,10 +19,10 @@ pub enum TlsClientDetailsError {
     #[snafu(display("failed to convert secret class volume into named Kubernetes volume"))]
     SecretClassVolume { source: SecretClassVolumeError },
 
-    #[snafu(display("failed to add needed volumes"))]
+    #[snafu(display("failed to add required volumes"))]
     AddVolumes { source: builder::pod::Error },
 
-    #[snafu(display("failed to add needed volumeMounts"))]
+    #[snafu(display("failed to add required volumeMounts"))]
     AddVolumeMounts {
         source: builder::pod::container::Error,
     },

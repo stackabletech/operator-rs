@@ -40,7 +40,7 @@ pub enum LoggingError {
         source: builder::pod::container::Error,
     },
 
-    #[snafu(display("failed to add needed volumeMounts"))]
+    #[snafu(display("failed to add required volumeMounts"))]
     AddVolumeMounts {
         source: builder::pod::container::Error,
     },
