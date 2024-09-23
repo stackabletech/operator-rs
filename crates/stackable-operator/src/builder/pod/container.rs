@@ -300,6 +300,12 @@ impl ContainerBuilder {
     }
 
     pub fn build(&self) -> Container {
+        let volume_mounts = if self.volume_mounts.is_empty() {
+            None
+        } else {
+            Some(self.volume_mounts.values().cloned().collect())
+        };
+
         Container {
             args: self.args.clone(),
             command: self.command.clone(),
@@ -309,11 +315,7 @@ impl ContainerBuilder {
             resources: self.resources.clone(),
             name: self.name.clone(),
             ports: self.container_ports.clone(),
-            volume_mounts: if self.volume_mounts.is_empty() {
-                None
-            } else {
-                Some(self.volume_mounts.clone().into_values().collect())
-            },
+            volume_mounts,
             readiness_probe: self.readiness_probe.clone(),
             liveness_probe: self.liveness_probe.clone(),
             startup_probe: self.startup_probe.clone(),

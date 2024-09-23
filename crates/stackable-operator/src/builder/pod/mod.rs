@@ -560,6 +560,12 @@ impl PodBuilder {
     }
 
     fn build_spec(&self) -> PodSpec {
+        let volumes = if self.volumes.is_empty() {
+            None
+        } else {
+            Some(self.volumes.values().cloned().collect())
+        };
+
         let pod_spec = PodSpec {
             containers: self.containers.clone(),
             host_network: self.host_network,
@@ -573,11 +579,7 @@ impl PodBuilder {
             }),
             security_context: self.security_context.clone(),
             tolerations: self.tolerations.clone(),
-            volumes: if self.volumes.is_empty() {
-                None
-            } else {
-                Some(self.volumes.clone().into_values().collect())
-            },
+            volumes,
             // Legacy feature for ancient Docker images
             // In practice, this just causes a bunch of unused environment variables that may conflict with other uses,
             // such as https://github.com/stackabletech/spark-operator/pull/256.
