@@ -690,7 +690,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_pod_builder_pod_name() {
+    fn builder_pod_name() {
         let pod = PodBuilder::new()
             .metadata_builder(|builder| builder.name("foo"))
             .build()
@@ -700,7 +700,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_pod_builder(pod_affinity: PodAffinity, dummy_container: Container) {
+    fn builder(pod_affinity: PodAffinity, dummy_container: Container) {
         let init_container = ContainerBuilder::new("init-containername")
             .expect("ContainerBuilder not created")
             .image("stackable/zookeeper:2.4.14")
@@ -752,7 +752,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_pod_builder_image_pull_secrets(mut pod_builder_with_name_and_container: PodBuilder) {
+    fn builder_image_pull_secrets(mut pod_builder_with_name_and_container: PodBuilder) {
         let pod = pod_builder_with_name_and_container
             .image_pull_secrets(vec!["company-registry-secret".to_string()].into_iter())
             .build()
@@ -767,7 +767,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_pod_builder_restart_policy(mut pod_builder_with_name_and_container: PodBuilder) {
+    fn builder_restart_policy(mut pod_builder_with_name_and_container: PodBuilder) {
         let pod = pod_builder_with_name_and_container
             .restart_policy("Always")
             .build()
@@ -776,7 +776,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pod_builder_too_long_termination_grace_period() {
+    fn builder_too_long_termination_grace_period() {
         let too_long_duration = Duration::from_secs(i64::MAX as u64 + 1);
         let mut pod_builder = PodBuilder::new();
 

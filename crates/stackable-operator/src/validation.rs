@@ -346,7 +346,7 @@ mod tests {
     #[case("a?b")]
     #[case("a$b")]
     #[case(&"a".repeat(254))]
-    fn test_bad_values_is_rfc_1123_subdomain(#[case] value: &str) {
+    fn is_rfc_1123_subdomain_fail(#[case] value: &str) {
         assert!(is_rfc_1123_subdomain(value).is_err());
     }
 
@@ -392,7 +392,7 @@ mod tests {
     #[case("1.2.3.4.5")]
     #[case("11.22.33.44.55")]
     #[case(&"a".repeat(253))]
-    fn test_good_values_is_rfc_1123_subdomain(#[case] value: &str) {
+    fn is_rfc_1123_subdomain_pass(#[case] value: &str) {
         assert!(is_rfc_1123_subdomain(value).is_ok());
     }
 
@@ -445,7 +445,7 @@ mod tests {
     #[case(" 1")]
     #[case("1 2")]
     #[case(&"a".repeat(64))]
-    fn test_bad_values_is_rfc_1035_label(#[case] value: &str) {
+    fn is_rfc_1035_label_fail(#[case] value: &str) {
         assert!(is_rfc_1035_label(value).is_err());
     }
 
@@ -457,7 +457,7 @@ mod tests {
     #[case("a-1")]
     #[case("a--1--2--b")]
     #[case(&"a".repeat(63))]
-    fn test_good_values_is_rfc_1035_label(#[case] value: &str) {
+    fn is_rfc_1035_label_pass(#[case] value: &str) {
         assert!(is_rfc_1035_label(value).is_ok());
     }
 }

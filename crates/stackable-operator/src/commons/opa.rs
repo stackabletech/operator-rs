@@ -264,10 +264,11 @@ impl OpaConfig {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use kube::CustomResource;
     use schemars::{self, JsonSchema};
     use serde::{Deserialize, Serialize};
+
+    use super::*;
 
     const CLUSTER_NAME: &str = "simple-cluster";
     const PACKAGE_NAME: &str = "my-package";
@@ -278,7 +279,7 @@ mod tests {
     const V1: OpaApiVersion = OpaApiVersion::V1;
 
     #[test]
-    fn test_document_url_with_package_name() {
+    fn document_url_with_package_name() {
         let cluster = build_test_cluster();
         let opa_config = build_opa_config(Some(PACKAGE_NAME));
 
@@ -294,7 +295,7 @@ mod tests {
     }
 
     #[test]
-    fn test_document_url_without_package_name() {
+    fn document_url_without_package_name() {
         let cluster = build_test_cluster();
         let opa_config = build_opa_config(None);
 
@@ -310,7 +311,7 @@ mod tests {
     }
 
     #[test]
-    fn test_full_document_url() {
+    fn full_document_url() {
         let cluster = build_test_cluster();
         let opa_config = build_opa_config(None);
 
@@ -365,7 +366,7 @@ mod tests {
     }
 
     #[test]
-    fn test_opa_package_name_sanitizer() {
+    fn sanitize_package_name() {
         // No sanitization needed
         assert_eq!(
             OpaConfig::sanitize_opa_package_name("kafka/authz"),
@@ -386,7 +387,7 @@ mod tests {
     }
 
     #[test]
-    fn test_opa_document_url_sanitization() {
+    fn sanitize_document_url() {
         let opa_config = OpaConfig {
             config_map_name: "simple-opa".to_owned(),
             package: Some("///kafka.authz".to_owned()),

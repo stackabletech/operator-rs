@@ -225,11 +225,11 @@ impl Default for FieldNames {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
-    fn test_ldap_minimal() {
+    fn minimal() {
         let ldap = serde_yaml::from_str::<AuthenticationProvider>(
             "
             hostname: my.ldap.server
@@ -243,7 +243,7 @@ mod test {
     }
 
     #[test]
-    fn test_ldap_with_bind_credentials() {
+    fn with_bind_credentials() {
         let _ldap = serde_yaml::from_str::<AuthenticationProvider>(
             "
             hostname: my.ldap.server
@@ -257,7 +257,7 @@ mod test {
     }
 
     #[test]
-    fn test_ldap_full() {
+    fn full() {
         let input = r#"
             hostname: my.ldap.server
             port: 42
@@ -284,6 +284,7 @@ mod test {
             ldap.tls.tls_ca_cert_mount_path(),
             Some("/stackable/secrets/ldap-ca-cert/ca.crt".to_string())
         );
+
         let (tls_volumes, tls_mounts) = ldap.tls.volumes_and_mounts().unwrap();
         assert_eq!(
             tls_volumes,
@@ -311,6 +312,7 @@ mod test {
                 "/stackable/secrets/openldap-bind-credentials/password".to_string()
             ))
         );
+
         let (ldap_volumes, ldap_mounts) = ldap.volumes_and_mounts().unwrap();
         assert_eq!(
             ldap_volumes,

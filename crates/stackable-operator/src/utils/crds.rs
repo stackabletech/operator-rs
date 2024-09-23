@@ -44,7 +44,7 @@ mod tests {
     }
 
     #[test]
-    fn test_valid_pod_override_with_tolerations() {
+    fn valid_pod_override_with_tolerations() {
         let input = r#"
           podOverrides:
             spec:
@@ -59,7 +59,7 @@ mod tests {
     }
 
     #[test]
-    fn test_valid_pod_override_with_labels() {
+    fn valid_pod_override_with_labels() {
         let input = r#"
           podOverrides:
             metadata:
@@ -71,7 +71,7 @@ mod tests {
     }
 
     #[test]
-    fn test_valid_pod_override_with_containers() {
+    fn valid_pod_override_with_containers() {
         let input = r#"
           podOverrides:
             spec:
@@ -87,7 +87,7 @@ mod tests {
     }
 
     #[test]
-    fn test_valid_pod_override_with_containers_and_volumes() {
+    fn valid_pod_override_with_containers_and_volumes() {
         let input = r#"
           podOverrides:
             spec:
@@ -111,7 +111,7 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_pod_override_missing_container_name() {
+    fn invalid_pod_override_missing_container_name() {
         let input = r#"
           podOverrides:
             spec:

@@ -228,7 +228,7 @@ impl Sum for CpuQuantity {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use rstest::*;
 
@@ -240,9 +240,9 @@ mod test {
     #[case("0.2", 200)]
     #[case("0.02", 20)]
     #[case("0.002", 2)]
-    fn test_from_str(#[case] s: &str, #[case] millis: usize) {
-        let result = CpuQuantity::from_str(s).unwrap();
-        assert_eq!(millis, result.as_milli_cpus())
+    fn from_str_pass(#[case] input: &str, #[case] expected: usize) {
+        let got = CpuQuantity::from_str(input).unwrap();
+        assert_eq!(got.as_milli_cpus(), expected);
     }
 
     #[rstest]
@@ -250,8 +250,8 @@ mod test {
     #[case("1000.1m")]
     #[case("500k")]
     #[case("0.0002")]
-    fn test_from_str_err(#[case] s: &str) {
-        let result = CpuQuantity::from_str(s);
+    fn from_str_fail(#[case] input: &str) {
+        let result = CpuQuantity::from_str(input);
         assert!(result.is_err());
     }
 
@@ -263,7 +263,7 @@ mod test {
     #[case(CpuQuantity::from_millis(100), "100m")]
     #[case(CpuQuantity::from_millis(2000), "2")]
     #[case(CpuQuantity::from_millis(1000), "1")]
-    fn test_display_to_string(#[case] cpu: CpuQuantity, #[case] expected: &str) {
+    fn to_string(#[case] cpu: CpuQuantity, #[case] expected: &str) {
         assert_eq!(cpu.to_string(), expected)
     }
 
@@ -275,7 +275,7 @@ mod test {
     #[case(CpuQuantity::from_millis(100), "cpu: 100m\n")]
     #[case(CpuQuantity::from_millis(2000), "cpu: '2'\n")]
     #[case(CpuQuantity::from_millis(1000), "cpu: '1'\n")]
-    fn test_serialize(#[case] cpu: CpuQuantity, #[case] expected: &str) {
+    fn serialize(#[case] cpu: CpuQuantity, #[case] expected: &str) {
         #[derive(Serialize)]
         struct Cpu {
             cpu: CpuQuantity,
@@ -295,7 +295,7 @@ mod test {
     #[case("cpu: 100m", CpuQuantity::from_millis(100))]
     #[case("cpu: 2", CpuQuantity::from_millis(2000))]
     #[case("cpu: 1", CpuQuantity::from_millis(1000))]
-    fn test_deserialize(#[case] input: &str, #[case] expected: CpuQuantity) {
+    fn deserialize(#[case] input: &str, #[case] expected: CpuQuantity) {
         #[derive(Deserialize)]
         struct Cpu {
             cpu: CpuQuantity,

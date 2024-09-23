@@ -69,7 +69,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     #[test]
-    fn test_configmap_builder() {
+    fn configmap_builder() {
         let mut data = BTreeMap::new();
         data.insert("foo".to_string(), "bar".to_string());
         let configmap = ConfigMapBuilder::new()

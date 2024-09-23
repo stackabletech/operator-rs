@@ -74,7 +74,7 @@ pub struct ServiceAccountValues {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::path::PathBuf;
 
     use rstest::rstest;
@@ -84,14 +84,14 @@ mod test {
     use super::*;
 
     #[rstest]
-    fn test_deserialize(#[files("fixtures/helm/input-*.yaml")] path: PathBuf) {
+    fn deserialize(#[files("fixtures/helm/input-*.yaml")] path: PathBuf) {
         let contents = std::fs::read_to_string(path).unwrap();
         let values: DynamicValues = serde_yaml::from_str(&contents).unwrap();
         assert_eq!(values.labels().len(), 2);
     }
 
     #[rstest]
-    fn test_serialize(#[files("fixtures/helm/input-required.yaml")] input: PathBuf) {
+    fn serialize(#[files("fixtures/helm/input-required.yaml")] input: PathBuf) {
         let contents = std::fs::read_to_string(input).unwrap();
         let mut values: DynamicValues = serde_yaml::from_str(&contents).unwrap();
 

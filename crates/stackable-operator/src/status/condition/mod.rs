@@ -410,7 +410,7 @@ impl From<Vec<ClusterCondition>> for ClusterConditionSet {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     struct TestClusterCondition {}
@@ -491,7 +491,7 @@ mod test {
     }
 
     #[test]
-    pub fn test_compute_conditions_with_transition() {
+    fn compute_conditions_with_transition() {
         let resource = TestClusterCondition {};
         let condition_builders = &[&AvailableTrueConditionBuilder1 {} as &dyn ConditionBuilder];
 
@@ -515,7 +515,7 @@ mod test {
     }
 
     #[test]
-    pub fn test_compute_conditions_message_concatenation() {
+    fn compute_conditions_message_concatenation() {
         let resource = TestClusterCondition {};
         let condition_builders = &[
             &AvailableTrueConditionBuilder1 {} as &dyn ConditionBuilder,
@@ -542,7 +542,7 @@ mod test {
     }
 
     #[test]
-    pub fn test_compute_conditions_message_concatenation_with_different_status() {
+    fn compute_conditions_message_concatenation_with_different_status() {
         let resource = TestClusterCondition {};
         let condition_builders = &[
             &AvailableFalseConditionBuilder1 {} as &dyn ConditionBuilder,
@@ -571,7 +571,7 @@ mod test {
     }
 
     #[test]
-    pub fn test_compute_conditions_status_priority() {
+    fn compute_conditions_status_priority() {
         let resource = TestClusterCondition {};
         let condition_builders = &[
             &AvailableUnknownConditionBuilder {} as &dyn ConditionBuilder,
@@ -597,7 +597,7 @@ mod test {
     }
 
     #[test]
-    fn test_display_short() {
+    fn display_short() {
         let condition = ClusterCondition {
             type_: ClusterConditionType::Available,
             status: ClusterConditionStatus::False,
@@ -620,7 +620,7 @@ mod test {
     }
 
     #[test]
-    fn test_display_long() {
+    fn display_long() {
         let condition = ClusterCondition {
             type_: ClusterConditionType::Available,
             status: ClusterConditionStatus::False,
@@ -649,7 +649,7 @@ mod test {
     }
 
     #[test]
-    fn test_display_short_or_long() {
+    fn display_short_or_long() {
         let condition = ClusterCondition {
             type_: ClusterConditionType::Available,
             status: ClusterConditionStatus::False,

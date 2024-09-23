@@ -339,7 +339,7 @@ mod tests {
     use k8s_openapi::api::core::v1::{PodSecurityContext, SELinuxOptions, SeccompProfile, Sysctl};
 
     #[test]
-    fn test_security_context_builder() {
+    fn security_context_builder() {
         let mut builder = PodSecurityContextBuilder::new();
         let context = builder
             .fs_group(1000)

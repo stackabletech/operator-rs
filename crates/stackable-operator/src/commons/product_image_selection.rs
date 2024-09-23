@@ -414,7 +414,7 @@ mod tests {
             pull_secrets: Some(vec![LocalObjectReference{name: "myPullSecrets1".to_string()}, LocalObjectReference{name: "myPullSecrets2".to_string()}]),
         }
     )]
-    fn test_correct_resolved_image(
+    fn resolved_image_pass(
         #[case] image_base_name: String,
         #[case] operator_version: String,
         #[case] input: String,
@@ -443,7 +443,7 @@ mod tests {
         "{}",
         "data did not match any variant of untagged enum ProductImageSelection"
     )]
-    fn test_invalid_image(#[case] input: String, #[case] expected: String) {
+    fn resolved_image_fail(#[case] input: String, #[case] expected: String) {
         let err = serde_yaml::from_str::<ProductImage>(&input).expect_err("Must be error");
 
         assert_eq!(err.to_string(), expected);

@@ -416,7 +416,7 @@ mod tests {
     };
 
     #[test]
-    fn test_container_builder() {
+    fn builder() {
         let container_port: i32 = 10000;
         let container_port_name = "foo_port_name";
         let container_port_1: i32 = 20000;
@@ -477,7 +477,7 @@ mod tests {
     }
 
     #[test]
-    fn test_container_builder_lifecycle() {
+    fn builder_lifecycle() {
         let post_start = LifecycleHandler {
             exec: Some(ExecAction {
                 command: Some(vec!["hello".to_string(), "world".to_string()]),
@@ -505,7 +505,7 @@ mod tests {
     }
 
     #[test]
-    fn test_container_port_builder() {
+    fn port_builder() {
         let port: i32 = 10000;
         let name = "FooBar";
         let protocol = "http";
@@ -526,15 +526,16 @@ mod tests {
     }
 
     #[test]
-    pub fn test_field_ref_env_var_serialization() {
+    pub fn field_ref_env_var_serialization() {
         assert_eq!(
             "metadata.labels['some-label-name']",
             FieldPathEnvVar::Labels("some-label-name".to_string()).to_string()
         );
     }
 
+    // TODO (@Techassi): Use rstest for name validation below
     #[test]
-    fn test_container_name_max_len() {
+    fn name_max_len() {
         let long_container_name =
             "lengthexceededlengthexceededlengthexceededlengthexceededlengthex";
         assert_eq!(long_container_name.len(), 64); // 63 characters is the limit for container names
@@ -559,12 +560,12 @@ mod tests {
     }
 
     #[test]
-    fn test_container_name_alphabet_only() {
+    fn name_alphabet_only() {
         ContainerBuilder::new("okname").unwrap();
     }
 
     #[test]
-    fn test_container_name_hyphen() {
+    fn name_hyphen() {
         assert!(ContainerBuilder::new("name-with-hyphen").is_ok());
         assert_container_builder_err(
             ContainerBuilder::new("ends-with-hyphen-"),
@@ -577,12 +578,12 @@ mod tests {
     }
 
     #[test]
-    fn test_container_name_contains_number() {
+    fn name_contains_number() {
         assert!(ContainerBuilder::new("1name-0-name1").is_ok());
     }
 
     #[test]
-    fn test_container_name_contains_underscore() {
+    fn name_contains_underscore() {
         assert!(ContainerBuilder::new("name_name").is_err());
         assert_container_builder_err(
             ContainerBuilder::new("name_name"),
@@ -591,7 +592,7 @@ mod tests {
     }
 
     #[test]
-    fn test_container_cpu_and_memory_resource_requirements() {
+    fn cpu_and_memory_resource_requirements() {
         let resources = ResourceRequirementsBuilder::new()
             .with_cpu_request("2000m")
             .with_cpu_limit("3000m")

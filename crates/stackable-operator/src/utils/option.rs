@@ -48,10 +48,10 @@ impl<T> OptionExt<T> for Option<T> {
 mod tests {
     use std::borrow::Cow;
 
-    use crate::utils::OptionExt as _;
+    use super::*;
 
     #[test]
-    fn test_as_ref_or_else() {
+    fn as_ref_or_else() {
         let maybe: Option<String> = None;
         let defaulted: Cow<String> = maybe.as_ref_or_else(|| "foo".to_string());
         assert_eq!(defaulted, Cow::<String>::Owned("foo".to_string()));
@@ -62,7 +62,7 @@ mod tests {
     }
 
     #[test]
-    fn test_as_deref_or_else() {
+    fn as_deref_or_else() {
         let maybe: Option<String> = None;
         let defaulted: Cow<str> = maybe.as_deref_or_else(|| "foo".to_string());
         assert_eq!(defaulted, Cow::<str>::Owned("foo".to_string()));

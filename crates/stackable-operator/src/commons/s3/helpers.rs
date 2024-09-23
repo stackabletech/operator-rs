@@ -182,7 +182,7 @@ impl S3BucketInlineOrReference {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::collections::BTreeMap;
 
     use crate::commons::{
@@ -194,7 +194,7 @@ mod test {
 
     // We cant test the correct resolve, as we can't mock the k8s API.
     #[test]
-    fn test_http() {
+    fn http_endpoint() {
         let s3 = ResolvedS3Connection {
             host: "minio".parse().unwrap(),
             port: None,
@@ -210,7 +210,7 @@ mod test {
     }
 
     #[test]
-    fn test_https() {
+    fn https_endpoint() {
         let s3 = ResolvedS3Connection {
             host: "s3-eu-central-2.ionoscloud.com".parse().unwrap(),
             port: None,
@@ -267,7 +267,7 @@ mod test {
     }
 
     #[test]
-    fn test_https_without_verification() {
+    fn https_without_verification() {
         let s3 = ResolvedS3Connection {
             host: "minio".parse().unwrap(),
             port: Some(1234),

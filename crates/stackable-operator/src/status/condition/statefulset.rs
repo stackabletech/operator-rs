@@ -91,12 +91,13 @@ impl StatefulSetConditionBuilder {
 }
 
 #[cfg(test)]
-mod test {
-    use crate::status::condition::statefulset::StatefulSetConditionBuilder;
-    use crate::status::condition::{
-        ClusterCondition, ClusterConditionStatus, ClusterConditionType, ConditionBuilder,
-    };
+mod tests {
     use k8s_openapi::api::apps::v1::{StatefulSet, StatefulSetSpec, StatefulSetStatus};
+
+    use crate::status::condition::{
+        statefulset::StatefulSetConditionBuilder, ClusterCondition, ClusterConditionStatus,
+        ClusterConditionType, ConditionBuilder,
+    };
 
     fn build_sts(spec_replicas: i32, available_replicas: i32) -> StatefulSet {
         StatefulSet {
@@ -113,7 +114,7 @@ mod test {
     }
 
     #[test]
-    fn test_stateful_set_available_true() {
+    fn available() {
         let sts = build_sts(3, 3);
 
         assert_eq!(
@@ -123,7 +124,7 @@ mod test {
     }
 
     #[test]
-    fn test_stateful_set_available_false() {
+    fn unavailable() {
         let sts = build_sts(3, 2);
 
         assert_eq!(
@@ -140,7 +141,7 @@ mod test {
     }
 
     #[test]
-    fn test_stateful_set_available_condition_true() {
+    fn condition_available() {
         let mut sts_condition_builder = StatefulSetConditionBuilder::default();
         sts_condition_builder.add(build_sts(3, 3));
 
@@ -164,7 +165,7 @@ mod test {
     }
 
     #[test]
-    fn test_stateful_set_available_condition_false() {
+    fn condition_unavailable() {
         let mut sts_condition_builder = StatefulSetConditionBuilder::default();
         sts_condition_builder.add(build_sts(3, 2));
 
