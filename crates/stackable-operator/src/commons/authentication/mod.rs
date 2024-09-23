@@ -6,6 +6,7 @@ use strum::Display;
 
 use crate::client::Client;
 
+pub mod kerberos;
 pub mod ldap;
 pub mod oidc;
 pub mod static_;
@@ -77,6 +78,9 @@ pub enum AuthenticationClassProvider {
     /// The [TLS provider](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication#_tls).
     /// The TLS AuthenticationClass is used when users should authenticate themselves with a TLS certificate.
     Tls(tls::AuthenticationProvider),
+
+    /// The Kerberos provider is used for Kerberos authentication and defines the secret used for generating keytabs.
+    Kerberos(kerberos::AuthenticationProvider),
 }
 
 impl AuthenticationClass {
@@ -183,6 +187,13 @@ mod tests {
         let tls_provider = AuthenticationClassProvider::Tls(AuthenticationProvider {
             client_cert_secret_class: None,
         });
-        assert_eq!("Tls", tls_provider.to_string())
+        assert_eq!("Tls", tls_provider.to_string());
+
+        let kerberos_provider = AuthenticationClassProvider::Kerberos(
+            crate::commons::authentication::kerberos::AuthenticationProvider {
+                kerberos_secret_class: "kerberos".to_string(),
+            },
+        );
+        assert_eq!("Kerberos", kerberos_provider.to_string());
     }
 }
