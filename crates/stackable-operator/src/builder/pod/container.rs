@@ -436,7 +436,7 @@ mod tests {
             .add_env_var_from_config_map("envFromConfigMap", "my-configmap", "my-key")
             .add_env_var_from_secret("envFromSecret", "my-secret", "my-key")
             .add_volume_mount("configmap", "/mount")
-            .unwrap()
+            .expect("add volume mount")
             .add_container_port(container_port_name, container_port)
             .resources(resources.clone())
             .add_container_ports(vec![ContainerPortBuilder::new(container_port_1)
