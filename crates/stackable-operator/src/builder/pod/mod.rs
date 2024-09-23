@@ -717,7 +717,7 @@ mod tests {
                     .with_config_map("configmap")
                     .build(),
             )
-            .unwrap()
+            .expect("Add volume")
             .termination_grace_period(&Duration::from_secs(42))
             .unwrap()
             .build()
