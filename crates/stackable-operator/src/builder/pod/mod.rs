@@ -293,7 +293,7 @@ impl PodBuilder {
     pub fn add_volume(&mut self, volume: Volume) -> Result<&mut Self> {
         if let Some(existing_volume) = self.volumes.get(&volume.name) {
             ensure!(
-                existing_volume.eq(&volume),
+                existing_volume == &volume,
                 ClashingVolumeNameSnafu {
                     volume_name: volume.name.clone(),
                     existing_volume: existing_volume.clone(),

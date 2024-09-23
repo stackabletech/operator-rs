@@ -218,7 +218,7 @@ impl ContainerBuilder {
     pub fn add_volume_mount_struct(&mut self, volume_mount: VolumeMount) -> Result<&mut Self> {
         if let Some(existing_volume_mount) = self.volume_mounts.get(&volume_mount.mount_path) {
             ensure!(
-                existing_volume_mount.eq(&volume_mount),
+                existing_volume_mount == &volume_mount,
                 ClashingVolumeMountMountPathSnafu {
                     existing_volume_mount: existing_volume_mount.clone(),
                     new_volume_mount: volume_mount,
