@@ -118,6 +118,9 @@ impl<I> VersionedContainer<I> {
 
         let kubernetes_options = attributes.kubernetes_attrs.map(|a| KubernetesOptions {
             skip_merged_crd: a.skip.map_or(false, |s| s.merged_crd.is_present()),
+            namespaced: a.namespaced.is_present(),
+            singular: a.singular,
+            plural: a.plural,
             group: a.group,
             kind: a.kind,
         });
@@ -166,7 +169,10 @@ pub(crate) struct VersionedContainerOptions {
 
 #[derive(Debug)]
 pub(crate) struct KubernetesOptions {
+    pub(crate) singular: Option<String>,
+    pub(crate) plural: Option<String>,
     pub(crate) skip_merged_crd: bool,
     pub(crate) kind: Option<String>,
+    pub(crate) namespaced: bool,
     pub(crate) group: String,
 }

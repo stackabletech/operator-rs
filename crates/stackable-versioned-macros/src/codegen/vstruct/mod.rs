@@ -253,6 +253,7 @@ impl VersionedStruct {
     /// attributes.
     fn generate_kubernetes_cr_derive(&self, version: &ContainerVersion) -> Option<TokenStream> {
         if let Some(kubernetes_options) = &self.options.kubernetes_options {
+            // Required arguments
             let group = &kubernetes_options.group;
             let version = version.inner.to_string();
             let kind = kubernetes_options
@@ -260,9 +261,22 @@ impl VersionedStruct {
                 .as_ref()
                 .map_or(self.idents.kubernetes.to_string(), |kind| kind.clone());
 
+            // Optional arguments
+            let namespaced = kubernetes_options
+                .namespaced
+                .then_some(quote! { , namespaced });
+            let singular = kubernetes_options
+                .singular
+                .as_ref()
+                .map(|s| quote! { , singular = #s });
+            let plural = kubernetes_options
+                .plural
+                .as_ref()
+                .map(|p| quote! { , plural = #p });
+
             return Some(quote! {
                 #[derive(::kube::CustomResource)]
-                #[kube(group = #group, version = #version, kind = #kind)]
+                #[kube(group = #group, version = #version, kind = #kind #singular #plural #namespaced)]
             });
         }
 
