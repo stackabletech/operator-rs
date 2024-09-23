@@ -52,7 +52,7 @@ pub enum Error {
     #[snafu(display("object is missing key {key:?}"))]
     MissingObjectKey { key: &'static str },
 
-    #[snafu(display("The volume {volume_name:?} is clashing with an already existing volume with the same name but a different content. \
+    #[snafu(display("The volume {volume_name:?} clashes with an existing volume of the same name but with different content. \
         The existing volume is {existing_volume:?}, the new one is {new_volume:?}"))]
     ClashingVolumeName {
         volume_name: String,
@@ -64,7 +64,7 @@ pub enum Error {
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
 ///
 /// This struct is often times using an [`IndexMap`] to have consistent ordering (so we don't produce reconcile loops).
-/// We are also choosing it over an [`BTreeMap`], as it's easier to debug for users, as logically grouped volumes
+/// We are also choosing it over a [`BTreeMap`], because it is easier to debug for users, as logically grouped volumes
 /// (e.g. all volumes related to S3) are near each other in the list instead of "just" being sorted alphabetically.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PodBuilder {
@@ -290,9 +290,6 @@ impl PodBuilder {
     /// Historically this function unconditionally added volumes, which resulted in invalid [`PodSpec`]s, as volumes
     /// where added multiple times - think of Trino using the same [`crate::commons::s3::S3Connection`] two times,
     /// resulting in e.g. the s3 credentials being mounted twice as the sake volume.
-    ///
-    /// We could have made this function fallible, but decided not to do so for now, as it would be a bigger breaking
-    /// change.
     pub fn add_volume(&mut self, volume: Volume) -> Result<&mut Self> {
         if let Some(existing_volume) = self.volumes.get(&volume.name) {
             ensure!(

@@ -38,7 +38,7 @@ pub enum Error {
 /// This will automatically create the necessary volumes and mounts for each `ConfigMap` which is added.
 ///
 /// This struct is often times using an [`IndexMap`] to have consistent ordering (so we don't produce reconcile loops).
-/// We are also choosing it over an [`std::collections::BTreeMap`], as it's easier to debug for users, as logically
+/// We are also choosing it over a [`BTreeMap`], because it is easier to debug for users, as logically
 /// grouped volumeMounts (e.g. all volumeMounts related to S3) are near each other in the list instead of "just" being
 /// sorted alphabetically.
 #[derive(Clone, Default)]
@@ -212,9 +212,6 @@ impl ContainerBuilder {
     /// Historically this function unconditionally added volumeMounts, which resulted in invalid
     /// [`k8s_openapi::api::core::v1::PodSpec`]s, as volumeMounts where added multiple times - think of Trino using the same [`crate::commons::s3::S3Connection`]
     /// two times, resulting in e.g. the s3 credentials being mounted twice as the same volumeMount.
-    ///
-    /// We could have made this function fallible, but decided not to do so for now, as it would be a bigger breaking
-    /// change.
     pub fn add_volume_mount_struct(&mut self, volume_mount: VolumeMount) -> Result<&mut Self> {
         if let Some(existing_volume_mount) = self.volume_mounts.get(&volume_mount.mount_path) {
             ensure!(
