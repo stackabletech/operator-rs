@@ -540,11 +540,12 @@ mod tests {
         assert_eq!(long_container_name.len(), 64); // 63 characters is the limit for container names
         let result = ContainerBuilder::new(long_container_name);
         if let Error::InvalidContainerName {
-                container_name,
-                source,
-            } = result
+            container_name,
+            source,
+        } = result
             .err()
-            .expect("Container name exceeding 63 characters should cause an error") {
+            .expect("Container name exceeding 63 characters should cause an error")
+        {
             assert_eq!(container_name, long_container_name);
             assert_eq!(
                 source.to_string(),
@@ -614,11 +615,12 @@ mod tests {
         expected_err_contains: &str,
     ) {
         if let Error::InvalidContainerName {
-                container_name: _,
-                source,
-            } = result
+            container_name: _,
+            source,
+        } = result
             .err()
-            .expect("Container name exceeding 63 characters should cause an error") {
+            .expect("Container name exceeding 63 characters should cause an error")
+        {
             assert!(dbg!(source.to_string()).contains(dbg!(expected_err_contains)));
         }
     }
