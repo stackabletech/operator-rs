@@ -215,7 +215,7 @@ impl ContainerBuilder {
     /// Historically this function unconditionally added volumeMounts, which resulted in invalid
     /// [`k8s_openapi::api::core::v1::PodSpec`]s, as volumeMounts where added multiple times - think of Trino using the same [`crate::commons::s3::S3Connection`]
     /// two times, resulting in e.g. the s3 credentials being mounted twice as the same volumeMount.
-    pub fn add_volume_mount_struct(&mut self, volume_mount: VolumeMount) -> Result<&mut Self> {
+    fn add_volume_mount_impl(&mut self, volume_mount: VolumeMount) -> Result<&mut Self> {
         if let Some(existing_volume_mount) = self.volume_mounts.get(&volume_mount.mount_path) {
             ensure!(
                 existing_volume_mount == &volume_mount,
@@ -232,26 +232,26 @@ impl ContainerBuilder {
         Ok(self)
     }
 
-    /// See [`Self::add_volume_mount_struct`] for details
+    /// See [`Self::add_volume_mount_impl`] for details
     pub fn add_volume_mount(
         &mut self,
         name: impl Into<String>,
         path: impl Into<String>,
     ) -> Result<&mut Self> {
-        self.add_volume_mount_struct(VolumeMount {
+        self.add_volume_mount_impl(VolumeMount {
             name: name.into(),
             mount_path: path.into(),
             ..VolumeMount::default()
         })
     }
 
-    /// See [`Self::add_volume_mount_struct`] for details
+    /// See [`Self::add_volume_mount_impl`] for details
     pub fn add_volume_mounts(
         &mut self,
         volume_mounts: impl IntoIterator<Item = VolumeMount>,
     ) -> Result<&mut Self> {
         for volume_mount in volume_mounts {
-            self.add_volume_mount_struct(volume_mount)?;
+            self.add_volume_mount_impl(volume_mount)?;
         }
 
         Ok(self)
