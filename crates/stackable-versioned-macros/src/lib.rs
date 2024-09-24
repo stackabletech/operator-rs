@@ -470,7 +470,7 @@ println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 /// - `singular`: Sets the singular name.
 /// - `plural`: Sets the plural name.
 /// - `namespaced`: Specify that this is a namespaced resource rather than
-///   cluster level.
+///   a cluster scoped.
 #[proc_macro_attribute]
 pub fn versioned(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let attrs = match NestedMeta::parse_meta_list(attrs.into()) {
