@@ -322,12 +322,12 @@ impl VersionedStruct {
         let enum_ident = &self.idents.kubernetes;
         let enum_vis = &self.visibility;
 
-        let mut enum_variant_matches = TokenStream::new();
+        let mut enum_display_impl_matches = TokenStream::new();
         let mut enum_variant_idents = TokenStream::new();
 
         for (enum_variant_ident, enum_variant_display) in enum_variants {
             enum_variant_idents.extend(quote! {#enum_variant_ident,});
-            enum_variant_matches.extend(quote! {
+            enum_display_impl_matches.extend(quote! {
                 #enum_ident::#enum_variant_ident => f.write_str(#enum_variant_display),
             });
         }
@@ -342,7 +342,7 @@ impl VersionedStruct {
             impl ::std::fmt::Display for #enum_ident {
                 fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::result::Result<(), ::std::fmt::Error> {
                     match self {
-                        #enum_variant_matches
+                        #enum_display_impl_matches
                     }
                 }
             }
