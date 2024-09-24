@@ -9,8 +9,7 @@ use crate::{
     attrs::common::ContainerAttributes,
     codegen::{
         common::{
-            Container, ContainerInput, ContainerVersion, Item, KubernetesOptions, VersionExt,
-            VersionedContainer,
+            Container, ContainerInput, ContainerVersion, Item, VersionExt, VersionedContainer,
         },
         vstruct::field::VersionedField,
     },
@@ -152,7 +151,7 @@ impl VersionedStruct {
             Some(options) => {
                 // Generate the CustomResource derive macro with the appropriate
                 // attributes supplied using #[kube()].
-                let cr_derive = self.generate_kubernetes_cr_derive(version, options);
+                let cr_derive = self.generate_kubernetes_cr_derive(version);
 
                 // Generate merged_crd specific code when not opted out.
                 let merged_crd = if !options.skip_merged_crd {
@@ -282,22 +281,36 @@ impl VersionedStruct {
 impl VersionedStruct {
     /// Generates the `kube::CustomResource` derive with the appropriate macro
     /// attributes.
-    fn generate_kubernetes_cr_derive(
-        &self,
-        version: &ContainerVersion,
-        options: &KubernetesOptions,
-    ) -> TokenStream {
-        let group = &options.group;
-        let version = version.inner.to_string();
-        let kind = options
-            .kind
-            .as_ref()
-            .map_or(self.idents.kubernetes.to_string(), |kind| kind.clone());
+    fn generate_kubernetes_cr_derive(&self, version: &ContainerVersion) -> Option<TokenStream> {
+        if let Some(kubernetes_options) = &self.options.kubernetes_options {
+            // Required arguments
+            let group = &kubernetes_options.group;
+            let version = version.inner.to_string();
+            let kind = kubernetes_options
+                .kind
+                .as_ref()
+                .map_or(self.idents.kubernetes.to_string(), |kind| kind.clone());
 
-        quote! {
-            #[derive(::kube::CustomResource)]
-            #[kube(group = #group, version = #version, kind = #kind)]
+            // Optional arguments
+            let namespaced = kubernetes_options
+                .namespaced
+                .then_some(quote! { , namespaced });
+            let singular = kubernetes_options
+                .singular
+                .as_ref()
+                .map(|s| quote! { , singular = #s });
+            let plural = kubernetes_options
+                .plural
+                .as_ref()
+                .map(|p| quote! { , plural = #p });
+
+            return Some(quote! {
+                #[derive(::kube::CustomResource)]
+                #[kube(group = #group, version = #version, kind = #kind #singular #plural #namespaced)]
+            });
         }
+
+        None
     }
 
     /// Generates the `merge_crds` function call.

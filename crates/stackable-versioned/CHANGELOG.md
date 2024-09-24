@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add forwarding of `singular`, `plural`, and `namespaced` arguments in `k8s()`
+  ([#873]).
 - Generate a `Version` enum containing all declared versions as variants
   ([#872]).
 
@@ -15,6 +17,7 @@ All notable changes to this project will be documented in this file.
   input ([#872]).
 
 [#872]: https://github.com/stackabletech/operator-rs/pull/872
+[#873]: https://github.com/stackabletech/operator-rs/pull/873
 
 ## [0.2.0] - 2024-09-19
 
