@@ -469,7 +469,7 @@ println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 ///   to the struct name (without the 'Spec' suffix).
 /// - `singular`: Sets the singular name.
 /// - `plural`: Sets the plural name.
-/// - `namespaced`: Specify that this is a namespaced resource rather than
+/// - `namespaced`: Specifies that this is a namespaced resource rather than
 ///   a cluster scoped.
 #[proc_macro_attribute]
 pub fn versioned(attrs: TokenStream, input: TokenStream) -> TokenStream {
