@@ -589,7 +589,19 @@ pub fn create_logback_config(
     </rollingPolicy>
     <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
       <MaxFileSize>{max_log_file_size_in_mib}MB</MaxFileSize>
-      <checkIncrement>5 seconds</checkIncrement>
+      <!--
+        checkIncrement defines how often file sizes are checked, because
+        checking them is a relatively costly operation.
+        checkIncrement was introduced in the SizeBasedTriggeringPolicy in
+        logback 1.3.6/1.4.6 as an Integer representing milliseconds. In logback
+        1.3.12/1.4.12, it was changed to a Duration, also accepting a unit.
+        Without a given unit, milliseconds are assumed. The logback manual is
+        misleading: In logback 1.5.8, checkIncrement is no longer used for the
+        SizeAndTimeBasedFileNamingAndTriggeringPolicy, but it is still used for
+        the SizeBasedTriggeringPolicy!
+        In prior versions of logback, setting this option has no effect.
+      -->
+      <checkIncrement>5000</checkIncrement>
     </triggeringPolicy>
   </appender>
 
