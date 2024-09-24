@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add forwarding of `singular`, `plural`, and `namespaced` arguments in `k8s()`
+  ([#873]).
+
+[#873]: https://github.com/stackabletech/operator-rs/pull/873
+
 ## [0.2.0] - 2024-09-19
 
 ### Added
