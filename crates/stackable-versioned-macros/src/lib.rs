@@ -462,6 +462,15 @@ println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 ```
 "#
 )]
+/// Currently, the following arguments are supported:
+///
+/// - `group`: Sets the CRD group, usually the domain of the company.
+/// - `kind`:  Allows overwriting the kind field of the CRD. This defaults
+///   to the struct name (without the 'Spec' suffix).
+/// - `singular`: Sets the singular name.
+/// - `plural`: Sets the plural name.
+/// - `namespaced`: Specifies that this is a namespaced resource rather than
+///   a cluster scoped.
 #[proc_macro_attribute]
 pub fn versioned(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let attrs = match NestedMeta::parse_meta_list(attrs.into()) {

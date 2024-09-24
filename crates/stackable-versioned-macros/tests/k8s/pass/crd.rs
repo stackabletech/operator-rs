@@ -9,7 +9,12 @@ fn main() {
         version(name = "v1alpha1"),
         version(name = "v1beta1"),
         version(name = "v1"),
-        k8s(group = "stackable.tech")
+        k8s(
+            group = "stackable.tech",
+            singular = "foo",
+            plural = "foos",
+            namespaced,
+        )
     )]
     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
     pub struct FooSpec {
@@ -21,6 +26,6 @@ fn main() {
         baz: bool,
     }
 
-    let merged_crd = Foo::merged_crd("v1").unwrap();
+    let merged_crd = Foo::merged_crd(Version::V1).unwrap();
     println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 }
