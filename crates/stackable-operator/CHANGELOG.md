@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix the logback configuration for logback versions from 1.3.6/1.4.6 to
+  1.3.11/1.4.11 ([#874]).
+
+[#874]: https://github.com/stackabletech/operator-rs/pull/874
+
 ## [0.76.0] - 2024-09-19
 
 ### Added
