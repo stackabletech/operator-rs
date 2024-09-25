@@ -456,7 +456,7 @@ pub struct FooSpec {
 }
 
 # fn main() {
-let merged_crd = Foo::merged_crd("v1").unwrap();
+let merged_crd = Foo::merged_crd(Foo::V1).unwrap();
 println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 # }
 ```

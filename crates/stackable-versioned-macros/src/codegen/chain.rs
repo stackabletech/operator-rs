@@ -5,6 +5,9 @@ where
     K: Ord + Eq,
 {
     fn get_neighbors(&self, key: &K) -> (Option<&V>, Option<&V>);
+    fn value_is<F>(&self, key: &K, f: F) -> bool
+    where
+        F: Fn(&V) -> bool;
 
     fn lo_bound(&self, bound: Bound<&K>) -> Option<(&K, &V)>;
     fn up_bound(&self, bound: Bound<&K>) -> Option<(&K, &V)>;
@@ -49,6 +52,13 @@ where
             (Some((_, lo)), Some((_, up))) => (Some(lo), Some(up)),
             (None, None) => unreachable!(),
         }
+    }
+
+    fn value_is<F>(&self, key: &K, f: F) -> bool
+    where
+        F: Fn(&V) -> bool,
+    {
+        self.get(key).map_or(false, f)
     }
 
     fn lo_bound(&self, bound: Bound<&K>) -> Option<(&K, &V)> {

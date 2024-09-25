@@ -7,7 +7,7 @@ fn main() {
         version(name = "v1")
     )]
     struct Foo {
-        #[versioned(deprecated(since = "v1beta1", note = "gone"))]
+        #[versioned(deprecated(since = "v1", note = "gone"))]
         deprecated_bar: usize,
         baz: bool,
     }
