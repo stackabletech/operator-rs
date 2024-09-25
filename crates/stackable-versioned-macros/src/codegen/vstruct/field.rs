@@ -157,10 +157,22 @@ impl VersionedField {
                         })
                     }
                     ItemStatus::NotPresent => None,
-                    ItemStatus::NoChange { ident, ty } => Some(quote! {
-                        #(#original_attributes)*
-                        pub #ident: #ty,
-                    }),
+                    ItemStatus::NoChange {
+                        previously_deprecated,
+                        ident,
+                        ty,
+                        ..
+                    } => {
+                        // TODO (@Techassi): Also carry along the deprecation
+                        // note.
+                        let deprecated_attr = previously_deprecated.then(|| quote! {#[deprecated]});
+
+                        Some(quote! {
+                            #(#original_attributes)*
+                            #deprecated_attr
+                            pub #ident: #ty,
+                        })
+                    }
                 }
             }
             None => {

@@ -303,6 +303,7 @@ where
                         } => chain.insert(
                             version.inner,
                             ItemStatus::NoChange {
+                                previously_deprecated: false,
                                 ident: from_ident.clone(),
                                 ty: from_type.clone(),
                             },
@@ -310,13 +311,19 @@ where
                         ItemStatus::Deprecation { previous_ident, .. } => chain.insert(
                             version.inner,
                             ItemStatus::NoChange {
+                                previously_deprecated: false,
                                 ident: previous_ident.clone(),
                                 ty: self.inner.ty(),
                             },
                         ),
-                        ItemStatus::NoChange { ident, ty } => chain.insert(
+                        ItemStatus::NoChange {
+                            previously_deprecated,
+                            ident,
+                            ty,
+                        } => chain.insert(
                             version.inner,
                             ItemStatus::NoChange {
+                                previously_deprecated: *previously_deprecated,
                                 ident: ident.clone(),
                                 ty: ty.clone(),
                             },
@@ -324,37 +331,51 @@ where
                         ItemStatus::NotPresent => unreachable!(),
                     },
                     (Some(status), None) => {
-                        let (ident, ty) = match status {
-                            ItemStatus::Addition { ident, ty, .. } => (ident, ty),
+                        let (ident, ty, previously_deprecated) = match status {
+                            ItemStatus::Addition { ident, ty, .. } => (ident, ty, false),
                             ItemStatus::Change {
                                 to_ident, to_type, ..
-                            } => (to_ident, to_type),
-                            ItemStatus::Deprecation { ident, .. } => (ident, &self.inner.ty()),
-                            ItemStatus::NoChange { ident, ty } => (ident, ty),
+                            } => (to_ident, to_type, false),
+                            ItemStatus::Deprecation { ident, .. } => {
+                                (ident, &self.inner.ty(), true)
+                            }
+                            ItemStatus::NoChange {
+                                previously_deprecated,
+                                ident,
+                                ty,
+                                ..
+                            } => (ident, ty, *previously_deprecated),
                             ItemStatus::NotPresent => unreachable!(),
                         };
 
                         chain.insert(
                             version.inner,
                             ItemStatus::NoChange {
+                                previously_deprecated,
                                 ident: ident.clone(),
                                 ty: ty.clone(),
                             },
                         )
                     }
                     (Some(status), Some(_)) => {
-                        let (ident, ty) = match status {
-                            ItemStatus::Addition { ident, ty, .. } => (ident, ty),
+                        let (ident, ty, previously_deprecated) = match status {
+                            ItemStatus::Addition { ident, ty, .. } => (ident, ty, false),
                             ItemStatus::Change {
                                 to_ident, to_type, ..
-                            } => (to_ident, to_type),
-                            ItemStatus::NoChange { ident, ty, .. } => (ident, ty),
+                            } => (to_ident, to_type, false),
+                            ItemStatus::NoChange {
+                                previously_deprecated,
+                                ident,
+                                ty,
+                                ..
+                            } => (ident, ty, *previously_deprecated),
                             _ => unreachable!(),
                         };
 
                         chain.insert(
                             version.inner,
                             ItemStatus::NoChange {
+                                previously_deprecated,
                                 ident: ident.clone(),
                                 ty: ty.clone(),
                             },
@@ -398,6 +419,7 @@ pub(crate) enum ItemStatus {
         ident: Ident,
     },
     NoChange {
+        previously_deprecated: bool,
         ident: Ident,
         ty: Type,
     },

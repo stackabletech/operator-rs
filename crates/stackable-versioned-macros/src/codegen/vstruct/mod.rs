@@ -248,12 +248,10 @@ impl VersionedStruct {
             // version is deprecated.
             let allow_attribute = (version.deprecated
                 || next_version.deprecated
-                || self.any_field_deprecated(version)
-                || self.any_field_deprecated(next_version))
+                || self.is_any_field_deprecated(version)
+                || self.is_any_field_deprecated(next_version))
             .then_some(quote! { #[allow(deprecated)] });
 
-            // TODO (@Techassi): Be a little bit more clever about when to include
-            // the #[allow(deprecated)] attribute.
             return Some(quote! {
                 #[automatically_derived]
                 #allow_attribute
@@ -289,18 +287,23 @@ impl VersionedStruct {
 
     /// Returns whether any field is deprecated in the provided
     /// [`ContainerVersion`].
-    fn any_field_deprecated(&self, version: &ContainerVersion) -> bool {
+    fn is_any_field_deprecated(&self, version: &ContainerVersion) -> bool {
         // First, iterate over all fields. Any will return true if any of the
         // function invocations return true. If a field doesn't have a chain,
         // we can safely default to false (unversioned fields cannot be
         // deprecated). Then we retrieve the status of the field and ensure it
         // is deprecated.
-        // TODO (@Techassi): This currently does not include fields which were
-        // already deprecated and thus now have the NoChange status.
         self.items.iter().any(|f| {
             f.chain.as_ref().map_or(false, |c| {
                 c.value_is(&version.inner, |a| {
-                    matches!(a, ItemStatus::Deprecation { .. })
+                    matches!(
+                        a,
+                        ItemStatus::Deprecation { .. }
+                            | ItemStatus::NoChange {
+                                previously_deprecated: true,
+                                ..
+                            }
+                    )
                 })
             })
         })

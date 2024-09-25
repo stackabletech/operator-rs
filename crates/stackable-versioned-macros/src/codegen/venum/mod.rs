@@ -8,7 +8,10 @@ use syn::{DataEnum, Error};
 use crate::{
     attrs::common::ContainerAttributes,
     codegen::{
-        common::{Container, ContainerInput, ContainerVersion, Item, VersionedContainer},
+        chain::Neighbors,
+        common::{
+            Container, ContainerInput, ContainerVersion, Item, ItemStatus, VersionedContainer,
+        },
         venum::variant::VersionedVariant,
     },
 };
@@ -193,11 +196,18 @@ impl VersionedEnum {
                 ))
             }
 
-            // TODO (@Techassi): Be a little bit more clever about when to include
-            // the #[allow(deprecated)] attribute.
+            // Include allow(deprecated) only when this or the next version is
+            // deprecated. Also include it, when a variant in this or the next
+            // version is deprecated.
+            let allow_attribute = (version.deprecated
+                || next_version.deprecated
+                || self.is_any_variant_deprecated(version)
+                || self.is_any_variant_deprecated(next_version))
+            .then_some(quote! { #[allow(deprecated)] });
+
             return quote! {
                 #[automatically_derived]
-                #[allow(deprecated)]
+                #allow_attribute
                 impl From<#module_name::#enum_ident> for #next_module_name::#enum_ident {
                     fn from(#from_ident: #module_name::#enum_ident) -> Self {
                         match #from_ident {
@@ -209,5 +219,29 @@ impl VersionedEnum {
         }
 
         quote! {}
+    }
+
+    /// Returns whether any field is deprecated in the provided
+    /// [`ContainerVersion`].
+    fn is_any_variant_deprecated(&self, version: &ContainerVersion) -> bool {
+        // First, iterate over all fields. Any will return true if any of the
+        // function invocations return true. If a field doesn't have a chain,
+        // we can safely default to false (unversioned fields cannot be
+        // deprecated). Then we retrieve the status of the field and ensure it
+        // is deprecated.
+        self.items.iter().any(|f| {
+            f.chain.as_ref().map_or(false, |c| {
+                c.value_is(&version.inner, |a| {
+                    matches!(
+                        a,
+                        ItemStatus::Deprecation { .. }
+                            | ItemStatus::NoChange {
+                                previously_deprecated: true,
+                                ..
+                            }
+                    )
+                })
+            })
+        })
     }
 }
