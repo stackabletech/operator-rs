@@ -26,6 +26,6 @@ fn main() {
         baz: bool,
     }
 
-    let merged_crd = Foo::merged_crd(Version::V1).unwrap();
+    let merged_crd = Foo::merged_crd(Foo::V1).unwrap();
     println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 }

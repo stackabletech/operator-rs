@@ -319,22 +319,40 @@ impl VersionedStruct {
         crd_fn_calls: Vec<TokenStream>,
         enum_variants: Vec<(Ident, String)>,
     ) -> TokenStream {
-        let ident = &self.idents.kubernetes;
+        let enum_ident = &self.idents.kubernetes;
+        let enum_vis = &self.visibility;
 
-        let version_enum_definition = self.generate_kubernetes_version_enum(enum_variants);
+        let mut enum_display_impl_matches = TokenStream::new();
+        let mut enum_variant_idents = TokenStream::new();
+
+        for (enum_variant_ident, enum_variant_display) in enum_variants {
+            enum_variant_idents.extend(quote! {#enum_variant_ident,});
+            enum_display_impl_matches.extend(quote! {
+                #enum_ident::#enum_variant_ident => f.write_str(#enum_variant_display),
+            });
+        }
 
         quote! {
             #[automatically_derived]
-            pub struct #ident;
-
-            #version_enum_definition
+            #enum_vis enum #enum_ident {
+                #enum_variant_idents
+            }
 
             #[automatically_derived]
-            impl #ident {
+            impl ::std::fmt::Display for #enum_ident {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::result::Result<(), ::std::fmt::Error> {
+                    match self {
+                        #enum_display_impl_matches
+                    }
+                }
+            }
+
+            #[automatically_derived]
+            impl #enum_ident {
                 /// Generates a merged CRD which contains all versions defined using the
                 /// `#[versioned()]` macro.
                 pub fn merged_crd(
-                    stored_apiversion: Version
+                    stored_apiversion: Self
                 ) -> ::std::result::Result<::k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition, ::kube::core::crd::MergeError> {
                     ::kube::core::crd::merge_crds(vec![#(#crd_fn_calls),*], &stored_apiversion.to_string())
                 }
@@ -351,34 +369,6 @@ impl VersionedStruct {
 
         quote! {
             <#path as ::kube::CustomResourceExt>::crd()
-        }
-    }
-
-    fn generate_kubernetes_version_enum(&self, enum_variants: Vec<(Ident, String)>) -> TokenStream {
-        let mut enum_variant_matches = TokenStream::new();
-        let mut enum_variant_idents = TokenStream::new();
-
-        for (enum_variant_ident, enum_variant_display) in enum_variants {
-            enum_variant_idents.extend(quote! {#enum_variant_ident,});
-            enum_variant_matches.extend(quote! {
-                Version::#enum_variant_ident => f.write_str(#enum_variant_display),
-            });
-        }
-
-        quote! {
-            #[automatically_derived]
-            pub enum Version {
-                #enum_variant_idents
-            }
-
-            #[automatically_derived]
-            impl ::std::fmt::Display for Version {
-                fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::result::Result<(), ::std::fmt::Error> {
-                    match self {
-                        #enum_variant_matches
-                    }
-                }
-            }
         }
     }
 }
