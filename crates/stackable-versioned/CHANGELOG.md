@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - 2024-09-26
+
 ### Added
 
 - Add forwarding of `singular`, `plural`, and `namespaced` arguments in `k8s()`
@@ -14,7 +16,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: The `merged_crd` function now accepts `Self` instead of a dedicated
-  `Version` enu ([#875]).
+  `Version` enum ([#875]).
 - The `merged_crd` associated function now takes `Version` instead of `&str` as
   input ([#872]).
 
