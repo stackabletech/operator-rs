@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.77.0] - 2024-09-26
+
 ### Fixed
 
 - Fix the logback configuration for logback versions from 1.3.6/1.4.6 to 1.3.11/1.4.11 ([#874]).
