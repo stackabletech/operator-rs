@@ -214,7 +214,7 @@ impl ContainerBuilder {
     /// exists.
     ///
     /// A colliding [`VolumeMount`] would have the same mountPath but a different content than
-    /// another [`VolumeMount`]. An appropriate error is returned when such a clashing mount path is
+    /// another [`VolumeMount`]. An appropriate error is returned when such a colliding mount path is
     /// encountered.
     ///
     /// ### Note
@@ -251,7 +251,7 @@ impl ContainerBuilder {
     /// exists.
     ///
     /// A colliding [`VolumeMount`] would have the same mountPath but a different content than
-    /// another [`VolumeMount`]. An appropriate error is returned when such a clashing mount path is
+    /// another [`VolumeMount`]. An appropriate error is returned when such a colliding mount path is
     /// encountered.
     ///
     /// ### Note

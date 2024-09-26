@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Fix the logback configuration for logback versions from 1.3.6/1.4.6 to 1.3.11/1.4.11 ([#874]).
-- BREAKING: Avoid clashing volumes and mounts by only adding volumes or mounts if they do not already exist. This makes functions such as `PodBuilder::add_volume` or `ContainerBuilder::add_volume_mount` as well as related ones fallible ([#871]).
+- BREAKING: Avoid colliding volumes and mounts by only adding volumes or mounts if they do not already exist. This makes functions such as `PodBuilder::add_volume` or `ContainerBuilder::add_volume_mount` as well as related ones fallible ([#871]).
 
 ### Changed
 

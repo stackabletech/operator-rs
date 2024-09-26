@@ -281,7 +281,7 @@ impl PodBuilder {
     /// Adds a new [`Volume`] to the container while ensuring that no colliding [`Volume`] exists.
     ///
     /// A colliding [`Volume`] would have the same name but a different content than another
-    /// [`Volume`]. An appropriate error is returned when such a clashing volume name is
+    /// [`Volume`]. An appropriate error is returned when such a colliding volume name is
     /// encountered.
     ///
     /// ### Note
