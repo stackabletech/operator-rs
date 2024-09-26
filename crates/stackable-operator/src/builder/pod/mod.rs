@@ -278,13 +278,16 @@ impl PodBuilder {
         )
     }
 
-    /// This function only adds the [`Volume`] in case there is no volume with the same name already.
-    /// In case there already was a volume with the same name already, an [`tracing::error`] is raised in case the
-    /// contents of the volumes differ.
+    /// Adds a new [`Volume`] to the container while ensuring that no colliding [`Volume`] exists.
     ///
-    /// Historically this function unconditionally added volumes, which resulted in invalid [`PodSpec`]s, as volumes
-    /// where added multiple times - think of Trino using the same [`crate::commons::s3::S3Connection`] two times,
-    /// resulting in e.g. the s3 credentials being mounted twice as the sake volume.
+    /// A colliding [`Volume`] would have the same name but a different content than another
+    /// [`Volume`]. An appropriate error is returned when such a clashing volume name is
+    /// encountered.
+    ///
+    /// ### Note
+    ///
+    /// Previously, this function unconditionally added [`Volume`]s, which resulted in invalid
+    /// [`PodSpec`]s.
     #[instrument(skip(self))]
     pub fn add_volume(&mut self, volume: Volume) -> Result<&mut Self> {
         if let Some(existing_volume) = self.volumes.get(&volume.name) {

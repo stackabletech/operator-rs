@@ -1,7 +1,7 @@
 use std::fmt;
 
 #[cfg(doc)]
-use std::collections::BTreeMap;
+use {k8s_openapi::api::core::v1::PodSpec, std::collections::BTreeMap};
 
 use indexmap::IndexMap;
 use k8s_openapi::api::core::v1::{
@@ -210,13 +210,17 @@ impl ContainerBuilder {
         self
     }
 
-    /// This function only adds the [`VolumeMount`] in case there is no volumeMount with the same mountPath already.
-    /// In case there already was a volumeMount with the same path already, an [`tracing::error`] is raised in case the
-    /// contents of the volumeMounts differ.
+    /// Adds a new [`VolumeMount`] to the container while ensuring that no colliding [`VolumeMount`]
+    /// exists.
     ///
-    /// Historically this function unconditionally added volumeMounts, which resulted in invalid
-    /// [`k8s_openapi::api::core::v1::PodSpec`]s, as volumeMounts where added multiple times - think of Trino using the same [`crate::commons::s3::S3Connection`]
-    /// two times, resulting in e.g. the s3 credentials being mounted twice as the same volumeMount.
+    /// A colliding [`VolumeMount`] would have the same mountPath but a different content than
+    /// another [`VolumeMount`]. An appropriate error is returned when such a clashing mount path is
+    /// encountered.
+    ///
+    /// ### Note
+    ///
+    /// Previously, this function unconditionally added [`VolumeMount`]s, which resulted in invalid
+    /// [`PodSpec`]s.
     #[instrument(skip(self))]
     fn add_volume_mount_impl(&mut self, volume_mount: VolumeMount) -> Result<&mut Self> {
         if let Some(existing_volume_mount) = self.volume_mounts.get(&volume_mount.mount_path) {
@@ -243,7 +247,17 @@ impl ContainerBuilder {
         Ok(self)
     }
 
-    /// See [`Self::add_volume_mount_impl`] for details
+    /// Adds a new [`VolumeMount`] to the container while ensuring that no colliding [`VolumeMount`]
+    /// exists.
+    ///
+    /// A colliding [`VolumeMount`] would have the same mountPath but a different content than
+    /// another [`VolumeMount`]. An appropriate error is returned when such a clashing mount path is
+    /// encountered.
+    ///
+    /// ### Note
+    ///
+    /// Previously, this function unconditionally added [`VolumeMount`]s, which resulted in invalid
+    /// [`PodSpec`]s.
     pub fn add_volume_mount(
         &mut self,
         name: impl Into<String>,
@@ -256,7 +270,10 @@ impl ContainerBuilder {
         })
     }
 
-    /// See [`Self::add_volume_mount_impl`] for details
+    /// Adds new [`VolumeMount`]s to the container while ensuring that no colliding [`VolumeMount`]
+    /// exists.
+    ///
+    /// See [`Self::add_volume_mount`] for details.
     pub fn add_volume_mounts(
         &mut self,
         volume_mounts: impl IntoIterator<Item = VolumeMount>,
