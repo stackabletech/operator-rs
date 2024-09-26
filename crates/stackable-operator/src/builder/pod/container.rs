@@ -28,36 +28,23 @@ pub enum Error {
 
     #[snafu(display(
         "The volumeMount is clashing with an already existing volumeMount with the same mountPath but a different content. \
-            The shared mountPath is {:?}, \
-            the existing mount's volume name is {:?}, \
-            the existing mount's subPath is {:?}, \
-            the existing mount's SubPathExpr is {:?}, \
-            the new mount's volume name is {:?}, \
-            the new mount's subPath is {:?}, \
-            the new mount's SubPathExpr is {:?}",
-            details.mount_path,
-            details.existing_volume_name,
-            details.existing_sub_path,
-            details.existing_sub_path_expr,
-            details.new_volume_name,
-            details.new_sub_path,
-            details.new_sub_path_expr
+            The shared mountPath is {mount_path:?}, \
+            the existing mount's volume name is {existing_volume_name:?}, \
+            the existing mount's subPath is {existing_sub_path:?}, \
+            the existing mount's SubPathExpr is {existing_sub_path_expr:?}, \
+            the new mount's volume name is {new_volume_name:?}, \
+            the new mount's subPath is {new_sub_path:?}, \
+            the new mount's SubPathExpr is {new_sub_path_expr:?}"
     ))]
     ClashingMountPath {
-        /// We need to box the details, so that the [`Error`] enum does not get too big
-        details: Box<ClashingMountPathDetails>,
+        mount_path: String,
+        existing_volume_name: String,
+        existing_sub_path: Option<String>,
+        existing_sub_path_expr: Option<String>,
+        new_volume_name: String,
+        new_sub_path: Option<String>,
+        new_sub_path_expr: Option<String>,
     },
-}
-
-#[derive(Debug)]
-pub struct ClashingMountPathDetails {
-    mount_path: String,
-    existing_volume_name: String,
-    existing_sub_path: Option<String>,
-    existing_sub_path_expr: Option<String>,
-    new_volume_name: String,
-    new_sub_path: Option<String>,
-    new_sub_path_expr: Option<String>,
 }
 
 /// A builder to build [`Container`] objects.
@@ -244,15 +231,13 @@ impl ContainerBuilder {
             ensure!(
                 existing_volume_mount == &volume_mount,
                 ClashingMountPathSnafu {
-                    details: Box::new(ClashingMountPathDetails {
-                        mount_path: volume_mount.mount_path,
-                        existing_volume_name: existing_volume_mount.name.clone(),
-                        existing_sub_path: existing_volume_mount.sub_path.clone(),
-                        existing_sub_path_expr: existing_volume_mount.sub_path_expr.clone(),
-                        new_volume_name: volume_mount.name,
-                        new_sub_path: volume_mount.sub_path,
-                        new_sub_path_expr: volume_mount.sub_path_expr,
-                    }),
+                    mount_path: volume_mount.mount_path,
+                    existing_volume_name: existing_volume_mount.name.clone(),
+                    existing_sub_path: existing_volume_mount.sub_path.clone(),
+                    existing_sub_path_expr: existing_volume_mount.sub_path_expr.clone(),
+                    new_volume_name: volume_mount.name,
+                    new_sub_path: volume_mount.sub_path,
+                    new_sub_path_expr: volume_mount.sub_path_expr,
                 }
             );
         } else {
