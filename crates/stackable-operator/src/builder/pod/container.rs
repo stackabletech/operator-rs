@@ -9,7 +9,8 @@ use k8s_openapi::api::core::v1::{
     LifecycleHandler, ObjectFieldSelector, Probe, ResourceRequirements, SecretKeySelector,
     SecurityContext, VolumeMount,
 };
-use snafu::{ensure, ResultExt as _, Snafu};
+use snafu::{ResultExt as _, Snafu};
+use tracing::instrument;
 
 use crate::{
     commons::product_image_selection::ResolvedProductImage,
@@ -27,14 +28,11 @@ pub enum Error {
     },
 
     #[snafu(display(
-        "The volumeMount is clashing with an already existing volumeMount with the same mountPath but a different content. \
-            The clashing mountPath is {clashing_mount_path:?}, \
-            the existing mount's volume name is {existing_volume_name:?} \
-            and the new mount's volume name is {new_volume_name:?}. \
-            Please have a look at the log/traces for details"
+        "Colliding mountPath {mount_path:?} in volumeMounts with different content. \
+            Existing volume name {existing_volume_name:?}, new volume name {new_volume_name:?}"
     ))]
-    ClashingMountPath {
-        clashing_mount_path: String,
+    MountPathCollision {
+        mount_path: String,
         existing_volume_name: String,
         new_volume_name: String,
     },
@@ -219,25 +217,24 @@ impl ContainerBuilder {
     /// Historically this function unconditionally added volumeMounts, which resulted in invalid
     /// [`k8s_openapi::api::core::v1::PodSpec`]s, as volumeMounts where added multiple times - think of Trino using the same [`crate::commons::s3::S3Connection`]
     /// two times, resulting in e.g. the s3 credentials being mounted twice as the same volumeMount.
+    #[instrument(skip(self))]
     fn add_volume_mount_impl(&mut self, volume_mount: VolumeMount) -> Result<&mut Self> {
         if let Some(existing_volume_mount) = self.volume_mounts.get(&volume_mount.mount_path) {
-            // We don't want to include the details in the error message, but instead trace them
             if existing_volume_mount != &volume_mount {
+                let colliding_mount_path = &volume_mount.mount_path;
+                // We don't want to include the details in the error message, but instead trace them
                 tracing::error!(
-                    clashing_mount_path = &volume_mount.mount_path,
+                    colliding_mount_path,
                     ?existing_volume_mount,
-                    new_volume_mount = ?volume_mount,
-                    "The volumeMount is clashing with an already existing volumeMount with the same mountPath but a different content"
+                    "Colliding mountPath {colliding_mount_path:?} in volumeMounts with different content"
                 );
             }
-            ensure!(
-                existing_volume_mount == &volume_mount,
-                ClashingMountPathSnafu {
-                    clashing_mount_path: volume_mount.mount_path,
-                    existing_volume_name: existing_volume_mount.name.clone(),
-                    new_volume_name: volume_mount.name,
-                }
-            );
+            MountPathCollisionSnafu {
+                mount_path: &volume_mount.mount_path,
+                existing_volume_name: &existing_volume_mount.name,
+                new_volume_name: &volume_mount.name,
+            }
+            .fail()?;
         } else {
             self.volume_mounts
                 .insert(volume_mount.mount_path.clone(), volume_mount);

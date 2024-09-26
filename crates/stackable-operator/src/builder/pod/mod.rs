@@ -9,8 +9,8 @@ use k8s_openapi::{
     },
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
 };
-use snafu::{ensure, OptionExt, ResultExt, Snafu};
-use tracing::warn;
+use snafu::{OptionExt, ResultExt, Snafu};
+use tracing::{instrument, warn};
 
 use crate::kvp::Labels;
 use crate::{
@@ -52,9 +52,8 @@ pub enum Error {
     #[snafu(display("object is missing key {key:?}"))]
     MissingObjectKey { key: &'static str },
 
-    #[snafu(display("The volume {clashing_volume_name:?} clashes with an existing volume of the same name but with different content. \
-        Please have a look at the log/traces for details."))]
-    ClashingVolumeName { clashing_volume_name: String },
+    #[snafu(display("Colliding volume name {volume_name:?} in volumes with different content"))]
+    VolumeNameCollision { volume_name: String },
 }
 
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
@@ -286,24 +285,23 @@ impl PodBuilder {
     /// Historically this function unconditionally added volumes, which resulted in invalid [`PodSpec`]s, as volumes
     /// where added multiple times - think of Trino using the same [`crate::commons::s3::S3Connection`] two times,
     /// resulting in e.g. the s3 credentials being mounted twice as the sake volume.
+    #[instrument(skip(self))]
     pub fn add_volume(&mut self, volume: Volume) -> Result<&mut Self> {
         if let Some(existing_volume) = self.volumes.get(&volume.name) {
-            // We don't want to include the details in the error message, but instead trace them
             if existing_volume != &volume {
-                let clashing_name = &volume.name;
+                let colliding_name = &volume.name;
+                // We don't want to include the details in the error message, but instead trace them
                 tracing::error!(
-                    clashing_name,
+                    colliding_name,
                     ?existing_volume,
-                    new_volume = ?volume,
-                    "The volume {clashing_name:?} clashes with an existing volume of the same name but with different content",
+                    "Colliding volume name {colliding_name:?} in volumes with different content"
                 );
-            }
-            ensure!(
-                existing_volume == &volume,
-                ClashingVolumeNameSnafu {
-                    clashing_volume_name: volume.name.clone(),
+
+                VolumeNameCollisionSnafu {
+                    volume_name: &volume.name,
                 }
-            );
+                .fail()?;
+            }
         } else {
             self.volumes.insert(volume.name.clone(), volume);
         }
