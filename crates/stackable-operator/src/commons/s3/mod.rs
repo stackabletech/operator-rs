@@ -7,6 +7,8 @@ pub use helpers::*;
 use snafu::Snafu;
 use url::Url;
 
+use crate::builder::{self};
+
 use super::{secret_class::SecretClassVolumeError, tls_verification::TlsClientDetailsError};
 
 #[derive(Debug, Snafu)]
@@ -31,4 +33,12 @@ pub enum S3Error {
 
     #[snafu(display("failed to add S3 TLS client details volumes and volume mounts"))]
     AddS3TlsClientDetailsVolumes { source: TlsClientDetailsError },
+
+    #[snafu(display("failed to add required volumes"))]
+    AddVolumes { source: builder::pod::Error },
+
+    #[snafu(display("failed to add required volumeMounts"))]
+    AddVolumeMounts {
+        source: builder::pod::container::Error,
+    },
 }

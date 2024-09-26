@@ -1,11 +1,16 @@
 use std::fmt;
 
+#[cfg(doc)]
+use {k8s_openapi::api::core::v1::PodSpec, std::collections::BTreeMap};
+
+use indexmap::IndexMap;
 use k8s_openapi::api::core::v1::{
     ConfigMapKeySelector, Container, ContainerPort, EnvVar, EnvVarSource, Lifecycle,
     LifecycleHandler, ObjectFieldSelector, Probe, ResourceRequirements, SecretKeySelector,
     SecurityContext, VolumeMount,
 };
 use snafu::{ResultExt as _, Snafu};
+use tracing::instrument;
 
 use crate::{
     commons::product_image_selection::ResolvedProductImage,
@@ -21,11 +26,26 @@ pub enum Error {
         source: validation::Errors,
         container_name: String,
     },
+
+    #[snafu(display(
+        "Colliding mountPath {mount_path:?} in volumeMounts with different content. \
+            Existing volume name {existing_volume_name:?}, new volume name {new_volume_name:?}"
+    ))]
+    MountPathCollision {
+        mount_path: String,
+        existing_volume_name: String,
+        new_volume_name: String,
+    },
 }
 
 /// A builder to build [`Container`] objects.
 ///
 /// This will automatically create the necessary volumes and mounts for each `ConfigMap` which is added.
+///
+/// This struct is often times using an [`IndexMap`] to have consistent ordering (so we don't produce reconcile loops).
+/// We are also choosing it over a [`BTreeMap`], because it is easier to debug for users, as logically
+/// grouped volumeMounts (e.g. all volumeMounts related to S3) are near each other in the list instead of "just" being
+/// sorted alphabetically.
 #[derive(Clone, Default)]
 pub struct ContainerBuilder {
     args: Option<Vec<String>>,
@@ -36,7 +56,9 @@ pub struct ContainerBuilder {
     image_pull_policy: Option<String>,
     name: String,
     resources: Option<ResourceRequirements>,
-    volume_mounts: Option<Vec<VolumeMount>>,
+
+    /// The key is the volumeMount mountPath.
+    volume_mounts: IndexMap<String, VolumeMount>,
     readiness_probe: Option<Probe>,
     liveness_probe: Option<Probe>,
     startup_probe: Option<Probe>,
@@ -188,29 +210,79 @@ impl ContainerBuilder {
         self
     }
 
+    /// Adds a new [`VolumeMount`] to the container while ensuring that no colliding [`VolumeMount`]
+    /// exists.
+    ///
+    /// A colliding [`VolumeMount`] would have the same mountPath but a different content than
+    /// another [`VolumeMount`]. An appropriate error is returned when such a colliding mount path is
+    /// encountered.
+    ///
+    /// ### Note
+    ///
+    /// Previously, this function unconditionally added [`VolumeMount`]s, which resulted in invalid
+    /// [`PodSpec`]s.
+    #[instrument(skip(self))]
+    fn add_volume_mount_impl(&mut self, volume_mount: VolumeMount) -> Result<&mut Self> {
+        if let Some(existing_volume_mount) = self.volume_mounts.get(&volume_mount.mount_path) {
+            if existing_volume_mount != &volume_mount {
+                let colliding_mount_path = &volume_mount.mount_path;
+                // We don't want to include the details in the error message, but instead trace them
+                tracing::error!(
+                    colliding_mount_path,
+                    ?existing_volume_mount,
+                    "Colliding mountPath {colliding_mount_path:?} in volumeMounts with different content"
+                );
+            }
+            MountPathCollisionSnafu {
+                mount_path: &volume_mount.mount_path,
+                existing_volume_name: &existing_volume_mount.name,
+                new_volume_name: &volume_mount.name,
+            }
+            .fail()?;
+        } else {
+            self.volume_mounts
+                .insert(volume_mount.mount_path.clone(), volume_mount);
+        }
+
+        Ok(self)
+    }
+
+    /// Adds a new [`VolumeMount`] to the container while ensuring that no colliding [`VolumeMount`]
+    /// exists.
+    ///
+    /// A colliding [`VolumeMount`] would have the same mountPath but a different content than
+    /// another [`VolumeMount`]. An appropriate error is returned when such a colliding mount path is
+    /// encountered.
+    ///
+    /// ### Note
+    ///
+    /// Previously, this function unconditionally added [`VolumeMount`]s, which resulted in invalid
+    /// [`PodSpec`]s.
     pub fn add_volume_mount(
         &mut self,
         name: impl Into<String>,
         path: impl Into<String>,
-    ) -> &mut Self {
-        self.volume_mounts
-            .get_or_insert_with(Vec::new)
-            .push(VolumeMount {
-                name: name.into(),
-                mount_path: path.into(),
-                ..VolumeMount::default()
-            });
-        self
+    ) -> Result<&mut Self> {
+        self.add_volume_mount_impl(VolumeMount {
+            name: name.into(),
+            mount_path: path.into(),
+            ..VolumeMount::default()
+        })
     }
 
+    /// Adds new [`VolumeMount`]s to the container while ensuring that no colliding [`VolumeMount`]
+    /// exists.
+    ///
+    /// See [`Self::add_volume_mount`] for details.
     pub fn add_volume_mounts(
         &mut self,
         volume_mounts: impl IntoIterator<Item = VolumeMount>,
-    ) -> &mut Self {
-        self.volume_mounts
-            .get_or_insert_with(Vec::new)
-            .extend(volume_mounts);
-        self
+    ) -> Result<&mut Self> {
+        for volume_mount in volume_mounts {
+            self.add_volume_mount_impl(volume_mount)?;
+        }
+
+        Ok(self)
     }
 
     pub fn readiness_probe(&mut self, probe: Probe) -> &mut Self {
@@ -256,6 +328,12 @@ impl ContainerBuilder {
     }
 
     pub fn build(&self) -> Container {
+        let volume_mounts = if self.volume_mounts.is_empty() {
+            None
+        } else {
+            Some(self.volume_mounts.values().cloned().collect())
+        };
+
         Container {
             args: self.args.clone(),
             command: self.command.clone(),
@@ -265,7 +343,7 @@ impl ContainerBuilder {
             resources: self.resources.clone(),
             name: self.name.clone(),
             ports: self.container_ports.clone(),
-            volume_mounts: self.volume_mounts.clone(),
+            volume_mounts,
             readiness_probe: self.readiness_probe.clone(),
             liveness_probe: self.liveness_probe.clone(),
             startup_probe: self.startup_probe.clone(),
@@ -388,6 +466,7 @@ mod tests {
             .add_env_var_from_config_map("envFromConfigMap", "my-configmap", "my-key")
             .add_env_var_from_secret("envFromSecret", "my-secret", "my-key")
             .add_volume_mount("configmap", "/mount")
+            .expect("add volume mount")
             .add_container_port(container_port_name, container_port)
             .resources(resources.clone())
             .add_container_ports(vec![ContainerPortBuilder::new(container_port_1)
@@ -491,20 +570,18 @@ mod tests {
             "lengthexceededlengthexceededlengthexceededlengthexceededlengthex";
         assert_eq!(long_container_name.len(), 64); // 63 characters is the limit for container names
         let result = ContainerBuilder::new(long_container_name);
-        match result
+        if let Error::InvalidContainerName {
+            container_name,
+            source,
+        } = result
             .err()
             .expect("Container name exceeding 63 characters should cause an error")
         {
-            Error::InvalidContainerName {
-                container_name,
-                source,
-            } => {
-                assert_eq!(container_name, long_container_name);
-                assert_eq!(
-                    source.to_string(),
-                    "input is 64 bytes long but must be no more than 63"
-                )
-            }
+            assert_eq!(container_name, long_container_name);
+            assert_eq!(
+                source.to_string(),
+                "input is 64 bytes long but must be no more than 63"
+            )
         }
         // One characters shorter name is valid
         let max_len_container_name: String = long_container_name.chars().skip(1).collect();
@@ -568,16 +645,14 @@ mod tests {
         result: Result<ContainerBuilder, Error>,
         expected_err_contains: &str,
     ) {
-        match result
+        if let Error::InvalidContainerName {
+            container_name: _,
+            source,
+        } = result
             .err()
             .expect("Container name exceeding 63 characters should cause an error")
         {
-            Error::InvalidContainerName {
-                container_name: _,
-                source,
-            } => {
-                assert!(dbg!(source.to_string()).contains(dbg!(expected_err_contains)));
-            }
+            assert!(dbg!(source.to_string()).contains(dbg!(expected_err_contains)));
         }
     }
 }

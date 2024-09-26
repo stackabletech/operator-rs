@@ -1,5 +1,6 @@
 use std::{collections::BTreeMap, num::TryFromIntError};
 
+use indexmap::IndexMap;
 use k8s_openapi::{
     api::core::v1::{
         Affinity, Container, LocalObjectReference, NodeAffinity, Pod, PodAffinity, PodAntiAffinity,
@@ -9,7 +10,7 @@ use k8s_openapi::{
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
 };
 use snafu::{OptionExt, ResultExt, Snafu};
-use tracing::warn;
+use tracing::{instrument, warn};
 
 use crate::kvp::Labels;
 use crate::{
@@ -50,9 +51,16 @@ pub enum Error {
 
     #[snafu(display("object is missing key {key:?}"))]
     MissingObjectKey { key: &'static str },
+
+    #[snafu(display("Colliding volume name {volume_name:?} in volumes with different content"))]
+    VolumeNameCollision { volume_name: String },
 }
 
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
+///
+/// This struct is often times using an [`IndexMap`] to have consistent ordering (so we don't produce reconcile loops).
+/// We are also choosing it over a [`BTreeMap`], because it is easier to debug for users, as logically grouped volumes
+/// (e.g. all volumes related to S3) are near each other in the list instead of "just" being sorted alphabetically.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PodBuilder {
     containers: Vec<Container>,
@@ -67,7 +75,9 @@ pub struct PodBuilder {
     status: Option<PodStatus>,
     security_context: Option<PodSecurityContext>,
     tolerations: Option<Vec<Toleration>>,
-    volumes: Option<Vec<Volume>>,
+
+    /// The key is the volume name.
+    volumes: IndexMap<String, Volume>,
     service_account_name: Option<String>,
     image_pull_secrets: Option<Vec<LocalObjectReference>>,
     restart_policy: Option<String>,
@@ -254,18 +264,13 @@ impl PodBuilder {
         self
     }
 
-    pub fn add_volume(&mut self, volume: Volume) -> &mut Self {
-        self.volumes.get_or_insert_with(Vec::new).push(volume);
-        self
-    }
-
     /// Utility function for the common case of adding an emptyDir Volume
     /// with the given name and no medium and no quantity.
     pub fn add_empty_dir_volume(
         &mut self,
         name: impl Into<String>,
         quantity: Option<Quantity>,
-    ) -> &mut Self {
+    ) -> Result<&mut Self> {
         self.add_volume(
             VolumeBuilder::new(name)
                 .with_empty_dir(None::<String>, quantity)
@@ -273,9 +278,47 @@ impl PodBuilder {
         )
     }
 
-    pub fn add_volumes(&mut self, volumes: Vec<Volume>) -> &mut Self {
-        self.volumes.get_or_insert_with(Vec::new).extend(volumes);
-        self
+    /// Adds a new [`Volume`] to the container while ensuring that no colliding [`Volume`] exists.
+    ///
+    /// A colliding [`Volume`] would have the same name but a different content than another
+    /// [`Volume`]. An appropriate error is returned when such a colliding volume name is
+    /// encountered.
+    ///
+    /// ### Note
+    ///
+    /// Previously, this function unconditionally added [`Volume`]s, which resulted in invalid
+    /// [`PodSpec`]s.
+    #[instrument(skip(self))]
+    pub fn add_volume(&mut self, volume: Volume) -> Result<&mut Self> {
+        if let Some(existing_volume) = self.volumes.get(&volume.name) {
+            if existing_volume != &volume {
+                let colliding_name = &volume.name;
+                // We don't want to include the details in the error message, but instead trace them
+                tracing::error!(
+                    colliding_name,
+                    ?existing_volume,
+                    "Colliding volume name {colliding_name:?} in volumes with different content"
+                );
+
+                VolumeNameCollisionSnafu {
+                    volume_name: &volume.name,
+                }
+                .fail()?;
+            }
+        } else {
+            self.volumes.insert(volume.name.clone(), volume);
+        }
+
+        Ok(self)
+    }
+
+    /// See [`Self::add_volume`] for details
+    pub fn add_volumes(&mut self, volumes: Vec<Volume>) -> Result<&mut Self> {
+        for volume in volumes {
+            self.add_volume(volume)?;
+        }
+
+        Ok(self)
     }
 
     /// Add a [`Volume`] for the storage class `listeners.stackable.tech` with the given listener
@@ -304,6 +347,7 @@ impl PodBuilder {
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
+    ///             .unwrap()
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_class("listener", "nodeport", &labels)
@@ -359,7 +403,7 @@ impl PodBuilder {
             name: volume_name.into(),
             ephemeral: Some(volume),
             ..Volume::default()
-        });
+        })?;
 
         Ok(self)
     }
@@ -390,6 +434,7 @@ impl PodBuilder {
     ///         ContainerBuilder::new("container")
     ///             .unwrap()
     ///             .add_volume_mount("listener", "/path/to/volume")
+    ///             .unwrap()
     ///             .build(),
     ///     )
     ///     .add_listener_volume_by_listener_name("listener", "preprovisioned-listener", &labels)
@@ -445,7 +490,7 @@ impl PodBuilder {
             name: volume_name.into(),
             ephemeral: Some(volume),
             ..Volume::default()
-        });
+        })?;
 
         Ok(self)
     }
@@ -520,6 +565,12 @@ impl PodBuilder {
     }
 
     fn build_spec(&self) -> PodSpec {
+        let volumes = if self.volumes.is_empty() {
+            None
+        } else {
+            Some(self.volumes.values().cloned().collect())
+        };
+
         let pod_spec = PodSpec {
             containers: self.containers.clone(),
             host_network: self.host_network,
@@ -533,7 +584,7 @@ impl PodBuilder {
             }),
             security_context: self.security_context.clone(),
             tolerations: self.tolerations.clone(),
-            volumes: self.volumes.clone(),
+            volumes,
             // Legacy feature for ancient Docker images
             // In practice, this just causes a bunch of unused environment variables that may conflict with other uses,
             // such as https://github.com/stackabletech/spark-operator/pull/256.
@@ -673,6 +724,7 @@ mod tests {
                     .with_config_map("configmap")
                     .build(),
             )
+            .unwrap()
             .termination_grace_period(&Duration::from_secs(42))
             .unwrap()
             .build()

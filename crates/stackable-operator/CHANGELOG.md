@@ -6,9 +6,14 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Fix the logback configuration for logback versions from 1.3.6/1.4.6 to
-  1.3.11/1.4.11 ([#874]).
+- Fix the logback configuration for logback versions from 1.3.6/1.4.6 to 1.3.11/1.4.11 ([#874]).
+- BREAKING: Avoid colliding volumes and mounts by only adding volumes or mounts if they do not already exist. This makes functions such as `PodBuilder::add_volume` or `ContainerBuilder::add_volume_mount` as well as related ones fallible ([#871]).
 
+### Changed
+
+- BREAKING: Remove the `unique_identifier` argument from `ResolvedS3Connection::add_volumes_and_mounts`, `ResolvedS3Connection::volumes_and_mounts` and `ResolvedS3Connection::credentials_mount_paths` as it is not needed anymore ([#871]).
+
+[#871]: https://github.com/stackabletech/operator-rs/pull/871
 [#874]: https://github.com/stackabletech/operator-rs/pull/874
 
 ## [0.76.0] - 2024-09-19

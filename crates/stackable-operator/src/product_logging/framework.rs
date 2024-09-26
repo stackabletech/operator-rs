@@ -2,8 +2,10 @@
 
 use std::{cmp, fmt::Write, ops::Mul};
 
+use snafu::{ResultExt, Snafu};
+
 use crate::{
-    builder::pod::container::ContainerBuilder,
+    builder::{self, pod::container::ContainerBuilder},
     commons::product_image_selection::ResolvedProductImage,
     k8s_openapi::{
         api::core::v1::{Container, ResourceRequirements},
@@ -30,6 +32,19 @@ const SHUTDOWN_FILE: &str = "shutdown";
 
 /// File name of the Vector config file
 pub const VECTOR_CONFIG_FILE: &str = "vector.yaml";
+
+#[derive(Debug, Snafu)]
+pub enum LoggingError {
+    #[snafu(display("failed to create container"))]
+    CreateContainer {
+        source: builder::pod::container::Error,
+    },
+
+    #[snafu(display("failed to add required volumeMounts"))]
+    AddVolumeMounts {
+        source: builder::pod::container::Error,
+    },
+}
 
 /// Calculate the size limit for the log volume.
 ///
@@ -81,6 +96,7 @@ pub const VECTOR_CONFIG_FILE: &str = "vector.yaml";
 ///             ],
 ///         )),
 ///     )
+///     .unwrap()
 ///     .build()
 ///     .unwrap();
 /// ```
@@ -1410,7 +1426,7 @@ sinks:
 ///         "log",
 ///         logging.containers.get(&Container::Vector),
 ///         resources,
-///     ));
+///     ).unwrap());
 /// }
 ///
 /// pod_builder.build().unwrap();
@@ -1421,7 +1437,7 @@ pub fn vector_container(
     log_volume_name: &str,
     log_config: Option<&ContainerLogConfig>,
     resources: ResourceRequirements,
-) -> Container {
+) -> Result<Container, LoggingError> {
     let log_level = if let Some(ContainerLogConfig {
         choice: Some(ContainerLogConfigChoice::Automatic(automatic_log_config)),
     }) = log_config
@@ -1431,8 +1447,8 @@ pub fn vector_container(
         LogLevel::INFO
     };
 
-    ContainerBuilder::new("vector")
-        .unwrap()
+    Ok(ContainerBuilder::new("vector")
+        .context(CreateContainerSnafu)?
         .image_from_product_image(image)
         .command(vec![
             "/bin/bash".to_string(),
@@ -1459,9 +1475,11 @@ kill $vector_pid
         )])
         .add_env_var("VECTOR_LOG", log_level.to_vector_literal())
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
+        .context(AddVolumeMountsSnafu)?
         .add_volume_mount(log_volume_name, STACKABLE_LOG_DIR)
+        .context(AddVolumeMountsSnafu)?
         .resources(resources)
-        .build()
+        .build())
 }
 
 /// Command to create a shutdown file for the vector container.
@@ -1489,6 +1507,7 @@ kill $vector_pid
 ///     .command(vec!["bash".to_string(), "-c".to_string()])
 ///     .args(vec![args.join(" && ")])
 ///     .add_volume_mount("log", STACKABLE_LOG_DIR)
+///     .unwrap()
 ///     .build();
 /// ```
 pub fn create_vector_shutdown_file_command(stackable_log_dir: &str) -> String {
