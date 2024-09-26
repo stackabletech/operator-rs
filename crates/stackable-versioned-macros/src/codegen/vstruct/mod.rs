@@ -8,8 +8,10 @@ use syn::{parse_quote, DataStruct, Error, Ident};
 use crate::{
     attrs::common::ContainerAttributes,
     codegen::{
+        chain::Neighbors,
         common::{
-            Container, ContainerInput, ContainerVersion, Item, VersionExt, VersionedContainer,
+            Container, ContainerInput, ContainerVersion, Item, ItemStatus, VersionExt,
+            VersionedContainer,
         },
         vstruct::field::VersionedField,
     },
@@ -241,11 +243,18 @@ impl VersionedStruct {
 
             let fields = self.generate_from_fields(version, next_version, from_ident);
 
-            // TODO (@Techassi): Be a little bit more clever about when to include
-            // the #[allow(deprecated)] attribute.
+            // Include allow(deprecated) only when this or the next version is
+            // deprecated. Also include it, when a field in this or the next
+            // version is deprecated.
+            let allow_attribute = (version.deprecated
+                || next_version.deprecated
+                || self.is_any_field_deprecated(version)
+                || self.is_any_field_deprecated(next_version))
+            .then_some(quote! { #[allow(deprecated)] });
+
             return Some(quote! {
                 #[automatically_derived]
-                #[allow(deprecated)]
+                #allow_attribute
                 impl From<#module_name::#struct_ident> for #next_module_name::#struct_ident {
                     fn from(#from_ident: #module_name::#struct_ident) -> Self {
                         Self {
@@ -274,6 +283,30 @@ impl VersionedStruct {
         }
 
         token_stream
+    }
+
+    /// Returns whether any field is deprecated in the provided
+    /// [`ContainerVersion`].
+    fn is_any_field_deprecated(&self, version: &ContainerVersion) -> bool {
+        // First, iterate over all fields. Any will return true if any of the
+        // function invocations return true. If a field doesn't have a chain,
+        // we can safely default to false (unversioned fields cannot be
+        // deprecated). Then we retrieve the status of the field and ensure it
+        // is deprecated.
+        self.items.iter().any(|f| {
+            f.chain.as_ref().map_or(false, |c| {
+                c.value_is(&version.inner, |a| {
+                    matches!(
+                        a,
+                        ItemStatus::Deprecation { .. }
+                            | ItemStatus::NoChange {
+                                previously_deprecated: true,
+                                ..
+                            }
+                    )
+                })
+            })
+        })
     }
 }
 
