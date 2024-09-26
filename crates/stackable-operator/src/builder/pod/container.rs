@@ -35,6 +35,8 @@ pub enum Error {
             the new mount's subPath is {new_sub_path:?}"
     ))]
     ClashingMountPath {
+        // The VolumeMount structs where not added to avoid to many information for the users. Instead we pick the most
+        // relevant information only.
         mount_path: String,
         existing_volume_name: String,
         existing_sub_path: Option<String>,
