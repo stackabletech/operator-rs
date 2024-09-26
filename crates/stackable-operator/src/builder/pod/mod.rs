@@ -52,13 +52,9 @@ pub enum Error {
     #[snafu(display("object is missing key {key:?}"))]
     MissingObjectKey { key: &'static str },
 
-    #[snafu(display("The volume {volume_name:?} clashes with an existing volume of the same name but with different content. \
-        The existing volume is {existing_volume:?}, the new one is {new_volume:?}"))]
-    ClashingVolumeName {
-        volume_name: String,
-        existing_volume: Box<Volume>,
-        new_volume: Box<Volume>,
-    },
+    #[snafu(display("The volume {clashing_volume_name:?} clashes with an existing volume of the same name but with different content. \
+        Please have a look at the log/traces for details."))]
+    ClashingVolumeName { clashing_volume_name: String },
 }
 
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
@@ -292,12 +288,20 @@ impl PodBuilder {
     /// resulting in e.g. the s3 credentials being mounted twice as the sake volume.
     pub fn add_volume(&mut self, volume: Volume) -> Result<&mut Self> {
         if let Some(existing_volume) = self.volumes.get(&volume.name) {
+            // We don't want to include the details in the error message, but instead trace them
+            if existing_volume != &volume {
+                let clashing_name = &volume.name;
+                tracing::error!(
+                    clashing_name,
+                    ?existing_volume,
+                    new_volume = ?volume,
+                    "The volume {clashing_name:?} clashes with an existing volume of the same name but with different content",
+                );
+            }
             ensure!(
                 existing_volume == &volume,
                 ClashingVolumeNameSnafu {
-                    volume_name: volume.name.clone(),
-                    existing_volume: existing_volume.clone(),
-                    new_volume: volume
+                    clashing_volume_name: volume.name.clone(),
                 }
             );
         } else {

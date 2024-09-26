@@ -28,20 +28,15 @@ pub enum Error {
 
     #[snafu(display(
         "The volumeMount is clashing with an already existing volumeMount with the same mountPath but a different content. \
-            The shared mountPath is {mount_path:?}, \
-            the existing mount's volume name is {existing_volume_name:?}, \
-            the existing mount's subPath is {existing_sub_path:?}, \
-            the new mount's volume name is {new_volume_name:?}, \
-            the new mount's subPath is {new_sub_path:?}"
+            The clashing mountPath is {clashing_mount_path:?}, \
+            the existing mount's volume name is {existing_volume_name:?} \
+            and the new mount's volume name is {new_volume_name:?}. \
+            Please have a look at the log/traces for details"
     ))]
     ClashingMountPath {
-        // The VolumeMount structs where not added to avoid to many information for the users. Instead we pick the most
-        // relevant information only.
-        mount_path: String,
+        clashing_mount_path: String,
         existing_volume_name: String,
-        existing_sub_path: Option<String>,
         new_volume_name: String,
-        new_sub_path: Option<String>,
     },
 }
 
@@ -226,14 +221,21 @@ impl ContainerBuilder {
     /// two times, resulting in e.g. the s3 credentials being mounted twice as the same volumeMount.
     fn add_volume_mount_impl(&mut self, volume_mount: VolumeMount) -> Result<&mut Self> {
         if let Some(existing_volume_mount) = self.volume_mounts.get(&volume_mount.mount_path) {
+            // We don't want to include the details in the error message, but instead trace them
+            if existing_volume_mount != &volume_mount {
+                tracing::error!(
+                    clashing_mount_path = &volume_mount.mount_path,
+                    ?existing_volume_mount,
+                    new_volume_mount = ?volume_mount,
+                    "The volumeMount is clashing with an already existing volumeMount with the same mountPath but a different content"
+                );
+            }
             ensure!(
                 existing_volume_mount == &volume_mount,
                 ClashingMountPathSnafu {
-                    mount_path: volume_mount.mount_path,
+                    clashing_mount_path: volume_mount.mount_path,
                     existing_volume_name: existing_volume_mount.name.clone(),
-                    existing_sub_path: existing_volume_mount.sub_path.clone(),
                     new_volume_name: volume_mount.name,
-                    new_sub_path: volume_mount.sub_path,
                 }
             );
         } else {
