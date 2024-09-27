@@ -1,88 +1,87 @@
 ---
 source: crates/stackable-versioned-macros/src/lib.rs
-assertion_line: 518
 expression: formatted
-input_file: crates/stackable-versioned-macros/fixtures/inputs/default/deprecate_struct.rs
+input_file: crates/stackable-versioned-macros/fixtures/inputs/default/deprecate_enum.rs
 ---
 #[automatically_derived]
 mod v1alpha1 {
     use super::*;
-    pub struct Foo {
-        pub bar: usize,
-        pub baz: bool,
+    pub enum Foo {
+        Bar,
+        Baz,
     }
 }
 #[automatically_derived]
 impl From<v1alpha1::Foo> for v1beta1::Foo {
     fn from(__sv_foo: v1alpha1::Foo) -> Self {
-        Self {
-            bar: __sv_foo.bar,
-            baz: __sv_foo.baz,
+        match __sv_foo {
+            v1alpha1::Foo::Bar => v1beta1::Foo::Bar,
+            v1alpha1::Foo::Baz => v1beta1::Foo::Baz,
         }
     }
 }
 #[automatically_derived]
 mod v1beta1 {
     use super::*;
-    pub struct Foo {
-        pub bar: usize,
-        pub baz: bool,
+    pub enum Foo {
+        Bar,
+        Baz,
     }
 }
 #[automatically_derived]
 #[allow(deprecated)]
 impl From<v1beta1::Foo> for v1::Foo {
     fn from(__sv_foo: v1beta1::Foo) -> Self {
-        Self {
-            deprecated_bar: __sv_foo.bar,
-            baz: __sv_foo.baz,
+        match __sv_foo {
+            v1beta1::Foo::Bar => v1::Foo::DeprecatedBar,
+            v1beta1::Foo::Baz => v1::Foo::Baz,
         }
     }
 }
 #[automatically_derived]
 mod v1 {
     use super::*;
-    pub struct Foo {
-        #[deprecated = "gone"]
-        pub deprecated_bar: usize,
-        pub baz: bool,
+    pub enum Foo {
+        #[deprecated]
+        DeprecatedBar,
+        Baz,
     }
 }
 #[automatically_derived]
 #[allow(deprecated)]
 impl From<v1::Foo> for v2::Foo {
     fn from(__sv_foo: v1::Foo) -> Self {
-        Self {
-            deprecated_bar: __sv_foo.deprecated_bar,
-            baz: __sv_foo.baz,
+        match __sv_foo {
+            v1::Foo::DeprecatedBar => v2::Foo::DeprecatedBar,
+            v1::Foo::Baz => v2::Foo::Baz,
         }
     }
 }
 #[automatically_derived]
 mod v2 {
     use super::*;
-    pub struct Foo {
+    pub enum Foo {
         #[deprecated]
-        pub deprecated_bar: usize,
-        pub baz: bool,
+        DeprecatedBar,
+        Baz,
     }
 }
 #[automatically_derived]
 #[allow(deprecated)]
 impl From<v2::Foo> for v3::Foo {
     fn from(__sv_foo: v2::Foo) -> Self {
-        Self {
-            deprecated_bar: __sv_foo.deprecated_bar,
-            baz: __sv_foo.baz,
+        match __sv_foo {
+            v2::Foo::DeprecatedBar => v3::Foo::DeprecatedBar,
+            v2::Foo::Baz => v3::Foo::Baz,
         }
     }
 }
 #[automatically_derived]
 mod v3 {
     use super::*;
-    pub struct Foo {
+    pub enum Foo {
         #[deprecated]
-        pub deprecated_bar: usize,
-        pub baz: bool,
+        DeprecatedBar,
+        Baz,
     }
 }
