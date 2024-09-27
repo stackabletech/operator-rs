@@ -16,17 +16,6 @@
 // again but before running tests, otherwise compilation will fail (as expected).
 #[allow(dead_code)]
 mod default {
-    // mod pass {
-    //     // mod attributes_enum;
-    //     // mod attributes_struct;
-    //     // mod basic;
-
-    //     // mod deprecate_enum;
-    //     // mod deprecate_struct;
-    //     // mod rename;
-    //     // mod skip_from_version;
-    // }
-
     // mod fail {
     //     mod deprecate;
     //     mod skip_from_all;
@@ -37,7 +26,6 @@ mod default {
 #[test]
 fn default_macros() {
     let t = trybuild::TestCases::new();
-    t.pass("tests/default/pass/*.rs");
     t.compile_fail("tests/default/fail/*.rs");
 }
 

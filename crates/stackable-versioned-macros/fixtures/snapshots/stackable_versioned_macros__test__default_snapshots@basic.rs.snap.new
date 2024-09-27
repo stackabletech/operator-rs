@@ -1,0 +1,93 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+assertion_line: 518
+expression: formatted
+input_file: crates/stackable-versioned-macros/fixtures/inputs/default/basic.rs
+---
+#[automatically_derived]
+#[deprecated = "Version v1alpha1 is deprecated"]
+pub(crate) mod v1alpha1 {
+    use super::*;
+    pub struct Foo {
+        /// Test
+        pub jjj: u8,
+        pub baz: bool,
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl From<v1alpha1::Foo> for v1beta1::Foo {
+    fn from(__sv_foo: v1alpha1::Foo) -> Self {
+        Self {
+            bar: __sv_foo.jjj.into(),
+            baz: __sv_foo.baz,
+        }
+    }
+}
+#[automatically_derived]
+pub(crate) mod v1beta1 {
+    use super::*;
+    pub struct Foo {
+        /// Test
+        pub bar: u16,
+        pub baz: bool,
+    }
+}
+#[automatically_derived]
+impl From<v1beta1::Foo> for v1::Foo {
+    fn from(__sv_foo: v1beta1::Foo) -> Self {
+        Self {
+            bar: __sv_foo.bar.into(),
+            baz: __sv_foo.baz,
+        }
+    }
+}
+#[automatically_derived]
+pub(crate) mod v1 {
+    use super::*;
+    pub struct Foo {
+        /// Test
+        pub bar: usize,
+        pub baz: bool,
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl From<v1::Foo> for v2::Foo {
+    fn from(__sv_foo: v1::Foo) -> Self {
+        Self {
+            deprecated_bar: __sv_foo.bar,
+            baz: __sv_foo.baz,
+        }
+    }
+}
+#[automatically_derived]
+pub(crate) mod v2 {
+    use super::*;
+    pub struct Foo {
+        /// Test
+        #[deprecated = "not empty"]
+        pub deprecated_bar: usize,
+        pub baz: bool,
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl From<v2::Foo> for v3::Foo {
+    fn from(__sv_foo: v2::Foo) -> Self {
+        Self {
+            deprecated_bar: __sv_foo.deprecated_bar,
+            baz: __sv_foo.baz,
+        }
+    }
+}
+#[automatically_derived]
+pub(crate) mod v3 {
+    use super::*;
+    pub struct Foo {
+        /// Test
+        #[deprecated]
+        pub deprecated_bar: usize,
+        pub baz: bool,
+    }
+}

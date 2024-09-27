@@ -38,6 +38,9 @@ syn.workspace = true
 quote.workspace = true
 
 [dev-dependencies]
+insta.workspace = true
+prettyplease.workspace = true
+regex.workspace = true
 rstest.workspace = true
 schemars.workspace = true
 serde.workspace = true

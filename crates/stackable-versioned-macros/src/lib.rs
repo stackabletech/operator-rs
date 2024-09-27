@@ -4,6 +4,9 @@ use syn::{DeriveInput, Error};
 
 use crate::attrs::common::ContainerAttributes;
 
+#[cfg(test)]
+mod test_utils;
+
 mod attrs;
 mod codegen;
 mod consts;
@@ -473,14 +476,6 @@ println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 ///   a cluster scoped.
 #[proc_macro_attribute]
 pub fn versioned(attrs: TokenStream, input: TokenStream) -> TokenStream {
-    let attrs = match NestedMeta::parse_meta_list(attrs.into()) {
-        Ok(attrs) => match ContainerAttributes::from_list(&attrs) {
-            Ok(attrs) => attrs,
-            Err(err) => return err.write_errors().into(),
-        },
-        Err(err) => return darling::Error::from(err).write_errors().into(),
-    };
-
     // NOTE (@Techassi): For now, we can just use the DeriveInput type here,
     // because we only support structs end enums to be versioned.
     // In the future - if we decide to support modules - this requires
@@ -488,8 +483,39 @@ pub fn versioned(attrs: TokenStream, input: TokenStream) -> TokenStream {
     // use an enum with two variants: Container(DeriveInput) and
     // Module(ItemMod).
     let input = syn::parse_macro_input!(input as DeriveInput);
+    versioned_impl(attrs.into(), input).into()
+}
 
-    codegen::expand(attrs, input)
-        .unwrap_or_else(Error::into_compile_error)
-        .into()
+fn versioned_impl(attrs: proc_macro2::TokenStream, input: DeriveInput) -> proc_macro2::TokenStream {
+    let attrs = match NestedMeta::parse_meta_list(attrs) {
+        Ok(attrs) => match ContainerAttributes::from_list(&attrs) {
+            Ok(attrs) => attrs,
+            Err(err) => return err.write_errors(),
+        },
+        Err(err) => return darling::Error::from(err).write_errors(),
+    };
+
+    codegen::expand(attrs, input).unwrap_or_else(Error::into_compile_error)
+}
+
+#[cfg(test)]
+mod test {
+    use insta::{assert_snapshot, glob};
+
+    use super::*;
+
+    #[test]
+    fn default_snapshots() {
+        let settings = test_utils::set_snapshot_path();
+        let _guard = settings.bind_to_scope();
+
+        glob!("../fixtures/inputs/default", "*.rs", |path| {
+            let input = std::fs::read_to_string(path).unwrap();
+            let (attrs, input) = test_utils::prepare_from_string(input);
+            let expanded = versioned_impl(attrs, input).to_string();
+            let formatted = prettyplease::unparse(&syn::parse_file(&expanded).unwrap());
+
+            assert_snapshot!(formatted);
+        });
+    }
 }
