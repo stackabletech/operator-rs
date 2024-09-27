@@ -232,13 +232,14 @@ impl ContainerBuilder {
                     ?existing_volume_mount,
                     "Colliding mountPath {colliding_mount_path:?} in volumeMounts with different content"
                 );
+
+                MountPathCollisionSnafu {
+                    mount_path: &volume_mount.mount_path,
+                    existing_volume_name: &existing_volume_mount.name,
+                    new_volume_name: &volume_mount.name,
+                }
+                .fail()?;
             }
-            MountPathCollisionSnafu {
-                mount_path: &volume_mount.mount_path,
-                existing_volume_name: &existing_volume_mount.name,
-                new_volume_name: &volume_mount.name,
-            }
-            .fail()?;
         } else {
             self.volume_mounts
                 .insert(volume_mount.mount_path.clone(), volume_mount);

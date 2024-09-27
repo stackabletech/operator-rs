@@ -8,6 +8,13 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fix always returning an error stating that volumeMounts are colliding. Instead move the error
+  creation to the correct location within an `if` statement
+
+## [0.77.1] - 2024-09-26
+
+### Fixed
+
 - Fix the logback configuration for logback versions from 1.3.6/1.4.6 to 1.3.11/1.4.11 ([#874]).
 - BREAKING: Avoid colliding volumes and mounts by only adding volumes or mounts if they do not already exist. This makes functions such as `PodBuilder::add_volume` or `ContainerBuilder::add_volume_mount` as well as related ones fallible ([#871]).
 
