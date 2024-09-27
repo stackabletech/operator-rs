@@ -17,13 +17,14 @@
 #[allow(dead_code)]
 mod default {
     // mod pass {
-    //     mod attributes_enum;
-    //     mod attributes_struct;
-    //     mod basic;
+    //     // mod attributes_enum;
+    //     // mod attributes_struct;
+    //     // mod basic;
 
-    //     mod deprecate;
-    //     mod rename;
-    //     mod skip_from_version;
+    //     // mod deprecate_enum;
+    //     // mod deprecate_struct;
+    //     // mod rename;
+    //     // mod skip_from_version;
     // }
 
     // mod fail {

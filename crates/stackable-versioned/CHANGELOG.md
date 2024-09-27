@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - 2024-09-26
+
+### Added
+
+- Add forwarding of `singular`, `plural`, and `namespaced` arguments in `k8s()`
+  ([#873]).
+- Generate a `Version` enum containing all declared versions as variants
+  ([#872]).
+
+### Changed
+
+- BREAKING: The `merged_crd` function now accepts `Self` instead of a dedicated
+  `Version` enum ([#875]).
+- The `merged_crd` associated function now takes `Version` instead of `&str` as
+  input ([#872]).
+
+[#872]: https://github.com/stackabletech/operator-rs/pull/872
+[#873]: https://github.com/stackabletech/operator-rs/pull/873
+[#875]: https://github.com/stackabletech/operator-rs/pull/875
+
 ## [0.2.0] - 2024-09-19
 
 ### Added

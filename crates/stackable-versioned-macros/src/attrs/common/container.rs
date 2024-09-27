@@ -141,7 +141,10 @@ pub(crate) struct OptionAttributes {
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct KubernetesAttributes {
     pub(crate) skip: Option<KubernetesSkipAttributes>,
+    pub(crate) singular: Option<String>,
+    pub(crate) plural: Option<String>,
     pub(crate) kind: Option<String>,
+    pub(crate) namespaced: Flag,
     pub(crate) group: String,
 }
 

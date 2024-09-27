@@ -2926,7 +2926,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.76.0"
+version = "0.77.1"
 dependencies = [
  "chrono",
  "clap",
@@ -2936,6 +2936,7 @@ dependencies = [
  "dockerfile-parser",
  "either",
  "futures",
+ "indexmap 2.5.0",
  "json-patch",
  "k8s-openapi",
  "kube",
@@ -2996,14 +2997,14 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "stackable-versioned-macros",
 ]
 
 [[package]]
 name = "stackable-versioned-macros"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "convert_case",
  "darling",

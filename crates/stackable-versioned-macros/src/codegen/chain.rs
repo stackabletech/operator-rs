@@ -4,16 +4,6 @@ pub(crate) trait Neighbors<K, V>
 where
     K: Ord + Eq,
 {
-    fn get_neighbors(&self, key: &K) -> (Option<&V>, Option<&V>);
-
-    fn lo_bound(&self, bound: Bound<&K>) -> Option<(&K, &V)>;
-    fn up_bound(&self, bound: Bound<&K>) -> Option<(&K, &V)>;
-}
-
-impl<K, V> Neighbors<K, V> for BTreeMap<K, V>
-where
-    K: Ord + Eq,
-{
     /// Returns the values of keys which are neighbors of `key`.
     ///
     /// Given a map which contains the following keys: 1, 3, 5. Calling this
@@ -23,6 +13,22 @@ where
     /// - Key **2**: `(Some(1), Some(3))`
     /// - Key **4**: `(Some(3), Some(5))`
     /// - Key **6**: `(Some(5), None)`
+    fn get_neighbors(&self, key: &K) -> (Option<&V>, Option<&V>);
+
+    /// Returns whether the function `f` returns true if applied to the value
+    /// identified by `key`.
+    fn value_is<F>(&self, key: &K, f: F) -> bool
+    where
+        F: Fn(&V) -> bool;
+
+    fn lo_bound(&self, bound: Bound<&K>) -> Option<(&K, &V)>;
+    fn up_bound(&self, bound: Bound<&K>) -> Option<(&K, &V)>;
+}
+
+impl<K, V> Neighbors<K, V> for BTreeMap<K, V>
+where
+    K: Ord + Eq,
+{
     fn get_neighbors(&self, key: &K) -> (Option<&V>, Option<&V>) {
         // NOTE (@Techassi): These functions might get added to the standard
         // library at some point. If that's the case, we can use the ones
@@ -49,6 +55,13 @@ where
             (Some((_, lo)), Some((_, up))) => (Some(lo), Some(up)),
             (None, None) => unreachable!(),
         }
+    }
+
+    fn value_is<F>(&self, key: &K, f: F) -> bool
+    where
+        F: Fn(&V) -> bool,
+    {
+        self.get(key).map_or(false, f)
     }
 
     fn lo_bound(&self, bound: Bound<&K>) -> Option<(&K, &V)> {

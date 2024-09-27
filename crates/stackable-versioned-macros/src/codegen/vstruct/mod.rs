@@ -8,12 +8,18 @@ use syn::{parse_quote, DataStruct, Error, Ident};
 use crate::{
     attrs::common::ContainerAttributes,
     codegen::{
-        common::{Container, ContainerInput, ContainerVersion, Item, VersionedContainer},
+        chain::Neighbors,
+        common::{
+            Container, ContainerInput, ContainerVersion, Item, ItemStatus, VersionExt,
+            VersionedContainer,
+        },
         vstruct::field::VersionedField,
     },
 };
 
 pub(crate) mod field;
+
+type GenerateVersionReturn = (TokenStream, Option<(TokenStream, (Ident, String))>);
 
 /// Stores individual versions of a single struct. Each version tracks field
 /// actions, which describe if the field was added, renamed or deprecated in
@@ -85,24 +91,30 @@ impl Container<DataStruct, VersionedField> for VersionedStruct {
     }
 
     fn generate_tokens(&self) -> TokenStream {
-        let mut kubernetes_crd_fn_calls = TokenStream::new();
-        let mut container_definition = TokenStream::new();
+        let mut tokens = TokenStream::new();
+
+        let mut enum_variants = Vec::new();
+        let mut crd_fn_calls = Vec::new();
 
         let mut versions = self.versions.iter().peekable();
 
         while let Some(version) = versions.next() {
-            container_definition.extend(self.generate_version(version, versions.peek().copied()));
-            kubernetes_crd_fn_calls.extend(self.generate_kubernetes_crd_fn_call(version));
+            let (container_definition, merged_crd) =
+                self.generate_version(version, versions.peek().copied());
+
+            if let Some((crd_fn_call, enum_variant)) = merged_crd {
+                enum_variants.push(enum_variant);
+                crd_fn_calls.push(crd_fn_call);
+            }
+
+            tokens.extend(container_definition);
         }
 
-        // If tokens for the 'crd()' function calls were generated, also generate
-        // the 'merge_crds' call.
-        if !kubernetes_crd_fn_calls.is_empty() {
-            container_definition
-                .extend(self.generate_kubernetes_merge_crds(kubernetes_crd_fn_calls));
+        if !crd_fn_calls.is_empty() {
+            tokens.extend(self.generate_kubernetes_merge_crds(crd_fn_calls, enum_variants));
         }
 
-        container_definition
+        tokens
     }
 }
 
@@ -112,7 +124,7 @@ impl VersionedStruct {
         &self,
         version: &ContainerVersion,
         next_version: Option<&ContainerVersion>,
-    ) -> TokenStream {
+    ) -> GenerateVersionReturn {
         let mut token_stream = TokenStream::new();
 
         let original_attributes = &self.original_attributes;
@@ -137,7 +149,27 @@ impl VersionedStruct {
         let version_specific_docs = self.generate_struct_docs(version);
 
         // Generate K8s specific code
-        let kubernetes_cr_derive = self.generate_kubernetes_cr_derive(version);
+        let (kubernetes_cr_derive, merged_crd) = match &self.options.kubernetes_options {
+            Some(options) => {
+                // Generate the CustomResource derive macro with the appropriate
+                // attributes supplied using #[kube()].
+                let cr_derive = self.generate_kubernetes_cr_derive(version);
+
+                // Generate merged_crd specific code when not opted out.
+                let merged_crd = if !options.skip_merged_crd {
+                    let crd_fn_call = self.generate_kubernetes_crd_fn_call(version);
+                    let enum_variant = version.inner.as_variant_ident();
+                    let enum_display = version.inner.to_string();
+
+                    Some((crd_fn_call, (enum_variant, enum_display)))
+                } else {
+                    None
+                };
+
+                (Some(cr_derive), merged_crd)
+            }
+            None => (None, None),
+        };
 
         // Generate tokens for the module and the contained struct
         token_stream.extend(quote! {
@@ -160,7 +192,7 @@ impl VersionedStruct {
             token_stream.extend(self.generate_from_impl(version, next_version));
         }
 
-        token_stream
+        (token_stream, merged_crd)
     }
 
     /// Generates version specific doc comments for the struct.
@@ -211,11 +243,18 @@ impl VersionedStruct {
 
             let fields = self.generate_from_fields(version, next_version, from_ident);
 
-            // TODO (@Techassi): Be a little bit more clever about when to include
-            // the #[allow(deprecated)] attribute.
+            // Include allow(deprecated) only when this or the next version is
+            // deprecated. Also include it, when a field in this or the next
+            // version is deprecated.
+            let allow_attribute = (version.deprecated
+                || next_version.deprecated
+                || self.is_any_field_deprecated(version)
+                || self.is_any_field_deprecated(next_version))
+            .then_some(quote! { #[allow(deprecated)] });
+
             return Some(quote! {
                 #[automatically_derived]
-                #[allow(deprecated)]
+                #allow_attribute
                 impl From<#module_name::#struct_ident> for #next_module_name::#struct_ident {
                     fn from(#from_ident: #module_name::#struct_ident) -> Self {
                         Self {
@@ -245,6 +284,30 @@ impl VersionedStruct {
 
         token_stream
     }
+
+    /// Returns whether any field is deprecated in the provided
+    /// [`ContainerVersion`].
+    fn is_any_field_deprecated(&self, version: &ContainerVersion) -> bool {
+        // First, iterate over all fields. Any will return true if any of the
+        // function invocations return true. If a field doesn't have a chain,
+        // we can safely default to false (unversioned fields cannot be
+        // deprecated). Then we retrieve the status of the field and ensure it
+        // is deprecated.
+        self.items.iter().any(|f| {
+            f.chain.as_ref().map_or(false, |c| {
+                c.value_is(&version.inner, |a| {
+                    matches!(
+                        a,
+                        ItemStatus::Deprecation { .. }
+                            | ItemStatus::NoChange {
+                                previously_deprecated: true,
+                                ..
+                            }
+                    )
+                })
+            })
+        })
+    }
 }
 
 // Kubernetes specific code generation
@@ -253,6 +316,7 @@ impl VersionedStruct {
     /// attributes.
     fn generate_kubernetes_cr_derive(&self, version: &ContainerVersion) -> Option<TokenStream> {
         if let Some(kubernetes_options) = &self.options.kubernetes_options {
+            // Required arguments
             let group = &kubernetes_options.group;
             let version = version.inner.to_string();
             let kind = kubernetes_options
@@ -260,9 +324,22 @@ impl VersionedStruct {
                 .as_ref()
                 .map_or(self.idents.kubernetes.to_string(), |kind| kind.clone());
 
+            // Optional arguments
+            let namespaced = kubernetes_options
+                .namespaced
+                .then_some(quote! { , namespaced });
+            let singular = kubernetes_options
+                .singular
+                .as_ref()
+                .map(|s| quote! { , singular = #s });
+            let plural = kubernetes_options
+                .plural
+                .as_ref()
+                .map(|p| quote! { , plural = #p });
+
             return Some(quote! {
                 #[derive(::kube::CustomResource)]
-                #[kube(group = #group, version = #version, kind = #kind)]
+                #[kube(group = #group, version = #version, kind = #kind #singular #plural #namespaced)]
             });
         }
 
@@ -270,21 +347,47 @@ impl VersionedStruct {
     }
 
     /// Generates the `merge_crds` function call.
-    fn generate_kubernetes_merge_crds(&self, fn_calls: TokenStream) -> TokenStream {
-        let ident = &self.idents.kubernetes;
+    fn generate_kubernetes_merge_crds(
+        &self,
+        crd_fn_calls: Vec<TokenStream>,
+        enum_variants: Vec<(Ident, String)>,
+    ) -> TokenStream {
+        let enum_ident = &self.idents.kubernetes;
+        let enum_vis = &self.visibility;
+
+        let mut enum_display_impl_matches = TokenStream::new();
+        let mut enum_variant_idents = TokenStream::new();
+
+        for (enum_variant_ident, enum_variant_display) in enum_variants {
+            enum_variant_idents.extend(quote! {#enum_variant_ident,});
+            enum_display_impl_matches.extend(quote! {
+                #enum_ident::#enum_variant_ident => f.write_str(#enum_variant_display),
+            });
+        }
 
         quote! {
             #[automatically_derived]
-            pub struct #ident;
+            #enum_vis enum #enum_ident {
+                #enum_variant_idents
+            }
 
             #[automatically_derived]
-            impl #ident {
+            impl ::std::fmt::Display for #enum_ident {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::result::Result<(), ::std::fmt::Error> {
+                    match self {
+                        #enum_display_impl_matches
+                    }
+                }
+            }
+
+            #[automatically_derived]
+            impl #enum_ident {
                 /// Generates a merged CRD which contains all versions defined using the
                 /// `#[versioned()]` macro.
                 pub fn merged_crd(
-                    stored_apiversion: &str
+                    stored_apiversion: Self
                 ) -> ::std::result::Result<::k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition, ::kube::core::crd::MergeError> {
-                    ::kube::core::crd::merge_crds(vec![#fn_calls], stored_apiversion)
+                    ::kube::core::crd::merge_crds(vec![#(#crd_fn_calls),*], &stored_apiversion.to_string())
                 }
             }
         }
@@ -292,22 +395,13 @@ impl VersionedStruct {
 
     /// Generates the inner `crd()` functions calls which get used in the
     /// `merge_crds` function.
-    fn generate_kubernetes_crd_fn_call(&self, version: &ContainerVersion) -> Option<TokenStream> {
-        if self
-            .options
-            .kubernetes_options
-            .as_ref()
-            .is_some_and(|o| !o.skip_merged_crd)
-        {
-            let struct_ident = &self.idents.kubernetes;
-            let version_ident = &version.ident;
+    fn generate_kubernetes_crd_fn_call(&self, version: &ContainerVersion) -> TokenStream {
+        let struct_ident = &self.idents.kubernetes;
+        let version_ident = &version.ident;
+        let path: syn::Path = parse_quote!(#version_ident::#struct_ident);
 
-            let path: syn::Path = parse_quote!(#version_ident::#struct_ident);
-            return Some(quote! {
-                <#path as ::kube::CustomResourceExt>::crd(),
-            });
+        quote! {
+            <#path as ::kube::CustomResourceExt>::crd()
         }
-
-        None
     }
 }

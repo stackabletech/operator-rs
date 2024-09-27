@@ -4,17 +4,28 @@ use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 
 use crate::{
-    builder::pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
+    builder::{
+        self,
+        pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
+    },
     commons::{
         authentication::SECRET_BASE_PATH,
         secret_class::{SecretClassVolume, SecretClassVolumeError},
     },
 };
 
-#[derive(Debug, PartialEq, Snafu)]
+#[derive(Debug, Snafu)]
 pub enum TlsClientDetailsError {
     #[snafu(display("failed to convert secret class volume into named Kubernetes volume"))]
     SecretClassVolume { source: SecretClassVolumeError },
+
+    #[snafu(display("failed to add required volumes"))]
+    AddVolumes { source: builder::pod::Error },
+
+    #[snafu(display("failed to add required volumeMounts"))]
+    AddVolumeMounts {
+        source: builder::pod::container::Error,
+    },
 }
 
 #[derive(
@@ -41,10 +52,11 @@ impl TlsClientDetails {
         container_builders: Vec<&mut ContainerBuilder>,
     ) -> Result<(), TlsClientDetailsError> {
         let (volumes, mounts) = self.volumes_and_mounts()?;
-        pod_builder.add_volumes(volumes);
+        pod_builder.add_volumes(volumes).context(AddVolumesSnafu)?;
 
         for cb in container_builders {
-            cb.add_volume_mounts(mounts.clone());
+            cb.add_volume_mounts(mounts.clone())
+                .context(AddVolumeMountsSnafu)?;
         }
 
         Ok(())

@@ -1,5 +1,7 @@
 use std::ops::Deref;
 
+use convert_case::{Case, Casing};
+use k8s_version::Version;
 use proc_macro2::TokenStream;
 use quote::format_ident;
 use syn::{Attribute, Ident, Visibility};
@@ -49,6 +51,16 @@ impl IdentExt for Ident {
 
     fn as_from_impl_ident(&self) -> Ident {
         format_ident!("__sv_{}", self.to_string().to_lowercase())
+    }
+}
+
+pub(crate) trait VersionExt {
+    fn as_variant_ident(&self) -> Ident;
+}
+
+impl VersionExt for Version {
+    fn as_variant_ident(&self) -> Ident {
+        format_ident!("{ident}", ident = self.to_string().to_case(Case::Pascal))
     }
 }
 
@@ -118,6 +130,9 @@ impl<I> VersionedContainer<I> {
 
         let kubernetes_options = attributes.kubernetes_attrs.map(|a| KubernetesOptions {
             skip_merged_crd: a.skip.map_or(false, |s| s.merged_crd.is_present()),
+            namespaced: a.namespaced.is_present(),
+            singular: a.singular,
+            plural: a.plural,
             group: a.group,
             kind: a.kind,
         });
@@ -166,7 +181,10 @@ pub(crate) struct VersionedContainerOptions {
 
 #[derive(Debug)]
 pub(crate) struct KubernetesOptions {
+    pub(crate) singular: Option<String>,
+    pub(crate) plural: Option<String>,
     pub(crate) skip_merged_crd: bool,
     pub(crate) kind: Option<String>,
+    pub(crate) namespaced: bool,
     pub(crate) group: String,
 }

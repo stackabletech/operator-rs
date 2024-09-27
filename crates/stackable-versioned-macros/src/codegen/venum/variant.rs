@@ -142,10 +142,21 @@ impl VersionedVariant {
                         #ident,
                     })
                 }
-                ItemStatus::NoChange { ident, .. } => Some(quote! {
-                    #(#original_attributes)*
-                    #ident,
-                }),
+                ItemStatus::NoChange {
+                    previously_deprecated,
+                    ident,
+                    ..
+                } => {
+                    // TODO (@Techassi): Also carry along the deprecation
+                    // note.
+                    let deprecated_attr = previously_deprecated.then(|| quote! {#[deprecated]});
+
+                    Some(quote! {
+                        #(#original_attributes)*
+                        #deprecated_attr
+                        #ident,
+                    })
+                }
                 ItemStatus::NotPresent => None,
             },
             None => {
