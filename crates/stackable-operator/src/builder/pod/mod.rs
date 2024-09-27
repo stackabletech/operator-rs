@@ -52,8 +52,10 @@ pub enum Error {
     #[snafu(display("object is missing key {key:?}"))]
     MissingObjectKey { key: &'static str },
 
-    #[snafu(display("Colliding volume name {volume_name:?} in volumes with different content"))]
-    VolumeNameCollision { volume_name: String },
+    #[snafu(display(
+        "Colliding volume name {colliding_volume_name:?} in volumes with different content"
+    ))]
+    VolumeNameCollision { colliding_volume_name: String },
 }
 
 /// A builder to build [`Pod`] or [`PodTemplateSpec`] objects.
@@ -292,16 +294,16 @@ impl PodBuilder {
     pub fn add_volume(&mut self, volume: Volume) -> Result<&mut Self> {
         if let Some(existing_volume) = self.volumes.get(&volume.name) {
             if existing_volume != &volume {
-                let colliding_name = &volume.name;
+                let colliding_volume_name = &volume.name;
                 // We don't want to include the details in the error message, but instead trace them
                 tracing::error!(
-                    colliding_name,
+                    colliding_volume_name,
                     ?existing_volume,
-                    "Colliding volume name {colliding_name:?} in volumes with different content"
+                    "Colliding volume name in volumes with different content"
                 );
 
                 VolumeNameCollisionSnafu {
-                    volume_name: &volume.name,
+                    colliding_volume_name,
                 }
                 .fail()?;
             }
