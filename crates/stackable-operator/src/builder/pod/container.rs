@@ -28,11 +28,11 @@ pub enum Error {
     },
 
     #[snafu(display(
-        "Colliding mountPath {mount_path:?} in volumeMounts with different content. \
+        "Colliding mountPath {colliding_mount_path:?} in volumeMounts with different content. \
             Existing volume name {existing_volume_name:?}, new volume name {new_volume_name:?}"
     ))]
     MountPathCollision {
-        mount_path: String,
+        colliding_mount_path: String,
         existing_volume_name: String,
         new_volume_name: String,
     },
@@ -234,7 +234,7 @@ impl ContainerBuilder {
                 );
 
                 MountPathCollisionSnafu {
-                    mount_path: &volume_mount.mount_path,
+                    colliding_mount_path,
                     existing_volume_name: &existing_volume_mount.name,
                     new_volume_name: &volume_mount.name,
                 }
