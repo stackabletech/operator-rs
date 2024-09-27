@@ -79,6 +79,7 @@ pub enum AuthenticationClassProvider {
     /// The TLS AuthenticationClass is used when users should authenticate themselves with a TLS certificate.
     Tls(tls::AuthenticationProvider),
 
+    /// The [Kerberos provider](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication#_kerberos).
     /// The Kerberos AuthenticationClass is used when users should authenticate themselves via Kerberos.
     Kerberos(kerberos::AuthenticationProvider),
 }
