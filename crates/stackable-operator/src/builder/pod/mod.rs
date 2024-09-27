@@ -299,7 +299,7 @@ impl PodBuilder {
                 tracing::error!(
                     colliding_volume_name,
                     ?existing_volume,
-                    "Colliding volume name {colliding_volume_name:?} in volumes with different content"
+                    "Colliding volume name in volumes with different content"
                 );
 
                 VolumeNameCollisionSnafu {

@@ -230,7 +230,7 @@ impl ContainerBuilder {
                 tracing::error!(
                     colliding_mount_path,
                     ?existing_volume_mount,
-                    "Colliding mountPath {colliding_mount_path:?} in volumeMounts with different content"
+                    "Colliding mountPath in volumeMounts with different content"
                 );
 
                 MountPathCollisionSnafu {
