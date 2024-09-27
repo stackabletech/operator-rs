@@ -79,7 +79,7 @@ pub enum AuthenticationClassProvider {
     /// The TLS AuthenticationClass is used when users should authenticate themselves with a TLS certificate.
     Tls(tls::AuthenticationProvider),
 
-    /// The Kerberos provider is used for Kerberos authentication and defines the secret used for generating keytabs.
+  /// The Kerberos AuthenticationClass is used when users should authenticate themselves via Kerberos.
     Kerberos(kerberos::AuthenticationProvider),
 }
 
