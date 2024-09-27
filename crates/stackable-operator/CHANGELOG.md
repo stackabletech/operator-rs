@@ -4,14 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.77.0] - 2024-09-26
+## [0.77.1] - 2024-09-27
 
 ### Fixed
 
 - Fix always returning an error stating that volumeMounts are colliding. Instead move the error
-  creation to the correct location within an `if` statement
+  creation to the correct location within an `if` statement ([#879]).
 
-## [0.77.1] - 2024-09-26
+[#879]: https://github.com/stackabletech/operator-rs/pull/879
+
+## [0.77.0] - 2024-09-26
 
 ### Fixed
 
