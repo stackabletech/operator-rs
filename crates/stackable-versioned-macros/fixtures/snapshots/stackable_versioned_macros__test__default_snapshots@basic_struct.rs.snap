@@ -1,8 +1,7 @@
 ---
 source: crates/stackable-versioned-macros/src/lib.rs
-assertion_line: 518
 expression: formatted
-input_file: crates/stackable-versioned-macros/fixtures/inputs/default/basic.rs
+input_file: crates/stackable-versioned-macros/fixtures/inputs/default/basic_struct.rs
 ---
 #[automatically_derived]
 #[deprecated = "Version v1alpha1 is deprecated"]
