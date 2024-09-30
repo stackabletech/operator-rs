@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.78.0] - 2024-09-30
+
+### Added
+
+- Add Kerberos AuthenticationProvider ([#880]).
+
+[#880]: https://github.com/stackabletech/operator-rs/pull/880
+
 ## [0.77.1] - 2024-09-27
 
 ### Fixed
