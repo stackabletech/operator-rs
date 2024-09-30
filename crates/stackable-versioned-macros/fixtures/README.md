@@ -46,7 +46,7 @@ cargo insta test -p stackable-versioned-macros
 ```
 
 This command will place the new snapshot files in the `fixtures/snapshots` folder. To review them,
-run the `cargo insta review` command. Now check these files in.
+run the `cargo insta review` command, then accept or fix the snapshots. Once all are accepted (ie: no `.new` files remaining), check in the files.
 
 [rust-ref]: https://doc.rust-lang.org/reference/procedural-macros.html#attribute-macros
 [insta-ext]: https://insta.rs/docs/vscode/
