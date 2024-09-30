@@ -39,14 +39,17 @@ pub(crate) struct Foo {
 
 First, add new input files (which automatically get picked up by `insta`) to the `fixtures/inputs`
 folder. Make sure the delimiter is placed correctly between the attribute and the container
-definition. Next, generate the snapshot files (initially not accepted) by running
+definition. Doc comments on the container have to be placed after the delimiter. Next, generate the
+snapshot files (initially not accepted) by running
 
 ```shell
 cargo insta test -p stackable-versioned-macros
 ```
 
-This command will place the new snapshot files in the `fixtures/snapshots` folder. To review them,
-run the `cargo insta review` command, then accept or fix the snapshots. Once all are accepted (ie: no `.new` files remaining), check in the files.
+This command will place the new snapshot files (with a `.new` extension) in the `fixtures/snapshots`
+folder. These new snapshot files must not appear on `main`, but can be shared on branches for
+collaboration. To review them, run the `cargo insta review` command, then accept or fix the
+snapshots. Once all are accepted (ie: no `.new` files remaining), check in the files.
 
 [rust-ref]: https://doc.rust-lang.org/reference/procedural-macros.html#attribute-macros
 [insta-ext]: https://insta.rs/docs/vscode/
