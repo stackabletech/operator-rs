@@ -1,5 +1,8 @@
 # Snapshot Testing
 
+> [!NOTE]
+> Also see the compile-fail tests, described [here](../tests/README.md).
+
 This folder contains fixtures for snapshot testing the `#[versioned()]` macro. Snapshot testing is
 done using the [insta] crate. It provides a [CLI tool][insta-cli] called `cargo-insta` and a
 [VS Code extension][insta-ext].
