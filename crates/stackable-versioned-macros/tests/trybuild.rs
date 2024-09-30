@@ -32,10 +32,6 @@ fn default_macros() {
 #[cfg(feature = "k8s")]
 #[allow(dead_code)]
 mod k8s {
-    // mod pass {
-    //     mod crd;
-    // }
-
     // mod fail {
     //     mod crd;
     // }
@@ -45,6 +41,5 @@ mod k8s {
 #[test]
 fn k8s_macros() {
     let t = trybuild::TestCases::new();
-    t.pass("tests/k8s/pass/*.rs");
     t.compile_fail("tests/k8s/fail/*.rs");
 }

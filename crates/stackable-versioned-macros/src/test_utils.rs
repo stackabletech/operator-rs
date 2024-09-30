@@ -1,9 +1,16 @@
-use std::{path::PathBuf, str::FromStr, sync::LazyLock};
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::LazyLock,
+};
 
 use insta::Settings;
 use proc_macro2::TokenStream;
 use regex::Regex;
+use snafu::{OptionExt, ResultExt, Snafu};
 use syn::DeriveInput;
+
+use crate::versioned_impl;
 
 const DELIMITER: &str = "// ---\n";
 
@@ -12,23 +19,52 @@ static REGEX: LazyLock<Regex> = LazyLock::new(|| {
         .expect("failed to compile versioned regex")
 });
 
-pub(crate) fn prepare_from_string(input: String) -> (TokenStream, DeriveInput) {
-    let (attrs, input) = input
-        .split_once(DELIMITER)
-        .expect("failed to find delimiter");
+#[derive(Debug, Snafu)]
+pub(crate) enum Error {
+    #[snafu(display("failed to read input file"))]
+    ReadFile { source: std::io::Error },
+
+    #[snafu(display("failed to find delimiter"))]
+    MissingDelimiter,
+
+    #[snafu(display("failed to find regex match group"))]
+    MissingRegexMatchGroup,
+
+    #[snafu(display("failed to parse token stream"))]
+    ParseTokenStream { source: proc_macro2::LexError },
+
+    #[snafu(display("failed to parse derive input"))]
+    ParseDeriveInput { source: syn::Error },
+
+    #[snafu(display("failed to parse output file"))]
+    ParseOutputFile { source: syn::Error },
+}
+
+pub(crate) fn expand_from_file(path: &Path) -> Result<String, Error> {
+    let input = std::fs::read_to_string(path).context(ReadFileSnafu)?;
+    let (attrs, input) = prepare_from_string(input)?;
+
+    let expanded = versioned_impl(attrs, input).to_string();
+    let parsed = syn::parse_file(&expanded).context(ParseOutputFileSnafu)?;
+
+    Ok(prettyplease::unparse(&parsed))
+}
+
+fn prepare_from_string(input: String) -> Result<(TokenStream, DeriveInput), Error> {
+    let (attrs, input) = input.split_once(DELIMITER).context(MissingDelimiterSnafu)?;
 
     let attrs = REGEX
         .captures(attrs)
         .unwrap()
         .name("args")
-        .expect("args match group must be available")
+        .context(MissingRegexMatchGroupSnafu)?
         .as_str();
 
-    let attrs = TokenStream::from_str(attrs).expect("attrs must parse as a token stream");
-    let input = TokenStream::from_str(input).expect("input mus parse as a token stream");
-    let input = syn::parse2(input).expect("input must parse as derive input");
+    let attrs = TokenStream::from_str(attrs).context(ParseTokenStreamSnafu)?;
+    let input = TokenStream::from_str(input).context(ParseTokenStreamSnafu)?;
+    let input = syn::parse2(input).context(ParseDeriveInputSnafu)?;
 
-    (attrs, input)
+    Ok((attrs, input))
 }
 
 pub(crate) fn set_snapshot_path() -> Settings {

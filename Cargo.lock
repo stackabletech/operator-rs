@@ -3098,6 +3098,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "snafu 0.8.4",
  "strum",
  "syn 2.0.77",
  "trybuild",

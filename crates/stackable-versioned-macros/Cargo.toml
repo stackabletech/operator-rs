@@ -46,4 +46,5 @@ schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
+snafu.workspace = true
 trybuild.workspace = true

@@ -506,15 +506,24 @@ mod test {
 
     #[test]
     fn default_snapshots() {
-        let settings = test_utils::set_snapshot_path();
-        let _guard = settings.bind_to_scope();
+        let _settings_guard = test_utils::set_snapshot_path().bind_to_scope();
 
         glob!("../fixtures/inputs/default", "*.rs", |path| {
-            let input = std::fs::read_to_string(path).unwrap();
-            let (attrs, input) = test_utils::prepare_from_string(input);
-            let expanded = versioned_impl(attrs, input).to_string();
-            let formatted = prettyplease::unparse(&syn::parse_file(&expanded).unwrap());
+            let formatted = test_utils::expand_from_file(path)
+                .inspect_err(|err| eprintln!("{err}"))
+                .unwrap();
+            assert_snapshot!(formatted);
+        });
+    }
 
+    #[test]
+    fn k8s_snapshots() {
+        let _settings_guard = test_utils::set_snapshot_path().bind_to_scope();
+
+        glob!("../fixtures/inputs/k8s", "*.rs", |path| {
+            let formatted = test_utils::expand_from_file(path)
+                .inspect_err(|err| eprintln!("{err}"))
+                .unwrap();
             assert_snapshot!(formatted);
         });
     }
