@@ -516,6 +516,7 @@ mod test {
         });
     }
 
+    #[cfg(feature = "k8s")]
     #[test]
     fn k8s_snapshots() {
         let _settings_guard = test_utils::set_snapshot_path().bind_to_scope();
