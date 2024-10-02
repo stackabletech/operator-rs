@@ -16,17 +16,6 @@
 // again but before running tests, otherwise compilation will fail (as expected).
 #[allow(dead_code)]
 mod default {
-    // mod pass {
-    //     // mod attributes_enum;
-    //     // mod attributes_struct;
-    //     // mod basic;
-
-    //     // mod deprecate_enum;
-    //     // mod deprecate_struct;
-    //     // mod rename;
-    //     // mod skip_from_version;
-    // }
-
     // mod fail {
     //     mod deprecate;
     //     mod skip_from_all;
@@ -37,17 +26,12 @@ mod default {
 #[test]
 fn default_macros() {
     let t = trybuild::TestCases::new();
-    t.pass("tests/default/pass/*.rs");
     t.compile_fail("tests/default/fail/*.rs");
 }
 
 #[cfg(feature = "k8s")]
 #[allow(dead_code)]
 mod k8s {
-    // mod pass {
-    //     mod crd;
-    // }
-
     // mod fail {
     //     mod crd;
     // }
@@ -57,6 +41,5 @@ mod k8s {
 #[test]
 fn k8s_macros() {
     let t = trybuild::TestCases::new();
-    t.pass("tests/k8s/pass/*.rs");
     t.compile_fail("tests/k8s/fail/*.rs");
 }

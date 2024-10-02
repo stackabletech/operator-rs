@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add snapshot tests to verify generated code matches expected output ([#881]).
+
+[#881]: https://github.com/stackabletech/operator-rs/pull/881
+
 ## [0.3.0] - 2024-09-26
 
 ### Added
