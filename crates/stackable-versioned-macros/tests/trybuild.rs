@@ -16,26 +16,30 @@
 // again but before running tests, otherwise compilation will fail (as expected).
 #[allow(dead_code)]
 mod default {
-    // mod deprecate;
-    // mod skip_from_all;
-    // mod skip_from_version;
+    // mod fail {
+    //     mod deprecate;
+    //     mod skip_from_all;
+    //     mod skip_from_version;
+    // }
 }
 
 #[test]
 fn default_macros() {
     let t = trybuild::TestCases::new();
-    t.compile_fail("tests/default/*.rs");
+    t.compile_fail("tests/default/fail/*.rs");
 }
 
 #[cfg(feature = "k8s")]
 #[allow(dead_code)]
 mod k8s {
-    // mod crd;
+    // mod fail {
+    //     mod crd;
+    // }
 }
 
 #[cfg(feature = "k8s")]
 #[test]
 fn k8s_macros() {
     let t = trybuild::TestCases::new();
-    t.compile_fail("tests/k8s/*.rs");
+    t.compile_fail("tests/k8s/fail/*.rs");
 }
