@@ -79,7 +79,7 @@ mod tests {
 
     use rstest::rstest;
 
-    use crate::yaml::serialize_to_explicit_document;
+    use stackable_shared::yaml::{serialize as ser, SerializeOptions};
 
     use super::*;
 
@@ -102,7 +102,7 @@ mod tests {
         let expected = std::fs::read_to_string("fixtures/helm/output.yaml").unwrap();
 
         let mut output = Vec::new();
-        serialize_to_explicit_document(&mut output, &values).unwrap();
+        ser(&values, &mut output, SerializeOptions::default()).unwrap();
 
         assert_eq!(std::str::from_utf8(&output).unwrap(), expected);
     }
