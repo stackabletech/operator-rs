@@ -128,37 +128,6 @@ pub trait YamlSchema: Sized + serde::Serialize {
 
 impl<T> YamlSchema for T where T: serde::ser::Serialize {}
 
-/// Provides YAML schema generation and output capabilities for Kubernetes custom resources.
-pub trait CustomResourceExt: kube::CustomResourceExt {
-    /// Generates the YAML schema of a `CustomResourceDefinition` and writes it to the specified
-    /// file at `path`.
-    ///
-    /// It additionally replaces the documentation URL placeholder with the correct value based on
-    /// the provided `operator_version`. The written YAML string is an explicit document with
-    /// leading dashes (`---`).
-    fn write_yaml_schema<P: AsRef<Path>>(path: P, operator_version: &str) -> Result<()> {
-        Self::crd().write_yaml_schema(path, operator_version, SerializeOptions::default())
-    }
-
-    /// Generates the YAML schema of a `CustomResourceDefinition` and prints it to [stdout].
-    ///
-    /// It additionally replaces the documentation URL placeholder with the correct value based on
-    /// the provided `operator_version`. The written YAML string is an explicit document with
-    /// leading dashes (`---`).
-    ///
-    /// [stdout]: std::io::stdout
-    fn print_yaml_schema(operator_version: &str) -> Result<()> {
-        Self::crd().print_yaml_schema(operator_version, SerializeOptions::default())
-    }
-
-    /// Generates the YAML schema of a `CustomResourceDefinition` and returns it as a [`String`].
-    fn yaml_schema(operator_version: &str) -> Result<String> {
-        Self::crd().generate_yaml_schema(operator_version, SerializeOptions::default())
-    }
-}
-
-impl<T> CustomResourceExt for T where T: kube::CustomResourceExt {}
-
 /// Serializes the given data structure and writes it to a [`Writer`](Write).
 pub fn serialize<T, W>(value: &T, mut writer: W, options: SerializeOptions) -> Result<()>
 where

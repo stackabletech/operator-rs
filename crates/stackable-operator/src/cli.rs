@@ -14,7 +14,7 @@
 //! use kube::CustomResource;
 //! use schemars::JsonSchema;
 //! use serde::{Deserialize, Serialize};
-//! use stackable_operator::{CustomResourceExt, cli, crd};
+//! use stackable_operator::{CustomResourceExt, cli, shared::crd};
 //!
 //! const OPERATOR_VERSION: &str = "23.1.1";
 //!
@@ -106,15 +106,16 @@
 //! ```
 //!
 //!
-use crate::logging::TracingTarget;
-use crate::namespace::WatchNamespace;
-use clap::Args;
-use product_config::ProductConfigManager;
-use snafu::{ResultExt, Snafu};
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
 };
+
+use clap::Args;
+use product_config::ProductConfigManager;
+use snafu::{ResultExt, Snafu};
+
+use crate::{logging::TracingTarget, namespace::WatchNamespace};
 
 pub const AUTHOR: &str = "Stackable GmbH - info@stackable.tech";
 
