@@ -1,5 +1,5 @@
 //! Utility functions for processing data in the YAML file format
-use std::{io::Write, path::Path, str::FromStr};
+use std::{io::Write, path::Path};
 
 use semver::Version;
 use snafu::{ResultExt, Snafu};
@@ -34,26 +34,36 @@ pub enum Error {
     ParseUtf8Bytes { source: std::string::FromUtf8Error },
 }
 
-pub(crate) struct DocUrlReplacer<'a>(&'a str);
+pub(crate) struct DocUrlReplacer(Version);
 
-impl<'a> DocUrlReplacer<'a> {
-    pub(crate) fn new(operator_version: &'a str) -> Self {
-        Self(operator_version)
+impl DocUrlReplacer {
+    pub(crate) fn new(operator_version: &str) -> Result<Self> {
+        let version = operator_version
+            .parse()
+            .context(ParseSemanticVersionSnafu {
+                input: operator_version,
+            })?;
+
+        Ok(Self(version))
     }
 
-    fn replace(&self, input: &str) -> Result<String> {
-        let docs_version = match self.0 {
-            "0.0.0-dev" => "nightly".to_owned(),
-            ver => {
-                let v = Version::from_str(ver).context(ParseSemanticVersionSnafu { input })?;
-                format!("{major}.{minor}", major = v.major, minor = v.minor)
+    fn replace(&self, input: &str) -> String {
+        let docs_version = match (
+            self.0.major,
+            self.0.minor,
+            self.0.patch,
+            self.0.pre.as_str(),
+        ) {
+            (0, 0, 0, "dev") => "nightly".to_owned(),
+            (major, minor, ..) => {
+                format!("{major}.{minor}")
             }
         };
 
-        Ok(input.replace(
+        input.replace(
             STACKABLE_DOCS_HOME_URL_PLACEHOLDER,
             &format!("{STACKABLE_DOCS_HOME_BASE_URL}/{docs_version}"),
-        ))
+        )
     }
 }
 
@@ -96,8 +106,8 @@ pub trait YamlSchema: Sized + serde::Serialize {
 
         let yaml_string = String::from_utf8(buffer).context(ParseUtf8BytesSnafu)?;
 
-        let replacer = DocUrlReplacer::new(operator_version);
-        let yaml_string = replacer.replace(&yaml_string)?;
+        let replacer = DocUrlReplacer::new(operator_version)?;
+        let yaml_string = replacer.replace(&yaml_string);
 
         Ok(yaml_string)
     }
