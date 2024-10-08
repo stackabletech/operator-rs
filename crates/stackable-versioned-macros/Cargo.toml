@@ -22,9 +22,10 @@ proc-macro = true
 
 [features]
 full = ["k8s"]
-k8s = ["dep:kube", "dep:k8s-openapi"]
+k8s = ["dep:kube", "dep:k8s-openapi", "dep:stackable-shared"]
 
 [dependencies]
+stackable-shared = { path = "../stackable-shared", optional = true }
 k8s-version = { path = "../k8s-version", features = ["darling"] }
 
 convert_case.workspace = true
