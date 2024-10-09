@@ -67,6 +67,7 @@ pub struct ListenerClassSpec {
     /// Whether addresses should prefer using the IP address (`IP`) or the hostname (`Hostname`).
     ///
     /// The other type will be used if the preferred type is not available.
+    /// By default `Hostname` is used.
     #[serde(default = "ListenerClassSpec::default_preferred_address_type")]
     pub preferred_address_type: AddressType,
 }
