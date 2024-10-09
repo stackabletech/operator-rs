@@ -38,7 +38,7 @@ jobs:
         with:
           key: udeps
       - run: cargo install --locked cargo-udeps@0.1.50
-      - run: cargo udeps --all-targets
+      - run: cargo udeps --all-targets --all-features
 
   run_cargodeny:
     name: Run Cargo Deny
