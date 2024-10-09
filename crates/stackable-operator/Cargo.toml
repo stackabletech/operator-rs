@@ -11,8 +11,8 @@ repository.workspace = true
 time = ["dep:time"]
 
 [dependencies]
-stackable-operator-derive = { path = "../stackable-operator-derive", version = "0.3.1" }
-stackable-shared = { path = "../stackable-shared", version = "0.0.1" }
+stackable-operator-derive = { path = "../stackable-operator-derive" }
+stackable-shared = { path = "../stackable-shared" }
 
 chrono.workspace = true
 clap.workspace = true

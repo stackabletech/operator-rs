@@ -3088,6 +3088,9 @@ dependencies = [
 name = "stackable-versioned"
 version = "0.3.0"
 dependencies = [
+ "kube",
+ "snafu 0.8.4",
+ "stackable-shared",
  "stackable-versioned-macros",
 ]
 
@@ -3112,6 +3115,8 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "snafu 0.8.4",
+ "stackable-shared",
+ "stackable-versioned",
  "strum",
  "syn 2.0.77",
  "trybuild",
