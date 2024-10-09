@@ -20,8 +20,8 @@ k8s = [
 ]
 
 [dependencies]
-stackable-shared = { path = "../stackable-shared", version = "0.0.1", optional = true }
 stackable-versioned-macros = { path = "../stackable-versioned-macros" }
+stackable-shared = { path = "../stackable-shared", optional = true }
 
 kube = { workspace = true, optional = true }
 snafu = { workspace = true, optional = true }
