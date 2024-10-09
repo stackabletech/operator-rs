@@ -39,6 +39,9 @@ syn.workspace = true
 quote.workspace = true
 
 [dev-dependencies]
+# Only needed for doc tests / examples
+stackable-versioned = { path = "../stackable-versioned", features = ["k8s"] }
+
 insta.workspace = true
 prettyplease.workspace = true
 regex.workspace = true

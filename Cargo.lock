@@ -3116,6 +3116,7 @@ dependencies = [
  "serde_yaml",
  "snafu 0.8.4",
  "stackable-shared",
+ "stackable-versioned",
  "strum",
  "syn 2.0.77",
  "trybuild",
