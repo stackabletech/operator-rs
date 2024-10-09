@@ -63,11 +63,21 @@ pub struct ListenerClassSpec {
     /// break Local mode (IONOS so far).
     #[serde(default = "ListenerClassSpec::default_service_external_traffic_policy")]
     pub service_external_traffic_policy: KubernetesTrafficPolicy,
+
+    /// Whether addresses should prefer using the IP address (`IP`) or the hostname (`Hostname`).
+    ///
+    /// The other type will be used if the preferred type is not available.
+    #[serde(default = "ListenerClassSpec::default_preferred_address_type")]
+    pub preferred_address_type: AddressType,
 }
 
 impl ListenerClassSpec {
     const fn default_service_external_traffic_policy() -> KubernetesTrafficPolicy {
         KubernetesTrafficPolicy::Local
+    }
+
+    const fn default_preferred_address_type() -> AddressType {
+        AddressType::Hostname
     }
 }
 
