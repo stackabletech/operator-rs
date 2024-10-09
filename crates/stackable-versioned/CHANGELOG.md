@@ -6,9 +6,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add YAML serialization for merged CRD schema. The schema can now be printed to stdout or written
+  to file ([#884]).
 - Add snapshot tests to verify generated code matches expected output ([#881]).
 
 [#881]: https://github.com/stackabletech/operator-rs/pull/881
+[#884]: https://github.com/stackabletech/operator-rs/pull/884
 
 ## [0.3.0] - 2024-09-26
 
