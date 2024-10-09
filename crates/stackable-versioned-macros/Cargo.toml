@@ -10,12 +10,16 @@ repository.workspace = true
 [package.metadata."docs.rs"]
 all-features = true
 
-# cargo-udeps throws an error that these dependencies are unused. They are,
-# however, used in K8s specific test cases. This is a false-positive and an
+[package.metadata.cargo-udeps.ignore]
+# cargo-udeps throws an error stating that these dependencies are unused. They
+# are, however, used in K8s specific test cases. This is a false-positive and an
 # apparent limitation of cargo-udeps. These entries can be removed once
 # cargo-udeps supports detecting usage of such dependencies.
-[package.metadata.cargo-udeps.ignore]
-development = ["schemars", "serde_yaml"]
+development = ["schemars", "serde_yaml", "stackable-versioned"]
+
+# cargo-udeps throws an error stating that these dependencies are unused. They are all marked as
+# optional, which trips up cargo-udeps for whatever reason...
+normal = ["k8s-openapi", "kube", "stackable-shared"]
 
 [lib]
 proc-macro = true
