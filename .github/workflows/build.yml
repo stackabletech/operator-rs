@@ -142,7 +142,7 @@ jobs:
       - uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
         with:
           key: test
-      - run: cargo test
+      - run: cargo test --all-features
 
   tests_passed:
     name: All tests passed
