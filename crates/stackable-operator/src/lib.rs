@@ -20,10 +20,15 @@ pub mod status;
 pub mod time;
 pub mod utils;
 pub mod validation;
-pub mod yaml;
 
-pub use crate::crd::CustomResourceExt;
+// Internal re-exports
+pub use stackable_shared::{crd::CustomResourceExt, yaml::YamlSchema};
 
+pub mod shared {
+    pub use stackable_shared::*;
+}
+
+// External re-exports
 pub use ::k8s_openapi;
 pub use ::kube;
 pub use ::schemars;

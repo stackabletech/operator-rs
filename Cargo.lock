@@ -3028,6 +3028,7 @@ dependencies = [
  "serde_yaml",
  "snafu 0.8.4",
  "stackable-operator-derive",
+ "stackable-shared",
  "strum",
  "tempfile",
  "time",
@@ -3048,6 +3049,18 @@ dependencies = [
  "quote",
  "stackable-operator",
  "syn 2.0.77",
+]
+
+[[package]]
+name = "stackable-shared"
+version = "0.0.1"
+dependencies = [
+ "k8s-openapi",
+ "kube",
+ "semver",
+ "serde",
+ "serde_yaml",
+ "snafu 0.8.4",
 ]
 
 [[package]]

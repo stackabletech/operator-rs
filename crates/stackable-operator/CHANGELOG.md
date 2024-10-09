@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Re-export the `YamlSchema` trait and the `stackable-shared` crate as the `shared` module ([#883]).
+
+### Changed
+
+- BREAKING: The `CustomResourceExt` trait is now re-exported from the `stackable-shared` crate. The
+  trait functions use the same parameters but return a different error type ([#883]).
+
+### Removed
+
+- BREAKING: The `CustomResourceExt` trait doesn't provide a `generate_yaml_schema` function any
+  more. Instead, use the high-level functions to write the schema to a file, write it to stdout or
+  use it as a `String`.
+
+[#883]: https://github.com/stackabletech/operator-rs/pull/883
+
 ## [0.78.0] - 2024-09-30
 
 ### Added
