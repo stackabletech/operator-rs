@@ -12,8 +12,16 @@ all-features = true
 
 [features]
 full = ["k8s"]
-# Forward the k8s feature to the underlying macro crate
-k8s = ["stackable-versioned-macros/k8s"]
+k8s = [
+  "stackable-versioned-macros/k8s", # Forward the k8s feature to the underlying macro crate
+  "dep:stackable-shared",
+  "dep:snafu",
+  "dep:kube",
+]
 
 [dependencies]
+stackable-shared = { path = "../stackable-shared", version = "0.0.1", optional = true }
 stackable-versioned-macros = { path = "../stackable-versioned-macros" }
+
+kube = { workspace = true, optional = true }
+snafu = { workspace = true, optional = true }
