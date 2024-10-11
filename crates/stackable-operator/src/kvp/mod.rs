@@ -152,8 +152,8 @@ where
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum KeyValuePairsError {
-    #[snafu(display("key/value pair already exists"))]
-    PairAlreadyExists,
+    #[snafu(display("key already exists"))]
+    KeyAlreadyExists,
 }
 
 /// A validated set/list of Kubernetes key/value pairs.
@@ -304,7 +304,7 @@ where
     /// If the list already had this key present, nothing is updated, and an
     /// error is returned.
     pub fn try_insert(&mut self, kvp: KeyValuePair<T>) -> Result<(), KeyValuePairsError> {
-        ensure!(!self.0.contains_key(&kvp.key), PairAlreadyExistsSnafu);
+        ensure!(!self.0.contains_key(&kvp.key), KeyAlreadyExistsSnafu);
         self.insert(kvp);
         Ok(())
     }
