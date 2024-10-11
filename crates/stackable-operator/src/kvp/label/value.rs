@@ -1,4 +1,9 @@
-use std::{fmt::Display, ops::Deref, str::FromStr, sync::LazyLock};
+use std::{
+    fmt::{Debug, Display},
+    ops::Deref,
+    str::FromStr,
+    sync::LazyLock,
+};
 
 use regex::Regex;
 use snafu::{ensure, Snafu};
@@ -43,8 +48,14 @@ pub enum LabelValueError {
 /// unvalidated mutable access to inner values.
 ///
 /// [k8s-labels]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LabelValue(String);
+
+impl Debug for LabelValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
 
 impl Value for LabelValue {
     type Error = LabelValueError;
