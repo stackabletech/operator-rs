@@ -12,6 +12,20 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: The `CustomResourceExt` trait is now re-exported from the `stackable-shared` crate. The
   trait functions use the same parameters but return a different error type ([#883]).
+- BREAKING: `KeyValuePairs<V>` (and `Annotations`/`Labels`) is now an alias for `BTreeMap<Key, V>` ([#889]).
+  - Generally, this means that the API now behaves like a map rather than a set. For example, duplicate keys are no longer allowed (as was already documented before).
+  - Some `KeyValuePairs` methods have been renamed for certain use cases:
+    - `KeyValuePairs::insert(&mut self, kvp)`: use `::extend(&mut self, [kvp])` instead.
+    - `KeyValuePairs::try_from`: you may need to use `::try_from_iter` instead.
+    - `KeyValuePairs::contains_key`: unvalidated keys will need to use `::contains_str_key` instead.
+    - `Into<BTreeMap<String, String>>`: use `::to_unvalidated` instead.
+  - Well-known annotations have been moved from `kvp::Annotation` to `kvp::annotation::well_known`.
+  - Well-known labels have been moved from `kvp::Label` to `kvp::label::well_known`.
+  - Well-known label sets have been moved from `kvp::Labels` to `kvp::label::sets`.
+
+### Fixed
+
+- `KeyValuePairs` will now consistently use the last-written value for a given key ([#889]).
 
 ### Removed
 
@@ -20,6 +34,7 @@ All notable changes to this project will be documented in this file.
   use it as a `String`.
 
 [#883]: https://github.com/stackabletech/operator-rs/pull/883
+[#889]: https://github.com/stackabletech/operator-rs/pull/889
 
 ## [0.78.0] - 2024-09-30
 
