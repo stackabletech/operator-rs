@@ -686,17 +686,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "delegate"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5060bb0febb73fa907273f8a7ed17ab4bf831d585eac835b28ec24a1e2460956"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.77",
-]
-
-[[package]]
 name = "der"
 version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3007,7 +2996,6 @@ dependencies = [
  "chrono",
  "clap",
  "const_format",
- "delegate",
  "derivative",
  "dockerfile-parser",
  "either",

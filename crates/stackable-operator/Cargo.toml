@@ -17,7 +17,6 @@ stackable-shared = { path = "../stackable-shared" }
 chrono.workspace = true
 clap.workspace = true
 const_format.workspace = true
-delegate.workspace = true
 derivative.workspace = true
 dockerfile-parser.workspace = true
 either.workspace = true
