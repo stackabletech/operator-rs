@@ -15,7 +15,7 @@ use crate::versioned_impl;
 const DELIMITER: &str = "// ---\n";
 
 static REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"#\[versioned\(\n(?P<args>[[:ascii:]]+)\n\)\]")
+    Regex::new(r"#\[versioned\(\s*(?P<args>[[:ascii:]]+)\s*\)\]")
         .expect("failed to compile versioned regex")
 });
 
@@ -55,7 +55,7 @@ fn prepare_from_string(input: String) -> Result<(TokenStream, DeriveInput), Erro
 
     let attrs = REGEX
         .captures(attrs)
-        .unwrap()
+        .expect("the regex did not match")
         .name("args")
         .context(MissingRegexMatchGroupSnafu)?
         .as_str();
