@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add support to apply the `#[versioned()]` macro to modules to version all contained items at
+  once ([#abc]).
+
+[#abc]: https://github.com/stackabletech/operator-rs/pull/abc
+
 ## [0.4.0] - 2024-10-14
 
 ### Added
