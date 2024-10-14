@@ -3,7 +3,10 @@ use kube::{Resource, ResourceExt};
 use snafu::{ResultExt, Snafu};
 use tracing::warn;
 
-use crate::kvp::{Annotation, Annotations, Label, LabelError, Labels, ObjectLabels};
+use crate::kvp::{
+    label, Annotation, Annotations, KeyValuePairs, KeyValuePairsExt, Label, LabelError, Labels,
+    ObjectLabels,
+};
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -106,7 +109,7 @@ impl ObjectMetaBuilder {
     pub fn with_annotation(&mut self, annotation: Annotation) -> &mut Self {
         self.annotations
             .get_or_insert(Annotations::new())
-            .insert(annotation);
+            .extend([annotation]);
         self
     }
 
@@ -128,7 +131,7 @@ impl ObjectMetaBuilder {
     /// This adds a single label to the existing labels.
     /// It'll override a label with the same key.
     pub fn with_label(&mut self, label: Label) -> &mut Self {
-        self.labels.get_or_insert(Labels::new()).insert(label);
+        self.labels.get_or_insert(Labels::new()).extend([label]);
         self
     }
 
@@ -154,7 +157,7 @@ impl ObjectMetaBuilder {
         object_labels: ObjectLabels<T>,
     ) -> Result<&mut Self> {
         let recommended_labels =
-            Labels::recommended(object_labels).context(RecommendedLabelsSnafu)?;
+            label::sets::recommended(object_labels).context(RecommendedLabelsSnafu)?;
 
         self.labels
             .get_or_insert(Labels::new())
@@ -185,8 +188,8 @@ impl ObjectMetaBuilder {
                 .ownerreference
                 .as_ref()
                 .map(|ownerreference| vec![ownerreference.clone()]),
-            labels: self.labels.clone().map(|l| l.into()),
-            annotations: self.annotations.clone().map(|a| a.into()),
+            labels: self.labels.as_ref().map(KeyValuePairs::to_unvalidated),
+            annotations: self.annotations.as_ref().map(KeyValuePairs::to_unvalidated),
             ..ObjectMeta::default()
         }
     }

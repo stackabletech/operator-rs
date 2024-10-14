@@ -1,26 +1,30 @@
 //! Utility functions and data structures the create and manage Kubernetes
 //! key/value pairs, like labels and annotations.
 use std::{
-    collections::{BTreeMap, BTreeSet},
-    fmt::Display,
-    ops::Deref,
+    collections::BTreeMap,
+    fmt::{Debug, Display},
     str::FromStr,
 };
 
-use snafu::{ensure, ResultExt, Snafu};
+use snafu::{ResultExt, Snafu};
+
+pub mod annotation;
+pub mod consts;
+mod key;
+pub mod label;
+mod value;
+
+pub use annotation::{Annotation, AnnotationError, AnnotationValue, Annotations};
+pub use key::*;
+pub use label::{Label, LabelError, LabelSelectorExt, LabelValue, Labels, SelectorError};
+pub use value::*;
 
 use crate::iter::TryFromIterator;
 
-mod annotation;
-pub mod consts;
-mod key;
-mod label;
-mod value;
-
-pub use annotation::*;
-pub use key::*;
-pub use label::*;
-pub use value::*;
+#[cfg(doc)]
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
+#[cfg(doc)]
+use std::ops::Deref;
 
 /// The error type for key/value pair parsing/validating operations.
 #[derive(Debug, PartialEq, Snafu)]
@@ -90,268 +94,102 @@ where
 ///
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyValuePair<T>
 where
     T: Value,
 {
-    key: Key,
-    value: T,
+    pub key: Key,
+    pub value: T,
 }
 
-impl<K, V, T> TryFrom<(K, V)> for KeyValuePair<T>
+impl<V> TryFrom<(&str, &str)> for KeyValuePair<V>
 where
-    K: AsRef<str>,
-    V: AsRef<str>,
-    T: Value,
+    V: Value,
 {
-    type Error = KeyValuePairError<T::Error>;
+    type Error = KeyValuePairError<V::Error>;
 
-    fn try_from(value: (K, V)) -> Result<Self, Self::Error> {
-        let key = Key::from_str(value.0.as_ref()).context(InvalidKeySnafu {
-            key: value.0.as_ref(),
-        })?;
-
-        let value = T::from_str(value.1.as_ref()).context(InvalidValueSnafu {
-            key: key.to_string(),
-            value: value.1.as_ref(),
-        })?;
-
+    fn try_from((key, value): (&str, &str)) -> Result<Self, Self::Error> {
+        let key = Key::from_str(key).context(InvalidKeySnafu { key })?;
+        let value = V::from_str(value).context(InvalidValueSnafu { key: &key, value })?;
         Ok(Self { key, value })
     }
 }
 
-impl<T> Display for KeyValuePair<T>
-where
-    T: Value,
-{
+impl<V: Value> From<KeyValuePair<V>> for (Key, V) {
+    fn from(KeyValuePair { key, value }: KeyValuePair<V>) -> Self {
+        (key, value)
+    }
+}
+
+impl<T: Value> Display for KeyValuePair<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}={}", self.key, self.value)
     }
 }
 
-impl<T> KeyValuePair<T>
-where
-    T: Value,
-{
-    /// Creates a new [`KeyValuePair`] from a validated [`Key`] and value.
-    pub fn new(key: Key, value: T) -> Self {
-        Self { key, value }
+impl<T: Value + Debug> Debug for KeyValuePair<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}: {:?}", self.key, self.value)
     }
-
-    /// Returns an immutable reference to the pair's [`Key`].
-    pub fn key(&self) -> &Key {
-        &self.key
-    }
-
-    /// Returns an immutable reference to the pair's value.
-    pub fn value(&self) -> &T {
-        &self.value
-    }
-}
-
-#[derive(Debug, PartialEq, Snafu)]
-pub enum KeyValuePairsError {
-    #[snafu(display("key already exists"))]
-    KeyAlreadyExists,
 }
 
 /// A validated set/list of Kubernetes key/value pairs.
 ///
-/// It implements various traits which allows conversion from and to different
-/// data types. Traits to construct [`KeyValuePairs`] from other data types are:
+/// See [`Annotations`] and [`Labels`] for actual instantiations.
 ///
-/// - `TryFrom<&BTreeMap<String, String>>`
-/// - `TryFrom<BTreeMap<String, String>>`
-/// - `FromIterator<KeyValuePair<T>>`
-/// - `TryFrom<[(K, V); N]>`
-///
-/// Traits to convert [`KeyValuePairs`] into a different data type are:
-///
-/// - `From<KeyValuePairs<T>> for BTreeMap<String, String>`
-///
-/// See [`Labels`] and [`Annotations`] on how these traits can be used.
-///
-/// # Note
-///
-/// A [`BTreeSet`] is used as the inner collection to preserve order of items
-/// which ultimately prevent unncessary reconciliations due to changes
-/// in item order.
-#[derive(Clone, Debug, Default)]
-pub struct KeyValuePairs<T: Value>(BTreeMap<Key, T>);
+/// See [`KeyValuePairsExt`] for kvp-specific convenience helpers.
+pub type KeyValuePairs<V> = BTreeMap<Key, V>;
 
-impl<K, V, T> TryFrom<BTreeMap<K, V>> for KeyValuePairs<T>
-where
-    K: AsRef<str>,
-    V: AsRef<str>,
-    T: Value,
-{
-    type Error = KeyValuePairError<T::Error>;
-
-    fn try_from(map: BTreeMap<K, V>) -> Result<Self, Self::Error> {
-        Self::try_from_iter(map)
+impl<V: Value> Extend<KeyValuePair<V>> for KeyValuePairs<V> {
+    fn extend<T: IntoIterator<Item = KeyValuePair<V>>>(&mut self, iter: T) {
+        self.extend(iter.into_iter().map(<(Key, V)>::from));
     }
 }
 
-impl<K, V, T> TryFrom<&BTreeMap<K, V>> for KeyValuePairs<T>
-where
-    K: AsRef<str>,
-    V: AsRef<str>,
-    T: Value,
-{
-    type Error = KeyValuePairError<T::Error>;
-
-    fn try_from(map: &BTreeMap<K, V>) -> Result<Self, Self::Error> {
-        Self::try_from_iter(map)
+impl<V: Value> FromIterator<KeyValuePair<V>> for KeyValuePairs<V> {
+    fn from_iter<T: IntoIterator<Item = KeyValuePair<V>>>(iter: T) -> Self {
+        Self::from_iter(iter.into_iter().map(<(Key, V)>::from))
     }
 }
 
-impl<const N: usize, K, V, T> TryFrom<[(K, V); N]> for KeyValuePairs<T>
-where
-    K: AsRef<str>,
-    V: AsRef<str>,
-    T: Value + std::default::Default,
-{
-    type Error = KeyValuePairError<T::Error>;
+/// Helpers for [`KeyValuePairs`].
+pub trait KeyValuePairsExt {
+    /// Clones `self` into a type without validation types, ready for use in [`ObjectMeta::annotations`]/[`ObjectMeta::labels`].
+    fn to_unvalidated(&self) -> BTreeMap<String, String>;
 
-    fn try_from(array: [(K, V); N]) -> Result<Self, Self::Error> {
-        Self::try_from_iter(array)
-    }
+    /// Returns whether the list contains a key/value pair with a specific [`Key`].
+    ///
+    /// Returns `false` if `key` cannot be parsed as a valid [`Key`].
+    // TODO: Does anyone actually use this API?
+    fn contains_str_key(&self, key: &str) -> bool;
 }
-
-impl<T> FromIterator<KeyValuePair<T>> for KeyValuePairs<T>
-where
-    T: Value,
-{
-    fn from_iter<I: IntoIterator<Item = KeyValuePair<T>>>(iter: I) -> Self {
-        Self(iter.into_iter().map(|kvp| (kvp.key, kvp.value)).collect())
-    }
-}
-
-impl<K, V, T> TryFromIterator<(K, V)> for KeyValuePairs<T>
-where
-    K: AsRef<str>,
-    V: AsRef<str>,
-    T: Value,
-{
-    type Error = KeyValuePairError<T::Error>;
-
-    fn try_from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Result<Self, Self::Error> {
-        let pairs = iter
-            .into_iter()
-            .map(KeyValuePair::try_from)
-            .collect::<Result<BTreeSet<_>, KeyValuePairError<T::Error>>>()?;
-
-        Ok(Self::from_iter(pairs))
-    }
-}
-
-impl<T> From<KeyValuePairs<T>> for BTreeMap<String, String>
-where
-    T: Value,
-{
-    fn from(value: KeyValuePairs<T>) -> Self {
-        value
-            .iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
+impl<V: Value> KeyValuePairsExt for KeyValuePairs<V> {
+    fn to_unvalidated(&self) -> BTreeMap<String, String> {
+        self.iter()
+            .map(|(key, value)| (key.to_string(), value.to_string()))
             .collect()
     }
-}
 
-impl<T> Deref for KeyValuePairs<T>
-where
-    T: Value,
-{
-    type Target = BTreeMap<Key, T>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T> KeyValuePairs<T>
-where
-    T: Value + std::default::Default,
-{
-    /// Creates a new empty list of [`KeyValuePair`]s.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Creates a new list of [`KeyValuePair`]s from `pairs`.
-    pub fn new_with(pairs: BTreeSet<KeyValuePair<T>>) -> Self {
-        Self::from_iter(pairs)
-    }
-
-    /// Extends `self` with `other`.
-    pub fn extend(&mut self, other: Self) {
-        self.0.extend(other.0);
-    }
-
-    /// Inserts a new [`KeyValuePair`] into the list of pairs.
-    ///
-    /// This function overwrites any existing key/value pair. To avoid
-    /// overwriting existing pairs, either use [`KeyValuePairs::contains`] or
-    /// [`KeyValuePairs::contains_key`] before inserting or try to insert
-    /// fallible via [`KeyValuePairs::try_insert`].
-    pub fn insert(&mut self, kvp: KeyValuePair<T>) -> &mut Self {
-        self.0.insert(kvp.key, kvp.value);
-        self
-    }
-
-    /// Tries to insert a new [`KeyValuePair`] into the list of pairs.
-    ///
-    /// If the list already had this key present, nothing is updated, and an
-    /// error is returned.
-    pub fn try_insert(&mut self, kvp: KeyValuePair<T>) -> Result<(), KeyValuePairsError> {
-        ensure!(!self.0.contains_key(&kvp.key), KeyAlreadyExistsSnafu);
-        self.insert(kvp);
-        Ok(())
-    }
-
-    /// Returns if the list contains a specific [`KeyValuePair`].
-    pub fn contains(&self, kvp: impl TryInto<KeyValuePair<T>>) -> bool {
-        let Ok(kvp) = kvp.try_into() else {
+    fn contains_str_key(&self, key: &str) -> bool {
+        // We could avoid this clone by providing an UnvalidatedKeyRef and ensure that Key: Borrow<UnvalidatedKeyRef>
+        let Ok(key) = key.parse::<Key>() else {
+            // If the key cannot be parsed then it cannot, by definition, possibly exist in the map
             return false;
         };
-        let Some(value) = self.get(&kvp.key) else {
-            return false;
-        };
-        value == &kvp.value
-    }
-
-    /// Returns if the list contains a key/value pair with a specific [`Key`].
-    pub fn contains_key(&self, key: impl TryInto<Key>) -> bool {
-        let Ok(key) = key.try_into() else {
-            return false;
-        };
-
-        self.0.contains_key(&key)
-    }
-
-    /// Returns an [`Iterator`] over [`KeyValuePairs`] yielding a reference to every [`KeyValuePair`] contained within.
-    pub fn iter(&self) -> impl Iterator<Item = KeyValuePair<T>> + '_ {
-        self.0.iter().map(|(k, v)| KeyValuePair {
-            key: k.clone(),
-            value: v.clone(),
-        })
+        self.contains_key(&key)
     }
 }
 
-impl<T> IntoIterator for KeyValuePairs<T>
-where
-    T: Value,
-{
-    type Item = KeyValuePair<T>;
-    type IntoIter =
-        std::iter::Map<std::collections::btree_map::IntoIter<Key, T>, fn((Key, T)) -> Self::Item>;
+impl<'a, T: Value> TryFromIterator<(&'a str, &'a str)> for KeyValuePairs<T> {
+    type Error = KeyValuePairError<T::Error>;
 
-    /// Returns a consuming [`Iterator`] over [`KeyValuePairs`] moving every [`KeyValuePair`] out.
-    /// The [`KeyValuePairs`] cannot be used again after calling this.
-    fn into_iter(self) -> Self::IntoIter {
-        self.0
-            .into_iter()
-            .map(|(key, value)| KeyValuePair { key, value })
+    fn try_from_iter<I: IntoIterator<Item = (&'a str, &'a str)>>(
+        iter: I,
+    ) -> Result<Self, Self::Error> {
+        iter.into_iter()
+            .map(KeyValuePair::try_from)
+            .collect::<Result<Self, KeyValuePairError<T::Error>>>()
     }
 }
 
@@ -404,26 +242,13 @@ mod test {
 
     #[test]
     fn try_from_tuple() {
-        let label = Label::try_from(("stackable.tech/vendor", "Stackable")).unwrap();
+        let label =
+            KeyValuePair::<LabelValue>::try_from(("stackable.tech/vendor", "Stackable")).unwrap();
 
-        assert_eq!(
-            label.key(),
-            &Key::from_str("stackable.tech/vendor").unwrap()
-        );
-        assert_eq!(label.value(), &LabelValue::from_str("Stackable").unwrap());
+        assert_eq!(label.key, Key::from_str("stackable.tech/vendor").unwrap());
+        assert_eq!(label.value, LabelValue::from_str("Stackable").unwrap());
 
         assert_eq!(label.to_string(), "stackable.tech/vendor=Stackable");
-    }
-
-    #[test]
-    fn labels_from_array() {
-        let labels = Labels::try_from([
-            ("stackable.tech/managed-by", "stackablectl"),
-            ("stackable.tech/vendor", "Stackable"),
-        ])
-        .unwrap();
-
-        assert_eq!(labels.len(), 2);
     }
 
     #[test]
@@ -443,28 +268,26 @@ mod test {
             ("stackable.tech/vendor", "Stackable"),
         ]);
 
-        let labels = Labels::try_from(map).unwrap();
+        let labels = Labels::try_from_iter(map).unwrap();
         assert_eq!(labels.len(), 2);
     }
 
     #[test]
-    fn labels_into_map() {
-        let labels = Labels::try_from([
-            ("stackable.tech/managed-by", "stackablectl"),
-            ("stackable.tech/vendor", "Stackable"),
-        ])
-        .unwrap();
+    fn labels_to_unvalidated() {
+        let labels = Labels::from_iter([
+            KeyValuePair::try_from(("stackable.tech/managed-by", "stackablectl")).unwrap(),
+            KeyValuePair::try_from(("stackable.tech/vendor", "Stackable")).unwrap(),
+        ]);
 
-        let map: BTreeMap<String, String> = labels.into();
+        let map: BTreeMap<String, String> = labels.to_unvalidated();
         assert_eq!(map.len(), 2);
     }
 
     #[test]
     fn contains() {
-        let labels = Labels::common("test", "test-01").unwrap();
+        let labels = label::sets::common("test", "test-01").unwrap();
 
-        assert!(labels.contains(("app.kubernetes.io/name", "test")));
-        assert!(labels.contains_key("app.kubernetes.io/instance"))
+        assert!(labels.contains_str_key("app.kubernetes.io/instance"))
     }
 
     #[test]
@@ -498,10 +321,8 @@ mod test {
             Labels::try_from_iter([("a", "b"), ("b", "a"), ("c", "c")]).unwrap();
         merged_labels.extend(Labels::try_from_iter([("a", "a"), ("b", "b"), ("d", "d")]).unwrap());
         assert_eq!(
-            BTreeMap::from(merged_labels),
-            BTreeMap::from(
-                Labels::try_from_iter([("a", "a"), ("b", "b"), ("c", "c"), ("d", "d")]).unwrap()
-            )
+            merged_labels,
+            Labels::try_from_iter([("a", "a"), ("b", "b"), ("c", "c"), ("d", "d")]).unwrap()
         )
     }
 }

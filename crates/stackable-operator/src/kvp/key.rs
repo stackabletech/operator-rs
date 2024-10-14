@@ -109,6 +109,12 @@ impl Display for Key {
     }
 }
 
+impl From<&Key> for String {
+    fn from(value: &Key) -> Self {
+        value.to_string()
+    }
+}
+
 impl Key {
     /// Retrieves the key's prefix.
     ///
@@ -413,7 +419,7 @@ mod test {
         let label = Label::try_from((key, "zookeeper")).unwrap();
 
         let is_valid = label
-            .key()
+            .key
             .prefix()
             .is_some_and(|prefix| *prefix == "app.kubernetes.io");
 
@@ -427,7 +433,7 @@ mod test {
     #[case("foo", false)]
     fn key_name_deref(#[case] key: &str, #[case] expected: bool) {
         let label = Label::try_from((key, "zookeeper")).unwrap();
-        let is_valid = *label.key().name() == "name";
+        let is_valid = *label.key.name() == "name";
 
         assert_eq!(is_valid, expected);
     }

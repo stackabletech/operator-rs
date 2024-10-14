@@ -331,16 +331,17 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::pod::PodBuilder;
     /// # use stackable_operator::builder::pod::container::ContainerBuilder;
+    /// # use stackable_operator::iter::TryFromIterator;
     /// # use stackable_operator::kvp::Labels;
     /// # use k8s_openapi::{
     /// #     apimachinery::pkg::apis::meta::v1::ObjectMeta,
     /// # };
     /// # use std::collections::BTreeMap;
     ///
-    /// let labels: Labels = Labels::try_from(
-    ///        BTreeMap::from([("app.kubernetes.io/component", "test-role"),
+    /// let labels: Labels = Labels::try_from_iter(
+    ///        [("app.kubernetes.io/component", "test-role"),
     ///             ("app.kubernetes.io/instance", "test"),
-    ///             ("app.kubernetes.io/name", "test")]))
+    ///             ("app.kubernetes.io/name", "test")])
     /// .unwrap();
     ///
     /// let pod = PodBuilder::new()
@@ -418,16 +419,17 @@ impl PodBuilder {
     /// ```
     /// # use stackable_operator::builder::pod::PodBuilder;
     /// # use stackable_operator::builder::pod::container::ContainerBuilder;
+    /// # use stackable_operator::iter::TryFromIterator;
     /// # use stackable_operator::kvp::Labels;
     /// # use k8s_openapi::{
     /// #    apimachinery::pkg::apis::meta::v1::ObjectMeta,
     /// # };
     /// # use std::collections::BTreeMap;
     ///
-    /// let labels: Labels = Labels::try_from(
-    ///        BTreeMap::from([("app.kubernetes.io/component", "test-role"),
+    /// let labels: Labels = Labels::try_from_iter(
+    ///        [("app.kubernetes.io/component", "test-role"),
     ///             ("app.kubernetes.io/instance", "test"),
-    ///             ("app.kubernetes.io/name", "test")]))
+    ///             ("app.kubernetes.io/name", "test")])
     /// .unwrap();
     ///
     /// let pod = PodBuilder::new()

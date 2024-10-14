@@ -10,7 +10,7 @@ use snafu::{ResultExt, Snafu};
 
 use crate::{
     builder::meta::ObjectMetaBuilder,
-    kvp::{Label, Labels},
+    kvp::{label, KeyValuePairsExt},
 };
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -86,9 +86,9 @@ impl PodDisruptionBudgetBuilder<(), (), ()> {
         controller_name: &str,
     ) -> Result<PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()>> {
         let role_selector_labels =
-            Labels::role_selector(owner, app_name, role).context(RoleSelectorLabelsSnafu)?;
-        let managed_by_label =
-            Label::managed_by(operator_name, controller_name).context(ManagedByLabelSnafu)?;
+            label::sets::role_selector(owner, app_name, role).context(RoleSelectorLabelsSnafu)?;
+        let managed_by_label = label::well_known::managed_by(operator_name, controller_name)
+            .context(ManagedByLabelSnafu)?;
         let metadata = ObjectMetaBuilder::new()
             .namespace_opt(owner.namespace())
             .name(format!("{}-{}", owner.name_any(), role))
@@ -102,7 +102,7 @@ impl PodDisruptionBudgetBuilder<(), (), ()> {
             metadata,
             selector: LabelSelector {
                 match_expressions: None,
-                match_labels: Some(role_selector_labels.into()),
+                match_labels: Some(role_selector_labels.to_unvalidated()),
             },
             ..PodDisruptionBudgetBuilder::default()
         })
