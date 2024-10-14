@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.0] - 2024-10-14
+
 ### Added
 
 - Add YAML serialization for merged CRD schema. The schema can now be printed to stdout or written
