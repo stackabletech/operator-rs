@@ -8,8 +8,14 @@ All notable changes to this project will be documented in this file.
 
 - Add support to apply the `#[versioned()]` macro to modules to version all contained items at
   once ([#891]).
+- Add basic handling for enum variants with data ([#892]).
+
+### Fixed
+
+- Accept a wider variety of formatting styles in the macro testing regex ([#892]).
 
 [#891]: https://github.com/stackabletech/operator-rs/pull/891
+[#892]: https://github.com/stackabletech/operator-rs/pull/892
 
 ## [0.4.0] - 2024-10-14
 

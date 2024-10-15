@@ -15,7 +15,7 @@ all-features = true
 # are, however, used in K8s specific test cases. This is a false-positive and an
 # apparent limitation of cargo-udeps. These entries can be removed once
 # cargo-udeps supports detecting usage of such dependencies.
-development = ["schemars", "serde_yaml", "stackable-versioned"]
+development = ["k8s-openapi", "schemars", "serde_yaml", "stackable-versioned"]
 
 # cargo-udeps throws an error stating that these dependencies are unused. They are all marked as
 # optional, which trips up cargo-udeps for whatever reason...
@@ -45,6 +45,7 @@ quote.workspace = true
 [dev-dependencies]
 # Only needed for doc tests / examples
 stackable-versioned = { path = "../stackable-versioned", features = ["k8s"] }
+k8s-openapi = { workspace = true }
 
 insta.workspace = true
 prettyplease.workspace = true
