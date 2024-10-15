@@ -2,6 +2,7 @@ pub mod bash;
 pub mod crds;
 pub mod logging;
 mod option;
+pub mod service_dns_domain;
 mod url;
 
 #[deprecated(
