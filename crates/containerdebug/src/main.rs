@@ -24,6 +24,11 @@ fn main() {
 
     let system_network_information = get_network_info();
 
+    let current_uid = users::get_current_uid();
+    let current_gid = users::get_current_gid();
+    let current_user = users::get_user_by_uid(current_uid).unwrap();
+
+
     let system_information = SystemInformation {
         cpu_count: sys.cpus().len(),
         physical_core_count: sys.physical_core_count(),
@@ -50,6 +55,12 @@ fn main() {
         disks,
 
         network_information: system_network_information,
+
+
+        // Adding current user, UID, and GID info
+        current_user: current_user.name().to_str().unwrap().to_string(),
+        current_uid,
+        current_gid,
     };
 
     let serialized = serde_json::to_string_pretty(&system_information).unwrap();
@@ -58,7 +69,6 @@ fn main() {
     // TODO:
     //  Current time
     //  SElinux/AppArmor
-    //  Current user / User id, group id
     //  Maybe env variables (may contain secrets)
     //  dmesg/syslog?
     //  capabilities?

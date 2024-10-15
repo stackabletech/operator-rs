@@ -26,6 +26,10 @@ pub struct SystemInformation {
     pub host_name: Option<String>,
     pub cpu_arch: Option<String>,
 
+    pub current_user: String, // The name of the current user
+    pub current_uid: u32,     // The user ID (UID)
+    pub current_gid: u32,     // The group ID (GID)
+
     pub disks: Vec<Disk>,
     pub network_information: SystemNetworkInfo,
 }
