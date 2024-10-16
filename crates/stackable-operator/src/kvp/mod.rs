@@ -8,18 +8,19 @@ use std::{
 
 use snafu::{ResultExt, Snafu};
 
+use crate::iter::TryFromIterator;
+
 pub mod annotation;
 pub mod consts;
-mod key;
 pub mod label;
+
+mod key;
 mod value;
 
 pub use annotation::{Annotation, AnnotationError, AnnotationValue, Annotations};
 pub use key::*;
 pub use label::{Label, LabelError, LabelSelectorExt, LabelValue, Labels, SelectorError};
 pub use value::*;
-
-use crate::iter::TryFromIterator;
 
 #[cfg(doc)]
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
