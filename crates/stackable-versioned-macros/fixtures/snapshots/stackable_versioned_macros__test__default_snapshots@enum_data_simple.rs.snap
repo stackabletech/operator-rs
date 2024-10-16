@@ -1,0 +1,31 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+expression: formatted
+input_file: crates/stackable-versioned-macros/fixtures/inputs/default/enum_data_simple.rs
+---
+#[automatically_derived]
+mod v1alpha1 {
+    use super::*;
+    pub enum Foo {
+        Foo,
+        Bar(u32, String),
+    }
+}
+#[automatically_derived]
+impl From<v1alpha1::Foo> for v1alpha2::Foo {
+    fn from(__sv_foo: v1alpha1::Foo) -> Self {
+        match __sv_foo {
+            v1alpha1::Foo::Foo => v1alpha2::Foo::Foo,
+            v1alpha1::Foo::Bar(__sv_0, __sv_1) => v1alpha2::Foo::Bar(__sv_0, __sv_1),
+        }
+    }
+}
+#[automatically_derived]
+mod v1alpha2 {
+    use super::*;
+    pub enum Foo {
+        Foo,
+        Bar(u32, String),
+        Baz { id: u32, name: String },
+    }
+}

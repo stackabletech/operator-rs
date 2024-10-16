@@ -3074,7 +3074,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "kube",
  "snafu 0.8.4",
@@ -3084,7 +3084,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned-macros"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "convert_case",
  "darling",
