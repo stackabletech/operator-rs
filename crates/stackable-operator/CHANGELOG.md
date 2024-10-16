@@ -8,9 +8,9 @@ All notable changes to this project will be documented in this file.
 
 - Re-export the `YamlSchema` trait and the `stackable-shared` crate as the `shared` module ([#883]).
 - BREAKING: Added `preferredAddressType` field to ListenerClass CRD ([#885]).
-- BREAKING: The cluster domain (default: `cluster.local`) can now be configured in the individual operators 
-  via the ENV variable `KUBERNETES_CLUSTER_DOMAIN` or resolved automatically by parsing the 
-  `/etc/resolve.conf`. This requires using `initialze_operator` instead of `create_client` in the `main.rs` 
+- BREAKING: The cluster domain (default: `cluster.local`) can now be configured in the individual operators
+  via the ENV variable `KUBERNETES_CLUSTER_DOMAIN` or resolved automatically by parsing the
+  `/etc/resolve.conf`. This requires using `initialze_operator` instead of `create_client` in the `main.rs`
   of the individual operators ([#893]).
 
 ### Changed
