@@ -1,7 +1,5 @@
 use crate::kvp::LabelSelectorExt;
-use crate::utils::cluster_domain::{
-    self, resolve_kubernetes_cluster_domain, KUBERNETES_CLUSTER_DOMAIN,
-};
+use crate::utils::cluster_domain::{self, retrieve_cluster_domain, KUBERNETES_CLUSTER_DOMAIN};
 
 use either::Either;
 use futures::StreamExt;
@@ -630,7 +628,7 @@ where
 
 pub async fn initialize_operator(field_manager: Option<String>) -> Result<Client> {
     let _ = KUBERNETES_CLUSTER_DOMAIN
-        .set(resolve_kubernetes_cluster_domain().context(ResolveKubernetesClusterDomainSnafu)?);
+        .set(retrieve_cluster_domain().context(ResolveKubernetesClusterDomainSnafu)?);
     create_client(field_manager).await
 }
 

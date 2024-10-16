@@ -1,40 +1,30 @@
-use std::{
-    env,
-    io::{self, BufRead},
-    path::Path,
-    sync::OnceLock,
-};
+use std::{env, path::Path, str::FromStr, sync::OnceLock};
 
 use snafu::{OptionExt, ResultExt, Snafu};
 
 use crate::commons::networking::DomainName;
 
-// Env vars
 const KUBERNETES_CLUSTER_DOMAIN_ENV: &str = "KUBERNETES_CLUSTER_DOMAIN";
 const KUBERNETES_SERVICE_HOST_ENV: &str = "KUBERNETES_SERVICE_HOST";
-// Misc
+
 const KUBERNETES_CLUSTER_DOMAIN_DEFAULT: &str = "cluster.local";
 const RESOLVE_CONF_FILE_PATH: &str = "/etc/resolv.conf";
 
+// TODO (@Techassi): Do we even need this many variants? Can we get rid of a bunch of variants and
+// fall back to defaults instead? Also trace the errors
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Env var '{name}' does not exist."))]
-    EnvVarNotFound { source: env::VarError, name: String },
+    #[snafu(display("failed to read resolv.conf"))]
+    ReadResolvConfFile { source: std::io::Error },
 
-    #[snafu(display("Could not find '{resolve_conf_file_path}'."))]
-    ResolvConfNotFound {
-        source: io::Error,
-        resolve_conf_file_path: String,
-    },
-
-    #[snafu(display("The provided cluster domain '{cluster_domain}' is not valid."))]
-    InvalidDomain {
+    #[snafu(display("failed to parse {cluster_domain:?} as cluster domain"))]
+    ParseDomainName {
         source: crate::validation::Errors,
         cluster_domain: String,
     },
 
-    #[snafu(display("No 'search' entries found in '{RESOLVE_CONF_FILE_PATH}'."))]
-    SearchEntryNotFound { resolve_conf_file_path: String },
+    #[snafu(display("No 'search' entries found in"))]
+    SearchEntryNotFound,
 
     #[snafu(display("Could not trim search entry in '{search_entry_line}'."))]
     TrimSearchEntryFailed { search_entry_line: String },
@@ -73,152 +63,75 @@ pub enum Error {
 /// ```
 pub static KUBERNETES_CLUSTER_DOMAIN: OnceLock<DomainName> = OnceLock::new();
 
-pub(crate) fn resolve_kubernetes_cluster_domain() -> Result<DomainName, Error> {
+pub(crate) fn retrieve_cluster_domain() -> Result<DomainName, Error> {
     // 1. Read KUBERNETES_CLUSTER_DOMAIN env var
     tracing::info!("Trying to determine the Kubernetes cluster domain...");
-    match read_env_var(KUBERNETES_CLUSTER_DOMAIN_ENV) {
-        Ok(cluster_domain) => {
+
+    match env::var(KUBERNETES_CLUSTER_DOMAIN_ENV) {
+        Ok(cluster_domain) if !cluster_domain.is_empty() => {
             tracing::info!("Using Kubernetes cluster domain: '{cluster_domain}'");
-            return cluster_domain
-                .clone()
-                .try_into()
-                .context(InvalidDomainSnafu { cluster_domain });
+            return DomainName::from_str(&cluster_domain)
+                .context(ParseDomainNameSnafu { cluster_domain });
         }
-        Err(_) => {
-            tracing::info!("The env var '{KUBERNETES_CLUSTER_DOMAIN_ENV}' is not set.");
+        _ => {
+            tracing::info!("The env var '{KUBERNETES_CLUSTER_DOMAIN_ENV}' is not set or empty");
         }
     };
 
-    // 2. If no env var is set, check if we run in a clusterized (Kubernetes/Openshift) enviroment
+    // 2. If no env var is set, check if we run in a clustered (Kubernetes/Openshift) environment
     //    by checking if KUBERNETES_SERVICE_HOST is set: If not default to 'cluster.local'.
     tracing::info!("Trying to determine the operator runtime environment...");
-    if read_env_var(KUBERNETES_SERVICE_HOST_ENV).is_err() {
-        tracing::info!("The env var '{KUBERNETES_SERVICE_HOST_ENV}' is not set. This means we do not run in Kubernetes / Openshift. Defaulting cluster domain to '{KUBERNETES_CLUSTER_DOMAIN_DEFAULT}'.");
-        return KUBERNETES_CLUSTER_DOMAIN_DEFAULT
-            .to_string()
-            .try_into()
-            .context(InvalidDomainSnafu {
-                cluster_domain: KUBERNETES_CLUSTER_DOMAIN_DEFAULT.to_string(),
-            });
+
+    match env::var(KUBERNETES_SERVICE_HOST_ENV) {
+        Ok(_) => {
+            let cluster_domain = retrieve_cluster_domain_from_resolv_conf(RESOLVE_CONF_FILE_PATH)?;
+
+            tracing::info!(
+                cluster_domain,
+                "Using Kubernetes cluster domain from {RESOLVE_CONF_FILE_PATH} file"
+            );
+
+            DomainName::from_str(&cluster_domain).context(ParseDomainNameSnafu { cluster_domain })
+        }
+        Err(_) => {
+            tracing::info!(
+                cluster_domain = KUBERNETES_CLUSTER_DOMAIN_DEFAULT,
+                "Using default Kubernetes cluster domain"
+            );
+            Ok(DomainName::from_str(KUBERNETES_CLUSTER_DOMAIN_DEFAULT).expect("stuff"))
+        }
     }
-
-    // 3. Read and parse 'resolv.conf'. We are looking for the last "search" entry and filter for the shortest
-    //    element in that search line
-    tracing::info!(
-        "Running in clusterized environment. Attempting to parse '{RESOLVE_CONF_FILE_PATH}'..."
-    );
-    let resolve_conf_lines =
-        read_file_from_path(RESOLVE_CONF_FILE_PATH).context(ResolvConfNotFoundSnafu {
-            resolve_conf_file_path: RESOLVE_CONF_FILE_PATH.to_string(),
-        })?;
-
-    let cluster_domain = parse_resolve_config(resolve_conf_lines)?;
-    tracing::info!("Using Kubernetes cluster domain: '{cluster_domain}'");
-
-    cluster_domain
-        .clone()
-        .try_into()
-        .context(InvalidDomainSnafu { cluster_domain })
 }
 
-/// Extract the Kubernetes cluster domain from the vectorized 'resolv.conf'.
-/// This will:
-/// 1. Use the last entry containing a 'search' prefix.
-/// 2. Strip 'search' from the last entry.
-/// 3. Return the shortest itme (e.g. 'cluster.local') in the whitespace seperated list.
-fn parse_resolve_config(resolv_conf: Vec<String>) -> Result<String, Error> {
-    tracing::debug!(
-        "Start parsing '{RESOLVE_CONF_FILE_PATH}' to retrieve the Kubernetes cluster domain..."
-    );
+fn retrieve_cluster_domain_from_resolv_conf<P>(path: P) -> Result<String, Error>
+where
+    P: AsRef<Path>,
+{
+    let content = std::fs::read_to_string(path).context(ReadResolvConfFileSnafu)?;
 
-    let last_search_entry =
-        find_last_search_entry(&resolv_conf).context(SearchEntryNotFoundSnafu {
-            resolve_conf_file_path: RESOLVE_CONF_FILE_PATH.to_string(),
-        })?;
+    let last = content
+        .lines()
+        .map(|l| l.trim())
+        .filter(|l| l.starts_with("search"))
+        .map(|l| l.trim_start_matches("search"))
+        .last()
+        .context(SearchEntryNotFoundSnafu)?;
 
-    let last_search_entry_content =
-        trim_search_line(&last_search_entry).context(TrimSearchEntryFailedSnafu {
-            search_entry_line: last_search_entry.to_string(),
-        })?;
-
-    let shortest_search_entry = find_shortest_entry(last_search_entry_content)
+    let shortest_entry = last
+        .split_ascii_whitespace()
+        .min_by_key(|item| item.len())
         .context(LookupClusterDomainEntryFailedSnafu)?;
 
-    Ok(shortest_search_entry.into())
-}
-
-/// Read an ENV variable
-fn read_env_var(name: &str) -> Result<String, Error> {
-    env::var(name).context(EnvVarNotFoundSnafu { name })
-}
-
-// Function to read the contents of a file and return all lines as Vec<String>
-fn read_file_from_path(resolv_conf_file_path: &str) -> Result<Vec<String>, io::Error> {
-    let file = std::fs::File::open(Path::new(resolv_conf_file_path))?;
-    let reader = io::BufReader::new(file);
-
-    reader.lines().collect()
-}
-
-/// Search the last entry containing the 'search' prefix. We are only interested in
-/// the last line (in case there are multiple entries which would be ignored by external tools).
-fn find_last_search_entry(lines: &[String]) -> Option<String> {
-    lines
-        .iter()
-        .rev() // Start from the end to find the last occurrence
-        .find(|line| line.trim().starts_with("search"))
-        .cloned()
-}
-
-/// Extract the content of the 'search' line. Basically stripping the 'search' prefix from the line like:
-/// 'search sble-operators.svc.cluster.local svc.cluster.local cluster.local' will become
-/// 'sble-operators.svc.cluster.local svc.cluster.local cluster.local'
-fn trim_search_line(search_line: &str) -> Option<&str> {
-    search_line.trim().strip_prefix("search")
-}
-
-/// Extract the shortest entry from a whitespace seperated string like:
-/// 'sble-operators.svc.cluster.local svc.cluster.local cluster.local'
-/// This will be 'cluster.local' here.
-fn find_shortest_entry(search_content: &str) -> Option<&str> {
-    search_content
-        .split_whitespace()
-        .min_by_key(|entry| entry.len())
+    // NOTE (@Techassi): This is really sad and bothers me more than I would like to admit
+    Ok(shortest_entry.to_owned())
 }
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
-
-    const KUBERNETES_RESOLV_CONF: &str = r#"""
-    search sble-operators.svc.cluster.local svc.cluster.local cluster.local
-    nameserver 10.243.21.53
-    options ndots:5
-    """#;
-
-    const OPENSHIFT_RESOLV_CONF: &str = r#"""
-    search openshift-service-ca-operator.svc.cluster.local svc.cluster.local cluster.local cmx.repl-openshift.build
-    nameserver 172.30.0.10
-    options ndots:5
-    """#;
-
-    const KUBERNETES_RESOLV_CONF_MULTIPLE_SEARCH_ENTRIES: &str = r#"""
-    search baz svc.foo.bar foo.bar
-    search sble-operators.svc.cluster.local svc.cluster.local cluster.local
-    nameserver 10.243.21.53
-    options ndots:5
-    """#;
-
-    const KUBERNETES_RESOLV_CONF_MISSING_SEARCH_ENTRIES: &str = r#"""
-    nameserver 10.243.21.53
-    options ndots:5
-    """#;
-
-    // Helper method to read resolv.conf from a string and not from file.
-    fn read_file_from_string(contents: &str) -> Vec<String> {
-        // Split the string by lines and collect into a Vec<String>
-        contents.lines().map(|line| line.to_string()).collect()
-    }
+    use rstest::rstest;
 
     #[test]
     fn use_different_kubernetes_cluster_domain_value() {
@@ -230,7 +143,7 @@ mod tests {
         }
 
         // initialize the lock
-        let _ = KUBERNETES_CLUSTER_DOMAIN.set(resolve_kubernetes_cluster_domain().unwrap());
+        let _ = KUBERNETES_CLUSTER_DOMAIN.set(retrieve_cluster_domain().unwrap());
 
         assert_eq!(
             cluster_domain,
@@ -238,27 +151,20 @@ mod tests {
         );
     }
 
-    #[test]
-    fn parse_resolv_conf_success() {
-        let correct_resolv_configs = vec![
-            KUBERNETES_RESOLV_CONF,
-            OPENSHIFT_RESOLV_CONF,
-            KUBERNETES_RESOLV_CONF_MULTIPLE_SEARCH_ENTRIES,
-        ];
-
-        for resolv_conf in correct_resolv_configs {
-            let lines = read_file_from_string(resolv_conf);
-            let last_search_entry = find_last_search_entry(lines.as_slice()).unwrap();
-            let search_entry = trim_search_line(&last_search_entry).unwrap();
-            let cluster_domain = find_shortest_entry(search_entry).unwrap();
-            assert_eq!(cluster_domain, KUBERNETES_CLUSTER_DOMAIN_DEFAULT);
-        }
+    #[rstest]
+    fn parse_resolv_conf_pass(
+        #[files("fixtures/cluster_domain/pass/*.resolv.conf")] path: PathBuf,
+    ) {
+        assert_eq!(
+            retrieve_cluster_domain_from_resolv_conf(path).unwrap(),
+            KUBERNETES_CLUSTER_DOMAIN_DEFAULT
+        );
     }
 
-    #[test]
-    fn parse_resolv_conf_error_no_search_entry() {
-        let lines = read_file_from_string(KUBERNETES_RESOLV_CONF_MISSING_SEARCH_ENTRIES);
-        let last_search_entry = find_last_search_entry(lines.as_slice());
-        assert_eq!(last_search_entry, None);
+    #[rstest]
+    fn parse_resolv_conf_fail(
+        #[files("fixtures/cluster_domain/fail/*.resolv.conf")] path: PathBuf,
+    ) {
+        assert!(retrieve_cluster_domain_from_resolv_conf(path).is_err());
     }
 }
