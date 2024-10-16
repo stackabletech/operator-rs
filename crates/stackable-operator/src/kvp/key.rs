@@ -109,9 +109,10 @@ impl Display for Key {
     }
 }
 
-impl From<&Key> for String {
+// Allows SNAFU context selectors to clone the key implicitly
+impl From<&Key> for Key {
     fn from(value: &Key) -> Self {
-        value.to_string()
+        value.clone()
     }
 }
 

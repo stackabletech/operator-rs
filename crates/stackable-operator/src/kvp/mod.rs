@@ -38,12 +38,8 @@ where
     InvalidKey { source: KeyError, key: String },
 
     /// Indicates that the value failed to parse.
-    #[snafu(display("failed to parse value {value:?} of key {key:?}"))]
-    InvalidValue {
-        source: E,
-        key: String,
-        value: String,
-    },
+    #[snafu(display("failed to parse value {value:?} for key {key:?}", key = key.to_string()))]
+    InvalidValue { source: E, key: Key, value: String },
 }
 
 /// A validated Kubernetes key/value pair.
