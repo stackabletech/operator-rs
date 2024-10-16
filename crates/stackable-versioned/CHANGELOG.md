@@ -6,6 +6,18 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add basic handling for enum variants with data ([#892]).
+
+### Fixed
+
+- Accept a wider variety of formatting styles in the macro testing regex ([#892]).
+
+[#892]: https://github.com/stackabletech/operator-rs/pull/892
+
+## [0.4.0] - 2024-10-14
+
+### Added
+
 - Add YAML serialization for merged CRD schema. The schema can now be printed to stdout or written
   to file ([#884]).
 - Add snapshot tests to verify generated code matches expected output ([#881]).
