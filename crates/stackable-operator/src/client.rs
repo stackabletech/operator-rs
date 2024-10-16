@@ -516,12 +516,12 @@ impl Client {
     /// use tokio::time::error::Elapsed;
     /// use kube::runtime::watcher;
     /// use k8s_openapi::api::core::v1::Pod;
-    /// use stackable_operator::client::{Client, create_client};
+    /// use stackable_operator::client::{Client, initialize_operator};
     ///
     /// #[tokio::main]
     /// async fn main(){
     ///
-    /// let client: Client = create_client(None).await.expect("Unable to construct client.");
+    /// let client: Client = initialize_operator(None).await.expect("Unable to construct client.");
     /// let watcher_config: watcher::Config =
     ///         watcher::Config::default().fields(&format!("metadata.name=nonexistent-pod"));
     ///

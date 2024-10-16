@@ -60,13 +60,17 @@ pub enum Error {
 ///
 /// # Usage
 ///
-/// ```
+/// ```no_run
+/// use stackable_operator::client::{Client, initialize_operator};
 /// use stackable_operator::utils::KUBERNETES_CLUSTER_DOMAIN;
 ///
-/// let kubernetes_cluster_domain = KUBERNETES_CLUSTER_DOMAIN.get().expect("Could not resolve the Kubernetes cluster domain!");
-/// tracing::info!("Found cluster domain: {kubernetes_cluster_domain}");
+/// #[tokio::main]
+/// async fn main(){
+///     let client: Client = initialize_operator(None).await.expect("Unable to construct client.");
+///     let kubernetes_cluster_domain = KUBERNETES_CLUSTER_DOMAIN.get().expect("Could not resolve the Kubernetes cluster domain!");
+///     tracing::info!("Found cluster domain: {kubernetes_cluster_domain}");
+/// }
 /// ```
-///
 pub static KUBERNETES_CLUSTER_DOMAIN: OnceLock<DomainName> = OnceLock::new();
 
 pub(crate) fn resolve_kubernetes_cluster_domain() -> Result<DomainName, Error> {
@@ -101,7 +105,7 @@ pub(crate) fn resolve_kubernetes_cluster_domain() -> Result<DomainName, Error> {
     // 3. Read and parse 'resolv.conf'. We are looking for the last "search" entry and filter for the shortest
     //    element in that search line
     tracing::info!(
-        "Running in clusterized environment. Attempting to parse '{RESOLVE_CONF_FILE_PATH}' ..."
+        "Running in clusterized environment. Attempting to parse '{RESOLVE_CONF_FILE_PATH}'..."
     );
     let resolve_conf_lines =
         read_file_from_path(RESOLVE_CONF_FILE_PATH).context(ResolvConfNotFoundSnafu {
