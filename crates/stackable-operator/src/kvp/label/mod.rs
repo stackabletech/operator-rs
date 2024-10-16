@@ -114,6 +114,8 @@ pub mod well_known {
         Label::try_from((K8S_APP_VERSION_KEY, version))
     }
 
+    /// Creates the `stackable.tech/vendor: Stackable` label, tagging the object as
+    /// created by a Stackable operator.
     pub fn vendor_stackable() -> Label {
         Label::try_from((STACKABLE_VENDOR_KEY, STACKABLE_VENDOR_VALUE))
             .expect("failed to parse hard-coded Stackable vendor label")
