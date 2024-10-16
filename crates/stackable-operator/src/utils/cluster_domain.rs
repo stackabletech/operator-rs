@@ -74,7 +74,7 @@ pub(crate) fn resolve_kubernetes_cluster_domain() -> Result<DomainName, Error> {
     tracing::info!("Trying to determine the Kubernetes cluster domain...");
     match read_env_var(KUBERNETES_CLUSTER_DOMAIN_ENV) {
         Ok(cluster_domain) => {
-            tracing::info!("Using Kubernetes cluster domain: {cluster_domain}");
+            tracing::info!("Using Kubernetes cluster domain: '{cluster_domain}'");
             return cluster_domain
                 .clone()
                 .try_into()
@@ -100,13 +100,16 @@ pub(crate) fn resolve_kubernetes_cluster_domain() -> Result<DomainName, Error> {
 
     // 3. Read and parse 'resolv.conf'. We are looking for the last "search" entry and filter for the shortest
     //    element in that search line
+    tracing::info!(
+        "Running in clusterized environment. Attempting to parse '{RESOLVE_CONF_FILE_PATH}' ..."
+    );
     let resolve_conf_lines =
         read_file_from_path(RESOLVE_CONF_FILE_PATH).context(ResolvConfNotFoundSnafu {
             resolve_conf_file_path: RESOLVE_CONF_FILE_PATH.to_string(),
         })?;
 
     let cluster_domain = parse_resolve_config(resolve_conf_lines)?;
-    tracing::info!("Using Kubernetes cluster domain: {cluster_domain}");
+    tracing::info!("Using Kubernetes cluster domain: '{cluster_domain}'");
 
     cluster_domain
         .clone()
