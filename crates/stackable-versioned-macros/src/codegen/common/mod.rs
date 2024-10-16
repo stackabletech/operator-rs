@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use k8s_version::Version;
-use proc_macro2::Span;
-use quote::format_ident;
+use proc_macro2::{Span, TokenStream};
+use quote::{format_ident, quote, ToTokens};
 use syn::Ident;
 
 use crate::{
@@ -34,24 +34,7 @@ pub(crate) struct ContainerVersion {
     pub(crate) ident: Ident,
 
     /// Store additional doc-comment lines for this version.
-    pub(crate) version_specific_docs: Vec<String>,
-}
-
-/// Converts lines of doc-comments into a trimmed list.
-fn process_docs(input: &Option<String>) -> Vec<String> {
-    if let Some(input) = input {
-        input
-            // Trim the leading and trailing whitespace, deleting suprefluous
-            // empty lines.
-            .trim()
-            .lines()
-            // Trim the leading and trailing whitespace on each line that can be
-            // introduced when the developer indents multi-line comments.
-            .map(|line| line.trim().to_owned())
-            .collect()
-    } else {
-        Vec::new()
-    }
+    pub(crate) docs: Docs,
 }
 
 impl From<&ContainerAttributes> for Vec<ContainerVersion> {
@@ -63,10 +46,52 @@ impl From<&ContainerAttributes> for Vec<ContainerVersion> {
                 skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
                 ident: Ident::new(&v.name.to_string(), Span::call_site()),
                 deprecated: v.deprecated.is_present(),
+                docs: v.doc.clone().into(),
                 inner: v.name,
-                version_specific_docs: process_docs(&v.doc),
             })
             .collect()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct Docs(Vec<String>);
+
+impl From<Option<String>> for Docs {
+    fn from(doc: Option<String>) -> Self {
+        let lines = if let Some(doc) = doc {
+            doc
+                // Trim the leading and trailing whitespace, deleting
+                // superfluous empty lines.
+                .trim()
+                .lines()
+                // Trim the leading and trailing whitespace on each line that
+                // can be introduced when the developer indents multi-line
+                // comments.
+                .map(|line| line.trim().into())
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+        Self(lines)
+    }
+}
+
+impl ToTokens for Docs {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        for (index, line) in self.0.iter().enumerate() {
+            if index == 0 {
+                // Prepend an empty line to clearly separate the version/action
+                // specific docs.
+                tokens.extend(quote! {
+                    #[doc = ""]
+                })
+            }
+
+            tokens.extend(quote! {
+                #[doc = #line]
+            })
+        }
     }
 }
 

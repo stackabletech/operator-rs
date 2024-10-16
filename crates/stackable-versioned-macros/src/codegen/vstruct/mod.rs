@@ -138,15 +138,13 @@ impl VersionedStruct {
         // enable the attribute macro to be applied to a module which
         // generates versioned versions of all contained containers.
 
+        let version_specific_docs = &version.docs;
         let version_ident = &version.ident;
 
         let deprecated_note = format!("Version {version} is deprecated", version = version_ident);
         let deprecated_attr = version
             .deprecated
             .then_some(quote! {#[deprecated = #deprecated_note]});
-
-        // Generate doc comments for the container (struct)
-        let version_specific_docs = self.generate_struct_docs(version);
 
         // Generate K8s specific code
         let (kubernetes_cr_derive, merged_crd) = match &self.options.kubernetes_options {
@@ -178,8 +176,8 @@ impl VersionedStruct {
             #visibility mod #version_ident {
                 use super::*;
 
-                #version_specific_docs
                 #(#original_attributes)*
+                #version_specific_docs
                 #kubernetes_cr_derive
                 pub struct #struct_name {
                     #fields
@@ -193,26 +191,6 @@ impl VersionedStruct {
         }
 
         (token_stream, merged_crd)
-    }
-
-    /// Generates version specific doc comments for the struct.
-    fn generate_struct_docs(&self, version: &ContainerVersion) -> TokenStream {
-        let mut tokens = TokenStream::new();
-
-        for (i, doc) in version.version_specific_docs.iter().enumerate() {
-            if i == 0 {
-                // Prepend an empty line to clearly separate the version
-                // specific docs.
-                tokens.extend(quote! {
-                    #[doc = ""]
-                })
-            }
-            tokens.extend(quote! {
-                #[doc = #doc]
-            })
-        }
-
-        tokens
     }
 
     /// Generates struct fields following the `name: type` format which includes
