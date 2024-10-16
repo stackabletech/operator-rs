@@ -55,7 +55,7 @@ pub enum Error {
 ///
 /// # Context
 ///
-/// This variable is initialized in [`stackable_operator::client::initialize_operator`], which is called
+/// This variable is initialized in [`crate::client::initialize_operator`], which is called
 /// in the main function. It can be used as suggested below.
 ///
 /// # Usage
@@ -74,10 +74,10 @@ pub(crate) fn resolve_kubernetes_cluster_domain() -> Result<DomainName, Error> {
     tracing::info!("Trying to determine the Kubernetes cluster domain...");
     match read_env_var(KUBERNETES_CLUSTER_DOMAIN_ENV) {
         Ok(cluster_domain) => {
-            return Ok(cluster_domain
+            return cluster_domain
                 .clone()
                 .try_into()
-                .context(InvalidDomainSnafu { cluster_domain })?)
+                .context(InvalidDomainSnafu { cluster_domain })
         }
         Err(_) => {
             tracing::info!("The env var '{KUBERNETES_CLUSTER_DOMAIN_ENV}' is not set.");
@@ -107,10 +107,10 @@ pub(crate) fn resolve_kubernetes_cluster_domain() -> Result<DomainName, Error> {
     let cluster_domain = parse_resolve_config(resolve_conf_lines)?;
     tracing::info!("Using Kubernetes cluster domain: {cluster_domain}");
 
-    Ok(cluster_domain
+    cluster_domain
         .clone()
         .try_into()
-        .context(InvalidDomainSnafu { cluster_domain })?)
+        .context(InvalidDomainSnafu { cluster_domain })
 }
 
 /// Extract the Kubernetes cluster domain from the vectorized 'resolv.conf'.
