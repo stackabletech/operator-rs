@@ -12,6 +12,14 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: The `CustomResourceExt` trait is now re-exported from the `stackable-shared` crate. The
   trait functions use the same parameters but return a different error type ([#883]).
+- BREAKING: `KeyValuePairs` (as well as `Labels`/`Annotations` via it) is now backed by a `BTreeMap` rather than a `BTreeSet` ([#888]).
+  - The `Deref` impl now returns a `BTreeMap` instead.
+  - `iter()` now clones the values.
+
+### Fixed
+
+- BREAKING: `KeyValuePairs::insert` (as well as `Labels::`/`Annotations::` via it) now overwrites the old value if the key already exists ([#888]).
+  - Previously, `iter()` would return *both* values in lexicographical order (causing further conversions like `Into<BTreeMap>` to prefer the maximum value).
 
 ### Removed
 
@@ -20,6 +28,7 @@ All notable changes to this project will be documented in this file.
   use it as a `String`.
 
 [#883]: https://github.com/stackabletech/operator-rs/pull/883
+[#888]: https://github.com/stackabletech/operator-rs/pull/888
 
 ## [0.78.0] - 2024-09-30
 
@@ -271,7 +280,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Implement `PartialEq` for most _Snafu_ Error enums ([#757]).
+- Implement `PartialEq` for most *Snafu* Error enums ([#757]).
 - Update Rust to 1.77 ([#759])
 
 ### Fixed
