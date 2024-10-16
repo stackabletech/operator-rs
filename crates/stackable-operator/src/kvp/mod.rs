@@ -239,8 +239,7 @@ mod test {
 
     #[test]
     fn try_from_tuple() {
-        let label =
-            KeyValuePair::<LabelValue>::try_from(("stackable.tech/vendor", "Stackable")).unwrap();
+        let label = Label::try_from(("stackable.tech/vendor", "Stackable")).unwrap();
 
         assert_eq!(label.key, Key::from_str("stackable.tech/vendor").unwrap());
         assert_eq!(label.value, LabelValue::from_str("Stackable").unwrap());
@@ -276,7 +275,7 @@ mod test {
             KeyValuePair::try_from(("stackable.tech/vendor", "Stackable")).unwrap(),
         ]);
 
-        let map: BTreeMap<String, String> = labels.to_unvalidated();
+        let map = labels.to_unvalidated();
         assert_eq!(map.len(), 2);
     }
 
