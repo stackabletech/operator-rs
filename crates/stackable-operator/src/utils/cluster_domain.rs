@@ -213,12 +213,21 @@ mod tests {
     }
 
     #[test]
-    fn use_different_kubernetes_service_dns_domain_value() {
-        let service_dns_domain = "my-cluster.local".to_string();
+    fn use_different_kubernetes_cluster_domain_value() {
+        let cluster_domain = "my-cluster.local".to_string();
+
+        // set different domain via env var
         unsafe {
-            env::set_var(KUBERNETES_CLUSTER_DOMAIN_ENV, &service_dns_domain);
+            env::set_var(KUBERNETES_CLUSTER_DOMAIN_ENV, &cluster_domain);
         }
-        //assert_eq!(KUBERNETES_CLUSTER_DOMAIN.get().expect(""), service_dns_domain.try_into().unwrap());
+
+        // initialize the lock
+        let _ = KUBERNETES_CLUSTER_DOMAIN.set(resolve_kubernetes_cluster_domain().unwrap());
+
+        assert_eq!(
+            cluster_domain,
+            KUBERNETES_CLUSTER_DOMAIN.get().unwrap().to_string()
+        );
     }
 
     #[test]
@@ -233,8 +242,8 @@ mod tests {
             let lines = read_file_from_string(resolv_conf);
             let last_search_entry = find_last_search_entry(lines.as_slice()).unwrap();
             let search_entry = trim_search_line(&last_search_entry).unwrap();
-            let service_dns_domain = find_shortest_entry(search_entry).unwrap();
-            //assert_eq!(service_dns_domain, KUBERNETES_SERVICE_DNS_DOMAIN_DEFAULT);
+            let cluster_domain = find_shortest_entry(search_entry).unwrap();
+            assert_eq!(cluster_domain, KUBERNETES_CLUSTER_DOMAIN_DEFAULT);
         }
     }
 
