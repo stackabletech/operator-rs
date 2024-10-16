@@ -1,8 +1,8 @@
 pub mod bash;
+pub mod cluster_domain;
 pub mod crds;
 pub mod logging;
 mod option;
-pub mod service_dns_domain;
 mod url;
 
 #[deprecated(
@@ -26,3 +26,5 @@ pub use self::{option::OptionExt, url::UrlExt};
 pub(crate) fn format_full_controller_name(operator: &str, controller: &str) -> String {
     format!("{operator}_{controller}")
 }
+
+pub use self::cluster_domain::KUBERNETES_CLUSTER_DOMAIN;

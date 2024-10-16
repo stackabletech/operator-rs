@@ -1,4 +1,7 @@
 use crate::kvp::LabelSelectorExt;
+use crate::utils::cluster_domain::{
+    self, resolve_kubernetes_cluster_domain, KUBERNETES_CLUSTER_DOMAIN,
+};
 
 use either::Either;
 use futures::StreamExt;
@@ -77,6 +80,9 @@ pub enum Error {
 
     #[snafu(display("unable to create kubernetes client"))]
     CreateKubeClient { source: kube::Error },
+
+    #[snafu(display("unable to to resolve kubernetes cluster domain"))]
+    ResolveKubernetesClusterDomain { source: cluster_domain::Error },
 }
 
 /// This `Client` can be used to access Kubernetes.
@@ -622,7 +628,13 @@ where
     }
 }
 
-pub async fn create_client(field_manager: Option<String>) -> Result<Client> {
+pub async fn initialize_operator(field_manager: Option<String>) -> Result<Client> {
+    let _ = KUBERNETES_CLUSTER_DOMAIN
+        .set(resolve_kubernetes_cluster_domain().context(ResolveKubernetesClusterDomainSnafu)?);
+    create_client(field_manager).await
+}
+
+async fn create_client(field_manager: Option<String>) -> Result<Client> {
     let kubeconfig: Config = kube::Config::infer()
         .await
         .map_err(kube::Error::InferConfig)
