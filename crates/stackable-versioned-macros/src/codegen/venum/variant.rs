@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use darling::FromVariant;
 use proc_macro2::{Span, TokenStream};
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{token::Not, Ident, Type, TypeNever, Variant};
 
 use crate::{
@@ -104,6 +104,7 @@ impl VersionedVariant {
         container_version: &ContainerVersion,
     ) -> Option<TokenStream> {
         let original_attributes = &self.original_attributes;
+        let fields = &self.inner.fields;
 
         match &self.chain {
             // NOTE (@Techassi): https://rust-lang.github.io/rust-clippy/master/index.html#/expect_fun_call
@@ -115,11 +116,11 @@ impl VersionedVariant {
             }) {
                 ItemStatus::Addition { ident, .. } => Some(quote! {
                     #(#original_attributes)*
-                    #ident,
+                    #ident #fields,
                 }),
                 ItemStatus::Change { to_ident, .. } => Some(quote! {
                     #(#original_attributes)*
-                    #to_ident,
+                    #to_ident #fields,
                 }),
                 ItemStatus::Deprecation { ident, note, .. } => {
                     // FIXME (@Techassi): Emitting the deprecated attribute
@@ -139,7 +140,7 @@ impl VersionedVariant {
                     Some(quote! {
                         #(#original_attributes)*
                         #deprecated_attr
-                        #ident,
+                        #ident #fields,
                     })
                 }
                 ItemStatus::NoChange {
@@ -154,7 +155,7 @@ impl VersionedVariant {
                     Some(quote! {
                         #(#original_attributes)*
                         #deprecated_attr
-                        #ident,
+                        #ident #fields,
                     })
                 }
                 ItemStatus::NotPresent => None,
@@ -163,11 +164,11 @@ impl VersionedVariant {
                 // If there is no chain of variant actions, the variant is not
                 // versioned and code generation is straight forward.
                 // Unversioned variants are always included in versioned enums.
-                let variant_ident = &self.inner.ident;
+                let ident = &self.inner.ident;
 
                 Some(quote! {
                     #(#original_attributes)*
-                    #variant_ident,
+                    #ident #fields,
                 })
             }
         }
@@ -182,6 +183,38 @@ impl VersionedVariant {
         next_version: &ContainerVersion,
         enum_ident: &Ident,
     ) -> TokenStream {
+        let variant_data = match &self.inner.fields {
+            syn::Fields::Named(fields_named) => {
+                let field_names = fields_named
+                    .named
+                    .iter()
+                    .map(|field| {
+                        field
+                            .ident
+                            .as_ref()
+                            .expect("named fields always have an ident")
+                            .clone()
+                    })
+                    .collect::<Vec<_>>();
+
+                let tokens = quote! { { #(#field_names),* } };
+                tokens
+            }
+            syn::Fields::Unnamed(fields_unnamed) => {
+                let field_names = fields_unnamed
+                    .unnamed
+                    .iter()
+                    .enumerate()
+                    .map(|(index, _)| format_ident!("__sv_{index}"))
+                    .collect::<Vec<_>>();
+
+                let tokens = quote! { ( #(#field_names),* ) };
+                tokens
+            }
+
+            syn::Fields::Unit => TokenStream::new(),
+        };
+
         match &self.chain {
             Some(chain) => match (
                 chain.get_expect(&version.inner),
@@ -197,7 +230,7 @@ impl VersionedVariant {
                         .expect("internal error: next variant must have a name");
 
                     quote! {
-                        #module_name::#enum_ident::#old_variant_ident => #next_module_name::#enum_ident::#next_variant_ident,
+                        #module_name::#enum_ident::#old_variant_ident #variant_data => #next_module_name::#enum_ident::#next_variant_ident #variant_data,
                     }
                 }
             },
@@ -205,7 +238,7 @@ impl VersionedVariant {
                 let variant_ident = &self.inner.ident;
 
                 quote! {
-                    #module_name::#enum_ident::#variant_ident => #next_module_name::#enum_ident::#variant_ident,
+                    #module_name::#enum_ident::#variant_ident #variant_data => #next_module_name::#enum_ident::#variant_ident #variant_data,
                 }
             }
         }
