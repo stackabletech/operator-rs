@@ -74,10 +74,11 @@ pub(crate) fn resolve_kubernetes_cluster_domain() -> Result<DomainName, Error> {
     tracing::info!("Trying to determine the Kubernetes cluster domain...");
     match read_env_var(KUBERNETES_CLUSTER_DOMAIN_ENV) {
         Ok(cluster_domain) => {
+            tracing::info!("Using Kubernetes cluster domain: {cluster_domain}");
             return cluster_domain
                 .clone()
                 .try_into()
-                .context(InvalidDomainSnafu { cluster_domain })
+                .context(InvalidDomainSnafu { cluster_domain });
         }
         Err(_) => {
             tracing::info!("The env var '{KUBERNETES_CLUSTER_DOMAIN_ENV}' is not set.");
