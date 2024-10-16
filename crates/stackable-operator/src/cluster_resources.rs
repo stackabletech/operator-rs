@@ -464,7 +464,7 @@ impl ClusterResources {
     /// Return required labels for cluster resources to be uniquely identified for clean up.
     // TODO: This is a (quick-fix) helper method but should be replaced by better label handling
     pub fn get_required_labels(&self) -> Result<Labels, LabelError> {
-        let mut labels = label::sets::common(&self.app_name, &self.app_instance)?;
+        let mut labels = label::well_known::sets::common(&self.app_name, &self.app_instance)?;
 
         labels.extend([label::well_known::managed_by(
             &self.operator_name,

@@ -21,7 +21,7 @@ All notable changes to this project will be documented in this file.
     - `Into<BTreeMap<String, String>>`: use `::to_unvalidated` instead.
   - Well-known annotations have been moved from `kvp::Annotation` to `kvp::annotation::well_known`.
   - Well-known labels have been moved from `kvp::Label` to `kvp::label::well_known`.
-  - Well-known label sets have been moved from `kvp::Labels` to `kvp::label::sets`.
+  - Well-known label sets have been moved from `kvp::Labels` to `kvp::label::well_known::sets`.
 
 ### Fixed
 

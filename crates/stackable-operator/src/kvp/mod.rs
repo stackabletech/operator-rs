@@ -281,7 +281,7 @@ mod test {
 
     #[test]
     fn contains() {
-        let labels = label::sets::common("test", "test-01").unwrap();
+        let labels = label::well_known::sets::common("test", "test-01").unwrap();
 
         assert!(labels.contains_str_key("app.kubernetes.io/instance"))
     }

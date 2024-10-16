@@ -120,107 +120,107 @@ pub mod well_known {
         Label::try_from((STACKABLE_VENDOR_KEY, STACKABLE_VENDOR_VALUE))
             .expect("failed to parse hard-coded Stackable vendor label")
     }
-}
 
-/// Common sets of labels that apply for different use-cases.
-pub mod sets {
-    use kube::{Resource, ResourceExt};
+    /// Common sets of labels that apply for different use-cases.
+    pub mod sets {
+        use kube::{Resource, ResourceExt};
 
-    use crate::kvp::{
-        consts::{K8S_APP_INSTANCE_KEY, K8S_APP_NAME_KEY},
-        ObjectLabels,
-    };
+        use crate::kvp::{
+            consts::{K8S_APP_INSTANCE_KEY, K8S_APP_NAME_KEY},
+            ObjectLabels,
+        };
 
-    use super::{well_known, Label, LabelError, Labels};
+        use super::super::{Label, LabelError, Labels};
 
-    /// Returns the recommended set of labels. The set includes these well-known
-    /// Kubernetes labels:
-    ///
-    /// - `app.kubernetes.io/role-group`
-    /// - `app.kubernetes.io/managed-by`
-    /// - `app.kubernetes.io/component`
-    /// - `app.kubernetes.io/instance`
-    /// - `app.kubernetes.io/version`
-    /// - `app.kubernetes.io/name`
-    ///
-    /// Additionally, it includes Stackable-specific labels. These are:
-    ///
-    /// - `stackable.tech/vendor`
-    ///
-    /// This function returns a result, because the parameter `object_labels`
-    /// can contain invalid data or can exceed the maximum allowed number of
-    /// characters.
-    pub fn recommended<R>(object_labels: ObjectLabels<R>) -> Result<Labels, LabelError>
-    where
-        R: Resource,
-    {
-        // Well-known Kubernetes labels
-        let mut labels = role_group_selector(
-            object_labels.owner,
-            object_labels.app_name,
-            object_labels.role,
-            object_labels.role_group,
-        )?;
+        /// Returns the recommended set of labels. The set includes these well-known
+        /// Kubernetes labels:
+        ///
+        /// - `app.kubernetes.io/role-group`
+        /// - `app.kubernetes.io/managed-by`
+        /// - `app.kubernetes.io/component`
+        /// - `app.kubernetes.io/instance`
+        /// - `app.kubernetes.io/version`
+        /// - `app.kubernetes.io/name`
+        ///
+        /// Additionally, it includes Stackable-specific labels. These are:
+        ///
+        /// - `stackable.tech/vendor`
+        ///
+        /// This function returns a result, because the parameter `object_labels`
+        /// can contain invalid data or can exceed the maximum allowed number of
+        /// characters.
+        pub fn recommended<R>(object_labels: ObjectLabels<R>) -> Result<Labels, LabelError>
+        where
+            R: Resource,
+        {
+            // Well-known Kubernetes labels
+            let mut labels = role_group_selector(
+                object_labels.owner,
+                object_labels.app_name,
+                object_labels.role,
+                object_labels.role_group,
+            )?;
 
-        labels.extend([
-            well_known::managed_by(object_labels.operator_name, object_labels.controller_name)?,
-            well_known::version(object_labels.app_version)?,
-            // Stackable-specific labels
-            well_known::vendor_stackable(),
-        ]);
+            labels.extend([
+                super::managed_by(object_labels.operator_name, object_labels.controller_name)?,
+                super::version(object_labels.app_version)?,
+                // Stackable-specific labels
+                super::vendor_stackable(),
+            ]);
 
-        Ok(labels)
-    }
+            Ok(labels)
+        }
 
-    /// Returns the set of labels required to select the resource based on the
-    /// role group. The set contains role selector labels, see
-    /// [`role_selector`] for more details. Additionally, it contains
-    /// the `app.kubernetes.io/role-group` label with `role_group` as the value.
-    pub fn role_group_selector<R>(
-        owner: &R,
-        app_name: &str,
-        role: &str,
-        role_group: &str,
-    ) -> Result<Labels, LabelError>
-    where
-        R: Resource,
-    {
-        let mut labels = role_selector(owner, app_name, role)?;
-        labels.extend([well_known::role_group(role_group)?]);
-        Ok(labels)
-    }
+        /// Returns the set of labels required to select the resource based on the
+        /// role group. The set contains role selector labels, see
+        /// [`role_selector`] for more details. Additionally, it contains
+        /// the `app.kubernetes.io/role-group` label with `role_group` as the value.
+        pub fn role_group_selector<R>(
+            owner: &R,
+            app_name: &str,
+            role: &str,
+            role_group: &str,
+        ) -> Result<Labels, LabelError>
+        where
+            R: Resource,
+        {
+            let mut labels = role_selector(owner, app_name, role)?;
+            labels.extend([super::role_group(role_group)?]);
+            Ok(labels)
+        }
 
-    /// Returns the set of labels required to select the resource based on the
-    /// role. The set contains the common labels, see [`common`] for
-    /// more details. Additionally, it contains the `app.kubernetes.io/component`
-    /// label with `role` as the value.
-    ///
-    /// This function returns a result, because the parameters `owner`, `app_name`,
-    /// and `role` can contain invalid data or can exceed the maximum allowed
-    /// number fo characters.
-    pub fn role_selector<R>(owner: &R, app_name: &str, role: &str) -> Result<Labels, LabelError>
-    where
-        R: Resource,
-    {
-        let mut labels = common(app_name, owner.name_any().as_str())?;
-        labels.extend([well_known::component(role)?]);
-        Ok(labels)
-    }
+        /// Returns the set of labels required to select the resource based on the
+        /// role. The set contains the common labels, see [`common`] for
+        /// more details. Additionally, it contains the `app.kubernetes.io/component`
+        /// label with `role` as the value.
+        ///
+        /// This function returns a result, because the parameters `owner`, `app_name`,
+        /// and `role` can contain invalid data or can exceed the maximum allowed
+        /// number fo characters.
+        pub fn role_selector<R>(owner: &R, app_name: &str, role: &str) -> Result<Labels, LabelError>
+        where
+            R: Resource,
+        {
+            let mut labels = common(app_name, owner.name_any().as_str())?;
+            labels.extend([super::component(role)?]);
+            Ok(labels)
+        }
 
-    /// Returns a common set of labels, which are required to identify resources
-    /// that belong to a certain owner object, for example a `ZookeeperCluster`.
-    /// The set contains these well-known labels:
-    ///
-    /// - `app.kubernetes.io/instance` and
-    /// - `app.kubernetes.io/name`
-    ///
-    /// This function returns a result, because the parameters `app_name` and
-    /// `app_instance` can contain invalid data or can exceed the maximum
-    /// allowed number of characters.
-    pub fn common(app_name: &str, app_instance: &str) -> Result<Labels, LabelError> {
-        Ok(Labels::from_iter([
-            Label::try_from((K8S_APP_INSTANCE_KEY, app_instance))?,
-            Label::try_from((K8S_APP_NAME_KEY, app_name))?,
-        ]))
+        /// Returns a common set of labels, which are required to identify resources
+        /// that belong to a certain owner object, for example a `ZookeeperCluster`.
+        /// The set contains these well-known labels:
+        ///
+        /// - `app.kubernetes.io/instance` and
+        /// - `app.kubernetes.io/name`
+        ///
+        /// This function returns a result, because the parameters `app_name` and
+        /// `app_instance` can contain invalid data or can exceed the maximum
+        /// allowed number of characters.
+        pub fn common(app_name: &str, app_instance: &str) -> Result<Labels, LabelError> {
+            Ok(Labels::from_iter([
+                Label::try_from((K8S_APP_INSTANCE_KEY, app_instance))?,
+                Label::try_from((K8S_APP_NAME_KEY, app_name))?,
+            ]))
+        }
     }
 }

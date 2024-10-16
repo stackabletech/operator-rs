@@ -157,7 +157,7 @@ impl ObjectMetaBuilder {
         object_labels: ObjectLabels<T>,
     ) -> Result<&mut Self> {
         let recommended_labels =
-            label::sets::recommended(object_labels).context(RecommendedLabelsSnafu)?;
+            label::well_known::sets::recommended(object_labels).context(RecommendedLabelsSnafu)?;
 
         self.labels
             .get_or_insert(Labels::new())

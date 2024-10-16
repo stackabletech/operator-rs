@@ -85,8 +85,8 @@ impl PodDisruptionBudgetBuilder<(), (), ()> {
         operator_name: &str,
         controller_name: &str,
     ) -> Result<PodDisruptionBudgetBuilder<ObjectMeta, LabelSelector, ()>> {
-        let role_selector_labels =
-            label::sets::role_selector(owner, app_name, role).context(RoleSelectorLabelsSnafu)?;
+        let role_selector_labels = label::well_known::sets::role_selector(owner, app_name, role)
+            .context(RoleSelectorLabelsSnafu)?;
         let managed_by_label = label::well_known::managed_by(operator_name, controller_name)
             .context(ManagedByLabelSnafu)?;
         let metadata = ObjectMetaBuilder::new()
