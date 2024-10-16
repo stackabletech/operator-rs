@@ -38,7 +38,6 @@ All notable changes to this project will be documented in this file.
 [#885]: https://github.com/stackabletech/operator-rs/pull/885
 [#889]: https://github.com/stackabletech/operator-rs/pull/889
 
-
 ## [0.78.0] - 2024-09-30
 
 ### Added
