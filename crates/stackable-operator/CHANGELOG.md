@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Re-export the `YamlSchema` trait and the `stackable-shared` crate as the `shared` module ([#883]).
+- The cluster domain (default: `cluster.local`) can now be configured via the ENV variable 
+  `KUBERNETES_CLUSTER_DOMAIN` or resolved automatically by parsing the `/etc/resolve.conf` ([#893]).
 
 ### Changed
 
@@ -20,6 +22,7 @@ All notable changes to this project will be documented in this file.
   use it as a `String`.
 
 [#883]: https://github.com/stackabletech/operator-rs/pull/883
+[#893]: https://github.com/stackabletech/operator-rs/pull/893
 
 ## [0.78.0] - 2024-09-30
 
