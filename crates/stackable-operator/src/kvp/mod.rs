@@ -92,12 +92,12 @@ where
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct KeyValuePair<T>
+pub struct KeyValuePair<V>
 where
-    T: Value,
+    V: Value,
 {
     pub key: Key,
-    pub value: T,
+    pub value: V,
 }
 
 impl<V> TryFrom<(&str, &str)> for KeyValuePair<V>
@@ -119,13 +119,13 @@ impl<V: Value> From<KeyValuePair<V>> for (Key, V) {
     }
 }
 
-impl<T: Value> Display for KeyValuePair<T> {
+impl<V: Value> Display for KeyValuePair<V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}={}", self.key, self.value)
     }
 }
 
-impl<T: Value + Debug> Debug for KeyValuePair<T> {
+impl<V: Value + Debug> Debug for KeyValuePair<V> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}: {:?}", self.key, self.value)
     }
@@ -178,15 +178,15 @@ impl<V: Value> KeyValuePairsExt for KeyValuePairs<V> {
     }
 }
 
-impl<'a, T: Value> TryFromIterator<(&'a str, &'a str)> for KeyValuePairs<T> {
-    type Error = KeyValuePairError<T::Error>;
+impl<'a, V: Value> TryFromIterator<(&'a str, &'a str)> for KeyValuePairs<V> {
+    type Error = KeyValuePairError<V::Error>;
 
     fn try_from_iter<I: IntoIterator<Item = (&'a str, &'a str)>>(
         iter: I,
     ) -> Result<Self, Self::Error> {
         iter.into_iter()
             .map(KeyValuePair::try_from)
-            .collect::<Result<Self, KeyValuePairError<T::Error>>>()
+            .collect::<Result<Self, KeyValuePairError<V::Error>>>()
     }
 }
 
