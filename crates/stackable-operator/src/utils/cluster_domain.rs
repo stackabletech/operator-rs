@@ -17,20 +17,17 @@ pub enum Error {
     #[snafu(display("failed to read resolv.conf"))]
     ReadResolvConfFile { source: std::io::Error },
 
-    #[snafu(display("failed to parse {cluster_domain:?} as cluster domain"))]
+    #[snafu(display("failed to parse {cluster_domain:?} as domain name"))]
     ParseDomainName {
         source: crate::validation::Errors,
         cluster_domain: String,
     },
 
-    #[snafu(display("No 'search' entries found in"))]
-    SearchEntryNotFound,
+    #[snafu(display("unable to find \"search\" entry"))]
+    NoSearchEntry,
 
-    #[snafu(display("Could not trim search entry in '{search_entry_line}'."))]
-    TrimSearchEntryFailed { search_entry_line: String },
-
-    #[snafu(display("Could not find any cluster domain entry in search line."))]
-    LookupClusterDomainEntryFailed,
+    #[snafu(display("unable to find unambiguous domain in \"search\" entry"))]
+    AmbiguousDomainEntries,
 }
 
 /// This is the primary entry point to retrieve the Kubernetes cluster domain.
@@ -115,12 +112,12 @@ where
         .filter(|l| l.starts_with("search"))
         .map(|l| l.trim_start_matches("search"))
         .last()
-        .context(SearchEntryNotFoundSnafu)?;
+        .context(NoSearchEntrySnafu)?;
 
     let shortest_entry = last
         .split_ascii_whitespace()
         .min_by_key(|item| item.len())
-        .context(LookupClusterDomainEntryFailedSnafu)?;
+        .context(AmbiguousDomainEntriesSnafu)?;
 
     // NOTE (@Techassi): This is really sad and bothers me more than I would like to admit
     Ok(shortest_entry.to_owned())
