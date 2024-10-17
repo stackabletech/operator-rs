@@ -30,6 +30,14 @@ impl TryFrom<String> for DomainName {
     }
 }
 
+impl TryFrom<&str> for DomainName {
+    type Error = validation::Errors;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
 impl From<DomainName> for String {
     fn from(value: DomainName) -> Self {
         value.0

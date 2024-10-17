@@ -1,6 +1,7 @@
 use std::{env, path::Path, str::FromStr, sync::OnceLock};
 
 use snafu::{OptionExt, ResultExt, Snafu};
+use tracing::instrument;
 
 use crate::commons::networking::DomainName;
 
@@ -56,52 +57,64 @@ pub enum Error {
 /// - <https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/>
 pub static KUBERNETES_CLUSTER_DOMAIN: OnceLock<DomainName> = OnceLock::new();
 
+#[instrument]
 pub(crate) fn retrieve_cluster_domain() -> Result<DomainName, Error> {
     // 1. Read KUBERNETES_CLUSTER_DOMAIN env var
-    tracing::info!("Trying to determine the Kubernetes cluster domain...");
+    tracing::debug!("Trying to determine the Kubernetes cluster domain...");
 
     match env::var(KUBERNETES_CLUSTER_DOMAIN_ENV) {
         Ok(cluster_domain) if !cluster_domain.is_empty() => {
+            let cluster_domain = DomainName::from_str(&cluster_domain)
+                .context(ParseDomainNameSnafu { cluster_domain })?;
             tracing::info!(
-                cluster_domain,
-                "Kubernetes cluster domain set by environment variable"
+                %cluster_domain,
+                "Using Kubernetes cluster domain from {KUBERNETES_CLUSTER_DOMAIN_ENV} environment variable"
             );
-            return DomainName::from_str(&cluster_domain)
-                .context(ParseDomainNameSnafu { cluster_domain });
+            return Ok(cluster_domain);
         }
-        _ => {
-            tracing::info!(
-                "The environment variable \"{KUBERNETES_CLUSTER_DOMAIN_ENV}\" is not set or empty"
-            );
-        }
+        _ => {}
     };
 
     // 2. If no env var is set, check if we run in a clustered (Kubernetes/Openshift) environment
     //    by checking if KUBERNETES_SERVICE_HOST is set: If not default to 'cluster.local'.
-    tracing::info!("Trying to determine the operator runtime environment...");
+    tracing::debug!(
+        "Trying to determine the operator runtime environment as environment variable \
+            \"{KUBERNETES_CLUSTER_DOMAIN_ENV}\" is not set"
+    );
 
     match env::var(KUBERNETES_SERVICE_HOST_ENV) {
         Ok(_) => {
             let cluster_domain = retrieve_cluster_domain_from_resolv_conf(RESOLVE_CONF_FILE_PATH)?;
+            let cluster_domain = DomainName::from_str(&cluster_domain)
+                .context(ParseDomainNameSnafu { cluster_domain })?;
 
             tracing::info!(
-                cluster_domain,
+                %cluster_domain,
                 "Using Kubernetes cluster domain from {RESOLVE_CONF_FILE_PATH} file"
             );
 
-            DomainName::from_str(&cluster_domain).context(ParseDomainNameSnafu { cluster_domain })
+            Ok(cluster_domain)
         }
         Err(_) => {
-            let cluster_domain = KUBERNETES_CLUSTER_DOMAIN_DEFAULT;
-            tracing::info!(cluster_domain, "Using default Kubernetes cluster domain");
-            DomainName::from_str(cluster_domain).context(ParseDomainNameSnafu { cluster_domain })
+            let cluster_domain = DomainName::from_str(KUBERNETES_CLUSTER_DOMAIN_DEFAULT).context(
+                ParseDomainNameSnafu {
+                    cluster_domain: KUBERNETES_CLUSTER_DOMAIN_DEFAULT,
+                },
+            )?;
+
+            tracing::info!(
+                %cluster_domain,
+                "Could not determine Kubernetes cluster domain as the operator is not running within Kubernetes, assuming default Kubernetes cluster domain"
+            );
+            Ok(cluster_domain)
         }
     }
 }
 
+#[instrument]
 fn retrieve_cluster_domain_from_resolv_conf<P>(path: P) -> Result<String, Error>
 where
-    P: AsRef<Path>,
+    P: std::fmt::Debug + AsRef<Path>,
 {
     let content = std::fs::read_to_string(path).context(ReadResolvConfFileSnafu)?;
 
