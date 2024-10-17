@@ -43,7 +43,7 @@ pub enum Error {
 /// ## Usage
 ///
 /// ```no_run
-/// use stackable_operator::utils::KUBERNETES_CLUSTER_DOMAIN;
+/// use stackable_operator::utils::cluster_domain::KUBERNETES_CLUSTER_DOMAIN;
 ///
 /// let kubernetes_cluster_domain = KUBERNETES_CLUSTER_DOMAIN.get()
 ///     .expect("KUBERNETES_CLUSTER_DOMAIN must first be set by calling initialize_operator");
