@@ -123,6 +123,8 @@ where
     // NOTE (@Techassi): This is really sad and bothers me more than I would like to admit. This
     // clone could be removed by using the code directly in the calling function. But that would
     // remove the possibility to easily test the parsing.
+    // NOTE (@maltesander): This is only executed once at the start of the operator, so we can
+    // can live with that performance reduction :-)
     Ok(shortest_entry.to_owned())
 }
 
