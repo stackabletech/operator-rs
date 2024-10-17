@@ -385,7 +385,7 @@ impl Labels {
             pub fn contains_key(&self, key: impl TryInto<Key>) -> bool;
 
             /// Returns an [`Iterator`] over [`Labels`] yielding a reference to every [`Label`] contained within.
-            pub fn iter(&self) -> impl Iterator<Item = &KeyValuePair<LabelValue>>;
+            pub fn iter(&self) -> impl Iterator<Item = KeyValuePair<LabelValue>> + '_;
 
         }
     }
@@ -393,7 +393,7 @@ impl Labels {
 
 impl IntoIterator for Labels {
     type Item = KeyValuePair<LabelValue>;
-    type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
+    type IntoIter = <KeyValuePairs<LabelValue> as IntoIterator>::IntoIter;
 
     /// Returns a consuming [`Iterator`] over [`Labels`] moving every [`Label`] out.
     /// The [`Labels`] cannot be used again after calling this.
