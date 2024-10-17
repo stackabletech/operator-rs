@@ -66,7 +66,7 @@ pub(crate) fn retrieve_cluster_domain() -> Result<DomainName, Error> {
                 .context(ParseDomainNameSnafu { cluster_domain })?;
             tracing::info!(
                 %cluster_domain,
-                "Using Kubernetes cluster domain from {KUBERNETES_CLUSTER_DOMAIN_ENV} environment variable"
+                "Using Kubernetes cluster domain from {KUBERNETES_CLUSTER_DOMAIN_ENV:?} environment variable"
             );
             return Ok(cluster_domain);
         }
@@ -77,7 +77,7 @@ pub(crate) fn retrieve_cluster_domain() -> Result<DomainName, Error> {
     //    by checking if KUBERNETES_SERVICE_HOST is set: If not default to 'cluster.local'.
     tracing::debug!(
         "Trying to determine the operator runtime environment as environment variable \
-            \"{KUBERNETES_CLUSTER_DOMAIN_ENV}\" is not set"
+            {KUBERNETES_CLUSTER_DOMAIN_ENV:?} is not set"
     );
 
     match env::var(KUBERNETES_SERVICE_HOST_ENV) {
