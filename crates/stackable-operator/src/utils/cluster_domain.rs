@@ -119,7 +119,9 @@ where
         .min_by_key(|item| item.len())
         .context(AmbiguousDomainEntriesSnafu)?;
 
-    // NOTE (@Techassi): This is really sad and bothers me more than I would like to admit
+    // NOTE (@Techassi): This is really sad and bothers me more than I would like to admit. This
+    // clone could be removed by using the code directly in the calling function. But that would
+    // remove the possibility to easily test the parsing.
     Ok(shortest_entry.to_owned())
 }
 
