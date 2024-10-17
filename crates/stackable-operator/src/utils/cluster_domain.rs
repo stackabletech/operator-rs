@@ -62,7 +62,7 @@ pub(crate) fn retrieve_cluster_domain() -> Result<DomainName, Error> {
 
     match env::var(KUBERNETES_CLUSTER_DOMAIN_ENV) {
         Ok(cluster_domain) if !cluster_domain.is_empty() => {
-            tracing::info!("Using Kubernetes cluster domain: '{cluster_domain}'");
+            tracing::info!(cluster_domain, "Kubernetes cluster domain set by environment variable");
             return DomainName::from_str(&cluster_domain)
                 .context(ParseDomainNameSnafu { cluster_domain });
         }
