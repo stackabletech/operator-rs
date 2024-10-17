@@ -26,5 +26,3 @@ pub use self::{option::OptionExt, url::UrlExt};
 pub(crate) fn format_full_controller_name(operator: &str, controller: &str) -> String {
     format!("{operator}_{controller}")
 }
-
-pub use self::cluster_domain::KUBERNETES_CLUSTER_DOMAIN;
