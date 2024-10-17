@@ -30,34 +30,30 @@ pub enum Error {
     AmbiguousDomainEntries,
 }
 
-/// This is the primary entry point to retrieve the Kubernetes cluster domain.
+/// Tries to retrieve the Kubernetes cluster domain.
 ///
-/// Implements the logic decided in <https://github.com/stackabletech/issues/issues/436>
+/// 1. Return `KUBERNETES_CLUSTER_DOMAIN` if set, otherwise
+/// 2. Return the cluster domain parsed from the `/etc/resolv.conf` file if `KUBERNETES_SERVICE_HOST`
+///    is set, otherwise fall back to `cluster.local`. cluster.
 ///
-/// 1. Check if KUBERNETES_CLUSTER_DOMAIN is set -> return if set
-/// 2. Check if KUBERNETES_SERVICE_HOST is set to determine if we run in a Kubernetes / Openshift cluster
-///    2.1 If set continue and parse the `resolv.conf`
-///    2.2 If not set default to `cluster.local`
-/// 3. Read and parse the `resolv.conf`.
+/// This variable is initialized in [`crate::client::initialize_operator`], which is called in the
+/// main function. It can be used as suggested below.
 ///
-/// # Context
+/// ## Usage
 ///
-/// This variable is initialized in [`crate::client::initialize_operator`], which is called
-/// in the main function. It can be used as suggested below.
-///
-/// # Usage
-///
-/// ```no_run
-/// use stackable_operator::client::{Client, initialize_operator};
+/// ```
 /// use stackable_operator::utils::KUBERNETES_CLUSTER_DOMAIN;
 ///
-/// #[tokio::main]
-/// async fn main(){
-///     let client: Client = initialize_operator(None).await.expect("Unable to construct client.");
-///     let kubernetes_cluster_domain = KUBERNETES_CLUSTER_DOMAIN.get().expect("Could not resolve the Kubernetes cluster domain!");
-///     tracing::info!("Found cluster domain: {kubernetes_cluster_domain}");
-/// }
+/// let kubernetes_cluster_domain = KUBERNETES_CLUSTER_DOMAIN.get()
+///     .expect("KUBERNETES_CLUSTER_DOMAIN must first be set by calling initialize_operator");
+///
+/// tracing::info!(%kubernetes_cluster_domain, "Found cluster domain");
 /// ```
+///
+/// ## See
+///
+/// - <https://github.com/stackabletech/issues/issues/436>
+/// - <https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/>
 pub static KUBERNETES_CLUSTER_DOMAIN: OnceLock<DomainName> = OnceLock::new();
 
 pub(crate) fn retrieve_cluster_domain() -> Result<DomainName, Error> {
