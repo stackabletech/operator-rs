@@ -152,8 +152,8 @@ where
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum KeyValuePairsError {
-    #[snafu(display("key/value pair already exists"))]
-    PairAlreadyExists,
+    #[snafu(display("key already exists"))]
+    KeyAlreadyExists,
 }
 
 /// A validated set/list of Kubernetes key/value pairs.
@@ -178,7 +178,7 @@ pub enum KeyValuePairsError {
 /// which ultimately prevent unncessary reconciliations due to changes
 /// in item order.
 #[derive(Clone, Debug, Default)]
-pub struct KeyValuePairs<T: Value>(BTreeSet<KeyValuePair<T>>);
+pub struct KeyValuePairs<T: Value>(BTreeMap<Key, T>);
 
 impl<K, V, T> TryFrom<BTreeMap<K, V>> for KeyValuePairs<T>
 where
@@ -224,7 +224,7 @@ where
     T: Value,
 {
     fn from_iter<I: IntoIterator<Item = KeyValuePair<T>>>(iter: I) -> Self {
-        Self(iter.into_iter().collect())
+        Self(iter.into_iter().map(|kvp| (kvp.key, kvp.value)).collect())
     }
 }
 
@@ -242,7 +242,7 @@ where
             .map(KeyValuePair::try_from)
             .collect::<Result<BTreeSet<_>, KeyValuePairError<T::Error>>>()?;
 
-        Ok(Self(pairs))
+        Ok(Self::from_iter(pairs))
     }
 }
 
@@ -253,7 +253,7 @@ where
     fn from(value: KeyValuePairs<T>) -> Self {
         value
             .iter()
-            .map(|pair| (pair.key().to_string(), pair.value().to_string()))
+            .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect()
     }
 }
@@ -262,7 +262,7 @@ impl<T> Deref for KeyValuePairs<T>
 where
     T: Value,
 {
-    type Target = BTreeSet<KeyValuePair<T>>;
+    type Target = BTreeMap<Key, T>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -280,7 +280,7 @@ where
 
     /// Creates a new list of [`KeyValuePair`]s from `pairs`.
     pub fn new_with(pairs: BTreeSet<KeyValuePair<T>>) -> Self {
-        Self(pairs)
+        Self::from_iter(pairs)
     }
 
     /// Extends `self` with `other`.
@@ -295,16 +295,16 @@ where
     /// [`KeyValuePairs::contains_key`] before inserting or try to insert
     /// fallible via [`KeyValuePairs::try_insert`].
     pub fn insert(&mut self, kvp: KeyValuePair<T>) -> &mut Self {
-        self.0.insert(kvp);
+        self.0.insert(kvp.key, kvp.value);
         self
     }
 
     /// Tries to insert a new [`KeyValuePair`] into the list of pairs.
     ///
-    /// If the list already had this pair present, nothing is updated, and an
+    /// If the list already had this key present, nothing is updated, and an
     /// error is returned.
     pub fn try_insert(&mut self, kvp: KeyValuePair<T>) -> Result<(), KeyValuePairsError> {
-        ensure!(!self.0.contains(&kvp), PairAlreadyExistsSnafu);
+        ensure!(!self.0.contains_key(&kvp.key), KeyAlreadyExistsSnafu);
         self.insert(kvp);
         Ok(())
     }
@@ -314,7 +314,10 @@ where
         let Ok(kvp) = kvp.try_into() else {
             return false;
         };
-        self.0.contains(&kvp)
+        let Some(value) = self.get(&kvp.key) else {
+            return false;
+        };
+        value == &kvp.value
     }
 
     /// Returns if the list contains a key/value pair with a specific [`Key`].
@@ -323,18 +326,15 @@ where
             return false;
         };
 
-        for kvp in &self.0 {
-            if kvp.key == key {
-                return true;
-            }
-        }
-
-        false
+        self.0.contains_key(&key)
     }
 
     /// Returns an [`Iterator`] over [`KeyValuePairs`] yielding a reference to every [`KeyValuePair`] contained within.
-    pub fn iter(&self) -> impl Iterator<Item = &KeyValuePair<T>> {
-        self.0.iter()
+    pub fn iter(&self) -> impl Iterator<Item = KeyValuePair<T>> + '_ {
+        self.0.iter().map(|(k, v)| KeyValuePair {
+            key: k.clone(),
+            value: v.clone(),
+        })
     }
 }
 
@@ -343,12 +343,15 @@ where
     T: Value,
 {
     type Item = KeyValuePair<T>;
-    type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
+    type IntoIter =
+        std::iter::Map<std::collections::btree_map::IntoIter<Key, T>, fn((Key, T)) -> Self::Item>;
 
     /// Returns a consuming [`Iterator`] over [`KeyValuePairs`] moving every [`KeyValuePair`] out.
     /// The [`KeyValuePairs`] cannot be used again after calling this.
     fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+        self.0
+            .into_iter()
+            .map(|(key, value)| KeyValuePair { key, value })
     }
 }
 
@@ -487,5 +490,18 @@ mod test {
         let err = Label::try_from(("stackable.tech/vendor", "Stäckable")).unwrap_err();
         let report = Report::from_error(err);
         println!("{report}")
+    }
+
+    #[test]
+    fn merge() {
+        let mut merged_labels =
+            Labels::try_from_iter([("a", "b"), ("b", "a"), ("c", "c")]).unwrap();
+        merged_labels.extend(Labels::try_from_iter([("a", "a"), ("b", "b"), ("d", "d")]).unwrap());
+        assert_eq!(
+            BTreeMap::from(merged_labels),
+            BTreeMap::from(
+                Labels::try_from_iter([("a", "a"), ("b", "b"), ("c", "c"), ("d", "d")]).unwrap()
+            )
+        )
     }
 }
