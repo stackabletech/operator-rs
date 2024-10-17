@@ -293,15 +293,14 @@ impl Annotations {
             pub fn contains_key(&self, key: impl TryInto<Key>) -> bool;
 
             /// Returns an [`Iterator`] over [`Annotations`] yielding a reference to every [`Annotation`] contained within.
-            pub fn iter(&self) -> impl Iterator<Item = &KeyValuePair<AnnotationValue>>;
-
+            pub fn iter(&self) -> impl Iterator<Item = KeyValuePair<AnnotationValue>> + '_;
         }
     }
 }
 
 impl IntoIterator for Annotations {
     type Item = KeyValuePair<AnnotationValue>;
-    type IntoIter = std::collections::btree_set::IntoIter<Self::Item>;
+    type IntoIter = <KeyValuePairs<AnnotationValue> as IntoIterator>::IntoIter;
 
     /// Returns a consuming [`Iterator`] over [`Annotations`] moving every [`Annotation`] out.
     /// The [`Annotations`] cannot be used again after calling this.
