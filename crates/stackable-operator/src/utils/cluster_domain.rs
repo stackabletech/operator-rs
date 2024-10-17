@@ -1,6 +1,6 @@
-use std::{env, path::Path, str::FromStr, sync::OnceLock};
+use std::{env, path::PathBuf, str::FromStr, sync::OnceLock};
 
-use snafu::{OptionExt, ResultExt, Snafu};
+use snafu::{ResultExt, Snafu};
 use tracing::instrument;
 
 use crate::commons::networking::DomainName;
@@ -11,11 +11,9 @@ const KUBERNETES_SERVICE_HOST_ENV: &str = "KUBERNETES_SERVICE_HOST";
 const KUBERNETES_CLUSTER_DOMAIN_DEFAULT: &str = "cluster.local";
 const RESOLVE_CONF_FILE_PATH: &str = "/etc/resolv.conf";
 
-// TODO (@Techassi): Do we even need this many variants? Can we get rid of a bunch of variants and
-// fall back to defaults instead? Also trace the errors
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("failed to read resolv config from {RESOLVE_CONF_FILE_PATH}"))]
+    #[snafu(display("failed to read resolv config from {RESOLVE_CONF_FILE_PATH:?}"))]
     ReadResolvConfFile { source: std::io::Error },
 
     #[snafu(display("failed to parse {cluster_domain:?} as domain name"))]
@@ -24,10 +22,10 @@ pub enum Error {
         cluster_domain: String,
     },
 
-    #[snafu(display("unable to find \"search\" entry"))]
+    #[snafu(display(r#"unable to find "search" entry"#))]
     NoSearchEntry,
 
-    #[snafu(display("unable to find unambiguous domain in \"search\" entry"))]
+    #[snafu(display(r#"unable to find unambiguous domain in "search" entry"#))]
     AmbiguousDomainEntries,
 }
 
@@ -90,52 +88,58 @@ pub(crate) fn retrieve_cluster_domain() -> Result<DomainName, Error> {
 
             tracing::info!(
                 %cluster_domain,
-                "Using Kubernetes cluster domain from {RESOLVE_CONF_FILE_PATH} file"
+                "Using Kubernetes cluster domain from {RESOLVE_CONF_FILE_PATH:?} file"
             );
 
             Ok(cluster_domain)
         }
         Err(_) => {
-            let cluster_domain = DomainName::from_str(KUBERNETES_CLUSTER_DOMAIN_DEFAULT).context(
-                ParseDomainNameSnafu {
-                    cluster_domain: KUBERNETES_CLUSTER_DOMAIN_DEFAULT,
-                },
-            )?;
+            let cluster_domain = DomainName::from_str(KUBERNETES_CLUSTER_DOMAIN_DEFAULT)
+                .expect("KUBERNETES_CLUSTER_DOMAIN_DEFAULT constant must a valid domain");
 
             tracing::info!(
                 %cluster_domain,
                 "Could not determine Kubernetes cluster domain as the operator is not running within Kubernetes, assuming default Kubernetes cluster domain"
             );
+
             Ok(cluster_domain)
         }
     }
 }
 
 #[instrument]
-fn retrieve_cluster_domain_from_resolv_conf<P>(path: P) -> Result<String, Error>
-where
-    P: std::fmt::Debug + AsRef<Path>,
-{
-    let content = std::fs::read_to_string(path).context(ReadResolvConfFileSnafu)?;
+fn retrieve_cluster_domain_from_resolv_conf(
+    path: impl Into<PathBuf> + std::fmt::Debug,
+) -> Result<String, Error> {
+    let path = path.into();
+    let content = std::fs::read_to_string(&path)
+        .inspect_err(|error| {
+            tracing::error!(%error, path = %path.display(), "Cannot read resolv conf");
+        })
+        .context(ReadResolvConfFileSnafu)?;
 
-    let last = content
+    // If there are multiple search directives, only the search
+    // man 5 resolv.conf
+    let Some(last_search_entry) = content
         .lines()
+        .rev()
         .map(|l| l.trim())
-        .filter(|l| l.starts_with("search"))
-        .map(|l| l.trim_start_matches("search"))
-        .last()
-        .context(NoSearchEntrySnafu)?;
+        .find(|&l| l.starts_with("search"))
+        .map(|l| l.trim_start_matches("search").trim())
+    else {
+        return NoSearchEntrySnafu.fail();
+    };
 
-    let shortest_entry = last
+    let Some(shortest_entry) = last_search_entry
         .split_ascii_whitespace()
         .min_by_key(|item| item.len())
-        .context(AmbiguousDomainEntriesSnafu)?;
+    else {
+        return AmbiguousDomainEntriesSnafu.fail();
+    };
 
     // NOTE (@Techassi): This is really sad and bothers me more than I would like to admit. This
     // clone could be removed by using the code directly in the calling function. But that would
     // remove the possibility to easily test the parsing.
-    // NOTE (@maltesander): This is only executed once at the start of the operator, so we can
-    // can live with that performance reduction :-)
     Ok(shortest_entry.to_owned())
 }
 
