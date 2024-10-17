@@ -15,7 +15,7 @@ const RESOLVE_CONF_FILE_PATH: &str = "/etc/resolv.conf";
 // fall back to defaults instead? Also trace the errors
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("failed to read resolv.conf"))]
+    #[snafu(display("failed to read resolv config from {RESOLVE_CONF_FILE_PATH}"))]
     ReadResolvConfFile { source: std::io::Error },
 
     #[snafu(display("failed to parse {cluster_domain:?} as domain name"))]
@@ -35,7 +35,7 @@ pub enum Error {
 ///
 /// 1. Return `KUBERNETES_CLUSTER_DOMAIN` if set, otherwise
 /// 2. Return the cluster domain parsed from the `/etc/resolv.conf` file if `KUBERNETES_SERVICE_HOST`
-///    is set, otherwise fall back to `cluster.local`. cluster.
+///    is set, otherwise fall back to `cluster.local`.
 ///
 /// This variable is initialized in [`crate::client::initialize_operator`], which is called in the
 /// main function. It can be used as suggested below.
