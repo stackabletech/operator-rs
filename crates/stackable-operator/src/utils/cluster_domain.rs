@@ -2,7 +2,7 @@ use std::{env, path::Path, str::FromStr, sync::OnceLock};
 
 use snafu::{OptionExt, ResultExt, Snafu};
 
-use crate::{commons::networking::DomainName, utils::cluster_domain};
+use crate::commons::networking::DomainName;
 
 const KUBERNETES_CLUSTER_DOMAIN_ENV: &str = "KUBERNETES_CLUSTER_DOMAIN";
 const KUBERNETES_SERVICE_HOST_ENV: &str = "KUBERNETES_SERVICE_HOST";
@@ -94,8 +94,7 @@ pub(crate) fn retrieve_cluster_domain() -> Result<DomainName, Error> {
         Err(_) => {
             let cluster_domain = KUBERNETES_CLUSTER_DOMAIN_DEFAULT;
             tracing::info!(cluster_domain, "Using default Kubernetes cluster domain");
-            DomainName::from_str(KUBERNETES_CLUSTER_DOMAIN_DEFAULT)
-                .context(ParseDomainNameSnafu { cluster_domain })
+            DomainName::from_str(cluster_domain).context(ParseDomainNameSnafu { cluster_domain })
         }
     }
 }
