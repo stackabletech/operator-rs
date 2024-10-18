@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.79.0] - 2024-10-18
+
 ### Added
 
 - Re-export the `YamlSchema` trait and the `stackable-shared` crate as the `shared` module ([#883]).
