@@ -4,10 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+clap = { version = "4.5.20", features = ["derive"] }
 
 hickory-resolver = "0.24.1"
 local-ip-address = "0.6.3"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
+stackable-operator = { git = "https://github.com/stackabletech/operator-rs", tag = "stackable-operator-0.78.0", version = "0.78.0" }
 sysinfo = "0.32.0"
 users = "0.11.0"

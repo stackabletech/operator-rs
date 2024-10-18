@@ -1,5 +1,6 @@
 mod system_information;
 
+use clap::Parser;
 use local_ip_address::list_afinet_netifas;
 use std::collections::{HashMap, HashSet};
 use sysinfo::{Disks, System};
@@ -8,79 +9,103 @@ use crate::system_information::{SystemInformation, SystemNetworkInfo};
 use hickory_resolver::system_conf::read_system_conf;
 use hickory_resolver::Resolver;
 use std::net::IpAddr;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+
+/// Collects and prints helpful debugging information about the environment that it is running in.
+#[derive(clap::Parser)]
+struct Opts {
+    /// Loop every <DURATION>, instead of shutting down once completed (default <DURATION>: 1m)
+    #[clap(
+        long,
+        default_missing_value = "1m",
+        num_args = 0..=1,
+        require_equals = true,
+        value_name = "DURATION",
+    )]
+    loop_interval: Option<stackable_operator::time::Duration>,
+}
 
 fn main() {
-    // Please note that we use "new_all" to ensure that all list of
-    // components, network interfaces, disks and users are already
-    // filled!
-    let sys = System::new_all();
+    let opts = Opts::parse();
 
-    let disks = Disks::new_with_refreshed_list();
-    let disks = disks
-        .into_iter()
-        .map(|disk| system_information::Disk::from(disk))
-        .collect();
+    let mut next_run = Instant::now();
+    loop {
+        std::thread::sleep(next_run.saturating_duration_since(Instant::now()));
 
-    let system_network_information = get_network_info();
+        // Please note that we use "new_all" to ensure that all list of
+        // components, network interfaces, disks and users are already
+        // filled!
+        let sys = System::new_all();
 
-    let current_uid = users::get_current_uid();
-    let current_gid = users::get_current_gid();
-    let current_user = users::get_user_by_uid(current_uid).unwrap();
+        let disks = Disks::new_with_refreshed_list();
+        let disks = disks
+            .into_iter()
+            .map(system_information::Disk::from)
+            .collect();
 
+        let system_network_information = get_network_info();
 
-    let system_information = SystemInformation {
-        cpu_count: sys.cpus().len(),
-        physical_core_count: sys.physical_core_count(),
+        let current_uid = users::get_current_uid();
+        let current_gid = users::get_current_gid();
+        let current_user = users::get_user_by_uid(current_uid).unwrap();
 
-        total_memory: sys.total_memory(),
-        free_memory: sys.free_memory(),
-        available_memory: sys.available_memory(),
-        used_memory: sys.used_memory(),
+        let system_information = SystemInformation {
+            cpu_count: sys.cpus().len(),
+            physical_core_count: sys.physical_core_count(),
 
-        total_swap: sys.total_swap(),
-        free_swap: sys.free_swap(),
-        used_swap: sys.used_swap(),
+            total_memory: sys.total_memory(),
+            free_memory: sys.free_memory(),
+            available_memory: sys.available_memory(),
+            used_memory: sys.used_memory(),
 
-        total_memory_cgroup: sys.cgroup_limits().map(|limit| limit.total_memory),
-        free_memory_cgroup: sys.cgroup_limits().map(|limit| limit.free_memory),
-        free_swap_cgroup: sys.cgroup_limits().map(|limit| limit.free_swap),
+            total_swap: sys.total_swap(),
+            free_swap: sys.free_swap(),
+            used_swap: sys.used_swap(),
 
-        system_name: System::name(),
-        kernel_version: System::kernel_version(),
-        os_version: System::long_os_version(),
-        host_name: System::host_name(),
-        cpu_arch: System::cpu_arch(),
+            total_memory_cgroup: sys.cgroup_limits().map(|limit| limit.total_memory),
+            free_memory_cgroup: sys.cgroup_limits().map(|limit| limit.free_memory),
+            free_swap_cgroup: sys.cgroup_limits().map(|limit| limit.free_swap),
 
-        disks,
+            system_name: System::name(),
+            kernel_version: System::kernel_version(),
+            os_version: System::long_os_version(),
+            host_name: System::host_name(),
+            cpu_arch: System::cpu_arch(),
 
-        network_information: system_network_information,
+            disks,
 
+            network_information: system_network_information,
 
-        // Adding current user, UID, and GID info
-        current_user: current_user.name().to_str().unwrap().to_string(),
-        current_uid,
-        current_gid,
-    };
+            // Adding current user, UID, and GID info
+            current_user: current_user.name().to_str().unwrap().to_string(),
+            current_uid,
+            current_gid,
+        };
 
-    let serialized = serde_json::to_string_pretty(&system_information).unwrap();
-    println!("{}", serialized);
+        let serialized = serde_json::to_string_pretty(&system_information).unwrap();
+        println!("{}", serialized);
 
-    // TODO:
-    //  Current time
-    //  SElinux/AppArmor
-    //  Maybe env variables (may contain secrets)
-    //  dmesg/syslog?
-    //  capabilities?
-    //  downward API
-    //  Somehow get the custom resources logged?
+        // TODO:
+        //  Current time
+        //  SElinux/AppArmor
+        //  Maybe env variables (may contain secrets)
+        //  dmesg/syslog?
+        //  capabilities?
+        //  downward API
+        //  Somehow get the custom resources logged?
 
-    // Things left out for now because it doesn't seem too useful:
-    // - Running processes
-    // - Uptime/boot time
-    // - Load average
-    // - Network utilization
-    // - Users/Groups
+        // Things left out for now because it doesn't seem too useful:
+        // - Running processes
+        // - Uptime/boot time
+        // - Load average
+        // - Network utilization
+        // - Users/Groups
+
+        match opts.loop_interval {
+            Some(interval) => next_run += interval,
+            None => break,
+        }
+    }
 }
 
 fn get_network_info() -> SystemNetworkInfo {
