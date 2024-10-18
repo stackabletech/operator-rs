@@ -1,20 +1,20 @@
 use std::ops::{Deref, DerefMut};
 
-use darling::FromVariant;
+use darling::{util::IdentString, FromVariant};
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{token::Not, Ident, Type, TypeNever, Variant};
 
 use crate::{
     attrs::{
-        common::{ContainerAttributes, ItemAttributes},
+        common::{ItemAttributes, StandaloneContainerAttributes},
         variant::VariantAttributes,
     },
     codegen::{
         chain::BTreeMapExt,
         common::{
-            remove_deprecated_variant_prefix, Attributes, ContainerVersion, InnerItem, Item,
-            ItemStatus, Named, VersionedItem,
+            remove_deprecated_variant_prefix, Attributes, InnerItem, Item, ItemStatus, Named,
+            VersionDefinition, VersionedItem,
         },
     },
 };
@@ -92,7 +92,7 @@ impl VersionedVariant {
     /// common creation code.
     pub(crate) fn new(
         variant: Variant,
-        container_attributes: &ContainerAttributes,
+        container_attributes: &StandaloneContainerAttributes,
     ) -> syn::Result<Self> {
         let item = VersionedItem::<_, VariantAttributes>::new(variant, container_attributes)?;
         Ok(Self(item))
@@ -101,7 +101,7 @@ impl VersionedVariant {
     /// Generates tokens to be used in a container definition.
     pub(crate) fn generate_for_container(
         &self,
-        container_version: &ContainerVersion,
+        container_version: &VersionDefinition,
     ) -> Option<TokenStream> {
         let original_attributes = &self.original_attributes;
         let fields = &self.inner.fields;
@@ -179,9 +179,9 @@ impl VersionedVariant {
         &self,
         module_name: &Ident,
         next_module_name: &Ident,
-        version: &ContainerVersion,
-        next_version: &ContainerVersion,
-        enum_ident: &Ident,
+        version: &VersionDefinition,
+        next_version: &VersionDefinition,
+        enum_ident: &IdentString,
     ) -> TokenStream {
         let variant_data = match &self.inner.fields {
             syn::Fields::Named(fields_named) => {

@@ -1,18 +1,18 @@
 use std::ops::{Deref, DerefMut};
 
-use darling::FromField;
+use darling::{util::IdentString, FromField};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Field, Ident};
 
 use crate::{
     attrs::{
-        common::{ContainerAttributes, ItemAttributes},
+        common::{ItemAttributes, StandaloneContainerAttributes},
         field::FieldAttributes,
     },
     codegen::common::{
-        remove_deprecated_field_prefix, Attributes, ContainerVersion, InnerItem, Item, ItemStatus,
-        Named, VersionedItem,
+        remove_deprecated_field_prefix, Attributes, InnerItem, Item, ItemStatus, Named,
+        VersionDefinition, VersionedItem,
     },
 };
 
@@ -89,7 +89,7 @@ impl VersionedField {
     /// common creation code.
     pub(crate) fn new(
         field: Field,
-        container_attributes: &ContainerAttributes,
+        container_attributes: &StandaloneContainerAttributes,
     ) -> syn::Result<Self> {
         let item = VersionedItem::<_, FieldAttributes>::new(field, container_attributes)?;
         Ok(Self(item))
@@ -98,7 +98,7 @@ impl VersionedField {
     /// Generates tokens to be used in a container definition.
     pub(crate) fn generate_for_container(
         &self,
-        container_version: &ContainerVersion,
+        container_version: &VersionDefinition,
     ) -> Option<TokenStream> {
         let original_attributes = &self.original_attributes;
 
@@ -192,9 +192,9 @@ impl VersionedField {
     /// Generates tokens to be used in a [`From`] implementation.
     pub(crate) fn generate_for_from_impl(
         &self,
-        version: &ContainerVersion,
-        next_version: &ContainerVersion,
-        from_ident: &Ident,
+        version: &VersionDefinition,
+        next_version: &VersionDefinition,
+        from_ident: &IdentString,
     ) -> TokenStream {
         match &self.chain {
             Some(chain) => {
