@@ -21,7 +21,7 @@ pub mod v1alpha1 {
     }
 }
 #[automatically_derived]
-impl From<v1alpha1::FooSpec> for v1beta1::FooSpec {
+impl ::std::convert::From<v1alpha1::FooSpec> for v1beta1::FooSpec {
     fn from(__sv_foospec: v1alpha1::FooSpec) -> Self {
         Self {
             bah: ::std::default::Default::default(),
@@ -48,7 +48,7 @@ pub mod v1beta1 {
     }
 }
 #[automatically_derived]
-impl From<v1beta1::FooSpec> for v1::FooSpec {
+impl ::std::convert::From<v1beta1::FooSpec> for v1::FooSpec {
     fn from(__sv_foospec: v1beta1::FooSpec) -> Self {
         Self {
             bar: __sv_foospec.bah.into(),

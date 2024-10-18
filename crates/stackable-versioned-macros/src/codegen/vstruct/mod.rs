@@ -294,7 +294,7 @@ impl VersionedStruct {
             return Some(quote! {
                 #[automatically_derived]
                 #allow_attribute
-                impl From<#module_name::#struct_ident> for #next_module_name::#struct_ident {
+                impl ::std::convert::From<#module_name::#struct_ident> for #next_module_name::#struct_ident {
                     fn from(#from_ident: #module_name::#struct_ident) -> Self {
                         Self {
                             #fields
