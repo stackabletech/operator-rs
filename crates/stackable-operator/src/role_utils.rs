@@ -95,10 +95,12 @@ use crate::{
     utils::crds::raw_object_schema,
 };
 use derivative::Derivative;
+use k8s_openapi::api::autoscaling::v1::HorizontalPodAutoscaler;
 use k8s_openapi::api::core::v1::PodTemplateSpec;
 use kube::{runtime::reflector::ObjectRef, Resource};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use crate::commons::scaling::ScalingConfig;
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(
@@ -221,6 +223,7 @@ where
                                 pod_overrides: group.config.pod_overrides,
                             },
                             replicas: group.replicas,
+                            scaling_config: None,
                         },
                     )
                 })
@@ -252,6 +255,7 @@ pub struct RoleGroup<T> {
     #[serde(flatten)]
     pub config: CommonConfiguration<T>,
     pub replicas: Option<u16>,
+    pub scaling_config: Option<HorizontalPodAutoscaler>,
 }
 
 impl<T> RoleGroup<T> {

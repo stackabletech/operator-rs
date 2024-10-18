@@ -37,6 +37,7 @@ use std::{
     collections::{BTreeMap, HashSet},
     fmt::Debug,
 };
+use k8s_openapi::api::autoscaling::v1::HorizontalPodAutoscaler;
 use strum::Display;
 use tracing::{debug, info, warn};
 
@@ -205,6 +206,7 @@ impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
 impl ClusterResource for PodDisruptionBudget {}
 impl ClusterResource for Listener {}
+impl ClusterResource for HorizontalPodAutoscaler {}
 
 impl ClusterResource for Job {
     fn pod_spec(&self) -> Option<&PodSpec> {
