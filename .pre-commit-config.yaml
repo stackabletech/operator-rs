@@ -51,5 +51,5 @@ repos:
         name: .scripts/verify-crate-versions
         language: system
         entry: .scripts/verify_crate_versions.sh
-        stages: [commit, merge-commit, manual]
+        stages: [pre-commit, pre-merge-commit, manual]
         pass_filenames: false

@@ -1,4 +1,5 @@
 use crate::kvp::LabelSelectorExt;
+use crate::utils::cluster_domain::{self, retrieve_cluster_domain, KUBERNETES_CLUSTER_DOMAIN};
 
 use either::Either;
 use futures::StreamExt;
@@ -77,6 +78,9 @@ pub enum Error {
 
     #[snafu(display("unable to create kubernetes client"))]
     CreateKubeClient { source: kube::Error },
+
+    #[snafu(display("unable to to resolve kubernetes cluster domain"))]
+    ResolveKubernetesClusterDomain { source: cluster_domain::Error },
 }
 
 /// This `Client` can be used to access Kubernetes.
@@ -510,12 +514,12 @@ impl Client {
     /// use tokio::time::error::Elapsed;
     /// use kube::runtime::watcher;
     /// use k8s_openapi::api::core::v1::Pod;
-    /// use stackable_operator::client::{Client, create_client};
+    /// use stackable_operator::client::{Client, initialize_operator};
     ///
     /// #[tokio::main]
     /// async fn main(){
     ///
-    /// let client: Client = create_client(None).await.expect("Unable to construct client.");
+    /// let client: Client = initialize_operator(None).await.expect("Unable to construct client.");
     /// let watcher_config: watcher::Config =
     ///         watcher::Config::default().fields(&format!("metadata.name=nonexistent-pod"));
     ///
@@ -622,7 +626,13 @@ where
     }
 }
 
-pub async fn create_client(field_manager: Option<String>) -> Result<Client> {
+pub async fn initialize_operator(field_manager: Option<String>) -> Result<Client> {
+    let _ = KUBERNETES_CLUSTER_DOMAIN
+        .set(retrieve_cluster_domain().context(ResolveKubernetesClusterDomainSnafu)?);
+    create_client(field_manager).await
+}
+
+async fn create_client(field_manager: Option<String>) -> Result<Client> {
     let kubeconfig: Config = kube::Config::infer()
         .await
         .map_err(kube::Error::InferConfig)
