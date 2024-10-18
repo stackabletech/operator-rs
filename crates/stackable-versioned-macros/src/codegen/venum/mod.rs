@@ -3,14 +3,14 @@ use std::ops::Deref;
 use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{DataEnum, Error};
+use syn::{punctuated::Punctuated, token::Comma, Error, Variant};
 
 use crate::{
-    attrs::common::ContainerAttributes,
+    attrs::common::StandaloneContainerAttributes,
     codegen::{
         chain::Neighbors,
         common::{
-            Container, ContainerInput, ContainerVersion, Item, ItemStatus, VersionedContainer,
+            Container, ContainerInput, Item, ItemStatus, VersionDefinition, VersionedContainer,
         },
         venum::variant::VersionedVariant,
     },
@@ -33,11 +33,11 @@ impl Deref for VersionedEnum {
     }
 }
 
-impl Container<DataEnum, VersionedVariant> for VersionedEnum {
+impl Container<Punctuated<Variant, Comma>, VersionedVariant> for VersionedEnum {
     fn new(
         input: ContainerInput,
-        data: DataEnum,
-        attributes: ContainerAttributes,
+        variants: Punctuated<Variant, Comma>,
+        attributes: StandaloneContainerAttributes,
     ) -> syn::Result<Self> {
         let ident = &input.ident;
 
@@ -49,7 +49,7 @@ impl Container<DataEnum, VersionedVariant> for VersionedEnum {
         // version declared by the container attribute.
         let mut items = Vec::new();
 
-        for variant in data.variants {
+        for variant in variants {
             let mut versioned_field = VersionedVariant::new(variant, &attributes)?;
             versioned_field.insert_container_versions(&versions);
             items.push(versioned_field);
@@ -78,7 +78,7 @@ impl Container<DataEnum, VersionedVariant> for VersionedEnum {
         )))
     }
 
-    fn generate_tokens(&self) -> TokenStream {
+    fn generate_standalone_tokens(&self) -> TokenStream {
         let mut token_stream = TokenStream::new();
         let mut versions = self.versions.iter().peekable();
 
@@ -88,13 +88,17 @@ impl Container<DataEnum, VersionedVariant> for VersionedEnum {
 
         token_stream
     }
+
+    fn generate_nested_tokens(&self) -> TokenStream {
+        quote! {}
+    }
 }
 
 impl VersionedEnum {
     fn generate_version(
         &self,
-        version: &ContainerVersion,
-        next_version: Option<&ContainerVersion>,
+        version: &VersionDefinition,
+        next_version: Option<&VersionDefinition>,
     ) -> TokenStream {
         let mut token_stream = TokenStream::new();
 
@@ -143,7 +147,7 @@ impl VersionedEnum {
     }
 
     /// Generates version specific doc comments for the enum.
-    fn generate_enum_docs(&self, version: &ContainerVersion) -> TokenStream {
+    fn generate_enum_docs(&self, version: &VersionDefinition) -> TokenStream {
         let mut tokens = TokenStream::new();
 
         for (i, doc) in version.version_specific_docs.iter().enumerate() {
@@ -162,7 +166,7 @@ impl VersionedEnum {
         tokens
     }
 
-    fn generate_enum_variants(&self, version: &ContainerVersion) -> TokenStream {
+    fn generate_enum_variants(&self, version: &VersionDefinition) -> TokenStream {
         let mut token_stream = TokenStream::new();
 
         for variant in &self.items {
@@ -174,8 +178,8 @@ impl VersionedEnum {
 
     fn generate_from_impl(
         &self,
-        version: &ContainerVersion,
-        next_version: Option<&ContainerVersion>,
+        version: &VersionDefinition,
+        next_version: Option<&VersionDefinition>,
     ) -> TokenStream {
         if let Some(next_version) = next_version {
             let next_module_name = &next_version.ident;
@@ -223,7 +227,7 @@ impl VersionedEnum {
 
     /// Returns whether any field is deprecated in the provided
     /// [`ContainerVersion`].
-    fn is_any_variant_deprecated(&self, version: &ContainerVersion) -> bool {
+    fn is_any_variant_deprecated(&self, version: &VersionDefinition) -> bool {
         // First, iterate over all fields. Any will return true if any of the
         // function invocations return true. If a field doesn't have a chain,
         // we can safely default to false (unversioned fields cannot be

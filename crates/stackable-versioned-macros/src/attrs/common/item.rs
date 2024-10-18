@@ -4,7 +4,7 @@ use proc_macro2::Span;
 use syn::{spanned::Spanned, Attribute, Ident, Path, Type};
 
 use crate::{
-    attrs::common::ContainerAttributes,
+    attrs::common::StandaloneContainerAttributes,
     codegen::common::Attributes,
     consts::{DEPRECATED_FIELD_PREFIX, DEPRECATED_VARIANT_PREFIX},
 };
@@ -23,7 +23,7 @@ where
     /// declared container versions.
     fn validate_versions(
         &self,
-        container_attrs: &ContainerAttributes,
+        container_attrs: &StandaloneContainerAttributes,
         item: &I,
     ) -> Result<(), darling::Error>;
 }
@@ -35,7 +35,7 @@ where
 {
     fn validate_versions(
         &self,
-        container_attrs: &ContainerAttributes,
+        container_attrs: &StandaloneContainerAttributes,
         item: &I,
     ) -> Result<(), darling::Error> {
         // NOTE (@Techassi): Can we maybe optimize this a little?
@@ -360,7 +360,6 @@ fn default_default_fn() -> SpannedValue<Path> {
 pub(crate) struct ChangedAttributes {
     pub(crate) since: SpannedValue<Version>,
     pub(crate) from_name: Option<SpannedValue<String>>,
-
     pub(crate) from_type: Option<SpannedValue<Type>>,
 }
 

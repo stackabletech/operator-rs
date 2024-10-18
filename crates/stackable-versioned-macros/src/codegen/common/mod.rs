@@ -6,21 +6,23 @@ use quote::format_ident;
 use syn::Ident;
 
 use crate::{
-    attrs::common::ContainerAttributes,
+    attrs::common::{ModuleAttributes, StandaloneContainerAttributes},
     consts::{DEPRECATED_FIELD_PREFIX, DEPRECATED_VARIANT_PREFIX},
 };
 
 mod container;
 mod item;
+mod module;
 
 pub(crate) use container::*;
 pub(crate) use item::*;
+pub(crate) use module::*;
 
 /// Type alias to make the type of the version chain easier to handle.
 pub(crate) type VersionChain = BTreeMap<Version, ItemStatus>;
 
 #[derive(Debug, Clone)]
-pub(crate) struct ContainerVersion {
+pub(crate) struct VersionDefinition {
     /// Indicates that the container version is deprecated.
     pub(crate) deprecated: bool,
 
@@ -54,17 +56,34 @@ fn process_docs(input: &Option<String>) -> Vec<String> {
     }
 }
 
-impl From<&ContainerAttributes> for Vec<ContainerVersion> {
-    fn from(attributes: &ContainerAttributes) -> Self {
+// NOTE (@Techassi): Can we maybe unify these two impls?
+impl From<&StandaloneContainerAttributes> for Vec<VersionDefinition> {
+    fn from(attributes: &StandaloneContainerAttributes) -> Self {
         attributes
             .versions
             .iter()
-            .map(|v| ContainerVersion {
+            .map(|v| VersionDefinition {
                 skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
                 ident: Ident::new(&v.name.to_string(), Span::call_site()),
+                version_specific_docs: process_docs(&v.doc),
                 deprecated: v.deprecated.is_present(),
                 inner: v.name,
+            })
+            .collect()
+    }
+}
+
+impl From<&ModuleAttributes> for Vec<VersionDefinition> {
+    fn from(attributes: &ModuleAttributes) -> Self {
+        attributes
+            .versions
+            .iter()
+            .map(|v| VersionDefinition {
+                skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
+                ident: format_ident!("{version}", version = v.name.to_string()),
                 version_specific_docs: process_docs(&v.doc),
+                deprecated: v.deprecated.is_present(),
+                inner: v.name,
             })
             .collect()
     }

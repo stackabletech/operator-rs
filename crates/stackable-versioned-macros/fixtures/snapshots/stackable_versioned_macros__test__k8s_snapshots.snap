@@ -106,7 +106,7 @@ impl Foo {
             vec![
                 < v1alpha1::Foo as ::kube::CustomResourceExt > ::crd(), < v1beta1::Foo as
                 ::kube::CustomResourceExt > ::crd(), < v1::Foo as
-                ::kube::CustomResourceExt > ::crd()
+                ::kube::CustomResourceExt > ::crd(),
             ],
             &stored_apiversion.to_string(),
         )

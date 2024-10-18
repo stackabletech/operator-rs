@@ -1,12 +1,17 @@
 use std::ops::Deref;
 
 use convert_case::{Case, Casing};
+use darling::util::IdentString;
 use k8s_version::Version;
 use proc_macro2::TokenStream;
 use quote::format_ident;
 use syn::{Attribute, Ident, Visibility};
 
-use crate::{attrs::common::ContainerAttributes, codegen::common::ContainerVersion};
+use crate::{
+    attrs::common::StandaloneContainerAttributes,
+    codegen::common::VersionDefinition,
+    consts::{DEPRECATED_FIELD_PREFIX, DEPRECATED_VARIANT_PREFIX},
+};
 
 /// This trait helps to unify versioned containers, like structs and enums.
 ///
@@ -24,7 +29,11 @@ where
     Self: Sized + Deref<Target = VersionedContainer<I>>,
 {
     /// Creates a new versioned container.
-    fn new(input: ContainerInput, data: D, attributes: ContainerAttributes) -> syn::Result<Self>;
+    fn new(
+        input: ContainerInput,
+        data: D,
+        attributes: StandaloneContainerAttributes,
+    ) -> syn::Result<Self>;
 
     /// This generates the complete code for a single versioned container.
     ///
@@ -32,25 +41,48 @@ where
     /// contains the container with the appropriate items (fields or variants)
     /// Additionally, it generates `From` implementations, which enable
     /// conversion from an older to a newer version.
-    fn generate_tokens(&self) -> TokenStream;
+    fn generate_standalone_tokens(&self) -> TokenStream;
+
+    fn generate_nested_tokens(&self) -> TokenStream;
 }
 
-/// Provides extra functionality on top of [`struct@Ident`]s.
-pub(crate) trait IdentExt {
+/// Provides extra functionality on top of [`struct@Ident`]s used to name containers.
+pub(crate) trait ContainerIdentExt {
     /// Removes the 'Spec' suffix from the [`struct@Ident`].
-    fn as_cleaned_kubernetes_ident(&self) -> Ident;
+    fn as_cleaned_kubernetes_ident(&self) -> IdentString;
 
     /// Transforms the [`struct@Ident`] into one usable in the [`From`] impl.
-    fn as_from_impl_ident(&self) -> Ident;
+    fn as_from_impl_ident(&self) -> IdentString;
 }
 
-impl IdentExt for Ident {
-    fn as_cleaned_kubernetes_ident(&self) -> Ident {
-        format_ident!("{}", self.to_string().trim_end_matches("Spec"))
+impl ContainerIdentExt for Ident {
+    fn as_cleaned_kubernetes_ident(&self) -> IdentString {
+        let ident = format_ident!("{}", self.to_string().trim_end_matches("Spec"));
+        IdentString::new(ident)
     }
 
-    fn as_from_impl_ident(&self) -> Ident {
-        format_ident!("__sv_{}", self.to_string().to_lowercase())
+    fn as_from_impl_ident(&self) -> IdentString {
+        let ident = format_ident!("__sv_{}", self.to_string().to_lowercase());
+        IdentString::new(ident)
+    }
+}
+
+/// Provides extra functionality on top of [`struct@Ident`]s used to name items, like fields and
+/// variants.
+pub(crate) trait ItemIdentExt {
+    /// Removes deprecation prefixed from field or variant idents.
+    fn as_cleaned_ident(&self) -> IdentString;
+}
+
+impl ItemIdentExt for Ident {
+    fn as_cleaned_ident(&self) -> IdentString {
+        let ident = self.to_string();
+        let ident = ident
+            .trim_start_matches(DEPRECATED_FIELD_PREFIX)
+            .trim_start_matches(DEPRECATED_VARIANT_PREFIX)
+            .trim_start_matches('_');
+
+        IdentString::new(format_ident!("{ident}"))
     }
 }
 
@@ -88,7 +120,7 @@ pub(crate) struct ContainerInput {
 pub(crate) struct VersionedContainer<I> {
     /// List of declared versions for this container. Each version generates a
     /// definition with appropriate items.
-    pub(crate) versions: Vec<ContainerVersion>,
+    pub(crate) versions: Vec<VersionDefinition>,
 
     /// The original attributes that were added to the container.
     pub(crate) original_attributes: Vec<Attribute>,
@@ -113,8 +145,8 @@ impl<I> VersionedContainer<I> {
     /// across structs and enums.
     pub(crate) fn new(
         input: ContainerInput,
-        attributes: ContainerAttributes,
-        versions: Vec<ContainerVersion>,
+        attributes: StandaloneContainerAttributes,
+        versions: Vec<VersionDefinition>,
         items: Vec<I>,
     ) -> Self {
         let ContainerInput {
@@ -124,11 +156,11 @@ impl<I> VersionedContainer<I> {
         } = input;
 
         let skip_from = attributes
-            .common_option_attrs
+            .common_option_args
             .skip
             .map_or(false, |s| s.from.is_present());
 
-        let kubernetes_options = attributes.kubernetes_attrs.map(|a| KubernetesOptions {
+        let kubernetes_options = attributes.kubernetes_args.map(|a| KubernetesOptions {
             skip_merged_crd: a.skip.map_or(false, |s| s.merged_crd.is_present()),
             namespaced: a.namespaced.is_present(),
             singular: a.singular,
@@ -145,7 +177,7 @@ impl<I> VersionedContainer<I> {
         let idents = VersionedContainerIdents {
             kubernetes: ident.as_cleaned_kubernetes_ident(),
             from: ident.as_from_impl_ident(),
-            original: ident,
+            original: ident.into(),
         };
 
         VersionedContainer {
@@ -164,13 +196,13 @@ impl<I> VersionedContainer<I> {
 pub(crate) struct VersionedContainerIdents {
     /// The ident used in the context of Kubernetes specific code. This ident
     /// removes the 'Spec' suffix present in the definition container.
-    pub(crate) kubernetes: Ident,
+    pub(crate) kubernetes: IdentString,
 
     /// The original ident, or name, of the versioned container.
-    pub(crate) original: Ident,
+    pub(crate) original: IdentString,
 
     /// The ident used in the [`From`] impl.
-    pub(crate) from: Ident,
+    pub(crate) from: IdentString,
 }
 
 #[derive(Debug)]

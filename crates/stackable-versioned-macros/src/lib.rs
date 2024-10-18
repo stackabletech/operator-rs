@@ -1,8 +1,13 @@
 use darling::{ast::NestedMeta, FromMeta};
 use proc_macro::TokenStream;
-use syn::{DeriveInput, Error};
+use syn::{spanned::Spanned, Error, Item};
 
-use crate::attrs::common::ContainerAttributes;
+use crate::codegen::{
+    common::{Container, ContainerInput},
+    venum::VersionedEnum,
+    vmod::VersionedModule,
+    vstruct::VersionedStruct,
+};
 
 #[cfg(test)]
 mod test_utils;
@@ -482,20 +487,83 @@ pub fn versioned(attrs: TokenStream, input: TokenStream) -> TokenStream {
     // adjustments to also support modules. One possible solution might be to
     // use an enum with two variants: Container(DeriveInput) and
     // Module(ItemMod).
-    let input = syn::parse_macro_input!(input as DeriveInput);
+    let input = syn::parse_macro_input!(input as Item);
     versioned_impl(attrs.into(), input).into()
 }
 
-fn versioned_impl(attrs: proc_macro2::TokenStream, input: DeriveInput) -> proc_macro2::TokenStream {
-    let attrs = match NestedMeta::parse_meta_list(attrs) {
-        Ok(attrs) => match ContainerAttributes::from_list(&attrs) {
-            Ok(attrs) => attrs,
-            Err(err) => return err.write_errors(),
-        },
-        Err(err) => return darling::Error::from(err).write_errors(),
-    };
+fn versioned_impl(attrs: proc_macro2::TokenStream, input: Item) -> proc_macro2::TokenStream {
+    // NOTE (@Techassi): This derive macro cannot handle multiple structs / enums
+    // to be versioned within the same file. This is because we cannot declare
+    // modules more than once (They will not be merged, like impl blocks for
+    // example). This leads to collisions if there are multiple structs / enums
+    // which declare the same version. This could maybe be solved by using an
+    // attribute macro applied to a module with all struct / enums declared in said
+    // module. This would allow us to generate all versioned structs and enums in
+    // a single sweep and put them into the appropriate module.
 
-    codegen::expand(attrs, input).unwrap_or_else(Error::into_compile_error)
+    // TODO (@Techassi): Think about how we can handle nested structs / enums which
+    // are also versioned.
+
+    match input {
+        Item::Mod(item_mod) => {
+            let module_attributes = match parse_outer_attributes(attrs) {
+                Ok(ma) => ma,
+                Err(err) => return err.write_errors(),
+            };
+
+            match VersionedModule::new(item_mod, module_attributes) {
+                Ok(versioned_module) => versioned_module.generate_tokens(),
+                Err(err) => Error::into_compile_error(err),
+            }
+        }
+        Item::Enum(item_enum) => {
+            let container_attributes = match parse_outer_attributes(attrs) {
+                Ok(ca) => ca,
+                Err(err) => return err.write_errors(),
+            };
+
+            let input = ContainerInput {
+                original_attributes: item_enum.attrs,
+                visibility: item_enum.vis,
+                ident: item_enum.ident,
+            };
+
+            match VersionedEnum::new(input, item_enum.variants, container_attributes) {
+                Ok(versioned_enum) => versioned_enum.generate_standalone_tokens(),
+                Err(err) => Error::into_compile_error(err),
+            }
+        }
+        Item::Struct(item_struct) => {
+            let container_attributes = match parse_outer_attributes(attrs) {
+                Ok(ca) => ca,
+                Err(err) => return err.write_errors(),
+            };
+
+            let input = ContainerInput {
+                original_attributes: item_struct.attrs,
+                visibility: item_struct.vis,
+                ident: item_struct.ident,
+            };
+
+            match VersionedStruct::new(input, item_struct.fields, container_attributes) {
+                Ok(versioned_struct) => versioned_struct.generate_standalone_tokens(),
+                Err(err) => Error::into_compile_error(err),
+            }
+        }
+        _ => Error::new(
+            input.span(),
+            "attribute macro `versioned` can be only be applied to modules, structs and enums",
+        )
+        .into_compile_error(),
+    }
+}
+
+fn parse_outer_attributes<T>(attrs: proc_macro2::TokenStream) -> Result<T, darling::Error>
+where
+    T: FromMeta,
+{
+    let nm = NestedMeta::parse_meta_list(attrs)?;
+    T::from_list(&nm)
 }
 
 #[cfg(test)]
