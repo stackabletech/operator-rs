@@ -12,7 +12,7 @@ mod v1alpha1 {
     }
 }
 #[automatically_derived]
-impl From<v1alpha1::Foo> for v1alpha2::Foo {
+impl ::std::convert::From<v1alpha1::Foo> for v1alpha2::Foo {
     fn from(__sv_foo: v1alpha1::Foo) -> Self {
         match __sv_foo {
             v1alpha1::Foo::Foo => v1alpha2::Foo::Foo,

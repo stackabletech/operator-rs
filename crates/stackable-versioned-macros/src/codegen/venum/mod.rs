@@ -10,13 +10,19 @@ use crate::{
     codegen::{
         chain::Neighbors,
         common::{
-            Container, ContainerInput, Item, ItemStatus, VersionDefinition, VersionedContainer,
+            generate_module, Container, ContainerInput, Item, ItemStatus, VersionDefinition,
+            VersionedContainer,
         },
         venum::variant::VersionedVariant,
     },
 };
 
 pub(crate) mod variant;
+
+pub(crate) struct GenerateVersionTokens {
+    from_impl: Option<TokenStream>,
+    enum_definition: TokenStream,
+}
 
 /// Stores individual versions of a single enum. Each version tracks variant
 /// actions, which describe if the variant was added, renamed or deprecated in
@@ -79,14 +85,22 @@ impl Container<Punctuated<Variant, Comma>, VersionedVariant> for VersionedEnum {
     }
 
     fn generate_standalone_tokens(&self) -> TokenStream {
-        let mut token_stream = TokenStream::new();
+        let mut tokens = TokenStream::new();
         let mut versions = self.versions.iter().peekable();
 
         while let Some(version) = versions.next() {
-            token_stream.extend(self.generate_version(version, versions.peek().copied()));
+            let GenerateVersionTokens {
+                enum_definition,
+                from_impl,
+            } = self.generate_version(version, versions.peek().copied());
+
+            let module_definition = generate_module(version, &self.visibility, enum_definition);
+
+            tokens.extend(module_definition);
+            tokens.extend(from_impl);
         }
 
-        token_stream
+        tokens
     }
 
     fn generate_nested_tokens(&self) -> TokenStream {
@@ -99,51 +113,37 @@ impl VersionedEnum {
         &self,
         version: &VersionDefinition,
         next_version: Option<&VersionDefinition>,
-    ) -> TokenStream {
-        let mut token_stream = TokenStream::new();
+    ) -> GenerateVersionTokens {
+        let mut enum_definition = TokenStream::new();
 
         let original_attributes = &self.original_attributes;
         let enum_name = &self.idents.original;
-        let visibility = &self.visibility;
 
         // Generate variants of the enum for `version`.
         let variants = self.generate_enum_variants(version);
 
-        // TODO (@Techassi): Make the generation of the module optional to
-        // enable the attribute macro to be applied to a module which
-        // generates versioned versions of all contained containers.
-
-        let version_ident = &version.ident;
-
-        let deprecated_note = format!("Version {version} is deprecated", version = version_ident);
-        let deprecated_attr = version
-            .deprecated
-            .then_some(quote! {#[deprecated = #deprecated_note]});
-
         // Generate doc comments for the container (enum)
         let version_specific_docs = self.generate_enum_docs(version);
 
-        // Generate tokens for the module and the contained enum
-        token_stream.extend(quote! {
-            #[automatically_derived]
-            #deprecated_attr
-            #visibility mod #version_ident {
-                use super::*;
-
-                #version_specific_docs
-                #(#original_attributes)*
-                pub enum #enum_name {
-                    #variants
-                }
+        // Generate enum definition tokens
+        enum_definition.extend(quote! {
+            #version_specific_docs
+            #(#original_attributes)*
+            pub enum #enum_name {
+                #variants
             }
         });
 
-        // Generate the From impl between this `version` and the next one.
-        if !self.options.skip_from && !version.skip_from {
-            token_stream.extend(self.generate_from_impl(version, next_version));
-        }
+        let from_impl = if !self.options.skip_from && !version.skip_from {
+            self.generate_from_impl(version, next_version)
+        } else {
+            None
+        };
 
-        token_stream
+        GenerateVersionTokens {
+            enum_definition,
+            from_impl,
+        }
     }
 
     /// Generates version specific doc comments for the enum.
@@ -180,7 +180,7 @@ impl VersionedEnum {
         &self,
         version: &VersionDefinition,
         next_version: Option<&VersionDefinition>,
-    ) -> TokenStream {
+    ) -> Option<TokenStream> {
         if let Some(next_version) = next_version {
             let next_module_name = &next_version.ident;
             let module_name = &version.ident;
@@ -209,20 +209,20 @@ impl VersionedEnum {
                 || self.is_any_variant_deprecated(next_version))
             .then_some(quote! { #[allow(deprecated)] });
 
-            return quote! {
+            return Some(quote! {
                 #[automatically_derived]
                 #allow_attribute
-                impl From<#module_name::#enum_ident> for #next_module_name::#enum_ident {
+                impl ::std::convert::From<#module_name::#enum_ident> for #next_module_name::#enum_ident {
                     fn from(#from_ident: #module_name::#enum_ident) -> Self {
                         match #from_ident {
                             #variants
                         }
                     }
                 }
-            };
+            });
         }
 
-        quote! {}
+        None
     }
 
     /// Returns whether any field is deprecated in the provided

@@ -20,13 +20,6 @@ use crate::{
 
 pub(crate) mod field;
 
-// NOTE (@Techassi): The generate_version function should return a triple of values. The first
-// value is the complete container definition without any module wrapping it. The second value
-// contains the generated tokens for the conversion between this version and the next one. Lastly,
-// the third value contains Kubernetes related code. The last top values are wrapped in Option.
-// type GenerateVersionReturn = (TokenStream, Option<TokenStream>, Option<KubernetesTokens>);
-// type KubernetesTokens = (TokenStream, Ident, String);
-
 pub(crate) struct GenerateVersionTokens {
     kubernetes_definition: Option<KubernetesTokens>,
     struct_definition: TokenStream,
