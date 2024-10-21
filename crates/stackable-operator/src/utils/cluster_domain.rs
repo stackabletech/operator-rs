@@ -1,6 +1,6 @@
 use std::{env, path::PathBuf, str::FromStr, sync::OnceLock};
 
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 use tracing::instrument;
 
 use crate::commons::networking::DomainName;
@@ -25,8 +25,10 @@ pub enum Error {
     #[snafu(display(r#"unable to find "search" entry"#))]
     NoSearchEntry,
 
-    #[snafu(display(r#"unable to find unambiguous domain in "search" entry"#))]
-    AmbiguousDomainEntries,
+    #[snafu(display(
+        r#"unable to find the Kubernetes service domain, which needs to start with "svc.""#
+    ))]
+    FindKubernetesServiceDomain,
 }
 
 /// Tries to retrieve the Kubernetes cluster domain.
@@ -118,24 +120,25 @@ fn retrieve_cluster_domain_from_resolv_conf(
         })
         .context(ReadResolvConfFileSnafu)?;
 
-    // If there are multiple search directives, only the search
-    // man 5 resolv.conf
-    let Some(last_search_entry) = content
+    // If there are multiple search directives, only the last search directive is relevant.
+    // See `man 5 resolv.conf`
+    let last_search_entry = content
         .lines()
         .rev()
         .map(|l| l.trim())
         .find(|&l| l.starts_with("search"))
         .map(|l| l.trim_start_matches("search").trim())
-    else {
-        return NoSearchEntrySnafu.fail();
-    };
+        .context(NoSearchEntrySnafu)?;
 
-    let Some(shortest_entry) = last_search_entry
+    // We only care about entries starting with "svc." to limit the entries to the ones used by
+    // Kubernetes for Services.
+    let shortest_entry = last_search_entry
         .split_ascii_whitespace()
-        .min_by_key(|item| item.len())
-    else {
-        return AmbiguousDomainEntriesSnafu.fail();
-    };
+        // Normally there should only be one such entry, but we take the first on in any case.
+        .find(|&entry| entry.starts_with("svc."))
+        // Strip the "svc." prefix to get only the cluster domain.
+        .map(|entry| entry.trim_start_matches("svc.").trim_end())
+        .context(FindKubernetesServiceDomainSnafu)?;
 
     // NOTE (@Techassi): This is really sad and bothers me more than I would like to admit. This
     // clone could be removed by using the code directly in the calling function. But that would
