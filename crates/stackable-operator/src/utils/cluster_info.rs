@@ -20,7 +20,7 @@ impl KubernetesClusterInfo {
             None => {
                 // TODO(sbernauer): Do some sort of advanced auto-detection, see https://github.com/stackabletech/issues/issues/436.
                 // There have been attempts of parsing the `/etc/resolv.conf`, but they have been
-                // reverted. Please read on the linked Issue for details.
+                // reverted. Please read on the linked issue for details.
                 let cluster_domain = DomainName::from_str(KUBERNETES_CLUSTER_DOMAIN_DEFAULT)
                     .expect("KUBERNETES_CLUSTER_DOMAIN_DEFAULT constant must a valid domain");
                 tracing::info!(%cluster_domain, "Defaulting Kubernetes cluster domain as it has not been configured");
