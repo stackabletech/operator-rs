@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Update as much Rust dependencies as possible: `kube` to `0.96.0`, `rstest` to `0.23.0` and
+  `tower-http` to `0.6.1`. We are not able to update `json-patch` to `3.0.1`, because `kube` `0.97.0`
+  has not been released yet and opentelemetry crates because of the Jaeger exporter support ([#XXX]).
+
 ### Fixed
 
 - Fix Kubernetes cluster domain parsing from resolv.conf, e.g. on AWS EKS.
