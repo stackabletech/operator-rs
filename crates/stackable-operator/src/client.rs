@@ -20,7 +20,8 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use tracing::trace;
 
 use crate::{
-    cli::ProductOperatorRun, kvp::LabelSelectorExt, utils::cluster_info::KubernetesClusterInfo,
+    commons::networking::DomainName, kvp::LabelSelectorExt,
+    utils::cluster_info::KubernetesClusterInfo,
 };
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -517,18 +518,15 @@ impl Client {
     ///
     /// ```no_run
     /// use std::time::Duration;
-    /// use clap::Parser;
     /// use tokio::time::error::Elapsed;
     /// use kube::runtime::watcher;
     /// use k8s_openapi::api::core::v1::Pod;
-    /// use stackable_operator::{cli::ProductOperatorRun, client::{Client, initialize_operator}};
+    /// use stackable_operator::client::{Client, initialize_operator};
     ///
     /// #[tokio::main]
     /// async fn main(){
     ///
-    /// // Parse CLI arguments with Opts::parse() instead
-    /// let cli_opts = ProductOperatorRun::parse_from(["run"]);
-    /// let client: Client = initialize_operator(&cli_opts, None).await.expect("Unable to construct client.");
+    /// let client: Client = initialize_operator(&None, None).await.expect("Unable to construct client.");
     /// let watcher_config: watcher::Config =
     ///         watcher::Config::default().fields(&format!("metadata.name=nonexistent-pod"));
     ///
@@ -636,7 +634,7 @@ where
 }
 
 pub async fn initialize_operator(
-    cli_opts: &ProductOperatorRun,
+    cli_kubernetes_cluster_domain: &Option<DomainName>,
     field_manager: Option<String>,
 ) -> Result<Client> {
     let kubeconfig: Config = kube::Config::infer()
@@ -645,7 +643,7 @@ pub async fn initialize_operator(
         .context(InferKubeConfigSnafu)?;
     let default_namespace = kubeconfig.default_namespace.clone();
     let client = kube::Client::try_from(kubeconfig).context(CreateKubeClientSnafu)?;
-    let cluster_info = KubernetesClusterInfo::new(cli_opts);
+    let cluster_info = KubernetesClusterInfo::new(cli_kubernetes_cluster_domain);
 
     Ok(Client::new(
         client,
@@ -659,7 +657,6 @@ pub async fn initialize_operator(
 mod tests {
     use std::{collections::BTreeMap, time::Duration};
 
-    use clap::Parser;
     use futures::StreamExt;
     use k8s_openapi::{
         api::core::v1::{Container, Pod, PodSpec},
@@ -671,13 +668,10 @@ mod tests {
     };
     use tokio::time::error::Elapsed;
 
-    use crate::cli::ProductOperatorRun;
-
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created() {
-        let cli_opts = ProductOperatorRun::parse_from(["run"]);
-        let client = super::initialize_operator(&cli_opts, None)
+        let client = super::initialize_operator(&None, None)
             .await
             .expect("KUBECONFIG variable must be configured.");
 
@@ -755,8 +749,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created_timeout() {
-        let cli_opts = ProductOperatorRun::parse_from(["run"]);
-        let client = super::initialize_operator(&cli_opts, None)
+        let client = super::initialize_operator(&None, None)
             .await
             .expect("KUBECONFIG variable must be configured.");
 
@@ -776,8 +769,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_list_with_label_selector() {
-        let cli_opts = ProductOperatorRun::parse_from(["run"]);
-        let client = super::initialize_operator(&cli_opts, None)
+        let client = super::initialize_operator(&None, None)
             .await
             .expect("KUBECONFIG variable must be configured.");
 

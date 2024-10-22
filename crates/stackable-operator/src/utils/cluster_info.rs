@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::{cli::ProductOperatorRun, commons::networking::DomainName};
+use crate::commons::networking::DomainName;
 
 const KUBERNETES_CLUSTER_DOMAIN_DEFAULT: &str = "cluster.local";
 
@@ -10,8 +10,8 @@ pub struct KubernetesClusterInfo {
 }
 
 impl KubernetesClusterInfo {
-    pub fn new(cli_opts: &ProductOperatorRun) -> Self {
-        let cluster_domain = match &cli_opts.kubernetes_cluster_domain {
+    pub fn new(cli_kubernetes_cluster_domain: &Option<DomainName>) -> Self {
+        let cluster_domain = match cli_kubernetes_cluster_domain {
             Some(cluster_domain) => {
                 tracing::info!(%cluster_domain, "Using configured Kubernetes cluster domain");
 
