@@ -115,7 +115,7 @@ use clap::Args;
 use product_config::ProductConfigManager;
 use snafu::{ResultExt, Snafu};
 
-use crate::{logging::TracingTarget, namespace::WatchNamespace};
+use crate::{commons::networking::DomainName, logging::TracingTarget, namespace::WatchNamespace};
 
 pub const AUTHOR: &str = "Stackable GmbH - info@stackable.tech";
 
@@ -179,7 +179,8 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///     common: ProductOperatorRun {
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
 ///         watch_namespace: WatchNamespace::One("foobar".to_string()),
-///         tracing_target: TracingTarget::None
+///         tracing_target: TracingTarget::None,
+///         kubernetes_cluster_domain: None,
 ///     },
 /// }));
 /// ```
@@ -205,12 +206,20 @@ pub struct ProductOperatorRun {
     /// Provides the path to a product-config file
     #[arg(long, short = 'p', value_name = "FILE", default_value = "", env)]
     pub product_config: ProductConfigPath,
+
     /// Provides a specific namespace to watch (instead of watching all namespaces)
     #[arg(long, env, default_value = "")]
     pub watch_namespace: WatchNamespace,
+
     /// Tracing log collector system
     #[arg(long, env, default_value_t, value_enum)]
     pub tracing_target: TracingTarget,
+
+    /// Kubernetes cluster domain, usually this is `cluster.local`.
+    // We are not using a default value here, as operators will probably do an more advanced
+    // auto-detection of the cluster domain in case it is not specified in the future.
+    #[arg(long, env)]
+    pub kubernetes_cluster_domain: Option<DomainName>,
 }
 
 /// A path to a [`ProductConfigManager`] spec file
@@ -384,6 +393,7 @@ mod tests {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
                 tracing_target: TracingTarget::None,
+                kubernetes_cluster_domain: None,
             }
         );
 
@@ -395,6 +405,7 @@ mod tests {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::All,
                 tracing_target: TracingTarget::None,
+                kubernetes_cluster_domain: None,
             }
         );
 
@@ -407,6 +418,7 @@ mod tests {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
                 tracing_target: TracingTarget::None,
+                kubernetes_cluster_domain: None,
             }
         );
     }
