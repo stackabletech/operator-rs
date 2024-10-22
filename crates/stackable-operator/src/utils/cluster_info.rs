@@ -4,8 +4,10 @@ use crate::commons::networking::DomainName;
 
 const KUBERNETES_CLUSTER_DOMAIN_DEFAULT: &str = "cluster.local";
 
+/// Some information that we know about the Kubernetes cluster.
 #[derive(Debug, Clone)]
 pub struct KubernetesClusterInfo {
+    /// The Kubernetes cluster domain, typically `cluster.local`.
     pub cluster_domain: DomainName,
 }
 
