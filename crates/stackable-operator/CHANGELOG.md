@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Update as much Rust dependencies as possible: `kube` to `0.96.0`, `rstest` to `0.23.0` and
   `tower-http` to `0.6.1`. We are not able to update `json-patch` to `3.0.1`, because `kube` `0.97.0`
-  has not been released yet and opentelemetry crates because of the Jaeger exporter support ([#XXX]).
+  has not been released yet and opentelemetry crates because of the Jaeger exporter support ([#897]).
 
 ### Fixed
 
@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
   We now only consider Kubernetes services domains instead of all domains (which could include non-Kubernetes domains) ([#895]).
 
 [#895]: https://github.com/stackabletech/operator-rs/pull/895
+[#897]: https://github.com/stackabletech/operator-rs/pull/897
 
 ## [0.79.0] - 2024-10-18
 
