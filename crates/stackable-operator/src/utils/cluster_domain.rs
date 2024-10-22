@@ -125,9 +125,9 @@ fn retrieve_cluster_domain_from_resolv_conf(
     let last_search_entry = content
         .lines()
         .rev()
-        .map(|l| l.trim())
-        .find(|&l| l.starts_with("search"))
-        .map(|l| l.trim_start_matches("search").trim())
+        .map(|entry| entry.trim())
+        .find(|&entry| entry.starts_with("search"))
+        .map(|entry| entry.trim_start_matches("search").trim())
         .context(NoSearchEntrySnafu)?;
 
     // We only care about entries starting with "svc." to limit the entries to the ones used by
