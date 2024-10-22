@@ -10,7 +10,7 @@ pub struct KubernetesClusterInfo {
 }
 
 #[derive(clap::Parser, Debug, PartialEq, Eq)]
-pub struct KubernetesClusterInfoCliOpts {
+pub struct KubernetesClusterInfoOpts {
     /// Kubernetes cluster domain, usually this is `cluster.local`.
     // We are not using a default value here, as operators will probably do an more advanced
     // auto-detection of the cluster domain in case it is not specified in the future.
@@ -19,7 +19,7 @@ pub struct KubernetesClusterInfoCliOpts {
 }
 
 impl KubernetesClusterInfo {
-    pub fn new(cluster_info_cli_opts: &KubernetesClusterInfoCliOpts) -> Self {
+    pub fn new(cluster_info_cli_opts: &KubernetesClusterInfoOpts) -> Self {
         let cluster_domain = match &cluster_info_cli_opts.kubernetes_cluster_domain {
             Some(cluster_domain) => {
                 tracing::info!(%cluster_domain, "Using configured Kubernetes cluster domain");

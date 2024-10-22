@@ -21,7 +21,7 @@ use tracing::trace;
 
 use crate::{
     kvp::LabelSelectorExt,
-    utils::cluster_info::{KubernetesClusterInfo, KubernetesClusterInfoCliOpts},
+    utils::cluster_info::{KubernetesClusterInfo, KubernetesClusterInfoOpts},
 };
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -523,13 +523,13 @@ impl Client {
     /// use k8s_openapi::api::core::v1::Pod;
     /// use stackable_operator::{
     ///     client::{Client, initialize_operator},
-    ///     utils::cluster_info::KubernetesClusterInfoCliOpts
+    ///     utils::cluster_info::KubernetesClusterInfoOpts
     /// };
     ///
     /// #[tokio::main]
     /// async fn main() {
     ///
-    /// let cluster_info_cli_opts = KubernetesClusterInfoCliOpts {
+    /// let cluster_info_cli_opts = KubernetesClusterInfoOpts {
     ///     kubernetes_cluster_domain: None,
     /// };
     /// let client = initialize_operator(None, &cluster_info_cli_opts)
@@ -643,7 +643,7 @@ where
 
 pub async fn initialize_operator(
     field_manager: Option<String>,
-    cluster_info_cli_opts: &KubernetesClusterInfoCliOpts,
+    cluster_info_cli_opts: &KubernetesClusterInfoOpts,
 ) -> Result<Client> {
     let kubeconfig: Config = kube::Config::infer()
         .await
@@ -676,12 +676,12 @@ mod tests {
     };
     use tokio::time::error::Elapsed;
 
-    use crate::utils::cluster_info::KubernetesClusterInfoCliOpts;
+    use crate::utils::cluster_info::KubernetesClusterInfoOpts;
 
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created() {
-        let cluster_info_cli_opts = KubernetesClusterInfoCliOpts {
+        let cluster_info_cli_opts = KubernetesClusterInfoOpts {
             kubernetes_cluster_domain: None,
         };
         let client = super::initialize_operator(None, &cluster_info_cli_opts)
@@ -762,7 +762,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created_timeout() {
-        let cluster_info_cli_opts = KubernetesClusterInfoCliOpts {
+        let cluster_info_cli_opts = KubernetesClusterInfoOpts {
             kubernetes_cluster_domain: None,
         };
         let client = super::initialize_operator(None, &cluster_info_cli_opts)
@@ -785,7 +785,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_list_with_label_selector() {
-        let cluster_info_cli_opts = KubernetesClusterInfoCliOpts {
+        let cluster_info_cli_opts = KubernetesClusterInfoOpts {
             kubernetes_cluster_domain: None,
         };
         let client = super::initialize_operator(None, &cluster_info_cli_opts)
