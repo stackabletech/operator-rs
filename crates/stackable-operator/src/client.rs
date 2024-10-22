@@ -637,7 +637,7 @@ where
 
 pub async fn initialize_operator(
     field_manager: Option<String>,
-    cluster_info_cli_opts: &KubernetesClusterInfoOpts,
+    cluster_info_opts: &KubernetesClusterInfoOpts,
 ) -> Result<Client> {
     let kubeconfig: Config = kube::Config::infer()
         .await
@@ -645,7 +645,7 @@ pub async fn initialize_operator(
         .context(InferKubeConfigSnafu)?;
     let default_namespace = kubeconfig.default_namespace.clone();
     let client = kube::Client::try_from(kubeconfig).context(CreateKubeClientSnafu)?;
-    let cluster_info = KubernetesClusterInfo::new(cluster_info_cli_opts);
+    let cluster_info = KubernetesClusterInfo::new(cluster_info_opts);
 
     Ok(Client::new(
         client,

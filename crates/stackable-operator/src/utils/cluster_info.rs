@@ -19,8 +19,8 @@ pub struct KubernetesClusterInfoOpts {
 }
 
 impl KubernetesClusterInfo {
-    pub fn new(cluster_info_cli_opts: &KubernetesClusterInfoOpts) -> Self {
-        let cluster_domain = match &cluster_info_cli_opts.kubernetes_cluster_domain {
+    pub fn new(cluster_info_opts: &KubernetesClusterInfoOpts) -> Self {
+        let cluster_domain = match &cluster_info_opts.kubernetes_cluster_domain {
             Some(cluster_domain) => {
                 tracing::info!(%cluster_domain, "Using configured Kubernetes cluster domain");
 
