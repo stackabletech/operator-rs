@@ -4,8 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.79.1] - 2024-10-21
-
 ### Fixed
 
 - Fix Kubernetes cluster domain parsing from resolv.conf, e.g. on AWS EKS.
