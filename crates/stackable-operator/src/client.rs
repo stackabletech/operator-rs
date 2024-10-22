@@ -20,8 +20,8 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use tracing::trace;
 
 use crate::{
-    commons::networking::DomainName, kvp::LabelSelectorExt,
-    utils::cluster_info::KubernetesClusterInfo,
+    kvp::LabelSelectorExt,
+    utils::cluster_info::{KubernetesClusterInfo, KubernetesClusterInfoCliOpts},
 };
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -521,12 +521,20 @@ impl Client {
     /// use tokio::time::error::Elapsed;
     /// use kube::runtime::watcher;
     /// use k8s_openapi::api::core::v1::Pod;
-    /// use stackable_operator::client::{Client, initialize_operator};
+    /// use stackable_operator::{
+    ///     client::{Client, initialize_operator},
+    ///     utils::cluster_info::KubernetesClusterInfoCliOpts
+    /// };
     ///
     /// #[tokio::main]
-    /// async fn main(){
+    /// async fn main() {
     ///
-    /// let client: Client = initialize_operator(&None, None).await.expect("Unable to construct client.");
+    /// let cluster_info_cli_opts = KubernetesClusterInfoCliOpts {
+    ///     kubernetes_cluster_domain: None,
+    /// };
+    /// let client = initialize_operator(None, &cluster_info_cli_opts)
+    ///     .await
+    ///     .expect("Unable to construct client.");
     /// let watcher_config: watcher::Config =
     ///         watcher::Config::default().fields(&format!("metadata.name=nonexistent-pod"));
     ///
@@ -634,8 +642,8 @@ where
 }
 
 pub async fn initialize_operator(
-    cli_kubernetes_cluster_domain: &Option<DomainName>,
     field_manager: Option<String>,
+    cluster_info_cli_opts: &KubernetesClusterInfoCliOpts,
 ) -> Result<Client> {
     let kubeconfig: Config = kube::Config::infer()
         .await
@@ -643,7 +651,7 @@ pub async fn initialize_operator(
         .context(InferKubeConfigSnafu)?;
     let default_namespace = kubeconfig.default_namespace.clone();
     let client = kube::Client::try_from(kubeconfig).context(CreateKubeClientSnafu)?;
-    let cluster_info = KubernetesClusterInfo::new(cli_kubernetes_cluster_domain);
+    let cluster_info = KubernetesClusterInfo::new(cluster_info_cli_opts);
 
     Ok(Client::new(
         client,
@@ -668,10 +676,15 @@ mod tests {
     };
     use tokio::time::error::Elapsed;
 
+    use crate::utils::cluster_info::KubernetesClusterInfoCliOpts;
+
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created() {
-        let client = super::initialize_operator(&None, None)
+        let cluster_info_cli_opts = KubernetesClusterInfoCliOpts {
+            kubernetes_cluster_domain: None,
+        };
+        let client = super::initialize_operator(None, &cluster_info_cli_opts)
             .await
             .expect("KUBECONFIG variable must be configured.");
 
@@ -749,7 +762,10 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created_timeout() {
-        let client = super::initialize_operator(&None, None)
+        let cluster_info_cli_opts = KubernetesClusterInfoCliOpts {
+            kubernetes_cluster_domain: None,
+        };
+        let client = super::initialize_operator(None, &cluster_info_cli_opts)
             .await
             .expect("KUBECONFIG variable must be configured.");
 
@@ -769,7 +785,10 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_list_with_label_selector() {
-        let client = super::initialize_operator(&None, None)
+        let cluster_info_cli_opts = KubernetesClusterInfoCliOpts {
+            kubernetes_cluster_domain: None,
+        };
+        let client = super::initialize_operator(None, &cluster_info_cli_opts)
             .await
             .expect("KUBECONFIG variable must be configured.");
 

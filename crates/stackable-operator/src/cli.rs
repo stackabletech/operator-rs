@@ -115,7 +115,10 @@ use clap::Args;
 use product_config::ProductConfigManager;
 use snafu::{ResultExt, Snafu};
 
-use crate::{commons::networking::DomainName, logging::TracingTarget, namespace::WatchNamespace};
+use crate::{
+    logging::TracingTarget, namespace::WatchNamespace,
+    utils::cluster_info::KubernetesClusterInfoCliOpts,
+};
 
 pub const AUTHOR: &str = "Stackable GmbH - info@stackable.tech";
 
@@ -171,8 +174,12 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///     common: ProductOperatorRun,
 /// }
 /// use clap::Parser;
-/// use stackable_operator::logging::TracingTarget;
-/// use stackable_operator::namespace::WatchNamespace;
+/// use stackable_operator::{
+///     logging::TracingTarget,
+///     namespace::WatchNamespace,
+///     utils::cluster_info::KubernetesClusterInfoCliOpts
+/// };
+///
 /// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar", "--watch-namespace", "foobar"]);
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
@@ -180,7 +187,9 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
 ///         watch_namespace: WatchNamespace::One("foobar".to_string()),
 ///         tracing_target: TracingTarget::None,
-///         kubernetes_cluster_domain: None,
+///         cluster_info_opts: KubernetesClusterInfoCliOpts {
+///             kubernetes_cluster_domain: None
+///         }
 ///     },
 /// }));
 /// ```
@@ -215,11 +224,8 @@ pub struct ProductOperatorRun {
     #[arg(long, env, default_value_t, value_enum)]
     pub tracing_target: TracingTarget,
 
-    /// Kubernetes cluster domain, usually this is `cluster.local`.
-    // We are not using a default value here, as operators will probably do an more advanced
-    // auto-detection of the cluster domain in case it is not specified in the future.
-    #[arg(long, env)]
-    pub kubernetes_cluster_domain: Option<DomainName>,
+    #[command(flatten)]
+    pub cluster_info_opts: KubernetesClusterInfoCliOpts,
 }
 
 /// A path to a [`ProductConfigManager`] spec file
@@ -393,7 +399,9 @@ mod tests {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
                 tracing_target: TracingTarget::None,
-                kubernetes_cluster_domain: None,
+                cluster_info_opts: KubernetesClusterInfoCliOpts {
+                    kubernetes_cluster_domain: None
+                }
             }
         );
 
@@ -405,7 +413,9 @@ mod tests {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::All,
                 tracing_target: TracingTarget::None,
-                kubernetes_cluster_domain: None,
+                cluster_info_opts: KubernetesClusterInfoCliOpts {
+                    kubernetes_cluster_domain: None
+                }
             }
         );
 
@@ -418,7 +428,9 @@ mod tests {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
                 tracing_target: TracingTarget::None,
-                kubernetes_cluster_domain: None,
+                cluster_info_opts: KubernetesClusterInfoCliOpts {
+                    kubernetes_cluster_domain: None
+                }
             }
         );
     }
