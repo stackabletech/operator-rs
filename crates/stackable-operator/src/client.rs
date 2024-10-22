@@ -1,5 +1,6 @@
+use crate::commons::networking::DomainName;
 use crate::kvp::LabelSelectorExt;
-use crate::utils::cluster_domain::{self, retrieve_cluster_domain, KUBERNETES_CLUSTER_DOMAIN};
+use crate::utils::cluster_domain::{self, retrieve_cluster_domain};
 
 use either::Either;
 use futures::StreamExt;
@@ -93,6 +94,7 @@ pub struct Client {
     delete_params: DeleteParams,
     /// Default namespace as defined in the kubeconfig this client has been created from.
     pub default_namespace: String,
+    pub kubernetes_cluster_domain: DomainName,
 }
 
 impl Client {
@@ -100,6 +102,7 @@ impl Client {
         client: KubeClient,
         field_manager: Option<String>,
         default_namespace: String,
+        kubernetes_cluster_domain: DomainName,
     ) -> Self {
         Client {
             client,
@@ -113,6 +116,7 @@ impl Client {
             },
             delete_params: DeleteParams::default(),
             default_namespace,
+            kubernetes_cluster_domain,
         }
     }
 
@@ -627,19 +631,20 @@ where
 }
 
 pub async fn initialize_operator(field_manager: Option<String>) -> Result<Client> {
-    let _ = KUBERNETES_CLUSTER_DOMAIN
-        .set(retrieve_cluster_domain().context(ResolveKubernetesClusterDomainSnafu)?);
-    create_client(field_manager).await
-}
-
-async fn create_client(field_manager: Option<String>) -> Result<Client> {
     let kubeconfig: Config = kube::Config::infer()
         .await
         .map_err(kube::Error::InferConfig)
         .context(InferKubeConfigSnafu)?;
     let default_namespace = kubeconfig.default_namespace.clone();
     let client = kube::Client::try_from(kubeconfig).context(CreateKubeClientSnafu)?;
-    Ok(Client::new(client, field_manager, default_namespace))
+    let cluster_domain = retrieve_cluster_domain().context(ResolveKubernetesClusterDomainSnafu)?;
+
+    Ok(Client::new(
+        client,
+        field_manager,
+        default_namespace,
+        cluster_domain,
+    ))
 }
 
 #[cfg(test)]
@@ -657,7 +662,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created() {
-        let client = super::create_client(None)
+        let client = super::initialize_operator(None)
             .await
             .expect("KUBECONFIG variable must be configured.");
 
@@ -735,7 +740,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created_timeout() {
-        let client = super::create_client(None)
+        let client = super::initialize_operator(None)
             .await
             .expect("KUBECONFIG variable must be configured.");
 
@@ -755,7 +760,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_list_with_label_selector() {
-        let client = super::create_client(None)
+        let client = super::initialize_operator(None)
             .await
             .expect("KUBECONFIG variable must be configured.");
 
