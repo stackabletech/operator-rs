@@ -521,18 +521,12 @@ impl Client {
     /// use tokio::time::error::Elapsed;
     /// use kube::runtime::watcher;
     /// use k8s_openapi::api::core::v1::Pod;
-    /// use stackable_operator::{
-    ///     client::{Client, initialize_operator},
-    ///     utils::cluster_info::KubernetesClusterInfoOpts
-    /// };
+    /// use stackable_operator::client::{Client, initialize_operator};
     ///
     /// #[tokio::main]
     /// async fn main() {
     ///
-    /// let cluster_info_cli_opts = KubernetesClusterInfoOpts {
-    ///     kubernetes_cluster_domain: None,
-    /// };
-    /// let client = initialize_operator(None, &cluster_info_cli_opts)
+    /// let client = initialize_operator(None, &Default::default())
     ///     .await
     ///     .expect("Unable to construct client.");
     /// let watcher_config: watcher::Config =
@@ -676,15 +670,10 @@ mod tests {
     };
     use tokio::time::error::Elapsed;
 
-    use crate::utils::cluster_info::KubernetesClusterInfoOpts;
-
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created() {
-        let cluster_info_cli_opts = KubernetesClusterInfoOpts {
-            kubernetes_cluster_domain: None,
-        };
-        let client = super::initialize_operator(None, &cluster_info_cli_opts)
+        let client = super::initialize_operator(None, &Default::default())
             .await
             .expect("KUBECONFIG variable must be configured.");
 
@@ -762,10 +751,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created_timeout() {
-        let cluster_info_cli_opts = KubernetesClusterInfoOpts {
-            kubernetes_cluster_domain: None,
-        };
-        let client = super::initialize_operator(None, &cluster_info_cli_opts)
+        let client = super::initialize_operator(None, &Default::default())
             .await
             .expect("KUBECONFIG variable must be configured.");
 
@@ -785,10 +771,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_list_with_label_selector() {
-        let cluster_info_cli_opts = KubernetesClusterInfoOpts {
-            kubernetes_cluster_domain: None,
-        };
-        let client = super::initialize_operator(None, &cluster_info_cli_opts)
+        let client = super::initialize_operator(None, &Default::default())
             .await
             .expect("KUBECONFIG variable must be configured.");
 

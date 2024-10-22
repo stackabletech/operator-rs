@@ -177,7 +177,6 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 /// use stackable_operator::{
 ///     logging::TracingTarget,
 ///     namespace::WatchNamespace,
-///     utils::cluster_info::KubernetesClusterInfoOpts
 /// };
 ///
 /// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar", "--watch-namespace", "foobar"]);
@@ -187,9 +186,7 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
 ///         watch_namespace: WatchNamespace::One("foobar".to_string()),
 ///         tracing_target: TracingTarget::None,
-///         cluster_info_opts: KubernetesClusterInfoOpts {
-///             kubernetes_cluster_domain: None
-///         }
+///         cluster_info_opts: Default::default(),
 ///     },
 /// }));
 /// ```
@@ -399,9 +396,7 @@ mod tests {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
                 tracing_target: TracingTarget::None,
-                cluster_info_opts: KubernetesClusterInfoOpts {
-                    kubernetes_cluster_domain: None
-                }
+                cluster_info_opts: Default::default(),
             }
         );
 
@@ -413,9 +408,7 @@ mod tests {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::All,
                 tracing_target: TracingTarget::None,
-                cluster_info_opts: KubernetesClusterInfoOpts {
-                    kubernetes_cluster_domain: None
-                }
+                cluster_info_opts: Default::default(),
             }
         );
 
@@ -428,9 +421,7 @@ mod tests {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
                 tracing_target: TracingTarget::None,
-                cluster_info_opts: KubernetesClusterInfoOpts {
-                    kubernetes_cluster_domain: None
-                }
+                cluster_info_opts: Default::default(),
             }
         );
     }

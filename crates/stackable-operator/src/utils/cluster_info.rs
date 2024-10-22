@@ -9,7 +9,7 @@ pub struct KubernetesClusterInfo {
     pub cluster_domain: DomainName,
 }
 
-#[derive(clap::Parser, Debug, PartialEq, Eq)]
+#[derive(clap::Parser, Debug, Default, PartialEq, Eq)]
 pub struct KubernetesClusterInfoOpts {
     /// Kubernetes cluster domain, usually this is `cluster.local`.
     // We are not using a default value here, as operators will probably do an more advanced
