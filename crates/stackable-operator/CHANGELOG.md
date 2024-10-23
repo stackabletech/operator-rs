@@ -6,6 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- BREAKING: Don't parse `/etc/resolv.conf` to auto-detect the Kubernetes cluster domain in case it is not explicitly configured.
+  Instead the operator will default to `cluster.local`. We revert this now after some concerns where raised, we will
+  create a follow-up decision instead addressing how we will continue with this ([#896]).
 - Update as much Rust dependencies as possible: `kube` to `0.96.0`, `rstest` to `0.23.0` and
   `tower-http` to `0.6.1`. We are not able to update `json-patch` to `3.0.1`, because `kube` `0.97.0`
   has not been released yet and opentelemetry crates because of the Jaeger exporter support ([#897]).
@@ -16,6 +19,7 @@ All notable changes to this project will be documented in this file.
   We now only consider Kubernetes services domains instead of all domains (which could include non-Kubernetes domains) ([#895]).
 
 [#895]: https://github.com/stackabletech/operator-rs/pull/895
+[#896]: https://github.com/stackabletech/operator-rs/pull/896
 [#897]: https://github.com/stackabletech/operator-rs/pull/897
 
 ## [0.79.0] - 2024-10-18
