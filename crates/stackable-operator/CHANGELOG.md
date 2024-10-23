@@ -4,12 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Don't parse `/etc/resolv.conf` to auto-detect the Kubernetes cluster domain in case it is not explicitly configured.
+  Instead the operator will default to `cluster.local`. We revert this now after some concerns where raised, we will
+  create a follow-up decision instead addressing how we will continue with this ([#896]).
+
 ### Fixed
 
 - Fix Kubernetes cluster domain parsing from resolv.conf, e.g. on AWS EKS.
   We now only consider Kubernetes services domains instead of all domains (which could include non-Kubernetes domains) ([#895]).
 
 [#895]: https://github.com/stackabletech/operator-rs/pull/895
+[#896]: https://github.com/stackabletech/operator-rs/pull/896
 
 ## [0.79.0] - 2024-10-18
 

@@ -1,22 +1,28 @@
-use crate::kvp::LabelSelectorExt;
-use crate::utils::cluster_domain::{self, retrieve_cluster_domain, KUBERNETES_CLUSTER_DOMAIN};
+use std::{
+    convert::TryFrom,
+    fmt::{Debug, Display},
+};
 
 use either::Either;
 use futures::StreamExt;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
-use k8s_openapi::{ClusterResourceScope, NamespaceResourceScope};
-use kube::api::{DeleteParams, ListParams, Patch, PatchParams, PostParams, Resource, ResourceExt};
-use kube::client::Client as KubeClient;
-use kube::core::Status;
-use kube::runtime::wait::delete::delete_and_finalize;
-use kube::runtime::{watcher, WatchStreamExt};
-use kube::{Api, Config};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use k8s_openapi::{
+    apimachinery::pkg::apis::meta::v1::LabelSelector, ClusterResourceScope, NamespaceResourceScope,
+};
+use kube::{
+    api::{DeleteParams, ListParams, Patch, PatchParams, PostParams, Resource, ResourceExt},
+    client::Client as KubeClient,
+    core::Status,
+    runtime::{wait::delete::delete_and_finalize, watcher, WatchStreamExt},
+    Api, Config,
+};
+use serde::{de::DeserializeOwned, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
-use std::convert::TryFrom;
-use std::fmt::{Debug, Display};
 use tracing::trace;
+
+use crate::{
+    kvp::LabelSelectorExt,
+    utils::cluster_info::{KubernetesClusterInfo, KubernetesClusterInfoOpts},
+};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -78,9 +84,6 @@ pub enum Error {
 
     #[snafu(display("unable to create kubernetes client"))]
     CreateKubeClient { source: kube::Error },
-
-    #[snafu(display("unable to to resolve kubernetes cluster domain"))]
-    ResolveKubernetesClusterDomain { source: cluster_domain::Error },
 }
 
 /// This `Client` can be used to access Kubernetes.
@@ -93,6 +96,8 @@ pub struct Client {
     delete_params: DeleteParams,
     /// Default namespace as defined in the kubeconfig this client has been created from.
     pub default_namespace: String,
+
+    pub kubernetes_cluster_info: KubernetesClusterInfo,
 }
 
 impl Client {
@@ -100,6 +105,7 @@ impl Client {
         client: KubeClient,
         field_manager: Option<String>,
         default_namespace: String,
+        kubernetes_cluster_info: KubernetesClusterInfo,
     ) -> Self {
         Client {
             client,
@@ -113,6 +119,7 @@ impl Client {
             },
             delete_params: DeleteParams::default(),
             default_namespace,
+            kubernetes_cluster_info,
         }
     }
 
@@ -517,9 +524,11 @@ impl Client {
     /// use stackable_operator::client::{Client, initialize_operator};
     ///
     /// #[tokio::main]
-    /// async fn main(){
+    /// async fn main() {
     ///
-    /// let client: Client = initialize_operator(None).await.expect("Unable to construct client.");
+    /// let client = initialize_operator(None, &Default::default())
+    ///     .await
+    ///     .expect("Unable to construct client.");
     /// let watcher_config: watcher::Config =
     ///         watcher::Config::default().fields(&format!("metadata.name=nonexistent-pod"));
     ///
@@ -626,38 +635,45 @@ where
     }
 }
 
-pub async fn initialize_operator(field_manager: Option<String>) -> Result<Client> {
-    let _ = KUBERNETES_CLUSTER_DOMAIN
-        .set(retrieve_cluster_domain().context(ResolveKubernetesClusterDomainSnafu)?);
-    create_client(field_manager).await
-}
-
-async fn create_client(field_manager: Option<String>) -> Result<Client> {
+pub async fn initialize_operator(
+    field_manager: Option<String>,
+    cluster_info_opts: &KubernetesClusterInfoOpts,
+) -> Result<Client> {
     let kubeconfig: Config = kube::Config::infer()
         .await
         .map_err(kube::Error::InferConfig)
         .context(InferKubeConfigSnafu)?;
     let default_namespace = kubeconfig.default_namespace.clone();
     let client = kube::Client::try_from(kubeconfig).context(CreateKubeClientSnafu)?;
-    Ok(Client::new(client, field_manager, default_namespace))
+    let cluster_info = KubernetesClusterInfo::new(cluster_info_opts);
+
+    Ok(Client::new(
+        client,
+        field_manager,
+        default_namespace,
+        cluster_info,
+    ))
 }
 
 #[cfg(test)]
 mod tests {
+    use std::{collections::BTreeMap, time::Duration};
+
     use futures::StreamExt;
-    use k8s_openapi::api::core::v1::{Container, Pod, PodSpec};
-    use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
-    use kube::api::{ObjectMeta, PostParams, ResourceExt};
-    use kube::runtime::watcher;
-    use kube::runtime::watcher::Event;
-    use std::collections::BTreeMap;
-    use std::time::Duration;
+    use k8s_openapi::{
+        api::core::v1::{Container, Pod, PodSpec},
+        apimachinery::pkg::apis::meta::v1::LabelSelector,
+    };
+    use kube::{
+        api::{ObjectMeta, PostParams, ResourceExt},
+        runtime::watcher::{self, Event},
+    };
     use tokio::time::error::Elapsed;
 
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created() {
-        let client = super::create_client(None)
+        let client = super::initialize_operator(None, &Default::default())
             .await
             .expect("KUBECONFIG variable must be configured.");
 
@@ -735,7 +751,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created_timeout() {
-        let client = super::create_client(None)
+        let client = super::initialize_operator(None, &Default::default())
             .await
             .expect("KUBECONFIG variable must be configured.");
 
@@ -755,7 +771,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_list_with_label_selector() {
-        let client = super::create_client(None)
+        let client = super::initialize_operator(None, &Default::default())
             .await
             .expect("KUBECONFIG variable must be configured.");
 
