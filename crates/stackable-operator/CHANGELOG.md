@@ -9,9 +9,10 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Don't parse `/etc/resolv.conf` to auto-detect the Kubernetes cluster domain in case it is not explicitly configured.
   Instead the operator will default to `cluster.local`. We revert this now after some concerns where raised, we will
   create a follow-up decision instead addressing how we will continue with this ([#896]).
-- Update as much Rust dependencies as possible: `kube` to `0.96.0`, `rstest` to `0.23.0` and
-  `tower-http` to `0.6.1`. We are not able to update `json-patch` to `3.0.1`, because `kube` `0.97.0`
-  has not been released yet and opentelemetry crates because of the Jaeger exporter support ([#897]).
+- Update Rust dependencies (Both `json-patch` and opentelemetry crates cannot be updated because of conflicts) ([#897]):
+  - Bump `kube` to `0.96.0`,
+  - `rstest` to `0.23.0` and
+  - `tower-http` to `0.6.1`
 
 ### Fixed
 
