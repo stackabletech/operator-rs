@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.80.0] - 2024-10-23
+
 ### Changed
 
 - BREAKING: Don't parse `/etc/resolv.conf` to auto-detect the Kubernetes cluster domain in case it is not explicitly configured.

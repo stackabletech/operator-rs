@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.1] - 2024-10-23
+
 ### Added
 
 - Add basic handling for enum variants with data ([#892]).
