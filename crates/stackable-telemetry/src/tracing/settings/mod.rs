@@ -3,6 +3,9 @@ use tracing::level_filters::LevelFilter;
 pub mod console_log;
 pub use console_log::*;
 
+pub mod otlp_trace;
+pub use otlp_trace::*;
+
 #[derive(Debug, PartialEq)]
 pub struct Settings {
     pub environment_variable: &'static str,
@@ -49,6 +52,15 @@ impl Build<ConsoleLogSettings> for SettingsBuilder {
     }
 }
 
+impl Build<OtlpTraceSettings> for SettingsBuilder {
+    fn build(self) -> OtlpTraceSettings {
+        OtlpTraceSettings {
+            common_settings: self.into(),
+            ..Default::default()
+        }
+    }
+}
+
 impl SettingsBuilder {
     pub fn env_var(mut self, name: &'static str) -> Self {
         self.environment_variable = name;
@@ -70,13 +82,13 @@ impl SettingsBuilder {
     //     self.into()
     // }
 
-    pub fn console_builder(self) -> ConsoleLogSettingsBuilder {
+    pub fn console_log_builder(self) -> ConsoleLogSettingsBuilder {
         self.into()
     }
 
-    // pub fn xxx_builder(self) -> XxxSettingsBuilder {
-    //     self.into()
-    // }
+    pub fn otlp_trace_builder(self) -> OtlpTraceSettingsBuilder {
+        self.into()
+    }
 }
 
 impl Default for SettingsBuilder {
@@ -108,6 +120,14 @@ impl From<SettingsBuilder> for ConsoleLogSettingsBuilder {
     }
 }
 
+impl From<SettingsBuilder> for OtlpTraceSettingsBuilder {
+    fn from(value: SettingsBuilder) -> Self {
+        Self {
+            common_settings: value.into(),
+        }
+    }
+}
+
 #[derive(Debug, Default, PartialEq)]
 pub enum Format {
     #[default]
@@ -134,9 +154,28 @@ mod test {
             .enabled(true)
             .env_var("hello")
             .default_level(LevelFilter::DEBUG)
-            .console_builder()
+            .console_log_builder()
             .log_format(Format::Plain)
             // color
+            .build();
+
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn builds_otlp_trace_settings() {
+        let expected = OtlpTraceSettings {
+            common_settings: Settings {
+                environment_variable: "hello",
+                enabled: true,
+                default_level: LevelFilter::DEBUG,
+            },
+        };
+        let result: OtlpTraceSettings = Settings::builder()
+            .enabled(true)
+            .env_var("hello")
+            .default_level(LevelFilter::DEBUG)
+            .otlp_trace_builder()
             .build();
 
         assert_eq!(expected, result);
