@@ -4,10 +4,10 @@ use quote::format_ident;
 use syn::{spanned::Spanned, Attribute, Ident, Path, Type};
 
 use crate::{
-    attrs::common::{ContainerAttributes, ItemAttributes, ValidateVersions},
+    attrs::common::{ItemAttributes, StandaloneContainerAttributes, ValidateVersions},
     codegen::{
         chain::Neighbors,
-        common::{ContainerVersion, VersionChain},
+        common::{VersionChain, VersionDefinition},
     },
 };
 
@@ -26,7 +26,7 @@ where
     /// Creates a new versioned item (struct field or enum variant) by consuming
     /// the parsed [Field](syn::Field) or [Variant](syn::Variant) and validating
     /// the versions of field actions against versions attached on the container.
-    fn new(item: I, container_attrs: &ContainerAttributes) -> syn::Result<Self>;
+    fn new(item: I, container_attrs: &StandaloneContainerAttributes) -> syn::Result<Self>;
 
     /// Inserts container versions not yet present in the status chain.
     ///
@@ -37,10 +37,10 @@ where
     ///
     /// This continuous chain ensures that when generating code (tokens), each
     /// field can lookup the status (and ident) for a requested version.
-    fn insert_container_versions(&mut self, versions: &[ContainerVersion]);
+    fn insert_container_versions(&mut self, versions: &[VersionDefinition]);
 
     /// Returns the ident of the item based on the provided container version.
-    fn get_ident(&self, version: &ContainerVersion) -> Option<&Ident>;
+    fn get_ident(&self, version: &VersionDefinition) -> Option<&Ident>;
 }
 
 pub(crate) trait InnerItem: Named + Spanned {
@@ -105,7 +105,7 @@ where
     A: for<'i> TryFrom<&'i I> + Attributes + ValidateVersions<I>,
     I: InnerItem,
 {
-    fn new(item: I, container_attrs: &ContainerAttributes) -> syn::Result<Self> {
+    fn new(item: I, container_attrs: &StandaloneContainerAttributes) -> syn::Result<Self> {
         // We use the TryFrom trait here, because the type parameter `A` can use
         // it as a trait bound. Internally this then calls either `from_field`
         // for field attributes or `from_variant` for variant attributes. Sadly
@@ -284,7 +284,7 @@ where
         }
     }
 
-    fn insert_container_versions(&mut self, versions: &[ContainerVersion]) {
+    fn insert_container_versions(&mut self, versions: &[VersionDefinition]) {
         if let Some(chain) = &mut self.chain {
             for version in versions {
                 if chain.contains_key(&version.inner) {
@@ -387,7 +387,7 @@ where
         }
     }
 
-    fn get_ident(&self, version: &ContainerVersion) -> Option<&Ident> {
+    fn get_ident(&self, version: &VersionDefinition) -> Option<&Ident> {
         match &self.chain {
             Some(chain) => chain
                 .get(&version.inner)
