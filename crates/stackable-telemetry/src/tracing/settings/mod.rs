@@ -3,6 +3,9 @@ use tracing::level_filters::LevelFilter;
 pub mod console_log;
 pub use console_log::*;
 
+pub mod otlp_log;
+pub use otlp_log::*;
+
 pub mod otlp_trace;
 pub use otlp_trace::*;
 
@@ -52,6 +55,15 @@ impl Build<ConsoleLogSettings> for SettingsBuilder {
     }
 }
 
+impl Build<OtlpLogSettings> for SettingsBuilder {
+    fn build(self) -> OtlpLogSettings {
+        OtlpLogSettings {
+            common_settings: self.into(),
+            ..Default::default()
+        }
+    }
+}
+
 impl Build<OtlpTraceSettings> for SettingsBuilder {
     fn build(self) -> OtlpTraceSettings {
         OtlpTraceSettings {
@@ -86,6 +98,10 @@ impl SettingsBuilder {
         self.into()
     }
 
+    pub fn otlp_log_builder(self) -> OtlpLogSettingsBuilder {
+        self.into()
+    }
+
     pub fn otlp_trace_builder(self) -> OtlpTraceSettingsBuilder {
         self.into()
     }
@@ -116,6 +132,14 @@ impl From<SettingsBuilder> for ConsoleLogSettingsBuilder {
         Self {
             common_settings: value.into(),
             log_format: Format::default(),
+        }
+    }
+}
+
+impl From<SettingsBuilder> for OtlpLogSettingsBuilder {
+    fn from(value: SettingsBuilder) -> Self {
+        Self {
+            common_settings: value.into(),
         }
     }
 }
@@ -157,6 +181,25 @@ mod test {
             .console_log_builder()
             .log_format(Format::Plain)
             // color
+            .build();
+
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn builds_otlp_log_settings() {
+        let expected = OtlpLogSettings {
+            common_settings: Settings {
+                environment_variable: "hello",
+                enabled: true,
+                default_level: LevelFilter::DEBUG,
+            },
+        };
+        let result: OtlpLogSettings = Settings::builder()
+            .enabled(true)
+            .env_var("hello")
+            .default_level(LevelFilter::DEBUG)
+            .otlp_log_builder()
             .build();
 
         assert_eq!(expected, result);
