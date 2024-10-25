@@ -14,7 +14,7 @@ use opentelemetry_sdk::{
     trace, Resource,
 };
 use opentelemetry_semantic_conventions::resource;
-use settings::{ConsoleLogSettings, OtlpLogSettings, OtlpTraceSettings};
+use settings::{CommonSettings as _, ConsoleLogSettings, OtlpLogSettings, OtlpTraceSettings};
 use snafu::{ResultExt as _, Snafu};
 use tracing::subscriber::SetGlobalDefaultError;
 use tracing_subscriber::{filter::Directive, layer::SubscriberExt, EnvFilter, Layer, Registry};
@@ -146,23 +146,23 @@ impl Tracing {
     pub fn init(mut self) -> Result<Tracing> {
         let mut layers: Vec<Box<dyn Layer<Registry> + Sync + Send>> = Vec::new();
 
-        if self.console_log_settings.common_settings.enabled {
+        if self.console_log_settings.enabled() {
             let env_filter_layer = env_filter_builder(
                 &self
                     .console_log_settings
                     .common_settings
                     .environment_variable,
-                self.console_log_settings.common_settings.default_level,
+                self.console_log_settings.default_level(),
             );
             let console_output_layer =
                 tracing_subscriber::fmt::layer().with_filter(env_filter_layer);
             layers.push(console_output_layer.boxed());
         }
 
-        if self.otlp_log_settings.common_settings.enabled {
+        if self.otlp_log_settings.enabled() {
             let env_filter_layer = env_filter_builder(
-                &self.otlp_log_settings.common_settings.environment_variable,
-                self.otlp_log_settings.common_settings.default_level,
+                &self.otlp_log_settings.environment_variable(),
+                self.otlp_log_settings.default_level(),
             )
             // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
             .add_directive("h2=off".parse().expect("invalid directive"));
@@ -187,13 +187,13 @@ impl Tracing {
             self.logger_provider = Some(otel_log);
         }
 
-        if self.otlp_trace_settings.common_settings.enabled {
+        if self.otlp_trace_settings.enabled() {
             let env_filter_layer = env_filter_builder(
                 &self
                     .otlp_trace_settings
                     .common_settings
                     .environment_variable,
-                self.otlp_trace_settings.common_settings.default_level,
+                self.otlp_trace_settings.default_level(),
             )
             // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
             .add_directive("h2=off".parse().expect("invalid directive"));
@@ -241,12 +241,12 @@ impl Tracing {
 impl Drop for Tracing {
     fn drop(&mut self) {
         tracing::debug!(
-            opentelemetry.tracing.enabled = self.otlp_trace_settings.common_settings.enabled,
-            opentelemetry.logger.enabled = self.otlp_log_settings.common_settings.enabled,
+            opentelemetry.tracing.enabled = self.otlp_trace_settings.enabled(),
+            opentelemetry.logger.enabled = self.otlp_log_settings.enabled(),
             "shutting down opentelemetry OTLP providers"
         );
 
-        if self.otlp_trace_settings.common_settings.enabled {
+        if self.otlp_trace_settings.enabled() {
             // NOTE (@NickLarsenNZ): This might eventually be replaced with something like SdkMeterProvider::shutdown(&self)
             // as has been done with the LoggerProvider (further below)
             // see: https://github.com/open-telemetry/opentelemetry-rust/pull/1412/files#r1409608679
@@ -468,8 +468,8 @@ mod test {
                 log_format: Default::default()
             }
         );
-        assert!(!trace_guard.otlp_log_settings.common_settings.enabled);
-        assert!(!trace_guard.otlp_trace_settings.common_settings.enabled);
+        assert!(!trace_guard.otlp_log_settings.enabled());
+        assert!(!trace_guard.otlp_trace_settings.enabled());
     }
 
     #[test]

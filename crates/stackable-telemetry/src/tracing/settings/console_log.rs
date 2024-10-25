@@ -1,4 +1,6 @@
-use super::{Build, Settings, SettingsBuilder};
+use tracing::level_filters::LevelFilter;
+
+use super::{Build, CommonSettings, Settings, SettingsBuilder};
 
 #[derive(Debug, Default, PartialEq)]
 pub struct ConsoleLogSettings {
@@ -54,6 +56,20 @@ impl Build<ConsoleLogSettings> for SettingsBuilder {
             common_settings: self.into(),
             ..Default::default()
         }
+    }
+}
+
+impl CommonSettings for ConsoleLogSettings {
+    fn environment_variable(&self) -> &'static str {
+        self.common_settings.environment_variable
+    }
+
+    fn enabled(&self) -> bool {
+        self.common_settings.enabled
+    }
+
+    fn default_level(&self) -> LevelFilter {
+        self.common_settings.default_level
     }
 }
 

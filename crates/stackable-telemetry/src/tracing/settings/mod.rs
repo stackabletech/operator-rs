@@ -9,6 +9,13 @@ pub use otlp_log::*;
 pub mod otlp_trace;
 pub use otlp_trace::*;
 
+// this trait is to make it simpler to access common settings from specific settings.
+pub trait CommonSettings {
+    fn environment_variable(&self) -> &'static str;
+    fn enabled(&self) -> bool;
+    fn default_level(&self) -> LevelFilter;
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Settings {
     pub environment_variable: &'static str,

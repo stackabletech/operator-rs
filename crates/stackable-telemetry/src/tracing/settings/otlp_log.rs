@@ -1,4 +1,6 @@
-use super::{Build, Settings, SettingsBuilder};
+use tracing::level_filters::LevelFilter;
+
+use super::{Build, CommonSettings, Settings, SettingsBuilder};
 
 #[derive(Debug, Default, PartialEq)]
 pub struct OtlpLogSettings {
@@ -39,6 +41,21 @@ impl Build<OtlpLogSettings> for SettingsBuilder {
         }
     }
 }
+
+impl CommonSettings for OtlpLogSettings {
+    fn environment_variable(&self) -> &'static str {
+        self.common_settings.environment_variable
+    }
+
+    fn enabled(&self) -> bool {
+        self.common_settings.enabled
+    }
+
+    fn default_level(&self) -> LevelFilter {
+        self.common_settings.default_level
+    }
+}
+
 #[cfg(test)]
 mod test {
     use tracing::level_filters::LevelFilter;
