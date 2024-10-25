@@ -3,6 +3,9 @@ use tracing::level_filters::LevelFilter;
 pub mod console_log;
 pub use console_log::*;
 
+pub mod otlp_log;
+pub use otlp_log::*;
+
 pub mod otlp_trace;
 pub use otlp_trace::*;
 
@@ -60,6 +63,10 @@ impl SettingsBuilder {
     }
 
     pub fn console_log_settings_builder(self) -> ConsoleLogSettingsBuilder {
+        self.into()
+    }
+
+    pub fn otlp_log_settings_builder(self) -> OtlpLogSettingsBuilder {
         self.into()
     }
 

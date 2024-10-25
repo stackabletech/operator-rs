@@ -14,7 +14,7 @@ use opentelemetry_sdk::{
     trace, Resource,
 };
 use opentelemetry_semantic_conventions::resource;
-use settings::{ConsoleLogSettings, OtlpTraceSettings};
+use settings::{ConsoleLogSettings, OtlpLogSettings, OtlpTraceSettings};
 use snafu::{ResultExt as _, Snafu};
 use tracing::{level_filters::LevelFilter, subscriber::SetGlobalDefaultError};
 use tracing_subscriber::{filter::Directive, layer::SubscriberExt, EnvFilter, Layer, Registry};
@@ -383,16 +383,15 @@ impl TracingBuilder<builder_state::Config> {
     /// in the opentelemetry crates. See [`Tracing`].
     pub fn with_otlp_log_exporter(
         self,
-        env_var: &'static str,
-        default_level_filter: LevelFilter,
+        settings: OtlpLogSettings,
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
             console_log_config: self.console_log_config,
             otlp_log_config: SubscriberConfig {
-                enabled: true,
-                env_var,
-                default_level_filter,
+                enabled: settings.common_settings.enabled,
+                env_var: settings.common_settings.environment_variable,
+                default_level_filter: settings.common_settings.default_level,
             },
             otlp_trace_config: self.otlp_trace_config,
             _marker: self._marker,
@@ -502,7 +501,13 @@ mod test {
                     .enabled(true)
                     .build(),
             )
-            .with_otlp_log_exporter("ABC_OTLP_LOG", LevelFilter::DEBUG)
+            .with_otlp_log_exporter(
+                Settings::builder()
+                    .env_var("ABC_OTLP_LOG")
+                    .default_level(LevelFilter::DEBUG)
+                    .enabled(true)
+                    .build(),
+            )
             .with_otlp_trace_exporter(
                 Settings::builder()
                     .env_var("ABC_OTLP_TRACE")
