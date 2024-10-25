@@ -3,6 +3,9 @@ use tracing::level_filters::LevelFilter;
 pub mod console_log;
 pub use console_log::*;
 
+pub mod otlp_trace;
+pub use otlp_trace::*;
+
 #[derive(Debug, PartialEq)]
 pub struct Settings {
     pub environment_variable: &'static str,
@@ -57,6 +60,10 @@ impl SettingsBuilder {
     }
 
     pub fn console_log_settings_builder(self) -> ConsoleLogSettingsBuilder {
+        self.into()
+    }
+
+    pub fn otlp_trace_settings_builder(self) -> OtlpTraceSettingsBuilder {
         self.into()
     }
 }
