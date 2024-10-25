@@ -14,9 +14,12 @@ use opentelemetry_sdk::{
     trace, Resource,
 };
 use opentelemetry_semantic_conventions::resource;
+use settings::ConsoleLogSettings;
 use snafu::{ResultExt as _, Snafu};
 use tracing::{level_filters::LevelFilter, subscriber::SetGlobalDefaultError};
 use tracing_subscriber::{filter::Directive, layer::SubscriberExt, EnvFilter, Layer, Registry};
+
+pub mod settings;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -358,15 +361,14 @@ impl TracingBuilder<builder_state::Config> {
     /// variable.
     pub fn with_console_output(
         self,
-        env_var: &'static str,
-        default_level_filter: LevelFilter,
+        settings: ConsoleLogSettings,
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
             console_log_config: SubscriberConfig {
-                enabled: true,
-                env_var,
-                default_level_filter,
+                enabled: settings.common_settings.enabled,
+                env_var: settings.common_settings.environment_variable,
+                default_level_filter: settings.common_settings.default_level,
             },
             otlp_log_config: self.otlp_log_config,
             otlp_trace_config: self.otlp_trace_config,
@@ -447,6 +449,8 @@ fn env_filter_builder(env_var: &str, default_directive: impl Into<Directive>) ->
 
 #[cfg(test)]
 mod test {
+    use settings::{Build as _, Settings};
+
     use super::*;
 
     #[test]
@@ -460,8 +464,20 @@ mod test {
     fn builder_with_console_output() {
         let trace_guard = Tracing::builder()
             .service_name("test")
-            .with_console_output("ABC_A", LevelFilter::TRACE)
-            .with_console_output("ABC_B", LevelFilter::DEBUG)
+            .with_console_output(
+                Settings::builder()
+                    .env_var("ABC_A")
+                    .default_level(LevelFilter::TRACE)
+                    .enabled(true)
+                    .build(),
+            )
+            .with_console_output(
+                Settings::builder()
+                    .env_var("ABC_B")
+                    .default_level(LevelFilter::DEBUG)
+                    .enabled(true)
+                    .build(),
+            )
             .build();
 
         assert_eq!(
@@ -480,7 +496,13 @@ mod test {
     fn builder_with_all() {
         let trace_guard = Tracing::builder()
             .service_name("test")
-            .with_console_output("ABC_CONSOLE", LevelFilter::INFO)
+            .with_console_output(
+                Settings::builder()
+                    .env_var("ABC_CONSOLE")
+                    .default_level(LevelFilter::INFO)
+                    .enabled(true)
+                    .build(),
+            )
             .with_otlp_log_exporter("ABC_OTLP_LOG", LevelFilter::DEBUG)
             .with_otlp_trace_exporter("ABC_OTLP_TRACE", LevelFilter::TRACE)
             .build();
