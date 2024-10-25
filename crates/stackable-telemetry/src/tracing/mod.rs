@@ -16,13 +16,14 @@ use opentelemetry_sdk::{
 use opentelemetry_semantic_conventions::resource;
 use settings::{ConsoleLogSettings, OtlpLogSettings, OtlpTraceSettings};
 use snafu::{ResultExt as _, Snafu};
-use tracing::{level_filters::LevelFilter, subscriber::SetGlobalDefaultError};
+use tracing::subscriber::SetGlobalDefaultError;
 use tracing_subscriber::{filter::Directive, layer::SubscriberExt, EnvFilter, Layer, Registry};
 
 pub mod settings;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
+#[allow(missing_docs)]
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("unable to install opentelemetry trace exporter"))]
@@ -126,9 +127,9 @@ pub enum Error {
 /// [5]: https://docs.rs/opentelemetry_sdk/latest/src/opentelemetry_sdk/logs/log_processor.rs.html
 pub struct Tracing {
     service_name: &'static str,
-    console_log_config: SubscriberConfig,
-    otlp_log_config: SubscriberConfig,
-    otlp_trace_config: SubscriberConfig,
+    console_log_settings: ConsoleLogSettings,
+    otlp_log_settings: OtlpLogSettings,
+    otlp_trace_settings: OtlpTraceSettings,
     logger_provider: Option<LoggerProvider>,
 }
 
@@ -145,20 +146,23 @@ impl Tracing {
     pub fn init(mut self) -> Result<Tracing> {
         let mut layers: Vec<Box<dyn Layer<Registry> + Sync + Send>> = Vec::new();
 
-        if self.console_log_config.enabled {
+        if self.console_log_settings.common_settings.enabled {
             let env_filter_layer = env_filter_builder(
-                self.console_log_config.env_var,
-                self.console_log_config.default_level_filter,
+                &self
+                    .console_log_settings
+                    .common_settings
+                    .environment_variable,
+                self.console_log_settings.common_settings.default_level,
             );
             let console_output_layer =
                 tracing_subscriber::fmt::layer().with_filter(env_filter_layer);
             layers.push(console_output_layer.boxed());
         }
 
-        if self.otlp_log_config.enabled {
+        if self.otlp_log_settings.common_settings.enabled {
             let env_filter_layer = env_filter_builder(
-                self.otlp_log_config.env_var,
-                self.otlp_log_config.default_level_filter,
+                &self.otlp_log_settings.common_settings.environment_variable,
+                self.otlp_log_settings.common_settings.default_level,
             )
             // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
             .add_directive("h2=off".parse().expect("invalid directive"));
@@ -183,10 +187,13 @@ impl Tracing {
             self.logger_provider = Some(otel_log);
         }
 
-        if self.otlp_trace_config.enabled {
+        if self.otlp_trace_settings.common_settings.enabled {
             let env_filter_layer = env_filter_builder(
-                self.otlp_trace_config.env_var,
-                self.otlp_trace_config.default_level_filter,
+                &self
+                    .otlp_trace_settings
+                    .common_settings
+                    .environment_variable,
+                self.otlp_trace_settings.common_settings.default_level,
             )
             // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
             .add_directive("h2=off".parse().expect("invalid directive"));
@@ -234,12 +241,12 @@ impl Tracing {
 impl Drop for Tracing {
     fn drop(&mut self) {
         tracing::debug!(
-            opentelemetry.tracing.enabled = self.otlp_trace_config.enabled,
-            opentelemetry.logger.enabled = self.otlp_log_config.enabled,
+            opentelemetry.tracing.enabled = self.otlp_trace_settings.common_settings.enabled,
+            opentelemetry.logger.enabled = self.otlp_log_settings.common_settings.enabled,
             "shutting down opentelemetry OTLP providers"
         );
 
-        if self.otlp_trace_config.enabled {
+        if self.otlp_trace_settings.common_settings.enabled {
             // NOTE (@NickLarsenNZ): This might eventually be replaced with something like SdkMeterProvider::shutdown(&self)
             // as has been done with the LoggerProvider (further below)
             // see: https://github.com/open-telemetry/opentelemetry-rust/pull/1412/files#r1409608679
@@ -318,29 +325,12 @@ impl BuilderState for builder_state::Config {}
 #[derive(Default)]
 pub struct TracingBuilder<S: BuilderState> {
     service_name: Option<&'static str>,
-    console_log_config: SubscriberConfig,
-    otlp_log_config: SubscriberConfig,
-    otlp_trace_config: SubscriberConfig,
+    console_log_settings: ConsoleLogSettings,
+    otlp_log_settings: OtlpLogSettings,
+    otlp_trace_settings: OtlpTraceSettings,
 
     /// Allow the generic to be used (needed for impls).
     _marker: std::marker::PhantomData<S>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-struct SubscriberConfig {
-    enabled: bool,
-    env_var: &'static str,
-    default_level_filter: LevelFilter,
-}
-
-impl Default for SubscriberConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            env_var: EnvFilter::DEFAULT_ENV,
-            default_level_filter: LevelFilter::OFF,
-        }
-    }
 }
 
 impl TracingBuilder<builder_state::PreServiceName> {
@@ -361,17 +351,13 @@ impl TracingBuilder<builder_state::Config> {
     /// variable.
     pub fn with_console_output(
         self,
-        settings: ConsoleLogSettings,
+        console_log_settings: ConsoleLogSettings,
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
-            console_log_config: SubscriberConfig {
-                enabled: settings.common_settings.enabled,
-                env_var: settings.common_settings.environment_variable,
-                default_level_filter: settings.common_settings.default_level,
-            },
-            otlp_log_config: self.otlp_log_config,
-            otlp_trace_config: self.otlp_trace_config,
+            console_log_settings,
+            otlp_log_settings: self.otlp_log_settings,
+            otlp_trace_settings: self.otlp_trace_settings,
             _marker: self._marker,
         }
     }
@@ -383,17 +369,13 @@ impl TracingBuilder<builder_state::Config> {
     /// in the opentelemetry crates. See [`Tracing`].
     pub fn with_otlp_log_exporter(
         self,
-        settings: OtlpLogSettings,
+        otlp_log_settings: OtlpLogSettings,
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
-            console_log_config: self.console_log_config,
-            otlp_log_config: SubscriberConfig {
-                enabled: settings.common_settings.enabled,
-                env_var: settings.common_settings.environment_variable,
-                default_level_filter: settings.common_settings.default_level,
-            },
-            otlp_trace_config: self.otlp_trace_config,
+            console_log_settings: self.console_log_settings,
+            otlp_log_settings,
+            otlp_trace_settings: self.otlp_trace_settings,
             _marker: self._marker,
         }
     }
@@ -405,17 +387,13 @@ impl TracingBuilder<builder_state::Config> {
     /// in the opentelemetry crates. See [`Tracing`].
     pub fn with_otlp_trace_exporter(
         self,
-        settings: OtlpTraceSettings,
+        otlp_trace_settings: OtlpTraceSettings,
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
-            console_log_config: self.console_log_config,
-            otlp_log_config: self.otlp_log_config,
-            otlp_trace_config: SubscriberConfig {
-                enabled: settings.common_settings.enabled,
-                env_var: settings.common_settings.environment_variable,
-                default_level_filter: settings.common_settings.default_level,
-            },
+            console_log_settings: self.console_log_settings,
+            otlp_log_settings: self.otlp_log_settings,
+            otlp_trace_settings,
             _marker: self._marker,
         }
     }
@@ -429,9 +407,9 @@ impl TracingBuilder<builder_state::Config> {
             service_name: self
                 .service_name
                 .expect("service_name must be configured at this point"),
-            console_log_config: self.console_log_config,
-            otlp_log_config: self.otlp_log_config,
-            otlp_trace_config: self.otlp_trace_config,
+            console_log_settings: self.console_log_settings,
+            otlp_log_settings: self.otlp_log_settings,
+            otlp_trace_settings: self.otlp_trace_settings,
             logger_provider: None,
         }
     }
@@ -448,6 +426,7 @@ fn env_filter_builder(env_var: &str, default_directive: impl Into<Directive>) ->
 #[cfg(test)]
 mod test {
     use settings::{Build as _, Settings};
+    use tracing::level_filters::LevelFilter;
 
     use super::*;
 
@@ -479,15 +458,18 @@ mod test {
             .build();
 
         assert_eq!(
-            trace_guard.console_log_config,
-            SubscriberConfig {
-                enabled: true,
-                env_var: "ABC_B",
-                default_level_filter: LevelFilter::DEBUG
+            trace_guard.console_log_settings,
+            ConsoleLogSettings {
+                common_settings: Settings {
+                    enabled: true,
+                    environment_variable: "ABC_B",
+                    default_level: LevelFilter::DEBUG
+                },
+                log_format: Default::default()
             }
         );
-        assert!(!trace_guard.otlp_log_config.enabled);
-        assert!(!trace_guard.otlp_trace_config.enabled);
+        assert!(!trace_guard.otlp_log_settings.common_settings.enabled);
+        assert!(!trace_guard.otlp_trace_settings.common_settings.enabled);
     }
 
     #[test]
@@ -518,27 +500,34 @@ mod test {
             .build();
 
         assert_eq!(
-            trace_guard.console_log_config,
-            SubscriberConfig {
-                enabled: true,
-                env_var: "ABC_CONSOLE",
-                default_level_filter: LevelFilter::INFO
+            trace_guard.console_log_settings,
+            ConsoleLogSettings {
+                common_settings: Settings {
+                    enabled: true,
+                    environment_variable: "ABC_CONSOLE",
+                    default_level: LevelFilter::INFO
+                },
+                log_format: Default::default()
             }
         );
         assert_eq!(
-            trace_guard.otlp_log_config,
-            SubscriberConfig {
-                enabled: true,
-                env_var: "ABC_OTLP_LOG",
-                default_level_filter: LevelFilter::DEBUG
+            trace_guard.otlp_log_settings,
+            OtlpLogSettings {
+                common_settings: Settings {
+                    enabled: true,
+                    environment_variable: "ABC_OTLP_LOG",
+                    default_level: LevelFilter::DEBUG
+                },
             }
         );
         assert_eq!(
-            trace_guard.otlp_trace_config,
-            SubscriberConfig {
-                enabled: true,
-                env_var: "ABC_OTLP_TRACE",
-                default_level_filter: LevelFilter::TRACE
+            trace_guard.otlp_trace_settings,
+            OtlpTraceSettings {
+                common_settings: Settings {
+                    enabled: true,
+                    environment_variable: "ABC_OTLP_TRACE",
+                    default_level: LevelFilter::TRACE
+                }
             }
         );
     }
