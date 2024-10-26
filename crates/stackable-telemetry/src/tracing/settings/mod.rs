@@ -102,6 +102,31 @@ impl From<SettingsBuilder> for Settings {
     }
 }
 
+pub(crate) type SettingsDouble = (&'static str, LevelFilter);
+pub(crate) type SettingsTriple = (&'static str, LevelFilter, bool);
+
+// for enabling a subscriber in one line with no extra settings
+impl From<SettingsDouble> for Settings {
+    fn from((environment_variable, default_level): SettingsDouble) -> Self {
+        Settings {
+            environment_variable,
+            default_level,
+            enabled: true,
+        }
+    }
+}
+
+// for configuring a subscriber in one line with no extra settings
+impl From<SettingsTriple> for Settings {
+    fn from((environment_variable, default_level, enabled): SettingsTriple) -> Self {
+        Settings {
+            environment_variable,
+            default_level,
+            enabled,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

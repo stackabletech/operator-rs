@@ -44,7 +44,7 @@ pub enum Error {
 ///
 /// # Usage:
 /// ```
-/// use stackable_telemetry::tracing::{Tracing, Error};
+/// use stackable_telemetry::tracing::{Tracing, Error, settings::{Build as _, Settings}};
 /// use tracing_subscriber::filter::LevelFilter;
 ///
 /// #[tokio::main]
@@ -53,9 +53,15 @@ pub enum Error {
 ///     // `let _ =`, as that will drop immediately.
 ///     let _tracing_guard = Tracing::builder()
 ///         .service_name("test")
-///         .with_console_output("TEST_CONSOLE", LevelFilter::INFO)
-///         .with_otlp_log_exporter("TEST_OTLP_LOG", LevelFilter::DEBUG)
-///         .with_otlp_trace_exporter("TEST_OTLP_TRACE", LevelFilter::TRACE)
+///         .with_console_output(
+///             Settings::builder()
+///                 .environment_variable("TEST_CONSOLE")
+///                 .default_level(LevelFilter::INFO)
+///                 .enabled(true)
+///                 .build()
+///         )
+///         .with_otlp_log_exporter(("TEST_OTLP_LOG", LevelFilter::DEBUG).into())
+///         .with_otlp_trace_exporter(("TEST_OTLP_TRACE", LevelFilter::TRACE).into())
 ///         .build()
 ///         .init()?;
 ///
@@ -483,20 +489,8 @@ mod test {
                     .enabled(true)
                     .build(),
             )
-            .with_otlp_log_exporter(
-                Settings::builder()
-                    .env_var("ABC_OTLP_LOG")
-                    .default_level(LevelFilter::DEBUG)
-                    .enabled(true)
-                    .build(),
-            )
-            .with_otlp_trace_exporter(
-                Settings::builder()
-                    .env_var("ABC_OTLP_TRACE")
-                    .default_level(LevelFilter::TRACE)
-                    .enabled(true)
-                    .build(),
-            )
+            .with_otlp_log_exporter(("ABC_OTLP_LOG", LevelFilter::DEBUG).into())
+            .with_otlp_trace_exporter(("ABC_OTLP_TRACE", LevelFilter::TRACE).into())
             .build();
 
         assert_eq!(
