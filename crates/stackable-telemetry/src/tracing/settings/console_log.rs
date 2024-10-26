@@ -64,12 +64,12 @@ impl CommonSettings for ConsoleLogSettings {
         self.common_settings.environment_variable
     }
 
-    fn enabled(&self) -> bool {
-        self.common_settings.enabled
-    }
-
     fn default_level(&self) -> LevelFilter {
         self.common_settings.default_level
+    }
+
+    fn enabled(&self) -> bool {
+        self.common_settings.enabled
     }
 }
 
@@ -84,15 +84,15 @@ mod test {
         let expected = ConsoleLogSettings {
             common_settings: Settings {
                 environment_variable: "hello",
-                enabled: true,
                 default_level: LevelFilter::DEBUG,
+                enabled: true,
             },
             log_format: Format::Plain,
         };
         let result = Settings::builder()
-            .enabled(true)
-            .env_var("hello")
+            .environment_variable("hello")
             .default_level(LevelFilter::DEBUG)
+            .enabled(true)
             .console_log_settings_builder()
             .log_format(Format::Plain)
             // color

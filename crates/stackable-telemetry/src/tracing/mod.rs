@@ -443,14 +443,14 @@ mod test {
             .service_name("test")
             .with_console_output(
                 Settings::builder()
-                    .env_var("ABC_A")
+                    .environment_variable("ABC_A")
                     .default_level(LevelFilter::TRACE)
                     .enabled(true)
                     .build(),
             )
             .with_console_output(
                 Settings::builder()
-                    .env_var("ABC_B")
+                    .environment_variable("ABC_B")
                     .default_level(LevelFilter::DEBUG)
                     .enabled(true)
                     .build(),
@@ -478,7 +478,7 @@ mod test {
             .service_name("test")
             .with_console_output(
                 Settings::builder()
-                    .env_var("ABC_CONSOLE")
+                    .environment_variable("ABC_CONSOLE")
                     .default_level(LevelFilter::INFO)
                     .enabled(true)
                     .build(),

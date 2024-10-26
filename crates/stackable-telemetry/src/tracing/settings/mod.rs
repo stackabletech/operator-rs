@@ -12,17 +12,17 @@ pub use otlp_trace::*;
 // this trait is to make it simpler to access common settings from specific settings.
 pub trait CommonSettings {
     fn environment_variable(&self) -> &'static str;
-    fn enabled(&self) -> bool;
     fn default_level(&self) -> LevelFilter;
+    fn enabled(&self) -> bool;
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Settings {
     pub environment_variable: &'static str,
 
-    pub enabled: bool,
-
     pub default_level: LevelFilter,
+
+    pub enabled: bool,
 }
 
 impl Settings {
@@ -54,18 +54,18 @@ impl Build<Settings> for SettingsBuilder {
 }
 
 impl SettingsBuilder {
-    pub fn env_var(mut self, name: &'static str) -> Self {
+    pub fn environment_variable(mut self, name: &'static str) -> Self {
         self.environment_variable = name;
-        self
-    }
-
-    pub fn enabled(mut self, enabled: bool) -> Self {
-        self.enabled = enabled;
         self
     }
 
     pub fn default_level(mut self, level: impl Into<LevelFilter>) -> Self {
         self.default_level = level.into();
+        self
+    }
+
+    pub fn enabled(mut self, enabled: bool) -> Self {
+        self.enabled = enabled;
         self
     }
 
@@ -86,8 +86,8 @@ impl Default for SettingsBuilder {
     fn default() -> Self {
         Self {
             environment_variable: "RUST_LOG",
-            enabled: false,
             default_level: LevelFilter::OFF,
+            enabled: false,
         }
     }
 }
@@ -96,8 +96,8 @@ impl From<SettingsBuilder> for Settings {
     fn from(value: SettingsBuilder) -> Self {
         Self {
             environment_variable: value.environment_variable,
-            enabled: value.enabled,
             default_level: value.default_level,
+            enabled: value.enabled,
         }
     }
 }
@@ -110,13 +110,13 @@ mod test {
     fn builds_settings() {
         let expected = Settings {
             environment_variable: "hello",
-            enabled: true,
             default_level: LevelFilter::DEBUG,
+            enabled: true,
         };
         let result = Settings::builder()
-            .enabled(true)
-            .env_var("hello")
+            .environment_variable("hello")
             .default_level(LevelFilter::DEBUG)
+            .enabled(true)
             .build();
 
         assert_eq!(expected, result);

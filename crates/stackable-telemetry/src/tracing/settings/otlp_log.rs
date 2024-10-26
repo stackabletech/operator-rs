@@ -47,12 +47,12 @@ impl CommonSettings for OtlpLogSettings {
         self.common_settings.environment_variable
     }
 
-    fn enabled(&self) -> bool {
-        self.common_settings.enabled
-    }
-
     fn default_level(&self) -> LevelFilter {
         self.common_settings.default_level
+    }
+
+    fn enabled(&self) -> bool {
+        self.common_settings.enabled
     }
 }
 
@@ -67,14 +67,14 @@ mod test {
         let expected = OtlpLogSettings {
             common_settings: Settings {
                 environment_variable: "hello",
-                enabled: true,
                 default_level: LevelFilter::DEBUG,
+                enabled: true,
             },
         };
         let result = Settings::builder()
-            .enabled(true)
-            .env_var("hello")
+            .environment_variable("hello")
             .default_level(LevelFilter::DEBUG)
+            .enabled(true)
             .otlp_log_settings_builder()
             .build();
 
