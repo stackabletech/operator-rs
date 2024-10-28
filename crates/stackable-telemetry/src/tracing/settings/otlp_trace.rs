@@ -37,7 +37,7 @@ impl Build<OtlpTraceSettings> for SettingsBuilder {
     fn build(self) -> OtlpTraceSettings {
         OtlpTraceSettings {
             common_settings: self.into(),
-            ..Default::default()
+            // ..Default::default()
         }
     }
 }
@@ -60,7 +60,7 @@ impl From<SettingsDouble> for OtlpTraceSettings {
     fn from(value: SettingsDouble) -> Self {
         Self {
             common_settings: value.into(),
-            ..Default::default()
+            // ..Default::default()
         }
     }
 }
@@ -69,7 +69,7 @@ impl From<SettingsTriple> for OtlpTraceSettings {
     fn from(value: SettingsTriple) -> Self {
         Self {
             common_settings: value.into(),
-            ..Default::default()
+            // ..Default::default()
         }
     }
 }

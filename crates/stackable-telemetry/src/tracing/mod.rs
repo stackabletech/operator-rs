@@ -154,8 +154,7 @@ impl Tracing {
 
         if self.console_log_settings.enabled() {
             let env_filter_layer = env_filter_builder(
-                &self
-                    .console_log_settings
+                self.console_log_settings
                     .common_settings
                     .environment_variable,
                 self.console_log_settings.default_level(),
@@ -167,7 +166,7 @@ impl Tracing {
 
         if self.otlp_log_settings.enabled() {
             let env_filter_layer = env_filter_builder(
-                &self.otlp_log_settings.environment_variable(),
+                self.otlp_log_settings.environment_variable(),
                 self.otlp_log_settings.default_level(),
             )
             // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
@@ -195,8 +194,7 @@ impl Tracing {
 
         if self.otlp_trace_settings.enabled() {
             let env_filter_layer = env_filter_builder(
-                &self
-                    .otlp_trace_settings
+                self.otlp_trace_settings
                     .common_settings
                     .environment_variable,
                 self.otlp_trace_settings.default_level(),
