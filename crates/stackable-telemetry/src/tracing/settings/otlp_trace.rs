@@ -90,8 +90,8 @@ mod test {
             },
         };
         let result = Settings::builder()
-            .environment_variable("hello")
-            .default_level(LevelFilter::DEBUG)
+            .with_environment_variable("hello")
+            .with_default_level(LevelFilter::DEBUG)
             .enabled(true)
             .otlp_trace_settings_builder()
             .build();

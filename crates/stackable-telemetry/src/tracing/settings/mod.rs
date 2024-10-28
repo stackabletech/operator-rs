@@ -54,16 +54,22 @@ impl Build<Settings> for SettingsBuilder {
 }
 
 impl SettingsBuilder {
-    pub fn environment_variable(mut self, name: &'static str) -> Self {
+    pub fn with_environment_variable(mut self, name: &'static str) -> Self {
         self.environment_variable = name;
         self
     }
 
-    pub fn default_level(mut self, level: impl Into<LevelFilter>) -> Self {
+    pub fn with_default_level(mut self, level: impl Into<LevelFilter>) -> Self {
         self.default_level = level.into();
         self
     }
 
+    // TODO (@NickLarsenNZ): Currently this has to be called to enable the
+    // subscriber. Eventually it should become optional, and default to on (if
+    // settings are supplied). Therefore, the fields in TracingBuilder to hold
+    // the subscriber settings should become Option<T> so that the subscriber is
+    // disabled when not configured, is enabled when configured, while still
+    // controllable through this function. Then this can be renamed to `with_enabled`
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.enabled = enabled;
         self
@@ -139,8 +145,8 @@ mod test {
             enabled: true,
         };
         let result = Settings::builder()
-            .environment_variable("hello")
-            .default_level(LevelFilter::DEBUG)
+            .with_environment_variable("hello")
+            .with_default_level(LevelFilter::DEBUG)
             .enabled(true)
             .build();
 

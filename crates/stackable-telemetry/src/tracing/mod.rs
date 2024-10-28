@@ -447,15 +447,15 @@ mod test {
             .service_name("test")
             .with_console_output(
                 Settings::builder()
-                    .environment_variable("ABC_A")
-                    .default_level(LevelFilter::TRACE)
+                    .with_environment_variable("ABC_A")
+                    .with_default_level(LevelFilter::TRACE)
                     .enabled(true)
                     .build(),
             )
             .with_console_output(
                 Settings::builder()
-                    .environment_variable("ABC_B")
-                    .default_level(LevelFilter::DEBUG)
+                    .with_environment_variable("ABC_B")
+                    .with_default_level(LevelFilter::DEBUG)
                     .enabled(true)
                     .build(),
             )
@@ -482,8 +482,8 @@ mod test {
             .service_name("test")
             .with_console_output(
                 Settings::builder()
-                    .environment_variable("ABC_CONSOLE")
-                    .default_level(LevelFilter::INFO)
+                    .with_environment_variable("ABC_CONSOLE")
+                    .with_default_level(LevelFilter::INFO)
                     .enabled(true)
                     .build(),
             )

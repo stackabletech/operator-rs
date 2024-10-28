@@ -22,7 +22,7 @@ pub struct ConsoleLogSettingsBuilder {
 }
 
 impl ConsoleLogSettingsBuilder {
-    pub fn log_format(mut self, format: Format) -> Self {
+    pub fn with_log_format(mut self, format: Format) -> Self {
         self.log_format = format;
         self
     }
@@ -108,11 +108,11 @@ mod test {
             log_format: Format::Plain,
         };
         let result = Settings::builder()
-            .environment_variable("hello")
-            .default_level(LevelFilter::DEBUG)
+            .with_environment_variable("hello")
+            .with_default_level(LevelFilter::DEBUG)
             .enabled(true)
             .console_log_settings_builder()
-            .log_format(Format::Plain)
+            .with_log_format(Format::Plain)
             // color
             .build();
 
