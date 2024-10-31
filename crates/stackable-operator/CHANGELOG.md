@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add new `PreferredAddressType::HostnameConservative` ([#903]).
+
+### Changed
+
+- BREAKING: Split `ListenerClass.spec.preferred_address_type` into a new `PreferredAddressType` type. Use `resolve_preferred_address_type()` to access the `AddressType` as before. ([#903])
+
+[#903]: https://github.com/stackabletech/operator-rs/pull/903
+
 ## [0.80.0] - 2024-10-23
 
 ### Changed
