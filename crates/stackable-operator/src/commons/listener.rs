@@ -210,6 +210,7 @@ pub struct ListenerIngress {
 pub enum AddressType {
     /// A resolvable DNS hostname.
     Hostname,
+
     /// A resolved IP address.
     #[serde(rename = "IP")]
     Ip,
@@ -219,22 +220,27 @@ pub enum AddressType {
 ///
 /// These can vary depending on the rest of the [`ListenerClass`].
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, JsonSchema, PartialEq, Eq)]
-#[serde(rename_all = "PascalCase")]
 pub enum PreferredAddressType {
     /// Like [`AddressType::Hostname`], but prefers [`AddressType::Ip`] for [`ServiceType::NodePort`], since their hostnames are less likely to be resolvable.
     HostnameConservative,
-    #[serde(untagged)]
-    AddressType(AddressType),
+
+    // Like the respective variants of AddressType. Ideally we would refer to them instead of copy/pasting, but that breaks due to upstream issues:
+    // - https://github.com/GREsau/schemars/issues/222
+    // - https://github.com/kube-rs/kube/issues/1622
+    Hostname,
+    #[serde(rename = "IP")]
+    Ip,
 }
 
 impl PreferredAddressType {
     pub fn resolve(self, listener_class: &ListenerClassSpec) -> AddressType {
         match self {
-            PreferredAddressType::AddressType(tpe) => tpe,
             PreferredAddressType::HostnameConservative => match listener_class.service_type {
                 ServiceType::NodePort => AddressType::Ip,
                 _ => AddressType::Hostname,
             },
+            PreferredAddressType::Hostname => AddressType::Hostname,
+            PreferredAddressType::Ip => AddressType::Ip,
         }
     }
 }
