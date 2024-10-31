@@ -65,11 +65,13 @@ pub struct ListenerClassSpec {
     pub service_external_traffic_policy: KubernetesTrafficPolicy,
 
     /// Whether addresses should prefer using the IP address (`IP`) or the hostname (`Hostname`).
+    /// Can also be set to `HostnameConservative`, which will use `IP` for `NodePort` service types, but `Hostname` for everything else.
     ///
     /// The other type will be used if the preferred type is not available.
-    /// By default `Hostname` is used.
+    ///
+    /// Defaults to `HostnameConservative`.
     #[serde(default = "ListenerClassSpec::default_preferred_address_type")]
-    pub preferred_address_type: AddressType,
+    pub preferred_address_type: PreferredAddressType,
 }
 
 impl ListenerClassSpec {
@@ -77,8 +79,13 @@ impl ListenerClassSpec {
         KubernetesTrafficPolicy::Local
     }
 
-    const fn default_preferred_address_type() -> AddressType {
-        AddressType::Hostname
+    const fn default_preferred_address_type() -> PreferredAddressType {
+        PreferredAddressType::HostnameConservative
+    }
+
+    /// Resolves [`Self::preferred_address_type`]'s "smart" modes depending on the rest of `self`.
+    pub fn resolve_preferred_address_type(&self) -> AddressType {
+        self.preferred_address_type.resolve(self)
     }
 }
 
@@ -197,12 +204,39 @@ pub struct ListenerIngress {
     pub ports: BTreeMap<String, i32>,
 }
 
+/// The type of a given address.
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "PascalCase")]
 pub enum AddressType {
+    /// A resolvable DNS hostname.
     Hostname,
+    /// A resolved IP address.
     #[serde(rename = "IP")]
     Ip,
+}
+
+/// A mode for deciding the preferred [`AddressType`].
+///
+/// These can vary depending on the rest of the [`ListenerClass`].
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "PascalCase")]
+pub enum PreferredAddressType {
+    /// Like [`AddressType::Hostname`], but prefers [`AddressType::Ip`] for [`ServiceType::NodePort`], since their hostnames are less likely to be resolvable.
+    HostnameConservative,
+    #[serde(untagged)]
+    AddressType(AddressType),
+}
+
+impl PreferredAddressType {
+    pub fn resolve(self, listener_class: &ListenerClassSpec) -> AddressType {
+        match self {
+            PreferredAddressType::AddressType(tpe) => tpe,
+            PreferredAddressType::HostnameConservative => match listener_class.service_type {
+                ServiceType::NodePort => AddressType::Ip,
+                _ => AddressType::Hostname,
+            },
+        }
+    }
 }
 
 /// Informs users about Listeners that are bound by a given Pod.
