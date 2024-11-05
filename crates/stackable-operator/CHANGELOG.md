@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.81.0] - 2024-11-05
+
 ### Added
 
 - Add new `PreferredAddressType::HostnameConservative` ([#903]).
