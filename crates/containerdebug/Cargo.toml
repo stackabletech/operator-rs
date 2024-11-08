@@ -12,4 +12,6 @@ serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
 stackable-operator = { git = "https://github.com/stackabletech/operator-rs", tag = "stackable-operator-0.78.0", version = "0.78.0" }
 sysinfo = "0.32.0"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
 users = "0.11.0"

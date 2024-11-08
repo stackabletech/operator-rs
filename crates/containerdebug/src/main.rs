@@ -26,11 +26,15 @@ struct Opts {
 }
 
 fn main() {
+    tracing_subscriber::fmt().init();
+
     let opts = Opts::parse();
 
     let mut next_run = Instant::now();
     loop {
         std::thread::sleep(next_run.saturating_duration_since(Instant::now()));
+
+        tracing::info!("starting run");
 
         // Please note that we use "new_all" to ensure that all list of
         // components, network interfaces, disks and users are already
@@ -102,7 +106,10 @@ fn main() {
         // - Users/Groups
 
         match opts.loop_interval {
-            Some(interval) => next_run += interval,
+            Some(interval) => {
+                next_run += interval;
+                tracing::info!(?next_run, "run completed, scheduling next...");
+            }
             None => break,
         }
     }
