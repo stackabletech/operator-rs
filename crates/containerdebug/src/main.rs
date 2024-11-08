@@ -16,11 +16,11 @@ use std::time::{Duration, Instant};
 struct Opts {
     /// Loop every <DURATION>, instead of shutting down once completed (default <DURATION>: 1m)
     #[clap(
-        long,
+        long = "loop",
+        value_name = "INTERVAL",
         default_missing_value = "1m",
         num_args = 0..=1,
         require_equals = true,
-        value_name = "DURATION",
     )]
     loop_interval: Option<stackable_operator::time::Duration>,
 }
