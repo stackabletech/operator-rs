@@ -1,12 +1,9 @@
 ---
 blank_issues_enabled: true
 contact_links:
-  - name: Feature request
-    about: 🚀 Suggest an idea for this project
-    url: https://github.com/stackabletech/operator-rs/discussions/new?category=ideas
   - name: 🙋🏾 Question
     about: Use this to ask a question about this project
-    url: https://github.com/stackabletech/operator-rs/discussions/new?category=q-a
-  - name: Other issue
-    about: Open an issue that doesn't fit any other category
-    url: https://github.com/stackabletech/operator-rs/issues/new
+    url: https://github.com/orgs/stackabletech/discussions/new?category=q-a
+  - name: 🚀 Feature Requests and other things
+    about: Open an issue with your feature request or any other issue not covered elsewhere
+    url: https://github.com/stackabletech/nifi-operator/issues/new

@@ -115,7 +115,10 @@ use clap::Args;
 use product_config::ProductConfigManager;
 use snafu::{ResultExt, Snafu};
 
-use crate::{logging::TracingTarget, namespace::WatchNamespace};
+use crate::{
+    logging::TracingTarget, namespace::WatchNamespace,
+    utils::cluster_info::KubernetesClusterInfoOpts,
+};
 
 pub const AUTHOR: &str = "Stackable GmbH - info@stackable.tech";
 
@@ -171,15 +174,19 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///     common: ProductOperatorRun,
 /// }
 /// use clap::Parser;
-/// use stackable_operator::logging::TracingTarget;
-/// use stackable_operator::namespace::WatchNamespace;
+/// use stackable_operator::{
+///     logging::TracingTarget,
+///     namespace::WatchNamespace,
+/// };
+///
 /// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar", "--watch-namespace", "foobar"]);
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
 ///     common: ProductOperatorRun {
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
 ///         watch_namespace: WatchNamespace::One("foobar".to_string()),
-///         tracing_target: TracingTarget::None
+///         tracing_target: TracingTarget::None,
+///         cluster_info_opts: Default::default(),
 ///     },
 /// }));
 /// ```
@@ -205,12 +212,17 @@ pub struct ProductOperatorRun {
     /// Provides the path to a product-config file
     #[arg(long, short = 'p', value_name = "FILE", default_value = "", env)]
     pub product_config: ProductConfigPath,
+
     /// Provides a specific namespace to watch (instead of watching all namespaces)
     #[arg(long, env, default_value = "")]
     pub watch_namespace: WatchNamespace,
+
     /// Tracing log collector system
     #[arg(long, env, default_value_t, value_enum)]
     pub tracing_target: TracingTarget,
+
+    #[command(flatten)]
+    pub cluster_info_opts: KubernetesClusterInfoOpts,
 }
 
 /// A path to a [`ProductConfigManager`] spec file
@@ -384,6 +396,7 @@ mod tests {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
                 tracing_target: TracingTarget::None,
+                cluster_info_opts: Default::default(),
             }
         );
 
@@ -395,6 +408,7 @@ mod tests {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::All,
                 tracing_target: TracingTarget::None,
+                cluster_info_opts: Default::default(),
             }
         );
 
@@ -407,6 +421,7 @@ mod tests {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
                 tracing_target: TracingTarget::None,
+                cluster_info_opts: Default::default(),
             }
         );
     }

@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.1] - 2024-10-23
+
 ### Added
 
 - Add support to apply the `#[versioned()]` macro to modules to version all contained items at
