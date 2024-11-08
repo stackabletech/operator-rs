@@ -3,6 +3,7 @@ mod system_information;
 use clap::Parser;
 use local_ip_address::list_afinet_netifas;
 use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 use sysinfo::{Disks, System};
 
 use crate::system_information::{SystemInformation, SystemNetworkInfo};
@@ -23,6 +24,9 @@ struct Opts {
         require_equals = true,
     )]
     loop_interval: Option<stackable_operator::time::Duration>,
+
+    #[clap(long, short = 'o')]
+    output: Option<PathBuf>,
 }
 
 fn main() {
@@ -88,6 +92,9 @@ fn main() {
 
         let serialized = serde_json::to_string_pretty(&system_information).unwrap();
         println!("{}", serialized);
+        if let Some(output_path) = &opts.output {
+            std::fs::write(output_path, &serialized).unwrap();
+        }
 
         // TODO:
         //  Current time
