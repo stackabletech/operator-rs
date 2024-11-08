@@ -138,7 +138,7 @@ fn get_network_info() -> SystemNetworkInfo {
     let mut ip_set: HashSet<IpAddr> = HashSet::new();
     for (_, ip_addrs) in interfaces.iter() {
         for ip_addr in ip_addrs {
-            ip_set.insert(ip_addr.clone());
+            ip_set.insert(*ip_addr);
         }
     }
 
@@ -174,10 +174,9 @@ fn get_network_info() -> SystemNetworkInfo {
         }
     }
 
-    let system_network_information = SystemNetworkInfo {
+    SystemNetworkInfo {
         network_interfaces: interfaces,
         reverse_lookups,
         forward_lookups,
-    };
-    system_network_information
+    }
 }
