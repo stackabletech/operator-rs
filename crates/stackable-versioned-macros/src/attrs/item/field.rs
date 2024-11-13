@@ -1,11 +1,10 @@
-use convert_case::{Case, Casing};
-use darling::{Error, FromVariant};
+use darling::{FromField, Result};
 use syn::{Attribute, Ident};
 
-use crate::attrs::common::{ItemAttributes, ItemType};
+use crate::{attrs::item::CommonItemAttributes, codegen::VersionDefinition, utils::FieldIdent};
 
-/// This struct describes all available variant attributes, as well as the
-/// variant name to display better diagnostics.
+/// This struct describes all available field attributes, as well as the field
+/// name to display better diagnostics.
 ///
 /// Data stored in this struct is validated using darling's `and_then` attribute.
 /// During darlings validation, it is not possible to validate that action
@@ -17,20 +16,20 @@ use crate::attrs::common::{ItemAttributes, ItemType};
 ///
 /// [1]: crate::attrs::common::ValidateVersions::validate_versions
 /// [2]: crate::attrs::common::ItemAttributes
-#[derive(Debug, FromVariant)]
+#[derive(Debug, FromField)]
 #[darling(
     attributes(versioned),
     forward_attrs,
-    and_then = VariantAttributes::validate
+    and_then = FieldAttributes::validate
 )]
-pub(crate) struct VariantAttributes {
+pub(crate) struct FieldAttributes {
     #[darling(flatten)]
-    pub(crate) common: ItemAttributes,
+    pub(crate) common: CommonItemAttributes,
 
     // The ident (automatically extracted by darling) cannot be moved into the
     // shared item attributes because for struct fields, the type is
     // `Option<Ident>`, while for enum variants, the type is `Ident`.
-    pub(crate) ident: Ident,
+    pub(crate) ident: Option<Ident>,
 
     // This must be named `attrs` for darling to populate it accordingly, and
     // cannot live in common because Vec<Attribute> is not implemented for
@@ -39,34 +38,25 @@ pub(crate) struct VariantAttributes {
     pub(crate) attrs: Vec<Attribute>,
 }
 
-impl VariantAttributes {
+impl FieldAttributes {
     /// This associated function is called by darling (see and_then attribute)
     /// after it successfully parsed the attribute. This allows custom
     /// validation of the attribute which extends the validation already in
     /// place by darling.
     ///
     /// Internally, it calls out to other specialized validation functions.
-    fn validate(self) -> Result<Self, Error> {
-        let mut errors = Error::accumulator();
+    fn validate(self) -> Result<Self> {
+        let ident = self
+            .ident
+            .as_ref()
+            .expect("internal error: field must have an ident")
+            .clone();
 
-        errors.handle(
-            self.common
-                .validate(&self.ident, &ItemType::Variant, &self.attrs),
-        );
-
-        // Validate names of renames
-        for change in &self.common.changes {
-            if let Some(from_name) = &change.from_name {
-                if !from_name.is_case(Case::Pascal) {
-                    errors.push(
-                        Error::custom("renamed variant must use PascalCase")
-                            .with_span(&from_name.span()),
-                    )
-                }
-            }
-        }
-
-        errors.finish()?;
+        self.common.validate(FieldIdent::from(ident), &self.attrs)?;
         Ok(self)
+    }
+
+    pub(crate) fn validate_versions(&self, versions: &[VersionDefinition]) -> Result<()> {
+        self.common.validate_versions(versions)
     }
 }

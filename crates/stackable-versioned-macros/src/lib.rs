@@ -2,11 +2,13 @@ use darling::{ast::NestedMeta, FromMeta};
 use proc_macro::TokenStream;
 use syn::{spanned::Spanned, Error, Item};
 
-use crate::codegen::{
-    common::{Container, ContainerInput},
-    venum::VersionedEnum,
-    vmod::VersionedModule,
-    vstruct::VersionedStruct,
+use crate::{
+    attrs::{container::StandaloneContainerAttributes, module::ModuleAttributes},
+    codegen::{
+        container::{Container, StandaloneContainer},
+        module::{Module, ModuleInput},
+        VersionDefinition,
+    },
 };
 
 #[cfg(test)]
@@ -14,7 +16,7 @@ mod test_utils;
 
 mod attrs;
 mod codegen;
-mod consts;
+mod utils;
 
 /// This macro enables generating versioned structs and enums.
 ///
@@ -506,49 +508,78 @@ fn versioned_impl(attrs: proc_macro2::TokenStream, input: Item) -> proc_macro2::
 
     match input {
         Item::Mod(item_mod) => {
-            let module_attributes = match parse_outer_attributes(attrs) {
+            let module_attributes: ModuleAttributes = match parse_outer_attributes(attrs) {
                 Ok(ma) => ma,
                 Err(err) => return err.write_errors(),
             };
 
-            match VersionedModule::new(item_mod, module_attributes) {
-                Ok(versioned_module) => versioned_module.generate_tokens(),
-                Err(err) => Error::into_compile_error(err),
+            let versions: Vec<VersionDefinition> = (&module_attributes).into();
+            let preserve_modules = module_attributes.preserve_module.is_present();
+
+            let module_span = item_mod.span();
+            let module_input = ModuleInput {
+                ident: item_mod.ident,
+                vis: item_mod.vis,
+            };
+
+            let Some((_, items)) = item_mod.content else {
+                return Error::new(module_span, "the macro can only be used on module blocks")
+                    .into_compile_error();
+            };
+
+            let mut containers = Vec::new();
+
+            for item in items {
+                let container = match item {
+                    Item::Enum(item_enum) => {
+                        match Container::new_enum_nested(item_enum, &versions) {
+                            Ok(container) => container,
+                            Err(err) => return err.write_errors(),
+                        }
+                    }
+                    Item::Struct(item_struct) => {
+                        match Container::new_struct_nested(item_struct, &versions) {
+                            Ok(container) => container,
+                            Err(err) => return err.write_errors(),
+                        }
+                    }
+                    _ => continue,
+                };
+
+                containers.push(container);
             }
+
+            Module::new(module_input, preserve_modules, versions, containers).generate_tokens()
         }
         Item::Enum(item_enum) => {
-            let container_attributes = match parse_outer_attributes(attrs) {
-                Ok(ca) => ca,
-                Err(err) => return err.write_errors(),
-            };
+            let container_attributes: StandaloneContainerAttributes =
+                match parse_outer_attributes(attrs) {
+                    Ok(ca) => ca,
+                    Err(err) => return err.write_errors(),
+                };
 
-            let input = ContainerInput {
-                original_attributes: item_enum.attrs,
-                visibility: item_enum.vis,
-                ident: item_enum.ident,
-            };
+            let standalone_enum =
+                match StandaloneContainer::new_enum(item_enum, container_attributes) {
+                    Ok(standalone_enum) => standalone_enum,
+                    Err(err) => return err.write_errors(),
+                };
 
-            match VersionedEnum::new(input, item_enum.variants, container_attributes) {
-                Ok(versioned_enum) => versioned_enum.generate_standalone_tokens(),
-                Err(err) => Error::into_compile_error(err),
-            }
+            standalone_enum.generate_tokens()
         }
         Item::Struct(item_struct) => {
-            let container_attributes = match parse_outer_attributes(attrs) {
-                Ok(ca) => ca,
-                Err(err) => return err.write_errors(),
-            };
+            let container_attributes: StandaloneContainerAttributes =
+                match parse_outer_attributes(attrs) {
+                    Ok(ca) => ca,
+                    Err(err) => return err.write_errors(),
+                };
 
-            let input = ContainerInput {
-                original_attributes: item_struct.attrs,
-                visibility: item_struct.vis,
-                ident: item_struct.ident,
-            };
+            let standalone_struct =
+                match StandaloneContainer::new_struct(item_struct, container_attributes) {
+                    Ok(standalone_struct) => standalone_struct,
+                    Err(err) => return err.write_errors(),
+                };
 
-            match VersionedStruct::new(input, item_struct.fields, container_attributes) {
-                Ok(versioned_struct) => versioned_struct.generate_standalone_tokens(),
-                Err(err) => Error::into_compile_error(err),
-            }
+            standalone_struct.generate_tokens()
         }
         _ => Error::new(
             input.span(),
