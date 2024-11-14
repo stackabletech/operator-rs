@@ -266,7 +266,7 @@ impl Struct {
         version: &VersionDefinition,
     ) -> Option<(IdentString, String, TokenStream)> {
         match &self.common.options.kubernetes_options {
-            Some(_) => {
+            Some(options) if !options.skip_merged_crd => {
                 let enum_variant_ident = version.inner.as_variant_ident();
                 let enum_variant_string = version.inner.to_string();
 
@@ -280,7 +280,7 @@ impl Struct {
 
                 Some((enum_variant_ident, enum_variant_string, merge_crds_fn_call))
             }
-            None => None,
+            _ => None,
         }
     }
 
