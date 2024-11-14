@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 use darling::util::IdentString;
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -64,11 +66,26 @@ impl Module {
                 from_impls.extend(container.generate_from_impl(
                     version,
                     versions.peek().copied(),
-                    true,
+                    self.preserve_module,
                 ));
             }
 
+            // Only add #[automatically_derived] here if the user doesn't want to preserve the
+            // module.
+            let automatically_derived = self
+                .preserve_module
+                .not()
+                .then(|| quote! {#[automatically_derived]});
+
+            // Add the #[deprecated] attribute when the version is marked as deprecated.
+            let deprecated_attribute = version
+                .deprecated
+                .as_ref()
+                .map(|note| quote! { #[deprecated = #note] });
+
             tokens.extend(quote! {
+                #automatically_derived
+                #deprecated_attribute
                 #version_module_vis mod #version_ident {
                     use super::*;
 
@@ -81,6 +98,7 @@ impl Module {
 
         if self.preserve_module {
             quote! {
+                #[automatically_derived]
                 #module_vis mod #module_ident {
                     #tokens
                 }

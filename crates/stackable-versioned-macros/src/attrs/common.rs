@@ -1,5 +1,5 @@
 use darling::{
-    util::{Flag, SpannedValue},
+    util::{Flag, Override, SpannedValue},
     Error, FromMeta, Result,
 };
 use itertools::Itertools;
@@ -75,7 +75,7 @@ pub(crate) struct RootOptions {
 /// - `doc` option to add version-specific documentation.
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct VersionArguments {
-    pub(crate) deprecated: Flag,
+    pub(crate) deprecated: Option<Override<String>>,
     pub(crate) name: Version,
     pub(crate) skip: Option<SkipArguments>,
     pub(crate) doc: Option<String>,

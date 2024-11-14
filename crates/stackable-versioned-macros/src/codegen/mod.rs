@@ -13,7 +13,7 @@ pub(crate) mod module;
 #[derive(Debug)]
 pub(crate) struct VersionDefinition {
     /// Indicates that the container version is deprecated.
-    pub(crate) deprecated: bool,
+    pub(crate) deprecated: Option<String>,
 
     /// Indicates that the generation of `From<OLD> for NEW` should be skipped.
     pub(crate) skip_from: bool,
@@ -38,7 +38,12 @@ impl From<&StandaloneContainerAttributes> for Vec<VersionDefinition> {
             .map(|v| VersionDefinition {
                 skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
                 ident: format_ident!("{version}", version = v.name.to_string()).into(),
-                deprecated: v.deprecated.is_present(),
+                deprecated: v.deprecated.as_ref().map(|r#override| {
+                    r#override.clone().unwrap_or(format!(
+                        "Version {version} is deprecated",
+                        version = v.name.to_string()
+                    ))
+                }),
                 docs: process_docs(&v.doc),
                 inner: v.name,
             })
@@ -55,7 +60,12 @@ impl From<&ModuleAttributes> for Vec<VersionDefinition> {
             .map(|v| VersionDefinition {
                 skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
                 ident: format_ident!("{version}", version = v.name.to_string()).into(),
-                deprecated: v.deprecated.is_present(),
+                deprecated: v.deprecated.as_ref().map(|r#override| {
+                    r#override.clone().unwrap_or(format!(
+                        "Version {version} is deprecated",
+                        version = v.name.to_string()
+                    ))
+                }),
                 docs: process_docs(&v.doc),
                 inner: v.name,
             })

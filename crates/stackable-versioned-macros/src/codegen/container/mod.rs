@@ -43,11 +43,11 @@ impl Container {
         &self,
         version: &VersionDefinition,
         next_version: Option<&VersionDefinition>,
-        is_nested: bool,
+        add_attributes: bool,
     ) -> Option<TokenStream> {
         match self {
-            Container::Struct(s) => s.generate_from_impl(version, next_version, is_nested),
-            Container::Enum(e) => e.generate_from_impl(version, next_version, is_nested),
+            Container::Struct(s) => s.generate_from_impl(version, next_version, add_attributes),
+            Container::Enum(e) => e.generate_from_impl(version, next_version, add_attributes),
         }
     }
 
@@ -135,6 +135,12 @@ impl StandaloneContainer {
                 self.container
                     .generate_from_impl(version, versions.peek().copied(), false);
 
+            // Add the #[deprecated] attribute when the version is marked as deprecated.
+            let deprecated_attribute = version
+                .deprecated
+                .as_ref()
+                .map(|note| quote! { #[deprecated = #note] });
+
             // Generate Kubernetes specific code which is placed outside of the container
             // definition.
             if let Some((enum_variant, fn_call)) = self.container.generate_kubernetes_item(version)
@@ -146,7 +152,10 @@ impl StandaloneContainer {
             let version_ident = &version.ident;
 
             tokens.extend(quote! {
+                #[automatically_derived]
+                #deprecated_attribute
                 #vis mod #version_ident {
+                    use super::*;
                     #container_definition
                 }
 

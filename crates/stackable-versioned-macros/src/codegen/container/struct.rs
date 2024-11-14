@@ -103,10 +103,6 @@ impl Container {
             common,
         }))
     }
-
-    fn new_struct() -> Result<Self> {
-        todo!()
-    }
 }
 
 pub(crate) struct Struct {
@@ -143,7 +139,7 @@ impl Struct {
         &self,
         version: &VersionDefinition,
         next_version: Option<&VersionDefinition>,
-        is_nested: bool,
+        add_attributes: bool,
     ) -> Option<TokenStream> {
         if version.skip_from || self.common.options.skip_from {
             return None;
@@ -162,16 +158,17 @@ impl Struct {
                 // Include allow(deprecated) only when this or the next version is
                 // deprecated. Also include it, when a field in this or the next
                 // version is deprecated.
-                let allow_attribute = (version.deprecated
-                    || next_version.deprecated
+                let allow_attribute = (version.deprecated.is_some()
+                    || next_version.deprecated.is_some()
                     || self.is_any_field_deprecated(version)
                     || self.is_any_field_deprecated(next_version))
                 .then(|| quote! { #[allow(deprecated)] });
 
                 // Only add the #[automatically_derived] attribute only if this impl is used
                 // outside of a module (in standalone mode).
-                let automatically_derived =
-                    is_nested.not().then(|| quote! {#[automatically_derived]});
+                let automatically_derived = add_attributes
+                    .not()
+                    .then(|| quote! {#[automatically_derived]});
 
                 Some(quote! {
                     #automatically_derived

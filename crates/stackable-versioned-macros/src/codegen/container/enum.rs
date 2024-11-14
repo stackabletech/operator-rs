@@ -139,8 +139,8 @@ impl Enum {
                 // Include allow(deprecated) only when this or the next version is
                 // deprecated. Also include it, when a variant in this or the next
                 // version is deprecated.
-                let allow_attribute = (version.deprecated
-                    || next_version.deprecated
+                let allow_attribute = (version.deprecated.is_some()
+                    || next_version.deprecated.is_some()
                     || self.is_any_variant_deprecated(version)
                     || self.is_any_variant_deprecated(next_version))
                 .then_some(quote! { #[allow(deprecated)] });
