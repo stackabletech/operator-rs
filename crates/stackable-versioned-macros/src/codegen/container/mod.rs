@@ -54,7 +54,7 @@ impl Container {
     pub(crate) fn generate_kubernetes_item(
         &self,
         version: &VersionDefinition,
-    ) -> Option<(IdentString, TokenStream)> {
+    ) -> Option<(IdentString, String, TokenStream)> {
         match self {
             Container::Struct(s) => s.generate_kubernetes_item(version),
             Container::Enum(_) => None,
@@ -63,14 +63,18 @@ impl Container {
 
     pub(crate) fn generate_kubernetes_merge_crds(
         &self,
-        enum_variants: Vec<IdentString>,
+        enum_variant_idents: Vec<IdentString>,
+        enum_variant_strings: Vec<String>,
         fn_calls: Vec<TokenStream>,
         is_nested: bool,
     ) -> Option<TokenStream> {
         match self {
-            Container::Struct(s) => {
-                s.generate_kubernetes_merge_crds(enum_variants, fn_calls, is_nested)
-            }
+            Container::Struct(s) => s.generate_kubernetes_merge_crds(
+                enum_variant_idents,
+                enum_variant_strings,
+                fn_calls,
+                is_nested,
+            ),
             Container::Enum(_) => None,
         }
     }
@@ -122,7 +126,8 @@ impl StandaloneContainer {
         let mut tokens = TokenStream::new();
 
         let mut kubernetes_merge_crds_fn_calls = Vec::new();
-        let mut kubernetes_enum_variants = Vec::new();
+        let mut kubernetes_enum_variant_idents = Vec::new();
+        let mut kubernetes_enum_variant_strings = Vec::new();
 
         let mut versions = self.versions.iter().peekable();
 
@@ -143,10 +148,12 @@ impl StandaloneContainer {
 
             // Generate Kubernetes specific code which is placed outside of the container
             // definition.
-            if let Some((enum_variant, fn_call)) = self.container.generate_kubernetes_item(version)
+            if let Some((enum_variant_ident, enum_variant_string, fn_call)) =
+                self.container.generate_kubernetes_item(version)
             {
                 kubernetes_merge_crds_fn_calls.push(fn_call);
-                kubernetes_enum_variants.push(enum_variant);
+                kubernetes_enum_variant_idents.push(enum_variant_ident);
+                kubernetes_enum_variant_strings.push(enum_variant_string);
             }
 
             let version_ident = &version.ident;
@@ -164,7 +171,8 @@ impl StandaloneContainer {
         }
 
         tokens.extend(self.container.generate_kubernetes_merge_crds(
-            kubernetes_enum_variants,
+            kubernetes_enum_variant_idents,
+            kubernetes_enum_variant_strings,
             kubernetes_merge_crds_fn_calls,
             false,
         ));

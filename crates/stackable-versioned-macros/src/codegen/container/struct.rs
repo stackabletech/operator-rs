@@ -264,10 +264,11 @@ impl Struct {
     pub(crate) fn generate_kubernetes_item(
         &self,
         version: &VersionDefinition,
-    ) -> Option<(IdentString, TokenStream)> {
+    ) -> Option<(IdentString, String, TokenStream)> {
         match &self.common.options.kubernetes_options {
             Some(_) => {
                 let enum_variant_ident = version.inner.as_variant_ident();
+                let enum_variant_string = version.inner.to_string();
 
                 let struct_ident = &self.common.idents.kubernetes;
                 let module_ident = &version.ident;
@@ -277,7 +278,7 @@ impl Struct {
                     <#qualified_path as ::kube::CustomResourceExt>::crd()
                 };
 
-                Some((enum_variant_ident, merge_crds_fn_call))
+                Some((enum_variant_ident, enum_variant_string, merge_crds_fn_call))
             }
             None => None,
         }
@@ -285,11 +286,12 @@ impl Struct {
 
     pub(crate) fn generate_kubernetes_merge_crds(
         &self,
-        enum_variants: Vec<IdentString>,
+        enum_variant_idents: Vec<IdentString>,
+        enum_variant_strings: Vec<String>,
         fn_calls: Vec<TokenStream>,
         is_nested: bool,
     ) -> Option<TokenStream> {
-        if enum_variants.is_empty() {
+        if enum_variant_idents.is_empty() {
             return None;
         }
 
@@ -303,14 +305,14 @@ impl Struct {
         Some(quote! {
             #automatically_derived
             pub enum #enum_ident {
-                #(#enum_variants),*
+                #(#enum_variant_idents),*
             }
 
             #automatically_derived
             impl ::std::fmt::Display for #enum_ident {
                 fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::result::Result<(), ::std::fmt::Error> {
                     match self {
-                        #(Self::#enum_variants => f.write_str("stuff")),*
+                        #(Self::#enum_variant_idents => f.write_str(#enum_variant_strings)),*
                     }
                 }
             }
