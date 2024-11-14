@@ -39,10 +39,9 @@ impl From<&StandaloneContainerAttributes> for Vec<VersionDefinition> {
                 skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
                 ident: format_ident!("{version}", version = v.name.to_string()).into(),
                 deprecated: v.deprecated.as_ref().map(|r#override| {
-                    r#override.clone().unwrap_or(format!(
-                        "Version {version} is deprecated",
-                        version = v.name.to_string()
-                    ))
+                    r#override
+                        .clone()
+                        .unwrap_or(format!("Version {version} is deprecated", version = v.name))
                 }),
                 docs: process_docs(&v.doc),
                 inner: v.name,
@@ -61,10 +60,9 @@ impl From<&ModuleAttributes> for Vec<VersionDefinition> {
                 skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
                 ident: format_ident!("{version}", version = v.name.to_string()).into(),
                 deprecated: v.deprecated.as_ref().map(|r#override| {
-                    r#override.clone().unwrap_or(format!(
-                        "Version {version} is deprecated",
-                        version = v.name.to_string()
-                    ))
+                    r#override
+                        .clone()
+                        .unwrap_or(format!("Version {version} is deprecated", version = v.name))
                 }),
                 docs: process_docs(&v.doc),
                 inner: v.name,
@@ -111,26 +109,6 @@ impl ItemStatus {
             ItemStatus::NotPresent => unreachable!(),
         }
     }
-}
-
-pub(crate) struct Change {
-    pub(crate) item_ident: IdentString,
-    pub(crate) item_type: Type,
-    pub(crate) ty: ChangeType,
-}
-
-pub(crate) enum ChangeType {
-    Added {
-        default_fn: Path,
-    },
-    Changed {
-        from_ident: IdentString,
-        from_type: Type,
-    },
-    Deprecated {
-        from_ident: IdentString,
-        note: Option<String>,
-    },
 }
 
 /// Converts lines of doc-comments into a trimmed list.
