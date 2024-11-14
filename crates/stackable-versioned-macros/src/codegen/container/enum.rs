@@ -119,6 +119,10 @@ impl Enum {
         next_version: Option<&VersionDefinition>,
         is_nested: bool,
     ) -> Option<TokenStream> {
+        if version.skip_from || self.common.options.skip_from {
+            return None;
+        }
+
         match next_version {
             Some(next_version) => {
                 let enum_ident = &self.common.idents.original;
