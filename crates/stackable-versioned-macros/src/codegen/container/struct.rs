@@ -117,6 +117,7 @@ impl Struct {
     pub(crate) fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
         let original_attributes = &self.common.original_attributes;
         let ident = &self.common.idents.original;
+        let version_docs = &version.docs;
 
         let mut fields = TokenStream::new();
         for field in &self.fields {
@@ -127,6 +128,7 @@ impl Struct {
         let kubernetes_cr_derive = self.generate_kubernetes_cr_derive(version);
 
         quote! {
+            #(#[doc = #version_docs])*
             #(#original_attributes)*
             #kubernetes_cr_derive
             pub struct #ident {

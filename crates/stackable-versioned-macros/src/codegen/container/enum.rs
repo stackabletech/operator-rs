@@ -99,6 +99,7 @@ impl Enum {
     pub(crate) fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
         let original_attributes = &self.common.original_attributes;
         let ident = &self.common.idents.original;
+        let version_docs = &version.docs;
 
         let mut variants = TokenStream::new();
         for variant in &self.variants {
@@ -106,6 +107,7 @@ impl Enum {
         }
 
         quote! {
+            #(#[doc = #version_docs])*
             #(#original_attributes)*
             pub enum #ident {
                 #variants
