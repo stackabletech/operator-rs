@@ -19,3 +19,7 @@ jobs:
       - uses: stackabletech/actions/run-pre-commit@9bd13255f286e4b7a654617268abe1b2f37c3e0a # v0.3.0
         with:
           rust: ${{ env.RUST_TOOLCHAIN_VERSION }}
+          # rust-src is required for trybuild stderr output comparison to work
+          # for our cases.
+          # See: https://github.com/dtolnay/trybuild/issues/236#issuecomment-1620950759
+          rust-components: rustfmt,clippy,rust-src
