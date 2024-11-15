@@ -87,9 +87,9 @@ impl ::std::fmt::Display for Foo {
         f: &mut ::std::fmt::Formatter<'_>,
     ) -> ::std::result::Result<(), ::std::fmt::Error> {
         match self {
-            Foo::V1Alpha1 => f.write_str("v1alpha1"),
-            Foo::V1Beta1 => f.write_str("v1beta1"),
-            Foo::V1 => f.write_str("v1"),
+            Self::V1Alpha1 => f.write_str("v1alpha1"),
+            Self::V1Beta1 => f.write_str("v1beta1"),
+            Self::V1 => f.write_str("v1"),
         }
     }
 }
@@ -106,7 +106,7 @@ impl Foo {
             vec![
                 < v1alpha1::Foo as ::kube::CustomResourceExt > ::crd(), < v1beta1::Foo as
                 ::kube::CustomResourceExt > ::crd(), < v1::Foo as
-                ::kube::CustomResourceExt > ::crd(),
+                ::kube::CustomResourceExt > ::crd()
             ],
             &stored_apiversion.to_string(),
         )
