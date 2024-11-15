@@ -1,6 +1,6 @@
 use std::ops::Not;
 
-use darling::{util::IdentString, FromAttributes, Result};
+use darling::{util::IdentString, Error, FromAttributes, Result};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{parse_quote, ItemStruct, Path};
@@ -32,6 +32,15 @@ impl Container {
         }
 
         let kubernetes_options = attributes.kubernetes_arguments.map(Into::into);
+        let idents: ContainerIdents = item_struct.ident.into();
+
+        // Validate K8s specific requirements
+        // Ensure that the struct name includes the 'Spec' suffix.
+        if kubernetes_options.is_some() && !idents.original.as_str().ends_with("Spec") {
+            return Err(Error::custom(
+                "struct name needs to include the `Spec` suffix if Kubernetes features are enabled via `#[versioned(k8s())]`"
+            ).with_span(&idents.original.span()));
+        }
 
         let options = ContainerOptions {
             skip_from: attributes
@@ -41,8 +50,6 @@ impl Container {
                 .map_or(false, |s| s.from.is_present()),
             kubernetes_options,
         };
-
-        let idents: ContainerIdents = item_struct.ident.into();
 
         let common = CommonContainerData {
             original_attributes: item_struct.attrs,
@@ -71,6 +78,15 @@ impl Container {
         }
 
         let kubernetes_options = attributes.kubernetes_arguments.map(Into::into);
+        let idents: ContainerIdents = item_struct.ident.into();
+
+        // Validate K8s specific requirements
+        // Ensure that the struct name includes the 'Spec' suffix.
+        if kubernetes_options.is_some() && !idents.original.as_str().ends_with("Spec") {
+            return Err(Error::custom(
+                "struct name needs to include the `Spec` suffix if Kubernetes features are enabled via `#[versioned(k8s())]`"
+            ).with_span(&idents.original.span()));
+        }
 
         let options = ContainerOptions {
             skip_from: attributes
@@ -79,8 +95,6 @@ impl Container {
                 .map_or(false, |s| s.from.is_present()),
             kubernetes_options,
         };
-
-        let idents: ContainerIdents = item_struct.ident.into();
 
         // Nested structs
         // We need to filter out the `versioned` attribute, because these are not directly processed
