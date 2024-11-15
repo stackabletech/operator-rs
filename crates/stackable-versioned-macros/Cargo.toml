@@ -38,7 +38,6 @@ itertools.workspace = true
 k8s-openapi = { workspace = true, optional = true }
 kube = { workspace = true, optional = true }
 proc-macro2.workspace = true
-strum.workspace = true
 syn.workspace = true
 quote.workspace = true
 
