@@ -10,13 +10,13 @@ use crate::{attrs::item::CommonItemAttributes, codegen::VersionDefinition, utils
 /// Data stored in this struct is validated using darling's `and_then` attribute.
 /// During darlings validation, it is not possible to validate that action
 /// versions match up with declared versions on the container. This validation
-/// can be done using the associated [`ValidateVersions::validate_versions`][1]
+/// can be done using the associated [`VariantAttributes::validate_versions`][1]
 /// function.
 ///
 /// Rules shared across fields and variants can be found [here][2].
 ///
-/// [1]: crate::attrs::common::ValidateVersions::validate_versions
-/// [2]: crate::attrs::common::ItemAttributes
+/// [1]: crate::attrs::item::VariantAttributes::validate_versions
+/// [2]: crate::attrs::item::CommonItemAttributes
 #[derive(Debug, FromVariant)]
 #[darling(
     attributes(versioned),
