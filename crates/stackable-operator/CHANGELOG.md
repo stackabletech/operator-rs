@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Replace unmaintained `derivative` create with `educe`. Although I tested the change with two operators,
+  this might be breaking as some Trait bounds where touched ([#907]).
+
+[#907]: https://github.com/stackabletech/operator-rs/pull/907
+
 ## [0.81.0] - 2024-11-05
 
 ### Added
@@ -13,11 +20,8 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: Split `ListenerClass.spec.preferred_address_type` into a new `PreferredAddressType` type. Use `resolve_preferred_address_type()` to access the `AddressType` as before. ([#903])
-- BREAKING: Replace unmaintained `derivative` create with `educe`. Although I tested the change with two operators,
-  this might be breaking as some Trait bounds where touched ([#907]).
 
 [#903]: https://github.com/stackabletech/operator-rs/pull/903
-[#907]: https://github.com/stackabletech/operator-rs/pull/907
 
 ## [0.80.0] - 2024-10-23
 
