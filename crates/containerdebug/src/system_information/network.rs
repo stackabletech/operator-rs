@@ -2,7 +2,7 @@ use hickory_resolver::{system_conf::read_system_conf, Resolver};
 use local_ip_address::list_afinet_netifas;
 use serde::Serialize;
 use std::{
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{BTreeSet, HashMap},
     net::IpAddr,
     time::Duration,
 };

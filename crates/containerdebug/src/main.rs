@@ -1,10 +1,13 @@
 mod system_information;
 
-use clap::Parser;
+use clap::{crate_description, crate_version, Parser};
+use stackable_operator::logging::TracingTarget;
 use std::path::PathBuf;
 
 use crate::system_information::SystemInformation;
 use std::time::Instant;
+
+const APP_NAME: &str = "containerdebug";
 
 /// Collects and prints helpful debugging information about the environment that it is running in.
 #[derive(clap::Parser)]
@@ -21,12 +24,31 @@ struct Opts {
 
     #[clap(long, short = 'o')]
     output: Option<PathBuf>,
+
+    /// Tracing log collector system
+    #[arg(long, env, default_value_t, value_enum)]
+    pub tracing_target: TracingTarget,
+}
+
+mod built_info {
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
 fn main() {
-    tracing_subscriber::fmt().init();
-
     let opts = Opts::parse();
+    stackable_operator::logging::initialize_logging(
+        "CONTAINERDEBUG_LOG",
+        APP_NAME,
+        opts.tracing_target,
+    );
+    stackable_operator::utils::print_startup_string(
+        crate_description!(),
+        crate_version!(),
+        built_info::GIT_VERSION,
+        built_info::TARGET,
+        built_info::BUILT_TIME_UTC,
+        built_info::RUSTC_VERSION,
+    );
 
     let mut next_run = Instant::now();
     loop {
