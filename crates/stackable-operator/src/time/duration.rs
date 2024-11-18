@@ -1,8 +1,7 @@
 //! This module contains a common [`Duration`] struct which is able to parse
 //! human-readable duration formats, like `5s`, `24h`, `2y2h20m42s` or`15d2m2s`. It
-//! additionally implements many required traits, like [`Derivative`],
-//! [`JsonSchema`], [`Deserialize`][serde::Deserialize], and
-//! [`Serialize`][serde::Serialize].
+//! additionally implements many required traits, like [`JsonSchema`],
+//! [`Deserialize`][serde::Deserialize], and [`Serialize`][serde::Serialize].
 //!
 //! Furthermore, it implements [`Deref`], which enables us to use all associated
 //! functions of [`std::time::Duration`] without re-implementing the public
