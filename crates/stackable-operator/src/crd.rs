@@ -1,19 +1,12 @@
 use std::marker::PhantomData;
 
-use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// A reference to a product cluster (for example, a `ZookeeperCluster`)
 ///
 /// `namespace`'s defaulting only applies when retrieved via [`ClusterRef::namespace_relative_from`]
-#[derive(Deserialize, Serialize, JsonSchema, Derivative)]
-#[derivative(
-    Default(bound = ""),
-    Clone(bound = ""),
-    Debug(bound = ""),
-    PartialEq(bound = "")
-)]
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize, JsonSchema)]
 pub struct ClusterRef<K> {
     /// The name of the cluster
     pub name: Option<String>,
