@@ -523,6 +523,7 @@ mod tests {
 
     use super::*;
     use crate::role_utils::{Role, RoleGroup};
+    use crate::time::Duration;
     use k8s_openapi::api::core::v1::PodTemplateSpec;
     use rstest::*;
     use std::collections::HashMap;
@@ -617,6 +618,7 @@ mod tests {
             env_overrides: env_overrides.unwrap_or_default(),
             cli_overrides: cli_overrides.unwrap_or_default(),
             pod_overrides: PodTemplateSpec::default(),
+            min_secret_lifetime: Duration::default(),
         }
     }
 

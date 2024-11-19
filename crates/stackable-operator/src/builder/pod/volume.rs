@@ -15,6 +15,7 @@ use tracing::warn;
 use crate::{
     builder::meta::ObjectMetaBuilder,
     kvp::{Annotation, AnnotationError, Annotations, LabelError, Labels},
+    time::Duration,
 };
 
 /// A builder to build [`Volume`] objects. May only contain one `volume_source`
@@ -280,6 +281,7 @@ pub struct SecretOperatorVolumeSourceBuilder {
     format: Option<SecretFormat>,
     kerberos_service_names: Vec<String>,
     tls_pkcs12_password: Option<String>,
+    auto_tls_cert_lifetime: Option<Duration>,
 }
 
 impl SecretOperatorVolumeSourceBuilder {
@@ -290,7 +292,13 @@ impl SecretOperatorVolumeSourceBuilder {
             format: None,
             kerberos_service_names: Vec::new(),
             tls_pkcs12_password: None,
+            auto_tls_cert_lifetime: None,
         }
+    }
+
+    pub fn with_auto_tls_cert_lifetime(&mut self, lifetime: impl Into<Duration>) -> &mut Self {
+        self.auto_tls_cert_lifetime = Some(lifetime.into());
+        self
     }
 
     pub fn with_node_scope(&mut self) -> &mut Self {
@@ -362,6 +370,13 @@ impl SecretOperatorVolumeSourceBuilder {
                     Annotation::tls_pkcs12_password(password).context(ParseAnnotationSnafu)?,
                 );
             }
+        }
+
+        if let Some(lifetime) = &self.auto_tls_cert_lifetime {
+            annotations.insert(
+                Annotation::auto_tls_cert_lifetime(&lifetime.to_string())
+                    .context(ParseAnnotationSnafu)?,
+            );
         }
 
         Ok(EphemeralVolumeSource {

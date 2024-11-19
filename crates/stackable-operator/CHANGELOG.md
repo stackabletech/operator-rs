@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add new configuration field `CommonConfiguration::min_secret_lifetime` and supporting `SecretOperatorVolumeSourceBuilder` code to use it ([#908]).
+
+[#908]: https://github.com/stackabletech/operator-rs/pull/908
+
 ## [0.81.0] - 2024-11-05
 
 ### Added
