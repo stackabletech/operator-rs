@@ -1,20 +1,24 @@
 use std::marker::PhantomData;
 
+use educe::Educe;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// A reference to a product cluster (for example, a `ZookeeperCluster`)
 ///
 /// `namespace`'s defaulting only applies when retrieved via [`ClusterRef::namespace_relative_from`]
-#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize, JsonSchema)]
+#[derive(Deserialize, Serialize, JsonSchema, Educe)]
+#[educe(Clone(bound()), Debug(bound()), Default(bound()), PartialEq(bound()))]
 pub struct ClusterRef<K> {
     /// The name of the cluster
     pub name: Option<String>,
+
     /// The namespace of the cluster
     ///
     /// This field is optional, and will default to the namespace of the referring object.
     #[serde(default)]
     pub namespace: Option<String>,
+
     #[serde(skip)]
     _kind: PhantomData<K>,
 }
