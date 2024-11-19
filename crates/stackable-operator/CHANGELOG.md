@@ -6,8 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: Replace unmaintained `derivative` create with `educe`. Although I tested the change with two operators,
-  this might be breaking as some trait bounds where touched ([#907]).
+- Replace unmaintained `derivative` crate with `educe` ([#907]).
 
 [#907]: https://github.com/stackabletech/operator-rs/pull/907
 
