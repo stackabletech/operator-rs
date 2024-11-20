@@ -281,7 +281,7 @@ pub struct SecretOperatorVolumeSourceBuilder {
     format: Option<SecretFormat>,
     kerberos_service_names: Vec<String>,
     tls_pkcs12_password: Option<String>,
-    auto_tls_cert_lifetime: Option<Duration>,
+    secret_lifetime: Option<Duration>,
 }
 
 impl SecretOperatorVolumeSourceBuilder {
@@ -292,12 +292,12 @@ impl SecretOperatorVolumeSourceBuilder {
             format: None,
             kerberos_service_names: Vec::new(),
             tls_pkcs12_password: None,
-            auto_tls_cert_lifetime: None,
+            secret_lifetime: None,
         }
     }
 
-    pub fn with_auto_tls_cert_lifetime(&mut self, lifetime: impl Into<Duration>) -> &mut Self {
-        self.auto_tls_cert_lifetime = Some(lifetime.into());
+    pub fn with_secret_lifetime(&mut self, lifetime: Option<Duration>) -> &mut Self {
+        self.secret_lifetime = lifetime;
         self
     }
 
@@ -372,7 +372,7 @@ impl SecretOperatorVolumeSourceBuilder {
             }
         }
 
-        if let Some(lifetime) = &self.auto_tls_cert_lifetime {
+        if let Some(lifetime) = &self.secret_lifetime {
             annotations.insert(
                 Annotation::auto_tls_cert_lifetime(&lifetime.to_string())
                     .context(ParseAnnotationSnafu)?,
