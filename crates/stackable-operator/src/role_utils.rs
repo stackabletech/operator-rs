@@ -151,17 +151,12 @@ pub struct CommonConfiguration<T> {
     /// [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass) object it's self.
     /// Currently this property covers self signed certificates but in the future it may be extended to other
     /// secret types such as Kerberos keytabs.
-    #[serde(default)]
+    #[serde(default = "default_min_secret_lifetime")]
     pub min_secret_lifetime: Duration,
 }
 
-/// This implementation targets the `CommonConfiguration::min_secret_lifetime` specifically
-/// and corresponds to the current TLS certificate lifetime that the secret operator issues by
-/// default.
-impl Default for Duration {
-    fn default() -> Self {
-        Duration::from_hours_unchecked(24)
-    }
+fn default_min_secret_lifetime() -> Duration {
+    Duration::from_hours_unchecked(24)
 }
 
 fn config_schema_default() -> serde_json::Value {

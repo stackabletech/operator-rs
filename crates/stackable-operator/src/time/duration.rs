@@ -301,6 +301,14 @@ impl Div<u32> for Duration {
     }
 }
 
+/// This implementation is needed for `CommonConfiguration::min_secret_lifetime`.
+/// The default value is arbitrary and should probably not be assumed at call sites.
+impl Default for Duration {
+    fn default() -> Self {
+        Duration::from_hours_unchecked(1)
+    }
+}
+
 impl Duration {
     /// Creates a new [`Duration`] containing the amount of time passed since
     /// 1970-01-01 UTC. This can be used to calculate [`Duration`]s based on
