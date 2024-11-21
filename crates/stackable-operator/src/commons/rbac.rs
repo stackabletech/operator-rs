@@ -32,7 +32,7 @@ pub enum Error {
 /// and it is a assumed that a ClusterRole named `{rbac_prefix}-clusterrole` exists.
 /// 'rbac_prefix' is not used to build the names of the serviceAccount and roleBinding objects,
 /// as this caused problems with multiple clusters of the same product within the same namespace
-/// (https://stackable.atlassian.net/browse/SUP-148).
+/// see <https://stackable.atlassian.net/browse/SUP-148> for more details.
 /// Instead the names for these objects are created by reading the name from the cluster object
 /// and appending [-rolebinding|-serviceaccount] to create unique names instead of using the
 /// same objects for multiple clusters.
