@@ -136,7 +136,7 @@ mod tests {
             build_rbac_resources(&cluster, RESOURCE_NAME, Labels::new()).unwrap();
 
         assert_eq!(
-            Some(service_account_name(RESOURCE_NAME)),
+            Some(service_account_name(CLUSTER_NAME)),
             rbac_sa.metadata.name,
             "service account does not match"
         );
@@ -147,7 +147,7 @@ mod tests {
         );
 
         assert_eq!(
-            Some(role_binding_name(RESOURCE_NAME)),
+            Some(role_binding_name(CLUSTER_NAME)),
             rbac_rolebinding.metadata.name,
             "rolebinding does not match"
         );
