@@ -35,7 +35,7 @@ pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     rbac_prefix: &str,
     labels: Labels,
 ) -> Result<(ServiceAccount, RoleBinding)> {
-    let sa_name = service_account_name(rbac_prefix);
+    let sa_name = service_account_name(&resource.name_any());
     let service_account = ServiceAccount {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(resource)
@@ -52,7 +52,7 @@ pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     let role_binding = RoleBinding {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(resource)
-            .name(role_binding_name(rbac_prefix))
+            .name(role_binding_name(&resource.name_any()))
             .ownerreference_from_resource(resource, None, Some(true))
             .context(RoleBindingOwnerReferenceFromResourceSnafu {
                 name: resource.name_any(),
