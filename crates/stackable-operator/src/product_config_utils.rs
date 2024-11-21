@@ -618,7 +618,7 @@ mod tests {
             env_overrides: env_overrides.unwrap_or_default(),
             cli_overrides: cli_overrides.unwrap_or_default(),
             pod_overrides: PodTemplateSpec::default(),
-            min_secret_lifetime: Duration::default(),
+            min_secret_lifetime: Duration::from_secs(0),
         }
     }
 

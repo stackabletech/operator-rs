@@ -101,7 +101,7 @@ use kube::{runtime::reflector::ObjectRef, Resource};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(
     rename_all = "camelCase",
     bound(deserialize = "T: Default + Deserialize<'de>")
@@ -153,6 +153,22 @@ pub struct CommonConfiguration<T> {
     /// secret types such as Kerberos keytabs.
     #[serde(default = "default_min_secret_lifetime")]
     pub min_secret_lifetime: Duration,
+}
+
+impl<T> Default for CommonConfiguration<T>
+where
+    T: Default,
+{
+    fn default() -> Self {
+        Self {
+            config: T::default(),
+            config_overrides: HashMap::default(),
+            env_overrides: HashMap::default(),
+            cli_overrides: BTreeMap::default(),
+            pod_overrides: PodTemplateSpec::default(),
+            min_secret_lifetime: Duration::from_secs(0),
+        }
+    }
 }
 
 fn default_min_secret_lifetime() -> Duration {
