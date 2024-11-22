@@ -119,7 +119,9 @@ impl AuthenticationProvider {
         }
     }
 
-    /// Base [`Url`] without any path set (so only protocol, host, port and such).
+    /// Returns the base [`Url`] without any path segments.
+    ///
+    /// The base url only contains the scheme, the host, and an optional port.
     fn base_url(&self) -> Result<Url> {
         let mut url = Url::parse(&format!(
             "http://{host}:{port}",
@@ -143,7 +145,7 @@ impl AuthenticationProvider {
 
     /// Returns the OIDC endpoint [`Url`] without a trailing slash.
     ///
-    /// To get the well-known URL, please use [`Self::well_known_url`].
+    /// To retrieve the well-known OIDC configuration url, please use [`Self::well_known_config_url`].
     pub fn endpoint_url(&self) -> Result<Url> {
         let mut url = self.base_url()?;
         // Some tools can not cope with a trailing slash, so let's remove that

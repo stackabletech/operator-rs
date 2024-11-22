@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: Made `DEFAULT_OIDC_WELLKNOWN_PATH` private. Use `AuthenticationProvider::well_known_url` instead ([#910]).
+- BREAKING: Made `DEFAULT_OIDC_WELLKNOWN_PATH` private. Use `AuthenticationProvider::well_known_config_url` instead ([#910]).
 
 [#910]: https://github.com/stackabletech/operator-rs/pull/910
 
