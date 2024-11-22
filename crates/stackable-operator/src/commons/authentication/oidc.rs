@@ -20,7 +20,8 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub const CLIENT_ID_SECRET_KEY: &str = "clientId";
 pub const CLIENT_SECRET_SECRET_KEY: &str = "clientSecret";
 
-const DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH: &str = ".well-known/openid-configuration";
+/// Do *not* use this for [`Url::join`], as the leading slash will erase the existing path!
+const DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH: &str = "/.well-known/openid-configuration";
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
@@ -31,13 +32,6 @@ pub enum Error {
         "failed to set OIDC endpoint scheme '{scheme}' for endpoint url \"{endpoint}\""
     ))]
     SetOidcEndpointScheme { endpoint: Url, scheme: String },
-
-    #[snafu(display("failed to join the path {path:?} to URL \"{url}\""))]
-    JoinPath {
-        source: ParseError,
-        url: Url,
-        path: String,
-    },
 }
 
 /// This struct contains configuration values to configure an OpenID Connect
@@ -155,21 +149,23 @@ impl AuthenticationProvider {
 
     /// Returns the well-known [`Url`] without a trailing slash.
     ///
-    /// It is basically the [`Self::endpoint_url`] joined with
-    /// "./.well-known/openid-configuration", while watching out for URL joining madness.
+    /// The returned url is a combination of [`Self::endpoint_url`] joined with
+    /// the well-known OIDC configuration path `DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH`.
     pub fn well_known_config_url(&self) -> Result<Url> {
         let mut url = self.base_url()?;
 
-        // Url::join cuts of the part after the last slash :/
-        // So we need to make sure we have a trailing slash, so that nothing get's cut of.
+        // Taken from https://docs.rs/url/latest/url/struct.Url.html#method.join:
+        // A trailing slash is significant. Without it, the last path component is considered to be
+        // a “file” name to be removed to get at the “directory” that is used as the base.
+        //
+        // Because of that behavior, we first need to make sure that the root path doesn't contain
+        // any trailing slashes to finally append the well-known config path to the url. The path
+        // already contains a prefixed slash.
         let mut root_path_with_trailing_slash = self.root_path.trim_end_matches('/').to_string();
-        root_path_with_trailing_slash.push('/');
+        root_path_with_trailing_slash.push_str(DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH);
         url.set_path(&root_path_with_trailing_slash);
-        url.join(DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH)
-            .with_context(|_| JoinPathSnafu {
-                url: url.clone(),
-                path: DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH.to_owned(),
-            })
+
+        Ok(url)
     }
 
     /// Returns the port to be used, which is either user configured or defaulted based upon TLS usage
