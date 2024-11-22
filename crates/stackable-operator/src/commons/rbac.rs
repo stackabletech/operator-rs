@@ -30,18 +30,22 @@ pub enum Error {
 /// Build RBAC objects for the product workloads.
 /// The `product_name` is meant to be the product name, for example: zookeeper, airflow, etc.
 /// and it is a assumed that a ClusterRole named `{product_name}-clusterrole` exists.
-/// 'product_name' is not used to build the names of the serviceAccount and roleBinding objects,
-/// as this caused problems with multiple clusters of the same product within the same namespace
-/// see <https://stackable.atlassian.net/browse/SUP-148> for more details.
-/// Instead the names for these objects are created by reading the name from the cluster object
-/// and appending [-rolebinding|-serviceaccount] to create unique names instead of using the
-/// same objects for multiple clusters.
+
 pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     resource: &T,
+    // 'product_name' is not used to build the names of the serviceAccount and roleBinding objects,
+    // as this caused problems with multiple clusters of the same product within the same namespace
+    // see <https://stackable.atlassian.net/browse/SUP-148> for more details.
+    // Instead the names for these objects are created by reading the name from the cluster object
+    // and appending [-rolebinding|-serviceaccount] to create unique names instead of using the
+    // same objects for multiple clusters.
     product_name: &str,
     labels: Labels,
 ) -> Result<(ServiceAccount, RoleBinding)> {
     let sa_name = service_account_name(&resource.name_any());
+    // We add the legacy serviceAccount name to the binding here for at least one
+    // release cycle, so that the switchover during the upgrade can be smoother.
+    let legacy_sa_name = service_account_name(product_name);
     let service_account = ServiceAccount {
         metadata: ObjectMetaBuilder::new()
             .name_and_namespace(resource)
@@ -70,12 +74,22 @@ pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
             name: format!("{product_name}-clusterrole"),
             api_group: "rbac.authorization.k8s.io".to_string(),
         },
-        subjects: Some(vec![Subject {
-            kind: "ServiceAccount".to_string(),
-            name: sa_name,
-            namespace: resource.namespace(),
-            ..Subject::default()
-        }]),
+        subjects: Some(vec![
+            Subject {
+                kind: "ServiceAccount".to_string(),
+                name: sa_name,
+                namespace: resource.namespace(),
+                ..Subject::default()
+            },
+            // We add the legacy serviceAccount name to the binding here for at least one
+            // release cycle, so that the switchover during the upgrade can be smoother.
+            Subject {
+                kind: "ServiceAccount".to_string(),
+                name: legacy_sa_name,
+                namespace: resource.namespace(),
+                ..Subject::default()
+            },
+        ]),
     };
 
     Ok((service_account, role_binding))
