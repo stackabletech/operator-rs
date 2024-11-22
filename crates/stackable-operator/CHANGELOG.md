@@ -6,11 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Fixed URL handling related to OIDC and `rootPath` with and without trailing slashes. Also added a bunch of tests ([#XXX]).
+- Fixed URL handling related to OIDC and `rootPath` with and without trailing slashes. Also added a bunch of tests ([#910]).
 
 ### Changed
 
-- BREAKING: Made `DEFAULT_OIDC_WELLKNOWN_PATH` private. Use `AuthenticationProvider::well_known_url` instead ([#XXX]).
+- BREAKING: Made `DEFAULT_OIDC_WELLKNOWN_PATH` private. Use `AuthenticationProvider::well_known_url` instead ([#910]).
+
+[#910]: https://github.com/stackabletech/operator-rs/pull/910
 
 ## [0.81.0] - 2024-11-05
 
