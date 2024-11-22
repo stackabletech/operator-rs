@@ -1,15 +1,22 @@
 use darling::{ast::NestedMeta, FromMeta};
 use proc_macro::TokenStream;
-use syn::{DeriveInput, Error};
+use syn::{spanned::Spanned, Error, Item};
 
-use crate::attrs::common::ContainerAttributes;
+use crate::{
+    attrs::{container::StandaloneContainerAttributes, module::ModuleAttributes},
+    codegen::{
+        container::{Container, StandaloneContainer},
+        module::{Module, ModuleInput},
+        VersionDefinition,
+    },
+};
 
 #[cfg(test)]
 mod test_utils;
 
 mod attrs;
 mod codegen;
-mod consts;
+mod utils;
 
 /// This macro enables generating versioned structs and enums.
 ///
@@ -476,26 +483,103 @@ println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 ///   a cluster scoped.
 #[proc_macro_attribute]
 pub fn versioned(attrs: TokenStream, input: TokenStream) -> TokenStream {
-    // NOTE (@Techassi): For now, we can just use the DeriveInput type here,
-    // because we only support structs end enums to be versioned.
-    // In the future - if we decide to support modules - this requires
-    // adjustments to also support modules. One possible solution might be to
-    // use an enum with two variants: Container(DeriveInput) and
-    // Module(ItemMod).
-    let input = syn::parse_macro_input!(input as DeriveInput);
+    let input = syn::parse_macro_input!(input as Item);
     versioned_impl(attrs.into(), input).into()
 }
 
-fn versioned_impl(attrs: proc_macro2::TokenStream, input: DeriveInput) -> proc_macro2::TokenStream {
-    let attrs = match NestedMeta::parse_meta_list(attrs) {
-        Ok(attrs) => match ContainerAttributes::from_list(&attrs) {
-            Ok(attrs) => attrs,
-            Err(err) => return err.write_errors(),
-        },
-        Err(err) => return darling::Error::from(err).write_errors(),
-    };
+fn versioned_impl(attrs: proc_macro2::TokenStream, input: Item) -> proc_macro2::TokenStream {
+    // TODO (@Techassi): Think about how we can handle nested structs / enums which
+    // are also versioned.
 
-    codegen::expand(attrs, input).unwrap_or_else(Error::into_compile_error)
+    match input {
+        Item::Mod(item_mod) => {
+            let module_attributes: ModuleAttributes = match parse_outer_attributes(attrs) {
+                Ok(ma) => ma,
+                Err(err) => return err.write_errors(),
+            };
+
+            let versions: Vec<VersionDefinition> = (&module_attributes).into();
+            let preserve_modules = module_attributes.preserve_module.is_present();
+
+            let module_span = item_mod.span();
+            let module_input = ModuleInput {
+                ident: item_mod.ident,
+                vis: item_mod.vis,
+            };
+
+            let Some((_, items)) = item_mod.content else {
+                return Error::new(module_span, "the macro can only be used on module blocks")
+                    .into_compile_error();
+            };
+
+            let mut containers = Vec::new();
+
+            for item in items {
+                let container = match item {
+                    Item::Enum(item_enum) => {
+                        match Container::new_enum_nested(item_enum, &versions) {
+                            Ok(container) => container,
+                            Err(err) => return err.write_errors(),
+                        }
+                    }
+                    Item::Struct(item_struct) => {
+                        match Container::new_struct_nested(item_struct, &versions) {
+                            Ok(container) => container,
+                            Err(err) => return err.write_errors(),
+                        }
+                    }
+                    _ => continue,
+                };
+
+                containers.push(container);
+            }
+
+            Module::new(module_input, preserve_modules, versions, containers).generate_tokens()
+        }
+        Item::Enum(item_enum) => {
+            let container_attributes: StandaloneContainerAttributes =
+                match parse_outer_attributes(attrs) {
+                    Ok(ca) => ca,
+                    Err(err) => return err.write_errors(),
+                };
+
+            let standalone_enum =
+                match StandaloneContainer::new_enum(item_enum, container_attributes) {
+                    Ok(standalone_enum) => standalone_enum,
+                    Err(err) => return err.write_errors(),
+                };
+
+            standalone_enum.generate_tokens()
+        }
+        Item::Struct(item_struct) => {
+            let container_attributes: StandaloneContainerAttributes =
+                match parse_outer_attributes(attrs) {
+                    Ok(ca) => ca,
+                    Err(err) => return err.write_errors(),
+                };
+
+            let standalone_struct =
+                match StandaloneContainer::new_struct(item_struct, container_attributes) {
+                    Ok(standalone_struct) => standalone_struct,
+                    Err(err) => return err.write_errors(),
+                };
+
+            standalone_struct.generate_tokens()
+        }
+        _ => Error::new(
+            input.span(),
+            "attribute macro `versioned` can be only be applied to modules, structs and enums",
+        )
+        .into_compile_error(),
+    }
+}
+
+fn parse_outer_attributes<T>(attrs: proc_macro2::TokenStream) -> Result<T, darling::Error>
+where
+    T: FromMeta,
+{
+    let nm = NestedMeta::parse_meta_list(attrs)?;
+    T::from_list(&nm)
 }
 
 #[cfg(test)]

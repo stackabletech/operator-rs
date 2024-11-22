@@ -1,8 +1,8 @@
 use convert_case::{Case, Casing};
-use darling::{Error, FromVariant};
+use darling::{Error, FromVariant, Result};
 use syn::{Attribute, Ident};
 
-use crate::attrs::common::{ItemAttributes, ItemType};
+use crate::{attrs::item::CommonItemAttributes, codegen::VersionDefinition, utils::VariantIdent};
 
 /// This struct describes all available variant attributes, as well as the
 /// variant name to display better diagnostics.
@@ -10,13 +10,13 @@ use crate::attrs::common::{ItemAttributes, ItemType};
 /// Data stored in this struct is validated using darling's `and_then` attribute.
 /// During darlings validation, it is not possible to validate that action
 /// versions match up with declared versions on the container. This validation
-/// can be done using the associated [`ValidateVersions::validate_versions`][1]
+/// can be done using the associated [`VariantAttributes::validate_versions`][1]
 /// function.
 ///
 /// Rules shared across fields and variants can be found [here][2].
 ///
-/// [1]: crate::attrs::common::ValidateVersions::validate_versions
-/// [2]: crate::attrs::common::ItemAttributes
+/// [1]: crate::attrs::item::VariantAttributes::validate_versions
+/// [2]: crate::attrs::item::CommonItemAttributes
 #[derive(Debug, FromVariant)]
 #[darling(
     attributes(versioned),
@@ -25,7 +25,7 @@ use crate::attrs::common::{ItemAttributes, ItemType};
 )]
 pub(crate) struct VariantAttributes {
     #[darling(flatten)]
-    pub(crate) common: ItemAttributes,
+    pub(crate) common: CommonItemAttributes,
 
     // The ident (automatically extracted by darling) cannot be moved into the
     // shared item attributes because for struct fields, the type is
@@ -46,12 +46,12 @@ impl VariantAttributes {
     /// place by darling.
     ///
     /// Internally, it calls out to other specialized validation functions.
-    fn validate(self) -> Result<Self, Error> {
+    fn validate(self) -> Result<Self> {
         let mut errors = Error::accumulator();
 
         errors.handle(
             self.common
-                .validate(&self.ident, &ItemType::Variant, &self.attrs),
+                .validate(VariantIdent::from(self.ident.clone()), &self.attrs),
         );
 
         // Validate names of renames
@@ -66,7 +66,10 @@ impl VariantAttributes {
             }
         }
 
-        errors.finish()?;
-        Ok(self)
+        errors.finish_with(self)
+    }
+
+    pub(crate) fn validate_versions(&self, versions: &[VersionDefinition]) -> Result<()> {
+        self.common.validate_versions(versions)
     }
 }
