@@ -204,6 +204,9 @@ impl CommonItemAttributes {
         Ok(())
     }
 
+    /// This associated function is called by the top-level validation function
+    /// and validates that parameters provided to the `added` actions are
+    /// valid.
     fn validate_added_action(&self) -> Result<()> {
         // NOTE (@Techassi): Can the path actually be empty?
         if let Some(added) = &self.added {
