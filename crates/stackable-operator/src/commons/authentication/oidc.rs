@@ -113,7 +113,7 @@ impl AuthenticationProvider {
         }
     }
 
-    /// Returns the base [`Url`] without any path segments.
+    /// Returns the OIDC base [`Url`] without any path segments.
     ///
     /// The base url only contains the scheme, the host, and an optional port.
     fn base_url(&self) -> Result<Url> {
@@ -147,7 +147,7 @@ impl AuthenticationProvider {
         Ok(url)
     }
 
-    /// Returns the well-known [`Url`] without a trailing slash.
+    /// Returns the well-known OIDC configuration [`Url`] without a trailing slash.
     ///
     /// The returned url is a combination of [`Self::endpoint_url`] joined with
     /// the well-known OIDC configuration path `DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH`.
