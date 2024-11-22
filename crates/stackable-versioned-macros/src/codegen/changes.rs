@@ -87,13 +87,10 @@ where
     fn get_expect(&self, key: &K) -> &V;
 }
 
-impl<K, V> BTreeMapExt<K, V> for BTreeMap<K, V>
-where
-    K: Ord,
-{
+impl<V> BTreeMapExt<Version, V> for BTreeMap<Version, V> {
     const MESSAGE: &'static str = "internal error: chain must contain version";
 
-    fn get_expect(&self, key: &K) -> &V {
+    fn get_expect(&self, key: &Version) -> &V {
         self.get(key).expect(Self::MESSAGE)
     }
 }
