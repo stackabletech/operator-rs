@@ -157,7 +157,7 @@ impl AuthenticationProvider {
     ///
     /// It is basically the [`Self::endpoint_url`] joined with
     /// "./.well-known/openid-configuration", while watching out for URL joining madness.
-    pub fn well_known_url(&self) -> Result<Url> {
+    pub fn well_known_config_url(&self) -> Result<Url> {
         let mut url = self.base_url()?;
 
         // Url::join cuts of the part after the last slash :/
@@ -431,7 +431,7 @@ mod test {
         .unwrap();
 
         assert_eq!(
-            oidc.well_known_url().unwrap().as_str(),
+            oidc.well_known_config_url().unwrap().as_str(),
             expected_well_known_url
         );
     }
