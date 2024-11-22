@@ -1,109 +1,63 @@
-use std::ops::{Deref, DerefMut};
+use std::collections::BTreeMap;
 
-use darling::FromField;
+use darling::{util::IdentString, FromField, Result};
+use k8s_version::Version;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Field, Ident};
+use syn::{Attribute, Field, Type};
 
 use crate::{
-    attrs::{
-        common::{ContainerAttributes, ItemAttributes},
-        field::FieldAttributes,
+    attrs::item::FieldAttributes,
+    codegen::{
+        changes::{BTreeMapExt, ChangesetExt},
+        ItemStatus, VersionDefinition,
     },
-    codegen::common::{
-        remove_deprecated_field_prefix, Attributes, ContainerVersion, InnerItem, Item, ItemStatus,
-        Named, VersionedItem,
-    },
+    utils::FieldIdent,
 };
 
-/// A versioned field, which contains common [`Field`] data and a chain of
-/// actions.
-///
-/// The chain of actions maps versions to an action and the appropriate field
-/// name.
-///
-/// Additionally, the [`Field`] data can be used to forward attributes, generate
-/// documentation, etc.
-#[derive(Debug)]
-pub(crate) struct VersionedField(VersionedItem<Field, FieldAttributes>);
-
-impl Deref for VersionedField {
-    type Target = VersionedItem<Field, FieldAttributes>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for VersionedField {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl TryFrom<&Field> for FieldAttributes {
-    type Error = darling::Error;
-
-    fn try_from(field: &Field) -> Result<Self, Self::Error> {
-        Self::from_field(field)
-    }
-}
-
-impl Attributes for FieldAttributes {
-    fn common_attributes_owned(self) -> ItemAttributes {
-        self.common
-    }
-
-    fn common_attributes(&self) -> &ItemAttributes {
-        &self.common
-    }
-
-    fn original_attributes(&self) -> &Vec<syn::Attribute> {
-        &self.attrs
-    }
-}
-
-impl InnerItem for Field {
-    fn ty(&self) -> syn::Type {
-        self.ty.clone()
-    }
-}
-
-impl Named for Field {
-    fn cleaned_ident(&self) -> Ident {
-        let ident = self.ident();
-        remove_deprecated_field_prefix(ident)
-    }
-
-    fn ident(&self) -> &Ident {
-        self.ident
-            .as_ref()
-            .expect("internal error: field must have an ident")
-    }
+pub(crate) struct VersionedField {
+    pub(crate) original_attributes: Vec<Attribute>,
+    pub(crate) changes: Option<BTreeMap<Version, ItemStatus>>,
+    pub(crate) ident: FieldIdent,
+    pub(crate) ty: Type,
 }
 
 impl VersionedField {
-    /// Creates a new versioned field.
-    ///
-    /// Internally this calls [`VersionedItem::new`] to handle most of the
-    /// common creation code.
-    pub(crate) fn new(
-        field: Field,
-        container_attributes: &ContainerAttributes,
-    ) -> syn::Result<Self> {
-        let item = VersionedItem::<_, FieldAttributes>::new(field, container_attributes)?;
-        Ok(Self(item))
+    pub(crate) fn new(field: Field, versions: &[VersionDefinition]) -> Result<Self> {
+        let field_attributes = FieldAttributes::from_field(&field)?;
+        field_attributes.validate_versions(versions)?;
+
+        let field_ident = FieldIdent::from(
+            field
+                .ident
+                .expect("internal error: field must have an ident"),
+        );
+        let changes = field_attributes
+            .common
+            .into_changeset(&field_ident, field.ty.clone());
+
+        Ok(Self {
+            original_attributes: field_attributes.attrs,
+            ident: field_ident,
+            ty: field.ty,
+            changes,
+        })
     }
 
-    /// Generates tokens to be used in a container definition.
+    pub(crate) fn insert_container_versions(&mut self, versions: &[VersionDefinition]) {
+        if let Some(changes) = &mut self.changes {
+            changes.insert_container_versions(versions, &self.ty);
+        }
+    }
+
     pub(crate) fn generate_for_container(
         &self,
-        container_version: &ContainerVersion,
+        version: &VersionDefinition,
     ) -> Option<TokenStream> {
         let original_attributes = &self.original_attributes;
 
-        match &self.chain {
-            Some(chain) => {
+        match &self.changes {
+            Some(changes) => {
                 // Check if the provided container version is present in the map
                 // of actions. If it is, some action occurred in exactly that
                 // version and thus code is generated for that field based on
@@ -112,13 +66,13 @@ impl VersionedField {
                 // The code generation then depends on the relation to other
                 // versions (with actions).
 
-                let field_type = &self.inner.ty;
+                let field_type = &self.ty;
 
                 // NOTE (@Techassi): https://rust-lang.github.io/rust-clippy/master/index.html#/expect_fun_call
-                match chain.get(&container_version.inner).unwrap_or_else(|| {
+                match changes.get(&version.inner).unwrap_or_else(|| {
                     panic!(
                         "internal error: chain must contain container version {}",
-                        container_version.inner
+                        version.inner
                     )
                 }) {
                     ItemStatus::Addition { ident, ty, .. } => Some(quote! {
@@ -178,8 +132,8 @@ impl VersionedField {
             None => {
                 // If there is no chain of field actions, the field is not
                 // versioned and therefore included in all versions.
-                let field_ident = &self.inner.ident;
-                let field_type = &self.inner.ty;
+                let field_ident = &self.ident;
+                let field_type = &self.ty;
 
                 Some(quote! {
                     #(#original_attributes)*
@@ -189,23 +143,18 @@ impl VersionedField {
         }
     }
 
-    /// Generates tokens to be used in a [`From`] implementation.
     pub(crate) fn generate_for_from_impl(
         &self,
-        version: &ContainerVersion,
-        next_version: &ContainerVersion,
-        from_ident: &Ident,
+        version: &VersionDefinition,
+        next_version: &VersionDefinition,
+        from_struct_ident: &IdentString,
     ) -> TokenStream {
-        match &self.chain {
-            Some(chain) => {
-                match (
-                    chain
-                        .get(&version.inner)
-                        .expect("internal error: chain must contain container version"),
-                    chain
-                        .get(&next_version.inner)
-                        .expect("internal error: chain must contain container version"),
-                ) {
+        match &self.changes {
+            Some(changes) => {
+                let next_change = changes.get_expect(&next_version.inner);
+                let change = changes.get_expect(&version.inner);
+
+                match (change, next_change) {
                     (
                         _,
                         ItemStatus::Addition {
@@ -225,33 +174,29 @@ impl VersionedField {
                     ) => {
                         if from_type == to_type {
                             quote! {
-                                #to_ident: #from_ident.#old_field_ident,
+                                #to_ident: #from_struct_ident.#old_field_ident,
                             }
                         } else {
                             quote! {
-                                #to_ident: #from_ident.#old_field_ident.into(),
+                                #to_ident: #from_struct_ident.#old_field_ident.into(),
                             }
                         }
                     }
                     (old, next) => {
-                        let old_field_ident = old
-                            .get_ident()
-                            .expect("internal error: old field must have a name");
-
-                        let next_field_ident = next
-                            .get_ident()
-                            .expect("internal error: new field must have a name");
+                        let next_field_ident = next.get_ident();
+                        let old_field_ident = old.get_ident();
 
                         quote! {
-                            #next_field_ident: #from_ident.#old_field_ident,
+                            #next_field_ident: #from_struct_ident.#old_field_ident,
                         }
                     }
                 }
             }
             None => {
-                let field_ident = &self.inner.ident;
+                let field_ident = &*self.ident;
+
                 quote! {
-                    #field_ident: #from_ident.#field_ident,
+                    #field_ident: #from_struct_ident.#field_ident,
                 }
             }
         }

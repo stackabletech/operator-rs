@@ -11,7 +11,7 @@ pub mod v1alpha1 {
     }
 }
 #[automatically_derived]
-impl From<v1alpha1::Foo> for v1beta1::Foo {
+impl ::std::convert::From<v1alpha1::Foo> for v1beta1::Foo {
     fn from(__sv_foo: v1alpha1::Foo) -> Self {
         Self {
             bar: ::std::default::Default::default(),

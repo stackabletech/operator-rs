@@ -1,7 +1,7 @@
-use darling::{Error, FromField};
+use darling::{FromField, Result};
 use syn::{Attribute, Ident};
 
-use crate::attrs::common::{ItemAttributes, ItemType};
+use crate::{attrs::item::CommonItemAttributes, codegen::VersionDefinition, utils::FieldIdent};
 
 /// This struct describes all available field attributes, as well as the field
 /// name to display better diagnostics.
@@ -9,13 +9,13 @@ use crate::attrs::common::{ItemAttributes, ItemType};
 /// Data stored in this struct is validated using darling's `and_then` attribute.
 /// During darlings validation, it is not possible to validate that action
 /// versions match up with declared versions on the container. This validation
-/// can be done using the associated [`ValidateVersions::validate_versions`][1]
+/// can be done using the associated [`FieldAttributes::validate_versions`][1]
 /// function.
 ///
 /// Rules shared across fields and variants can be found [here][2].
 ///
-/// [1]: crate::attrs::common::ValidateVersions::validate_versions
-/// [2]: crate::attrs::common::ItemAttributes
+/// [1]: crate::attrs::item::FieldAttributes::validate_versions
+/// [2]: crate::attrs::item::CommonItemAttributes
 #[derive(Debug, FromField)]
 #[darling(
     attributes(versioned),
@@ -24,7 +24,7 @@ use crate::attrs::common::{ItemAttributes, ItemType};
 )]
 pub(crate) struct FieldAttributes {
     #[darling(flatten)]
-    pub(crate) common: ItemAttributes,
+    pub(crate) common: CommonItemAttributes,
 
     // The ident (automatically extracted by darling) cannot be moved into the
     // shared item attributes because for struct fields, the type is
@@ -45,13 +45,18 @@ impl FieldAttributes {
     /// place by darling.
     ///
     /// Internally, it calls out to other specialized validation functions.
-    fn validate(self) -> Result<Self, Error> {
+    fn validate(self) -> Result<Self> {
         let ident = self
             .ident
             .as_ref()
-            .expect("internal error: field must have an ident");
+            .expect("internal error: field must have an ident")
+            .clone();
 
-        self.common.validate(ident, &ItemType::Field, &self.attrs)?;
+        self.common.validate(FieldIdent::from(ident), &self.attrs)?;
         Ok(self)
+    }
+
+    pub(crate) fn validate_versions(&self, versions: &[VersionDefinition]) -> Result<()> {
+        self.common.validate_versions(versions)
     }
 }

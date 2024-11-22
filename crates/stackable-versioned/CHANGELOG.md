@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add support to apply the `#[versioned()]` macro to modules to version all contained items at
+  once ([#891]).
+
+### Changed
+
+- Bump Rust to 1.82.0 ([#891]).
+
+[#891]: https://github.com/stackabletech/operator-rs/pull/891
+
 ## [0.4.1] - 2024-10-23
 
 ### Added
