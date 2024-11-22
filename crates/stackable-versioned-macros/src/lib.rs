@@ -483,26 +483,11 @@ println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 ///   a cluster scoped.
 #[proc_macro_attribute]
 pub fn versioned(attrs: TokenStream, input: TokenStream) -> TokenStream {
-    // NOTE (@Techassi): For now, we can just use the DeriveInput type here,
-    // because we only support structs end enums to be versioned.
-    // In the future - if we decide to support modules - this requires
-    // adjustments to also support modules. One possible solution might be to
-    // use an enum with two variants: Container(DeriveInput) and
-    // Module(ItemMod).
     let input = syn::parse_macro_input!(input as Item);
     versioned_impl(attrs.into(), input).into()
 }
 
 fn versioned_impl(attrs: proc_macro2::TokenStream, input: Item) -> proc_macro2::TokenStream {
-    // NOTE (@Techassi): This derive macro cannot handle multiple structs / enums
-    // to be versioned within the same file. This is because we cannot declare
-    // modules more than once (They will not be merged, like impl blocks for
-    // example). This leads to collisions if there are multiple structs / enums
-    // which declare the same version. This could maybe be solved by using an
-    // attribute macro applied to a module with all struct / enums declared in said
-    // module. This would allow us to generate all versioned structs and enums in
-    // a single sweep and put them into the appropriate module.
-
     // TODO (@Techassi): Think about how we can handle nested structs / enums which
     // are also versioned.
 
