@@ -375,26 +375,22 @@ mod test {
     }
 
     #[rstest]
-    #[case("/", "https://my.keycloak.server/")]
-    #[case("/realms/sdp", "https://my.keycloak.server/realms/sdp")]
-    #[case("/realms/sdp/", "https://my.keycloak.server/realms/sdp")]
-    #[case("/realms/sdp//////", "https://my.keycloak.server/realms/sdp")]
+    #[case("/", "http://my.keycloak.server:1234/")]
+    #[case("/realms/sdp", "http://my.keycloak.server:1234/realms/sdp")]
+    #[case("/realms/sdp/", "http://my.keycloak.server:1234/realms/sdp")]
+    #[case("/realms/sdp//////", "http://my.keycloak.server:1234/realms/sdp")]
     #[case(
         "/realms/my/realm/with/slashes//////",
-        "https://my.keycloak.server/realms/my/realm/with/slashes"
+        "http://my.keycloak.server:1234/realms/my/realm/with/slashes"
     )]
     fn root_path_endpoint_url(#[case] root_path: String, #[case] expected_endpoint_url: &str) {
         let oidc = serde_yaml::from_str::<AuthenticationProvider>(&format!(
             "
             hostname: my.keycloak.server
+            port: 1234
             rootPath: {root_path}
             scopes: [openid]
             principalClaim: preferred_username
-            tls:
-              verification:
-                server:
-                  caCert:
-                    webPki: {{}}
             "
         ))
         .unwrap();
