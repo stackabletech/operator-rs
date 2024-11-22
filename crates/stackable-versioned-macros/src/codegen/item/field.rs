@@ -24,11 +24,14 @@ pub(crate) struct VersionedField {
 
 impl VersionedField {
     pub(crate) fn new(field: Field, versions: &[VersionDefinition]) -> Result<Self> {
-        // TODO (@Techassi): Remove unwrap
         let field_attributes = FieldAttributes::from_field(&field)?;
         field_attributes.validate_versions(versions)?;
 
-        let field_ident = FieldIdent::from(field.ident.unwrap());
+        let field_ident = FieldIdent::from(
+            field
+                .ident
+                .expect("internal error: field must have an ident"),
+        );
         let changes = field_attributes
             .common
             .into_changeset(&field_ident, field.ty.clone());
