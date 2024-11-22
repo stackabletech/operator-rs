@@ -17,9 +17,10 @@ use crate::commons::{
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-pub const DEFAULT_OIDC_WELLKNOWN_PATH: &str = ".well-known/openid-configuration";
 pub const CLIENT_ID_SECRET_KEY: &str = "clientId";
 pub const CLIENT_SECRET_SECRET_KEY: &str = "clientSecret";
+
+const DEFAULT_OIDC_WELLKNOWN_PATH: &str = "./.well-known/openid-configuration";
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
@@ -27,9 +28,16 @@ pub enum Error {
     ParseOidcEndpointUrl { source: ParseError },
 
     #[snafu(display(
-        "failed to set OIDC endpoint scheme '{scheme}' for endpoint url '{endpoint}'"
+        "failed to set OIDC endpoint scheme '{scheme}' for endpoint url \"{endpoint}\""
     ))]
     SetOidcEndpointScheme { endpoint: Url, scheme: String },
+
+    #[snafu(display("failed to join the path {path:?} to URL \"{url}\""))]
+    JoinPath {
+        source: ParseError,
+        url: Url,
+        path: String,
+    },
 }
 
 /// This struct contains configuration values to configure an OpenID Connect
@@ -111,10 +119,8 @@ impl AuthenticationProvider {
         }
     }
 
-    /// Returns the OIDC endpoint [`Url`]. To append the default OIDC well-known
-    /// configuration path, use `url.join()`. This module provides the default
-    /// path at [`DEFAULT_OIDC_WELLKNOWN_PATH`].
-    pub fn endpoint_url(&self) -> Result<Url> {
+    /// Base [`Url`] without any path set (so only protocol, host, port and such).
+    fn base_url(&self) -> Result<Url> {
         let mut url = Url::parse(&format!(
             "http://{host}:{port}",
             host = self.hostname.as_url_host(),
@@ -132,8 +138,36 @@ impl AuthenticationProvider {
             })?;
         }
 
-        url.set_path(&self.root_path);
         Ok(url)
+    }
+
+    /// Returns the OIDC endpoint [`Url`] without a trailing slash.
+    ///
+    /// To get the well-known URL, please use [`Self::well_known_url`].
+    pub fn endpoint_url(&self) -> Result<Url> {
+        let mut url = self.base_url()?;
+        // Some tools can not cope with a trailing slash, so let's remove that
+        url.set_path(&self.root_path.trim_end_matches('/'));
+        Ok(url)
+    }
+
+    /// Returns the well-known [`Url`] without a trailing slash.
+    ///
+    /// It is basically the [`Self::endpoint_url`] joined with
+    /// "./.well-known/openid-configuration", while watching out for URL joining madness.
+    pub fn well_known_url(&self) -> Result<Url> {
+        let mut url = self.base_url()?;
+
+        // Url::join cuts of the part after the last slash :/
+        // So we need to make sure we have a trailing slash, so that nothing get's cut of.
+        let mut root_path_with_trailing_slash = self.root_path.trim_end_matches('/').to_string();
+        root_path_with_trailing_slash.push('/');
+        url.set_path(&root_path_with_trailing_slash);
+        url.join(DEFAULT_OIDC_WELLKNOWN_PATH)
+            .with_context(|_| JoinPathSnafu {
+                url: url.clone(),
+                path: DEFAULT_OIDC_WELLKNOWN_PATH.to_owned(),
+            })
     }
 
     /// Returns the port to be used, which is either user configured or defaulted based upon TLS usage
@@ -246,6 +280,8 @@ pub struct ClientAuthenticationOptions<T = ()> {
 
 #[cfg(test)]
 mod test {
+    use rstest::rstest;
+
     use super::*;
 
     #[test]
@@ -335,6 +371,74 @@ mod test {
         assert_eq!(
             oidc.endpoint_url().unwrap().as_str(),
             "http://[2606:2800:220:1:248:1893:25c8:1946]:12345/my-root-path"
+        );
+    }
+
+    #[rstest]
+    #[case("/", "https://my.keycloak.server/")]
+    #[case("/realms/sdp", "https://my.keycloak.server/realms/sdp")]
+    #[case("/realms/sdp/", "https://my.keycloak.server/realms/sdp")]
+    #[case("/realms/sdp//////", "https://my.keycloak.server/realms/sdp")]
+    #[case(
+        "/realms/my/realm/with/slashes//////",
+        "https://my.keycloak.server/realms/my/realm/with/slashes"
+    )]
+    fn root_path_endpoint_url(#[case] root_path: String, #[case] expected_endpoint_url: &str) {
+        let oidc = serde_yaml::from_str::<AuthenticationProvider>(&format!(
+            "
+            hostname: my.keycloak.server
+            rootPath: {root_path}
+            scopes: [openid]
+            principalClaim: preferred_username
+            tls:
+              verification:
+                server:
+                  caCert:
+                    webPki: {{}}
+            "
+        ))
+        .unwrap();
+
+        assert_eq!(oidc.endpoint_url().unwrap().as_str(), expected_endpoint_url);
+    }
+
+    #[rstest]
+    #[case("/", "https://my.keycloak.server/.well-known/openid-configuration")]
+    #[case(
+        "/realms/sdp",
+        "https://my.keycloak.server/realms/sdp/.well-known/openid-configuration"
+    )]
+    #[case(
+        "/realms/sdp/",
+        "https://my.keycloak.server/realms/sdp/.well-known/openid-configuration"
+    )]
+    #[case(
+        "/realms/sdp//////",
+        "https://my.keycloak.server/realms/sdp/.well-known/openid-configuration"
+    )]
+    #[case(
+        "/realms/my/realm/with/slashes//////",
+        "https://my.keycloak.server/realms/my/realm/with/slashes/.well-known/openid-configuration"
+    )]
+    fn root_path_well_known_url(#[case] root_path: String, #[case] expected_well_known_url: &str) {
+        let oidc = serde_yaml::from_str::<AuthenticationProvider>(&format!(
+            "
+            hostname: my.keycloak.server
+            rootPath: {root_path}
+            scopes: [openid]
+            principalClaim: preferred_username
+            tls:
+              verification:
+                server:
+                  caCert:
+                    webPki: {{}}
+            "
+        ))
+        .unwrap();
+
+        assert_eq!(
+            oidc.well_known_url().unwrap().as_str(),
+            expected_well_known_url
         );
     }
 

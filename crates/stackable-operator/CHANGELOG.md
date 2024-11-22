@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed URL handling related to OIDC and `rootPath` with and without trailing slashes. Also added a bunch of tests ([#XXX]).
+
+### Changed
+
+- BREAKING: Made `DEFAULT_OIDC_WELLKNOWN_PATH` private. Use `AuthenticationProvider::well_known_url` instead ([#XXX]).
+
 ## [0.81.0] - 2024-11-05
 
 ### Added
@@ -12,7 +20,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: Split `ListenerClass.spec.preferred_address_type` into a new `PreferredAddressType` type. Use `resolve_preferred_address_type()` to access the `AddressType` as before. ([#903])
+- BREAKING: Split `ListenerClass.spec.preferred_address_type` into a new `PreferredAddressType` type. Use `resolve_preferred_address_type()` to access the `AddressType` as before ([#903]).
 
 [#903]: https://github.com/stackabletech/operator-rs/pull/903
 
