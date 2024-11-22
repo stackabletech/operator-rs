@@ -17,9 +17,11 @@ use crate::commons::{
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-pub const DEFAULT_OIDC_WELLKNOWN_PATH: &str = ".well-known/openid-configuration";
 pub const CLIENT_ID_SECRET_KEY: &str = "clientId";
 pub const CLIENT_SECRET_SECRET_KEY: &str = "clientSecret";
+
+/// Do *not* use this for [`Url::join`], as the leading slash will erase the existing path!
+const DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH: &str = "/.well-known/openid-configuration";
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
@@ -27,7 +29,7 @@ pub enum Error {
     ParseOidcEndpointUrl { source: ParseError },
 
     #[snafu(display(
-        "failed to set OIDC endpoint scheme '{scheme}' for endpoint url '{endpoint}'"
+        "failed to set OIDC endpoint scheme '{scheme}' for endpoint url \"{endpoint}\""
     ))]
     SetOidcEndpointScheme { endpoint: Url, scheme: String },
 }
@@ -111,10 +113,10 @@ impl AuthenticationProvider {
         }
     }
 
-    /// Returns the OIDC endpoint [`Url`]. To append the default OIDC well-known
-    /// configuration path, use `url.join()`. This module provides the default
-    /// path at [`DEFAULT_OIDC_WELLKNOWN_PATH`].
-    pub fn endpoint_url(&self) -> Result<Url> {
+    /// Returns the OIDC base [`Url`] without any path segments.
+    ///
+    /// The base url only contains the scheme, the host, and an optional port.
+    fn base_url(&self) -> Result<Url> {
         let mut url = Url::parse(&format!(
             "http://{host}:{port}",
             host = self.hostname.as_url_host(),
@@ -132,7 +134,37 @@ impl AuthenticationProvider {
             })?;
         }
 
-        url.set_path(&self.root_path);
+        Ok(url)
+    }
+
+    /// Returns the OIDC endpoint [`Url`] without a trailing slash.
+    ///
+    /// To retrieve the well-known OIDC configuration url, please use [`Self::well_known_config_url`].
+    pub fn endpoint_url(&self) -> Result<Url> {
+        let mut url = self.base_url()?;
+        // Some tools can not cope with a trailing slash, so let's remove that
+        url.set_path(self.root_path.trim_end_matches('/'));
+        Ok(url)
+    }
+
+    /// Returns the well-known OIDC configuration [`Url`] without a trailing slash.
+    ///
+    /// The returned url is a combination of [`Self::endpoint_url`] joined with
+    /// the well-known OIDC configuration path `DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH`.
+    pub fn well_known_config_url(&self) -> Result<Url> {
+        let mut url = self.base_url()?;
+
+        // Taken from https://docs.rs/url/latest/url/struct.Url.html#method.join:
+        // A trailing slash is significant. Without it, the last path component is considered to be
+        // a “file” name to be removed to get at the “directory” that is used as the base.
+        //
+        // Because of that behavior, we first need to make sure that the root path doesn't contain
+        // any trailing slashes to finally append the well-known config path to the url. The path
+        // already contains a prefixed slash.
+        let mut root_path_with_trailing_slash = self.root_path.trim_end_matches('/').to_string();
+        root_path_with_trailing_slash.push_str(DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH);
+        url.set_path(&root_path_with_trailing_slash);
+
         Ok(url)
     }
 
@@ -246,6 +278,8 @@ pub struct ClientAuthenticationOptions<T = ()> {
 
 #[cfg(test)]
 mod test {
+    use rstest::rstest;
+
     use super::*;
 
     #[test]
@@ -310,12 +344,8 @@ mod test {
         .unwrap();
 
         assert_eq!(
-            oidc.endpoint_url()
-                .unwrap()
-                .join(DEFAULT_OIDC_WELLKNOWN_PATH)
-                .unwrap()
-                .as_str(),
-            "https://my.keycloak.server/.well-known/openid-configuration"
+            oidc.endpoint_url().unwrap().as_str(),
+            "https://my.keycloak.server/"
         );
     }
 
@@ -335,6 +365,70 @@ mod test {
         assert_eq!(
             oidc.endpoint_url().unwrap().as_str(),
             "http://[2606:2800:220:1:248:1893:25c8:1946]:12345/my-root-path"
+        );
+    }
+
+    #[rstest]
+    #[case("/", "http://my.keycloak.server:1234/")]
+    #[case("/realms/sdp", "http://my.keycloak.server:1234/realms/sdp")]
+    #[case("/realms/sdp/", "http://my.keycloak.server:1234/realms/sdp")]
+    #[case("/realms/sdp//////", "http://my.keycloak.server:1234/realms/sdp")]
+    #[case(
+        "/realms/my/realm/with/slashes//////",
+        "http://my.keycloak.server:1234/realms/my/realm/with/slashes"
+    )]
+    fn root_path_endpoint_url(#[case] root_path: String, #[case] expected_endpoint_url: &str) {
+        let oidc = serde_yaml::from_str::<AuthenticationProvider>(&format!(
+            "
+            hostname: my.keycloak.server
+            port: 1234
+            rootPath: {root_path}
+            scopes: [openid]
+            principalClaim: preferred_username
+            "
+        ))
+        .unwrap();
+
+        assert_eq!(oidc.endpoint_url().unwrap().as_str(), expected_endpoint_url);
+    }
+
+    #[rstest]
+    #[case("/", "https://my.keycloak.server/.well-known/openid-configuration")]
+    #[case(
+        "/realms/sdp",
+        "https://my.keycloak.server/realms/sdp/.well-known/openid-configuration"
+    )]
+    #[case(
+        "/realms/sdp/",
+        "https://my.keycloak.server/realms/sdp/.well-known/openid-configuration"
+    )]
+    #[case(
+        "/realms/sdp//////",
+        "https://my.keycloak.server/realms/sdp/.well-known/openid-configuration"
+    )]
+    #[case(
+        "/realms/my/realm/with/slashes//////",
+        "https://my.keycloak.server/realms/my/realm/with/slashes/.well-known/openid-configuration"
+    )]
+    fn root_path_well_known_url(#[case] root_path: String, #[case] expected_well_known_url: &str) {
+        let oidc = serde_yaml::from_str::<AuthenticationProvider>(&format!(
+            "
+            hostname: my.keycloak.server
+            rootPath: {root_path}
+            scopes: [openid]
+            principalClaim: preferred_username
+            tls:
+              verification:
+                server:
+                  caCert:
+                    webPki: {{}}
+            "
+        ))
+        .unwrap();
+
+        assert_eq!(
+            oidc.well_known_config_url().unwrap().as_str(),
+            expected_well_known_url
         );
     }
 
