@@ -119,15 +119,19 @@ impl Container {
     }
 }
 
+/// A versioned struct.
 pub(crate) struct Struct {
     /// List of fields defined in the original struct. How, and if, an item
     /// should generate code, is decided by the currently generated version.
     pub(crate) fields: Vec<VersionedField>,
+
+    /// Common container data which is shared between structs and enums.
     pub(crate) common: CommonContainerData,
 }
 
 // Common token generation
 impl Struct {
+    /// Generates code for the struct definition.
     pub(crate) fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
         let original_attributes = &self.common.original_attributes;
         let ident = &self.common.idents.original;
@@ -151,6 +155,7 @@ impl Struct {
         }
     }
 
+    /// Generates code for the `From<Version> for NextVersion` implementation.
     pub(crate) fn generate_from_impl(
         &self,
         version: &VersionDefinition,
@@ -202,6 +207,7 @@ impl Struct {
         }
     }
 
+    /// Generates code for struct fields used in `From` implementations.
     fn generate_from_fields(
         &self,
         version: &VersionDefinition,
@@ -217,7 +223,13 @@ impl Struct {
         tokens
     }
 
+    /// Returns whether any field is deprecated in the provided `version`.
     fn is_any_field_deprecated(&self, version: &VersionDefinition) -> bool {
+        // First, iterate over all fields. The `any` function will return true
+        // if any of the function invocations return true. If a field doesn't
+        // have a chain, we can safely default to false (unversioned fields
+        // cannot be deprecated). Then we retrieve the status of the field and
+        // ensure it is deprecated.
         self.fields.iter().any(|f| {
             f.changes.as_ref().map_or(false, |c| {
                 c.value_is(&version.inner, |a| {

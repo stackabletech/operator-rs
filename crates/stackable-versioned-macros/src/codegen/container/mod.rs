@@ -15,6 +15,7 @@ use crate::{
 mod r#enum;
 mod r#struct;
 
+/// Contains common container data shared between structs and enums.
 pub(crate) struct CommonContainerData {
     /// Original attributes placed on the container, like `#[derive()]` or `#[cfg()]`.
     pub(crate) original_attributes: Vec<Attribute>,
@@ -26,12 +27,18 @@ pub(crate) struct CommonContainerData {
     pub(crate) idents: ContainerIdents,
 }
 
+/// Supported types of containers, structs and enums.
+///
+/// Abstracting away with kind of container is generated makes it possible to create a list of
+/// containers when the macro is used on modules. This enum provides functions to generate code
+/// which then internally call the appropriate function based on the variant.
 pub(crate) enum Container {
     Struct(Struct),
     Enum(Enum),
 }
 
 impl Container {
+    /// Generates the container definition for the specified `version`.
     pub(crate) fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
         match self {
             Container::Struct(s) => s.generate_definition(version),
@@ -39,6 +46,7 @@ impl Container {
         }
     }
 
+    /// Generates the container `From<Version> for NextVersion` implementation.
     pub(crate) fn generate_from_impl(
         &self,
         version: &VersionDefinition,
@@ -51,6 +59,16 @@ impl Container {
         }
     }
 
+    /// Generates Kubernetes specific code snippets.
+    ///
+    /// This function returns three values:
+    ///
+    /// - an enum variant ident,
+    /// - an enum variant display string,
+    /// - and a `CustomResource::crd()` call
+    ///
+    /// This function only returns `Some` if it is a struct. Enums cannot be used to define
+    /// Kubernetes custom resources.
     pub(crate) fn generate_kubernetes_item(
         &self,
         version: &VersionDefinition,
@@ -61,6 +79,10 @@ impl Container {
         }
     }
 
+    /// Generates Kubernetes specific code to merge two or more CRDs into one.
+    ///
+    /// This function only returns `Some` if it is a struct. Enums cannot be used to define
+    /// Kubernetes custom resources.
     pub(crate) fn generate_kubernetes_merge_crds(
         &self,
         enum_variant_idents: Vec<IdentString>,
@@ -80,6 +102,12 @@ impl Container {
     }
 }
 
+/// A versioned standalone container.
+///
+/// A standalone container is a container defined outside of a versioned module. See [`Module`][1]
+/// for more information about versioned modules.
+///
+/// [1]: crate::codegen::module::Module
 pub(crate) struct StandaloneContainer {
     versions: Vec<VersionDefinition>,
     container: Container,
@@ -87,6 +115,7 @@ pub(crate) struct StandaloneContainer {
 }
 
 impl StandaloneContainer {
+    /// Creates a new versioned standalone struct.
     pub(crate) fn new_struct(
         item_struct: ItemStruct,
         attributes: StandaloneContainerAttributes,
@@ -103,6 +132,7 @@ impl StandaloneContainer {
         })
     }
 
+    /// Creates a new versioned standalone enum.
     pub(crate) fn new_enum(
         item_enum: ItemEnum,
         attributes: StandaloneContainerAttributes,
@@ -119,6 +149,7 @@ impl StandaloneContainer {
         })
     }
 
+    /// Generate tokens containing every piece of code required for a standalone container.
     pub(crate) fn generate_tokens(&self) -> TokenStream {
         let vis = &self.vis;
 

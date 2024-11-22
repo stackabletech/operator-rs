@@ -12,6 +12,10 @@ pub(crate) struct ModuleInput {
     pub(crate) ident: Ident,
 }
 
+/// A versioned module.
+///
+/// Versioned modules allow versioning multiple containers at once without introducing conflicting
+/// version module definitions.
 pub(crate) struct Module {
     versions: Vec<VersionDefinition>,
     containers: Vec<Container>,
@@ -21,6 +25,7 @@ pub(crate) struct Module {
 }
 
 impl Module {
+    /// Creates a new versioned module containing versioned containers.
     pub(crate) fn new(
         ModuleInput { ident, vis, .. }: ModuleInput,
         preserve_module: bool,
@@ -36,6 +41,7 @@ impl Module {
         }
     }
 
+    /// Generates tokens for all versioned containers.
     pub(crate) fn generate_tokens(&self) -> TokenStream {
         if self.containers.is_empty() {
             return quote! {};
