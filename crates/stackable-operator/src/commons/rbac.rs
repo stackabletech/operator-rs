@@ -28,9 +28,9 @@ pub enum Error {
 }
 
 /// Build RBAC objects for the product workloads.
-/// The `rbac_prefix` is meant to be the product name, for example: zookeeper, airflow, etc.
-/// and it is a assumed that a ClusterRole named `{rbac_prefix}-clusterrole` exists.
-/// 'rbac_prefix' is not used to build the names of the serviceAccount and roleBinding objects,
+/// The `product_name` is meant to be the product name, for example: zookeeper, airflow, etc.
+/// and it is a assumed that a ClusterRole named `{product_name}-clusterrole` exists.
+/// 'product_name' is not used to build the names of the serviceAccount and roleBinding objects,
 /// as this caused problems with multiple clusters of the same product within the same namespace
 /// see <https://stackable.atlassian.net/browse/SUP-148> for more details.
 /// Instead the names for these objects are created by reading the name from the cluster object
@@ -38,7 +38,7 @@ pub enum Error {
 /// same objects for multiple clusters.
 pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     resource: &T,
-    rbac_prefix: &str,
+    product_name: &str,
     labels: Labels,
 ) -> Result<(ServiceAccount, RoleBinding)> {
     let sa_name = service_account_name(&resource.name_any());
@@ -67,7 +67,7 @@ pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
             .build(),
         role_ref: RoleRef {
             kind: "ClusterRole".to_string(),
-            name: format!("{rbac_prefix}-clusterrole"),
+            name: format!("{product_name}-clusterrole"),
             api_group: "rbac.authorization.k8s.io".to_string(),
         },
         subjects: Some(vec![Subject {
@@ -83,13 +83,19 @@ pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
 
 /// Generate the service account name.
 /// The `rbac_prefix` is meant to be the product name, for example: zookeeper, airflow, etc.
-pub fn service_account_name(rbac_prefix: &str) -> String {
+/// This is private because operators should not use this function to calculate names for
+/// serviceAccount objects, but rather read the name from the objects returned by
+/// `build_rbac_resources` if they need the name.
+fn service_account_name(rbac_prefix: &str) -> String {
     format!("{rbac_prefix}-serviceaccount")
 }
 
 /// Generate the role binding name.
 /// The `rbac_prefix` is meant to be the product name, for example: zookeeper, airflow, etc.
-pub fn role_binding_name(rbac_prefix: &str) -> String {
+/// This is private because operators should not use this function to calculate names for
+/// roleBinding objects, but rather read the name from the objects returned by
+/// `build_rbac_resources` if they need the name.
+fn role_binding_name(rbac_prefix: &str) -> String {
     format!("{rbac_prefix}-rolebinding")
 }
 
