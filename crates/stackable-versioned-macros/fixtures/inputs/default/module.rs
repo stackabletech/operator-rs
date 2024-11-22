@@ -15,6 +15,7 @@ pub(crate) mod versioned {
         deprecated_foo: String,
     }
 
+    // The following attribute is just to ensure no strange behavior occurs.
     #[versioned]
     pub struct Bar {
         baz: String,
