@@ -28,8 +28,8 @@ impl CommonRootArguments {
 
         let is_sorted = self.versions.iter().is_sorted_by_key(|v| v.name);
 
-        // It needs to be sorted, even tho the definition could be unsorted (if allow_unsorted is
-        // set).
+        // It needs to be sorted, even though the definition could be unsorted
+        // (if allow_unsorted is set).
         self.versions.sort_by(|lhs, rhs| lhs.name.cmp(&rhs.name));
 
         if !self.options.allow_unsorted.is_present() && !is_sorted {

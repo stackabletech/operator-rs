@@ -65,7 +65,7 @@ impl VersionedVariant {
         let fields = &self.fields;
 
         match &self.changes {
-            // NOTE (@Techassi): https://rust-lang.github.io/rust-clippy/master/index.html#/expect_fun_call
+            // NOTE (@Techassi): `unwrap_or_else` used instead of `expect`. See: https://rust-lang.github.io/rust-clippy/master/index.html#/expect_fun_call
             Some(changes) => match changes.get(&version.inner).unwrap_or_else(|| {
                 panic!(
                     "internal error: chain must contain container version {}",

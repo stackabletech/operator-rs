@@ -311,7 +311,7 @@ impl Struct {
 
         let enum_ident = &self.common.idents.kubernetes;
 
-        // Only add the #[automatically_derived] attribute only if this impl is used outside of a
+        // Only add the #[automatically_derived] attribute if this impl is used outside of a
         // module (in standalone mode).
         let automatically_derived = is_nested.not().then(|| quote! {#[automatically_derived]});
 

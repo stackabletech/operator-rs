@@ -174,7 +174,7 @@ impl Enum {
 
     /// Returns whether any variant is deprecated in the provided `version`.
     fn is_any_variant_deprecated(&self, version: &VersionDefinition) -> bool {
-        // First, iterate over all variants. Any will return true if any of the
+        // First, iterate over all variants. The `any` function will return true if any of the
         // function invocations return true. If a field doesn't have a chain,
         // we can safely default to false (unversioned fields cannot be
         // deprecated). Then we retrieve the status of the field and ensure it

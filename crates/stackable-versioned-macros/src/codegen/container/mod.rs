@@ -91,7 +91,6 @@ impl StandaloneContainer {
         item_struct: ItemStruct,
         attributes: StandaloneContainerAttributes,
     ) -> Result<Self> {
-        // TODO (@Techassi): Only pass the fields we need from item struct instead of moving as a whole
         let versions: Vec<_> = (&attributes).into();
         let vis = item_struct.vis.clone();
 
