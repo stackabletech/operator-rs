@@ -29,9 +29,9 @@ impl VersionedVariant {
 
         let variant_ident = VariantIdent::from(variant.ident);
 
-        // FIXME (@Techassi): As we currently don't support enum variants with
-        // data, we just return the Never type as the code generation code for
-        // enum variants won't use this type information.
+        // FIXME (@Techassi): The chain of changes currently doesn't track versioning of variant
+        // date and as such, we just use the never type here. During codegen, we just re-emit the
+        // variant data as is.
         let ty = Type::Never(TypeNever {
             bang_token: Not([Span::call_site()]),
         });
@@ -65,7 +65,8 @@ impl VersionedVariant {
         let fields = &self.fields;
 
         match &self.changes {
-            // NOTE (@Techassi): `unwrap_or_else` used instead of `expect`. See: https://rust-lang.github.io/rust-clippy/master/index.html#/expect_fun_call
+            // NOTE (@Techassi): `unwrap_or_else` used instead of `expect`.
+            // See: https://rust-lang.github.io/rust-clippy/master/index.html#/expect_fun_call
             Some(changes) => match changes.get(&version.inner).unwrap_or_else(|| {
                 panic!(
                     "internal error: chain must contain container version {}",
