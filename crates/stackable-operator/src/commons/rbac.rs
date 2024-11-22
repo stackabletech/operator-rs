@@ -45,6 +45,7 @@ pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     let sa_name = service_account_name(&resource.name_any());
     // We add the legacy serviceAccount name to the binding here for at least one
     // release cycle, so that the switchover during the upgrade can be smoother.
+    // To be removed in v24.3+1.
     let legacy_sa_name = service_account_name(product_name);
     let service_account = ServiceAccount {
         metadata: ObjectMetaBuilder::new()
