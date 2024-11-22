@@ -13,8 +13,17 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: Split `ListenerClass.spec.preferred_address_type` into a new `PreferredAddressType` type. Use `resolve_preferred_address_type()` to access the `AddressType` as before. ([#903])
+- BREAKING: Changed visibility of `commons::rbac::service_account_name` and `commons::rbac::role_binding_name` to
+  private, as these functions should not be called directly by the operators. This is likely to result in naming conflicts
+  as the result is completely dependent on what is passed to this function. Operators should instead rely on the roleBinding
+  and serviceAccount objects created by `commons::rbac::build_rbac_resources` and retrieve the name from the returned
+  objects if they need it. ([#909])
+- Changed the names of the objects that are returned from `commons::rbac::build_rbac_resources` to not rely solely on the product
+  they refer to (e.g. "nifi-rolebinding") but instead include the name of the resource to be unique per cluster
+  (e.g. simple-nifi-rolebinding). ([#909])
 
 [#903]: https://github.com/stackabletech/operator-rs/pull/903
+[#909]: https://github.com/stackabletech/operator-rs/pull/909
 
 ## [0.80.0] - 2024-10-23
 
