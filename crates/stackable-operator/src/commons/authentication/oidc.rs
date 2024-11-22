@@ -147,7 +147,7 @@ impl AuthenticationProvider {
     pub fn endpoint_url(&self) -> Result<Url> {
         let mut url = self.base_url()?;
         // Some tools can not cope with a trailing slash, so let's remove that
-        url.set_path(&self.root_path.trim_end_matches('/'));
+        url.set_path(self.root_path.trim_end_matches('/'));
         Ok(url)
     }
 
