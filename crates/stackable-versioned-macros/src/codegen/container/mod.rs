@@ -250,23 +250,25 @@ pub(crate) struct ContainerOptions {
 
 #[derive(Debug)]
 pub(crate) struct KubernetesOptions {
+    pub(crate) group: String,
+    pub(crate) kind: Option<String>,
     pub(crate) singular: Option<String>,
     pub(crate) plural: Option<String>,
-    pub(crate) skip_merged_crd: bool,
-    pub(crate) kind: Option<String>,
     pub(crate) namespaced: bool,
-    pub(crate) group: String,
+    pub(crate) status: Option<String>,
+    pub(crate) skip_merged_crd: bool,
 }
 
 impl From<KubernetesArguments> for KubernetesOptions {
     fn from(args: KubernetesArguments) -> Self {
         KubernetesOptions {
-            skip_merged_crd: args.skip.map_or(false, |s| s.merged_crd.is_present()),
-            namespaced: args.namespaced.is_present(),
-            singular: args.singular,
-            plural: args.plural,
             group: args.group,
             kind: args.kind,
+            singular: args.singular,
+            plural: args.plural,
+            namespaced: args.namespaced.is_present(),
+            status: args.status,
+            skip_merged_crd: args.skip.map_or(false, |s| s.merged_crd.is_present()),
         }
     }
 }

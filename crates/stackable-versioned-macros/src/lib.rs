@@ -481,6 +481,7 @@ println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 /// - `plural`: Sets the plural name.
 /// - `namespaced`: Specifies that this is a namespaced resource rather than
 ///   a cluster scoped.
+/// - `status`: Sets the specified struct as the status subresource.
 #[proc_macro_attribute]
 pub fn versioned(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(input as Item);

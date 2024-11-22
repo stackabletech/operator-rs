@@ -266,9 +266,6 @@ impl Struct {
                     });
 
                 // Optional arguments
-                let namespaced = kubernetes_options
-                    .namespaced
-                    .then_some(quote! { , namespaced });
                 let singular = kubernetes_options
                     .singular
                     .as_ref()
@@ -277,10 +274,17 @@ impl Struct {
                     .plural
                     .as_ref()
                     .map(|p| quote! { , plural = #p });
+                let namespaced = kubernetes_options
+                    .namespaced
+                    .then_some(quote! { , namespaced });
+                let status = kubernetes_options
+                    .status
+                    .as_ref()
+                    .map(|s| quote! { , status = #s });
 
                 Some(quote! {
                     #[derive(::kube::CustomResource)]
-                    #[kube(group = #group, version = #version, kind = #kind #singular #plural #namespaced)]
+                    #[kube(group = #group, version = #version, kind = #kind #singular #plural #namespaced #status)]
                 })
             }
             None => None,

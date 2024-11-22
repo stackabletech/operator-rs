@@ -16,12 +16,13 @@ use darling::{util::Flag, FromMeta};
 /// - `group`, which sets the CRD group, usually the domain of the company.
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct KubernetesArguments {
+    pub(crate) group: String,
+    pub(crate) kind: Option<String>,
     pub(crate) skip: Option<KubernetesSkipArguments>,
     pub(crate) singular: Option<String>,
     pub(crate) plural: Option<String>,
-    pub(crate) kind: Option<String>,
     pub(crate) namespaced: Flag,
-    pub(crate) group: String,
+    pub(crate) status: Option<String>,
 }
 
 /// This struct contains supported kubernetes skip arguments.
