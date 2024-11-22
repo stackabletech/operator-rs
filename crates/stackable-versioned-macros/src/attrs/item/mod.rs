@@ -197,7 +197,7 @@ impl CommonItemAttributes {
 
         if self.deprecated.is_none() && starts_with_deprecated {
             return Err(Error::custom(
-                format!("not marked as `deprecated` and thus mustn't include the `{deprecated_prefix}` prefix", deprecated_prefix = item_ident.deprecated_prefix())
+                format!("not marked as `deprecated` and thus must not include the `{deprecated_prefix}` prefix", deprecated_prefix = item_ident.deprecated_prefix())
             ).with_span(item_ident));
         }
 
@@ -231,7 +231,7 @@ impl CommonItemAttributes {
                 if from_name.starts_with(item_ident.deprecated_prefix()) {
                     errors.push(
                         Error::custom(
-                            "the previous name mustn't start with the deprecation prefix",
+                            "the previous name must not start with the deprecation prefix",
                         )
                         .with_span(&from_name.span()),
                     );
