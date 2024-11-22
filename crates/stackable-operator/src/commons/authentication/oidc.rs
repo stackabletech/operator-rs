@@ -20,7 +20,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub const CLIENT_ID_SECRET_KEY: &str = "clientId";
 pub const CLIENT_SECRET_SECRET_KEY: &str = "clientSecret";
 
-const DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH: &str = "/.well-known/openid-configuration";
+const DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH: &str = ".well-known/openid-configuration";
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
@@ -163,10 +163,10 @@ impl AuthenticationProvider {
         let mut root_path_with_trailing_slash = self.root_path.trim_end_matches('/').to_string();
         root_path_with_trailing_slash.push('/');
         url.set_path(&root_path_with_trailing_slash);
-        url.join(DEFAULT_OIDC_WELLKNOWN_PATH)
+        url.join(DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH)
             .with_context(|_| JoinPathSnafu {
                 url: url.clone(),
-                path: DEFAULT_OIDC_WELLKNOWN_PATH.to_owned(),
+                path: DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH.to_owned(),
             })
     }
 
@@ -346,12 +346,8 @@ mod test {
         .unwrap();
 
         assert_eq!(
-            oidc.endpoint_url()
-                .unwrap()
-                .join(DEFAULT_OIDC_WELLKNOWN_PATH)
-                .unwrap()
-                .as_str(),
-            "https://my.keycloak.server/.well-known/openid-configuration"
+            oidc.endpoint_url().unwrap().as_str(),
+            "https://my.keycloak.server/"
         );
     }
 
