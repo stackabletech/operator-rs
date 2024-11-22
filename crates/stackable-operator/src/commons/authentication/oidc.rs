@@ -20,7 +20,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub const CLIENT_ID_SECRET_KEY: &str = "clientId";
 pub const CLIENT_SECRET_SECRET_KEY: &str = "clientSecret";
 
-const DEFAULT_OIDC_WELLKNOWN_PATH: &str = "./.well-known/openid-configuration";
+const DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH: &str = "/.well-known/openid-configuration";
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
