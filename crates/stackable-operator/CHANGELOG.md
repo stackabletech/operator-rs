@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.82.0] - 2024-11-23
+
 ### Fixed
 
 - Fixed URL handling related to OIDC and `rootPath` with and without trailing slashes. Also added a bunch of tests ([#910]).
