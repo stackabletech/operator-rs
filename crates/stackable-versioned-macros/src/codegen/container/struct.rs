@@ -312,9 +312,9 @@ impl Struct {
 
     pub(crate) fn generate_kubernetes_merge_crds(
         &self,
-        enum_variant_idents: Vec<IdentString>,
-        enum_variant_strings: Vec<String>,
-        fn_calls: Vec<TokenStream>,
+        enum_variant_idents: &[IdentString],
+        enum_variant_strings: &[String],
+        fn_calls: &[TokenStream],
         is_nested: bool,
     ) -> Option<TokenStream> {
         if enum_variant_idents.is_empty() {
