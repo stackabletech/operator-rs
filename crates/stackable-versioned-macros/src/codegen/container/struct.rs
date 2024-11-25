@@ -143,12 +143,12 @@ impl Struct {
         }
 
         // This only returns Some, if K8s features are enabled
-        let kubernetes_cr_derive = self.generate_kubernetes_cr_derive(version);
+        let kube_attribute = self.generate_kube_attribute(version);
 
         quote! {
             #(#[doc = #version_docs])*
             #(#original_attributes)*
-            #kubernetes_cr_derive
+            #kube_attribute
             pub struct #ident {
                 #fields
             }
@@ -249,7 +249,7 @@ impl Struct {
 
 // Kubernetes-specific token generation
 impl Struct {
-    pub(crate) fn generate_kubernetes_cr_derive(
+    pub(crate) fn generate_kube_attribute(
         &self,
         version: &VersionDefinition,
     ) -> Option<TokenStream> {
@@ -288,7 +288,8 @@ impl Struct {
                     .map(|s| quote! { , shortname = #s });
 
                 Some(quote! {
-                    #[derive(::kube::CustomResource)]
+                    // The end-developer needs to derive CustomResource and JsonSchema.
+                    // This is because we don't know if they want to use a re-exported or renamed import.
                     #[kube(
                         // These must be comma separated (except the last) as they always exist:
                         group = #group, version = #version, kind = #kind
