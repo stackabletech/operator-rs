@@ -255,7 +255,19 @@ pub(crate) struct KubernetesOptions {
     pub(crate) singular: Option<String>,
     pub(crate) plural: Option<String>,
     pub(crate) namespaced: bool,
+    // root
+    // crates
     pub(crate) status: Option<String>,
+    // derive
+    // schema
+    // scale
+    // printcolumn
+    pub(crate) shortname: Option<String>,
+    // category
+    // selectable
+    // doc
+    // annotation
+    // label
     pub(crate) skip_merged_crd: bool,
 }
 
@@ -268,6 +280,7 @@ impl From<KubernetesArguments> for KubernetesOptions {
             plural: args.plural,
             namespaced: args.namespaced.is_present(),
             status: args.status,
+            shortname: args.shortname,
             skip_merged_crd: args.skip.map_or(false, |s| s.merged_crd.is_present()),
         }
     }

@@ -281,10 +281,14 @@ impl Struct {
                     .status
                     .as_ref()
                     .map(|s| quote! { , status = #s });
+                let shortname = kubernetes_options
+                    .shortname
+                    .as_ref()
+                    .map(|s| quote! { , shortname = #s });
 
                 Some(quote! {
                     #[derive(::kube::CustomResource)]
-                    #[kube(group = #group, version = #version, kind = #kind #singular #plural #namespaced #status)]
+                    #[kube(group = #group, version = #version, kind = #kind #singular #plural #namespaced #status #shortname)]
                 })
             }
             None => None,

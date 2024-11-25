@@ -22,6 +22,18 @@ pub(crate) struct KubernetesArguments {
     pub(crate) singular: Option<String>,
     pub(crate) plural: Option<String>,
     pub(crate) namespaced: Flag,
+    // root
+    // crates
+    // derive
+    // schema
+    // scale
+    // printcolumn
+    pub(crate) shortname: Option<String>,
+    // category
+    // selectable
+    // doc
+    // annotation
+    // label
     pub(crate) status: Option<String>,
 }
 
