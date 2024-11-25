@@ -2,7 +2,7 @@ use std::ops::Not;
 
 use darling::{util::IdentString, Error, FromAttributes, Result};
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{parse_quote, ItemStruct, Path};
 
 use crate::{
@@ -277,6 +277,7 @@ impl Struct {
                 let namespaced = kubernetes_options
                     .namespaced
                     .then_some(quote! { , namespaced });
+                let crates = kubernetes_options.crates.to_token_stream();
                 let status = kubernetes_options
                     .status
                     .as_ref()
@@ -288,7 +289,12 @@ impl Struct {
 
                 Some(quote! {
                     #[derive(::kube::CustomResource)]
-                    #[kube(group = #group, version = #version, kind = #kind #singular #plural #namespaced #status #shortname)]
+                    #[kube(
+                        // These must be comma separated (except the last) as they always exist:
+                        group = #group, version = #version, kind = #kind
+                        // These fields are optional, and therefore the token stream must prefix each with a comma:
+                        #singular #plural #namespaced #crates #status #shortname
+                    )]
                 })
             }
             None => None,

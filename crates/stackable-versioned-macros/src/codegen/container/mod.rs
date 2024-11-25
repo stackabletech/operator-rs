@@ -4,7 +4,10 @@ use quote::quote;
 use syn::{Attribute, Ident, ItemEnum, ItemStruct, Visibility};
 
 use crate::{
-    attrs::{container::StandaloneContainerAttributes, k8s::KubernetesArguments},
+    attrs::{
+        container::StandaloneContainerAttributes,
+        k8s::{KubernetesArguments, KubernetesCrateArguments},
+    },
     codegen::{
         container::{r#enum::Enum, r#struct::Struct},
         VersionDefinition,
@@ -256,7 +259,7 @@ pub(crate) struct KubernetesOptions {
     pub(crate) plural: Option<String>,
     pub(crate) namespaced: bool,
     // root
-    // crates
+    pub(crate) crates: Option<KubernetesCrateArguments>,
     pub(crate) status: Option<String>,
     // derive
     // schema
@@ -279,6 +282,7 @@ impl From<KubernetesArguments> for KubernetesOptions {
             singular: args.singular,
             plural: args.plural,
             namespaced: args.namespaced.is_present(),
+            crates: args.crates,
             status: args.status,
             shortname: args.shortname,
             skip_merged_crd: args.skip.map_or(false, |s| s.merged_crd.is_present()),

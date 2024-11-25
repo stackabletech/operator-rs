@@ -481,6 +481,7 @@ println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 /// - `plural`: Sets the plural name.
 /// - `namespaced`: Specifies that this is a namespaced resource rather than
 ///   a cluster scoped.
+/// - `crates`: Override specific crates.
 /// - `status`: Sets the specified struct as the status subresource.
 /// - `shortname`: Sets the shortname of the CRD.
 #[proc_macro_attribute]
