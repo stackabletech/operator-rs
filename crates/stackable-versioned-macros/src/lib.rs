@@ -434,18 +434,21 @@ mod utils;
 /// }
 /// ```
 ///
-/// ## Kubernetes-specific Features
-///
-/// This macro also offers support for Kubernetes-specific versioning,
-/// especially for CustomResourceDefinitions (CRDs). These features are
-/// completely opt-in. You need to enable the `k8s` feature (which enables
-/// optional dependencies) and use the `k8s()` parameter in the macro.
-///
 #[cfg_attr(
     feature = "k8s",
     doc = r#"
+## Kubernetes-specific Features
+
+This macro also offers support for Kubernetes-specific versioning,
+especially for CustomResourceDefinitions (CRDs). These features are
+completely opt-in. You need to enable the `k8s` feature (which enables
+optional dependencies) and use the `k8s()` parameter in the macro.
+
+You need to derive both [`kube::CustomResource`] and [`schemars::JsonSchema`].
+
 ```
 # use stackable_versioned_macros::versioned;
+use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -455,7 +458,7 @@ use serde::{Deserialize, Serialize};
     version(name = "v1"),
     k8s(group = "example.com")
 )]
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
 pub struct FooSpec {
     #[versioned(
         added(since = "v1beta1"),
@@ -470,20 +473,21 @@ let merged_crd = Foo::merged_crd(Foo::V1).unwrap();
 println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 # }
 ```
+
+Currently, the following arguments are supported:
+
+- `group`: Sets the CRD group, usually the domain of the company.
+- `kind`:  Allows overwriting the kind field of the CRD. This defaults
+  to the struct name (without the 'Spec' suffix).
+- `singular`: Sets the singular name.
+- `plural`: Sets the plural name.
+- `namespaced`: Specifies that this is a namespaced resource rather than
+  a cluster scoped.
+- `crates`: Override specific crates.
+- `status`: Sets the specified struct as the status subresource.
+- `shortname`: Sets the shortname of the CRD.
 "#
 )]
-/// Currently, the following arguments are supported:
-///
-/// - `group`: Sets the CRD group, usually the domain of the company.
-/// - `kind`:  Allows overwriting the kind field of the CRD. This defaults
-///   to the struct name (without the 'Spec' suffix).
-/// - `singular`: Sets the singular name.
-/// - `plural`: Sets the plural name.
-/// - `namespaced`: Specifies that this is a namespaced resource rather than
-///   a cluster scoped.
-/// - `crates`: Override specific crates.
-/// - `status`: Sets the specified struct as the status subresource.
-/// - `shortname`: Sets the shortname of the CRD.
 #[proc_macro_attribute]
 pub fn versioned(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(input as Item);

@@ -56,9 +56,7 @@ pub(crate) struct KubernetesSkipArguments {
     pub(crate) merged_crd: Flag,
 }
 
-/// This struct contains crate overrides.
-///
-// TODO (@NickLarsenNZ): Update docs to say what this is for.
+/// This struct contains crate overrides to be passed to `#[kube]`.
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct KubernetesCrateArguments {
     kube_core: Option<Path>,
