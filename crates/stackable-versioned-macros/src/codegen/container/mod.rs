@@ -85,9 +85,9 @@ impl Container {
     /// Kubernetes custom resources.
     pub(crate) fn generate_kubernetes_merge_crds(
         &self,
-        enum_variant_idents: Vec<IdentString>,
-        enum_variant_strings: Vec<String>,
-        fn_calls: Vec<TokenStream>,
+        enum_variant_idents: &[IdentString],
+        enum_variant_strings: &[String],
+        fn_calls: &[TokenStream],
         is_nested: bool,
     ) -> Option<TokenStream> {
         match self {
@@ -201,9 +201,9 @@ impl StandaloneContainer {
         }
 
         tokens.extend(self.container.generate_kubernetes_merge_crds(
-            kubernetes_enum_variant_idents,
-            kubernetes_enum_variant_strings,
-            kubernetes_merge_crds_fn_calls,
+            &kubernetes_enum_variant_idents,
+            &kubernetes_enum_variant_strings,
+            &kubernetes_merge_crds_fn_calls,
             false,
         ));
 

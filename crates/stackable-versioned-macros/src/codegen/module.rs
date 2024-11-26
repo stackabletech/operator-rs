@@ -47,6 +47,9 @@ impl Module {
             return quote! {};
         }
 
+        let module_ident = &self.ident;
+        let module_vis = &self.vis;
+
         // If the 'preserve_module' flag is provided by the user, we need to change the visibility
         // of version modules (eg. 'v1alpha1') to be public, so that they are accessible inside the
         // preserved (wrapping) module. Otherwise, we can inherit the visibility from the module
@@ -57,14 +60,18 @@ impl Module {
             &self.vis
         };
 
+        let mut kubernetes_tokens = TokenStream::new();
         let mut tokens = TokenStream::new();
 
-        let module_ident = &self.ident;
-        let module_vis = &self.vis;
+        let mut kubernetes_container_items = Vec::new();
 
         let mut versions = self.versions.iter().peekable();
 
         while let Some(version) = versions.next() {
+            let mut kubernetes_merge_crds_fn_calls = Vec::new();
+            let mut kubernetes_enum_variant_idents = Vec::new();
+            let mut kubernetes_enum_variant_strings = Vec::new();
+
             let mut container_definitions = TokenStream::new();
             let mut from_impls = TokenStream::new();
 
@@ -72,11 +79,22 @@ impl Module {
 
             for container in &self.containers {
                 container_definitions.extend(container.generate_definition(version));
+
                 from_impls.extend(container.generate_from_impl(
                     version,
                     versions.peek().copied(),
                     self.preserve_module,
                 ));
+
+                // Generate Kubernetes specific code which is placed outside of the container
+                // definition.
+                if let Some((enum_variant_ident, enum_variant_string, fn_call)) =
+                    container.generate_kubernetes_item(version)
+                {
+                    kubernetes_merge_crds_fn_calls.push(fn_call);
+                    kubernetes_enum_variant_idents.push(enum_variant_ident);
+                    kubernetes_enum_variant_strings.push(enum_variant_string);
+                }
             }
 
             // Only add #[automatically_derived] here if the user doesn't want to preserve the
@@ -103,6 +121,29 @@ impl Module {
 
                 #from_impls
             });
+
+            kubernetes_container_items.push((
+                kubernetes_merge_crds_fn_calls,
+                kubernetes_enum_variant_idents,
+                kubernetes_enum_variant_strings,
+            ));
+        }
+
+        // Generate the final Kubernetes specific code for each container (which uses Kubernetes
+        // specific features) which is appended to the end of container definitions.
+        for (index, container) in self.containers.iter().enumerate() {
+            let (
+                kubernetes_merge_crds_fn_calls,
+                kubernetes_enum_variant_idents,
+                kubernetes_enum_variant_strings,
+            ) = kubernetes_container_items.get(index).unwrap();
+
+            kubernetes_tokens.extend(container.generate_kubernetes_merge_crds(
+                kubernetes_enum_variant_idents,
+                kubernetes_enum_variant_strings,
+                kubernetes_merge_crds_fn_calls,
+                self.preserve_module,
+            ));
         }
 
         if self.preserve_module {
@@ -110,10 +151,14 @@ impl Module {
                 #[automatically_derived]
                 #module_vis mod #module_ident {
                     #tokens
+                    #kubernetes_tokens
                 }
             }
         } else {
-            tokens
+            quote! {
+                #tokens
+                #kubernetes_tokens
+            }
         }
     }
 }
