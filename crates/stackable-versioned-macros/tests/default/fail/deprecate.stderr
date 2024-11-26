@@ -1,4 +1,4 @@
-error: deprecation must be done using #[versioned(deprecated(since = "VERSION"))]
+error: deprecation must be done using `#[versioned(deprecated(since = "VERSION"))]`
   --> tests/default/fail/deprecate.rs:10:9
    |
 10 |         #[deprecated]

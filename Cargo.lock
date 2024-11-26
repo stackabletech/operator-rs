@@ -3026,7 +3026,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.81.0"
+version = "0.82.0"
 dependencies = [
  "chrono",
  "clap",
@@ -3141,7 +3141,6 @@ dependencies = [
  "snafu 0.8.5",
  "stackable-shared",
  "stackable-versioned",
- "strum",
  "syn 2.0.82",
  "trybuild",
 ]

@@ -8,7 +8,7 @@ use insta::Settings;
 use proc_macro2::TokenStream;
 use regex::Regex;
 use snafu::{OptionExt, ResultExt, Snafu};
-use syn::DeriveInput;
+use syn::Item;
 
 use crate::versioned_impl;
 
@@ -50,7 +50,7 @@ pub(crate) fn expand_from_file(path: &Path) -> Result<String, Error> {
     Ok(prettyplease::unparse(&parsed))
 }
 
-fn prepare_from_string(input: String) -> Result<(TokenStream, DeriveInput), Error> {
+fn prepare_from_string(input: String) -> Result<(TokenStream, Item), Error> {
     let (attrs, input) = input.split_once(DELIMITER).context(MissingDelimiterSnafu)?;
 
     let attrs = REGEX

@@ -1,59 +1,129 @@
-use proc_macro2::TokenStream;
-use syn::{spanned::Spanned, Data, DeriveInput, Error, Result};
+use darling::util::IdentString;
+use k8s_version::Version;
+use quote::format_ident;
+use syn::{Path, Type};
 
-use crate::{
-    attrs::common::ContainerAttributes,
-    codegen::{
-        common::{Container, ContainerInput},
-        venum::VersionedEnum,
-        vstruct::VersionedStruct,
+use crate::attrs::{container::StandaloneContainerAttributes, module::ModuleAttributes};
+
+pub(crate) mod changes;
+pub(crate) mod container;
+pub(crate) mod item;
+pub(crate) mod module;
+
+#[derive(Debug)]
+pub(crate) struct VersionDefinition {
+    /// Indicates that the container version is deprecated.
+    pub(crate) deprecated: Option<String>,
+
+    /// Indicates that the generation of `From<OLD> for NEW` should be skipped.
+    pub(crate) skip_from: bool,
+
+    /// A validated Kubernetes API version.
+    pub(crate) inner: Version,
+
+    /// The ident of the container.
+    pub(crate) ident: IdentString,
+
+    /// Store additional doc-comment lines for this version.
+    pub(crate) docs: Vec<String>,
+}
+
+// NOTE (@Techassi): Can we maybe unify these two impls?
+impl From<&StandaloneContainerAttributes> for Vec<VersionDefinition> {
+    fn from(attributes: &StandaloneContainerAttributes) -> Self {
+        attributes
+            .common_root_arguments
+            .versions
+            .iter()
+            .map(|v| VersionDefinition {
+                skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
+                ident: format_ident!("{version}", version = v.name.to_string()).into(),
+                deprecated: v.deprecated.as_ref().map(|r#override| {
+                    r#override
+                        .clone()
+                        .unwrap_or(format!("Version {version} is deprecated", version = v.name))
+                }),
+                docs: process_docs(&v.doc),
+                inner: v.name,
+            })
+            .collect()
+    }
+}
+
+impl From<&ModuleAttributes> for Vec<VersionDefinition> {
+    fn from(attributes: &ModuleAttributes) -> Self {
+        attributes
+            .common_root_arguments
+            .versions
+            .iter()
+            .map(|v| VersionDefinition {
+                skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
+                ident: format_ident!("{version}", version = v.name.to_string()).into(),
+                deprecated: v.deprecated.as_ref().map(|r#override| {
+                    r#override
+                        .clone()
+                        .unwrap_or(format!("Version {version} is deprecated", version = v.name))
+                }),
+                docs: process_docs(&v.doc),
+                inner: v.name,
+            })
+            .collect()
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub(crate) enum ItemStatus {
+    Addition {
+        ident: IdentString,
+        default_fn: Path,
+        // NOTE (@Techassi): We need to carry idents and type information in
+        // nearly every status. Ideally, we would store this in separate maps.
+        ty: Type,
     },
-};
+    Change {
+        from_ident: IdentString,
+        to_ident: IdentString,
+        from_type: Type,
+        to_type: Type,
+    },
+    Deprecation {
+        previous_ident: IdentString,
+        note: Option<String>,
+        ident: IdentString,
+    },
+    NoChange {
+        previously_deprecated: bool,
+        ident: IdentString,
+        ty: Type,
+    },
+    NotPresent,
+}
 
-pub(crate) mod chain;
-pub(crate) mod common;
-pub(crate) mod venum;
-pub(crate) mod vstruct;
-
-// NOTE (@Techassi): This derive macro cannot handle multiple structs / enums
-// to be versioned within the same file. This is because we cannot declare
-// modules more than once (They will not be merged, like impl blocks for
-// example). This leads to collisions if there are multiple structs / enums
-// which declare the same version. This could maybe be solved by using an
-// attribute macro applied to a module with all struct / enums declared in said
-// module. This would allow us to generate all versioned structs and enums in
-// a single sweep and put them into the appropriate module.
-
-// TODO (@Techassi): Think about how we can handle nested structs / enums which
-// are also versioned.
-
-pub(crate) fn expand(attributes: ContainerAttributes, input: DeriveInput) -> Result<TokenStream> {
-    let expanded = match input.data {
-        Data::Struct(data) => {
-            let input = ContainerInput {
-                original_attributes: input.attrs,
-                visibility: input.vis,
-                ident: input.ident,
-            };
-
-            VersionedStruct::new(input, data, attributes)?.generate_tokens()
+impl ItemStatus {
+    pub(crate) fn get_ident(&self) -> &IdentString {
+        match &self {
+            ItemStatus::Addition { ident, .. } => ident,
+            ItemStatus::Change { to_ident, .. } => to_ident,
+            ItemStatus::Deprecation { ident, .. } => ident,
+            ItemStatus::NoChange { ident, .. } => ident,
+            ItemStatus::NotPresent => unreachable!(),
         }
-        Data::Enum(data) => {
-            let input = ContainerInput {
-                original_attributes: input.attrs,
-                visibility: input.vis,
-                ident: input.ident,
-            };
+    }
+}
 
-            VersionedEnum::new(input, data, attributes)?.generate_tokens()
-        }
-        _ => {
-            return Err(Error::new(
-                input.span(),
-                "attribute macro `versioned` only supports structs and enums",
-            ))
-        }
-    };
-
-    Ok(expanded)
+/// Converts lines of doc-comments into a trimmed list.
+fn process_docs(input: &Option<String>) -> Vec<String> {
+    if let Some(input) = input {
+        input
+            // Trim the leading and trailing whitespace, deleting superfluous
+            // empty lines.
+            .trim()
+            .lines()
+            // Trim the leading and trailing whitespace on each line that can be
+            // introduced when the developer indents multi-line comments.
+            .map(|line| line.trim().to_owned())
+            .collect()
+    } else {
+        Vec::new()
+    }
 }

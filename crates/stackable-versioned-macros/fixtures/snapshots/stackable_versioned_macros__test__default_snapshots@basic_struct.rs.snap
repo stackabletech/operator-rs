@@ -15,7 +15,7 @@ pub(crate) mod v1alpha1 {
 }
 #[automatically_derived]
 #[allow(deprecated)]
-impl From<v1alpha1::Foo> for v1beta1::Foo {
+impl ::std::convert::From<v1alpha1::Foo> for v1beta1::Foo {
     fn from(__sv_foo: v1alpha1::Foo) -> Self {
         Self {
             bar: __sv_foo.jjj.into(),
@@ -33,7 +33,7 @@ pub(crate) mod v1beta1 {
     }
 }
 #[automatically_derived]
-impl From<v1beta1::Foo> for v1::Foo {
+impl ::std::convert::From<v1beta1::Foo> for v1::Foo {
     fn from(__sv_foo: v1beta1::Foo) -> Self {
         Self {
             bar: __sv_foo.bar.into(),
@@ -52,7 +52,7 @@ pub(crate) mod v1 {
 }
 #[automatically_derived]
 #[allow(deprecated)]
-impl From<v1::Foo> for v2::Foo {
+impl ::std::convert::From<v1::Foo> for v2::Foo {
     fn from(__sv_foo: v1::Foo) -> Self {
         Self {
             deprecated_bar: __sv_foo.bar,
@@ -72,7 +72,7 @@ pub(crate) mod v2 {
 }
 #[automatically_derived]
 #[allow(deprecated)]
-impl From<v2::Foo> for v3::Foo {
+impl ::std::convert::From<v2::Foo> for v3::Foo {
     fn from(__sv_foo: v2::Foo) -> Self {
         Self {
             deprecated_bar: __sv_foo.deprecated_bar,
