@@ -49,19 +49,36 @@ pub enum Error {
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Error> {
+///     // This can come from a Clap argument for example. The enabled builder
+///     // function below allows enabling/disabling certain subscribers during
+///     // runtime.
+///     let otlp_log_flag = false;
+///
 ///     // IMPORTANT: Name the guard variable appropriately, do not just use
 ///     // `let _ =`, as that will drop immediately.
 ///     let _tracing_guard = Tracing::builder()
 ///         .service_name("test")
 ///         .with_console_output(
 ///             Settings::builder()
-///                 .environment_variable("TEST_CONSOLE")
-///                 .default_level(LevelFilter::INFO)
+///                 .with_environment_variable("TEST_CONSOLE")
+///                 .with_default_level(LevelFilter::INFO)
 ///                 .enabled(true)
 ///                 .build()
 ///         )
-///         .with_otlp_log_exporter(("TEST_OTLP_LOG", LevelFilter::DEBUG).into())
-///         .with_otlp_trace_exporter(("TEST_OTLP_TRACE", LevelFilter::TRACE).into())
+///         .with_otlp_log_exporter(
+///             Settings::builder()
+///                 .with_environment_variable("TEST_OTLP_LOG")
+///                 .with_default_level(LevelFilter::DEBUG)
+///                 .enabled(otlp_log_flag)
+///                 .build()
+///         )
+///         .with_otlp_trace_exporter(
+///             Settings::builder()
+///                 .with_environment_variable("TEST_OTLP_TRACE")
+///                 .with_default_level(LevelFilter::TRACE)
+///                 .enabled(true)
+///                 .build()
+///         )
 ///         .build()
 ///         .init()?;
 ///
