@@ -74,7 +74,7 @@ impl Module {
 
             let version_ident = &version.ident;
 
-            for container in self.containers.iter() {
+            for container in &self.containers {
                 container_definitions.extend(container.generate_definition(version));
 
                 from_impls.extend(container.generate_from_impl(
@@ -126,7 +126,7 @@ impl Module {
 
         // Generate the final Kubernetes specific code for each container (which uses Kubernetes
         // specific features) which is appended to the end of container definitions.
-        for container in self.containers.iter() {
+        for container in &self.containers {
             if let Some((
                 kubernetes_merge_crds_fn_calls,
                 kubernetes_enum_variant_idents,
