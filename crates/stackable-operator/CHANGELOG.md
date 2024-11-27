@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added cert lifetime setter to `SecretOperatorVolumeSourceBuilder` ([#915])
+
+[#915]: https://github.com/stackabletech/operator-rs/pull/915
+
 ## [0.82.0] - 2024-11-23
 
 ### Fixed
