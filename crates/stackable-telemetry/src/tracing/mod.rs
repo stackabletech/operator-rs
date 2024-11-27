@@ -368,8 +368,10 @@ impl TracingBuilder<builder_state::PreServiceName> {
 
 impl TracingBuilder<builder_state::Config> {
     /// Enable the console output tracing subscriber and set the default
-    /// [`LevelFilter`] which is overridable through the given environment
+    /// [`LevelFilter`][1] which is overridable through the given environment
     /// variable.
+    ///
+    /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_console_output(
         self,
         console_log_settings: ConsoleLogSettings,
@@ -383,11 +385,13 @@ impl TracingBuilder<builder_state::Config> {
         }
     }
 
-    /// Enable the OTLP logging subscriber and set the default [`LevelFilter`]
+    /// Enable the OTLP logging subscriber and set the default [`LevelFilter`][1]
     /// which is overridable through the given environment variable.
     ///
     /// You can configure the OTLP log exports through the variables defined
     /// in the opentelemetry crates. See [`Tracing`].
+    ///
+    /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_otlp_log_exporter(
         self,
         otlp_log_settings: OtlpLogSettings,
@@ -401,11 +405,13 @@ impl TracingBuilder<builder_state::Config> {
         }
     }
 
-    /// Enable the OTLP tracing subscriber and set the default [`LevelFilter`]
+    /// Enable the OTLP tracing subscriber and set the default [`LevelFilter`][1]
     /// which is overridable through the given environment variable.
     ///
     /// You can configure the OTLP trace exports through the variables defined
     /// in the opentelemetry crates. See [`Tracing`].
+    ///
+    /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_otlp_trace_exporter(
         self,
         otlp_trace_settings: OtlpTraceSettings,
