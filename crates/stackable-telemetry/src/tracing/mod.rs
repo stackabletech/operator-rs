@@ -14,16 +14,16 @@ use opentelemetry_sdk::{
     trace, Resource,
 };
 use opentelemetry_semantic_conventions::resource;
-use settings::{ConsoleLogSettings, OtlpLogSettings, OtlpTraceSettings};
 use snafu::{ResultExt as _, Snafu};
 use tracing::subscriber::SetGlobalDefaultError;
 use tracing_subscriber::{filter::Directive, layer::SubscriberExt, EnvFilter, Layer, Registry};
+
+use settings::{ConsoleLogSettings, OtlpLogSettings, OtlpTraceSettings};
 
 pub mod settings;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[allow(missing_docs)]
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("unable to install opentelemetry trace exporter"))]
