@@ -1,6 +1,6 @@
 use tracing::level_filters::LevelFilter;
 
-use super::{Build, CommonSettings, Settings, SettingsBuilder, SettingsDouble, SettingsTriple};
+use super::{Build, CommonSettings, Settings, SettingsBuilder};
 
 #[derive(Debug, Default, PartialEq)]
 pub struct OtlpLogSettings {
@@ -53,24 +53,6 @@ impl CommonSettings for OtlpLogSettings {
 
     fn enabled(&self) -> bool {
         self.common_settings.enabled
-    }
-}
-
-impl From<SettingsDouble> for OtlpLogSettings {
-    fn from(value: SettingsDouble) -> Self {
-        Self {
-            common_settings: value.into(),
-            // ..Default::default()
-        }
-    }
-}
-
-impl From<SettingsTriple> for OtlpLogSettings {
-    fn from(value: SettingsTriple) -> Self {
-        Self {
-            common_settings: value.into(),
-            // ..Default::default()
-        }
     }
 }
 

@@ -487,8 +487,20 @@ mod test {
                     .enabled(true)
                     .build(),
             )
-            .with_otlp_log_exporter(("ABC_OTLP_LOG", LevelFilter::DEBUG).into())
-            .with_otlp_trace_exporter(("ABC_OTLP_TRACE", LevelFilter::TRACE).into())
+            .with_otlp_log_exporter(
+                Settings::builder()
+                    .with_environment_variable("ABC_OTLP_LOG")
+                    .with_default_level(LevelFilter::DEBUG)
+                    .enabled(true)
+                    .build(),
+            )
+            .with_otlp_trace_exporter(
+                Settings::builder()
+                    .with_environment_variable("ABC_OTLP_TRACE")
+                    .with_default_level(LevelFilter::TRACE)
+                    .enabled(true)
+                    .build(),
+            )
             .build();
 
         assert_eq!(
