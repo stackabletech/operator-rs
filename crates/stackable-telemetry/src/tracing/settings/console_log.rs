@@ -1,21 +1,41 @@
+//! Console Log Subscriber Settings.
+
 use tracing::level_filters::LevelFilter;
 
 use super::{Build, CommonSettings, Settings, SettingsBuilder};
 
+/// Configure specific settings for the Console Log subscriber.
 #[derive(Debug, Default, PartialEq)]
 pub struct ConsoleLogSettings {
+    /// Common subscriber settings that apply to the Console Log Subscriber.
     pub common_settings: Settings,
+
+    /// Console Subscriber log event output format.
     pub log_format: Format,
 }
 
+/// Console Subscriber log event output formats.
+///
+/// Currently, only [Plain][Format::Plain] is supported.
 #[derive(Debug, Default, PartialEq)]
 pub enum Format {
+    /// Use the plain unstructured log output.
+    ///
+    /// ANSI color output is enabled by default, but can be disabled at runtime by
+    /// setting `NO_COLOR` to a non-empty value.
+    ///
+    /// See: [`Layer::with_ansi`][tracing_subscriber::fmt::Layer::with_ansi].
     #[default]
     Plain,
     // Json { pretty: bool },
     // LogFmt,
 }
 
+/// For building [`ConsoleLogSettings`].
+///
+/// <div class="warning">
+/// Do not use directly, instead use the [`Settings::builder`] associated function.
+/// </div>
 pub struct ConsoleLogSettingsBuilder {
     pub(crate) common_settings: Settings,
     pub(crate) log_format: Format,

@@ -1,3 +1,5 @@
+//! OTLP Log Subscriber Settings.
+
 use tracing::level_filters::LevelFilter;
 
 use super::{Build, CommonSettings, Settings, SettingsBuilder};
