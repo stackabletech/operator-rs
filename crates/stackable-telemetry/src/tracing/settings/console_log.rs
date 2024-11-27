@@ -48,32 +48,30 @@ impl ConsoleLogSettingsBuilder {
     }
 
     pub fn build(self) -> ConsoleLogSettings {
-        self.into()
-    }
-}
-
-impl From<ConsoleLogSettingsBuilder> for ConsoleLogSettings {
-    fn from(value: ConsoleLogSettingsBuilder) -> Self {
-        Self {
-            common_settings: value.common_settings,
-            log_format: value.log_format,
+        ConsoleLogSettings {
+            common_settings: self.common_settings,
+            log_format: self.log_format,
         }
     }
 }
 
+/// This implementation is used to turn the common settings builder into the console log specific
+/// settings builder via the [`SettingsBuilder::console_log_settings_builder`] function.
 impl From<SettingsBuilder> for ConsoleLogSettingsBuilder {
     fn from(value: SettingsBuilder) -> Self {
         Self {
-            common_settings: value.into(),
+            common_settings: value.build(),
             log_format: Format::default(),
         }
     }
 }
 
+/// This implementation is used to build console log settings from common settings without
+/// specifying console log specific settings.
 impl Build<ConsoleLogSettings> for SettingsBuilder {
     fn build(self) -> ConsoleLogSettings {
         ConsoleLogSettings {
-            common_settings: self.into(),
+            common_settings: self.build(),
             ..Default::default()
         }
     }

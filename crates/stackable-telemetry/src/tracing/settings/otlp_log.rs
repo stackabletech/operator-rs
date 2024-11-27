@@ -15,30 +15,28 @@ pub struct OtlpLogSettingsBuilder {
 
 impl OtlpLogSettingsBuilder {
     pub fn build(self) -> OtlpLogSettings {
-        self.into()
+        OtlpLogSettings {
+            common_settings: self.common_settings,
+        }
     }
 }
 
+/// This implementation is used to turn the common settings builder into the OTLP log specific
+/// settings builder via the [`SettingsBuilder::otlp_log_settings_builder`] function.
 impl From<SettingsBuilder> for OtlpLogSettingsBuilder {
     fn from(value: SettingsBuilder) -> Self {
         Self {
-            common_settings: value.into(),
+            common_settings: value.build(),
         }
     }
 }
 
-impl From<OtlpLogSettingsBuilder> for OtlpLogSettings {
-    fn from(value: OtlpLogSettingsBuilder) -> Self {
-        Self {
-            common_settings: value.common_settings,
-        }
-    }
-}
-
+/// This implementation is used to build OTLP log settings from common settings without
+/// specifying OTLP log specific settings.
 impl Build<OtlpLogSettings> for SettingsBuilder {
     fn build(self) -> OtlpLogSettings {
         OtlpLogSettings {
-            common_settings: self.into(),
+            common_settings: self.build(),
             // ..Default::default()
         }
     }

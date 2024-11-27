@@ -52,7 +52,7 @@ impl Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        SettingsBuilder::default().into()
+        SettingsBuilder::default().build()
     }
 }
 
@@ -71,7 +71,11 @@ pub trait Build<T> {
 
 impl Build<Settings> for SettingsBuilder {
     fn build(self) -> Settings {
-        self.into()
+        Settings {
+            environment_variable: self.environment_variable,
+            default_level: self.default_level,
+            enabled: self.enabled,
+        }
     }
 }
 
@@ -130,16 +134,6 @@ impl Default for SettingsBuilder {
             environment_variable: "RUST_LOG",
             default_level: LevelFilter::OFF,
             enabled: false,
-        }
-    }
-}
-
-impl From<SettingsBuilder> for Settings {
-    fn from(value: SettingsBuilder) -> Self {
-        Self {
-            environment_variable: value.environment_variable,
-            default_level: value.default_level,
-            enabled: value.enabled,
         }
     }
 }

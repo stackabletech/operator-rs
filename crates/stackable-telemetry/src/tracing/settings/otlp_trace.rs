@@ -15,30 +15,28 @@ pub struct OtlpTraceSettingsBuilder {
 
 impl OtlpTraceSettingsBuilder {
     pub fn build(self) -> OtlpTraceSettings {
-        self.into()
+        OtlpTraceSettings {
+            common_settings: self.common_settings,
+        }
     }
 }
 
+/// This implementation is used to turn the common settings builder into the OTLP trace specific
+/// settings builder via the [`SettingsBuilder::otlp_trace_settings_builder`] function.
 impl From<SettingsBuilder> for OtlpTraceSettingsBuilder {
     fn from(value: SettingsBuilder) -> Self {
         Self {
-            common_settings: value.into(),
+            common_settings: value.build(),
         }
     }
 }
 
-impl From<OtlpTraceSettingsBuilder> for OtlpTraceSettings {
-    fn from(value: OtlpTraceSettingsBuilder) -> Self {
-        Self {
-            common_settings: value.common_settings,
-        }
-    }
-}
-
+/// This implementation is used to build OTLP trace settings from common settings without
+/// specifying OTLP trace specific settings.
 impl Build<OtlpTraceSettings> for SettingsBuilder {
     fn build(self) -> OtlpTraceSettings {
         OtlpTraceSettings {
-            common_settings: self.into(),
+            common_settings: self.build(),
             // ..Default::default()
         }
     }
