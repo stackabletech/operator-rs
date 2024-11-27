@@ -1,7 +1,5 @@
 //! OTLP Trace Subscriber Settings.
 
-use tracing::level_filters::LevelFilter;
-
 use super::{Build, CommonSettings, Settings, SettingsBuilder};
 
 #[derive(Debug, Default, PartialEq)]
@@ -43,16 +41,8 @@ impl Build<OtlpTraceSettings> for SettingsBuilder {
 }
 
 impl CommonSettings for OtlpTraceSettings {
-    fn environment_variable(&self) -> &'static str {
-        self.common_settings.environment_variable
-    }
-
-    fn default_level(&self) -> LevelFilter {
-        self.common_settings.default_level
-    }
-
-    fn enabled(&self) -> bool {
-        self.common_settings.enabled
+    fn common(&self) -> &Settings {
+        &self.common_settings
     }
 }
 
