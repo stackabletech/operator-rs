@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Introduce common `Settings` and subscriber specific settings ([#901]).
+
+### Changed
+
+- BREAKING: Renamed `TracingBuilder` methods with long names, and prefix with `with_` ([#901]).
+- BREAKING: Use the new subscriber settings in the `TracingBuilder` ([#901]).
+
+[#901]: https://github.com/stackabletech/operator-rs/pull/901
+
 ## [0.2.0] - 2024-07-10
 
 ### Changed
