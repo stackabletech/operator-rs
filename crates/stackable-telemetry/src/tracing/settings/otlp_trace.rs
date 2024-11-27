@@ -1,10 +1,20 @@
 //! OTLP Trace Subscriber Settings.
 
-use super::{Build, CommonSettings, Settings, SettingsBuilder};
+use std::ops::Deref;
+
+use super::{Build, Settings, SettingsBuilder};
 
 #[derive(Debug, Default, PartialEq)]
 pub struct OtlpTraceSettings {
     pub common_settings: Settings,
+}
+
+impl Deref for OtlpTraceSettings {
+    type Target = Settings;
+
+    fn deref(&self) -> &Self::Target {
+        &self.common_settings
+    }
 }
 
 pub struct OtlpTraceSettingsBuilder {
@@ -37,12 +47,6 @@ impl Build<OtlpTraceSettings> for SettingsBuilder {
             common_settings: self.build(),
             // ..Default::default()
         }
-    }
-}
-
-impl CommonSettings for OtlpTraceSettings {
-    fn common(&self) -> &Settings {
-        &self.common_settings
     }
 }
 

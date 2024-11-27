@@ -1,6 +1,8 @@
 //! Console Log Subscriber Settings.
 
-use super::{Build, CommonSettings, Settings, SettingsBuilder};
+use std::ops::Deref;
+
+use super::{Build, Settings, SettingsBuilder};
 
 /// Configure specific settings for the Console Log subscriber.
 #[derive(Debug, Default, PartialEq)]
@@ -10,6 +12,14 @@ pub struct ConsoleLogSettings {
 
     /// Console Subscriber log event output format.
     pub log_format: Format,
+}
+
+impl Deref for ConsoleLogSettings {
+    type Target = Settings;
+
+    fn deref(&self) -> &Self::Target {
+        &self.common_settings
+    }
 }
 
 /// Console Subscriber log event output formats.
@@ -72,12 +82,6 @@ impl Build<ConsoleLogSettings> for SettingsBuilder {
             common_settings: self.build(),
             ..Default::default()
         }
-    }
-}
-
-impl CommonSettings for ConsoleLogSettings {
-    fn common(&self) -> &Settings {
-        &self.common_settings
     }
 }
 

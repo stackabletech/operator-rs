@@ -11,27 +11,6 @@ pub use otlp_log::*;
 pub mod otlp_trace;
 pub use otlp_trace::*;
 
-/// Simplifies access common settings from subscriber specific settings.
-pub trait CommonSettings {
-    /// Access to common settings.
-    fn common(&self) -> &Settings;
-
-    /// Access to the [`Settings::environment_variable`] field.
-    fn environment_variable(&self) -> &'static str {
-        self.common().environment_variable
-    }
-
-    /// Access to the [`Settings::default_level`] field.
-    fn default_level(&self) -> LevelFilter {
-        self.common().default_level
-    }
-
-    /// Access to the [`Settings::enabled`] field.
-    fn enabled(&self) -> bool {
-        self.common().enabled
-    }
-}
-
 /// General settings that apply to any subscriber.
 #[derive(Debug, PartialEq)]
 pub struct Settings {
