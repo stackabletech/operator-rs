@@ -6,6 +6,9 @@ input_file: crates/stackable-versioned-macros/fixtures/inputs/k8s/module.rs
 #[automatically_derived]
 pub(crate) mod v1alpha1 {
     use super::*;
+    pub struct Baz {
+        pub boom: Option<u16>,
+    }
     #[derive(::kube::CustomResource)]
     #[kube(
         group = "foo.example.org",
@@ -28,8 +31,15 @@ pub(crate) mod v1alpha1 {
     pub struct BarSpec {
         pub baz: String,
     }
-    pub struct Baz {
-        pub boom: Option<u16>,
+    pub enum Boom {
+        Big,
+        Shaq,
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1alpha1::Baz> for v1::Baz {
+    fn from(__sv_baz: v1alpha1::Baz) -> Self {
+        Self { boom: __sv_baz.boom }
     }
 }
 #[automatically_derived]
@@ -49,14 +59,20 @@ impl ::std::convert::From<v1alpha1::BarSpec> for v1::BarSpec {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1alpha1::Baz> for v1::Baz {
-    fn from(__sv_baz: v1alpha1::Baz) -> Self {
-        Self { boom: __sv_baz.boom }
+impl ::std::convert::From<v1alpha1::Boom> for v1::Boom {
+    fn from(__sv_boom: v1alpha1::Boom) -> Self {
+        match __sv_boom {
+            v1alpha1::Boom::Big => v1::Boom::Big,
+            v1alpha1::Boom::Shaq => v1::Boom::Shaq,
+        }
     }
 }
 #[automatically_derived]
 pub(crate) mod v1 {
     use super::*;
+    pub struct Baz {
+        pub boom: Option<u16>,
+    }
     #[derive(::kube::CustomResource)]
     #[kube(
         group = "foo.example.org",
@@ -75,8 +91,15 @@ pub(crate) mod v1 {
     pub struct BarSpec {
         pub baz: String,
     }
-    pub struct Baz {
-        pub boom: Option<u16>,
+    pub enum Boom {
+        Big,
+        Shaq,
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1::Baz> for v2alpha1::Baz {
+    fn from(__sv_baz: v1::Baz) -> Self {
+        Self { boom: __sv_baz.boom }
     }
 }
 #[automatically_derived]
@@ -97,14 +120,20 @@ impl ::std::convert::From<v1::BarSpec> for v2alpha1::BarSpec {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1::Baz> for v2alpha1::Baz {
-    fn from(__sv_baz: v1::Baz) -> Self {
-        Self { boom: __sv_baz.boom }
+impl ::std::convert::From<v1::Boom> for v2alpha1::Boom {
+    fn from(__sv_boom: v1::Boom) -> Self {
+        match __sv_boom {
+            v1::Boom::Big => v2alpha1::Boom::Big,
+            v1::Boom::Shaq => v2alpha1::Boom::Shaq,
+        }
     }
 }
 #[automatically_derived]
 pub(crate) mod v2alpha1 {
     use super::*;
+    pub struct Baz {
+        pub boom: Option<u16>,
+    }
     #[derive(::kube::CustomResource)]
     #[kube(
         group = "foo.example.org",
@@ -129,14 +158,16 @@ pub(crate) mod v2alpha1 {
     pub struct BarSpec {
         pub baz: String,
     }
-    pub struct Baz {
-        pub boom: Option<u16>,
+    pub enum Boom {
+        Big,
+        Shaq,
     }
 }
 #[automatically_derived]
 pub enum Foo {
     V1Alpha1,
-    V1Alpha1,
+    V1,
+    V2Alpha1,
 }
 #[automatically_derived]
 impl ::std::fmt::Display for Foo {
@@ -146,7 +177,8 @@ impl ::std::fmt::Display for Foo {
     ) -> ::std::result::Result<(), ::std::fmt::Error> {
         match self {
             Self::V1Alpha1 => f.write_str("v1alpha1"),
-            Self::V1Alpha1 => f.write_str("v1alpha1"),
+            Self::V1 => f.write_str("v1"),
+            Self::V2Alpha1 => f.write_str("v2alpha1"),
         }
     }
 }
@@ -161,87 +193,8 @@ impl Foo {
     > {
         ::kube::core::crd::merge_crds(
             vec![
-                < v1alpha1::Foo as ::kube::CustomResourceExt > ::crd(), < v1alpha1::Bar
-                as ::kube::CustomResourceExt > ::crd()
-            ],
-            &stored_apiversion.to_string(),
-        )
-    }
-    /// Generates and writes a merged CRD which contains all versions defined using the `#[versioned()]`
-    /// macro to a file located at `path`.
-    pub fn write_merged_crd<P>(
-        path: P,
-        stored_apiversion: Self,
-        operator_version: &str,
-    ) -> Result<(), ::stackable_versioned::Error>
-    where
-        P: AsRef<::std::path::Path>,
-    {
-        use ::stackable_shared::yaml::{YamlSchema, SerializeOptions};
-        let merged_crd = Self::merged_crd(stored_apiversion)
-            .map_err(|err| ::stackable_versioned::Error::MergeCrd {
-                source: err,
-            })?;
-        YamlSchema::write_yaml_schema(
-                &merged_crd,
-                path,
-                operator_version,
-                SerializeOptions::default(),
-            )
-            .map_err(|err| ::stackable_versioned::Error::SerializeYaml {
-                source: err,
-            })
-    }
-    /// Generates and writes a merged CRD which contains all versions defined using the `#[versioned()]`
-    /// macro to stdout.
-    pub fn print_merged_crd(
-        stored_apiversion: Self,
-        operator_version: &str,
-    ) -> Result<(), ::stackable_versioned::Error> {
-        use ::stackable_shared::yaml::{YamlSchema, SerializeOptions};
-        let merged_crd = Self::merged_crd(stored_apiversion)
-            .map_err(|err| ::stackable_versioned::Error::MergeCrd {
-                source: err,
-            })?;
-        YamlSchema::print_yaml_schema(
-                &merged_crd,
-                operator_version,
-                SerializeOptions::default(),
-            )
-            .map_err(|err| ::stackable_versioned::Error::SerializeYaml {
-                source: err,
-            })
-    }
-}
-#[automatically_derived]
-pub enum Bar {
-    V1,
-    V1,
-}
-#[automatically_derived]
-impl ::std::fmt::Display for Bar {
-    fn fmt(
-        &self,
-        f: &mut ::std::fmt::Formatter<'_>,
-    ) -> ::std::result::Result<(), ::std::fmt::Error> {
-        match self {
-            Self::V1 => f.write_str("v1"),
-            Self::V1 => f.write_str("v1"),
-        }
-    }
-}
-#[automatically_derived]
-impl Bar {
-    /// Generates a merged CRD which contains all versions defined using the `#[versioned()]` macro.
-    pub fn merged_crd(
-        stored_apiversion: Self,
-    ) -> ::std::result::Result<
-        ::k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition,
-        ::kube::core::crd::MergeError,
-    > {
-        ::kube::core::crd::merge_crds(
-            vec![
-                < v1::Foo as ::kube::CustomResourceExt > ::crd(), < v1::Bar as
+                < v1alpha1::Foo as ::kube::CustomResourceExt > ::crd(), < v1::Foo as
+                ::kube::CustomResourceExt > ::crd(), < v2alpha1::Foo as
                 ::kube::CustomResourceExt > ::crd()
             ],
             &stored_apiversion.to_string(),
@@ -294,24 +247,26 @@ impl Bar {
     }
 }
 #[automatically_derived]
-pub enum Baz {
-    V2Alpha1,
+pub enum Bar {
+    V1Alpha1,
+    V1,
     V2Alpha1,
 }
 #[automatically_derived]
-impl ::std::fmt::Display for Baz {
+impl ::std::fmt::Display for Bar {
     fn fmt(
         &self,
         f: &mut ::std::fmt::Formatter<'_>,
     ) -> ::std::result::Result<(), ::std::fmt::Error> {
         match self {
-            Self::V2Alpha1 => f.write_str("v2alpha1"),
+            Self::V1Alpha1 => f.write_str("v1alpha1"),
+            Self::V1 => f.write_str("v1"),
             Self::V2Alpha1 => f.write_str("v2alpha1"),
         }
     }
 }
 #[automatically_derived]
-impl Baz {
+impl Bar {
     /// Generates a merged CRD which contains all versions defined using the `#[versioned()]` macro.
     pub fn merged_crd(
         stored_apiversion: Self,
@@ -321,8 +276,9 @@ impl Baz {
     > {
         ::kube::core::crd::merge_crds(
             vec![
-                < v2alpha1::Foo as ::kube::CustomResourceExt > ::crd(), < v2alpha1::Bar
-                as ::kube::CustomResourceExt > ::crd()
+                < v1alpha1::Bar as ::kube::CustomResourceExt > ::crd(), < v1::Bar as
+                ::kube::CustomResourceExt > ::crd(), < v2alpha1::Bar as
+                ::kube::CustomResourceExt > ::crd()
             ],
             &stored_apiversion.to_string(),
         )

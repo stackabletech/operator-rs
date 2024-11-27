@@ -5,6 +5,12 @@
 )]
 // ---
 pub(crate) mod versioned {
+    // This struct is placed before the FooSpec one to ensure that the Kubernetes code generation
+    // works no matter the order.
+    pub struct Baz {
+        boom: Option<u16>,
+    }
+
     #[versioned(k8s(group = "foo.example.org", plural = "foos", namespaced))]
     pub struct FooSpec {
         bar: usize,
@@ -21,7 +27,8 @@ pub(crate) mod versioned {
         baz: String,
     }
 
-    pub struct Baz {
-        boom: Option<u16>,
+    pub enum Boom {
+        Big,
+        Shaq,
     }
 }

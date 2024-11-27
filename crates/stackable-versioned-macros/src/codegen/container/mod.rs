@@ -100,6 +100,13 @@ impl Container {
             Container::Enum(_) => None,
         }
     }
+
+    pub(crate) fn get_original_ident(&self) -> &Ident {
+        match &self {
+            Container::Struct(s) => s.common.idents.original.as_ident(),
+            Container::Enum(e) => e.common.idents.original.as_ident(),
+        }
+    }
 }
 
 /// A versioned standalone container.
