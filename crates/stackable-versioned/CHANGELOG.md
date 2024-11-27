@@ -15,10 +15,12 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Generate Kubernetes code independent of container order ([#913]).
 - Correctly emit Kubernetes code when macro is used on modules ([#912]).
 
 [#891]: https://github.com/stackabletech/operator-rs/pull/891
 [#912]: https://github.com/stackabletech/operator-rs/pull/912
+[#913]: https://github.com/stackabletech/operator-rs/pull/913
 
 ## [0.4.1] - 2024-10-23
 

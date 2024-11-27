@@ -1,4 +1,4 @@
-use std::ops::Not;
+use std::{collections::HashMap, ops::Not};
 
 use darling::util::IdentString;
 use proc_macro2::TokenStream;
@@ -6,6 +6,8 @@ use quote::quote;
 use syn::{token::Pub, Ident, Visibility};
 
 use crate::codegen::{container::Container, VersionDefinition};
+
+pub(crate) type KubernetesItems = (Vec<TokenStream>, Vec<IdentString>, Vec<String>);
 
 pub(crate) struct ModuleInput {
     pub(crate) vis: Visibility,
@@ -63,15 +65,10 @@ impl Module {
         let mut kubernetes_tokens = TokenStream::new();
         let mut tokens = TokenStream::new();
 
-        let mut kubernetes_container_items = Vec::new();
-
+        let mut kubernetes_container_items: HashMap<Ident, KubernetesItems> = HashMap::new();
         let mut versions = self.versions.iter().peekable();
 
         while let Some(version) = versions.next() {
-            let mut kubernetes_merge_crds_fn_calls = Vec::new();
-            let mut kubernetes_enum_variant_idents = Vec::new();
-            let mut kubernetes_enum_variant_strings = Vec::new();
-
             let mut container_definitions = TokenStream::new();
             let mut from_impls = TokenStream::new();
 
@@ -91,9 +88,13 @@ impl Module {
                 if let Some((enum_variant_ident, enum_variant_string, fn_call)) =
                     container.generate_kubernetes_item(version)
                 {
-                    kubernetes_merge_crds_fn_calls.push(fn_call);
-                    kubernetes_enum_variant_idents.push(enum_variant_ident);
-                    kubernetes_enum_variant_strings.push(enum_variant_string);
+                    let entry = kubernetes_container_items
+                        .entry(container.get_original_ident().clone())
+                        .or_default();
+
+                    entry.0.push(fn_call);
+                    entry.1.push(enum_variant_ident);
+                    entry.2.push(enum_variant_string);
                 }
             }
 
@@ -121,29 +122,24 @@ impl Module {
 
                 #from_impls
             });
-
-            kubernetes_container_items.push((
-                kubernetes_merge_crds_fn_calls,
-                kubernetes_enum_variant_idents,
-                kubernetes_enum_variant_strings,
-            ));
         }
 
         // Generate the final Kubernetes specific code for each container (which uses Kubernetes
         // specific features) which is appended to the end of container definitions.
-        for (index, container) in self.containers.iter().enumerate() {
-            let (
+        for container in &self.containers {
+            if let Some((
                 kubernetes_merge_crds_fn_calls,
                 kubernetes_enum_variant_idents,
                 kubernetes_enum_variant_strings,
-            ) = kubernetes_container_items.get(index).unwrap();
-
-            kubernetes_tokens.extend(container.generate_kubernetes_merge_crds(
-                kubernetes_enum_variant_idents,
-                kubernetes_enum_variant_strings,
-                kubernetes_merge_crds_fn_calls,
-                self.preserve_module,
-            ));
+            )) = kubernetes_container_items.get(container.get_original_ident())
+            {
+                kubernetes_tokens.extend(container.generate_kubernetes_merge_crds(
+                    kubernetes_enum_variant_idents,
+                    kubernetes_enum_variant_strings,
+                    kubernetes_merge_crds_fn_calls,
+                    self.preserve_module,
+                ));
+            }
         }
 
         if self.preserve_module {
