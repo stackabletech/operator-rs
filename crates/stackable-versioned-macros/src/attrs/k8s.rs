@@ -1,6 +1,4 @@
 use darling::{util::Flag, FromMeta};
-use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
 use syn::Path;
 
 /// This struct contains supported Kubernetes arguments.
@@ -64,30 +62,4 @@ pub(crate) struct KubernetesCrateArguments {
     pub(crate) schemars: Option<Path>,
     pub(crate) serde: Option<Path>,
     pub(crate) serde_json: Option<Path>,
-}
-
-impl ToTokens for KubernetesCrateArguments {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let mut crate_overrides = TokenStream::new();
-
-        if let Some(path) = &self.k8s_openapi {
-            crate_overrides.extend(quote! { k8s_openapi = #path, });
-        }
-        if let Some(path) = &self.kube_core {
-            crate_overrides.extend(quote! { kube_core = #path, });
-        }
-        if let Some(path) = &self.schemars {
-            crate_overrides.extend(quote! { schemars = #path, });
-        }
-        if let Some(path) = &self.serde {
-            crate_overrides.extend(quote! { serde = #path, });
-        }
-        if let Some(path) = &self.serde_json {
-            crate_overrides.extend(quote! { serde_json = #path, });
-        }
-
-        if !crate_overrides.is_empty() {
-            tokens.extend(quote! { , crates(#crate_overrides) });
-        }
-    }
 }

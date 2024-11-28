@@ -1,6 +1,6 @@
 use std::ops::Not;
 
-use darling::{util::IdentString, Error, FromAttributes, FromMeta, Result};
+use darling::{util::IdentString, Error, FromAttributes, Result};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{parse_quote, ItemStruct, Path};
@@ -306,21 +306,10 @@ impl Struct {
         &self,
         version: &VersionDefinition,
     ) -> Option<(IdentString, String, TokenStream)> {
-        let kube_core_module_default = &Path::from_string("::kube::core").expect("valid path");
-        let kube_core_module = self.common.options.kubernetes_options.as_ref().map_or_else(
-            || quote! {#kube_core_module_default},
-            |options| {
-                if let Some(crates) = &options.crates {
-                    if let Some(kube_core) = &crates.kube_core {
-                        return quote! {#kube_core};
-                    }
-                }
-                quote! {#kube_core_module_default}
-            },
-        );
-
         match &self.common.options.kubernetes_options {
             Some(options) if !options.skip_merged_crd => {
+                let kube_core_path = &*options.crates.kube_core;
+
                 let enum_variant_ident = version.inner.as_variant_ident();
                 let enum_variant_string = version.inner.to_string();
 
@@ -329,7 +318,7 @@ impl Struct {
                 let qualified_path: Path = parse_quote!(#module_ident::#struct_ident);
 
                 let merge_crds_fn_call = quote! {
-                    <#qualified_path as #kube_core_module::CustomResourceExt>::crd()
+                    <#qualified_path as #kube_core_path::CustomResourceExt>::crd()
                 };
 
                 Some((enum_variant_ident, enum_variant_string, merge_crds_fn_call))
@@ -345,109 +334,89 @@ impl Struct {
         fn_calls: &[TokenStream],
         is_nested: bool,
     ) -> Option<TokenStream> {
-        if enum_variant_idents.is_empty() {
-            return None;
+        match &self.common.options.kubernetes_options {
+            Some(kubernetes_options) if !kubernetes_options.skip_merged_crd => {
+                let enum_ident = &self.common.idents.kubernetes;
+
+                // Only add the #[automatically_derived] attribute if this impl is used outside of a
+                // module (in standalone mode).
+                let automatically_derived =
+                    is_nested.not().then(|| quote! {#[automatically_derived]});
+
+                // Get the crate paths
+                let k8s_openapi_path = &*kubernetes_options.crates.k8s_openapi;
+                let kube_core_path = &*kubernetes_options.crates.kube_core;
+
+                // TODO (@Techassi): Use proper visibility instead of hard-coding 'pub'
+                // TODO (@Techassi): Move the YAML printing code into 'stackable-versioned' so that we don't
+                // have any cross-dependencies and the macro can be used on it's own (K8s features of course
+                // still need kube and friends).
+                Some(quote! {
+                    #automatically_derived
+                    pub enum #enum_ident {
+                        #(#enum_variant_idents),*
+                    }
+
+                    #automatically_derived
+                    impl ::std::fmt::Display for #enum_ident {
+                        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::result::Result<(), ::std::fmt::Error> {
+                            match self {
+                                #(Self::#enum_variant_idents => f.write_str(#enum_variant_strings)),*
+                            }
+                        }
+                    }
+
+                    #automatically_derived
+                    impl #enum_ident {
+                        /// Generates a merged CRD which contains all versions defined using the `#[versioned()]` macro.
+                        pub fn merged_crd(
+                            stored_apiversion: Self
+                        ) -> ::std::result::Result<#k8s_openapi_path::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition, #kube_core_path::crd::MergeError> {
+                            #kube_core_path::crd::merge_crds(vec![#(#fn_calls),*], &stored_apiversion.to_string())
+                        }
+
+                        /// Generates and writes a merged CRD which contains all versions defined using the `#[versioned()]`
+                        /// macro to a file located at `path`.
+                        pub fn write_merged_crd<P>(path: P, stored_apiversion: Self, operator_version: &str) -> Result<(), ::stackable_versioned::Error>
+                            where P: AsRef<::std::path::Path>
+                        {
+                            use ::stackable_shared::yaml::{YamlSchema, SerializeOptions};
+
+                            let merged_crd = Self::merged_crd(stored_apiversion).map_err(|err| ::stackable_versioned::Error::MergeCrd {
+                                source: err,
+                            })?;
+
+                            YamlSchema::write_yaml_schema(
+                                &merged_crd,
+                                path,
+                                operator_version,
+                                SerializeOptions::default()
+                            ).map_err(|err| ::stackable_versioned::Error::SerializeYaml {
+                                source: err,
+                            })
+                        }
+
+                        /// Generates and writes a merged CRD which contains all versions defined using the `#[versioned()]`
+                        /// macro to stdout.
+                        pub fn print_merged_crd(stored_apiversion: Self, operator_version: &str) -> Result<(), ::stackable_versioned::Error> {
+                            use ::stackable_shared::yaml::{YamlSchema, SerializeOptions};
+
+                            let merged_crd = Self::merged_crd(stored_apiversion).map_err(|err| ::stackable_versioned::Error::MergeCrd {
+                                source: err,
+                            })?;
+
+                            YamlSchema::print_yaml_schema(
+                                &merged_crd,
+                                operator_version,
+                                SerializeOptions::default()
+                            ).map_err(|err| ::stackable_versioned::Error::SerializeYaml {
+                                source: err,
+                            })
+                        }
+                    }
+                })
+            }
+            _ => None,
         }
-
-        let enum_ident = &self.common.idents.kubernetes;
-
-        // Only add the #[automatically_derived] attribute if this impl is used outside of a
-        // module (in standalone mode).
-        let automatically_derived = is_nested.not().then(|| quote! {#[automatically_derived]});
-
-        let kube_core_module_default = &Path::from_string("::kube::core").expect("valid path");
-        let kube_core_module = self.common.options.kubernetes_options.as_ref().map_or_else(
-            || quote! {#kube_core_module_default},
-            |options| {
-                if let Some(crates) = &options.crates {
-                    if let Some(kube_core) = &crates.kube_core {
-                        return quote! {#kube_core};
-                    }
-                }
-                quote! {#kube_core_module_default}
-            },
-        );
-
-        let k8s_openapi_crate_default = &Path::from_string("::k8s_openapi").expect("valid path");
-        let k8s_openapi_crate = self.common.options.kubernetes_options.as_ref().map_or_else(
-            || quote! {#k8s_openapi_crate_default},
-            |options| {
-                if let Some(crates) = &options.crates {
-                    if let Some(k8s_openapi) = &crates.k8s_openapi {
-                        return quote! {#k8s_openapi};
-                    }
-                }
-                quote! {#k8s_openapi_crate_default}
-            },
-        );
-
-        // TODO (@Techassi): Use proper visibility instead of hard-coding 'pub'
-        // TODO (@Techassi): Move the YAML printing code into 'stackable-versioned' so that we don't
-        // have any cross-dependencies and the macro can be used on it's own (K8s features of course
-        // still need kube and friends).
-        Some(quote! {
-            #automatically_derived
-            pub enum #enum_ident {
-                #(#enum_variant_idents),*
-            }
-
-            #automatically_derived
-            impl ::std::fmt::Display for #enum_ident {
-                fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::result::Result<(), ::std::fmt::Error> {
-                    match self {
-                        #(Self::#enum_variant_idents => f.write_str(#enum_variant_strings)),*
-                    }
-                }
-            }
-
-            #automatically_derived
-            impl #enum_ident {
-                /// Generates a merged CRD which contains all versions defined using the `#[versioned()]` macro.
-                pub fn merged_crd(
-                    stored_apiversion: Self
-                ) -> ::std::result::Result<#k8s_openapi_crate::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition, #kube_core_module::crd::MergeError> {
-                    #kube_core_module::crd::merge_crds(vec![#(#fn_calls),*], &stored_apiversion.to_string())
-                }
-
-                /// Generates and writes a merged CRD which contains all versions defined using the `#[versioned()]`
-                /// macro to a file located at `path`.
-                pub fn write_merged_crd<P>(path: P, stored_apiversion: Self, operator_version: &str) -> Result<(), ::stackable_versioned::Error>
-                    where P: AsRef<::std::path::Path>
-                {
-                    use ::stackable_shared::yaml::{YamlSchema, SerializeOptions};
-
-                    let merged_crd = Self::merged_crd(stored_apiversion).map_err(|err| ::stackable_versioned::Error::MergeCrd {
-                        source: err,
-                    })?;
-
-                    YamlSchema::write_yaml_schema(
-                        &merged_crd,
-                        path,
-                        operator_version,
-                        SerializeOptions::default()
-                    ).map_err(|err| ::stackable_versioned::Error::SerializeYaml {
-                        source: err,
-                    })
-                }
-
-                /// Generates and writes a merged CRD which contains all versions defined using the `#[versioned()]`
-                /// macro to stdout.
-                pub fn print_merged_crd(stored_apiversion: Self, operator_version: &str) -> Result<(), ::stackable_versioned::Error> {
-                    use ::stackable_shared::yaml::{YamlSchema, SerializeOptions};
-
-                    let merged_crd = Self::merged_crd(stored_apiversion).map_err(|err| ::stackable_versioned::Error::MergeCrd {
-                        source: err,
-                    })?;
-
-                    YamlSchema::print_yaml_schema(
-                        &merged_crd,
-                        operator_version,
-                        SerializeOptions::default()
-                    ).map_err(|err| ::stackable_versioned::Error::SerializeYaml {
-                        source: err,
-                    })
-                }
-            }
-        })
     }
 }
