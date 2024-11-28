@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Replace unmaintained `derivative` crate with `educe` ([#907]).
+
+[#907]: https://github.com/stackabletech/operator-rs/pull/907
+
 ## [0.82.0] - 2024-11-23
 
 ### Fixed
