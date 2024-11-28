@@ -306,6 +306,19 @@ impl Struct {
         &self,
         version: &VersionDefinition,
     ) -> Option<(IdentString, String, TokenStream)> {
+        let kube_core_crate_default = &Path::from_string("::kube::core").expect("valid path");
+        let kube_core_crate = self.common.options.kubernetes_options.as_ref().map_or_else(
+            || quote! {#kube_core_crate_default},
+            |options| {
+                if let Some(crates) = &options.crates {
+                    if let Some(kube_core) = &crates.kube_core {
+                        return quote! {#kube_core};
+                    }
+                }
+                quote! {#kube_core_crate_default}
+            },
+        );
+
         match &self.common.options.kubernetes_options {
             Some(options) if !options.skip_merged_crd => {
                 let enum_variant_ident = version.inner.as_variant_ident();
@@ -316,7 +329,7 @@ impl Struct {
                 let qualified_path: Path = parse_quote!(#module_ident::#struct_ident);
 
                 let merge_crds_fn_call = quote! {
-                    <#qualified_path as ::kube::CustomResourceExt>::crd()
+                    <#qualified_path as #kube_core_crate::CustomResourceExt>::crd()
                 };
 
                 Some((enum_variant_ident, enum_variant_string, merge_crds_fn_call))
@@ -341,6 +354,19 @@ impl Struct {
         // Only add the #[automatically_derived] attribute if this impl is used outside of a
         // module (in standalone mode).
         let automatically_derived = is_nested.not().then(|| quote! {#[automatically_derived]});
+
+        let kube_core_crate_default = &Path::from_string("::kube::core").expect("valid path");
+        let kube_core_crate = self.common.options.kubernetes_options.as_ref().map_or_else(
+            || quote! {#kube_core_crate_default},
+            |options| {
+                if let Some(crates) = &options.crates {
+                    if let Some(kube_core) = &crates.kube_core {
+                        return quote! {#kube_core};
+                    }
+                }
+                quote! {#kube_core_crate_default}
+            },
+        );
 
         let k8s_openapi_crate_default = &Path::from_string("::k8s_openapi").expect("valid path");
         let k8s_openapi_crate = self.common.options.kubernetes_options.as_ref().map_or_else(
@@ -379,8 +405,8 @@ impl Struct {
                 /// Generates a merged CRD which contains all versions defined using the `#[versioned()]` macro.
                 pub fn merged_crd(
                     stored_apiversion: Self
-                ) -> ::std::result::Result<#k8s_openapi_crate::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition, ::kube::core::crd::MergeError> {
-                    ::kube::core::crd::merge_crds(vec![#(#fn_calls),*], &stored_apiversion.to_string())
+                ) -> ::std::result::Result<#k8s_openapi_crate::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition, #kube_core_crate::crd::MergeError> {
+                    #kube_core_crate::crd::merge_crds(vec![#(#fn_calls),*], &stored_apiversion.to_string())
                 }
 
                 /// Generates and writes a merged CRD which contains all versions defined using the `#[versioned()]`
