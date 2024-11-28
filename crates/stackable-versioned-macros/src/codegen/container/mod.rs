@@ -306,11 +306,11 @@ pub(crate) struct KubernetesCrateOptions {
 impl Default for KubernetesCrateOptions {
     fn default() -> Self {
         Self {
-            k8s_openapi: Override::new_default(parse_quote! { ::k8s_openapi }),
-            serde_json: Override::new_default(parse_quote! { ::serde_json }),
-            kube_core: Override::new_default(parse_quote! { ::kube::core }),
-            schemars: Override::new_default(parse_quote! { ::schemars }),
-            serde: Override::new_default(parse_quote! { ::serde }),
+            k8s_openapi: Override::Default(parse_quote! { ::k8s_openapi }),
+            serde_json: Override::Default(parse_quote! { ::serde_json }),
+            kube_core: Override::Default(parse_quote! { ::kube::core }),
+            schemars: Override::Default(parse_quote! { ::schemars }),
+            serde: Override::Default(parse_quote! { ::serde }),
         }
     }
 }
@@ -320,23 +320,23 @@ impl From<KubernetesCrateArguments> for KubernetesCrateOptions {
         let mut crate_options = Self::default();
 
         if let Some(k8s_openapi) = args.k8s_openapi {
-            crate_options.k8s_openapi = Override::new_custom(k8s_openapi);
+            crate_options.k8s_openapi = Override::Overridden(k8s_openapi);
         }
 
         if let Some(serde_json) = args.serde_json {
-            crate_options.serde_json = Override::new_custom(serde_json);
+            crate_options.serde_json = Override::Overridden(serde_json);
         }
 
         if let Some(kube_core) = args.kube_core {
-            crate_options.kube_core = Override::new_custom(kube_core);
+            crate_options.kube_core = Override::Overridden(kube_core);
         }
 
         if let Some(schemars) = args.schemars {
-            crate_options.schemars = Override::new_custom(schemars);
+            crate_options.schemars = Override::Overridden(schemars);
         }
 
         if let Some(serde) = args.serde {
-            crate_options.serde = Override::new_custom(serde);
+            crate_options.serde = Override::Overridden(serde);
         }
 
         crate_options
@@ -355,23 +355,23 @@ impl ToTokens for KubernetesCrateOptions {
             serde,
         } = self;
 
-        if let Some(k8s_openapi) = k8s_openapi.get_if_overridden() {
+        if let Override::Overridden(k8s_openapi) = k8s_openapi {
             crate_overrides.extend(quote! { k8s_openapi = #k8s_openapi, });
         }
 
-        if let Some(serde_json) = serde_json.get_if_overridden() {
+        if let Override::Overridden(serde_json) = serde_json {
             crate_overrides.extend(quote! { serde_json = #serde_json, });
         }
 
-        if let Some(kube_core) = kube_core.get_if_overridden() {
+        if let Override::Overridden(kube_core) = kube_core {
             crate_overrides.extend(quote! { kube_core = #kube_core, });
         }
 
-        if let Some(schemars) = schemars.get_if_overridden() {
+        if let Override::Overridden(schemars) = schemars {
             crate_overrides.extend(quote! { schemars = #schemars, });
         }
 
-        if let Some(serde) = serde.get_if_overridden() {
+        if let Override::Overridden(serde) = serde {
             crate_overrides.extend(quote! { serde = #serde, });
         }
 
@@ -383,44 +383,34 @@ impl ToTokens for KubernetesCrateOptions {
 
 /// Wraps a value to indicate whether it is original or has been overridden.
 #[derive(Debug)]
-pub(crate) struct Override<T> {
-    is_overridden: bool,
-    inner: T,
+pub(crate) enum Override<T> {
+    Default(T),
+    Overridden(T),
 }
 
-impl<T> Override<T> {
-    /// Mark a value as a default.
-    ///
-    /// This is used to indicate that the value is a default and was not overridden.
-    pub(crate) fn new_default(inner: T) -> Self {
-        Override {
-            is_overridden: false,
-            inner,
-        }
-    }
+// impl<T> Override<T> {
+//     /// Mark a value as a default.
+//     ///
+//     /// This is used to indicate that the value is a default and was not overridden.
+//     pub(crate) fn new_default(inner: T) -> Self {
+//         Override::Default(inner)
+//     }
 
-    /// Mark a value as overridden.
-    ///
-    /// This is used to indicate that the value was overridden and not the default.
-    pub(crate) fn new_custom(inner: T) -> Self {
-        Override {
-            is_overridden: true,
-            inner,
-        }
-    }
-
-    pub(crate) fn get_if_overridden(&self) -> Option<&T> {
-        match &self.is_overridden {
-            true => Some(&self.inner),
-            false => None,
-        }
-    }
-}
+//     /// Mark a value as overridden.
+//     ///
+//     /// This is used to indicate that the value was overridden and not the default.
+//     pub(crate) fn new_custom(inner: T) -> Self {
+//         Override::Overridden(inner)
+//     }
+// }
 
 impl<T> Deref for Override<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        &self.inner
+        match &self {
+            Override::Default(inner) => inner,
+            Override::Overridden(inner) => inner,
+        }
     }
 }

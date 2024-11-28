@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 
 - Simplify crate override handling and generation ([#919]).
 - Bump Rust to 1.82.0 ([#891]).
+- Refactor the Override type ([#xxx]).
 
 ### Fixed
 
@@ -31,6 +32,7 @@ All notable changes to this project will be documented in this file.
 [#913]: https://github.com/stackabletech/operator-rs/pull/913
 [#914]: https://github.com/stackabletech/operator-rs/pull/914
 [#919]: https://github.com/stackabletech/operator-rs/pull/919
+[#xxx]: https://github.com/stackabletech/operator-rs/pull/xxx
 
 ## [0.4.1] - 2024-10-23
 
