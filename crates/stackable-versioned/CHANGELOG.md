@@ -8,7 +8,13 @@ All notable changes to this project will be documented in this file.
 
 - Add support to apply the `#[versioned()]` macro to modules to version all contained items at
   once ([#891]).
-- Add support for passing a status object through to `#[kube]` ([#xxx]).
+- Add support for passing a `status`, `crates`, and `shortname` arguments through to the `#[kube]`
+  derive attribute ([#914]).
+- Add support for overriding `kube::core` and `k8s_openapi` in generated code ([#914]).
+
+### Removed
+
+- BREAKING: Remove the `CustomResource` derive ([#914]).
 
 ### Changed
 
@@ -22,7 +28,7 @@ All notable changes to this project will be documented in this file.
 [#891]: https://github.com/stackabletech/operator-rs/pull/891
 [#912]: https://github.com/stackabletech/operator-rs/pull/912
 [#913]: https://github.com/stackabletech/operator-rs/pull/913
-[#xxx]: https://github.com/stackabletech/operator-rs/pull/xxx
+[#914]: https://github.com/stackabletech/operator-rs/pull/914
 
 ## [0.4.1] - 2024-10-23
 
