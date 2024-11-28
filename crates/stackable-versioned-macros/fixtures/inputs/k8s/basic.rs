@@ -10,7 +10,9 @@
     )
 )]
 // ---
-#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+#[derive(
+    Clone, Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema, kube::CustomResource,
+)]
 pub struct FooSpec {
     #[versioned(
         added(since = "v1beta1"),

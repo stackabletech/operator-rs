@@ -6,8 +6,14 @@ input_file: crates/stackable-versioned-macros/fixtures/inputs/k8s/skip.rs
 #[automatically_derived]
 pub mod v1alpha1 {
     use super::*;
-    #[derive(Clone, Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-    #[derive(::kube::CustomResource)]
+    #[derive(
+        Clone,
+        Debug,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+        kube::CustomResource,
+    )]
     #[kube(
         group = "stackable.tech",
         version = "v1alpha1",
@@ -32,8 +38,14 @@ impl ::std::convert::From<v1alpha1::FooSpec> for v1beta1::FooSpec {
 #[automatically_derived]
 pub mod v1beta1 {
     use super::*;
-    #[derive(Clone, Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-    #[derive(::kube::CustomResource)]
+    #[derive(
+        Clone,
+        Debug,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+        kube::CustomResource,
+    )]
     #[kube(
         group = "stackable.tech",
         version = "v1beta1",
@@ -59,8 +71,14 @@ impl ::std::convert::From<v1beta1::FooSpec> for v1::FooSpec {
 #[automatically_derived]
 pub mod v1 {
     use super::*;
-    #[derive(Clone, Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-    #[derive(::kube::CustomResource)]
+    #[derive(
+        Clone,
+        Debug,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+        kube::CustomResource,
+    )]
     #[kube(
         group = "stackable.tech",
         version = "v1",

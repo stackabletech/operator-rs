@@ -12,6 +12,14 @@ pub(crate) mod versioned {
     }
 
     #[versioned(k8s(group = "foo.example.org", plural = "foos", namespaced))]
+    #[derive(
+        Clone,
+        Debug,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+        kube::CustomResource,
+    )]
     pub struct FooSpec {
         bar: usize,
 
@@ -23,6 +31,14 @@ pub(crate) mod versioned {
     }
 
     #[versioned(k8s(group = "bar.example.org", plural = "bars"))]
+    #[derive(
+        Clone,
+        Debug,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+        kube::CustomResource,
+    )]
     pub struct BarSpec {
         baz: String,
     }
