@@ -76,7 +76,7 @@ use crate::{
     cpu::CpuQuantity,
     memory::MemoryQuantity,
 };
-use derivative::Derivative;
+use educe::Educe;
 use k8s_openapi::api::core::v1::{
     Container, PersistentVolumeClaim, PersistentVolumeClaimSpec, PodSpec, ResourceRequirements,
     VolumeResourceRequirements,
@@ -133,13 +133,8 @@ pub enum Error {
     path_overrides(fragment = "crate::config::fragment")
 )]
 #[fragment_attrs(
-    derive(Merge, Serialize, Deserialize, JsonSchema, Derivative),
-    derivative(
-        Default(bound = "T::Fragment: Default, K::Fragment: Default"),
-        Debug(bound = "T::Fragment: Debug, K::Fragment: Debug"),
-        Clone(bound = "T::Fragment: Clone, K::Fragment: Clone"),
-        PartialEq(bound = "T::Fragment: PartialEq, K::Fragment: PartialEq")
-    ),
+    derive(Merge, Serialize, Deserialize, JsonSchema, Educe),
+    educe(Clone, Debug, Default, PartialEq),
     merge(
         bound = "T::Fragment: Merge, K::Fragment: Merge",
         path_overrides(merge = "crate::config::merge")
@@ -172,13 +167,8 @@ pub struct Resources<T, K = NoRuntimeLimits> {
     path_overrides(fragment = "crate::config::fragment")
 )]
 #[fragment_attrs(
-    derive(Merge, Serialize, Deserialize, JsonSchema, Derivative),
-    derivative(
-        Default(bound = "T::Fragment: Default"),
-        Debug(bound = "T::Fragment: Debug"),
-        Clone(bound = "T::Fragment: Clone"),
-        PartialEq(bound = "T::Fragment: PartialEq")
-    ),
+    derive(Merge, Serialize, Deserialize, JsonSchema, Educe),
+    educe(Clone, Debug, Default, PartialEq),
     merge(
         bound = "T::Fragment: Merge",
         path_overrides(merge = "crate::config::merge")
