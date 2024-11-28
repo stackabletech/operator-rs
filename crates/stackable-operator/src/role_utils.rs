@@ -94,7 +94,7 @@ use crate::{
     product_config_utils::Configuration,
     utils::crds::raw_object_schema,
 };
-use derivative::Derivative;
+use educe::Educe;
 use k8s_openapi::api::core::v1::PodTemplateSpec;
 use kube::{runtime::reflector::ObjectRef, Resource};
 use schemars::JsonSchema;
@@ -274,11 +274,8 @@ impl<T> RoleGroup<T> {
 }
 
 /// A reference to a named role group of a given cluster object
-#[derive(Derivative)]
-#[derivative(
-    Debug(bound = "K::DynamicType: Debug"),
-    Clone(bound = "K::DynamicType: Clone")
-)]
+#[derive(Educe)]
+#[educe(Clone, Debug)]
 pub struct RoleGroupRef<K: Resource> {
     pub cluster: ObjectRef<K>,
     pub role: String,

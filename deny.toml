@@ -1,3 +1,4 @@
+[graph]
 targets = [
     { triple = "x86_64-unknown-linux-gnu" },
     { triple = "aarch64-unknown-linux-gnu" },
@@ -7,49 +8,44 @@ targets = [
 ]
 
 [advisories]
-vulnerability = "warn"
-unmaintained = "allow"
-unsound = "warn"
-yanked = "warn"
-notice = "warn"
+yanked = "deny"
 
 [bans]
 multiple-versions = "allow"
 
-[[bans.deny]]
-name = "time"
-version = "0.1"
-
 [licenses]
-unlicensed = "deny"
-copyleft = "deny"
-allow-osi-fsf-free = "neither"
-default = "deny"
+unused-allowed-license = "allow"
 confidence-threshold = 1.0
 allow = [
     "Apache-2.0",
+    "BSD-2-Clause",
     "BSD-3-Clause",
     "CC0-1.0",
     "ISC",
     "LicenseRef-ring",
     "LicenseRef-webpki",
     "MIT",
+    "MPL-2.0",
+    "Unicode-3.0",
     "Unicode-DFS-2016",
     "Zlib",
     "Unlicense",
-    "OpenSSL",
-    "Unicode-3.0",
 ]
+private = { ignore = true }
 
 [[licenses.clarify]]
 name = "ring"
 expression = "LicenseRef-ring"
-license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 },
+]
 
 [[licenses.clarify]]
 name = "webpki"
 expression = "LicenseRef-webpki"
-license-files = [{ path = "LICENSE", hash = 0x001c7e6c }]
+license-files = [
+    { path = "LICENSE", hash = 0x001c7e6c },
+]
 
 [sources]
 unknown-registry = "deny"
