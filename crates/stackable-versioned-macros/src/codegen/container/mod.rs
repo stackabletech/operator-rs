@@ -4,7 +4,10 @@ use quote::quote;
 use syn::{Attribute, Ident, ItemEnum, ItemStruct, Visibility};
 
 use crate::{
-    attrs::{container::StandaloneContainerAttributes, k8s::KubernetesArguments},
+    attrs::{
+        container::StandaloneContainerAttributes,
+        k8s::{KubernetesArguments, KubernetesCrateArguments},
+    },
     codegen::{
         container::{r#enum::Enum, r#struct::Struct},
         VersionDefinition,
@@ -250,23 +253,39 @@ pub(crate) struct ContainerOptions {
 
 #[derive(Debug)]
 pub(crate) struct KubernetesOptions {
+    pub(crate) group: String,
+    pub(crate) kind: Option<String>,
     pub(crate) singular: Option<String>,
     pub(crate) plural: Option<String>,
-    pub(crate) skip_merged_crd: bool,
-    pub(crate) kind: Option<String>,
     pub(crate) namespaced: bool,
-    pub(crate) group: String,
+    // root
+    pub(crate) crates: Option<KubernetesCrateArguments>,
+    pub(crate) status: Option<String>,
+    // derive
+    // schema
+    // scale
+    // printcolumn
+    pub(crate) shortname: Option<String>,
+    // category
+    // selectable
+    // doc
+    // annotation
+    // label
+    pub(crate) skip_merged_crd: bool,
 }
 
 impl From<KubernetesArguments> for KubernetesOptions {
     fn from(args: KubernetesArguments) -> Self {
         KubernetesOptions {
-            skip_merged_crd: args.skip.map_or(false, |s| s.merged_crd.is_present()),
-            namespaced: args.namespaced.is_present(),
-            singular: args.singular,
-            plural: args.plural,
             group: args.group,
             kind: args.kind,
+            singular: args.singular,
+            plural: args.plural,
+            namespaced: args.namespaced.is_present(),
+            crates: args.crates,
+            status: args.status,
+            shortname: args.shortname,
+            skip_merged_crd: args.skip.map_or(false, |s| s.merged_crd.is_present()),
         }
     }
 }

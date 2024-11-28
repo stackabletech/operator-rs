@@ -10,7 +10,14 @@ pub(crate) mod versioned {
         pub struct Baz {
             pub boom: Option<u16>,
         }
-        #[derive(::kube::CustomResource)]
+        #[derive(
+            Clone,
+            Debug,
+            serde::Deserialize,
+            serde::Serialize,
+            schemars::JsonSchema,
+            kube::CustomResource,
+        )]
         #[kube(
             group = "foo.example.org",
             version = "v1alpha1",
@@ -22,7 +29,14 @@ pub(crate) mod versioned {
             pub bar: usize,
             pub foo: String,
         }
-        #[derive(::kube::CustomResource)]
+        #[derive(
+            Clone,
+            Debug,
+            serde::Deserialize,
+            serde::Serialize,
+            schemars::JsonSchema,
+            kube::CustomResource,
+        )]
         #[kube(
             group = "bar.example.org",
             version = "v1alpha1",
@@ -69,7 +83,14 @@ pub(crate) mod versioned {
         pub struct Baz {
             pub boom: Option<u16>,
         }
-        #[derive(::kube::CustomResource)]
+        #[derive(
+            Clone,
+            Debug,
+            serde::Deserialize,
+            serde::Serialize,
+            schemars::JsonSchema,
+            kube::CustomResource,
+        )]
         #[kube(
             group = "foo.example.org",
             version = "v1",
@@ -82,7 +103,14 @@ pub(crate) mod versioned {
             pub baz: bool,
             pub foo: String,
         }
-        #[derive(::kube::CustomResource)]
+        #[derive(
+            Clone,
+            Debug,
+            serde::Deserialize,
+            serde::Serialize,
+            schemars::JsonSchema,
+            kube::CustomResource,
+        )]
         #[kube(group = "bar.example.org", version = "v1", kind = "Bar", plural = "bars")]
         pub struct BarSpec {
             pub baz: String,
@@ -125,7 +153,14 @@ pub(crate) mod versioned {
         pub struct Baz {
             pub boom: Option<u16>,
         }
-        #[derive(::kube::CustomResource)]
+        #[derive(
+            Clone,
+            Debug,
+            serde::Deserialize,
+            serde::Serialize,
+            schemars::JsonSchema,
+            kube::CustomResource,
+        )]
         #[kube(
             group = "foo.example.org",
             version = "v2alpha1",
@@ -139,7 +174,14 @@ pub(crate) mod versioned {
             #[deprecated]
             pub deprecated_foo: String,
         }
-        #[derive(::kube::CustomResource)]
+        #[derive(
+            Clone,
+            Debug,
+            serde::Deserialize,
+            serde::Serialize,
+            schemars::JsonSchema,
+            kube::CustomResource,
+        )]
         #[kube(
             group = "bar.example.org",
             version = "v2alpha1",
