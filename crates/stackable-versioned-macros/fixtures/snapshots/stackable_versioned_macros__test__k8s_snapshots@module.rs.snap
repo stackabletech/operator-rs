@@ -9,7 +9,14 @@ pub(crate) mod v1alpha1 {
     pub struct Baz {
         pub boom: Option<u16>,
     }
-    #[derive(::kube::CustomResource)]
+    #[derive(
+        Clone,
+        Debug,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+        kube::CustomResource,
+    )]
     #[kube(
         group = "foo.example.org",
         version = "v1alpha1",
@@ -21,7 +28,14 @@ pub(crate) mod v1alpha1 {
         pub bar: usize,
         pub foo: String,
     }
-    #[derive(::kube::CustomResource)]
+    #[derive(
+        Clone,
+        Debug,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+        kube::CustomResource,
+    )]
     #[kube(
         group = "bar.example.org",
         version = "v1alpha1",
@@ -73,7 +87,14 @@ pub(crate) mod v1 {
     pub struct Baz {
         pub boom: Option<u16>,
     }
-    #[derive(::kube::CustomResource)]
+    #[derive(
+        Clone,
+        Debug,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+        kube::CustomResource,
+    )]
     #[kube(
         group = "foo.example.org",
         version = "v1",
@@ -86,7 +107,14 @@ pub(crate) mod v1 {
         pub baz: bool,
         pub foo: String,
     }
-    #[derive(::kube::CustomResource)]
+    #[derive(
+        Clone,
+        Debug,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+        kube::CustomResource,
+    )]
     #[kube(group = "bar.example.org", version = "v1", kind = "Bar", plural = "bars")]
     pub struct BarSpec {
         pub baz: String,
@@ -134,7 +162,14 @@ pub(crate) mod v2alpha1 {
     pub struct Baz {
         pub boom: Option<u16>,
     }
-    #[derive(::kube::CustomResource)]
+    #[derive(
+        Clone,
+        Debug,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+        kube::CustomResource,
+    )]
     #[kube(
         group = "foo.example.org",
         version = "v2alpha1",
@@ -148,7 +183,14 @@ pub(crate) mod v2alpha1 {
         #[deprecated]
         pub deprecated_foo: String,
     }
-    #[derive(::kube::CustomResource)]
+    #[derive(
+        Clone,
+        Debug,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+        kube::CustomResource,
+    )]
     #[kube(
         group = "bar.example.org",
         version = "v2alpha1",
@@ -193,9 +235,9 @@ impl Foo {
     > {
         ::kube::core::crd::merge_crds(
             vec![
-                < v1alpha1::Foo as ::kube::CustomResourceExt > ::crd(), < v1::Foo as
-                ::kube::CustomResourceExt > ::crd(), < v2alpha1::Foo as
-                ::kube::CustomResourceExt > ::crd()
+                < v1alpha1::Foo as ::kube::core::CustomResourceExt > ::crd(), < v1::Foo
+                as ::kube::core::CustomResourceExt > ::crd(), < v2alpha1::Foo as
+                ::kube::core::CustomResourceExt > ::crd()
             ],
             &stored_apiversion.to_string(),
         )
@@ -276,9 +318,9 @@ impl Bar {
     > {
         ::kube::core::crd::merge_crds(
             vec![
-                < v1alpha1::Bar as ::kube::CustomResourceExt > ::crd(), < v1::Bar as
-                ::kube::CustomResourceExt > ::crd(), < v2alpha1::Bar as
-                ::kube::CustomResourceExt > ::crd()
+                < v1alpha1::Bar as ::kube::core::CustomResourceExt > ::crd(), < v1::Bar
+                as ::kube::core::CustomResourceExt > ::crd(), < v2alpha1::Bar as
+                ::kube::core::CustomResourceExt > ::crd()
             ],
             &stored_apiversion.to_string(),
         )

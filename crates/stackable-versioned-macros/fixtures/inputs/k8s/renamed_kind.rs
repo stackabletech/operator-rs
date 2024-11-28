@@ -4,6 +4,7 @@
     version(name = "v1"),
     k8s(
         group = "stackable.tech",
+        kind = "FooBar",
         singular = "foo",
         plural = "foos",
         namespaced,

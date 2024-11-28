@@ -3,10 +3,13 @@
     version(name = "v1beta1"),
     version(name = "v1"),
     k8s(
-        group = "stackable.tech",
+        group = "foo.example.org",
         singular = "foo",
         plural = "foos",
         namespaced,
+        crates(
+            kube_core = ::kube::core
+        )
     )
 )]
 // ---

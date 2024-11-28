@@ -1,7 +1,7 @@
 ---
 source: crates/stackable-versioned-macros/src/lib.rs
 expression: formatted
-input_file: crates/stackable-versioned-macros/fixtures/inputs/k8s/basic.rs
+input_file: crates/stackable-versioned-macros/fixtures/inputs/k8s/renamed_kind.rs
 ---
 #[automatically_derived]
 pub mod v1alpha1 {
@@ -17,7 +17,7 @@ pub mod v1alpha1 {
     #[kube(
         group = "stackable.tech",
         version = "v1alpha1",
-        kind = "Foo",
+        kind = "FooBar",
         singular = "foo",
         plural = "foos",
         namespaced
@@ -49,7 +49,7 @@ pub mod v1beta1 {
     #[kube(
         group = "stackable.tech",
         version = "v1beta1",
-        kind = "Foo",
+        kind = "FooBar",
         singular = "foo",
         plural = "foos",
         namespaced
@@ -82,7 +82,7 @@ pub mod v1 {
     #[kube(
         group = "stackable.tech",
         version = "v1",
-        kind = "Foo",
+        kind = "FooBar",
         singular = "foo",
         plural = "foos",
         namespaced
@@ -93,13 +93,13 @@ pub mod v1 {
     }
 }
 #[automatically_derived]
-pub enum Foo {
+pub enum FooBar {
     V1Alpha1,
     V1Beta1,
     V1,
 }
 #[automatically_derived]
-impl ::std::fmt::Display for Foo {
+impl ::std::fmt::Display for FooBar {
     fn fmt(
         &self,
         f: &mut ::std::fmt::Formatter<'_>,
@@ -112,7 +112,7 @@ impl ::std::fmt::Display for Foo {
     }
 }
 #[automatically_derived]
-impl Foo {
+impl FooBar {
     /// Generates a merged CRD which contains all versions defined using the `#[versioned()]` macro.
     pub fn merged_crd(
         stored_apiversion: Self,
@@ -122,9 +122,9 @@ impl Foo {
     > {
         ::kube::core::crd::merge_crds(
             vec![
-                < v1alpha1::Foo as ::kube::core::CustomResourceExt > ::crd(), <
-                v1beta1::Foo as ::kube::core::CustomResourceExt > ::crd(), < v1::Foo as
-                ::kube::core::CustomResourceExt > ::crd()
+                < v1alpha1::FooBar as ::kube::core::CustomResourceExt > ::crd(), <
+                v1beta1::FooBar as ::kube::core::CustomResourceExt > ::crd(), <
+                v1::FooBar as ::kube::core::CustomResourceExt > ::crd()
             ],
             &stored_apiversion.to_string(),
         )

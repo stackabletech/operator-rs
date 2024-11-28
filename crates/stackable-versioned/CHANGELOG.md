@@ -8,19 +8,33 @@ All notable changes to this project will be documented in this file.
 
 - Add support to apply the `#[versioned()]` macro to modules to version all contained items at
   once ([#891]).
+- Add support for passing a `status`, `crates`, and `shortname` arguments through to the `#[kube]`
+  derive attribute ([#914]).
+- Add support for overriding `kube::core` and `k8s_openapi` in generated code ([#914]).
+
+### Removed
+
+- BREAKING: Remove the `CustomResource` derive ([#914]).
 
 ### Changed
 
+- Simplify crate override handling and generation ([#919]).
 - Bump Rust to 1.82.0 ([#891]).
+- Refactor the Override type ([#922]).
 
 ### Fixed
 
+- Emit correct enum ident based on kube/k8s kind argument ([#920]).
 - Generate Kubernetes code independent of container order ([#913]).
 - Correctly emit Kubernetes code when macro is used on modules ([#912]).
 
 [#891]: https://github.com/stackabletech/operator-rs/pull/891
 [#912]: https://github.com/stackabletech/operator-rs/pull/912
 [#913]: https://github.com/stackabletech/operator-rs/pull/913
+[#914]: https://github.com/stackabletech/operator-rs/pull/914
+[#919]: https://github.com/stackabletech/operator-rs/pull/919
+[#920]: https://github.com/stackabletech/operator-rs/pull/920
+[#922]: https://github.com/stackabletech/operator-rs/pull/922
 
 ## [0.4.1] - 2024-10-23
 

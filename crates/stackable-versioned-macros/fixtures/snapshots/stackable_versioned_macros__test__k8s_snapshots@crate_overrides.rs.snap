@@ -1,7 +1,7 @@
 ---
 source: crates/stackable-versioned-macros/src/lib.rs
 expression: formatted
-input_file: crates/stackable-versioned-macros/fixtures/inputs/k8s/basic.rs
+input_file: crates/stackable-versioned-macros/fixtures/inputs/k8s/crate_overrides.rs
 ---
 #[automatically_derived]
 pub mod v1alpha1 {
@@ -15,12 +15,13 @@ pub mod v1alpha1 {
         kube::CustomResource,
     )]
     #[kube(
-        group = "stackable.tech",
+        group = "foo.example.org",
         version = "v1alpha1",
         kind = "Foo",
         singular = "foo",
         plural = "foos",
-        namespaced
+        namespaced,
+        crates(kube_core = ::kube::core)
     )]
     pub struct FooSpec {
         pub baz: bool,
@@ -47,12 +48,13 @@ pub mod v1beta1 {
         kube::CustomResource,
     )]
     #[kube(
-        group = "stackable.tech",
+        group = "foo.example.org",
         version = "v1beta1",
         kind = "Foo",
         singular = "foo",
         plural = "foos",
-        namespaced
+        namespaced,
+        crates(kube_core = ::kube::core)
     )]
     pub struct FooSpec {
         pub bah: u16,
@@ -80,12 +82,13 @@ pub mod v1 {
         kube::CustomResource,
     )]
     #[kube(
-        group = "stackable.tech",
+        group = "foo.example.org",
         version = "v1",
         kind = "Foo",
         singular = "foo",
         plural = "foos",
-        namespaced
+        namespaced,
+        crates(kube_core = ::kube::core)
     )]
     pub struct FooSpec {
         pub bar: usize,

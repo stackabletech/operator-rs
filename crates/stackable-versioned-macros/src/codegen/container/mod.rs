@@ -1,10 +1,15 @@
+use std::ops::Deref;
+
 use darling::{util::IdentString, Result};
-use proc_macro2::TokenStream;
-use quote::quote;
-use syn::{Attribute, Ident, ItemEnum, ItemStruct, Visibility};
+use proc_macro2::{Span, TokenStream};
+use quote::{quote, ToTokens};
+use syn::{parse_quote, Attribute, Ident, ItemEnum, ItemStruct, Path, Visibility};
 
 use crate::{
-    attrs::{container::StandaloneContainerAttributes, k8s::KubernetesArguments},
+    attrs::{
+        container::StandaloneContainerAttributes,
+        k8s::{KubernetesArguments, KubernetesCrateArguments},
+    },
     codegen::{
         container::{r#enum::Enum, r#struct::Struct},
         VersionDefinition,
@@ -232,12 +237,22 @@ pub(crate) struct ContainerIdents {
     pub(crate) from: IdentString,
 }
 
-impl From<Ident> for ContainerIdents {
-    fn from(ident: Ident) -> Self {
+impl ContainerIdents {
+    pub(crate) fn from(ident: Ident, kubernetes_options: Option<&KubernetesOptions>) -> Self {
+        let kubernetes = kubernetes_options.map_or_else(
+            || ident.as_cleaned_kubernetes_ident(),
+            |options| {
+                options.kind.as_ref().map_or_else(
+                    || ident.as_cleaned_kubernetes_ident(),
+                    |kind| IdentString::from(Ident::new(kind, Span::call_site())),
+                )
+            },
+        );
+
         Self {
-            kubernetes: ident.as_cleaned_kubernetes_ident(),
             from: ident.as_from_impl_ident(),
             original: ident.into(),
+            kubernetes,
         }
     }
 }
@@ -250,23 +265,146 @@ pub(crate) struct ContainerOptions {
 
 #[derive(Debug)]
 pub(crate) struct KubernetesOptions {
+    pub(crate) group: String,
+    pub(crate) kind: Option<String>,
     pub(crate) singular: Option<String>,
     pub(crate) plural: Option<String>,
-    pub(crate) skip_merged_crd: bool,
-    pub(crate) kind: Option<String>,
     pub(crate) namespaced: bool,
-    pub(crate) group: String,
+    // root
+    pub(crate) crates: KubernetesCrateOptions,
+    pub(crate) status: Option<String>,
+    // derive
+    // schema
+    // scale
+    // printcolumn
+    pub(crate) shortname: Option<String>,
+    // category
+    // selectable
+    // doc
+    // annotation
+    // label
+    pub(crate) skip_merged_crd: bool,
 }
 
 impl From<KubernetesArguments> for KubernetesOptions {
     fn from(args: KubernetesArguments) -> Self {
         KubernetesOptions {
-            skip_merged_crd: args.skip.map_or(false, |s| s.merged_crd.is_present()),
-            namespaced: args.namespaced.is_present(),
-            singular: args.singular,
-            plural: args.plural,
             group: args.group,
             kind: args.kind,
+            singular: args.singular,
+            plural: args.plural,
+            namespaced: args.namespaced.is_present(),
+            crates: args
+                .crates
+                .map_or_else(KubernetesCrateOptions::default, |crates| crates.into()),
+            status: args.status,
+            shortname: args.shortname,
+            skip_merged_crd: args.skip.map_or(false, |s| s.merged_crd.is_present()),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct KubernetesCrateOptions {
+    pub(crate) kube_core: Override<Path>,
+    pub(crate) k8s_openapi: Override<Path>,
+    pub(crate) schemars: Override<Path>,
+    pub(crate) serde: Override<Path>,
+    pub(crate) serde_json: Override<Path>,
+}
+
+impl Default for KubernetesCrateOptions {
+    fn default() -> Self {
+        Self {
+            k8s_openapi: Override::Default(parse_quote! { ::k8s_openapi }),
+            serde_json: Override::Default(parse_quote! { ::serde_json }),
+            kube_core: Override::Default(parse_quote! { ::kube::core }),
+            schemars: Override::Default(parse_quote! { ::schemars }),
+            serde: Override::Default(parse_quote! { ::serde }),
+        }
+    }
+}
+
+impl From<KubernetesCrateArguments> for KubernetesCrateOptions {
+    fn from(args: KubernetesCrateArguments) -> Self {
+        let mut crate_options = Self::default();
+
+        if let Some(k8s_openapi) = args.k8s_openapi {
+            crate_options.k8s_openapi = Override::Overridden(k8s_openapi);
+        }
+
+        if let Some(serde_json) = args.serde_json {
+            crate_options.serde_json = Override::Overridden(serde_json);
+        }
+
+        if let Some(kube_core) = args.kube_core {
+            crate_options.kube_core = Override::Overridden(kube_core);
+        }
+
+        if let Some(schemars) = args.schemars {
+            crate_options.schemars = Override::Overridden(schemars);
+        }
+
+        if let Some(serde) = args.serde {
+            crate_options.serde = Override::Overridden(serde);
+        }
+
+        crate_options
+    }
+}
+
+impl ToTokens for KubernetesCrateOptions {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let mut crate_overrides = TokenStream::new();
+
+        let KubernetesCrateOptions {
+            k8s_openapi,
+            serde_json,
+            kube_core,
+            schemars,
+            serde,
+        } = self;
+
+        if let Override::Overridden(k8s_openapi) = k8s_openapi {
+            crate_overrides.extend(quote! { k8s_openapi = #k8s_openapi, });
+        }
+
+        if let Override::Overridden(serde_json) = serde_json {
+            crate_overrides.extend(quote! { serde_json = #serde_json, });
+        }
+
+        if let Override::Overridden(kube_core) = kube_core {
+            crate_overrides.extend(quote! { kube_core = #kube_core, });
+        }
+
+        if let Override::Overridden(schemars) = schemars {
+            crate_overrides.extend(quote! { schemars = #schemars, });
+        }
+
+        if let Override::Overridden(serde) = serde {
+            crate_overrides.extend(quote! { serde = #serde, });
+        }
+
+        if !crate_overrides.is_empty() {
+            tokens.extend(quote! { , crates(#crate_overrides) });
+        }
+    }
+}
+
+/// Wraps a value to indicate whether it is original or has been overridden.
+#[derive(Debug)]
+pub(crate) enum Override<T> {
+    Default(T),
+    Overridden(T),
+}
+
+impl<T> Deref for Override<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        match &self {
+            Override::Default(inner) => inner,
+            Override::Overridden(inner) => inner,
         }
     }
 }
