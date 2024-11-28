@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Emit correct enum ident based on kube/k8s kind argument ([#920]).
 - Generate Kubernetes code independent of container order ([#913]).
 - Correctly emit Kubernetes code when macro is used on modules ([#912]).
 
@@ -31,6 +32,7 @@ All notable changes to this project will be documented in this file.
 [#913]: https://github.com/stackabletech/operator-rs/pull/913
 [#914]: https://github.com/stackabletech/operator-rs/pull/914
 [#919]: https://github.com/stackabletech/operator-rs/pull/919
+[#920]: https://github.com/stackabletech/operator-rs/pull/920
 
 ## [0.4.1] - 2024-10-23
 
