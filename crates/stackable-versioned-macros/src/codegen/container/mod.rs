@@ -388,22 +388,6 @@ pub(crate) enum Override<T> {
     Overridden(T),
 }
 
-// impl<T> Override<T> {
-//     /// Mark a value as a default.
-//     ///
-//     /// This is used to indicate that the value is a default and was not overridden.
-//     pub(crate) fn new_default(inner: T) -> Self {
-//         Override::Default(inner)
-//     }
-
-//     /// Mark a value as overridden.
-//     ///
-//     /// This is used to indicate that the value was overridden and not the default.
-//     pub(crate) fn new_custom(inner: T) -> Self {
-//         Override::Overridden(inner)
-//     }
-// }
-
 impl<T> Deref for Override<T> {
     type Target = T;
 
