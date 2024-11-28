@@ -12,9 +12,9 @@ use syn::Path;
 ///
 /// - `group`, which sets the CRD group, usually the domain of the company.
 /// - `kind`, which allows overwriting the kind field of the CRD. This defaults to the struct name
+///    (without the 'Spec' suffix).
 /// - `singular`, to specify the singular name of the CR object.
 /// - `plural`, to specify the plural name of the CR object.
-///    (without the 'Spec' suffix).
 /// - `namespaced`, to specify that this is a namespaced resource rather than cluster level.
 /// - `crates`: Override specific crates.
 /// - `status`: Sets the specified struct as the status subresource.
