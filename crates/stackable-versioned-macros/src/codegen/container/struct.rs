@@ -1,6 +1,6 @@
 use std::ops::Not;
 
-use darling::{util::IdentString, Error, FromAttributes, Result};
+use darling::{util::IdentString, Error, FromAttributes, FromMeta, Result};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{parse_quote, ItemStruct, Path};
@@ -342,6 +342,19 @@ impl Struct {
         // module (in standalone mode).
         let automatically_derived = is_nested.not().then(|| quote! {#[automatically_derived]});
 
+        let k8s_openapi_crate_default = &Path::from_string("::k8s_openapi").expect("valid path");
+        let k8s_openapi_crate = self.common.options.kubernetes_options.as_ref().map_or_else(
+            || quote! {#k8s_openapi_crate_default},
+            |options| {
+                if let Some(crates) = &options.crates {
+                    if let Some(k8s_openapi) = &crates.k8s_openapi {
+                        return quote! {#k8s_openapi};
+                    }
+                }
+                quote! {#k8s_openapi_crate_default}
+            },
+        );
+
         // TODO (@Techassi): Use proper visibility instead of hard-coding 'pub'
         // TODO (@Techassi): Move the YAML printing code into 'stackable-versioned' so that we don't
         // have any cross-dependencies and the macro can be used on it's own (K8s features of course
@@ -366,7 +379,7 @@ impl Struct {
                 /// Generates a merged CRD which contains all versions defined using the `#[versioned()]` macro.
                 pub fn merged_crd(
                     stored_apiversion: Self
-                ) -> ::std::result::Result<::k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition, ::kube::core::crd::MergeError> {
+                ) -> ::std::result::Result<#k8s_openapi_crate::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition, ::kube::core::crd::MergeError> {
                     ::kube::core::crd::merge_crds(vec![#(#fn_calls),*], &stored_apiversion.to_string())
                 }
 
