@@ -32,7 +32,7 @@ impl Container {
         }
 
         let kubernetes_options = attributes.kubernetes_arguments.map(Into::into);
-        let idents: ContainerIdents = item_struct.ident.into();
+        let idents = ContainerIdents::from(item_struct.ident, kubernetes_options.as_ref());
 
         // Validate K8s specific requirements
         // Ensure that the struct name includes the 'Spec' suffix.
@@ -78,7 +78,7 @@ impl Container {
         }
 
         let kubernetes_options = attributes.kubernetes_arguments.map(Into::into);
-        let idents: ContainerIdents = item_struct.ident.into();
+        let idents = ContainerIdents::from(item_struct.ident, kubernetes_options.as_ref());
 
         // Validate K8s specific requirements
         // Ensure that the struct name includes the 'Spec' suffix.

@@ -1,5 +1,5 @@
 use darling::{util::IdentString, Result};
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Attribute, Ident, ItemEnum, ItemStruct, Visibility};
 
@@ -235,12 +235,22 @@ pub(crate) struct ContainerIdents {
     pub(crate) from: IdentString,
 }
 
-impl From<Ident> for ContainerIdents {
-    fn from(ident: Ident) -> Self {
+impl ContainerIdents {
+    pub(crate) fn from(ident: Ident, kubernetes_options: Option<&KubernetesOptions>) -> Self {
+        let kubernetes = kubernetes_options.map_or_else(
+            || ident.as_cleaned_kubernetes_ident(),
+            |options| {
+                options.kind.as_ref().map_or_else(
+                    || ident.as_cleaned_kubernetes_ident(),
+                    |kind| IdentString::from(Ident::new(kind, Span::call_site())),
+                )
+            },
+        );
+
         Self {
-            kubernetes: ident.as_cleaned_kubernetes_ident(),
             from: ident.as_from_impl_ident(),
             original: ident.into(),
+            kubernetes,
         }
     }
 }

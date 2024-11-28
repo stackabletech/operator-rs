@@ -37,7 +37,7 @@ impl Container {
                 .map_or(false, |s| s.from.is_present()),
         };
 
-        let idents: ContainerIdents = item_enum.ident.into();
+        let idents = ContainerIdents::from(item_enum.ident, None);
 
         let common = CommonContainerData {
             original_attributes: item_enum.attrs,
@@ -73,7 +73,7 @@ impl Container {
                 .map_or(false, |s| s.from.is_present()),
         };
 
-        let idents: ContainerIdents = item_enum.ident.into();
+        let idents = ContainerIdents::from(item_enum.ident, None);
 
         let common = CommonContainerData {
             original_attributes: item_enum.attrs,
