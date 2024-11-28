@@ -223,9 +223,9 @@ pub(crate) mod versioned {
         > {
             ::kube::core::crd::merge_crds(
                 vec![
-                    < v1alpha1::Foo as ::kube::CustomResourceExt > ::crd(), < v1::Foo as
-                    ::kube::CustomResourceExt > ::crd(), < v2alpha1::Foo as
-                    ::kube::CustomResourceExt > ::crd()
+                    < v1alpha1::Foo as ::kube::core::CustomResourceExt > ::crd(), <
+                    v1::Foo as ::kube::core::CustomResourceExt > ::crd(), < v2alpha1::Foo
+                    as ::kube::core::CustomResourceExt > ::crd()
                 ],
                 &stored_apiversion.to_string(),
             )
@@ -303,9 +303,9 @@ pub(crate) mod versioned {
         > {
             ::kube::core::crd::merge_crds(
                 vec![
-                    < v1alpha1::Bar as ::kube::CustomResourceExt > ::crd(), < v1::Bar as
-                    ::kube::CustomResourceExt > ::crd(), < v2alpha1::Bar as
-                    ::kube::CustomResourceExt > ::crd()
+                    < v1alpha1::Bar as ::kube::core::CustomResourceExt > ::crd(), <
+                    v1::Bar as ::kube::core::CustomResourceExt > ::crd(), < v2alpha1::Bar
+                    as ::kube::core::CustomResourceExt > ::crd()
                 ],
                 &stored_apiversion.to_string(),
             )
