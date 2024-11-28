@@ -26,6 +26,7 @@ allow = [
     "LicenseRef-webpki",
     "MIT",
     "MPL-2.0",
+    "OpenSSL", # Needed for the ring and/or aws-lc-sys crate.
     "Unicode-3.0",
     "Unicode-DFS-2016",
     "Zlib",
