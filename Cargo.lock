@@ -3279,7 +3279,6 @@ dependencies = [
 name = "stackable-versioned"
 version = "0.4.1"
 dependencies = [
- "kube",
  "stackable-versioned-macros",
 ]
 

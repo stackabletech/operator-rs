@@ -14,10 +14,7 @@ all-features = true
 full = ["k8s"]
 k8s = [
   "stackable-versioned-macros/k8s", # Forward the k8s feature to the underlying macro crate
-  "dep:kube",
 ]
 
 [dependencies]
 stackable-versioned-macros = { path = "../stackable-versioned-macros" }
-
-kube = { workspace = true, optional = true }
