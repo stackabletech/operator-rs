@@ -93,6 +93,7 @@ impl Container {
         enum_variant_idents: &[IdentString],
         enum_variant_strings: &[String],
         fn_calls: &[TokenStream],
+        vis: &Visibility,
         is_nested: bool,
     ) -> Option<TokenStream> {
         match self {
@@ -100,6 +101,7 @@ impl Container {
                 enum_variant_idents,
                 enum_variant_strings,
                 fn_calls,
+                vis,
                 is_nested,
             ),
             Container::Enum(_) => None,
@@ -216,6 +218,7 @@ impl StandaloneContainer {
             &kubernetes_enum_variant_idents,
             &kubernetes_enum_variant_strings,
             &kubernetes_merge_crds_fn_calls,
+            vis,
             false,
         ));
 

@@ -137,6 +137,7 @@ impl Module {
                     kubernetes_enum_variant_idents,
                     kubernetes_enum_variant_strings,
                     kubernetes_merge_crds_fn_calls,
+                    version_module_vis,
                     self.preserve_module,
                 ));
             }
