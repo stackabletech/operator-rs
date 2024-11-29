@@ -6,4 +6,4 @@ contact_links:
     url: https://github.com/orgs/stackabletech/discussions/new?category=q-a
   - name: 🚀 Feature Requests and other things
     about: Open an issue with your feature request or any other issue not covered elsewhere
-    url: https://github.com/stackabletech/nifi-operator/issues/new
+    url: https://github.com/stackabletech/operator-rs/issues/new
