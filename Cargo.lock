@@ -3280,7 +3280,6 @@ name = "stackable-versioned"
 version = "0.4.1"
 dependencies = [
  "kube",
- "snafu 0.8.5",
  "stackable-versioned-macros",
 ]
 
