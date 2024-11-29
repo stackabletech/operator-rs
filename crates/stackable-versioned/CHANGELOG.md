@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Use visibility of container definition or module for generated CRD enum ([#923]).
 - Add support to apply the `#[versioned()]` macro to modules to version all contained items at
   once ([#891]).
 - Add support for passing a `status`, `crates`, and `shortname` arguments through to the `#[kube]`
@@ -35,6 +36,7 @@ All notable changes to this project will be documented in this file.
 [#919]: https://github.com/stackabletech/operator-rs/pull/919
 [#920]: https://github.com/stackabletech/operator-rs/pull/920
 [#922]: https://github.com/stackabletech/operator-rs/pull/922
+[#923]: https://github.com/stackabletech/operator-rs/pull/923
 
 ## [0.4.1] - 2024-10-23
 
