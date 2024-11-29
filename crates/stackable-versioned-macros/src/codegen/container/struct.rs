@@ -348,9 +348,6 @@ impl Struct {
                 let kube_core_path = &*kubernetes_options.crates.kube_core;
 
                 // TODO (@Techassi): Use proper visibility instead of hard-coding 'pub'
-                // TODO (@Techassi): Move the YAML printing code into 'stackable-versioned' so that we don't
-                // have any cross-dependencies and the macro can be used on it's own (K8s features of course
-                // still need kube and friends).
                 Some(quote! {
                     #automatically_derived
                     pub enum #enum_ident {
@@ -373,45 +370,6 @@ impl Struct {
                             stored_apiversion: Self
                         ) -> ::std::result::Result<#k8s_openapi_path::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition, #kube_core_path::crd::MergeError> {
                             #kube_core_path::crd::merge_crds(vec![#(#fn_calls),*], &stored_apiversion.to_string())
-                        }
-
-                        /// Generates and writes a merged CRD which contains all versions defined using the `#[versioned()]`
-                        /// macro to a file located at `path`.
-                        pub fn write_merged_crd<P>(path: P, stored_apiversion: Self, operator_version: &str) -> Result<(), ::stackable_versioned::Error>
-                            where P: AsRef<::std::path::Path>
-                        {
-                            use ::stackable_shared::yaml::{YamlSchema, SerializeOptions};
-
-                            let merged_crd = Self::merged_crd(stored_apiversion).map_err(|err| ::stackable_versioned::Error::MergeCrd {
-                                source: err,
-                            })?;
-
-                            YamlSchema::write_yaml_schema(
-                                &merged_crd,
-                                path,
-                                operator_version,
-                                SerializeOptions::default()
-                            ).map_err(|err| ::stackable_versioned::Error::SerializeYaml {
-                                source: err,
-                            })
-                        }
-
-                        /// Generates and writes a merged CRD which contains all versions defined using the `#[versioned()]`
-                        /// macro to stdout.
-                        pub fn print_merged_crd(stored_apiversion: Self, operator_version: &str) -> Result<(), ::stackable_versioned::Error> {
-                            use ::stackable_shared::yaml::{YamlSchema, SerializeOptions};
-
-                            let merged_crd = Self::merged_crd(stored_apiversion).map_err(|err| ::stackable_versioned::Error::MergeCrd {
-                                source: err,
-                            })?;
-
-                            YamlSchema::print_yaml_schema(
-                                &merged_crd,
-                                operator_version,
-                                SerializeOptions::default()
-                            ).map_err(|err| ::stackable_versioned::Error::SerializeYaml {
-                                source: err,
-                            })
                         }
                     }
                 })
