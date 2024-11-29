@@ -28,6 +28,8 @@ All notable changes to this project will be documented in this file.
 - Emit correct enum ident based on kube/k8s kind argument ([#920]).
 - Generate Kubernetes code independent of container order ([#913]).
 - Correctly emit Kubernetes code when macro is used on modules ([#912]).
+- Remove type comparison and use into() on all field conversions ([#925]).
+  Type semantics are not known, so the comparison was invalid.
 
 [#891]: https://github.com/stackabletech/operator-rs/pull/891
 [#912]: https://github.com/stackabletech/operator-rs/pull/912
@@ -37,6 +39,7 @@ All notable changes to this project will be documented in this file.
 [#920]: https://github.com/stackabletech/operator-rs/pull/920
 [#922]: https://github.com/stackabletech/operator-rs/pull/922
 [#923]: https://github.com/stackabletech/operator-rs/pull/923
+[#925]: https://github.com/stackabletech/operator-rs/pull/925
 
 ## [0.4.1] - 2024-10-23
 
