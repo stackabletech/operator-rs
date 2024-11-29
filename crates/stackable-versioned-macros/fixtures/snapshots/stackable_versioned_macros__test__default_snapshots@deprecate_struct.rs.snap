@@ -15,8 +15,8 @@ mod v1alpha1 {
 impl ::std::convert::From<v1alpha1::Foo> for v1beta1::Foo {
     fn from(__sv_foo: v1alpha1::Foo) -> Self {
         Self {
-            bar: __sv_foo.bar,
-            baz: __sv_foo.baz,
+            bar: __sv_foo.bar.into(),
+            baz: __sv_foo.baz.into(),
         }
     }
 }
@@ -33,8 +33,8 @@ mod v1beta1 {
 impl ::std::convert::From<v1beta1::Foo> for v1::Foo {
     fn from(__sv_foo: v1beta1::Foo) -> Self {
         Self {
-            deprecated_bar: __sv_foo.bar,
-            baz: __sv_foo.baz,
+            deprecated_bar: __sv_foo.bar.into(),
+            baz: __sv_foo.baz.into(),
         }
     }
 }
@@ -52,8 +52,8 @@ mod v1 {
 impl ::std::convert::From<v1::Foo> for v2::Foo {
     fn from(__sv_foo: v1::Foo) -> Self {
         Self {
-            deprecated_bar: __sv_foo.deprecated_bar,
-            baz: __sv_foo.baz,
+            deprecated_bar: __sv_foo.deprecated_bar.into(),
+            baz: __sv_foo.baz.into(),
         }
     }
 }
@@ -71,8 +71,8 @@ mod v2 {
 impl ::std::convert::From<v2::Foo> for v3::Foo {
     fn from(__sv_foo: v2::Foo) -> Self {
         Self {
-            deprecated_bar: __sv_foo.deprecated_bar,
-            baz: __sv_foo.baz,
+            deprecated_bar: __sv_foo.deprecated_bar.into(),
+            baz: __sv_foo.baz.into(),
         }
     }
 }
