@@ -13,7 +13,7 @@
 #[derive(
     Clone, Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema, kube::CustomResource,
 )]
-pub struct FooSpec {
+pub(crate) struct FooSpec {
     #[versioned(
         added(since = "v1beta1"),
         changed(since = "v1", from_name = "bah", from_type = "u16")
