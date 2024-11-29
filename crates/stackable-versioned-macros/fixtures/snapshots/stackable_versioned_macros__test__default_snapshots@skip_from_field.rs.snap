@@ -15,7 +15,7 @@ impl ::std::convert::From<v1alpha1::Foo> for v1beta1::Foo {
     fn from(__sv_foo: v1alpha1::Foo) -> Self {
         Self {
             bar: ::std::default::Default::default(),
-            baz: __sv_foo.baz,
+            baz: __sv_foo.baz.into(),
         }
     }
 }
