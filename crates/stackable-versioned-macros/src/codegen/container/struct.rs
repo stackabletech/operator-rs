@@ -3,7 +3,7 @@ use std::ops::Not;
 use darling::{util::IdentString, Error, FromAttributes, Result};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{parse_quote, ItemStruct, Path};
+use syn::{parse_quote, ItemStruct, Path, Visibility};
 
 use crate::{
     attrs::container::NestedContainerAttributes,
@@ -332,6 +332,7 @@ impl Struct {
         enum_variant_idents: &[IdentString],
         enum_variant_strings: &[String],
         fn_calls: &[TokenStream],
+        vis: &Visibility,
         is_nested: bool,
     ) -> Option<TokenStream> {
         match &self.common.options.kubernetes_options {
@@ -347,10 +348,9 @@ impl Struct {
                 let k8s_openapi_path = &*kubernetes_options.crates.k8s_openapi;
                 let kube_core_path = &*kubernetes_options.crates.kube_core;
 
-                // TODO (@Techassi): Use proper visibility instead of hard-coding 'pub'
                 Some(quote! {
                     #automatically_derived
-                    pub enum #enum_ident {
+                    #vis enum #enum_ident {
                         #(#enum_variant_idents),*
                     }
 
@@ -365,7 +365,7 @@ impl Struct {
 
                     #automatically_derived
                     impl #enum_ident {
-                        /// Generates a merged CRD which contains all versions defined using the `#[versioned()]` macro.
+                        /// Generates a merged CRD containing all versions and marking `stored_apiversion` as stored.
                         pub fn merged_crd(
                             stored_apiversion: Self
                         ) -> ::std::result::Result<#k8s_openapi_path::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition, #kube_core_path::crd::MergeError> {
