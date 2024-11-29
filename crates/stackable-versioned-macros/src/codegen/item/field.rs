@@ -168,18 +168,11 @@ impl VersionedField {
                         ItemStatus::Change {
                             from_ident: old_field_ident,
                             to_ident,
-                            from_type,
-                            to_type,
+                            ..
                         },
                     ) => {
-                        if from_type == to_type {
-                            quote! {
-                                #to_ident: #from_struct_ident.#old_field_ident,
-                            }
-                        } else {
-                            quote! {
-                                #to_ident: #from_struct_ident.#old_field_ident.into(),
-                            }
+                        quote! {
+                            #to_ident: #from_struct_ident.#old_field_ident.into(),
                         }
                     }
                     (old, next) => {
@@ -187,7 +180,7 @@ impl VersionedField {
                         let old_field_ident = old.get_ident();
 
                         quote! {
-                            #next_field_ident: #from_struct_ident.#old_field_ident,
+                            #next_field_ident: #from_struct_ident.#old_field_ident.into(),
                         }
                     }
                 }
@@ -196,7 +189,7 @@ impl VersionedField {
                 let field_ident = &*self.ident;
 
                 quote! {
-                    #field_ident: #from_struct_ident.#field_ident,
+                    #field_ident: #from_struct_ident.#field_ident.into(),
                 }
             }
         }

@@ -53,21 +53,23 @@ pub(crate) mod versioned {
     }
     impl ::std::convert::From<v1alpha1::Baz> for v1::Baz {
         fn from(__sv_baz: v1alpha1::Baz) -> Self {
-            Self { boom: __sv_baz.boom }
+            Self { boom: __sv_baz.boom.into() }
         }
     }
     impl ::std::convert::From<v1alpha1::FooSpec> for v1::FooSpec {
         fn from(__sv_foospec: v1alpha1::FooSpec) -> Self {
             Self {
-                bar: __sv_foospec.bar,
+                bar: __sv_foospec.bar.into(),
                 baz: ::std::default::Default::default(),
-                foo: __sv_foospec.foo,
+                foo: __sv_foospec.foo.into(),
             }
         }
     }
     impl ::std::convert::From<v1alpha1::BarSpec> for v1::BarSpec {
         fn from(__sv_barspec: v1alpha1::BarSpec) -> Self {
-            Self { baz: __sv_barspec.baz }
+            Self {
+                baz: __sv_barspec.baz.into(),
+            }
         }
     }
     impl ::std::convert::From<v1alpha1::Boom> for v1::Boom {
@@ -122,22 +124,24 @@ pub(crate) mod versioned {
     }
     impl ::std::convert::From<v1::Baz> for v2alpha1::Baz {
         fn from(__sv_baz: v1::Baz) -> Self {
-            Self { boom: __sv_baz.boom }
+            Self { boom: __sv_baz.boom.into() }
         }
     }
     #[allow(deprecated)]
     impl ::std::convert::From<v1::FooSpec> for v2alpha1::FooSpec {
         fn from(__sv_foospec: v1::FooSpec) -> Self {
             Self {
-                bar: __sv_foospec.bar,
-                baz: __sv_foospec.baz,
-                deprecated_foo: __sv_foospec.foo,
+                bar: __sv_foospec.bar.into(),
+                baz: __sv_foospec.baz.into(),
+                deprecated_foo: __sv_foospec.foo.into(),
             }
         }
     }
     impl ::std::convert::From<v1::BarSpec> for v2alpha1::BarSpec {
         fn from(__sv_barspec: v1::BarSpec) -> Self {
-            Self { baz: __sv_barspec.baz }
+            Self {
+                baz: __sv_barspec.baz.into(),
+            }
         }
     }
     impl ::std::convert::From<v1::Boom> for v2alpha1::Boom {

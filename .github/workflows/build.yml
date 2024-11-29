@@ -125,7 +125,6 @@ jobs:
   run_tests:
     name: Run Cargo Tests
     needs:
-      - run_cargodeny
       - run_clippy
       - run_rustfmt
       - run_rustdoc
