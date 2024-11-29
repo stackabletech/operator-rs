@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
+- BREAKING: Remove {write,print}_merged_crd functions ([#924]).
 - BREAKING: Remove the `CustomResource` derive ([#914]).
 
 ### Changed
@@ -39,6 +40,7 @@ All notable changes to this project will be documented in this file.
 [#920]: https://github.com/stackabletech/operator-rs/pull/920
 [#922]: https://github.com/stackabletech/operator-rs/pull/922
 [#923]: https://github.com/stackabletech/operator-rs/pull/923
+[#924]: https://github.com/stackabletech/operator-rs/pull/924
 [#925]: https://github.com/stackabletech/operator-rs/pull/925
 
 ## [0.4.1] - 2024-10-23

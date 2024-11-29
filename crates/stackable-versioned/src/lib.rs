@@ -15,18 +15,6 @@
 // Re-export macro
 pub use stackable_versioned_macros::*;
 
-#[cfg(feature = "k8s")]
-#[derive(Debug, snafu::Snafu)]
-pub enum Error {
-    #[snafu(display("failed to merge CRDs"))]
-    MergeCrd { source: kube::core::crd::MergeError },
-
-    #[snafu(display("failed to serialize YAML"))]
-    SerializeYaml {
-        source: stackable_shared::yaml::Error,
-    },
-}
-
 // Unused for now, might get picked up again in the future.
 #[doc(hidden)]
 pub trait AsVersionStr {
