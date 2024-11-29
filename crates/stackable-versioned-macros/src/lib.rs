@@ -507,6 +507,12 @@ fn versioned_impl(attrs: proc_macro2::TokenStream, input: Item) -> proc_macro2::
 
             let versions: Vec<VersionDefinition> = (&module_attributes).into();
             let preserve_modules = module_attributes.preserve_module.is_present();
+            let skip_from = module_attributes
+                .common_root_arguments
+                .options
+                .skip
+                .as_ref()
+                .map_or(false, |opts| opts.from.is_present());
 
             let module_span = item_mod.span();
             let module_input = ModuleInput {
@@ -541,7 +547,14 @@ fn versioned_impl(attrs: proc_macro2::TokenStream, input: Item) -> proc_macro2::
                 containers.push(container);
             }
 
-            Module::new(module_input, preserve_modules, versions, containers).generate_tokens()
+            Module::new(
+                module_input,
+                preserve_modules,
+                skip_from,
+                versions,
+                containers,
+            )
+            .generate_tokens()
         }
         Item::Enum(item_enum) => {
             let container_attributes: StandaloneContainerAttributes =
