@@ -116,7 +116,7 @@ impl ::std::fmt::Display for Foo {
 }
 #[automatically_derived]
 impl Foo {
-    /// Generates a merged CRD which contains all versions defined using the `#[versioned()]` macro.
+    /// Generates a merged CRD containing all versions and marking `stored_apiversion` as stored.
     pub fn merged_crd(
         stored_apiversion: Self,
     ) -> ::std::result::Result<
