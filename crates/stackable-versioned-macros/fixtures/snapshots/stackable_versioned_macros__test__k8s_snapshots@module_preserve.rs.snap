@@ -53,21 +53,23 @@ pub(crate) mod versioned {
     }
     impl ::std::convert::From<v1alpha1::Baz> for v1::Baz {
         fn from(__sv_baz: v1alpha1::Baz) -> Self {
-            Self { boom: __sv_baz.boom }
+            Self { boom: __sv_baz.boom.into() }
         }
     }
     impl ::std::convert::From<v1alpha1::FooSpec> for v1::FooSpec {
         fn from(__sv_foospec: v1alpha1::FooSpec) -> Self {
             Self {
-                bar: __sv_foospec.bar,
+                bar: __sv_foospec.bar.into(),
                 baz: ::std::default::Default::default(),
-                foo: __sv_foospec.foo,
+                foo: __sv_foospec.foo.into(),
             }
         }
     }
     impl ::std::convert::From<v1alpha1::BarSpec> for v1::BarSpec {
         fn from(__sv_barspec: v1alpha1::BarSpec) -> Self {
-            Self { baz: __sv_barspec.baz }
+            Self {
+                baz: __sv_barspec.baz.into(),
+            }
         }
     }
     impl ::std::convert::From<v1alpha1::Boom> for v1::Boom {
@@ -122,22 +124,24 @@ pub(crate) mod versioned {
     }
     impl ::std::convert::From<v1::Baz> for v2alpha1::Baz {
         fn from(__sv_baz: v1::Baz) -> Self {
-            Self { boom: __sv_baz.boom }
+            Self { boom: __sv_baz.boom.into() }
         }
     }
     #[allow(deprecated)]
     impl ::std::convert::From<v1::FooSpec> for v2alpha1::FooSpec {
         fn from(__sv_foospec: v1::FooSpec) -> Self {
             Self {
-                bar: __sv_foospec.bar,
-                baz: __sv_foospec.baz,
-                deprecated_foo: __sv_foospec.foo,
+                bar: __sv_foospec.bar.into(),
+                baz: __sv_foospec.baz.into(),
+                deprecated_foo: __sv_foospec.foo.into(),
             }
         }
     }
     impl ::std::convert::From<v1::BarSpec> for v2alpha1::BarSpec {
         fn from(__sv_barspec: v1::BarSpec) -> Self {
-            Self { baz: __sv_barspec.baz }
+            Self {
+                baz: __sv_barspec.baz.into(),
+            }
         }
     }
     impl ::std::convert::From<v1::Boom> for v2alpha1::Boom {
@@ -230,51 +234,6 @@ pub(crate) mod versioned {
                 &stored_apiversion.to_string(),
             )
         }
-        /// Generates and writes a merged CRD which contains all versions defined using the `#[versioned()]`
-        /// macro to a file located at `path`.
-        pub fn write_merged_crd<P>(
-            path: P,
-            stored_apiversion: Self,
-            operator_version: &str,
-        ) -> Result<(), ::stackable_versioned::Error>
-        where
-            P: AsRef<::std::path::Path>,
-        {
-            use ::stackable_shared::yaml::{YamlSchema, SerializeOptions};
-            let merged_crd = Self::merged_crd(stored_apiversion)
-                .map_err(|err| ::stackable_versioned::Error::MergeCrd {
-                    source: err,
-                })?;
-            YamlSchema::write_yaml_schema(
-                    &merged_crd,
-                    path,
-                    operator_version,
-                    SerializeOptions::default(),
-                )
-                .map_err(|err| ::stackable_versioned::Error::SerializeYaml {
-                    source: err,
-                })
-        }
-        /// Generates and writes a merged CRD which contains all versions defined using the `#[versioned()]`
-        /// macro to stdout.
-        pub fn print_merged_crd(
-            stored_apiversion: Self,
-            operator_version: &str,
-        ) -> Result<(), ::stackable_versioned::Error> {
-            use ::stackable_shared::yaml::{YamlSchema, SerializeOptions};
-            let merged_crd = Self::merged_crd(stored_apiversion)
-                .map_err(|err| ::stackable_versioned::Error::MergeCrd {
-                    source: err,
-                })?;
-            YamlSchema::print_yaml_schema(
-                    &merged_crd,
-                    operator_version,
-                    SerializeOptions::default(),
-                )
-                .map_err(|err| ::stackable_versioned::Error::SerializeYaml {
-                    source: err,
-                })
-        }
     }
     pub enum Bar {
         V1Alpha1,
@@ -309,51 +268,6 @@ pub(crate) mod versioned {
                 ],
                 &stored_apiversion.to_string(),
             )
-        }
-        /// Generates and writes a merged CRD which contains all versions defined using the `#[versioned()]`
-        /// macro to a file located at `path`.
-        pub fn write_merged_crd<P>(
-            path: P,
-            stored_apiversion: Self,
-            operator_version: &str,
-        ) -> Result<(), ::stackable_versioned::Error>
-        where
-            P: AsRef<::std::path::Path>,
-        {
-            use ::stackable_shared::yaml::{YamlSchema, SerializeOptions};
-            let merged_crd = Self::merged_crd(stored_apiversion)
-                .map_err(|err| ::stackable_versioned::Error::MergeCrd {
-                    source: err,
-                })?;
-            YamlSchema::write_yaml_schema(
-                    &merged_crd,
-                    path,
-                    operator_version,
-                    SerializeOptions::default(),
-                )
-                .map_err(|err| ::stackable_versioned::Error::SerializeYaml {
-                    source: err,
-                })
-        }
-        /// Generates and writes a merged CRD which contains all versions defined using the `#[versioned()]`
-        /// macro to stdout.
-        pub fn print_merged_crd(
-            stored_apiversion: Self,
-            operator_version: &str,
-        ) -> Result<(), ::stackable_versioned::Error> {
-            use ::stackable_shared::yaml::{YamlSchema, SerializeOptions};
-            let merged_crd = Self::merged_crd(stored_apiversion)
-                .map_err(|err| ::stackable_versioned::Error::MergeCrd {
-                    source: err,
-                })?;
-            YamlSchema::print_yaml_schema(
-                    &merged_crd,
-                    operator_version,
-                    SerializeOptions::default(),
-                )
-                .map_err(|err| ::stackable_versioned::Error::SerializeYaml {
-                    source: err,
-                })
         }
     }
 }

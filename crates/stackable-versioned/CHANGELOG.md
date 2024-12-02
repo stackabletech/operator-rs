@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
+- BREAKING: Remove {write,print}_merged_crd functions ([#924]).
 - BREAKING: Remove the `CustomResource` derive ([#914]).
 
 ### Changed
@@ -28,6 +29,9 @@ All notable changes to this project will be documented in this file.
 - Emit correct enum ident based on kube/k8s kind argument ([#920]).
 - Generate Kubernetes code independent of container order ([#913]).
 - Correctly emit Kubernetes code when macro is used on modules ([#912]).
+- Use `.into()` on all field conversions ([#925]).
+- Remove invalid type comparison on field conversion because the semantics are unknown ([#925]).
+- Check whether to skip all from impls when versioning a module ([#926]).
 
 [#891]: https://github.com/stackabletech/operator-rs/pull/891
 [#912]: https://github.com/stackabletech/operator-rs/pull/912
@@ -37,6 +41,9 @@ All notable changes to this project will be documented in this file.
 [#920]: https://github.com/stackabletech/operator-rs/pull/920
 [#922]: https://github.com/stackabletech/operator-rs/pull/922
 [#923]: https://github.com/stackabletech/operator-rs/pull/923
+[#924]: https://github.com/stackabletech/operator-rs/pull/924
+[#925]: https://github.com/stackabletech/operator-rs/pull/925
+[#926]: https://github.com/stackabletech/operator-rs/pull/926
 
 ## [0.4.1] - 2024-10-23
 

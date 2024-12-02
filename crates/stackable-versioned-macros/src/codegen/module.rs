@@ -22,6 +22,7 @@ pub(crate) struct Module {
     versions: Vec<VersionDefinition>,
     containers: Vec<Container>,
     preserve_module: bool,
+    skip_from: bool,
     ident: IdentString,
     vis: Visibility,
 }
@@ -31,6 +32,7 @@ impl Module {
     pub(crate) fn new(
         ModuleInput { ident, vis, .. }: ModuleInput,
         preserve_module: bool,
+        skip_from: bool,
         versions: Vec<VersionDefinition>,
         containers: Vec<Container>,
     ) -> Self {
@@ -38,6 +40,7 @@ impl Module {
             ident: ident.into(),
             preserve_module,
             containers,
+            skip_from,
             versions,
             vis,
         }
@@ -77,11 +80,13 @@ impl Module {
             for container in &self.containers {
                 container_definitions.extend(container.generate_definition(version));
 
-                from_impls.extend(container.generate_from_impl(
-                    version,
-                    versions.peek().copied(),
-                    self.preserve_module,
-                ));
+                if !self.skip_from {
+                    from_impls.extend(container.generate_from_impl(
+                        version,
+                        versions.peek().copied(),
+                        self.preserve_module,
+                    ));
+                }
 
                 // Generate Kubernetes specific code which is placed outside of the container
                 // definition.
