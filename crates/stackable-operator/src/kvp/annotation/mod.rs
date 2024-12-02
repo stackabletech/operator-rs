@@ -137,6 +137,15 @@ impl Annotation {
         ))?;
         Ok(Self(kvp))
     }
+
+    /// Constructs a `secrets.stackable.tech/backend.autotls.cert.lifetime` annotation.
+    pub fn auto_tls_cert_lifetime(lifetime: &str) -> Result<Self, AnnotationError> {
+        let kvp = KeyValuePair::try_from((
+            "secrets.stackable.tech/backend.autotls.cert.lifetime",
+            lifetime,
+        ))?;
+        Ok(Self(kvp))
+    }
 }
 
 /// A validated set/list of Kubernetes annotations.

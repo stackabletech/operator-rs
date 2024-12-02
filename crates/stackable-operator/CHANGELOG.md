@@ -4,12 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added cert lifetime setter to `SecretOperatorVolumeSourceBuilder` ([#915])
+
 ### Changed
 
 - Replace unmaintained `derivative` crate with `educe` ([#907]).
 - Bump dependencies, notably rustls 0.23.15 to 0.23.19 to fix [RUSTSEC-2024-0399] ([#917]).
 
 [#907]: https://github.com/stackabletech/operator-rs/pull/907
+[#915]: https://github.com/stackabletech/operator-rs/pull/915
 [#917]: https://github.com/stackabletech/operator-rs/pull/917
 [RUSTSEC-2024-0399]: https://rustsec.org/advisories/RUSTSEC-2024-0399
 
