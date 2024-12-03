@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.83.0] - 2024-12-03
+
 ### Added
 
 - Added cert lifetime setter to `SecretOperatorVolumeSourceBuilder` ([#915])
