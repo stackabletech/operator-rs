@@ -9,6 +9,27 @@ targets = [
 
 [advisories]
 yanked = "deny"
+ignore = [
+    # https://rustsec.org/advisories/RUSTSEC-2023-0071
+    # "rsa" crate: Marvin Attack: potential key recovery through timing sidechannel
+    #
+    # No patch is yet available, however work is underway to migrate to a fully constant-time implementation
+    # So we need to accept this, as of SDP 24.11 we are not using the rsa crate to create certificates used in production
+    # setups.
+    #
+    # TODO: Remove after https://github.com/RustCrypto/RSA/pull/394 is merged
+    "RUSTSEC-2023-0071",
+
+    # https://rustsec.org/advisories/RUSTSEC-2024-0384
+    # "instant" is unmaintained
+    #
+    # The upstream "kube" crate also silenced this in https://github.com/kube-rs/kube/commit/4f1e889f265da8f19f03f60683569cae1a154fda
+    # They/we are actively working on migrating kube from backoff to backon, which removes the transitive dependency on
+    # instant, in https://github.com/kube-rs/kube/pull/1652.
+    #
+    # TODO: Remove after https://github.com/kube-rs/kube/pull/1652 is merged
+    "RUSTSEC-2024-0384",
+]
 
 [bans]
 multiple-versions = "allow"
@@ -26,6 +47,7 @@ allow = [
     "LicenseRef-webpki",
     "MIT",
     "MPL-2.0",
+    "OpenSSL", # Needed for the ring and/or aws-lc-sys crate. See https://github.com/stackabletech/operator-templating/pull/464 for details
     "Unicode-3.0",
     "Unicode-DFS-2016",
     "Zlib",
