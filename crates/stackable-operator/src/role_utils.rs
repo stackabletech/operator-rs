@@ -89,7 +89,7 @@ use crate::{
     commons::pdb::PdbConfig,
     config::{
         fragment::{self, FromFragment},
-        merge::{Atomic, Merge},
+        merge::Merge,
     },
     product_config_utils::Configuration,
     utils::crds::raw_object_schema,
@@ -178,16 +178,38 @@ pub struct JavaCommonConfig {
     /// Allows overriding JVM arguments.
     ///
     // TODO: Docs
+    // Use [`JavaCommonConfig::effective_jvm_config`] to retrieve the effective JVM arguments!
     #[serde(default)]
     pub jvm_argument_overrides: BTreeMap<String, JvmArgument>,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
-pub struct JvmArgument(pub Option<String>);
-impl Atomic for JvmArgument {}
+impl JavaCommonConfig {
+    /// Returns all arguments that should be passed to the JVM.
+    ///
+    /// Please note that the values of the [`BTreeMap`] are [`Option<String>`]. A value of [`None`]
+    /// expresses that the given argument is just a flag without any argument.
+    pub fn effective_jvm_config(&self) -> BTreeMap<String, Option<String>> {
+        self.jvm_argument_overrides
+            .iter()
+            .filter_map(|(k, v)| match v {
+                JvmArgument::Argument(argument) => Some((k.to_owned(), Some(argument.to_owned()))),
+                JvmArgument::Flag {} => Some((k.to_owned(), None)),
+                JvmArgument::Remove {} => None,
+            })
+            .collect()
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum JvmArgument {
+    Argument(String),
+    Flag {},
+    Remove {},
+}
 impl Merge for JvmArgument {
-    fn merge(&mut self, defaults: &Self) {
-        *self = defaults.clone();
+    fn merge(&mut self, _defaults: &Self) {
+        // We ignore whatever was in there before, later values override earlier ones
     }
 }
 
@@ -371,5 +393,194 @@ impl<K: Resource> Display for RoleGroupRef<K> {
             "role group {}/{} of {}",
             self.role, self.role_group, self.cluster
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use crate::{config::merge::Merge, role_utils::JvmArgument};
+
+    use super::JavaCommonConfig;
+
+    #[test]
+    fn test_parse_java_common_config() {
+        let input = r#"
+            jvmArgumentOverrides:
+              -XX:+UseG1GC:
+                flag: {}
+              -Dhttps.proxyHost:
+                argument: proxy.my.corp
+              -XX:+ExitOnOutOfMemoryError:
+                remove: {}
+        "#;
+        let deserializer = serde_yaml::Deserializer::from_str(input);
+        let java_common_config: JavaCommonConfig =
+            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+
+        assert_eq!(
+            java_common_config,
+            JavaCommonConfig {
+                jvm_argument_overrides: BTreeMap::from([
+                    ("-XX:+UseG1GC".to_owned(), JvmArgument::Flag {}),
+                    (
+                        "-Dhttps.proxyHost".to_owned(),
+                        JvmArgument::Argument("proxy.my.corp".to_owned())
+                    ),
+                    (
+                        "-XX:+ExitOnOutOfMemoryError".to_owned(),
+                        JvmArgument::Remove {}
+                    )
+                ])
+            }
+        );
+    }
+
+    #[test]
+    fn test_merge_java_common_config() {
+        // The operator generates some JVM arguments
+        let operator_generated = JavaCommonConfig {
+            jvm_argument_overrides: BTreeMap::from([
+                // Some flags
+                ("-Xms34406m".to_owned(), JvmArgument::Flag {}),
+                ("-Xmx34406m".to_owned(), JvmArgument::Flag {}),
+                ("-XX:+UseG1GC".to_owned(), JvmArgument::Flag {}),
+                (
+                    "-XX:+ExitOnOutOfMemoryError".to_owned(),
+                    JvmArgument::Flag {},
+                ),
+                // And some arguments
+                (
+                    "-Djava.protocol.handler.pkgs".to_owned(),
+                    JvmArgument::Argument("sun.net.www.protocol".to_owned()),
+                ),
+                (
+                    "-Dsun.net.http.allowRestrictedHeaders".to_owned(),
+                    JvmArgument::Argument(true.to_string()),
+                ),
+                (
+                    "-Djava.security.properties".to_owned(),
+                    JvmArgument::Argument("/stackable/nifi/conf/security.properties".to_owned()),
+                ),
+            ]),
+        };
+
+        // Let's say we want to set some additional HTTP Proxy and IPv4 settings
+        // And we don't like the garbage collector for some reason...
+        let role = serde_yaml::Deserializer::from_str(
+            r#"
+            jvmArgumentOverrides:
+              -XX:+UseG1GC:
+                remove: {}
+              -Dhttps.proxyHost:
+                argument: proxy.my.corp
+              -Dhttps.proxyPort:
+                argument: "8080"
+              -Djava.net.preferIPv4Stack:
+                argument: "true"
+            "#,
+        );
+        let role: JavaCommonConfig =
+            serde_yaml::with::singleton_map_recursive::deserialize(role).unwrap();
+
+        // For the roleGroup, let's say we need a different memory config.
+        // For that to work we first remove the flags generated by the operator and add our own.
+        // Also we override the proxy port to test that the roleGroup config takes precedence over the role config.
+        let role_group = serde_yaml::Deserializer::from_str(
+            r#"
+            jvmArgumentOverrides:
+              # We need more memory!
+              -Xmx34406m:
+                remove: {}
+              -Xmx40000m:
+                flag: {}
+              -Dhttps.proxyPort:
+                argument: "1234"
+            "#,
+        );
+        let role_group: JavaCommonConfig =
+            serde_yaml::with::singleton_map_recursive::deserialize(role_group).unwrap();
+
+        let mut merged = role_group;
+        merged.merge(&role);
+        merged.merge(&operator_generated);
+
+        assert_eq!(
+            merged,
+            JavaCommonConfig {
+                jvm_argument_overrides: BTreeMap::from([
+                    // Flags
+                    ("-Xms34406m".to_owned(), JvmArgument::Flag {}),
+                    // Note the different memory config from the roleGroup!
+                    ("-Xmx34406m".to_owned(), JvmArgument::Remove {}),
+                    ("-Xmx40000m".to_owned(), JvmArgument::Flag {}),
+                    // Note that the "-XX:+UseG1GC" flag is removed!
+                    ("-XX:+UseG1GC".to_owned(), JvmArgument::Remove {}),
+                    (
+                        "-XX:+ExitOnOutOfMemoryError".to_owned(),
+                        JvmArgument::Flag {},
+                    ),
+                    // Arguments
+                    (
+                        "-Djava.protocol.handler.pkgs".to_owned(),
+                        JvmArgument::Argument("sun.net.www.protocol".to_owned()),
+                    ),
+                    (
+                        "-Dsun.net.http.allowRestrictedHeaders".to_owned(),
+                        JvmArgument::Argument(true.to_string()),
+                    ),
+                    (
+                        "-Djava.security.properties".to_owned(),
+                        JvmArgument::Argument(
+                            "/stackable/nifi/conf/security.properties".to_owned()
+                        ),
+                    ),
+                    (
+                        "-Dhttps.proxyHost".to_owned(),
+                        JvmArgument::Argument("proxy.my.corp".to_owned()),
+                    ),
+                    (
+                        "-Dhttps.proxyPort".to_owned(),
+                        // Note: This is overridden by the roleGroup
+                        JvmArgument::Argument("1234".to_owned()),
+                    ),
+                    (
+                        "-Djava.net.preferIPv4Stack".to_owned(),
+                        JvmArgument::Argument("true".to_owned()),
+                    ),
+                ])
+            }
+        );
+
+        assert_eq!(
+            merged.effective_jvm_config(),
+            BTreeMap::from([
+                ("-Xms34406m".to_owned(), None),
+                ("-Xmx40000m".to_owned(), None),
+                ("-XX:+ExitOnOutOfMemoryError".to_owned(), None),
+                (
+                    "-Djava.protocol.handler.pkgs".to_owned(),
+                    Some("sun.net.www.protocol".to_owned())
+                ),
+                (
+                    "-Dsun.net.http.allowRestrictedHeaders".to_owned(),
+                    Some("true".to_owned())
+                ),
+                (
+                    "-Djava.security.properties".to_owned(),
+                    Some("/stackable/nifi/conf/security.properties".to_owned())
+                ),
+                (
+                    "-Dhttps.proxyHost".to_owned(),
+                    Some("proxy.my.corp".to_owned())
+                ),
+                ("-Dhttps.proxyPort".to_owned(), Some("1234".to_owned())),
+                (
+                    "-Djava.net.preferIPv4Stack".to_owned(),
+                    Some("true".to_owned())
+                ),
+            ])
+        );
     }
 }
