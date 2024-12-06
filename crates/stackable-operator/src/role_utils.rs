@@ -89,7 +89,7 @@ use crate::{
     commons::pdb::PdbConfig,
     config::{
         fragment::{self, FromFragment},
-        merge::Merge,
+        merge::{Atomic, Merge},
     },
     product_config_utils::Configuration,
     utils::crds::raw_object_schema,
@@ -99,18 +99,27 @@ use k8s_openapi::api::core::v1::PodTemplateSpec;
 use kube::{runtime::reflector::ObjectRef, Resource};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use snafu::{OptionExt, Snafu};
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("missing roleGroup {role_group:?}"))]
+    MissingRoleGroup { role_group: String },
+}
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(
     rename_all = "camelCase",
-    bound(deserialize = "T: Default + Deserialize<'de>")
+    bound(
+        deserialize = "T: Default + Deserialize<'de>, ProductSpecificCommonConfig: Default + Deserialize<'de>"
+    )
 )]
-pub struct CommonConfiguration<T> {
+pub struct CommonConfiguration<T, ProductSpecificCommonConfig> {
     #[serde(default)]
     // We can't depend on T being `Default`, since that trait is not object-safe
     // We only need to generate schemas for fully specified types, but schemars_derive
     // does not support specifying custom bounds.
-    #[schemars(default = "config_schema_default")]
+    #[schemars(default = "Self::default_config")]
     pub config: T,
 
     /// The `configOverrides` can be used to configure properties in product config files
@@ -144,10 +153,42 @@ pub struct CommonConfiguration<T> {
     #[serde(default)]
     #[schemars(schema_with = "raw_object_schema")]
     pub pod_overrides: PodTemplateSpec,
+
+    // No docs needed, as we flatten this struct.
+    //
+    // This field is product-specific and can contain e.g. jvmArgumentOverrides.
+    // It is not accessible by operators, please use <TODO link to functions> to read the value
+    #[serde(flatten, default)]
+    pub(crate) product_specific_common_config: ProductSpecificCommonConfig,
 }
 
-fn config_schema_default() -> serde_json::Value {
-    serde_json::json!({})
+impl<T, ProductSpecificCommonConfig> CommonConfiguration<T, ProductSpecificCommonConfig> {
+    fn default_config() -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+pub struct GenericProductSpecificCommonConfig {}
+
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize, Merge)]
+#[merge(path_overrides(merge = "crate::config::merge"))]
+#[serde(rename_all = "camelCase")]
+pub struct JavaCommonConfig {
+    /// Allows overriding JVM arguments.
+    ///
+    // TODO: Docs
+    #[serde(default)]
+    pub jvm_argument_overrides: BTreeMap<String, JvmArgument>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+pub struct JvmArgument(pub Option<String>);
+impl Atomic for JvmArgument {}
+impl Merge for JvmArgument {
+    fn merge(&mut self, defaults: &Self) {
+        *self = defaults.clone();
+    }
 }
 
 /// This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a key-value-map containing
@@ -168,33 +209,46 @@ fn config_schema_default() -> serde_json::Value {
 // However, product-operators can define their own - custom - struct and use that here.
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Role<T, U = GenericRoleConfig>
-where
+pub struct Role<
+    T,
+    U = GenericRoleConfig,
+    ProductSpecificCommonConfig = GenericProductSpecificCommonConfig,
+> where
     // Don't remove this trait bounds!!!
     // We don't know why, but if you remove either of them, the generated default value in the CRDs will
     // be missing!
     U: Default + JsonSchema + Serialize,
+    ProductSpecificCommonConfig: Default + JsonSchema + Serialize,
 {
-    #[serde(flatten, bound(deserialize = "T: Default + Deserialize<'de>"))]
-    pub config: CommonConfiguration<T>,
+    #[serde(
+        flatten,
+        bound(
+            deserialize = "T: Default + Deserialize<'de>, ProductSpecificCommonConfig: Deserialize<'de>"
+        )
+    )]
+    pub config: CommonConfiguration<T, ProductSpecificCommonConfig>,
 
     #[serde(default)]
     pub role_config: U,
 
-    pub role_groups: HashMap<String, RoleGroup<T>>,
+    pub role_groups: HashMap<String, RoleGroup<T, ProductSpecificCommonConfig>>,
 }
 
-impl<T, U> Role<T, U>
+impl<T, U, ProductSpecificCommonConfig> Role<T, U, ProductSpecificCommonConfig>
 where
     T: Configuration + 'static,
     U: Default + JsonSchema + Serialize,
+    ProductSpecificCommonConfig: Default + JsonSchema + Serialize + Clone + Merge,
 {
     /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
     /// and used in [`Role`] into a Box of a dynamically dispatched
     /// [`crate::product_config_utils::Configuration`] Trait. This is required to use the generic
     /// [`Role`] with more than a single generic struct. For example different roles most likely
     /// have different structs implementing Configuration.
-    pub fn erase(self) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>, U> {
+    pub fn erase(
+        self,
+    ) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>, U, ProductSpecificCommonConfig>
+    {
         Role {
             config: CommonConfiguration {
                 config: Box::new(self.config.config)
@@ -203,6 +257,7 @@ where
                 env_overrides: self.config.env_overrides,
                 cli_overrides: self.config.cli_overrides,
                 pod_overrides: self.config.pod_overrides,
+                product_specific_common_config: self.config.product_specific_common_config,
             },
             role_config: self.role_config,
             role_groups: self
@@ -219,6 +274,9 @@ where
                                 env_overrides: group.config.env_overrides,
                                 cli_overrides: group.config.cli_overrides,
                                 pod_overrides: group.config.pod_overrides,
+                                product_specific_common_config: group
+                                    .config
+                                    .product_specific_common_config,
                             },
                             replicas: group.replicas,
                         },
@@ -226,6 +284,23 @@ where
                 })
                 .collect(),
         }
+    }
+
+    pub fn merged_product_specific_common_config(
+        &self,
+        role_group: &str,
+    ) -> Result<ProductSpecificCommonConfig, Error> {
+        let from_role = &self.config.product_specific_common_config;
+        let mut merged = self
+            .role_groups
+            .get(role_group)
+            .with_context(|| MissingRoleGroupSnafu { role_group })?
+            .config
+            .product_specific_common_config
+            .clone();
+        merged.merge(from_role);
+
+        Ok(merged)
     }
 }
 
@@ -246,15 +321,17 @@ pub struct EmptyRoleConfig {}
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(
     rename_all = "camelCase",
-    bound(deserialize = "T: Default + Deserialize<'de>")
+    bound(
+        deserialize = "T: Default + Deserialize<'de>, ProductSpecificCommonConfig: Default + Deserialize<'de>"
+    )
 )]
-pub struct RoleGroup<T> {
+pub struct RoleGroup<T, ProductSpecificCommonConfig> {
     #[serde(flatten)]
-    pub config: CommonConfiguration<T>,
+    pub config: CommonConfiguration<T, ProductSpecificCommonConfig>,
     pub replicas: Option<u16>,
 }
 
-impl<T> RoleGroup<T> {
+impl<T, ProductSpecificCommonConfig> RoleGroup<T, ProductSpecificCommonConfig> {
     pub fn validate_config<C, U>(
         &self,
         role: &Role<T, U>,
