@@ -1,11 +1,15 @@
 # Container Support Helper
 
-This is a tool meant to make the life of a support engineer easier when working with docker containers.
+This is a tool meant to make the life of a support engineer easier when working
+with docker containers.
 
-We often face issues where we would have loved to know more details about the environment a container is running in.
-This tool is meant to print as much information as possible to stdout (later possibly also to a log file) to aid in debugging:
+We often face issues where we would have loved to know more details about the
+environment a container is running in. This tool is meant to print as much
+information as possible to stdout (later possibly also to a log file)
+to aid in debugging:
 
 It currently prints:
+
 - CPU core count
 - Memory (free, total, available)
 - CGroup Limits
@@ -17,7 +21,6 @@ It currently prints:
 - List of all network interfaces with names and IP addresses
 - Reverse Lookup for those IP addresses (IP Address => List of hostnames)
 - Forward lookup for those hostnames (Hostname => List of IP addresses)
-             
 
 Here is an example of what it looks like on my Laptop:
 
