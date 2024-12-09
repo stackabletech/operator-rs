@@ -21,15 +21,10 @@ pub struct Resources {
 }
 
 impl Resources {
-    #[tracing::instrument(name = "Resources::collect")]
-    pub fn collect() -> Self {
+    #[tracing::instrument(name = "Resources::collect", skip(sys))]
+    pub fn collect(sys: &System) -> Self {
         // This style of "declare-then-log-then-merge becomes a bit verbose,
         // but should help keep each log statement local to where that info is collected.
-
-        // Please note that we use "new_all" to ensure that all list of
-        // components, network interfaces, disks and users are already
-        // filled!
-        let sys = System::new_all();
 
         let cpu_count = sys.cpus().len();
         let physical_core_count = sys.physical_core_count();

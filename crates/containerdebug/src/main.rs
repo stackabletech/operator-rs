@@ -1,3 +1,4 @@
+mod error;
 mod system_information;
 
 use clap::{crate_description, crate_version, Parser};
