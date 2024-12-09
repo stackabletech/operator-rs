@@ -180,10 +180,16 @@ pub struct JavaCommonConfig {
     // TODO: Docs
     // Use [`JavaCommonConfig::effective_jvm_config`] to retrieve the effective JVM arguments!
     #[serde(default)]
-    pub jvm_argument_overrides: BTreeMap<String, JvmArgument>,
+    jvm_argument_overrides: BTreeMap<String, JvmArgument>,
 }
 
 impl JavaCommonConfig {
+    pub fn new(jvm_argument_overrides: BTreeMap<String, JvmArgument>) -> Self {
+        Self {
+            jvm_argument_overrides,
+        }
+    }
+
     /// Returns all arguments that should be passed to the JVM.
     ///
     /// Please note that the values of the [`BTreeMap`] are [`Option<String>`]. A value of [`None`]
