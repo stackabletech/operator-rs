@@ -67,14 +67,14 @@ impl SystemNetworkInfo {
                         .into_iter()
                         .map(|ptr_record| ptr_record.to_utf8())
                         .collect();
-                    tracing::info!(%ip, ?hostnames, "performed reverse lookup for IP");
+                    tracing::info!(%ip, ?hostnames, "performed reverse DNS lookup for IP");
                     Some((ip, hostnames))
                 }
                 Err(error) => {
-                    tracing::error!(
+                    tracing::warn!(
                         %ip,
                         error = &error as &dyn std::error::Error,
-                        "reverse lookup failed"
+                        "reverse DNS lookup failed"
                     );
                     None
                 }
@@ -89,14 +89,14 @@ impl SystemNetworkInfo {
             .filter_map(|hostname| match resolver.lookup_ip(hostname.clone()) {
                 Ok(result) => {
                     let ips = result.iter().collect();
-                    tracing::info!(hostname, ?ips, "performed forward lookup for hostname");
+                    tracing::info!(hostname, ?ips, "performed forward DNS lookup for hostname");
                     Some((hostname, ips))
                 }
                 Err(error) => {
-                    tracing::error!(
+                    tracing::warn!(
                         hostname,
                         error = &error as &dyn std::error::Error,
-                        "forward lookup failed"
+                        "forward DNS lookup failed"
                     );
                     None
                 }
