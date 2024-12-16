@@ -42,6 +42,10 @@ fn main() {
         APP_NAME,
         opts.tracing_target,
     );
+
+    // Wrap *all* output in a span, to separate it from main app output.
+    let _span = tracing::error_span!("containerdebug").entered();
+
     stackable_operator::utils::print_startup_string(
         crate_description!(),
         crate_version!(),
@@ -62,7 +66,6 @@ fn main() {
         let system_information = SystemInformation::collect();
 
         let serialized = serde_json::to_string_pretty(&system_information).unwrap();
-        // println!("{serialized}");
         if let Some(output_path) = &opts.output {
             std::fs::write(output_path, &serialized).unwrap();
         }
