@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.1] - 2024-12-16
+
 ### Changed
 
 - Downgraded DNS errors to warnings ([#17]).
