@@ -8,13 +8,14 @@ pub mod os;
 pub mod resources;
 pub mod user;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 pub struct SystemInformation {
-    pub resources: resources::Resources,
-    pub os: os::OperatingSystem,
-    pub current_user: ComponentResult<user::User>,
-    pub disks: Vec<disk::Disk>,
-    pub network: network::SystemNetworkInfo,
+    // All fields are optional, to make it easy to disable modules one by one
+    pub resources: Option<resources::Resources>,
+    pub os: Option<os::OperatingSystem>,
+    pub current_user: Option<ComponentResult<user::User>>,
+    pub disks: Option<Vec<disk::Disk>>,
+    pub network: Option<network::SystemNetworkInfo>,
     // TODO:
     //  Current time
     //  SElinux/AppArmor
@@ -32,26 +33,47 @@ pub struct SystemInformation {
     // - Users/Groups
 }
 
+/// Common data that is cached between [`SystemInformation::collect`] calls.
+pub struct CollectContext {
+    system: sysinfo::System,
+}
+
 impl SystemInformation {
-    #[tracing::instrument(name = "SystemInformation::collect")]
-    pub fn collect() -> Self {
+    /// Collects static information that doesn't need to be refreshed.
+    #[tracing::instrument(name = "SystemInformation::init")]
+    pub fn init() -> CollectContext {
+        tracing::info!("initializing");
+        let mut ctx = CollectContext {
+            // Each module is responsible for updating the information that it cares about.
+            system: sysinfo::System::new(),
+        };
+        if let Err(err) = user::User::init(&mut ctx.system) {
+            tracing::error!(
+                error = &err as &dyn std::error::Error,
+                "failed to initialize user module, ignoring but this will likely cause collection errors..."
+            );
+        }
+        tracing::info!("init finished");
+        ctx
+    }
+
+    /// Collects and reports
+    #[tracing::instrument(name = "SystemInformation::collect", skip(ctx))]
+    pub fn collect(ctx: &mut CollectContext) -> Self {
         tracing::info!("Starting data collection");
 
-        // Please note that we use "new_all" to ensure that all list of
-        // components, network interfaces, disks and users are already
-        // filled!
-        let sys = sysinfo::System::new_all();
-
         let info = Self {
-            resources: resources::Resources::collect(&sys),
-            os: os::OperatingSystem::collect(),
-            current_user: ComponentResult::report_from_result(
+            resources: Some(resources::Resources::collect(&mut ctx.system)),
+            os: Some(os::OperatingSystem::collect()),
+            current_user: Some(ComponentResult::report_from_result(
                 "User::collect_current",
-                user::User::collect_current(&sys),
-            ),
-            disks: disk::Disk::collect_all(),
-            network: network::SystemNetworkInfo::collect(),
+                user::User::collect_current(&ctx.system),
+            )),
+            disks: Some(disk::Disk::collect_all()),
+            network: Some(network::SystemNetworkInfo::collect()),
+            // ..Default::default()
         };
+
         tracing::info!("Data collection finished");
         info
     }

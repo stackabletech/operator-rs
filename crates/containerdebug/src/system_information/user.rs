@@ -1,6 +1,6 @@
 use serde::Serialize;
 use snafu::{OptionExt, ResultExt, Snafu};
-use sysinfo::{Gid, Pid, Uid};
+use sysinfo::{Gid, Pid, ProcessRefreshKind, Uid, UpdateKind};
 
 use crate::error::SysinfoError;
 
@@ -21,6 +21,20 @@ pub struct User {
 }
 
 impl User {
+    #[tracing::instrument(name = "User::init", skip(sys))]
+    pub fn init(sys: &mut sysinfo::System) -> Result<()> {
+        let pid = sysinfo::get_current_pid()
+            .map_err(|msg| SysinfoError { msg })
+            .context(GetCurrentPidSnafu)?;
+        // The process user is static, and there is a memory leak to updating it for every run, so cache it once and keep that.
+        sys.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::Some(&[pid]),
+            false,
+            ProcessRefreshKind::new().with_user(UpdateKind::OnlyIfNotSet),
+        );
+        Ok(())
+    }
+
     #[tracing::instrument(name = "User::collect_current", skip(sys))]
     pub fn collect_current(sys: &sysinfo::System) -> Result<Self> {
         let pid = sysinfo::get_current_pid()

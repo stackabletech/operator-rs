@@ -1,5 +1,5 @@
 use serde::Serialize;
-use sysinfo::System;
+use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
 
 #[derive(Debug, Serialize)]
 pub struct Resources {
@@ -22,9 +22,15 @@ pub struct Resources {
 
 impl Resources {
     #[tracing::instrument(name = "Resources::collect", skip(sys))]
-    pub fn collect(sys: &System) -> Self {
+    pub fn collect(sys: &mut System) -> Self {
         // This style of "declare-then-log-then-merge becomes a bit verbose,
         // but should help keep each log statement local to where that info is collected.
+
+        sys.refresh_specifics(
+            RefreshKind::new()
+                .with_cpu(CpuRefreshKind::new().with_cpu_usage())
+                .with_memory(MemoryRefreshKind::everything()),
+        );
 
         let cpu_count = sys.cpus().len();
         let physical_core_count = sys.physical_core_count();

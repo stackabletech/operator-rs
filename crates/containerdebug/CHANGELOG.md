@@ -9,8 +9,13 @@ All notable changes to this project will be documented in this file.
 - Downgraded DNS errors to warnings ([#17]).
 - All output is now wrapped in a "containerdebug" span ([#18]).
 
+### Fixes
+
+- Reduced memory usage dramatically by limiting and caching fetched information ([#20]).
+
 [#17]: https://github.com/stackabletech/containerdebug/pull/17
 [#18]: https://github.com/stackabletech/containerdebug/pull/18
+[#20]: https://github.com/stackabletech/containerdebug/pull/20
 
 ## [0.1.0] - 2024-12-09
 

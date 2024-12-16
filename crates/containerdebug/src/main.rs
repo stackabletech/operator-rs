@@ -55,6 +55,8 @@ fn main() {
         built_info::RUSTC_VERSION,
     );
 
+    let mut collect_ctx = SystemInformation::init();
+
     let mut next_run = Instant::now();
     loop {
         let next_run_sleep = next_run.saturating_duration_since(Instant::now());
@@ -63,7 +65,7 @@ fn main() {
         }
         std::thread::sleep(next_run_sleep);
 
-        let system_information = SystemInformation::collect();
+        let system_information = SystemInformation::collect(&mut collect_ctx);
 
         let serialized = serde_json::to_string_pretty(&system_information).unwrap();
         if let Some(output_path) = &opts.output {
