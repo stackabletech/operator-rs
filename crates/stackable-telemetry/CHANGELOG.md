@@ -10,10 +10,12 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: Renamed `TracingBuilder` methods with long names, and prefix with `with_` ([#901]).
+- BREAKING: Rename `Tracing` to `Telemetry` ([#932]).
+- BREAKING: Rename `TracingBuilder` methods with long names, and prefix with `with_` ([#901]).
 - BREAKING: Use the new subscriber settings in the `TracingBuilder` ([#901]).
 
 [#901]: https://github.com/stackabletech/operator-rs/pull/901
+[#932]: https://github.com/stackabletech/operator-rs/pull/932
 
 ## [0.2.0] - 2024-07-10
 
