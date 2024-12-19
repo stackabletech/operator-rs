@@ -55,7 +55,7 @@ mod private {
 /// This allows only the methods to be called when the builder is in the
 /// applicable state.
 ///
-/// [1]: FileLogSettingsBuilder
+/// [1]: super::FileLogSettingsBuilder
 #[doc(hidden)]
 pub mod builder_state {
     /// The initial state, before the log directory path is set.
@@ -64,7 +64,7 @@ pub mod builder_state {
 
     /// The state that allows you to configure the [`FileLogSettings`][1].
     ///
-    /// [1]: FileLogSettings
+    /// [1]: super::FileLogSettings
     #[derive(Default)]
     pub struct Config;
 }
