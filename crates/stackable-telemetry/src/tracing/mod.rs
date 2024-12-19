@@ -425,7 +425,7 @@ impl TracingBuilder<builder_state::Config> {
         }
     }
 
-    /// Enable the OTLP logging subscriber and set the default [`LevelFilter`]
+    /// Enable the OTLP logging subscriber and set the default [`LevelFilter`][1]
     /// which is overridable through the given environment variable.
     ///
     /// You can configure the OTLP log exports through the variables defined

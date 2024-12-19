@@ -50,21 +50,21 @@ mod private {
 /// This module holds the possible states that the builder is in.
 ///
 /// Each state will implement [`BuilderState`] (with no methods), and the
-/// Builder struct ([`TracingBuilder`]) itself will be implemented with
+/// Builder struct ([`FileLogSettingsBuilder`][1]) itself will be implemented with
 /// each state as a generic parameter.
 /// This allows only the methods to be called when the builder is in the
 /// applicable state.
+///
+/// [1]: FileLogSettingsBuilder
 #[doc(hidden)]
 pub mod builder_state {
     /// The initial state, before the log directory path is set.
     #[derive(Default)]
     pub struct PreLogDir;
 
-    /// The state that allows you to configure the supported [`Subscriber`][1]
-    /// [`Layer`][2].
+    /// The state that allows you to configure the [`FileLogSettings`][1].
     ///
-    /// [1]: tracing::Subscriber
-    /// [2]: tracing_subscriber::layer::Layer
+    /// [1]: FileLogSettings
     #[derive(Default)]
     pub struct Config;
 }
