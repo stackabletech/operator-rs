@@ -368,21 +368,22 @@ where
         }
     }
 
-    pub fn merged_product_specific_common_config(
+    /// Returns the product specific common config from
+    /// 1. The role
+    /// 2. The role group
+    pub fn merged_product_specific_common_configs(
         &self,
         role_group: &str,
-    ) -> Result<ProductSpecificCommonConfig, Error> {
+    ) -> Result<(&ProductSpecificCommonConfig, &ProductSpecificCommonConfig), Error> {
         let from_role = &self.config.product_specific_common_config;
-        let mut merged = self
+        let from_role_group = &self
             .role_groups
             .get(role_group)
             .with_context(|| MissingRoleGroupSnafu { role_group })?
             .config
-            .product_specific_common_config
-            .clone();
-        merged.merge(from_role);
+            .product_specific_common_config;
 
-        Ok(merged)
+        Ok((from_role, from_role_group))
     }
 }
 
