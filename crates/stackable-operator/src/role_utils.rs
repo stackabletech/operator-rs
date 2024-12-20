@@ -371,10 +371,16 @@ where
     /// Returns the product specific common config from
     /// 1. The role
     /// 2. The role group
-    pub fn merged_product_specific_common_configs(
-        &self,
+    pub fn merged_product_specific_common_configs<'a>(
+        &'a self,
         role_group: &str,
-    ) -> Result<(&ProductSpecificCommonConfig, &ProductSpecificCommonConfig), Error> {
+    ) -> Result<
+        (
+            &'a ProductSpecificCommonConfig,
+            &'a ProductSpecificCommonConfig,
+        ),
+        Error,
+    > {
         let from_role = &self.config.product_specific_common_config;
         let from_role_group = &self
             .role_groups
