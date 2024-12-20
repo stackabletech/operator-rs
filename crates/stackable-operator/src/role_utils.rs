@@ -81,7 +81,7 @@
 //! Each resource can have more operator specific labels.
 
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap},
     fmt::{Debug, Display},
 };
 
@@ -97,20 +97,31 @@ use crate::{
 use educe::Educe;
 use k8s_openapi::api::core::v1::PodTemplateSpec;
 use kube::{runtime::reflector::ObjectRef, Resource};
+use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use snafu::{OptionExt, Snafu};
+use tracing::instrument;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("missing roleGroup {role_group:?}"))]
+    MissingRoleGroup { role_group: String },
+}
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(
     rename_all = "camelCase",
-    bound(deserialize = "T: Default + Deserialize<'de>")
+    bound(
+        deserialize = "T: Default + Deserialize<'de>, ProductSpecificCommonConfig: Default + Deserialize<'de>"
+    )
 )]
-pub struct CommonConfiguration<T> {
+pub struct CommonConfiguration<T, ProductSpecificCommonConfig> {
     #[serde(default)]
     // We can't depend on T being `Default`, since that trait is not object-safe
     // We only need to generate schemas for fully specified types, but schemars_derive
     // does not support specifying custom bounds.
-    #[schemars(default = "config_schema_default")]
+    #[schemars(default = "Self::default_config")]
     pub config: T,
 
     /// The `configOverrides` can be used to configure properties in product config files
@@ -144,10 +155,122 @@ pub struct CommonConfiguration<T> {
     #[serde(default)]
     #[schemars(schema_with = "raw_object_schema")]
     pub pod_overrides: PodTemplateSpec,
+
+    // No docs needed, as we flatten this struct.
+    //
+    // This field is product-specific and can contain e.g. jvmArgumentOverrides.
+    // It is not accessible by operators, please use <TODO link to functions> to read the value
+    #[serde(flatten, default)]
+    pub(crate) product_specific_common_config: ProductSpecificCommonConfig,
 }
 
-fn config_schema_default() -> serde_json::Value {
-    serde_json::json!({})
+impl<T, ProductSpecificCommonConfig> CommonConfiguration<T, ProductSpecificCommonConfig> {
+    fn default_config() -> serde_json::Value {
+        serde_json::json!({})
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+pub struct GenericProductSpecificCommonConfig {}
+
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize, Merge)]
+#[merge(path_overrides(merge = "crate::config::merge"))]
+#[serde(rename_all = "camelCase")]
+pub struct JavaCommonConfig {
+    /// Allows overriding JVM arguments.
+    //
+    // TODO: Docs
+    #[serde(default)]
+    pub jvm_argument_overrides: JvmArgumentOverrides,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JvmArgumentOverrides {
+    #[serde(default)]
+    add: BTreeSet<String>,
+
+    #[serde(default)]
+    remove: BTreeSet<String>,
+
+    #[serde(default)]
+    remove_regex: BTreeSet<String>,
+}
+
+impl JvmArgumentOverrides {
+    pub fn new(
+        add: BTreeSet<String>,
+        remove: BTreeSet<String>,
+        remove_regex: BTreeSet<String>,
+    ) -> Self {
+        Self {
+            add,
+            remove,
+            remove_regex,
+        }
+    }
+
+    pub fn new_with_only_additions(add: BTreeSet<String>) -> Self {
+        Self {
+            add,
+            ..Default::default()
+        }
+    }
+
+    /// Returns all arguments that should be passed to the JVM.
+    ///
+    /// **Can only be called on merged config, it will panic otherwise**
+    pub fn effective_jvm_config_after_merging(&self) -> &BTreeSet<String> {
+        assert!(
+            self.remove.is_empty(),
+            "After merging there should be no removals left. \"effective_jvm_config_after_merging\" should only be called on merged configs!"
+        );
+        assert!(
+            self.remove_regex.is_empty(),
+            "After merging there should be no removal regexes left. \"effective_jvm_config_after_merging\" should only be called on merged configs!"
+        );
+
+        &self.add
+    }
+}
+
+impl Merge for JvmArgumentOverrides {
+    #[instrument]
+    fn merge(&mut self, defaults: &Self) {
+        let regexes = self
+            .remove_regex
+            .iter()
+            .filter_map(|regex| {
+                let without_anchors = regex.trim_start_matches('^').trim_end_matches('$');
+                let with_anchors = format!("^{without_anchors}$");
+                match Regex::new(&with_anchors) {
+                    Ok(regex) => Some(regex),
+                    Err(error) => {
+                        tracing::warn!(
+                            regex,
+                            regex_without_anchors = without_anchors,
+                            regex_with_anchors = with_anchors,
+                            ?error,
+                            "Could not parse regex from \"jvmArgumentOverrides.removeRegex\", ignoring it"
+                        );
+                        None
+                    }
+            }})
+            .collect::<Vec<_>>();
+
+        let new_add = defaults
+            .add
+            .iter()
+            .filter(|arg| !self.remove.contains(*arg))
+            .filter(|arg| !regexes.iter().any(|regex| regex.is_match(arg)))
+            .chain(self.add.iter())
+            .cloned()
+            .collect();
+
+        self.add = new_add;
+        self.remove = BTreeSet::new();
+        self.remove_regex = BTreeSet::new();
+    }
 }
 
 /// This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a key-value-map containing
@@ -168,33 +291,46 @@ fn config_schema_default() -> serde_json::Value {
 // However, product-operators can define their own - custom - struct and use that here.
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Role<T, U = GenericRoleConfig>
-where
+pub struct Role<
+    T,
+    U = GenericRoleConfig,
+    ProductSpecificCommonConfig = GenericProductSpecificCommonConfig,
+> where
     // Don't remove this trait bounds!!!
     // We don't know why, but if you remove either of them, the generated default value in the CRDs will
     // be missing!
     U: Default + JsonSchema + Serialize,
+    ProductSpecificCommonConfig: Default + JsonSchema + Serialize,
 {
-    #[serde(flatten, bound(deserialize = "T: Default + Deserialize<'de>"))]
-    pub config: CommonConfiguration<T>,
+    #[serde(
+        flatten,
+        bound(
+            deserialize = "T: Default + Deserialize<'de>, ProductSpecificCommonConfig: Deserialize<'de>"
+        )
+    )]
+    pub config: CommonConfiguration<T, ProductSpecificCommonConfig>,
 
     #[serde(default)]
     pub role_config: U,
 
-    pub role_groups: HashMap<String, RoleGroup<T>>,
+    pub role_groups: HashMap<String, RoleGroup<T, ProductSpecificCommonConfig>>,
 }
 
-impl<T, U> Role<T, U>
+impl<T, U, ProductSpecificCommonConfig> Role<T, U, ProductSpecificCommonConfig>
 where
     T: Configuration + 'static,
     U: Default + JsonSchema + Serialize,
+    ProductSpecificCommonConfig: Default + JsonSchema + Serialize + Clone + Merge,
 {
     /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
     /// and used in [`Role`] into a Box of a dynamically dispatched
     /// [`crate::product_config_utils::Configuration`] Trait. This is required to use the generic
     /// [`Role`] with more than a single generic struct. For example different roles most likely
     /// have different structs implementing Configuration.
-    pub fn erase(self) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>, U> {
+    pub fn erase(
+        self,
+    ) -> Role<Box<dyn Configuration<Configurable = T::Configurable>>, U, ProductSpecificCommonConfig>
+    {
         Role {
             config: CommonConfiguration {
                 config: Box::new(self.config.config)
@@ -203,6 +339,7 @@ where
                 env_overrides: self.config.env_overrides,
                 cli_overrides: self.config.cli_overrides,
                 pod_overrides: self.config.pod_overrides,
+                product_specific_common_config: self.config.product_specific_common_config,
             },
             role_config: self.role_config,
             role_groups: self
@@ -219,6 +356,9 @@ where
                                 env_overrides: group.config.env_overrides,
                                 cli_overrides: group.config.cli_overrides,
                                 pod_overrides: group.config.pod_overrides,
+                                product_specific_common_config: group
+                                    .config
+                                    .product_specific_common_config,
                             },
                             replicas: group.replicas,
                         },
@@ -226,6 +366,30 @@ where
                 })
                 .collect(),
         }
+    }
+
+    /// Returns the product specific common config from
+    /// 1. The role
+    /// 2. The role group
+    pub fn merged_product_specific_common_configs<'a>(
+        &'a self,
+        role_group: &str,
+    ) -> Result<
+        (
+            &'a ProductSpecificCommonConfig,
+            &'a ProductSpecificCommonConfig,
+        ),
+        Error,
+    > {
+        let from_role = &self.config.product_specific_common_config;
+        let from_role_group = &self
+            .role_groups
+            .get(role_group)
+            .with_context(|| MissingRoleGroupSnafu { role_group })?
+            .config
+            .product_specific_common_config;
+
+        Ok((from_role, from_role_group))
     }
 }
 
@@ -246,15 +410,17 @@ pub struct EmptyRoleConfig {}
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(
     rename_all = "camelCase",
-    bound(deserialize = "T: Default + Deserialize<'de>")
+    bound(
+        deserialize = "T: Default + Deserialize<'de>, ProductSpecificCommonConfig: Default + Deserialize<'de>"
+    )
 )]
-pub struct RoleGroup<T> {
+pub struct RoleGroup<T, ProductSpecificCommonConfig> {
     #[serde(flatten)]
-    pub config: CommonConfiguration<T>,
+    pub config: CommonConfiguration<T, ProductSpecificCommonConfig>,
     pub replicas: Option<u16>,
 }
 
-impl<T> RoleGroup<T> {
+impl<T, ProductSpecificCommonConfig> RoleGroup<T, ProductSpecificCommonConfig> {
     pub fn validate_config<C, U>(
         &self,
         role: &Role<T, U>,
@@ -294,5 +460,106 @@ impl<K: Resource> Display for RoleGroupRef<K> {
             "role group {}/{} of {}",
             self.role, self.role_group, self.cluster
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    use crate::{config::merge::Merge, role_utils::JavaCommonConfig};
+
+    use super::JvmArgumentOverrides;
+
+    #[test]
+    fn test_merge_java_common_config() {
+        // The operator generates some JVM arguments
+        let operator_generated = JavaCommonConfig {
+            jvm_argument_overrides: JvmArgumentOverrides::new_with_only_additions(
+                [
+                    "-Xms34406m".to_owned(),
+                    "-Xmx34406m".to_owned(),
+                    "-XX:+UseG1GC".to_owned(),
+                    "-XX:+ExitOnOutOfMemoryError".to_owned(),
+                    "-Djava.protocol.handler.pkgs=sun.net.www.protocol".to_owned(),
+                    "-Dsun.net.http.allowRestrictedHeaders=true".to_owned(),
+                    "-Djava.security.properties=/stackable/nifi/conf/security.properties"
+                        .to_owned(),
+                ]
+                .into(),
+            ),
+        };
+
+        // Let's say we want to set some additional HTTP Proxy and IPv4 settings
+        // And we don't like the garbage collector for some reason...
+        let mut role: JavaCommonConfig = serde_yaml::from_str(
+            r#"
+                jvmArgumentOverrides:
+                  remove:
+                    - -XX:+UseG1GC
+                  add:
+                    - -Dhttps.proxyHost=proxy.my.corp
+                    - -Dhttps.proxyPort=8080
+                    - -Djava.net.preferIPv4Stack=true
+                "#,
+        )
+        .unwrap();
+
+        // For the roleGroup, let's say we need a different memory config.
+        // For that to work we first remove the flags generated by the operator and add our own.
+        // Also we override the proxy port to test that the roleGroup config takes precedence over the role config.
+        let mut role_group: JavaCommonConfig = serde_yaml::from_str(
+            r#"
+                jvmArgumentOverrides:
+                  removeRegex:
+                    - # We need more memory!
+                    - -Xmx.*
+                    - -Dhttps.proxyPort=.*
+                  add:
+                    - -Xmx40000m
+                    - -Dhttps.proxyPort=1234
+                "#,
+        )
+        .unwrap();
+
+        // let mut merged = role_group;
+        // merged.merge(&role);
+        // merged.merge(&operator_generated);
+
+        // Please note that merge order is different than we normally do!
+        // This is not trivial, as the merge operation is not purely additive (as it is with e.g.
+        // PodTemplateSpec).
+        role.merge(&operator_generated);
+        role_group.merge(&role);
+
+        let expected = BTreeSet::from([
+            "-Xms34406m".to_owned(),
+            "-Xmx40000m".to_owned(),
+            "-XX:+ExitOnOutOfMemoryError".to_owned(),
+            "-Djava.protocol.handler.pkgs=sun.net.www.protocol".to_owned(),
+            "-Dsun.net.http.allowRestrictedHeaders=true".to_owned(),
+            "-Djava.security.properties=/stackable/nifi/conf/security.properties".to_owned(),
+            "-Djava.net.preferIPv4Stack=true".to_owned(),
+            "-Dhttps.proxyHost=proxy.my.corp".to_owned(),
+            "-Dhttps.proxyPort=1234".to_owned(),
+        ]);
+
+        assert_eq!(
+            role_group,
+            JavaCommonConfig {
+                jvm_argument_overrides: JvmArgumentOverrides {
+                    add: expected.clone(),
+                    remove: BTreeSet::new(),
+                    remove_regex: BTreeSet::new()
+                }
+            }
+        );
+
+        assert_eq!(
+            role_group
+                .jvm_argument_overrides
+                .effective_jvm_config_after_merging(),
+            &expected
+        );
     }
 }

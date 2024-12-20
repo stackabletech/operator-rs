@@ -167,13 +167,21 @@ pub fn config_for_role_and_group<'a>(
 /// - `resource`  - Not used directly. It's passed on to the `Configuration::compute_*` calls.
 /// - `roles`     - A map keyed by role names. The value is a tuple of a vector of `PropertyNameKind`
 ///                 like (Cli, Env or Files) and [`crate::role_utils::Role`] with a boxed [`Configuration`].
-pub fn transform_all_roles_to_config<T, U>(
+#[allow(clippy::type_complexity)]
+pub fn transform_all_roles_to_config<T, U, ProductSpecificCommonConfig>(
     resource: &T::Configurable,
-    roles: HashMap<String, (Vec<PropertyNameKind>, Role<T, U>)>,
+    roles: HashMap<
+        String,
+        (
+            Vec<PropertyNameKind>,
+            Role<T, U, ProductSpecificCommonConfig>,
+        ),
+    >,
 ) -> Result<RoleConfigByPropertyKind>
 where
     T: Configuration,
     U: Default + JsonSchema + Serialize,
+    ProductSpecificCommonConfig: Default + JsonSchema + Serialize,
 {
     let mut result = HashMap::new();
 
@@ -359,15 +367,16 @@ fn process_validation_result(
 /// - `role_name`      - The name of the role.
 /// - `role`           - The role for which to transform the configuration parameters.
 /// - `property_kinds` - Used as "buckets" to partition the configuration properties by.
-fn transform_role_to_config<T, U>(
+fn transform_role_to_config<T, U, ProductSpecificCommonConfig>(
     resource: &T::Configurable,
     role_name: &str,
-    role: &Role<T, U>,
+    role: &Role<T, U, ProductSpecificCommonConfig>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<RoleGroupConfigByPropertyKind>
 where
     T: Configuration,
     U: Default + JsonSchema + Serialize,
+    ProductSpecificCommonConfig: Default + JsonSchema + Serialize,
 {
     let mut result = HashMap::new();
 
@@ -422,10 +431,10 @@ where
 /// - `role_name`      - Not used directly but passed on to the `Configuration::compute_*` calls.
 /// - `config`         - The configuration properties to partition.
 /// - `property_kinds` - The "buckets" used to partition the configuration properties.
-fn parse_role_config<T>(
+fn parse_role_config<T, ProductSpecificCommonConfig>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &CommonConfiguration<T>,
+    config: &CommonConfiguration<T, ProductSpecificCommonConfig>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
@@ -452,8 +461,8 @@ where
     Ok(result)
 }
 
-fn parse_role_overrides<T>(
-    config: &CommonConfiguration<T>,
+fn parse_role_overrides<T, ProductSpecificCommonConfig>(
+    config: &CommonConfiguration<T, ProductSpecificCommonConfig>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
@@ -489,8 +498,8 @@ where
     Ok(result)
 }
 
-fn parse_file_overrides<T>(
-    config: &CommonConfiguration<T>,
+fn parse_file_overrides<T, ProductSpecificCommonConfig>(
+    config: &CommonConfiguration<T, ProductSpecificCommonConfig>,
     file: &str,
 ) -> Result<BTreeMap<String, Option<String>>>
 where
@@ -522,7 +531,7 @@ mod tests {
     }
 
     use super::*;
-    use crate::role_utils::{Role, RoleGroup};
+    use crate::role_utils::{GenericProductSpecificCommonConfig, Role, RoleGroup};
     use k8s_openapi::api::core::v1::PodTemplateSpec;
     use rstest::*;
     use std::collections::HashMap;
@@ -610,13 +619,14 @@ mod tests {
         config_overrides: Option<HashMap<String, HashMap<String, String>>>,
         env_overrides: Option<HashMap<String, String>>,
         cli_overrides: Option<BTreeMap<String, String>>,
-    ) -> CommonConfiguration<Box<TestConfig>> {
+    ) -> CommonConfiguration<Box<TestConfig>, GenericProductSpecificCommonConfig> {
         CommonConfiguration {
             config: test_config.unwrap_or_default(),
             config_overrides: config_overrides.unwrap_or_default(),
             env_overrides: env_overrides.unwrap_or_default(),
             cli_overrides: cli_overrides.unwrap_or_default(),
             pod_overrides: PodTemplateSpec::default(),
+            product_specific_common_config: GenericProductSpecificCommonConfig::default(),
         }
     }
 
