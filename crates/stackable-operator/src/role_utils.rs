@@ -81,7 +81,7 @@
 //! Each resource can have more operator specific labels.
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     fmt::{Debug, Display},
 };
 
@@ -188,21 +188,18 @@ pub struct JavaCommonConfig {
 #[serde(rename_all = "camelCase")]
 pub struct JvmArgumentOverrides {
     #[serde(default)]
-    add: BTreeSet<String>,
+    add: Vec<String>,
+
+    // HashSet to be optimized for quick lookup
+    #[serde(default)]
+    remove: HashSet<String>,
 
     #[serde(default)]
-    remove: BTreeSet<String>,
-
-    #[serde(default)]
-    remove_regex: BTreeSet<String>,
+    remove_regex: Vec<String>,
 }
 
 impl JvmArgumentOverrides {
-    pub fn new(
-        add: BTreeSet<String>,
-        remove: BTreeSet<String>,
-        remove_regex: BTreeSet<String>,
-    ) -> Self {
+    pub fn new(add: Vec<String>, remove: HashSet<String>, remove_regex: Vec<String>) -> Self {
         Self {
             add,
             remove,
@@ -210,7 +207,7 @@ impl JvmArgumentOverrides {
         }
     }
 
-    pub fn new_with_only_additions(add: BTreeSet<String>) -> Self {
+    pub fn new_with_only_additions(add: Vec<String>) -> Self {
         Self {
             add,
             ..Default::default()
@@ -220,7 +217,7 @@ impl JvmArgumentOverrides {
     /// Returns all arguments that should be passed to the JVM.
     ///
     /// **Can only be called on merged config, it will panic otherwise**
-    pub fn effective_jvm_config_after_merging(&self) -> &BTreeSet<String> {
+    pub fn effective_jvm_config_after_merging(&self) -> &Vec<String> {
         assert!(
             self.remove.is_empty(),
             "After merging there should be no removals left. \"effective_jvm_config_after_merging\" should only be called on merged configs!"
@@ -268,8 +265,8 @@ impl Merge for JvmArgumentOverrides {
             .collect();
 
         self.add = new_add;
-        self.remove = BTreeSet::new();
-        self.remove_regex = BTreeSet::new();
+        self.remove = HashSet::new();
+        self.remove_regex = Vec::new();
     }
 }
 
@@ -465,7 +462,7 @@ impl<K: Resource> Display for RoleGroupRef<K> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
+    use std::collections::HashSet;
 
     use crate::{config::merge::Merge, role_utils::JavaCommonConfig};
 
@@ -532,15 +529,15 @@ mod tests {
         role.merge(&operator_generated);
         role_group.merge(&role);
 
-        let expected = BTreeSet::from([
+        let expected = Vec::from([
             "-Xms34406m".to_owned(),
-            "-Xmx40000m".to_owned(),
             "-XX:+ExitOnOutOfMemoryError".to_owned(),
             "-Djava.protocol.handler.pkgs=sun.net.www.protocol".to_owned(),
             "-Dsun.net.http.allowRestrictedHeaders=true".to_owned(),
             "-Djava.security.properties=/stackable/nifi/conf/security.properties".to_owned(),
-            "-Djava.net.preferIPv4Stack=true".to_owned(),
             "-Dhttps.proxyHost=proxy.my.corp".to_owned(),
+            "-Djava.net.preferIPv4Stack=true".to_owned(),
+            "-Xmx40000m".to_owned(),
             "-Dhttps.proxyPort=1234".to_owned(),
         ]);
 
@@ -549,8 +546,8 @@ mod tests {
             JavaCommonConfig {
                 jvm_argument_overrides: JvmArgumentOverrides {
                     add: expected.clone(),
-                    remove: BTreeSet::new(),
-                    remove_regex: BTreeSet::new()
+                    remove: HashSet::new(),
+                    remove_regex: Vec::new()
                 }
             }
         );
@@ -560,6 +557,49 @@ mod tests {
                 .jvm_argument_overrides
                 .effective_jvm_config_after_merging(),
             &expected
+        );
+    }
+
+    #[test]
+    fn test_merge_java_common_config_keep_order() {
+        let operator_generated = JavaCommonConfig {
+            jvm_argument_overrides: JvmArgumentOverrides::new_with_only_additions(
+                ["-Xms1m".to_owned()].into(),
+            ),
+        };
+
+        let mut role: JavaCommonConfig = serde_yaml::from_str(
+            r#"
+                jvmArgumentOverrides:
+                    add:
+                    - -Xms2m
+                "#,
+        )
+        .unwrap();
+        let mut role_group: JavaCommonConfig = serde_yaml::from_str(
+            r#"
+            jvmArgumentOverrides:
+                add:
+                - -Xms3m
+            "#,
+        )
+        .unwrap();
+
+        // Please note that merge order is different than we normally do!
+        // This is not trivial, as the merge operation is not purely additive (as it is with e.g.
+        // PodTemplateSpec).
+        role.merge(&operator_generated);
+        role_group.merge(&role);
+
+        assert_eq!(
+            role_group
+                .jvm_argument_overrides
+                .effective_jvm_config_after_merging(),
+            &[
+                "-Xms1m".to_owned(),
+                "-Xms2m".to_owned(),
+                "-Xms3m".to_owned()
+            ]
         );
     }
 }
