@@ -367,9 +367,10 @@ where
     }
 
     /// Returns the product specific common config from
+    ///
     /// 1. The role
     /// 2. The role group
-    pub fn merged_product_specific_common_configs<'a>(
+    pub fn get_product_specific_common_configs<'a>(
         &'a self,
         role_group: &str,
     ) -> Result<
