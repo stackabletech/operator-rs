@@ -172,7 +172,8 @@ pub struct GenericProductSpecificCommonConfig {}
 pub struct JavaCommonConfig {
     /// Allows overriding JVM arguments.
     //
-    // TODO: Docs
+    /// Please read on the [JVM argument overrides documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/overrides#jvm-argument-overrides)
+    /// for details on the usage.
     #[serde(default)]
     pub jvm_argument_overrides: JvmArgumentOverrides,
 }
