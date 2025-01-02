@@ -100,14 +100,7 @@ use kube::{runtime::reflector::ObjectRef, Resource};
 use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use snafu::{OptionExt, Snafu};
 use tracing::instrument;
-
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("missing roleGroup {role_group:?}"))]
-    MissingRoleGroup { role_group: String },
-}
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(
@@ -364,30 +357,6 @@ where
                 .collect(),
         }
     }
-
-    /// Returns the product specific common config from
-    /// 1. The role
-    /// 2. The role group
-    pub fn merged_product_specific_common_configs<'a>(
-        &'a self,
-        role_group: &str,
-    ) -> Result<
-        (
-            &'a ProductSpecificCommonConfig,
-            &'a ProductSpecificCommonConfig,
-        ),
-        Error,
-    > {
-        let from_role = &self.config.product_specific_common_config;
-        let from_role_group = &self
-            .role_groups
-            .get(role_group)
-            .with_context(|| MissingRoleGroupSnafu { role_group })?
-            .config
-            .product_specific_common_config;
-
-        Ok((from_role, from_role_group))
-    }
 }
 
 /// This is a product-agnostic RoleConfig, which is sufficient for most of the products.
@@ -518,10 +487,6 @@ mod tests {
                 "#,
         )
         .unwrap();
-
-        // let mut merged = role_group;
-        // merged.merge(&role);
-        // merged.merge(&operator_generated);
 
         // Please note that merge order is different than we normally do!
         // This is not trivial, as the merge operation is not purely additive (as it is with e.g.
