@@ -3277,14 +3277,14 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "stackable-versioned-macros",
 ]
 
 [[package]]
 name = "stackable-versioned-macros"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "convert_case",
  "darling",

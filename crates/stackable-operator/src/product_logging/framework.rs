@@ -12,7 +12,7 @@ use crate::{
         apimachinery::pkg::api::resource::Quantity,
     },
     kube::Resource,
-    memory::{BinaryMultiple, MemoryQuantity},
+    quantity::{BinaryByteMultiple, MemoryQuantity, Suffix},
     role_utils::RoleGroupRef,
 };
 
@@ -105,7 +105,7 @@ pub fn calculate_log_volume_size_limit(max_log_files_size: &[MemoryQuantity]) ->
         .iter()
         .cloned()
         .sum::<MemoryQuantity>()
-        .scale_to(BinaryMultiple::Mebi)
+        .scale_to(Suffix::BinaryByteMultiple(BinaryByteMultiple::Mebi))
         // According to the reasons mentioned in the function documentation, the multiplier must be
         // greater than 2. Manual tests with ZooKeeper 3.8 in an OpenShift cluster showed that 3 is
         // absolutely sufficient.

@@ -5,11 +5,7 @@ use k8s_openapi::{
 };
 use tracing::warn;
 
-use crate::{
-    commons::resources::ResourceRequirementsType,
-    cpu::{self, CpuQuantity},
-    memory::{self, MemoryQuantity},
-};
+use crate::{commons::resources::ResourceRequirementsType, quantity::CpuQuantity};
 
 const RESOURCE_DENYLIST: &[&str] = &["cpu", "memory"];
 

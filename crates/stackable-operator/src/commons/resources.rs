@@ -68,14 +68,6 @@
 //! }
 //! ```
 
-use crate::{
-    config::{
-        fragment::{Fragment, FromFragment},
-        merge::Merge,
-    },
-    cpu::CpuQuantity,
-    memory::MemoryQuantity,
-};
 use educe::Educe;
 use k8s_openapi::api::core::v1::{
     Container, PersistentVolumeClaim, PersistentVolumeClaimSpec, PodSpec, ResourceRequirements,
@@ -88,6 +80,12 @@ use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::{collections::BTreeMap, fmt::Debug};
 use strum::Display;
+
+use crate::config::{
+    fragment::{Fragment, FromFragment},
+    merge::Merge,
+};
+use crate::quantity::{CpuQuantity, MemoryQuantity};
 
 pub const LIMIT_REQUEST_RATIO_CPU: f32 = 5.0;
 pub const LIMIT_REQUEST_RATIO_MEMORY: f32 = 1.0;
