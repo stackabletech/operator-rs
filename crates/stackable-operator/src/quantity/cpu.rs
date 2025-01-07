@@ -10,7 +10,7 @@ use crate::quantity::{
     DecimalByteMultiple, ParseQuantityError, Quantity, Suffix,
 };
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct CpuQuantity(Quantity);
 
 impl Deref for CpuQuantity {

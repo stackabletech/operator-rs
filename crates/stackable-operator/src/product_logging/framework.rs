@@ -101,17 +101,16 @@ pub enum LoggingError {
 ///     .unwrap();
 /// ```
 pub fn calculate_log_volume_size_limit(max_log_files_size: &[MemoryQuantity]) -> Quantity {
-    let log_volume_size_limit = max_log_files_size
-        .iter()
-        .cloned()
-        .sum::<MemoryQuantity>()
-        .scale_to(Suffix::BinaryByteMultiple(BinaryByteMultiple::Mebi))
+    let mut log_volume_size_limit = max_log_files_size.iter().cloned().sum::<MemoryQuantity>();
+    log_volume_size_limit.scale_to(Suffix::BinaryByteMultiple(BinaryByteMultiple::Mebi));
+    log_volume_size_limit
         // According to the reasons mentioned in the function documentation, the multiplier must be
         // greater than 2. Manual tests with ZooKeeper 3.8 in an OpenShift cluster showed that 3 is
         // absolutely sufficient.
-        .mul(3.0)
+        .mul(3.0f32)
         // Avoid bulky numbers due to the floating-point arithmetic.
         .ceil();
+
     log_volume_size_limit.into()
 }
 

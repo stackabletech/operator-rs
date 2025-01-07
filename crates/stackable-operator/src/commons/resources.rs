@@ -67,28 +67,34 @@
 //!     shared_storage: PvcConfig,
 //! }
 //! ```
+use std::{collections::BTreeMap, fmt::Debug};
 
 use educe::Educe;
-use k8s_openapi::api::core::v1::{
-    Container, PersistentVolumeClaim, PersistentVolumeClaimSpec, PodSpec, ResourceRequirements,
-    VolumeResourceRequirements,
+use k8s_openapi::{
+    api::core::v1::{
+        Container, PersistentVolumeClaim, PersistentVolumeClaimSpec, PodSpec, ResourceRequirements,
+        VolumeResourceRequirements,
+    },
+    apimachinery::pkg::{
+        api::resource::Quantity,
+        apis::meta::v1::{LabelSelector, ObjectMeta},
+    },
 };
-use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{LabelSelector, ObjectMeta};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
-use std::{collections::BTreeMap, fmt::Debug};
 use strum::Display;
 
-use crate::config::{
-    fragment::{Fragment, FromFragment},
-    merge::Merge,
+use crate::{
+    config::{
+        fragment::{Fragment, FromFragment},
+        merge::Merge,
+    },
+    quantity::{CpuQuantity, MemoryQuantity, ParseQuantityError},
 };
-use crate::quantity::{CpuQuantity, MemoryQuantity};
 
-pub const LIMIT_REQUEST_RATIO_CPU: f32 = 5.0;
-pub const LIMIT_REQUEST_RATIO_MEMORY: f32 = 1.0;
+pub const LIMIT_REQUEST_RATIO_CPU: f64 = 5.0;
+pub const LIMIT_REQUEST_RATIO_MEMORY: f64 = 1.0;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -107,20 +113,20 @@ pub enum Error {
     LimitToRequestRatioExceeded {
         container_name: String,
         resource_key: String,
-        allowed_ration: f32,
+        allowed_ration: f64,
     },
 
     #[snafu(display("failed to convert Quantity to CpuQuantity for cpu limit"))]
-    CpuLimit { source: crate::cpu::Error },
+    CpuLimit { source: ParseQuantityError },
 
     #[snafu(display("failed to convert Quantity to CpuQuantity for cpu request"))]
-    CpuRequest { source: crate::cpu::Error },
+    CpuRequest { source: ParseQuantityError },
 
     #[snafu(display("failed to convert Quantity to MemoryQuantity for memory limit"))]
-    MemoryLimit { source: crate::memory::Error },
+    MemoryLimit { source: ParseQuantityError },
 
     #[snafu(display("failed to convert Quantity to MemoryQuantity for memory request"))]
-    MemoryRequest { source: crate::memory::Error },
+    MemoryRequest { source: ParseQuantityError },
 }
 
 /// Resource usage is configured here, this includes CPU usage, memory usage and disk storage
@@ -427,7 +433,7 @@ pub trait ResourceRequirementsExt {
         &self,
         resource: &ComputeResource,
         // We did choose a f32 instead of a usize here, as LimitRange ratios can be a floating point (Quantity - e.g. 1500m)
-        ratio: f32,
+        ratio: f64,
     ) -> Result<()>;
 }
 
@@ -457,7 +463,7 @@ impl ResourceRequirementsExt for Container {
         Ok(())
     }
 
-    fn check_limit_to_request_ratio(&self, resource: &ComputeResource, ratio: f32) -> Result<()> {
+    fn check_limit_to_request_ratio(&self, resource: &ComputeResource, ratio: f64) -> Result<()> {
         let limit = self
             .resources
             .as_ref()
@@ -509,7 +515,7 @@ impl ResourceRequirementsExt for PodSpec {
         Ok(())
     }
 
-    fn check_limit_to_request_ratio(&self, resource: &ComputeResource, ratio: f32) -> Result<()> {
+    fn check_limit_to_request_ratio(&self, resource: &ComputeResource, ratio: f64) -> Result<()> {
         for container in &self.containers {
             container.check_limit_to_request_ratio(resource, ratio)?;
         }

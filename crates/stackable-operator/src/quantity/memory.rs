@@ -18,7 +18,7 @@ pub trait JavaHeap {
     fn to_java_heap_string(&self) -> Result<String, String>;
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct MemoryQuantity(Quantity);
 
 impl Deref for MemoryQuantity {

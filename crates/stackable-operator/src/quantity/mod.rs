@@ -16,7 +16,7 @@ mod ops;
 pub use cpu::*;
 pub use memory::*;
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 pub enum ParseQuantityError {
     #[snafu(display("input is either empty or contains non-ascii characters"))]
     InvalidFormat,
@@ -28,7 +28,7 @@ pub enum ParseQuantityError {
     InvalidSuffix { source: ParseSuffixError },
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct Quantity {
     // FIXME (@Techassi): Support arbitrary-precision numbers
     /// The numeric value of the quantity.
@@ -138,22 +138,26 @@ impl Quantity {
                 let factor = (s.base() as f64).powf(s.exponent())
                     / (suffix.base() as f64).powf(suffix.exponent());
 
-                *v = *v * factor;
+                *v *= factor;
                 *s = suffix;
 
                 false
             }
         }
     }
+
+    pub fn ceil(&mut self) {
+        self.value = self.value.ceil();
+    }
 }
 
-#[derive(Debug, Snafu)]
+#[derive(Debug, PartialEq, Snafu)]
 #[snafu(display("failed to parse {input:?} as quantity suffix"))]
 pub struct ParseSuffixError {
     input: String,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum Suffix {
     DecimalByteMultiple(DecimalByteMultiple),
     BinaryByteMultiple(BinaryByteMultiple),
@@ -244,7 +248,7 @@ pub trait SuffixMultiple {
 /// - <https://physics.nist.gov/cuu/Units/binary.html>
 ///
 /// [k8s-serialization-format]: https://github.com/kubernetes/apimachinery/blob/8c60292e48e46c4faa1e92acb232ce6adb37512c/pkg/api/resource/quantity.go#L37-L59
-#[derive(Clone, Debug, PartialEq, strum::Display, strum::EnumString)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, strum::Display, strum::EnumString)]
 pub enum BinaryByteMultiple {
     #[strum(serialize = "Ki")]
     Kibi,
@@ -310,7 +314,7 @@ impl SuffixMultiple for BinaryByteMultiple {
 /// - <https://physics.nist.gov/cuu/Units/binary.html>
 ///
 /// [k8s-serialization-format]: https://github.com/kubernetes/apimachinery/blob/8c60292e48e46c4faa1e92acb232ce6adb37512c/pkg/api/resource/quantity.go#L37-L59
-#[derive(Clone, Debug, PartialEq, strum::Display, strum::EnumString)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, strum::Display, strum::EnumString)]
 pub enum DecimalByteMultiple {
     #[strum(serialize = "m")]
     Milli,
@@ -355,7 +359,7 @@ impl SuffixMultiple for DecimalByteMultiple {
 /// ### See
 ///
 /// - <https://en.wikipedia.org/wiki/Scientific_notation#E_notation>
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct DecimalExponent(f64);
 
 impl Deref for DecimalExponent {
@@ -471,10 +475,10 @@ mod test {
         #[case] output: &str,
         #[case] scaled: bool,
     ) {
-        let parsed = Quantity::from_str(input).unwrap();
-        let (quantity, was_scaled) = parsed.scale_to(Suffix::BinaryByteMultiple(scale_to));
+        let mut parsed = Quantity::from_str(input).unwrap();
+        let was_scaled = parsed.scale_to(Suffix::BinaryByteMultiple(scale_to));
 
-        assert_eq!(quantity.to_string(), output);
+        assert_eq!(parsed.to_string(), output);
         assert_eq!(was_scaled, scaled);
     }
 
@@ -487,10 +491,10 @@ mod test {
         #[case] output: &str,
         #[case] scaled: bool,
     ) {
-        let parsed = Quantity::from_str(input).unwrap();
-        let (quantity, was_scaled) = parsed.scale_to(Suffix::DecimalByteMultiple(scale_to));
+        let mut parsed = Quantity::from_str(input).unwrap();
+        let was_scaled = parsed.scale_to(Suffix::DecimalByteMultiple(scale_to));
 
-        assert_eq!(quantity.to_string(), output);
+        assert_eq!(parsed.to_string(), output);
         assert_eq!(was_scaled, scaled);
     }
 
@@ -504,10 +508,10 @@ mod test {
         #[case] output: &str,
         #[case] scaled: bool,
     ) {
-        let parsed = Quantity::from_str(input).unwrap();
-        let (quantity, was_scaled) = parsed.scale_to(Suffix::DecimalByteMultiple(scale_to));
+        let mut parsed = Quantity::from_str(input).unwrap();
+        let was_scaled = parsed.scale_to(Suffix::DecimalByteMultiple(scale_to));
 
-        assert_eq!(quantity.to_string(), output);
+        assert_eq!(parsed.to_string(), output);
         assert_eq!(was_scaled, scaled);
     }
 
@@ -521,10 +525,10 @@ mod test {
         #[case] output: &str,
         #[case] scaled: bool,
     ) {
-        let parsed = Quantity::from_str(input).unwrap();
-        let (quantity, was_scaled) = parsed.scale_to(Suffix::DecimalExponent(scale_to));
+        let mut parsed = Quantity::from_str(input).unwrap();
+        let was_scaled = parsed.scale_to(Suffix::DecimalExponent(scale_to));
 
-        assert_eq!(quantity.to_string(), output);
+        assert_eq!(parsed.to_string(), output);
         assert_eq!(was_scaled, scaled);
     }
 }
