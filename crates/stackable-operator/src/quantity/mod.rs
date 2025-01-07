@@ -115,24 +115,33 @@ impl TryFrom<&K8sQuantity> for Quantity {
 }
 
 impl Quantity {
+    // TODO (@Techassi): Discuss if this should consume or mutate in place. Consumption requires us
+    // to add these function on specialized quantities (which then forward). If we mutate in place,
+    // we could leverage the Deref impl instead.
+
     /// Optionally scales up or down to the provided `suffix`.
     ///
-    /// It additionally returns `true` if the suffix was scaled, and `false` if it was not. This can
-    /// be the case if the suffixes already match, the quantity has no suffix, or if the value is 0.
-    pub fn scale_to(self, suffix: Suffix) -> (Self, bool) {
-        match (self.value, &self.suffix) {
-            (_, None) | (0.0, _) => (self, false),
-            (_, Some(s)) if *s == suffix => (self, false),
+    /// It additionally returns `true` if the suffix was scaled, and `false` in the following cases:
+    ///
+    /// - the suffixes already match
+    /// - the quantity has no suffix, in which case the suffix will be added without scaling
+    /// - the value is 0
+    pub fn scale_to(&mut self, suffix: Suffix) -> bool {
+        match (&mut self.value, &mut self.suffix) {
+            (0.0, _) => false,
+            (_, Some(s)) if *s == suffix => false,
+            (_, None) => {
+                self.suffix = Some(suffix);
+                false
+            }
             (v, Some(s)) => {
                 let factor = (s.base() as f64).powf(s.exponent())
                     / (suffix.base() as f64).powf(suffix.exponent());
 
-                let quantity = Self {
-                    value: v * factor,
-                    suffix: Some(suffix),
-                };
+                *v = *v * factor;
+                *s = suffix;
 
-                (quantity, true)
+                false
             }
         }
     }

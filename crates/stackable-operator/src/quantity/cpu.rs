@@ -1,4 +1,7 @@
-use std::{ops::Deref, str::FromStr};
+use std::{
+    ops::{Deref, DerefMut},
+    str::FromStr,
+};
 
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity as K8sQuantity;
 
@@ -18,12 +21,24 @@ impl Deref for CpuQuantity {
     }
 }
 
+impl DerefMut for CpuQuantity {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 impl FromStr for CpuQuantity {
     type Err = ParseQuantityError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let quantity = Quantity::from_str(input)?;
         Ok(Self(quantity))
+    }
+}
+
+impl From<CpuQuantity> for K8sQuantity {
+    fn from(value: CpuQuantity) -> Self {
+        K8sQuantity(value.to_string())
     }
 }
 
