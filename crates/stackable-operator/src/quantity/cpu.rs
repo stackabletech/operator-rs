@@ -3,7 +3,8 @@ use std::{ops::Deref, str::FromStr};
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity as K8sQuantity;
 
 use crate::quantity::{
-    macros::forward_from_impls, DecimalByteMultiple, ParseQuantityError, Quantity, Suffix,
+    macros::{forward_from_impls, forward_op_impls},
+    DecimalByteMultiple, ParseQuantityError, Quantity, Suffix,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -27,6 +28,16 @@ impl FromStr for CpuQuantity {
 }
 
 forward_from_impls!(Quantity, K8sQuantity, CpuQuantity);
+forward_op_impls!(
+    CpuQuantity(Quantity {
+        value: 0.0,
+        suffix: None,
+    }),
+    CpuQuantity,
+    usize,
+    f32,
+    f64
+);
 
 impl CpuQuantity {
     pub fn from_millis(value: u32) -> Self {

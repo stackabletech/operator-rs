@@ -9,7 +9,9 @@ use k8s_openapi::apimachinery::pkg::api::resource::Quantity as K8sQuantity;
 use snafu::{ensure, ResultExt as _, Snafu};
 
 mod cpu;
+mod macros;
 mod memory;
+mod ops;
 
 pub use cpu::*;
 pub use memory::*;
@@ -367,36 +369,6 @@ impl SuffixMultiple for DecimalExponent {
     fn exponent(&self) -> f64 {
         self.0
     }
-}
-
-mod macros {
-    macro_rules! forward_from_impls {
-        ($q:ty, $kq:ty, $for:ty) => {
-            impl From<$q> for $for {
-                fn from(quantity: $q) -> Self {
-                    Self(quantity)
-                }
-            }
-
-            impl TryFrom<$kq> for $for {
-                type Error = ParseQuantityError;
-
-                fn try_from(value: $kq) -> Result<Self, Self::Error> {
-                    Ok(Self(Quantity::try_from(value)?))
-                }
-            }
-
-            impl TryFrom<&$kq> for $for {
-                type Error = ParseQuantityError;
-
-                fn try_from(value: &$kq) -> Result<Self, Self::Error> {
-                    Ok(Self(Quantity::try_from(value)?))
-                }
-            }
-        };
-    }
-
-    pub(crate) use forward_from_impls;
 }
 
 #[cfg(test)]

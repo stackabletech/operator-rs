@@ -3,7 +3,8 @@ use std::{ops::Deref, str::FromStr};
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity as K8sQuantity;
 
 use crate::quantity::{
-    macros::forward_from_impls, BinaryByteMultiple, ParseQuantityError, Quantity, Suffix,
+    macros::{forward_from_impls, forward_op_impls},
+    BinaryByteMultiple, ParseQuantityError, Quantity, Suffix,
 };
 
 pub trait JavaHeap {
@@ -35,6 +36,18 @@ impl FromStr for MemoryQuantity {
 }
 
 forward_from_impls!(Quantity, K8sQuantity, MemoryQuantity);
+forward_op_impls!(
+    MemoryQuantity(Quantity {
+        value: 0.0,
+        // TODO (@Techassi): This needs to be talked about. The previous implementation used Kibi
+        // here. Code which relies on that fact (for later scaling) will thus break.
+        suffix: None,
+    }),
+    MemoryQuantity,
+    usize,
+    f32,
+    f64
+);
 
 impl MemoryQuantity {
     pub const fn from_gibi(value: f64) -> Self {
