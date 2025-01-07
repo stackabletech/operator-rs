@@ -141,7 +141,7 @@ impl Quantity {
                 *v *= factor;
                 *s = suffix;
 
-                false
+                true
             }
         }
     }
