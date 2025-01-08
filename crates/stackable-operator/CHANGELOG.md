@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Bump all Rust dependencies (except opentelemetry-related) and enable Kubernetes 1.32 (via `kube` 0.98.0 and `k8s-openapi` 0.23.0) ([#867]).
+- BREAKING: Bump all Rust dependencies (except opentelemetry-related) and enable Kubernetes 1.32 (via `kube` 0.98.0 and `k8s-openapi` 0.23.0) ([#867]).
 
 ## [0.83.0] - 2024-12-03
 
