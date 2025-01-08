@@ -40,7 +40,7 @@ fn error_to_event<E: ReconcilerError>(err: &E) -> Event {
 
 /// Reports an error coming from a controller to Kubernetes
 ///
-/// This is inteded to be executed on the log entries returned by [`kube::runtime::Controller::run`]
+/// This is intended to be executed on the log entries returned by [`kube::runtime::Controller::run`]
 #[tracing::instrument(skip(client))]
 pub fn publish_controller_error_as_k8s_event<ReconcileErr, QueueErr>(
     client: &Client,
@@ -50,24 +50,24 @@ pub fn publish_controller_error_as_k8s_event<ReconcileErr, QueueErr>(
     ReconcileErr: ReconcilerError,
     QueueErr: Error,
 {
-    let (error, obj) = match controller_error {
-        controller::Error::ReconcilerFailed(err, obj) => (err, obj),
+    let controller::Error::ReconcilerFailed(error, obj) = controller_error else {
         // Other error types are intended for the operator administrator, and aren't linked to a specific object
-        _ => return,
+        return;
     };
+
     let recorder = Recorder::new(
         client.as_kube_client(),
         Reporter {
             controller: controller.to_string(),
             instance: None,
         },
-        obj.clone().into(),
     );
     let event = error_to_event(error);
+    let obj_ref = obj.clone().into();
     // Run in the background
     tokio::spawn(
         async move {
-            if let Err(err) = recorder.publish(event).await {
+            if let Err(err) = recorder.publish(&event, &obj_ref).await {
                 tracing::error!(
                     error = &err as &dyn std::error::Error,
                     "Failed to report error as K8s event"
