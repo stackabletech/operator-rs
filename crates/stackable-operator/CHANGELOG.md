@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add `ProductSpecificCommonConfig`, so that products can have custom fields on the `commonConfig`.
+- Add `ProductSpecificCommonConfig`, so that product operators can have custom fields on the `commonConfig`.
   Also add a `JavaCommonConfig`, which can be used by JVM based tools to offer `jvmArgumentOverrides` ([#931])
 
 [#931]: https://github.com/stackabletech/operator-rs/pull/931
