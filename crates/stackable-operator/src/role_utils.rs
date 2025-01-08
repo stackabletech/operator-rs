@@ -159,7 +159,7 @@ pub struct CommonConfiguration<T, ProductSpecificCommonConfig> {
     // No docs needed, as we flatten this struct.
     //
     // This field is product-specific and can contain e.g. jvmArgumentOverrides.
-    // It is not accessible by operators, please use <TODO link to functions> to read the value
+    // It is not accessible by operators, please use [`Role::get_product_specific_common_configs`] to read the values.
     #[serde(flatten, default)]
     pub(crate) product_specific_common_config: ProductSpecificCommonConfig,
 }
