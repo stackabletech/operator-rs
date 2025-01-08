@@ -1,31 +1,37 @@
-/// This macro is intended to be used to implement the From and TryFrom traits on specialized
-/// quantities.
-///
-/// Currently two specialized quantities exist: [`MemoryQuantity`][1] and [`CpuQuantity`][2].
-/// The traits are implemented by forwarding to the inner [`Quantity`][3] implementation. Both
-/// specialized quantities are just newtypes / wrappers around [`Quantity`][3].
-///
-/// [1]: super::MemoryQuantity
-/// [2]: super::CpuQuantity
-/// [3]: super::Quantity
+macro_rules! forward_quantity_impls {
+    ($for:ty, $kq:ty, $($on:ty),+) => {
+        $crate::quantity::macros::forward_from_impls!($for, $kq);
+        $crate::quantity::macros::forward_op_impls!($for, $($on),*);
+    };
+}
+
 macro_rules! forward_from_impls {
-    ($q:ty, $kq:ty, $for:ty) => {
-        impl From<$q> for $for {
-            fn from(quantity: $q) -> Self {
+    ($for:ty, $kq:ty) => {
+        impl ::std::str::FromStr for $for {
+            type Err = $crate::quantity::ParseQuantityError;
+
+            fn from_str(input: &str) -> Result<Self, Self::Err> {
+                let quantity = $crate::quantity::Quantity::from_str(input)?;
+                Ok(Self(quantity))
+            }
+        }
+
+        impl From<$crate::quantity::Quantity> for $for {
+            fn from(quantity: $crate::quantity::Quantity) -> Self {
                 Self(quantity)
             }
         }
 
         impl TryFrom<$kq> for $for {
-            type Error = ParseQuantityError;
+            type Error = $crate::quantity::ParseQuantityError;
 
             fn try_from(value: $kq) -> Result<Self, Self::Error> {
-                Ok(Self(Quantity::try_from(value)?))
+                Ok(Self($crate::quantity::Quantity::try_from(value)?))
             }
         }
 
         impl TryFrom<&$kq> for $for {
-            type Error = ParseQuantityError;
+            type Error = $crate::quantity::ParseQuantityError;
 
             fn try_from(value: &$kq) -> Result<Self, Self::Error> {
                 Ok(Self(Quantity::try_from(value)?))
@@ -35,7 +41,7 @@ macro_rules! forward_from_impls {
 }
 
 macro_rules! forward_op_impls {
-    ($acc:expr, $for:ty, $($on:ty),+) => {
+    ($for:ty, $($on:ty),+) => {
         impl ::std::ops::Add for $for {
             type Output = $for;
 
@@ -72,15 +78,6 @@ macro_rules! forward_op_impls {
             }
         }
 
-        impl ::std::iter::Sum for $for {
-            fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-                iter.fold(
-                    $acc,
-                    <$for as ::std::ops::Add>::add,
-                )
-            }
-        }
-
         $(
             impl ::std::ops::Mul<$on> for $for {
                 type Output = $for;
@@ -99,6 +96,7 @@ macro_rules! forward_op_impls {
     };
 }
 
-/// HACK: Make the macros only available in this crate.
+// HACK: Make the macros only available in this crate.
 pub(crate) use forward_from_impls;
 pub(crate) use forward_op_impls;
+pub(crate) use forward_quantity_impls;

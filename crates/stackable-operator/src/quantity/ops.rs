@@ -1,7 +1,4 @@
-use std::{
-    iter::Sum,
-    ops::{Add, AddAssign, Div, Mul, MulAssign, Sub, SubAssign},
-};
+use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Sub, SubAssign};
 
 use crate::quantity::Quantity;
 
@@ -9,6 +6,8 @@ impl Add for Quantity {
     type Output = Quantity;
 
     fn add(self, rhs: Quantity) -> Self::Output {
+        let rhs = rhs.scale_to(self.suffix);
+
         Self {
             value: self.value + rhs.value,
             ..self
@@ -18,7 +17,7 @@ impl Add for Quantity {
 
 impl AddAssign for Quantity {
     fn add_assign(&mut self, rhs: Quantity) {
-        self.value += rhs.value
+        *self = self.add(rhs)
     }
 }
 
@@ -26,6 +25,8 @@ impl Sub for Quantity {
     type Output = Quantity;
 
     fn sub(self, rhs: Quantity) -> Self::Output {
+        let rhs = rhs.scale_to(self.suffix);
+
         Self {
             value: self.value - rhs.value,
             ..self
@@ -35,7 +36,7 @@ impl Sub for Quantity {
 
 impl SubAssign for Quantity {
     fn sub_assign(&mut self, rhs: Self) {
-        self.value -= rhs.value
+        *self = self.sub(rhs)
     }
 }
 
@@ -52,7 +53,7 @@ impl Mul<usize> for Quantity {
 
 impl MulAssign<usize> for Quantity {
     fn mul_assign(&mut self, rhs: usize) {
-        self.value *= rhs as f64
+        *self = self.mul(rhs)
     }
 }
 
@@ -69,7 +70,7 @@ impl Mul<f32> for Quantity {
 
 impl MulAssign<f32> for Quantity {
     fn mul_assign(&mut self, rhs: f32) {
-        self.value *= rhs as f64
+        *self = self.mul(rhs)
     }
 }
 
@@ -86,7 +87,7 @@ impl Mul<f64> for Quantity {
 
 impl MulAssign<f64> for Quantity {
     fn mul_assign(&mut self, rhs: f64) {
-        self.value *= rhs
+        *self = self.mul(rhs)
     }
 }
 
@@ -94,18 +95,7 @@ impl Div for Quantity {
     type Output = f64;
 
     fn div(self, rhs: Self) -> Self::Output {
+        let rhs = rhs.scale_to(self.suffix);
         self.value / rhs.value
-    }
-}
-
-impl Sum for Quantity {
-    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.fold(
-            Quantity {
-                value: 0.0,
-                suffix: None,
-            },
-            Quantity::add,
-        )
     }
 }
