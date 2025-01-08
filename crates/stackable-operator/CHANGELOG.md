@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- BREAKING: Aggregate emitted Kubernetes events on the CustomResources thanks to the new [kube feature](https://github.com/kube-rs/controller-rs/pull/116).
+  Instead of spamming the same Warning over and over it now uses `EventSeries` to have a nice - single - Age `3s (x11 over 53s)`.
+
+  First off this makes `report_controller_error` async.
+  Also you now need to pass a `Recorder` instead of a `Client` instead.
+  You need to store the `Recorder` across all `reconcile` invocations, so that it can do the aggregation correctly.
+
+  Also make sure that the operator has the permission to `patch` events (previously only `create` was needed)! ([#867]).
+
 ### Changed
 
 - BREAKING: Bump all Rust dependencies (except opentelemetry-related) and enable Kubernetes 1.32 (via `kube` 0.98.0 and `k8s-openapi` 0.23.0) ([#867]).
