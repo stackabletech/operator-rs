@@ -38,10 +38,10 @@ pub struct Quantity {
     /// need to support these huge numbers.
     value: f64,
 
-    /// The optional suffix of the quantity.
+    /// The suffix of the quantity.
     ///
     /// This field holds data parsed from `<suffix>` according to the spec.
-    suffix: Option<Suffix>,
+    suffix: Suffix,
 }
 
 impl FromStr for Quantity {
@@ -52,8 +52,8 @@ impl FromStr for Quantity {
 
         if input == "0" {
             return Ok(Self {
+                suffix: Suffix::DecimalMultiple(DecimalMultiple::Empty),
                 value: 0.0,
-                suffix: None,
             });
         }
 
@@ -63,16 +63,14 @@ impl FromStr for Quantity {
                 let value = f64::from_str(parts.0).context(InvalidFloatSnafu)?;
                 let suffix = Suffix::from_str(parts.1).context(InvalidSuffixSnafu)?;
 
-                Ok(Self {
-                    suffix: Some(suffix),
-                    value,
-                })
+                Ok(Self { suffix, value })
             }
             None => {
                 let value = f64::from_str(input).context(InvalidFloatSnafu)?;
+
                 Ok(Self {
+                    suffix: Suffix::DecimalMultiple(DecimalMultiple::Empty),
                     value,
-                    suffix: None,
                 })
             }
         }
@@ -85,15 +83,23 @@ impl Display for Quantity {
             return f.write_char('0');
         }
 
-        match &self.suffix {
-            Some(suffix) => write!(f, "{value}{suffix}", value = self.value,),
-            None => write!(f, "{value}", value = self.value),
-        }
+        write!(
+            f,
+            "{value}{suffix}",
+            value = self.value,
+            suffix = self.suffix
+        )
     }
 }
 
 impl From<Quantity> for K8sQuantity {
     fn from(value: Quantity) -> Self {
+        K8sQuantity(value.to_string())
+    }
+}
+
+impl From<&Quantity> for K8sQuantity {
+    fn from(value: &Quantity) -> Self {
         K8sQuantity(value.to_string())
     }
 }
@@ -115,39 +121,26 @@ impl TryFrom<&K8sQuantity> for Quantity {
 }
 
 impl Quantity {
-    // TODO (@Techassi): Discuss if this should consume or mutate in place. Consumption requires us
-    // to add these function on specialized quantities (which then forward). If we mutate in place,
-    // we could leverage the Deref impl instead.
-
     /// Optionally scales up or down to the provided `suffix`.
     ///
-    /// It additionally returns `true` if the suffix was scaled, and `false` in the following cases:
+    /// This function returns a value pair which contains an optional [`Quantity`] and a bool
+    /// indicating if the function performed any scaling. It returns `false` in the following cases:
     ///
     /// - the suffixes already match
-    /// - the quantity has no suffix, in which case the suffix will be added without scaling
     /// - the value is 0
-    pub fn scale_to(&mut self, suffix: Suffix) -> bool {
-        match (&mut self.value, &mut self.suffix) {
-            (0.0, _) => false,
-            (_, Some(s)) if *s == suffix => false,
-            (_, None) => {
-                self.suffix = Some(suffix);
-                false
-            }
-            (v, Some(s)) => {
-                let factor = (s.base() as f64).powf(s.exponent())
-                    / (suffix.base() as f64).powf(suffix.exponent());
+    pub fn scale_to(self, suffix: Suffix) -> Self {
+        match (self.value, &self.suffix) {
+            (0.0, _) => self,
+            (_, s) if *s == suffix => self,
+            (v, s) => {
+                let factor = s.factor() / suffix.factor();
 
-                *v *= factor;
-                *s = suffix;
-
-                true
+                Self {
+                    value: v * factor,
+                    suffix,
+                }
             }
         }
-    }
-
-    pub fn ceil(&mut self) {
-        self.value = self.value.ceil();
     }
 }
 
@@ -159,8 +152,8 @@ pub struct ParseSuffixError {
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum Suffix {
-    DecimalByteMultiple(DecimalByteMultiple),
-    BinaryByteMultiple(BinaryByteMultiple),
+    DecimalMultiple(DecimalMultiple),
+    BinaryMultiple(BinaryMultiple),
     DecimalExponent(DecimalExponent),
 }
 
@@ -168,12 +161,12 @@ impl FromStr for Suffix {
     type Err = ParseSuffixError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        if let Ok(binary_si) = BinaryByteMultiple::from_str(input) {
-            return Ok(Self::BinaryByteMultiple(binary_si));
+        if let Ok(binary_si) = BinaryMultiple::from_str(input) {
+            return Ok(Self::BinaryMultiple(binary_si));
         }
 
-        if let Ok(decimal_si) = DecimalByteMultiple::from_str(input) {
-            return Ok(Self::DecimalByteMultiple(decimal_si));
+        if let Ok(decimal_si) = DecimalMultiple::from_str(input) {
+            return Ok(Self::DecimalMultiple(decimal_si));
         }
 
         if input.starts_with(['e', 'E']) {
@@ -189,39 +182,21 @@ impl FromStr for Suffix {
 impl Display for Suffix {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Suffix::DecimalByteMultiple(decimal) => write!(f, "{decimal}"),
-            Suffix::BinaryByteMultiple(binary) => write!(f, "{binary}"),
+            Suffix::DecimalMultiple(decimal) => write!(f, "{decimal}"),
+            Suffix::BinaryMultiple(binary) => write!(f, "{binary}"),
             Suffix::DecimalExponent(float) => write!(f, "e{float}"),
         }
     }
 }
 
 impl Suffix {
-    pub fn exponent(&self) -> f64 {
+    pub fn factor(&self) -> f64 {
         match self {
-            Suffix::DecimalByteMultiple(s) => s.exponent(),
-            Suffix::BinaryByteMultiple(s) => s.exponent(),
-            Suffix::DecimalExponent(s) => s.exponent(),
+            Suffix::DecimalMultiple(s) => s.factor(),
+            Suffix::BinaryMultiple(s) => s.factor(),
+            Suffix::DecimalExponent(s) => s.factor(),
         }
     }
-
-    pub fn base(&self) -> usize {
-        match self {
-            Suffix::DecimalByteMultiple(_) => DecimalByteMultiple::BASE,
-            Suffix::BinaryByteMultiple(_) => BinaryByteMultiple::BASE,
-            Suffix::DecimalExponent(_) => DecimalExponent::BASE,
-        }
-    }
-}
-
-/// Provides a trait for suffix multiples to provide their base and exponent for each unit variant
-/// or scientific notation exponent.
-pub trait SuffixMultiple {
-    /// The base of the multiple.
-    const BASE: usize;
-
-    /// Returns the exponent based on the unit variant or scientific notation exponent.
-    fn exponent(&self) -> f64;
 }
 
 /// Supported byte-multiples based on powers of 2.
@@ -249,7 +224,7 @@ pub trait SuffixMultiple {
 ///
 /// [k8s-serialization-format]: https://github.com/kubernetes/apimachinery/blob/8c60292e48e46c4faa1e92acb232ce6adb37512c/pkg/api/resource/quantity.go#L37-L59
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, strum::Display, strum::EnumString)]
-pub enum BinaryByteMultiple {
+pub enum BinaryMultiple {
     #[strum(serialize = "Ki")]
     Kibi,
 
@@ -269,18 +244,16 @@ pub enum BinaryByteMultiple {
     Exbi,
 }
 
-impl SuffixMultiple for BinaryByteMultiple {
-    /// The base of the binary byte multiple is 2 because 2^10 = 1024^1 = 1 KiB.
-    const BASE: usize = 2;
-
-    fn exponent(&self) -> f64 {
+impl BinaryMultiple {
+    /// Returns the factor based on powers of 2.
+    pub fn factor(&self) -> f64 {
         match self {
-            BinaryByteMultiple::Kibi => 10.0,
-            BinaryByteMultiple::Mebi => 20.0,
-            BinaryByteMultiple::Gibi => 30.0,
-            BinaryByteMultiple::Tebi => 40.0,
-            BinaryByteMultiple::Pebi => 50.0,
-            BinaryByteMultiple::Exbi => 60.0,
+            BinaryMultiple::Kibi => 2f64.powi(10),
+            BinaryMultiple::Mebi => 2f64.powi(20),
+            BinaryMultiple::Gibi => 2f64.powi(30),
+            BinaryMultiple::Tebi => 2f64.powi(40),
+            BinaryMultiple::Pebi => 2f64.powi(50),
+            BinaryMultiple::Exbi => 2f64.powi(60),
         }
     }
 }
@@ -296,7 +269,7 @@ impl SuffixMultiple for BinaryByteMultiple {
 ///
 /// ```plain
 /// - 1000^-1,    (m): millibyte (Kubernetes only)
-/// - 1000^ 0,  B ( ): byte      (no suffix, unit-less)
+/// - 1000^ 0,  B ( ): byte      (no suffix)
 /// - 1000^ 1, kB (k): kilobyte
 /// - 1000^ 2, MB (M): Megabyte
 /// - 1000^ 3, GB (G): Gigabyte
@@ -315,9 +288,12 @@ impl SuffixMultiple for BinaryByteMultiple {
 ///
 /// [k8s-serialization-format]: https://github.com/kubernetes/apimachinery/blob/8c60292e48e46c4faa1e92acb232ce6adb37512c/pkg/api/resource/quantity.go#L37-L59
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, strum::Display, strum::EnumString)]
-pub enum DecimalByteMultiple {
+pub enum DecimalMultiple {
     #[strum(serialize = "m")]
     Milli,
+
+    #[strum(serialize = "")]
+    Empty,
 
     #[strum(serialize = "k")]
     Kilo,
@@ -338,23 +314,22 @@ pub enum DecimalByteMultiple {
     Exa,
 }
 
-impl SuffixMultiple for DecimalByteMultiple {
-    const BASE: usize = 10;
-
-    fn exponent(&self) -> f64 {
+impl DecimalMultiple {
+    pub fn factor(&self) -> f64 {
         match self {
-            DecimalByteMultiple::Milli => -3.0,
-            DecimalByteMultiple::Kilo => 3.0,
-            DecimalByteMultiple::Mega => 6.0,
-            DecimalByteMultiple::Giga => 9.0,
-            DecimalByteMultiple::Tera => 12.0,
-            DecimalByteMultiple::Peta => 15.0,
-            DecimalByteMultiple::Exa => 18.0,
+            DecimalMultiple::Milli => 10f64.powi(-3),
+            DecimalMultiple::Empty => 10f64.powi(0),
+            DecimalMultiple::Kilo => 10f64.powi(3),
+            DecimalMultiple::Mega => 10f64.powi(6),
+            DecimalMultiple::Giga => 10f64.powi(9),
+            DecimalMultiple::Tera => 10f64.powi(12),
+            DecimalMultiple::Peta => 10f64.powi(15),
+            DecimalMultiple::Exa => 10f64.powi(18),
         }
     }
 }
 
-/// Scientific (also know as E) notation of numbers.
+/// Scientific (also known as E) notation of numbers.
 ///
 /// ### See
 ///
@@ -376,11 +351,9 @@ impl Display for DecimalExponent {
     }
 }
 
-impl SuffixMultiple for DecimalExponent {
-    const BASE: usize = 10;
-
-    fn exponent(&self) -> f64 {
-        self.0
+impl DecimalExponent {
+    pub fn factor(&self) -> f64 {
+        10f64.powf(self.0)
     }
 }
 
@@ -390,62 +363,63 @@ mod test {
     use rstest::rstest;
 
     #[rstest]
-    #[case("Ki", Suffix::BinaryByteMultiple(BinaryByteMultiple::Kibi))]
-    #[case("Mi", Suffix::BinaryByteMultiple(BinaryByteMultiple::Mebi))]
-    #[case("Gi", Suffix::BinaryByteMultiple(BinaryByteMultiple::Gibi))]
-    #[case("Ti", Suffix::BinaryByteMultiple(BinaryByteMultiple::Tebi))]
-    #[case("Pi", Suffix::BinaryByteMultiple(BinaryByteMultiple::Pebi))]
-    #[case("Ei", Suffix::BinaryByteMultiple(BinaryByteMultiple::Exbi))]
-    fn binary_byte_multiple_from_str_pass(#[case] input: &str, #[case] expected: Suffix) {
+    #[case("Ki", Suffix::BinaryMultiple(BinaryMultiple::Kibi))]
+    #[case("Mi", Suffix::BinaryMultiple(BinaryMultiple::Mebi))]
+    #[case("Gi", Suffix::BinaryMultiple(BinaryMultiple::Gibi))]
+    #[case("Ti", Suffix::BinaryMultiple(BinaryMultiple::Tebi))]
+    #[case("Pi", Suffix::BinaryMultiple(BinaryMultiple::Pebi))]
+    #[case("Ei", Suffix::BinaryMultiple(BinaryMultiple::Exbi))]
+    fn binary_multiple_from_str_pass(#[case] input: &str, #[case] expected: Suffix) {
         let parsed = Suffix::from_str(input).unwrap();
         assert_eq!(parsed, expected);
     }
 
     #[rstest]
-    #[case("m", Suffix::DecimalByteMultiple(DecimalByteMultiple::Milli))]
-    #[case("k", Suffix::DecimalByteMultiple(DecimalByteMultiple::Kilo))]
-    #[case("M", Suffix::DecimalByteMultiple(DecimalByteMultiple::Mega))]
-    #[case("G", Suffix::DecimalByteMultiple(DecimalByteMultiple::Giga))]
-    #[case("T", Suffix::DecimalByteMultiple(DecimalByteMultiple::Tera))]
-    #[case("P", Suffix::DecimalByteMultiple(DecimalByteMultiple::Peta))]
-    #[case("E", Suffix::DecimalByteMultiple(DecimalByteMultiple::Exa))]
-    fn decimal_byte_multiple_from_str_pass(#[case] input: &str, #[case] expected: Suffix) {
+    #[case("m", Suffix::DecimalMultiple(DecimalMultiple::Milli))]
+    #[case("", Suffix::DecimalMultiple(DecimalMultiple::Empty))]
+    #[case("k", Suffix::DecimalMultiple(DecimalMultiple::Kilo))]
+    #[case("M", Suffix::DecimalMultiple(DecimalMultiple::Mega))]
+    #[case("G", Suffix::DecimalMultiple(DecimalMultiple::Giga))]
+    #[case("T", Suffix::DecimalMultiple(DecimalMultiple::Tera))]
+    #[case("P", Suffix::DecimalMultiple(DecimalMultiple::Peta))]
+    #[case("E", Suffix::DecimalMultiple(DecimalMultiple::Exa))]
+    fn decimal_multiple_from_str_pass(#[case] input: &str, #[case] expected: Suffix) {
         let parsed = Suffix::from_str(input).unwrap();
         assert_eq!(parsed, expected);
     }
 
     #[rstest]
-    #[case("49041204Ki", Quantity { value: 49041204.0, suffix: Some(Suffix::BinaryByteMultiple(BinaryByteMultiple::Kibi)) })]
-    #[case("256Ki", Quantity { value: 256.0, suffix: Some(Suffix::BinaryByteMultiple(BinaryByteMultiple::Kibi)) })]
-    #[case("1.5Gi", Quantity { value: 1.5, suffix: Some(Suffix::BinaryByteMultiple(BinaryByteMultiple::Gibi)) })]
-    #[case("0.8Ti", Quantity { value: 0.8, suffix: Some(Suffix::BinaryByteMultiple(BinaryByteMultiple::Tebi)) })]
-    #[case("3.2Pi", Quantity { value: 3.2, suffix: Some(Suffix::BinaryByteMultiple(BinaryByteMultiple::Pebi)) })]
-    #[case("0.2Ei", Quantity { value: 0.2, suffix: Some(Suffix::BinaryByteMultiple(BinaryByteMultiple::Exbi)) })]
-    #[case("8Mi", Quantity { value: 8.0, suffix: Some(Suffix::BinaryByteMultiple(BinaryByteMultiple::Mebi)) })]
+    #[case("49041204Ki", Quantity { value: 49041204.0, suffix: Suffix::BinaryMultiple(BinaryMultiple::Kibi) })]
+    #[case("256Ki", Quantity { value: 256.0, suffix: Suffix::BinaryMultiple(BinaryMultiple::Kibi) })]
+    #[case("1.5Gi", Quantity { value: 1.5, suffix: Suffix::BinaryMultiple(BinaryMultiple::Gibi) })]
+    #[case("0.8Ti", Quantity { value: 0.8, suffix: Suffix::BinaryMultiple(BinaryMultiple::Tebi) })]
+    #[case("3.2Pi", Quantity { value: 3.2, suffix: Suffix::BinaryMultiple(BinaryMultiple::Pebi) })]
+    #[case("0.2Ei", Quantity { value: 0.2, suffix: Suffix::BinaryMultiple(BinaryMultiple::Exbi) })]
+    #[case("8Mi", Quantity { value: 8.0, suffix: Suffix::BinaryMultiple(BinaryMultiple::Mebi) })]
     fn binary_quantity_from_str_pass(#[case] input: &str, #[case] expected: Quantity) {
         let parsed = Quantity::from_str(input).unwrap();
         assert_eq!(parsed, expected);
     }
 
     #[rstest]
-    #[case("49041204k", Quantity { value: 49041204.0, suffix: Some(Suffix::DecimalByteMultiple(DecimalByteMultiple::Kilo)) })]
-    #[case("256k", Quantity { value: 256.0, suffix: Some(Suffix::DecimalByteMultiple(DecimalByteMultiple::Kilo)) })]
-    #[case("1.5G", Quantity { value: 1.5, suffix: Some(Suffix::DecimalByteMultiple(DecimalByteMultiple::Giga)) })]
-    #[case("0.8T", Quantity { value: 0.8, suffix: Some(Suffix::DecimalByteMultiple(DecimalByteMultiple::Tera)) })]
-    #[case("3.2P", Quantity { value: 3.2, suffix: Some(Suffix::DecimalByteMultiple(DecimalByteMultiple::Peta)) })]
-    #[case("0.2E", Quantity { value: 0.2, suffix: Some(Suffix::DecimalByteMultiple(DecimalByteMultiple::Exa)) })]
-    #[case("4m", Quantity { value: 4.0, suffix: Some(Suffix::DecimalByteMultiple(DecimalByteMultiple::Milli)) })]
-    #[case("8M", Quantity { value: 8.0, suffix: Some(Suffix::DecimalByteMultiple(DecimalByteMultiple::Mega)) })]
+    #[case("49041204k", Quantity { value: 49041204.0, suffix: Suffix::DecimalMultiple(DecimalMultiple::Kilo) })]
+    #[case("256k", Quantity { value: 256.0, suffix: Suffix::DecimalMultiple(DecimalMultiple::Kilo) })]
+    #[case("1.5G", Quantity { value: 1.5, suffix: Suffix::DecimalMultiple(DecimalMultiple::Giga) })]
+    #[case("0.8T", Quantity { value: 0.8, suffix: Suffix::DecimalMultiple(DecimalMultiple::Tera) })]
+    #[case("3.2P", Quantity { value: 3.2, suffix: Suffix::DecimalMultiple(DecimalMultiple::Peta) })]
+    #[case("0.2E", Quantity { value: 0.2, suffix: Suffix::DecimalMultiple(DecimalMultiple::Exa) })]
+    #[case("4m", Quantity { value: 4.0, suffix: Suffix::DecimalMultiple(DecimalMultiple::Milli) })]
+    #[case("8M", Quantity { value: 8.0, suffix: Suffix::DecimalMultiple(DecimalMultiple::Mega) })]
     fn decimal_quantity_from_str_pass(#[case] input: &str, #[case] expected: Quantity) {
         let parsed = Quantity::from_str(input).unwrap();
         assert_eq!(parsed, expected);
     }
 
     #[rstest]
-    #[case("1.234e-3.21", Quantity { value: 1.234, suffix: Some(Suffix::DecimalExponent(DecimalExponent(-3.21))) })]
-    #[case("1.234E-3.21", Quantity { value: 1.234, suffix: Some(Suffix::DecimalExponent(DecimalExponent(-3.21))) })]
-    #[case("1.234e3", Quantity { value: 1.234, suffix: Some(Suffix::DecimalExponent(DecimalExponent(3.0))) })]
-    #[case("1.234E3", Quantity { value: 1.234, suffix: Some(Suffix::DecimalExponent(DecimalExponent(3.0))) })]
+    #[case("1.234e-3.21", Quantity { value: 1.234, suffix: Suffix::DecimalExponent(DecimalExponent(-3.21)) })]
+    #[case("1.234E-3.21", Quantity { value: 1.234, suffix: Suffix::DecimalExponent(DecimalExponent(-3.21)) })]
+    #[case("1.234e3", Quantity { value: 1.234, suffix: Suffix::DecimalExponent(DecimalExponent(3.0)) })]
+    #[case("1.234E3", Quantity { value: 1.234, suffix: Suffix::DecimalExponent(DecimalExponent(3.0)) })]
     fn decimal_exponent_quantity_from_str_pass(#[case] input: &str, #[case] expected: Quantity) {
         let parsed = Quantity::from_str(input).unwrap();
         assert_eq!(parsed, expected);
@@ -466,53 +440,53 @@ mod test {
     }
 
     #[rstest]
-    #[case("1Mi", BinaryByteMultiple::Kibi, "1024Ki", true)]
-    #[case("1024Ki", BinaryByteMultiple::Mebi, "1Mi", true)]
-    #[case("1Mi", BinaryByteMultiple::Mebi, "1Mi", false)]
-    fn binary_byte_to_binary_byte_scale_pass(
+    #[case("1Mi", BinaryMultiple::Kibi, "1024Ki", true)]
+    #[case("1024Ki", BinaryMultiple::Mebi, "1Mi", true)]
+    #[case("1Mi", BinaryMultiple::Mebi, "1Mi", false)]
+    fn binary_to_binary_scale_pass(
         #[case] input: &str,
-        #[case] scale_to: BinaryByteMultiple,
+        #[case] scale_to: BinaryMultiple,
         #[case] output: &str,
-        #[case] scaled: bool,
+        #[case] _scaled: bool,
     ) {
-        let mut parsed = Quantity::from_str(input).unwrap();
-        let was_scaled = parsed.scale_to(Suffix::BinaryByteMultiple(scale_to));
+        let parsed = Quantity::from_str(input)
+            .unwrap()
+            .scale_to(Suffix::BinaryMultiple(scale_to));
 
         assert_eq!(parsed.to_string(), output);
-        assert_eq!(was_scaled, scaled);
     }
 
     #[rstest]
-    #[case("1Mi", DecimalByteMultiple::Kilo, "1048.576k", true)]
-    #[case("1Mi", DecimalByteMultiple::Mega, "1.048576M", true)]
-    fn binary_byte_to_decimal_byte_scale_pass(
+    #[case("1Mi", DecimalMultiple::Kilo, "1048.576k", true)]
+    #[case("1Mi", DecimalMultiple::Mega, "1.048576M", true)]
+    fn binary_to_decimal_scale_pass(
         #[case] input: &str,
-        #[case] scale_to: DecimalByteMultiple,
+        #[case] scale_to: DecimalMultiple,
         #[case] output: &str,
-        #[case] scaled: bool,
+        #[case] _scaled: bool,
     ) {
-        let mut parsed = Quantity::from_str(input).unwrap();
-        let was_scaled = parsed.scale_to(Suffix::DecimalByteMultiple(scale_to));
+        let parsed = Quantity::from_str(input)
+            .unwrap()
+            .scale_to(Suffix::DecimalMultiple(scale_to));
 
         assert_eq!(parsed.to_string(), output);
-        assert_eq!(was_scaled, scaled);
     }
 
     #[rstest]
-    #[case("1M", DecimalByteMultiple::Kilo, "1000k", true)]
-    #[case("1000k", DecimalByteMultiple::Mega, "1M", true)]
-    #[case("1M", DecimalByteMultiple::Mega, "1M", false)]
-    fn decimal_byte_to_decimal_byte_scale_pass(
+    #[case("1M", DecimalMultiple::Kilo, "1000k", true)]
+    #[case("1000k", DecimalMultiple::Mega, "1M", true)]
+    #[case("1M", DecimalMultiple::Mega, "1M", false)]
+    fn decimal_to_decimal_scale_pass(
         #[case] input: &str,
-        #[case] scale_to: DecimalByteMultiple,
+        #[case] scale_to: DecimalMultiple,
         #[case] output: &str,
-        #[case] scaled: bool,
+        #[case] _scaled: bool,
     ) {
-        let mut parsed = Quantity::from_str(input).unwrap();
-        let was_scaled = parsed.scale_to(Suffix::DecimalByteMultiple(scale_to));
+        let parsed = Quantity::from_str(input)
+            .unwrap()
+            .scale_to(Suffix::DecimalMultiple(scale_to));
 
         assert_eq!(parsed.to_string(), output);
-        assert_eq!(was_scaled, scaled);
     }
 
     #[rstest]
@@ -523,12 +497,12 @@ mod test {
         #[case] input: &str,
         #[case] scale_to: DecimalExponent,
         #[case] output: &str,
-        #[case] scaled: bool,
+        #[case] _scaled: bool,
     ) {
-        let mut parsed = Quantity::from_str(input).unwrap();
-        let was_scaled = parsed.scale_to(Suffix::DecimalExponent(scale_to));
+        let parsed = Quantity::from_str(input)
+            .unwrap()
+            .scale_to(Suffix::DecimalExponent(scale_to));
 
         assert_eq!(parsed.to_string(), output);
-        assert_eq!(was_scaled, scaled);
     }
 }
