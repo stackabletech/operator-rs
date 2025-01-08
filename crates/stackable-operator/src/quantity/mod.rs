@@ -1,3 +1,5 @@
+//! This module contains types and functions to parse and handle Kubernetes quantities.
+
 use std::{
     fmt::{Display, Write},
     num::ParseFloatError,
@@ -29,6 +31,69 @@ pub enum ParseQuantityError {
     InvalidSuffix { source: ParseSuffixError },
 }
 
+/// Quantity is a representation of a number with a suffix / format.
+///
+/// This type makes it possible to parse Kubernetes quantity strings like '12Ki', '2M, '1.5e2', or
+/// '0'. This is done by storing the parsed data as two separate values: the `value` and the
+/// `suffix`. The parsing is implemented according to the serialization format laid out in the
+/// Kubernetes [source code][quantity-format]. Roughly, the format looks like this:
+///
+/// ```plain
+/// quantity        ::= <signedNumber><suffix>
+/// suffix          ::= <binaryMultiple> | <decimalMultiple> | <decimalExponent>
+/// binaryMultiple  ::= Ki | Mi | Gi | Ti | Pi | Ei
+/// decimalMultiple ::= m | "" | k | M | G | T | P | E
+/// decimalExponent ::= "e" <signedNumber> | "E" <signedNumber>
+/// ```
+///
+/// Generally speaking, this implementation very closely resembles the original upstream Go
+/// implementation of the Kubernetes project. However there are a few differences which boil down
+/// to being easier to use / implement using Rust and safety. These differences in addition to
+/// general notes on the implementation are detailed below:
+///
+/// #### Suffixes
+///
+/// It should be noted that the decimal multiple contains `""` (an empty string / no suffix). This
+/// is why one might think that the suffix is optional. Strictly speaking, it is not optional, but
+/// a missing / empty suffix maps to a decimal multiple with a scaling factor of 1000^0. The
+/// following section goes into more detail about the scaling factors.
+///
+/// Instead of marking the `suffix` field as optional by using [`Option`], it instead maps the empty
+/// suffix to the [`DecimalMultiple::Empty`] variant. This eases implementing safe mathematical (like
+/// scaling up/down, addition or division) operations on [`Quantity`].
+///
+/// The [`Suffix`] enum represents the three different supported suffixes. Each suffix uses a
+/// specific base and exponent for it's scaling factor:
+///
+/// - The [`BinaryMultiple`] uses a base of 2 and exponents of 10s.
+/// - The [`DecimalMultiple`] uses a base of 10 and exponents of 3s.
+/// - The [`DecimalExponent`] uses a base of 10 and exponents defined using the
+///   [scientific notation][sci-notation].
+///
+/// #### Mathematical operations
+///
+/// Similar to to upstream implementation, math operations can change the suffix / format.
+/// Additionally, it is necessary to change the suffix of the right-hand-side in binary operations
+/// before doing the actual operation (like addition).
+///
+/// - **Example 1:** `0Ki + 1Mi` - In this example, the lhs has the value **0**. The exact suffix is
+///   irrelevant, but note that it might be different from the suffix of the rhs. Since the value is
+///   zero, we can safely update the suffix of the lhs to `Mi` and continue by adding **1** to the
+///   lhs. The final result is then `1Mi`.
+/// - **Example 2:** `1024Ki + 1Mi` - Here, the lhs is not zero, so we cannot safely update the
+///   suffix. Instead, we need to scale the rhs to the appropriate suffix, `Ki` in this example.
+///   Afterwards the addition of both values can be done. The final result is `2048Ki`. If needed,
+///   this can be scaled to `Mi`, resulting in `2Mi` as expected.
+///
+/// #### Precision
+///
+/// The upstream implementation uses infinite-precision arithmetic to be able to store very large
+/// values, up to 2^63-1. This implementation **does not** use infinite-precision arithmetic. The
+/// biggest value which can be safely expresses is [`f64::MAX`]. This value is deemed plenty for
+/// now, but there is always the possibility of using infinite-precision implementation as well.
+///
+/// [quantity-format]: https://github.com/kubernetes/apimachinery/blob/3e8e52d6a1259ada73f63c1c7d1fad39d4ba9fb4/pkg/api/resource/quantity.go#L39-L59
+/// [sci-notation]: https://en.wikipedia.org/wiki/Scientific_notation#E_notation
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct Quantity {
     // FIXME (@Techassi): Support arbitrary-precision numbers
