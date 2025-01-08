@@ -188,13 +188,17 @@ pub struct JavaCommonConfig {
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JvmArgumentOverrides {
+    /// JVM arguments to be added
     #[serde(default)]
     add: Vec<String>,
 
+    /// JVM arguments to be removed by exact match
+    //
     // HashSet to be optimized for quick lookup
     #[serde(default)]
     remove: HashSet<String>,
 
+    /// JVM arguments matching any of this regexes will be removed
     #[serde(default)]
     remove_regex: Vec<String>,
 }
