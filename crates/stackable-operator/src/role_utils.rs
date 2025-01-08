@@ -240,6 +240,8 @@ impl JvmArgumentOverrides {
 }
 
 impl Merge for JvmArgumentOverrides {
+    /// Please watch out: Merge order is complicated for this merge.
+    /// Test your code!
     #[instrument]
     fn merge(&mut self, defaults: &Self) {
         let regexes = self
