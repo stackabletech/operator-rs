@@ -219,9 +219,12 @@ impl JvmArgumentOverrides {
         }
     }
 
-    /// Returns all arguments that should be passed to the JVM.
+    /// Called on **merged** [`JvmArgumentOverrides`}, returns all arguments that should be passed to the JVM.
     ///
-    /// **Can only be called on merged config, it will panic otherwise**
+    /// **Can only be called on merged config, it will panic otherwise!**
+    ///
+    ///  We are panicking (instead of returning an Error), because this is not the users fault, but
+    /// the operator is doing things wrong
     pub fn effective_jvm_config_after_merging(&self) -> &Vec<String> {
         assert!(
             self.remove.is_empty(),
