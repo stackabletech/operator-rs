@@ -58,12 +58,12 @@ impl Suffix {
 
     pub fn scale_down(self) -> Option<Self> {
         match self {
-            Suffix::DecimalMultiple(s) => todo!(),
+            Suffix::DecimalMultiple(_s) => todo!(),
             Suffix::BinaryMultiple(s) => match s.scale_down() {
                 Some(s) => Some(Self::BinaryMultiple(s)),
                 None => Some(Self::DecimalMultiple(DecimalMultiple::Milli)),
             },
-            Suffix::DecimalExponent(s) => todo!(),
+            Suffix::DecimalExponent(_s) => todo!(),
         }
     }
 }

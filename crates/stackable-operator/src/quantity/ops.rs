@@ -6,11 +6,11 @@ impl Add for Quantity {
     type Output = Quantity;
 
     fn add(self, rhs: Quantity) -> Self::Output {
-        let rhs = rhs.scale_to(self.suffix);
+        let (this, rhs) = self.set_suffix_or_scale_rhs(rhs);
 
         Self {
-            value: self.value + rhs.value,
-            ..self
+            value: this.value + rhs.value,
+            suffix: this.suffix,
         }
     }
 }
@@ -25,11 +25,11 @@ impl Sub for Quantity {
     type Output = Quantity;
 
     fn sub(self, rhs: Quantity) -> Self::Output {
-        let rhs = rhs.scale_to(self.suffix);
+        let (this, rhs) = self.set_suffix_or_scale_rhs(rhs);
 
         Self {
-            value: self.value - rhs.value,
-            ..self
+            value: this.value - rhs.value,
+            suffix: this.suffix,
         }
     }
 }

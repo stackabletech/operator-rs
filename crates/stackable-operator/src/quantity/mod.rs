@@ -142,6 +142,25 @@ impl Quantity {
             }
         }
     }
+
+    /// Either sets the suffix of `self` to `rhs` or scales `rhs` if `self` has a value other than
+    /// zero.
+    ///
+    /// This function is currently used for the [`std::ops::Add`] and [`std::ops::Sub`]
+    /// implementations.
+    pub fn set_suffix_or_scale_rhs(self, rhs: Self) -> (Self, Self) {
+        if self.value == 0.0 {
+            (
+                Self {
+                    suffix: rhs.suffix,
+                    ..self
+                },
+                rhs,
+            )
+        } else {
+            (self, rhs.scale_to(self.suffix))
+        }
+    }
 }
 
 #[cfg(test)]
