@@ -1,71 +1,15 @@
 use std::{fmt::Display, ops::Deref, str::FromStr};
 
-use snafu::Snafu;
-
-#[derive(Debug, PartialEq, Snafu)]
-#[snafu(display("failed to parse {input:?} as quantity suffix"))]
-pub struct ParseSuffixError {
-    input: String,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
-pub enum Suffix {
-    DecimalMultiple(DecimalMultiple),
-    BinaryMultiple(BinaryMultiple),
-    DecimalExponent(DecimalExponent),
-}
-
-impl FromStr for Suffix {
-    type Err = ParseSuffixError;
-
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        if let Ok(binary_si) = BinaryMultiple::from_str(input) {
-            return Ok(Self::BinaryMultiple(binary_si));
-        }
-
-        if let Ok(decimal_si) = DecimalMultiple::from_str(input) {
-            return Ok(Self::DecimalMultiple(decimal_si));
-        }
-
-        if input.starts_with(['e', 'E']) {
-            if let Ok(decimal_exponent) = f64::from_str(&input[1..]) {
-                return Ok(Self::DecimalExponent(DecimalExponent(decimal_exponent)));
-            }
-        }
-
-        ParseSuffixSnafu { input }.fail()
-    }
-}
-
-impl Display for Suffix {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Suffix::DecimalMultiple(decimal) => write!(f, "{decimal}"),
-            Suffix::BinaryMultiple(binary) => write!(f, "{binary}"),
-            Suffix::DecimalExponent(float) => write!(f, "e{float}"),
-        }
-    }
-}
-
-impl Suffix {
-    pub fn factor(&self) -> f64 {
-        match self {
-            Suffix::DecimalMultiple(s) => s.factor(),
-            Suffix::BinaryMultiple(s) => s.factor(),
-            Suffix::DecimalExponent(s) => s.factor(),
-        }
-    }
-
-    pub fn scale_down(self) -> Option<Self> {
-        match self {
-            Suffix::DecimalMultiple(_s) => todo!(),
-            Suffix::BinaryMultiple(s) => match s.scale_down() {
-                Some(s) => Some(Self::BinaryMultiple(s)),
-                None => Some(Self::DecimalMultiple(DecimalMultiple::Milli)),
-            },
-            Suffix::DecimalExponent(_s) => todo!(),
-        }
-    }
+pub trait Suffix:
+    FromStr<Err: std::error::Error + 'static>
+    + Clone
+    + Copy
+    + Default
+    + Display
+    + PartialEq
+    + PartialOrd
+{
+    fn factor(&self) -> f64;
 }
 
 /// Supported byte-multiples based on powers of 2.
@@ -181,6 +125,7 @@ pub enum DecimalMultiple {
     #[strum(serialize = "")]
     Empty,
 
+    // (Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)
     #[strum(serialize = "k")]
     Kilo,
 
@@ -257,30 +202,30 @@ mod test {
     use rstest::rstest;
 
     #[rstest]
-    #[case("Ki", Suffix::BinaryMultiple(BinaryMultiple::Kibi))]
-    #[case("Mi", Suffix::BinaryMultiple(BinaryMultiple::Mebi))]
-    #[case("Gi", Suffix::BinaryMultiple(BinaryMultiple::Gibi))]
-    #[case("Ti", Suffix::BinaryMultiple(BinaryMultiple::Tebi))]
-    #[case("Pi", Suffix::BinaryMultiple(BinaryMultiple::Pebi))]
-    #[case("Ei", Suffix::BinaryMultiple(BinaryMultiple::Exbi))]
-    fn binary_multiple_from_str_pass(#[case] input: &str, #[case] expected: Suffix) {
-        let parsed = Suffix::from_str(input).unwrap();
+    #[case("Ki", BinaryMultiple::Kibi)]
+    #[case("Mi", BinaryMultiple::Mebi)]
+    #[case("Gi", BinaryMultiple::Gibi)]
+    #[case("Ti", BinaryMultiple::Tebi)]
+    #[case("Pi", BinaryMultiple::Pebi)]
+    #[case("Ei", BinaryMultiple::Exbi)]
+    fn binary_multiple_from_str_pass(#[case] input: &str, #[case] expected: BinaryMultiple) {
+        let parsed = BinaryMultiple::from_str(input).unwrap();
         assert_eq!(parsed, expected);
     }
 
     #[rstest]
-    #[case("n", Suffix::DecimalMultiple(DecimalMultiple::Nano))]
-    #[case("u", Suffix::DecimalMultiple(DecimalMultiple::Micro))]
-    #[case("m", Suffix::DecimalMultiple(DecimalMultiple::Milli))]
-    #[case("", Suffix::DecimalMultiple(DecimalMultiple::Empty))]
-    #[case("k", Suffix::DecimalMultiple(DecimalMultiple::Kilo))]
-    #[case("M", Suffix::DecimalMultiple(DecimalMultiple::Mega))]
-    #[case("G", Suffix::DecimalMultiple(DecimalMultiple::Giga))]
-    #[case("T", Suffix::DecimalMultiple(DecimalMultiple::Tera))]
-    #[case("P", Suffix::DecimalMultiple(DecimalMultiple::Peta))]
-    #[case("E", Suffix::DecimalMultiple(DecimalMultiple::Exa))]
-    fn decimal_multiple_from_str_pass(#[case] input: &str, #[case] expected: Suffix) {
-        let parsed = Suffix::from_str(input).unwrap();
+    #[case("n", DecimalMultiple::Nano)]
+    #[case("u", DecimalMultiple::Micro)]
+    #[case("m", DecimalMultiple::Milli)]
+    #[case("", DecimalMultiple::Empty)]
+    #[case("k", DecimalMultiple::Kilo)]
+    #[case("M", DecimalMultiple::Mega)]
+    #[case("G", DecimalMultiple::Giga)]
+    #[case("T", DecimalMultiple::Tera)]
+    #[case("P", DecimalMultiple::Peta)]
+    #[case("E", DecimalMultiple::Exa)]
+    fn decimal_multiple_from_str_pass(#[case] input: &str, #[case] expected: DecimalMultiple) {
+        let parsed = DecimalMultiple::from_str(input).unwrap();
         assert_eq!(parsed, expected);
     }
 }

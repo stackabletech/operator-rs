@@ -20,7 +20,10 @@ pub use memory::*;
 pub use suffix::*;
 
 #[derive(Debug, PartialEq, Snafu)]
-pub enum ParseQuantityError {
+pub enum ParseQuantityError<E>
+where
+    E: std::error::Error + 'static,
+{
     #[snafu(display("input is either empty or contains non-ascii characters"))]
     InvalidFormat,
 
@@ -28,8 +31,22 @@ pub enum ParseQuantityError {
     InvalidFloat { source: ParseFloatError },
 
     #[snafu(display("failed to parse suffix"))]
-    InvalidSuffix { source: ParseSuffixError },
+    InvalidSuffix { source: E },
 }
+
+// pub struct CpuQuant(Quantity1<DecimalMultiple>);
+
+// pub struct Quantity1<T>
+// where
+//     T: SuffixTrait,
+// {
+//     value: f64,
+//     suffix: T,
+// }
+
+// pub trait SuffixTrait: FromStr + Default {
+//     fn factor(&self) -> f64;
+// }
 
 /// Quantity is a representation of a number with a suffix / format.
 ///
@@ -95,7 +112,10 @@ pub enum ParseQuantityError {
 /// [quantity-format]: https://github.com/kubernetes/apimachinery/blob/3e8e52d6a1259ada73f63c1c7d1fad39d4ba9fb4/pkg/api/resource/quantity.go#L39-L59
 /// [sci-notation]: https://en.wikipedia.org/wiki/Scientific_notation#E_notation
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
-pub struct Quantity {
+pub struct Quantity<S>
+where
+    S: Suffix,
+{
     // FIXME (@Techassi): Support arbitrary-precision numbers
     /// The numeric value of the quantity.
     ///
@@ -107,18 +127,21 @@ pub struct Quantity {
     /// The suffix of the quantity.
     ///
     /// This field holds data parsed from `<suffix>` according to the spec.
-    suffix: Suffix,
+    suffix: S,
 }
 
-impl FromStr for Quantity {
-    type Err = ParseQuantityError;
+impl<S> FromStr for Quantity<S>
+where
+    S: Suffix,
+{
+    type Err = ParseQuantityError<S::Err>;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         ensure!(!input.is_empty() && input.is_ascii(), InvalidFormatSnafu);
 
         if input == "0" {
             return Ok(Self {
-                suffix: Suffix::DecimalMultiple(DecimalMultiple::Empty),
+                suffix: S::default(),
                 value: 0.0,
             });
         }
@@ -127,7 +150,7 @@ impl FromStr for Quantity {
             Some(suffix_index) => {
                 let parts = input.split_at(suffix_index);
                 let value = f64::from_str(parts.0).context(InvalidFloatSnafu)?;
-                let suffix = Suffix::from_str(parts.1).context(InvalidSuffixSnafu)?;
+                let suffix = S::from_str(parts.1).context(InvalidSuffixSnafu)?;
 
                 Ok(Self { suffix, value })
             }
@@ -135,7 +158,7 @@ impl FromStr for Quantity {
                 let value = f64::from_str(input).context(InvalidFloatSnafu)?;
 
                 Ok(Self {
-                    suffix: Suffix::DecimalMultiple(DecimalMultiple::Empty),
+                    suffix: S::default(),
                     value,
                 })
             }
@@ -143,7 +166,10 @@ impl FromStr for Quantity {
     }
 }
 
-impl Display for Quantity {
+impl<S> Display for Quantity<S>
+where
+    S: Suffix,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.value == 0.0 {
             return f.write_char('0');
@@ -158,42 +184,57 @@ impl Display for Quantity {
     }
 }
 
-impl From<Quantity> for K8sQuantity {
-    fn from(value: Quantity) -> Self {
+impl<S> From<Quantity<S>> for K8sQuantity
+where
+    S: Suffix,
+{
+    fn from(value: Quantity<S>) -> Self {
         K8sQuantity(value.to_string())
     }
 }
 
-impl From<&Quantity> for K8sQuantity {
-    fn from(value: &Quantity) -> Self {
+impl<S> From<&Quantity<S>> for K8sQuantity
+where
+    S: Suffix,
+{
+    fn from(value: &Quantity<S>) -> Self {
         K8sQuantity(value.to_string())
     }
 }
 
-impl TryFrom<K8sQuantity> for Quantity {
-    type Error = ParseQuantityError;
+impl<S> TryFrom<K8sQuantity> for Quantity<S>
+where
+    S: Suffix,
+{
+    type Error = ParseQuantityError<S::Err>;
 
     fn try_from(value: K8sQuantity) -> Result<Self, Self::Error> {
         Quantity::from_str(&value.0)
     }
 }
 
-impl TryFrom<&K8sQuantity> for Quantity {
-    type Error = ParseQuantityError;
+impl<S> TryFrom<&K8sQuantity> for Quantity<S>
+where
+    S: Suffix,
+{
+    type Error = ParseQuantityError<S::Err>;
 
     fn try_from(value: &K8sQuantity) -> Result<Self, Self::Error> {
         Quantity::from_str(&value.0)
     }
 }
 
-impl Quantity {
+impl<S> Quantity<S>
+where
+    S: Suffix,
+{
     /// Optionally scales up or down to the provided `suffix`.
     ///
     /// No scaling is performed in the following cases:
     ///
     /// - the suffixes already match
     /// - the value is 0
-    pub fn scale_to(self, suffix: Suffix) -> Self {
+    pub fn scale_to(self, suffix: S) -> Self {
         match (self.value, &self.suffix) {
             (0.0, _) => self,
             (_, s) if *s == suffix => self,
@@ -207,6 +248,28 @@ impl Quantity {
             }
         }
     }
+
+    // pub fn scale_to_non_zero(self) -> Self {
+    //     if !self.value.between(-1.0, 1.0) {
+    //         return self;
+    //     }
+
+    //     let mut this = self;
+
+    //     while let Some(suffix) = this.suffix.scale_down() {
+    //         this = self.scale_to(suffix);
+    //         if this.value.between(-1.0, 1.0) {
+    //             continue;
+    //         } else {
+    //             return this;
+    //         }
+    //     }
+
+    //     Self {
+    //         value: 1.0,
+    //         suffix: this.suffix,
+    //     }
+    // }
 
     /// Either sets the suffix of `self` to `rhs` or scales `rhs` if `self` has a value other than
     /// zero.
@@ -228,46 +291,54 @@ impl Quantity {
     }
 }
 
+trait FloatExt: PartialOrd + Sized {
+    fn between(self, start: Self, end: Self) -> bool {
+        self > start && self < end
+    }
+}
+
+impl FloatExt for f64 {}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use rstest::rstest;
 
+    // See https://github.com/kubernetes/apimachinery/blob/3e8e52d6a1259ada73f63c1c7d1fad39d4ba9fb4/pkg/api/resource/quantity_test.go#L276-L287
+    #[rustfmt::skip]
     #[rstest]
-    #[case("49041204Ki", Quantity { value: 49041204.0, suffix: Suffix::BinaryMultiple(BinaryMultiple::Kibi) })]
-    #[case("256Ki", Quantity { value: 256.0, suffix: Suffix::BinaryMultiple(BinaryMultiple::Kibi) })]
-    #[case("1.5Gi", Quantity { value: 1.5, suffix: Suffix::BinaryMultiple(BinaryMultiple::Gibi) })]
-    #[case("0.8Ti", Quantity { value: 0.8, suffix: Suffix::BinaryMultiple(BinaryMultiple::Tebi) })]
-    #[case("3.2Pi", Quantity { value: 3.2, suffix: Suffix::BinaryMultiple(BinaryMultiple::Pebi) })]
-    #[case("0.2Ei", Quantity { value: 0.2, suffix: Suffix::BinaryMultiple(BinaryMultiple::Exbi) })]
-    #[case("8Mi", Quantity { value: 8.0, suffix: Suffix::BinaryMultiple(BinaryMultiple::Mebi) })]
-    fn binary_quantity_from_str_pass(#[case] input: &str, #[case] expected: Quantity) {
+    #[case("0",   0.0, Suffix::DecimalMultiple(DecimalMultiple::Empty))]
+    #[case("0n",  0.0, Suffix::DecimalMultiple(DecimalMultiple::Nano))]
+    #[case("0u",  0.0, Suffix::DecimalMultiple(DecimalMultiple::Micro))]
+    #[case("0m",  0.0, Suffix::DecimalMultiple(DecimalMultiple::Milli))]
+    #[case("0Ki", 0.0, Suffix::BinaryMultiple(BinaryMultiple::Kibi))]
+    #[case("0k",  0.0, Suffix::DecimalMultiple(DecimalMultiple::Kilo))]
+    #[case("0Mi", 0.0, Suffix::BinaryMultiple(BinaryMultiple::Mebi))]
+    #[case("0M",  0.0, Suffix::DecimalMultiple(DecimalMultiple::Mega))]
+    #[case("0Gi", 0.0, Suffix::BinaryMultiple(BinaryMultiple::Gibi))]
+    #[case("0G",  0.0, Suffix::DecimalMultiple(DecimalMultiple::Giga))]
+    #[case("0Ti", 0.0, Suffix::BinaryMultiple(BinaryMultiple::Tebi))]
+    #[case("0T",  0.0, Suffix::DecimalMultiple(DecimalMultiple::Tera))]
+    #[case("0Pi", 0.0, Suffix::BinaryMultiple(BinaryMultiple::Pebi))]
+    #[case("0P",  0.0, Suffix::DecimalMultiple(DecimalMultiple::Peta))]
+    #[case("0Ei", 0.0, Suffix::BinaryMultiple(BinaryMultiple::Exbi))]
+    #[case("0E",  0.0, Suffix::DecimalMultiple(DecimalMultiple::Exa))]
+    fn parse_zero_quantity(#[case] input: &str, #[case] expected_value: f64, #[case] expected_suffix: Suffix) {
         let parsed = Quantity::from_str(input).unwrap();
-        assert_eq!(parsed, expected);
+
+        assert_eq!(parsed.suffix, expected_suffix);
+        assert_eq!(parsed.value, expected_value);
     }
 
+    // See https://github.com/kubernetes/apimachinery/blob/3e8e52d6a1259ada73f63c1c7d1fad39d4ba9fb4/pkg/api/resource/quantity_test.go#L289
+    #[rustfmt::skip]
     #[rstest]
-    #[case("49041204k", Quantity { value: 49041204.0, suffix: Suffix::DecimalMultiple(DecimalMultiple::Kilo) })]
-    #[case("256k", Quantity { value: 256.0, suffix: Suffix::DecimalMultiple(DecimalMultiple::Kilo) })]
-    #[case("1.5G", Quantity { value: 1.5, suffix: Suffix::DecimalMultiple(DecimalMultiple::Giga) })]
-    #[case("0.8T", Quantity { value: 0.8, suffix: Suffix::DecimalMultiple(DecimalMultiple::Tera) })]
-    #[case("3.2P", Quantity { value: 3.2, suffix: Suffix::DecimalMultiple(DecimalMultiple::Peta) })]
-    #[case("0.2E", Quantity { value: 0.2, suffix: Suffix::DecimalMultiple(DecimalMultiple::Exa) })]
-    #[case("4m", Quantity { value: 4.0, suffix: Suffix::DecimalMultiple(DecimalMultiple::Milli) })]
-    #[case("8M", Quantity { value: 8.0, suffix: Suffix::DecimalMultiple(DecimalMultiple::Mega) })]
-    fn decimal_quantity_from_str_pass(#[case] input: &str, #[case] expected: Quantity) {
+    #[case("12.34", 12.34)]
+    #[case("12",    12.0)]
+    #[case("1",      1.0)]
+    fn parse_quantity_without_suffix(#[case] input: &str, #[case] expected_value: f64) {
         let parsed = Quantity::from_str(input).unwrap();
-        assert_eq!(parsed, expected);
-    }
-
-    #[rstest]
-    #[case("1.234e-3.21", Quantity { value: 1.234, suffix: Suffix::DecimalExponent(DecimalExponent::from(-3.21)) })]
-    #[case("1.234E-3.21", Quantity { value: 1.234, suffix: Suffix::DecimalExponent(DecimalExponent::from(-3.21)) })]
-    #[case("1.234e3", Quantity { value: 1.234, suffix: Suffix::DecimalExponent(DecimalExponent::from(3.0)) })]
-    #[case("1.234E3", Quantity { value: 1.234, suffix: Suffix::DecimalExponent(DecimalExponent::from(3.0)) })]
-    fn decimal_exponent_quantity_from_str_pass(#[case] input: &str, #[case] expected: Quantity) {
-        let parsed = Quantity::from_str(input).unwrap();
-        assert_eq!(parsed, expected);
+        assert_eq!(parsed.value, expected_value);
     }
 
     #[rstest]
