@@ -11,13 +11,13 @@ use crate::validation;
     Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, JsonSchema,
 )]
 #[serde(try_from = "String", into = "String")]
-pub struct DomainName(#[validate(regex(path = "validation::RFC_1123_SUBDOMAIN_REGEX"))] String);
+pub struct DomainName(#[validate(regex(path = "validation::FQDN_REGEX"))] String);
 
 impl FromStr for DomainName {
     type Err = validation::Errors;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        validation::is_rfc_1123_subdomain(value)?;
+        validation::is_fqdn(value)?;
         Ok(DomainName(value.to_owned()))
     }
 }
