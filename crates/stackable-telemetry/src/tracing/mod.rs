@@ -44,7 +44,7 @@ pub enum Error {
 ///
 /// # Usage:
 /// ```
-/// use stackable_telemetry::tracing::{Tracing, Error, settings::{Build as _, Settings}};
+/// use stackable_telemetry::tracing::{Tracing, Error, settings::Settings};
 /// use tracing_subscriber::filter::LevelFilter;
 ///
 /// #[tokio::main]
