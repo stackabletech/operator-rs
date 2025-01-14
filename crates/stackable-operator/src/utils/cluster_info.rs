@@ -30,7 +30,7 @@ impl KubernetesClusterInfo {
             Some(cluster_domain) => {
                 tracing::info!(%cluster_domain, "Using configured Kubernetes cluster domain");
                 if !cluster_domain.ends_with('.') {
-                    tracing::warn!(%cluster_domain, "Your configured Kubernetes cluster domain does not end with a dot (\".\"). We recommend to add a trailing dot to reduce DNS requests, see https://github.com/stackabletech/issues/issues/656 for details");
+                    tracing::warn!(%cluster_domain, "Your configured Kubernetes cluster domain is not fully qualified (it does not end with a dot (\".\")). We recommend adding a trailing dot to reduce DNS requests, see https://github.com/stackabletech/issues/issues/656 for details");
                 }
 
                 cluster_domain.clone()
