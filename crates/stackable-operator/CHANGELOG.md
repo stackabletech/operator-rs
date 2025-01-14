@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Append a dot to the default cluster domain and allow a trailing dot in `DomainName` ([#939]).
+
+[#939]: https://github.com/stackabletech/operator-rs/pull/939
+
 ### Added
 
 - BREAKING: Aggregate emitted Kubernetes events on the CustomResources thanks to the new
@@ -114,7 +120,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - BREAKING: `KeyValuePairs::insert` (as well as `Labels::`/`Annotations::` via it) now overwrites
-  the old value if the key already exists. Previously, `iter()` would return *both* values in
+  the old value if the key already exists. Previously, `iter()` would return _both_ values in
   lexicographical order (causing further conversions like `Into<BTreeMap>` to prefer the maximum
   value) ([#888]).
 
@@ -316,7 +322,7 @@ All notable changes to this project will be documented in this file.
 
 [#808]: https://github.com/stackabletech/operator-rs/pull/808
 
-## [0.69.1]  2024-06-10
+## [0.69.1] 2024-06-10
 
 ### Added
 
@@ -379,7 +385,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Implement `PartialEq` for most *Snafu* Error enums ([#757]).
+- Implement `PartialEq` for most _Snafu_ Error enums ([#757]).
 - Update Rust to 1.77 ([#759])
 
 ### Fixed
@@ -1130,7 +1136,7 @@ This is a rerelease of 0.25.1 which some last-minute incompatible API changes to
 ### Changed
 
 - Objects are now streamed rather than polled when waiting for them to be deleted ([#452]).
-- serde\_yaml 0.8.26 -> 0.9.9 ([#450])
+- serde_yaml 0.8.26 -> 0.9.9 ([#450])
 
 [#450]: https://github.com/stackabletech/operator-rs/pull/450
 [#452]: https://github.com/stackabletech/operator-rs/pull/452
