@@ -15,7 +15,7 @@ pub struct KubernetesClusterInfo {
 pub struct KubernetesClusterInfoOpts {
     /// Kubernetes cluster domain, usually this is `cluster.local.`.
     ///
-    /// Please note that we recommend adding a trailing dot (".") for performance reasons, see
+    /// Please note that we recommend adding a trailing dot (".") to reduce DNS requests, see
     /// <https://github.com/stackabletech/issues/issues/656> for details.
     //
     // We are not using a default value here, as operators will probably do an more advanced
