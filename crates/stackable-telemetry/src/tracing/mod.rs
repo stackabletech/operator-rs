@@ -40,9 +40,44 @@ pub enum Error {
     SetGlobalDefaultSubscriber { source: SetGlobalDefaultError },
 }
 
-/// Easily initialize a set of preconfigured [`Subscriber`][1] layers.
+/// Easily initialize a set of pre-configured [`Subscriber`][1] layers.
 ///
-/// # Usage:
+/// # Usage
+///
+/// There are two different styles to configure individual subscribers: Using the sophisticated
+/// [`SettingsBuilder`][settings::SettingsBuilder] or the simplified tuple style for basic
+/// configuration. Currently, three different subscribers are supported: console output, OTLP log
+/// export, and OTLP trace export.
+///
+/// The subscribers are active as long as the tracing guard returned by [`Tracing::init`] is in
+/// scope and not dropped. Dropping it results in subscribers being shut down, which can lead to
+/// loss of telemetry data when done before exiting the application. This is why it is important
+/// to hold onto the guard as long as required.
+///
+/// <div class="warning">
+/// Name the guard variable appropriately, do not just use <code>let _ =</code>, as that will drop
+/// immediately.
+/// </div>
+///
+/// ```
+/// # use stackable_telemetry::tracing::{Tracing, Error};
+/// #[tokio::main]
+/// async fn main() -> Result<(), Error> {
+///     let _tracing_guard = Tracing::builder() // < Scope starts here
+///         .service_name("test")               // |
+///         .build()                            // |
+///         .init()?;                           // |
+///                                             // |
+///     tracing::info!("log a message");        // < Scope ends here, guard is dropped
+/// }
+/// ```
+///
+/// ## Basic configuration
+///
+/// A basic configuration of subscribers can be done by using 2-tuples or 3-tuples, also called
+/// doubles and triples. Using tuples, the subscriber can be enabled/disabled and it's environment
+/// variable and default level can be set.
+///
 /// ```
 /// use stackable_telemetry::tracing::{Tracing, Error, settings::Settings};
 /// use tracing_subscriber::filter::LevelFilter;
@@ -54,8 +89,28 @@ pub enum Error {
 ///     // runtime.
 ///     let otlp_log_flag = false;
 ///
-///     // IMPORTANT: Name the guard variable appropriately, do not just use
-///     // `let _ =`, as that will drop immediately.
+///     let _tracing_guard = Tracing::builder()
+///         .service_name("test")
+///         .with_console_output(("TEST_CONSOLE", LevelFilter::INFO))
+///         .with_otlp_log_exporter(("TEST_OTLP_LOG", LevelFilter::DEBUG, otlp_log_flag))
+///         .build()
+///         .init()?;
+///
+///     tracing::info!("log a message");
+///
+///     Ok(())
+/// }
+/// ```
+///
+/// ## Advanced configuration
+///
+/// ```
+/// # use stackable_telemetry::tracing::{Tracing, Error, settings::Settings};
+/// # use tracing_subscriber::filter::LevelFilter;
+/// #[tokio::main]
+/// async fn main() -> Result<(), Error> {
+///     let otlp_log_flag = false;
+///
 ///     let _tracing_guard = Tracing::builder()
 ///         .service_name("test")
 ///         .with_console_output(
