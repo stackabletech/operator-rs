@@ -6,10 +6,26 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+
+- BREAKING: Aggregate emitted Kubernetes events on the CustomResources thanks to the new
+  [kube feature](https://github.com/kube-rs/controller-rs/pull/116). Instead of reporting the same
+  event multiple times it now uses `EventSeries` to aggregate these events to single entry with an
+  age like `3s (x11 over 53s)` ([#938]):
+  - The `report_controller_error` function now needs to be async.
+  - It now takes `Recorder` as a parameter instead of a `Client`.
+  - The `Recorder` instance needs to be available across all `reconcile` invocations, to ensure
+    aggregation works correctly.
+  - The operator needs permission to `patch` events (previously only `create` was needed).
 - Add `ProductSpecificCommonConfig`, so that product operators can have custom fields within `commonConfig`.
   Also add a `JavaCommonConfig`, which can be used by JVM-based tools to offer `jvmArgumentOverrides` with this mechanism ([#931])
 
+### Changed
+
+- BREAKING: Bump Rust dependencies to enable Kubernetes 1.32 (via `kube` 0.98.0 and `k8s-openapi`
+  0.23.0) ([#938]).
+
 [#931]: https://github.com/stackabletech/operator-rs/pull/931
+[#938]: https://github.com/stackabletech/operator-rs/pull/938
 
 ## [0.83.0] - 2024-12-03
 

@@ -8,13 +8,14 @@ use kube::{
     core::DynamicObject,
     runtime::{
         controller::{self, Action},
+        events::Recorder,
         reflector::ObjectRef,
     },
     Resource,
 };
 use tracing;
 
-use crate::{client::Client, logging::k8s_events::publish_controller_error_as_k8s_event};
+use crate::logging::k8s_events::publish_controller_error_as_k8s_event;
 
 /// [`Error`] extensions that help report reconciliation errors
 ///
@@ -43,8 +44,8 @@ pub trait ReconcilerError: Error {
 /// * Kubernetes [`Event`]s, if there is an error that is relevant to the end user
 ///
 /// [`Event`]: `k8s_openapi::api::events::v1::Event`
-pub fn report_controller_reconciled<K, ReconcileErr, QueueErr>(
-    client: &Client,
+pub async fn report_controller_reconciled<K, ReconcileErr, QueueErr>(
+    recorder: &Recorder,
     controller_name: &str,
     result: &Result<(ObjectRef<K>, Action), controller::Error<ReconcileErr, QueueErr>>,
 ) where
@@ -60,13 +61,13 @@ pub fn report_controller_reconciled<K, ReconcileErr, QueueErr>(
                 "Reconciled object"
             );
         }
-        Err(err) => report_controller_error(client, controller_name, err),
+        Err(err) => report_controller_error(recorder, controller_name, err).await,
     }
 }
 
 /// Reports an error to the operator administrator and, if relevant, the end user
-fn report_controller_error<ReconcileErr, QueueErr>(
-    client: &Client,
+async fn report_controller_error<ReconcileErr, QueueErr>(
+    recorder: &Recorder,
     controller_name: &str,
     error: &controller::Error<ReconcileErr, QueueErr>,
 ) where
@@ -78,5 +79,5 @@ fn report_controller_error<ReconcileErr, QueueErr>(
         error = error as &dyn std::error::Error,
         "Failed to reconcile object",
     );
-    publish_controller_error_as_k8s_event(client, controller_name, error);
+    publish_controller_error_as_k8s_event(recorder, error).await;
 }
