@@ -6,7 +6,6 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-
 - BREAKING: Aggregate emitted Kubernetes events on the CustomResources thanks to the new
   [kube feature](https://github.com/kube-rs/controller-rs/pull/116). Instead of reporting the same
   event multiple times it now uses `EventSeries` to aggregate these events to single entry with an
