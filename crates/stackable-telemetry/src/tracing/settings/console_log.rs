@@ -2,7 +2,9 @@
 
 use std::ops::Deref;
 
-use super::{Build, Settings, SettingsBuilder};
+use tracing::level_filters::LevelFilter;
+
+use super::{Settings, SettingsBuilder};
 
 /// Configure specific settings for the Console Log subscriber.
 #[derive(Debug, Default, PartialEq)]
@@ -74,12 +76,36 @@ impl From<SettingsBuilder> for ConsoleLogSettingsBuilder {
     }
 }
 
-/// This implementation is used to build console log settings from common settings without
-/// specifying console log specific settings.
-impl Build<ConsoleLogSettings> for SettingsBuilder {
-    fn build(self) -> ConsoleLogSettings {
+impl From<Settings> for ConsoleLogSettings {
+    fn from(common_settings: Settings) -> Self {
         ConsoleLogSettings {
-            common_settings: self.build(),
+            common_settings,
+            ..Default::default()
+        }
+    }
+}
+
+impl From<(&'static str, LevelFilter)> for ConsoleLogSettings {
+    fn from(value: (&'static str, LevelFilter)) -> Self {
+        Self {
+            common_settings: Settings {
+                environment_variable: value.0,
+                default_level: value.1,
+                enabled: true,
+            },
+            ..Default::default()
+        }
+    }
+}
+
+impl From<(&'static str, LevelFilter, bool)> for ConsoleLogSettings {
+    fn from(value: (&'static str, LevelFilter, bool)) -> Self {
+        Self {
+            common_settings: Settings {
+                environment_variable: value.0,
+                default_level: value.1,
+                enabled: value.2,
+            },
             ..Default::default()
         }
     }

@@ -374,11 +374,11 @@ impl TracingBuilder<builder_state::Config> {
     /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_console_output(
         self,
-        console_log_settings: ConsoleLogSettings,
+        console_log_settings: impl Into<ConsoleLogSettings>,
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
-            console_log_settings,
+            console_log_settings: console_log_settings.into(),
             otlp_log_settings: self.otlp_log_settings,
             otlp_trace_settings: self.otlp_trace_settings,
             _marker: self._marker,
@@ -394,12 +394,12 @@ impl TracingBuilder<builder_state::Config> {
     /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_otlp_log_exporter(
         self,
-        otlp_log_settings: OtlpLogSettings,
+        otlp_log_settings: impl Into<OtlpLogSettings>,
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
             console_log_settings: self.console_log_settings,
-            otlp_log_settings,
+            otlp_log_settings: otlp_log_settings.into(),
             otlp_trace_settings: self.otlp_trace_settings,
             _marker: self._marker,
         }
@@ -414,13 +414,13 @@ impl TracingBuilder<builder_state::Config> {
     /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_otlp_trace_exporter(
         self,
-        otlp_trace_settings: OtlpTraceSettings,
+        otlp_trace_settings: impl Into<OtlpTraceSettings>,
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
             console_log_settings: self.console_log_settings,
             otlp_log_settings: self.otlp_log_settings,
-            otlp_trace_settings,
+            otlp_trace_settings: otlp_trace_settings.into(),
             _marker: self._marker,
         }
     }
@@ -452,7 +452,8 @@ fn env_filter_builder(env_var: &str, default_directive: impl Into<Directive>) ->
 
 #[cfg(test)]
 mod test {
-    use settings::{Build as _, Settings};
+    use rstest::rstest;
+    use settings::Settings;
     use tracing::level_filters::LevelFilter;
 
     use super::*;
@@ -497,6 +498,48 @@ mod test {
         );
         assert!(!trace_guard.otlp_log_settings.enabled);
         assert!(!trace_guard.otlp_trace_settings.enabled);
+    }
+
+    #[test]
+    fn builder_with_console_output_double() {
+        let trace_guard = Tracing::builder()
+            .service_name("test")
+            .with_console_output(("ABC_A", LevelFilter::TRACE))
+            .build();
+
+        assert_eq!(
+            trace_guard.console_log_settings,
+            ConsoleLogSettings {
+                common_settings: Settings {
+                    environment_variable: "ABC_A",
+                    default_level: LevelFilter::TRACE,
+                    enabled: true
+                },
+                log_format: Default::default()
+            }
+        )
+    }
+
+    #[rstest]
+    #[case(false)]
+    #[case(true)]
+    fn builder_with_console_output_triple(#[case] enabled: bool) {
+        let trace_guard = Tracing::builder()
+            .service_name("test")
+            .with_console_output(("ABC_A", LevelFilter::TRACE, enabled))
+            .build();
+
+        assert_eq!(
+            trace_guard.console_log_settings,
+            ConsoleLogSettings {
+                common_settings: Settings {
+                    environment_variable: "ABC_A",
+                    default_level: LevelFilter::TRACE,
+                    enabled
+                },
+                log_format: Default::default()
+            }
+        )
     }
 
     #[test]

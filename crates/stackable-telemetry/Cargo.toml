@@ -25,6 +25,7 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 [dev-dependencies]
 tokio.workspace = true
 tracing-opentelemetry.workspace = true
+rstest.workspace = true
 stackable-webhook = { path = "../stackable-webhook" }
 
 [package.metadata.cargo-udeps.ignore]
