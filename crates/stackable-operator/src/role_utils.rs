@@ -100,13 +100,17 @@ use kube::{runtime::reflector::ObjectRef, Resource};
 use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use snafu::{OptionExt, Snafu};
-use tracing::instrument;
+use snafu::{OptionExt, ResultExt, Snafu};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("missing roleGroup {role_group:?}"))]
     MissingRoleGroup { role_group: String },
+
+    #[snafu(display(
+        "Could not parse regex from \"jvmArgumentOverrides.removeRegex\", ignoring it (there might be some added anchors at the start and end): {regex:?}"
+    ))]
+    InvalidRemoveRegex { source: regex::Error, regex: String },
 }
 
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -173,8 +177,7 @@ impl<T, ProductSpecificCommonConfig> CommonConfiguration<T, ProductSpecificCommo
 #[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 pub struct GenericProductSpecificCommonConfig {}
 
-#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize, Merge)]
-#[merge(path_overrides(merge = "crate::config::merge"))]
+#[derive(Clone, Debug, Default, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JavaCommonConfig {
     /// Allows overriding JVM arguments.
@@ -239,31 +242,23 @@ impl JvmArgumentOverrides {
     }
 }
 
-impl Merge for JvmArgumentOverrides {
+/// We can not use [`Merge`] here, as this function can fail, e.g. if an invalid regex is specified by the user
+impl JvmArgumentOverrides {
     /// Please watch out: Merge order is complicated for this merge.
     /// Test your code!
-    #[instrument]
-    fn merge(&mut self, defaults: &Self) {
+    pub fn try_merge(&mut self, defaults: &Self) -> Result<(), Error> {
         let regexes = self
             .remove_regex
             .iter()
-            .filter_map(|regex| {
+            .map(|regex| {
                 let without_anchors = regex.trim_start_matches('^').trim_end_matches('$');
                 let with_anchors = format!("^{without_anchors}$");
-                match Regex::new(&with_anchors) {
-                    Ok(regex) => Some(regex),
-                    Err(error) => {
-                        tracing::warn!(
-                            regex,
-                            regex_without_anchors = without_anchors,
-                            regex_with_anchors = with_anchors,
-                            ?error,
-                            "Could not parse regex from \"jvmArgumentOverrides.removeRegex\", ignoring it"
-                        );
-                        None
-                    }
-            }})
-            .collect::<Vec<_>>();
+
+                Regex::new(&with_anchors).with_context(|_| InvalidRemoveRegexSnafu {
+                    regex: with_anchors,
+                })
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
 
         let new_add = defaults
             .add
@@ -277,6 +272,8 @@ impl Merge for JvmArgumentOverrides {
         self.add = new_add;
         self.remove = HashSet::new();
         self.remove_regex = Vec::new();
+
+        Ok(())
     }
 }
 
@@ -374,30 +371,42 @@ where
                 .collect(),
         }
     }
+}
 
-    /// Returns the product specific common config from
+impl<T, U> Role<T, U, JavaCommonConfig>
+where
+    U: Default + JsonSchema + Serialize,
+{
+    /// Merges jvm argument overrides from
     ///
-    /// 1. The role
-    /// 2. The role group
-    pub fn get_product_specific_common_configs<'a>(
-        &'a self,
+    /// 1. It takes the operator generated JVM args
+    /// 2. It applies role level overrides
+    /// 3. It applies roleGroup level overrides
+    pub fn get_merged_jvm_argument_overrides(
+        &self,
         role_group: &str,
-    ) -> Result<
-        (
-            &'a ProductSpecificCommonConfig,
-            &'a ProductSpecificCommonConfig,
-        ),
-        Error,
-    > {
-        let from_role = &self.config.product_specific_common_config;
+        operator_generated: &JvmArgumentOverrides,
+    ) -> Result<JvmArgumentOverrides, Error> {
+        let from_role = &self
+            .config
+            .product_specific_common_config
+            .jvm_argument_overrides;
         let from_role_group = &self
             .role_groups
             .get(role_group)
             .with_context(|| MissingRoleGroupSnafu { role_group })?
             .config
-            .product_specific_common_config;
+            .product_specific_common_config
+            .jvm_argument_overrides;
 
-        Ok((from_role, from_role_group))
+        // Please note that the merge order is different than we normally do!
+        // This is not trivial, as the merge operation is not purely additive (as it is with e.g. `PodTemplateSpec).
+        let mut from_role = from_role.clone();
+        from_role.try_merge(&operator_generated)?;
+        let mut from_role_group = from_role_group.clone();
+        from_role_group.try_merge(&from_role)?;
+
+        Ok(from_role_group)
     }
 }
 
@@ -475,32 +484,29 @@ impl<K: Resource> Display for RoleGroupRef<K> {
 mod tests {
     use std::collections::HashSet;
 
-    use crate::{config::merge::Merge, role_utils::JavaCommonConfig};
+    use crate::role_utils::JavaCommonConfig;
 
-    use super::JvmArgumentOverrides;
+    use super::*;
 
     #[test]
     fn test_merge_java_common_config() {
         // The operator generates some JVM arguments
-        let operator_generated = JavaCommonConfig {
-            jvm_argument_overrides: JvmArgumentOverrides::new_with_only_additions(
-                [
-                    "-Xms34406m".to_owned(),
-                    "-Xmx34406m".to_owned(),
-                    "-XX:+UseG1GC".to_owned(),
-                    "-XX:+ExitOnOutOfMemoryError".to_owned(),
-                    "-Djava.protocol.handler.pkgs=sun.net.www.protocol".to_owned(),
-                    "-Dsun.net.http.allowRestrictedHeaders=true".to_owned(),
-                    "-Djava.security.properties=/stackable/nifi/conf/security.properties"
-                        .to_owned(),
-                ]
-                .into(),
-            ),
-        };
+        let operator_generated = JvmArgumentOverrides::new_with_only_additions(
+            [
+                "-Xms34406m".to_owned(),
+                "-Xmx34406m".to_owned(),
+                "-XX:+UseG1GC".to_owned(),
+                "-XX:+ExitOnOutOfMemoryError".to_owned(),
+                "-Djava.protocol.handler.pkgs=sun.net.www.protocol".to_owned(),
+                "-Dsun.net.http.allowRestrictedHeaders=true".to_owned(),
+                "-Djava.security.properties=/stackable/nifi/conf/security.properties".to_owned(),
+            ]
+            .into(),
+        );
 
         // Let's say we want to set some additional HTTP Proxy and IPv4 settings
         // And we don't like the garbage collector for some reason...
-        let mut role: JavaCommonConfig = serde_yaml::from_str(
+        let role: JavaCommonConfig = serde_yaml::from_str(
             r#"
                 jvmArgumentOverrides:
                   remove:
@@ -516,7 +522,7 @@ mod tests {
         // For the roleGroup, let's say we need a different memory config.
         // For that to work we first remove the flags generated by the operator and add our own.
         // Also we override the proxy port to test that the roleGroup config takes precedence over the role config.
-        let mut role_group: JavaCommonConfig = serde_yaml::from_str(
+        let role_group: JavaCommonConfig = serde_yaml::from_str(
             r#"
                 jvmArgumentOverrides:
                   removeRegex:
@@ -530,15 +536,27 @@ mod tests {
         )
         .unwrap();
 
-        // let mut merged = role_group;
-        // merged.merge(&role);
-        // merged.merge(&operator_generated);
+        let entire_role: Role<(), GenericRoleConfig, JavaCommonConfig> = Role {
+            config: CommonConfiguration {
+                product_specific_common_config: role,
+                ..Default::default()
+            },
+            role_groups: HashMap::from([(
+                "default".to_owned(),
+                RoleGroup {
+                    config: CommonConfiguration {
+                        product_specific_common_config: role_group,
+                        ..Default::default()
+                    },
+                    replicas: Some(42),
+                },
+            )]),
+            ..Default::default()
+        };
 
-        // Please note that merge order is different than we normally do!
-        // This is not trivial, as the merge operation is not purely additive (as it is with e.g.
-        // PodTemplateSpec).
-        role.merge(&operator_generated);
-        role_group.merge(&role);
+        let merged_jvm_argument_overrides = entire_role
+            .get_merged_jvm_argument_overrides("default", &operator_generated)
+            .expect("Failed to merge jvm argument overrides");
 
         let expected = Vec::from([
             "-Xms34406m".to_owned(),
@@ -553,33 +571,26 @@ mod tests {
         ]);
 
         assert_eq!(
-            role_group,
-            JavaCommonConfig {
-                jvm_argument_overrides: JvmArgumentOverrides {
-                    add: expected.clone(),
-                    remove: HashSet::new(),
-                    remove_regex: Vec::new()
-                }
+            merged_jvm_argument_overrides,
+            JvmArgumentOverrides {
+                add: expected.clone(),
+                remove: HashSet::new(),
+                remove_regex: Vec::new()
             }
         );
 
         assert_eq!(
-            role_group
-                .jvm_argument_overrides
-                .effective_jvm_config_after_merging(),
+            merged_jvm_argument_overrides.effective_jvm_config_after_merging(),
             &expected
         );
     }
 
     #[test]
     fn test_merge_java_common_config_keep_order() {
-        let operator_generated = JavaCommonConfig {
-            jvm_argument_overrides: JvmArgumentOverrides::new_with_only_additions(
-                ["-Xms1m".to_owned()].into(),
-            ),
-        };
+        let operator_generated =
+            JvmArgumentOverrides::new_with_only_additions(["-Xms1m".to_owned()].into());
 
-        let mut role: JavaCommonConfig = serde_yaml::from_str(
+        let role: JavaCommonConfig = serde_yaml::from_str(
             r#"
                 jvmArgumentOverrides:
                     add:
@@ -587,7 +598,7 @@ mod tests {
                 "#,
         )
         .unwrap();
-        let mut role_group: JavaCommonConfig = serde_yaml::from_str(
+        let role_group: JavaCommonConfig = serde_yaml::from_str(
             r#"
             jvmArgumentOverrides:
                 add:
@@ -596,16 +607,30 @@ mod tests {
         )
         .unwrap();
 
-        // Please note that merge order is different than we normally do!
-        // This is not trivial, as the merge operation is not purely additive (as it is with e.g.
-        // PodTemplateSpec).
-        role.merge(&operator_generated);
-        role_group.merge(&role);
+        let entire_role: Role<(), GenericRoleConfig, JavaCommonConfig> = Role {
+            config: CommonConfiguration {
+                product_specific_common_config: role,
+                ..Default::default()
+            },
+            role_groups: HashMap::from([(
+                "default".to_owned(),
+                RoleGroup {
+                    config: CommonConfiguration {
+                        product_specific_common_config: role_group,
+                        ..Default::default()
+                    },
+                    replicas: Some(42),
+                },
+            )]),
+            ..Default::default()
+        };
+
+        let merged_jvm_argument_overrides = entire_role
+            .get_merged_jvm_argument_overrides("default", &operator_generated)
+            .expect("Failed to merge jvm argument overrides");
 
         assert_eq!(
-            role_group
-                .jvm_argument_overrides
-                .effective_jvm_config_after_merging(),
+            merged_jvm_argument_overrides.effective_jvm_config_after_merging(),
             &[
                 "-Xms1m".to_owned(),
                 "-Xms2m".to_owned(),
