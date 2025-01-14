@@ -423,6 +423,13 @@ mod tests {
         assert!(is_fqdn(value).is_ok());
     }
 
+    #[rstest]
+    #[case("cluster.local")]
+    #[case("cluster.local.")]
+    fn is_fqdn_pass(#[case] value: &str) {
+        assert!(is_fqdn(value).is_ok());
+    }
+
     #[test]
     fn test_mask_trailing_dash() {
         assert_eq!(mask_trailing_dash("abc-".to_string()), "abca");
