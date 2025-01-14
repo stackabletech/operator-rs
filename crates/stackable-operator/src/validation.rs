@@ -28,10 +28,10 @@ const RFC_1123_SUBDOMAIN_FMT: &str =
     concatcp!(RFC_1123_LABEL_FMT, "(\\.", RFC_1123_LABEL_FMT, ")*");
 const RFC_1123_SUBDOMAIN_ERROR_MSG: &str = "a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
 
-const FQDN_MAX_LENGTH: usize = RFC_1123_SUBDOMAIN_MAX_LENGTH;
+const DOMAIN_MAX_LENGTH: usize = RFC_1123_SUBDOMAIN_MAX_LENGTH;
 /// Same as [`RFC_1123_SUBDOMAIN_FMT`], but allows a trailing dot
-const FQDN_FMT: &str = concatcp!(RFC_1123_SUBDOMAIN_FMT, "\\.?");
-const FQDN_ERROR_MSG: &str = "a FQDN must consist of lower case alphanumeric characters, '-' or '.', and must start with an alphanumeric character and end with an alphanumeric character or '.'";
+const DOMAIN_FMT: &str = concatcp!(RFC_1123_SUBDOMAIN_FMT, "\\.?");
+const DOMAIN_ERROR_MSG: &str = "a domain must consist of lower case alphanumeric characters, '-' or '.', and must start with an alphanumeric character and end with an alphanumeric character or '.'";
 
 const RFC_1035_LABEL_FMT: &str = "[a-z]([-a-z0-9]*[a-z0-9])?";
 const RFC_1035_LABEL_ERROR_MSG: &str = "a DNS-1035 label must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character";
@@ -51,8 +51,9 @@ const KERBEROS_REALM_NAME_ERROR_MSG: &str =
     "Kerberos realm name must only contain alphanumeric characters, '-', and '.'";
 
 // Lazily initialized regular expressions
-pub(crate) static FQDN_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(&format!("^{FQDN_FMT}$")).expect("failed to compile FQDN regex"));
+pub(crate) static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(&format!("^{DOMAIN_FMT}$")).expect("failed to compile domain regex")
+});
 
 pub(crate) static RFC_1123_SUBDOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(&format!("^{RFC_1123_SUBDOMAIN_FMT}$"))
@@ -186,13 +187,13 @@ fn validate_all(validations: impl IntoIterator<Item = Result<(), Error>>) -> Res
     }
 }
 
-pub fn is_fqdn(value: &str) -> Result {
+pub fn is_domain(value: &str) -> Result {
     validate_all([
-        validate_str_length(value, FQDN_MAX_LENGTH),
+        validate_str_length(value, DOMAIN_MAX_LENGTH),
         validate_str_regex(
             value,
-            &FQDN_REGEX,
-            FQDN_ERROR_MSG,
+            &DOMAIN_REGEX,
+            DOMAIN_ERROR_MSG,
             &[
                 "example.com",
                 "example.com.",
@@ -419,15 +420,15 @@ mod tests {
     #[case(&"a".repeat(253))]
     fn is_rfc_1123_subdomain_pass(#[case] value: &str) {
         assert!(is_rfc_1123_subdomain(value).is_ok());
-        // Every valid RFC1123 is also a valid FQDN
-        assert!(is_fqdn(value).is_ok());
+        // Every valid RFC1123 is also a valid domain
+        assert!(is_domain(value).is_ok());
     }
 
     #[rstest]
     #[case("cluster.local")]
     #[case("cluster.local.")]
-    fn is_fqdn_pass(#[case] value: &str) {
-        assert!(is_fqdn(value).is_ok());
+    fn is_domain_pass(#[case] value: &str) {
+        assert!(is_domain(value).is_ok());
     }
 
     #[test]
