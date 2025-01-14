@@ -402,7 +402,7 @@ where
         // Please note that the merge order is different than we normally do!
         // This is not trivial, as the merge operation is not purely additive (as it is with e.g. `PodTemplateSpec).
         let mut from_role = from_role.clone();
-        from_role.try_merge(&operator_generated)?;
+        from_role.try_merge(operator_generated)?;
         let mut from_role_group = from_role_group.clone();
         from_role_group.try_merge(&from_role)?;
 
