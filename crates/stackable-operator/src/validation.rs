@@ -29,7 +29,7 @@ const RFC_1123_SUBDOMAIN_FMT: &str =
 const RFC_1123_SUBDOMAIN_ERROR_MSG: &str = "a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
 
 const FQDN_MAX_LENGTH: usize = RFC_1123_SUBDOMAIN_MAX_LENGTH;
-/// Same as [`RFC_1123_SUBDOMAIN_FMT`], but allows a trailing slash
+/// Same as [`RFC_1123_SUBDOMAIN_FMT`], but allows a trailing dot
 const FQDN_FMT: &str = concatcp!(RFC_1123_SUBDOMAIN_FMT, "\\.?");
 const FQDN_ERROR_MSG: &str = "a FQDN must consist of lower case alphanumeric characters, '-' or '.', and must start with an alphanumeric character and end with an alphanumeric character or '.'";
 
