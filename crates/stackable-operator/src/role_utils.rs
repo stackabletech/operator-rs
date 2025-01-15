@@ -569,8 +569,8 @@ mod tests {
         let entire_role: Role<(), GenericRoleConfig, JavaCommonConfig> = serde_yaml::from_str(
             "
                 jvmArgumentOverrides:
-                    add:
-                      - -Xms2m
+                  add:
+                    - -Xms2m
                 roleGroups:
                   default:
                     jvmArgumentOverrides:
