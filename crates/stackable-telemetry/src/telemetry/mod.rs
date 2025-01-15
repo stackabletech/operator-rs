@@ -4,7 +4,7 @@
 //! It is intended to be used by the Stackable Data Platform operators and
 //! webhooks, but it should be generic enough to be used in any application.
 //!
-//! To get started, see [`Tracing`].
+//! To get started, see [`Telemetry`].
 
 use opentelemetry::KeyValue;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
@@ -44,7 +44,7 @@ pub enum Error {
 ///
 /// # Usage:
 /// ```
-/// use stackable_telemetry::tracing::{Tracing, Error, settings::{Build as _, Settings}};
+/// use stackable_telemetry::telemetry::{Telemetry, Error, settings::{Build as _, Settings}};
 /// use tracing_subscriber::filter::LevelFilter;
 ///
 /// #[tokio::main]
@@ -56,7 +56,7 @@ pub enum Error {
 ///
 ///     // IMPORTANT: Name the guard variable appropriately, do not just use
 ///     // `let _ =`, as that will drop immediately.
-///     let _tracing_guard = Tracing::builder()
+///     let _telemetry_guard = Telemetry::builder()
 ///         .service_name("test")
 ///         .with_console_output(
 ///             Settings::builder()
@@ -148,7 +148,7 @@ pub enum Error {
 /// [3]: https://docs.rs/opentelemetry_sdk/latest/src/opentelemetry_sdk/trace/config.rs.html
 /// [4]: https://docs.rs/opentelemetry_sdk/latest/src/opentelemetry_sdk/trace/span_processor.rs.html
 /// [5]: https://docs.rs/opentelemetry_sdk/latest/src/opentelemetry_sdk/logs/log_processor.rs.html
-pub struct Tracing {
+pub struct Telemetry {
     service_name: &'static str,
     console_log_settings: ConsoleLogSettings,
     otlp_log_settings: OtlpLogSettings,
@@ -156,9 +156,9 @@ pub struct Tracing {
     logger_provider: Option<LoggerProvider>,
 }
 
-impl Tracing {
-    pub fn builder() -> TracingBuilder<builder_state::PreServiceName> {
-        TracingBuilder::default()
+impl Telemetry {
+    pub fn builder() -> TelemetryBuilder<builder_state::PreServiceName> {
+        TelemetryBuilder::default()
     }
 
     /// Initialise the configured tracing subscribers, returning a guard that
@@ -166,7 +166,7 @@ impl Tracing {
     ///
     /// IMPORTANT: Name the guard variable appropriately, do not just use
     /// `let _ =`, as that will drop immediately.
-    pub fn init(mut self) -> Result<Tracing> {
+    pub fn init(mut self) -> Result<Telemetry> {
         let mut layers: Vec<Box<dyn Layer<Registry> + Sync + Send>> = Vec::new();
 
         if self.console_log_settings.enabled {
@@ -259,7 +259,7 @@ impl Tracing {
     }
 }
 
-impl Drop for Tracing {
+impl Drop for Telemetry {
     fn drop(&mut self) {
         tracing::debug!(
             opentelemetry.tracing.enabled = self.otlp_trace_settings.enabled,
@@ -310,7 +310,7 @@ mod private {
 /// This module holds the possible states that the builder is in.
 ///
 /// Each state will implement [`BuilderState`] (with no methods), and the
-/// Builder struct ([`TracingBuilder`]) itself will be implemented with
+/// Builder struct ([`TelemetryBuilder`]) itself will be implemented with
 /// each state as a generic parameter.
 /// This allows only the methods to be called when the builder is in the
 /// applicable state.
@@ -342,9 +342,9 @@ impl BuilderState for builder_state::PreServiceName {}
 #[doc(hidden)]
 impl BuilderState for builder_state::Config {}
 
-/// Makes it easy to build a valid [`Tracing`] instance.
+/// Makes it easy to build a valid [`Telemetry`] instance.
 #[derive(Default)]
-pub struct TracingBuilder<S: BuilderState> {
+pub struct TelemetryBuilder<S: BuilderState> {
     service_name: Option<&'static str>,
     console_log_settings: ConsoleLogSettings,
     otlp_log_settings: OtlpLogSettings,
@@ -354,19 +354,22 @@ pub struct TracingBuilder<S: BuilderState> {
     _marker: std::marker::PhantomData<S>,
 }
 
-impl TracingBuilder<builder_state::PreServiceName> {
+impl TelemetryBuilder<builder_state::PreServiceName> {
     /// Set the service name used in OTLP exports, and console output.
     ///
     /// A service name is required for valid OTLP telemetry.
-    pub fn service_name(self, service_name: &'static str) -> TracingBuilder<builder_state::Config> {
-        TracingBuilder {
+    pub fn service_name(
+        self,
+        service_name: &'static str,
+    ) -> TelemetryBuilder<builder_state::Config> {
+        TelemetryBuilder {
             service_name: Some(service_name),
             ..Default::default()
         }
     }
 }
 
-impl TracingBuilder<builder_state::Config> {
+impl TelemetryBuilder<builder_state::Config> {
     /// Enable the console output tracing subscriber and set the default
     /// [`LevelFilter`][1] which is overridable through the given environment
     /// variable.
@@ -375,8 +378,8 @@ impl TracingBuilder<builder_state::Config> {
     pub fn with_console_output(
         self,
         console_log_settings: ConsoleLogSettings,
-    ) -> TracingBuilder<builder_state::Config> {
-        TracingBuilder {
+    ) -> TelemetryBuilder<builder_state::Config> {
+        TelemetryBuilder {
             service_name: self.service_name,
             console_log_settings,
             otlp_log_settings: self.otlp_log_settings,
@@ -389,14 +392,14 @@ impl TracingBuilder<builder_state::Config> {
     /// which is overridable through the given environment variable.
     ///
     /// You can configure the OTLP log exports through the variables defined
-    /// in the opentelemetry crates. See [`Tracing`].
+    /// in the opentelemetry crates. See [`Telemetry`].
     ///
     /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_otlp_log_exporter(
         self,
         otlp_log_settings: OtlpLogSettings,
-    ) -> TracingBuilder<builder_state::Config> {
-        TracingBuilder {
+    ) -> TelemetryBuilder<builder_state::Config> {
+        TelemetryBuilder {
             service_name: self.service_name,
             console_log_settings: self.console_log_settings,
             otlp_log_settings,
@@ -409,14 +412,14 @@ impl TracingBuilder<builder_state::Config> {
     /// which is overridable through the given environment variable.
     ///
     /// You can configure the OTLP trace exports through the variables defined
-    /// in the opentelemetry crates. See [`Tracing`].
+    /// in the opentelemetry crates. See [`Telemetry`].
     ///
     /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_otlp_trace_exporter(
         self,
         otlp_trace_settings: OtlpTraceSettings,
-    ) -> TracingBuilder<builder_state::Config> {
-        TracingBuilder {
+    ) -> TelemetryBuilder<builder_state::Config> {
+        TelemetryBuilder {
             service_name: self.service_name,
             console_log_settings: self.console_log_settings,
             otlp_log_settings: self.otlp_log_settings,
@@ -425,12 +428,12 @@ impl TracingBuilder<builder_state::Config> {
         }
     }
 
-    /// Consumes self and returns a valid [`Tracing`] instance.
+    /// Consumes self and returns a valid [`Telemetry`] instance.
     ///
-    /// Once built, you can call [`Tracing::init`] to enable the configured
+    /// Once built, you can call [`Telemetry::init`] to enable the configured
     /// tracing subscribers.
-    pub fn build(self) -> Tracing {
-        Tracing {
+    pub fn build(self) -> Telemetry {
+        Telemetry {
             service_name: self
                 .service_name
                 .expect("service_name must be configured at this point"),
@@ -459,14 +462,14 @@ mod test {
 
     #[test]
     fn builder_basic_construction() {
-        let trace_guard = Tracing::builder().service_name("test").build();
+        let trace_guard = Telemetry::builder().service_name("test").build();
 
         assert_eq!(trace_guard.service_name, "test");
     }
 
     #[test]
     fn builder_with_console_output() {
-        let trace_guard = Tracing::builder()
+        let trace_guard = Telemetry::builder()
             .service_name("test")
             .with_console_output(
                 Settings::builder()
@@ -501,7 +504,7 @@ mod test {
 
     #[test]
     fn builder_with_all() {
-        let trace_guard = Tracing::builder()
+        let trace_guard = Telemetry::builder()
             .service_name("test")
             .with_console_output(
                 Settings::builder()
