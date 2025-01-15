@@ -20,6 +20,9 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: Bump Rust dependencies to enable Kubernetes 1.32 (via `kube` 0.98.0 and `k8s-openapi`
   0.23.0) ([#867]).
+- BREAKING: Append a dot to the default cluster domain to make it a FQDN and allow FQDNs when validating a `DomainName` ([#939]).
+
+[#939]: https://github.com/stackabletech/operator-rs/pull/939
 
 ## [0.83.0] - 2024-12-03
 
@@ -316,7 +319,7 @@ All notable changes to this project will be documented in this file.
 
 [#808]: https://github.com/stackabletech/operator-rs/pull/808
 
-## [0.69.1]  2024-06-10
+## [0.69.1] - 2024-06-10
 
 ### Added
 
