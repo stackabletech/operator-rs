@@ -566,40 +566,19 @@ mod tests {
         let operator_generated =
             JvmArgumentOverrides::new_with_only_additions(["-Xms1m".to_owned()].into());
 
-        let role: JavaCommonConfig = serde_yaml::from_str(
-            r#"
+        let entire_role: Role<(), GenericRoleConfig, JavaCommonConfig> = serde_yaml::from_str(
+            "
                 jvmArgumentOverrides:
                     add:
-                    - -Xms2m
-                "#,
+                      - -Xms2m
+                roleGroups:
+                  default:
+                    jvmArgumentOverrides:
+                      add:
+                        - -Xms3m
+            ",
         )
-        .unwrap();
-        let role_group: JavaCommonConfig = serde_yaml::from_str(
-            r#"
-            jvmArgumentOverrides:
-                add:
-                - -Xms3m
-            "#,
-        )
-        .unwrap();
-
-        let entire_role: Role<(), GenericRoleConfig, JavaCommonConfig> = Role {
-            config: CommonConfiguration {
-                product_specific_common_config: role,
-                ..Default::default()
-            },
-            role_groups: HashMap::from([(
-                "default".to_owned(),
-                RoleGroup {
-                    config: CommonConfiguration {
-                        product_specific_common_config: role_group,
-                        ..Default::default()
-                    },
-                    replicas: Some(42),
-                },
-            )]),
-            ..Default::default()
-        };
+        .expect("Failed to parse role");
 
         let merged_jvm_argument_overrides = entire_role
             .get_merged_jvm_argument_overrides("default", &operator_generated)
