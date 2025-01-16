@@ -1,5 +1,7 @@
 //! Subscriber settings.
 
+use std::path::Path;
+
 use tracing::level_filters::LevelFilter;
 
 pub mod console_log;
@@ -109,8 +111,14 @@ impl SettingsBuilder {
     }
 
     /// Set specific [`FileLogSettings`].
-    pub fn file_log_settings_builder(self) -> FileLogSettingsBuilder<builder_state::PreLogDir> {
-        self.into()
+    pub fn file_log_settings_builder<P>(self, path: P) -> FileLogSettingsBuilder
+    where
+        P: AsRef<Path>,
+    {
+        FileLogSettingsBuilder {
+            common_settings: self.build(),
+            file_log_dir: path.as_ref().to_path_buf(),
+        }
     }
 
     /// Set specific [`OtlpLogSettings`].

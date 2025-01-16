@@ -1,5 +1,5 @@
 //! This module contains functionality to initialise tracing Subscribers for
-//! console output, file output and OpenTelemetry OTLP export for traces and logs.
+//! console output, file output, and OpenTelemetry OTLP export for traces and logs.
 //!
 //! It is intended to be used by the Stackable Data Platform operators and
 //! webhooks, but it should be generic enough to be used in any application.
@@ -16,7 +16,7 @@ use opentelemetry_sdk::{
 use opentelemetry_semantic_conventions::resource;
 use snafu::{ResultExt as _, Snafu};
 use tracing::subscriber::SetGlobalDefaultError;
-use tracing_appender::rolling::{RollingFileAppender, Rotation};
+use tracing_appender::rolling::{InitError, RollingFileAppender, Rotation};
 use tracing_subscriber::{filter::Directive, layer::SubscriberExt, EnvFilter, Layer, Registry};
 
 use settings::{ConsoleLogSettings, FileLogSettings, OtlpLogSettings, OtlpTraceSettings};
@@ -39,6 +39,9 @@ pub enum Error {
 
     #[snafu(display("unable to set the global default subscriber"))]
     SetGlobalDefaultSubscriber { source: SetGlobalDefaultError },
+
+    #[snafu(display("failed to initialize rolling file appender"))]
+    InitRollingFileAppender { source: InitError },
 }
 
 /// Easily initialize a set of preconfigured [`Subscriber`][1] layers.
@@ -195,7 +198,7 @@ impl Tracing {
                 .filename_suffix("tracing-rs.json")
                 .max_log_files(6)
                 .build(&self.file_log_settings.file_log_dir)
-                .expect("failed to initialize rolling file appender");
+                .context(InitRollingFileAppenderSnafu)?;
 
             layers.push(
                 tracing_subscriber::fmt::layer()
@@ -560,8 +563,7 @@ mod test {
                     .with_environment_variable("ABC_FILE")
                     .with_default_level(LevelFilter::INFO)
                     .enabled(true)
-                    .file_log_settings_builder()
-                    .with_file_log_dir(String::from("/abc_file_dir"))
+                    .file_log_settings_builder(String::from("/abc_file_dir"))
                     .build(),
             )
             .with_otlp_log_exporter(

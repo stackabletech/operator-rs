@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Introduce common `Settings` and subscriber specific settings ([#901]).
-- Added support for logging to files ([#933]).
+- Add support for logging to files ([#933]).
 
 ### Changed
 
