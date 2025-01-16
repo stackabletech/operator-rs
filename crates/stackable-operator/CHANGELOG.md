@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.84.0] - 2025-01-16
+
 ### Added
 
 - BREAKING: Aggregate emitted Kubernetes events on the CustomResources thanks to the new
