@@ -109,7 +109,7 @@ pub trait FromFragment: Sized {
     /// For complex structs, this should be a variant of `Self` where each field is replaced by its respective `Fragment` type. This can be derived using
     /// [`Fragment`].
     type Fragment;
-    /// A variant of [`Self::Fragment`] that is used when the container already provides a to indicate that a value is optional.
+    /// A variant of [`Self::Fragment`] that is used when the container already provides a way to indicate that a value is optional.
     ///
     /// For example, there's no use marking a value as [`Option`]al again if the value is already contained in an `Option`.
     ///

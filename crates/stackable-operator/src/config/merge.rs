@@ -1,3 +1,5 @@
+//! Automatically merges objects *deeply*, especially fragments.
+
 use k8s_openapi::{
     api::core::v1::{NodeAffinity, PodAffinity, PodAntiAffinity, PodTemplateSpec},
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
