@@ -18,7 +18,7 @@ use snafu::{ResultExt as _, Snafu};
 use tracing::subscriber::SetGlobalDefaultError;
 use tracing_subscriber::{filter::Directive, layer::SubscriberExt, EnvFilter, Layer, Registry};
 
-use settings::{ConsoleLogSettings, OtlpLogSettings, OtlpTraceSettings};
+use settings::*;
 
 pub mod settings;
 
@@ -45,9 +45,8 @@ pub enum Error {
 /// # Usage
 ///
 /// There are two different styles to configure individual subscribers: Using the sophisticated
-/// [`SettingsBuilder`][settings::SettingsBuilder] or the simplified tuple style for basic
-/// configuration. Currently, three different subscribers are supported: console output, OTLP log
-/// export, and OTLP trace export.
+/// [`SettingsBuilder`] or the simplified tuple style for basic configuration. Currently, three
+/// different subscribers are supported: console output, OTLP log export, and OTLP trace export.
 ///
 /// The subscribers are active as long as the tracing guard returned by [`Tracing::init`] is in
 /// scope and not dropped. Dropping it results in subscribers being shut down, which can lead to
@@ -104,6 +103,14 @@ pub enum Error {
 /// ```
 ///
 /// ## Advanced configuration
+///
+/// More advanced configurations can be done via the [`Settings::builder`] function. Each
+/// subscriber provides specific settings based on a common set of options. These options can be
+/// customized via the following methods:
+///
+/// - [`SettingsBuilder::console_log_settings_builder`]
+/// - [`SettingsBuilder::otlp_log_settings_builder`]
+/// - [`SettingsBuilder::otlp_trace_settings_builder`]
 ///
 /// ```
 /// # use stackable_telemetry::tracing::{Tracing, Error, settings::Settings};
@@ -220,8 +227,10 @@ impl Tracing {
     /// Initialise the configured tracing subscribers, returning a guard that
     /// will shutdown the subscribers when dropped.
     ///
-    /// IMPORTANT: Name the guard variable appropriately, do not just use
-    /// `let _ =`, as that will drop immediately.
+    /// <div class="warning">
+    /// Name the guard variable appropriately, do not just use <code>let _ =</code>, as that will drop
+    /// immediately.
+    /// </div>
     pub fn init(mut self) -> Result<Tracing> {
         let mut layers: Vec<Box<dyn Layer<Registry> + Sync + Send>> = Vec::new();
 
