@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `TtlCache` structure ([#943]).
+
+[#943]: https://github.com/stackabletech/operator-rs/pull/943
+
 ## [0.84.0] - 2025-01-16
 
 ### Added
