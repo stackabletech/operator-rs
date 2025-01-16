@@ -68,7 +68,8 @@ pub enum Error {
 ///         .build()                            // |
 ///         .init()?;                           // |
 ///                                             // |
-///     tracing::info!("log a message");        // < Scope ends here, guard is dropped
+///     tracing::info!("log a message");        // |
+///     Ok(())                                  // < Scope ends here, guard is dropped
 /// }
 /// ```
 ///
