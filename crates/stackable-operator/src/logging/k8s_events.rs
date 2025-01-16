@@ -2,12 +2,10 @@
 
 use std::error::Error;
 
-use crate::client::Client;
 use kube::runtime::{
     controller,
-    events::{Event, EventType, Recorder, Reporter},
+    events::{Event, EventType, Recorder},
 };
-use tracing::Instrument;
 
 use super::controller::ReconcilerError;
 
@@ -40,42 +38,29 @@ fn error_to_event<E: ReconcilerError>(err: &E) -> Event {
 
 /// Reports an error coming from a controller to Kubernetes
 ///
-/// This is inteded to be executed on the log entries returned by [`kube::runtime::Controller::run`]
-#[tracing::instrument(skip(client))]
-pub fn publish_controller_error_as_k8s_event<ReconcileErr, QueueErr>(
-    client: &Client,
-    controller: &str,
+/// This is intended to be executed on the log entries returned by [`kube::runtime::Controller::run`]
+#[tracing::instrument(skip(recorder))]
+pub async fn publish_controller_error_as_k8s_event<ReconcileErr, QueueErr>(
+    recorder: &Recorder,
     controller_error: &controller::Error<ReconcileErr, QueueErr>,
 ) where
     ReconcileErr: ReconcilerError,
     QueueErr: Error,
 {
-    let (error, obj) = match controller_error {
-        controller::Error::ReconcilerFailed(err, obj) => (err, obj),
+    let controller::Error::ReconcilerFailed(error, obj) = controller_error else {
         // Other error types are intended for the operator administrator, and aren't linked to a specific object
-        _ => return,
+        return;
     };
-    let recorder = Recorder::new(
-        client.as_kube_client(),
-        Reporter {
-            controller: controller.to_string(),
-            instance: None,
-        },
-        obj.clone().into(),
-    );
-    let event = error_to_event(error);
-    // Run in the background
-    tokio::spawn(
-        async move {
-            if let Err(err) = recorder.publish(event).await {
-                tracing::error!(
-                    error = &err as &dyn std::error::Error,
-                    "Failed to report error as K8s event"
-                );
-            }
-        }
-        .in_current_span(),
-    );
+
+    if let Err(err) = recorder
+        .publish(&error_to_event(error), &obj.clone().into())
+        .await
+    {
+        tracing::error!(
+            error = &err as &dyn std::error::Error,
+            "Failed to report error as K8s event"
+        );
+    }
 }
 
 mod message {

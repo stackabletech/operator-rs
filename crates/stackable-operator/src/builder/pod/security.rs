@@ -402,6 +402,8 @@ mod tests {
                 app_armor_profile: None,
                 // This attribute is supported starting with Kubernetes 1.31.
                 supplemental_groups_policy: None,
+                // This attribute is supported starting with Kubernetes 1.32.
+                se_linux_change_policy: None,
             }
         );
     }

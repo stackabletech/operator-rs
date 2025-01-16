@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- BREAKING: Aggregate emitted Kubernetes events on the CustomResources thanks to the new
+  [kube feature](https://github.com/kube-rs/controller-rs/pull/116). Instead of reporting the same
+  event multiple times it now uses `EventSeries` to aggregate these events to single entry with an
+  age like `3s (x11 over 53s)` ([#867]):
+  - The `report_controller_error` function now needs to be async.
+  - It now takes `Recorder` as a parameter instead of a `Client`.
+  - The `Recorder` instance needs to be available across all `reconcile` invocations, to ensure
+    aggregation works correctly.
+  - The operator needs permission to `patch` events (previously only `create` was needed).
+
+### Changed
+
+- BREAKING: Bump Rust dependencies to enable Kubernetes 1.32 (via `kube` 0.98.0 and `k8s-openapi`
+  0.23.0) ([#867]).
+- BREAKING: Append a dot to the default cluster domain to make it a FQDN and allow FQDNs when validating a `DomainName` ([#939]).
+
+[#939]: https://github.com/stackabletech/operator-rs/pull/939
+
 ## [0.83.0] - 2024-12-03
 
 ### Added
@@ -299,7 +319,7 @@ All notable changes to this project will be documented in this file.
 
 [#808]: https://github.com/stackabletech/operator-rs/pull/808
 
-## [0.69.1]  2024-06-10
+## [0.69.1] - 2024-06-10
 
 ### Added
 
