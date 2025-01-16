@@ -16,7 +16,7 @@ chrono = { version = "0.4.38", default-features = false }
 clap = { version = "4.5.17", features = ["derive", "cargo", "env"] }
 const_format = "0.2.33"
 const-oid = "0.9.6"
-convert_case = "0.6.0"
+convert_case = "0.7.1"
 darling = "0.20.10"
 delegate = "0.13.0"
 dockerfile-parser = "0.9.0"
