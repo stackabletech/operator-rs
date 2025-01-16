@@ -15,18 +15,23 @@ use const_format::concatcp;
 use regex::Regex;
 use snafu::Snafu;
 
+/// Minimal length required by RFC 1123 is 63. Up to 255 allowed, unsupported by k8s.
+const RFC_1123_LABEL_MAX_LENGTH: usize = 63;
 // FIXME: According to https://www.rfc-editor.org/rfc/rfc1035#section-2.3.1 domain names must start with a letter
 // (and not a number).
 const RFC_1123_LABEL_FMT: &str = "[a-z0-9]([-a-z0-9]*[a-z0-9])?";
+const RFC_1123_LABEL_ERROR_MSG: &str = "a lowercase RFC 1123 label must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
+
+/// This is a subdomain's max length in DNS (RFC 1123)
+const RFC_1123_SUBDOMAIN_MAX_LENGTH: usize = 253;
 const RFC_1123_SUBDOMAIN_FMT: &str =
     concatcp!(RFC_1123_LABEL_FMT, "(\\.", RFC_1123_LABEL_FMT, ")*");
 const RFC_1123_SUBDOMAIN_ERROR_MSG: &str = "a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
-const RFC_1123_LABEL_ERROR_MSG: &str = "a lowercase RFC 1123 label must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
 
-// This is a subdomain's max length in DNS (RFC 1123)
-const RFC_1123_SUBDOMAIN_MAX_LENGTH: usize = 253;
-// Minimal length required by RFC 1123 is 63. Up to 255 allowed, unsupported by k8s.
-const RFC_1123_LABEL_MAX_LENGTH: usize = 63;
+const DOMAIN_MAX_LENGTH: usize = RFC_1123_SUBDOMAIN_MAX_LENGTH;
+/// Same as [`RFC_1123_SUBDOMAIN_FMT`], but allows a trailing dot
+const DOMAIN_FMT: &str = concatcp!(RFC_1123_SUBDOMAIN_FMT, "\\.?");
+const DOMAIN_ERROR_MSG: &str = "a domain must consist of lower case alphanumeric characters, '-' or '.', and must start with an alphanumeric character and end with an alphanumeric character or '.'";
 
 const RFC_1035_LABEL_FMT: &str = "[a-z]([-a-z0-9]*[a-z0-9])?";
 const RFC_1035_LABEL_ERROR_MSG: &str = "a DNS-1035 label must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character";
@@ -46,6 +51,10 @@ const KERBEROS_REALM_NAME_ERROR_MSG: &str =
     "Kerberos realm name must only contain alphanumeric characters, '-', and '.'";
 
 // Lazily initialized regular expressions
+pub(crate) static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(&format!("^{DOMAIN_FMT}$")).expect("failed to compile domain regex")
+});
+
 pub(crate) static RFC_1123_SUBDOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(&format!("^{RFC_1123_SUBDOMAIN_FMT}$"))
         .expect("failed to compile RFC 1123 subdomain regex")
@@ -176,6 +185,23 @@ fn validate_all(validations: impl IntoIterator<Item = Result<(), Error>>) -> Res
     } else {
         Err(Errors(errors))
     }
+}
+
+pub fn is_domain(value: &str) -> Result {
+    validate_all([
+        validate_str_length(value, DOMAIN_MAX_LENGTH),
+        validate_str_regex(
+            value,
+            &DOMAIN_REGEX,
+            DOMAIN_ERROR_MSG,
+            &[
+                "example.com",
+                "example.com.",
+                "cluster.local",
+                "cluster.local.",
+            ],
+        ),
+    ])
 }
 
 /// Tests for a string that conforms to the definition of a subdomain in DNS (RFC 1123).
@@ -394,6 +420,15 @@ mod tests {
     #[case(&"a".repeat(253))]
     fn is_rfc_1123_subdomain_pass(#[case] value: &str) {
         assert!(is_rfc_1123_subdomain(value).is_ok());
+        // Every valid RFC1123 is also a valid domain
+        assert!(is_domain(value).is_ok());
+    }
+
+    #[rstest]
+    #[case("cluster.local")]
+    #[case("cluster.local.")]
+    fn is_domain_pass(#[case] value: &str) {
+        assert!(is_domain(value).is_ok());
     }
 
     #[test]
