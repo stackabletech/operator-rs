@@ -563,7 +563,7 @@ mod test {
                     .with_environment_variable("ABC_FILE")
                     .with_default_level(LevelFilter::INFO)
                     .enabled(true)
-                    .file_log_settings_builder(String::from("/abc_file_dir"))
+                    .file_log_settings_builder(PathBuf::from("/abc_file_dir"))
                     .build(),
             )
             .with_otlp_log_exporter(

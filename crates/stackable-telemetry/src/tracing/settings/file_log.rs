@@ -62,7 +62,7 @@ mod test {
             .with_environment_variable("hello")
             .with_default_level(LevelFilter::DEBUG)
             .enabled(true)
-            .file_log_settings_builder(String::from("/logs"))
+            .file_log_settings_builder(PathBuf::from("/logs"))
             .build();
 
         assert_eq!(expected, result);
