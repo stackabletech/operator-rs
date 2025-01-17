@@ -19,7 +19,7 @@ use tracing::subscriber::SetGlobalDefaultError;
 use tracing_appender::rolling::{InitError, RollingFileAppender, Rotation};
 use tracing_subscriber::{filter::Directive, layer::SubscriberExt, EnvFilter, Layer, Registry};
 
-use settings::{ConsoleLogSettings, FileLogSettings, OtlpLogSettings, OtlpTraceSettings};
+use settings::*;
 
 pub mod settings;
 
@@ -44,11 +44,46 @@ pub enum Error {
     InitRollingFileAppender { source: InitError },
 }
 
-/// Easily initialize a set of preconfigured [`Subscriber`][1] layers.
+/// Easily initialize a set of pre-configured [`Subscriber`][1] layers.
 ///
-/// # Usage:
+/// # Usage
+///
+/// There are two different styles to configure individual subscribers: Using the sophisticated
+/// [`SettingsBuilder`] or the simplified tuple style for basic configuration. Currently, three
+/// different subscribers are supported: console output, OTLP log export, and OTLP trace export.
+///
+/// The subscribers are active as long as the tracing guard returned by [`Tracing::init`] is in
+/// scope and not dropped. Dropping it results in subscribers being shut down, which can lead to
+/// loss of telemetry data when done before exiting the application. This is why it is important
+/// to hold onto the guard as long as required.
+///
+/// <div class="warning">
+/// Name the guard variable appropriately, do not just use <code>let _ =</code>, as that will drop
+/// immediately.
+/// </div>
+///
 /// ```
-/// use stackable_telemetry::tracing::{Tracing, Error, settings::{Build as _, Settings}};
+/// # use stackable_telemetry::tracing::{Tracing, Error};
+/// #[tokio::main]
+/// async fn main() -> Result<(), Error> {
+///     let _tracing_guard = Tracing::builder() // < Scope starts here
+///         .service_name("test")               // |
+///         .build()                            // |
+///         .init()?;                           // |
+///                                             // |
+///     tracing::info!("log a message");        // |
+///     Ok(())                                  // < Scope ends here, guard is dropped
+/// }
+/// ```
+///
+/// ## Basic configuration
+///
+/// A basic configuration of subscribers can be done by using 2-tuples or 3-tuples, also called
+/// doubles and triples. Using tuples, the subscriber can be enabled/disabled and it's environment
+/// variable and default level can be set.
+///
+/// ```
+/// use stackable_telemetry::tracing::{Tracing, Error, settings::Settings};
 /// use tracing_subscriber::filter::LevelFilter;
 ///
 /// #[tokio::main]
@@ -58,8 +93,36 @@ pub enum Error {
 ///     // runtime.
 ///     let otlp_log_flag = false;
 ///
-///     // IMPORTANT: Name the guard variable appropriately, do not just use
-///     // `let _ =`, as that will drop immediately.
+///     let _tracing_guard = Tracing::builder()
+///         .service_name("test")
+///         .with_console_output(("TEST_CONSOLE", LevelFilter::INFO))
+///         .with_otlp_log_exporter(("TEST_OTLP_LOG", LevelFilter::DEBUG, otlp_log_flag))
+///         .build()
+///         .init()?;
+///
+///     tracing::info!("log a message");
+///
+///     Ok(())
+/// }
+/// ```
+///
+/// ## Advanced configuration
+///
+/// More advanced configurations can be done via the [`Settings::builder`] function. Each
+/// subscriber provides specific settings based on a common set of options. These options can be
+/// customized via the following methods:
+///
+/// - [`SettingsBuilder::console_log_settings_builder`]
+/// - [`SettingsBuilder::otlp_log_settings_builder`]
+/// - [`SettingsBuilder::otlp_trace_settings_builder`]
+///
+/// ```
+/// # use stackable_telemetry::tracing::{Tracing, Error, settings::Settings};
+/// # use tracing_subscriber::filter::LevelFilter;
+/// #[tokio::main]
+/// async fn main() -> Result<(), Error> {
+///     let otlp_log_flag = false;
+///
 ///     let _tracing_guard = Tracing::builder()
 ///         .service_name("test")
 ///         .with_console_output(
@@ -169,8 +232,10 @@ impl Tracing {
     /// Initialise the configured tracing subscribers, returning a guard that
     /// will shutdown the subscribers when dropped.
     ///
-    /// IMPORTANT: Name the guard variable appropriately, do not just use
-    /// `let _ =`, as that will drop immediately.
+    /// <div class="warning">
+    /// Name the guard variable appropriately, do not just use <code>let _ =</code>, as that will drop
+    /// immediately.
+    /// </div>
     pub fn init(mut self) -> Result<Tracing> {
         let mut layers: Vec<Box<dyn Layer<Registry> + Sync + Send>> = Vec::new();
 
@@ -397,11 +462,11 @@ impl TracingBuilder<builder_state::Config> {
     /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_console_output(
         self,
-        console_log_settings: ConsoleLogSettings,
+        console_log_settings: impl Into<ConsoleLogSettings>,
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
-            console_log_settings,
+            console_log_settings: console_log_settings.into(),
             otlp_log_settings: self.otlp_log_settings,
             otlp_trace_settings: self.otlp_trace_settings,
             file_log_settings: self.file_log_settings,
@@ -437,12 +502,12 @@ impl TracingBuilder<builder_state::Config> {
     /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_otlp_log_exporter(
         self,
-        otlp_log_settings: OtlpLogSettings,
+        otlp_log_settings: impl Into<OtlpLogSettings>,
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
             console_log_settings: self.console_log_settings,
-            otlp_log_settings,
+            otlp_log_settings: otlp_log_settings.into(),
             otlp_trace_settings: self.otlp_trace_settings,
             file_log_settings: self.file_log_settings,
             _marker: self._marker,
@@ -458,13 +523,13 @@ impl TracingBuilder<builder_state::Config> {
     /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_otlp_trace_exporter(
         self,
-        otlp_trace_settings: OtlpTraceSettings,
+        otlp_trace_settings: impl Into<OtlpTraceSettings>,
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
             console_log_settings: self.console_log_settings,
             otlp_log_settings: self.otlp_log_settings,
-            otlp_trace_settings,
+            otlp_trace_settings: otlp_trace_settings.into(),
             file_log_settings: self.file_log_settings,
             _marker: self._marker,
         }
@@ -500,6 +565,7 @@ fn env_filter_builder(env_var: &str, default_directive: impl Into<Directive>) ->
 mod test {
     use std::path::PathBuf;
 
+    use rstest::rstest;
     use settings::{Build as _, Settings};
     use tracing::level_filters::LevelFilter;
 
@@ -545,6 +611,48 @@ mod test {
         );
         assert!(!trace_guard.otlp_log_settings.enabled);
         assert!(!trace_guard.otlp_trace_settings.enabled);
+    }
+
+    #[test]
+    fn builder_with_console_output_double() {
+        let trace_guard = Tracing::builder()
+            .service_name("test")
+            .with_console_output(("ABC_A", LevelFilter::TRACE))
+            .build();
+
+        assert_eq!(
+            trace_guard.console_log_settings,
+            ConsoleLogSettings {
+                common_settings: Settings {
+                    environment_variable: "ABC_A",
+                    default_level: LevelFilter::TRACE,
+                    enabled: true
+                },
+                log_format: Default::default()
+            }
+        )
+    }
+
+    #[rstest]
+    #[case(false)]
+    #[case(true)]
+    fn builder_with_console_output_triple(#[case] enabled: bool) {
+        let trace_guard = Tracing::builder()
+            .service_name("test")
+            .with_console_output(("ABC_A", LevelFilter::TRACE, enabled))
+            .build();
+
+        assert_eq!(
+            trace_guard.console_log_settings,
+            ConsoleLogSettings {
+                common_settings: Settings {
+                    environment_variable: "ABC_A",
+                    default_level: LevelFilter::TRACE,
+                    enabled
+                },
+                log_format: Default::default()
+            }
+        )
     }
 
     #[test]

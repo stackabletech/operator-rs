@@ -56,22 +56,6 @@ pub struct SettingsBuilder {
     default_level: LevelFilter,
 }
 
-/// Finalizer to be implemented on builders.
-pub trait Build<T> {
-    /// Finalize settings.
-    fn build(self) -> T;
-}
-
-impl Build<Settings> for SettingsBuilder {
-    fn build(self) -> Settings {
-        Settings {
-            environment_variable: self.environment_variable,
-            default_level: self.default_level,
-            enabled: self.enabled,
-        }
-    }
-}
-
 impl SettingsBuilder {
     /// Set the environment variable used for overriding the [`Settings::default_level`].
     ///
@@ -129,6 +113,15 @@ impl SettingsBuilder {
     /// Set specific [`OtlpTraceSettings`].
     pub fn otlp_trace_settings_builder(self) -> OtlpTraceSettingsBuilder {
         self.into()
+    }
+
+    /// Consumes self and constructs valid [`Settings`].
+    pub fn build(self) -> Settings {
+        Settings {
+            environment_variable: self.environment_variable,
+            default_level: self.default_level,
+            enabled: self.enabled,
+        }
     }
 }
 
