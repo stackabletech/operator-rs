@@ -3272,6 +3272,7 @@ dependencies = [
  "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
  "pin-project",
+ "rstest",
  "snafu 0.8.5",
  "stackable-webhook",
  "tokio",

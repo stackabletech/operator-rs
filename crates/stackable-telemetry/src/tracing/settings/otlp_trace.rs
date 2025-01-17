@@ -2,7 +2,9 @@
 
 use std::ops::Deref;
 
-use super::{Build, Settings, SettingsBuilder};
+use tracing::level_filters::LevelFilter;
+
+use super::{Settings, SettingsBuilder};
 
 #[derive(Debug, Default, PartialEq)]
 pub struct OtlpTraceSettings {
@@ -39,13 +41,32 @@ impl From<SettingsBuilder> for OtlpTraceSettingsBuilder {
     }
 }
 
-/// This implementation is used to build OTLP trace settings from common settings without
-/// specifying OTLP trace specific settings.
-impl Build<OtlpTraceSettings> for SettingsBuilder {
-    fn build(self) -> OtlpTraceSettings {
-        OtlpTraceSettings {
-            common_settings: self.build(),
-            // ..Default::default()
+impl From<Settings> for OtlpTraceSettings {
+    fn from(common_settings: Settings) -> Self {
+        Self { common_settings }
+    }
+}
+
+impl From<(&'static str, LevelFilter)> for OtlpTraceSettings {
+    fn from(value: (&'static str, LevelFilter)) -> Self {
+        Self {
+            common_settings: Settings {
+                environment_variable: value.0,
+                default_level: value.1,
+                enabled: true,
+            },
+        }
+    }
+}
+
+impl From<(&'static str, LevelFilter, bool)> for OtlpTraceSettings {
+    fn from(value: (&'static str, LevelFilter, bool)) -> Self {
+        Self {
+            common_settings: Settings {
+                environment_variable: value.0,
+                default_level: value.1,
+                enabled: value.2,
+            },
         }
     }
 }
