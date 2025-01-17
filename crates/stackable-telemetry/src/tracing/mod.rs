@@ -566,7 +566,7 @@ mod test {
     use std::path::PathBuf;
 
     use rstest::rstest;
-    use settings::{Build as _, Settings};
+    use settings::Settings;
     use tracing::level_filters::LevelFilter;
 
     use super::*;
