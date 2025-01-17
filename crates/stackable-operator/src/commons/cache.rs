@@ -15,7 +15,7 @@ pub struct TtlCache {
     /// Maximum number of entries in the cache; If this threshold is reached then the least
     /// recently used item is removed.
     #[serde(default = "TtlCache::default_max_entries")]
-    pub max_entries: i32,
+    pub max_entries: u32,
 }
 
 impl TtlCache {
@@ -23,7 +23,7 @@ impl TtlCache {
         Duration::from_secs(30)
     }
 
-    const fn default_max_entries() -> i32 {
+    const fn default_max_entries() -> u32 {
         1000
     }
 }
