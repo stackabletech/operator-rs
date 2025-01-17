@@ -24,20 +24,29 @@ pub mod settings;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
+/// Errors which can be encountered when initialising [`Tracing`].
 #[derive(Debug, Snafu)]
 pub enum Error {
+    /// Indicates that [`Tracing`] failed to install the OpenTelemetry trace exporter.
     #[snafu(display("unable to install opentelemetry trace exporter"))]
     InstallOtelTraceExporter {
+        #[allow(missing_docs)]
         source: opentelemetry::trace::TraceError,
     },
 
+    /// Indicates that [`Tracing`] failed to install the OpenTelemetry log exporter.
     #[snafu(display("unable to install opentelemetry log exporter"))]
     InstallOtelLogExporter {
+        #[allow(missing_docs)]
         source: opentelemetry::logs::LogError,
     },
 
+    /// Indicates that [`Tracing`] failed to set the global default subscriber.
     #[snafu(display("unable to set the global default subscriber"))]
-    SetGlobalDefaultSubscriber { source: SetGlobalDefaultError },
+    SetGlobalDefaultSubscriber {
+        #[allow(missing_docs)]
+        source: SetGlobalDefaultError,
+    },
 }
 
 /// Easily initialize a set of pre-configured [`Subscriber`][1] layers.
@@ -220,6 +229,7 @@ pub struct Tracing {
 }
 
 impl Tracing {
+    /// Creates and returns a [`TracingBuilder`].
     pub fn builder() -> TracingBuilder<builder_state::PreServiceName> {
         TracingBuilder::default()
     }

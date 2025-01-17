@@ -6,13 +6,13 @@ use tracing::level_filters::LevelFilter;
 
 use super::{Settings, SettingsBuilder};
 
-/// Configure specific settings for the Console Log subscriber.
+/// Configure specific settings for the console log subscriber.
 #[derive(Debug, Default, PartialEq)]
 pub struct ConsoleLogSettings {
-    /// Common subscriber settings that apply to the Console Log Subscriber.
+    /// Common subscriber settings that apply to the console log subscriber.
     pub common_settings: Settings,
 
-    /// Console Subscriber log event output format.
+    /// Console subscriber log event output format.
     pub log_format: Format,
 }
 
@@ -24,7 +24,7 @@ impl Deref for ConsoleLogSettings {
     }
 }
 
-/// Console Subscriber log event output formats.
+/// Console subscriber log event output formats.
 ///
 /// Currently, only [Plain][Format::Plain] is supported.
 #[derive(Debug, Default, PartialEq)]
@@ -52,11 +52,13 @@ pub struct ConsoleLogSettingsBuilder {
 }
 
 impl ConsoleLogSettingsBuilder {
+    /// Overrides the default log [`Format`].
     pub fn with_log_format(mut self, format: Format) -> Self {
         self.log_format = format;
         self
     }
 
+    /// Consumes `self` and builds [`ConsoleLogSettings`].
     pub fn build(self) -> ConsoleLogSettings {
         ConsoleLogSettings {
             common_settings: self.common_settings,

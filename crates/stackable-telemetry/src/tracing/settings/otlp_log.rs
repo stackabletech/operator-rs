@@ -6,8 +6,10 @@ use tracing::level_filters::LevelFilter;
 
 use super::{Settings, SettingsBuilder};
 
+/// Configure specific settings for the OpenTelemetry log subscriber.
 #[derive(Debug, Default, PartialEq)]
 pub struct OtlpLogSettings {
+    /// Common subscriber settings that apply to the OpenTelemetry log subscriber.
     pub common_settings: Settings,
 }
 
@@ -19,11 +21,17 @@ impl Deref for OtlpLogSettings {
     }
 }
 
+/// For building [`OtlpLogSettings`].
+///
+/// <div class="warning">
+/// Do not use directly, instead use the [`Settings::builder`] associated function.
+/// </div>
 pub struct OtlpLogSettingsBuilder {
     pub(crate) common_settings: Settings,
 }
 
 impl OtlpLogSettingsBuilder {
+    /// Consumes `self` and builds [`OtlpLogSettings`].
     pub fn build(self) -> OtlpLogSettings {
         OtlpLogSettings {
             common_settings: self.common_settings,
