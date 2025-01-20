@@ -8,7 +8,12 @@ All notable changes to this project will be documented in this file.
 
 - Add `TtlCache` structure ([#943]).
 
+### Fixed
+
+- Remove `Merge` trait bound from `erase` and make `product_specific_common_config` public ([#946]).
+
 [#943]: https://github.com/stackabletech/operator-rs/pull/943
+[#946]: https://github.com/stackabletech/operator-rs/pull/946
 
 ## [0.84.0] - 2025-01-16
 
