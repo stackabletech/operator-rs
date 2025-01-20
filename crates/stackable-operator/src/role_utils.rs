@@ -164,7 +164,7 @@ pub struct CommonConfiguration<T, ProductSpecificCommonConfig> {
     //
     // This field is product-specific and can contain e.g. jvmArgumentOverrides.
     //
-    // If JavaCommonConfig is used, please use [`Role::get_merged_jvm_argument_overrides`] instead of
+    // If [`JavaCommonConfig`] is used, please use [`Role::get_merged_jvm_argument_overrides`] instead of
     // reading this field directly.
     #[serde(flatten, default)]
     pub product_specific_common_config: ProductSpecificCommonConfig,
