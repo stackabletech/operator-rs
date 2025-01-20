@@ -481,12 +481,12 @@ impl TracingBuilder<builder_state::Config> {
     /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_file_output(
         self,
-        file_log_settings: FileLogSettings,
+        file_log_settings: impl Into<FileLogSettings>,
     ) -> TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
             console_log_settings: self.console_log_settings,
-            file_log_settings,
+            file_log_settings: file_log_settings.into(),
             otlp_log_settings: self.otlp_log_settings,
             otlp_trace_settings: self.otlp_trace_settings,
             _marker: self._marker,
