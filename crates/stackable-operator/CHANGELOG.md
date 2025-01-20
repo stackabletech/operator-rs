@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Remove Merge trait from `erase` and make `product_specific_common_config` public ([#946]).
+- Remove `Merge` trait bound from `erase` and make `product_specific_common_config` public ([#946]).
 
 [#946]: https://github.com/stackabletech/operator-rs/pull/946
 
