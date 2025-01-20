@@ -163,9 +163,11 @@ pub struct CommonConfiguration<T, ProductSpecificCommonConfig> {
     // No docs needed, as we flatten this struct.
     //
     // This field is product-specific and can contain e.g. jvmArgumentOverrides.
-    // It is not accessible by operators, please use [`Role::get_product_specific_common_configs`] to read the values.
+    //
+    // If JavaCommonConfig is used, please use [`Role::get_merged_jvm_argument_overrides`] instead of
+    // reading this field directly.
     #[serde(flatten, default)]
-    pub(crate) product_specific_common_config: ProductSpecificCommonConfig,
+    pub product_specific_common_config: ProductSpecificCommonConfig,
 }
 
 impl<T, ProductSpecificCommonConfig> CommonConfiguration<T, ProductSpecificCommonConfig> {
@@ -324,7 +326,7 @@ impl<T, U, ProductSpecificCommonConfig> Role<T, U, ProductSpecificCommonConfig>
 where
     T: Configuration + 'static,
     U: Default + JsonSchema + Serialize,
-    ProductSpecificCommonConfig: Default + JsonSchema + Serialize + Clone + Merge,
+    ProductSpecificCommonConfig: Default + JsonSchema + Serialize + Clone,
 {
     /// This casts a generic struct implementing [`crate::product_config_utils::Configuration`]
     /// and used in [`Role`] into a Box of a dynamically dispatched
