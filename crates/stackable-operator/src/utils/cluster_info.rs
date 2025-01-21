@@ -2,18 +2,18 @@ use std::str::FromStr;
 
 use crate::commons::networking::DomainName;
 
-const KUBERNETES_CLUSTER_DOMAIN_DEFAULT: &str = "cluster.local.";
+const KUBERNETES_CLUSTER_DOMAIN_DEFAULT: &str = "cluster.local";
 
 /// Some information that we know about the Kubernetes cluster.
 #[derive(Debug, Clone)]
 pub struct KubernetesClusterInfo {
-    /// The Kubernetes cluster domain, typically `cluster.local.`.
+    /// The Kubernetes cluster domain, typically `cluster.local`.
     pub cluster_domain: DomainName,
 }
 
 #[derive(clap::Parser, Debug, Default, PartialEq, Eq)]
 pub struct KubernetesClusterInfoOpts {
-    /// Kubernetes cluster domain, usually this is `cluster.local.`.
+    /// Kubernetes cluster domain, usually this is `cluster.local`.
     ///
     /// Please note that we recommend adding a trailing dot (".") to reduce DNS requests, see
     /// <https://github.com/stackabletech/issues/issues/656> for details.
