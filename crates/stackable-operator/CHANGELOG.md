@@ -11,9 +11,11 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Remove `Merge` trait bound from `erase` and make `product_specific_common_config` public ([#946]).
+- BREAKING: Revert the change of appending a dot to the default cluster domain to make it a FQDN, it is now `cluster.local` again. Users can instead explicitly opt-in to FQDNs via the ENV variable `KUBERNETES_CLUSTER_DOMAIN`. ([#947]).
 
 [#943]: https://github.com/stackabletech/operator-rs/pull/943
 [#946]: https://github.com/stackabletech/operator-rs/pull/946
+[#947]: https://github.com/stackabletech/operator-rs/pull/947
 
 ## [0.84.0] - 2025-01-16
 
