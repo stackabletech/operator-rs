@@ -14,10 +14,6 @@ pub struct KubernetesClusterInfo {
 #[derive(clap::Parser, Debug, Default, PartialEq, Eq)]
 pub struct KubernetesClusterInfoOpts {
     /// Kubernetes cluster domain, usually this is `cluster.local`.
-    ///
-    /// Please note that we recommend adding a trailing dot (".") to reduce DNS requests, see
-    /// <https://github.com/stackabletech/issues/issues/656> for details.
-    //
     // We are not using a default value here, as operators will probably do an more advanced
     // auto-detection of the cluster domain in case it is not specified in the future.
     #[arg(long, env)]
@@ -29,9 +25,6 @@ impl KubernetesClusterInfo {
         let cluster_domain = match &cluster_info_opts.kubernetes_cluster_domain {
             Some(cluster_domain) => {
                 tracing::info!(%cluster_domain, "Using configured Kubernetes cluster domain");
-                if !cluster_domain.ends_with('.') {
-                    tracing::warn!(%cluster_domain, "Your configured Kubernetes cluster domain is not fully qualified (it does not end with a dot (\".\")). We recommend adding a trailing dot to reduce DNS requests, see https://github.com/stackabletech/issues/issues/656 for details");
-                }
 
                 cluster_domain.clone()
             }
