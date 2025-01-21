@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::time::Duration;
 
-/// TtlCache with sensible defaults for a user information cache
+/// [`TtlCache`] with sensible defaults for a user information cache
 pub type UserInformationCache = TtlCache<30, 10_000>;
 
 /// Least Recently Used (LRU) cache with per-entry time-to-live (TTL) value.
