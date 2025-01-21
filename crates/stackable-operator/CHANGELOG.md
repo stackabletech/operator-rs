@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add `TtlCache` structure ([#943]).
+- Add generic `TtlCache` structure as well as a `UserInformationCache` type ([#943]).
 
 ### Fixed
 
