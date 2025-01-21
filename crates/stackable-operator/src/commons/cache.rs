@@ -15,6 +15,9 @@ pub type UserInformationCache = TtlCache<30, 10_000>;
 /// * `D_MAX_ENTRIES` is the default for the maximum number of entries
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[schemars(
+    description = "Least Recently Used (LRU) cache with per-entry time-to-live (TTL) value."
+)]
 pub struct TtlCache<const D_TTL_SEC: u64, const D_MAX_ENTRIES: u32> {
     /// Time to live per entry; Entries which were not queried within the given duration, are
     /// removed.
