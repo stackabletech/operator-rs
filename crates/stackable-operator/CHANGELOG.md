@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.85.0] - 2025-01-22
+
 ### Fixed
 
 - Remove `Merge` trait bound from `erase` and make `product_specific_common_config` public ([#946]).
