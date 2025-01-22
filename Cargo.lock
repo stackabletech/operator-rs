@@ -3278,6 +3278,7 @@ dependencies = [
  "tokio",
  "tower 0.5.2",
  "tracing",
+ "tracing-appender",
  "tracing-opentelemetry",
  "tracing-subscriber",
 ]
