@@ -1,61 +1,86 @@
+use std::marker::PhantomData;
+
+use educe::Educe;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::time::Duration;
 
 /// [`TtlCache`] with sensible defaults for a user information cache
-pub type UserInformationCache = TtlCache<30, 10_000>;
+pub type UserInformationCache = TtlCache<UserInformationCacheDefaults>;
+
+/// Default tunings for [`UserInformationCache`].
+#[derive(JsonSchema)]
+pub struct UserInformationCacheDefaults;
+
+impl TtlCacheDefaults for UserInformationCacheDefaults {
+    fn entry_time_to_live() -> Duration {
+        Duration::from_secs(30)
+    }
+
+    fn max_entries() -> u32 {
+        10_000
+    }
+}
 
 /// Least Recently Used (LRU) cache with per-entry time-to-live (TTL) value.
-///
-/// This struct has two const generics, so that different use-cases can have different default
-/// values:
-///
-/// * `D_TTL_SEC` is the default TTL (in seconds) the entries should have.
-/// * `D_MAX_ENTRIES` is the default for the maximum number of entries
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[schemars(
-    description = "Least Recently Used (LRU) cache with per-entry time-to-live (TTL) value."
+#[derive(Deserialize, Educe, JsonSchema, Serialize)]
+#[serde(
+    rename_all = "camelCase",
+    bound(deserialize = "D: TtlCacheDefaults", serialize = "D: TtlCacheDefaults")
 )]
-pub struct TtlCache<const D_TTL_SEC: u64, const D_MAX_ENTRIES: u32> {
+#[schemars(
+    description = "Least Recently Used (LRU) cache with per-entry time-to-live (TTL) value.",
+    // We don't care about the fields, but we also use JsonSchema to derive the name for the composite type
+    bound(serialize = "D: TtlCacheDefaults + JsonSchema")
+)]
+#[educe(
+    Clone(bound = false),
+    Debug(bound = false),
+    PartialEq(bound = false),
+    Eq
+)]
+pub struct TtlCache<D> {
     /// Time to live per entry; Entries which were not queried within the given duration, are
     /// removed.
-    #[serde(default = "TtlCache::<D_TTL_SEC, D_MAX_ENTRIES>::default_entry_time_to_live")]
+    #[serde(default = "D::entry_time_to_live")]
     pub entry_time_to_live: Duration,
 
     /// Maximum number of entries in the cache; If this threshold is reached then the least
     /// recently used item is removed.
-    #[serde(default = "TtlCache::<D_TTL_SEC, D_MAX_ENTRIES>::default_max_entries")]
+    #[serde(default = "D::max_entries")]
     pub max_entries: u32,
+
+    #[serde(skip)]
+    pub _defaults: PhantomData<D>,
 }
 
-impl<const D_TTL_SEC: u64, const D_MAX_ENTRIES: u32> TtlCache<D_TTL_SEC, D_MAX_ENTRIES> {
-    const fn default_entry_time_to_live() -> Duration {
-        Duration::from_secs(D_TTL_SEC)
-    }
-
-    const fn default_max_entries() -> u32 {
-        D_MAX_ENTRIES
-    }
-}
-
-impl<const D_TTL_SEC: u64, const D_MAX_ENTRIES: u32> Default
-    for TtlCache<D_TTL_SEC, D_MAX_ENTRIES>
-{
+impl<D: TtlCacheDefaults> Default for TtlCache<D> {
     fn default() -> Self {
         Self {
-            entry_time_to_live: Self::default_entry_time_to_live(),
-            max_entries: Self::default_max_entries(),
+            entry_time_to_live: D::entry_time_to_live(),
+            max_entries: D::max_entries(),
+            _defaults: PhantomData,
         }
     }
+}
+
+/// A set of default values for [`TtlCache`].
+///
+/// This is extracted to a separate trait in order to be able to provide different
+/// default tunings for different use cases.
+pub trait TtlCacheDefaults {
+    /// The default TTL the entries should have.
+    fn entry_time_to_live() -> Duration;
+    /// The default for the maximum number of entries
+    fn max_entries() -> u32;
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    type MyCache = TtlCache<30, 10_000>;
+    type MyCache = TtlCache<UserInformationCacheDefaults>;
 
     #[test]
     fn test_defaults() {
