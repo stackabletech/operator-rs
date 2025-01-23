@@ -23,7 +23,7 @@ impl TtlCacheDefaults for UserInformationCacheDefaults {
     }
 }
 
-/// Least Recently Used (LRU) cache with per-entry time-to-live (TTL) value.
+/// Structure to configure a TTL cache in a product.
 #[derive(Deserialize, Educe, JsonSchema, Serialize)]
 #[serde(
     rename_all = "camelCase",
