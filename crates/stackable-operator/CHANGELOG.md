@@ -6,7 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Deprecate `stackable_operator::logging::initialize_logging()`. It's recommended to use `stackable-telemetry` instead.
+- Deprecate `stackable_operator::logging::initialize_logging()`. It's recommended to use `stackable-telemetry` instead ([#950]).
+
+[#950]: https://github.com/stackabletech/operator-rs/pull/950
 
 ## [0.84.1] - 2025-01-22
 
