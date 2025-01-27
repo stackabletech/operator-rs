@@ -13,11 +13,11 @@ const APP_NAME: &str = "containerdebug";
 /// Collects and prints helpful debugging information about the environment that it is running in.
 #[derive(clap::Parser)]
 struct Opts {
-    /// Loop every DURATION, instead of shutting down once completed (default DURATION: 1m)
+    /// Loop every DURATION, instead of shutting down once completed (default DURATION: 30m)
     #[clap(
         long = "loop",
         value_name = "INTERVAL",
-        default_missing_value = "1m",
+        default_missing_value = "30m",
         num_args = 0..=1,
         require_equals = true,
     )]

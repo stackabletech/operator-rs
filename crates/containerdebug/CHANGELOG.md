@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Increased the default `--loop` interval from every minute to every 30 minutes ([#23]).
+
+[#23]: https://github.com/stackabletech/containerdebug/pull/23
+
 ## [0.1.1] - 2024-12-16
 
 ### Changed
