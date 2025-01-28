@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Change constant used for product image selection so that it defaults to OCI ([#945]).
+
+[#945]: https://github.com/stackabletech/operator-rs/pull/945
+
 ## [0.84.1] - 2025-01-22
 
 ### Fixed
