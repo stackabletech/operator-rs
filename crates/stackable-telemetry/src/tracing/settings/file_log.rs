@@ -1,6 +1,6 @@
 //! File Log Subscriber Settings.
 
-use std::{ops::Deref, path::PathBuf};
+use std::path::PathBuf;
 
 use super::{Settings, SettingsToggle};
 
@@ -30,14 +30,6 @@ impl SettingsToggle for FileLogSettings {
         !self.is_enabled()
     }
 }
-
-// impl Deref for FileLogSettings {
-//     type Target = Settings;
-
-//     fn deref(&self) -> &Self::Target {
-//         &self.common_settings
-//     }
-// }
 
 /// For building [`FileLogSettings`].
 ///

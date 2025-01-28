@@ -1,7 +1,5 @@
 //! Console Log Subscriber Settings.
 
-use std::ops::Deref;
-
 use tracing::level_filters::LevelFilter;
 
 use super::{Settings, SettingsBuilder, SettingsToggle};
@@ -50,14 +48,6 @@ impl SettingsToggle for ConsoleLogSettings {
         !self.is_enabled()
     }
 }
-
-// impl Deref for ConsoleLogSettings {
-//     type Target = Settings;
-
-//     fn deref(&self) -> &Self::Target {
-//         &self.common_settings
-//     }
-// }
 
 /// For building [`ConsoleLogSettings`].
 ///

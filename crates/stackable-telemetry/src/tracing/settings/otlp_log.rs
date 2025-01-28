@@ -1,7 +1,5 @@
 //! OTLP Log Subscriber Settings.
 
-use std::ops::Deref;
-
 use tracing::level_filters::LevelFilter;
 
 use super::{Settings, SettingsBuilder, SettingsToggle};
@@ -27,14 +25,6 @@ impl SettingsToggle for OtlpLogSettings {
         !self.is_enabled()
     }
 }
-
-// impl Deref for OtlpLogSettings {
-//     type Target = Settings;
-
-//     fn deref(&self) -> &Self::Target {
-//         &self.common_settings
-//     }
-// }
 
 pub struct OtlpLogSettingsBuilder {
     pub(crate) common_settings: Settings,
