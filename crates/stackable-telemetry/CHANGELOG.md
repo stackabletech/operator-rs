@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Introduce common `Settings` and subscriber specific settings ([#901]).
+- Add support for logging to files ([#933]).
 
 ### Changed
 
@@ -14,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Use the new subscriber settings in the `TracingBuilder` ([#901]).
 
 [#901]: https://github.com/stackabletech/operator-rs/pull/901
+[#933]: https://github.com/stackabletech/operator-rs/pull/933
 
 ## [0.2.0] - 2024-07-10
 

@@ -3199,7 +3199,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.84.0"
+version = "0.84.1"
 dependencies = [
  "chrono",
  "clap",
@@ -3278,6 +3278,7 @@ dependencies = [
  "tokio",
  "tower 0.5.2",
  "tracing",
+ "tracing-appender",
  "tracing-opentelemetry",
  "tracing-subscriber",
 ]
