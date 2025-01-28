@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Rename `TracingBuilder` methods with long names, and prefix with `with_` ([#901]).
 - BREAKING: Use the new subscriber settings in the `TracingBuilder` ([#901]).
 
-## Removed
+### Removed
 
 - BREAKING: Remove `Deref` impls for subscriber settings and removed the `enabled` fields and `enabled()` methods ([#951]).
 
