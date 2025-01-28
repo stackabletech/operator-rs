@@ -617,46 +617,47 @@ mod test {
         assert!(trace_guard.otlp_trace_settings.is_disabled());
     }
 
-    // #[test]
-    // fn builder_with_console_output_double() {
-    //     let trace_guard = Tracing::builder()
-    //         .service_name("test")
-    //         .with_console_output(("ABC_A", LevelFilter::TRACE))
-    //         .build();
+    #[test]
+    fn builder_with_console_output_double() {
+        let trace_guard = Tracing::builder()
+            .service_name("test")
+            .with_console_output(("ABC_A", LevelFilter::TRACE))
+            .build();
 
-    //     assert_eq!(
-    //         trace_guard.console_log_settings,
-    //         ConsoleLogSettings {
-    //             common_settings: Settings {
-    //                 environment_variable: "ABC_A",
-    //                 default_level: LevelFilter::TRACE,
-    //             },
-    //             log_format: Default::default()
-    //         }
-    //     )
-    // }
+        assert_eq!(
+            trace_guard.console_log_settings,
+            ConsoleLogSettings::Enabled {
+                common_settings: Settings {
+                    environment_variable: "ABC_A",
+                    default_level: LevelFilter::TRACE,
+                },
+                log_format: Default::default()
+            }
+        )
+    }
 
-    // #[rstest]
-    // #[case(false)]
-    // #[case(true)]
-    // fn builder_with_console_output_triple(#[case] enabled: bool) {
-    //     let trace_guard = Tracing::builder()
-    //         .service_name("test")
-    //         .with_console_output(("ABC_A", LevelFilter::TRACE, enabled))
-    //         .build();
+    #[rstest]
+    #[case(false)]
+    #[case(true)]
+    fn builder_with_console_output_triple(#[case] enabled: bool) {
+        let trace_guard = Tracing::builder()
+            .service_name("test")
+            .with_console_output(("ABC_A", LevelFilter::TRACE, enabled))
+            .build();
 
-    //     assert_eq!(
-    //         trace_guard.console_log_settings,
-    //         ConsoleLogSettings {
-    //             common_settings: Settings {
-    //                 environment_variable: "ABC_A",
-    //                 default_level: LevelFilter::TRACE,
-    //                 enabled
-    //             },
-    //             log_format: Default::default()
-    //         }
-    //     )
-    // }
+        let expected = match enabled {
+            true => ConsoleLogSettings::Enabled {
+                common_settings: Settings {
+                    environment_variable: "ABC_A",
+                    default_level: LevelFilter::TRACE,
+                },
+                log_format: Default::default(),
+            },
+            false => ConsoleLogSettings::Disabled,
+        };
+
+        assert_eq!(trace_guard.console_log_settings, expected)
+    }
 
     #[test]
     fn builder_with_all() {

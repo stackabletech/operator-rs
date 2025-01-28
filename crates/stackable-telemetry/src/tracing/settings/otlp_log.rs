@@ -66,29 +66,30 @@ where
     }
 }
 
-// impl From<(&'static str, LevelFilter)> for OtlpLogSettings {
-//     fn from(value: (&'static str, LevelFilter)) -> Self {
-//         Self {
-//             common_settings: Settings {
-//                 environment_variable: value.0,
-//                 default_level: value.1,
-//                 enabled: true,
-//             },
-//         }
-//     }
-// }
+impl From<(&'static str, LevelFilter)> for OtlpLogSettings {
+    fn from(value: (&'static str, LevelFilter)) -> Self {
+        Self::Enabled {
+            common_settings: Settings {
+                environment_variable: value.0,
+                default_level: value.1,
+            },
+        }
+    }
+}
 
-// impl From<(&'static str, LevelFilter, bool)> for OtlpLogSettings {
-//     fn from(value: (&'static str, LevelFilter, bool)) -> Self {
-//         Self {
-//             common_settings: Settings {
-//                 environment_variable: value.0,
-//                 default_level: value.1,
-//                 enabled: value.2,
-//             },
-//         }
-//     }
-// }
+impl From<(&'static str, LevelFilter, bool)> for OtlpLogSettings {
+    fn from(value: (&'static str, LevelFilter, bool)) -> Self {
+        match value.2 {
+            true => Self::Enabled {
+                common_settings: Settings {
+                    environment_variable: value.0,
+                    default_level: value.1,
+                },
+            },
+            false => Self::Disabled,
+        }
+    }
+}
 
 #[cfg(test)]
 mod test {

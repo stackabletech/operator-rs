@@ -105,31 +105,32 @@ where
     }
 }
 
-// impl From<(&'static str, LevelFilter)> for ConsoleLogSettings {
-//     fn from(value: (&'static str, LevelFilter)) -> Self {
-//         Self {
-//             common_settings: Settings {
-//                 environment_variable: value.0,
-//                 default_level: value.1,
-//                 enabled: true,
-//             },
-//             ..Default::default()
-//         }
-//     }
-// }
+impl From<(&'static str, LevelFilter)> for ConsoleLogSettings {
+    fn from(value: (&'static str, LevelFilter)) -> Self {
+        Self::Enabled {
+            common_settings: Settings {
+                environment_variable: value.0,
+                default_level: value.1,
+            },
+            log_format: Default::default(),
+        }
+    }
+}
 
-// impl From<(&'static str, LevelFilter, bool)> for ConsoleLogSettings {
-//     fn from(value: (&'static str, LevelFilter, bool)) -> Self {
-//         Self {
-//             common_settings: Settings {
-//                 environment_variable: value.0,
-//                 default_level: value.1,
-//                 enabled: value.2,
-//             },
-//             ..Default::default()
-//         }
-//     }
-// }
+impl From<(&'static str, LevelFilter, bool)> for ConsoleLogSettings {
+    fn from(value: (&'static str, LevelFilter, bool)) -> Self {
+        match value.2 {
+            true => Self::Enabled {
+                common_settings: Settings {
+                    environment_variable: value.0,
+                    default_level: value.1,
+                },
+                log_format: Default::default(),
+            },
+            false => Self::Disabled,
+        }
+    }
+}
 
 #[cfg(test)]
 mod test {
