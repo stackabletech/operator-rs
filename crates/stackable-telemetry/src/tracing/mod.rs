@@ -218,9 +218,9 @@ pub enum Error {
 pub struct Tracing {
     service_name: &'static str,
     console_log_settings: ConsoleLogSettings,
-    file_log_settings: Option<FileLogSettings>,
-    otlp_log_settings: Option<OtlpLogSettings>,
-    otlp_trace_settings: Option<OtlpTraceSettings>,
+    file_log_settings: FileLogSettings,
+    otlp_log_settings: OtlpLogSettings,
+    otlp_trace_settings: OtlpTraceSettings,
     logger_provider: Option<LoggerProvider>,
 }
 
@@ -253,10 +253,14 @@ impl Tracing {
             layers.push(console_output_layer.boxed());
         }
 
-        if let Some(file_log_settings) = &self.file_log_settings {
+        if let FileLogSettings::Enabled {
+            common_settings,
+            file_log_dir,
+        } = &self.file_log_settings
+        {
             let env_filter_layer = env_filter_builder(
-                file_log_settings.common_settings.environment_variable,
-                file_log_settings.default_level,
+                common_settings.environment_variable,
+                common_settings.default_level,
             );
 
             let file_appender = RollingFileAppender::builder()
@@ -264,7 +268,7 @@ impl Tracing {
                 .filename_prefix(self.service_name.to_string())
                 .filename_suffix("tracing-rs.json")
                 .max_log_files(6)
-                .build(&file_log_settings.file_log_dir)
+                .build(&file_log_dir)
                 .context(InitRollingFileAppenderSnafu)?;
 
             layers.push(
@@ -276,10 +280,10 @@ impl Tracing {
             );
         }
 
-        if let Some(otlp_log_settings) = &self.otlp_log_settings {
+        if let OtlpLogSettings::Enabled { common_settings } = &self.otlp_log_settings {
             let env_filter_layer = env_filter_builder(
-                otlp_log_settings.environment_variable,
-                otlp_log_settings.default_level,
+                common_settings.environment_variable,
+                common_settings.default_level,
             )
             // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
             .add_directive("h2=off".parse().expect("invalid directive"));
@@ -304,10 +308,11 @@ impl Tracing {
             self.logger_provider = Some(otel_log);
         }
 
-        if let Some(otlp_trace_settings) = &self.otlp_trace_settings {
+        if let OtlpTraceSettings::Enabled { common_settings } = &self.otlp_trace_settings {
             let env_filter_layer = env_filter_builder(
-                otlp_trace_settings.common_settings.environment_variable,
-                otlp_trace_settings.default_level,
+                // todo, deref?
+                common_settings.environment_variable,
+                common_settings.default_level,
             )
             // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
             .add_directive("h2=off".parse().expect("invalid directive"));
@@ -355,12 +360,12 @@ impl Tracing {
 impl Drop for Tracing {
     fn drop(&mut self) {
         tracing::debug!(
-            opentelemetry.tracing.enabled = self.otlp_trace_settings.is_some(),
-            opentelemetry.logger.enabled = self.otlp_log_settings.is_some(),
+            opentelemetry.tracing.enabled = self.otlp_trace_settings.is_enabled(),
+            opentelemetry.logger.enabled = self.otlp_log_settings.is_enabled(),
             "shutting down opentelemetry OTLP providers"
         );
 
-        if self.otlp_trace_settings.is_some() {
+        if self.otlp_trace_settings.is_enabled() {
             // NOTE (@NickLarsenNZ): This might eventually be replaced with something like SdkMeterProvider::shutdown(&self)
             // as has been done with the LoggerProvider (further below)
             // see: https://github.com/open-telemetry/opentelemetry-rust/pull/1412/files#r1409608679
@@ -434,9 +439,9 @@ impl BuilderState for builder_state::Config {}
 pub struct TracingBuilder<S: BuilderState> {
     service_name: Option<&'static str>,
     console_log_settings: ConsoleLogSettings,
-    otlp_log_settings: Option<OtlpLogSettings>,
-    otlp_trace_settings: Option<OtlpTraceSettings>,
-    file_log_settings: Option<FileLogSettings>,
+    file_log_settings: FileLogSettings,
+    otlp_log_settings: OtlpLogSettings,
+    otlp_trace_settings: OtlpTraceSettings,
 
     /// Allow the generic to be used (needed for impls).
     _marker: std::marker::PhantomData<S>,
@@ -486,7 +491,7 @@ impl TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
             console_log_settings: self.console_log_settings,
-            file_log_settings: Some(file_log_settings.into()),
+            file_log_settings: file_log_settings.into(),
             otlp_log_settings: self.otlp_log_settings,
             otlp_trace_settings: self.otlp_trace_settings,
             _marker: self._marker,
@@ -507,7 +512,7 @@ impl TracingBuilder<builder_state::Config> {
         TracingBuilder {
             service_name: self.service_name,
             console_log_settings: self.console_log_settings,
-            otlp_log_settings: Some(otlp_log_settings.into()),
+            otlp_log_settings: otlp_log_settings.into(),
             otlp_trace_settings: self.otlp_trace_settings,
             file_log_settings: self.file_log_settings,
             _marker: self._marker,
@@ -529,7 +534,7 @@ impl TracingBuilder<builder_state::Config> {
             service_name: self.service_name,
             console_log_settings: self.console_log_settings,
             otlp_log_settings: self.otlp_log_settings,
-            otlp_trace_settings: Some(otlp_trace_settings.into()),
+            otlp_trace_settings: otlp_trace_settings.into(),
             file_log_settings: self.file_log_settings,
             _marker: self._marker,
         }
@@ -607,8 +612,9 @@ mod test {
             }
         );
 
-        assert!(trace_guard.otlp_log_settings.is_none());
-        assert!(trace_guard.otlp_trace_settings.is_none());
+        assert!(trace_guard.file_log_settings.is_disabled());
+        assert!(trace_guard.otlp_log_settings.is_disabled());
+        assert!(trace_guard.otlp_trace_settings.is_disabled());
     }
 
     // #[test]
@@ -695,37 +701,38 @@ mod test {
         );
         assert_eq!(
             trace_guard.file_log_settings,
-            Some(FileLogSettings {
+            FileLogSettings::Enabled {
                 common_settings: Settings {
                     environment_variable: "ABC_FILE",
                     default_level: LevelFilter::INFO
                 },
                 file_log_dir: PathBuf::from("/abc_file_dir")
-            })
+            }
         );
         assert_eq!(
             trace_guard.otlp_log_settings,
-            Some(OtlpLogSettings {
+            OtlpLogSettings::Enabled {
                 common_settings: Settings {
                     environment_variable: "ABC_OTLP_LOG",
                     default_level: LevelFilter::DEBUG
                 },
-            })
+            }
         );
         assert_eq!(
             trace_guard.otlp_trace_settings,
-            Some(OtlpTraceSettings {
+            OtlpTraceSettings::Enabled {
                 common_settings: Settings {
                     environment_variable: "ABC_OTLP_TRACE",
                     default_level: LevelFilter::TRACE
                 }
-            })
+            }
         );
     }
 
     #[test]
     fn builder_with_options() {
         let enable_console_output = true;
+        let enable_filelog_output = true;
         let enable_otlp_trace = true;
         let enable_otlp_log = false;
 
@@ -734,6 +741,12 @@ mod test {
             .with_console_output(enable_console_output.then(|| {
                 Settings::builder()
                     .with_environment_variable("ABC_CONSOLE")
+                    .build()
+            }))
+            .with_file_output(enable_filelog_output.then(|| {
+                Settings::builder()
+                    .with_environment_variable("ABC_FILELOG")
+                    .file_log_settings_builder("/dev/null")
                     .build()
             }))
             .with_otlp_trace_exporter(enable_otlp_trace.then(|| {
@@ -748,11 +761,9 @@ mod test {
             }))
             .build();
 
-        matches!(
-            tracing_builder.console_log_settings,
-            ConsoleLogSettings::Enabled { .. }
-        );
-        assert!(tracing_builder.otlp_trace_settings.is_some());
-        // assert!(tracing_builder.otlp_log_settings.is_none());
+        assert!(tracing_builder.console_log_settings.is_enabled());
+        assert!(tracing_builder.file_log_settings.is_enabled());
+        assert!(tracing_builder.otlp_trace_settings.is_enabled());
+        assert!(tracing_builder.otlp_log_settings.is_disabled());
     }
 }

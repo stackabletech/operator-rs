@@ -4,20 +4,37 @@ use std::ops::Deref;
 
 use tracing::level_filters::LevelFilter;
 
-use super::{Settings, SettingsBuilder};
+use super::{Settings, SettingsBuilder, SettingsToggle};
 
 #[derive(Debug, Default, PartialEq)]
-pub struct OtlpLogSettings {
-    pub common_settings: Settings,
+pub enum OtlpLogSettings {
+    #[default]
+    Disabled,
+    Enabled {
+        common_settings: Settings,
+    },
 }
 
-impl Deref for OtlpLogSettings {
-    type Target = Settings;
+impl SettingsToggle for OtlpLogSettings {
+    fn is_enabled(&self) -> bool {
+        match self {
+            OtlpLogSettings::Disabled => false,
+            OtlpLogSettings::Enabled { .. } => true,
+        }
+    }
 
-    fn deref(&self) -> &Self::Target {
-        &self.common_settings
+    fn is_disabled(&self) -> bool {
+        !self.is_enabled()
     }
 }
+
+// impl Deref for OtlpLogSettings {
+//     type Target = Settings;
+
+//     fn deref(&self) -> &Self::Target {
+//         &self.common_settings
+//     }
+// }
 
 pub struct OtlpLogSettingsBuilder {
     pub(crate) common_settings: Settings,
@@ -25,7 +42,7 @@ pub struct OtlpLogSettingsBuilder {
 
 impl OtlpLogSettingsBuilder {
     pub fn build(self) -> OtlpLogSettings {
-        OtlpLogSettings {
+        OtlpLogSettings::Enabled {
             common_settings: self.common_settings,
         }
     }
@@ -43,7 +60,7 @@ impl From<SettingsBuilder> for OtlpLogSettingsBuilder {
 
 impl From<Settings> for OtlpLogSettings {
     fn from(common_settings: Settings) -> Self {
-        Self { common_settings }
+        Self::Enabled { common_settings }
     }
 }
 
@@ -91,7 +108,7 @@ mod test {
 
     #[test]
     fn builds_settings() {
-        let expected = OtlpLogSettings {
+        let expected = OtlpLogSettings::Enabled {
             common_settings: Settings {
                 environment_variable: "hello",
                 default_level: LevelFilter::DEBUG,

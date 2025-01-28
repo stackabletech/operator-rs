@@ -4,7 +4,7 @@ use std::ops::Deref;
 
 use tracing::level_filters::LevelFilter;
 
-use super::{Settings, SettingsBuilder};
+use super::{Settings, SettingsBuilder, SettingsToggle};
 
 /// Configure specific settings for the Console Log subscriber.
 #[derive(Debug, Default, PartialEq)]
@@ -20,14 +20,6 @@ pub enum ConsoleLogSettings {
         log_format: Format,
     },
 }
-
-// impl Deref for ConsoleLogSettings {
-//     type Target = Settings;
-
-//     fn deref(&self) -> &Self::Target {
-//         &self.common_settings
-//     }
-// }
 
 /// Console Subscriber log event output formats.
 ///
@@ -45,6 +37,27 @@ pub enum Format {
     // Json { pretty: bool },
     // LogFmt,
 }
+
+impl SettingsToggle for ConsoleLogSettings {
+    fn is_enabled(&self) -> bool {
+        match self {
+            ConsoleLogSettings::Disabled => false,
+            ConsoleLogSettings::Enabled { .. } => true,
+        }
+    }
+
+    fn is_disabled(&self) -> bool {
+        !self.is_enabled()
+    }
+}
+
+// impl Deref for ConsoleLogSettings {
+//     type Target = Settings;
+
+//     fn deref(&self) -> &Self::Target {
+//         &self.common_settings
+//     }
+// }
 
 /// For building [`ConsoleLogSettings`].
 ///

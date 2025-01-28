@@ -16,6 +16,11 @@ pub use otlp_log::*;
 pub mod otlp_trace;
 pub use otlp_trace::*;
 
+pub trait SettingsToggle {
+    fn is_enabled(&self) -> bool;
+    fn is_disabled(&self) -> bool;
+}
+
 /// General settings that apply to any subscriber.
 #[derive(Debug, PartialEq)]
 pub struct Settings {

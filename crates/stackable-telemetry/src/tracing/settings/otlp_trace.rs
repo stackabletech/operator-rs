@@ -4,20 +4,37 @@ use std::ops::Deref;
 
 use tracing::level_filters::LevelFilter;
 
-use super::{Settings, SettingsBuilder};
+use super::{Settings, SettingsBuilder, SettingsToggle};
 
 #[derive(Debug, Default, PartialEq)]
-pub struct OtlpTraceSettings {
-    pub common_settings: Settings,
+pub enum OtlpTraceSettings {
+    #[default]
+    Disabled,
+    Enabled {
+        common_settings: Settings,
+    },
 }
 
-impl Deref for OtlpTraceSettings {
-    type Target = Settings;
+impl SettingsToggle for OtlpTraceSettings {
+    fn is_enabled(&self) -> bool {
+        match self {
+            OtlpTraceSettings::Disabled => false,
+            OtlpTraceSettings::Enabled { .. } => true,
+        }
+    }
 
-    fn deref(&self) -> &Self::Target {
-        &self.common_settings
+    fn is_disabled(&self) -> bool {
+        !self.is_enabled()
     }
 }
+
+// impl Deref for OtlpTraceSettings {
+//     type Target = Settings;
+
+//     fn deref(&self) -> &Self::Target {
+//         &self.common_settings
+//     }
+// }
 
 pub struct OtlpTraceSettingsBuilder {
     pub(crate) common_settings: Settings,
@@ -25,7 +42,7 @@ pub struct OtlpTraceSettingsBuilder {
 
 impl OtlpTraceSettingsBuilder {
     pub fn build(self) -> OtlpTraceSettings {
-        OtlpTraceSettings {
+        OtlpTraceSettings::Enabled {
             common_settings: self.common_settings,
         }
     }
@@ -43,7 +60,7 @@ impl From<SettingsBuilder> for OtlpTraceSettingsBuilder {
 
 impl From<Settings> for OtlpTraceSettings {
     fn from(common_settings: Settings) -> Self {
-        Self { common_settings }
+        Self::Enabled { common_settings }
     }
 }
 
@@ -91,7 +108,7 @@ mod test {
 
     #[test]
     fn builds_settings() {
-        let expected = OtlpTraceSettings {
+        let expected = OtlpTraceSettings::Enabled {
             common_settings: Settings {
                 environment_variable: "hello",
                 default_level: LevelFilter::DEBUG,
