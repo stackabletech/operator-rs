@@ -121,6 +121,7 @@ pub enum Error {
 /// # use tracing_subscriber::filter::LevelFilter;
 /// #[tokio::main]
 /// async fn main() -> Result<(), Error> {
+///     // Control the otlp_log subscriber at runtime
 ///     let otlp_log_flag = false;
 ///
 ///     let _tracing_guard = Tracing::builder()
@@ -129,21 +130,25 @@ pub enum Error {
 ///             Settings::builder()
 ///                 .with_environment_variable("TEST_CONSOLE")
 ///                 .with_default_level(LevelFilter::INFO)
-///                 .enabled(true)
 ///                 .build()
 ///         )
-///         .with_otlp_log_exporter(
+///         .with_file_output(
+///             Settings::builder()
+///                 .with_environment_variable("TEST_FILE_LOG")
+///                 .with_default_level(LevelFilter::INFO)
+///                 .file_log_settings_builder("/tmp/logs")
+///                 .build()
+///         )
+///         .with_otlp_log_exporter(otlp_log_flag.then(|| {
 ///             Settings::builder()
 ///                 .with_environment_variable("TEST_OTLP_LOG")
 ///                 .with_default_level(LevelFilter::DEBUG)
-///                 .enabled(otlp_log_flag)
 ///                 .build()
-///         )
+///         }))
 ///         .with_otlp_trace_exporter(
 ///             Settings::builder()
 ///                 .with_environment_variable("TEST_OTLP_TRACE")
 ///                 .with_default_level(LevelFilter::TRACE)
-///                 .enabled(true)
 ///                 .build()
 ///         )
 ///         .build()
