@@ -47,29 +47,41 @@ impl From<Settings> for OtlpTraceSettings {
     }
 }
 
-impl From<(&'static str, LevelFilter)> for OtlpTraceSettings {
-    fn from(value: (&'static str, LevelFilter)) -> Self {
-        Self {
-            common_settings: Settings {
-                environment_variable: value.0,
-                default_level: value.1,
-                enabled: true,
-            },
+impl<T> From<Option<T>> for OtlpTraceSettings
+where
+    T: Into<OtlpTraceSettings>,
+{
+    fn from(settings: Option<T>) -> Self {
+        match settings {
+            Some(settings) => settings.into(),
+            None => OtlpTraceSettings::default(),
         }
     }
 }
 
-impl From<(&'static str, LevelFilter, bool)> for OtlpTraceSettings {
-    fn from(value: (&'static str, LevelFilter, bool)) -> Self {
-        Self {
-            common_settings: Settings {
-                environment_variable: value.0,
-                default_level: value.1,
-                enabled: value.2,
-            },
-        }
-    }
-}
+// impl From<(&'static str, LevelFilter)> for OtlpTraceSettings {
+//     fn from(value: (&'static str, LevelFilter)) -> Self {
+//         Self {
+//             common_settings: Settings {
+//                 environment_variable: value.0,
+//                 default_level: value.1,
+//                 enabled: true,
+//             },
+//         }
+//     }
+// }
+
+// impl From<(&'static str, LevelFilter, bool)> for OtlpTraceSettings {
+//     fn from(value: (&'static str, LevelFilter, bool)) -> Self {
+//         Self {
+//             common_settings: Settings {
+//                 environment_variable: value.0,
+//                 default_level: value.1,
+//                 enabled: value.2,
+//             },
+//         }
+//     }
+// }
 
 #[cfg(test)]
 mod test {
@@ -83,13 +95,11 @@ mod test {
             common_settings: Settings {
                 environment_variable: "hello",
                 default_level: LevelFilter::DEBUG,
-                enabled: true,
             },
         };
         let result = Settings::builder()
             .with_environment_variable("hello")
             .with_default_level(LevelFilter::DEBUG)
-            .enabled(true)
             .otlp_trace_settings_builder()
             .build();
 

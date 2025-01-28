@@ -8,21 +8,26 @@ use super::{Settings, SettingsBuilder};
 
 /// Configure specific settings for the Console Log subscriber.
 #[derive(Debug, Default, PartialEq)]
-pub struct ConsoleLogSettings {
-    /// Common subscriber settings that apply to the Console Log Subscriber.
-    pub common_settings: Settings,
+pub enum ConsoleLogSettings {
+    #[default]
+    Disabled,
 
-    /// Console Subscriber log event output format.
-    pub log_format: Format,
+    Enabled {
+        /// Common subscriber settings that apply to the Console Log Subscriber.
+        common_settings: Settings,
+
+        /// Console Subscriber log event output format.
+        log_format: Format,
+    },
 }
 
-impl Deref for ConsoleLogSettings {
-    type Target = Settings;
+// impl Deref for ConsoleLogSettings {
+//     type Target = Settings;
 
-    fn deref(&self) -> &Self::Target {
-        &self.common_settings
-    }
-}
+//     fn deref(&self) -> &Self::Target {
+//         &self.common_settings
+//     }
+// }
 
 /// Console Subscriber log event output formats.
 ///
@@ -58,7 +63,7 @@ impl ConsoleLogSettingsBuilder {
     }
 
     pub fn build(self) -> ConsoleLogSettings {
-        ConsoleLogSettings {
+        ConsoleLogSettings::Enabled {
             common_settings: self.common_settings,
             log_format: self.log_format,
         }
@@ -78,38 +83,50 @@ impl From<SettingsBuilder> for ConsoleLogSettingsBuilder {
 
 impl From<Settings> for ConsoleLogSettings {
     fn from(common_settings: Settings) -> Self {
-        ConsoleLogSettings {
+        ConsoleLogSettings::Enabled {
             common_settings,
-            ..Default::default()
+            log_format: Default::default(),
         }
     }
 }
 
-impl From<(&'static str, LevelFilter)> for ConsoleLogSettings {
-    fn from(value: (&'static str, LevelFilter)) -> Self {
-        Self {
-            common_settings: Settings {
-                environment_variable: value.0,
-                default_level: value.1,
-                enabled: true,
-            },
-            ..Default::default()
+impl<T> From<Option<T>> for ConsoleLogSettings
+where
+    T: Into<ConsoleLogSettings>,
+{
+    fn from(settings: Option<T>) -> Self {
+        match settings {
+            Some(settings) => settings.into(),
+            None => ConsoleLogSettings::default(),
         }
     }
 }
 
-impl From<(&'static str, LevelFilter, bool)> for ConsoleLogSettings {
-    fn from(value: (&'static str, LevelFilter, bool)) -> Self {
-        Self {
-            common_settings: Settings {
-                environment_variable: value.0,
-                default_level: value.1,
-                enabled: value.2,
-            },
-            ..Default::default()
-        }
-    }
-}
+// impl From<(&'static str, LevelFilter)> for ConsoleLogSettings {
+//     fn from(value: (&'static str, LevelFilter)) -> Self {
+//         Self {
+//             common_settings: Settings {
+//                 environment_variable: value.0,
+//                 default_level: value.1,
+//                 enabled: true,
+//             },
+//             ..Default::default()
+//         }
+//     }
+// }
+
+// impl From<(&'static str, LevelFilter, bool)> for ConsoleLogSettings {
+//     fn from(value: (&'static str, LevelFilter, bool)) -> Self {
+//         Self {
+//             common_settings: Settings {
+//                 environment_variable: value.0,
+//                 default_level: value.1,
+//                 enabled: value.2,
+//             },
+//             ..Default::default()
+//         }
+//     }
+// }
 
 #[cfg(test)]
 mod test {
@@ -119,18 +136,16 @@ mod test {
 
     #[test]
     fn builds_settings() {
-        let expected = ConsoleLogSettings {
+        let expected = ConsoleLogSettings::Enabled {
             common_settings: Settings {
                 environment_variable: "hello",
                 default_level: LevelFilter::DEBUG,
-                enabled: true,
             },
             log_format: Format::Plain,
         };
         let result = Settings::builder()
             .with_environment_variable("hello")
             .with_default_level(LevelFilter::DEBUG)
-            .enabled(true)
             .console_log_settings_builder()
             .with_log_format(Format::Plain)
             // color

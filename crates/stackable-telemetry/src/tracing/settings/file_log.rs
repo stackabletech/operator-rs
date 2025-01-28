@@ -54,14 +54,12 @@ mod test {
             common_settings: Settings {
                 environment_variable: "hello",
                 default_level: LevelFilter::DEBUG,
-                enabled: true,
             },
             file_log_dir: PathBuf::from("/logs"),
         };
         let result = Settings::builder()
             .with_environment_variable("hello")
             .with_default_level(LevelFilter::DEBUG)
-            .enabled(true)
             .file_log_settings_builder(PathBuf::from("/logs"))
             .build();
 
