@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.85.0] - 2025-01-28
+
 ### Changed
 
 - Change constant used for product image selection so that it defaults to OCI ([#945]).
