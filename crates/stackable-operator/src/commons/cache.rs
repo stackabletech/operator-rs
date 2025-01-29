@@ -41,8 +41,7 @@ impl TtlCacheDefaults for UserInformationCacheDefaults {
     Eq
 )]
 pub struct TtlCache<D> {
-    /// Time to live per entry; Entries which were not queried within the given duration, are
-    /// removed.
+    /// Time to live per entry
     #[serde(default = "D::entry_time_to_live")]
     pub entry_time_to_live: Duration,
 

@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.86.0] - 2025-01-29
+
 ### Added
 
 - Add generic `TtlCache` structure as well as a `UserInformationCache` type ([#943]).
