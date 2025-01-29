@@ -5,6 +5,10 @@ name: Publish Crate Docs
 # changed.
 
 on:
+  pull_request:
+    paths:
+      - .github/workflows/publish-docs.yml
+      - crates/**
   push:
     branches:
       - main
