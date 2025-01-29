@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add generic `TtlCache` structure as well as a `UserInformationCache` type ([#943]).
+
+[#943]: https://github.com/stackabletech/operator-rs/pull/943
+
 ## [0.85.0] - 2025-01-28
 
 ### Changed

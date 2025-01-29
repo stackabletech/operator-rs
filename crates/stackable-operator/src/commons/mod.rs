@@ -2,6 +2,7 @@
 
 pub mod affinity;
 pub mod authentication;
+pub mod cache;
 pub mod cluster_operation;
 pub mod listener;
 pub mod networking;

@@ -21,7 +21,7 @@ darling = "0.20.10"
 delegate = "0.13.0"
 dockerfile-parser = "0.9.0"
 ecdsa = { version = "0.16.9", features = ["digest", "pem"] }
-educe =  { version = "0.6.0", default-features = false, features = ["Clone", "Debug", "Default", "PartialEq"] }
+educe =  { version = "0.6.0", default-features = false, features = ["Clone", "Debug", "Default", "PartialEq", "Eq"] }
 either = "1.13.0"
 futures = "0.3.30"
 futures-util = "0.3.30"
