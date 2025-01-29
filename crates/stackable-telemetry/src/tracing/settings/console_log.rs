@@ -43,10 +43,6 @@ impl SettingsToggle for ConsoleLogSettings {
             ConsoleLogSettings::Enabled { .. } => true,
         }
     }
-
-    fn is_disabled(&self) -> bool {
-        !self.is_enabled()
-    }
 }
 
 /// For building [`ConsoleLogSettings`].

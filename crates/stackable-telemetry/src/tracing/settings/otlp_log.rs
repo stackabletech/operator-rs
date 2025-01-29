@@ -20,10 +20,6 @@ impl SettingsToggle for OtlpLogSettings {
             OtlpLogSettings::Enabled { .. } => true,
         }
     }
-
-    fn is_disabled(&self) -> bool {
-        !self.is_enabled()
-    }
 }
 
 pub struct OtlpLogSettingsBuilder {

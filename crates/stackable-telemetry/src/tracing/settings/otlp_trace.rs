@@ -20,10 +20,6 @@ impl SettingsToggle for OtlpTraceSettings {
             OtlpTraceSettings::Enabled { .. } => true,
         }
     }
-
-    fn is_disabled(&self) -> bool {
-        !self.is_enabled()
-    }
 }
 
 pub struct OtlpTraceSettingsBuilder {

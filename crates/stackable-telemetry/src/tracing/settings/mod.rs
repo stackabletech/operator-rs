@@ -18,7 +18,9 @@ pub use otlp_trace::*;
 
 pub trait SettingsToggle {
     fn is_enabled(&self) -> bool;
-    fn is_disabled(&self) -> bool;
+    fn is_disabled(&self) -> bool {
+        !self.is_enabled()
+    }
 }
 
 /// General settings that apply to any subscriber.
