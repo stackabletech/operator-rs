@@ -273,7 +273,7 @@ impl Tracing {
                 .filename_prefix(self.service_name.to_string())
                 .filename_suffix("tracing-rs.json")
                 .max_log_files(6)
-                .build(&file_log_dir)
+                .build(file_log_dir)
                 .context(InitRollingFileAppenderSnafu)?;
 
             layers.push(
