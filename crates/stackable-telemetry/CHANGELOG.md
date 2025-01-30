@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-01-30
+
 ### Added
 
 - Introduce common `Settings` and subscriber specific settings ([#901]).
