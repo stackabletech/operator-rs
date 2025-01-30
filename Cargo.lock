@@ -3262,7 +3262,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-telemetry"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "axum 0.8.1",
  "futures-util",
