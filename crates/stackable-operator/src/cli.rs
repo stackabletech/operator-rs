@@ -217,12 +217,48 @@ pub struct ProductOperatorRun {
     #[arg(long, env, default_value = "")]
     pub watch_namespace: WatchNamespace,
 
-    /// Tracing log collector system
-    #[arg(long, env, default_value_t, value_enum)]
-    pub tracing_target: TracingTarget,
+    #[command(flatten)]
+    pub telemetry_opts: TelemetryOpts,
 
     #[command(flatten)]
     pub cluster_info_opts: KubernetesClusterInfoOpts,
+}
+
+/// Telemetry options for logs/metrics/traces
+#[derive(clap::Args, Debug, PartialEq, Eq)]
+pub struct TelemetryOpts {
+    /// Disable console log output
+    #[arg(long, env)]
+    pub no_console_log: bool,
+
+    /// Console log format. Currently only "plain" is supported.
+    // NOTE (@NickLarsenNZ): We have to choose from one of these options:
+    // 1. Include stackable-telemetry to get access to console_log::Format, or
+    // 2. Use a String, and leave the bin crate to figure it out
+    // 3. Duplicate console_log::Format, and leave it to the bin crate to figure out.
+    // We have hidden it for now until we decide what to do.
+    #[arg(hide = true, long, env, default_value_t = String::from("plain"))]
+    console_output_format: String,
+
+    /// Enable OTLP export for logs
+    // TODO (@NickLarsenNZ): Add long help test describing the default endpoint: http://localhost:4317
+    #[arg(long, env)]
+    pub otlp_logs: bool,
+
+    /// Enable OTLP export for metrics
+    // TODO (@NickLarsenNZ): Add long help test describing the default endpoint: http://localhost:4317
+    // NOTE (@NickLarsenNZ): Hidden for now as stackable-telemetry doesn't yet handle metrics.
+    #[arg(hide = true, long, env)]
+    otlp_metrics: bool,
+
+    /// Enable OTLP export for traces
+    // TODO (@NickLarsenNZ): Add long help test describing the default endpoint: http://localhost:4317
+    #[arg(long, env)]
+    pub otlp_traces: bool,
+
+    /// Enable rolling log files in the given directory
+    #[arg(long, env)]
+    pub rolling_logs_directory: Option<PathBuf>,
 }
 
 /// A path to a [`ProductConfigManager`] spec file
