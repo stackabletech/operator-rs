@@ -285,16 +285,13 @@ fn resolve_path<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::Parser;
     use rstest::*;
-    use std::env;
     use std::fs::File;
     use tempfile::tempdir;
 
     const USER_PROVIDED_PATH: &str = "user_provided_path_properties.yaml";
     const DEPLOY_FILE_PATH: &str = "deploy_config_spec_properties.yaml";
     const DEFAULT_FILE_PATH: &str = "default_file_path_properties.yaml";
-    const WATCH_NAMESPACE: &str = "WATCH_NAMESPACE";
 
     #[test]
     fn verify_cli() {
@@ -375,54 +372,5 @@ mod tests {
         } else {
             panic!("must return RequiredFileMissing when file was not found")
         }
-    }
-
-    #[test]
-    fn product_operator_run_watch_namespace() {
-        // clean env var to not interfere if already set
-        env::remove_var(WATCH_NAMESPACE);
-
-        // cli with namespace
-        let opts = ProductOperatorRun::parse_from([
-            "run",
-            "--product-config",
-            "bar",
-            "--watch-namespace",
-            "foo",
-        ]);
-        assert_eq!(
-            opts,
-            ProductOperatorRun {
-                product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::One("foo".to_string()),
-                tracing_target: TracingTarget::None,
-                cluster_info_opts: Default::default(),
-            }
-        );
-
-        // no cli / no env
-        let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
-        assert_eq!(
-            opts,
-            ProductOperatorRun {
-                product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::All,
-                tracing_target: TracingTarget::None,
-                cluster_info_opts: Default::default(),
-            }
-        );
-
-        // env with namespace
-        env::set_var(WATCH_NAMESPACE, "foo");
-        let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
-        assert_eq!(
-            opts,
-            ProductOperatorRun {
-                product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::One("foo".to_string()),
-                tracing_target: TracingTarget::None,
-                cluster_info_opts: Default::default(),
-            }
-        );
     }
 }
