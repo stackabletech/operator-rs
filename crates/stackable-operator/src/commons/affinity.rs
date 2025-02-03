@@ -138,9 +138,8 @@ mod tests {
         apimachinery::pkg::apis::meta::v1::LabelSelectorRequirement,
     };
 
-    use crate::config::fragment;
-
     use super::*;
+    use crate::config::fragment;
 
     #[test]
     fn merge_new_attributes() {

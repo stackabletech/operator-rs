@@ -89,8 +89,9 @@ impl Display for LabelValue {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     #[rstest]
     #[case("a".repeat(64), LabelValueError::ValueTooLong { length: 64 })]

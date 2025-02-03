@@ -232,6 +232,40 @@ impl From<Labels> for BTreeMap<String, String> {
 }
 
 impl Labels {
+    // This forwards / delegates associated functions to the inner field. In
+    // this case self.0 which is of type KeyValuePairs<T>. So calling
+    // Labels::len() will be delegated to KeyValuePair<T>::len() without the
+    // need to write boilerplate code.
+    delegate! {
+        to self.0 {
+            /// Tries to insert a new [`Label`]. It ensures there are no duplicate
+            /// entries. Trying to insert duplicated data returns an error. If no such
+            /// check is required, use [`Labels::insert`] instead.
+            pub fn try_insert(&mut self, #[newtype] label: Label) -> Result<(), LabelsError>;
+
+            /// Extends `self` with `other`.
+            pub fn extend(&mut self, #[newtype] other: Self);
+
+            /// Returns the number of labels.
+            pub fn len(&self) -> usize;
+
+            /// Returns if the set of labels is empty.
+            pub fn is_empty(&self) -> bool;
+
+            /// Returns if the set of labels contains the provided `label`. Failure to
+            /// parse/validate the [`KeyValuePair`] will return `false`.
+            pub fn contains(&self, label: impl TryInto<KeyValuePair<LabelValue>>) -> bool;
+
+            /// Returns if the set of labels contains a label with the provided `key`.
+            /// Failure to parse/validate the [`Key`] will return `false`.
+            pub fn contains_key(&self, key: impl TryInto<Key>) -> bool;
+
+            /// Returns an [`Iterator`] over [`Labels`] yielding a reference to every [`Label`] contained within.
+            pub fn iter(&self) -> impl Iterator<Item = KeyValuePair<LabelValue>> + '_;
+
+        }
+    }
+
     /// Creates a new empty list of [`Labels`].
     pub fn new() -> Self {
         Self::default()
@@ -355,45 +389,11 @@ impl Labels {
 
         Ok(labels)
     }
-
-    // This forwards / delegates associated functions to the inner field. In
-    // this case self.0 which is of type KeyValuePairs<T>. So calling
-    // Labels::len() will be delegated to KeyValuePair<T>::len() without the
-    // need to write boilerplate code.
-    delegate! {
-        to self.0 {
-            /// Tries to insert a new [`Label`]. It ensures there are no duplicate
-            /// entries. Trying to insert duplicated data returns an error. If no such
-            /// check is required, use [`Labels::insert`] instead.
-            pub fn try_insert(&mut self, #[newtype] label: Label) -> Result<(), LabelsError>;
-
-            /// Extends `self` with `other`.
-            pub fn extend(&mut self, #[newtype] other: Self);
-
-            /// Returns the number of labels.
-            pub fn len(&self) -> usize;
-
-            /// Returns if the set of labels is empty.
-            pub fn is_empty(&self) -> bool;
-
-            /// Returns if the set of labels contains the provided `label`. Failure to
-            /// parse/validate the [`KeyValuePair`] will return `false`.
-            pub fn contains(&self, label: impl TryInto<KeyValuePair<LabelValue>>) -> bool;
-
-            /// Returns if the set of labels contains a label with the provided `key`.
-            /// Failure to parse/validate the [`Key`] will return `false`.
-            pub fn contains_key(&self, key: impl TryInto<Key>) -> bool;
-
-            /// Returns an [`Iterator`] over [`Labels`] yielding a reference to every [`Label`] contained within.
-            pub fn iter(&self) -> impl Iterator<Item = KeyValuePair<LabelValue>> + '_;
-
-        }
-    }
 }
 
 impl IntoIterator for Labels {
-    type Item = KeyValuePair<LabelValue>;
     type IntoIter = <KeyValuePairs<LabelValue> as IntoIterator>::IntoIter;
+    type Item = KeyValuePair<LabelValue>;
 
     /// Returns a consuming [`Iterator`] over [`Labels`] moving every [`Label`] out.
     /// The [`Labels`] cannot be used again after calling this.

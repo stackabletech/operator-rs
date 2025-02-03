@@ -1,7 +1,9 @@
-use crate::commons::cluster_operation::ClusterOperation;
-use crate::status::condition::{
-    ClusterCondition, ClusterConditionSet, ClusterConditionStatus, ClusterConditionType,
-    ConditionBuilder,
+use crate::{
+    commons::cluster_operation::ClusterOperation,
+    status::condition::{
+        ClusterCondition, ClusterConditionSet, ClusterConditionStatus, ClusterConditionType,
+        ConditionBuilder,
+    },
 };
 
 /// Default implementation to build [`ClusterCondition`]s for
@@ -87,8 +89,9 @@ impl<'a> ClusterOperationsConditionBuilder<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::*;
+
+    use super::*;
 
     #[rstest]
     #[case::not_paused_not_stopped(

@@ -530,12 +530,13 @@ mod tests {
         };
     }
 
-    use super::*;
-    use crate::role_utils::{GenericProductSpecificCommonConfig, Role, RoleGroup};
+    use std::{collections::HashMap, str::FromStr};
+
     use k8s_openapi::api::core::v1::PodTemplateSpec;
     use rstest::*;
-    use std::collections::HashMap;
-    use std::str::FromStr;
+
+    use super::*;
+    use crate::role_utils::{GenericProductSpecificCommonConfig, Role, RoleGroup};
 
     const ROLE_GROUP: &str = "role_group";
 

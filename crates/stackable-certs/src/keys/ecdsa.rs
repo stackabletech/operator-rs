@@ -40,11 +40,10 @@ impl SigningKey {
 }
 
 impl CertificateKeypair for SigningKey {
-    type SigningKey = p256::ecdsa::SigningKey;
-    type Signature = ecdsa::der::Signature<NistP256>;
-    type VerifyingKey = p256::ecdsa::VerifyingKey;
-
     type Error = Error;
+    type Signature = ecdsa::der::Signature<NistP256>;
+    type SigningKey = p256::ecdsa::SigningKey;
+    type VerifyingKey = p256::ecdsa::VerifyingKey;
 
     fn signing_key(&self) -> &Self::SigningKey {
         &self.0

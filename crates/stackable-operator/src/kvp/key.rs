@@ -340,9 +340,8 @@ where
 mod test {
     use rstest::rstest;
 
-    use crate::kvp::Label;
-
     use super::*;
+    use crate::kvp::Label;
 
     #[test]
     fn key_with_prefix() {

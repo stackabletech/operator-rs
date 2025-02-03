@@ -284,12 +284,13 @@ fn resolve_path<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::{env, fs::File};
+
     use clap::Parser;
     use rstest::*;
-    use std::env;
-    use std::fs::File;
     use tempfile::tempdir;
+
+    use super::*;
 
     const USER_PROVIDED_PATH: &str = "user_provided_path_properties.yaml";
     const DEPLOY_FILE_PATH: &str = "deploy_config_spec_properties.yaml";

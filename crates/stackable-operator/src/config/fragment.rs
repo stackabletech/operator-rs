@@ -8,17 +8,15 @@ use std::{
     hash::Hash,
 };
 
-use super::merge::Atomic;
+use k8s_openapi::api::core::v1::PodTemplateSpec;
+use snafu::Snafu;
+pub use stackable_operator_derive::Fragment;
 
+use super::merge::Atomic;
 #[cfg(doc)]
 use super::merge::Merge;
 #[cfg(doc)]
 use crate::role_utils::{Role, RoleGroup};
-
-use k8s_openapi::api::core::v1::PodTemplateSpec;
-use snafu::Snafu;
-
-pub use stackable_operator_derive::Fragment;
 
 /// Contains context used for generating validation errors
 ///

@@ -229,8 +229,9 @@ impl Sum for CpuQuantity {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::*;
+
+    use super::*;
 
     #[rstest]
     #[case("1", 1000)]
