@@ -23,6 +23,7 @@ struct Opts {
     )]
     loop_interval: Option<stackable_operator::time::Duration>,
 
+    /// Write collected information to OUTPUT as JSON
     #[clap(long, short = 'o')]
     output: Option<PathBuf>,
 
