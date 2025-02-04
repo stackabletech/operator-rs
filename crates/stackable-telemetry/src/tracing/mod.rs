@@ -1,5 +1,5 @@
 //! This module contains functionality to initialise tracing Subscribers for
-//! console output, and OpenTelemetry OTLP export for traces and logs.
+//! console output, file output, and OpenTelemetry OTLP export for traces and logs.
 //!
 //! It is intended to be used by the Stackable Data Platform operators and
 //! webhooks, but it should be generic enough to be used in any application.
@@ -16,6 +16,7 @@ use opentelemetry_sdk::{
 use opentelemetry_semantic_conventions::resource;
 use snafu::{ResultExt as _, Snafu};
 use tracing::subscriber::SetGlobalDefaultError;
+use tracing_appender::rolling::{InitError, RollingFileAppender, Rotation};
 use tracing_subscriber::{filter::Directive, layer::SubscriberExt, EnvFilter, Layer, Registry};
 
 use settings::*;
@@ -39,6 +40,13 @@ pub enum Error {
     InstallOtelLogExporter {
         #[allow(missing_docs)]
         source: opentelemetry::logs::LogError,
+    },
+
+    /// Indicates that [`Tracing`] failed to installed the rolling file appender subscriber.
+    #[snafu(display("failed to initialize rolling file appender"))]
+    InitRollingFileAppender {
+        #[allow(missing_docs)]
+        source: InitError,
     },
 
     /// Indicates that [`Tracing`] failed to set the global default subscriber.
@@ -223,6 +231,7 @@ pub enum Error {
 pub struct Tracing {
     service_name: &'static str,
     console_log_settings: ConsoleLogSettings,
+    file_log_settings: FileLogSettings,
     otlp_log_settings: OtlpLogSettings,
     otlp_trace_settings: OtlpTraceSettings,
     logger_provider: Option<LoggerProvider>,
@@ -254,6 +263,29 @@ impl Tracing {
             let console_output_layer =
                 tracing_subscriber::fmt::layer().with_filter(env_filter_layer);
             layers.push(console_output_layer.boxed());
+        }
+
+        if self.file_log_settings.enabled {
+            let env_filter_layer = env_filter_builder(
+                self.file_log_settings.common_settings.environment_variable,
+                self.file_log_settings.default_level,
+            );
+
+            let file_appender = RollingFileAppender::builder()
+                .rotation(Rotation::HOURLY)
+                .filename_prefix(self.service_name.to_string())
+                .filename_suffix("tracing-rs.json")
+                .max_log_files(6)
+                .build(&self.file_log_settings.file_log_dir)
+                .context(InitRollingFileAppenderSnafu)?;
+
+            layers.push(
+                tracing_subscriber::fmt::layer()
+                    .json()
+                    .with_writer(file_appender)
+                    .with_filter(env_filter_layer)
+                    .boxed(),
+            );
         }
 
         if self.otlp_log_settings.enabled {
@@ -395,12 +427,6 @@ mod builder_state {
     #[derive(Default)]
     pub struct PreServiceName;
 
-    /// The state before the [`EnvFilter`][1] environment variable name is set.
-    ///
-    /// [1]: tracing_subscriber::filter::EnvFilter
-    #[derive(Default)]
-    pub struct PreEnvVar;
-
     /// The state that allows you to configure the supported [`Subscriber`][1]
     /// [`Layer`][2].
     ///
@@ -424,6 +450,7 @@ pub struct TracingBuilder<S: BuilderState> {
     console_log_settings: ConsoleLogSettings,
     otlp_log_settings: OtlpLogSettings,
     otlp_trace_settings: OtlpTraceSettings,
+    file_log_settings: FileLogSettings,
 
     /// Allow the generic to be used (needed for impls).
     _marker: std::marker::PhantomData<S>,
@@ -456,6 +483,26 @@ impl TracingBuilder<builder_state::Config> {
             console_log_settings: console_log_settings.into(),
             otlp_log_settings: self.otlp_log_settings,
             otlp_trace_settings: self.otlp_trace_settings,
+            file_log_settings: self.file_log_settings,
+            _marker: self._marker,
+        }
+    }
+
+    /// Enable the file output tracing subscriber and set the default
+    /// [`LevelFilter`][1] which is overridable through the given environment
+    /// variable.
+    ///
+    /// [1]: tracing_subscriber::filter::LevelFilter
+    pub fn with_file_output(
+        self,
+        file_log_settings: impl Into<FileLogSettings>,
+    ) -> TracingBuilder<builder_state::Config> {
+        TracingBuilder {
+            service_name: self.service_name,
+            console_log_settings: self.console_log_settings,
+            file_log_settings: file_log_settings.into(),
+            otlp_log_settings: self.otlp_log_settings,
+            otlp_trace_settings: self.otlp_trace_settings,
             _marker: self._marker,
         }
     }
@@ -476,6 +523,7 @@ impl TracingBuilder<builder_state::Config> {
             console_log_settings: self.console_log_settings,
             otlp_log_settings: otlp_log_settings.into(),
             otlp_trace_settings: self.otlp_trace_settings,
+            file_log_settings: self.file_log_settings,
             _marker: self._marker,
         }
     }
@@ -496,6 +544,7 @@ impl TracingBuilder<builder_state::Config> {
             console_log_settings: self.console_log_settings,
             otlp_log_settings: self.otlp_log_settings,
             otlp_trace_settings: otlp_trace_settings.into(),
+            file_log_settings: self.file_log_settings,
             _marker: self._marker,
         }
     }
@@ -512,6 +561,7 @@ impl TracingBuilder<builder_state::Config> {
             console_log_settings: self.console_log_settings,
             otlp_log_settings: self.otlp_log_settings,
             otlp_trace_settings: self.otlp_trace_settings,
+            file_log_settings: self.file_log_settings,
             logger_provider: None,
         }
     }
@@ -527,6 +577,8 @@ fn env_filter_builder(env_var: &str, default_directive: impl Into<Directive>) ->
 
 #[cfg(test)]
 mod test {
+    use std::path::PathBuf;
+
     use rstest::rstest;
     use settings::Settings;
     use tracing::level_filters::LevelFilter;
@@ -628,6 +680,14 @@ mod test {
                     .enabled(true)
                     .build(),
             )
+            .with_file_output(
+                Settings::builder()
+                    .with_environment_variable("ABC_FILE")
+                    .with_default_level(LevelFilter::INFO)
+                    .enabled(true)
+                    .file_log_settings_builder(PathBuf::from("/abc_file_dir"))
+                    .build(),
+            )
             .with_otlp_log_exporter(
                 Settings::builder()
                     .with_environment_variable("ABC_OTLP_LOG")
@@ -653,6 +713,17 @@ mod test {
                     default_level: LevelFilter::INFO
                 },
                 log_format: Default::default()
+            }
+        );
+        assert_eq!(
+            trace_guard.file_log_settings,
+            FileLogSettings {
+                common_settings: Settings {
+                    enabled: true,
+                    environment_variable: "ABC_FILE",
+                    default_level: LevelFilter::INFO
+                },
+                file_log_dir: PathBuf::from("/abc_file_dir")
             }
         );
         assert_eq!(
