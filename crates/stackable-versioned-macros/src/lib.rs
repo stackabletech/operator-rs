@@ -33,8 +33,8 @@ mod utils;
 ///
 /// It is **important** to note that this macro must be placed before any other
 /// (derive) macros and attributes. Macros supplied before the versioned macro
-/// will be erased, because the original struct or enum (container) is erased,
-/// and new containers are generated. This ensures that the macros and
+/// will be erased, because the original struct, enum or module (container) is
+/// erased, and new containers are generated. This ensures that the macros and
 /// attributes are applied to the generated versioned instances of the
 /// container.
 ///
@@ -131,6 +131,103 @@ mod utils;
 /// }
 /// ```
 ///
+/// ## Versioning Items in a Module
+///
+/// Using the macro on structs and enums is explained in detail in the following
+/// sections. This section is dedicated to explain the usage of the macro when
+/// applied to a module.
+///
+/// Using the macro on a module has one clear use-case: Versioning multiple
+/// structs and enums at once in **a single file**. Applying the `#[versioned]`
+/// macro to individual containers will result in invalid Rust code which the
+/// compiler rejects. This behaviour can best be explained using the following
+/// example:
+///
+/// ```ignore
+/// # use stackable_versioned_macros::versioned;
+/// #[versioned(version(name = "v1alpha1"))]
+/// struct Foo {}
+///
+/// #[versioned(version(name = "v1alpha1"))]
+/// struct Bar {}
+/// ```
+///
+/// In this example, two different structs are versioned using the same version,
+/// `v1alpha1`. Each macro will now (independently) expand into versioned code.
+/// This will result in the module named `v1alpha1` to be emitted twice, in the
+/// same file. This is invalid Rust code. You cannot define the same module more
+/// than once in the same file.
+///
+/// <details>
+/// <summary>Expand Generated Invalid Code</summary>
+///
+/// ```ignore
+/// mod v1alpha1 {
+///     struct Foo {}
+/// }
+///
+/// mod v1alpha1 {
+///     struct Bar {}
+/// }
+/// ```
+/// </details>
+///
+/// This behaviour makes it impossible to version multiple containers in the
+/// same file. The only solution would be to put each container into its own
+/// file which in many cases is not needed or even undesired. To solve this
+/// issue, it is thus possible to apply the macro to a module.
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// #[versioned(
+///     version(name = "v1alpha1"),
+///     version(name = "v1")
+/// )]
+/// mod versioned {
+///     struct Foo {
+///         bar: usize,
+///     }
+///
+///     struct Bar {
+///         baz: String,
+///     }
+/// }
+/// ```
+///
+/// <details>
+/// <summary>Expand Generated Code</summary>
+///
+/// 1. All containers defined in the module will get versioned. That's why every
+///    version module includes all containers.
+/// 2. Each version will expand to a version module, as expected.
+///
+/// ```ignore
+/// mod v1alpha1 {
+///     use super::*;
+///     pub struct Foo { // 1
+///         bar: usize,
+///     }
+///     pub struct Bar { // 1
+///         baz: String,
+///     }
+/// }
+///
+/// mod v1 {             // 2
+///     use super::*;
+///     pub struct Foo {
+///         bar: usize,
+///     }
+///     pub struct Bar {
+///         baz: String,
+///     }
+/// }
+/// ```
+/// </details>
+///
+/// It should be noted that versions are now defined at the module level and
+/// **not** at the struct / enum level. Item actions describes in the following
+/// section can be used as expected.
+///
 /// ## Item Actions
 ///
 /// This crate currently supports three different item actions. Items can
@@ -176,7 +273,7 @@ mod utils;
 /// ```
 ///
 /// <details>
-/// <summary>Generated code</summary>
+/// <summary>Expand Generated Code</summary>
 ///
 /// 1. The field `bar` is not yet present in version `v1alpha1` and is therefore
 ///    not generated.
@@ -235,7 +332,7 @@ mod utils;
 /// ```
 ///
 /// <details>
-/// <summary>Generated code</summary>
+/// <summary>Expand Generated Code</summary>
 ///
 /// 1. Instead of `Default::default()`, the provided function `default_bar()` is
 ///    used. It is of course fully type checked and needs to return the expected
@@ -285,7 +382,7 @@ mod utils;
 /// ```
 ///
 /// <details>
-/// <summary>Generated code</summary>
+/// <summary>Expand Generated Code</summary>
 ///
 /// 1. In version `v1alpha1` the field is named `prev_bar` and uses a `u16`.
 /// 2. In the next version, `v1beta1`, the field is now named `bar` and uses
@@ -336,7 +433,7 @@ mod utils;
 /// ```
 ///
 /// <details>
-/// <summary>Generated code</summary>
+/// <summary>Expand Generated Code</summary>
 ///
 /// 1. In version `v1alpha1` the field `bar` is not yet deprecated and thus uses
 ///    the name without the `deprecated_` prefix.
