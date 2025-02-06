@@ -583,6 +583,94 @@ Currently, the following arguments are supported:
 - `crates`: Override specific crates.
 - `status`: Sets the specified struct as the status subresource.
 - `shortname`: Sets the shortname of the CRD.
+
+### Versioning Items in a Module
+
+Versioning multiple CRD related structs via a module is supported and common
+rules from [above](#versioning-items-in-a-module) apply here as well. It should
+however be noted, that specifying Kubernetes specific arguments is done on the
+container level instead of on the module level, which is detailed in the
+following example:
+
+```
+#[versioned(
+    version(name = "v1alpha1"),
+    version(name = "v1")
+)]
+mod versioned {
+    #[versioned(k8s(group = "foo.example.org"))]
+    #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
+    struct FooSpec {
+        bar: usize,
+    }
+
+    #[versioned(k8s(group = "bar.example.org"))]
+    #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
+    struct BarSpec {
+        baz: String,
+    }
+}
+```
+
+<details>
+<summary>Expand Generated Code</summary>
+
+```ignore
+mod v1alpha1 {
+    use super::*;
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
+    #[kube(
+        group = "foo.example.org",
+        version = "v1alpha1",
+        kind = "Foo"
+    )]
+    pub struct FooSpec {
+        pub bar: usize,
+    }
+
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
+    #[kube(
+        group = "bar.example.org",
+        version = "v1alpha1",
+        kind = "Bar"
+    )]
+    pub struct BarSpec {
+        pub bar: usize,
+    }
+}
+
+// Automatic From implementations for conversion between versions ...
+
+mod v1 {
+    use super::*;
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
+    #[kube(
+        group = "foo.example.org",
+        version = "v1",
+        kind = "Foo"
+    )]
+    pub struct FooSpec {
+        pub bar: usize,
+    }
+
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
+    #[kube(
+        group = "bar.example.org",
+        version = "v1",
+        kind = "Bar"
+    )]
+    pub struct BarSpec {
+        pub bar: usize,
+    }
+}
+
+// Implementations to create the merged CRDs ...
+```
+</details>
+
+It is possible to include structs and enums which are not CRDs. They are instead
+versioned as expected (without adding the `#[kube]` derive macro and generating
+code to merge CRD versions).
 "#
 )]
 #[proc_macro_attribute]
