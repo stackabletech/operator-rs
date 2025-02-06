@@ -228,6 +228,36 @@ mod utils;
 /// **not** at the struct / enum level. Item actions describes in the following
 /// section can be used as expected.
 ///
+/// ### Preserve Module
+///
+/// The previous examples completely replaced the `versioned` module with
+/// top-level version modules. This is the default behaviour. Preserving the
+/// module can however be enabled by setting the `preserve_module` flag.
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// #[versioned(
+///     version(name = "v1alpha1"),
+///     version(name = "v1"),
+///     preserve_module
+/// )]
+/// mod versioned {
+///     struct Foo {
+///         bar: usize,
+///     }
+///
+///     struct Bar {
+///         baz: String,
+///     }
+/// }
+/// ```
+///
+/// <div class="warning">
+/// It is planned to move the <code>preserve_module</code> flag into the
+/// <code>options()</code> argument list, but currently seems tricky to
+/// implement.
+/// </div>
+///
 /// ## Item Actions
 ///
 /// This crate currently supports three different item actions. Items can
