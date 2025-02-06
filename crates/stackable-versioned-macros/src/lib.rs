@@ -623,6 +623,10 @@ container level instead of on the module level, which is detailed in the
 following example:
 
 ```
+# use stackable_versioned_macros::versioned;
+# use kube::CustomResource;
+# use schemars::JsonSchema;
+# use serde::{Deserialize, Serialize};
 #[versioned(
     version(name = "v1alpha1"),
     version(name = "v1")
@@ -640,6 +644,11 @@ mod versioned {
         baz: String,
     }
 }
+
+# fn main() {
+let merged_crd = Foo::merged_crd(Foo::V1).unwrap();
+println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
+# }
 ```
 
 <details>
