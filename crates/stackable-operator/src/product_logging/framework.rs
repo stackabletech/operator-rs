@@ -12,7 +12,7 @@ use crate::{
         apimachinery::pkg::api::resource::Quantity,
     },
     kube::Resource,
-    memory::{BinaryMultiple, MemoryQuantity},
+    quantity::{BinaryMultiple, MemoryQuantity, Suffix},
     role_utils::RoleGroupRef,
 };
 
@@ -69,21 +69,15 @@ pub enum LoggingError {
 ///         pod::PodBuilder,
 ///         meta::ObjectMetaBuilder,
 ///     },
-///     memory::{
+///     quantity::{
 ///         BinaryMultiple,
 ///         MemoryQuantity,
 ///     },
 /// };
 /// # use stackable_operator::product_logging;
 ///
-/// const MAX_INIT_CONTAINER_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
-///     value: 1.0,
-///     unit: BinaryMultiple::Mebi,
-/// };
-/// const MAX_MAIN_CONTAINER_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity {
-///     value: 10.0,
-///     unit: BinaryMultiple::Mebi,
-/// };
+/// const MAX_INIT_CONTAINER_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity::from_mebi(1.0);
+/// const MAX_MAIN_CONTAINER_LOG_FILES_SIZE: MemoryQuantity = MemoryQuantity::from_mebi(10.0);
 ///
 /// PodBuilder::new()
 ///     .metadata(ObjectMetaBuilder::default().build())
@@ -105,13 +99,14 @@ pub fn calculate_log_volume_size_limit(max_log_files_size: &[MemoryQuantity]) ->
         .iter()
         .cloned()
         .sum::<MemoryQuantity>()
-        .scale_to(BinaryMultiple::Mebi)
+        .scale_to(Suffix::BinaryMultiple(BinaryMultiple::Mebi))
         // According to the reasons mentioned in the function documentation, the multiplier must be
         // greater than 2. Manual tests with ZooKeeper 3.8 in an OpenShift cluster showed that 3 is
         // absolutely sufficient.
-        .mul(3.0)
+        .mul(3.0f32)
         // Avoid bulky numbers due to the floating-point arithmetic.
         .ceil();
+
     log_volume_size_limit.into()
 }
 
@@ -1528,10 +1523,10 @@ mod tests {
     use super::*;
     use crate::product_logging::spec::{AppenderConfig, LoggerConfig};
     use rstest::rstest;
-    use std::collections::BTreeMap;
+    use std::{collections::BTreeMap, str::FromStr};
 
     #[rstest]
-    #[case("0Mi", &[])]
+    #[case("0", &[])]
     #[case("3Mi", &["1Mi"])]
     #[case("5Mi", &["1.5Mi"])]
     #[case("1Mi", &["100Ki"])]
@@ -1542,7 +1537,7 @@ mod tests {
     ) {
         let input = max_log_files_sizes
             .iter()
-            .map(|v| MemoryQuantity::try_from(Quantity(v.to_string())).unwrap())
+            .map(|v| MemoryQuantity::from_str(v).unwrap())
             .collect::<Vec<_>>();
         let calculated_log_volume_size_limit = calculate_log_volume_size_limit(&input);
         assert_eq!(

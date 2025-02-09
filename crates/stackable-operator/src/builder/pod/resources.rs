@@ -7,8 +7,7 @@ use tracing::warn;
 
 use crate::{
     commons::resources::ResourceRequirementsType,
-    cpu::{self, CpuQuantity},
-    memory::{self, MemoryQuantity},
+    quantity::{CpuQuantity, MemoryQuantity, ParseQuantityError},
 };
 
 const RESOURCE_DENYLIST: &[&str] = &["cpu", "memory"];
@@ -54,7 +53,7 @@ impl<CL, MR, ML> ResourceRequirementsBuilder<(), CL, MR, ML> {
         self,
         request: impl Into<String>,
         factor: f32,
-    ) -> cpu::Result<ResourceRequirementsBuilder<Quantity, Quantity, MR, ML>> {
+    ) -> Result<ResourceRequirementsBuilder<Quantity, Quantity, MR, ML>, ParseQuantityError> {
         let request = CpuQuantity::from_str(&request.into())?;
         let limit = request * factor;
 
@@ -124,7 +123,7 @@ impl<CR, CL, ML> ResourceRequirementsBuilder<CL, CR, (), ML> {
         self,
         request: impl Into<String>,
         factor: f32,
-    ) -> memory::Result<ResourceRequirementsBuilder<CL, CR, Quantity, Quantity>> {
+    ) -> Result<ResourceRequirementsBuilder<CL, CR, Quantity, Quantity>, ParseQuantityError> {
         let request = MemoryQuantity::from_str(&request.into())?;
         let limit = request * factor;
 
