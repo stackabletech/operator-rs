@@ -92,9 +92,8 @@ mod message {
 
     #[cfg(test)]
     mod tests {
-        use crate::logging::k8s_events::message::find_start_of_char;
-
         use super::truncate_with_ellipsis;
+        use crate::logging::k8s_events::message::find_start_of_char;
 
         #[test]
         fn truncate_should_be_noop_if_string_fits() {

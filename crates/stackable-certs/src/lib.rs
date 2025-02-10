@@ -21,6 +21,8 @@
 #[cfg(feature = "rustls")]
 use std::ops::Deref;
 
+use snafu::Snafu;
+use x509_cert::{spki::EncodePublicKey, Certificate};
 #[cfg(feature = "rustls")]
 use {
     p256::pkcs8::EncodePrivateKey,
@@ -28,9 +30,6 @@ use {
     tokio_rustls::rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer},
     x509_cert::der::Encode,
 };
-
-use snafu::Snafu;
-use x509_cert::{spki::EncodePublicKey, Certificate};
 
 use crate::keys::CertificateKeypair;
 

@@ -12,9 +12,11 @@ use k8s_openapi::{
 use snafu::{OptionExt, ResultExt, Snafu};
 use tracing::{instrument, warn};
 
-use crate::kvp::Labels;
 use crate::{
-    builder::meta::ObjectMetaBuilder,
+    builder::{
+        meta::ObjectMetaBuilder,
+        pod::volume::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder},
+    },
     commons::{
         affinity::StackableAffinity,
         product_image_selection::ResolvedProductImage,
@@ -23,10 +25,9 @@ use crate::{
             LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
         },
     },
+    kvp::Labels,
     time::Duration,
 };
-
-use self::volume::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
 
 pub mod container;
 pub mod resources;
@@ -633,6 +634,7 @@ mod tests {
     };
     use rstest::*;
 
+    use super::*;
     use crate::builder::{
         meta::ObjectMetaBuilder,
         pod::{
@@ -640,8 +642,6 @@ mod tests {
             volume::VolumeBuilder,
         },
     };
-
-    use super::*;
 
     // A simple [`Container`] with a name and image.
     #[fixture]

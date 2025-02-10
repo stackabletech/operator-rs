@@ -1,10 +1,9 @@
 use std::{cmp::Ordering, fmt::Display, num::ParseIntError, str::FromStr, sync::LazyLock};
 
-use regex::Regex;
-use snafu::{OptionExt, ResultExt, Snafu};
-
 #[cfg(feature = "darling")]
 use darling::FromMeta;
+use regex::Regex;
+use snafu::{OptionExt, ResultExt, Snafu};
 
 use crate::{Level, ParseLevelError};
 
@@ -117,13 +116,12 @@ impl Version {
 
 #[cfg(test)]
 mod test {
+    #[cfg(feature = "darling")]
+    use quote::quote;
     use rstest::rstest;
     use rstest_reuse::{apply, template};
 
     use super::*;
-
-    #[cfg(feature = "darling")]
-    use quote::quote;
 
     #[cfg(feature = "darling")]
     fn parse_meta(tokens: proc_macro2::TokenStream) -> ::std::result::Result<syn::Meta, String> {

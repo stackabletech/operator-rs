@@ -19,7 +19,7 @@ use tracing::subscriber::SetGlobalDefaultError;
 use tracing_appender::rolling::{InitError, RollingFileAppender, Rotation};
 use tracing_subscriber::{filter::Directive, layer::SubscriberExt, EnvFilter, Layer, Registry};
 
-use settings::*;
+use crate::tracing::settings::*;
 
 pub mod settings;
 

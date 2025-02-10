@@ -3,13 +3,12 @@ mod helpers;
 
 pub use crd::*;
 pub use helpers::*;
-
 use snafu::Snafu;
 use url::Url;
 
-use crate::builder::{self};
-
-use super::{secret_class::SecretClassVolumeError, tls_verification::TlsClientDetailsError};
+use crate::commons::{
+    secret_class::SecretClassVolumeError, tls_verification::TlsClientDetailsError,
+};
 
 #[derive(Debug, Snafu)]
 pub enum S3Error {
@@ -35,10 +34,10 @@ pub enum S3Error {
     AddS3TlsClientDetailsVolumes { source: TlsClientDetailsError },
 
     #[snafu(display("failed to add required volumes"))]
-    AddVolumes { source: builder::pod::Error },
+    AddVolumes { source: crate::builder::pod::Error },
 
     #[snafu(display("failed to add required volumeMounts"))]
     AddVolumeMounts {
-        source: builder::pod::container::Error,
+        source: crate::builder::pod::container::Error,
     },
 }

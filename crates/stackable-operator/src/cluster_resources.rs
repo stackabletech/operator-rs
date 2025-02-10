@@ -1,20 +1,8 @@
 //! A structure containing the cluster resources.
 
-use crate::{
-    client::{Client, GetApi},
-    commons::{
-        cluster_operation::ClusterOperation,
-        listener::Listener,
-        resources::{
-            ComputeResource, ResourceRequirementsExt, ResourceRequirementsType,
-            LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
-        },
-    },
-    kvp::{
-        consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
-        Label, LabelError, Labels,
-    },
-    utils::format_full_controller_name,
+use std::{
+    collections::{BTreeMap, HashSet},
+    fmt::Debug,
 };
 
 use k8s_openapi::{
@@ -33,10 +21,6 @@ use k8s_openapi::{
 use kube::{core::ErrorResponse, Resource, ResourceExt};
 use serde::{de::DeserializeOwned, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
-use std::{
-    collections::{BTreeMap, HashSet},
-    fmt::Debug,
-};
 use strum::Display;
 use tracing::{debug, info, warn};
 
@@ -44,6 +28,22 @@ use tracing::{debug, info, warn};
 use crate::k8s_openapi::api::{
     apps::v1::Deployment,
     core::v1::{NodeSelector, Pod},
+};
+use crate::{
+    client::{Client, GetApi},
+    commons::{
+        cluster_operation::ClusterOperation,
+        listener::Listener,
+        resources::{
+            ComputeResource, ResourceRequirementsExt, ResourceRequirementsType,
+            LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
+        },
+    },
+    kvp::{
+        consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
+        Label, LabelError, Labels,
+    },
+    utils::format_full_controller_name,
 };
 
 type Result<T, E = Error> = std::result::Result<T, E>;

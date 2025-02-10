@@ -13,11 +13,10 @@ use crate::{
     },
     kube::Resource,
     memory::{BinaryMultiple, MemoryQuantity},
+    product_logging::spec::{
+        AutomaticContainerLogConfig, ContainerLogConfig, ContainerLogConfigChoice, LogLevel,
+    },
     role_utils::RoleGroupRef,
-};
-
-use super::spec::{
-    AutomaticContainerLogConfig, ContainerLogConfig, ContainerLogConfigChoice, LogLevel,
 };
 
 /// Config directory used in the Vector log agent container
@@ -1525,10 +1524,12 @@ pub fn remove_vector_shutdown_file_command(stackable_log_dir: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
+    use rstest::rstest;
+
     use super::*;
     use crate::product_logging::spec::{AppenderConfig, LoggerConfig};
-    use rstest::rstest;
-    use std::collections::BTreeMap;
 
     #[rstest]
     #[case("0Mi", &[])]

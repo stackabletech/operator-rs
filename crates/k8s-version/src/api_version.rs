@@ -1,9 +1,8 @@
 use std::{cmp::Ordering, fmt::Display, str::FromStr};
 
-use snafu::{ResultExt, Snafu};
-
 #[cfg(feature = "darling")]
 use darling::FromMeta;
+use snafu::{ResultExt, Snafu};
 
 use crate::{Group, ParseGroupError, ParseVersionError, Version};
 
@@ -102,13 +101,12 @@ impl ApiVersion {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::Level;
-
-    use rstest::rstest;
-
     #[cfg(feature = "darling")]
     use quote::quote;
+    use rstest::rstest;
+
+    use super::*;
+    use crate::Level;
 
     #[cfg(feature = "darling")]
     fn parse_meta(tokens: proc_macro2::TokenStream) -> ::std::result::Result<syn::Meta, String> {

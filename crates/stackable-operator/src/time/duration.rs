@@ -421,9 +421,10 @@ impl DurationUnit {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use rstest::rstest;
     use serde::{Deserialize, Serialize};
+
+    use super::*;
 
     #[test]
     fn const_from() {

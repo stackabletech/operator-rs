@@ -3,10 +3,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::commons::{
-    networking::HostName, secret_class::SecretClassVolume, tls_verification::TlsClientDetails,
+    networking::HostName, s3::S3ConnectionInlineOrReference, secret_class::SecretClassVolume,
+    tls_verification::TlsClientDetails,
 };
-
-use super::S3ConnectionInlineOrReference;
 
 /// S3 bucket specification containing the bucket name and an inlined or referenced connection specification.
 /// Learn more on the [S3 concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).

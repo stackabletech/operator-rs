@@ -166,8 +166,9 @@ pub mod fragment;
 pub mod merge;
 
 #[cfg(doc)]
-use crate::role_utils::{Role, RoleGroup};
-#[cfg(doc)]
 use fragment::{validate, Fragment, FromFragment};
 #[cfg(doc)]
 use merge::{Atomic, Merge};
+
+#[cfg(doc)]
+use crate::role_utils::{Role, RoleGroup};

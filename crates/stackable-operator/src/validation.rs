@@ -308,8 +308,9 @@ pub fn validate_namespace_name(name: &str, prefix: bool) -> Result {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     #[rstest]
     #[case("")]

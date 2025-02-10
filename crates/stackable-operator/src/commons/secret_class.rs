@@ -96,8 +96,9 @@ pub struct SecretClassVolumeScope {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::collections::BTreeMap;
+
+    use super::*;
 
     #[test]
     fn volume_to_csi_volume_source() {
