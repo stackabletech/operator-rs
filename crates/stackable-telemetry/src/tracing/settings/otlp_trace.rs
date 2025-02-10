@@ -1,21 +1,24 @@
 //! OTLP Trace Subscriber Settings.
 
-use std::ops::Deref;
-
 use tracing::level_filters::LevelFilter;
 
-use super::{Settings, SettingsBuilder};
+use super::{Settings, SettingsBuilder, SettingsToggle};
 
 #[derive(Debug, Default, PartialEq)]
-pub struct OtlpTraceSettings {
-    pub common_settings: Settings,
+pub enum OtlpTraceSettings {
+    #[default]
+    Disabled,
+    Enabled {
+        common_settings: Settings,
+    },
 }
 
-impl Deref for OtlpTraceSettings {
-    type Target = Settings;
-
-    fn deref(&self) -> &Self::Target {
-        &self.common_settings
+impl SettingsToggle for OtlpTraceSettings {
+    fn is_enabled(&self) -> bool {
+        match self {
+            OtlpTraceSettings::Disabled => false,
+            OtlpTraceSettings::Enabled { .. } => true,
+        }
     }
 }
 
@@ -25,7 +28,7 @@ pub struct OtlpTraceSettingsBuilder {
 
 impl OtlpTraceSettingsBuilder {
     pub fn build(self) -> OtlpTraceSettings {
-        OtlpTraceSettings {
+        OtlpTraceSettings::Enabled {
             common_settings: self.common_settings,
         }
     }
@@ -43,17 +46,28 @@ impl From<SettingsBuilder> for OtlpTraceSettingsBuilder {
 
 impl From<Settings> for OtlpTraceSettings {
     fn from(common_settings: Settings) -> Self {
-        Self { common_settings }
+        Self::Enabled { common_settings }
+    }
+}
+
+impl<T> From<Option<T>> for OtlpTraceSettings
+where
+    T: Into<OtlpTraceSettings>,
+{
+    fn from(settings: Option<T>) -> Self {
+        match settings {
+            Some(settings) => settings.into(),
+            None => OtlpTraceSettings::default(),
+        }
     }
 }
 
 impl From<(&'static str, LevelFilter)> for OtlpTraceSettings {
     fn from(value: (&'static str, LevelFilter)) -> Self {
-        Self {
+        Self::Enabled {
             common_settings: Settings {
                 environment_variable: value.0,
                 default_level: value.1,
-                enabled: true,
             },
         }
     }
@@ -61,12 +75,14 @@ impl From<(&'static str, LevelFilter)> for OtlpTraceSettings {
 
 impl From<(&'static str, LevelFilter, bool)> for OtlpTraceSettings {
     fn from(value: (&'static str, LevelFilter, bool)) -> Self {
-        Self {
-            common_settings: Settings {
-                environment_variable: value.0,
-                default_level: value.1,
-                enabled: value.2,
+        match value.2 {
+            true => Self::Enabled {
+                common_settings: Settings {
+                    environment_variable: value.0,
+                    default_level: value.1,
+                },
             },
+            false => Self::Disabled,
         }
     }
 }
@@ -79,17 +95,15 @@ mod test {
 
     #[test]
     fn builds_settings() {
-        let expected = OtlpTraceSettings {
+        let expected = OtlpTraceSettings::Enabled {
             common_settings: Settings {
                 environment_variable: "hello",
                 default_level: LevelFilter::DEBUG,
-                enabled: true,
             },
         };
         let result = Settings::builder()
             .with_environment_variable("hello")
             .with_default_level(LevelFilter::DEBUG)
-            .enabled(true)
             .otlp_trace_settings_builder()
             .build();
 
