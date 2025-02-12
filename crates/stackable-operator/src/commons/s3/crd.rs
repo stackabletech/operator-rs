@@ -56,6 +56,12 @@ pub struct S3ConnectionSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub port: Option<u16>,
 
+    /// Region to connect to when using AWS S3.
+    ///
+    /// This defaults to us-east-1, and can be ignored if not using AWS S3.
+    #[serde(default = "s3_region_default")]
+    pub region: String,
+
     /// Which access style to use.
     /// Defaults to virtual hosted-style as most of the data products out there.
     /// Have a look at the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html).
@@ -84,4 +90,8 @@ pub enum S3AccessStyle {
     /// Use as virtual hosted-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#virtual-hosted-style-access>
     #[default]
     VirtualHosted,
+}
+
+fn s3_region_default() -> String {
+    "us-east-1".to_owned()
 }
