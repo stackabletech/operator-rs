@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add support for multiple k8s `shortname` arguments ([#958]).
+
+[#958]: https://github.com/stackabletech/operator-rs/pull/958
+
 ## [0.5.0] - 2024-12-03
 
 ### Added
