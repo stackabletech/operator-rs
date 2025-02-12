@@ -30,7 +30,7 @@ impl User {
         sys.refresh_processes_specifics(
             sysinfo::ProcessesToUpdate::Some(&[pid]),
             false,
-            ProcessRefreshKind::new().with_user(UpdateKind::OnlyIfNotSet),
+            ProcessRefreshKind::nothing().with_user(UpdateKind::OnlyIfNotSet),
         );
         Ok(())
     }

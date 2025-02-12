@@ -27,8 +27,8 @@ impl Resources {
         // but should help keep each log statement local to where that info is collected.
 
         sys.refresh_specifics(
-            RefreshKind::new()
-                .with_cpu(CpuRefreshKind::new().with_cpu_usage())
+            RefreshKind::nothing()
+                .with_cpu(CpuRefreshKind::nothing().with_cpu_usage())
                 .with_memory(MemoryRefreshKind::everything()),
         );
 

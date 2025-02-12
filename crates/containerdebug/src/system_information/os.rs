@@ -7,7 +7,7 @@ pub struct OperatingSystem {
     pub kernel_version: Option<String>,
     pub version: Option<String>,
     pub host_name: Option<String>,
-    pub cpu_arch: Option<String>,
+    pub cpu_arch: String,
 }
 
 impl OperatingSystem {
