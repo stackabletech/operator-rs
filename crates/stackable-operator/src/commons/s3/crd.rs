@@ -56,11 +56,26 @@ pub struct S3ConnectionSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub port: Option<u16>,
 
-    /// Region to connect to when using AWS S3.
+    /// AWS service API region used by the AWS SDK when using AWS S3 buckets.
+    ///
+    /// This defaults to `us-east-1`.
+    ///
+    /// NOTE: This is not the bucket region, and is used by the AWS SDK to make
+    /// endpoints for various AWS service APIs. It is only useful when using AWS
+    /// S3 buckets.
+    ///
+    /// NOTE: This setting is only useful if using AWS S3 buckets. Other S3
+    /// implementations _should not_ require this to be set.
+    ///
+    /// When using AWS S3 buckets, you can configure optimal AWS service API
+    /// connections in the following ways:
+    /// - From **inside** AWS: Use an auto-discovery source (eg: AWS IMDS).
+    /// - From **outside** AWS, or when IMDS is disabled, explicity set the
+    ///   region name nearest to where the client application is running from.
     ///
     /// This defaults to us-east-1, and can be ignored if not using AWS S3.
-    #[serde(default = "s3_region_default")]
-    pub region: String,
+    #[serde(flatten)]
+    pub region: AwsRegion,
 
     /// Which access style to use.
     /// Defaults to virtual hosted-style as most of the data products out there.
@@ -92,6 +107,41 @@ pub enum S3AccessStyle {
     VirtualHosted,
 }
 
-fn s3_region_default() -> String {
-    "us-east-1".to_owned()
+#[derive(strum::Display, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[strum(serialize_all = "snake_case")]
+pub enum AwsRegion {
+    /// Defer region detection to an auto-discovery mechanism.
+    Source(AwsRegionAutoDiscovery),
+
+    /// An explicit region, eg: eu-central-1
+    Name(String),
+}
+
+impl AwsRegion {
+    /// Get the region.
+    ///
+    /// Returns None if an auto-discovery source has been selected.
+    /// Otherwise, returns the configured region name.
+    pub fn region(self) -> Option<String> {
+        match self {
+            AwsRegion::Name(name) => Some(name),
+            AwsRegion::Source(_) => None,
+        }
+    }
+}
+
+impl Default for AwsRegion {
+    fn default() -> Self {
+        Self::Name("us-east-1".to_owned())
+    }
+}
+
+#[derive(strum::Display, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[strum(serialize_all = "kebab-case")]
+pub enum AwsRegionAutoDiscovery {
+    /// AWS Instance Meta Data Service.
+    ///
+    /// This variant should result in no region being given to the AWS SDK,
+    /// which should, in turn, query the AWS IMDS.
+    AwsImds,
 }
