@@ -8,16 +8,19 @@ use syn::Path;
 ///
 /// Supported arguments are:
 ///
-/// - `group`, which sets the CRD group, usually the domain of the company.
-/// - `kind`, which allows overwriting the kind field of the CRD. This defaults to the struct name
-///    (without the 'Spec' suffix).
-/// - `singular`, to specify the singular name of the CR object.
-/// - `plural`, to specify the plural name of the CR object.
-/// - `namespaced`, to specify that this is a namespaced resource rather than cluster level.
+/// - `group`: Set the group of the CR object, usually the domain of the company.
+///   This argument is Required.
+/// - `kind`: Override the kind field of the CR object. This defaults to the struct
+///    name (without the 'Spec' suffix).
+/// - `singular`: Set the singular name of the CR object.
+/// - `plural`: Set the plural name of the CR object.
+/// - `namespaced`: Indicate that this is a namespaced scoped resource rather than a
+///    cluster scoped resource.
 /// - `crates`: Override specific crates.
-/// - `status`: Sets the specified struct as the status subresource.
-/// - `shortname`: Sets a shortname for the CRD. This can be specified multiple times.
-/// - `skip`, which controls skipping parts of the generation.
+/// - `status`: Set the specified struct as the status subresource.
+/// - `shortname`: Set a shortname for the CR object. This can be specified multiple
+///   times.
+/// - `skip`: Controls skipping parts of the generation.
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct KubernetesArguments {
     pub(crate) group: String,

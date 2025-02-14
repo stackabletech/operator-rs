@@ -603,16 +603,17 @@ println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 
 Currently, the following arguments are supported:
 
-- `group`: Sets the CRD group, usually the domain of the company.
-- `kind`:  Allows overwriting the kind field of the CRD. This defaults
-  to the struct name (without the 'Spec' suffix).
-- `singular`: Sets the singular name.
-- `plural`: Sets the plural name.
-- `namespaced`: Specifies that this is a namespaced resource rather than
-  a cluster scoped.
+- `group`: Set the group of the CR object, usually the domain of the company.
+  This argument is Required.
+- `kind`: Override the kind field of the CR object. This defaults to the struct
+   name (without the 'Spec' suffix).
+- `singular`: Set the singular name of the CR object.
+- `plural`: Set the plural name of the CR object.
+- `namespaced`: Indicate that this is a namespaced scoped resource rather than a
+   cluster scoped resource.
 - `crates`: Override specific crates.
-- `status`: Sets the specified struct as the status subresource.
-- `shortname`: Sets a shortname for the CRD. This can be specified multiple
+- `status`: Set the specified struct as the status subresource.
+- `shortname`: Set a shortname for the CR object. This can be specified multiple
   times.
 
 ### Versioning Items in a Module
