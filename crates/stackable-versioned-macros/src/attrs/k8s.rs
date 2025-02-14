@@ -16,7 +16,7 @@ use syn::Path;
 /// - `namespaced`, to specify that this is a namespaced resource rather than cluster level.
 /// - `crates`: Override specific crates.
 /// - `status`: Sets the specified struct as the status subresource.
-/// - `shortname`: Sets one or more shortnames for the CRD.
+/// - `shortname`: Sets a shortname for the CRD. This can be specified multiple times.
 /// - `skip`, which controls skipping parts of the generation.
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct KubernetesArguments {

@@ -612,7 +612,8 @@ Currently, the following arguments are supported:
   a cluster scoped.
 - `crates`: Override specific crates.
 - `status`: Sets the specified struct as the status subresource.
-- `shortname`: Sets the shortname of the CRD.
+- `shortname`: Sets a shortname for the CRD. This can be specified multiple
+  times.
 
 ### Versioning Items in a Module
 
