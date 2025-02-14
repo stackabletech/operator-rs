@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.1] - 2025-02-14
+
 ### Added
 
 - Add support for multiple k8s `shortname` arguments ([#958]).
