@@ -42,7 +42,7 @@ pub enum Error {
         source: opentelemetry::logs::LogError,
     },
 
-    /// Indicates that [`Tracing`] failed to installed the rolling file appender subscriber.
+    /// Indicates that [`Tracing`] failed to install the rolling file appender.
     #[snafu(display("failed to initialize rolling file appender"))]
     InitRollingFileAppender {
         #[allow(missing_docs)]
