@@ -24,7 +24,9 @@ impl Deref for OtlpLogSettings {
 /// For building [`OtlpLogSettings`].
 ///
 /// <div class="warning">
+///
 /// Do not use directly, instead use the [`Settings::builder`] associated function.
+///
 /// </div>
 pub struct OtlpLogSettingsBuilder {
     pub(crate) common_settings: Settings,

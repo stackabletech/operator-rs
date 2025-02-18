@@ -24,7 +24,9 @@ impl Deref for OtlpTraceSettings {
 /// For building [`OtlpTraceSettings`].
 ///
 /// <div class="warning">
+///
 /// Do not use directly, instead use the [`Settings::builder`] associated function.
+///
 /// </div>
 pub struct OtlpTraceSettingsBuilder {
     pub(crate) common_settings: Settings,
