@@ -15,8 +15,6 @@ repos:
   - repo: https://github.com/doublify/pre-commit-rust
     rev: eeee35a89e69d5772bdee97db1a6a898467b686e # 1.0
     hooks:
-      - id: fmt
-        args: ["--all", "--", "--check"]
       - id: clippy
         args: ["--all-targets", "--", "-D", "warnings"]
   - repo: https://github.com/adrienverge/yamllint
@@ -52,4 +50,12 @@ repos:
         language: system
         entry: .scripts/verify_crate_versions.sh
         stages: [pre-commit, pre-merge-commit, manual]
+        pass_filenames: false
+
+      - id: rustfmt
+        name: rustfmt
+        language: system
+        # Pinning to a specific rustc version, so that we get consistent formatting
+        entry: cargo +nightly-2025-01-15 fmt --all -- --check
+        stages: [pre-commit]
         pass_filenames: false

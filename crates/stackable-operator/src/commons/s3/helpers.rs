@@ -7,13 +7,14 @@ use url::Url;
 use crate::{
     builder::pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
     client::Client,
-    commons::authentication::SECRET_BASE_PATH,
-};
-
-use super::{
-    AddS3CredentialVolumesSnafu, AddS3TlsClientDetailsVolumesSnafu, AddVolumeMountsSnafu,
-    AddVolumesSnafu, ParseS3EndpointSnafu, RetrieveS3ConnectionSnafu, S3Bucket, S3BucketSpec,
-    S3Connection, S3ConnectionSpec, S3Error, SetS3EndpointSchemeSnafu,
+    commons::{
+        authentication::SECRET_BASE_PATH,
+        s3::{
+            AddS3CredentialVolumesSnafu, AddS3TlsClientDetailsVolumesSnafu, AddVolumeMountsSnafu,
+            AddVolumesSnafu, ParseS3EndpointSnafu, RetrieveS3ConnectionSnafu, S3Bucket,
+            S3BucketSpec, S3Connection, S3ConnectionSpec, S3Error, SetS3EndpointSchemeSnafu,
+        },
+    },
 };
 
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -185,12 +186,11 @@ impl S3BucketInlineOrReference {
 mod tests {
     use std::collections::BTreeMap;
 
+    use super::*;
     use crate::commons::{
         secret_class::SecretClassVolume,
         tls_verification::{CaCert, Tls, TlsClientDetails, TlsServerVerification, TlsVerification},
     };
-
-    use super::*;
 
     // We cant test the correct resolve, as we can't mock the k8s API.
     #[test]

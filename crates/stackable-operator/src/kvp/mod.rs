@@ -342,9 +342,9 @@ impl<T> IntoIterator for KeyValuePairs<T>
 where
     T: Value,
 {
-    type Item = KeyValuePair<T>;
     type IntoIter =
         std::iter::Map<std::collections::btree_map::IntoIter<Key, T>, fn((Key, T)) -> Self::Item>;
+    type Item = KeyValuePair<T>;
 
     /// Returns a consuming [`Iterator`] over [`KeyValuePairs`] moving every [`KeyValuePair`] out.
     /// The [`KeyValuePairs`] cannot be used again after calling this.

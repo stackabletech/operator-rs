@@ -282,10 +282,11 @@ impl Struct {
                     .status
                     .as_ref()
                     .map(|s| quote! { , status = #s });
-                let shortname = kubernetes_options
-                    .shortname
-                    .as_ref()
-                    .map(|s| quote! { , shortname = #s });
+                let shortnames: TokenStream = kubernetes_options
+                    .shortnames
+                    .iter()
+                    .map(|s| quote! { , shortname = #s })
+                    .collect();
 
                 Some(quote! {
                     // The end-developer needs to derive CustomResource and JsonSchema.
@@ -294,7 +295,7 @@ impl Struct {
                         // These must be comma separated (except the last) as they always exist:
                         group = #group, version = #version, kind = #kind
                         // These fields are optional, and therefore the token stream must prefix each with a comma:
-                        #singular #plural #namespaced #crates #status #shortname
+                        #singular #plural #namespaced #crates #status #shortnames
                     )]
                 })
             }

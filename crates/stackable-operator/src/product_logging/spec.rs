@@ -2,15 +2,14 @@
 
 use std::{borrow::Cow, collections::BTreeMap, fmt::Display};
 
-use crate::config::{
-    fragment::{self, Fragment, FromFragment},
-    merge::Atomic,
-    merge::Merge,
-};
-
 use educe::Educe;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+use crate::config::{
+    fragment::{self, Fragment, FromFragment},
+    merge::{Atomic, Merge},
+};
 
 /// Logging configuration
 ///
@@ -451,8 +450,6 @@ pub fn default_container_log_config() -> ContainerLogConfigFragment {
 mod tests {
     use std::collections::BTreeMap;
 
-    use crate::config::{fragment, merge};
-
     use super::{
         AppenderConfig, AppenderConfigFragment, AutomaticContainerLogConfig,
         AutomaticContainerLogConfigFragment, ConfigMapLogConfig, ConfigMapLogConfigFragment,
@@ -460,6 +457,7 @@ mod tests {
         ContainerLogConfigFragment, CustomContainerLogConfig, CustomContainerLogConfigFragment,
         LogLevel,
     };
+    use crate::config::{fragment, merge};
 
     #[test]
     fn serialize_container_log_config() {

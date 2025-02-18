@@ -1,15 +1,15 @@
 //! Automatically merges objects *deeply*, especially fragments.
 
-use k8s_openapi::{
-    api::core::v1::{NodeAffinity, PodAffinity, PodAntiAffinity, PodTemplateSpec},
-    apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
-    DeepMerge,
-};
 use std::{
     collections::{btree_map, hash_map, BTreeMap, HashMap},
     hash::Hash,
 };
 
+use k8s_openapi::{
+    api::core::v1::{NodeAffinity, PodAffinity, PodAntiAffinity, PodTemplateSpec},
+    apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
+    DeepMerge,
+};
 pub use stackable_operator_derive::Merge;
 
 use crate::time::Duration;
@@ -162,8 +162,9 @@ impl<T: Atomic> Merge for Option<T> {
 
 #[cfg(test)]
 mod tests {
-    use k8s_openapi::api::core::v1::{PodSpec, PodTemplateSpec};
     use std::collections::{BTreeMap, HashMap};
+
+    use k8s_openapi::api::core::v1::{PodSpec, PodTemplateSpec};
 
     use super::{merge, Merge};
 

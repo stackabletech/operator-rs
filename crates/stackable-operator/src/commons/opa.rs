@@ -45,13 +45,14 @@
 //! ```
 use std::sync::LazyLock;
 
-use crate::client::{Client, GetApi};
 use k8s_openapi::{api::core::v1::ConfigMap, NamespaceResourceScope};
 use kube::{Resource, ResourceExt};
 use regex::Regex;
 use schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
 use snafu::{OptionExt, ResultExt, Snafu};
+
+use crate::client::{Client, GetApi};
 
 static DOT_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new("\\.").expect("failed to compile OPA dot regex"));
