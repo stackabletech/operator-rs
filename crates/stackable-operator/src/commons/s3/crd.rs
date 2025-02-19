@@ -122,7 +122,7 @@ impl AwsRegion {
     ///
     /// Returns None if an auto-discovery source has been selected.
     /// Otherwise, returns the configured region name.
-    pub fn region(self) -> Option<String> {
+    pub fn name(self) -> Option<String> {
         match self {
             AwsRegion::Name(name) => Some(name),
             AwsRegion::Source(_) => None,
