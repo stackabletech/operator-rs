@@ -74,7 +74,7 @@ pub struct S3ConnectionSpec {
     ///   region name nearest to where the client application is running from.
     ///
     /// This defaults to us-east-1, and can be ignored if not using AWS S3.
-    #[serde(flatten)]
+    #[serde(default)]
     pub region: AwsRegion,
 
     /// Which access style to use.
@@ -107,8 +107,8 @@ pub enum S3AccessStyle {
     VirtualHosted,
 }
 
-#[derive(strum::Display, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[strum(serialize_all = "snake_case")]
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum AwsRegion {
     /// Defer region detection to an auto-discovery mechanism.
     Source(AwsRegionAutoDiscovery),
@@ -136,8 +136,8 @@ impl Default for AwsRegion {
     }
 }
 
-#[derive(strum::Display, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[strum(serialize_all = "kebab-case")]
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "PascalCase")]
 pub enum AwsRegionAutoDiscovery {
     /// AWS Instance Meta Data Service.
     ///
