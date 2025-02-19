@@ -58,22 +58,18 @@ pub struct S3ConnectionSpec {
 
     /// AWS service API region used by the AWS SDK when using AWS S3 buckets.
     ///
-    /// This defaults to `us-east-1`.
+    /// This defaults to `us-east-1` and can be ignored if not using AWS S3
+    /// buckets.
     ///
-    /// NOTE: This is not the bucket region, and is used by the AWS SDK to make
-    /// endpoints for various AWS service APIs. It is only useful when using AWS
-    /// S3 buckets.
-    ///
-    /// NOTE: This setting is only useful if using AWS S3 buckets. Other S3
-    /// implementations _should not_ require this to be set.
+    /// NOTE: This is not the bucket region, and is used by the AWS SDK to
+    /// construct endpoints for various AWS service APIs. It is only useful when
+    /// using AWS S3 buckets.
     ///
     /// When using AWS S3 buckets, you can configure optimal AWS service API
     /// connections in the following ways:
     /// - From **inside** AWS: Use an auto-discovery source (eg: AWS IMDS).
     /// - From **outside** AWS, or when IMDS is disabled, explicity set the
     ///   region name nearest to where the client application is running from.
-    ///
-    /// This defaults to us-east-1, and can be ignored if not using AWS S3.
     #[serde(default)]
     pub region: AwsRegion,
 
@@ -107,6 +103,7 @@ pub enum S3AccessStyle {
     VirtualHosted,
 }
 
+/// Set a named AWS region, or defer to an auto-discovery mechanism.
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum AwsRegion {
@@ -118,10 +115,24 @@ pub enum AwsRegion {
 }
 
 impl AwsRegion {
-    /// Get the region.
+    /// Get the AWS region name.
     ///
-    /// Returns None if an auto-discovery source has been selected.
-    /// Otherwise, returns the configured region name.
+    /// Returns `None` if an auto-discovery source has been selected. Otherwise,
+    /// it returns the configured region name.
+    ///
+    /// Example usage:
+    ///
+    /// ```
+    /// # fn set_property(key: &str, value: String) {
+    /// # }
+    ///
+    /// # fn example(aws_region: AwsRegion) {
+    /// aws_region.name().and_then(|region_name| {
+    ///     // set some propery if the region is set, or is the default.
+    ///     set_property("aws.region", region_name);
+    /// });
+    /// # }
+    /// ```
     pub fn name(self) -> Option<String> {
         match self {
             AwsRegion::Name(name) => Some(name),
@@ -136,6 +147,7 @@ impl Default for AwsRegion {
     }
 }
 
+/// AWS region auto-discovery mechanism.
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum AwsRegionAutoDiscovery {
