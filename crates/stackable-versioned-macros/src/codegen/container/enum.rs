@@ -31,7 +31,7 @@ impl Container {
         let options = ContainerOptions {
             kubernetes_options: None,
             skip_from: attributes
-                .common_root_arguments
+                .common
                 .options
                 .skip
                 .map_or(false, |s| s.from.is_present()),

@@ -32,7 +32,7 @@ pub(crate) struct VersionDefinition {
 impl From<&StandaloneContainerAttributes> for Vec<VersionDefinition> {
     fn from(attributes: &StandaloneContainerAttributes) -> Self {
         attributes
-            .common_root_arguments
+            .common
             .versions
             .iter()
             .map(|v| VersionDefinition {
@@ -53,7 +53,7 @@ impl From<&StandaloneContainerAttributes> for Vec<VersionDefinition> {
 impl From<&ModuleAttributes> for Vec<VersionDefinition> {
     fn from(attributes: &ModuleAttributes) -> Self {
         attributes
-            .common_root_arguments
+            .common
             .versions
             .iter()
             .map(|v| VersionDefinition {

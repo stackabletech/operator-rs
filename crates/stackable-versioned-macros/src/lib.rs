@@ -239,7 +239,7 @@ mod utils;
 /// #[versioned(
 ///     version(name = "v1alpha1"),
 ///     version(name = "v1"),
-///     preserve_module
+///     options(preserve_module)
 /// )]
 /// mod versioned {
 ///     struct Foo {
@@ -732,9 +732,14 @@ fn versioned_impl(attrs: proc_macro2::TokenStream, input: Item) -> proc_macro2::
             };
 
             let versions: Vec<VersionDefinition> = (&module_attributes).into();
-            let preserve_modules = module_attributes.preserve_module.is_present();
+            let preserve_modules = module_attributes
+                .common
+                .options
+                .preserve_module
+                .is_present();
+
             let skip_from = module_attributes
-                .common_root_arguments
+                .common
                 .options
                 .skip
                 .as_ref()

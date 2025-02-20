@@ -5,17 +5,27 @@ use darling::{
 use itertools::Itertools;
 use k8s_version::Version;
 
+pub trait CommonOptions {
+    fn allow_unsorted(&self) -> Flag;
+}
+
 #[derive(Debug, FromMeta)]
 #[darling(and_then = CommonRootArguments::validate)]
-pub(crate) struct CommonRootArguments {
+pub(crate) struct CommonRootArguments<T>
+where
+    T: CommonOptions + Default,
+{
     #[darling(default)]
-    pub(crate) options: RootOptions,
+    pub(crate) options: T,
 
     #[darling(multiple, rename = "version")]
     pub(crate) versions: SpannedValue<Vec<VersionArguments>>,
 }
 
-impl CommonRootArguments {
+impl<T> CommonRootArguments<T>
+where
+    T: CommonOptions + Default,
+{
     fn validate(mut self) -> Result<Self> {
         let mut errors = Error::accumulator();
 
@@ -32,7 +42,7 @@ impl CommonRootArguments {
         // (if allow_unsorted is set).
         self.versions.sort_by(|lhs, rhs| lhs.name.cmp(&rhs.name));
 
-        if !self.options.allow_unsorted.is_present() && !is_sorted {
+        if !self.options.allow_unsorted().is_present() && !is_sorted {
             let versions = self.versions.iter().map(|v| v.name).join(", ");
 
             errors.push(Error::custom(format!(
@@ -57,12 +67,6 @@ impl CommonRootArguments {
 
         errors.finish_with(self)
     }
-}
-
-#[derive(Clone, Debug, Default, FromMeta)]
-pub(crate) struct RootOptions {
-    pub(crate) allow_unsorted: Flag,
-    pub(crate) skip: Option<SkipArguments>,
 }
 
 /// This struct contains supported version arguments.
