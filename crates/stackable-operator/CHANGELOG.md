@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.86.2] - 2025-02-21
+
 ### Fix
 
 - BREAKING: Improve `AwsRegion::name()` ergonomics: borrow self and return `Option<&str>` ([#963]).
