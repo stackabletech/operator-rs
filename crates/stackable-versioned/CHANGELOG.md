@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Move `preserve_module` option into `options` to unify option interface ([#961]).
+
+[#961]: https://github.com/stackabletech/operator-rs/pull/961
+
 ## [0.5.1] - 2025-02-14
 
 ### Added
