@@ -201,6 +201,7 @@ mod tests {
             access_style: Default::default(),
             credentials: None,
             tls: TlsClientDetails { tls: None },
+            region: Default::default(),
         };
         let (volumes, mounts) = s3.volumes_and_mounts().unwrap();
 
@@ -226,6 +227,7 @@ mod tests {
                     }),
                 }),
             },
+            region: Default::default(),
         };
         let (mut volumes, mut mounts) = s3.volumes_and_mounts().unwrap();
 
@@ -278,6 +280,7 @@ mod tests {
                     verification: TlsVerification::None {},
                 }),
             },
+            region: Default::default(),
         };
         let (volumes, mounts) = s3.volumes_and_mounts().unwrap();
 
