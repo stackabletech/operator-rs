@@ -132,7 +132,7 @@ impl AwsRegion {
     /// };
     /// # }
     /// ```
-    pub fn name(self) -> Option<String> {
+    pub fn name(&self) -> Option<&str> {
         match self {
             AwsRegion::Name(name) => Some(name),
             AwsRegion::Source(_) => None,
