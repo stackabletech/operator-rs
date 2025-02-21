@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fix
+
+- BREAKING: Improve `AwsRegion::name()` ergonomics: borrow self and return `Option<&str>` ([#963]).
+
+[#963]: https://github.com/stackabletech/operator-rs/pull/963
+
 ## [0.86.1] - 2025-02-21
 
 ### Added
