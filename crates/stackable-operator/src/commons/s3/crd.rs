@@ -127,7 +127,7 @@ impl AwsRegion {
     /// # fn set_property(key: &str, value: String) {}
     /// # fn example(aws_region: AwsRegion) {
     /// if let Some(region_name) = aws_region.name() {
-    ///     // set some propery if the region is set, or is the default.
+    ///     // set some property if the region is set, or is the default.
     ///     set_property("aws.region", region_name);
     /// };
     /// # }
