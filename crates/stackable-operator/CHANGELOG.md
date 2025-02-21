@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.86.1] - 2025-02-21
+
 ### Added
 
 - Add `region` field to S3ConnectionSpec ([#959]).
