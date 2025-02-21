@@ -124,7 +124,7 @@ impl AwsRegion {
     ///
     /// ```
     /// # use stackable_operator::commons::s3::AwsRegion;
-    /// # fn set_property(key: &str, value: String) {}
+    /// # fn set_property(key: &str, value: &str) {}
     /// # fn example(aws_region: AwsRegion) {
     /// if let Some(region_name) = aws_region.name() {
     ///     // set some property if the region is set, or is the default.
