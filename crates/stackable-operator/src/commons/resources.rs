@@ -68,6 +68,24 @@
 //! }
 //! ```
 
+use std::{collections::BTreeMap, fmt::Debug};
+
+use educe::Educe;
+use k8s_openapi::{
+    api::core::v1::{
+        Container, PersistentVolumeClaim, PersistentVolumeClaimSpec, PodSpec, ResourceRequirements,
+        VolumeResourceRequirements,
+    },
+    apimachinery::pkg::{
+        api::resource::Quantity,
+        apis::meta::v1::{LabelSelector, ObjectMeta},
+    },
+};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
+use strum::Display;
+
 use crate::{
     config::{
         fragment::{Fragment, FromFragment},
@@ -76,18 +94,6 @@ use crate::{
     cpu::CpuQuantity,
     memory::MemoryQuantity,
 };
-use educe::Educe;
-use k8s_openapi::api::core::v1::{
-    Container, PersistentVolumeClaim, PersistentVolumeClaimSpec, PodSpec, ResourceRequirements,
-    VolumeResourceRequirements,
-};
-use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{LabelSelector, ObjectMeta};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use snafu::{ResultExt, Snafu};
-use std::{collections::BTreeMap, fmt::Debug};
-use strum::Display;
 
 pub const LIMIT_REQUEST_RATIO_CPU: f32 = 5.0;
 pub const LIMIT_REQUEST_RATIO_MEMORY: f32 = 1.0;
@@ -522,17 +528,19 @@ impl ResourceRequirementsExt for PodSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::builder::pod::resources::ResourceRequirementsBuilder;
-    use crate::commons::resources::{PvcConfig, PvcConfigFragment, Resources, ResourcesFragment};
-    use crate::config::{
-        fragment::{self, Fragment},
-        merge::Merge,
-    };
     use k8s_openapi::api::core::v1::{Container, PersistentVolumeClaim, ResourceRequirements};
     use rstest::rstest;
     use serde::{Deserialize, Serialize};
 
     use super::*;
+    use crate::{
+        builder::pod::resources::ResourceRequirementsBuilder,
+        commons::resources::{PvcConfig, PvcConfigFragment, Resources, ResourcesFragment},
+        config::{
+            fragment::{self, Fragment},
+            merge::Merge,
+        },
+    };
 
     #[derive(Clone, Debug, Default, Fragment)]
     #[fragment(path_overrides(fragment = "crate::config::fragment"))]

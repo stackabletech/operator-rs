@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Move `preserve_module` option into `options` to unify option interface ([#961]).
+
+[#961]: https://github.com/stackabletech/operator-rs/pull/961
+
+## [0.5.1] - 2025-02-14
+
+### Added
+
+- Add support for multiple k8s `shortname` arguments ([#958]).
+
+[#958]: https://github.com/stackabletech/operator-rs/pull/958
+
 ## [0.5.0] - 2024-12-03
 
 ### Added

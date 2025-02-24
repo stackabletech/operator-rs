@@ -29,8 +29,8 @@ use snafu::{ResultExt, Snafu};
 use stackable_telemetry::AxumTraceLayer;
 use tokio::signal::unix::{signal, SignalKind};
 use tower::ServiceBuilder;
-// use tower_http::trace::TraceLayer;
 
+// use tower_http::trace::TraceLayer;
 use crate::tls::TlsServer;
 
 pub mod constants;

@@ -70,6 +70,7 @@ impl SecurityContextBuilder {
         sc.level = Some(level.into());
         self
     }
+
     pub fn se_linux_role(&mut self, role: impl Into<String>) -> &mut Self {
         let sc = self
             .security_context
@@ -201,6 +202,7 @@ impl PodSecurityContextBuilder {
             ));
         self
     }
+
     pub fn se_linux_role(&mut self, role: &str) -> &mut Self {
         self.pod_security_context.se_linux_options =
             Some(self.pod_security_context.se_linux_options.clone().map_or(
@@ -215,6 +217,7 @@ impl PodSecurityContextBuilder {
             ));
         self
     }
+
     pub fn se_linux_type(&mut self, type_: &str) -> &mut Self {
         self.pod_security_context.se_linux_options =
             Some(self.pod_security_context.se_linux_options.clone().map_or(
@@ -229,6 +232,7 @@ impl PodSecurityContextBuilder {
             ));
         self
     }
+
     pub fn se_linux_user(&mut self, user: &str) -> &mut Self {
         self.pod_security_context.se_linux_options =
             Some(self.pod_security_context.se_linux_options.clone().map_or(
@@ -335,8 +339,9 @@ impl PodSecurityContextBuilder {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use k8s_openapi::api::core::v1::{PodSecurityContext, SELinuxOptions, SeccompProfile, Sysctl};
+
+    use super::*;
 
     #[test]
     fn security_context_builder() {

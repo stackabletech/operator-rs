@@ -19,29 +19,42 @@ use tracing::subscriber::SetGlobalDefaultError;
 use tracing_appender::rolling::{InitError, RollingFileAppender, Rotation};
 use tracing_subscriber::{filter::Directive, layer::SubscriberExt, EnvFilter, Layer, Registry};
 
-use settings::*;
+use crate::tracing::settings::*;
 
 pub mod settings;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
+/// Errors which can be encountered when initialising [`Tracing`].
 #[derive(Debug, Snafu)]
 pub enum Error {
+    /// Indicates that [`Tracing`] failed to install the OpenTelemetry trace exporter.
     #[snafu(display("unable to install opentelemetry trace exporter"))]
     InstallOtelTraceExporter {
+        #[allow(missing_docs)]
         source: opentelemetry::trace::TraceError,
     },
 
+    /// Indicates that [`Tracing`] failed to install the OpenTelemetry log exporter.
     #[snafu(display("unable to install opentelemetry log exporter"))]
     InstallOtelLogExporter {
+        #[allow(missing_docs)]
         source: opentelemetry::logs::LogError,
     },
 
-    #[snafu(display("unable to set the global default subscriber"))]
-    SetGlobalDefaultSubscriber { source: SetGlobalDefaultError },
-
+    /// Indicates that [`Tracing`] failed to install the rolling file appender.
     #[snafu(display("failed to initialize rolling file appender"))]
-    InitRollingFileAppender { source: InitError },
+    InitRollingFileAppender {
+        #[allow(missing_docs)]
+        source: InitError,
+    },
+
+    /// Indicates that [`Tracing`] failed to set the global default subscriber.
+    #[snafu(display("unable to set the global default subscriber"))]
+    SetGlobalDefaultSubscriber {
+        #[allow(missing_docs)]
+        source: SetGlobalDefaultError,
+    },
 }
 
 /// Easily initialize a set of pre-configured [`Subscriber`][1] layers.
@@ -230,6 +243,7 @@ pub struct Tracing {
 }
 
 impl Tracing {
+    /// Creates and returns a [`TracingBuilder`].
     pub fn builder() -> TracingBuilder<builder_state::PreServiceName> {
         TracingBuilder::default()
     }

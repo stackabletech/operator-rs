@@ -1,7 +1,6 @@
-use std::{borrow::Cow, ops::Deref};
-
 #[cfg(doc)]
 use std::path::PathBuf;
+use std::{borrow::Cow, ops::Deref};
 
 /// Extension methods for [`Option`].
 pub trait OptionExt<T> {

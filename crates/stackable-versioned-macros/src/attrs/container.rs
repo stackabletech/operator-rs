@@ -1,7 +1,7 @@
-use darling::{Error, FromAttributes, FromMeta, Result};
+use darling::{util::Flag, Error, FromAttributes, FromMeta, Result};
 
 use crate::attrs::{
-    common::{CommonRootArguments, SkipArguments},
+    common::{CommonOptions, CommonRootArguments, SkipArguments},
     k8s::KubernetesArguments,
 };
 
@@ -12,7 +12,7 @@ pub(crate) struct StandaloneContainerAttributes {
     pub(crate) kubernetes_arguments: Option<KubernetesArguments>,
 
     #[darling(flatten)]
-    pub(crate) common_root_arguments: CommonRootArguments,
+    pub(crate) common: CommonRootArguments<StandaloneContainerOptions>,
 }
 
 impl StandaloneContainerAttributes {
@@ -22,6 +22,18 @@ impl StandaloneContainerAttributes {
         }
 
         Ok(self)
+    }
+}
+
+#[derive(Debug, FromMeta, Default)]
+pub(crate) struct StandaloneContainerOptions {
+    pub(crate) allow_unsorted: Flag,
+    pub(crate) skip: Option<SkipArguments>,
+}
+
+impl CommonOptions for StandaloneContainerOptions {
+    fn allow_unsorted(&self) -> Flag {
+        self.allow_unsorted
     }
 }
 

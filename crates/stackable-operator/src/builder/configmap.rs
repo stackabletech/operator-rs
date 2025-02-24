@@ -1,6 +1,7 @@
+use std::collections::BTreeMap;
+
 use k8s_openapi::{api::core::v1::ConfigMap, apimachinery::pkg::apis::meta::v1::ObjectMeta};
 use snafu::{OptionExt, Snafu};
-use std::collections::BTreeMap;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -64,9 +65,9 @@ impl ConfigMapBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::builder::{configmap::ConfigMapBuilder, meta::ObjectMetaBuilder};
-
     use std::collections::BTreeMap;
+
+    use crate::builder::{configmap::ConfigMapBuilder, meta::ObjectMetaBuilder};
 
     #[test]
     fn configmap_builder() {

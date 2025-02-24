@@ -4,11 +4,16 @@ use tracing::level_filters::LevelFilter;
 
 use super::{Settings, SettingsBuilder, SettingsToggle};
 
+/// Configure specific settings for the OpenTelemetry trace subscriber.
 #[derive(Debug, Default, PartialEq)]
 pub enum OtlpTraceSettings {
+    /// OpenTelemetry trace subscriber disabled.
     #[default]
     Disabled,
+
+    /// OpenTelemetry trace subscriber enabled.
     Enabled {
+        /// Common subscriber settings that apply to the OpenTelemetry trace subscriber.
         common_settings: Settings,
     },
 }
@@ -22,11 +27,19 @@ impl SettingsToggle for OtlpTraceSettings {
     }
 }
 
+/// For building [`OtlpTraceSettings`].
+///
+/// <div class="warning">
+///
+/// Do not use directly, instead use the [`Settings::builder`] associated function.
+///
+/// </div>
 pub struct OtlpTraceSettingsBuilder {
     pub(crate) common_settings: Settings,
 }
 
 impl OtlpTraceSettingsBuilder {
+    /// Consumes `self` and builds [`OtlpTraceSettings`].
     pub fn build(self) -> OtlpTraceSettings {
         OtlpTraceSettings::Enabled {
             common_settings: self.common_settings,

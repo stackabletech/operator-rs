@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.86.2] - 2025-02-21
+
+### Fix
+
+- BREAKING: Improve `AwsRegion::name()` ergonomics: borrow self and return `Option<&str>` ([#963]).
+
+[#963]: https://github.com/stackabletech/operator-rs/pull/963
+
+## [0.86.1] - 2025-02-21
+
+### Added
+
+- Add `region` field to S3ConnectionSpec ([#959]).
+
+[#959]: https://github.com/stackabletech/operator-rs/pull/959
+
 ## [0.86.0] - 2025-01-30
 
 ### Added

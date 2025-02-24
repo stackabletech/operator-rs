@@ -209,9 +209,8 @@ mod tests {
     use schemars::JsonSchema;
     use serde::{Deserialize, Serialize};
 
+    use super::*;
     use crate::builder::meta::{ObjectMetaBuilder, OwnerReferenceBuilder};
-
-    use super::PodDisruptionBudgetBuilder;
 
     #[test]
     pub fn normal_build() {

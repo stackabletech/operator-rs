@@ -1,6 +1,6 @@
 [package]
 name = "stackable-versioned-macros"
-version = "0.5.0"
+version = "0.5.1"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -43,7 +43,7 @@ quote.workspace = true
 [dev-dependencies]
 # Only needed for doc tests / examples
 stackable-versioned = { path = "../stackable-versioned", features = ["k8s"] }
-k8s-openapi = { workspace = true }
+k8s-openapi.workspace = true
 
 insta.workspace = true
 prettyplease.workspace = true

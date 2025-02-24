@@ -579,12 +579,14 @@ where
     (K, K::Scope): GetApiImpl<Resource = K>,
 {
     type Namespace = <(K, K::Scope) as GetApiImpl>::Namespace;
+
     fn get_api(client: kube::Client, ns: &Self::Namespace) -> kube::Api<Self>
     where
         Self::DynamicType: Default,
     {
         <(K, K::Scope) as GetApiImpl>::get_api(client, ns)
     }
+
     fn get_namespace(&self) -> &Self::Namespace {
         <(K, K::Scope) as GetApiImpl>::get_namespace(self)
     }
@@ -605,14 +607,16 @@ impl<K> GetApiImpl for (K, NamespaceResourceScope)
 where
     K: Resource<Scope = NamespaceResourceScope>,
 {
-    type Resource = K;
     type Namespace = str;
+    type Resource = K;
+
     fn get_api(client: kube::Client, ns: &Self::Namespace) -> kube::Api<K>
     where
         <Self::Resource as Resource>::DynamicType: Default,
     {
         Api::namespaced(client, ns)
     }
+
     fn get_namespace(res: &Self::Resource) -> &Self::Namespace {
         res.meta().namespace.as_deref().unwrap_or_default()
     }
@@ -622,14 +626,16 @@ impl<K> GetApiImpl for (K, ClusterResourceScope)
 where
     K: Resource<Scope = ClusterResourceScope>,
 {
-    type Resource = K;
     type Namespace = ();
+    type Resource = K;
+
     fn get_api(client: kube::Client, (): &Self::Namespace) -> kube::Api<K>
     where
         <Self::Resource as Resource>::DynamicType: Default,
     {
         Api::all(client)
     }
+
     fn get_namespace(_res: &Self::Resource) -> &Self::Namespace {
         &()
     }

@@ -27,14 +27,13 @@
 
 use std::collections::BTreeMap;
 
-use kube::CustomResource;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
 #[cfg(doc)]
 use k8s_openapi::api::core::v1::{
     Node, PersistentVolume, PersistentVolumeClaim, Pod, Service, Volume,
 };
+use kube::CustomResource;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[cfg(doc)]
 use crate::builder::pod::volume::ListenerOperatorVolumeSourceBuilder;
