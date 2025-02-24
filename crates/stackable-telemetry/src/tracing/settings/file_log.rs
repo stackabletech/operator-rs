@@ -7,8 +7,11 @@ use super::{Settings, SettingsToggle};
 /// Configure specific settings for the File Log subscriber.
 #[derive(Debug, Default, PartialEq)]
 pub enum FileLogSettings {
+    /// File Log subscriber disabled.
     #[default]
     Disabled,
+
+    /// File Log subscriber enabled.
     Enabled {
         /// Common subscriber settings that apply to the File Log Subscriber.
         common_settings: Settings,
