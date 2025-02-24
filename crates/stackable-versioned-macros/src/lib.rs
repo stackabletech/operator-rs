@@ -614,6 +614,11 @@ println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 # }
 ```
 
+The generated `merged_crd` method is a wrapper around [kube's `merge_crds`][1]
+function. It automatically calls the `crd` methods of the CRD in all of its
+versions and additionally provides a strongly typed selector for the stored
+API version.
+
 Currently, the following arguments are supported:
 
 - `group`: Set the group of the CR object, usually the domain of the company.
