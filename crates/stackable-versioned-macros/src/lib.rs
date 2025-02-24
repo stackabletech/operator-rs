@@ -265,12 +265,6 @@ mod utils;
 /// }
 /// ```
 ///
-/// <div class="warning">
-/// It is planned to move the <code>preserve_module</code> flag into the
-/// <code>options()</code> argument list, but currently seems tricky to
-/// implement.
-/// </div>
-///
 /// ## Item Actions
 ///
 /// This crate currently supports three different item actions. Items can
