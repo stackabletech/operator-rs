@@ -554,7 +554,7 @@ mod utils;
 /// <details>
 /// <summary>Expand Generated Code</summary>
 ///
-/// ```
+/// ```ignore
 /// pub mod v1alpha1 {
 ///     use super::*;
 ///     pub struct Foo {
