@@ -29,7 +29,7 @@ mod utils;
 /// example, `#[automatically_derived]` and `#[allow(deprecated)]` are removed
 /// in most examples to reduce visual clutter.
 ///
-/// ## Declaring Versions
+/// <div class="warning">
 ///
 /// It is **important** to note that this macro must be placed before any other
 /// (derive) macros and attributes. Macros supplied before the versioned macro
@@ -38,15 +38,28 @@ mod utils;
 /// attributes are applied to the generated versioned instances of the
 /// container.
 ///
+/// </div>
+///
+/// ## Declaring Versions
+///
 /// Before any of the fields or variants can be versioned, versions need to be
 /// declared at the container level. Each version currently supports two
 /// parameters: `name` and the `deprecated` flag. The `name` must be a valid
 /// (and supported) format.
 ///
 /// <div class="warning">
+///
 /// Currently, only Kubernetes API versions are supported. The macro checks each
 /// declared version and reports any error encountered during parsing.
+///
 /// </div>
+///
+/// It should be noted that the defined struct always represents the **latest**
+/// version, eg: when defining three versions `v1alpha1`, `v1beta1`, and `v1`,
+/// the struct will describe the structure of the data in `v1`. This behaviour
+/// is especially noticeable in the [`changed()`](#changed-action) action which
+/// works "backwards" by describing how a field looked before the current
+/// (latest) version.
 ///
 /// ```
 /// # use stackable_versioned_macros::versioned;
