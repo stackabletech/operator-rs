@@ -16,8 +16,12 @@ pub use otlp_log::*;
 pub mod otlp_trace;
 pub use otlp_trace::*;
 
+/// Indicate whether a type is enabled or disabled.
 pub trait SettingsToggle {
+    /// Whether the settings are enabled or not.
     fn is_enabled(&self) -> bool;
+
+    /// The opposite of [SettingsToggle::is_enabled] as a helper.
     fn is_disabled(&self) -> bool {
         !self.is_enabled()
     }
