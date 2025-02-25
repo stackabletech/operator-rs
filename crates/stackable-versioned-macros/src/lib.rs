@@ -400,6 +400,10 @@ mod utils;
 /// - `since` to indicate since which version the item is changed.
 /// - `from_name` to indicate from which previous name the field is renamed.
 /// - `from_type` to indicate from which previous type the field is changed.
+/// - `convert_with` to provide a custom conversion function instead of using
+///   a [`From`] implementation by default. This argument can only be used in
+///   combination with the `from_type` argument. The expected function signature
+///   is: `fn (OLD_TYPE) -> NEW_TYPE`. This function must not fail.
 ///
 /// ```
 /// # use stackable_versioned_macros::versioned;
@@ -520,6 +524,61 @@ mod utils;
 ///
 /// This automatic generation can be skipped to enable a custom implementation
 /// for more complex conversions.
+///
+/// ### Custom conversion function at field level
+///
+/// As stated in the [`changed()`](#changed-action) section, a custom conversion
+/// function can be provided using the `convert_with` argument. A simple example
+/// looks like this:
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// #[versioned(
+///     version(name = "v1alpha1"),
+///     version(name = "v1beta1")
+/// )]
+/// pub struct Foo {
+///     #[versioned(changed(
+///         since = "v1beta1",
+///         from_type = "u8",
+///         convert_with = "u8_to_u16"
+///     ))]
+///     bar: u16,
+/// }
+///
+/// fn u8_to_u16(old: u8) -> u16 {
+///     old as u16
+/// }
+/// ```
+///
+/// <details>
+/// <summary>Expand Generated Code</summary>
+///
+/// ```ignore
+/// pub mod v1alpha1 {
+///     use super::*;
+///     pub struct Foo {
+///         pub bar: u8,
+///     }
+/// }
+///
+/// impl ::std::convert::From<v1alpha1::Foo> for v1beta1::Foo {
+///     fn from(__sv_foo: v1alpha1::Foo) -> Self {
+///         Self {
+///             bar: u8_to_u16(__sv_foo.bar),
+///         }
+///     }
+/// }
+///
+/// pub mod v1beta1 {
+///     use super::*;
+///     pub struct Foo {
+///         pub bar: u16,
+///     }
+/// }
+/// ```
+///
+/// </details>
 ///
 /// ### Skipping at the Container Level
 ///

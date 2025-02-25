@@ -1,0 +1,42 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+expression: formatted
+input_file: crates/stackable-versioned-macros/fixtures/inputs/default/convert_with.rs
+---
+#[automatically_derived]
+mod v1alpha1 {
+    use super::*;
+    pub struct Foo {
+        pub bar: u16,
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1alpha1::Foo> for v1::Foo {
+    fn from(__sv_foo: v1alpha1::Foo) -> Self {
+        Self {
+            baz: u16_to_u32(__sv_foo.bar),
+        }
+    }
+}
+#[automatically_derived]
+mod v1 {
+    use super::*;
+    pub struct Foo {
+        pub baz: u32,
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1::Foo> for v2::Foo {
+    fn from(__sv_foo: v1::Foo) -> Self {
+        Self {
+            baz: u32_to_u64(__sv_foo.baz),
+        }
+    }
+}
+#[automatically_derived]
+mod v2 {
+    use super::*;
+    pub struct Foo {
+        pub baz: u64,
+    }
+}
