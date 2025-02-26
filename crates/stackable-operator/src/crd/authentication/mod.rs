@@ -12,8 +12,6 @@ pub mod oidc;
 pub mod static_;
 pub mod tls;
 
-pub(crate) const SECRET_BASE_PATH: &str = "/stackable/secrets";
-
 type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, PartialEq, Snafu)]
@@ -179,22 +177,19 @@ impl<O> ClientAuthenticationDetails<O> {
 
 #[cfg(test)]
 mod tests {
-    use crate::commons::authentication::{
-        tls::AuthenticationProvider, AuthenticationClassProvider,
-    };
+    use crate::crd::authentication::{kerberos, tls, AuthenticationClassProvider};
 
     #[test]
     fn provider_to_string() {
-        let tls_provider = AuthenticationClassProvider::Tls(AuthenticationProvider {
+        let tls_provider = AuthenticationClassProvider::Tls(tls::AuthenticationProvider {
             client_cert_secret_class: None,
         });
         assert_eq!("Tls", tls_provider.to_string());
 
-        let kerberos_provider = AuthenticationClassProvider::Kerberos(
-            crate::commons::authentication::kerberos::AuthenticationProvider {
+        let kerberos_provider =
+            AuthenticationClassProvider::Kerberos(kerberos::AuthenticationProvider {
                 kerberos_secret_class: "kerberos".to_string(),
-            },
-        );
+            });
         assert_eq!("Kerberos", kerberos_provider.to_string());
     }
 }

@@ -1,55 +1,216 @@
-use k8s_openapi::api::core::v1::{Volume, VolumeMount};
+use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use snafu::ResultExt;
+use snafu::{ResultExt as _, Snafu};
 use url::Url;
 
 use crate::{
     builder::pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
     client::Client,
     commons::{
-        authentication::SECRET_BASE_PATH,
-        s3::{
-            AddS3CredentialVolumesSnafu, AddS3TlsClientDetailsVolumesSnafu, AddVolumeMountsSnafu,
-            AddVolumesSnafu, ParseS3EndpointSnafu, RetrieveS3ConnectionSnafu, S3Bucket,
-            S3BucketSpec, S3Connection, S3ConnectionSpec, S3Error, SetS3EndpointSchemeSnafu,
-        },
+        networking::HostName,
+        secret_class::{SecretClassVolume, SecretClassVolumeError},
+        tls_verification::{TlsClientDetails, TlsClientDetailsError},
     },
+    constants::secret::SECRET_BASE_PATH,
+    k8s_openapi::api::core::v1::{Volume, VolumeMount},
 };
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-// TODO: This probably should be serde(untagged), but this would be a breaking change
-pub enum S3ConnectionInlineOrReference {
-    Inline(S3ConnectionSpec),
-    Reference(String),
+#[derive(Debug, Snafu)]
+pub enum ConnectionError {
+    #[snafu(display("failed to retrieve S3 connection '{s3_connection}'"))]
+    RetrieveS3Connection {
+        source: crate::client::Error,
+        s3_connection: String,
+    },
+
+    #[snafu(display("failed to parse S3 endpoint '{endpoint}'"))]
+    ParseS3Endpoint {
+        source: url::ParseError,
+        endpoint: String,
+    },
+
+    #[snafu(display("failed to set S3 endpoint scheme '{scheme}' for endpoint '{endpoint}'"))]
+    SetS3EndpointScheme { endpoint: Url, scheme: String },
+
+    #[snafu(display("failed to add S3 credential volumes and volume mounts"))]
+    AddS3CredentialVolumes { source: SecretClassVolumeError },
+
+    #[snafu(display("failed to add S3 TLS client details volumes and volume mounts"))]
+    AddS3TlsClientDetailsVolumes { source: TlsClientDetailsError },
+
+    #[snafu(display("failed to add required volumes"))]
+    AddVolumes { source: crate::builder::pod::Error },
+
+    #[snafu(display("failed to add required volumeMounts"))]
+    AddVolumeMounts {
+        source: crate::builder::pod::container::Error,
+    },
 }
 
-/// Use this type in you operator!
-pub type ResolvedS3Connection = S3ConnectionSpec;
+/// S3 connection definition as a resource.
+/// Learn more on the [S3 concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
+#[derive(CustomResource, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[kube(
+    group = "s3.stackable.tech",
+    version = "v1alpha1",
+    kind = "S3Connection",
+    plural = "s3connections",
+    crates(
+        kube_core = "kube::core",
+        k8s_openapi = "k8s_openapi",
+        schemars = "schemars"
+    ),
+    namespaced
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionSpec {
+    /// Host of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.
+    pub host: HostName,
 
-impl S3ConnectionInlineOrReference {
-    pub async fn resolve(
-        self,
-        client: &Client,
-        namespace: &str,
-    ) -> Result<ResolvedS3Connection, S3Error> {
+    /// Port the S3 server listens on.
+    /// If not specified the product will determine the port to use.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub port: Option<u16>,
+
+    /// AWS service API region used by the AWS SDK when using AWS S3 buckets.
+    ///
+    /// This defaults to `us-east-1` and can be ignored if not using AWS S3
+    /// buckets.
+    ///
+    /// NOTE: This is not the bucket region, and is used by the AWS SDK to
+    /// construct endpoints for various AWS service APIs. It is only useful when
+    /// using AWS S3 buckets.
+    ///
+    /// When using AWS S3 buckets, you can configure optimal AWS service API
+    /// connections in the following ways:
+    /// - From **inside** AWS: Use an auto-discovery source (eg: AWS IMDS).
+    /// - From **outside** AWS, or when IMDS is disabled, explicity set the
+    ///   region name nearest to where the client application is running from.
+    #[serde(default)]
+    pub region: AwsRegion,
+
+    /// Which access style to use.
+    /// Defaults to virtual hosted-style as most of the data products out there.
+    /// Have a look at the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html).
+    #[serde(default)]
+    pub access_style: AccessStyle,
+
+    /// If the S3 uses authentication you have to specify you S3 credentials.
+    /// In the most cases a [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass)
+    /// providing `accessKey` and `secretKey` is sufficient.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credentials: Option<SecretClassVolume>,
+
+    /// Use a TLS connection. If not specified no TLS will be used.
+    #[serde(flatten)]
+    pub tls: TlsClientDetails,
+}
+
+#[derive(
+    strum::Display, Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize,
+)]
+#[strum(serialize_all = "PascalCase")]
+pub enum AccessStyle {
+    /// Use path-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access>
+    Path,
+
+    /// Use as virtual hosted-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#virtual-hosted-style-access>
+    #[default]
+    VirtualHosted,
+}
+
+/// Set a named AWS region, or defer to an auto-discovery mechanism.
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AwsRegion {
+    /// Defer region detection to an auto-discovery mechanism.
+    Source(AwsRegionAutoDiscovery),
+
+    /// An explicit region, eg: eu-central-1
+    Name(String),
+}
+
+impl AwsRegion {
+    /// Get the AWS region name.
+    ///
+    /// Returns `None` if an auto-discovery source has been selected. Otherwise,
+    /// it returns the configured region name.
+    ///
+    /// Example usage:
+    ///
+    /// ```
+    /// # use stackable_operator::commons::s3::AwsRegion;
+    /// # fn set_property(key: &str, value: &str) {}
+    /// # fn example(aws_region: AwsRegion) {
+    /// if let Some(region_name) = aws_region.name() {
+    ///     // set some property if the region is set, or is the default.
+    ///     set_property("aws.region", region_name);
+    /// };
+    /// # }
+    /// ```
+    pub fn name(&self) -> Option<&str> {
         match self {
-            Self::Inline(inline) => Ok(inline),
-            Self::Reference(reference) => Ok(client
-                .get::<S3Connection>(&reference, namespace)
-                .await
-                .context(RetrieveS3ConnectionSnafu {
-                    s3_connection: reference,
-                })?
-                .spec),
+            AwsRegion::Name(name) => Some(name),
+            AwsRegion::Source(_) => None,
         }
     }
 }
 
-impl ResolvedS3Connection {
+impl Default for AwsRegion {
+    fn default() -> Self {
+        Self::Name("us-east-1".to_owned())
+    }
+}
+
+/// AWS region auto-discovery mechanism.
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum AwsRegionAutoDiscovery {
+    /// AWS Instance Meta Data Service.
+    ///
+    /// This variant should result in no region being given to the AWS SDK,
+    /// which should, in turn, query the AWS IMDS.
+    AwsImds,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+// TODO: This probably should be serde(untagged), but this would be a breaking change
+pub enum ConnectionInlineOrReference {
+    Inline(ConnectionSpec),
+    Reference(String),
+}
+
+/// Use this type in you operator!
+pub type ResolvedConnection = ConnectionSpec;
+
+impl ConnectionInlineOrReference {
+    pub async fn resolve(
+        self,
+        client: &Client,
+        namespace: &str,
+    ) -> Result<ResolvedConnection, ConnectionError> {
+        match self {
+            Self::Inline(inline) => Ok(inline),
+            Self::Reference(reference) => {
+                let connection_spec = client
+                    .get::<S3Connection>(&reference, namespace)
+                    .await
+                    .context(RetrieveS3ConnectionSnafu {
+                        s3_connection: reference,
+                    })?
+                    .spec;
+
+                Ok(connection_spec)
+            }
+        }
+    }
+}
+
+impl ResolvedConnection {
     /// Build the endpoint URL from this connection
-    pub fn endpoint(&self) -> Result<Url, S3Error> {
+    pub fn endpoint(&self) -> Result<Url, ConnectionError> {
         let endpoint = format!(
             "http://{host}:{port}",
             host = self.host.as_url_host(),
@@ -84,7 +245,7 @@ impl ResolvedS3Connection {
         &self,
         pod_builder: &mut PodBuilder,
         container_builders: Vec<&mut ContainerBuilder>,
-    ) -> Result<(), S3Error> {
+    ) -> Result<(), ConnectionError> {
         let (volumes, mounts) = self.volumes_and_mounts()?;
         pod_builder.add_volumes(volumes).context(AddVolumesSnafu)?;
         for cb in container_builders {
@@ -97,7 +258,7 @@ impl ResolvedS3Connection {
 
     /// It is recommended to use [`Self::add_volumes_and_mounts`], this function returns you the
     /// volumes and mounts in case you need to add them by yourself.
-    pub fn volumes_and_mounts(&self) -> Result<(Vec<Volume>, Vec<VolumeMount>), S3Error> {
+    pub fn volumes_and_mounts(&self) -> Result<(Vec<Volume>, Vec<VolumeMount>), ConnectionError> {
         let mut volumes = Vec::new();
         let mut mounts = Vec::new();
 
@@ -140,48 +301,6 @@ impl ResolvedS3Connection {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-// TODO: This probably should be serde(untagged), but this would be a breaking change
-pub enum S3BucketInlineOrReference {
-    Inline(S3BucketSpec),
-    Reference(String),
-}
-
-/// Use this struct in your operator.
-pub struct ResolvedS3Bucket {
-    pub bucket_name: String,
-    pub connection: S3ConnectionSpec,
-}
-
-impl S3BucketInlineOrReference {
-    pub async fn resolve(
-        self,
-        client: &Client,
-        namespace: &str,
-    ) -> Result<ResolvedS3Bucket, S3Error> {
-        match self {
-            Self::Inline(inline) => Ok(ResolvedS3Bucket {
-                bucket_name: inline.bucket_name,
-                connection: inline.connection.resolve(client, namespace).await?,
-            }),
-            Self::Reference(reference) => {
-                let bucket = client
-                    .get::<S3Bucket>(&reference, namespace)
-                    .await
-                    .context(RetrieveS3ConnectionSnafu {
-                        s3_connection: reference,
-                    })?
-                    .spec;
-                Ok(ResolvedS3Bucket {
-                    bucket_name: bucket.bucket_name,
-                    connection: bucket.connection.resolve(client, namespace).await?,
-                })
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -195,7 +314,7 @@ mod tests {
     // We cant test the correct resolve, as we can't mock the k8s API.
     #[test]
     fn http_endpoint() {
-        let s3 = ResolvedS3Connection {
+        let s3 = ResolvedConnection {
             host: "minio".parse().unwrap(),
             port: None,
             access_style: Default::default(),
@@ -212,7 +331,7 @@ mod tests {
 
     #[test]
     fn https_endpoint() {
-        let s3 = ResolvedS3Connection {
+        let s3 = ResolvedConnection {
             host: "s3-eu-central-2.ionoscloud.com".parse().unwrap(),
             port: None,
             access_style: Default::default(),
@@ -270,7 +389,7 @@ mod tests {
 
     #[test]
     fn https_without_verification() {
-        let s3 = ResolvedS3Connection {
+        let s3 = ResolvedConnection {
             host: "minio".parse().unwrap(),
             port: Some(1234),
             access_style: Default::default(),
