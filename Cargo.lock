@@ -3226,6 +3226,7 @@ dependencies = [
  "snafu 0.8.5",
  "stackable-operator-derive",
  "stackable-shared",
+ "stackable-versioned",
  "strum",
  "tempfile",
  "time",
