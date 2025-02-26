@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+#[cfg(doc)]
+use k8s_openapi::api::core::v1::Service;
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

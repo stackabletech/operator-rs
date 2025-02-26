@@ -1,17 +1,18 @@
-//! This modules provides resource types used to interact with [listener-operator](https://docs.stackable.tech/listener-operator/stable/index.html)
+//! This modules provides resource types used to interact with [listener-operator][listener-docs].
 //!
 //! # Custom Resources
 //!
 //! ## [`Listener`]
 //!
-//! Exposes a set of pods, either internally to the cluster or to the outside world. The mechanism for how it is exposed
-//! is managed by the [`ListenerClass`].
+//! Exposes a set of pods, either internally to the cluster or to the outside world. The mechanism
+//! for how it is exposed is managed by the [`ListenerClass`].
 //!
-//! It can be either created manually by the application administrator (for applications that expose a single load-balanced endpoint),
-//! or automatically when mounting a [listener volume](`ListenerOperatorVolumeSourceBuilder`) (for applications that expose a separate endpoint
-//! per replica).
+//! It can be either created manually by the application administrator (for applications that expose
+//! a single load-balanced endpoint), or automatically when mounting a [listener volume][lvb] (for
+//! applications that expose a separate endpoint per replica).
 //!
-//! All exposed pods *must* have a mounted [listener volume](`ListenerOperatorVolumeSourceBuilder`), regardless of whether the [`Listener`] is created automatically.
+//! All exposed pods *must* have a mounted [listener volume][lvb], regardless of whether the
+//! [`Listener`] is created automatically.
 //!
 //! ## [`ListenerClass`]
 //!
@@ -24,11 +25,12 @@
 //! Informs users and other operators about the state of all [`Listener`]s associated with a [`Pod`].
 //!
 //! It is created by the Stackable Secret Operator, and always named `pod-{pod.metadata.uid}`.
+//!
+//! [listener-docs]: https://docs.stackable.tech/listener-operator/stable/index.html
+//! [lvb]: ListenerOperatorVolumeSourceBuilder
 
 #[cfg(doc)]
-use k8s_openapi::api::core::v1::{
-    Node, PersistentVolume, PersistentVolumeClaim, Pod, Service, Volume,
-};
+use k8s_openapi::api::core::v1::{Node, PersistentVolume, PersistentVolumeClaim, Pod, Volume};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
