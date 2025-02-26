@@ -3,7 +3,7 @@ use std::ops::Not;
 use darling::{util::IdentString, Error, FromAttributes, Result};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{parse_quote, ItemStruct, Path, Visibility};
+use syn::{parse_quote, Generics, ItemStruct, Path, Visibility};
 
 use crate::{
     attrs::container::NestedContainerAttributes,
@@ -58,6 +58,7 @@ impl Container {
         };
 
         Ok(Self::Struct(Struct {
+            generics: item_struct.generics,
             fields: versioned_fields,
             common,
         }))
@@ -113,6 +114,7 @@ impl Container {
         };
 
         Ok(Self::Struct(Struct {
+            generics: item_struct.generics,
             fields: versioned_fields,
             common,
         }))
@@ -123,10 +125,12 @@ impl Container {
 pub(crate) struct Struct {
     /// List of fields defined in the original struct. How, and if, an item
     /// should generate code, is decided by the currently generated version.
-    pub(crate) fields: Vec<VersionedField>,
+    pub fields: Vec<VersionedField>,
+
+    pub generics: Generics,
 
     /// Common container data which is shared between structs and enums.
-    pub(crate) common: CommonContainerData,
+    pub common: CommonContainerData,
 }
 
 // Common token generation
