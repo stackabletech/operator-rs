@@ -29,7 +29,7 @@ mod utils;
 /// example, `#[automatically_derived]` and `#[allow(deprecated)]` are removed
 /// in most examples to reduce visual clutter.
 ///
-/// ## Declaring Versions
+/// <div class="warning">
 ///
 /// It is **important** to note that this macro must be placed before any other
 /// (derive) macros and attributes. Macros supplied before the versioned macro
@@ -38,15 +38,28 @@ mod utils;
 /// attributes are applied to the generated versioned instances of the
 /// container.
 ///
+/// </div>
+///
+/// ## Declaring Versions
+///
 /// Before any of the fields or variants can be versioned, versions need to be
 /// declared at the container level. Each version currently supports two
 /// parameters: `name` and the `deprecated` flag. The `name` must be a valid
 /// (and supported) format.
 ///
 /// <div class="warning">
+///
 /// Currently, only Kubernetes API versions are supported. The macro checks each
 /// declared version and reports any error encountered during parsing.
+///
 /// </div>
+///
+/// It should be noted that the defined struct always represents the **latest**
+/// version, eg: when defining three versions `v1alpha1`, `v1beta1`, and `v1`,
+/// the struct will describe the structure of the data in `v1`. This behaviour
+/// is especially noticeable in the [`changed()`](#changed-action) action which
+/// works "backwards" by describing how a field looked before the current
+/// (latest) version.
 ///
 /// ```
 /// # use stackable_versioned_macros::versioned;
@@ -252,12 +265,6 @@ mod utils;
 /// }
 /// ```
 ///
-/// <div class="warning">
-/// It is planned to move the <code>preserve_module</code> flag into the
-/// <code>options()</code> argument list, but currently seems tricky to
-/// implement.
-/// </div>
-///
 /// ## Item Actions
 ///
 /// This crate currently supports three different item actions. Items can
@@ -393,6 +400,10 @@ mod utils;
 /// - `since` to indicate since which version the item is changed.
 /// - `from_name` to indicate from which previous name the field is renamed.
 /// - `from_type` to indicate from which previous type the field is changed.
+/// - `convert_with` to provide a custom conversion function instead of using
+///   a [`From`] implementation by default. This argument can only be used in
+///   combination with the `from_type` argument. The expected function signature
+///   is: `fn (OLD_TYPE) -> NEW_TYPE`. This function must not fail.
 ///
 /// ```
 /// # use stackable_versioned_macros::versioned;
@@ -514,6 +525,61 @@ mod utils;
 /// This automatic generation can be skipped to enable a custom implementation
 /// for more complex conversions.
 ///
+/// ### Custom conversion function at field level
+///
+/// As stated in the [`changed()`](#changed-action) section, a custom conversion
+/// function can be provided using the `convert_with` argument. A simple example
+/// looks like this:
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// #[versioned(
+///     version(name = "v1alpha1"),
+///     version(name = "v1beta1")
+/// )]
+/// pub struct Foo {
+///     #[versioned(changed(
+///         since = "v1beta1",
+///         from_type = "u8",
+///         convert_with = "u8_to_u16"
+///     ))]
+///     bar: u16,
+/// }
+///
+/// fn u8_to_u16(old: u8) -> u16 {
+///     old as u16
+/// }
+/// ```
+///
+/// <details>
+/// <summary>Expand Generated Code</summary>
+///
+/// ```ignore
+/// pub mod v1alpha1 {
+///     use super::*;
+///     pub struct Foo {
+///         pub bar: u8,
+///     }
+/// }
+///
+/// impl ::std::convert::From<v1alpha1::Foo> for v1beta1::Foo {
+///     fn from(__sv_foo: v1alpha1::Foo) -> Self {
+///         Self {
+///             bar: u8_to_u16(__sv_foo.bar),
+///         }
+///     }
+/// }
+///
+/// pub mod v1beta1 {
+///     use super::*;
+///     pub struct Foo {
+///         pub bar: u16,
+///     }
+/// }
+/// ```
+///
+/// </details>
+///
 /// ### Skipping at the Container Level
 ///
 /// Disabling this behavior at the container level results in no `From`
@@ -600,6 +666,11 @@ let merged_crd = Foo::merged_crd(Foo::V1).unwrap();
 println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 # }
 ```
+
+The generated `merged_crd` method is a wrapper around [kube's `merge_crds`][1]
+function. It automatically calls the `crd` methods of the CRD in all of its
+versions and additionally provides a strongly typed selector for the stored
+API version.
 
 Currently, the following arguments are supported:
 

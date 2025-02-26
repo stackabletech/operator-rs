@@ -72,7 +72,7 @@ impl From<&ModuleAttributes> for Vec<VersionDefinition> {
 }
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum ItemStatus {
+pub enum ItemStatus {
     Addition {
         ident: IdentString,
         default_fn: Path,
@@ -81,6 +81,7 @@ pub(crate) enum ItemStatus {
         ty: Type,
     },
     Change {
+        convert_with: Option<Path>,
         from_ident: IdentString,
         to_ident: IdentString,
         from_type: Type,
