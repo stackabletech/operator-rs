@@ -127,16 +127,18 @@ pub(crate) struct Struct {
     /// should generate code, is decided by the currently generated version.
     pub fields: Vec<VersionedField>,
 
-    pub generics: Generics,
-
     /// Common container data which is shared between structs and enums.
     pub common: CommonContainerData,
+
+    /// Generic types of the struct
+    pub generics: Generics,
 }
 
 // Common token generation
 impl Struct {
     /// Generates code for the struct definition.
     pub(crate) fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
+        let (_, type_generics, where_clause) = self.generics.split_for_impl();
         let original_attributes = &self.common.original_attributes;
         let ident = &self.common.idents.original;
         let version_docs = &version.docs;
@@ -153,7 +155,7 @@ impl Struct {
             #(#[doc = #version_docs])*
             #(#original_attributes)*
             #kube_attribute
-            pub struct #ident {
+            pub struct #ident #type_generics #where_clause {
                 #fields
             }
         }
@@ -172,6 +174,12 @@ impl Struct {
 
         match next_version {
             Some(next_version) => {
+                // TODO (@Techassi): Support generic types which have been removed in newer versions,
+                // but need to exist for older versions How do we represent that? Because the
+                // defined struct always represents the latest version. I guess we could generally
+                // advise against using generic types, but if you have to, avoid removing it in
+                // later versions.
+                let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
                 let struct_ident = &self.common.idents.original;
                 let from_struct_ident = &self.common.idents.from;
 
@@ -198,8 +206,10 @@ impl Struct {
                 Some(quote! {
                     #automatically_derived
                     #allow_attribute
-                    impl ::std::convert::From<#from_module_ident::#struct_ident> for #for_module_ident::#struct_ident {
-                        fn from(#from_struct_ident: #from_module_ident::#struct_ident) -> Self {
+                    impl #impl_generics ::std::convert::From<#from_module_ident::#struct_ident #type_generics> for #for_module_ident::#struct_ident #type_generics
+                        #where_clause
+                    {
+                        fn from(#from_struct_ident: #from_module_ident::#struct_ident #type_generics) -> Self {
                             Self {
                                 #fields
                             }
