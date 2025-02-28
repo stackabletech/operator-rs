@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.87.0] - 2025-02-28
+
 ### Changed
 
 - BREAKING: Update `strum` to `0.27.1` (clients need to also update strum!), `rand` to `0.9.0` and `convert_case` to `0.8.0` ([#972]).
