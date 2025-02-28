@@ -1,23 +1,29 @@
 //! OTLP Log Subscriber Settings.
 
-use std::ops::Deref;
-
 use tracing::level_filters::LevelFilter;
 
-use super::{Settings, SettingsBuilder};
+use super::{Settings, SettingsBuilder, SettingsToggle};
 
 /// Configure specific settings for the OpenTelemetry log subscriber.
 #[derive(Debug, Default, PartialEq)]
-pub struct OtlpLogSettings {
-    /// Common subscriber settings that apply to the OpenTelemetry log subscriber.
-    pub common_settings: Settings,
+pub enum OtlpLogSettings {
+    /// OpenTelemetry log subscriber disabled.
+    #[default]
+    Disabled,
+
+    /// OpenTelemetry log subscriber enabled.
+    Enabled {
+        /// Common subscriber settings that apply to the OpenTelemetry log subscriber.
+        common_settings: Settings,
+    },
 }
 
-impl Deref for OtlpLogSettings {
-    type Target = Settings;
-
-    fn deref(&self) -> &Self::Target {
-        &self.common_settings
+impl SettingsToggle for OtlpLogSettings {
+    fn is_enabled(&self) -> bool {
+        match self {
+            OtlpLogSettings::Disabled => false,
+            OtlpLogSettings::Enabled { .. } => true,
+        }
     }
 }
 
@@ -35,7 +41,7 @@ pub struct OtlpLogSettingsBuilder {
 impl OtlpLogSettingsBuilder {
     /// Consumes `self` and builds [`OtlpLogSettings`].
     pub fn build(self) -> OtlpLogSettings {
-        OtlpLogSettings {
+        OtlpLogSettings::Enabled {
             common_settings: self.common_settings,
         }
     }
@@ -53,17 +59,28 @@ impl From<SettingsBuilder> for OtlpLogSettingsBuilder {
 
 impl From<Settings> for OtlpLogSettings {
     fn from(common_settings: Settings) -> Self {
-        Self { common_settings }
+        Self::Enabled { common_settings }
+    }
+}
+
+impl<T> From<Option<T>> for OtlpLogSettings
+where
+    T: Into<OtlpLogSettings>,
+{
+    fn from(settings: Option<T>) -> Self {
+        match settings {
+            Some(settings) => settings.into(),
+            None => OtlpLogSettings::default(),
+        }
     }
 }
 
 impl From<(&'static str, LevelFilter)> for OtlpLogSettings {
     fn from(value: (&'static str, LevelFilter)) -> Self {
-        Self {
+        Self::Enabled {
             common_settings: Settings {
                 environment_variable: value.0,
                 default_level: value.1,
-                enabled: true,
             },
         }
     }
@@ -71,12 +88,14 @@ impl From<(&'static str, LevelFilter)> for OtlpLogSettings {
 
 impl From<(&'static str, LevelFilter, bool)> for OtlpLogSettings {
     fn from(value: (&'static str, LevelFilter, bool)) -> Self {
-        Self {
-            common_settings: Settings {
-                environment_variable: value.0,
-                default_level: value.1,
-                enabled: value.2,
+        match value.2 {
+            true => Self::Enabled {
+                common_settings: Settings {
+                    environment_variable: value.0,
+                    default_level: value.1,
+                },
             },
+            false => Self::Disabled,
         }
     }
 }
@@ -89,17 +108,15 @@ mod test {
 
     #[test]
     fn builds_settings() {
-        let expected = OtlpLogSettings {
+        let expected = OtlpLogSettings::Enabled {
             common_settings: Settings {
                 environment_variable: "hello",
                 default_level: LevelFilter::DEBUG,
-                enabled: true,
             },
         };
         let result = Settings::builder()
             .with_environment_variable("hello")
             .with_default_level(LevelFilter::DEBUG)
-            .enabled(true)
             .otlp_log_settings_builder()
             .build();
 
