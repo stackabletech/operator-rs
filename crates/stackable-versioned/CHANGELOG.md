@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-02-28
+
 ### Added
 
 - Add support for re-emitting and merging modules defined in versioned modules ([#971]).
