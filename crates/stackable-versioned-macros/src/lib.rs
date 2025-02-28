@@ -4,11 +4,7 @@ use syn::{spanned::Spanned, Error, Item};
 
 use crate::{
     attrs::{container::StandaloneContainerAttributes, module::ModuleAttributes},
-    codegen::{
-        container::{Container, StandaloneContainer},
-        module::{Module, ModuleInput},
-        VersionDefinition,
-    },
+    codegen::{container::StandaloneContainer, module::Module},
 };
 
 #[cfg(test)]
@@ -802,61 +798,12 @@ fn versioned_impl(attrs: proc_macro2::TokenStream, input: Item) -> proc_macro2::
                 Err(err) => return err.write_errors(),
             };
 
-            let versions: Vec<VersionDefinition> = (&module_attributes).into();
-            let preserve_modules = module_attributes
-                .common
-                .options
-                .preserve_module
-                .is_present();
-
-            let skip_from = module_attributes
-                .common
-                .options
-                .skip
-                .as_ref()
-                .map_or(false, |opts| opts.from.is_present());
-
-            let module_span = item_mod.span();
-            let module_input = ModuleInput {
-                ident: item_mod.ident,
-                vis: item_mod.vis,
+            let module = match Module::new(item_mod, module_attributes) {
+                Ok(module) => module,
+                Err(err) => return err.write_errors(),
             };
 
-            let Some((_, items)) = item_mod.content else {
-                return Error::new(module_span, "the macro can only be used on module blocks")
-                    .into_compile_error();
-            };
-
-            let mut containers = Vec::new();
-
-            for item in items {
-                let container = match item {
-                    Item::Enum(item_enum) => {
-                        match Container::new_enum_nested(item_enum, &versions) {
-                            Ok(container) => container,
-                            Err(err) => return err.write_errors(),
-                        }
-                    }
-                    Item::Struct(item_struct) => {
-                        match Container::new_struct_nested(item_struct, &versions) {
-                            Ok(container) => container,
-                            Err(err) => return err.write_errors(),
-                        }
-                    }
-                    _ => continue,
-                };
-
-                containers.push(container);
-            }
-
-            Module::new(
-                module_input,
-                preserve_modules,
-                skip_from,
-                versions,
-                containers,
-            )
-            .generate_tokens()
+            module.generate_tokens()
         }
         Item::Enum(item_enum) => {
             let container_attributes: StandaloneContainerAttributes =
