@@ -261,6 +261,75 @@ mod utils;
 /// }
 /// ```
 ///
+/// ### Re-emitting and merging Submodules
+///
+/// Modules defined in the versioned module will be re-emitted. This allows for
+/// composition of re-exports to compose easier to use imports for downstream
+/// consumers of versioned containers. The following rules apply:
+///
+/// 1. Only modules named the same like defined versions will be re-emitted.
+///    Modules named differently will be ignored and won't produce any code. In
+///    the future, this might return an error instead.
+/// 2. Only `use` statements defined in the module will be emitted. Other items
+///    will be ignored and won't produce any code. In the future, this might
+///    return an error instead.
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// # mod a {
+/// #     pub mod v1alpha1 {}
+/// # }
+/// # mod b {
+/// #     pub mod v1alpha1 {}
+/// # }
+/// #[versioned(
+///     version(name = "v1alpha1"),
+///     version(name = "v1")
+/// )]
+/// mod versioned {
+///     mod v1alpha1 {
+///         pub use a::v1alpha1::*;
+///         pub use b::v1alpha1::*;
+///     }
+///
+///     struct Foo {
+///         bar: usize,
+///     }
+/// }
+/// # fn main() {}
+/// ```
+///
+/// <details>
+/// <summary>Expand Generated Code</summary>
+///
+/// ```ignore
+/// mod v1alpha1 {
+///     use super::*;
+///     pub use a::v1alpha1::*;
+///     pub use b::v1alpha1::*;
+///     pub struct Foo {
+///         pub bar: usize,
+///     }
+/// }
+///
+/// impl ::std::convert::From<v1alpha1::Foo> for v1::Foo {
+///     fn from(__sv_foo: v1alpha1::Foo) -> Self {
+///         Self {
+///             bar: __sv_foo.bar.into(),
+///         }
+///     }
+/// }
+///
+/// mod v1 {
+///     use super::*;
+///     pub struct Foo {
+///         pub bar: usize,
+///     }
+/// }
+/// ```
+///
+/// </details>
+///
 /// ## Item Actions
 ///
 /// This crate currently supports three different item actions. Items can
