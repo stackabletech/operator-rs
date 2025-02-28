@@ -4,11 +4,7 @@ use syn::{spanned::Spanned, Error, Item};
 
 use crate::{
     attrs::{container::StandaloneContainerAttributes, module::ModuleAttributes},
-    codegen::{
-        container::{Container, StandaloneContainer},
-        module::{Module, ModuleInput},
-        VersionDefinition,
-    },
+    codegen::{container::StandaloneContainer, module::Module},
 };
 
 #[cfg(test)]
@@ -264,6 +260,73 @@ mod utils;
 ///     }
 /// }
 /// ```
+///
+/// ### Re-emitting and merging Submodules
+///
+/// Modules defined in the versioned module will be re-emitted. This allows for
+/// composition of re-exports to compose easier to use imports for downstream
+/// consumers of versioned containers. The following rules apply:
+///
+/// 1. Only modules named the same like defined versions will be re-emitted.
+///    Using modules with invalid names will return an error.
+/// 2. Only `use` statements defined in the module will be emitted. Declaring
+///    other items will return an error.
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// # mod a {
+/// #     pub mod v1alpha1 {}
+/// # }
+/// # mod b {
+/// #     pub mod v1alpha1 {}
+/// # }
+/// #[versioned(
+///     version(name = "v1alpha1"),
+///     version(name = "v1")
+/// )]
+/// mod versioned {
+///     mod v1alpha1 {
+///         pub use a::v1alpha1::*;
+///         pub use b::v1alpha1::*;
+///     }
+///
+///     struct Foo {
+///         bar: usize,
+///     }
+/// }
+/// # fn main() {}
+/// ```
+///
+/// <details>
+/// <summary>Expand Generated Code</summary>
+///
+/// ```ignore
+/// mod v1alpha1 {
+///     use super::*;
+///     pub use a::v1alpha1::*;
+///     pub use b::v1alpha1::*;
+///     pub struct Foo {
+///         pub bar: usize,
+///     }
+/// }
+///
+/// impl ::std::convert::From<v1alpha1::Foo> for v1::Foo {
+///     fn from(__sv_foo: v1alpha1::Foo) -> Self {
+///         Self {
+///             bar: __sv_foo.bar.into(),
+///         }
+///     }
+/// }
+///
+/// mod v1 {
+///     use super::*;
+///     pub struct Foo {
+///         pub bar: usize,
+///     }
+/// }
+/// ```
+///
+/// </details>
 ///
 /// ## Item Actions
 ///
@@ -802,61 +865,12 @@ fn versioned_impl(attrs: proc_macro2::TokenStream, input: Item) -> proc_macro2::
                 Err(err) => return err.write_errors(),
             };
 
-            let versions: Vec<VersionDefinition> = (&module_attributes).into();
-            let preserve_modules = module_attributes
-                .common
-                .options
-                .preserve_module
-                .is_present();
-
-            let skip_from = module_attributes
-                .common
-                .options
-                .skip
-                .as_ref()
-                .map_or(false, |opts| opts.from.is_present());
-
-            let module_span = item_mod.span();
-            let module_input = ModuleInput {
-                ident: item_mod.ident,
-                vis: item_mod.vis,
+            let module = match Module::new(item_mod, module_attributes) {
+                Ok(module) => module,
+                Err(err) => return err.write_errors(),
             };
 
-            let Some((_, items)) = item_mod.content else {
-                return Error::new(module_span, "the macro can only be used on module blocks")
-                    .into_compile_error();
-            };
-
-            let mut containers = Vec::new();
-
-            for item in items {
-                let container = match item {
-                    Item::Enum(item_enum) => {
-                        match Container::new_enum_nested(item_enum, &versions) {
-                            Ok(container) => container,
-                            Err(err) => return err.write_errors(),
-                        }
-                    }
-                    Item::Struct(item_struct) => {
-                        match Container::new_struct_nested(item_struct, &versions) {
-                            Ok(container) => container,
-                            Err(err) => return err.write_errors(),
-                        }
-                    }
-                    _ => continue,
-                };
-
-                containers.push(container);
-            }
-
-            Module::new(
-                module_input,
-                preserve_modules,
-                skip_from,
-                versions,
-                containers,
-            )
-            .generate_tokens()
+            module.generate_tokens()
         }
         Item::Enum(item_enum) => {
             let container_attributes: StandaloneContainerAttributes =
