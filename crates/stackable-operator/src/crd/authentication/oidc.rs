@@ -10,9 +10,10 @@ use snafu::{ResultExt, Snafu};
 use url::{ParseError, Url};
 
 #[cfg(doc)]
-use crate::commons::authentication::AuthenticationClass;
-use crate::commons::{
-    authentication::SECRET_BASE_PATH, networking::HostName, tls_verification::TlsClientDetails,
+use crate::crd::authentication::AuthenticationClass;
+use crate::{
+    commons::{networking::HostName, tls_verification::TlsClientDetails},
+    constants::secret::SECRET_BASE_PATH,
 };
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
