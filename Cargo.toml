@@ -16,7 +16,7 @@ chrono = { version = "0.4.38", default-features = false }
 clap = { version = "4.5.17", features = ["derive", "cargo", "env"] }
 const_format = "0.2.33"
 const-oid = "0.9.6"
-convert_case = "0.7.1"
+convert_case = "0.8.0"
 darling = "0.20.10"
 delegate = "0.13.0"
 dockerfile-parser = "0.9.0"
@@ -45,7 +45,7 @@ pin-project = "1.1.5"
 prettyplease = "0.2.22"
 proc-macro2 = "1.0.86"
 quote = "1.0.37"
-rand = "0.8.5"
+rand = "0.9.0"
 rand_core = "0.6.4"
 regex = "1.10.6"
 rsa = { version = "0.9.6", features = ["sha2"] }
@@ -60,7 +60,7 @@ sha2 = { version = "0.10.8", features = ["oid"] }
 signature = "2.2.0"
 snafu = "0.8.4"
 stackable-operator-derive = { path = "stackable-operator-derive" }
-strum = { version = "0.26.3", features = ["derive"] }
+strum = { version = "0.27.1", features = ["derive"] }
 syn = "2.0.77"
 tempfile = "3.12.0"
 time = { version = "0.3.36" }
