@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Update `strum` to `0.27.1` (clients need to also update strum!), `rand` to `0.9.0` and `convert_case` to `0.8.0` ([#972]).
+
+[#972]: https://github.com/stackabletech/operator-rs/pull/972
+
 ## [0.86.2] - 2025-02-21
 
 ### Fix
