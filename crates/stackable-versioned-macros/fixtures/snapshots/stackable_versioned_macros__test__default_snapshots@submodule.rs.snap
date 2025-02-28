@@ -1,0 +1,26 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+expression: formatted
+input_file: crates/stackable-versioned-macros/fixtures/inputs/default/submodule.rs
+---
+#[automatically_derived]
+mod v1alpha1 {
+    use super::*;
+    pub use my::reexport::v1alpha1::*;
+    pub struct Foo {
+        pub bar: usize,
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1alpha1::Foo> for v1::Foo {
+    fn from(__sv_foo: v1alpha1::Foo) -> Self {
+        Self { bar: __sv_foo.bar.into() }
+    }
+}
+#[automatically_derived]
+mod v1 {
+    use super::*;
+    pub struct Foo {
+        pub bar: usize,
+    }
+}
