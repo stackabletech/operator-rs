@@ -21,7 +21,7 @@ pub struct Module {
 
     // Recognized items of the module
     containers: Vec<Container>,
-    submodules: Vec<Submodule>,
+    submodules: HashMap<IdentString, Vec<ItemUse>>,
 
     ident: IdentString,
     vis: Visibility,
@@ -56,8 +56,8 @@ impl Module {
             .map_or(false, |opts| opts.from.is_present());
 
         let mut errors = Error::accumulator();
+        let mut submodules = HashMap::new();
         let mut containers = Vec::new();
-        let mut submodules = Vec::new();
 
         for item in items {
             match item {
@@ -69,29 +69,47 @@ impl Module {
                     let container = Container::new_struct_nested(item_struct, &versions)?;
                     containers.push(container);
                 }
-                Item::Mod(item_module) => match item_module.content {
-                    Some((_, items)) => {
-                        let imports: Vec<ItemUse> = items
-                            .into_iter()
-                            // We are only interested in use statements. Everything else is ignored.
-                            // NOTE (@Techassi): We might want to error instead.
-                            .filter_map(|item| match item {
-                                Item::Use(item_use) => Some(item_use),
-                                _ => None,
-                            })
-                            .collect();
-
-                        // NOTE (@Techassi): Do we wanna enforce that modules must use version names?
-
-                        submodules.push(Submodule {
-                            ident: item_module.ident.into(),
-                            imports,
-                        });
+                Item::Mod(submodule) => {
+                    if !versions
+                        .iter()
+                        .any(|v| v.ident.as_ident() == &submodule.ident)
+                    {
+                        errors.push(
+                            Error::custom(
+                                "submodules must use names which are defined as `version`s",
+                            )
+                            .with_span(&submodule),
+                        );
+                        continue;
                     }
-                    None => errors.push(
-                        Error::custom("submodules must be module blocks").with_span(&item_module),
-                    ),
-                },
+
+                    match submodule.content {
+                        Some((_, items)) => {
+                            let use_statements: Vec<ItemUse> = items
+                                .into_iter()
+                                // We are only interested in use statements. Everything else is ignored.
+                                .filter_map(|item| match item {
+                                    Item::Use(item_use) => Some(item_use),
+                                    item => {
+                                        errors.push(
+                                            Error::custom(
+                                                "submodules must only define `use` statements",
+                                            )
+                                            .with_span(&item),
+                                        );
+
+                                        None
+                                    }
+                                })
+                                .collect();
+
+                            submodules.insert(submodule.ident.into(), use_statements);
+                        }
+                        None => errors.push(
+                            Error::custom("submodules must be module blocks").with_span(&submodule),
+                        ),
+                    }
+                }
                 _ => continue,
             };
         }
@@ -232,21 +250,10 @@ impl Module {
     /// Optionally generates imports (which can be re-exports) located in submodules for the
     /// specified `version`.
     fn generate_submodule_imports(&self, version: &VersionDefinition) -> Option<TokenStream> {
-        for submodule in &self.submodules {
-            if submodule.ident == version.ident {
-                let imports = &submodule.imports;
-
-                return Some(quote! {
-                    #(#imports)*
-                });
+        self.submodules.get(&version.ident).map(|use_statements| {
+            quote! {
+                #(#use_statements)*
             }
-        }
-
-        None
+        })
     }
-}
-
-pub struct Submodule {
-    ident: IdentString,
-    imports: Vec<ItemUse>,
 }
