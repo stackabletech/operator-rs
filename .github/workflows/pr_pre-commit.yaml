@@ -7,7 +7,8 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_TOOLCHAIN_VERSION: "nightly-2025-01-15"
-  HADOLINT_VERSION: "v1.17.6"
+
+permissions: {}
 
 jobs:
   pre-commit:
@@ -15,6 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
+          persist-credentials: false
           fetch-depth: 0
       - uses: stackabletech/actions/run-pre-commit@2d3d7ddad981ae09901d45a0f6bf30c2658b1b78 # v0.7.0
         with:

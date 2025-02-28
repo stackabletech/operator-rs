@@ -15,12 +15,16 @@ on:
 env:
   RUST_TOOLCHAIN_VERSION: "1.82.0"
 
+permissions: {}
+
 jobs:
   build-docs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
 
       - uses: dtolnay/rust-toolchain@master
         with:
