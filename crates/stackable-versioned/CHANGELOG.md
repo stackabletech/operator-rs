@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add support for re-emitting and merging modules defined in versioned modules ([#xxx]).
+- Add support for re-emitting and merging modules defined in versioned modules ([#971]).
 - Add basic support for generic types in struct and enum definitions ([#969]).
 
 ### Changed
@@ -15,7 +15,7 @@ All notable changes to this project will be documented in this file.
 
 [#961]: https://github.com/stackabletech/operator-rs/pull/961
 [#969]: https://github.com/stackabletech/operator-rs/pull/969
-[#xxx]: https://github.com/stackabletech/operator-rs/pull/xxx
+[#971]: https://github.com/stackabletech/operator-rs/pull/971
 
 ## [0.5.1] - 2025-02-14
 
