@@ -268,11 +268,9 @@ mod utils;
 /// consumers of versioned containers. The following rules apply:
 ///
 /// 1. Only modules named the same like defined versions will be re-emitted.
-///    Modules named differently will be ignored and won't produce any code. In
-///    the future, this might return an error instead.
-/// 2. Only `use` statements defined in the module will be emitted. Other items
-///    will be ignored and won't produce any code. In the future, this might
-///    return an error instead.
+///    Using modules with invalid names will return an error.
+/// 2. Only `use` statements defined in the module will be emitted. Declaring
+///    other items will return an error.
 ///
 /// ```
 /// # use stackable_versioned_macros::versioned;
