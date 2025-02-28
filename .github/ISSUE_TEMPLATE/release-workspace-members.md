@@ -39,6 +39,7 @@ Replace the items in the task lists below with the applicable Pull Requests
 2. Adjust the version `RUST_TOOLCHAIN_VERSION` in the workflows:
      - `.github/workflows/build.yml`
      - `.github/workflows/pre_commit.yaml`
+     - `.github/workflows/publish-docs.yaml`
 3. Add a changelog entry.
 4. Update any actions (using the Git commit hash) in the workflows. Hint: Also
    make sure that the `cargo-udeps` action is up-to-date, otherwise the CI might
