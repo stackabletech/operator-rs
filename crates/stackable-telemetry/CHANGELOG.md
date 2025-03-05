@@ -8,16 +8,23 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Allow `Option<_>` to be used to enable/disable a subscriber ([#951]).
 - Introduce common `Settings` and subscriber specific settings ([#901]).
 - Add support for logging to files ([#933]).
 
 ### Changed
 
-- BREAKING: Renamed `TracingBuilder` methods with long names, and prefix with `with_` ([#901]).
+- BREAKING: Change subscriber settings into an enum to indicate if the subscriber is enabled/disabled ([#951]).
+- BREAKING: Rename `TracingBuilder` methods with long names, and prefix with `with_` ([#901]).
 - BREAKING: Use the new subscriber settings in the `TracingBuilder` ([#901]).
+
+### Removed
+
+- BREAKING: Remove `Deref` impls for subscriber settings and removed the `enabled` fields and `enabled()` methods ([#951]).
 
 [#901]: https://github.com/stackabletech/operator-rs/pull/901
 [#933]: https://github.com/stackabletech/operator-rs/pull/933
+[#951]: https://github.com/stackabletech/operator-rs/pull/951
 
 ## [0.2.0] - 2024-07-10
 
