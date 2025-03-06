@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Refactor `region` field in S3ConnectionSpec ([#976]).
+
+[#976]: https://github.com/stackabletech/operator-rs/pull/976
+
 ## [0.87.0] - 2025-02-28
 
 ### Changed
