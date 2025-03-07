@@ -97,12 +97,20 @@ pub enum S3AccessStyle {
     VirtualHosted,
 }
 
-/// Set a named AWS region, or defer to an auto-discovery mechanism.
-#[derive(Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+/// Set a named AWS region.
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Region {
     #[serde(default = "default_region_name")]
     name: String,
+}
+
+impl Default for Region {
+    fn default() -> Self {
+        Self {
+            name: default_region_name(),
+        }
+    }
 }
 
 fn default_region_name() -> String {
