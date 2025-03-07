@@ -347,7 +347,7 @@ impl<'de> Deserialize<'de> for MemoryQuantity {
     {
         struct MemoryQuantityVisitor;
 
-        impl<'de> Visitor<'de> for MemoryQuantityVisitor {
+        impl Visitor<'_> for MemoryQuantityVisitor {
             type Value = MemoryQuantity;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

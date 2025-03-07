@@ -13,7 +13,7 @@ pub struct ClusterOperationsConditionBuilder<'a> {
     cluster_operation: &'a ClusterOperation,
 }
 
-impl<'a> ConditionBuilder for ClusterOperationsConditionBuilder<'a> {
+impl ConditionBuilder for ClusterOperationsConditionBuilder<'_> {
     fn build_conditions(&self) -> ClusterConditionSet {
         vec![self.reconciliation_paused(), self.cluster_stopped()].into()
     }

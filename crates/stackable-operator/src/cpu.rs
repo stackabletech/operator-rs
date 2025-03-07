@@ -70,7 +70,7 @@ impl<'de> Deserialize<'de> for CpuQuantity {
     {
         struct CpuQuantityVisitor;
 
-        impl<'de> Visitor<'de> for CpuQuantityVisitor {
+        impl Visitor<'_> for CpuQuantityVisitor {
             type Value = CpuQuantity;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

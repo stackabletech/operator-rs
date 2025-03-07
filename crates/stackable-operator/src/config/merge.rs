@@ -146,7 +146,7 @@ impl Atomic for bool {}
 impl Atomic for String {}
 impl Atomic for Quantity {}
 impl Atomic for Duration {}
-impl<'a> Atomic for &'a str {}
+impl Atomic for &str {}
 impl Atomic for LabelSelector {}
 impl Atomic for PodAffinity {}
 impl Atomic for PodAntiAffinity {}
