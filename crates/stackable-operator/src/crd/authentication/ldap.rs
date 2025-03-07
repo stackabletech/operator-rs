@@ -10,11 +10,11 @@ use crate::{
         pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
     },
     commons::{
-        authentication::SECRET_BASE_PATH,
         networking::HostName,
         secret_class::{SecretClassVolume, SecretClassVolumeError},
         tls_verification::{TlsClientDetails, TlsClientDetailsError},
     },
+    constants::secret::SECRET_BASE_PATH,
 };
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

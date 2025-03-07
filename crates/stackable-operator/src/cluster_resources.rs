@@ -33,12 +33,12 @@ use crate::{
     client::{Client, GetApi},
     commons::{
         cluster_operation::ClusterOperation,
-        listener::Listener,
         resources::{
             ComputeResource, ResourceRequirementsExt, ResourceRequirementsType,
             LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
         },
     },
+    crd::listener::Listener,
     kvp::{
         consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
         Label, LabelError, Labels,
