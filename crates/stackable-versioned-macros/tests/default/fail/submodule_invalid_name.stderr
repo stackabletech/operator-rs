@@ -1,0 +1,5 @@
+error: submodules must use names which are defined as `version`s
+ --> tests/default/fail/submodule_invalid_name.rs:6:9
+  |
+6 |         mod v1alpha2 {}
+  |         ^^^

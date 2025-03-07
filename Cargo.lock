@@ -3242,7 +3242,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.86.2"
+version = "0.87.0"
 dependencies = [
  "chrono",
  "clap",
@@ -3329,14 +3329,14 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "stackable-versioned-macros",
 ]
 
 [[package]]
 name = "stackable-versioned-macros"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "convert_case",
  "darling",

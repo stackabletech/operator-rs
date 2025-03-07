@@ -16,6 +16,17 @@ pub use otlp_log::*;
 pub mod otlp_trace;
 pub use otlp_trace::*;
 
+/// Indicate whether a type is enabled or disabled.
+pub trait SettingsToggle {
+    /// Whether the settings are enabled or not.
+    fn is_enabled(&self) -> bool;
+
+    /// The opposite of [SettingsToggle::is_enabled] as a helper.
+    fn is_disabled(&self) -> bool {
+        !self.is_enabled()
+    }
+}
+
 /// General settings that apply to any subscriber.
 #[derive(Debug, PartialEq)]
 pub struct Settings {
@@ -28,12 +39,6 @@ pub struct Settings {
     /// The [`LevelFilter`] to fallback to if [`Self::environment_variable`] has
     /// not been set.
     pub default_level: LevelFilter,
-
-    /// Whether or not the subscriber is enabled.
-    ///
-    /// When set to `true`, the [`tracing::Subscriber`] will be added to the
-    /// [`tracing_subscriber::Layer`] list.
-    pub enabled: bool,
 }
 
 impl Settings {
@@ -52,7 +57,6 @@ impl Default for Settings {
 /// For building [`Settings`].
 pub struct SettingsBuilder {
     environment_variable: &'static str,
-    enabled: bool,
     default_level: LevelFilter,
 }
 
@@ -72,20 +76,6 @@ impl SettingsBuilder {
     // TODO (@NickLarsenNZ): set a constant for the default level.
     pub fn with_default_level(mut self, level: impl Into<LevelFilter>) -> Self {
         self.default_level = level.into();
-        self
-    }
-
-    /// Enable or disable the [`tracing::Subscriber`].
-    ///
-    /// Defaults to `false`.
-    // TODO (@NickLarsenNZ): Currently this has to be called to enable the
-    // subscriber. Eventually it should become optional, and default to on (if
-    // settings are supplied). Therefore, the fields in TracingBuilder to hold
-    // the subscriber settings should become Option<T> so that the subscriber is
-    // disabled when not configured, is enabled when configured, while still
-    // controllable through this function. Then this can be renamed to `with_enabled`
-    pub fn enabled(mut self, enabled: bool) -> Self {
-        self.enabled = enabled;
         self
     }
 
@@ -120,7 +110,6 @@ impl SettingsBuilder {
         Settings {
             environment_variable: self.environment_variable,
             default_level: self.default_level,
-            enabled: self.enabled,
         }
     }
 }
@@ -130,7 +119,6 @@ impl Default for SettingsBuilder {
         Self {
             environment_variable: "RUST_LOG",
             default_level: LevelFilter::OFF,
-            enabled: false,
         }
     }
 }
@@ -144,12 +132,10 @@ mod test {
         let expected = Settings {
             environment_variable: "hello",
             default_level: LevelFilter::DEBUG,
-            enabled: true,
         };
         let result = Settings::builder()
             .with_environment_variable("hello")
             .with_default_level(LevelFilter::DEBUG)
-            .enabled(true)
             .build();
 
         assert_eq!(expected, result);
