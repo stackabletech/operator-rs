@@ -36,7 +36,7 @@ impl From<&StandaloneContainerAttributes> for Vec<VersionDefinition> {
             .versions
             .iter()
             .map(|v| VersionDefinition {
-                skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
+                skip_from: v.skip.as_ref().is_some_and(|s| s.from.is_present()),
                 ident: format_ident!("{version}", version = v.name.to_string()).into(),
                 deprecated: v.deprecated.as_ref().map(|r#override| {
                     r#override
@@ -57,7 +57,7 @@ impl From<&ModuleAttributes> for Vec<VersionDefinition> {
             .versions
             .iter()
             .map(|v| VersionDefinition {
-                skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
+                skip_from: v.skip.as_ref().is_some_and(|s| s.from.is_present()),
                 ident: format_ident!("{version}", version = v.name.to_string()).into(),
                 deprecated: v.deprecated.as_ref().map(|r#override| {
                     r#override

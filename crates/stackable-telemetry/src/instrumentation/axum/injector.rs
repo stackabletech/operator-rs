@@ -20,7 +20,7 @@ use opentelemetry::{propagation::Injector, Context};
 /// [5]: https://docs.rs/opentelemetry-http/latest/opentelemetry_http/struct.HeaderInjector.html
 pub struct HeaderInjector<'a>(pub(crate) &'a mut HeaderMap);
 
-impl<'a> Injector for HeaderInjector<'a> {
+impl Injector for HeaderInjector<'_> {
     fn set(&mut self, key: &str, value: String) {
         if let Ok(header_name) = HeaderName::from_bytes(key.as_bytes()) {
             if let Ok(header_value) = HeaderValue::from_str(&value) {

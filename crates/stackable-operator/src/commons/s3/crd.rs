@@ -56,22 +56,13 @@ pub struct S3ConnectionSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub port: Option<u16>,
 
-    /// AWS service API region used by the AWS SDK when using AWS S3 buckets.
+    /// Bucket region used for signing headers (sigv4).
     ///
-    /// This defaults to `us-east-1` and can be ignored if not using AWS S3
-    /// buckets.
+    /// This defaults to `us-east-1` which is compatible with other implementations such as Minio.
     ///
-    /// NOTE: This is not the bucket region, and is used by the AWS SDK to
-    /// construct endpoints for various AWS service APIs. It is only useful when
-    /// using AWS S3 buckets.
-    ///
-    /// When using AWS S3 buckets, you can configure optimal AWS service API
-    /// connections in the following ways:
-    /// - From **inside** AWS: Use an auto-discovery source (eg: AWS IMDS).
-    /// - From **outside** AWS, or when IMDS is disabled, explicity set the
-    ///   region name nearest to where the client application is running from.
+    /// WARNING: Some products use the Hadoop S3 implementation which falls back to us-east-2.
     #[serde(default)]
-    pub region: AwsRegion,
+    pub region: Region,
 
     /// Which access style to use.
     /// Defaults to virtual hosted-style as most of the data products out there.
@@ -103,56 +94,22 @@ pub enum S3AccessStyle {
     VirtualHosted,
 }
 
-/// Set a named AWS region, or defer to an auto-discovery mechanism.
+/// Set a named S3 Bucket region.
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum AwsRegion {
-    /// Defer region detection to an auto-discovery mechanism.
-    Source(AwsRegionAutoDiscovery),
-
-    /// An explicit region, eg: eu-central-1
-    Name(String),
+pub struct Region {
+    #[serde(default = "default_region_name")]
+    name: String,
 }
 
-impl AwsRegion {
-    /// Get the AWS region name.
-    ///
-    /// Returns `None` if an auto-discovery source has been selected. Otherwise,
-    /// it returns the configured region name.
-    ///
-    /// Example usage:
-    ///
-    /// ```
-    /// # use stackable_operator::commons::s3::AwsRegion;
-    /// # fn set_property(key: &str, value: &str) {}
-    /// # fn example(aws_region: AwsRegion) {
-    /// if let Some(region_name) = aws_region.name() {
-    ///     // set some property if the region is set, or is the default.
-    ///     set_property("aws.region", region_name);
-    /// };
-    /// # }
-    /// ```
-    pub fn name(&self) -> Option<&str> {
-        match self {
-            AwsRegion::Name(name) => Some(name),
-            AwsRegion::Source(_) => None,
+impl Default for Region {
+    fn default() -> Self {
+        Self {
+            name: default_region_name(),
         }
     }
 }
 
-impl Default for AwsRegion {
-    fn default() -> Self {
-        Self::Name("us-east-1".to_owned())
-    }
-}
-
-/// AWS region auto-discovery mechanism.
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub enum AwsRegionAutoDiscovery {
-    /// AWS Instance Meta Data Service.
-    ///
-    /// This variant should result in no region being given to the AWS SDK,
-    /// which should, in turn, query the AWS IMDS.
-    AwsImds,
+fn default_region_name() -> String {
+    "us-east-1".into()
 }
