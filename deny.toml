@@ -17,7 +17,7 @@ ignore = [
     # So we need to accept this, as of SDP 24.11 we are not using the rsa crate to create certificates used in production
     # setups.
     #
-    # TODO: Remove after https://github.com/RustCrypto/RSA/pull/394 is merged
+    # TODO: Remove after https://github.com/RustCrypto/RSA/pull/394 is merged and v0.10.0 is released
     "RUSTSEC-2023-0071",
 
     # https://rustsec.org/advisories/RUSTSEC-2024-0384
