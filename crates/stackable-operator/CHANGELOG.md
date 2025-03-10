@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.87.1] - 2025-03-10
+
 ### Changed
 
 - Refactor `region` field in S3ConnectionSpec ([#976]).
