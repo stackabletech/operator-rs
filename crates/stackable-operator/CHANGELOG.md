@@ -30,7 +30,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add `region` field to S3ConnectionSpec ([#959]).
+- BREAKING: Add `region` field to S3ConnectionSpec (defaults to `us-east-1`) ([#959]).
 
 [#959]: https://github.com/stackabletech/operator-rs/pull/959
 
