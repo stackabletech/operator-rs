@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.87.2] - 2025-03-10
+
 ### Changed
 
 - Make `region.name` field in in S3ConnectionSpec public ([#980]).
