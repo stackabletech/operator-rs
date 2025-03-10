@@ -25,9 +25,9 @@ ignore = [
     #
     # The upstream "kube" crate also silenced this in https://github.com/kube-rs/kube/commit/4f1e889f265da8f19f03f60683569cae1a154fda
     # They/we are actively working on migrating kube from backoff to backon, which removes the transitive dependency on
-    # instant, in https://github.com/kube-rs/kube/pull/1652.
+    # instant, in https://github.com/kube-rs/kube/pull/1653.
     #
-    # TODO: Remove after https://github.com/kube-rs/kube/pull/1652 is merged
+    # TODO: Remove after https://github.com/kube-rs/kube/pull/1653 is released
     "RUSTSEC-2024-0384",
 ]
 
