@@ -56,14 +56,11 @@ pub struct S3ConnectionSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub port: Option<u16>,
 
-    /// AWS service API region used by the AWS SDK when using AWS S3 buckets.
+    /// Bucket region used for signing headers (sigv4).
     ///
-    /// This defaults to `us-east-1` and can be ignored if not using AWS S3
-    /// buckets.
+    /// This defaults to `us-east-1` which is compatible with other implementations such as Minio.
     ///
-    /// NOTE: This is not the bucket region, and is used by the AWS SDK to
-    /// construct endpoints for various AWS service APIs. It is only useful when
-    /// using AWS S3 buckets.
+    /// WARNING: Some products use the Hadoop S3 implementation which falls back to us-east-2.
     #[serde(default)]
     pub region: Region,
 
@@ -97,7 +94,7 @@ pub enum S3AccessStyle {
     VirtualHosted,
 }
 
-/// Set a named AWS region.
+/// Set a named S3 Bucket region.
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Region {
