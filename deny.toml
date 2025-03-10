@@ -29,6 +29,14 @@ ignore = [
     #
     # TODO: Remove after https://github.com/kube-rs/kube/pull/1653 is released
     "RUSTSEC-2024-0384",
+
+    # Advisory: https://rustsec.org/advisories/RUSTSEC-2025-0012
+    # The [backoff](https://crates.io/crates/backoff) crate is no longer actively maintained. For exponential backoffs/retrying, you can use the [backon](https://crates.io/crates/backon) crate.
+    # Announcement: https://github.com/ihrwein/backoff/issues/66
+    #
+    # TODO: Remove after https://github.com/kube-rs/kube/pull/1653 is released
+    "RUSTSEC-2025-0012",
+
 ]
 
 [bans]
@@ -47,7 +55,7 @@ allow = [
     "LicenseRef-webpki",
     "MIT",
     "MPL-2.0",
-    "OpenSSL", # Needed for the ring and/or aws-lc-sys crate. See https://github.com/stackabletech/operator-templating/pull/464 for details
+    "OpenSSL",           # Needed for the ring and/or aws-lc-sys crate. See https://github.com/stackabletech/operator-templating/pull/464 for details
     "Unicode-3.0",
     "Unicode-DFS-2016",
     "Zlib",
@@ -58,16 +66,12 @@ private = { ignore = true }
 [[licenses.clarify]]
 name = "ring"
 expression = "LicenseRef-ring"
-license-files = [
-    { path = "LICENSE", hash = 0xbd0eed23 },
-]
+license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
 
 [[licenses.clarify]]
 name = "webpki"
 expression = "LicenseRef-webpki"
-license-files = [
-    { path = "LICENSE", hash = 0x001c7e6c },
-]
+license-files = [{ path = "LICENSE", hash = 0x001c7e6c }]
 
 [sources]
 unknown-registry = "deny"
