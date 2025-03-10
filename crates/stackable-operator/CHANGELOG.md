@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Make `region.name` field in in S3ConnectionSpec public ([#980]).
+
+[#980]: https://github.com/stackabletech/operator-rs/pull/980
+
 ## [0.87.1] - 2025-03-10
 
 ### Changed

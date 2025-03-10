@@ -99,7 +99,7 @@ pub enum S3AccessStyle {
 #[serde(rename_all = "camelCase")]
 pub struct Region {
     #[serde(default = "default_region_name")]
-    name: String,
+    pub name: String,
 }
 
 impl Default for Region {
