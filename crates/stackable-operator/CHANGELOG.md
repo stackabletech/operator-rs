@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add more granular telemetry related arguments to `ProductOperatorRun` ([#977]).
+  - `--enable-console-output`: Enables output of `tracing` events to the console (stdout)
+  - `--enable-file-output`: Enables output `tracing` events to a rotating log file
+  - `--enable-otlp-traces`: Enables exporting of traces via OTLP
+  - `--enable-otlp-logs`: Enables exporting of logs via OTLP
+
+### Removed
+
+- BREAKING: Remove `--tracing-target` argument and field from `ProductOperatorRun`.
+  Use the new, more granular arguments instead ([#977]).
+- BREAKING: Remove `initialize_logging` helper function from `stackable_operator::logging` ([#977]).
+- Remove `opentelemetry-jaeger` dependency ([#977]).
+
+[#977]: https://github.com/stackabletech/operator-rs/pull/977
+
 ## [0.87.2] - 2025-03-10
 
 ### Changed
