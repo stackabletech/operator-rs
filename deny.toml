@@ -17,7 +17,7 @@ ignore = [
     # So we need to accept this, as of SDP 24.11 we are not using the rsa crate to create certificates used in production
     # setups.
     #
-    # TODO: Remove after https://github.com/RustCrypto/RSA/pull/394 is merged
+    # TODO: Remove after https://github.com/RustCrypto/RSA/pull/394 is merged and v0.10.0 is released
     "RUSTSEC-2023-0071",
 
     # https://rustsec.org/advisories/RUSTSEC-2024-0384
@@ -25,10 +25,29 @@ ignore = [
     #
     # The upstream "kube" crate also silenced this in https://github.com/kube-rs/kube/commit/4f1e889f265da8f19f03f60683569cae1a154fda
     # They/we are actively working on migrating kube from backoff to backon, which removes the transitive dependency on
-    # instant, in https://github.com/kube-rs/kube/pull/1652.
+    # instant, in https://github.com/kube-rs/kube/pull/1653.
     #
-    # TODO: Remove after https://github.com/kube-rs/kube/pull/1652 is merged
+    # TODO: Remove after https://github.com/kube-rs/kube/pull/1653 is released
     "RUSTSEC-2024-0384",
+
+    # Advisory: https://rustsec.org/advisories/RUSTSEC-2025-0012
+    # The [backoff](https://crates.io/crates/backoff) crate is no longer actively maintained. For exponential backoffs/retrying, you can use the [backon](https://crates.io/crates/backon) crate.
+    # Announcement: https://github.com/ihrwein/backoff/issues/66
+    #
+    # TODO: Remove after https://github.com/kube-rs/kube/pull/1653 is released
+    "RUSTSEC-2025-0012",
+
+    # Advisory: https://rustsec.org/advisories/RUSTSEC-2024-0436
+    # The creator of the crate `paste` has stated in the [`README.md`](https://github.com/dtolnay/paste/blob/master/README.md)
+    # that this project is not longer maintained as well as archived the repository
+    # Announcement: https://github.com/dtolnay/paste
+    #
+    # This comes in via aws-lc-rs. There is a PR open to migrate from `paste` to `concat-idents`.
+    # https://github.com/aws/aws-lc-rs/pull/723
+    #
+    # TODO: Remove after the migration is done and aws-lc-rs doesn't use paste anymore.
+    "RUSTSEC-2024-0436",
+
 ]
 
 [bans]
@@ -47,7 +66,7 @@ allow = [
     "LicenseRef-webpki",
     "MIT",
     "MPL-2.0",
-    "OpenSSL", # Needed for the ring and/or aws-lc-sys crate. See https://github.com/stackabletech/operator-templating/pull/464 for details
+    "OpenSSL",           # Needed for the ring and/or aws-lc-sys crate. See https://github.com/stackabletech/operator-templating/pull/464 for details
     "Unicode-3.0",
     "Unicode-DFS-2016",
     "Zlib",
@@ -58,16 +77,12 @@ private = { ignore = true }
 [[licenses.clarify]]
 name = "ring"
 expression = "LicenseRef-ring"
-license-files = [
-    { path = "LICENSE", hash = 0xbd0eed23 },
-]
+license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
 
 [[licenses.clarify]]
 name = "webpki"
 expression = "LicenseRef-webpki"
-license-files = [
-    { path = "LICENSE", hash = 0x001c7e6c },
-]
+license-files = [{ path = "LICENSE", hash = 0x001c7e6c }]
 
 [sources]
 unknown-registry = "deny"

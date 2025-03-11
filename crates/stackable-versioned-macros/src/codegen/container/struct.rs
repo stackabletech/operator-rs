@@ -47,7 +47,7 @@ impl Container {
                 .common
                 .options
                 .skip
-                .map_or(false, |s| s.from.is_present()),
+                .is_some_and(|s| s.from.is_present()),
             kubernetes_options,
         };
 
@@ -90,10 +90,7 @@ impl Container {
         }
 
         let options = ContainerOptions {
-            skip_from: attributes
-                .options
-                .skip
-                .map_or(false, |s| s.from.is_present()),
+            skip_from: attributes.options.skip.is_some_and(|s| s.from.is_present()),
             kubernetes_options,
         };
 
@@ -245,7 +242,7 @@ impl Struct {
         // cannot be deprecated). Then we retrieve the status of the field and
         // ensure it is deprecated.
         self.fields.iter().any(|f| {
-            f.changes.as_ref().map_or(false, |c| {
+            f.changes.as_ref().is_some_and(|c| {
                 c.value_is(&version.inner, |a| {
                     matches!(
                         a,

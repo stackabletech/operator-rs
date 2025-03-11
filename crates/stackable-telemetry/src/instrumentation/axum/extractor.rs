@@ -18,7 +18,7 @@ use opentelemetry::{propagation::Extractor, Context};
 /// [4]: https://docs.rs/opentelemetry-http/latest/opentelemetry_http/struct.HeaderExtractor.html
 pub struct HeaderExtractor<'a>(pub(crate) &'a HeaderMap);
 
-impl<'a> Extractor for HeaderExtractor<'a> {
+impl Extractor for HeaderExtractor<'_> {
     fn get(&self, key: &str) -> Option<&str> {
         self.0
             .get(key)

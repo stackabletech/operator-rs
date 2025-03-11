@@ -30,7 +30,6 @@ pub enum Error {
 /// Build RBAC objects for the product workloads.
 /// The `product_name` is meant to be the product name, for example: zookeeper, airflow, etc.
 /// and it is a assumed that a ClusterRole named `{product_name}-clusterrole` exists.
-
 pub fn build_rbac_resources<T: Clone + Resource<DynamicType = ()>>(
     resource: &T,
     // 'product_name' is not used to build the names of the serviceAccount and roleBinding objects,

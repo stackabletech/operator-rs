@@ -302,7 +302,7 @@ impl From<KubernetesArguments> for KubernetesOptions {
                 .map_or_else(KubernetesCrateOptions::default, |crates| crates.into()),
             status: args.status,
             shortnames: args.shortnames,
-            skip_merged_crd: args.skip.map_or(false, |s| s.merged_crd.is_present()),
+            skip_merged_crd: args.skip.is_some_and(|s| s.merged_crd.is_present()),
         }
     }
 }
