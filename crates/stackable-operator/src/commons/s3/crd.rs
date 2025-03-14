@@ -102,7 +102,7 @@ pub struct Region {
     pub name: String,
 }
 
-/// Having it as const &str as well, so we don't always allocate a [`String`] just for comparisons
+/// Having it as `const &str` as well, so we don't always allocate a [`String`] just for comparisons
 const DEFAULT_REGION_NAME: &str = "us-east-1";
 impl Region {
     fn default_region_name() -> String {
