@@ -98,18 +98,32 @@ pub enum S3AccessStyle {
 #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Region {
-    #[serde(default = "default_region_name")]
+    #[serde(default = "Region::default_region_name")]
     pub name: String,
+}
+
+impl Region {
+    /// Having it as `const &str` as well, so we don't always allocate a [`String`] just for comparisons
+    pub const DEFAULT_REGION_NAME: &str = "us-east-1";
+
+    fn default_region_name() -> String {
+        Self::DEFAULT_REGION_NAME.to_string()
+    }
+
+    /// Returns if the region sticks to the Stackable defaults.
+    ///
+    /// Some products don't really support configuring the region.
+    /// This function can be used to determine if a warning or error should be raised to inform the
+    /// user of this situation.
+    pub fn is_default_config(&self) -> bool {
+        self.name == Self::DEFAULT_REGION_NAME
+    }
 }
 
 impl Default for Region {
     fn default() -> Self {
         Self {
-            name: default_region_name(),
+            name: Self::default_region_name(),
         }
     }
-}
-
-fn default_region_name() -> String {
-    "us-east-1".into()
 }
