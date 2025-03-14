@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.87.3] - 2025-03-14
+
 ### Added
 
 - Add a `Region::is_default_config` function to determine if a region sticks to the default config ([#983]).
