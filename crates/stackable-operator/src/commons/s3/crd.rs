@@ -107,7 +107,7 @@ impl Region {
     pub const DEFAULT_REGION_NAME: &str = "us-east-1";
 
     fn default_region_name() -> String {
-        DEFAULT_REGION_NAME.to_string()
+        Self::DEFAULT_REGION_NAME.to_string()
     }
 
     /// Returns if the region sticks to the Stackable defaults.
@@ -116,7 +116,7 @@ impl Region {
     /// This function can be used to determine if a warning or error should be raised to inform the
     /// user of this situation.
     pub fn is_default_config(&self) -> bool {
-        self.name == DEFAULT_REGION_NAME
+        self.name == Self::DEFAULT_REGION_NAME
     }
 }
 
