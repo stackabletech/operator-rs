@@ -3253,7 +3253,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.87.2"
+version = "0.87.3"
 dependencies = [
  "chrono",
  "clap",
