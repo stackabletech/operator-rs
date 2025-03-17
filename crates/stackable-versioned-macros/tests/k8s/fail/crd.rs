@@ -1,6 +1,5 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
 use stackable_versioned_macros::versioned;
 
 #[allow(deprecated)]

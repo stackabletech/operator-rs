@@ -167,18 +167,29 @@ impl VersionedField {
                         _,
                         ItemStatus::Change {
                             from_ident: old_field_ident,
+                            convert_with,
                             to_ident,
                             ..
                         },
-                    ) => {
-                        quote! {
+                    ) => match convert_with {
+                        // The user specified a custom conversion function which
+                        // will be used here instead of the default .into() call
+                        // which utilizes From impls.
+                        Some(convert_fn) => quote! {
+                            #to_ident: #convert_fn(#from_struct_ident.#old_field_ident),
+                        },
+                        // Default .into() call using From impls.
+                        None => quote! {
                             #to_ident: #from_struct_ident.#old_field_ident.into(),
-                        }
-                    }
+                        },
+                    },
                     (old, next) => {
                         let next_field_ident = next.get_ident();
                         let old_field_ident = old.get_ident();
 
+                        // NOTE (@Techassi): Do we really need .into() here. I'm
+                        // currently not sure why it is there and if it is needed
+                        // in some edge cases.
                         quote! {
                             #next_field_ident: #from_struct_ident.#old_field_ident.into(),
                         }

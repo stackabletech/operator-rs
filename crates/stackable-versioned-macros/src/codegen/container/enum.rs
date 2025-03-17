@@ -3,7 +3,7 @@ use std::ops::Not;
 use darling::{util::IdentString, FromAttributes, Result};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::ItemEnum;
+use syn::{Generics, ItemEnum};
 
 use crate::{
     attrs::container::NestedContainerAttributes,
@@ -31,10 +31,10 @@ impl Container {
         let options = ContainerOptions {
             kubernetes_options: None,
             skip_from: attributes
-                .common_root_arguments
+                .common
                 .options
                 .skip
-                .map_or(false, |s| s.from.is_present()),
+                .is_some_and(|s| s.from.is_present()),
         };
 
         let idents = ContainerIdents::from(item_enum.ident, None);
@@ -46,6 +46,7 @@ impl Container {
         };
 
         Ok(Self::Enum(Enum {
+            generics: item_enum.generics,
             variants: versioned_variants,
             common,
         }))
@@ -67,10 +68,7 @@ impl Container {
 
         let options = ContainerOptions {
             kubernetes_options: None,
-            skip_from: attributes
-                .options
-                .skip
-                .map_or(false, |s| s.from.is_present()),
+            skip_from: attributes.options.skip.is_some_and(|s| s.from.is_present()),
         };
 
         let idents = ContainerIdents::from(item_enum.ident, None);
@@ -82,6 +80,7 @@ impl Container {
         };
 
         Ok(Self::Enum(Enum {
+            generics: item_enum.generics,
             variants: versioned_variants,
             common,
         }))
@@ -96,12 +95,16 @@ pub(crate) struct Enum {
 
     /// Common container data which is shared between enums and structs.
     pub(crate) common: CommonContainerData,
+
+    /// Generic types of the enum
+    pub generics: Generics,
 }
 
 // Common token generation
 impl Enum {
     /// Generates code for the enum definition.
     pub(crate) fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
+        let (_, type_generics, where_clause) = self.generics.split_for_impl();
         let original_attributes = &self.common.original_attributes;
         let ident = &self.common.idents.original;
         let version_docs = &version.docs;
@@ -114,7 +117,7 @@ impl Enum {
         quote! {
             #(#[doc = #version_docs])*
             #(#original_attributes)*
-            pub enum #ident {
+            pub enum #ident #type_generics #where_clause {
                 #variants
             }
         }
@@ -133,6 +136,12 @@ impl Enum {
 
         match next_version {
             Some(next_version) => {
+                // TODO (@Techassi): Support generic types which have been removed in newer versions,
+                // but need to exist for older versions How do we represent that? Because the
+                // defined struct always represents the latest version. I guess we could generally
+                // advise against using generic types, but if you have to, avoid removing it in
+                // later versions.
+                let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
                 let enum_ident = &self.common.idents.original;
                 let from_ident = &self.common.idents.from;
 
@@ -158,8 +167,10 @@ impl Enum {
                 Some(quote! {
                     #automatically_derived
                     #allow_attribute
-                    impl ::std::convert::From<#version_ident::#enum_ident> for #next_version_ident::#enum_ident {
-                        fn from(#from_ident: #version_ident::#enum_ident) -> Self {
+                    impl #impl_generics ::std::convert::From<#version_ident::#enum_ident #type_generics> for #next_version_ident::#enum_ident #type_generics
+                        #where_clause
+                    {
+                        fn from(#from_ident: #version_ident::#enum_ident #type_generics) -> Self {
                             match #from_ident {
                                 #variants
                             }
@@ -195,7 +206,7 @@ impl Enum {
         // cannot be deprecated). Then we retrieve the status of the variant and
         // ensure it is deprecated.
         self.variants.iter().any(|f| {
-            f.changes.as_ref().map_or(false, |c| {
+            f.changes.as_ref().is_some_and(|c| {
                 c.value_is(&version.inner, |a| {
                     matches!(
                         a,

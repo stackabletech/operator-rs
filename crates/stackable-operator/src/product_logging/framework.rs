@@ -13,11 +13,10 @@ use crate::{
     },
     kube::Resource,
     memory::{BinaryMultiple, MemoryQuantity},
+    product_logging::spec::{
+        AutomaticContainerLogConfig, ContainerLogConfig, ContainerLogConfigChoice, LogLevel,
+    },
     role_utils::RoleGroupRef,
-};
-
-use super::spec::{
-    AutomaticContainerLogConfig, ContainerLogConfig, ContainerLogConfigChoice, LogLevel,
 };
 
 /// Config directory used in the Vector log agent container
@@ -1383,7 +1382,7 @@ sinks:
 /// # let resolved_product_image = ResolvedProductImage {
 /// #     product_version: "1.0.0".into(),
 /// #     app_version_label: "1.0.0".into(),
-/// #     image: "docker.stackable.tech/stackable/my-product:1.0.0-stackable1.0.0".into(),
+/// #     image: "oci.stackable.tech/sdp/my-product:1.0.0-stackable1.0.0".into(),
 /// #     image_pull_policy: "Always".into(),
 /// #     pull_secrets: None,
 /// # };
@@ -1503,7 +1502,7 @@ kill $vector_pid
 ///
 /// let container = ContainerBuilder::new("init")
 ///     .unwrap()
-///     .image("docker.stackable.tech/stackable/my-product:1.0.0-stackable1.0.0")
+///     .image("oci.stackable.tech/sdp/my-product:1.0.0-stackable1.0.0")
 ///     .command(vec!["bash".to_string(), "-c".to_string()])
 ///     .args(vec![args.join(" && ")])
 ///     .add_volume_mount("log", STACKABLE_LOG_DIR)
@@ -1525,10 +1524,12 @@ pub fn remove_vector_shutdown_file_command(stackable_log_dir: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
+    use rstest::rstest;
+
     use super::*;
     use crate::product_logging::spec::{AppenderConfig, LoggerConfig};
-    use rstest::rstest;
-    use std::collections::BTreeMap;
 
     #[rstest]
     #[case("0Mi", &[])]

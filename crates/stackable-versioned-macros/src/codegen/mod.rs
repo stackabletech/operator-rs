@@ -32,11 +32,11 @@ pub(crate) struct VersionDefinition {
 impl From<&StandaloneContainerAttributes> for Vec<VersionDefinition> {
     fn from(attributes: &StandaloneContainerAttributes) -> Self {
         attributes
-            .common_root_arguments
+            .common
             .versions
             .iter()
             .map(|v| VersionDefinition {
-                skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
+                skip_from: v.skip.as_ref().is_some_and(|s| s.from.is_present()),
                 ident: format_ident!("{version}", version = v.name.to_string()).into(),
                 deprecated: v.deprecated.as_ref().map(|r#override| {
                     r#override
@@ -53,11 +53,11 @@ impl From<&StandaloneContainerAttributes> for Vec<VersionDefinition> {
 impl From<&ModuleAttributes> for Vec<VersionDefinition> {
     fn from(attributes: &ModuleAttributes) -> Self {
         attributes
-            .common_root_arguments
+            .common
             .versions
             .iter()
             .map(|v| VersionDefinition {
-                skip_from: v.skip.as_ref().map_or(false, |s| s.from.is_present()),
+                skip_from: v.skip.as_ref().is_some_and(|s| s.from.is_present()),
                 ident: format_ident!("{version}", version = v.name.to_string()).into(),
                 deprecated: v.deprecated.as_ref().map(|r#override| {
                     r#override
@@ -72,7 +72,7 @@ impl From<&ModuleAttributes> for Vec<VersionDefinition> {
 }
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum ItemStatus {
+pub enum ItemStatus {
     Addition {
         ident: IdentString,
         default_fn: Path,
@@ -81,6 +81,7 @@ pub(crate) enum ItemStatus {
         ty: Type,
     },
     Change {
+        convert_with: Option<Path>,
         from_ident: IdentString,
         to_ident: IdentString,
         from_type: Type,

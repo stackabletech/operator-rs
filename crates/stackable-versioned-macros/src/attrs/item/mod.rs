@@ -237,6 +237,19 @@ impl CommonItemAttributes {
                     );
                 }
             }
+
+            // The convert_with argument only makes sense to use when the
+            // type changed
+            if let Some(convert_func) = change.convert_with.as_ref() {
+                if change.from_type.is_none() {
+                    errors.push(
+                        Error::custom(
+                            "the `convert_with` argument must be used in combination with `from_type`",
+                        )
+                        .with_span(&convert_func.span()),
+                    );
+                }
+            }
         }
 
         errors.finish()
@@ -307,9 +320,10 @@ impl CommonItemAttributes {
                 actions.insert(
                     *change.since,
                     ItemStatus::Change {
+                        convert_with: change.convert_with.as_deref().cloned(),
                         from_ident: from_ident.clone(),
-                        to_ident: ident,
                         from_type: from_ty.clone(),
+                        to_ident: ident,
                         to_type: ty,
                     },
                 );
@@ -356,9 +370,10 @@ impl CommonItemAttributes {
                 actions.insert(
                     *change.since,
                     ItemStatus::Change {
+                        convert_with: change.convert_with.as_deref().cloned(),
                         from_ident: from_ident.clone(),
-                        to_ident: ident,
                         from_type: from_ty.clone(),
+                        to_ident: ident,
                         to_type: ty,
                     },
                 );
@@ -431,12 +446,14 @@ fn default_default_fn() -> SpannedValue<Path> {
 ///
 /// Example usage:
 /// - `changed(since = "...", from_name = "...")`
-/// - `changed(since = "...", from_name = "..." from_type="...")`
+/// - `changed(since = "...", from_name = "...", from_type="...")`
+/// - `changed(since = "...", from_name = "...", from_type="...", convert_with = "...")`
 #[derive(Clone, Debug, FromMeta)]
-pub(crate) struct ChangedAttributes {
-    pub(crate) since: SpannedValue<Version>,
-    pub(crate) from_name: Option<SpannedValue<String>>,
-    pub(crate) from_type: Option<SpannedValue<Type>>,
+pub struct ChangedAttributes {
+    pub since: SpannedValue<Version>,
+    pub from_name: Option<SpannedValue<String>>,
+    pub from_type: Option<SpannedValue<Type>>,
+    pub convert_with: Option<SpannedValue<Path>>,
 }
 
 /// For the deprecated() action

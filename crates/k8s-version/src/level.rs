@@ -7,11 +7,10 @@ use std::{
     sync::LazyLock,
 };
 
-use regex::Regex;
-use snafu::{OptionExt, ResultExt, Snafu};
-
 #[cfg(feature = "darling")]
 use darling::FromMeta;
+use regex::Regex;
+use snafu::{OptionExt, ResultExt, Snafu};
 
 static LEVEL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^(?P<identifier>[a-z]+)(?P<version>\d+)$").expect("failed to compile level regex")
@@ -158,13 +157,12 @@ impl FromMeta for Level {
 
 #[cfg(test)]
 mod test {
+    #[cfg(feature = "darling")]
+    use quote::quote;
     use rstest::rstest;
     use rstest_reuse::*;
 
     use super::*;
-
-    #[cfg(feature = "darling")]
-    use quote::quote;
 
     #[cfg(feature = "darling")]
     fn parse_meta(tokens: proc_macro2::TokenStream) -> ::std::result::Result<syn::Meta, String> {

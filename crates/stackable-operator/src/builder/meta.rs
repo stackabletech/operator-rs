@@ -311,9 +311,10 @@ impl OwnerReferenceBuilder {
 
 #[cfg(test)]
 mod tests {
+    use k8s_openapi::api::core::v1::Pod;
+
     use super::*;
     use crate::builder::meta::ObjectMetaBuilder;
-    use k8s_openapi::api::core::v1::Pod;
 
     #[test]
     fn objectmeta_builder() {

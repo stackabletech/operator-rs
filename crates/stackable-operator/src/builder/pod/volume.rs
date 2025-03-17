@@ -8,7 +8,6 @@ use k8s_openapi::{
     },
     apimachinery::pkg::api::resource::Quantity,
 };
-
 use snafu::{ResultExt, Snafu};
 use tracing::warn;
 
@@ -568,9 +567,11 @@ impl ListenerOperatorVolumeSourceBuilder {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
     use std::collections::BTreeMap;
+
+    use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+
+    use super::*;
 
     #[test]
     fn builder() {

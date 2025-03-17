@@ -111,9 +111,11 @@ impl LabelSelectorExt for LabelSelector {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use k8s_openapi::apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement};
     use std::collections::BTreeMap;
+
+    use k8s_openapi::apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement};
+
+    use super::*;
 
     #[test]
     fn label_selector() {

@@ -1,7 +1,8 @@
 //! This module provides helpers and constants to deal with namespaces
-use crate::client::Client;
 use k8s_openapi::NamespaceResourceScope;
 use kube::{Api, Resource};
+
+use crate::client::Client;
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum WatchNamespace {

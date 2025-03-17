@@ -280,7 +280,7 @@ pub(crate) struct KubernetesOptions {
     // schema
     // scale
     // printcolumn
-    pub(crate) shortname: Option<String>,
+    pub(crate) shortnames: Vec<String>,
     // category
     // selectable
     // doc
@@ -301,8 +301,8 @@ impl From<KubernetesArguments> for KubernetesOptions {
                 .crates
                 .map_or_else(KubernetesCrateOptions::default, |crates| crates.into()),
             status: args.status,
-            shortname: args.shortname,
-            skip_merged_crd: args.skip.map_or(false, |s| s.merged_crd.is_present()),
+            shortnames: args.shortnames,
+            skip_merged_crd: args.skip.is_some_and(|s| s.merged_crd.is_present()),
         }
     }
 }

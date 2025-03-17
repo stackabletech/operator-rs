@@ -66,7 +66,7 @@ where
     where
         F: Fn(&V) -> bool,
     {
-        self.get(key).map_or(false, f)
+        self.get(key).is_some_and(f)
     }
 
     fn lo_bound(&self, bound: Bound<&K>) -> Option<(&K, &V)> {
@@ -204,8 +204,9 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     #[rstest]
     #[case(0, (None, Some(&"test1")))]

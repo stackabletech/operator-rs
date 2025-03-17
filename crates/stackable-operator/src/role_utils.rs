@@ -85,6 +85,14 @@ use std::{
     fmt::{Debug, Display},
 };
 
+use educe::Educe;
+use k8s_openapi::api::core::v1::PodTemplateSpec;
+use kube::{runtime::reflector::ObjectRef, Resource};
+use regex::Regex;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use snafu::{OptionExt, ResultExt, Snafu};
+
 use crate::{
     commons::pdb::PdbConfig,
     config::{
@@ -94,13 +102,6 @@ use crate::{
     product_config_utils::Configuration,
     utils::crds::raw_object_schema,
 };
-use educe::Educe;
-use k8s_openapi::api::core::v1::PodTemplateSpec;
-use kube::{runtime::reflector::ObjectRef, Resource};
-use regex::Regex;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use snafu::{OptionExt, ResultExt, Snafu};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -486,9 +487,8 @@ impl<K: Resource> Display for RoleGroupRef<K> {
 mod tests {
     use std::collections::HashSet;
 
-    use crate::role_utils::JavaCommonConfig;
-
     use super::*;
+    use crate::role_utils::JavaCommonConfig;
 
     #[test]
     fn test_merge_java_common_config() {

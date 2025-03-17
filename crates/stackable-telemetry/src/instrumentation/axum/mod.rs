@@ -121,9 +121,9 @@ where
     S::Error: std::error::Error + 'static,
     S::Future: Send + 'static,
 {
-    type Response = S::Response;
     type Error = S::Error;
     type Future = ResponseFuture<S::Future>;
+    type Response = S::Response;
 
     fn poll_ready(
         &mut self,
@@ -173,20 +173,34 @@ where
     }
 }
 
+/// Errors which can be encountered when extracting the server host from a [`Request`].
 #[derive(Debug, Snafu)]
 pub enum ServerHostError {
+    /// Indicates that parsing the port of the server host from the [`Request`] as a `u16` failed.
     #[snafu(display("failed to parse port {port:?} as u16 from string"))]
-    ParsePort { source: ParseIntError, port: String },
+    ParsePort {
+        #[allow(missing_docs)]
+        source: ParseIntError,
 
+        // TODO (@Techassi): Make snafu re-emit this
+        /// The original input which was attempted to be parsed.
+        port: String,
+    },
+
+    /// Indicates that the server host from the [`Request`] contains an invalid/unknown scheme.
     #[snafu(display("encountered invalid request scheme {scheme:?}"))]
-    InvalidScheme { scheme: String },
+    InvalidScheme {
+        /// The original scheme.
+        scheme: String,
+    },
 
+    // TODO (@Techassi): Make snafu re-emit this
+    /// Indicates that no method of extracting the server host from the [`Request`] succeeded.
     #[snafu(display("failed to extract any host information from request"))]
     ExtractHost,
 }
 
-/// This trait provides various helper functions to extract data from a
-/// HTTP [`Request`].
+/// This trait provides various helper functions to extract data from a HTTP [`Request`].
 pub trait RequestExt {
     /// Returns the client socket address, if available.
     fn client_socket_address(&self) -> Option<SocketAddr>;
@@ -429,7 +443,7 @@ impl SpanExt for Span {
         // Therefore, we have to made a decision about linking the two traces.
         // These are the options:
         // 1. Link to the trace id supplied in the incoming request, or
-        // 2. Link to the current trace id, then set the parent contex based on
+        // 2. Link to the current trace id, then set the parent context based on
         //    trace information supplied in the incoming request.
         //
         // Neither is ideal, as it means there are (at least) two traces to look

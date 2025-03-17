@@ -1,0 +1,55 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+expression: formatted
+input_file: crates/stackable-versioned-macros/fixtures/inputs/k8s/shortnames.rs
+---
+#[automatically_derived]
+pub(crate) mod v1alpha1 {
+    use super::*;
+    #[derive(
+        Clone,
+        Debug,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+        kube::CustomResource,
+    )]
+    #[kube(
+        group = "stackable.tech",
+        version = "v1alpha1",
+        kind = "Foo",
+        shortname = "f",
+        shortname = "fo"
+    )]
+    pub struct FooSpec {}
+}
+#[automatically_derived]
+pub(crate) enum Foo {
+    V1Alpha1,
+}
+#[automatically_derived]
+impl ::std::fmt::Display for Foo {
+    fn fmt(
+        &self,
+        f: &mut ::std::fmt::Formatter<'_>,
+    ) -> ::std::result::Result<(), ::std::fmt::Error> {
+        match self {
+            Self::V1Alpha1 => f.write_str("v1alpha1"),
+        }
+    }
+}
+#[automatically_derived]
+impl Foo {
+    /// Generates a merged CRD containing all versions and marking `stored_apiversion` as stored.
+    pub fn merged_crd(
+        stored_apiversion: Self,
+    ) -> ::std::result::Result<
+        ::k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition,
+        ::kube::core::crd::MergeError,
+    > {
+        ::kube::core::crd::merge_crds(
+            vec![< v1alpha1::Foo as ::kube::core::CustomResourceExt > ::crd()],
+            &stored_apiversion.to_string(),
+        )
+    }
+}

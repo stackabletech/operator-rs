@@ -4,11 +4,7 @@ use syn::{spanned::Spanned, Error, Item};
 
 use crate::{
     attrs::{container::StandaloneContainerAttributes, module::ModuleAttributes},
-    codegen::{
-        container::{Container, StandaloneContainer},
-        module::{Module, ModuleInput},
-        VersionDefinition,
-    },
+    codegen::{container::StandaloneContainer, module::Module},
 };
 
 #[cfg(test)]
@@ -29,14 +25,18 @@ mod utils;
 /// example, `#[automatically_derived]` and `#[allow(deprecated)]` are removed
 /// in most examples to reduce visual clutter.
 ///
-/// ## Declaring Versions
+/// <div class="warning">
 ///
 /// It is **important** to note that this macro must be placed before any other
 /// (derive) macros and attributes. Macros supplied before the versioned macro
-/// will be erased, because the original struct or enum (container) is erased,
-/// and new containers are generated. This ensures that the macros and
+/// will be erased, because the original struct, enum or module (container) is
+/// erased, and new containers are generated. This ensures that the macros and
 /// attributes are applied to the generated versioned instances of the
 /// container.
+///
+/// </div>
+///
+/// ## Declaring Versions
 ///
 /// Before any of the fields or variants can be versioned, versions need to be
 /// declared at the container level. Each version currently supports two
@@ -44,9 +44,18 @@ mod utils;
 /// (and supported) format.
 ///
 /// <div class="warning">
+///
 /// Currently, only Kubernetes API versions are supported. The macro checks each
 /// declared version and reports any error encountered during parsing.
+///
 /// </div>
+///
+/// It should be noted that the defined struct always represents the **latest**
+/// version, eg: when defining three versions `v1alpha1`, `v1beta1`, and `v1`,
+/// the struct will describe the structure of the data in `v1`. This behaviour
+/// is especially noticeable in the [`changed()`](#changed-action) action which
+/// works "backwards" by describing how a field looked before the current
+/// (latest) version.
 ///
 /// ```
 /// # use stackable_versioned_macros::versioned;
@@ -131,6 +140,194 @@ mod utils;
 /// }
 /// ```
 ///
+/// ## Versioning Items in a Module
+///
+/// Using the macro on structs and enums is explained in detail in the following
+/// sections. This section is dedicated to explain the usage of the macro when
+/// applied to a module.
+///
+/// Using the macro on a module has one clear use-case: Versioning multiple
+/// structs and enums at once in **a single file**. Applying the `#[versioned]`
+/// macro to individual containers will result in invalid Rust code which the
+/// compiler rejects. This behaviour can best be explained using the following
+/// example:
+///
+/// ```ignore
+/// # use stackable_versioned_macros::versioned;
+/// #[versioned(version(name = "v1alpha1"))]
+/// struct Foo {}
+///
+/// #[versioned(version(name = "v1alpha1"))]
+/// struct Bar {}
+/// ```
+///
+/// In this example, two different structs are versioned using the same version,
+/// `v1alpha1`. Each macro will now (independently) expand into versioned code.
+/// This will result in the module named `v1alpha1` to be emitted twice, in the
+/// same file. This is invalid Rust code. You cannot define the same module more
+/// than once in the same file.
+///
+/// <details>
+/// <summary>Expand Generated Invalid Code</summary>
+///
+/// ```ignore
+/// mod v1alpha1 {
+///     struct Foo {}
+/// }
+///
+/// mod v1alpha1 {
+///     struct Bar {}
+/// }
+/// ```
+/// </details>
+///
+/// This behaviour makes it impossible to version multiple containers in the
+/// same file. The only solution would be to put each container into its own
+/// file which in many cases is not needed or even undesired. To solve this
+/// issue, it is thus possible to apply the macro to a module.
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// #[versioned(
+///     version(name = "v1alpha1"),
+///     version(name = "v1")
+/// )]
+/// mod versioned {
+///     struct Foo {
+///         bar: usize,
+///     }
+///
+///     struct Bar {
+///         baz: String,
+///     }
+/// }
+/// ```
+///
+/// <details>
+/// <summary>Expand Generated Code</summary>
+///
+/// 1. All containers defined in the module will get versioned. That's why every
+///    version module includes all containers.
+/// 2. Each version will expand to a version module, as expected.
+///
+/// ```ignore
+/// mod v1alpha1 {
+///     use super::*;
+///     pub struct Foo { // 1
+///         bar: usize,
+///     }
+///     pub struct Bar { // 1
+///         baz: String,
+///     }
+/// }
+///
+/// mod v1 {             // 2
+///     use super::*;
+///     pub struct Foo {
+///         bar: usize,
+///     }
+///     pub struct Bar {
+///         baz: String,
+///     }
+/// }
+/// ```
+/// </details>
+///
+/// It should be noted that versions are now defined at the module level and
+/// **not** at the struct / enum level. Item actions describes in the following
+/// section can be used as expected.
+///
+/// ### Preserve Module
+///
+/// The previous examples completely replaced the `versioned` module with
+/// top-level version modules. This is the default behaviour. Preserving the
+/// module can however be enabled by setting the `preserve_module` flag.
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// #[versioned(
+///     version(name = "v1alpha1"),
+///     version(name = "v1"),
+///     options(preserve_module)
+/// )]
+/// mod versioned {
+///     struct Foo {
+///         bar: usize,
+///     }
+///
+///     struct Bar {
+///         baz: String,
+///     }
+/// }
+/// ```
+///
+/// ### Re-emitting and merging Submodules
+///
+/// Modules defined in the versioned module will be re-emitted. This allows for
+/// composition of re-exports to compose easier to use imports for downstream
+/// consumers of versioned containers. The following rules apply:
+///
+/// 1. Only modules named the same like defined versions will be re-emitted.
+///    Using modules with invalid names will return an error.
+/// 2. Only `use` statements defined in the module will be emitted. Declaring
+///    other items will return an error.
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// # mod a {
+/// #     pub mod v1alpha1 {}
+/// # }
+/// # mod b {
+/// #     pub mod v1alpha1 {}
+/// # }
+/// #[versioned(
+///     version(name = "v1alpha1"),
+///     version(name = "v1")
+/// )]
+/// mod versioned {
+///     mod v1alpha1 {
+///         pub use a::v1alpha1::*;
+///         pub use b::v1alpha1::*;
+///     }
+///
+///     struct Foo {
+///         bar: usize,
+///     }
+/// }
+/// # fn main() {}
+/// ```
+///
+/// <details>
+/// <summary>Expand Generated Code</summary>
+///
+/// ```ignore
+/// mod v1alpha1 {
+///     use super::*;
+///     pub use a::v1alpha1::*;
+///     pub use b::v1alpha1::*;
+///     pub struct Foo {
+///         pub bar: usize,
+///     }
+/// }
+///
+/// impl ::std::convert::From<v1alpha1::Foo> for v1::Foo {
+///     fn from(__sv_foo: v1alpha1::Foo) -> Self {
+///         Self {
+///             bar: __sv_foo.bar.into(),
+///         }
+///     }
+/// }
+///
+/// mod v1 {
+///     use super::*;
+///     pub struct Foo {
+///         pub bar: usize,
+///     }
+/// }
+/// ```
+///
+/// </details>
+///
 /// ## Item Actions
 ///
 /// This crate currently supports three different item actions. Items can
@@ -176,7 +373,7 @@ mod utils;
 /// ```
 ///
 /// <details>
-/// <summary>Generated code</summary>
+/// <summary>Expand Generated Code</summary>
 ///
 /// 1. The field `bar` is not yet present in version `v1alpha1` and is therefore
 ///    not generated.
@@ -235,7 +432,7 @@ mod utils;
 /// ```
 ///
 /// <details>
-/// <summary>Generated code</summary>
+/// <summary>Expand Generated Code</summary>
 ///
 /// 1. Instead of `Default::default()`, the provided function `default_bar()` is
 ///    used. It is of course fully type checked and needs to return the expected
@@ -266,6 +463,10 @@ mod utils;
 /// - `since` to indicate since which version the item is changed.
 /// - `from_name` to indicate from which previous name the field is renamed.
 /// - `from_type` to indicate from which previous type the field is changed.
+/// - `convert_with` to provide a custom conversion function instead of using
+///   a [`From`] implementation by default. This argument can only be used in
+///   combination with the `from_type` argument. The expected function signature
+///   is: `fn (OLD_TYPE) -> NEW_TYPE`. This function must not fail.
 ///
 /// ```
 /// # use stackable_versioned_macros::versioned;
@@ -285,7 +486,7 @@ mod utils;
 /// ```
 ///
 /// <details>
-/// <summary>Generated code</summary>
+/// <summary>Expand Generated Code</summary>
 ///
 /// 1. In version `v1alpha1` the field is named `prev_bar` and uses a `u16`.
 /// 2. In the next version, `v1beta1`, the field is now named `bar` and uses
@@ -336,7 +537,7 @@ mod utils;
 /// ```
 ///
 /// <details>
-/// <summary>Generated code</summary>
+/// <summary>Expand Generated Code</summary>
 ///
 /// 1. In version `v1alpha1` the field `bar` is not yet deprecated and thus uses
 ///    the name without the `deprecated_` prefix.
@@ -386,6 +587,61 @@ mod utils;
 ///
 /// This automatic generation can be skipped to enable a custom implementation
 /// for more complex conversions.
+///
+/// ### Custom conversion function at field level
+///
+/// As stated in the [`changed()`](#changed-action) section, a custom conversion
+/// function can be provided using the `convert_with` argument. A simple example
+/// looks like this:
+///
+/// ```
+/// # use stackable_versioned_macros::versioned;
+/// #[versioned(
+///     version(name = "v1alpha1"),
+///     version(name = "v1beta1")
+/// )]
+/// pub struct Foo {
+///     #[versioned(changed(
+///         since = "v1beta1",
+///         from_type = "u8",
+///         convert_with = "u8_to_u16"
+///     ))]
+///     bar: u16,
+/// }
+///
+/// fn u8_to_u16(old: u8) -> u16 {
+///     old as u16
+/// }
+/// ```
+///
+/// <details>
+/// <summary>Expand Generated Code</summary>
+///
+/// ```ignore
+/// pub mod v1alpha1 {
+///     use super::*;
+///     pub struct Foo {
+///         pub bar: u8,
+///     }
+/// }
+///
+/// impl ::std::convert::From<v1alpha1::Foo> for v1beta1::Foo {
+///     fn from(__sv_foo: v1alpha1::Foo) -> Self {
+///         Self {
+///             bar: u8_to_u16(__sv_foo.bar),
+///         }
+///     }
+/// }
+///
+/// pub mod v1beta1 {
+///     use super::*;
+///     pub struct Foo {
+///         pub bar: u16,
+///     }
+/// }
+/// ```
+///
+/// </details>
 ///
 /// ### Skipping at the Container Level
 ///
@@ -474,18 +730,122 @@ println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 # }
 ```
 
+The generated `merged_crd` method is a wrapper around [kube's `merge_crds`][1]
+function. It automatically calls the `crd` methods of the CRD in all of its
+versions and additionally provides a strongly typed selector for the stored
+API version.
+
 Currently, the following arguments are supported:
 
-- `group`: Sets the CRD group, usually the domain of the company.
-- `kind`:  Allows overwriting the kind field of the CRD. This defaults
-  to the struct name (without the 'Spec' suffix).
-- `singular`: Sets the singular name.
-- `plural`: Sets the plural name.
-- `namespaced`: Specifies that this is a namespaced resource rather than
-  a cluster scoped.
+- `group`: Set the group of the CR object, usually the domain of the company.
+  This argument is Required.
+- `kind`: Override the kind field of the CR object. This defaults to the struct
+   name (without the 'Spec' suffix).
+- `singular`: Set the singular name of the CR object.
+- `plural`: Set the plural name of the CR object.
+- `namespaced`: Indicate that this is a namespaced scoped resource rather than a
+   cluster scoped resource.
 - `crates`: Override specific crates.
-- `status`: Sets the specified struct as the status subresource.
-- `shortname`: Sets the shortname of the CRD.
+- `status`: Set the specified struct as the status subresource.
+- `shortname`: Set a shortname for the CR object. This can be specified multiple
+  times.
+
+### Versioning Items in a Module
+
+Versioning multiple CRD related structs via a module is supported and common
+rules from [above](#versioning-items-in-a-module) apply here as well. It should
+however be noted, that specifying Kubernetes specific arguments is done on the
+container level instead of on the module level, which is detailed in the
+following example:
+
+```
+# use stackable_versioned_macros::versioned;
+# use kube::CustomResource;
+# use schemars::JsonSchema;
+# use serde::{Deserialize, Serialize};
+#[versioned(
+    version(name = "v1alpha1"),
+    version(name = "v1")
+)]
+mod versioned {
+    #[versioned(k8s(group = "foo.example.org"))]
+    #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
+    struct FooSpec {
+        bar: usize,
+    }
+
+    #[versioned(k8s(group = "bar.example.org"))]
+    #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
+    struct BarSpec {
+        baz: String,
+    }
+}
+
+# fn main() {
+let merged_crd = Foo::merged_crd(Foo::V1).unwrap();
+println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
+# }
+```
+
+<details>
+<summary>Expand Generated Code</summary>
+
+```ignore
+mod v1alpha1 {
+    use super::*;
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
+    #[kube(
+        group = "foo.example.org",
+        version = "v1alpha1",
+        kind = "Foo"
+    )]
+    pub struct FooSpec {
+        pub bar: usize,
+    }
+
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
+    #[kube(
+        group = "bar.example.org",
+        version = "v1alpha1",
+        kind = "Bar"
+    )]
+    pub struct BarSpec {
+        pub bar: usize,
+    }
+}
+
+// Automatic From implementations for conversion between versions ...
+
+mod v1 {
+    use super::*;
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
+    #[kube(
+        group = "foo.example.org",
+        version = "v1",
+        kind = "Foo"
+    )]
+    pub struct FooSpec {
+        pub bar: usize,
+    }
+
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
+    #[kube(
+        group = "bar.example.org",
+        version = "v1",
+        kind = "Bar"
+    )]
+    pub struct BarSpec {
+        pub bar: usize,
+    }
+}
+
+// Implementations to create the merged CRDs ...
+```
+</details>
+
+It is possible to include structs and enums which are not CRDs. They are instead
+versioned as expected (without adding the `#[kube]` derive macro and generating
+code to merge CRD versions).
 "#
 )]
 #[proc_macro_attribute]
@@ -505,56 +865,12 @@ fn versioned_impl(attrs: proc_macro2::TokenStream, input: Item) -> proc_macro2::
                 Err(err) => return err.write_errors(),
             };
 
-            let versions: Vec<VersionDefinition> = (&module_attributes).into();
-            let preserve_modules = module_attributes.preserve_module.is_present();
-            let skip_from = module_attributes
-                .common_root_arguments
-                .options
-                .skip
-                .as_ref()
-                .map_or(false, |opts| opts.from.is_present());
-
-            let module_span = item_mod.span();
-            let module_input = ModuleInput {
-                ident: item_mod.ident,
-                vis: item_mod.vis,
+            let module = match Module::new(item_mod, module_attributes) {
+                Ok(module) => module,
+                Err(err) => return err.write_errors(),
             };
 
-            let Some((_, items)) = item_mod.content else {
-                return Error::new(module_span, "the macro can only be used on module blocks")
-                    .into_compile_error();
-            };
-
-            let mut containers = Vec::new();
-
-            for item in items {
-                let container = match item {
-                    Item::Enum(item_enum) => {
-                        match Container::new_enum_nested(item_enum, &versions) {
-                            Ok(container) => container,
-                            Err(err) => return err.write_errors(),
-                        }
-                    }
-                    Item::Struct(item_struct) => {
-                        match Container::new_struct_nested(item_struct, &versions) {
-                            Ok(container) => container,
-                            Err(err) => return err.write_errors(),
-                        }
-                    }
-                    _ => continue,
-                };
-
-                containers.push(container);
-            }
-
-            Module::new(
-                module_input,
-                preserve_modules,
-                skip_from,
-                versions,
-                containers,
-            )
-            .generate_tokens()
+            module.generate_tokens()
         }
         Item::Enum(item_enum) => {
             let container_attributes: StandaloneContainerAttributes =

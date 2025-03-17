@@ -8,17 +8,15 @@ use std::{
     hash::Hash,
 };
 
-use super::merge::Atomic;
+use k8s_openapi::api::core::v1::PodTemplateSpec;
+use snafu::Snafu;
+pub use stackable_operator_derive::Fragment;
 
+use super::merge::Atomic;
 #[cfg(doc)]
 use super::merge::Merge;
 #[cfg(doc)]
 use crate::role_utils::{Role, RoleGroup};
-
-use k8s_openapi::api::core::v1::PodTemplateSpec;
-use snafu::Snafu;
-
-pub use stackable_operator_derive::Fragment;
 
 /// Contains context used for generating validation errors
 ///
@@ -28,7 +26,7 @@ pub struct Validator<'a> {
     parent: Option<&'a Validator<'a>>,
 }
 
-impl<'a> Validator<'a> {
+impl Validator<'_> {
     /// Creates a `Validator` for a subfield of the current object
     pub fn field<'b>(&'b self, ident: &'b dyn Display) -> Validator<'b> {
         Validator {

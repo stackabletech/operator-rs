@@ -70,7 +70,7 @@ impl<'de> Deserialize<'de> for CpuQuantity {
     {
         struct CpuQuantityVisitor;
 
-        impl<'de> Visitor<'de> for CpuQuantityVisitor {
+        impl Visitor<'_> for CpuQuantityVisitor {
             type Value = CpuQuantity;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -229,8 +229,9 @@ impl Sum for CpuQuantity {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::*;
+
+    use super::*;
 
     #[rstest]
     #[case("1", 1000)]

@@ -1,53 +1,132 @@
 use std::{collections::HashMap, ops::Not};
 
-use darling::util::IdentString;
+use darling::{util::IdentString, Error, Result};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{token::Pub, Ident, Visibility};
+use syn::{token::Pub, Ident, Item, ItemMod, ItemUse, Visibility};
 
-use crate::codegen::{container::Container, VersionDefinition};
+use crate::{
+    codegen::{container::Container, VersionDefinition},
+    ModuleAttributes,
+};
 
 pub(crate) type KubernetesItems = (Vec<TokenStream>, Vec<IdentString>, Vec<String>);
-
-pub(crate) struct ModuleInput {
-    pub(crate) vis: Visibility,
-    pub(crate) ident: Ident,
-}
 
 /// A versioned module.
 ///
 /// Versioned modules allow versioning multiple containers at once without introducing conflicting
 /// version module definitions.
-pub(crate) struct Module {
+pub struct Module {
     versions: Vec<VersionDefinition>,
+
+    // Recognized items of the module
     containers: Vec<Container>,
-    preserve_module: bool,
-    skip_from: bool,
+    submodules: HashMap<IdentString, Vec<ItemUse>>,
+
     ident: IdentString,
     vis: Visibility,
+
+    // Flags which influence generation
+    preserve_module: bool,
+    skip_from: bool,
 }
 
 impl Module {
     /// Creates a new versioned module containing versioned containers.
-    pub(crate) fn new(
-        ModuleInput { ident, vis, .. }: ModuleInput,
-        preserve_module: bool,
-        skip_from: bool,
-        versions: Vec<VersionDefinition>,
-        containers: Vec<Container>,
-    ) -> Self {
-        Self {
-            ident: ident.into(),
+    pub fn new(item_mod: ItemMod, module_attributes: ModuleAttributes) -> Result<Self> {
+        let Some((_, items)) = item_mod.content else {
+            return Err(
+                Error::custom("the macro can only be used on module blocks").with_span(&item_mod)
+            );
+        };
+
+        let versions: Vec<VersionDefinition> = (&module_attributes).into();
+
+        let preserve_module = module_attributes
+            .common
+            .options
+            .preserve_module
+            .is_present();
+
+        let skip_from = module_attributes
+            .common
+            .options
+            .skip
+            .as_ref()
+            .is_some_and(|opts| opts.from.is_present());
+
+        let mut errors = Error::accumulator();
+        let mut submodules = HashMap::new();
+        let mut containers = Vec::new();
+
+        for item in items {
+            match item {
+                Item::Enum(item_enum) => {
+                    let container = Container::new_enum_nested(item_enum, &versions)?;
+                    containers.push(container);
+                }
+                Item::Struct(item_struct) => {
+                    let container = Container::new_struct_nested(item_struct, &versions)?;
+                    containers.push(container);
+                }
+                Item::Mod(submodule) => {
+                    if !versions
+                        .iter()
+                        .any(|v| v.ident.as_ident() == &submodule.ident)
+                    {
+                        errors.push(
+                            Error::custom(
+                                "submodules must use names which are defined as `version`s",
+                            )
+                            .with_span(&submodule),
+                        );
+                        continue;
+                    }
+
+                    match submodule.content {
+                        Some((_, items)) => {
+                            let use_statements: Vec<ItemUse> = items
+                                .into_iter()
+                                // We are only interested in use statements. Everything else is ignored.
+                                .filter_map(|item| match item {
+                                    Item::Use(item_use) => Some(item_use),
+                                    item => {
+                                        errors.push(
+                                            Error::custom(
+                                                "submodules must only define `use` statements",
+                                            )
+                                            .with_span(&item),
+                                        );
+
+                                        None
+                                    }
+                                })
+                                .collect();
+
+                            submodules.insert(submodule.ident.into(), use_statements);
+                        }
+                        None => errors.push(
+                            Error::custom("submodules must be module blocks").with_span(&submodule),
+                        ),
+                    }
+                }
+                _ => continue,
+            };
+        }
+
+        errors.finish_with(Self {
+            ident: item_mod.ident.into(),
+            vis: item_mod.vis,
             preserve_module,
             containers,
+            submodules,
             skip_from,
             versions,
-            vis,
-        }
+        })
     }
 
     /// Generates tokens for all versioned containers.
-    pub(crate) fn generate_tokens(&self) -> TokenStream {
+    pub fn generate_tokens(&self) -> TokenStream {
         if self.containers.is_empty() {
             return quote! {};
         }
@@ -103,6 +182,8 @@ impl Module {
                 }
             }
 
+            let submodule_imports = self.generate_submodule_imports(version);
+
             // Only add #[automatically_derived] here if the user doesn't want to preserve the
             // module.
             let automatically_derived = self
@@ -121,6 +202,8 @@ impl Module {
                 #deprecated_attribute
                 #version_module_vis mod #version_ident {
                     use super::*;
+
+                    #submodule_imports
 
                     #container_definitions
                 }
@@ -162,5 +245,15 @@ impl Module {
                 #kubernetes_tokens
             }
         }
+    }
+
+    /// Optionally generates imports (which can be re-exports) located in submodules for the
+    /// specified `version`.
+    fn generate_submodule_imports(&self, version: &VersionDefinition) -> Option<TokenStream> {
+        self.submodules.get(&version.ident).map(|use_statements| {
+            quote! {
+                #(#use_statements)*
+            }
+        })
     }
 }

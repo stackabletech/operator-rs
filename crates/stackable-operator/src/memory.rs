@@ -8,16 +8,16 @@
 //!
 //! For details on Kubernetes quantities see: <https://github.com/kubernetes/apimachinery/blob/master/pkg/api/resource/quantity.go>
 
-use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
-use serde::{de::Visitor, Deserialize, Serialize};
-use snafu::{OptionExt, ResultExt, Snafu};
-
 use std::{
     fmt::Display,
     iter::Sum,
     ops::{Add, AddAssign, Div, Mul, Sub, SubAssign},
     str::FromStr,
 };
+
+use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+use serde::{de::Visitor, Deserialize, Serialize};
+use snafu::{OptionExt, ResultExt, Snafu};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -347,7 +347,7 @@ impl<'de> Deserialize<'de> for MemoryQuantity {
     {
         struct MemoryQuantityVisitor;
 
-        impl<'de> Visitor<'de> for MemoryQuantityVisitor {
+        impl Visitor<'_> for MemoryQuantityVisitor {
             type Value = MemoryQuantity;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -516,9 +516,9 @@ impl From<&MemoryQuantity> for Quantity {
 #[cfg(test)]
 mod tests {
     use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+    use rstest::rstest;
 
     use super::*;
-    use rstest::rstest;
 
     #[rstest]
     #[case("256Ki", MemoryQuantity { value: 256.0, unit: BinaryMultiple::Kibi })]

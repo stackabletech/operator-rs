@@ -3,10 +3,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::commons::{
-    networking::HostName, secret_class::SecretClassVolume, tls_verification::TlsClientDetails,
+    networking::HostName, s3::S3ConnectionInlineOrReference, secret_class::SecretClassVolume,
+    tls_verification::TlsClientDetails,
 };
-
-use super::S3ConnectionInlineOrReference;
 
 /// S3 bucket specification containing the bucket name and an inlined or referenced connection specification.
 /// Learn more on the [S3 concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
@@ -57,6 +56,14 @@ pub struct S3ConnectionSpec {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub port: Option<u16>,
 
+    /// Bucket region used for signing headers (sigv4).
+    ///
+    /// This defaults to `us-east-1` which is compatible with other implementations such as Minio.
+    ///
+    /// WARNING: Some products use the Hadoop S3 implementation which falls back to us-east-2.
+    #[serde(default)]
+    pub region: Region,
+
     /// Which access style to use.
     /// Defaults to virtual hosted-style as most of the data products out there.
     /// Have a look at the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html).
@@ -85,4 +92,38 @@ pub enum S3AccessStyle {
     /// Use as virtual hosted-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#virtual-hosted-style-access>
     #[default]
     VirtualHosted,
+}
+
+/// Set a named S3 Bucket region.
+#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Region {
+    #[serde(default = "Region::default_region_name")]
+    pub name: String,
+}
+
+impl Region {
+    /// Having it as `const &str` as well, so we don't always allocate a [`String`] just for comparisons
+    pub const DEFAULT_REGION_NAME: &str = "us-east-1";
+
+    fn default_region_name() -> String {
+        Self::DEFAULT_REGION_NAME.to_string()
+    }
+
+    /// Returns if the region sticks to the Stackable defaults.
+    ///
+    /// Some products don't really support configuring the region.
+    /// This function can be used to determine if a warning or error should be raised to inform the
+    /// user of this situation.
+    pub fn is_default_config(&self) -> bool {
+        self.name == Self::DEFAULT_REGION_NAME
+    }
+}
+
+impl Default for Region {
+    fn default() -> Self {
+        Self {
+            name: Self::default_region_name(),
+        }
+    }
 }

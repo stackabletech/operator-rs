@@ -7,7 +7,7 @@ use strum::AsRefStr;
 #[cfg(doc)]
 use crate::kvp::Labels;
 
-pub const STACKABLE_DOCKER_REPO: &str = "docker.stackable.tech/stackable";
+pub const STACKABLE_DOCKER_REPO: &str = "oci.stackable.tech/sdp";
 
 /// Specify which image to use, the easiest way is to only configure the `productVersion`.
 /// You can also configure a custom image registry to pull from, as well as completely custom
@@ -43,7 +43,7 @@ pub enum ProductImageSelection {
 #[serde(rename_all = "camelCase")]
 pub struct ProductImageCustom {
     /// Overwrite the docker image.
-    /// Specify the full docker image name, e.g. `docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0`
+    /// Specify the full docker image name, e.g. `oci.stackable.tech/sdp/superset:1.4.1-stackable2.1.0`
     custom: String,
     /// Version of the product, e.g. `1.4.1`.
     product_version: String,
@@ -58,7 +58,7 @@ pub struct ProductImageStackableVersion {
     /// If not specified, the operator will use its own version, e.g. `23.4.1`.
     /// When using a nightly operator or a pr version, it will use the nightly `0.0.0-dev` image.
     stackable_version: Option<String>,
-    /// Name of the docker repo, e.g. `docker.stackable.tech/stackable`
+    /// Name of the docker repo, e.g. `oci.stackable.tech/sdp`
     repo: Option<String>,
 }
 
@@ -70,7 +70,7 @@ pub struct ResolvedProductImage {
     /// App version as formatted for [`Labels::recommended`]
     pub app_version_label: String,
 
-    /// Image to be used for the product image e.g. `docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0`
+    /// Image to be used for the product image e.g. `oci.stackable.tech/sdp/superset:1.4.1-stackable2.1.0`
     pub image: String,
 
     /// Image pull policy for the containers using the product image
@@ -178,9 +178,9 @@ impl ProductImage {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use rstest::rstest;
+
+    use super::*;
 
     #[rstest]
     #[case::stackable_version_without_stackable_version_stable_version(
@@ -190,7 +190,7 @@ mod tests {
         productVersion: 1.4.1
         "#,
         ResolvedProductImage {
-            image: "docker.stackable.tech/stackable/superset:1.4.1-stackable23.7.42".to_string(),
+            image: "oci.stackable.tech/sdp/superset:1.4.1-stackable23.7.42".to_string(),
             app_version_label: "1.4.1-stackable23.7.42".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
@@ -204,7 +204,7 @@ mod tests {
         productVersion: 1.4.1
         "#,
         ResolvedProductImage {
-            image: "docker.stackable.tech/stackable/superset:1.4.1-stackable0.0.0-dev".to_string(),
+            image: "oci.stackable.tech/sdp/superset:1.4.1-stackable0.0.0-dev".to_string(),
             app_version_label: "1.4.1-stackable0.0.0-dev".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
@@ -218,7 +218,7 @@ mod tests {
         productVersion: 1.4.1
         "#,
         ResolvedProductImage {
-            image: "docker.stackable.tech/stackable/superset:1.4.1-stackable0.0.0-dev".to_string(),
+            image: "oci.stackable.tech/sdp/superset:1.4.1-stackable0.0.0-dev".to_string(),
             app_version_label: "1.4.1-stackable0.0.0-dev".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
@@ -233,7 +233,7 @@ mod tests {
         stackableVersion: 2.1.0
         "#,
         ResolvedProductImage {
-            image: "docker.stackable.tech/stackable/superset:1.4.1-stackable2.1.0".to_string(),
+            image: "oci.stackable.tech/sdp/superset:1.4.1-stackable2.1.0".to_string(),
             app_version_label: "1.4.1-stackable2.1.0".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
@@ -320,11 +320,11 @@ mod tests {
         "superset",
         "23.7.42",
         r#"
-        custom: docker.stackable.tech/stackable/superset@sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb8c42f76efc1098
+        custom: oci.stackable.tech/sdp/superset@sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb8c42f76efc1098
         productVersion: 1.4.1
         "#,
         ResolvedProductImage {
-            image: "docker.stackable.tech/stackable/superset@sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb8c42f76efc1098".to_string(),
+            image: "oci.stackable.tech/sdp/superset@sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb8c42f76efc1098".to_string(),
             app_version_label: "1.4.1-sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb".to_string(),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),

@@ -380,7 +380,7 @@ where
         key_certificate: &str,
         key_private_key: &str,
     ) -> Result<Self, SecretError<S::Error>> {
-        if !secret.type_.as_ref().is_some_and(|s| s == TLS_SECRET_TYPE) {
+        if secret.type_.as_ref().is_none_or(|s| s != TLS_SECRET_TYPE) {
             return InvalidSecretTypeSnafu.fail();
         }
 

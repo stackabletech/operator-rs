@@ -1,11 +1,12 @@
+use std::cmp;
+
+use k8s_openapi::api::apps::v1::DaemonSet;
+use kube::ResourceExt;
+
 use crate::status::condition::{
     ClusterCondition, ClusterConditionSet, ClusterConditionStatus, ClusterConditionType,
     ConditionBuilder,
 };
-
-use k8s_openapi::api::apps::v1::DaemonSet;
-use kube::ResourceExt;
-use std::cmp;
 
 /// Default implementation to build [`ClusterCondition`]s for
 /// `DaemonSet` resources.

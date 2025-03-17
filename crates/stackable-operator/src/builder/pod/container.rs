@@ -1,8 +1,5 @@
 use std::fmt;
 
-#[cfg(doc)]
-use {k8s_openapi::api::core::v1::PodSpec, std::collections::BTreeMap};
-
 use indexmap::IndexMap;
 use k8s_openapi::api::core::v1::{
     ConfigMapKeySelector, Container, ContainerPort, EnvVar, EnvVarSource, Lifecycle,
@@ -11,6 +8,8 @@ use k8s_openapi::api::core::v1::{
 };
 use snafu::{ResultExt as _, Snafu};
 use tracing::instrument;
+#[cfg(doc)]
+use {k8s_openapi::api::core::v1::PodSpec, std::collections::BTreeMap};
 
 use crate::{
     commons::product_image_selection::ResolvedProductImage,

@@ -243,34 +243,6 @@ impl From<Annotations> for BTreeMap<String, String> {
 }
 
 impl Annotations {
-    /// Creates a new empty list of [`Annotations`].
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Creates a new list of [`Annotations`] from `pairs`.
-    pub fn new_with(pairs: BTreeSet<KeyValuePair<AnnotationValue>>) -> Self {
-        Self(KeyValuePairs::new_with(pairs))
-    }
-
-    /// Tries to insert a new annotation by first parsing `annotation` as an
-    /// [`Annotation`] and then inserting it into the list. This function will
-    /// overwrite any existing annotation already present.
-    pub fn parse_insert(
-        &mut self,
-        annotation: impl TryInto<Annotation, Error = AnnotationError>,
-    ) -> Result<(), AnnotationError> {
-        self.0.insert(annotation.try_into()?.0);
-        Ok(())
-    }
-
-    /// Inserts a new [`Annotation`]. This function will overwrite any existing
-    /// annotation already present.
-    pub fn insert(&mut self, annotation: Annotation) -> &mut Self {
-        self.0.insert(annotation.0);
-        self
-    }
-
     // This forwards / delegates associated functions to the inner field. In
     // this case self.0 which is of type KeyValuePairs<T>. So calling
     // Annotations::len() will be delegated to KeyValuePair<T>::len() without
@@ -305,11 +277,39 @@ impl Annotations {
             pub fn iter(&self) -> impl Iterator<Item = KeyValuePair<AnnotationValue>> + '_;
         }
     }
+
+    /// Creates a new empty list of [`Annotations`].
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Creates a new list of [`Annotations`] from `pairs`.
+    pub fn new_with(pairs: BTreeSet<KeyValuePair<AnnotationValue>>) -> Self {
+        Self(KeyValuePairs::new_with(pairs))
+    }
+
+    /// Tries to insert a new annotation by first parsing `annotation` as an
+    /// [`Annotation`] and then inserting it into the list. This function will
+    /// overwrite any existing annotation already present.
+    pub fn parse_insert(
+        &mut self,
+        annotation: impl TryInto<Annotation, Error = AnnotationError>,
+    ) -> Result<(), AnnotationError> {
+        self.0.insert(annotation.try_into()?.0);
+        Ok(())
+    }
+
+    /// Inserts a new [`Annotation`]. This function will overwrite any existing
+    /// annotation already present.
+    pub fn insert(&mut self, annotation: Annotation) -> &mut Self {
+        self.0.insert(annotation.0);
+        self
+    }
 }
 
 impl IntoIterator for Annotations {
-    type Item = KeyValuePair<AnnotationValue>;
     type IntoIter = <KeyValuePairs<AnnotationValue> as IntoIterator>::IntoIter;
+    type Item = KeyValuePair<AnnotationValue>;
 
     /// Returns a consuming [`Iterator`] over [`Annotations`] moving every [`Annotation`] out.
     /// The [`Annotations`] cannot be used again after calling this.

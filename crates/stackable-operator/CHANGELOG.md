@@ -10,6 +10,70 @@ All notable changes to this project will be documented in this file.
 
 [#950]: https://github.com/stackabletech/operator-rs/pull/950
 
+## [0.87.3] - 2025-03-14
+
+### Added
+
+- Add a `Region::is_default_config` function to determine if a region sticks to the default config ([#983]).
+
+[#983]: https://github.com/stackabletech/operator-rs/pull/983
+
+## [0.87.2] - 2025-03-10
+
+### Changed
+
+- Make `region.name` field in in S3ConnectionSpec public ([#980]).
+
+[#980]: https://github.com/stackabletech/operator-rs/pull/980
+
+## [0.87.1] - 2025-03-10
+
+### Changed
+
+- Refactor `region` field in S3ConnectionSpec ([#976]).
+
+[#976]: https://github.com/stackabletech/operator-rs/pull/976
+
+## [0.87.0] - 2025-02-28
+
+### Changed
+
+- BREAKING: Update `strum` to `0.27.1` (clients need to also update strum!), `rand` to `0.9.0` and `convert_case` to `0.8.0` ([#972]).
+
+[#972]: https://github.com/stackabletech/operator-rs/pull/972
+
+## [0.86.2] - 2025-02-21
+
+### Fix
+
+- BREAKING: Improve `AwsRegion::name()` ergonomics: borrow self and return `Option<&str>` ([#963]).
+
+[#963]: https://github.com/stackabletech/operator-rs/pull/963
+
+## [0.86.1] - 2025-02-21
+
+### Added
+
+- BREAKING: Add `region` field to S3ConnectionSpec (defaults to `us-east-1`) ([#959]).
+
+[#959]: https://github.com/stackabletech/operator-rs/pull/959
+
+## [0.86.0] - 2025-01-30
+
+### Added
+
+- Add generic `TtlCache` structure as well as a `UserInformationCache` type ([#943]).
+
+[#943]: https://github.com/stackabletech/operator-rs/pull/943
+
+## [0.85.0] - 2025-01-28
+
+### Changed
+
+- Change constant used for product image selection so that it defaults to OCI ([#945]).
+
+[#945]: https://github.com/stackabletech/operator-rs/pull/945
+
 ## [0.84.1] - 2025-01-22
 
 ### Fixed

@@ -2,7 +2,7 @@
     version(name = "v1alpha1"),
     version(name = "v1"),
     version(name = "v2alpha1"),
-    preserve_module
+    options(preserve_module)
 )]
 // ---
 pub(crate) mod versioned {

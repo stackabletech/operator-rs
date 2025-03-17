@@ -3,7 +3,7 @@ use std::ops::Not;
 use darling::{util::IdentString, Error, FromAttributes, Result};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{parse_quote, ItemStruct, Path, Visibility};
+use syn::{parse_quote, Generics, ItemStruct, Path, Visibility};
 
 use crate::{
     attrs::container::NestedContainerAttributes,
@@ -44,10 +44,10 @@ impl Container {
 
         let options = ContainerOptions {
             skip_from: attributes
-                .common_root_arguments
+                .common
                 .options
                 .skip
-                .map_or(false, |s| s.from.is_present()),
+                .is_some_and(|s| s.from.is_present()),
             kubernetes_options,
         };
 
@@ -58,6 +58,7 @@ impl Container {
         };
 
         Ok(Self::Struct(Struct {
+            generics: item_struct.generics,
             fields: versioned_fields,
             common,
         }))
@@ -89,10 +90,7 @@ impl Container {
         }
 
         let options = ContainerOptions {
-            skip_from: attributes
-                .options
-                .skip
-                .map_or(false, |s| s.from.is_present()),
+            skip_from: attributes.options.skip.is_some_and(|s| s.from.is_present()),
             kubernetes_options,
         };
 
@@ -113,6 +111,7 @@ impl Container {
         };
 
         Ok(Self::Struct(Struct {
+            generics: item_struct.generics,
             fields: versioned_fields,
             common,
         }))
@@ -123,16 +122,20 @@ impl Container {
 pub(crate) struct Struct {
     /// List of fields defined in the original struct. How, and if, an item
     /// should generate code, is decided by the currently generated version.
-    pub(crate) fields: Vec<VersionedField>,
+    pub fields: Vec<VersionedField>,
 
     /// Common container data which is shared between structs and enums.
-    pub(crate) common: CommonContainerData,
+    pub common: CommonContainerData,
+
+    /// Generic types of the struct
+    pub generics: Generics,
 }
 
 // Common token generation
 impl Struct {
     /// Generates code for the struct definition.
     pub(crate) fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
+        let (_, type_generics, where_clause) = self.generics.split_for_impl();
         let original_attributes = &self.common.original_attributes;
         let ident = &self.common.idents.original;
         let version_docs = &version.docs;
@@ -149,7 +152,7 @@ impl Struct {
             #(#[doc = #version_docs])*
             #(#original_attributes)*
             #kube_attribute
-            pub struct #ident {
+            pub struct #ident #type_generics #where_clause {
                 #fields
             }
         }
@@ -168,6 +171,12 @@ impl Struct {
 
         match next_version {
             Some(next_version) => {
+                // TODO (@Techassi): Support generic types which have been removed in newer versions,
+                // but need to exist for older versions How do we represent that? Because the
+                // defined struct always represents the latest version. I guess we could generally
+                // advise against using generic types, but if you have to, avoid removing it in
+                // later versions.
+                let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
                 let struct_ident = &self.common.idents.original;
                 let from_struct_ident = &self.common.idents.from;
 
@@ -194,8 +203,10 @@ impl Struct {
                 Some(quote! {
                     #automatically_derived
                     #allow_attribute
-                    impl ::std::convert::From<#from_module_ident::#struct_ident> for #for_module_ident::#struct_ident {
-                        fn from(#from_struct_ident: #from_module_ident::#struct_ident) -> Self {
+                    impl #impl_generics ::std::convert::From<#from_module_ident::#struct_ident #type_generics> for #for_module_ident::#struct_ident #type_generics
+                        #where_clause
+                    {
+                        fn from(#from_struct_ident: #from_module_ident::#struct_ident #type_generics) -> Self {
                             Self {
                                 #fields
                             }
@@ -231,7 +242,7 @@ impl Struct {
         // cannot be deprecated). Then we retrieve the status of the field and
         // ensure it is deprecated.
         self.fields.iter().any(|f| {
-            f.changes.as_ref().map_or(false, |c| {
+            f.changes.as_ref().is_some_and(|c| {
                 c.value_is(&version.inner, |a| {
                     matches!(
                         a,
@@ -282,10 +293,11 @@ impl Struct {
                     .status
                     .as_ref()
                     .map(|s| quote! { , status = #s });
-                let shortname = kubernetes_options
-                    .shortname
-                    .as_ref()
-                    .map(|s| quote! { , shortname = #s });
+                let shortnames: TokenStream = kubernetes_options
+                    .shortnames
+                    .iter()
+                    .map(|s| quote! { , shortname = #s })
+                    .collect();
 
                 Some(quote! {
                     // The end-developer needs to derive CustomResource and JsonSchema.
@@ -294,7 +306,7 @@ impl Struct {
                         // These must be comma separated (except the last) as they always exist:
                         group = #group, version = #version, kind = #kind
                         // These fields are optional, and therefore the token stream must prefix each with a comma:
-                        #singular #plural #namespaced #crates #status #shortname
+                        #singular #plural #namespaced #crates #status #shortnames
                     )]
                 })
             }
