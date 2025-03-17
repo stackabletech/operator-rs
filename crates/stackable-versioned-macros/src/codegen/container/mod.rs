@@ -275,7 +275,7 @@ pub(crate) struct KubernetesOptions {
     pub(crate) namespaced: bool,
     // root
     pub(crate) crates: KubernetesCrateOptions,
-    pub(crate) status: Option<Path>,
+    pub(crate) status: Option<String>,
     // derive
     // schema
     // scale

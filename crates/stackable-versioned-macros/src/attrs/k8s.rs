@@ -30,7 +30,7 @@ pub(crate) struct KubernetesArguments {
     pub(crate) namespaced: Flag,
     // root
     pub(crate) crates: Option<KubernetesCrateArguments>,
-    pub(crate) status: Option<Path>,
+    pub(crate) status: Option<String>,
     // derive
     // schema
     // scale
