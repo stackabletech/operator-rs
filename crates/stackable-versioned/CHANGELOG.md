@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Change `status` field type in KubernetesArguments and KubernetesOptions ([#982]).
+
+[#982]: https://github.com/stackabletech/operator-rs/pull/982
+
 ## [0.6.0] - 2025-02-28
 
 ### Added
