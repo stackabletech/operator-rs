@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Enable the `kube/ring` feature to use ring as the crypto provider for `rustls`. This will
+  otherwise cause runtime errors which result in panics ([#988]).
+
+[#988]: https://github.com/stackabletech/operator-rs/pull/988
+
 ## [0.87.4] - 2025-03-17
 
 ## [0.87.3] - 2025-03-14
