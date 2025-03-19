@@ -26,7 +26,7 @@ pub struct Validator<'a> {
     parent: Option<&'a Validator<'a>>,
 }
 
-impl<'a> Validator<'a> {
+impl Validator<'_> {
     /// Creates a `Validator` for a subfield of the current object
     pub fn field<'b>(&'b self, ident: &'b dyn Display) -> Validator<'b> {
         Validator {

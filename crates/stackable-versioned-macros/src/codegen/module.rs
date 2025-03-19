@@ -53,7 +53,7 @@ impl Module {
             .options
             .skip
             .as_ref()
-            .map_or(false, |opts| opts.from.is_present());
+            .is_some_and(|opts| opts.from.is_present());
 
         let mut errors = Error::accumulator();
         let mut submodules = HashMap::new();
