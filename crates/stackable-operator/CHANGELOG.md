@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added `ListenerClass.spec.loadBalancerClass` field ([#986]).
+
+[#986]: https://github.com/stackabletech/operator-rs/pull/986
+
 ## [0.87.4] - 2025-03-17
 
 ## [0.87.3] - 2025-03-14

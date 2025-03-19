@@ -51,6 +51,21 @@ use crate::builder::pod::volume::ListenerOperatorVolumeSourceBuilder;
 pub struct ListenerClassSpec {
     pub service_type: ServiceType,
 
+    /// Configures whether a LoadBalancer service should also allocate node ports (like NodePort).
+    ///
+    /// Ignored unless serviceType is LoadBalancer.
+    // TODO: v1alpha2: Move into ServiceType::LoadBalancer
+    #[serde(default = "ListenerClassSpec::default_load_balancer_allocate_node_ports")]
+    pub load_balancer_allocate_node_ports: bool,
+
+    /// Configures a custom Service loadBalancerClass, which can be used to access secondary
+    /// load balancer controllers that are installed in the cluster, or to provision
+    /// custom addresses manually.
+    ///
+    /// Ignored unless serviceType is LoadBalancer.
+    // TODO: v1alpha2: Move into ServiceType::LoadBalancer
+    pub load_balancer_class: Option<String>,
+
     /// Annotations that should be added to the Service object.
     #[serde(default)]
     pub service_annotations: BTreeMap<String, String>,
@@ -80,6 +95,10 @@ impl ListenerClassSpec {
 
     const fn default_preferred_address_type() -> PreferredAddressType {
         PreferredAddressType::HostnameConservative
+    }
+
+    const fn default_load_balancer_allocate_node_ports() -> bool {
+        true
     }
 
     /// Resolves [`Self::preferred_address_type`]'s "smart" modes depending on the rest of `self`.
