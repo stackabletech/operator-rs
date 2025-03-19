@@ -28,6 +28,7 @@ impl Default for TracingTarget {
 ///
 /// Log output can be copied to a file by setting `{env}_DIRECTORY` (e.g. `FOOBAR_OPERATOR_DIRECTORY`)
 /// to a directory path. This file will be rotated regularly.
+#[deprecated(note = "Use stackable-telemetry instead, use OTLP instead of Jaeger protocol")]
 pub fn initialize_logging(env: &str, app_name: &str, tracing_target: TracingTarget) {
     let filter = match EnvFilter::try_from_env(env) {
         Ok(env_filter) => env_filter,
@@ -94,6 +95,7 @@ mod tests {
     //      NOT_SET=debug cargo test default_tracing -- --nocapture
     // to see them all.
     #[test]
+    #[allow(deprecated)]
     fn default_tracing_level_is_set_to_info() {
         super::initialize_logging("NOT_SET", "test", TracingTarget::None);
 

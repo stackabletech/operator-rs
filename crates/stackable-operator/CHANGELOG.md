@@ -4,7 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Deprecate `stackable_operator::logging::initialize_logging()`. It's recommended to use `stackable-telemetry` instead ([#950]).
+
+[#950]: https://github.com/stackabletech/operator-rs/pull/950
+
 ## [0.87.4] - 2025-03-17
+
+### Changed
+
+- Bump `kube` to 0.99.0 and `json-patch` to 4.0.0 ([#982]).
+
+[#982]: https://github.com/stackabletech/operator-rs/pull/982
 
 ## [0.87.3] - 2025-03-14
 
