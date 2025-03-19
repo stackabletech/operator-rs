@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.87.5] - 2025-03-19
+
 ### Fixed
 
 - Enable the `kube/ring` feature to use ring as the crypto provider for `rustls`. This will
@@ -12,6 +14,12 @@ All notable changes to this project will be documented in this file.
 [#988]: https://github.com/stackabletech/operator-rs/pull/988
 
 ## [0.87.4] - 2025-03-17
+
+### Changed
+
+- Bump `kube` to 0.99.0 and `json-patch` to 4.0.0 ([#982]).
+
+[#982]: https://github.com/stackabletech/operator-rs/pull/982
 
 ## [0.87.3] - 2025-03-14
 
