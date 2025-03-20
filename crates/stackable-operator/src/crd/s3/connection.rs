@@ -2,6 +2,7 @@ use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt as _, Snafu};
+use stackable_versioned::versioned;
 use url::Url;
 
 use crate::{
@@ -48,78 +49,88 @@ pub enum ConnectionError {
     },
 }
 
-/// S3 connection definition as a resource.
-/// Learn more on the [S3 concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
-#[derive(CustomResource, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[kube(
-    group = "s3.stackable.tech",
-    version = "v1alpha1",
-    kind = "S3Connection",
-    plural = "s3connections",
-    crates(
-        kube_core = "kube::core",
-        k8s_openapi = "k8s_openapi",
-        schemars = "schemars"
-    ),
-    namespaced
-)]
-#[serde(rename_all = "camelCase")]
-pub struct ConnectionSpec {
-    /// Host of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.
-    pub host: HostName,
+#[versioned(version(name = "v1alpha1"))]
+pub mod versioned {
+    /// S3 connection definition as a resource.
+    /// Learn more on the [S3 concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
+    #[versioned(k8s(
+        group = "s3.stackable.tech",
+        kind = "S3Connection",
+        plural = "s3connections",
+        crates(
+            kube_core = "kube::core",
+            k8s_openapi = "k8s_openapi",
+            schemars = "schemars"
+        ),
+        namespaced
+    ))]
+    #[derive(CustomResource, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct ConnectionSpec {
+        /// Host of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.
+        pub host: HostName,
 
-    /// Port the S3 server listens on.
-    /// If not specified the product will determine the port to use.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub port: Option<u16>,
+        /// Port the S3 server listens on.
+        /// If not specified the product will determine the port to use.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub port: Option<u16>,
 
-    /// Bucket region used for signing headers (sigv4).
-    ///
-    /// This defaults to `us-east-1` which is compatible with other implementations such as Minio.
-    ///
-    /// WARNING: Some products use the Hadoop S3 implementation which falls back to us-east-2.
-    #[serde(default)]
-    pub region: Region,
+        /// Bucket region used for signing headers (sigv4).
+        ///
+        /// This defaults to `us-east-1` which is compatible with other implementations such as Minio.
+        ///
+        /// WARNING: Some products use the Hadoop S3 implementation which falls back to us-east-2.
+        #[serde(default)]
+        pub region: Region,
 
-    /// Which access style to use.
-    /// Defaults to virtual hosted-style as most of the data products out there.
-    /// Have a look at the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html).
-    #[serde(default)]
-    pub access_style: S3AccessStyle,
+        /// Which access style to use.
+        /// Defaults to virtual hosted-style as most of the data products out there.
+        /// Have a look at the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html).
+        #[serde(default)]
+        pub access_style: S3AccessStyle,
 
-    /// If the S3 uses authentication you have to specify you S3 credentials.
-    /// In the most cases a [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass)
-    /// providing `accessKey` and `secretKey` is sufficient.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub credentials: Option<SecretClassVolume>,
+        /// If the S3 uses authentication you have to specify you S3 credentials.
+        /// In the most cases a [SecretClass](DOCS_BASE_URL_PLACEHOLDER/secret-operator/secretclass)
+        /// providing `accessKey` and `secretKey` is sufficient.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pub credentials: Option<SecretClassVolume>,
 
-    /// Use a TLS connection. If not specified no TLS will be used.
-    #[serde(flatten)]
-    pub tls: TlsClientDetails,
+        /// Use a TLS connection. If not specified no TLS will be used.
+        #[serde(flatten)]
+        pub tls: TlsClientDetails,
+    }
+
+    #[derive(
+        strum::Display, Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize,
+    )]
+    #[strum(serialize_all = "PascalCase")]
+    pub enum S3AccessStyle {
+        /// Use path-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access>
+        Path,
+
+        /// Use as virtual hosted-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#virtual-hosted-style-access>
+        #[default]
+        VirtualHosted,
+    }
+
+    /// Set a named S3 Bucket region.
+    #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Region {
+        #[serde(default = "v1alpha1::Region::default_region_name")]
+        pub name: String,
+    }
+
+    #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    // TODO: This probably should be serde(untagged), but this would be a breaking change
+    pub enum InlineConnectionOrReference {
+        Inline(ConnectionSpec),
+        Reference(String),
+    }
 }
 
-#[derive(
-    strum::Display, Clone, Debug, Default, Deserialize, Eq, JsonSchema, PartialEq, Serialize,
-)]
-#[strum(serialize_all = "PascalCase")]
-pub enum S3AccessStyle {
-    /// Use path-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access>
-    Path,
-
-    /// Use as virtual hosted-style access as described in <https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#virtual-hosted-style-access>
-    #[default]
-    VirtualHosted,
-}
-
-/// Set a named S3 Bucket region.
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Region {
-    #[serde(default = "Region::default_region_name")]
-    pub name: String,
-}
-
-impl Region {
+impl v1alpha1::Region {
     /// Having it as `const &str` as well, so we don't always allocate a [`String`] just for comparisons
     pub const DEFAULT_REGION_NAME: &str = "us-east-1";
 
@@ -137,7 +148,7 @@ impl Region {
     }
 }
 
-impl Default for Region {
+impl Default for v1alpha1::Region {
     fn default() -> Self {
         Self {
             name: Self::default_region_name(),
@@ -145,18 +156,10 @@ impl Default for Region {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-// TODO: This probably should be serde(untagged), but this would be a breaking change
-pub enum ConnectionInlineOrReference {
-    Inline(ConnectionSpec),
-    Reference(String),
-}
-
 /// Use this type in you operator!
-pub type ResolvedConnection = ConnectionSpec;
+pub type ResolvedConnection = v1alpha1::ConnectionSpec;
 
-impl ConnectionInlineOrReference {
+impl v1alpha1::InlineConnectionOrReference {
     pub async fn resolve(
         self,
         client: &Client,
@@ -166,7 +169,7 @@ impl ConnectionInlineOrReference {
             Self::Inline(inline) => Ok(inline),
             Self::Reference(reference) => {
                 let connection_spec = client
-                    .get::<S3Connection>(&reference, namespace)
+                    .get::<v1alpha1::S3Connection>(&reference, namespace)
                     .await
                     .context(RetrieveS3ConnectionSnafu {
                         s3_connection: reference,
