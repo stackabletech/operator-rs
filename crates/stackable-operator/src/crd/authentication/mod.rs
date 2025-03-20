@@ -112,7 +112,7 @@ impl AuthenticationClass {
 /// ```
 /// # use schemars::JsonSchema;
 /// # use serde::{Deserialize, Serialize};
-/// use stackable_operator::commons::authentication::ClientAuthenticationDetails;
+/// use stackable_operator::crd::authentication::ClientAuthenticationDetails;
 ///
 /// #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 /// #[serde(rename_all = "camelCase")]
