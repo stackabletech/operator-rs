@@ -1,6 +1,8 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use stackable_versioned::versioned;
+#[cfg(doc)]
+use url::Url;
 
 use crate::commons::{networking::HostName, tls_verification::TlsClientDetails};
 
