@@ -7,7 +7,6 @@ use url::Url;
 
 use crate::{
     builder::pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
-    client::Client,
     commons::{
         networking::HostName,
         secret_class::{SecretClassVolume, SecretClassVolumeError},
@@ -17,6 +16,11 @@ use crate::{
     k8s_openapi::api::core::v1::{Volume, VolumeMount},
 };
 
+mod v1alpha1_impl;
+
+// NOTE (@Techassi): Where should this error be placed? Technically errors can
+// change between version., because version-specific impl blocks might need
+// different variants or might use a completely different error type.
 #[derive(Debug, Snafu)]
 pub enum ConnectionError {
     #[snafu(display("failed to retrieve S3 connection '{s3_connection}'"))]
@@ -130,57 +134,10 @@ pub mod versioned {
     }
 }
 
-impl v1alpha1::Region {
-    /// Having it as `const &str` as well, so we don't always allocate a [`String`] just for comparisons
-    pub const DEFAULT_REGION_NAME: &str = "us-east-1";
-
-    fn default_region_name() -> String {
-        Self::DEFAULT_REGION_NAME.to_string()
-    }
-
-    /// Returns if the region sticks to the Stackable defaults.
-    ///
-    /// Some products don't really support configuring the region.
-    /// This function can be used to determine if a warning or error should be raised to inform the
-    /// user of this situation.
-    pub fn is_default_config(&self) -> bool {
-        self.name == Self::DEFAULT_REGION_NAME
-    }
-}
-
-impl Default for v1alpha1::Region {
-    fn default() -> Self {
-        Self {
-            name: Self::default_region_name(),
-        }
-    }
-}
-
+// FIXME (@Techassi): This should be versioned as well, but the macro cannot
+// handle new-type structs yet.
 /// Use this type in you operator!
 pub type ResolvedConnection = v1alpha1::ConnectionSpec;
-
-impl v1alpha1::InlineConnectionOrReference {
-    pub async fn resolve(
-        self,
-        client: &Client,
-        namespace: &str,
-    ) -> Result<ResolvedConnection, ConnectionError> {
-        match self {
-            Self::Inline(inline) => Ok(inline),
-            Self::Reference(reference) => {
-                let connection_spec = client
-                    .get::<v1alpha1::S3Connection>(&reference, namespace)
-                    .await
-                    .context(RetrieveS3ConnectionSnafu {
-                        s3_connection: reference,
-                    })?
-                    .spec;
-
-                Ok(connection_spec)
-            }
-        }
-    }
-}
 
 impl ResolvedConnection {
     /// Build the endpoint URL from this connection
