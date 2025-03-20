@@ -19,25 +19,30 @@
 //!   periodically converts the secret contents to the required product format.
 //!
 //! See <https://github.com/stackabletech/operator-rs/issues/494>
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use stackable_versioned::versioned;
 
-#[derive(
-    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct AuthenticationProvider {
-    /// Secret providing the usernames and passwords.
-    /// The Secret must contain an entry for every user, with the key being the username and the value the password in plain text.
-    /// It must be located in the same namespace as the product using it.
-    pub user_credentials_secret: UserCredentialsSecretRef,
-}
+#[versioned(version(name = "v1alpha1"))]
+pub mod versioned {
+    #[derive(
+        Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+    )]
+    #[serde(rename_all = "camelCase")]
+    pub struct AuthenticationProvider {
+        /// Secret providing the usernames and passwords.
+        /// The Secret must contain an entry for every user, with the key being the username and the value the password in plain text.
+        /// It must be located in the same namespace as the product using it.
+        pub user_credentials_secret: UserCredentialsSecretRef,
+    }
 
-#[derive(
-    Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct UserCredentialsSecretRef {
-    /// Name of the Secret.
-    pub name: String,
+    #[derive(
+        Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
+    )]
+    #[serde(rename_all = "camelCase")]
+    pub struct UserCredentialsSecretRef {
+        /// Name of the Secret.
+        pub name: String,
+    }
 }
