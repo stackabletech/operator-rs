@@ -3,8 +3,6 @@ use serde::{Deserialize, Serialize};
 use stackable_versioned::versioned;
 
 use crate::commons::{networking::HostName, tls_verification::TlsClientDetails};
-#[cfg(doc)]
-use crate::crd::authentication::AuthenticationClass;
 
 mod v1alpha1_impl;
 
@@ -95,7 +93,9 @@ pub mod versioned {
         pub client_credentials_secret_ref: String,
 
         /// An optional list of extra scopes which get merged with the scopes
-        /// defined in the [`AuthenticationClass`].
+        /// defined in the [`AuthenticationClass`][1].
+        ///
+        /// [1]: crate::crd::authentication::core::v1alpha1::AuthenticationClass
         #[serde(default)]
         pub extra_scopes: Vec<String>,
 

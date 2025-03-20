@@ -91,19 +91,18 @@ pub mod versioned {
         Kerberos(kerberos_v1alpha1::AuthenticationProvider),
     }
 
-    /// Common [`ClientAuthenticationDetails`] which is specified at the client/
-    /// product cluster level. It provides a name (key) to resolve a particular
-    /// [`AuthenticationClass`]. Additionally, it provides authentication provider
-    /// specific configuration (OIDC and LDAP for example).
+    /// Common [`v1alpha1::ClientAuthenticationDetails`] which is specified at the client/ product
+    /// cluster level. It provides a name (key) to resolve a particular [`AuthenticationClass`].
+    /// Additionally, it provides authentication provider specific configuration (OIDC and LDAP for
+    /// example).
     ///
-    /// If the product needs additional (product specific) authentication options,
-    /// it is recommended to wrap this struct and use `#[serde(flatten)]` on the
-    /// field.
+    /// If the product needs additional (product specific) authentication options, it is recommended
+    /// to wrap this struct and use `#[serde(flatten)]` on the field.
     ///
-    /// Additionally, it might be the case that special fields are needed in the
-    /// contained structs, such as [`oidc::ClientAuthenticationOptions`]. To be able
-    /// to add custom fields in that structs without serde(flattening) multiple structs,
-    /// they are generic, so you can add additional attributes if needed.
+    /// Additionally, it might be the case that special fields are needed in the contained structs,
+    /// such as [`oidc_v1alpha1::ClientAuthenticationOptions`]. To be able to add custom fields in
+    /// that structs without serde(flattening) multiple structs, they are generic, so you can add
+    /// additional attributes if needed.
     ///
     /// ### Example
     ///
