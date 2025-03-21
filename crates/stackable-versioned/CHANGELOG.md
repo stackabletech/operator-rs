@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Correctly emit generic type parameter defaults in enum/struct definition blocks ([#991]).
+
+[#991]: https://github.com/stackabletech/operator-rs/pull/991
+
 ## [0.7.0] - 2025-03-17
 
 ### Changed

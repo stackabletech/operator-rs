@@ -104,7 +104,9 @@ pub(crate) struct Enum {
 impl Enum {
     /// Generates code for the enum definition.
     pub(crate) fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
-        let (_, type_generics, where_clause) = self.generics.split_for_impl();
+        let where_clause = self.generics.where_clause.as_ref();
+        let type_generics = &self.generics;
+
         let original_attributes = &self.common.original_attributes;
         let ident = &self.common.idents.original;
         let version_docs = &version.docs;
