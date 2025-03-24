@@ -11,6 +11,7 @@ repository.workspace = true
 time = ["dep:time"]
 
 [dependencies]
+stackable-versioned = { path = "../stackable-versioned", features = ["k8s"] }
 stackable-operator-derive = { path = "../stackable-operator-derive" }
 stackable-shared = { path = "../stackable-shared" }
 

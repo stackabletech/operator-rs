@@ -4,6 +4,10 @@ use educe::Educe;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+pub mod authentication;
+pub mod listener;
+pub mod s3;
+
 /// A reference to a product cluster (for example, a `ZookeeperCluster`)
 ///
 /// `namespace`'s defaulting only applies when retrieved via [`ClusterRef::namespace_relative_from`]
