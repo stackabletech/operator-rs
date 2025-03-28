@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Make Deployments to ClusterResources ([#992]).
+
+[#992]: https://github.com/stackabletech/operator-rs/pull/992
+
 ## [0.87.5] - 2025-03-19
 
 ### Fixed
