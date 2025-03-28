@@ -1,4 +1,9 @@
-use std::{fmt::Display, ops::Deref, str::FromStr, sync::LazyLock};
+use std::{
+    fmt::{Debug, Display},
+    ops::Deref,
+    str::FromStr,
+    sync::LazyLock,
+};
 
 use regex::Regex;
 use snafu::{ensure, ResultExt, Snafu};
@@ -56,10 +61,19 @@ pub enum KeyError {
 /// values.
 ///
 /// [k8s-labels]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Key {
     prefix: Option<KeyPrefix>,
     name: KeyName,
+}
+
+impl Debug for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(prefix) = &self.prefix {
+            write!(f, "{:?}/", prefix)?;
+        }
+        write!(f, "{:?}", self.name)
+    }
 }
 
 impl FromStr for Key {
@@ -203,8 +217,14 @@ pub enum KeyPrefixError {
 /// [`Deref`], which enables read-only access to the inner value (a [`String`]).
 /// It, however, does not implement [`DerefMut`](std::ops::DerefMut) which would
 /// enable unvalidated mutable access to inner values.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyPrefix(String);
+
+impl Debug for KeyPrefix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
 
 impl FromStr for KeyPrefix {
     type Err = KeyPrefixError;
@@ -285,8 +305,14 @@ pub enum KeyNameError {
 /// which enables read-only access to the inner value (a [`String`]). It,
 /// however, does not implement [`DerefMut`](std::ops::DerefMut) which would
 /// enable unvalidated mutable access to inner values.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyName(String);
+
+impl Debug for KeyName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
 
 impl FromStr for KeyName {
     type Err = KeyNameError;
