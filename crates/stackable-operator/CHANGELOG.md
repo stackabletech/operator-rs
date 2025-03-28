@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Make Deployments to ClusterResources ([#992]).
+- Add Deployments to `ClusterResource`s ([#992]).
 
 [#992]: https://github.com/stackabletech/operator-rs/pull/992
 
