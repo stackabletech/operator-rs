@@ -27,10 +27,7 @@ use strum::Display;
 use tracing::{debug, info, warn};
 
 #[cfg(doc)]
-use crate::k8s_openapi::api::{
-    apps::v1::Deployment,
-    core::v1::{NodeSelector, Pod},
-};
+use crate::k8s_openapi::api::core::v1::{NodeSelector, Pod};
 use crate::{
     client::{Client, GetApi},
     commons::{
