@@ -5,6 +5,8 @@ use std::{
     fmt::Debug,
 };
 
+#[cfg(doc)]
+use k8s_openapi::api::core::v1::{NodeSelector, Pod};
 use k8s_openapi::{
     api::{
         apps::v1::{
@@ -26,11 +28,6 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use strum::Display;
 use tracing::{debug, info, warn};
 
-#[cfg(doc)]
-use crate::k8s_openapi::api::{
-    apps::v1::Deployment,
-    core::v1::{NodeSelector, Pod},
-};
 use crate::{
     client::{Client, GetApi},
     commons::{
@@ -40,7 +37,7 @@ use crate::{
             LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
         },
     },
-    crd::listener::Listener,
+    crd::listener::v1alpha1 as listener_v1alpha1,
     kvp::{
         consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
         Label, LabelError, Labels,
@@ -206,7 +203,7 @@ impl ClusterResource for Service {}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
 impl ClusterResource for PodDisruptionBudget {}
-impl ClusterResource for Listener {}
+impl ClusterResource for listener_v1alpha1::Listener {}
 
 impl ClusterResource for Job {
     fn pod_spec(&self) -> Option<&PodSpec> {
@@ -647,7 +644,7 @@ impl ClusterResources {
             self.delete_orphaned_resources_of_kind::<ServiceAccount>(client),
             self.delete_orphaned_resources_of_kind::<RoleBinding>(client),
             self.delete_orphaned_resources_of_kind::<PodDisruptionBudget>(client),
-            self.delete_orphaned_resources_of_kind::<Listener>(client),
+            self.delete_orphaned_resources_of_kind::<listener_v1alpha1::Listener>(client),
         )?;
 
         Ok(())
