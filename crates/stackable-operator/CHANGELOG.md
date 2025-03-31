@@ -15,8 +15,12 @@ All notable changes to this project will be documented in this file.
   - Each CRD-related struct and enum has been versioned. The initial version is `v1alpha1`.
   - The `static` authentication provider must now be imported using `r#static`.
   - Import are now more granular in general.
+- Deprecate `stackable_operator::logging::initialize_logging()`. It's recommended to use `stackable-telemetry` instead
+  ([#950], [#989]).
 
+[#950]: https://github.com/stackabletech/operator-rs/pull/950
 [#968]: https://github.com/stackabletech/operator-rs/pull/968
+[#989]: https://github.com/stackabletech/operator-rs/pull/989
 [#992]: https://github.com/stackabletech/operator-rs/pull/992
 
 ## [0.87.5] - 2025-03-19
