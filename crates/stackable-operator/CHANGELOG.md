@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 
 - Add Deployments to `ClusterResource`s ([#992]).
 
+### Changed
+
+- Deprecate `stackable_operator::logging::initialize_logging()`. It's recommended to use `stackable-telemetry` instead ([#950], [#989]).
+
+[#950]: https://github.com/stackabletech/operator-rs/pull/950
+[#989]: https://github.com/stackabletech/operator-rs/pull/989
 [#992]: https://github.com/stackabletech/operator-rs/pull/992
 
 ## [0.87.5] - 2025-03-19
