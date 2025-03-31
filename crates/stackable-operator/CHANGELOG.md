@@ -4,11 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add Deployments to `ClusterResource`s ([#992]).
+
 ### Changed
 
-- Deprecate `stackable_operator::logging::initialize_logging()`. It's recommended to use `stackable-telemetry` instead ([#950]).
+- Deprecate `stackable_operator::logging::initialize_logging()`. It's recommended to use `stackable-telemetry` instead ([#950], [#989]).
 
 [#950]: https://github.com/stackabletech/operator-rs/pull/950
+[#989]: https://github.com/stackabletech/operator-rs/pull/989
+[#992]: https://github.com/stackabletech/operator-rs/pull/992
+
+## [0.87.5] - 2025-03-19
+
+### Fixed
+
+- Enable the `kube/ring` feature to use ring as the crypto provider for `rustls`. This will
+  otherwise cause runtime errors which result in panics ([#988]).
+
+[#988]: https://github.com/stackabletech/operator-rs/pull/988
 
 ## [0.87.4] - 2025-03-17
 
