@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
 
 - Add Deployments to `ClusterResource`s ([#992]).
 
+### Changed
+
+- BREAKING: Version common CRD structs and enums ([#968]).
+  - All CRD-related types and function now reside in the `stackable_operator::crd` module.
+  - Each CRD-related struct and enum has been versioned. The initial version is `v1alpha1`.
+  - The `static` authentication provider must now be imported using `r#static`.
+  - Import are now more granular in general.
+
+[#968]: https://github.com/stackabletech/operator-rs/pull/968
 [#992]: https://github.com/stackabletech/operator-rs/pull/992
 
 ## [0.87.5] - 2025-03-19
