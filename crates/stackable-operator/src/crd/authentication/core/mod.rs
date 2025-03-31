@@ -109,7 +109,7 @@ pub mod versioned {
     /// ```
     /// # use schemars::JsonSchema;
     /// # use serde::{Deserialize, Serialize};
-    /// use stackable_operator::crd::authentication::ClientAuthenticationDetails;
+    /// use stackable_operator::crd::authentication::core::v1alpha1;
     ///
     /// #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
     /// #[serde(rename_all = "camelCase")]
@@ -118,7 +118,7 @@ pub mod versioned {
     ///     pub user_registration: bool,
     ///
     ///     #[serde(flatten)]
-    ///     pub common: ClientAuthenticationDetails,
+    ///     pub common: v1alpha1::ClientAuthenticationDetails,
     /// }
     /// ```
     #[derive(Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
