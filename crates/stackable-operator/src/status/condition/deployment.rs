@@ -32,11 +32,11 @@ impl DeploymentConditionBuilder {
     fn available(&self) -> ClusterCondition {
         let mut available = ClusterConditionStatus::True;
         let mut unavailable_resources = vec![];
-        for dplmt in &self.deployments {
-            let current_status = Self::deployment_available(dplmt);
+        for deployment in &self.deployments {
+            let current_status = Self::deployment_available(deployment);
 
             if current_status != ClusterConditionStatus::True {
-                unavailable_resources.push(dplmt.name_any())
+                unavailable_resources.push(deployment.name_any())
             }
 
             available = cmp::max(available, current_status);
