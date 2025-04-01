@@ -18,6 +18,7 @@ env:
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
   RUST_TOOLCHAIN_VERSION: "1.85.0"
+  RUST_NIGHTLY_TOOLCHAIN_VERSION: "nightly-2025-01-15"
   RUSTFLAGS: "-D warnings"
   RUSTDOCFLAGS: "-D warnings"
   RUST_LOG: "info"
@@ -73,7 +74,7 @@ jobs:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ env.RUST_TOOLCHAIN_VERSION }}
+          toolchain: ${{ env.RUST_NIGHTLY_TOOLCHAIN_VERSION }}
           components: rustfmt
       - uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3 # v2.7.7
         with:
