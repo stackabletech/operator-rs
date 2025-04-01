@@ -11,6 +11,12 @@ All notable changes to this project will be documented in this file.
   - `--enable-file-output`: Enables output `tracing` events to a rotating log file
   - `--enable-otlp-traces`: Enables exporting of traces via OTLP
   - `--enable-otlp-logs`: Enables exporting of logs via OTLP
+- Add Deployments to `ClusterResource`s ([#992]).
+- Add `DeploymentConditionBuilder`  ([#993]).
+
+### Changed
+
+- Deprecate `stackable_operator::logging::initialize_logging()`. It's recommended to use `stackable-telemetry` instead ([#950], [#989]).
 
 ### Removed
 
@@ -19,7 +25,28 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Remove `initialize_logging` helper function from `stackable_operator::logging` ([#977]).
 - Remove `opentelemetry-jaeger` dependency ([#977]).
 
+[#950]: https://github.com/stackabletech/operator-rs/pull/950
 [#977]: https://github.com/stackabletech/operator-rs/pull/977
+[#989]: https://github.com/stackabletech/operator-rs/pull/989
+[#992]: https://github.com/stackabletech/operator-rs/pull/992
+[#993]: https://github.com/stackabletech/operator-rs/pull/993
+
+## [0.87.5] - 2025-03-19
+
+### Fixed
+
+- Enable the `kube/ring` feature to use ring as the crypto provider for `rustls`. This will
+  otherwise cause runtime errors which result in panics ([#988]).
+
+[#988]: https://github.com/stackabletech/operator-rs/pull/988
+
+## [0.87.4] - 2025-03-17
+
+### Changed
+
+- Bump `kube` to 0.99.0 and `json-patch` to 4.0.0 ([#982]).
+
+[#982]: https://github.com/stackabletech/operator-rs/pull/982
 
 ## [0.87.3] - 2025-03-14
 

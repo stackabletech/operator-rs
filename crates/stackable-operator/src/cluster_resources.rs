@@ -5,9 +5,13 @@ use std::{
     fmt::Debug,
 };
 
+#[cfg(doc)]
+use k8s_openapi::api::core::v1::{NodeSelector, Pod};
 use k8s_openapi::{
     api::{
-        apps::v1::{DaemonSet, DaemonSetSpec, StatefulSet, StatefulSetSpec},
+        apps::v1::{
+            DaemonSet, DaemonSetSpec, Deployment, DeploymentSpec, StatefulSet, StatefulSetSpec,
+        },
         batch::v1::Job,
         core::v1::{
             ConfigMap, ObjectReference, PodSpec, PodTemplateSpec, Secret, Service, ServiceAccount,
@@ -24,11 +28,6 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use strum::Display;
 use tracing::{debug, info, warn};
 
-#[cfg(doc)]
-use crate::k8s_openapi::api::{
-    apps::v1::Deployment,
-    core::v1::{NodeSelector, Pod},
-};
 use crate::{
     client::{Client, GetApi},
     commons::{
@@ -262,6 +261,29 @@ impl ClusterResource for DaemonSet {
                         }),
                         ..self.spec.clone().unwrap_or_default().template
                     },
+                    ..self.spec.unwrap_or_default()
+                }),
+                ..self
+            },
+            ClusterResourceApplyStrategy::Default
+            | ClusterResourceApplyStrategy::ReconciliationPaused
+            | ClusterResourceApplyStrategy::NoApply => self,
+        }
+    }
+
+    fn pod_spec(&self) -> Option<&PodSpec> {
+        self.spec
+            .as_ref()
+            .and_then(|spec| spec.template.spec.as_ref())
+    }
+}
+
+impl ClusterResource for Deployment {
+    fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
+        match strategy {
+            ClusterResourceApplyStrategy::ClusterStopped => Deployment {
+                spec: Some(DeploymentSpec {
+                    replicas: Some(0),
                     ..self.spec.unwrap_or_default()
                 }),
                 ..self
