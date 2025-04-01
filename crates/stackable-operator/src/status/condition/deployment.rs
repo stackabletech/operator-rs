@@ -167,10 +167,10 @@ mod tests {
 
     #[test]
     fn condition_unavailable() {
-        let mut dplmt_condition_builder = DeploymentConditionBuilder::default();
-        dplmt_condition_builder.add(build_deployment(3, 2));
+        let mut deployment_condition_builder = DeploymentConditionBuilder::default();
+        deployment_condition_builder.add(build_deployment(3, 2));
 
-        let conditions = dplmt_condition_builder.build_conditions();
+        let conditions = deployment_condition_builder.build_conditions();
 
         let got = conditions
             .conditions
