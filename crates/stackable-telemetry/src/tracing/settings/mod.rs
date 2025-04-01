@@ -92,6 +92,7 @@ impl SettingsBuilder {
         FileLogSettingsBuilder {
             common_settings: self.build(),
             file_log_dir: path.as_ref().to_path_buf(),
+            rotation_period: Rotation::NEVER,
         }
     }
 

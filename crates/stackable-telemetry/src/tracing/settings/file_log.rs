@@ -2,6 +2,9 @@
 
 use std::path::PathBuf;
 
+/// Re-export to save the end crate
+pub use tracing_appender::rolling::Rotation;
+
 use super::{Settings, SettingsToggle};
 
 /// Configure specific settings for the File Log subscriber.
@@ -18,6 +21,9 @@ pub enum FileLogSettings {
 
         /// Path to directory for log files.
         file_log_dir: PathBuf,
+
+        /// Log rotation frequency.
+        rotation_period: Rotation,
     },
 }
 
@@ -38,14 +44,22 @@ impl SettingsToggle for FileLogSettings {
 pub struct FileLogSettingsBuilder {
     pub(crate) common_settings: Settings,
     pub(crate) file_log_dir: PathBuf,
+    pub(crate) rotation_period: Rotation,
 }
 
 impl FileLogSettingsBuilder {
+    /// Set file rotation period.
+    pub fn with_rotation_period(mut self, rotation_period: Rotation) -> Self {
+        self.rotation_period = rotation_period;
+        self
+    }
+
     /// Consumes self and returns a valid [`FileLogSettings`] instance.
     pub fn build(self) -> FileLogSettings {
         FileLogSettings::Enabled {
             common_settings: self.common_settings,
             file_log_dir: self.file_log_dir,
+            rotation_period: self.rotation_period,
         }
     }
 }
@@ -76,11 +90,13 @@ mod test {
                 default_level: LevelFilter::DEBUG,
             },
             file_log_dir: PathBuf::from("/logs"),
+            rotation_period: Rotation::HOURLY,
         };
         let result = Settings::builder()
             .with_environment_variable("hello")
             .with_default_level(LevelFilter::DEBUG)
             .file_log_settings_builder(PathBuf::from("/logs"))
+            .with_rotation_period(Rotation::HOURLY)
             .build();
 
         assert_eq!(expected, result);

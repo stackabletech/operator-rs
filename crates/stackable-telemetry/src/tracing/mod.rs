@@ -16,7 +16,7 @@ use opentelemetry_sdk::{
 use opentelemetry_semantic_conventions::resource;
 use snafu::{ResultExt as _, Snafu};
 use tracing::subscriber::SetGlobalDefaultError;
-use tracing_appender::rolling::{InitError, RollingFileAppender, Rotation};
+use tracing_appender::rolling::{InitError, RollingFileAppender};
 use tracing_subscriber::{filter::Directive, layer::SubscriberExt, EnvFilter, Layer, Registry};
 
 use crate::tracing::settings::*;
@@ -275,6 +275,7 @@ impl Tracing {
         if let FileLogSettings::Enabled {
             common_settings,
             file_log_dir,
+            rotation_period,
         } = &self.file_log_settings
         {
             let env_filter_layer = env_filter_builder(
@@ -283,7 +284,7 @@ impl Tracing {
             );
 
             let file_appender = RollingFileAppender::builder()
-                .rotation(Rotation::HOURLY)
+                .rotation(rotation_period.clone())
                 .filename_prefix(self.service_name.to_string())
                 .filename_suffix("tracing-rs.json")
                 .max_log_files(6)
@@ -592,6 +593,7 @@ mod test {
     use rstest::rstest;
     use settings::Settings;
     use tracing::level_filters::LevelFilter;
+    use tracing_appender::rolling::Rotation;
 
     use super::*;
 
@@ -726,7 +728,8 @@ mod test {
                     environment_variable: "ABC_FILE",
                     default_level: LevelFilter::INFO
                 },
-                file_log_dir: PathBuf::from("/abc_file_dir")
+                file_log_dir: PathBuf::from("/abc_file_dir"),
+                rotation_period: Rotation::NEVER,
             }
         );
         assert_eq!(
