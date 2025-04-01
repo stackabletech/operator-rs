@@ -6,7 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Allow customization of the rolling file appender rotation period [#995].
+- Allow customization of the rolling file appender [#995].
+  - rotation period
+  - filename suffix
 
 [#995]: https://github.com/stackabletech/operator-rs/pull/995
 

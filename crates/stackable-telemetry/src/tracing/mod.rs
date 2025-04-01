@@ -276,6 +276,7 @@ impl Tracing {
             common_settings,
             file_log_dir,
             rotation_period,
+            filename_suffix,
         } = &self.file_log_settings
         {
             let env_filter_layer = env_filter_builder(
@@ -286,7 +287,7 @@ impl Tracing {
             let file_appender = RollingFileAppender::builder()
                 .rotation(rotation_period.clone())
                 .filename_prefix(self.service_name.to_string())
-                .filename_suffix("tracing-rs.json")
+                .filename_suffix(filename_suffix)
                 .max_log_files(6)
                 .build(file_log_dir)
                 .context(InitRollingFileAppenderSnafu)?;
@@ -694,7 +695,7 @@ mod test {
                 Settings::builder()
                     .with_environment_variable("ABC_FILE")
                     .with_default_level(LevelFilter::INFO)
-                    .file_log_settings_builder(PathBuf::from("/abc_file_dir"))
+                    .file_log_settings_builder(PathBuf::from("/abc_file_dir"), "tracing-rs.json")
                     .build(),
             )
             .with_otlp_log_exporter(
@@ -730,6 +731,7 @@ mod test {
                 },
                 file_log_dir: PathBuf::from("/abc_file_dir"),
                 rotation_period: Rotation::NEVER,
+                filename_suffix: "tracing-rs.json".to_owned(),
             }
         );
         assert_eq!(
@@ -769,7 +771,7 @@ mod test {
             .with_file_output(enable_filelog_output.then(|| {
                 Settings::builder()
                     .with_environment_variable("ABC_FILELOG")
-                    .file_log_settings_builder("/dev/null")
+                    .file_log_settings_builder("/dev/null", "tracing-rs.json")
                     .build()
             }))
             .with_otlp_trace_exporter(enable_otlp_trace.then(|| {

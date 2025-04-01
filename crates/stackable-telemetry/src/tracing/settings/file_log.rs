@@ -24,6 +24,9 @@ pub enum FileLogSettings {
 
         /// Log rotation frequency.
         rotation_period: Rotation,
+
+        /// Suffix for log filenames.
+        filename_suffix: String,
     },
 }
 
@@ -45,6 +48,7 @@ pub struct FileLogSettingsBuilder {
     pub(crate) common_settings: Settings,
     pub(crate) file_log_dir: PathBuf,
     pub(crate) rotation_period: Rotation,
+    pub(crate) filename_suffix: String,
 }
 
 impl FileLogSettingsBuilder {
@@ -60,6 +64,7 @@ impl FileLogSettingsBuilder {
             common_settings: self.common_settings,
             file_log_dir: self.file_log_dir,
             rotation_period: self.rotation_period,
+            filename_suffix: self.filename_suffix,
         }
     }
 }
@@ -91,11 +96,12 @@ mod test {
             },
             file_log_dir: PathBuf::from("/logs"),
             rotation_period: Rotation::HOURLY,
+            filename_suffix: "tracing-rs.log".to_owned(),
         };
         let result = Settings::builder()
             .with_environment_variable("hello")
             .with_default_level(LevelFilter::DEBUG)
-            .file_log_settings_builder(PathBuf::from("/logs"))
+            .file_log_settings_builder(PathBuf::from("/logs"), "tracing-rs.json")
             .with_rotation_period(Rotation::HOURLY)
             .build();
 
