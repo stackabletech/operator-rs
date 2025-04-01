@@ -164,6 +164,12 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///
 /// ```rust
 /// # use stackable_operator::cli::{Command, ProductOperatorRun, ProductConfigPath};
+/// use clap::Parser;
+/// use stackable_operator::{
+///     cli::TelemetryArguments,
+///     namespace::WatchNamespace,
+/// };
+///
 /// #[derive(clap::Parser, Debug, PartialEq, Eq)]
 /// struct Run {
 ///     #[clap(long)]
@@ -171,11 +177,6 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///     #[clap(flatten)]
 ///     common: ProductOperatorRun,
 /// }
-/// use clap::Parser;
-/// use stackable_operator::{
-///     logging::TracingTarget,
-///     namespace::WatchNamespace,
-/// };
 ///
 /// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar", "--watch-namespace", "foobar"]);
 /// assert_eq!(opts, Command::Run(Run {
@@ -183,7 +184,7 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///     common: ProductOperatorRun {
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
 ///         watch_namespace: WatchNamespace::One("foobar".to_string()),
-///         tracing_target: TracingTarget::None,
+///         telemetry_arguments: TelemetryArguments::default(),
 ///         cluster_info_opts: Default::default(),
 ///     },
 /// }));
@@ -193,12 +194,14 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///
 /// ```rust
 /// # use stackable_operator::cli::{Command, ProductOperatorRun};
+/// use clap::Parser;
+///
 /// #[derive(clap::Parser, Debug, PartialEq, Eq)]
 /// struct Run {
 ///     #[arg(long)]
 ///     name: String,
 /// }
-/// use clap::Parser;
+///
 /// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo"]);
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
