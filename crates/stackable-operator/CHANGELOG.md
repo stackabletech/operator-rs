@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add Deployments to `ClusterResource`s ([#992]).
+- Add `DeploymentConditionBuilder`  ([#993]).
 
 ### Changed
 
@@ -22,6 +23,7 @@ All notable changes to this project will be documented in this file.
 [#968]: https://github.com/stackabletech/operator-rs/pull/968
 [#989]: https://github.com/stackabletech/operator-rs/pull/989
 [#992]: https://github.com/stackabletech/operator-rs/pull/992
+[#993]: https://github.com/stackabletech/operator-rs/pull/993
 
 ## [0.87.5] - 2025-03-19
 
