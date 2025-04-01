@@ -27,6 +27,9 @@ pub enum FileLogSettings {
 
         /// Suffix for log filenames.
         filename_suffix: String,
+
+        /// Keep the last `n` files on disk.
+        max_log_files: Option<usize>,
     },
 }
 
@@ -49,12 +52,19 @@ pub struct FileLogSettingsBuilder {
     pub(crate) file_log_dir: PathBuf,
     pub(crate) rotation_period: Rotation,
     pub(crate) filename_suffix: String,
+    pub(crate) max_log_files: Option<usize>,
 }
 
 impl FileLogSettingsBuilder {
     /// Set file rotation period.
     pub fn with_rotation_period(mut self, rotation_period: Rotation) -> Self {
         self.rotation_period = rotation_period;
+        self
+    }
+
+    /// Set maximum number of log files to keep.
+    pub fn with_max_log_files(mut self, max_log_files: usize) -> Self {
+        self.max_log_files = Some(max_log_files);
         self
     }
 
@@ -65,6 +75,7 @@ impl FileLogSettingsBuilder {
             file_log_dir: self.file_log_dir,
             rotation_period: self.rotation_period,
             filename_suffix: self.filename_suffix,
+            max_log_files: self.max_log_files,
         }
     }
 }
@@ -97,12 +108,14 @@ mod test {
             file_log_dir: PathBuf::from("/logs"),
             rotation_period: Rotation::HOURLY,
             filename_suffix: "tracing-rs.log".to_owned(),
+            max_log_files: Some(6),
         };
         let result = Settings::builder()
             .with_environment_variable("hello")
             .with_default_level(LevelFilter::DEBUG)
             .file_log_settings_builder(PathBuf::from("/logs"), "tracing-rs.json")
             .with_rotation_period(Rotation::HOURLY)
+            .with_max_log_files(6)
             .build();
 
         assert_eq!(expected, result);

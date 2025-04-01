@@ -7,8 +7,9 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Allow customization of the rolling file appender [#995].
-  - rotation period
-  - filename suffix
+  - Add required `filename_suffix` field.
+  - Add `with_rotation_period` method.
+  - Add `with_max_log_files` method.
 
 [#995]: https://github.com/stackabletech/operator-rs/pull/995
 

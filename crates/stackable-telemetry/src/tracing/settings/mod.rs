@@ -98,6 +98,7 @@ impl SettingsBuilder {
             file_log_dir: path.as_ref().to_path_buf(),
             rotation_period: Rotation::NEVER,
             filename_suffix: filename_suffix.into(),
+            max_log_files: None,
         }
     }
 

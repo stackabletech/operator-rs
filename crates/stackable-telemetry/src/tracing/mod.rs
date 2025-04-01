@@ -277,6 +277,7 @@ impl Tracing {
             file_log_dir,
             rotation_period,
             filename_suffix,
+            max_log_files,
         } = &self.file_log_settings
         {
             let env_filter_layer = env_filter_builder(
@@ -287,8 +288,15 @@ impl Tracing {
             let file_appender = RollingFileAppender::builder()
                 .rotation(rotation_period.clone())
                 .filename_prefix(self.service_name.to_string())
-                .filename_suffix(filename_suffix)
-                .max_log_files(6)
+                .filename_suffix(filename_suffix);
+
+            let file_appender = if let Some(max_log_files) = max_log_files {
+                file_appender.max_log_files(*max_log_files)
+            } else {
+                file_appender
+            };
+
+            let file_appender = file_appender
                 .build(file_log_dir)
                 .context(InitRollingFileAppenderSnafu)?;
 
@@ -732,6 +740,7 @@ mod test {
                 file_log_dir: PathBuf::from("/abc_file_dir"),
                 rotation_period: Rotation::NEVER,
                 filename_suffix: "tracing-rs.json".to_owned(),
+                max_log_files: None,
             }
         );
         assert_eq!(
