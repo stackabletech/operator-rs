@@ -25,8 +25,8 @@ impl ConditionBuilder for DeploymentConditionBuilder {
 }
 
 impl DeploymentConditionBuilder {
-    pub fn add(&mut self, dplmt: Deployment) {
-        self.deployments.push(dplmt);
+    pub fn add(&mut self, deployment: Deployment) {
+        self.deployments.push(deployment);
     }
 
     fn available(&self) -> ClusterCondition {
