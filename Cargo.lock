@@ -3198,7 +3198,6 @@ dependencies = [
  "json-patch",
  "k8s-openapi",
  "kube",
- "opentelemetry_sdk",
  "product-config",
  "regex",
  "rstest",
@@ -3216,7 +3215,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-appender",
- "tracing-opentelemetry",
  "tracing-subscriber",
  "url",
 ]
