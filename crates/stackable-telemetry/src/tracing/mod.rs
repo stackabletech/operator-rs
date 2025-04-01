@@ -149,7 +149,7 @@ pub enum Error {
 ///             Settings::builder()
 ///                 .with_environment_variable("TEST_FILE_LOG")
 ///                 .with_default_level(LevelFilter::INFO)
-///                 .file_log_settings_builder("/tmp/logs")
+///                 .file_log_settings_builder("/tmp/logs", "tracing-rs.log")
 ///                 .build()
 ///         )
 ///         .with_otlp_log_exporter(otlp_log_flag.then(|| {
