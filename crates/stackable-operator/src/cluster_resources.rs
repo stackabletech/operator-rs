@@ -5,6 +5,8 @@ use std::{
     fmt::Debug,
 };
 
+#[cfg(doc)]
+use k8s_openapi::api::core::v1::{NodeSelector, Pod};
 use k8s_openapi::{
     api::{
         apps::v1::{
@@ -26,8 +28,6 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use strum::Display;
 use tracing::{debug, info, warn};
 
-#[cfg(doc)]
-use crate::k8s_openapi::api::core::v1::{NodeSelector, Pod};
 use crate::{
     client::{Client, GetApi},
     commons::{
