@@ -1,5 +1,5 @@
 use axum::http::{HeaderMap, HeaderName};
-use opentelemetry::{propagation::Extractor, Context};
+use opentelemetry::{Context, propagation::Extractor};
 
 /// Extracts the [`TextMapPropagator`][1] to access trace parent information in
 /// HTTP headers.

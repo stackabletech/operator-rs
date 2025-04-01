@@ -115,7 +115,7 @@ impl FromStr for Duration {
                             previous: last_unit,
                             current: unit,
                         }
-                        .fail()
+                        .fail();
                     }
                     Ordering::Equal => return DuplicateUnitSnafu { unit }.fail(),
                     _ => (),

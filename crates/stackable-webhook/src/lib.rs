@@ -23,11 +23,11 @@
 //! enable complete controll over these details if needed.
 //!
 //! [1]: crate::servers::ConversionWebhookServer
-use axum::{routing::get, Router};
-use futures_util::{pin_mut, select, FutureExt as _};
+use axum::{Router, routing::get};
+use futures_util::{FutureExt as _, pin_mut, select};
 use snafu::{ResultExt, Snafu};
 use stackable_telemetry::AxumTraceLayer;
-use tokio::signal::unix::{signal, SignalKind};
+use tokio::signal::unix::{SignalKind, signal};
 use tower::ServiceBuilder;
 
 // use tower_http::trace::TraceLayer;

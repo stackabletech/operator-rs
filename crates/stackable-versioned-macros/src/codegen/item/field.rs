@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use darling::{util::IdentString, FromField, Result};
+use darling::{FromField, Result, util::IdentString};
 use k8s_version::Version;
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -9,8 +9,8 @@ use syn::{Attribute, Field, Type};
 use crate::{
     attrs::item::FieldAttributes,
     codegen::{
-        changes::{BTreeMapExt, ChangesetExt},
         ItemStatus, VersionDefinition,
+        changes::{BTreeMapExt, ChangesetExt},
     },
     utils::FieldIdent,
 };

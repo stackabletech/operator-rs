@@ -366,13 +366,10 @@ mod tests {
         if let Err(Error::RequiredFileMissing { search_path }) =
             resolve_path(None, &[DEPLOY_FILE_PATH, DEFAULT_FILE_PATH])
         {
-            assert_eq!(
-                search_path,
-                vec![
-                    PathBuf::from(DEPLOY_FILE_PATH),
-                    PathBuf::from(DEFAULT_FILE_PATH)
-                ]
-            )
+            assert_eq!(search_path, vec![
+                PathBuf::from(DEPLOY_FILE_PATH),
+                PathBuf::from(DEFAULT_FILE_PATH)
+            ])
         } else {
             panic!("must return RequiredFileMissing when file was not found")
         }
@@ -391,39 +388,30 @@ mod tests {
             "--watch-namespace",
             "foo",
         ]);
-        assert_eq!(
-            opts,
-            ProductOperatorRun {
-                product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::One("foo".to_string()),
-                tracing_target: TracingTarget::None,
-                cluster_info_opts: Default::default(),
-            }
-        );
+        assert_eq!(opts, ProductOperatorRun {
+            product_config: ProductConfigPath::from("bar".as_ref()),
+            watch_namespace: WatchNamespace::One("foo".to_string()),
+            tracing_target: TracingTarget::None,
+            cluster_info_opts: Default::default(),
+        });
 
         // no cli / no env
         let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
-        assert_eq!(
-            opts,
-            ProductOperatorRun {
-                product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::All,
-                tracing_target: TracingTarget::None,
-                cluster_info_opts: Default::default(),
-            }
-        );
+        assert_eq!(opts, ProductOperatorRun {
+            product_config: ProductConfigPath::from("bar".as_ref()),
+            watch_namespace: WatchNamespace::All,
+            tracing_target: TracingTarget::None,
+            cluster_info_opts: Default::default(),
+        });
 
         // env with namespace
         unsafe { env::set_var(WATCH_NAMESPACE, "foo") };
         let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
-        assert_eq!(
-            opts,
-            ProductOperatorRun {
-                product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::One("foo".to_string()),
-                tracing_target: TracingTarget::None,
-                cluster_info_opts: Default::default(),
-            }
-        );
+        assert_eq!(opts, ProductOperatorRun {
+            product_config: ProductConfigPath::from("bar".as_ref()),
+            watch_namespace: WatchNamespace::One("foo".to_string()),
+            tracing_target: TracingTarget::None,
+            cluster_info_opts: Default::default(),
+        });
     }
 }

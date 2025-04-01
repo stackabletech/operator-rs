@@ -8,6 +8,7 @@ use std::{
 #[cfg(doc)]
 use k8s_openapi::api::core::v1::{NodeSelector, Pod};
 use k8s_openapi::{
+    NamespaceResourceScope,
     api::{
         apps::v1::{
             DaemonSet, DaemonSetSpec, Deployment, DeploymentSpec, StatefulSet, StatefulSetSpec,
@@ -20,10 +21,9 @@ use k8s_openapi::{
         rbac::v1::RoleBinding,
     },
     apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
-    NamespaceResourceScope,
 };
-use kube::{core::ErrorResponse, Resource, ResourceExt};
-use serde::{de::DeserializeOwned, Serialize};
+use kube::{Resource, ResourceExt, core::ErrorResponse};
+use serde::{Serialize, de::DeserializeOwned};
 use snafu::{OptionExt, ResultExt, Snafu};
 use strum::Display;
 use tracing::{debug, info, warn};
@@ -34,13 +34,13 @@ use crate::{
         cluster_operation::ClusterOperation,
         listener::Listener,
         resources::{
-            ComputeResource, ResourceRequirementsExt, ResourceRequirementsType,
-            LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
+            ComputeResource, LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
+            ResourceRequirementsExt, ResourceRequirementsType,
         },
     },
     kvp::{
-        consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
         Label, LabelError, Labels,
+        consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
     },
     utils::format_full_controller_name,
 };
@@ -58,7 +58,9 @@ pub enum Error {
     #[snafu(display("label {label:?} is missing"))]
     MissingLabel { label: &'static str },
 
-    #[snafu(display("label {label:?} contains unexpected values - expected {expected_content:?}, got {actual_content:?}"))]
+    #[snafu(display(
+        "label {label:?} contains unexpected values - expected {expected_content:?}, got {actual_content:?}"
+    ))]
     UnexpectedLabelContent {
         label: &'static str,
         expected_content: String,

@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use product_config::{types::PropertyNameKind, ProductConfigManager, PropertyValidationResult};
+use product_config::{ProductConfigManager, PropertyValidationResult, types::PropertyNameKind};
 use schemars::JsonSchema;
 use serde::Serialize;
 use snafu::{ResultExt, Snafu};
@@ -28,7 +28,9 @@ pub enum Error {
     #[snafu(display("missing role {role:?}. This should not happen. Will requeue."))]
     MissingRole { role: String },
 
-    #[snafu(display("missing roleGroup {role_group:?} for role {role:?}. This might happen after custom resource changes. Will requeue."))]
+    #[snafu(display(
+        "missing roleGroup {role_group:?} for role {role:?}. This might happen after custom resource changes. Will requeue."
+    ))]
     MissingRoleGroup { role: String, role_group: String },
 
     // We need this for product specific errors that implement the Configuration trait and are not related to the
@@ -140,7 +142,7 @@ pub fn config_for_role_and_group<'a>(
             return MissingRoleSnafu {
                 role: role.to_string(),
             }
-            .fail()
+            .fail();
         }
         Some(group_config) => match group_config.get(group) {
             None => {
@@ -148,7 +150,7 @@ pub fn config_for_role_and_group<'a>(
                     role: role.to_string(),
                     role_group: group.to_string(),
                 }
-                .fail()
+                .fail();
             }
             Some(config_by_property_kind) => config_by_property_kind,
         },
@@ -304,7 +306,10 @@ fn process_validation_result(
     for (key, result) in validation_result.iter() {
         match result {
             PropertyValidationResult::Default(value) => {
-                debug!("Property [{}] is not explicitly set, will set and rely to the default instead ([{}])", key, value);
+                debug!(
+                    "Property [{}] is not explicitly set, will set and rely to the default instead ([{}])",
+                    key, value
+                );
                 properties.insert(key.clone(), value.clone());
             }
             PropertyValidationResult::RecommendedDefault(value) => {
@@ -326,13 +331,19 @@ fn process_validation_result(
                 properties.insert(key.clone(), value.clone());
             }
             PropertyValidationResult::Warn(value, err) => {
-                warn!("Property [{}] is set to value [{}] which causes a warning, `ignore_warn` is {}: {:?}", key, value, ignore_warn, err);
+                warn!(
+                    "Property [{}] is set to value [{}] which causes a warning, `ignore_warn` is {}: {:?}",
+                    key, value, ignore_warn, err
+                );
                 if ignore_warn {
                     properties.insert(key.clone(), value.clone());
                 }
             }
             PropertyValidationResult::Error(value, err) => {
-                error!("Property [{}] is set to value [{}] which causes an error, `ignore_err` is {}: {:?}", key, value, ignore_err, err);
+                error!(
+                    "Property [{}] is set to value [{}] which causes an error, `ignore_err` is {}: {:?}",
+                    key, value, ignore_err, err
+                );
                 if ignore_err {
                     properties.insert(key.clone(), value.clone());
                 } else {
