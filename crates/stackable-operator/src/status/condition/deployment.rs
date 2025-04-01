@@ -116,10 +116,10 @@ mod tests {
 
     #[test]
     fn available() {
-        let dplmt = build_deployment(3, 3);
+        let deployment = build_deployment(3, 3);
 
         assert_eq!(
-            DeploymentConditionBuilder::deployment_available(&dplmt),
+            DeploymentConditionBuilder::deployment_available(&deployment),
             ClusterConditionStatus::True
         );
     }
