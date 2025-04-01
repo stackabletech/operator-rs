@@ -71,13 +71,13 @@ impl DeploymentConditionBuilder {
     /// Returns a condition "Available: True" if the number of requested replicas matches
     /// the number of available replicas. In addition, there needs to be at least one replica
     /// available.
-    fn deployment_available(dplmt: &Deployment) -> ClusterConditionStatus {
-        let requested_replicas = dplmt
+    fn deployment_available(deployment: &Deployment) -> ClusterConditionStatus {
+        let requested_replicas = deployment
             .spec
             .as_ref()
             .and_then(|spec| spec.replicas)
             .unwrap_or_default();
-        let available_replicas = dplmt
+        let available_replicas = deployment
             .status
             .as_ref()
             .and_then(|status| status.available_replicas)
