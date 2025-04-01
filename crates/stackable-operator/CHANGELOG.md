@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.88.0] - 2025-04-01
+
 ### Added
 
 - Add Deployments to `ClusterResource`s ([#992]).
