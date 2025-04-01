@@ -521,11 +521,11 @@ where
 mod tests {
     macro_rules! collection {
         // map-like
-        ($($k:expr => $v:expr),* $(,)?) => {
+        ($($k:expr_2021 => $v:expr_2021),* $(,)?) => {
             [$(($k, $v),)*].into()
         };
         // set-like
-        ($($v:expr),* $(,)?) => {
+        ($($v:expr_2021),* $(,)?) => {
             [$($v,)*].into()
         };
     }

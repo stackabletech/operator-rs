@@ -381,7 +381,7 @@ mod tests {
     #[test]
     fn product_operator_run_watch_namespace() {
         // clean env var to not interfere if already set
-        env::remove_var(WATCH_NAMESPACE);
+        unsafe { env::remove_var(WATCH_NAMESPACE) };
 
         // cli with namespace
         let opts = ProductOperatorRun::parse_from([
@@ -414,7 +414,7 @@ mod tests {
         );
 
         // env with namespace
-        env::set_var(WATCH_NAMESPACE, "foo");
+        unsafe { env::set_var(WATCH_NAMESPACE, "foo") };
         let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
         assert_eq!(
             opts,

@@ -163,8 +163,8 @@ impl CommonItemAttributes {
         // Now, iterate over all changes and ensure that their versions are
         // between the added and deprecated version.
         if !self.changes.iter().all(|r| {
-            added_version.map_or(true, |a| a < *r.since)
-                && deprecated_version.map_or(true, |d| d > *r.since)
+            added_version.is_none_or(|a| a < *r.since)
+                && deprecated_version.is_none_or(|d| d > *r.since)
         }) {
             return Err(Error::custom(
                 "all changes must use versions higher than `added` and lower than `deprecated`",
