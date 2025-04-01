@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-/// Re-export to save the end crate from an extra import
+/// Re-export to save the end crate from an extra import.
 pub use tracing_appender::rolling::Rotation;
 
 use super::{Settings, SettingsToggle};
