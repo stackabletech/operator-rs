@@ -133,7 +133,7 @@ mod tests {
             ClusterConditionStatus::False
         );
 
-        let dplmt = build_deployment(3, 4);
+        let deployment = build_deployment(3, 4);
 
         assert_eq!(
             DeploymentConditionBuilder::deployment_available(&deployment),
