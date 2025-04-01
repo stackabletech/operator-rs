@@ -1,4 +1,5 @@
 pub mod daemonset;
+pub mod deployment;
 pub mod operations;
 pub mod statefulset;
 
