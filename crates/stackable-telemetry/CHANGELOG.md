@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- BREAKING: Allow customization of the rolling file appender [#995].
+  - Add required `filename_suffix` field.
+  - Add `with_rotation_period` method.
+  - Add `with_max_log_files` method.
+
 ### Changed
 
 - Bump OpenTelemetry related dependencies ([#977]).
@@ -15,6 +22,7 @@ All notable changes to this project will be documented in this file.
   - `tracing-opentelemetry` to 0.29.0
 
 [#977]: https://github.com/stackabletech/operator-rs/pull/977
+[#995]: https://github.com/stackabletech/operator-rs/pull/995
 
 ## [0.3.0] - 2025-01-30
 
