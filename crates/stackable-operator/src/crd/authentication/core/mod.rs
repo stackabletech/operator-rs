@@ -10,11 +10,7 @@ pub mod versioned {
     // This makes v1alpha1 versions of all authentication providers available to the
     // AuthenticationClassProvider enum below.
     mod v1alpha1 {
-        use crate::crd::authentication::{
-            kerberos::v1alpha1 as kerberos_v1alpha1, ldap::v1alpha1 as ldap_v1alpha1,
-            oidc::v1alpha1 as oidc_v1alpha1, r#static::v1alpha1 as static_v1alpha1,
-            tls::v1alpha1 as tls_v1alpha1,
-        };
+        use crate::crd::authentication::{kerberos, ldap, oidc, r#static, tls};
     }
     /// The Stackable Platform uses the AuthenticationClass as a central mechanism to handle user
     /// authentication across supported products.
@@ -72,23 +68,23 @@ pub mod versioned {
     pub enum AuthenticationClassProvider {
         /// The [static provider](https://DOCS_BASE_URL_PLACEHOLDER/concepts/authentication#_static)
         /// is used to configure a static set of users, identified by username and password.
-        Static(static_v1alpha1::AuthenticationProvider),
+        Static(r#static::v1alpha1::AuthenticationProvider),
 
         /// The [LDAP provider](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication#_ldap).
         /// There is also the ["Authentication with LDAP" tutorial](DOCS_BASE_URL_PLACEHOLDER/tutorials/authentication_with_openldap)
         /// where you can learn to configure Superset and Trino with OpenLDAP.
-        Ldap(ldap_v1alpha1::AuthenticationProvider),
+        Ldap(ldap::v1alpha1::AuthenticationProvider),
 
         /// The OIDC provider can be used to configure OpenID Connect.
-        Oidc(oidc_v1alpha1::AuthenticationProvider),
+        Oidc(oidc::v1alpha1::AuthenticationProvider),
 
         /// The [TLS provider](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication#_tls).
         /// The TLS AuthenticationClass is used when users should authenticate themselves with a TLS certificate.
-        Tls(tls_v1alpha1::AuthenticationProvider),
+        Tls(tls::v1alpha1::AuthenticationProvider),
 
         /// The [Kerberos provider](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication#_kerberos).
         /// The Kerberos AuthenticationClass is used when users should authenticate themselves via Kerberos.
-        Kerberos(kerberos_v1alpha1::AuthenticationProvider),
+        Kerberos(kerberos::v1alpha1::AuthenticationProvider),
     }
 
     /// Common [`v1alpha1::ClientAuthenticationDetails`] which is specified at the client/ product
@@ -140,6 +136,6 @@ pub mod versioned {
         // that user can not configure multiple options at the same time (yes we are aware that this makes a
         // changing the type of an AuthenticationClass harder).
         // This is a non-breaking change though :)
-        oidc: Option<oidc_v1alpha1::ClientAuthenticationOptions<O>>,
+        oidc: Option<oidc::v1alpha1::ClientAuthenticationOptions<O>>,
     }
 }
