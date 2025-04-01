@@ -143,10 +143,10 @@ mod tests {
 
     #[test]
     fn condition_available() {
-        let mut dplmt_condition_builder = DeploymentConditionBuilder::default();
-        dplmt_condition_builder.add(build_deployment(3, 3));
+        let mut deployment_condition_builder = DeploymentConditionBuilder::default();
+        deployment_condition_builder.add(build_deployment(3, 3));
 
-        let conditions = dplmt_condition_builder.build_conditions();
+        let conditions = deployment_condition_builder.build_conditions();
 
         let got = conditions
             .conditions
