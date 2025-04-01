@@ -7,10 +7,11 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add more granular telemetry related arguments to `ProductOperatorRun` ([#977]).
-  - `--enable-console-output`: Enables output of `tracing` events to the console (stdout)
-  - `--enable-file-output`: Enables output `tracing` events to a rotating log file
-  - `--enable-otlp-traces`: Enables exporting of traces via OTLP
-  - `--enable-otlp-logs`: Enables exporting of logs via OTLP
+  - `--no-console-output`: Disables output of `tracing` events to the console (stdout)
+  - `--rolling-logs`: Enables output `tracing` events to a rolling log file
+  - `--rolling-logs-period`: Sets the time period after which log files are rolled over
+  - `--otlp-traces`: Enables exporting of traces via OTLP
+  - `--otlp-logs`: Enables exporting of logs via OTLP
 - Add Deployments to `ClusterResource`s ([#992]).
 - Add `DeploymentConditionBuilder`  ([#993]).
 
