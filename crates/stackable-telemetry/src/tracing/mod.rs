@@ -6,15 +6,13 @@
 //!
 //! To get started, see [`Tracing`].
 
-use opentelemetry::KeyValue;
+use opentelemetry::trace::TracerProvider;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
+use opentelemetry_otlp::{LogExporter, SpanExporter};
 use opentelemetry_sdk::{
-    Resource,
-    logs::{self, LoggerProvider},
-    propagation::TraceContextPropagator,
-    trace,
+    Resource, logs::SdkLoggerProvider, propagation::TraceContextPropagator,
+    trace::SdkTracerProvider,
 };
-use opentelemetry_semantic_conventions::resource;
 use snafu::{ResultExt as _, Snafu};
 use tracing::subscriber::SetGlobalDefaultError;
 use tracing_appender::rolling::{InitError, RollingFileAppender};
@@ -40,7 +38,7 @@ pub enum Error {
     #[snafu(display("unable to install opentelemetry log exporter"))]
     InstallOtelLogExporter {
         #[allow(missing_docs)]
-        source: opentelemetry::logs::LogError,
+        source: opentelemetry_sdk::logs::LogError,
     },
 
     /// Indicates that [`Tracing`] failed to install the rolling file appender.
@@ -240,7 +238,9 @@ pub struct Tracing {
     file_log_settings: FileLogSettings,
     otlp_log_settings: OtlpLogSettings,
     otlp_trace_settings: OtlpTraceSettings,
-    logger_provider: Option<LoggerProvider>,
+
+    logger_provider: Option<SdkLoggerProvider>,
+    tracer_provider: Option<SdkTracerProvider>,
 }
 
 impl Tracing {
@@ -318,24 +318,27 @@ impl Tracing {
             // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
             .add_directive("h2=off".parse().expect("invalid directive"));
 
-            let log_exporter = opentelemetry_otlp::new_exporter().tonic();
-            let otel_log =
-                opentelemetry_otlp::new_pipeline()
-                    .logging()
-                    .with_exporter(log_exporter)
-                    .with_log_config(logs::config().with_resource(Resource::new(vec![
-                        KeyValue::new(resource::SERVICE_NAME, self.service_name),
-                    ])))
-                    .install_batch(opentelemetry_sdk::runtime::Tokio)
-                    .context(InstallOtelLogExporterSnafu)?;
+            let log_exporter = LogExporter::builder()
+                .with_tonic()
+                .build()
+                .context(InstallOtelLogExporterSnafu)?;
+
+            let logger_provider = SdkLoggerProvider::builder()
+                .with_batch_exporter(log_exporter)
+                .with_resource(
+                    Resource::builder()
+                        .with_service_name(self.service_name)
+                        .build(),
+                )
+                .build();
 
             // Convert `tracing::Event` to OpenTelemetry logs
             layers.push(
-                OpenTelemetryTracingBridge::new(&otel_log)
+                OpenTelemetryTracingBridge::new(&logger_provider)
                     .with_filter(env_filter_layer)
                     .boxed(),
             );
-            self.logger_provider = Some(otel_log);
+            self.logger_provider = Some(logger_provider);
         }
 
         if let OtlpTraceSettings::Enabled { common_settings } = &self.otlp_trace_settings {
@@ -347,22 +350,29 @@ impl Tracing {
             // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
             .add_directive("h2=off".parse().expect("invalid directive"));
 
-            let trace_exporter = opentelemetry_otlp::new_exporter().tonic();
-            let otel_tracer = opentelemetry_otlp::new_pipeline()
-                .tracing()
-                .with_exporter(trace_exporter)
-                .with_trace_config(trace::config().with_resource(Resource::new(vec![
-                    KeyValue::new(resource::SERVICE_NAME, self.service_name),
-                ])))
-                .install_batch(opentelemetry_sdk::runtime::Tokio)
+            let trace_exporter = SpanExporter::builder()
+                .with_tonic()
+                .build()
                 .context(InstallOtelTraceExporterSnafu)?;
+
+            let tracer_provider = SdkTracerProvider::builder()
+                .with_batch_exporter(trace_exporter)
+                .with_resource(
+                    Resource::builder()
+                        .with_service_name(self.service_name)
+                        .build(),
+                )
+                .build();
+
+            let tracer = tracer_provider.tracer(self.service_name);
 
             layers.push(
                 tracing_opentelemetry::layer()
-                    .with_tracer(otel_tracer)
+                    .with_tracer(tracer)
                     .with_filter(env_filter_layer)
                     .boxed(),
             );
+            self.tracer_provider = Some(tracer_provider);
 
             opentelemetry::global::set_text_map_propagator(
                 // NOTE (@NickLarsenNZ): There are various propagators. Eg: TraceContextPropagator
@@ -395,11 +405,10 @@ impl Drop for Tracing {
             "shutting down opentelemetry OTLP providers"
         );
 
-        if self.otlp_trace_settings.is_enabled() {
-            // NOTE (@NickLarsenNZ): This might eventually be replaced with something like SdkMeterProvider::shutdown(&self)
-            // as has been done with the LoggerProvider (further below)
-            // see: https://github.com/open-telemetry/opentelemetry-rust/pull/1412/files#r1409608679
-            opentelemetry::global::shutdown_tracer_provider();
+        if let Some(tracer_provider) = &self.tracer_provider {
+            if let Err(error) = tracer_provider.shutdown() {
+                tracing::error!(%error, "unable to shutdown TracerProvider")
+            }
         }
 
         if let Some(logger_provider) = &self.logger_provider {
@@ -584,6 +593,7 @@ impl TracingBuilder<builder_state::Config> {
             otlp_trace_settings: self.otlp_trace_settings,
             file_log_settings: self.file_log_settings,
             logger_provider: None,
+            tracer_provider: None,
         }
     }
 }

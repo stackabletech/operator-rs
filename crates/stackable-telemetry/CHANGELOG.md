@@ -11,6 +11,17 @@ All notable changes to this project will be documented in this file.
   - Add `with_rotation_period` method.
   - Add `with_max_log_files` method.
 
+### Changed
+
+- Bump OpenTelemetry related dependencies ([#977]).
+  - `opentelemetry` to 0.28.0
+  - `opentelemetry_sdk` to 0.28.0
+  - `opentelemetry-appender-tracing` to 0.28.0
+  - `opentelemetry-otlp` to 0.28.0
+  - `opentelemetry-semantic-conventions` to 0.28.0
+  - `tracing-opentelemetry` to 0.29.0
+
+[#977]: https://github.com/stackabletech/operator-rs/pull/977
 [#995]: https://github.com/stackabletech/operator-rs/pull/995
 
 ## [0.3.0] - 2025-01-30

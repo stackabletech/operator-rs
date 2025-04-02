@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add more granular telemetry related arguments to `ProductOperatorRun` ([#977]).
+  - `--no-console-output`: Disables output of `tracing` events to the console (stdout)
+  - `--rolling-logs`: Enables output `tracing` events to a rolling log file
+  - `--rolling-logs-period`: Sets the time period after which log files are rolled over
+  - `--otlp-traces`: Enables exporting of traces via OTLP
+  - `--otlp-logs`: Enables exporting of logs via OTLP
 - Add Deployments to `ClusterResource`s ([#992]).
 - Add `DeploymentConditionBuilder`  ([#993]).
 
@@ -16,7 +22,15 @@ All notable changes to this project will be documented in this file.
 - Deprecate `stackable_operator::logging::initialize_logging()`.
   It's recommended to use `stackable-telemetry` or `#[allow(deprecated)]` instead ([#950], [#989]).
 
+### Removed
+
+- BREAKING: Remove `--tracing-target` argument and field from `ProductOperatorRun`.
+  Use the new, more granular arguments instead ([#977]).
+- BREAKING: Remove `initialize_logging` helper function from `stackable_operator::logging` ([#977]).
+- Remove `opentelemetry-jaeger` dependency ([#977]).
+
 [#950]: https://github.com/stackabletech/operator-rs/pull/950
+[#977]: https://github.com/stackabletech/operator-rs/pull/977
 [#989]: https://github.com/stackabletech/operator-rs/pull/989
 [#992]: https://github.com/stackabletech/operator-rs/pull/992
 [#993]: https://github.com/stackabletech/operator-rs/pull/993
