@@ -37,7 +37,7 @@ use crate::{
             ResourceRequirementsExt, ResourceRequirementsType,
         },
     },
-    crd::listener::v1alpha1 as listener_v1alpha1,
+    crd::listener,
     kvp::{
         Label, LabelError, Labels,
         consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
@@ -205,7 +205,7 @@ impl ClusterResource for Service {}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
 impl ClusterResource for PodDisruptionBudget {}
-impl ClusterResource for listener_v1alpha1::Listener {}
+impl ClusterResource for listener::v1alpha1::Listener {}
 
 impl ClusterResource for Job {
     fn pod_spec(&self) -> Option<&PodSpec> {
@@ -646,7 +646,7 @@ impl ClusterResources {
             self.delete_orphaned_resources_of_kind::<ServiceAccount>(client),
             self.delete_orphaned_resources_of_kind::<RoleBinding>(client),
             self.delete_orphaned_resources_of_kind::<PodDisruptionBudget>(client),
-            self.delete_orphaned_resources_of_kind::<listener_v1alpha1::Listener>(client),
+            self.delete_orphaned_resources_of_kind::<listener::v1alpha1::Listener>(client),
         )?;
 
         Ok(())
