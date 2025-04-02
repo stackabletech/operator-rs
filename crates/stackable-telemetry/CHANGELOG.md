@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-04-02
+
 ### Added
 
 - BREAKING: Allow customization of the rolling file appender [#995].
