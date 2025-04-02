@@ -1,11 +1,11 @@
 [workspace]
 members = ["crates/*"]
-resolver = "2"
+resolver = "3"
 
 [workspace.package]
 authors = ["Stackable GmbH <info@stackable.de>"]
 license = "Apache-2.0"
-edition = "2021"
+edition = "2024"
 repository = "https://github.com/stackabletech/operator-rs"
 
 [workspace.dependencies]

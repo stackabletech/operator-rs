@@ -3,8 +3,8 @@ use std::ops::Deref;
 use convert_case::{Case, Casing};
 use darling::util::IdentString;
 use k8s_version::Version;
-use quote::{format_ident, ToTokens};
-use syn::{spanned::Spanned, Ident};
+use quote::{ToTokens, format_ident};
+use syn::{Ident, spanned::Spanned};
 
 pub(crate) trait VersionExt {
     fn as_variant_ident(&self) -> IdentString;

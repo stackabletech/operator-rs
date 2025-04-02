@@ -1,6 +1,6 @@
 use std::ops::Not;
 
-use darling::{util::IdentString, FromAttributes, Result};
+use darling::{FromAttributes, Result, util::IdentString};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Generics, ItemEnum};
@@ -8,10 +8,10 @@ use syn::{Generics, ItemEnum};
 use crate::{
     attrs::container::NestedContainerAttributes,
     codegen::{
+        ItemStatus, StandaloneContainerAttributes, VersionDefinition,
         changes::Neighbors,
         container::{CommonContainerData, Container, ContainerIdents, ContainerOptions},
         item::VersionedVariant,
-        ItemStatus, StandaloneContainerAttributes, VersionDefinition,
     },
 };
 

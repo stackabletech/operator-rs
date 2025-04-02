@@ -1,4 +1,4 @@
-use darling::{util::Flag, FromMeta};
+use darling::{FromMeta, util::Flag};
 
 use crate::attrs::common::{CommonOptions, CommonRootArguments, SkipArguments};
 

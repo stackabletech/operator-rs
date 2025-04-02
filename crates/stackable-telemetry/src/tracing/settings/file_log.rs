@@ -113,7 +113,7 @@ mod test {
         let result = Settings::builder()
             .with_environment_variable("hello")
             .with_default_level(LevelFilter::DEBUG)
-            .file_log_settings_builder(PathBuf::from("/logs"), "tracing-rs.json")
+            .file_log_settings_builder(PathBuf::from("/logs"), "tracing-rs.log")
             .with_rotation_period(Rotation::HOURLY)
             .with_max_log_files(6)
             .build();

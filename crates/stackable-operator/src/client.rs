@@ -6,16 +6,16 @@ use std::{
 use either::Either;
 use futures::StreamExt;
 use k8s_openapi::{
-    apimachinery::pkg::apis::meta::v1::LabelSelector, ClusterResourceScope, NamespaceResourceScope,
+    ClusterResourceScope, NamespaceResourceScope, apimachinery::pkg::apis::meta::v1::LabelSelector,
 };
 use kube::{
+    Api, Config,
     api::{DeleteParams, ListParams, Patch, PatchParams, PostParams, Resource, ResourceExt},
     client::Client as KubeClient,
     core::Status,
-    runtime::{wait::delete::delete_and_finalize, watcher, WatchStreamExt},
-    Api, Config,
+    runtime::{WatchStreamExt, wait::delete::delete_and_finalize, watcher},
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use snafu::{OptionExt, ResultExt, Snafu};
 use tracing::trace;
 

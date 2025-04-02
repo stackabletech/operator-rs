@@ -1,6 +1,6 @@
-use darling::{ast::NestedMeta, FromMeta};
+use darling::{FromMeta, ast::NestedMeta};
 use proc_macro::TokenStream;
-use syn::{spanned::Spanned, Error, Item};
+use syn::{Error, Item, spanned::Spanned};
 
 use crate::{
     attrs::{container::StandaloneContainerAttributes, module::ModuleAttributes},

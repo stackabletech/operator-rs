@@ -207,20 +207,17 @@ impl FromFragment for PodTemplateSpec {
 ///
 /// When validating a [`RoleGroup`]'s configuration, consider using [`RoleGroup::validate_config`] instead.
 pub fn validate<T: FromFragment>(fragment: T::Fragment) -> Result<T, ValidationError> {
-    T::from_fragment(
-        fragment,
-        Validator {
-            ident: None,
-            parent: None,
-        },
-    )
+    T::from_fragment(fragment, Validator {
+        ident: None,
+        parent: None,
+    })
 }
 
 #[cfg(test)]
 mod tests {
-    use schemars::{schema_for, JsonSchema};
+    use schemars::{JsonSchema, schema_for};
 
-    use super::{validate, Fragment};
+    use super::{Fragment, validate};
 
     #[derive(Fragment, Debug, PartialEq, Eq)]
     #[fragment(path_overrides(fragment = "super"))]

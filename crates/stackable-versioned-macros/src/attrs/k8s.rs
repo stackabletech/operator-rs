@@ -1,4 +1,4 @@
-use darling::{util::Flag, FromMeta};
+use darling::{FromMeta, util::Flag};
 use syn::Path;
 
 /// This struct contains supported Kubernetes arguments.

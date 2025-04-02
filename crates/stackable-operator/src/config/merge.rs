@@ -1,14 +1,14 @@
 //! Automatically merges objects *deeply*, especially fragments.
 
 use std::{
-    collections::{btree_map, hash_map, BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, btree_map, hash_map},
     hash::Hash,
 };
 
 use k8s_openapi::{
+    DeepMerge,
     api::core::v1::{NodeAffinity, PodAffinity, PodAntiAffinity, PodTemplateSpec},
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
-    DeepMerge,
 };
 pub use stackable_operator_derive::Merge;
 
@@ -166,7 +166,7 @@ mod tests {
 
     use k8s_openapi::api::core::v1::{PodSpec, PodTemplateSpec};
 
-    use super::{merge, Merge};
+    use super::{Merge, merge};
 
     #[derive(Debug, PartialEq, Eq, Clone)]
     struct Accumulator(u8);

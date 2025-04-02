@@ -7,7 +7,7 @@ use std::{
     str::FromStr,
 };
 
-use snafu::{ensure, ResultExt, Snafu};
+use snafu::{ResultExt, Snafu, ensure};
 
 use crate::iter::TryFromIterator;
 

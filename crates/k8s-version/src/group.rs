@@ -1,7 +1,7 @@
 use std::{fmt, ops::Deref, str::FromStr, sync::LazyLock};
 
 use regex::Regex;
-use snafu::{ensure, Snafu};
+use snafu::{Snafu, ensure};
 
 const MAX_GROUP_LENGTH: usize = 253;
 
