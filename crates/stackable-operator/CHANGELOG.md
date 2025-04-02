@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.88.0] - 2025-04-02
+## [0.89.0] - 2025-04-02
 
 ### Added
 
@@ -14,13 +14,6 @@ All notable changes to this project will be documented in this file.
   - `--rolling-logs-period`: Sets the time period after which log files are rolled over
   - `--otlp-traces`: Enables exporting of traces via OTLP
   - `--otlp-logs`: Enables exporting of logs via OTLP
-- Add Deployments to `ClusterResource`s ([#992]).
-- Add `DeploymentConditionBuilder`  ([#993]).
-
-### Changed
-
-- Deprecate `stackable_operator::logging::initialize_logging()`.
-  It's recommended to use `stackable-telemetry` or `#[allow(deprecated)]` instead ([#950], [#989]).
 
 ### Removed
 
@@ -29,8 +22,21 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Remove `initialize_logging` helper function from `stackable_operator::logging` ([#977]).
 - Remove `opentelemetry-jaeger` dependency ([#977]).
 
-[#950]: https://github.com/stackabletech/operator-rs/pull/950
 [#977]: https://github.com/stackabletech/operator-rs/pull/977
+
+## [0.88.0] - 2025-04-02
+
+### Added
+
+- Add Deployments to `ClusterResource`s ([#992]).
+- Add `DeploymentConditionBuilder`  ([#993]).
+
+### Changed
+
+- Deprecate `stackable_operator::logging::initialize_logging()`.
+  It's recommended to use `stackable-telemetry` or `#[allow(deprecated)]` instead ([#950], [#989]).
+
+[#950]: https://github.com/stackabletech/operator-rs/pull/950
 [#989]: https://github.com/stackabletech/operator-rs/pull/989
 [#992]: https://github.com/stackabletech/operator-rs/pull/992
 [#993]: https://github.com/stackabletech/operator-rs/pull/993
