@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use snafu::Snafu;
 use stackable_versioned::versioned;
 
-use crate::crd::s3::{connection::v1alpha1 as conn_v1alpha1, ConnectionError};
+use crate::crd::s3::{ConnectionError, connection::v1alpha1 as conn_v1alpha1};
 
 mod v1alpha1_impl;
 

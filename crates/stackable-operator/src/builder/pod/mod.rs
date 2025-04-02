@@ -21,8 +21,8 @@ use crate::{
         affinity::StackableAffinity,
         product_image_selection::ResolvedProductImage,
         resources::{
-            ComputeResource, ResourceRequirementsExt, ResourceRequirementsType,
-            LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
+            ComputeResource, LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
+            ResourceRequirementsExt, ResourceRequirementsType,
         },
     },
     kvp::Labels,
@@ -558,7 +558,9 @@ impl PodBuilder {
     /// or [`Deployment`](`k8s_openapi::api::apps::v1::Deployment`)
     pub fn build_template(&self) -> PodTemplateSpec {
         if self.status.is_some() {
-            tracing::warn!("Tried building a PodTemplate for a PodBuilder with a status, the status will be ignored...");
+            tracing::warn!(
+                "Tried building a PodTemplate for a PodBuilder with a status, the status will be ignored..."
+            );
         }
 
         PodTemplateSpec {
@@ -767,12 +769,11 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(
-            pod.spec.unwrap().image_pull_secrets.unwrap(),
-            vec![LocalObjectReference {
+        assert_eq!(pod.spec.unwrap().image_pull_secrets.unwrap(), vec![
+            LocalObjectReference {
                 name: "company-registry-secret".to_string()
-            }]
-        );
+            }
+        ]);
     }
 
     #[rstest]

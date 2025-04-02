@@ -11,8 +11,8 @@ use crate::{
     commons::{networking::HostName, tls_verification::TlsClientDetails},
     constants::secret::SECRET_BASE_PATH,
     crd::authentication::oidc::{
-        v1alpha1::{AuthenticationProvider, IdentityProviderHint},
         CLIENT_ID_SECRET_KEY, CLIENT_SECRET_SECRET_KEY, DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH,
+        v1alpha1::{AuthenticationProvider, IdentityProviderHint},
     },
 };
 

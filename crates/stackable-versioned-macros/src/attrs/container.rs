@@ -1,4 +1,4 @@
-use darling::{util::Flag, Error, FromAttributes, FromMeta, Result};
+use darling::{Error, FromAttributes, FromMeta, Result, util::Flag};
 
 use crate::attrs::{
     common::{CommonOptions, CommonRootArguments, SkipArguments},
@@ -18,7 +18,9 @@ pub(crate) struct StandaloneContainerAttributes {
 impl StandaloneContainerAttributes {
     fn validate(self) -> Result<Self> {
         if self.kubernetes_arguments.is_some() && cfg!(not(feature = "k8s")) {
-            return Err(Error::custom("the `#[versioned(k8s())]` attribute can only be used when the `k8s` feature is enabled"));
+            return Err(Error::custom(
+                "the `#[versioned(k8s())]` attribute can only be used when the `k8s` feature is enabled",
+            ));
         }
 
         Ok(self)
@@ -53,7 +55,9 @@ pub(crate) struct NestedContainerAttributes {
 impl NestedContainerAttributes {
     fn validate(self) -> Result<Self> {
         if self.kubernetes_arguments.is_some() && cfg!(not(feature = "k8s")) {
-            return Err(Error::custom("the `#[versioned(k8s())]` attribute can only be used when the `k8s` feature is enabled"));
+            return Err(Error::custom(
+                "the `#[versioned(k8s())]` attribute can only be used when the `k8s` feature is enabled",
+            ));
         }
 
         Ok(self)

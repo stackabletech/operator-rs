@@ -6,18 +6,17 @@
 //!
 //! To get started, see [`Tracing`].
 
-use opentelemetry::KeyValue;
+use opentelemetry::trace::TracerProvider;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
+use opentelemetry_otlp::{LogExporter, SpanExporter};
 use opentelemetry_sdk::{
-    logs::{self, LoggerProvider},
-    propagation::TraceContextPropagator,
-    trace, Resource,
+    Resource, logs::SdkLoggerProvider, propagation::TraceContextPropagator,
+    trace::SdkTracerProvider,
 };
-use opentelemetry_semantic_conventions::resource;
 use snafu::{ResultExt as _, Snafu};
 use tracing::subscriber::SetGlobalDefaultError;
-use tracing_appender::rolling::{InitError, RollingFileAppender, Rotation};
-use tracing_subscriber::{filter::Directive, layer::SubscriberExt, EnvFilter, Layer, Registry};
+use tracing_appender::rolling::{InitError, RollingFileAppender};
+use tracing_subscriber::{EnvFilter, Layer, Registry, filter::Directive, layer::SubscriberExt};
 
 use crate::tracing::settings::*;
 
@@ -39,7 +38,7 @@ pub enum Error {
     #[snafu(display("unable to install opentelemetry log exporter"))]
     InstallOtelLogExporter {
         #[allow(missing_docs)]
-        source: opentelemetry::logs::LogError,
+        source: opentelemetry_sdk::logs::LogError,
     },
 
     /// Indicates that [`Tracing`] failed to install the rolling file appender.
@@ -149,7 +148,7 @@ pub enum Error {
 ///             Settings::builder()
 ///                 .with_environment_variable("TEST_FILE_LOG")
 ///                 .with_default_level(LevelFilter::INFO)
-///                 .file_log_settings_builder("/tmp/logs")
+///                 .file_log_settings_builder("/tmp/logs", "tracing-rs.log")
 ///                 .build()
 ///         )
 ///         .with_otlp_log_exporter(otlp_log_flag.then(|| {
@@ -239,7 +238,9 @@ pub struct Tracing {
     file_log_settings: FileLogSettings,
     otlp_log_settings: OtlpLogSettings,
     otlp_trace_settings: OtlpTraceSettings,
-    logger_provider: Option<LoggerProvider>,
+
+    logger_provider: Option<SdkLoggerProvider>,
+    tracer_provider: Option<SdkTracerProvider>,
 }
 
 impl Tracing {
@@ -275,6 +276,9 @@ impl Tracing {
         if let FileLogSettings::Enabled {
             common_settings,
             file_log_dir,
+            rotation_period,
+            filename_suffix,
+            max_log_files,
         } = &self.file_log_settings
         {
             let env_filter_layer = env_filter_builder(
@@ -283,10 +287,17 @@ impl Tracing {
             );
 
             let file_appender = RollingFileAppender::builder()
-                .rotation(Rotation::HOURLY)
+                .rotation(rotation_period.clone())
                 .filename_prefix(self.service_name.to_string())
-                .filename_suffix("tracing-rs.json")
-                .max_log_files(6)
+                .filename_suffix(filename_suffix);
+
+            let file_appender = if let Some(max_log_files) = max_log_files {
+                file_appender.max_log_files(*max_log_files)
+            } else {
+                file_appender
+            };
+
+            let file_appender = file_appender
                 .build(file_log_dir)
                 .context(InitRollingFileAppenderSnafu)?;
 
@@ -307,24 +318,27 @@ impl Tracing {
             // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
             .add_directive("h2=off".parse().expect("invalid directive"));
 
-            let log_exporter = opentelemetry_otlp::new_exporter().tonic();
-            let otel_log =
-                opentelemetry_otlp::new_pipeline()
-                    .logging()
-                    .with_exporter(log_exporter)
-                    .with_log_config(logs::config().with_resource(Resource::new(vec![
-                        KeyValue::new(resource::SERVICE_NAME, self.service_name),
-                    ])))
-                    .install_batch(opentelemetry_sdk::runtime::Tokio)
-                    .context(InstallOtelLogExporterSnafu)?;
+            let log_exporter = LogExporter::builder()
+                .with_tonic()
+                .build()
+                .context(InstallOtelLogExporterSnafu)?;
+
+            let logger_provider = SdkLoggerProvider::builder()
+                .with_batch_exporter(log_exporter)
+                .with_resource(
+                    Resource::builder()
+                        .with_service_name(self.service_name)
+                        .build(),
+                )
+                .build();
 
             // Convert `tracing::Event` to OpenTelemetry logs
             layers.push(
-                OpenTelemetryTracingBridge::new(&otel_log)
+                OpenTelemetryTracingBridge::new(&logger_provider)
                     .with_filter(env_filter_layer)
                     .boxed(),
             );
-            self.logger_provider = Some(otel_log);
+            self.logger_provider = Some(logger_provider);
         }
 
         if let OtlpTraceSettings::Enabled { common_settings } = &self.otlp_trace_settings {
@@ -336,22 +350,29 @@ impl Tracing {
             // TODO (@NickLarsenNZ): Remove this directive once https://github.com/open-telemetry/opentelemetry-rust/issues/761 is resolved
             .add_directive("h2=off".parse().expect("invalid directive"));
 
-            let trace_exporter = opentelemetry_otlp::new_exporter().tonic();
-            let otel_tracer = opentelemetry_otlp::new_pipeline()
-                .tracing()
-                .with_exporter(trace_exporter)
-                .with_trace_config(trace::config().with_resource(Resource::new(vec![
-                    KeyValue::new(resource::SERVICE_NAME, self.service_name),
-                ])))
-                .install_batch(opentelemetry_sdk::runtime::Tokio)
+            let trace_exporter = SpanExporter::builder()
+                .with_tonic()
+                .build()
                 .context(InstallOtelTraceExporterSnafu)?;
+
+            let tracer_provider = SdkTracerProvider::builder()
+                .with_batch_exporter(trace_exporter)
+                .with_resource(
+                    Resource::builder()
+                        .with_service_name(self.service_name)
+                        .build(),
+                )
+                .build();
+
+            let tracer = tracer_provider.tracer(self.service_name);
 
             layers.push(
                 tracing_opentelemetry::layer()
-                    .with_tracer(otel_tracer)
+                    .with_tracer(tracer)
                     .with_filter(env_filter_layer)
                     .boxed(),
             );
+            self.tracer_provider = Some(tracer_provider);
 
             opentelemetry::global::set_text_map_propagator(
                 // NOTE (@NickLarsenNZ): There are various propagators. Eg: TraceContextPropagator
@@ -384,11 +405,10 @@ impl Drop for Tracing {
             "shutting down opentelemetry OTLP providers"
         );
 
-        if self.otlp_trace_settings.is_enabled() {
-            // NOTE (@NickLarsenNZ): This might eventually be replaced with something like SdkMeterProvider::shutdown(&self)
-            // as has been done with the LoggerProvider (further below)
-            // see: https://github.com/open-telemetry/opentelemetry-rust/pull/1412/files#r1409608679
-            opentelemetry::global::shutdown_tracer_provider();
+        if let Some(tracer_provider) = &self.tracer_provider {
+            if let Err(error) = tracer_provider.shutdown() {
+                tracing::error!(%error, "unable to shutdown TracerProvider")
+            }
         }
 
         if let Some(logger_provider) = &self.logger_provider {
@@ -573,6 +593,7 @@ impl TracingBuilder<builder_state::Config> {
             otlp_trace_settings: self.otlp_trace_settings,
             file_log_settings: self.file_log_settings,
             logger_provider: None,
+            tracer_provider: None,
         }
     }
 }
@@ -592,6 +613,7 @@ mod test {
     use rstest::rstest;
     use settings::Settings;
     use tracing::level_filters::LevelFilter;
+    use tracing_appender::rolling::Rotation;
 
     use super::*;
 
@@ -692,7 +714,7 @@ mod test {
                 Settings::builder()
                     .with_environment_variable("ABC_FILE")
                     .with_default_level(LevelFilter::INFO)
-                    .file_log_settings_builder(PathBuf::from("/abc_file_dir"))
+                    .file_log_settings_builder(PathBuf::from("/abc_file_dir"), "tracing-rs.json")
                     .build(),
             )
             .with_otlp_log_exporter(
@@ -719,25 +741,22 @@ mod test {
                 log_format: Default::default()
             }
         );
-        assert_eq!(
-            trace_guard.file_log_settings,
-            FileLogSettings::Enabled {
-                common_settings: Settings {
-                    environment_variable: "ABC_FILE",
-                    default_level: LevelFilter::INFO
-                },
-                file_log_dir: PathBuf::from("/abc_file_dir")
-            }
-        );
-        assert_eq!(
-            trace_guard.otlp_log_settings,
-            OtlpLogSettings::Enabled {
-                common_settings: Settings {
-                    environment_variable: "ABC_OTLP_LOG",
-                    default_level: LevelFilter::DEBUG
-                },
-            }
-        );
+        assert_eq!(trace_guard.file_log_settings, FileLogSettings::Enabled {
+            common_settings: Settings {
+                environment_variable: "ABC_FILE",
+                default_level: LevelFilter::INFO
+            },
+            file_log_dir: PathBuf::from("/abc_file_dir"),
+            rotation_period: Rotation::NEVER,
+            filename_suffix: "tracing-rs.json".to_owned(),
+            max_log_files: None,
+        });
+        assert_eq!(trace_guard.otlp_log_settings, OtlpLogSettings::Enabled {
+            common_settings: Settings {
+                environment_variable: "ABC_OTLP_LOG",
+                default_level: LevelFilter::DEBUG
+            },
+        });
         assert_eq!(
             trace_guard.otlp_trace_settings,
             OtlpTraceSettings::Enabled {
@@ -766,7 +785,7 @@ mod test {
             .with_file_output(enable_filelog_output.then(|| {
                 Settings::builder()
                     .with_environment_variable("ABC_FILELOG")
-                    .file_log_settings_builder("/dev/null")
+                    .file_log_settings_builder("/dev/null", "tracing-rs.json")
                     .build()
             }))
             .with_otlp_trace_exporter(enable_otlp_trace.then(|| {

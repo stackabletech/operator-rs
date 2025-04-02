@@ -16,7 +16,7 @@ use std::{
 };
 
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
-use serde::{de::Visitor, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Visitor};
 use snafu::{OptionExt, ResultExt, Snafu};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

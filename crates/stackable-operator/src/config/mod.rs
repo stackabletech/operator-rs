@@ -166,7 +166,7 @@ pub mod fragment;
 pub mod merge;
 
 #[cfg(doc)]
-use fragment::{validate, Fragment, FromFragment};
+use fragment::{Fragment, FromFragment, validate};
 #[cfg(doc)]
 use merge::{Atomic, Merge};
 

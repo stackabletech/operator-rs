@@ -78,7 +78,7 @@ mod tests {
     use std::path::PathBuf;
 
     use rstest::rstest;
-    use stackable_shared::yaml::{serialize as ser, SerializeOptions};
+    use stackable_shared::yaml::{SerializeOptions, serialize as ser};
 
     use super::*;
 

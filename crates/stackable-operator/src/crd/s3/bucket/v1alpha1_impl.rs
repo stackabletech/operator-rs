@@ -5,8 +5,8 @@ use snafu::ResultExt as _;
 use crate::{
     client::Client,
     crd::s3::bucket::{
-        v1alpha1::{InlineBucketOrReference, ResolvedBucket, S3Bucket},
         BucketError, ResolveConnectionSnafu, RetrieveS3ConnectionSnafu,
+        v1alpha1::{InlineBucketOrReference, ResolvedBucket, S3Bucket},
     },
 };
 

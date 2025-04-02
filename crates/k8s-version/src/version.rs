@@ -16,7 +16,9 @@ static VERSION_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 /// unparsed input.
 #[derive(Debug, PartialEq, Snafu)]
 pub enum ParseVersionError {
-    #[snafu(display("invalid version format. Input is empty, contains non-ASCII characters or contains more than 63 characters"))]
+    #[snafu(display(
+        "invalid version format. Input is empty, contains non-ASCII characters or contains more than 63 characters"
+    ))]
     InvalidFormat,
 
     #[snafu(display("failed to parse major version"))]

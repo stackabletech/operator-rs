@@ -15,20 +15,20 @@ use std::{future::Future, net::SocketAddr, num::ParseIntError, task::Poll};
 use axum::{
     extract::{ConnectInfo, MatchedPath, Request},
     http::{
-        header::{HOST, USER_AGENT},
         HeaderMap,
+        header::{HOST, USER_AGENT},
     },
     response::Response,
 };
 use futures_util::ready;
 use opentelemetry::{
-    trace::{SpanKind, TraceContextExt},
     Context,
+    trace::{SpanKind, TraceContextExt},
 };
 use pin_project::pin_project;
 use snafu::{ResultExt, Snafu};
 use tower::{Layer, Service};
-use tracing::{field::Empty, Span};
+use tracing::{Span, field::Empty};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 mod extractor;
@@ -568,7 +568,7 @@ impl SpanExt for Span {
 
 #[cfg(test)]
 mod test {
-    use axum::{routing::get, Router};
+    use axum::{Router, routing::get};
 
     use super::*;
 

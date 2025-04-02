@@ -5,13 +5,13 @@
 use std::error::Error;
 
 use kube::{
+    Resource,
     core::DynamicObject,
     runtime::{
         controller::{self, Action},
         events::Recorder,
         reflector::ObjectRef,
     },
-    Resource,
 };
 use tracing;
 

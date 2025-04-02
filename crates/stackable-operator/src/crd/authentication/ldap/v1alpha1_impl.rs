@@ -5,7 +5,7 @@ use url::{ParseError, Url};
 use crate::{
     builder::{
         self,
-        pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
+        pod::{PodBuilder, container::ContainerBuilder, volume::VolumeMountBuilder},
     },
     commons::{secret_class::SecretClassVolumeError, tls_verification::TlsClientDetailsError},
     constants::secret::SECRET_BASE_PATH,
@@ -229,23 +229,18 @@ mod tests {
         );
 
         let (tls_volumes, tls_mounts) = ldap.tls.volumes_and_mounts().unwrap();
-        assert_eq!(
-            tls_volumes,
-            vec![SecretClassVolume {
+        assert_eq!(tls_volumes, vec![
+            SecretClassVolume {
                 secret_class: "ldap-ca-cert".to_string(),
                 scope: None,
             }
             .to_volume("ldap-ca-cert-ca-cert")
-            .unwrap()]
-        );
-        assert_eq!(
-            tls_mounts,
-            vec![VolumeMountBuilder::new(
-                "ldap-ca-cert-ca-cert",
-                "/stackable/secrets/ldap-ca-cert"
-            )
-            .build()]
-        );
+            .unwrap()
+        ]);
+        assert_eq!(tls_mounts, vec![
+            VolumeMountBuilder::new("ldap-ca-cert-ca-cert", "/stackable/secrets/ldap-ca-cert")
+                .build()
+        ]);
 
         assert!(ldap.has_bind_credentials());
         assert_eq!(
@@ -257,34 +252,28 @@ mod tests {
         );
 
         let (ldap_volumes, ldap_mounts) = ldap.volumes_and_mounts().unwrap();
-        assert_eq!(
-            ldap_volumes,
-            vec![
-                SecretClassVolume {
-                    secret_class: "openldap-bind-credentials".to_string(),
-                    scope: None,
-                }
-                .to_volume("openldap-bind-credentials-bind-credentials")
-                .unwrap(),
-                SecretClassVolume {
-                    secret_class: "ldap-ca-cert".to_string(),
-                    scope: None,
-                }
-                .to_volume("ldap-ca-cert-ca-cert")
-                .unwrap()
-            ]
-        );
-        assert_eq!(
-            ldap_mounts,
-            vec![
-                VolumeMountBuilder::new(
-                    "openldap-bind-credentials-bind-credentials",
-                    "/stackable/secrets/openldap-bind-credentials"
-                )
-                .build(),
-                VolumeMountBuilder::new("ldap-ca-cert-ca-cert", "/stackable/secrets/ldap-ca-cert")
-                    .build()
-            ]
-        );
+        assert_eq!(ldap_volumes, vec![
+            SecretClassVolume {
+                secret_class: "openldap-bind-credentials".to_string(),
+                scope: None,
+            }
+            .to_volume("openldap-bind-credentials-bind-credentials")
+            .unwrap(),
+            SecretClassVolume {
+                secret_class: "ldap-ca-cert".to_string(),
+                scope: None,
+            }
+            .to_volume("ldap-ca-cert-ca-cert")
+            .unwrap()
+        ]);
+        assert_eq!(ldap_mounts, vec![
+            VolumeMountBuilder::new(
+                "openldap-bind-credentials-bind-credentials",
+                "/stackable/secrets/openldap-bind-credentials"
+            )
+            .build(),
+            VolumeMountBuilder::new("ldap-ca-cert-ca-cert", "/stackable/secrets/ldap-ca-cert")
+                .build()
+        ]);
     }
 }
