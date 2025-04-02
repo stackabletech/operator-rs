@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.7.1] - 2025-04-02
+
 ### Fixed
 
 - Correctly emit generic type parameter defaults in enum/struct definition blocks ([#991]).
