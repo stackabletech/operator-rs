@@ -284,23 +284,23 @@ impl ProductConfigPath {
 pub struct TelemetryArguments {
     /// Disable console output.
     #[arg(long, env)]
-    no_console_output: bool,
+    pub no_console_output: bool,
 
     /// Enable logging to rolling files located in the specified DIRECTORY.
     #[arg(long, env, value_name = "DIRECTORY", group = "rolling_logs_group")]
-    rolling_logs: Option<PathBuf>,
+    pub rolling_logs: Option<PathBuf>,
 
     /// Time PERIOD after which log files are rolled over.
     #[arg(long, env, value_name = "PERIOD", requires = "rolling_logs_group")]
-    rolling_logs_period: Option<RollingPeriod>,
+    pub rolling_logs_period: Option<RollingPeriod>,
 
     /// Enable exporting traces via OTLP.
     #[arg(long, env)]
-    otlp_traces: bool,
+    pub otlp_traces: bool,
 
     /// Enable exporting logs via OTLP.
     #[arg(long, env)]
-    otlp_logs: bool,
+    pub otlp_logs: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, strum::Display, strum::EnumString, clap::ValueEnum)]

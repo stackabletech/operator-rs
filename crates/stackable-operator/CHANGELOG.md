@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Make fields of `TelemetryArguments` public ([#998]).
+
+[#998]: https://github.com/stackabletech/operator-rs/pull/998
+
 ## [0.89.0] - 2025-04-02
 
 ### Added
