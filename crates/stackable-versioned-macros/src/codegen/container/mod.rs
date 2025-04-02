@@ -1,9 +1,9 @@
 use std::ops::Deref;
 
-use darling::{util::IdentString, Result};
+use darling::{Result, util::IdentString};
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
-use syn::{parse_quote, Attribute, Ident, ItemEnum, ItemStruct, Path, Visibility};
+use quote::{ToTokens, quote};
+use syn::{Attribute, Ident, ItemEnum, ItemStruct, Path, Visibility, parse_quote};
 
 use crate::{
     attrs::{
@@ -11,8 +11,8 @@ use crate::{
         k8s::{KubernetesArguments, KubernetesCrateArguments},
     },
     codegen::{
-        container::{r#enum::Enum, r#struct::Struct},
         VersionDefinition,
+        container::{r#enum::Enum, r#struct::Struct},
     },
     utils::ContainerIdentExt,
 };

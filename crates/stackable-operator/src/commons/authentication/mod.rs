@@ -18,7 +18,9 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
-    #[snafu(display("authentication details for OIDC were not specified. The AuthenticationClass {auth_class_name:?} uses an OIDC provider, you need to specify OIDC authentication details (such as client credentials) as well"))]
+    #[snafu(display(
+        "authentication details for OIDC were not specified. The AuthenticationClass {auth_class_name:?} uses an OIDC provider, you need to specify OIDC authentication details (such as client credentials) as well"
+    ))]
     OidcAuthenticationDetailsNotSpecified { auth_class_name: String },
 }
 
@@ -180,7 +182,7 @@ impl<O> ClientAuthenticationDetails<O> {
 #[cfg(test)]
 mod tests {
     use crate::commons::authentication::{
-        tls::AuthenticationProvider, AuthenticationClassProvider,
+        AuthenticationClassProvider, tls::AuthenticationProvider,
     };
 
     #[test]

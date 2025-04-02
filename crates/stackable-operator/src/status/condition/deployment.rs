@@ -96,8 +96,8 @@ mod tests {
     use k8s_openapi::api::apps::v1::{Deployment, DeploymentSpec, DeploymentStatus};
 
     use crate::status::condition::{
-        deployment::DeploymentConditionBuilder, ClusterCondition, ClusterConditionStatus,
-        ClusterConditionType, ConditionBuilder,
+        ClusterCondition, ClusterConditionStatus, ClusterConditionType, ConditionBuilder,
+        deployment::DeploymentConditionBuilder,
     };
 
     fn build_deployment(spec_replicas: i32, available_replicas: i32) -> Deployment {

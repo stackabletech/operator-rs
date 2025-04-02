@@ -1,5 +1,5 @@
 use axum::http::{HeaderMap, HeaderName, HeaderValue};
-use opentelemetry::{propagation::Injector, Context};
+use opentelemetry::{Context, propagation::Injector};
 
 /// Injects the [`TextMapPropagator`][1] to propagate trace parent information
 /// in HTTP headers.

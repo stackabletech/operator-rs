@@ -9,15 +9,16 @@
 use opentelemetry::KeyValue;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_sdk::{
+    Resource,
     logs::{self, LoggerProvider},
     propagation::TraceContextPropagator,
-    trace, Resource,
+    trace,
 };
 use opentelemetry_semantic_conventions::resource;
 use snafu::{ResultExt as _, Snafu};
 use tracing::subscriber::SetGlobalDefaultError;
 use tracing_appender::rolling::{InitError, RollingFileAppender};
-use tracing_subscriber::{filter::Directive, layer::SubscriberExt, EnvFilter, Layer, Registry};
+use tracing_subscriber::{EnvFilter, Layer, Registry, filter::Directive, layer::SubscriberExt};
 
 use crate::tracing::settings::*;
 
@@ -730,28 +731,22 @@ mod test {
                 log_format: Default::default()
             }
         );
-        assert_eq!(
-            trace_guard.file_log_settings,
-            FileLogSettings::Enabled {
-                common_settings: Settings {
-                    environment_variable: "ABC_FILE",
-                    default_level: LevelFilter::INFO
-                },
-                file_log_dir: PathBuf::from("/abc_file_dir"),
-                rotation_period: Rotation::NEVER,
-                filename_suffix: "tracing-rs.json".to_owned(),
-                max_log_files: None,
-            }
-        );
-        assert_eq!(
-            trace_guard.otlp_log_settings,
-            OtlpLogSettings::Enabled {
-                common_settings: Settings {
-                    environment_variable: "ABC_OTLP_LOG",
-                    default_level: LevelFilter::DEBUG
-                },
-            }
-        );
+        assert_eq!(trace_guard.file_log_settings, FileLogSettings::Enabled {
+            common_settings: Settings {
+                environment_variable: "ABC_FILE",
+                default_level: LevelFilter::INFO
+            },
+            file_log_dir: PathBuf::from("/abc_file_dir"),
+            rotation_period: Rotation::NEVER,
+            filename_suffix: "tracing-rs.json".to_owned(),
+            max_log_files: None,
+        });
+        assert_eq!(trace_guard.otlp_log_settings, OtlpLogSettings::Enabled {
+            common_settings: Settings {
+                environment_variable: "ABC_OTLP_LOG",
+                default_level: LevelFilter::DEBUG
+            },
+        });
         assert_eq!(
             trace_guard.otlp_trace_settings,
             OtlpTraceSettings::Enabled {

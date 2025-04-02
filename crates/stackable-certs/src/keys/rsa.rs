@@ -2,7 +2,7 @@
 //! which abstract away the generation of RSA keys used for signing of CAs
 //! and other certificates.
 use rand_core::{CryptoRngCore, OsRng};
-use rsa::{pkcs8::DecodePrivateKey, RsaPrivateKey};
+use rsa::{RsaPrivateKey, pkcs8::DecodePrivateKey};
 use signature::Keypair;
 use snafu::{ResultExt, Snafu};
 use tracing::instrument;

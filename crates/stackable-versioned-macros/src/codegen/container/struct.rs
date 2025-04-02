@@ -1,17 +1,17 @@
 use std::ops::Not;
 
-use darling::{util::IdentString, Error, FromAttributes, Result};
+use darling::{Error, FromAttributes, Result, util::IdentString};
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
-use syn::{parse_quote, Generics, ItemStruct, Path, Visibility};
+use quote::{ToTokens, quote};
+use syn::{Generics, ItemStruct, Path, Visibility, parse_quote};
 
 use crate::{
     attrs::container::NestedContainerAttributes,
     codegen::{
+        ItemStatus, StandaloneContainerAttributes, VersionDefinition,
         changes::Neighbors,
         container::{CommonContainerData, Container, ContainerIdents, ContainerOptions},
         item::VersionedField,
-        ItemStatus, StandaloneContainerAttributes, VersionDefinition,
     },
     utils::VersionExt,
 };

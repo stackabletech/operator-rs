@@ -10,7 +10,7 @@ use stackable_operator::{client::Client, commons::secret::SecretReference, time:
 use tracing::{debug, instrument};
 use x509_cert::{
     builder::{Builder, CertificateBuilder, Profile},
-    der::{pem::LineEnding, referenced::OwnedToRef, DecodePem},
+    der::{DecodePem, pem::LineEnding, referenced::OwnedToRef},
     ext::pkix::{AuthorityKeyIdentifier, ExtendedKeyUsage},
     name::Name,
     serial_number::SerialNumber,
@@ -19,8 +19,8 @@ use x509_cert::{
 };
 
 use crate::{
-    keys::{ecdsa, rsa, CertificateKeypair},
     CertificatePair,
+    keys::{CertificateKeypair, ecdsa, rsa},
 };
 
 mod consts;

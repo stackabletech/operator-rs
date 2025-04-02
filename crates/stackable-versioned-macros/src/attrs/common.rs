@@ -1,6 +1,6 @@
 use darling::{
-    util::{Flag, Override, SpannedValue},
     Error, FromMeta, Result,
+    util::{Flag, Override, SpannedValue},
 };
 use itertools::Itertools;
 use k8s_version::Version;

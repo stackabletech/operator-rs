@@ -92,8 +92,8 @@ mod tests {
     use k8s_openapi::api::apps::v1::{DaemonSet, DaemonSetStatus};
 
     use crate::status::condition::{
-        daemonset::DaemonSetConditionBuilder, ClusterCondition, ClusterConditionStatus,
-        ClusterConditionType, ConditionBuilder,
+        ClusterCondition, ClusterConditionStatus, ClusterConditionType, ConditionBuilder,
+        daemonset::DaemonSetConditionBuilder,
     };
 
     fn build_ds(number_ready: i32) -> DaemonSet {
