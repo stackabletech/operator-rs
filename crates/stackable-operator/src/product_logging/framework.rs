@@ -1385,6 +1385,7 @@ sinks:
 /// #     image_pull_policy: "Always".into(),
 /// #     pull_secrets: None,
 /// # };
+/// # let vector_aggregator_config_map_name = "vector-aggregator-discovery";
 ///
 /// let mut pod_builder = PodBuilder::new();
 /// pod_builder.metadata(ObjectMetaBuilder::default().build());
@@ -1418,11 +1419,6 @@ sinks:
 /// );
 ///
 /// if logging.enable_vector_agent {
-///     if let Some(vector_aggregator_config_map_name) = spec
-///         .cluster_config
-///         .vector_aggregator_config_map_name
-///         .to_owned()
-///     {
 ///         pod_builder.add_container(product_logging::framework::vector_container(
 ///             &resolved_product_image,
 ///             "config",
@@ -1431,7 +1427,6 @@ sinks:
 ///             resources,
 ///             vector_aggregator_config_map_name,
 ///         ).unwrap());
-///     }
 /// }
 ///
 /// pod_builder.build().unwrap();
