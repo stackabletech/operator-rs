@@ -31,6 +31,8 @@ const SHUTDOWN_FILE: &str = "shutdown";
 
 /// File name of the Vector config file
 pub const VECTOR_CONFIG_FILE: &str = "vector.yaml";
+/// Key in the discovery ConfigMap that holds the vector aggregator address
+const VECTOR_AGGREGATOR_CM_KEY: &str = "ADDRESS";
 
 #[derive(Debug, Snafu)]
 pub enum LoggingError {
@@ -678,7 +680,6 @@ pub fn create_logback_config(
 /// # }
 /// #
 /// # let logging = fragment::validate::<Logging<Container>>(default_logging()).unwrap();
-/// # let vector_aggregator_address = "vector-aggregator:6000";
 /// # let role_group = RoleGroupRef {
 /// #     cluster: ObjectRef::<Pod>::new("test-cluster"),
 /// #     role: "role".into(),
@@ -702,7 +703,6 @@ pub fn create_logback_config(
 ///         product_logging::framework::VECTOR_CONFIG_FILE,
 ///         product_logging::framework::create_vector_config(
 ///             &role_group,
-///             vector_aggregator_address,
 ///             vector_log_config,
 ///         ),
 ///     );
@@ -712,7 +712,6 @@ pub fn create_logback_config(
 /// ```
 pub fn create_vector_config<T>(
     role_group: &RoleGroupRef<T>,
-    vector_aggregator_address: &str,
     config: Option<&AutomaticContainerLogConfig>,
 ) -> String
 where
@@ -1330,7 +1329,7 @@ sinks:
     inputs:
       - extended_logs
     type: vector
-    address: {vector_aggregator_address}
+    address: $VECTOR_AGGREGATOR_ADDRESS
 "#,
         namespace = role_group.cluster.namespace.clone().unwrap_or_default(),
         cluster_name = role_group.cluster.name,
@@ -1419,14 +1418,20 @@ sinks:
 /// );
 ///
 /// if logging.enable_vector_agent {
-///     pod_builder.add_container(product_logging::framework::vector_container(
-///         &resolved_product_image,
-///         "config",
-///         "log",
-///         logging.containers.get(&Container::Vector),
-///         resources,
-///     ).unwrap());
-/// }
+///   if let Some(vector_aggregator_config_map_name) = spec
+///     .cluster_config
+///     .vector_aggregator_config_map_name
+///     .to_owned()
+///     {
+///       pod_builder.add_container(product_logging::framework::vector_container(
+///           &resolved_product_image,
+///           "config",
+///           "log",
+///           logging.containers.get(&Container::Vector),
+///           resources,
+///           vector_aggregator_config_map_name,
+///       ).unwrap());
+///   }
 ///
 /// pod_builder.build().unwrap();
 /// ```
@@ -1436,6 +1441,7 @@ pub fn vector_container(
     log_volume_name: &str,
     log_config: Option<&ContainerLogConfig>,
     resources: ResourceRequirements,
+    vector_aggregator_config_map_name: &str,
 ) -> Result<Container, LoggingError> {
     let log_level = if let Some(ContainerLogConfig {
         choice: Some(ContainerLogConfigChoice::Automatic(automatic_log_config)),
@@ -1473,6 +1479,11 @@ kill $vector_pid
 "
         )])
         .add_env_var("VECTOR_LOG", log_level.to_vector_literal())
+        .add_env_var_from_config_map(
+            "VECTOR_AGGREGATOR_ADDRESS",
+            vector_aggregator_config_map_name,
+            VECTOR_AGGREGATOR_CM_KEY,
+        )
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
         .context(AddVolumeMountsSnafu)?
         .add_volume_mount(log_volume_name, STACKABLE_LOG_DIR)
