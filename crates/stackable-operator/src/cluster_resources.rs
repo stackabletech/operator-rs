@@ -5,9 +5,14 @@ use std::{
     fmt::Debug,
 };
 
+#[cfg(doc)]
+use k8s_openapi::api::core::v1::{NodeSelector, Pod};
 use k8s_openapi::{
+    NamespaceResourceScope,
     api::{
-        apps::v1::{DaemonSet, DaemonSetSpec, StatefulSet, StatefulSetSpec},
+        apps::v1::{
+            DaemonSet, DaemonSetSpec, Deployment, DeploymentSpec, StatefulSet, StatefulSetSpec,
+        },
         batch::v1::Job,
         core::v1::{
             ConfigMap, ObjectReference, PodSpec, PodTemplateSpec, Secret, Service, ServiceAccount,
@@ -16,32 +21,26 @@ use k8s_openapi::{
         rbac::v1::RoleBinding,
     },
     apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
-    NamespaceResourceScope,
 };
-use kube::{core::ErrorResponse, Resource, ResourceExt};
-use serde::{de::DeserializeOwned, Serialize};
+use kube::{Resource, ResourceExt, core::ErrorResponse};
+use serde::{Serialize, de::DeserializeOwned};
 use snafu::{OptionExt, ResultExt, Snafu};
 use strum::Display;
 use tracing::{debug, info, warn};
 
-#[cfg(doc)]
-use crate::k8s_openapi::api::{
-    apps::v1::Deployment,
-    core::v1::{NodeSelector, Pod},
-};
 use crate::{
     client::{Client, GetApi},
     commons::{
         cluster_operation::ClusterOperation,
         listener::Listener,
         resources::{
-            ComputeResource, ResourceRequirementsExt, ResourceRequirementsType,
-            LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
+            ComputeResource, LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
+            ResourceRequirementsExt, ResourceRequirementsType,
         },
     },
     kvp::{
-        consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
         Label, LabelError, Labels,
+        consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
     },
     utils::format_full_controller_name,
 };
@@ -59,7 +58,9 @@ pub enum Error {
     #[snafu(display("label {label:?} is missing"))]
     MissingLabel { label: &'static str },
 
-    #[snafu(display("label {label:?} contains unexpected values - expected {expected_content:?}, got {actual_content:?}"))]
+    #[snafu(display(
+        "label {label:?} contains unexpected values - expected {expected_content:?}, got {actual_content:?}"
+    ))]
     UnexpectedLabelContent {
         label: &'static str,
         expected_content: String,
@@ -262,6 +263,29 @@ impl ClusterResource for DaemonSet {
                         }),
                         ..self.spec.clone().unwrap_or_default().template
                     },
+                    ..self.spec.unwrap_or_default()
+                }),
+                ..self
+            },
+            ClusterResourceApplyStrategy::Default
+            | ClusterResourceApplyStrategy::ReconciliationPaused
+            | ClusterResourceApplyStrategy::NoApply => self,
+        }
+    }
+
+    fn pod_spec(&self) -> Option<&PodSpec> {
+        self.spec
+            .as_ref()
+            .and_then(|spec| spec.template.spec.as_ref())
+    }
+}
+
+impl ClusterResource for Deployment {
+    fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
+        match strategy {
+            ClusterResourceApplyStrategy::ClusterStopped => Deployment {
+                spec: Some(DeploymentSpec {
+                    replicas: Some(0),
                     ..self.spec.unwrap_or_default()
                 }),
                 ..self

@@ -45,7 +45,7 @@
 //! ```
 use std::sync::LazyLock;
 
-use k8s_openapi::{api::core::v1::ConfigMap, NamespaceResourceScope};
+use k8s_openapi::{NamespaceResourceScope, api::core::v1::ConfigMap};
 use kube::{Resource, ResourceExt};
 use regex::Regex;
 use schemars::{self, JsonSchema};

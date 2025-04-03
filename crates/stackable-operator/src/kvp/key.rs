@@ -1,7 +1,7 @@
 use std::{fmt::Display, ops::Deref, str::FromStr, sync::LazyLock};
 
 use regex::Regex;
-use snafu::{ensure, ResultExt, Snafu};
+use snafu::{ResultExt, Snafu, ensure};
 
 const KEY_PREFIX_MAX_LEN: usize = 253;
 const KEY_NAME_MAX_LEN: usize = 63;
@@ -183,7 +183,9 @@ pub enum KeyPrefixError {
     /// Indicates that the key prefix segment exceeds the mamximum length of
     /// 253 ASCII characters. It additionally reports how many characters were
     /// encountered during parsing / validation.
-    #[snafu(display("prefix segment of key exceeds the maximum length - expected 253 characters or less, got {length}"))]
+    #[snafu(display(
+        "prefix segment of key exceeds the maximum length - expected 253 characters or less, got {length}"
+    ))]
     PrefixTooLong { length: usize },
 
     /// Indidcates that the key prefix segment contains non-ASCII characters
@@ -214,12 +216,9 @@ impl FromStr for KeyPrefix {
         ensure!(!input.is_empty(), PrefixEmptySnafu);
 
         // The length of the prefix cannot exceed 253 characters
-        ensure!(
-            input.len() <= KEY_PREFIX_MAX_LEN,
-            PrefixTooLongSnafu {
-                length: input.len()
-            }
-        );
+        ensure!(input.len() <= KEY_PREFIX_MAX_LEN, PrefixTooLongSnafu {
+            length: input.len()
+        });
 
         // The prefix cannot contain non-ascii characters
         ensure!(input.is_ascii(), PrefixNotAsciiSnafu);
@@ -265,7 +264,9 @@ pub enum KeyNameError {
     /// Indicates that the key name sgement exceeds the maximum length of 63
     /// ASCII characters. It additionally reports how many characters were
     /// encountered during parsing / validation.
-    #[snafu(display("name segment of key exceeds the maximum length - expected 63 characters or less, got {length}"))]
+    #[snafu(display(
+        "name segment of key exceeds the maximum length - expected 63 characters or less, got {length}"
+    ))]
     NameTooLong { length: usize },
 
     /// Indidcates that the key name segment contains non-ASCII characters
@@ -296,12 +297,9 @@ impl FromStr for KeyName {
         ensure!(!input.is_empty(), NameEmptySnafu);
 
         // The length of the name cannot exceed 63 characters
-        ensure!(
-            input.len() <= KEY_NAME_MAX_LEN,
-            NameTooLongSnafu {
-                length: input.len()
-            }
-        );
+        ensure!(input.len() <= KEY_NAME_MAX_LEN, NameTooLongSnafu {
+            length: input.len()
+        });
 
         // The name cannot contain non-ascii characters
         ensure!(input.is_ascii(), NameNotAsciiSnafu);

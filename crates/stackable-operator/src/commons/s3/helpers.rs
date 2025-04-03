@@ -5,7 +5,7 @@ use snafu::ResultExt;
 use url::Url;
 
 use crate::{
-    builder::pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
+    builder::pod::{PodBuilder, container::ContainerBuilder, volume::VolumeMountBuilder},
     client::Client,
     commons::{
         authentication::SECRET_BASE_PATH,

@@ -1,16 +1,16 @@
 use std::collections::BTreeMap;
 
-use darling::{util::IdentString, FromVariant, Result};
+use darling::{FromVariant, Result, util::IdentString};
 use k8s_version::Version;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{token::Not, Attribute, Fields, Type, TypeNever, Variant};
+use syn::{Attribute, Fields, Type, TypeNever, Variant, token::Not};
 
 use crate::{
     attrs::item::VariantAttributes,
     codegen::{
-        changes::{BTreeMapExt, ChangesetExt},
         ItemStatus, VersionDefinition,
+        changes::{BTreeMapExt, ChangesetExt},
     },
     utils::VariantIdent,
 };

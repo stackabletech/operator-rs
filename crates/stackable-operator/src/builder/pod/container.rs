@@ -121,16 +121,13 @@ impl ContainerBuilder {
         name: impl Into<String>,
         field_path: FieldPathEnvVar,
     ) -> &mut Self {
-        self.add_env_var_from_source(
-            name,
-            EnvVarSource {
-                field_ref: Some(ObjectFieldSelector {
-                    field_path: field_path.to_string(),
-                    ..ObjectFieldSelector::default()
-                }),
-                ..EnvVarSource::default()
-            },
-        );
+        self.add_env_var_from_source(name, EnvVarSource {
+            field_ref: Some(ObjectFieldSelector {
+                field_path: field_path.to_string(),
+                ..ObjectFieldSelector::default()
+            }),
+            ..EnvVarSource::default()
+        });
         self
     }
 
@@ -141,17 +138,14 @@ impl ContainerBuilder {
         secret_name: impl Into<String>,
         secret_key: impl Into<String>,
     ) -> &mut Self {
-        self.add_env_var_from_source(
-            name,
-            EnvVarSource {
-                secret_key_ref: Some(SecretKeySelector {
-                    name: secret_name.into(),
-                    key: secret_key.into(),
-                    ..Default::default()
-                }),
+        self.add_env_var_from_source(name, EnvVarSource {
+            secret_key_ref: Some(SecretKeySelector {
+                name: secret_name.into(),
+                key: secret_key.into(),
                 ..Default::default()
-            },
-        );
+            }),
+            ..Default::default()
+        });
         self
     }
 
@@ -162,17 +156,14 @@ impl ContainerBuilder {
         config_map_name: impl Into<String>,
         config_map_key: impl Into<String>,
     ) -> &mut Self {
-        self.add_env_var_from_source(
-            name,
-            EnvVarSource {
-                config_map_key_ref: Some(ConfigMapKeySelector {
-                    name: config_map_name.into(),
-                    key: config_map_key.into(),
-                    ..Default::default()
-                }),
+        self.add_env_var_from_source(name, EnvVarSource {
+            config_map_key_ref: Some(ConfigMapKeySelector {
+                name: config_map_name.into(),
+                key: config_map_key.into(),
                 ..Default::default()
-            },
-        );
+            }),
+            ..Default::default()
+        });
         self
     }
 
@@ -469,9 +460,11 @@ mod tests {
             .expect("add volume mount")
             .add_container_port(container_port_name, container_port)
             .resources(resources.clone())
-            .add_container_ports(vec![ContainerPortBuilder::new(container_port_1)
-                .name(container_port_name_1)
-                .build()])
+            .add_container_ports(vec![
+                ContainerPortBuilder::new(container_port_1)
+                    .name(container_port_name_1)
+                    .build(),
+            ])
             .build();
 
         assert_eq!(container.name, "testcontainer");

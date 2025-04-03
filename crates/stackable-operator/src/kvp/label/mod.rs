@@ -20,12 +20,12 @@ use kube::{Resource, ResourceExt};
 use crate::{
     iter::TryFromIterator,
     kvp::{
+        Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError, ObjectLabels,
         consts::{
             K8S_APP_COMPONENT_KEY, K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY,
             K8S_APP_ROLE_GROUP_KEY, K8S_APP_VERSION_KEY, STACKABLE_VENDOR_KEY,
             STACKABLE_VENDOR_VALUE,
         },
-        Key, KeyValuePair, KeyValuePairError, KeyValuePairs, KeyValuePairsError, ObjectLabels,
     },
     utils::format_full_controller_name,
 };

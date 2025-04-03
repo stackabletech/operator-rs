@@ -1,6 +1,6 @@
 use std::cmp;
 
-use k8s_openapi::api::apps::v1::DaemonSet;
+use k8s_openapi::api::apps::v1::Deployment;
 use kube::ResourceExt;
 
 use crate::status::condition::{
@@ -9,35 +9,34 @@ use crate::status::condition::{
 };
 
 /// Default implementation to build [`ClusterCondition`]s for
-/// `DaemonSet` resources.
+/// `Deployment` resources.
 ///
 /// Currently only the `ClusterConditionType::Available` is implemented. This will be extended
 /// to support all `ClusterConditionType`s in the future.
 #[derive(Default)]
-pub struct DaemonSetConditionBuilder {
-    daemon_sets: Vec<DaemonSet>,
+pub struct DeploymentConditionBuilder {
+    deployments: Vec<Deployment>,
 }
 
-impl ConditionBuilder for DaemonSetConditionBuilder {
+impl ConditionBuilder for DeploymentConditionBuilder {
     fn build_conditions(&self) -> ClusterConditionSet {
         vec![self.available()].into()
     }
 }
 
-impl DaemonSetConditionBuilder {
-    pub fn add(&mut self, ds: DaemonSet) {
-        self.daemon_sets.push(ds);
+impl DeploymentConditionBuilder {
+    pub fn add(&mut self, deployment: Deployment) {
+        self.deployments.push(deployment);
     }
 
     fn available(&self) -> ClusterCondition {
         let mut available = ClusterConditionStatus::True;
         let mut unavailable_resources = vec![];
-
-        for ds in &self.daemon_sets {
-            let current_status = Self::daemon_set_available(ds);
+        for deployment in &self.deployments {
+            let current_status = Self::deployment_available(deployment);
 
             if current_status != ClusterConditionStatus::True {
-                unavailable_resources.push(ds.name_any())
+                unavailable_resources.push(deployment.name_any())
             }
 
             available = cmp::max(available, current_status);
@@ -49,12 +48,14 @@ impl DaemonSetConditionBuilder {
 
         let message = match available {
             ClusterConditionStatus::True => {
-                "All DaemonSet have the requested amount of ready replicas.".to_string()
+                "All Deployments have the requested amount of ready replicas.".to_string()
             }
             ClusterConditionStatus::False => {
-                format!("DaemonSet {unavailable_resources:?} missing ready replicas.")
+                format!("Deployment {unavailable_resources:?} missing ready replicas.")
             }
-            ClusterConditionStatus::Unknown => "DaemonSet status cannot be determined.".to_string(),
+            ClusterConditionStatus::Unknown => {
+                "Deployment status cannot be determined.".to_string()
+            }
         };
 
         ClusterCondition {
@@ -67,19 +68,22 @@ impl DaemonSetConditionBuilder {
         }
     }
 
-    /// Returns a condition "Available: True" if the number of ready Pods is greater than zero.
-    /// This is an heuristic that doesn't take into consideration if *all* eligible nodes have
-    /// running Pods.
-    /// Other fields of the daemon set status have been considered and discarded for being even less
-    /// reliable/informative.
-    fn daemon_set_available(ds: &DaemonSet) -> ClusterConditionStatus {
-        let number_ready = ds
+    /// Returns a condition "Available: True" if the number of requested replicas matches
+    /// the number of available replicas. In addition, there needs to be at least one replica
+    /// available.
+    fn deployment_available(deployment: &Deployment) -> ClusterConditionStatus {
+        let requested_replicas = deployment
+            .spec
+            .as_ref()
+            .and_then(|spec| spec.replicas)
+            .unwrap_or_default();
+        let available_replicas = deployment
             .status
             .as_ref()
-            .map(|status| status.number_ready)
+            .and_then(|status| status.available_replicas)
             .unwrap_or_default();
 
-        if number_ready > 0 {
+        if requested_replicas == available_replicas && requested_replicas != 0 {
             ClusterConditionStatus::True
         } else {
             ClusterConditionStatus::False
@@ -89,48 +93,60 @@ impl DaemonSetConditionBuilder {
 
 #[cfg(test)]
 mod tests {
-    use k8s_openapi::api::apps::v1::{DaemonSet, DaemonSetStatus};
+    use k8s_openapi::api::apps::v1::{Deployment, DeploymentSpec, DeploymentStatus};
 
     use crate::status::condition::{
         ClusterCondition, ClusterConditionStatus, ClusterConditionType, ConditionBuilder,
-        daemonset::DaemonSetConditionBuilder,
+        deployment::DeploymentConditionBuilder,
     };
 
-    fn build_ds(number_ready: i32) -> DaemonSet {
-        DaemonSet {
-            status: Some(DaemonSetStatus {
-                number_ready,
-                ..DaemonSetStatus::default()
+    fn build_deployment(spec_replicas: i32, available_replicas: i32) -> Deployment {
+        Deployment {
+            spec: Some(DeploymentSpec {
+                replicas: Some(spec_replicas),
+                ..DeploymentSpec::default()
             }),
-            ..DaemonSet::default()
+            status: Some(DeploymentStatus {
+                available_replicas: Some(available_replicas),
+                ..DeploymentStatus::default()
+            }),
+            ..Deployment::default()
         }
     }
 
     #[test]
-    fn daemon_set_available() {
-        let ds = build_ds(1);
+    fn available() {
+        let deployment = build_deployment(3, 3);
 
         assert_eq!(
-            DaemonSetConditionBuilder::daemon_set_available(&ds),
+            DeploymentConditionBuilder::deployment_available(&deployment),
             ClusterConditionStatus::True
         );
     }
 
     #[test]
-    fn daemon_set_unavailable() {
-        let ds = build_ds(0);
+    fn unavailable() {
+        let deployment = build_deployment(3, 2);
+
         assert_eq!(
-            DaemonSetConditionBuilder::daemon_set_available(&ds),
+            DeploymentConditionBuilder::deployment_available(&deployment),
+            ClusterConditionStatus::False
+        );
+
+        let deployment = build_deployment(3, 4);
+
+        assert_eq!(
+            DeploymentConditionBuilder::deployment_available(&deployment),
             ClusterConditionStatus::False
         );
     }
 
     #[test]
-    fn daemon_set_condition_available() {
-        let mut ds_condition_builder = DaemonSetConditionBuilder::default();
-        ds_condition_builder.add(build_ds(1));
+    fn condition_available() {
+        let mut deployment_condition_builder = DeploymentConditionBuilder::default();
+        deployment_condition_builder.add(build_deployment(3, 3));
 
-        let conditions = ds_condition_builder.build_conditions();
+        let conditions = deployment_condition_builder.build_conditions();
 
         let got = conditions
             .conditions
@@ -150,11 +166,11 @@ mod tests {
     }
 
     #[test]
-    fn daemon_set_condition_unavailable() {
-        let mut ds_condition_builder = DaemonSetConditionBuilder::default();
-        ds_condition_builder.add(build_ds(0));
+    fn condition_unavailable() {
+        let mut deployment_condition_builder = DeploymentConditionBuilder::default();
+        deployment_condition_builder.add(build_deployment(3, 2));
 
-        let conditions = ds_condition_builder.build_conditions();
+        let conditions = deployment_condition_builder.build_conditions();
 
         let got = conditions
             .conditions

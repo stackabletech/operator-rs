@@ -1,13 +1,13 @@
 use std::{collections::HashMap, ops::Not};
 
-use darling::{util::IdentString, Error, Result};
+use darling::{Error, Result, util::IdentString};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{token::Pub, Ident, Item, ItemMod, ItemUse, Visibility};
+use syn::{Ident, Item, ItemMod, ItemUse, Visibility, token::Pub};
 
 use crate::{
-    codegen::{container::Container, VersionDefinition},
     ModuleAttributes,
+    codegen::{VersionDefinition, container::Container},
 };
 
 pub(crate) type KubernetesItems = (Vec<TokenStream>, Vec<IdentString>, Vec<String>);

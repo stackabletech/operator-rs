@@ -1,17 +1,17 @@
 use std::ops::Not;
 
-use darling::{util::IdentString, Error, FromAttributes, Result};
+use darling::{Error, FromAttributes, Result, util::IdentString};
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
-use syn::{parse_quote, Generics, ItemStruct, Path, Visibility};
+use quote::{ToTokens, quote};
+use syn::{Generics, ItemStruct, Path, Visibility, parse_quote};
 
 use crate::{
     attrs::container::NestedContainerAttributes,
     codegen::{
+        ItemStatus, StandaloneContainerAttributes, VersionDefinition,
         changes::Neighbors,
         container::{CommonContainerData, Container, ContainerIdents, ContainerOptions},
         item::VersionedField,
-        ItemStatus, StandaloneContainerAttributes, VersionDefinition,
     },
     utils::VersionExt,
 };
@@ -135,7 +135,9 @@ pub(crate) struct Struct {
 impl Struct {
     /// Generates code for the struct definition.
     pub(crate) fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
-        let (_, type_generics, where_clause) = self.generics.split_for_impl();
+        let where_clause = self.generics.where_clause.as_ref();
+        let type_generics = &self.generics;
+
         let original_attributes = &self.common.original_attributes;
         let ident = &self.common.idents.original;
         let version_docs = &version.docs;

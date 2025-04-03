@@ -1,3 +1,8 @@
 {
-  "rust-analyzer.cargo.features": "all"
+  "rust-analyzer.cargo.features": "all",
+  "rust-analyzer.rustfmt.overrideCommand": [
+    "rustfmt",
+    "+nightly-2025-01-15",
+    "--"
+  ],
 }
