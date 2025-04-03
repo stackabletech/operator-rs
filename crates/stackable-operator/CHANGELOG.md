@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Inject vector aggregator address into vector config file using an environment variable ([#1000]).
+
+[#1000]: https://github.com/stackabletech/operator-rs/pull/1000
+
 ## [0.87.5] - 2025-03-19
 
 ### Fixed
