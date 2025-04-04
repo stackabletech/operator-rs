@@ -33,6 +33,8 @@ const SHUTDOWN_FILE: &str = "shutdown";
 pub const VECTOR_CONFIG_FILE: &str = "vector.yaml";
 /// Key in the discovery ConfigMap that holds the vector aggregator address
 const VECTOR_AGGREGATOR_CM_KEY: &str = "ADDRESS";
+/// Name of the env var in the vector container that holds the vector aggregator address
+const VECTOR_AGGREGATOR_ENV_NAME: &str = "VECTOR_AGGREGATOR_ADDRESS";
 
 #[derive(Debug, Snafu)]
 pub enum LoggingError {
@@ -1329,7 +1331,7 @@ sinks:
     inputs:
       - extended_logs
     type: vector
-    address: $VECTOR_AGGREGATOR_ADDRESS
+    address: ${VECTOR_AGGREGATOR_ENV_NAME}
 "#,
         namespace = role_group.cluster.namespace.clone().unwrap_or_default(),
         cluster_name = role_group.cluster.name,
@@ -1476,7 +1478,7 @@ kill $vector_pid
         )])
         .add_env_var("VECTOR_LOG", log_level.to_vector_literal())
         .add_env_var_from_config_map(
-            "VECTOR_AGGREGATOR_ADDRESS",
+            VECTOR_AGGREGATOR_ENV_NAME,
             vector_aggregator_config_map_name,
             VECTOR_AGGREGATOR_CM_KEY,
         )
