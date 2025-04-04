@@ -6,6 +6,8 @@
 //!
 //! To get started, see [`Tracing`].
 
+use std::path::PathBuf;
+
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_otlp::{LogExporter, SpanExporter};
@@ -14,7 +16,7 @@ use opentelemetry_sdk::{
     trace::SdkTracerProvider,
 };
 use snafu::{ResultExt as _, Snafu};
-use tracing::subscriber::SetGlobalDefaultError;
+use tracing::{level_filters::LevelFilter, subscriber::SetGlobalDefaultError};
 use tracing_appender::rolling::{InitError, RollingFileAppender};
 use tracing_subscriber::{EnvFilter, Layer, Registry, filter::Directive, layer::SubscriberExt};
 
@@ -244,9 +246,43 @@ pub struct Tracing {
 }
 
 impl Tracing {
+    pub const CONSOLE_LOG_ENV_VAR: &str = "CONSOLE_LOG";
+    pub const FILE_LOG_ENV_VAR: &str = "FILE_LOG";
+    pub const OTLP_LOG_ENV_VAR: &str = "OTLP_LOG";
+    pub const OTLP_TRACE_ENV_VAR: &str = "OTLP_TRACE";
+
     /// Creates and returns a [`TracingBuilder`].
     pub fn builder() -> TracingBuilder<builder_state::PreServiceName> {
         TracingBuilder::default()
+    }
+
+    /// Creates an returns a pre-configured [`Tracing`] instance.
+    pub fn pre_configured(
+        service_name: &'static str,
+        no_console_output: bool,
+        log_directory: Option<PathBuf>,
+        rotation_period: Rotation,
+        otlp_logs: bool,
+        otlp_traces: bool,
+    ) -> Self {
+        Self::builder()
+            .service_name(service_name)
+            .with_console_output((
+                Self::CONSOLE_LOG_ENV_VAR,
+                LevelFilter::INFO,
+                !no_console_output,
+            ))
+            .with_file_output(log_directory.map(|log_directory| {
+                Settings::builder()
+                    .with_environment_variable(Self::FILE_LOG_ENV_VAR)
+                    .with_default_level(LevelFilter::INFO)
+                    .file_log_settings_builder(log_directory, "tracing-rs.log")
+                    .with_rotation_period(rotation_period)
+                    .build()
+            }))
+            .with_otlp_log_exporter((Self::OTLP_LOG_ENV_VAR, LevelFilter::DEBUG, otlp_logs))
+            .with_otlp_trace_exporter((Self::OTLP_TRACE_ENV_VAR, LevelFilter::DEBUG, otlp_traces))
+            .build()
     }
 
     /// Initialise the configured tracing subscribers, returning a guard that
