@@ -57,8 +57,8 @@ pub struct FileLogSettingsBuilder {
 
 impl FileLogSettingsBuilder {
     /// Set file rotation period.
-    pub fn with_rotation_period(mut self, rotation_period: Rotation) -> Self {
-        self.rotation_period = rotation_period;
+    pub fn with_rotation_period(mut self, rotation_period: impl Into<Rotation>) -> Self {
+        self.rotation_period = rotation_period.into();
         self
     }
 

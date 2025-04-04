@@ -6,6 +6,8 @@
 //!
 //! To get started, see [`Tracing`].
 
+use std::path::PathBuf;
+
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_otlp::{LogExporter, SpanExporter};
@@ -14,7 +16,7 @@ use opentelemetry_sdk::{
     trace::SdkTracerProvider,
 };
 use snafu::{ResultExt as _, Snafu};
-use tracing::subscriber::SetGlobalDefaultError;
+use tracing::{level_filters::LevelFilter, subscriber::SetGlobalDefaultError};
 use tracing_appender::rolling::{InitError, RollingFileAppender};
 use tracing_subscriber::{EnvFilter, Layer, Registry, filter::Directive, layer::SubscriberExt};
 
@@ -244,9 +246,56 @@ pub struct Tracing {
 }
 
 impl Tracing {
+    /// The environment variable used to set the console log level filter.
+    pub const CONSOLE_LOG_ENV_VAR: &str = "CONSOLE_LOG";
+    /// The environment variable used to set the rolling file log level filter.
+    pub const FILE_LOG_ENV_VAR: &str = "FILE_LOG";
+    /// The filename used for the rolling file logs.
+    pub const FILE_LOG_NAME: &str = "operator.log";
+    /// The environment variable used to set the OTLP log level filter.
+    pub const OTLP_LOG_ENV_VAR: &str = "OTLP_LOG";
+    /// The environment variable used to set the OTLP trace level filter.
+    pub const OTLP_TRACE_ENV_VAR: &str = "OTLP_TRACE";
+
     /// Creates and returns a [`TracingBuilder`].
     pub fn builder() -> TracingBuilder<builder_state::PreServiceName> {
         TracingBuilder::default()
+    }
+
+    /// Creates an returns a pre-configured [`Tracing`] instance which can be initialized by
+    /// calling [`Tracing::init()`].
+    ///
+    /// If `rolling_logs_period` is [`None`], this function will use a default value of
+    /// [`RollingPeriod::Never`].
+    pub fn pre_configured(service_name: &'static str, options: TelemetryOptions) -> Self {
+        let TelemetryOptions {
+            no_console_output,
+            rolling_logs,
+            rolling_logs_period,
+            otlp_traces,
+            otlp_logs,
+        } = options;
+
+        let rolling_logs_period = rolling_logs_period.unwrap_or_default();
+
+        Self::builder()
+            .service_name(service_name)
+            .with_console_output((
+                Self::CONSOLE_LOG_ENV_VAR,
+                LevelFilter::INFO,
+                !no_console_output,
+            ))
+            .with_file_output(rolling_logs.map(|log_directory| {
+                Settings::builder()
+                    .with_environment_variable(Self::FILE_LOG_ENV_VAR)
+                    .with_default_level(LevelFilter::INFO)
+                    .file_log_settings_builder(log_directory, Self::FILE_LOG_NAME)
+                    .with_rotation_period(rolling_logs_period)
+                    .build()
+            }))
+            .with_otlp_log_exporter((Self::OTLP_LOG_ENV_VAR, LevelFilter::DEBUG, otlp_logs))
+            .with_otlp_trace_exporter((Self::OTLP_TRACE_ENV_VAR, LevelFilter::DEBUG, otlp_traces))
+            .build()
     }
 
     /// Initialise the configured tracing subscribers, returning a guard that
@@ -604,6 +653,69 @@ fn env_filter_builder(env_var: &str, default_directive: impl Into<Directive>) ->
         .with_env_var(env_var)
         .with_default_directive(default_directive.into())
         .from_env_lossy()
+}
+
+/// Contains options which can be passed to [`Tracing::pre_configured()`].
+///
+/// Additionally, this struct can be used as operator CLI arguments. This functionality is only
+/// available if the feature `clap` is enabled.
+#[cfg_attr(feature = "clap", derive(clap::Args, PartialEq, Eq))]
+#[derive(Debug, Default)]
+pub struct TelemetryOptions {
+    /// Disable console output.
+    #[cfg_attr(feature = "clap", arg(long, env))]
+    pub no_console_output: bool,
+
+    /// Enable logging to rolling files located in the specified DIRECTORY.
+    #[cfg_attr(
+        feature = "clap",
+        arg(
+            long,
+            env = "ROLLING_LOGS_DIR",
+            value_name = "DIRECTORY",
+            group = "rolling_logs_group"
+        )
+    )]
+    pub rolling_logs: Option<PathBuf>,
+
+    /// Time PERIOD after which log files are rolled over.
+    #[cfg_attr(
+        feature = "clap",
+        arg(long, env, value_name = "PERIOD", requires = "rolling_logs_group")
+    )]
+    pub rolling_logs_period: Option<RollingPeriod>,
+
+    /// Enable exporting traces via OTLP.
+    #[cfg_attr(feature = "clap", arg(long, env))]
+    pub otlp_traces: bool,
+
+    /// Enable exporting logs via OTLP.
+    #[cfg_attr(feature = "clap", arg(long, env))]
+    pub otlp_logs: bool,
+}
+
+/// Supported periods when the log file is rolled over.
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, strum::Display, strum::EnumString)]
+#[allow(missing_docs)]
+pub enum RollingPeriod {
+    Minutely,
+    Hourly,
+    Daily,
+
+    #[default]
+    Never,
+}
+
+impl From<RollingPeriod> for Rotation {
+    fn from(value: RollingPeriod) -> Self {
+        match value {
+            RollingPeriod::Minutely => Self::MINUTELY,
+            RollingPeriod::Hourly => Self::HOURLY,
+            RollingPeriod::Daily => Self::DAILY,
+            RollingPeriod::Never => Self::NEVER,
+        }
+    }
 }
 
 #[cfg(test)]
