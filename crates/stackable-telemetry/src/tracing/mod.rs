@@ -299,8 +299,19 @@ impl Tracing {
     /// Creates an returns a pre-configured [`Tracing`] instance which can be initialized by
     /// calling [`Tracing::init()`].
     ///
-    /// If `rolling_logs_period` is [`None`], this function will use a default value of
-    /// [`RollingPeriod::Never`].
+    /// ### Environment Variables and Default Levels
+    ///
+    /// | Level Filter for | Environment Variable                       | Default Level |
+    /// | ---------------- | ------------------------------------------ | ------------- |
+    /// | Console logs     | [`CONSOLE_LOG`](Self::CONSOLE_LOG_ENV_VAR) | `INFO`        |
+    /// | File logs        | [`FILE_LOG`](Self::FILE_LOG_ENV_VAR)       | `INFO`        |
+    /// | OTLP logs        | [`OTLP_LOG`](Self::OTLP_LOG_ENV_VAR)       | `DEBUG`       |
+    /// | OTLP traces      | [`OTLP_TRACE`](Self::OTLP_TRACE_ENV_VAR)   | `DEBUG`       |
+    ///
+    /// ### Default Values
+    ///
+    /// - If `rolling_logs_period` is [`None`], this function will use a default value of
+    ///   [`RollingPeriod::Never`].
     pub fn pre_configured(service_name: &'static str, options: TelemetryOptions) -> Self {
         let TelemetryOptions {
             no_console_output,
