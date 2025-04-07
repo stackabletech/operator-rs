@@ -6,12 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add more granular telemetry related arguments to `ProductOperatorRun` ([#977]).
-  - `--no-console-output`: Disables output of `tracing` events to the console (stdout)
-  - `--rolling-logs`: Enables output `tracing` events to a rolling log file
-  - `--rolling-logs-period`: Sets the time period after which log files are rolled over
-  - `--otlp-traces`: Enables exporting of traces via OTLP
-  - `--otlp-logs`: Enables exporting of logs via OTLP
+- BREAKING: Inject vector aggregator address into vector config file using an environment variable ([#1000]).
 
 ### Changed
 
@@ -21,6 +16,28 @@ All notable changes to this project will be documented in this file.
   - The `static` authentication provider must now be imported using `r#static`.
   - Import are now more granular in general.
 
+[#968]: https://github.com/stackabletech/operator-rs/pull/968
+[#1000]: https://github.com/stackabletech/operator-rs/pull/1000
+
+## [0.89.1] - 2025-04-02
+
+### Changed
+
+- Make fields of `TelemetryArguments` public ([#998]).
+
+[#998]: https://github.com/stackabletech/operator-rs/pull/998
+
+## [0.89.0] - 2025-04-02
+
+### Added
+
+- Add more granular telemetry related arguments to `ProductOperatorRun` ([#977]).
+  - `--no-console-output`: Disables output of `tracing` events to the console (stdout)
+  - `--rolling-logs`: Enables output `tracing` events to a rolling log file
+  - `--rolling-logs-period`: Sets the time period after which log files are rolled over
+  - `--otlp-traces`: Enables exporting of traces via OTLP
+  - `--otlp-logs`: Enables exporting of logs via OTLP
+
 ### Removed
 
 - BREAKING: Remove `--tracing-target` argument and field from `ProductOperatorRun`.
@@ -28,7 +45,6 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Remove `initialize_logging` helper function from `stackable_operator::logging` ([#977]).
 - Remove `opentelemetry-jaeger` dependency ([#977]).
 
-[#968]: https://github.com/stackabletech/operator-rs/pull/968
 [#977]: https://github.com/stackabletech/operator-rs/pull/977
 
 ## [0.88.0] - 2025-04-02
