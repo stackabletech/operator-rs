@@ -90,7 +90,43 @@ pub enum Error {
 /// }
 /// ```
 ///
-/// ## Basic configuration
+/// ## Pre-configured Tracing Instance
+///
+/// There are two different styles to configure a [`Tracing`] instance: Using an opinionated pre-
+/// configured instance or a fully customizable builder. The first option should be suited for
+/// pretty much all operators by using sane defaults and applying best practices out-of-the-box.
+/// [`Tracing::pre_configured`] lists details about environment variables, filter levels and
+/// defaults used.
+///
+/// ```
+/// use stackable_telemetry::tracing::{Tracing, TelemetryOptions, Error};
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Error> {
+///     let options = TelemetryOptions {
+///          no_console_output: false,
+///          rolling_logs: None,
+///          rolling_logs_period: None,
+///          otlp_traces: true,
+///          otlp_logs: true,
+///      }
+///
+///     let _tracing_guard = Tracing::pre_configured("test", options).init()?;
+///
+///     tracing::info!("log a message");
+///
+///     Ok(())
+/// }
+/// ```
+///
+/// ## Builders
+///
+/// When choosing the builder, there are two different styles to configure individual subscribers:
+/// Using the sophisticated [`SettingsBuilder`] or the simplified tuple style for basic
+/// configuration. Currently, three different subscribers are supported: console output, OTLP log
+/// export, and OTLP trace export.
+///
+/// ### Basic Configuration
 ///
 /// A basic configuration of subscribers can be done by using 2-tuples or 3-tuples, also called
 /// doubles and triples. Using tuples, the subscriber can be enabled/disabled and it's environment
@@ -120,7 +156,7 @@ pub enum Error {
 /// }
 /// ```
 ///
-/// ## Advanced configuration
+/// ### Advanced Configuration
 ///
 /// More advanced configurations can be done via the [`Settings::builder`] function. Each
 /// subscriber provides specific settings based on a common set of options. These options can be
