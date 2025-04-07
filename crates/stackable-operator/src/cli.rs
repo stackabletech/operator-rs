@@ -108,13 +108,13 @@
 //!
 use std::{
     ffi::OsStr,
-    ops::Deref,
     path::{Path, PathBuf},
 };
 
 use clap::Args;
 use product_config::ProductConfigManager;
 use snafu::{ResultExt, Snafu};
+use stackable_telemetry::tracing::TelemetryOptions;
 
 use crate::{namespace::WatchNamespace, utils::cluster_info::KubernetesClusterInfoOpts};
 
@@ -219,7 +219,7 @@ pub struct ProductOperatorRun {
     pub watch_namespace: WatchNamespace,
 
     #[command(flatten)]
-    pub telemetry_arguments: TelemetryArguments,
+    pub telemetry_arguments: TelemetryOptions,
 
     #[command(flatten)]
     pub cluster_info_opts: KubernetesClusterInfoOpts,
@@ -277,50 +277,6 @@ impl ProductConfigPath {
                 .collect::<Vec<_>>(),
         }
         .fail()
-    }
-}
-
-#[derive(Debug, Default, PartialEq, Eq, Args)]
-pub struct TelemetryArguments {
-    /// Disable console output.
-    #[arg(long, env)]
-    pub no_console_output: bool,
-
-    /// Enable logging to rolling files located in the specified DIRECTORY.
-    #[arg(long, env, value_name = "DIRECTORY", group = "rolling_logs_group")]
-    pub rolling_logs: Option<PathBuf>,
-
-    /// Time PERIOD after which log files are rolled over.
-    #[arg(long, env, value_name = "PERIOD", requires = "rolling_logs_group")]
-    pub rolling_logs_period: Option<RollingPeriod>,
-
-    /// Enable exporting traces via OTLP.
-    #[arg(long, env)]
-    pub otlp_traces: bool,
-
-    /// Enable exporting logs via OTLP.
-    #[arg(long, env)]
-    pub otlp_logs: bool,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, strum::Display, strum::EnumString, clap::ValueEnum)]
-pub enum RollingPeriod {
-    Minutely,
-    Hourly,
-    Daily,
-    Never,
-}
-
-impl Deref for RollingPeriod {
-    type Target = tracing_appender::rolling::Rotation;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            RollingPeriod::Minutely => &tracing_appender::rolling::Rotation::MINUTELY,
-            RollingPeriod::Hourly => &tracing_appender::rolling::Rotation::HOURLY,
-            RollingPeriod::Daily => &tracing_appender::rolling::Rotation::DAILY,
-            RollingPeriod::Never => &tracing_appender::rolling::Rotation::NEVER,
-        }
     }
 }
 
