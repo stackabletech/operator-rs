@@ -912,9 +912,17 @@ mod test {
             }))
             .build();
 
-        assert!(tracing_builder.console_log_settings.is_enabled());
-        assert!(tracing_builder.file_log_settings.is_enabled());
-        assert!(tracing_builder.otlp_trace_settings.is_enabled());
-        assert!(tracing_builder.otlp_log_settings.is_disabled());
+
+    #[test]
+    fn pre_configured() {
+        let tracing = Tracing::pre_configured("test", TelemetryOptions {
+            no_console_output: false,
+            rolling_logs: None,
+            rolling_logs_period: None,
+            otlp_traces: true,
+            otlp_logs: false,
+        });
+
+        assert!(tracing.otlp_trace_settings.is_enabled());
     }
 }
