@@ -62,13 +62,11 @@ pub enum Error {
 ///
 /// # Usage
 ///
-/// There are two different styles to configure individual subscribers: Using the sophisticated
-/// [`SettingsBuilder`] or the simplified tuple style for basic configuration. Currently, three
-/// different subscribers are supported: console output, OTLP log export, and OTLP trace export.
+/// ## Tracing Guard
 ///
-/// The subscribers are active as long as the tracing guard returned by [`Tracing::init`] is in
-/// scope and not dropped. Dropping it results in subscribers being shut down, which can lead to
-/// loss of telemetry data when done before exiting the application. This is why it is important
+/// The configured subscribers are active as long as the tracing guard returned by [`Tracing::init`]
+/// is in scope and not dropped. Dropping it results in subscribers being shut down, which can lead
+/// to loss of telemetry data when done before exiting the application. This is why it is important
 /// to hold onto the guard as long as required.
 ///
 /// <div class="warning">
@@ -178,26 +176,26 @@ pub enum Error {
 ///         .service_name("test")
 ///         .with_console_output(
 ///             Settings::builder()
-///                 .with_environment_variable("TEST_CONSOLE")
+///                 .with_environment_variable("CONSOLE_LOG")
 ///                 .with_default_level(LevelFilter::INFO)
 ///                 .build()
 ///         )
 ///         .with_file_output(
 ///             Settings::builder()
-///                 .with_environment_variable("TEST_FILE_LOG")
+///                 .with_environment_variable("FILE_LOG")
 ///                 .with_default_level(LevelFilter::INFO)
-///                 .file_log_settings_builder("/tmp/logs", "tracing-rs.log")
+///                 .file_log_settings_builder("/tmp/logs", "operator.log")
 ///                 .build()
 ///         )
 ///         .with_otlp_log_exporter(otlp_log_flag.then(|| {
 ///             Settings::builder()
-///                 .with_environment_variable("TEST_OTLP_LOG")
+///                 .with_environment_variable("OTLP_LOG")
 ///                 .with_default_level(LevelFilter::DEBUG)
 ///                 .build()
 ///         }))
 ///         .with_otlp_trace_exporter(
 ///             Settings::builder()
-///                 .with_environment_variable("TEST_OTLP_TRACE")
+///                 .with_environment_variable("OTLP_TRACE")
 ///                 .with_default_level(LevelFilter::TRACE)
 ///                 .build()
 ///         )
@@ -334,7 +332,7 @@ impl Tracing {
             .build()
     }
 
-    /// Initialise the configured tracing subscribers, returning a guard that
+    /// Initialize the configured tracing subscribers, returning a guard that
     /// will shutdown the subscribers when dropped.
     ///
     /// <div class="warning">
