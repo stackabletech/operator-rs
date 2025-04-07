@@ -165,10 +165,8 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 /// ```rust
 /// # use stackable_operator::cli::{Command, ProductOperatorRun, ProductConfigPath};
 /// use clap::Parser;
-/// use stackable_operator::{
-///     cli::TelemetryArguments,
-///     namespace::WatchNamespace,
-/// };
+/// use stackable_operator::namespace::WatchNamespace;
+/// use stackable_telemetry::tracing::TelemetryOptions;
 ///
 /// #[derive(clap::Parser, Debug, PartialEq, Eq)]
 /// struct Run {
@@ -184,7 +182,7 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///     common: ProductOperatorRun {
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
 ///         watch_namespace: WatchNamespace::One("foobar".to_string()),
-///         telemetry_arguments: TelemetryArguments::default(),
+///         telemetry_arguments: TelemetryOptions::default(),
 ///         cluster_info_opts: Default::default(),
 ///     },
 /// }));

@@ -107,7 +107,7 @@ pub enum Error {
 ///          rolling_logs_period: None,
 ///          otlp_traces: true,
 ///          otlp_logs: true,
-///      }
+///      };
 ///
 ///     let _tracing_guard = Tracing::pre_configured("test", options).init()?;
 ///
