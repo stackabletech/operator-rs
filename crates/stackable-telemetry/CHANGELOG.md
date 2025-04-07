@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add new `Tracing::pre_configured` method ([#1001]).
+  - Add `TelemetryOptions` struct and `RollingPeriod` enum
+  - Add `clap` feature to enable `TelemetryOptions` being used as CLI arguments
+
+### Changed
+
+- BREAKING: Change `FileLogSettingsBuilder::with_rotation_period` to take `impl Into<Rotation>`
+  instead of `Rotation` ([#1001]).
 
 [#1001]: https://github.com/stackabletech/operator-rs/pull/1001
 
