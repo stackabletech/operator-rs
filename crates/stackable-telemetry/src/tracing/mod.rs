@@ -285,7 +285,7 @@ impl Tracing {
     /// The environment variable used to set the rolling file log level filter.
     pub const FILE_LOG_ENV_VAR: &str = "FILE_LOG";
     /// The filename used for the rolling file logs.
-    pub const FILE_LOG_NAME: &str = "operator.log";
+    pub const FILE_LOG_SUFFIX: &str = "tracing-rs.json";
     /// The environment variable used to set the OTLP log level filter.
     pub const OTLP_LOG_ENV_VAR: &str = "OTLP_LOG";
     /// The environment variable used to set the OTLP trace level filter.
@@ -323,7 +323,7 @@ impl Tracing {
                 Settings::builder()
                     .with_environment_variable(Self::FILE_LOG_ENV_VAR)
                     .with_default_level(LevelFilter::INFO)
-                    .file_log_settings_builder(log_directory, Self::FILE_LOG_NAME)
+                    .file_log_settings_builder(log_directory, Self::FILE_LOG_SUFFIX)
                     .with_rotation_period(rolling_logs_period)
                     .build()
             }))
