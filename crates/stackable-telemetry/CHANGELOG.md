@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add new `Tracing::pre_configured` method ([#1001]).
+
+[#1001]: https://github.com/stackabletech/operator-rs/pull/1001
+
 ## [0.4.0] - 2025-04-02
 
 ### Added
