@@ -1421,14 +1421,14 @@ sinks:
 /// );
 ///
 /// if logging.enable_vector_agent {
-///         pod_builder.add_container(product_logging::framework::vector_container(
-///             &resolved_product_image,
-///             "config",
-///             "log",
-///             logging.containers.get(&Container::Vector),
-///             resources,
-///             vector_aggregator_config_map_name,
-///         ).unwrap());
+///     pod_builder.add_container(product_logging::framework::vector_container(
+///         &resolved_product_image,
+///         "config",
+///         "log",
+///         logging.containers.get(&Container::Vector),
+///         resources,
+///         vector_aggregator_config_map_name,
+///     ).unwrap());
 /// }
 ///
 /// pod_builder.build().unwrap();
