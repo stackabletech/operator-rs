@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.90.0] - 2025-04-07
+
 ### Added
 
 - BREAKING: Inject vector aggregator address into vector config file using an environment variable ([#1000]).
