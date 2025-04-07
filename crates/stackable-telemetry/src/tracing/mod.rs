@@ -887,7 +887,7 @@ mod test {
         let enable_otlp_trace = true;
         let enable_otlp_log = false;
 
-        let tracing_builder = Tracing::builder()
+        let tracing_guard = Tracing::builder()
             .service_name("test")
             .with_console_output(enable_console_output.then(|| {
                 Settings::builder()
@@ -912,6 +912,11 @@ mod test {
             }))
             .build();
 
+        assert!(tracing_guard.console_log_settings.is_enabled());
+        assert!(tracing_guard.file_log_settings.is_enabled());
+        assert!(tracing_guard.otlp_trace_settings.is_enabled());
+        assert!(tracing_guard.otlp_log_settings.is_disabled());
+    }
 
     #[test]
     fn pre_configured() {
