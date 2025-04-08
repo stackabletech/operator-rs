@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.91.0] - 2025-04-08
+
 ### Changed
 
 - BREAKING: Remove `cli::TelemetryArguments` and `cli::RollingPeriod` which are both replaced by
