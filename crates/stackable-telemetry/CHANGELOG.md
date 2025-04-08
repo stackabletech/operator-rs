@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-04-08
+
 ### Added
 
 - Add new `Tracing::pre_configured` method ([#1001]).
