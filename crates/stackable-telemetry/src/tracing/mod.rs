@@ -8,6 +8,8 @@
 
 use std::path::PathBuf;
 
+#[cfg_attr(feature = "clap", cfg(doc))]
+use clap;
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_otlp::{LogExporter, SpanExporter};
@@ -116,6 +118,9 @@ pub enum Error {
 ///     Ok(())
 /// }
 /// ```
+///
+/// Also see the documentation for [`TelemetryOptions`] which details how it can be used as CLI
+/// arguments via [`clap`].
 ///
 /// ## Builders
 ///
@@ -305,8 +310,8 @@ impl Tracing {
     /// | ---------------- | ------------------------------------------ | ------------- |
     /// | Console logs     | [`CONSOLE_LOG`](Self::CONSOLE_LOG_ENV_VAR) | `INFO`        |
     /// | File logs        | [`FILE_LOG`](Self::FILE_LOG_ENV_VAR)       | `INFO`        |
-    /// | OTLP logs        | [`OTLP_LOG`](Self::OTLP_LOG_ENV_VAR)       | `INFO`       |
-    /// | OTLP traces      | [`OTLP_TRACE`](Self::OTLP_TRACE_ENV_VAR)   | `INFO`       |
+    /// | OTLP logs        | [`OTLP_LOG`](Self::OTLP_LOG_ENV_VAR)       | `INFO`        |
+    /// | OTLP traces      | [`OTLP_TRACE`](Self::OTLP_TRACE_ENV_VAR)   | `INFO`        |
     ///
     /// ### Default Values
     ///
@@ -696,6 +701,25 @@ fn env_filter_builder(env_var: &str, default_directive: impl Into<Directive>) ->
 ///
 /// Additionally, this struct can be used as operator CLI arguments. This functionality is only
 /// available if the feature `clap` is enabled.
+///
+#[cfg_attr(
+    feature = "clap",
+    doc = r#"
+```
+# use stackable_telemetry::tracing::TelemetryOptions;
+use clap::Parser;
+
+#[derive(Parser)]
+struct Cli {
+    #[arg(short, long)]
+    namespace: String,
+
+    #[clap(flatten)]
+    telemetry_arguments: TelemetryOptions,
+}
+```
+"#
+)]
 #[cfg_attr(feature = "clap", derive(clap::Args, PartialEq, Eq))]
 #[derive(Debug, Default)]
 pub struct TelemetryOptions {
