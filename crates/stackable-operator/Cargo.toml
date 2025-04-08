@@ -11,6 +11,7 @@ repository.workspace = true
 time = ["dep:time"]
 
 [dependencies]
+stackable-telemetry = { path = "../stackable-telemetry", features = ["clap"]}
 stackable-operator-derive = { path = "../stackable-operator-derive" }
 stackable-shared = { path = "../stackable-shared" }
 

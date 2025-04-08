@@ -3209,6 +3209,7 @@ dependencies = [
  "snafu 0.8.5",
  "stackable-operator-derive",
  "stackable-shared",
+ "stackable-telemetry",
  "strum",
  "tempfile",
  "time",
@@ -3247,6 +3248,7 @@ name = "stackable-telemetry"
 version = "0.4.0"
 dependencies = [
  "axum 0.8.3",
+ "clap",
  "futures-util",
  "opentelemetry",
  "opentelemetry-appender-tracing",
@@ -3256,6 +3258,7 @@ dependencies = [
  "rstest",
  "snafu 0.8.5",
  "stackable-webhook",
+ "strum",
  "tokio",
  "tower 0.5.2",
  "tracing",

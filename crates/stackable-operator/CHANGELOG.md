@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Remove `cli::TelemetryArguments` and `cli::RollingPeriod` which are both replaced by
+  types from `stackable_telemetry` ([#1001]).
+- BREAKING: The `ProductOperatorRun` struct now uses `stackable_telemetry::tracing::TelemetryOptions`
+  for the `telemetry_arguments` field ([#1001]).
+
+[#1001]: https://github.com/stackabletech/operator-rs/pull/1001
+
 ## [0.90.0] - 2025-04-07
 
 ### Added
