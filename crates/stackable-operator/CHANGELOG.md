@@ -4,12 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.90.0] - 2025-04-07
-
-### Added
-
-- BREAKING: Inject vector aggregator address into vector config file using an environment variable ([#1000]).
-
 ### Changed
 
 - BREAKING: Remove `cli::TelemetryArguments` and `cli::RollingPeriod` which are both replaced by
@@ -17,8 +11,15 @@ All notable changes to this project will be documented in this file.
 - BREAKING: The `ProductOperatorRun` struct now uses `stackable_telemetry::tracing::TelemetryOptions`
   for the `telemetry_arguments` field ([#1001]).
 
-[#1000]: https://github.com/stackabletech/operator-rs/pull/1000
 [#1001]: https://github.com/stackabletech/operator-rs/pull/1001
+
+## [0.90.0] - 2025-04-07
+
+### Added
+
+- BREAKING: Inject vector aggregator address into vector config file using an environment variable ([#1000]).
+
+[#1000]: https://github.com/stackabletech/operator-rs/pull/1000
 
 ## [0.89.1] - 2025-04-02
 
