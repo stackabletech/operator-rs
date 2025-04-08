@@ -305,8 +305,8 @@ impl Tracing {
     /// | ---------------- | ------------------------------------------ | ------------- |
     /// | Console logs     | [`CONSOLE_LOG`](Self::CONSOLE_LOG_ENV_VAR) | `INFO`        |
     /// | File logs        | [`FILE_LOG`](Self::FILE_LOG_ENV_VAR)       | `INFO`        |
-    /// | OTLP logs        | [`OTLP_LOG`](Self::OTLP_LOG_ENV_VAR)       | `DEBUG`       |
-    /// | OTLP traces      | [`OTLP_TRACE`](Self::OTLP_TRACE_ENV_VAR)   | `DEBUG`       |
+    /// | OTLP logs        | [`OTLP_LOG`](Self::OTLP_LOG_ENV_VAR)       | `INFO`       |
+    /// | OTLP traces      | [`OTLP_TRACE`](Self::OTLP_TRACE_ENV_VAR)   | `INFO`       |
     ///
     /// ### Default Values
     ///
@@ -338,8 +338,8 @@ impl Tracing {
                     .with_rotation_period(rolling_logs_period)
                     .build()
             }))
-            .with_otlp_log_exporter((Self::OTLP_LOG_ENV_VAR, LevelFilter::DEBUG, otlp_logs))
-            .with_otlp_trace_exporter((Self::OTLP_TRACE_ENV_VAR, LevelFilter::DEBUG, otlp_traces))
+            .with_otlp_log_exporter((Self::OTLP_LOG_ENV_VAR, LevelFilter::INFO, otlp_logs))
+            .with_otlp_trace_exporter((Self::OTLP_TRACE_ENV_VAR, LevelFilter::INFO, otlp_traces))
             .build()
     }
 
