@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add re-exports for `stackable-telemetry` and `stackable-versioned` ([#1007]).
+- Add new features: `default`, `full`, `telemetry`, and `versioned` ([#1007]).
+
+[#1007]: https://github.com/stackabletech/operator-rs/pull/1007
+
 ## [0.91.0] - 2025-04-08
 
 ### Changed
