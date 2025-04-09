@@ -617,9 +617,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.5.14"
+version = "0.5.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06ba6d68e24814cb8de6bb986db8222d3a027d15872cabc0d18817bc3c0e4471"
+checksum = "82b8f8f868b36967f9606790d1903570de9ceaf870a7bf9fbbd3016d636a2cb2"
 dependencies = [
  "crossbeam-utils",
 ]
@@ -3184,7 +3184,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.89.1"
+version = "0.91.1"
 dependencies = [
  "chrono",
  "clap",
@@ -3209,6 +3209,7 @@ dependencies = [
  "snafu 0.8.5",
  "stackable-operator-derive",
  "stackable-shared",
+ "stackable-telemetry",
  "stackable-versioned",
  "strum",
  "tempfile",
@@ -3245,9 +3246,10 @@ dependencies = [
 
 [[package]]
 name = "stackable-telemetry"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "axum 0.8.3",
+ "clap",
  "futures-util",
  "opentelemetry",
  "opentelemetry-appender-tracing",
@@ -3257,6 +3259,7 @@ dependencies = [
  "rstest",
  "snafu 0.8.5",
  "stackable-webhook",
+ "strum",
  "tokio",
  "tower 0.5.2",
  "tracing",

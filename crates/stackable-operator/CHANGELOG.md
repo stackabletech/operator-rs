@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.91.1] - 2025-04-09
+
+### Added
+
+- Add re-exports for `stackable-telemetry` and `stackable-versioned` ([#1007]).
+- Add new features: `default`, `full`, `telemetry`, and `versioned` ([#1007]).
+
+[#1007]: https://github.com/stackabletech/operator-rs/pull/1007
+
+## [0.91.0] - 2025-04-08
+
+### Changed
+
+- BREAKING: Remove `cli::TelemetryArguments` and `cli::RollingPeriod` which are both replaced by
+  types from `stackable_telemetry` ([#1001]).
+- BREAKING: The `ProductOperatorRun` struct now uses `stackable_telemetry::tracing::TelemetryOptions`
+  for the `telemetry_arguments` field ([#1001]).
+
+[#1001]: https://github.com/stackabletech/operator-rs/pull/1001
+
+## [0.90.0] - 2025-04-07
+
 ### Added
 
 - BREAKING: Inject vector aggregator address into vector config file using an environment variable ([#1000]).

@@ -6,6 +6,10 @@
 //!
 //! To get started, see [`Tracing`].
 
+use std::path::PathBuf;
+
+#[cfg_attr(feature = "clap", cfg(doc))]
+use clap;
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_otlp::{LogExporter, SpanExporter};
@@ -14,7 +18,7 @@ use opentelemetry_sdk::{
     trace::SdkTracerProvider,
 };
 use snafu::{ResultExt as _, Snafu};
-use tracing::subscriber::SetGlobalDefaultError;
+use tracing::{level_filters::LevelFilter, subscriber::SetGlobalDefaultError};
 use tracing_appender::rolling::{InitError, RollingFileAppender};
 use tracing_subscriber::{EnvFilter, Layer, Registry, filter::Directive, layer::SubscriberExt};
 
@@ -60,13 +64,11 @@ pub enum Error {
 ///
 /// # Usage
 ///
-/// There are two different styles to configure individual subscribers: Using the sophisticated
-/// [`SettingsBuilder`] or the simplified tuple style for basic configuration. Currently, three
-/// different subscribers are supported: console output, OTLP log export, and OTLP trace export.
+/// ## Tracing Guard
 ///
-/// The subscribers are active as long as the tracing guard returned by [`Tracing::init`] is in
-/// scope and not dropped. Dropping it results in subscribers being shut down, which can lead to
-/// loss of telemetry data when done before exiting the application. This is why it is important
+/// The configured subscribers are active as long as the tracing guard returned by [`Tracing::init`]
+/// is in scope and not dropped. Dropping it results in subscribers being shut down, which can lead
+/// to loss of telemetry data when done before exiting the application. This is why it is important
 /// to hold onto the guard as long as required.
 ///
 /// <div class="warning">
@@ -88,7 +90,46 @@ pub enum Error {
 /// }
 /// ```
 ///
-/// ## Basic configuration
+/// ## Pre-configured Tracing Instance
+///
+/// There are two different styles to configure a [`Tracing`] instance: Using an opinionated pre-
+/// configured instance or a fully customizable builder. The first option should be suited for
+/// pretty much all operators by using sane defaults and applying best practices out-of-the-box.
+/// [`Tracing::pre_configured`] lists details about environment variables, filter levels and
+/// defaults used.
+///
+/// ```
+/// use stackable_telemetry::tracing::{Tracing, TelemetryOptions, Error};
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Error> {
+///     let options = TelemetryOptions {
+///          no_console_output: false,
+///          rolling_logs: None,
+///          rolling_logs_period: None,
+///          otlp_traces: true,
+///          otlp_logs: true,
+///      };
+///
+///     let _tracing_guard = Tracing::pre_configured("test", options).init()?;
+///
+///     tracing::info!("log a message");
+///
+///     Ok(())
+/// }
+/// ```
+///
+/// Also see the documentation for [`TelemetryOptions`] which details how it can be used as CLI
+/// arguments via [`clap`].
+///
+/// ## Builders
+///
+/// When choosing the builder, there are two different styles to configure individual subscribers:
+/// Using the sophisticated [`SettingsBuilder`] or the simplified tuple style for basic
+/// configuration. Currently, three different subscribers are supported: console output, OTLP log
+/// export, and OTLP trace export.
+///
+/// ### Basic Configuration
 ///
 /// A basic configuration of subscribers can be done by using 2-tuples or 3-tuples, also called
 /// doubles and triples. Using tuples, the subscriber can be enabled/disabled and it's environment
@@ -118,7 +159,7 @@ pub enum Error {
 /// }
 /// ```
 ///
-/// ## Advanced configuration
+/// ### Advanced Configuration
 ///
 /// More advanced configurations can be done via the [`Settings::builder`] function. Each
 /// subscriber provides specific settings based on a common set of options. These options can be
@@ -140,26 +181,26 @@ pub enum Error {
 ///         .service_name("test")
 ///         .with_console_output(
 ///             Settings::builder()
-///                 .with_environment_variable("TEST_CONSOLE")
+///                 .with_environment_variable("CONSOLE_LOG")
 ///                 .with_default_level(LevelFilter::INFO)
 ///                 .build()
 ///         )
 ///         .with_file_output(
 ///             Settings::builder()
-///                 .with_environment_variable("TEST_FILE_LOG")
+///                 .with_environment_variable("FILE_LOG")
 ///                 .with_default_level(LevelFilter::INFO)
-///                 .file_log_settings_builder("/tmp/logs", "tracing-rs.log")
+///                 .file_log_settings_builder("/tmp/logs", "operator.log")
 ///                 .build()
 ///         )
 ///         .with_otlp_log_exporter(otlp_log_flag.then(|| {
 ///             Settings::builder()
-///                 .with_environment_variable("TEST_OTLP_LOG")
+///                 .with_environment_variable("OTLP_LOG")
 ///                 .with_default_level(LevelFilter::DEBUG)
 ///                 .build()
 ///         }))
 ///         .with_otlp_trace_exporter(
 ///             Settings::builder()
-///                 .with_environment_variable("TEST_OTLP_TRACE")
+///                 .with_environment_variable("OTLP_TRACE")
 ///                 .with_default_level(LevelFilter::TRACE)
 ///                 .build()
 ///         )
@@ -244,12 +285,70 @@ pub struct Tracing {
 }
 
 impl Tracing {
+    /// The environment variable used to set the console log level filter.
+    pub const CONSOLE_LOG_ENV_VAR: &str = "CONSOLE_LOG";
+    /// The environment variable used to set the rolling file log level filter.
+    pub const FILE_LOG_ENV_VAR: &str = "FILE_LOG";
+    /// The filename used for the rolling file logs.
+    pub const FILE_LOG_SUFFIX: &str = "tracing-rs.json";
+    /// The environment variable used to set the OTLP log level filter.
+    pub const OTLP_LOG_ENV_VAR: &str = "OTLP_LOG";
+    /// The environment variable used to set the OTLP trace level filter.
+    pub const OTLP_TRACE_ENV_VAR: &str = "OTLP_TRACE";
+
     /// Creates and returns a [`TracingBuilder`].
     pub fn builder() -> TracingBuilder<builder_state::PreServiceName> {
         TracingBuilder::default()
     }
 
-    /// Initialise the configured tracing subscribers, returning a guard that
+    /// Creates an returns a pre-configured [`Tracing`] instance which can be initialized by
+    /// calling [`Tracing::init()`].
+    ///
+    /// ### Environment Variables and Default Levels
+    ///
+    /// | Level Filter for | Environment Variable                       | Default Level |
+    /// | ---------------- | ------------------------------------------ | ------------- |
+    /// | Console logs     | [`CONSOLE_LOG`](Self::CONSOLE_LOG_ENV_VAR) | `INFO`        |
+    /// | File logs        | [`FILE_LOG`](Self::FILE_LOG_ENV_VAR)       | `INFO`        |
+    /// | OTLP logs        | [`OTLP_LOG`](Self::OTLP_LOG_ENV_VAR)       | `INFO`        |
+    /// | OTLP traces      | [`OTLP_TRACE`](Self::OTLP_TRACE_ENV_VAR)   | `INFO`        |
+    ///
+    /// ### Default Values
+    ///
+    /// - If `rolling_logs_period` is [`None`], this function will use a default value of
+    ///   [`RollingPeriod::Never`].
+    pub fn pre_configured(service_name: &'static str, options: TelemetryOptions) -> Self {
+        let TelemetryOptions {
+            no_console_output,
+            rolling_logs,
+            rolling_logs_period,
+            otlp_traces,
+            otlp_logs,
+        } = options;
+
+        let rolling_logs_period = rolling_logs_period.unwrap_or_default();
+
+        Self::builder()
+            .service_name(service_name)
+            .with_console_output((
+                Self::CONSOLE_LOG_ENV_VAR,
+                LevelFilter::INFO,
+                !no_console_output,
+            ))
+            .with_file_output(rolling_logs.map(|log_directory| {
+                Settings::builder()
+                    .with_environment_variable(Self::FILE_LOG_ENV_VAR)
+                    .with_default_level(LevelFilter::INFO)
+                    .file_log_settings_builder(log_directory, Self::FILE_LOG_SUFFIX)
+                    .with_rotation_period(rolling_logs_period)
+                    .build()
+            }))
+            .with_otlp_log_exporter((Self::OTLP_LOG_ENV_VAR, LevelFilter::INFO, otlp_logs))
+            .with_otlp_trace_exporter((Self::OTLP_TRACE_ENV_VAR, LevelFilter::INFO, otlp_traces))
+            .build()
+    }
+
+    /// Initialize the configured tracing subscribers, returning a guard that
     /// will shutdown the subscribers when dropped.
     ///
     /// <div class="warning">
@@ -500,10 +599,8 @@ impl TracingBuilder<builder_state::PreServiceName> {
 
 impl TracingBuilder<builder_state::Config> {
     /// Enable the console output tracing subscriber and set the default
-    /// [`LevelFilter`][1] which is overridable through the given environment
+    /// [`LevelFilter`] which is overridable through the given environment
     /// variable.
-    ///
-    /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_console_output(
         self,
         console_log_settings: impl Into<ConsoleLogSettings>,
@@ -519,10 +616,8 @@ impl TracingBuilder<builder_state::Config> {
     }
 
     /// Enable the file output tracing subscriber and set the default
-    /// [`LevelFilter`][1] which is overridable through the given environment
+    /// [`LevelFilter`] which is overridable through the given environment
     /// variable.
-    ///
-    /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_file_output(
         self,
         file_log_settings: impl Into<FileLogSettings>,
@@ -537,13 +632,11 @@ impl TracingBuilder<builder_state::Config> {
         }
     }
 
-    /// Enable the OTLP logging subscriber and set the default [`LevelFilter`][1]
+    /// Enable the OTLP logging subscriber and set the default [`LevelFilter`]
     /// which is overridable through the given environment variable.
     ///
     /// You can configure the OTLP log exports through the variables defined
     /// in the opentelemetry crates. See [`Tracing`].
-    ///
-    /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_otlp_log_exporter(
         self,
         otlp_log_settings: impl Into<OtlpLogSettings>,
@@ -558,13 +651,11 @@ impl TracingBuilder<builder_state::Config> {
         }
     }
 
-    /// Enable the OTLP tracing subscriber and set the default [`LevelFilter`][1]
+    /// Enable the OTLP tracing subscriber and set the default [`LevelFilter`]
     /// which is overridable through the given environment variable.
     ///
     /// You can configure the OTLP trace exports through the variables defined
     /// in the opentelemetry crates. See [`Tracing`].
-    ///
-    /// [1]: tracing_subscriber::filter::LevelFilter
     pub fn with_otlp_trace_exporter(
         self,
         otlp_trace_settings: impl Into<OtlpTraceSettings>,
@@ -604,6 +695,88 @@ fn env_filter_builder(env_var: &str, default_directive: impl Into<Directive>) ->
         .with_env_var(env_var)
         .with_default_directive(default_directive.into())
         .from_env_lossy()
+}
+
+/// Contains options which can be passed to [`Tracing::pre_configured()`].
+///
+/// Additionally, this struct can be used as operator CLI arguments. This functionality is only
+/// available if the feature `clap` is enabled.
+///
+#[cfg_attr(
+    feature = "clap",
+    doc = r#"
+```
+# use stackable_telemetry::tracing::TelemetryOptions;
+use clap::Parser;
+
+#[derive(Parser)]
+struct Cli {
+    #[arg(short, long)]
+    namespace: String,
+
+    #[clap(flatten)]
+    telemetry_arguments: TelemetryOptions,
+}
+```
+"#
+)]
+#[cfg_attr(feature = "clap", derive(clap::Args, PartialEq, Eq))]
+#[derive(Debug, Default)]
+pub struct TelemetryOptions {
+    /// Disable console output.
+    #[cfg_attr(feature = "clap", arg(long, env))]
+    pub no_console_output: bool,
+
+    /// Enable logging to rolling files located in the specified DIRECTORY.
+    #[cfg_attr(
+        feature = "clap",
+        arg(
+            long,
+            env = "ROLLING_LOGS_DIR",
+            value_name = "DIRECTORY",
+            group = "rolling_logs_group"
+        )
+    )]
+    pub rolling_logs: Option<PathBuf>,
+
+    /// Time PERIOD after which log files are rolled over.
+    #[cfg_attr(
+        feature = "clap",
+        arg(long, env, value_name = "PERIOD", requires = "rolling_logs_group")
+    )]
+    pub rolling_logs_period: Option<RollingPeriod>,
+
+    /// Enable exporting traces via OTLP.
+    #[cfg_attr(feature = "clap", arg(long, env))]
+    pub otlp_traces: bool,
+
+    /// Enable exporting logs via OTLP.
+    #[cfg_attr(feature = "clap", arg(long, env))]
+    pub otlp_logs: bool,
+}
+
+/// Supported periods when the log file is rolled over.
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, strum::Display, strum::EnumString)]
+#[allow(missing_docs)]
+pub enum RollingPeriod {
+    Minutely,
+    Hourly,
+    Daily,
+
+    #[default]
+    Never,
+}
+
+impl From<RollingPeriod> for Rotation {
+    fn from(value: RollingPeriod) -> Self {
+        match value {
+            RollingPeriod::Minutely => Self::MINUTELY,
+            RollingPeriod::Hourly => Self::HOURLY,
+            RollingPeriod::Daily => Self::DAILY,
+            RollingPeriod::Never => Self::NEVER,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -775,7 +948,7 @@ mod test {
         let enable_otlp_trace = true;
         let enable_otlp_log = false;
 
-        let tracing_builder = Tracing::builder()
+        let tracing_guard = Tracing::builder()
             .service_name("test")
             .with_console_output(enable_console_output.then(|| {
                 Settings::builder()
@@ -800,9 +973,22 @@ mod test {
             }))
             .build();
 
-        assert!(tracing_builder.console_log_settings.is_enabled());
-        assert!(tracing_builder.file_log_settings.is_enabled());
-        assert!(tracing_builder.otlp_trace_settings.is_enabled());
-        assert!(tracing_builder.otlp_log_settings.is_disabled());
+        assert!(tracing_guard.console_log_settings.is_enabled());
+        assert!(tracing_guard.file_log_settings.is_enabled());
+        assert!(tracing_guard.otlp_trace_settings.is_enabled());
+        assert!(tracing_guard.otlp_log_settings.is_disabled());
+    }
+
+    #[test]
+    fn pre_configured() {
+        let tracing = Tracing::pre_configured("test", TelemetryOptions {
+            no_console_output: false,
+            rolling_logs: None,
+            rolling_logs_period: None,
+            otlp_traces: true,
+            otlp_logs: false,
+        });
+
+        assert!(tracing.otlp_trace_settings.is_enabled());
     }
 }
