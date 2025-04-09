@@ -3210,6 +3210,7 @@ dependencies = [
  "stackable-operator-derive",
  "stackable-shared",
  "stackable-telemetry",
+ "stackable-versioned",
  "strum",
  "tempfile",
  "time",
