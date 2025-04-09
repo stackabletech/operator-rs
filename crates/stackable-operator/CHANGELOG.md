@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.91.1] - 2025-04-09
+
 ### Added
 
 - Add re-exports for `stackable-telemetry` and `stackable-versioned` ([#1007]).
