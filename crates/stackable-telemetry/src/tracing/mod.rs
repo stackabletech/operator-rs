@@ -782,7 +782,7 @@ pub struct TelemetryOptions {
     #[cfg_attr(feature = "clap", arg(long, env, group = "console_log"))]
     pub console_log_disabled: bool,
 
-    /// Console log format
+    /// Console log format.
     #[cfg_attr(
         feature = "clap",
         arg(long, env, group = "console_log", default_value_t)
