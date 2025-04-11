@@ -104,11 +104,11 @@ pub enum Error {
 /// #[tokio::main]
 /// async fn main() -> Result<(), Error> {
 ///     let options = TelemetryOptions {
-///          no_console_output: false,
-///          rolling_logs: None,
-///          rolling_logs_period: None,
-///          otlp_traces: true,
-///          otlp_logs: true,
+///          console_log_disabled: false,
+///          file_log_directory: None,
+///          file_log_rotation_period: None,
+///          otel_trace_exporter_enabled: true,
+///          otel_log_exporter_enabled: true,
 ///      };
 ///
 ///     let _tracing_guard = Tracing::pre_configured("test", options).init()?;
