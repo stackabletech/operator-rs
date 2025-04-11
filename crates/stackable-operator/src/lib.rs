@@ -15,6 +15,7 @@ pub mod config;
 pub mod constants;
 pub mod cpu;
 pub mod crd;
+pub mod git_sync;
 pub mod helm;
 pub mod iter;
 pub mod kvp;
