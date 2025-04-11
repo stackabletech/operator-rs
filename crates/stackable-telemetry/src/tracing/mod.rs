@@ -775,11 +775,11 @@ pub struct TelemetryOptions {
     )]
     pub file_log_rotation_period: Option<RotationPeriod>,
 
-    /// Enable exporting OTEL traces via OTLP.
+    /// Enable exporting OpenTelemetry traces via OTLP.
     #[cfg_attr(feature = "clap", arg(long, env))]
     pub otel_trace_exporter_enabled: bool,
 
-    /// Enable exporting OTEL logs via OTLP.
+    /// Enable exporting OpenTelemetry logs via OTLP.
     #[cfg_attr(feature = "clap", arg(long, env))]
     pub otel_log_exporter_enabled: bool,
 }
