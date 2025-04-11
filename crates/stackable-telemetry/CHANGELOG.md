@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add support for JSON console log output ([#1012]).
+  - A new CLI argument was added: `--console-log-format`. It can be set to `plain` (default),
+    or `json`.
+
 ### Changed
 
 - BREAKING: Update and align telemetry related CLI arguments in `TelemetryOptions` ([#1009]).
@@ -25,6 +31,7 @@ All notable changes to this project will be documented in this file.
 
 [#1009]: https://github.com/stackabletech/operator-rs/pull/1009
 [#1010]: https://github.com/stackabletech/operator-rs/pull/1010
+[#1012]: https://github.com/stackabletech/operator-rs/pull/1012
 
 ## [0.5.0] - 2025-04-08
 
