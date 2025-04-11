@@ -311,15 +311,15 @@ pub struct Tracing {
 
 impl Tracing {
     /// The environment variable used to set the console log level filter.
-    pub const CONSOLE_LOG_LEVEL: &str = "CONSOLE_LOG_LEVEL";
+    pub const CONSOLE_LOG_LEVEL_ENV: &str = "CONSOLE_LOG_LEVEL";
     /// The environment variable used to set the rolling file log level filter.
-    pub const FILE_LOG_LEVEL: &str = "FILE_LOG_LEVEL";
+    pub const FILE_LOG_LEVEL_ENV: &str = "FILE_LOG_LEVEL";
     /// The filename used for the rolling file logs.
     pub const FILE_LOG_SUFFIX: &str = "tracing-rs.json";
     /// The environment variable used to set the OTEL log level filter.
-    pub const OTEL_LOG_EXPORTER_LEVEL: &str = "OTEL_LOG_EXPORTER_LEVEL";
+    pub const OTEL_LOG_EXPORTER_LEVEL_ENV: &str = "OTEL_LOG_EXPORTER_LEVEL";
     /// The environment variable used to set the OTEL trace level filter.
-    pub const OTEL_TRACE_EXPORTER_LEVEL: &str = "OTEL_TRACE_EXPORTER_LEVEL";
+    pub const OTEL_TRACE_EXPORTER_LEVEL_ENV: &str = "OTEL_TRACE_EXPORTER_LEVEL";
 
     /// Creates and returns a [`TracingBuilder`].
     pub fn builder() -> TracingBuilder<builder_state::PreServiceName> {
@@ -357,25 +357,25 @@ impl Tracing {
         Self::builder()
             .service_name(service_name)
             .with_console_output((
-                Self::CONSOLE_LOG_LEVEL,
+                Self::CONSOLE_LOG_LEVEL_ENV,
                 LevelFilter::INFO,
                 !console_log_disabled,
             ))
             .with_file_output(file_log_directory.map(|log_directory| {
                 Settings::builder()
-                    .with_environment_variable(Self::FILE_LOG_LEVEL)
+                    .with_environment_variable(Self::FILE_LOG_LEVEL_ENV)
                     .with_default_level(LevelFilter::INFO)
                     .file_log_settings_builder(log_directory, Self::FILE_LOG_SUFFIX)
                     .with_rotation_period(file_log_rotation_period)
                     .build()
             }))
             .with_otlp_log_exporter((
-                Self::OTEL_LOG_EXPORTER_LEVEL,
+                Self::OTEL_LOG_EXPORTER_LEVEL_ENV,
                 LevelFilter::INFO,
                 otel_log_exporter_enabled,
             ))
             .with_otlp_trace_exporter((
-                Self::OTEL_TRACE_EXPORTER_LEVEL,
+                Self::OTEL_TRACE_EXPORTER_LEVEL_ENV,
                 LevelFilter::INFO,
                 otel_trace_exporter_enabled,
             ))
