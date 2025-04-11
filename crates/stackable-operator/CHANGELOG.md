@@ -4,12 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Adds the `--file-log-max-files` CLI argument and `FILE_LOG_MAX_FILES` environment variable
+  see detailed [stackable-telemetry changelog](../stackable-telemetry/CHANGELOG.md) ([#1010]).
+
 ### Changed
 
 - BREAKING: Update and align telemetry related CLI arguments of `ProductOperatorRun`, see detailed
-  changelog [here](../stackable-telemetry/CHANGELOG.md) ([#1009]).
+  changelog [stackable-telemetry changelog](../stackable-telemetry/CHANGELOG.md) ([#1009]).
 
 [#1009]: https://github.com/stackabletech/operator-rs/pull/1009
+[#1010]: https://github.com/stackabletech/operator-rs/pull/1010
 
 ## [0.91.1] - 2025-04-09
 

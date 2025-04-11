@@ -17,8 +17,14 @@ All notable changes to this project will be documented in this file.
   - `FILE_LOG_LEVEL` instead of `FILE_LOG`.
   - `OTEL_LOG_EXPORTER_LEVEL` instead of `OTLP_LOG`.
   - `OTEL_TRACE_EXPORTER_LEVEL` instead of `OTLP_TRACE`.
+- BREAKING: Allow configuration of `file_log_max_files` ([#1010]).
+  - Adds the `--file-log-max-files` CLI argument (env: `FILE_LOG_MAX_FILES`).
+  - `FileLogSettingsBuilder::with_max_log_files` which took a `usize` was renamed to
+    `FileLogSettingsBuilder::with_max_files` and now takes an `impl Into<Option<usize>>`
+    for improved builder ergonomics.
 
 [#1009]: https://github.com/stackabletech/operator-rs/pull/1009
+[#1010]: https://github.com/stackabletech/operator-rs/pull/1010
 
 ## [0.5.0] - 2025-04-08
 
