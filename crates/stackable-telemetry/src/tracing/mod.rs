@@ -761,7 +761,7 @@ pub struct TelemetryOptions {
     #[cfg_attr(feature = "clap", arg(long, env))]
     pub console_log_disabled: bool,
 
-    /// Enable logging to rolling files located in the specified DIRECTORY.
+    /// Enable logging to files located in the specified DIRECTORY.
     #[cfg_attr(
         feature = "clap",
         arg(long, env, value_name = "DIRECTORY", group = "file_log")
