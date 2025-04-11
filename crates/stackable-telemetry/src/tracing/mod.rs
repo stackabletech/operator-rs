@@ -107,6 +107,7 @@ pub enum Error {
 ///          console_log_disabled: false,
 ///          file_log_directory: None,
 ///          file_log_rotation_period: None,
+///          file_log_max_files: Some(6),
 ///          otel_trace_exporter_enabled: true,
 ///          otel_log_exporter_enabled: true,
 ///      };
@@ -348,6 +349,7 @@ impl Tracing {
             console_log_disabled,
             file_log_directory,
             file_log_rotation_period,
+            file_log_max_files,
             otel_trace_exporter_enabled,
             otel_log_exporter_enabled,
         } = options;
@@ -367,6 +369,7 @@ impl Tracing {
                     .with_default_level(LevelFilter::INFO)
                     .file_log_settings_builder(log_directory, Self::FILE_LOG_SUFFIX)
                     .with_rotation_period(file_log_rotation_period)
+                    .with_max_files(file_log_max_files)
                     .build()
             }))
             .with_otlp_log_exporter((
@@ -775,6 +778,13 @@ pub struct TelemetryOptions {
     )]
     pub file_log_rotation_period: Option<RotationPeriod>,
 
+    /// Maximum NUMBER of log files to keep.
+    #[cfg_attr(
+        feature = "clap",
+        arg(long, env, value_name = "NUMBER", requires = "file_log")
+    )]
+    pub file_log_max_files: Option<usize>,
+
     /// Enable exporting OpenTelemetry traces via OTLP.
     #[cfg_attr(feature = "clap", arg(long, env))]
     pub otel_trace_exporter_enabled: bool,
@@ -1015,6 +1025,7 @@ mod test {
             console_log_disabled: false,
             file_log_directory: None,
             file_log_rotation_period: None,
+            file_log_max_files: None,
             otel_trace_exporter_enabled: true,
             otel_log_exporter_enabled: false,
         });
