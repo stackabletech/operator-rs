@@ -797,7 +797,7 @@ pub struct TelemetryOptions {
 /// Supported periods when the log file is rolled over.
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, strum::Display, strum::EnumString)]
-#[strum(serialize_all = "PascalCase")]
+#[strum(serialize_all = "snake_case")]
 #[allow(missing_docs)]
 pub enum RotationPeriod {
     Minutely,
