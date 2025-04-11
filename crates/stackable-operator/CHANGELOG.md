@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Update and align telemetry related CLI arguments of `ProductOperatorRun`, see detailed
+  changelog [here](../stackable-telemetry/CHANGELOG.md) ([#1009]).
+
+[#1009]: https://github.com/stackabletech/operator-rs/pull/1009
+
 ## [0.91.1] - 2025-04-09
 
 ### Added

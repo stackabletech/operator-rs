@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Update and align telemetry related CLI arguments in `TelemetryOptions` ([#1009]).
+  - `--console-log-disabled` instead of `--no-console-output`.
+  - `--file-log-directory` instead of `--rolling-logs`.
+  - `--file-log-rotation-period` instead of `--rolling-logs-period`.
+  - `--otel-log-exporter-enabled` instead of `--otlp-logs`.
+  - `--otel-trace-exporter-enabled` instead of `--otlp-traces`.
+- BREAKING: Update and align telemetry related environment variables ([#1009]).
+  - `CONSOLE_LOG_LEVEL` instead of `CONSOLE_LOG`.
+  - `FILE_LOG_LEVEL` instead of `FILE_LOG`.
+  - `OTEL_LOG_EXPORTER_LEVEL` instead of `OTLP_LOG`.
+  - `OTEL_TRACE_EXPORTER_LEVEL` instead of `OTLP_TRACE`.
+
+[#1009]: https://github.com/stackabletech/operator-rs/pull/1009
+
 ## [0.5.0] - 2025-04-08
 
 ### Added
