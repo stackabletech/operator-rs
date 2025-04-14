@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-04-14
+
 ### Added
 
 - Add support for JSON console log output ([#1012]).
