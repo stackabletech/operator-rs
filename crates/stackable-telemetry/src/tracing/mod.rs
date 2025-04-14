@@ -6,7 +6,7 @@
 //!
 //! To get started, see [`Tracing`].
 
-use std::path::PathBuf;
+use std::{ops::Not, path::PathBuf};
 
 #[cfg_attr(feature = "clap", cfg(doc))]
 use clap;
@@ -105,6 +105,7 @@ pub enum Error {
 /// async fn main() -> Result<(), Error> {
 ///     let options = TelemetryOptions {
 ///          console_log_disabled: false,
+///          console_log_format: Default::default(),
 ///          file_log_directory: None,
 ///          file_log_rotation_period: None,
 ///          file_log_max_files: Some(6),
@@ -347,6 +348,7 @@ impl Tracing {
     pub fn pre_configured(service_name: &'static str, options: TelemetryOptions) -> Self {
         let TelemetryOptions {
             console_log_disabled,
+            console_log_format,
             file_log_directory,
             file_log_rotation_period,
             file_log_max_files,
@@ -358,11 +360,14 @@ impl Tracing {
 
         Self::builder()
             .service_name(service_name)
-            .with_console_output((
-                Self::CONSOLE_LOG_LEVEL_ENV,
-                LevelFilter::INFO,
-                !console_log_disabled,
-            ))
+            .with_console_output(console_log_disabled.not().then(|| {
+                Settings::builder()
+                    .with_environment_variable(Self::CONSOLE_LOG_LEVEL_ENV)
+                    .with_default_level(LevelFilter::INFO)
+                    .console_log_settings_builder()
+                    .with_log_format(console_log_format)
+                    .build()
+            }))
             .with_file_output(file_log_directory.map(|log_directory| {
                 Settings::builder()
                     .with_environment_variable(Self::FILE_LOG_LEVEL_ENV)
@@ -397,16 +402,29 @@ impl Tracing {
 
         if let ConsoleLogSettings::Enabled {
             common_settings,
-            log_format: _,
+            log_format,
         } = &self.console_log_settings
         {
             let env_filter_layer = env_filter_builder(
                 common_settings.environment_variable,
                 common_settings.default_level,
             );
-            let console_output_layer =
-                tracing_subscriber::fmt::layer().with_filter(env_filter_layer);
-            layers.push(console_output_layer.boxed());
+
+            // NOTE (@NickLarsenNZ): There is no elegant way to build the layer depending on formats because the types
+            // returned from each subscriber "modifier" function is different (sometimes with different generics).
+            match log_format {
+                Format::Plain => {
+                    let console_output_layer =
+                        tracing_subscriber::fmt::layer().with_filter(env_filter_layer);
+                    layers.push(console_output_layer.boxed());
+                }
+                Format::Json => {
+                    let console_output_layer = tracing_subscriber::fmt::layer()
+                        .json()
+                        .with_filter(env_filter_layer);
+                    layers.push(console_output_layer.boxed());
+                }
+            };
         }
 
         if let FileLogSettings::Enabled {
@@ -761,8 +779,15 @@ struct Cli {
 #[derive(Debug, Default)]
 pub struct TelemetryOptions {
     /// Disable console logs.
-    #[cfg_attr(feature = "clap", arg(long, env))]
+    #[cfg_attr(feature = "clap", arg(long, env, group = "console_log"))]
     pub console_log_disabled: bool,
+
+    /// Console log format.
+    #[cfg_attr(
+        feature = "clap",
+        arg(long, env, group = "console_log", default_value_t)
+    )]
+    pub console_log_format: Format,
 
     /// Enable logging to files located in the specified DIRECTORY.
     #[cfg_attr(
@@ -1023,6 +1048,7 @@ mod test {
     fn pre_configured() {
         let tracing = Tracing::pre_configured("test", TelemetryOptions {
             console_log_disabled: false,
+            console_log_format: Default::default(),
             file_log_directory: None,
             file_log_rotation_period: None,
             file_log_max_files: None,
