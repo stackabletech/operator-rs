@@ -141,7 +141,7 @@ mod tests {
     use snafu::Snafu;
     use strum::EnumDiscriminants;
 
-    use super::{error_to_event, ReconcilerError};
+    use super::{ReconcilerError, error_to_event};
 
     #[derive(Snafu, Debug, EnumDiscriminants)]
     #[strum_discriminants(derive(strum::IntoStaticStr))]

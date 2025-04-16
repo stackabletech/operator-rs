@@ -85,13 +85,17 @@ impl SettingsBuilder {
     }
 
     /// Set specific [`FileLogSettings`].
-    pub fn file_log_settings_builder<P>(self, path: P) -> FileLogSettingsBuilder
-    where
-        P: AsRef<Path>,
-    {
+    pub fn file_log_settings_builder(
+        self,
+        path: impl AsRef<Path>,
+        filename_suffix: impl Into<String>,
+    ) -> FileLogSettingsBuilder {
         FileLogSettingsBuilder {
             common_settings: self.build(),
             file_log_dir: path.as_ref().to_path_buf(),
+            rotation_period: Rotation::NEVER,
+            filename_suffix: filename_suffix.into(),
+            max_log_files: None,
         }
     }
 

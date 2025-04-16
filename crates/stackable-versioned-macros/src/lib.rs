@@ -1,6 +1,6 @@
-use darling::{ast::NestedMeta, FromMeta};
+use darling::{FromMeta, ast::NestedMeta};
 use proc_macro::TokenStream;
-use syn::{spanned::Spanned, Error, Item};
+use syn::{Error, Item, spanned::Spanned};
 
 use crate::{
     attrs::{container::StandaloneContainerAttributes, module::ModuleAttributes},
@@ -700,7 +700,7 @@ especially for CustomResourceDefinitions (CRDs). These features are
 completely opt-in. You need to enable the `k8s` feature (which enables
 optional dependencies) and use the `k8s()` parameter in the macro.
 
-You need to derive both [`kube::CustomResource`] and [`schemars::JsonSchema`].
+You need to derive both [`kube::CustomResource`] and [`schemars::JsonSchema`][1].
 
 ```
 # use stackable_versioned_macros::versioned;
@@ -730,7 +730,7 @@ println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 # }
 ```
 
-The generated `merged_crd` method is a wrapper around [kube's `merge_crds`][1]
+The generated `merged_crd` method is a wrapper around [kube's `merge_crds`][2]
 function. It automatically calls the `crd` methods of the CRD in all of its
 versions and additionally provides a strongly typed selector for the stored
 API version.
@@ -846,6 +846,9 @@ mod v1 {
 It is possible to include structs and enums which are not CRDs. They are instead
 versioned as expected (without adding the `#[kube]` derive macro and generating
 code to merge CRD versions).
+
+[1]: https://docs.rs/schemars/latest/schemars/derive.JsonSchema.html
+[2]: https://docs.rs/kube/latest/kube/core/crd/fn.merge_crds.html
 "#
 )]
 #[proc_macro_attribute]

@@ -1,6 +1,6 @@
 use std::ops::Not;
 
-use darling::{util::IdentString, FromAttributes, Result};
+use darling::{FromAttributes, Result, util::IdentString};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Generics, ItemEnum};
@@ -8,10 +8,10 @@ use syn::{Generics, ItemEnum};
 use crate::{
     attrs::container::NestedContainerAttributes,
     codegen::{
+        ItemStatus, StandaloneContainerAttributes, VersionDefinition,
         changes::Neighbors,
         container::{CommonContainerData, Container, ContainerIdents, ContainerOptions},
         item::VersionedVariant,
-        ItemStatus, StandaloneContainerAttributes, VersionDefinition,
     },
 };
 
@@ -104,7 +104,9 @@ pub(crate) struct Enum {
 impl Enum {
     /// Generates code for the enum definition.
     pub(crate) fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
-        let (_, type_generics, where_clause) = self.generics.split_for_impl();
+        let where_clause = self.generics.where_clause.as_ref();
+        let type_generics = &self.generics;
+
         let original_attributes = &self.common.original_attributes;
         let ident = &self.common.idents.original;
         let version_docs = &version.docs;

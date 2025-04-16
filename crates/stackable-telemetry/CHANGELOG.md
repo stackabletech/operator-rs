@@ -4,6 +4,74 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-04-14
+
+### Added
+
+- Add support for JSON console log output ([#1012]).
+  - A new CLI argument was added: `--console-log-format`. It can be set to `plain` (default),
+    or `json`.
+
+### Changed
+
+- BREAKING: Update and align telemetry related CLI arguments in `TelemetryOptions` ([#1009]).
+  - `--console-log-disabled` instead of `--no-console-output`.
+  - `--file-log-directory` instead of `--rolling-logs`.
+  - `--file-log-rotation-period` instead of `--rolling-logs-period`.
+  - `--otel-log-exporter-enabled` instead of `--otlp-logs`.
+  - `--otel-trace-exporter-enabled` instead of `--otlp-traces`.
+- BREAKING: Update and align telemetry related environment variables ([#1009]).
+  - `CONSOLE_LOG_LEVEL` instead of `CONSOLE_LOG`.
+  - `FILE_LOG_LEVEL` instead of `FILE_LOG`.
+  - `OTEL_LOG_EXPORTER_LEVEL` instead of `OTLP_LOG`.
+  - `OTEL_TRACE_EXPORTER_LEVEL` instead of `OTLP_TRACE`.
+- BREAKING: Allow configuration of `file_log_max_files` ([#1010]).
+  - Adds the `--file-log-max-files` CLI argument (env: `FILE_LOG_MAX_FILES`).
+  - `FileLogSettingsBuilder::with_max_log_files` which took a `usize` was renamed to
+    `FileLogSettingsBuilder::with_max_files` and now takes an `impl Into<Option<usize>>`
+    for improved builder ergonomics.
+
+[#1009]: https://github.com/stackabletech/operator-rs/pull/1009
+[#1010]: https://github.com/stackabletech/operator-rs/pull/1010
+[#1012]: https://github.com/stackabletech/operator-rs/pull/1012
+
+## [0.5.0] - 2025-04-08
+
+### Added
+
+- Add new `Tracing::pre_configured` method ([#1001]).
+  - Add `TelemetryOptions` struct and `RollingPeriod` enum
+  - Add `clap` feature to enable `TelemetryOptions` being used as CLI arguments
+
+### Changed
+
+- BREAKING: Change `FileLogSettingsBuilder::with_rotation_period` to take `impl Into<Rotation>`
+  instead of `Rotation` ([#1001]).
+
+[#1001]: https://github.com/stackabletech/operator-rs/pull/1001
+
+## [0.4.0] - 2025-04-02
+
+### Added
+
+- BREAKING: Allow customization of the rolling file appender [#995].
+  - Add required `filename_suffix` field.
+  - Add `with_rotation_period` method.
+  - Add `with_max_log_files` method.
+
+### Changed
+
+- Bump OpenTelemetry related dependencies ([#977]).
+  - `opentelemetry` to 0.28.0
+  - `opentelemetry_sdk` to 0.28.0
+  - `opentelemetry-appender-tracing` to 0.28.0
+  - `opentelemetry-otlp` to 0.28.0
+  - `opentelemetry-semantic-conventions` to 0.28.0
+  - `tracing-opentelemetry` to 0.29.0
+
+[#977]: https://github.com/stackabletech/operator-rs/pull/977
+[#995]: https://github.com/stackabletech/operator-rs/pull/995
+
 ## [0.3.0] - 2025-01-30
 
 ### Added

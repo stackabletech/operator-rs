@@ -1,6 +1,6 @@
 use schemars::schema::Schema;
 
-pub fn raw_object_schema(_: &mut schemars::gen::SchemaGenerator) -> Schema {
+pub fn raw_object_schema(_: &mut schemars::r#gen::SchemaGenerator) -> Schema {
     serde_json::from_value(serde_json::json!({
         "type": "object",
         "x-kubernetes-preserve-unknown-fields": true,
@@ -8,7 +8,7 @@ pub fn raw_object_schema(_: &mut schemars::gen::SchemaGenerator) -> Schema {
     .expect("Failed to parse JSON of custom raw object schema")
 }
 
-pub fn raw_optional_object_schema(_: &mut schemars::gen::SchemaGenerator) -> Schema {
+pub fn raw_optional_object_schema(_: &mut schemars::r#gen::SchemaGenerator) -> Schema {
     serde_json::from_value(serde_json::json!({
         "type": "object",
         "nullable": true,
@@ -17,7 +17,7 @@ pub fn raw_optional_object_schema(_: &mut schemars::gen::SchemaGenerator) -> Sch
     .expect("Failed to parse JSON of custom optional raw object schema")
 }
 
-pub fn raw_object_list_schema(_: &mut schemars::gen::SchemaGenerator) -> Schema {
+pub fn raw_object_list_schema(_: &mut schemars::r#gen::SchemaGenerator) -> Schema {
     serde_json::from_value(serde_json::json!({
         "type": "array",
         "items": {

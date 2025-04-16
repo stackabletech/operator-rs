@@ -111,7 +111,9 @@ pub enum Error {
         resource_type: ResourceRequirementsType,
     },
 
-    #[snafu(display("{resource_key:?} max limit to request ratio for Container {container_name:?} is {allowed_ration:?}, but ratio was exceeded or request and limit where not set explicitly"))]
+    #[snafu(display(
+        "{resource_key:?} max limit to request ratio for Container {container_name:?} is {allowed_ration:?}, but ratio was exceeded or request and limit where not set explicitly"
+    ))]
     LimitToRequestRatioExceeded {
         container_name: String,
         resource_key: String,

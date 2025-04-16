@@ -22,7 +22,7 @@
 use std::ops::Deref;
 
 use snafu::Snafu;
-use x509_cert::{spki::EncodePublicKey, Certificate};
+use x509_cert::{Certificate, spki::EncodePublicKey};
 #[cfg(feature = "rustls")]
 use {
     p256::pkcs8::EncodePrivateKey,

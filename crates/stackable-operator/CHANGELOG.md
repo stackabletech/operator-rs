@@ -10,7 +10,113 @@ All notable changes to this project will be documented in this file.
 
 [#986]: https://github.com/stackabletech/operator-rs/pull/986
 
+## [0.92.0] - 2025-04-14
+
+### Added
+
+- Adds new CLI arguments and environment variables ([#1010], [#1012]).
+  - Use `--file-log-max-files` (or `FILE_LOG_MAX_FILES`) to limit the number of log files kept.
+  - Use `--console-log-format` (or `CONSOLE_LOG_FORMAT`) to set the format to `plain` (default) or `json`.
+  - See detailed [stackable-telemetry changelog](../stackable-telemetry/CHANGELOG.md#060---2025-04-14).
+
+### Changed
+
+- BREAKING: Update and align telemetry related CLI arguments of `ProductOperatorRun`, see detailed
+  changelog [stackable-telemetry changelog](../stackable-telemetry/CHANGELOG.md#060---2025-04-14) ([#1009]).
+
+[#1009]: https://github.com/stackabletech/operator-rs/pull/1009
+[#1010]: https://github.com/stackabletech/operator-rs/pull/1010
+[#1012]: https://github.com/stackabletech/operator-rs/pull/1012
+
+## [0.91.1] - 2025-04-09
+
+### Added
+
+- Add re-exports for `stackable-telemetry` and `stackable-versioned` ([#1007]).
+- Add new features: `default`, `full`, `telemetry`, and `versioned` ([#1007]).
+
+[#1007]: https://github.com/stackabletech/operator-rs/pull/1007
+
+## [0.91.0] - 2025-04-08
+
+### Changed
+
+- BREAKING: Remove `cli::TelemetryArguments` and `cli::RollingPeriod` which are both replaced by
+  types from `stackable_telemetry` ([#1001]).
+- BREAKING: The `ProductOperatorRun` struct now uses `stackable_telemetry::tracing::TelemetryOptions`
+  for the `telemetry_arguments` field ([#1001]).
+
+[#1001]: https://github.com/stackabletech/operator-rs/pull/1001
+
+## [0.90.0] - 2025-04-07
+
+### Added
+
+- BREAKING: Inject vector aggregator address into vector config file using an environment variable ([#1000]).
+
+[#1000]: https://github.com/stackabletech/operator-rs/pull/1000
+
+## [0.89.1] - 2025-04-02
+
+### Changed
+
+- Make fields of `TelemetryArguments` public ([#998]).
+
+[#998]: https://github.com/stackabletech/operator-rs/pull/998
+
+## [0.89.0] - 2025-04-02
+
+### Added
+
+- Add more granular telemetry related arguments to `ProductOperatorRun` ([#977]).
+  - `--no-console-output`: Disables output of `tracing` events to the console (stdout)
+  - `--rolling-logs`: Enables output `tracing` events to a rolling log file
+  - `--rolling-logs-period`: Sets the time period after which log files are rolled over
+  - `--otlp-traces`: Enables exporting of traces via OTLP
+  - `--otlp-logs`: Enables exporting of logs via OTLP
+
+### Removed
+
+- BREAKING: Remove `--tracing-target` argument and field from `ProductOperatorRun`.
+  Use the new, more granular arguments instead ([#977]).
+- BREAKING: Remove `initialize_logging` helper function from `stackable_operator::logging` ([#977]).
+- Remove `opentelemetry-jaeger` dependency ([#977]).
+
+[#977]: https://github.com/stackabletech/operator-rs/pull/977
+
+## [0.88.0] - 2025-04-02
+
+### Added
+
+- Add Deployments to `ClusterResource`s ([#992]).
+- Add `DeploymentConditionBuilder`  ([#993]).
+
+### Changed
+
+- Deprecate `stackable_operator::logging::initialize_logging()`.
+  It's recommended to use `stackable-telemetry` or `#[allow(deprecated)]` instead ([#950], [#989]).
+
+[#950]: https://github.com/stackabletech/operator-rs/pull/950
+[#989]: https://github.com/stackabletech/operator-rs/pull/989
+[#992]: https://github.com/stackabletech/operator-rs/pull/992
+[#993]: https://github.com/stackabletech/operator-rs/pull/993
+
+## [0.87.5] - 2025-03-19
+
+### Fixed
+
+- Enable the `kube/ring` feature to use ring as the crypto provider for `rustls`. This will
+  otherwise cause runtime errors which result in panics ([#988]).
+
+[#988]: https://github.com/stackabletech/operator-rs/pull/988
+
 ## [0.87.4] - 2025-03-17
+
+### Changed
+
+- Bump `kube` to 0.99.0 and `json-patch` to 4.0.0 ([#982]).
+
+[#982]: https://github.com/stackabletech/operator-rs/pull/982
 
 ## [0.87.3] - 2025-03-14
 

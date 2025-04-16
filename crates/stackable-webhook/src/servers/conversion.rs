@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{Json, Router, extract::State, routing::post};
 // Re-export this type because users of the conversion webhook server require
 // this type to write the handler function. Instead of importing this type from
 // kube directly, consumers can use this type instead. This also eliminates
@@ -8,7 +8,7 @@ use axum::{extract::State, routing::post, Json, Router};
 pub use kube::core::conversion::ConversionReview;
 use tracing::instrument;
 
-use crate::{options::Options, StatefulWebhookHandler, WebhookHandler, WebhookServer};
+use crate::{StatefulWebhookHandler, WebhookHandler, WebhookServer, options::Options};
 
 impl<F> WebhookHandler<ConversionReview, ConversionReview> for F
 where
