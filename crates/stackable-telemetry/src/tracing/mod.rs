@@ -6,7 +6,7 @@
 //!
 //! To get started, see [`Tracing`].
 
-use std::path::PathBuf;
+use std::{ops::Not, path::PathBuf};
 
 #[cfg_attr(feature = "clap", cfg(doc))]
 use clap;
@@ -104,11 +104,13 @@ pub enum Error {
 /// #[tokio::main]
 /// async fn main() -> Result<(), Error> {
 ///     let options = TelemetryOptions {
-///          no_console_output: false,
-///          rolling_logs: None,
-///          rolling_logs_period: None,
-///          otlp_traces: true,
-///          otlp_logs: true,
+///          console_log_disabled: false,
+///          console_log_format: Default::default(),
+///          file_log_directory: None,
+///          file_log_rotation_period: None,
+///          file_log_max_files: Some(6),
+///          otel_trace_exporter_enabled: true,
+///          otel_log_exporter_enabled: true,
 ///      };
 ///
 ///     let _tracing_guard = Tracing::pre_configured("test", options).init()?;
@@ -120,7 +122,9 @@ pub enum Error {
 /// ```
 ///
 /// Also see the documentation for [`TelemetryOptions`] which details how it can be used as CLI
-/// arguments via [`clap`].
+/// arguments via [`clap`]. Additionally see [this section](#environment-variables-and-cli-arguments)
+/// in the docs for a full list of environment variables and CLI arguments used by the pre-configured
+/// instance.
 ///
 /// ## Builders
 ///
@@ -213,6 +217,29 @@ pub enum Error {
 /// }
 /// ```
 ///
+/// ## Environment Variables and CLI Arguments
+///
+/// ### Console logs
+///
+/// - `CONSOLE_LOG_DISABLED` (`--console-log-disabled`): Disables console logs when set to `true`.
+/// - `CONSOLE_LOG_LEVEL`: Set the log level for the console logs.
+///
+/// ### File logs
+///
+/// - `FILE_LOG_DIRECTORY` (`--file-log-directory`): Enable the file logs and set the file log directory.
+/// - `FILE_LOG_ROTATION_PERIOD` (`--file-log-rotation-period`): Set the rotation period of log files
+/// - `FILE_LOG_LEVEL`: Set the log level for file logs
+///
+/// ### OTEL logs
+///
+/// - `OTEL_LOG_EXPORTER_ENABLED` (`--otel-log-exporter-enabled`): Enable exporting OTEL logs
+/// - `OTEL_LOG_EXPORTER_LEVEL`: Set the log level for OTEL logs
+///
+/// ### OTEL traces
+///
+/// - `OTEL_TRACE_EXPORTER_ENABLED` (`--otel-trace-exporter-enabled`): Enable exporting OTEL traces
+/// - `OTEL_TRACE_EXPORTER_LEVEL`: Set the log level for OTEL traces
+///
 /// # Additional Configuration
 ///
 /// You can configure the OTLP trace and log exports through the variables defined in the opentelemetry crates:
@@ -286,15 +313,15 @@ pub struct Tracing {
 
 impl Tracing {
     /// The environment variable used to set the console log level filter.
-    pub const CONSOLE_LOG_ENV_VAR: &str = "CONSOLE_LOG";
+    pub const CONSOLE_LOG_LEVEL_ENV: &str = "CONSOLE_LOG_LEVEL";
     /// The environment variable used to set the rolling file log level filter.
-    pub const FILE_LOG_ENV_VAR: &str = "FILE_LOG";
+    pub const FILE_LOG_LEVEL_ENV: &str = "FILE_LOG_LEVEL";
     /// The filename used for the rolling file logs.
     pub const FILE_LOG_SUFFIX: &str = "tracing-rs.json";
-    /// The environment variable used to set the OTLP log level filter.
-    pub const OTLP_LOG_ENV_VAR: &str = "OTLP_LOG";
-    /// The environment variable used to set the OTLP trace level filter.
-    pub const OTLP_TRACE_ENV_VAR: &str = "OTLP_TRACE";
+    /// The environment variable used to set the OTEL log level filter.
+    pub const OTEL_LOG_EXPORTER_LEVEL_ENV: &str = "OTEL_LOG_EXPORTER_LEVEL";
+    /// The environment variable used to set the OTEL trace level filter.
+    pub const OTEL_TRACE_EXPORTER_LEVEL_ENV: &str = "OTEL_TRACE_EXPORTER_LEVEL";
 
     /// Creates and returns a [`TracingBuilder`].
     pub fn builder() -> TracingBuilder<builder_state::PreServiceName> {
@@ -304,47 +331,62 @@ impl Tracing {
     /// Creates an returns a pre-configured [`Tracing`] instance which can be initialized by
     /// calling [`Tracing::init()`].
     ///
-    /// ### Environment Variables and Default Levels
+    /// Also see [this section](#environment-variables-and-cli-arguments) in the docs for all full
+    /// list of environment variables and CLI arguments used by the pre-configured instance.
     ///
-    /// | Level Filter for | Environment Variable                       | Default Level |
-    /// | ---------------- | ------------------------------------------ | ------------- |
-    /// | Console logs     | [`CONSOLE_LOG`](Self::CONSOLE_LOG_ENV_VAR) | `INFO`        |
-    /// | File logs        | [`FILE_LOG`](Self::FILE_LOG_ENV_VAR)       | `INFO`        |
-    /// | OTLP logs        | [`OTLP_LOG`](Self::OTLP_LOG_ENV_VAR)       | `INFO`        |
-    /// | OTLP traces      | [`OTLP_TRACE`](Self::OTLP_TRACE_ENV_VAR)   | `INFO`        |
+    /// ### Default Levels
+    ///
+    /// - Console logs: INFO
+    /// - File logs: INFO
+    /// - OTEL logs: INFO
+    /// - OTEL traces: INFO
     ///
     /// ### Default Values
     ///
     /// - If `rolling_logs_period` is [`None`], this function will use a default value of
-    ///   [`RollingPeriod::Never`].
+    ///   [`RotationPeriod::Never`].
     pub fn pre_configured(service_name: &'static str, options: TelemetryOptions) -> Self {
         let TelemetryOptions {
-            no_console_output,
-            rolling_logs,
-            rolling_logs_period,
-            otlp_traces,
-            otlp_logs,
+            console_log_disabled,
+            console_log_format,
+            file_log_directory,
+            file_log_rotation_period,
+            file_log_max_files,
+            otel_trace_exporter_enabled,
+            otel_log_exporter_enabled,
         } = options;
 
-        let rolling_logs_period = rolling_logs_period.unwrap_or_default();
+        let file_log_rotation_period = file_log_rotation_period.unwrap_or_default();
 
         Self::builder()
             .service_name(service_name)
-            .with_console_output((
-                Self::CONSOLE_LOG_ENV_VAR,
-                LevelFilter::INFO,
-                !no_console_output,
-            ))
-            .with_file_output(rolling_logs.map(|log_directory| {
+            .with_console_output(console_log_disabled.not().then(|| {
                 Settings::builder()
-                    .with_environment_variable(Self::FILE_LOG_ENV_VAR)
+                    .with_environment_variable(Self::CONSOLE_LOG_LEVEL_ENV)
                     .with_default_level(LevelFilter::INFO)
-                    .file_log_settings_builder(log_directory, Self::FILE_LOG_SUFFIX)
-                    .with_rotation_period(rolling_logs_period)
+                    .console_log_settings_builder()
+                    .with_log_format(console_log_format)
                     .build()
             }))
-            .with_otlp_log_exporter((Self::OTLP_LOG_ENV_VAR, LevelFilter::INFO, otlp_logs))
-            .with_otlp_trace_exporter((Self::OTLP_TRACE_ENV_VAR, LevelFilter::INFO, otlp_traces))
+            .with_file_output(file_log_directory.map(|log_directory| {
+                Settings::builder()
+                    .with_environment_variable(Self::FILE_LOG_LEVEL_ENV)
+                    .with_default_level(LevelFilter::INFO)
+                    .file_log_settings_builder(log_directory, Self::FILE_LOG_SUFFIX)
+                    .with_rotation_period(file_log_rotation_period)
+                    .with_max_files(file_log_max_files)
+                    .build()
+            }))
+            .with_otlp_log_exporter((
+                Self::OTEL_LOG_EXPORTER_LEVEL_ENV,
+                LevelFilter::INFO,
+                otel_log_exporter_enabled,
+            ))
+            .with_otlp_trace_exporter((
+                Self::OTEL_TRACE_EXPORTER_LEVEL_ENV,
+                LevelFilter::INFO,
+                otel_trace_exporter_enabled,
+            ))
             .build()
     }
 
@@ -360,16 +402,29 @@ impl Tracing {
 
         if let ConsoleLogSettings::Enabled {
             common_settings,
-            log_format: _,
+            log_format,
         } = &self.console_log_settings
         {
             let env_filter_layer = env_filter_builder(
                 common_settings.environment_variable,
                 common_settings.default_level,
             );
-            let console_output_layer =
-                tracing_subscriber::fmt::layer().with_filter(env_filter_layer);
-            layers.push(console_output_layer.boxed());
+
+            // NOTE (@NickLarsenNZ): There is no elegant way to build the layer depending on formats because the types
+            // returned from each subscriber "modifier" function is different (sometimes with different generics).
+            match log_format {
+                Format::Plain => {
+                    let console_output_layer =
+                        tracing_subscriber::fmt::layer().with_filter(env_filter_layer);
+                    layers.push(console_output_layer.boxed());
+                }
+                Format::Json => {
+                    let console_output_layer = tracing_subscriber::fmt::layer()
+                        .json()
+                        .with_filter(env_filter_layer);
+                    layers.push(console_output_layer.boxed());
+                }
+            };
         }
 
         if let FileLogSettings::Enabled {
@@ -723,43 +778,53 @@ struct Cli {
 #[cfg_attr(feature = "clap", derive(clap::Args, PartialEq, Eq))]
 #[derive(Debug, Default)]
 pub struct TelemetryOptions {
-    /// Disable console output.
-    #[cfg_attr(feature = "clap", arg(long, env))]
-    pub no_console_output: bool,
+    /// Disable console logs.
+    #[cfg_attr(feature = "clap", arg(long, env, group = "console_log"))]
+    pub console_log_disabled: bool,
 
-    /// Enable logging to rolling files located in the specified DIRECTORY.
+    /// Console log format.
     #[cfg_attr(
         feature = "clap",
-        arg(
-            long,
-            env = "ROLLING_LOGS_DIR",
-            value_name = "DIRECTORY",
-            group = "rolling_logs_group"
-        )
+        arg(long, env, group = "console_log", default_value_t)
     )]
-    pub rolling_logs: Option<PathBuf>,
+    pub console_log_format: Format,
+
+    /// Enable logging to files located in the specified DIRECTORY.
+    #[cfg_attr(
+        feature = "clap",
+        arg(long, env, value_name = "DIRECTORY", group = "file_log")
+    )]
+    pub file_log_directory: Option<PathBuf>,
 
     /// Time PERIOD after which log files are rolled over.
     #[cfg_attr(
         feature = "clap",
-        arg(long, env, value_name = "PERIOD", requires = "rolling_logs_group")
+        arg(long, env, value_name = "PERIOD", requires = "file_log")
     )]
-    pub rolling_logs_period: Option<RollingPeriod>,
+    pub file_log_rotation_period: Option<RotationPeriod>,
 
-    /// Enable exporting traces via OTLP.
-    #[cfg_attr(feature = "clap", arg(long, env))]
-    pub otlp_traces: bool,
+    /// Maximum NUMBER of log files to keep.
+    #[cfg_attr(
+        feature = "clap",
+        arg(long, env, value_name = "NUMBER", requires = "file_log")
+    )]
+    pub file_log_max_files: Option<usize>,
 
-    /// Enable exporting logs via OTLP.
+    /// Enable exporting OpenTelemetry traces via OTLP.
     #[cfg_attr(feature = "clap", arg(long, env))]
-    pub otlp_logs: bool,
+    pub otel_trace_exporter_enabled: bool,
+
+    /// Enable exporting OpenTelemetry logs via OTLP.
+    #[cfg_attr(feature = "clap", arg(long, env))]
+    pub otel_log_exporter_enabled: bool,
 }
 
 /// Supported periods when the log file is rolled over.
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, strum::Display, strum::EnumString)]
+#[strum(serialize_all = "snake_case")]
 #[allow(missing_docs)]
-pub enum RollingPeriod {
+pub enum RotationPeriod {
     Minutely,
     Hourly,
     Daily,
@@ -768,13 +833,13 @@ pub enum RollingPeriod {
     Never,
 }
 
-impl From<RollingPeriod> for Rotation {
-    fn from(value: RollingPeriod) -> Self {
+impl From<RotationPeriod> for Rotation {
+    fn from(value: RotationPeriod) -> Self {
         match value {
-            RollingPeriod::Minutely => Self::MINUTELY,
-            RollingPeriod::Hourly => Self::HOURLY,
-            RollingPeriod::Daily => Self::DAILY,
-            RollingPeriod::Never => Self::NEVER,
+            RotationPeriod::Minutely => Self::MINUTELY,
+            RotationPeriod::Hourly => Self::HOURLY,
+            RotationPeriod::Daily => Self::DAILY,
+            RotationPeriod::Never => Self::NEVER,
         }
     }
 }
@@ -982,11 +1047,13 @@ mod test {
     #[test]
     fn pre_configured() {
         let tracing = Tracing::pre_configured("test", TelemetryOptions {
-            no_console_output: false,
-            rolling_logs: None,
-            rolling_logs_period: None,
-            otlp_traces: true,
-            otlp_logs: false,
+            console_log_disabled: false,
+            console_log_format: Default::default(),
+            file_log_directory: None,
+            file_log_rotation_period: None,
+            file_log_max_files: None,
+            otel_trace_exporter_enabled: true,
+            otel_log_exporter_enabled: false,
         });
 
         assert!(tracing.otlp_trace_settings.is_enabled());

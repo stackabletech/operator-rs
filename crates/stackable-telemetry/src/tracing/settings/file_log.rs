@@ -63,8 +63,8 @@ impl FileLogSettingsBuilder {
     }
 
     /// Set maximum number of log files to keep.
-    pub fn with_max_log_files(mut self, max_log_files: usize) -> Self {
-        self.max_log_files = Some(max_log_files);
+    pub fn with_max_files(mut self, max_log_files: impl Into<Option<usize>>) -> Self {
+        self.max_log_files = max_log_files.into();
         self
     }
 
@@ -115,7 +115,7 @@ mod test {
             .with_default_level(LevelFilter::DEBUG)
             .file_log_settings_builder(PathBuf::from("/logs"), "tracing-rs.log")
             .with_rotation_period(Rotation::HOURLY)
-            .with_max_log_files(6)
+            .with_max_files(6)
             .build();
 
         assert_eq!(expected, result);

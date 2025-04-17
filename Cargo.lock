@@ -3184,7 +3184,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.91.1"
+version = "0.92.0"
 dependencies = [
  "chrono",
  "clap",
@@ -3246,7 +3246,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-telemetry"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "axum 0.8.3",
  "clap",
