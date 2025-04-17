@@ -96,7 +96,7 @@ pub mod versioned {
     /// to wrap this struct and use `#[serde(flatten)]` on the field.
     ///
     /// Additionally, it might be the case that special fields are needed in the contained structs,
-    /// such as [`oidc_v1alpha1::ClientAuthenticationOptions`]. To be able to add custom fields in
+    /// such as [`oidc::v1alpha1::ClientAuthenticationOptions`]. To be able to add custom fields in
     /// that structs without serde(flattening) multiple structs, they are generic, so you can add
     /// additional attributes if needed.
     ///
