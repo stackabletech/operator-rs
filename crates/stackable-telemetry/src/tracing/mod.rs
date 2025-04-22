@@ -72,8 +72,10 @@ pub enum Error {
 /// to hold onto the guard as long as required.
 ///
 /// <div class="warning">
-/// Name the guard variable appropriately, do not just use <code>let _ =</code>, as that will drop
+///
+/// Name the guard variable appropriately, do not just use `let _ = ...`, as that will drop
 /// immediately.
+///
 /// </div>
 ///
 /// ```
