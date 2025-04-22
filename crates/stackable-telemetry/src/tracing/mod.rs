@@ -221,6 +221,13 @@ pub enum Error {
 ///
 /// ## Environment Variables and CLI Arguments
 ///
+/// <div class="warning">
+///
+/// It should be noted that the CLI arguments (listed in parentheses) are only available when the
+/// `clap` feature is enabled.
+///
+/// </div>
+///
 /// ### Console logs
 ///
 /// - `CONSOLE_LOG_DISABLED` (`--console-log-disabled`): Disables console logs when set to `true`.
