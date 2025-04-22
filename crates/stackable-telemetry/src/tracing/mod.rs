@@ -1,4 +1,4 @@
-//! This module contains functionality to initialise tracing Subscribers for
+//! This module contains functionality to initialize tracing Subscribers for
 //! console output, file output, and OpenTelemetry OTLP export for traces and logs.
 //!
 //! It is intended to be used by the Stackable Data Platform operators and
@@ -222,23 +222,25 @@ pub enum Error {
 /// ### Console logs
 ///
 /// - `CONSOLE_LOG_DISABLED` (`--console-log-disabled`): Disables console logs when set to `true`.
+/// - `CONSOLE_LOG_FORMAT` (`--console-log-format`): Set the format for the console logs.
 /// - `CONSOLE_LOG_LEVEL`: Set the log level for the console logs.
 ///
 /// ### File logs
 ///
 /// - `FILE_LOG_DIRECTORY` (`--file-log-directory`): Enable the file logs and set the file log directory.
-/// - `FILE_LOG_ROTATION_PERIOD` (`--file-log-rotation-period`): Set the rotation period of log files
-/// - `FILE_LOG_LEVEL`: Set the log level for file logs
+/// - `FILE_LOG_ROTATION_PERIOD` (`--file-log-rotation-period`): Set the rotation period of log files.
+/// - `FILE_LOG_MAX_FILES` (`--file-log-max-files`): Set the maximum number of log files to keep.
+/// - `FILE_LOG_LEVEL`: Set the log level for file logs.
 ///
 /// ### OTEL logs
 ///
-/// - `OTEL_LOG_EXPORTER_ENABLED` (`--otel-log-exporter-enabled`): Enable exporting OTEL logs
-/// - `OTEL_LOG_EXPORTER_LEVEL`: Set the log level for OTEL logs
+/// - `OTEL_LOG_EXPORTER_ENABLED` (`--otel-log-exporter-enabled`): Enable exporting OTEL logs.
+/// - `OTEL_LOG_EXPORTER_LEVEL`: Set the log level for OTEL logs.
 ///
 /// ### OTEL traces
 ///
-/// - `OTEL_TRACE_EXPORTER_ENABLED` (`--otel-trace-exporter-enabled`): Enable exporting OTEL traces
-/// - `OTEL_TRACE_EXPORTER_LEVEL`: Set the log level for OTEL traces
+/// - `OTEL_TRACE_EXPORTER_ENABLED` (`--otel-trace-exporter-enabled`): Enable exporting OTEL traces.
+/// - `OTEL_TRACE_EXPORTER_LEVEL`: Set the log level for OTEL traces.
 ///
 /// # Additional Configuration
 ///
