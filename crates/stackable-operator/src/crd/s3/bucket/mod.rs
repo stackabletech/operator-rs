@@ -9,7 +9,7 @@ use crate::crd::s3::{ConnectionError, connection::v1alpha1 as conn_v1alpha1};
 mod v1alpha1_impl;
 
 // NOTE (@Techassi): Where should this error be placed? Technically errors can
-// change between version., because version-specific impl blocks might need
+// change between version, because version-specific impl blocks might need
 // different variants or might use a completely different error type.
 #[derive(Debug, Snafu)]
 pub enum BucketError {
