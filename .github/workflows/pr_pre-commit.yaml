@@ -18,7 +18,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: stackabletech/actions/run-pre-commit@2d3d7ddad981ae09901d45a0f6bf30c2658b1b78 # v0.7.0
+      - uses: stackabletech/actions/run-pre-commit@4bfd3b65f22af597fe784599c077dc34bf5894a7 # v0.8.0
         with:
           rust: ${{ env.RUST_TOOLCHAIN_VERSION }}
           # rust-src is required for trybuild stderr output comparison to work
