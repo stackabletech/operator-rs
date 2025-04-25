@@ -10,7 +10,6 @@ use k8s_openapi::{
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
 };
 use snafu::{OptionExt, ResultExt, Snafu};
-use tracing::warn;
 
 use crate::{
     builder::{
@@ -609,19 +608,19 @@ impl PodBuilder {
 
         pod_spec
             .check_resource_requirement(ResourceRequirementsType::Limits, "cpu")
-            .unwrap_or_else(|err| warn!("{}", err));
+            .unwrap_or_else(|err| tracing::warn!("{err}"));
 
         pod_spec
             .check_resource_requirement(ResourceRequirementsType::Limits, "memory")
-            .unwrap_or_else(|err| warn!("{}", err));
+            .unwrap_or_else(|err| tracing::warn!("{err}"));
 
         pod_spec
             .check_limit_to_request_ratio(&ComputeResource::Cpu, LIMIT_REQUEST_RATIO_CPU)
-            .unwrap_or_else(|err| warn!("{}", err));
+            .unwrap_or_else(|err| tracing::warn!("{err}"));
 
         pod_spec
             .check_limit_to_request_ratio(&ComputeResource::Memory, LIMIT_REQUEST_RATIO_MEMORY)
-            .unwrap_or_else(|err| warn!("{}", err));
+            .unwrap_or_else(|err| tracing::warn!("{err}"));
 
         pod_spec
     }
