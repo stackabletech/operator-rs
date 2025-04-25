@@ -10,7 +10,7 @@ use k8s_openapi::{
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
 };
 use snafu::{OptionExt, ResultExt, Snafu};
-use tracing::{instrument, warn};
+use tracing::warn;
 
 use crate::{
     builder::{
@@ -291,7 +291,6 @@ impl PodBuilder {
     ///
     /// Previously, this function unconditionally added [`Volume`]s, which resulted in invalid
     /// [`PodSpec`]s.
-    #[instrument(skip(self))]
     pub fn add_volume(&mut self, volume: Volume) -> Result<&mut Self> {
         if let Some(existing_volume) = self.volumes.get(&volume.name) {
             if existing_volume != &volume {
