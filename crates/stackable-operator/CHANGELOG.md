@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
 
 - Added `ListenerClass.spec.loadBalancerClass` field ([#986]).
 
+### Changed
+
+- BREAKING: Version common CRD structs and enums ([#968]).
+  - All CRD-related types and function now reside in the `stackable_operator::crd` module.
+  - Each CRD-related struct and enum has been versioned. The initial version is `v1alpha1`.
+  - The `static` authentication provider must now be imported using `r#static`.
+  - Import are now more granular in general.
+
+[#968]: https://github.com/stackabletech/operator-rs/pull/968
 [#986]: https://github.com/stackabletech/operator-rs/pull/986
 
 ## [0.92.0] - 2025-04-14

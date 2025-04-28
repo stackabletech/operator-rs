@@ -8,10 +8,8 @@ use crate::{
         self,
         pod::{PodBuilder, container::ContainerBuilder, volume::VolumeMountBuilder},
     },
-    commons::{
-        authentication::SECRET_BASE_PATH,
-        secret_class::{SecretClassVolume, SecretClassVolumeError},
-    },
+    commons::secret_class::{SecretClassVolume, SecretClassVolumeError},
+    constants::secret::SECRET_BASE_PATH,
 };
 
 #[derive(Debug, Snafu)]
