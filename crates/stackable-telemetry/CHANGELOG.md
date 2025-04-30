@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Bump `opentelemetry` and related crates to `0.29.x` and `tracing-opentelemetry` to `0.30.0` ([#1021]).
+
+[#1021]: https://github.com/stackabletech/operator-rs/pull/1021
+
 ## [0.6.0] - 2025-04-14
 
 ### Added
