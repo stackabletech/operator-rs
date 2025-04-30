@@ -30,10 +30,12 @@ All notable changes to this project will be documented in this file.
   - `FileLogSettingsBuilder::with_max_log_files` which took a `usize` was renamed to
     `FileLogSettingsBuilder::with_max_files` and now takes an `impl Into<Option<usize>>`
     for improved builder ergonomics.
+- Bump `opentelemetry` and related crates to `0.29.x` and `tracing-opentelemetry` to `0.30.0` ([#1021]).
 
 [#1009]: https://github.com/stackabletech/operator-rs/pull/1009
 [#1010]: https://github.com/stackabletech/operator-rs/pull/1010
 [#1012]: https://github.com/stackabletech/operator-rs/pull/1012
+[#1021]: https://github.com/stackabletech/operator-rs/pull/1021
 
 ## [0.5.0] - 2025-04-08
 
