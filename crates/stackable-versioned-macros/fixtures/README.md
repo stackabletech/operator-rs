@@ -1,6 +1,9 @@
 # Snapshot Testing
 
 > [!NOTE]
+> Please have `rust-src` installed, e.g. using `rustup component add rust-src`.
+
+> [!NOTE]
 > Also see the compile-fail tests, described [here](../tests/README.md).
 
 This folder contains fixtures for snapshot testing the `#[versioned()]` macro. Snapshot testing is

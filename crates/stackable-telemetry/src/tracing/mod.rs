@@ -12,7 +12,7 @@ use std::{ops::Not, path::PathBuf};
 use clap;
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
-use opentelemetry_otlp::{LogExporter, SpanExporter};
+use opentelemetry_otlp::{ExporterBuildError, LogExporter, SpanExporter};
 use opentelemetry_sdk::{
     Resource, logs::SdkLoggerProvider, propagation::TraceContextPropagator,
     trace::SdkTracerProvider,
@@ -35,14 +35,14 @@ pub enum Error {
     #[snafu(display("unable to install opentelemetry trace exporter"))]
     InstallOtelTraceExporter {
         #[allow(missing_docs)]
-        source: opentelemetry::trace::TraceError,
+        source: ExporterBuildError,
     },
 
     /// Indicates that [`Tracing`] failed to install the OpenTelemetry log exporter.
     #[snafu(display("unable to install opentelemetry log exporter"))]
     InstallOtelLogExporter {
         #[allow(missing_docs)]
-        source: opentelemetry_sdk::logs::LogError,
+        source: ExporterBuildError,
     },
 
     /// Indicates that [`Tracing`] failed to install the rolling file appender.
