@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Added `ListenerClass.spec.loadBalancerClass` field ([#986]).
+- Added `ListenerClass.spec.loadBalancerClass` and `.loadBalancerAllocateNodePorts` fields ([#986]).
 
 ### Changed
 
