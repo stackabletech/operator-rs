@@ -1,15 +1,22 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use stackable_versioned::versioned;
 
-use crate::commons::{
-    networking::HostName, secret_class::SecretClassVolume, tls_verification::TlsClientDetails,
+use crate::{
+    commons::{
+        networking::HostName, secret_class::SecretClassVolume, tls_verification::TlsClientDetails,
+    },
+    versioned::versioned,
 };
 
 mod v1alpha1_impl;
 
 #[versioned(version(name = "v1alpha1"))]
 pub mod versioned {
+    mod v1alpha1 {
+        // Re-export the v1alpha1-specific error type from the private impl module.
+        pub use v1alpha1_impl::Error;
+    }
+
     #[derive(
         Clone, Debug, Deserialize, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize,
     )]

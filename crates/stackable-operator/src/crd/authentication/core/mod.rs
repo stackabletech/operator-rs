@@ -1,15 +1,19 @@
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use stackable_versioned::versioned;
+
+use crate::versioned::versioned;
 
 mod v1alpha1_impl;
 
 #[versioned(version(name = "v1alpha1"))]
 pub mod versioned {
-    // This makes v1alpha1 versions of all authentication providers available to the
-    // AuthenticationClassProvider enum below.
     mod v1alpha1 {
+        // Re-export the v1alpha1-specific error type from the private impl module.
+        pub use v1alpha1_impl::Error;
+
+        // This makes v1alpha1 versions of all authentication providers available to the
+        // AuthenticationClassProvider enum below.
         use crate::crd::authentication::{kerberos, ldap, oidc, r#static, tls};
     }
     /// The Stackable Platform uses the AuthenticationClass as a central mechanism to handle user
