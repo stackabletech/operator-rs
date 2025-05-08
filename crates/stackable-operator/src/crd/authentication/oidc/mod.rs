@@ -1,10 +1,12 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use stackable_versioned::versioned;
 #[cfg(doc)]
 use url::Url;
 
-use crate::commons::{networking::HostName, tls_verification::TlsClientDetails};
+use crate::{
+    commons::{networking::HostName, tls_verification::TlsClientDetails},
+    versioned::versioned,
+};
 
 mod v1alpha1_impl;
 
@@ -17,6 +19,11 @@ const DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH: &str = "/.well-known/openid-configurat
 
 #[versioned(version(name = "v1alpha1"))]
 pub mod versioned {
+    pub mod v1alpha1 {
+        // Re-export the v1alpha1-specific error type from the private impl module.
+        pub use v1alpha1_impl::Error;
+    }
+
     /// This struct contains configuration values to configure an OpenID Connect
     /// (OIDC) authentication class. Required fields are the identity provider
     /// (IdP) `hostname` and the TLS configuration. The `port` is selected

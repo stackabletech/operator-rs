@@ -16,8 +16,13 @@ All notable changes to this project will be documented in this file.
   - The `static` authentication provider must now be imported using `r#static`.
   - Import are now more granular in general.
 
+### Fixed
+
+- Re-export versioned CRD-specific error types ([#1025]).
+
 [#968]: https://github.com/stackabletech/operator-rs/pull/968
 [#1024]: https://github.com/stackabletech/operator-rs/pull/1024
+[#1025]: https://github.com/stackabletech/operator-rs/pull/1025
 
 ## [0.92.0] - 2025-04-14
 
