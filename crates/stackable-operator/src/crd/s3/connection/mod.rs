@@ -1,10 +1,12 @@
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use stackable_versioned::versioned;
 
-use crate::commons::{
-    networking::HostName, secret_class::SecretClassVolume, tls_verification::TlsClientDetails,
+use crate::{
+    commons::{
+        networking::HostName, secret_class::SecretClassVolume, tls_verification::TlsClientDetails,
+    },
+    versioned::versioned,
 };
 
 mod v1alpha1_impl;

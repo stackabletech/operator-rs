@@ -1,9 +1,8 @@
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use stackable_versioned::versioned;
 
-use crate::crd::s3::connection::v1alpha1 as conn_v1alpha1;
+use crate::{crd::s3::connection::v1alpha1 as conn_v1alpha1, versioned::versioned};
 
 mod v1alpha1_impl;
 
