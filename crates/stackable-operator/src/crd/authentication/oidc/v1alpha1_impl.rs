@@ -18,7 +18,6 @@ use crate::{
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-// TODO (@Techassi): Move this into mod.rs
 #[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
     #[snafu(display("failed to parse OIDC endpoint url"))]
