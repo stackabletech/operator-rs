@@ -24,9 +24,8 @@ pub enum ConsoleLogSettings {
 /// Console subscriber log event output formats.
 ///
 /// Currently, only [Plain][Format::Plain] is supported.
-#[derive(
-    Clone, Debug, Default, Eq, PartialEq, strum::EnumString, strum::Display, clap::ValueEnum,
-)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, strum::EnumString, strum::Display)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[strum(serialize_all = "snake_case")]
 pub enum Format {
     /// Use the plain unstructured log output.
