@@ -6,13 +6,14 @@ use k8s_openapi::api::core::v1::{
 use snafu::{ResultExt, Snafu};
 use strum::{EnumDiscriminants, IntoStaticStr};
 
-use super::spec::GitSync;
 use crate::{
     builder::pod::{
         container::ContainerBuilder, resources::ResourceRequirementsBuilder, volume::VolumeBuilder,
     },
     commons::product_image_selection::ResolvedProductImage,
+    crd::git_sync::v1alpha1::GitSync,
     product_config_utils::insert_or_update_env_vars,
+    time::Duration,
     utils::COMMON_BASH_TRAP_FUNCTIONS,
 };
 
@@ -35,6 +36,24 @@ pub enum Error {
     AddVolumeMount {
         source: crate::builder::pod::container::Error,
     },
+}
+
+impl GitSync {
+    pub(crate) fn default_branch() -> String {
+        "main".to_string()
+    }
+
+    pub(crate) fn default_git_folder() -> PathBuf {
+        PathBuf::from("/")
+    }
+
+    pub(crate) fn default_depth() -> u32 {
+        1
+    }
+
+    pub(crate) fn default_wait() -> Duration {
+        Duration::from_secs(20)
+    }
 }
 
 /// Kubernetes resources generated from `GitSync` specifications which should be added to the Pod.
