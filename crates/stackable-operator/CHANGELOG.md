@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added `ListenerClass.spec.loadBalancerClass` and `.loadBalancerAllocateNodePorts` fields ([#986]).
+
 ### Changed
 
 - BREAKING: Version common CRD structs and enums ([#968]).
@@ -13,6 +17,7 @@ All notable changes to this project will be documented in this file.
   - Import are now more granular in general.
 
 [#968]: https://github.com/stackabletech/operator-rs/pull/968
+[#986]: https://github.com/stackabletech/operator-rs/pull/986
 
 ## [0.92.0] - 2025-04-14
 
