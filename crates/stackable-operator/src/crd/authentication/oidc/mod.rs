@@ -19,7 +19,7 @@ const DEFAULT_WELLKNOWN_OIDC_CONFIG_PATH: &str = "/.well-known/openid-configurat
 
 #[versioned(version(name = "v1alpha1"))]
 pub mod versioned {
-    mod v1alpha1 {
+    pub mod v1alpha1 {
         // Re-export the v1alpha1-specific error type from the private impl module.
         pub use v1alpha1_impl::Error;
     }
