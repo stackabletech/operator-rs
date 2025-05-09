@@ -1,0 +1,86 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: podlisteners.listeners.stackable.tech
+spec:
+  group: listeners.stackable.tech
+  names:
+    categories: []
+    kind: PodListeners
+    plural: podlisteners
+    shortNames: []
+    singular: podlisteners
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns: []
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Auto-generated derived type for PodListenersSpec via `CustomResource`
+        properties:
+          spec:
+            description: |-
+              Informs users about Listeners that are bound by a given Pod.
+
+              This is not expected to be created or modified by users. It will be created by the Stackable Listener Operator when mounting the listener volume, and is always named `pod-{pod.metadata.uid}`.
+            properties:
+              listeners:
+                additionalProperties:
+                  properties:
+                    ingressAddresses:
+                      description: |-
+                        Addresses allowing access to this Pod.
+
+                        Compared to `ingress_addresses` on the Listener status, this list is restricted to addresses that can access this Pod.
+
+                        This field is intended to be equivalent to the files mounted into the Listener volume.
+                      items:
+                        description: One address that a Listener is accessible from.
+                        properties:
+                          address:
+                            description: The hostname or IP address to the Listener.
+                            type: string
+                          addressType:
+                            description: The type of address (`Hostname` or `IP`).
+                            enum:
+                            - Hostname
+                            - IP
+                            type: string
+                          ports:
+                            additionalProperties:
+                              format: int32
+                              type: integer
+                            description: Port mapping table.
+                            type: object
+                        required:
+                        - address
+                        - addressType
+                        - ports
+                        type: object
+                      nullable: true
+                      type: array
+                    scope:
+                      description: '`Node` if this address only allows access to Pods hosted on a specific Kubernetes Node, otherwise `Cluster`.'
+                      enum:
+                      - Node
+                      - Cluster
+                      type: string
+                  required:
+                  - scope
+                  type: object
+                description: |-
+                  All Listeners currently bound by the Pod.
+
+                  Indexed by Volume name (not PersistentVolume or PersistentVolumeClaim).
+                type: object
+            required:
+            - listeners
+            type: object
+        required:
+        - spec
+        title: PodListeners
+        type: object
+    served: true
+    storage: true
+    subresources: {}

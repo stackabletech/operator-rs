@@ -3120,6 +3120,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "stackable-crd-previewer"
+version = "0.1.0"
+dependencies = [
+ "snafu 0.8.5",
+ "stackable-operator",
+ "stackable-shared",
+]
+
+[[package]]
 name = "stackable-operator"
 version = "0.92.0"
 dependencies = [

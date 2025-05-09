@@ -1,0 +1,70 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: listenerclasses.listeners.stackable.tech
+spec:
+  group: listeners.stackable.tech
+  names:
+    categories: []
+    kind: ListenerClass
+    plural: listenerclasses
+    shortNames: []
+    singular: listenerclass
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns: []
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Auto-generated derived type for ListenerClassSpec via `CustomResource`
+        properties:
+          spec:
+            description: Defines a policy for how [Listeners](https://docs.stackable.tech/home/nightly/listener-operator/listener) should be exposed. Read the [ListenerClass documentation](https://docs.stackable.tech/home/nightly/listener-operator/listenerclass) for more information.
+            properties:
+              preferredAddressType:
+                default: HostnameConservative
+                description: |-
+                  Whether addresses should prefer using the IP address (`IP`) or the hostname (`Hostname`). Can also be set to `HostnameConservative`, which will use `IP` for `NodePort` service types, but `Hostname` for everything else.
+
+                  The other type will be used if the preferred type is not available.
+
+                  Defaults to `HostnameConservative`.
+                enum:
+                - Hostname
+                - IP
+                - HostnameConservative
+                type: string
+              serviceAnnotations:
+                additionalProperties:
+                  type: string
+                default: {}
+                description: Annotations that should be added to the Service object.
+                type: object
+              serviceExternalTrafficPolicy:
+                default: Local
+                description: |-
+                  `externalTrafficPolicy` that should be set on the created [`Service`] objects.
+
+                  The default is `Local` (in contrast to `Cluster`), as we aim to direct traffic to a node running the workload and we should keep testing that as the primary configuration. Cluster is a fallback option for providers that break Local mode (IONOS so far).
+                enum:
+                - Cluster
+                - Local
+                type: string
+              serviceType:
+                description: The method used to access the services.
+                enum:
+                - NodePort
+                - LoadBalancer
+                - ClusterIP
+                type: string
+            required:
+            - serviceType
+            type: object
+        required:
+        - spec
+        title: ListenerClass
+        type: object
+    served: true
+    storage: true
+    subresources: {}
