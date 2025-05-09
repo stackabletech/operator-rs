@@ -103,6 +103,7 @@ pub mod versioned {
     pub struct DummyClusterSpec {
         pub nodes: Option<Role<ProductConfigFragment>>,
 
+        // Not versioned yet
         stackable_affinity: stackable_operator::commons::affinity::StackableAffinity,
         stackable_node_selector: stackable_operator::commons::affinity::StackableNodeSelector,
         user_information_cache: stackable_operator::commons::cache::UserInformationCache,
@@ -117,6 +118,7 @@ pub mod versioned {
         secret_reference: stackable_operator::commons::secret::SecretReference,
         tls_client_details: stackable_operator::commons::tls_verification::TlsClientDetails,
 
+        // Already versioned
         client_authentication_details:
             stackable_operator::crd::authentication::core::v1alpha1::ClientAuthenticationDetails,
     }
