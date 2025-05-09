@@ -37,7 +37,7 @@ pub enum Error {
 }
 
 pub fn main() -> Report<Error> {
-    Report::capture(|| write_crds())
+    Report::capture(write_crds)
 }
 
 macro_rules! write_crd {
