@@ -101,7 +101,7 @@ pub mod versioned {
     ))]
     #[serde(rename_all = "camelCase")]
     pub struct DummyClusterSpec {
-        pub nodes: Option<Role<ProductConfigFragment>>,
+        nodes: Option<Role<ProductConfigFragment>>,
 
         // Not versioned yet
         stackable_affinity: stackable_operator::commons::affinity::StackableAffinity,
@@ -129,6 +129,7 @@ pub mod versioned {
         serde(rename_all = "camelCase")
     )]
     pub struct ProductConfig {
+        #[fragment_attrs(serde(default))]
         resources: Resources<ProductStorageConfig, JvmHeapLimits>,
     }
 
