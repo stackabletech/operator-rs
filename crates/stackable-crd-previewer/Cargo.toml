@@ -16,5 +16,10 @@ snafu.workspace = true
 [build-dependencies]
 stackable-shared = { path = "../stackable-shared" }
 stackable-operator = { path = "../stackable-operator" }
+stackable-versioned = { path = "../stackable-versioned" }
 
+kube.workspace = true
+schemars.workspace = true
+serde_json.workspace = true
+serde.workspace = true
 snafu.workspace = true

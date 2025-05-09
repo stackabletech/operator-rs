@@ -3,14 +3,21 @@ use std::fs::create_dir_all;
 use snafu::{Report, ResultExt, Snafu};
 use stackable_operator::{
     YamlSchema,
+    commons::resources::{JvmHeapLimits, Resources},
+    config::fragment::Fragment,
     crd::{
         authentication::core::AuthenticationClass,
         listener::{Listener, ListenerClass, PodListeners},
         s3::{S3Bucket, S3Connection},
     },
-    kube::core::crd::MergeError,
+    k8s_openapi::serde::{Deserialize, Serialize},
+    kube::{CustomResource, core::crd::MergeError},
+    role_utils::Role,
+    schemars::JsonSchema,
     shared::yaml::SerializeOptions,
+    status::condition::ClusterCondition,
 };
+use stackable_versioned::versioned;
 
 const OPERATOR_VERSION: &str = "0.0.0-dev";
 const OUTPUT_DIR: &str = "../../generated-crd-previews";
@@ -29,6 +36,10 @@ pub enum Error {
     },
 }
 
+pub fn main() -> Report<Error> {
+    Report::capture(|| write_crds())
+}
+
 macro_rules! write_crd {
     ($crd_name:ident, $stored_crd_version:ident) => {
         $crd_name::merged_crd($crd_name::$stored_crd_version)
@@ -42,10 +53,6 @@ macro_rules! write_crd {
             )
             .context(WriteCRDSnafu)?;
     };
-}
-
-pub fn main() -> Report<Error> {
-    Report::capture(|| write_crds())
 }
 
 pub fn write_crds() -> Result<(), Error> {
@@ -71,5 +78,70 @@ pub fn write_crds() -> Result<(), Error> {
     write_crd!(S3Bucket, V1Alpha1);
     write_crd!(S3Connection, V1Alpha1);
 
+    // Also write a CRD with all sorts of common structs
+    write_crd!(DummyCluster, V1Alpha1);
+
     Ok(())
+}
+
+#[versioned(version(name = "v1alpha1"))]
+pub mod versioned {
+
+    #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
+    #[versioned(k8s(
+        group = "zookeeper.stackable.tech",
+        kind = "DummyCluster",
+        status = "v1alpha1::DummyClusterStatus",
+        namespaced,
+        crates(
+            kube_core = "stackable_operator::kube::core",
+            k8s_openapi = "stackable_operator::k8s_openapi",
+            schemars = "stackable_operator::schemars"
+        )
+    ))]
+    #[serde(rename_all = "camelCase")]
+    pub struct DummyClusterSpec {
+        pub nodes: Option<Role<ProductConfigFragment>>,
+
+        stackable_affinity: stackable_operator::commons::affinity::StackableAffinity,
+        stackable_node_selector: stackable_operator::commons::affinity::StackableNodeSelector,
+        user_information_cache: stackable_operator::commons::cache::UserInformationCache,
+        cluster_operation: stackable_operator::commons::cluster_operation::ClusterOperation,
+        domain_name: stackable_operator::commons::networking::DomainName,
+        host_name: stackable_operator::commons::networking::HostName,
+        kerberos_realm_name: stackable_operator::commons::networking::KerberosRealmName,
+        opa_config: stackable_operator::commons::opa::OpaConfig,
+        pdb_config: stackable_operator::commons::pdb::PdbConfig,
+        product_image: stackable_operator::commons::product_image_selection::ProductImage,
+        secret_class_volume: stackable_operator::commons::secret_class::SecretClassVolume,
+        secret_reference: stackable_operator::commons::secret::SecretReference,
+        tls_client_details: stackable_operator::commons::tls_verification::TlsClientDetails,
+
+        client_authentication_details:
+            stackable_operator::crd::authentication::core::v1alpha1::ClientAuthenticationDetails,
+    }
+
+    #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]
+    #[fragment_attrs(
+        derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema),
+        serde(rename_all = "camelCase")
+    )]
+    pub struct ProductConfig {
+        resources: Resources<ProductStorageConfig, JvmHeapLimits>,
+    }
+
+    #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]
+    #[fragment_attrs(
+        derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema),
+        serde(rename_all = "camelCase")
+    )]
+    pub struct ProductStorageConfig {
+        data_storage: stackable_operator::commons::resources::PvcConfig,
+    }
+
+    #[derive(Clone, Default, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct DummyClusterStatus {
+        pub conditions: Vec<ClusterCondition>,
+    }
 }
