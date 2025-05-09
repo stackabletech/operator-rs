@@ -27,7 +27,7 @@ pub mod versioned {
         #[serde(default = "GitSync::default_branch")]
         pub branch: String,
 
-        /// The location of the DAG folder, relative to the synced repository root.
+        /// Location in the Git repository containing the resource.
         ///
         /// It can optionally start with `/`, however, no trailing slash is recommended.
         /// An empty string (``) or slash (`/`) corresponds to the root folder in Git.
