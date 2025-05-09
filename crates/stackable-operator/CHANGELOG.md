@@ -15,9 +15,11 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - Re-export versioned CRD-specific error types ([#1025]).
+- Re-export versioned common CRD enums ([#1029]).
 
 [#968]: https://github.com/stackabletech/operator-rs/pull/968
 [#1025]: https://github.com/stackabletech/operator-rs/pull/1025
+[#1029]: https://github.com/stackabletech/operator-rs/pull/1029
 
 ## [0.92.0] - 2025-04-14
 
