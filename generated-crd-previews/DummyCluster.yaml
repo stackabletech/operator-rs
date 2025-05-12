@@ -30,10 +30,7 @@ spec:
                       To get the concrete [`AuthenticationClass`], we must resolve it. This resolution can be achieved by using [`ClientAuthenticationDetails::resolve_class`].
                     type: string
                   oidc:
-                    description: |-
-                      This field contains OIDC-specific configuration. It is only required in case OIDC is used.
-
-                      Use [`ClientAuthenticationDetails::oidc_or_error`] to get the value or report an error to the user.
+                    description: This field contains OIDC-specific configuration. It is only required in case OIDC is used.
                     nullable: true
                     properties:
                       clientCredentialsSecret:
@@ -41,10 +38,7 @@ spec:
                         type: string
                       extraScopes:
                         default: []
-                        description: |-
-                          An optional list of extra scopes which get merged with the scopes defined in the [`AuthenticationClass`][1].
-
-                          [1]: crate::crd::authentication::core::v1alpha1::AuthenticationClass
+                        description: An optional list of extra scopes which get merged with the scopes defined in the AuthenticationClass
                         items:
                           type: string
                         type: array

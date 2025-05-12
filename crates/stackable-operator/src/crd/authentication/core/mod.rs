@@ -145,6 +145,9 @@ pub mod versioned {
         // added, so that user can not configure multiple options at the same time (yes we are aware
         // that this makes a changing the type of an AuthenticationClass harder). This is a
         // non-breaking change though :)
+        #[schemars(
+            description = "This field contains OIDC-specific configuration. It is only required in case OIDC is used."
+        )]
         oidc: Option<oidc::v1alpha1::ClientAuthenticationOptions<O>>,
     }
 }
