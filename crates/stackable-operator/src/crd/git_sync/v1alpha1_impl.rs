@@ -13,6 +13,10 @@ use crate::{
     commons::product_image_selection::ResolvedProductImage,
     crd::git_sync::v1alpha1::GitSync,
     product_config_utils::insert_or_update_env_vars,
+    product_logging::{
+        framework::capture_shell_output,
+        spec::{ContainerLogConfig, ContainerLogConfigChoice},
+    },
     time::Duration,
     utils::COMMON_BASH_TRAP_FUNCTIONS,
 };
@@ -72,6 +76,8 @@ pub struct GitSyncResources {
 }
 
 impl GitSyncResources {
+    const LOG_VOLUME_MOUNT_PATH: &str = "/stackable/log";
+
     /// Returns whether or not GitSync is enabled.
     pub fn is_git_sync_enabled(&self) -> bool {
         !self.git_sync_containers.is_empty()
@@ -91,6 +97,8 @@ impl GitSyncResources {
         resolved_product_image: &ResolvedProductImage,
         extra_env_vars: &[EnvVar],
         extra_volume_mounts: &[VolumeMount],
+        log_volume_name: &str,
+        container_log_config: &ContainerLogConfig,
     ) -> Result<GitSyncResources, Error> {
         let mut resources = GitSyncResources::default();
 
@@ -118,7 +126,15 @@ impl GitSyncResources {
                 mount_path: GIT_SYNC_ROOT_DIR.to_string(),
                 ..VolumeMount::default()
             };
-            let mut git_sync_container_volume_mounts = vec![git_sync_root_volume_mount];
+
+            let log_volume_mount = VolumeMount {
+                name: log_volume_name.to_string(),
+                mount_path: Self::LOG_VOLUME_MOUNT_PATH.to_string(),
+                ..VolumeMount::default()
+            };
+
+            let mut git_sync_container_volume_mounts =
+                vec![git_sync_root_volume_mount, log_volume_mount];
             git_sync_container_volume_mounts.extend_from_slice(extra_volume_mounts);
 
             let container = Self::create_git_sync_container(
@@ -128,6 +144,7 @@ impl GitSyncResources {
                 false,
                 &env_vars,
                 &git_sync_container_volume_mounts,
+                container_log_config,
             )?;
 
             let init_container = Self::create_git_sync_container(
@@ -137,6 +154,7 @@ impl GitSyncResources {
                 true,
                 &env_vars,
                 &git_sync_container_volume_mounts,
+                container_log_config,
             )?;
 
             let volume = VolumeBuilder::new(volume_name.to_owned())
@@ -176,6 +194,7 @@ impl GitSyncResources {
         one_time: bool,
         env_vars: &[EnvVar],
         volume_mounts: &[VolumeMount],
+        container_log_config: &ContainerLogConfig,
     ) -> Result<k8s_openapi::api::core::v1::Container, Error> {
         let container = ContainerBuilder::new(container_name)
             .context(InvalidContainerNameSnafu)?
@@ -187,7 +206,12 @@ impl GitSyncResources {
                 "pipefail".to_string(),
                 "-c".to_string(),
             ])
-            .args(vec![Self::create_git_sync_command(git_sync, one_time)])
+            .args(vec![Self::create_git_sync_shell_script(
+                container_name,
+                git_sync,
+                one_time,
+                container_log_config,
+            )])
             .add_env_vars(env_vars.into())
             .add_volume_mounts(volume_mounts.to_vec())
             .context(AddVolumeMountSnafu)?
@@ -203,7 +227,12 @@ impl GitSyncResources {
         Ok(container)
     }
 
-    fn create_git_sync_command(git_sync: &GitSync, one_time: bool) -> String {
+    fn create_git_sync_shell_script(
+        container_name: &str,
+        git_sync: &GitSync,
+        one_time: bool,
+        container_log_config: &ContainerLogConfig,
+    ) -> String {
         let internal_args = [
             Some(("--repo".to_string(), git_sync.repo.to_owned())),
             Some(("--ref".to_string(), git_sync.branch.to_owned())),
@@ -275,19 +304,35 @@ impl GitSyncResources {
             .collect::<Vec<_>>()
             .join(" ");
 
+        let mut shell_script = String::new();
+
+        if let ContainerLogConfig {
+            choice: Some(ContainerLogConfigChoice::Automatic(log_config)),
+        } = container_log_config
+        {
+            shell_script.push_str(&capture_shell_output(
+                Self::LOG_VOLUME_MOUNT_PATH,
+                container_name,
+                log_config,
+            ));
+            shell_script.push('\n');
+        };
+
         let git_sync_command = format!("/stackable/git-sync {args_string}");
 
         if one_time {
-            git_sync_command
+            shell_script.push_str(&git_sync_command);
         } else {
             // Run the git-sync command in the background
-            format!(
+            shell_script.push_str(&format!(
                 "{COMMON_BASH_TRAP_FUNCTIONS}
 prepare_signal_handlers
 {git_sync_command} &
 wait_for_termination $!"
-            )
+            ))
         }
+
+        shell_script
     }
 
     fn env_var_from_secret(var_name: &str, secret: &str, secret_key: &str) -> EnvVar {
@@ -309,7 +354,10 @@ wait_for_termination $!"
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::product_config_utils::env_vars_from;
+    use crate::{
+        config::fragment::validate, product_config_utils::env_vars_from,
+        product_logging::spec::default_container_log_config,
+    };
 
     #[test]
     fn test_no_git_sync() {
@@ -332,6 +380,8 @@ mod tests {
             &resolved_product_image,
             &extra_env_vars,
             &extra_volume_mounts,
+            "log-volume",
+            &validate(default_container_log_config()).unwrap(),
         )
         .unwrap();
 
@@ -407,6 +457,8 @@ mod tests {
             &resolved_product_image,
             &extra_env_vars,
             &extra_volume_mounts,
+            "log-volume",
+            &validate(default_container_log_config()).unwrap(),
         )
         .unwrap();
 
@@ -416,7 +468,8 @@ mod tests {
 
         assert_eq!(
             r#"args:
-- |2-
+- |-
+  mkdir --parents /stackable/log/git-sync-0 && exec > >(tee /stackable/log/git-sync-0/container.stdout.log) 2> >(tee /stackable/log/git-sync-0/container.stderr.log >&2)
 
   prepare_signal_handlers()
   {
@@ -474,6 +527,8 @@ resources:
 volumeMounts:
 - mountPath: /tmp/git
   name: content-from-git-0
+- mountPath: /stackable/log
+  name: log-volume
 - mountPath: /mnt/extra-volume
   name: extra-volume
 "#,
@@ -482,7 +537,8 @@ volumeMounts:
 
         assert_eq!(
             r#"args:
-- |2-
+- |-
+  mkdir --parents /stackable/log/git-sync-1 && exec > >(tee /stackable/log/git-sync-1/container.stdout.log) 2> >(tee /stackable/log/git-sync-1/container.stderr.log >&2)
 
   prepare_signal_handlers()
   {
@@ -545,6 +601,8 @@ resources:
 volumeMounts:
 - mountPath: /tmp/git
   name: content-from-git-1
+- mountPath: /stackable/log
+  name: log-volume
 - mountPath: /mnt/extra-volume
   name: extra-volume
 "#,
@@ -553,7 +611,8 @@ volumeMounts:
 
         assert_eq!(
             r#"args:
-- |2-
+- |-
+  mkdir --parents /stackable/log/git-sync-2 && exec > >(tee /stackable/log/git-sync-2/container.stdout.log) 2> >(tee /stackable/log/git-sync-2/container.stderr.log >&2)
 
   prepare_signal_handlers()
   {
@@ -611,6 +670,8 @@ resources:
 volumeMounts:
 - mountPath: /tmp/git
   name: content-from-git-2
+- mountPath: /stackable/log
+  name: log-volume
 - mountPath: /mnt/extra-volume
   name: extra-volume
 "#,
@@ -621,7 +682,9 @@ volumeMounts:
 
         assert_eq!(
             r#"args:
-- /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git' --link=current --one-time=true --period=20s --ref=main --repo=https://github.com/stackabletech/repo1 --root=/tmp/git
+- |-
+  mkdir --parents /stackable/log/git-sync-0-init && exec > >(tee /stackable/log/git-sync-0-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-0-init/container.stderr.log >&2)
+  /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git' --link=current --one-time=true --period=20s --ref=main --repo=https://github.com/stackabletech/repo1 --root=/tmp/git
 command:
 - /bin/bash
 - -x
@@ -646,6 +709,8 @@ resources:
 volumeMounts:
 - mountPath: /tmp/git
   name: content-from-git-0
+- mountPath: /stackable/log
+  name: log-volume
 - mountPath: /mnt/extra-volume
   name: extra-volume
 "#,
@@ -654,7 +719,9 @@ volumeMounts:
 
         assert_eq!(
             r#"args:
-- /stackable/git-sync --depth=3 --git-config='safe.directory:/tmp/git,http.sslCAInfo:/tmp/ca-cert/ca.crt' --link=current --one-time=true --period=60s --ref=trunk --repo=https://github.com/stackabletech/repo2 --rev=HEAD --root=/tmp/git
+- |-
+  mkdir --parents /stackable/log/git-sync-1-init && exec > >(tee /stackable/log/git-sync-1-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-1-init/container.stderr.log >&2)
+  /stackable/git-sync --depth=3 --git-config='safe.directory:/tmp/git,http.sslCAInfo:/tmp/ca-cert/ca.crt' --link=current --one-time=true --period=60s --ref=trunk --repo=https://github.com/stackabletech/repo2 --rev=HEAD --root=/tmp/git
 command:
 - /bin/bash
 - -x
@@ -684,6 +751,8 @@ resources:
 volumeMounts:
 - mountPath: /tmp/git
   name: content-from-git-1
+- mountPath: /stackable/log
+  name: log-volume
 - mountPath: /mnt/extra-volume
   name: extra-volume
 "#,
@@ -692,7 +761,9 @@ volumeMounts:
 
         assert_eq!(
             r#"args:
-- /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git,k1:v1,k2:v2,safe.directory:/safe-dir,k3:v3,k4:v4' --link=current --one-time=true --period=20s --ref=feat/git-sync --repo=https://github.com/stackabletech/repo3 --root=/tmp/git
+- |-
+  mkdir --parents /stackable/log/git-sync-2-init && exec > >(tee /stackable/log/git-sync-2-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-2-init/container.stderr.log >&2)
+  /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git,k1:v1,k2:v2,safe.directory:/safe-dir,k3:v3,k4:v4' --link=current --one-time=true --period=20s --ref=feat/git-sync --repo=https://github.com/stackabletech/repo3 --root=/tmp/git
 command:
 - /bin/bash
 - -x
@@ -717,6 +788,8 @@ resources:
 volumeMounts:
 - mountPath: /tmp/git
   name: content-from-git-2
+- mountPath: /stackable/log
+  name: log-volume
 - mountPath: /mnt/extra-volume
   name: extra-volume
 "#,
