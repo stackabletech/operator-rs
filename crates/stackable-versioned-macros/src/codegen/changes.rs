@@ -172,6 +172,10 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
                             ty,
                             ..
                         } => (ident, ty, *previously_deprecated),
+                        ItemStatus::NotPresent => {
+                            self.insert(version.inner, ItemStatus::NotPresent);
+                            continue;
+                        }
                         // TODO (@NickLarsenNZ): Explain why it is unreachable, as it can be reached during testing.
                         // To reproduce, use an invalid version, eg: #[versioned(deprecated(since = "v99"))]
                         _ => unreachable!(),

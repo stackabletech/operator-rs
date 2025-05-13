@@ -143,6 +143,7 @@ impl VersionedField {
         }
     }
 
+    // TODO (@Techassi): This should probably return an optional token stream.
     pub(crate) fn generate_for_from_impl(
         &self,
         version: &VersionDefinition,
@@ -155,6 +156,12 @@ impl VersionedField {
                 let change = changes.get_expect(&version.inner);
 
                 match (change, next_change) {
+                    // If both this status and the next one is NotPresent, which means
+                    // a field was introduced after a bunch of versions, we don'r
+                    // need to generate any code for the From impl.
+                    (ItemStatus::NotPresent, ItemStatus::NotPresent) => {
+                        quote! {}
+                    }
                     (
                         _,
                         ItemStatus::Addition {
