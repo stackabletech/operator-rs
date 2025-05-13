@@ -1,9 +1,8 @@
 mod bucket;
 mod connection;
 
-// Publicly re-export unversioned items, in this case errors.
-pub use bucket::BucketError;
-pub use connection::ConnectionError;
+pub use bucket::S3Bucket;
+pub use connection::S3Connection;
 
 // Group all v1alpha1 items in one module.
 pub mod v1alpha1 {

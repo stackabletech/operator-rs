@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Bump `opentelemetry` and related crates to `0.29.x` and `tracing-opentelemetry` to `0.30.0` ([#1021]).
+
+### Fixed
+
+- Only derive `clap::ValueEnum` if the `clap` feature is enabled ([#1026]).
+
+[#1021]: https://github.com/stackabletech/operator-rs/pull/1021
+[#1026]: https://github.com/stackabletech/operator-rs/pull/1026
+
 ## [0.6.0] - 2025-04-14
 
 ### Added
