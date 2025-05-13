@@ -10,7 +10,7 @@ fn main() {
     struct Foo {
         username: String,
 
-        #[versioned(added(since = "v1alpha2", default = default_foo))]
+        #[versioned(added(since = "v1alpha2", default = default_first_name))]
         first_name: String,
 
         #[versioned(added(since = "v1beta1"))]
@@ -18,6 +18,6 @@ fn main() {
     }
 }
 
-fn default_foo() -> String {
+fn default_first_name() -> String {
     "foo".into()
 }
