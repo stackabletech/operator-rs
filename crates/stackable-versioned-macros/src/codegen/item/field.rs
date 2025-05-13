@@ -157,7 +157,7 @@ impl VersionedField {
 
                 match (change, next_change) {
                     // If both this status and the next one is NotPresent, which means
-                    // a field was introduced after a bunch of versions, we don'r
+                    // a field was introduced after a bunch of versions, we don't
                     // need to generate any code for the From impl.
                     (ItemStatus::NotPresent, ItemStatus::NotPresent) => {
                         quote! {}
