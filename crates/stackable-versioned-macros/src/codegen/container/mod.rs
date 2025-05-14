@@ -95,7 +95,7 @@ impl Container {
     ///
     /// This function only returns `Some` if it is a struct. Enums cannot be used to define
     /// Kubernetes custom resources.
-    pub(crate) fn generate_kubernetes_item(
+    pub fn generate_kubernetes_item(
         &self,
         version: &VersionDefinition,
     ) -> Option<(IdentString, String, TokenStream)> {
@@ -109,7 +109,7 @@ impl Container {
     ///
     /// This function only returns `Some` if it is a struct. Enums cannot be used to define
     /// Kubernetes custom resources.
-    pub(crate) fn generate_kubernetes_merge_crds(
+    pub fn generate_kubernetes_merge_crds(
         &self,
         enum_variant_idents: &[IdentString],
         enum_variant_strings: &[String],
@@ -129,7 +129,14 @@ impl Container {
         }
     }
 
-    pub(crate) fn get_original_ident(&self) -> &Ident {
+    pub fn generate_kubernetes_status_struct(&self, vis: &Visibility) -> Option<TokenStream> {
+        match self {
+            Container::Struct(s) => s.generate_kubernetes_status_struct(vis),
+            Container::Enum(_) => None,
+        }
+    }
+
+    pub fn get_original_ident(&self) -> &Ident {
         match &self {
             Container::Struct(s) => s.common.idents.original.as_ident(),
             Container::Enum(e) => e.common.idents.original.as_ident(),
@@ -252,6 +259,10 @@ impl StandaloneContainer {
             false,
         ));
 
+        if self.versions.len() > 1 {
+            tokens.extend(self.container.generate_kubernetes_status_struct(vis));
+        }
+
         tokens
     }
 }
@@ -344,11 +355,13 @@ pub struct KubernetesCrateOptions {
     pub schemars: Override<Path>,
     pub serde: Override<Path>,
     pub serde_json: Override<Path>,
+    pub versioned: Override<Path>,
 }
 
 impl Default for KubernetesCrateOptions {
     fn default() -> Self {
         Self {
+            versioned: Override::Default(parse_quote! { ::stackable_versioned }),
             k8s_openapi: Override::Default(parse_quote! { ::k8s_openapi }),
             serde_json: Override::Default(parse_quote! { ::serde_json }),
             kube_core: Override::Default(parse_quote! { ::kube::core }),
@@ -382,6 +395,10 @@ impl From<KubernetesCrateArguments> for KubernetesCrateOptions {
             crate_options.serde = Override::Overridden(serde);
         }
 
+        if let Some(versioned) = args.versioned {
+            crate_options.versioned = Override::Overridden(versioned);
+        }
+
         crate_options
     }
 }
@@ -396,6 +413,7 @@ impl ToTokens for KubernetesCrateOptions {
             kube_core,
             schemars,
             serde,
+            ..
         } = self;
 
         if let Override::Overridden(k8s_openapi) = k8s_openapi {

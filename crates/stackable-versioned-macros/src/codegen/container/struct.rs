@@ -2,7 +2,7 @@ use std::ops::Not;
 
 use darling::{Error, FromAttributes, Result, util::IdentString};
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote};
+use quote::{ToTokens, format_ident, quote};
 use syn::{Generics, ItemStruct, Path, Visibility, parse_quote};
 
 use crate::{
@@ -317,10 +317,7 @@ impl Struct {
 
 // Kubernetes-specific token generation
 impl Struct {
-    pub(crate) fn generate_kube_attribute(
-        &self,
-        version: &VersionDefinition,
-    ) -> Option<TokenStream> {
+    pub fn generate_kube_attribute(&self, version: &VersionDefinition) -> Option<TokenStream> {
         match &self.common.options.kubernetes_options {
             Some(kubernetes_options) => {
                 // Required arguments
@@ -371,7 +368,7 @@ impl Struct {
         }
     }
 
-    pub(crate) fn generate_kubernetes_item(
+    pub fn generate_kubernetes_item(
         &self,
         version: &VersionDefinition,
     ) -> Option<(IdentString, String, TokenStream)> {
@@ -396,7 +393,7 @@ impl Struct {
         }
     }
 
-    pub(crate) fn generate_kubernetes_merge_crds(
+    pub fn generate_kubernetes_merge_crds(
         &self,
         enum_variant_idents: &[IdentString],
         enum_variant_strings: &[String],
@@ -444,6 +441,43 @@ impl Struct {
                 })
             }
             _ => None,
+        }
+    }
+
+    pub fn generate_kubernetes_status_struct(&self, vis: &Visibility) -> Option<TokenStream> {
+        match &self.common.options.kubernetes_options {
+            Some(kubernetes_options) => {
+                let status_ident = format_ident!(
+                    "{struct_ident}Status",
+                    struct_ident = self.common.idents.kubernetes.as_ident()
+                );
+
+                let versioned_crate = &*kubernetes_options.crates.versioned;
+                let schemars_crate = &*kubernetes_options.crates.schemars;
+                let serde_crate = &*kubernetes_options.crates.serde;
+
+                // FIXME (@Techassi): This needs to be set in the #[kube] attribute
+                match &kubernetes_options.status {
+                    Some(status) => Some(quote! {
+                        #[derive(Clone, Debug, #serde_crate::Deserialize, #serde_crate::Serialize, #schemars_crate::JsonSchema)]
+                        #[serde(rename_all = "camelCase")]
+                        #vis struct #status_ident {
+                            pub crd_changes: #versioned_crate::CrdChanges,
+
+                            #[serde(flatten)]
+                            pub status: #status,
+                        }
+                    }),
+                    None => Some(quote! {
+                        #[derive(Clone, Debug, #serde_crate::Deserialize, #serde_crate::Serialize, #schemars_crate::JsonSchema)]
+                        #[serde(rename_all = "camelCase")]
+                        #vis struct #status_ident {
+                            pub crd_changes: #versioned_crate::CrdChanges,
+                        }
+                    }),
+                }
+            }
+            None => None,
         }
     }
 }

@@ -24,3 +24,9 @@ pub trait AsVersionStr {
         Self::VERSION
     }
 }
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+pub struct CrdChanges {
+    pub downgrades: Vec<String>,
+    pub upgrades: Vec<String>,
+}
