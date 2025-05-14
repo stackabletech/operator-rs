@@ -4,6 +4,7 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 use schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 use crate::{time::Duration, versioned::versioned};
 
@@ -19,7 +20,7 @@ pub mod versioned {
     #[serde(rename_all = "camelCase")]
     pub struct GitSync {
         /// The git repository URL that will be cloned, for example: `https://github.com/stackabletech/airflow-operator`.
-        pub repo: String,
+        pub repo: Url,
 
         /// The branch to clone; defaults to `main`.
         ///

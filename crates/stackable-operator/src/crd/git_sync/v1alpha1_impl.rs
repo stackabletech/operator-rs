@@ -234,7 +234,7 @@ impl GitSyncResources {
         container_log_config: &ContainerLogConfig,
     ) -> String {
         let internal_args = [
-            Some(("--repo".to_string(), git_sync.repo.to_owned())),
+            Some(("--repo".to_string(), git_sync.repo.as_str().to_owned())),
             Some(("--ref".to_string(), git_sync.branch.to_owned())),
             Some(("--depth".to_string(), git_sync.depth.to_string())),
             Some((
