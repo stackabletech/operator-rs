@@ -27,6 +27,7 @@ mod default {
 fn default_macros() {
     let t = trybuild::TestCases::new();
     t.compile_fail("tests/default/fail/*.rs");
+    t.pass("tests/default/pass/*.rs");
 }
 
 #[cfg(feature = "k8s")]

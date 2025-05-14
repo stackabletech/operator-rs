@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Correctly handle fields added in later versions ([#1031]).
+
+[#1031]: https://github.com/stackabletech/operator-rs/pull/1031
+
 ## [0.7.1] - 2025-04-02
 
 ### Fixed
