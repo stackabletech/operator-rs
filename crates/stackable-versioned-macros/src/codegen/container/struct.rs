@@ -134,7 +134,7 @@ pub(crate) struct Struct {
 // Common token generation
 impl Struct {
     /// Generates code for the struct definition.
-    pub(crate) fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
+    pub fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
         let where_clause = self.generics.where_clause.as_ref();
         let type_generics = &self.generics;
 
@@ -160,8 +160,13 @@ impl Struct {
         }
     }
 
+    // TODO (@Techassi): It looks like some of the stuff from the upgrade and downgrade functions
+    // can be combined into a single piece of code. Figure out a nice way to do that.
     /// Generates code for the `From<Version> for NextVersion` implementation.
-    pub(crate) fn generate_from_impl(
+    ///
+    /// The `add_attributes` parameter declares if attributes (macros) should be added to the
+    /// generated `From` impl block.
+    pub fn generate_upgrade_from_impl(
         &self,
         version: &VersionDefinition,
         next_version: Option<&VersionDefinition>,
@@ -185,7 +190,13 @@ impl Struct {
                 let for_module_ident = &next_version.ident;
                 let from_module_ident = &version.ident;
 
-                let fields = self.generate_from_fields(version, next_version, from_struct_ident);
+                let fields: TokenStream = self
+                    .fields
+                    .iter()
+                    .map(|f| {
+                        f.generate_for_upgrade_from_impl(version, next_version, from_struct_ident)
+                    })
+                    .collect();
 
                 // Include allow(deprecated) only when this or the next version is
                 // deprecated. Also include it, when a field in this or the next
@@ -220,20 +231,64 @@ impl Struct {
         }
     }
 
-    /// Generates code for struct fields used in `From` implementations.
-    fn generate_from_fields(
+    pub fn generate_downgrade_from_impl(
         &self,
         version: &VersionDefinition,
-        next_version: &VersionDefinition,
-        from_struct_ident: &IdentString,
-    ) -> TokenStream {
-        let mut tokens = TokenStream::new();
-
-        for field in &self.fields {
-            tokens.extend(field.generate_for_from_impl(version, next_version, from_struct_ident));
+        next_version: Option<&VersionDefinition>,
+        add_attributes: bool,
+    ) -> Option<TokenStream> {
+        if version.skip_from || self.common.options.skip_from {
+            return None;
         }
 
-        tokens
+        match next_version {
+            Some(next_version) => {
+                let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
+                let struct_ident = &self.common.idents.original;
+                let from_struct_ident = &self.common.idents.from;
+
+                let for_module_ident = &version.ident;
+                let from_module_ident = &next_version.ident;
+
+                let fields: TokenStream = self
+                    .fields
+                    .iter()
+                    .map(|f| {
+                        f.generate_for_downgrade_from_impl(version, next_version, from_struct_ident)
+                    })
+                    .collect();
+
+                // Include allow(deprecated) only when this or the next version is
+                // deprecated. Also include it, when a field in this or the next
+                // version is deprecated.
+                let allow_attribute = (version.deprecated.is_some()
+                    || next_version.deprecated.is_some()
+                    || self.is_any_field_deprecated(version)
+                    || self.is_any_field_deprecated(next_version))
+                .then(|| quote! { #[allow(deprecated)] });
+
+                // Only add the #[automatically_derived] attribute only if this impl is used
+                // outside of a module (in standalone mode).
+                let automatically_derived = add_attributes
+                    .not()
+                    .then(|| quote! {#[automatically_derived]});
+
+                Some(quote! {
+                    #automatically_derived
+                    #allow_attribute
+                    impl #impl_generics ::std::convert::From<#from_module_ident::#struct_ident #type_generics> for #for_module_ident::#struct_ident #type_generics
+                        #where_clause
+                    {
+                        fn from(#from_struct_ident: #from_module_ident::#struct_ident #type_generics) -> Self {
+                            Self {
+                                #fields
+                            }
+                        }
+                    }
+                })
+            }
+            None => None,
+        }
     }
 
     /// Returns whether any field is deprecated in the provided `version`.

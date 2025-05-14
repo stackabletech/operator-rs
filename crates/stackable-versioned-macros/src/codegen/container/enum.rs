@@ -1,6 +1,6 @@
 use std::ops::Not;
 
-use darling::{FromAttributes, Result, util::IdentString};
+use darling::{FromAttributes, Result};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Generics, ItemEnum};
@@ -126,11 +126,11 @@ impl Enum {
     }
 
     /// Generates code for the `From<Version> for NextVersion` implementation.
-    pub(crate) fn generate_from_impl(
+    pub fn generate_upgrade_from_impl(
         &self,
         version: &VersionDefinition,
         next_version: Option<&VersionDefinition>,
-        is_nested: bool,
+        add_attributes: bool,
     ) -> Option<TokenStream> {
         if version.skip_from || self.common.options.skip_from {
             return None;
@@ -145,12 +145,17 @@ impl Enum {
                 // later versions.
                 let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
                 let enum_ident = &self.common.idents.original;
-                let from_ident = &self.common.idents.from;
+                let from_enum_ident = &self.common.idents.from;
 
-                let next_version_ident = &next_version.ident;
-                let version_ident = &version.ident;
+                let for_module_ident = &next_version.ident;
+                let from_module_ident = &version.ident;
 
-                let variants = self.generate_from_variants(version, next_version, enum_ident);
+                let variants: TokenStream = self
+                    .variants
+                    .iter()
+                    .map(|v| v.generate_for_upgrade_from_impl(version, next_version, enum_ident))
+                    .flatten()
+                    .collect();
 
                 // Include allow(deprecated) only when this or the next version is
                 // deprecated. Also include it, when a variant in this or the next
@@ -163,17 +168,18 @@ impl Enum {
 
                 // Only add the #[automatically_derived] attribute only if this impl is used
                 // outside of a module (in standalone mode).
-                let automatically_derived =
-                    is_nested.not().then(|| quote! {#[automatically_derived]});
+                let automatically_derived = add_attributes
+                    .not()
+                    .then(|| quote! {#[automatically_derived]});
 
                 Some(quote! {
                     #automatically_derived
                     #allow_attribute
-                    impl #impl_generics ::std::convert::From<#version_ident::#enum_ident #type_generics> for #next_version_ident::#enum_ident #type_generics
+                    impl #impl_generics ::std::convert::From<#from_module_ident::#enum_ident #type_generics> for #for_module_ident::#enum_ident #type_generics
                         #where_clause
                     {
-                        fn from(#from_ident: #version_ident::#enum_ident #type_generics) -> Self {
-                            match #from_ident {
+                        fn from(#from_enum_ident: #from_module_ident::#enum_ident #type_generics) -> Self {
+                            match #from_enum_ident {
                                 #variants
                             }
                         }
@@ -184,20 +190,53 @@ impl Enum {
         }
     }
 
-    /// Generates code for enum variants used in `From` implementations.
-    fn generate_from_variants(
+    pub fn generate_downgrade_from_impl(
         &self,
         version: &VersionDefinition,
-        next_version: &VersionDefinition,
-        enum_ident: &IdentString,
-    ) -> TokenStream {
-        let mut tokens = TokenStream::new();
-
-        for variant in &self.variants {
-            tokens.extend(variant.generate_for_from_impl(version, next_version, enum_ident));
+        next_version: Option<&VersionDefinition>,
+        add_attributes: bool,
+    ) -> Option<TokenStream> {
+        if version.skip_from || self.common.options.skip_from {
+            return None;
         }
 
-        tokens
+        match next_version {
+            Some(next_version) => {
+                let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
+                let enum_ident = &self.common.idents.original;
+                let from_enum_ident = &self.common.idents.from;
+
+                let for_module_ident = &version.ident;
+                let from_module_ident = &next_version.ident;
+
+                let variants: TokenStream = self
+                    .variants
+                    .iter()
+                    .map(|v| v.generate_for_downgrade_from_impl(version, next_version, enum_ident))
+                    .flatten()
+                    .collect();
+
+                // Only add the #[automatically_derived] attribute only if this impl is used
+                // outside of a module (in standalone mode).
+                let automatically_derived = add_attributes
+                    .not()
+                    .then(|| quote! {#[automatically_derived]});
+
+                Some(quote! {
+                    #automatically_derived
+                    impl #impl_generics ::std::convert::From<#from_module_ident::#enum_ident #type_generics> for #for_module_ident::#enum_ident #type_generics
+                        #where_clause
+                    {
+                        fn from(#from_enum_ident: #from_module_ident::#enum_ident #type_generics) -> Self {
+                            match #from_enum_ident {
+                                #variants
+                            }
+                        }
+                    }
+                })
+            }
+            None => None,
+        }
     }
 
     /// Returns whether any variant is deprecated in the provided `version`.

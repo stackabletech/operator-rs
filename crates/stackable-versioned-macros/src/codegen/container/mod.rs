@@ -21,7 +21,7 @@ mod r#enum;
 mod r#struct;
 
 /// Contains common container data shared between structs and enums.
-pub(crate) struct CommonContainerData {
+pub struct CommonContainerData {
     /// Original attributes placed on the container, like `#[derive()]` or `#[cfg()]`.
     pub(crate) original_attributes: Vec<Attribute>,
 
@@ -37,7 +37,7 @@ pub(crate) struct CommonContainerData {
 /// Abstracting away with kind of container is generated makes it possible to create a list of
 /// containers when the macro is used on modules. This enum provides functions to generate code
 /// which then internally call the appropriate function based on the variant.
-pub(crate) enum Container {
+pub enum Container {
     Struct(Struct),
     Enum(Enum),
 }
@@ -51,16 +51,37 @@ impl Container {
         }
     }
 
-    /// Generates the container `From<Version> for NextVersion` implementation.
-    pub(crate) fn generate_from_impl(
+    /// Generates the `From<Version> for NextVersion` implementation for the container.
+    pub fn generate_upgrade_from_impl(
         &self,
         version: &VersionDefinition,
         next_version: Option<&VersionDefinition>,
         add_attributes: bool,
     ) -> Option<TokenStream> {
         match self {
-            Container::Struct(s) => s.generate_from_impl(version, next_version, add_attributes),
-            Container::Enum(e) => e.generate_from_impl(version, next_version, add_attributes),
+            Container::Struct(s) => {
+                s.generate_upgrade_from_impl(version, next_version, add_attributes)
+            }
+            Container::Enum(e) => {
+                e.generate_upgrade_from_impl(version, next_version, add_attributes)
+            }
+        }
+    }
+
+    /// Generates the `From<NextVersion> for Version` implementation for the container.
+    pub fn generate_downgrade_from_impl(
+        &self,
+        version: &VersionDefinition,
+        next_version: Option<&VersionDefinition>,
+        add_attributes: bool,
+    ) -> Option<TokenStream> {
+        match self {
+            Container::Struct(s) => {
+                s.generate_downgrade_from_impl(version, next_version, add_attributes)
+            }
+            Container::Enum(e) => {
+                e.generate_downgrade_from_impl(version, next_version, add_attributes)
+            }
         }
     }
 
@@ -180,9 +201,17 @@ impl StandaloneContainer {
 
             // NOTE (@Techassi): Using '.copied()' here does not copy or clone the data, but instead
             // removes one level of indirection of the double reference '&&'.
-            let from_impl =
+            let next_version = versions.peek().copied();
+
+            // Generate the From impl for upgrading the CRD.
+            let upgrade_from_impl =
                 self.container
-                    .generate_from_impl(version, versions.peek().copied(), false);
+                    .generate_upgrade_from_impl(version, next_version, false);
+
+            // Generate the From impl for downgrading the CRD.
+            let downgrade_from_impl =
+                self.container
+                    .generate_downgrade_from_impl(version, next_version, false);
 
             // Add the #[deprecated] attribute when the version is marked as deprecated.
             let deprecated_attribute = version
@@ -210,7 +239,8 @@ impl StandaloneContainer {
                     #container_definition
                 }
 
-                #from_impl
+                #upgrade_from_impl
+                #downgrade_from_impl
             });
         }
 
@@ -231,13 +261,13 @@ impl StandaloneContainer {
 pub(crate) struct ContainerIdents {
     /// The ident used in the context of Kubernetes specific code. This ident
     /// removes the 'Spec' suffix present in the definition container.
-    pub(crate) kubernetes: IdentString,
+    pub kubernetes: IdentString,
 
     /// The original ident, or name, of the versioned container.
-    pub(crate) original: IdentString,
+    pub original: IdentString,
 
     /// The ident used in the [`From`] impl.
-    pub(crate) from: IdentString,
+    pub from: IdentString,
 }
 
 impl ContainerIdents {
@@ -261,32 +291,32 @@ impl ContainerIdents {
 }
 
 #[derive(Debug)]
-pub(crate) struct ContainerOptions {
-    pub(crate) kubernetes_options: Option<KubernetesOptions>,
-    pub(crate) skip_from: bool,
+pub struct ContainerOptions {
+    pub kubernetes_options: Option<KubernetesOptions>,
+    pub skip_from: bool,
 }
 
 #[derive(Debug)]
-pub(crate) struct KubernetesOptions {
-    pub(crate) group: String,
-    pub(crate) kind: Option<String>,
-    pub(crate) singular: Option<String>,
-    pub(crate) plural: Option<String>,
-    pub(crate) namespaced: bool,
+pub struct KubernetesOptions {
+    pub group: String,
+    pub kind: Option<String>,
+    pub singular: Option<String>,
+    pub plural: Option<String>,
+    pub namespaced: bool,
     // root
-    pub(crate) crates: KubernetesCrateOptions,
-    pub(crate) status: Option<Path>,
+    pub crates: KubernetesCrateOptions,
+    pub status: Option<Path>,
     // derive
     // schema
     // scale
     // printcolumn
-    pub(crate) shortnames: Vec<String>,
+    pub shortnames: Vec<String>,
     // category
     // selectable
     // doc
     // annotation
     // label
-    pub(crate) skip_merged_crd: bool,
+    pub skip_merged_crd: bool,
 }
 
 impl From<KubernetesArguments> for KubernetesOptions {
@@ -308,12 +338,12 @@ impl From<KubernetesArguments> for KubernetesOptions {
 }
 
 #[derive(Debug)]
-pub(crate) struct KubernetesCrateOptions {
-    pub(crate) kube_core: Override<Path>,
-    pub(crate) k8s_openapi: Override<Path>,
-    pub(crate) schemars: Override<Path>,
-    pub(crate) serde: Override<Path>,
-    pub(crate) serde_json: Override<Path>,
+pub struct KubernetesCrateOptions {
+    pub kube_core: Override<Path>,
+    pub k8s_openapi: Override<Path>,
+    pub schemars: Override<Path>,
+    pub serde: Override<Path>,
+    pub serde_json: Override<Path>,
 }
 
 impl Default for KubernetesCrateOptions {
@@ -396,7 +426,7 @@ impl ToTokens for KubernetesCrateOptions {
 
 /// Wraps a value to indicate whether it is original or has been overridden.
 #[derive(Debug)]
-pub(crate) enum Override<T> {
+pub enum Override<T> {
     Default(T),
     Overridden(T),
 }

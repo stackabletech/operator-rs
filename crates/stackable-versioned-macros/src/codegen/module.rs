@@ -160,7 +160,7 @@ impl Module {
                 container_definitions.extend(container.generate_definition(version));
 
                 if !self.skip_from {
-                    from_impls.extend(container.generate_from_impl(
+                    from_impls.extend(container.generate_upgrade_from_impl(
                         version,
                         versions.peek().copied(),
                         self.preserve_module,
