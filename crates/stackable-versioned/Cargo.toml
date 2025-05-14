@@ -11,10 +11,25 @@ repository.workspace = true
 all-features = true
 
 [features]
-full = ["k8s"]
+full = ["k8s", "flux-converter"]
 k8s = [
   "stackable-versioned-macros/k8s", # Forward the k8s feature to the underlying macro crate
+]
+flux-converter = [
+  "k8s",
+  "stackable-versioned-macros/flux-converter",
+  "dep:kube",
+  "dep:k8s-openapi",
+  "dep:serde",
+  "dep:schemars",
+  "dep:serde_json",
 ]
 
 [dependencies]
 stackable-versioned-macros = { path = "../stackable-versioned-macros" }
+
+kube = { workspace = true, optional = true }
+k8s-openapi = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+schemars = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }

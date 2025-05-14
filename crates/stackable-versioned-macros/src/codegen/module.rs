@@ -221,7 +221,7 @@ impl Module {
                 kubernetes_enum_variant_strings,
             )) = kubernetes_container_items.get(container.get_original_ident())
             {
-                kubernetes_tokens.extend(container.generate_kubernetes_merge_crds(
+                kubernetes_tokens.extend(container.generate_kubernetes_code(
                     kubernetes_enum_variant_idents,
                     kubernetes_enum_variant_strings,
                     kubernetes_merge_crds_fn_calls,

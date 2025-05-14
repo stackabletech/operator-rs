@@ -25,8 +25,9 @@ normal = ["k8s-openapi", "kube"]
 proc-macro = true
 
 [features]
-full = ["k8s"]
-k8s = ["dep:kube", "dep:k8s-openapi"]
+full = ["k8s", "flux-converter"]
+k8s = ["dep:kube", "dep:k8s-openapi", "dep:snafu"]
+flux-converter = ["k8s"]
 
 [dependencies]
 k8s-version = { path = "../k8s-version", features = ["darling"] }
@@ -37,6 +38,7 @@ itertools.workspace = true
 k8s-openapi = { workspace = true, optional = true }
 kube = { workspace = true, optional = true }
 proc-macro2.workspace = true
+snafu = { workspace = true, optional = true }
 syn.workspace = true
 quote.workspace = true
 

@@ -10,6 +10,9 @@ pub(crate) mod container;
 pub(crate) mod item;
 pub(crate) mod module;
 
+#[cfg(feature = "flux-converter")]
+pub(crate) mod flux_converter;
+
 #[derive(Debug)]
 pub(crate) struct VersionDefinition {
     /// Indicates that the container version is deprecated.

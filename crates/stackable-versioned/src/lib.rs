@@ -12,8 +12,13 @@
 //! See [`versioned`] for an in-depth usage guide and a list of supported
 //! parameters.
 
-// Re-export macro
 pub use stackable_versioned_macros::*;
+
+#[cfg(feature = "flux-converter")]
+mod flux_converter;
+
+#[cfg(feature = "flux-converter")]
+pub use flux_converter::UnknownResourceVersionError;
 
 // Unused for now, might get picked up again in the future.
 #[doc(hidden)]

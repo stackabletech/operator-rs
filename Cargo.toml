@@ -87,3 +87,7 @@ rsa.opt-level = 3
 [profile.dev.package]
 insta.opt-level = 3
 similar.opt-level = 3
+
+[patch.crates-io]
+# https://github.com/kube-rs/kube/pull/1759 will be in 1.1.0
+kube = { git = 'https://github.com/sbernauer/kube.git', branch = "fix/derive-conversion-types-0.99" }

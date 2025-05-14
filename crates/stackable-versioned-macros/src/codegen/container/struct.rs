@@ -349,6 +349,8 @@ impl Struct {
         vis: &Visibility,
         is_nested: bool,
     ) -> Option<TokenStream> {
+        assert_eq!(enum_variant_idents.len(), enum_variant_strings.len());
+
         match &self.common.options.kubernetes_options {
             Some(kubernetes_options) if !kubernetes_options.skip_merged_crd => {
                 let enum_ident = &self.common.idents.kubernetes;
@@ -378,11 +380,26 @@ impl Struct {
                     }
 
                     #automatically_derived
+                    impl ::std::str::FromStr for #enum_ident {
+                        type Err = stackable_versioned::UnknownResourceVersionError;
+
+                        fn from_str(version: &str) -> Result<Self, Self::Err> {
+                            match version {
+                                #(#enum_variant_strings => Ok(Self::#enum_variant_idents),)*
+                                _ => Err(stackable_versioned::UnknownResourceVersionError{version: version.to_string()}),
+                            }
+                        }
+                    }
+
+                    #automatically_derived
                     impl #enum_ident {
                         /// Generates a merged CRD containing all versions and marking `stored_apiversion` as stored.
                         pub fn merged_crd(
                             stored_apiversion: Self
-                        ) -> ::std::result::Result<#k8s_openapi_path::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition, #kube_core_path::crd::MergeError> {
+                        ) -> ::std::result::Result<
+                                #k8s_openapi_path::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition,
+                                #kube_core_path::crd::MergeError
+                            > {
                             #kube_core_path::crd::merge_crds(vec![#(#fn_calls),*], &stored_apiversion.to_string())
                         }
                     }
