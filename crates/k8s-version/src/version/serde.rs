@@ -38,3 +38,23 @@ impl Serialize for Version {
         serializer.serialize_str(&self.to_string())
     }
 }
+
+#[cfg(feature = "serde")]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deserialize() {
+        let _: Version = serde_yaml::from_str("v1alpha1").expect("version is valid");
+    }
+
+    #[test]
+    fn serialize() {
+        let api_version = Version::from_str("v1alpha1").expect("version is valid");
+        assert_eq!(
+            "v1alpha1\n",
+            serde_yaml::to_string(&api_version).expect("version must serialize")
+        );
+    }
+}

@@ -21,4 +21,5 @@ rstest.workspace = true
 rstest_reuse.workspace = true
 quote.workspace = true
 proc-macro2.workspace = true
+serde_yaml.workspace = true
 syn.workspace = true

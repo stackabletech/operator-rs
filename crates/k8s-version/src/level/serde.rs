@@ -38,3 +38,23 @@ impl Serialize for Level {
         serializer.serialize_str(&self.to_string())
     }
 }
+
+#[cfg(feature = "serde")]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deserialize() {
+        let _: Level = serde_yaml::from_str("alpha1").expect("level is valid");
+    }
+
+    #[test]
+    fn serialize() {
+        let api_version = Level::from_str("alpha1").expect("level is valid");
+        assert_eq!(
+            "alpha1\n",
+            serde_yaml::to_string(&api_version).expect("level must serialize")
+        );
+    }
+}

@@ -3,9 +3,6 @@ use std::{fmt, ops::Deref, str::FromStr, sync::LazyLock};
 use regex::Regex;
 use snafu::{Snafu, ensure};
 
-#[cfg(feature = "serde")]
-mod serde;
-
 const MAX_GROUP_LENGTH: usize = 253;
 
 static API_GROUP_REGEX: LazyLock<Regex> = LazyLock::new(|| {
@@ -38,6 +35,7 @@ pub enum ParseGroupError {
 /// ### See
 ///
 /// - <https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#api-conventions>
+#[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd)]
 pub struct Group(String);
 
@@ -64,5 +62,25 @@ impl Deref for Group {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+#[cfg(feature = "serde")]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deserialize() {
+        let _: Group = serde_yaml::from_str("extensions.k8s.io").expect("group is valid");
+    }
+
+    #[test]
+    fn serialize() {
+        let group = Group("extensions.k8s.io".into());
+        assert_eq!(
+            "extensions.k8s.io\n",
+            serde_yaml::to_string(&group).expect("group must serialize")
+        );
     }
 }
