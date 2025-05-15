@@ -7,14 +7,10 @@ use std::{error::Error, fmt::Write};
 
 use snafu::Snafu;
 
+use crate::ParseResourceVersionError;
+
 #[cfg(test)]
 mod tests;
-
-#[derive(Debug, Snafu)]
-pub enum ParseResourceVersionError {
-    #[snafu(display("the resource version \"{version}\" is not known"))]
-    UnknownResourceVersion { version: String },
-}
 
 #[derive(Debug, Snafu)]
 pub enum ConversionError {

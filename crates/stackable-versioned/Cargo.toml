@@ -22,8 +22,7 @@ flux-converter = [
   "dep:k8s-openapi",
   "dep:serde",
   "dep:schemars",
-  "dep:serde_json",
-  "dep:snafu",
+  "dep:serde_json"
 ]
 
 [dependencies]
@@ -34,7 +33,7 @@ k8s-openapi = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 schemars = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
-snafu = { workspace = true, optional = true }
+snafu.workspace = true
 
 [dev-dependencies]
 insta.workspace = true
