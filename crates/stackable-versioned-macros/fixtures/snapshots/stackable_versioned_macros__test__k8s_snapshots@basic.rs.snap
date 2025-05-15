@@ -112,6 +112,22 @@ impl ::std::fmt::Display for Foo {
     }
 }
 #[automatically_derived]
+impl ::std::str::FromStr for Foo {
+    type Err = stackable_versioned::UnknownResourceVersionError;
+    fn from_str(version: &str) -> Result<Self, Self::Err> {
+        match version {
+            "v1alpha1" => Ok(Self::V1Alpha1),
+            "v1beta1" => Ok(Self::V1Beta1),
+            "v1" => Ok(Self::V1),
+            _ => {
+                Err(stackable_versioned::UnknownResourceVersionError {
+                    version: version.to_string(),
+                })
+            }
+        }
+    }
+}
+#[automatically_derived]
 impl Foo {
     /// Generates a merged CRD containing all versions and marking `stored_apiversion` as stored.
     pub fn merged_crd(
@@ -128,5 +144,137 @@ impl Foo {
             ],
             &stored_apiversion.to_string(),
         )
+    }
+}
+#[automatically_derived]
+impl Foo {
+    pub fn convert(
+        review: kube::core::conversion::ConversionReview,
+    ) -> kube::core::conversion::ConversionResponse {
+        let request = kube::core::conversion::ConversionRequest::from_review(review)
+            .unwrap();
+        let desired_api_version = <Self as std::str::FromStr>::from_str(
+                &request.desired_api_version,
+            )
+            .expect(
+                &format!("invalid desired version for {} resource", stringify!(Foo)),
+            );
+        let mut converted: Vec<serde_json::Value> = Vec::with_capacity(
+            request.objects.len(),
+        );
+        for object in &request.objects {
+            let object_spec = object
+                .get("spec")
+                .expect("The passed object had no spec")
+                .clone();
+            let kind = object
+                .get("kind")
+                .expect("The objected asked to convert has no kind");
+            let api_version = object
+                .get("apiVersion")
+                .expect("The objected asked to convert has no apiVersion")
+                .as_str()
+                .expect(
+                    "The apiVersion of the objected asked to convert wasn't a String",
+                );
+            assert_eq!(kind, stringify!(Foo));
+            let current_api_version = <Self as std::str::FromStr>::from_str(api_version)
+                .expect(
+                    &format!("invalid current version for {} resource", stringify!(Foo)),
+                );
+            match (&current_api_version, &desired_api_version) {
+                (Self::V1Alpha1, Self::V1Alpha1) => {
+                    let resource: v1alpha1::FooSpec = serde_json::from_value(object_spec)
+                        .expect(&format!("Failed to deserialize {}", stringify!(Foo)));
+                    converted
+                        .push(
+                            serde_json::to_value(resource)
+                                .expect(&format!("Failed to serialize {}", stringify!(Foo))),
+                        );
+                }
+                (Self::V1Alpha1, Self::V1Beta1) => {
+                    let resource: v1alpha1::FooSpec = serde_json::from_value(object_spec)
+                        .expect(&format!("Failed to deserialize {}", stringify!(Foo)));
+                    let resource: v1beta1::FooSpec = resource.into();
+                    converted
+                        .push(
+                            serde_json::to_value(resource)
+                                .expect(&format!("Failed to serialize {}", stringify!(Foo))),
+                        );
+                }
+                (Self::V1Alpha1, Self::V1) => {
+                    let resource: v1alpha1::FooSpec = serde_json::from_value(object_spec)
+                        .expect(&format!("Failed to deserialize {}", stringify!(Foo)));
+                    let resource: v1beta1::FooSpec = resource.into();
+                    let resource: v1::FooSpec = resource.into();
+                    converted
+                        .push(
+                            serde_json::to_value(resource)
+                                .expect(&format!("Failed to serialize {}", stringify!(Foo))),
+                        );
+                }
+                (Self::V1Beta1, Self::V1Alpha1) => {
+                    let resource: v1beta1::FooSpec = serde_json::from_value(object_spec)
+                        .expect(&format!("Failed to deserialize {}", stringify!(Foo)));
+                    let resource: v1alpha1::FooSpec = resource.into();
+                    converted
+                        .push(
+                            serde_json::to_value(resource)
+                                .expect(&format!("Failed to serialize {}", stringify!(Foo))),
+                        );
+                }
+                (Self::V1Beta1, Self::V1Beta1) => {
+                    let resource: v1beta1::FooSpec = serde_json::from_value(object_spec)
+                        .expect(&format!("Failed to deserialize {}", stringify!(Foo)));
+                    converted
+                        .push(
+                            serde_json::to_value(resource)
+                                .expect(&format!("Failed to serialize {}", stringify!(Foo))),
+                        );
+                }
+                (Self::V1Beta1, Self::V1) => {
+                    let resource: v1beta1::FooSpec = serde_json::from_value(object_spec)
+                        .expect(&format!("Failed to deserialize {}", stringify!(Foo)));
+                    let resource: v1::FooSpec = resource.into();
+                    converted
+                        .push(
+                            serde_json::to_value(resource)
+                                .expect(&format!("Failed to serialize {}", stringify!(Foo))),
+                        );
+                }
+                (Self::V1, Self::V1Alpha1) => {
+                    let resource: v1::FooSpec = serde_json::from_value(object_spec)
+                        .expect(&format!("Failed to deserialize {}", stringify!(Foo)));
+                    let resource: v1beta1::FooSpec = resource.into();
+                    let resource: v1alpha1::FooSpec = resource.into();
+                    converted
+                        .push(
+                            serde_json::to_value(resource)
+                                .expect(&format!("Failed to serialize {}", stringify!(Foo))),
+                        );
+                }
+                (Self::V1, Self::V1Beta1) => {
+                    let resource: v1::FooSpec = serde_json::from_value(object_spec)
+                        .expect(&format!("Failed to deserialize {}", stringify!(Foo)));
+                    let resource: v1beta1::FooSpec = resource.into();
+                    converted
+                        .push(
+                            serde_json::to_value(resource)
+                                .expect(&format!("Failed to serialize {}", stringify!(Foo))),
+                        );
+                }
+                (Self::V1, Self::V1) => {
+                    let resource: v1::FooSpec = serde_json::from_value(object_spec)
+                        .expect(&format!("Failed to deserialize {}", stringify!(Foo)));
+                    converted
+                        .push(
+                            serde_json::to_value(resource)
+                                .expect(&format!("Failed to serialize {}", stringify!(Foo))),
+                        );
+                }
+            }
+        }
+        let response = kube::core::conversion::ConversionResponse::for_request(request);
+        response.success(converted)
     }
 }
