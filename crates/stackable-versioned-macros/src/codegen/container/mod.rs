@@ -99,17 +99,22 @@ impl Container {
         let Container::Struct(s) = self else {
             return None;
         };
+        let kubernetes_options = s.common.options.kubernetes_options.as_ref()?;
 
         let mut tokens = TokenStream::new();
-        tokens.extend(s.generate_kubernetes_merge_crds(
-            enum_variant_idents,
-            enum_variant_strings,
-            fn_calls,
-            vis,
-            is_nested,
-        ));
+
+        if !kubernetes_options.skip_merged_crd {
+            tokens.extend(s.generate_kubernetes_merge_crds(
+                enum_variant_idents,
+                enum_variant_strings,
+                fn_calls,
+                vis,
+                is_nested,
+            ));
+        }
 
         #[cfg(feature = "flux-converter")]
+        // TODO: Do we need a kubernetes_options.skip_conversion as well?
         tokens.extend(super::flux_converter::generate_kubernetes_conversion(
             &s.common.idents.kubernetes,
             &s.common.idents.original,
