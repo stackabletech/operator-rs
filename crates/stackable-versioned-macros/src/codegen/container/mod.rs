@@ -44,9 +44,13 @@ pub enum Container {
 
 impl Container {
     /// Generates the container definition for the specified `version`.
-    pub(crate) fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
+    pub(crate) fn generate_definition(
+        &self,
+        version: &VersionDefinition,
+        multiple_versions: bool,
+    ) -> TokenStream {
         match self {
-            Container::Struct(s) => s.generate_definition(version),
+            Container::Struct(s) => s.generate_definition(version, multiple_versions),
             Container::Enum(e) => e.generate_definition(version),
         }
     }
@@ -129,9 +133,9 @@ impl Container {
         }
     }
 
-    pub fn generate_kubernetes_status_struct(&self, vis: &Visibility) -> Option<TokenStream> {
+    pub fn generate_kubernetes_status_struct(&self) -> Option<TokenStream> {
         match self {
-            Container::Struct(s) => s.generate_kubernetes_status_struct(vis),
+            Container::Struct(s) => s.generate_kubernetes_status_struct(),
             Container::Enum(_) => None,
         }
     }
@@ -202,9 +206,12 @@ impl StandaloneContainer {
         let mut kubernetes_enum_variant_strings = Vec::new();
 
         let mut versions = self.versions.iter().peekable();
+        let multiple_versions = versions.len() > 1;
 
         while let Some(version) = versions.next() {
-            let container_definition = self.container.generate_definition(version);
+            let container_definition = self
+                .container
+                .generate_definition(version, multiple_versions);
 
             // NOTE (@Techassi): Using '.copied()' here does not copy or clone the data, but instead
             // removes one level of indirection of the double reference '&&'.
@@ -259,8 +266,8 @@ impl StandaloneContainer {
             false,
         ));
 
-        if self.versions.len() > 1 {
-            tokens.extend(self.container.generate_kubernetes_status_struct(vis));
+        if multiple_versions {
+            tokens.extend(self.container.generate_kubernetes_status_struct());
         }
 
         tokens

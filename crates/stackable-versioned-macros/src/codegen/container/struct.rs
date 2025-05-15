@@ -119,7 +119,7 @@ impl Container {
 }
 
 /// A versioned struct.
-pub(crate) struct Struct {
+pub struct Struct {
     /// List of fields defined in the original struct. How, and if, an item
     /// should generate code, is decided by the currently generated version.
     pub fields: Vec<VersionedField>,
@@ -134,7 +134,11 @@ pub(crate) struct Struct {
 // Common token generation
 impl Struct {
     /// Generates code for the struct definition.
-    pub fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
+    pub fn generate_definition(
+        &self,
+        version: &VersionDefinition,
+        multiple_versions: bool,
+    ) -> TokenStream {
         let where_clause = self.generics.where_clause.as_ref();
         let type_generics = &self.generics;
 
@@ -148,7 +152,7 @@ impl Struct {
         }
 
         // This only returns Some, if K8s features are enabled
-        let kube_attribute = self.generate_kube_attribute(version);
+        let kube_attribute = self.generate_kube_attribute(version, multiple_versions);
 
         quote! {
             #(#[doc = #version_docs])*
@@ -315,9 +319,15 @@ impl Struct {
     }
 }
 
+// TODO (@Techassi): Somehow bundle this into one struct which can emit all K8s related code. This
+// makes keeping track of interconnected parts easier.
 // Kubernetes-specific token generation
 impl Struct {
-    pub fn generate_kube_attribute(&self, version: &VersionDefinition) -> Option<TokenStream> {
+    pub fn generate_kube_attribute(
+        &self,
+        version: &VersionDefinition,
+        multiple_versions: bool,
+    ) -> Option<TokenStream> {
         match &self.common.options.kubernetes_options {
             Some(kubernetes_options) => {
                 // Required arguments
@@ -335,18 +345,30 @@ impl Struct {
                     .singular
                     .as_ref()
                     .map(|s| quote! { , singular = #s });
+
                 let plural = kubernetes_options
                     .plural
                     .as_ref()
                     .map(|p| quote! { , plural = #p });
+
                 let namespaced = kubernetes_options
                     .namespaced
                     .then_some(quote! { , namespaced });
                 let crates = kubernetes_options.crates.to_token_stream();
-                let status = kubernetes_options
-                    .status
-                    .as_ref()
-                    .map(|s| quote! { , status = #s });
+
+                let status = if multiple_versions {
+                    let status_ident = format_ident!(
+                        "{struct_ident}Status",
+                        struct_ident = self.common.idents.kubernetes.as_ident()
+                    );
+                    Some(quote! { , status = #status_ident })
+                } else {
+                    kubernetes_options
+                        .status
+                        .as_ref()
+                        .map(|s| quote! { , status = #s })
+                };
+
                 let shortnames: TokenStream = kubernetes_options
                     .shortnames
                     .iter()
@@ -374,7 +396,7 @@ impl Struct {
     ) -> Option<(IdentString, String, TokenStream)> {
         match &self.common.options.kubernetes_options {
             Some(options) if !options.skip_merged_crd => {
-                let kube_core_path = &*options.crates.kube_core;
+                let kube_core_crate = &*options.crates.kube_core;
 
                 let enum_variant_ident = version.inner.as_variant_ident();
                 let enum_variant_string = version.inner.to_string();
@@ -384,7 +406,7 @@ impl Struct {
                 let qualified_path: Path = parse_quote!(#module_ident::#struct_ident);
 
                 let merge_crds_fn_call = quote! {
-                    <#qualified_path as #kube_core_path::CustomResourceExt>::crd()
+                    <#qualified_path as #kube_core_crate::CustomResourceExt>::crd()
                 };
 
                 Some((enum_variant_ident, enum_variant_string, merge_crds_fn_call))
@@ -444,7 +466,7 @@ impl Struct {
         }
     }
 
-    pub fn generate_kubernetes_status_struct(&self, vis: &Visibility) -> Option<TokenStream> {
+    pub fn generate_kubernetes_status_struct(&self) -> Option<TokenStream> {
         match &self.common.options.kubernetes_options {
             Some(kubernetes_options) => {
                 let status_ident = format_ident!(
@@ -456,23 +478,34 @@ impl Struct {
                 let schemars_crate = &*kubernetes_options.crates.schemars;
                 let serde_crate = &*kubernetes_options.crates.serde;
 
-                // FIXME (@Techassi): This needs to be set in the #[kube] attribute
                 match &kubernetes_options.status {
                     Some(status) => Some(quote! {
-                        #[derive(Clone, Debug, #serde_crate::Deserialize, #serde_crate::Serialize, #schemars_crate::JsonSchema)]
+                        #[derive(
+                            ::core::clone::Clone,
+                            ::core::fmt::Debug,
+                            #serde_crate::Deserialize,
+                            #serde_crate::Serialize,
+                            #schemars_crate::JsonSchema
+                        )]
                         #[serde(rename_all = "camelCase")]
-                        #vis struct #status_ident {
-                            pub crd_changes: #versioned_crate::CrdChanges,
+                        pub struct #status_ident {
+                            pub crd_values: #versioned_crate::CrdValues,
 
                             #[serde(flatten)]
                             pub status: #status,
                         }
                     }),
                     None => Some(quote! {
-                        #[derive(Clone, Debug, #serde_crate::Deserialize, #serde_crate::Serialize, #schemars_crate::JsonSchema)]
+                        #[derive(
+                            ::core::clone::Clone,
+                            ::core::fmt::Debug,
+                            #serde_crate::Deserialize,
+                            #serde_crate::Serialize,
+                            #schemars_crate::JsonSchema
+                        )]
                         #[serde(rename_all = "camelCase")]
-                        #vis struct #status_ident {
-                            pub crd_changes: #versioned_crate::CrdChanges,
+                        pub struct #status_ident {
+                            pub crd_values: #versioned_crate::CrdValues,
                         }
                     }),
                 }
