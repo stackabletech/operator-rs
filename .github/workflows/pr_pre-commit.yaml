@@ -3,6 +3,7 @@ name: pre-commit
 
 on:
   pull_request:
+  merge_group:
 
 env:
   CARGO_TERM_COLOR: always
