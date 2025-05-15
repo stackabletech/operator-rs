@@ -1657,6 +1657,8 @@ dependencies = [
  "regex",
  "rstest",
  "rstest_reuse",
+ "serde",
+ "serde_yaml",
  "snafu 0.8.5",
  "syn 2.0.101",
 ]
