@@ -35,3 +35,6 @@ serde = { workspace = true, optional = true }
 schemars = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 snafu = { workspace = true, optional = true }
+
+[dev-dependencies]
+insta.workspace = true

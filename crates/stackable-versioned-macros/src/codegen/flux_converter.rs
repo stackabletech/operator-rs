@@ -77,7 +77,7 @@ pub(crate) fn generate_kubernetes_conversion(
 
                         conversion_response.failure(
                             kube::client::Status {
-                                status: Some(StatusSummary::Success),
+                                status: Some(StatusSummary::Failure),
                                 code: err.http_return_code(),
                                 message: error_message.clone(),
                                 reason: error_message,

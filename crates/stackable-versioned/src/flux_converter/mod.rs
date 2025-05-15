@@ -46,7 +46,7 @@ pub enum ConversionError {
     ObjectApiVersionNotString { api_version: serde_json::Value },
 
     #[snafu(display(
-        "I was asked to convert the kind \"{expected_kind}\", but I can only convert objects of kind \"{send_kind}\""
+        "I was asked to convert the kind \"{send_kind}\", but I can only convert objects of kind \"{expected_kind}\""
     ))]
     WrongObjectKind {
         expected_kind: String,

@@ -1,0 +1,15 @@
+---
+source: crates/stackable-versioned/src/flux_converter/tests/mod.rs
+expression: formatted
+input_file: crates/stackable-versioned/fixtures/inputs/fail/request_missing.json
+---
+{
+  "uid": "",
+  "result": {
+    "status": "Failure",
+    "code": 400,
+    "message": "The ConversionReview send did not include any request: request missing in ConversionReview",
+    "reason": "ConversionReview request missing"
+  },
+  "convertedObjects": []
+}
