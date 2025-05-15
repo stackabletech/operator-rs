@@ -3,6 +3,9 @@ use std::{fmt, ops::Deref, str::FromStr, sync::LazyLock};
 use regex::Regex;
 use snafu::{Snafu, ensure};
 
+#[cfg(feature = "serde")]
+mod serde;
+
 const MAX_GROUP_LENGTH: usize = 253;
 
 static API_GROUP_REGEX: LazyLock<Regex> = LazyLock::new(|| {

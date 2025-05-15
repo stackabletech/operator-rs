@@ -8,10 +8,12 @@ repository.workspace = true
 
 [features]
 darling = ["dep:darling"]
+serde = ["dep:serde"]
 
 [dependencies]
 darling = { workspace = true, optional = true }
 regex.workspace = true
+serde = { workspace = true, optional = true }
 snafu.workspace = true
 
 [dev-dependencies]
