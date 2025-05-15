@@ -3,7 +3,8 @@
 //! It converts between different CRD versions by using 1.21 GW of power,
 //! 142km/h and time travel.
 
-use kube::core::conversion::ConvertConversionReviewError;
+use std::{error::Error, fmt::Write};
+
 use snafu::Snafu;
 
 #[cfg(test)]
@@ -17,11 +18,6 @@ pub enum ParseResourceVersionError {
 
 #[derive(Debug, Snafu)]
 pub enum ConversionError {
-    #[snafu(display("failed to convert ConversionReview to ConversionRequest"))]
-    ConvertReviewToRequest {
-        source: ConvertConversionReviewError,
-    },
-
     #[snafu(display("failed to parse current resource version \"{version}\""))]
     ParseCurrentResourceVersion {
         source: ParseResourceVersionError,
@@ -68,4 +64,34 @@ pub enum ConversionError {
         source: serde_json::Error,
         kind: String,
     },
+}
+
+impl ConversionError {
+    pub fn http_return_code(&self) -> u16 {
+        match &self {
+            ConversionError::ParseCurrentResourceVersion { .. } => 500,
+            ConversionError::ParseDesiredResourceVersion { .. } => 500,
+            ConversionError::ObjectHasNoSpec {} => 400,
+            ConversionError::ObjectHasNoKind {} => 400,
+            ConversionError::ObjectHasNoApiVersion {} => 400,
+            ConversionError::ObjectKindNotString { .. } => 400,
+            ConversionError::ObjectApiVersionNotString { .. } => 400,
+            ConversionError::WrongObjectKind { .. } => 400,
+            ConversionError::DeserializeObjectSpec { .. } => 500,
+            ConversionError::SerializeObjectSpec { .. } => 500,
+        }
+    }
+
+    pub fn as_human_readable_error_message(&self) -> String {
+        let mut error_message = String::new();
+        write!(error_message, "{self}").expect("Writing to Strings can not fail");
+
+        let mut source = self.source();
+        while let Some(err) = source {
+            write!(error_message, ": {err}").expect("Writing to Strings can not fail");
+            source = err.source();
+        }
+
+        error_message
+    }
 }

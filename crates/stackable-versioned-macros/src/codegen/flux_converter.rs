@@ -45,15 +45,54 @@ pub(crate) fn generate_kubernetes_conversion(
         #[automatically_derived]
         impl #enum_ident {
             pub fn convert(review: kube::core::conversion::ConversionReview) -> kube::core::conversion::ConversionResponse {
-                Self::try_convert(review).expect("Self::try_convert failed")
-            }
-
-            fn try_convert(review: kube::core::conversion::ConversionReview) -> Result<kube::core::conversion::ConversionResponse, stackable_versioned::ConversionError> {
                 // Intentionally not using `snafu::ResultExt` here to keep the number of dependencies minimal
+                use kube::core::conversion::{ConversionRequest, ConversionResponse};
+                use kube::core::response::StatusSummary;
                 use stackable_versioned::ConversionError;
 
-                let request = kube::core::conversion::ConversionRequest::from_review(review)
-                    .map_err(|err| ConversionError::ConvertReviewToRequest{source: err})?;
+                let request = match ConversionRequest::from_review(review) {
+                    Ok(request) => request,
+                    Err(err) => {
+                        return ConversionResponse::invalid(
+                            kube::client::Status {
+                                status: Some(StatusSummary::Failure),
+                                code: 400,
+                                message: format!("The ConversionReview send did not include any request: {err}"),
+                                reason: "ConversionReview request missing".to_string(),
+                                details: None,
+                            },
+                        );
+                    }
+                };
+
+                let converted = Self::try_convert(&request);
+
+                let conversion_response = ConversionResponse::for_request(request);
+                match converted {
+                    Ok(converted) => {
+                        conversion_response.success(converted)
+                    },
+                    Err(err) => {
+                        let error_message = err.as_human_readable_error_message();
+
+                        conversion_response.failure(
+                            kube::client::Status {
+                                status: Some(StatusSummary::Success),
+                                code: err.http_return_code(),
+                                message: error_message.clone(),
+                                reason: error_message,
+                                details: None,
+                            },
+                        )
+                    }
+                }
+            }
+
+            fn try_convert(request: &kube::core::conversion::ConversionRequest) -> Result<Vec<serde_json::Value>, stackable_versioned::ConversionError> {
+                use stackable_versioned::ConversionError;
+
+                // FIXME: Check that request.types.{kind,api_version} match the expected values
+
                 let desired_object_version = <Self as std::str::FromStr>::from_str(&request.desired_api_version)
                     .map_err(|err| ConversionError::ParseDesiredResourceVersion{
                         source: err,
@@ -83,8 +122,7 @@ pub(crate) fn generate_kubernetes_conversion(
                     }
                 }
 
-                let response = kube::core::conversion::ConversionResponse::for_request(request);
-                Ok(response.success(converted))
+                Ok(converted)
             }
         }
     })
