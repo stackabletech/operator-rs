@@ -23,6 +23,7 @@ flux-converter = [
   "dep:serde",
   "dep:schemars",
   "dep:serde_json",
+  "dep:snafu",
 ]
 
 [dependencies]
@@ -33,3 +34,4 @@ k8s-openapi = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 schemars = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
+snafu = { workspace = true, optional = true }

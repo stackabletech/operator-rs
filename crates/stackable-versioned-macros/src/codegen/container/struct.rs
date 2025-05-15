@@ -381,12 +381,12 @@ impl Struct {
 
                     #automatically_derived
                     impl ::std::str::FromStr for #enum_ident {
-                        type Err = stackable_versioned::UnknownResourceVersionError;
+                        type Err = stackable_versioned::ParseResourceVersionError;
 
                         fn from_str(version: &str) -> Result<Self, Self::Err> {
                             match version {
                                 #(#enum_variant_strings => Ok(Self::#enum_variant_idents),)*
-                                _ => Err(stackable_versioned::UnknownResourceVersionError{version: version.to_string()}),
+                                _ => Err(stackable_versioned::ParseResourceVersionError::UnknownResourceVersion{version: version.to_string()}),
                             }
                         }
                     }

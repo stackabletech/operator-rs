@@ -3211,6 +3211,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "snafu 0.8.5",
  "stackable-versioned-macros",
 ]
 
