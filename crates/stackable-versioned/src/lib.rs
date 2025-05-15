@@ -18,7 +18,7 @@ pub use stackable_versioned_macros::*;
 mod flux_converter;
 
 #[cfg(feature = "flux-converter")]
-pub use flux_converter::ParseResourceVersionError;
+pub use flux_converter::{ConversionError, ParseResourceVersionError};
 
 // Unused for now, might get picked up again in the future.
 #[doc(hidden)]

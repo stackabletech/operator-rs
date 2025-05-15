@@ -26,15 +26,16 @@ pub(crate) fn generate_kubernetes_conversion(
             let src_lower = src_lower.parse::<TokenStream>().expect("The versions always needs to be a valid TokenStream");
 
             quote! { (Self::#src, Self::#dst) => {
-                let resource: #src_lower::#struct_ident = serde_json::from_value(object_spec)
-                    .expect(&format!("Failed to deserialize {}", stringify!(#enum_ident)));
+                let resource: #src_lower::#struct_ident = serde_json::from_value(object_spec.clone())
+                    .map_err(|err| ConversionError::DeserializeObjectSpec{source: err, kind: stringify!(#enum_ident).to_string()})?;
 
                 #(
                     let resource: #version_chain_string::#struct_ident = resource.into();
                 )*
 
                 converted.push(
-                    serde_json::to_value(resource).expect(&format!("Failed to serialize {}", stringify!(#enum_ident)))
+                    serde_json::to_value(resource)
+                        .map_err(|err| ConversionError::SerializeObjectSpec{source: err, kind: stringify!(#enum_ident).to_string()})?
                 );
             }}
         },
@@ -44,38 +45,46 @@ pub(crate) fn generate_kubernetes_conversion(
         #[automatically_derived]
         impl #enum_ident {
             pub fn convert(review: kube::core::conversion::ConversionReview) -> kube::core::conversion::ConversionResponse {
+                Self::try_convert(review).expect("Self::try_convert failed")
+            }
+
+            fn try_convert(review: kube::core::conversion::ConversionReview) -> Result<kube::core::conversion::ConversionResponse, stackable_versioned::ConversionError> {
+                // Intentionally not using `snafu::ResultExt` here to keep the number of dependencies minimal
+                use stackable_versioned::ConversionError;
+
                 let request = kube::core::conversion::ConversionRequest::from_review(review)
-                    .unwrap();
-                let desired_api_version = <Self as std::str::FromStr>::from_str(&request.desired_api_version)
-                    .expect(&format!("invalid desired version for {} resource", stringify!(#enum_ident)));
+                    .map_err(|err| ConversionError::ConvertReviewToRequest{source: err})?;
+                let desired_object_version = <Self as std::str::FromStr>::from_str(&request.desired_api_version)
+                    .map_err(|err| ConversionError::ParseDesiredResourceVersion{
+                        source: err,
+                        version: request.desired_api_version.to_string()
+                    })?;
 
                 let mut converted: Vec<serde_json::Value> = Vec::with_capacity(request.objects.len());
                 for object in &request.objects {
-                    let object_spec = object
-                        .get("spec")
-                        .expect("The passed object had no spec")
-                        .clone();
-                    let kind = object
-                        .get("kind")
-                        .expect("The objected asked to convert has no kind");
-                    let api_version = object
-                        .get("apiVersion")
-                        .expect("The objected asked to convert has no apiVersion")
-                        .as_str()
-                        .expect("The apiVersion of the objected asked to convert wasn't a String");
+                    let object_spec = object.get("spec").ok_or_else(|| ConversionError::ObjectHasNoSpec{})?;
+                    let object_kind = object.get("kind").ok_or_else(|| ConversionError::ObjectHasNoKind{})?;
+                    let object_kind = object_kind.as_str().ok_or_else(|| ConversionError::ObjectKindNotString{kind: object_kind.clone()})?;
+                    let object_version = object.get("apiVersion").ok_or_else(|| ConversionError::ObjectHasNoApiVersion{})?;
+                    let object_version = object_version.as_str().ok_or_else(|| ConversionError::ObjectApiVersionNotString{api_version: object_version.clone()})?;
 
-                    assert_eq!(kind, stringify!(#enum_ident));
+                    if object_kind != stringify!(#enum_ident) {
+                        return Err(ConversionError::WrongObjectKind{expected_kind: stringify!(#enum_ident).to_string(), send_kind: object_kind.to_string()});
+                    }
 
-                    let current_api_version = <Self as std::str::FromStr>::from_str(api_version)
-                        .expect(&format!("invalid current version for {} resource", stringify!(#enum_ident)));
+                    let current_object_version = <Self as std::str::FromStr>::from_str(object_version)
+                        .map_err(|err| ConversionError::ParseCurrentResourceVersion{
+                            source: err,
+                            version: object_version.to_string()
+                        })?;
 
-                    match (&current_api_version, &desired_api_version) {
+                    match (&current_object_version, &desired_object_version) {
                         #(#matches),*
                     }
                 }
 
                 let response = kube::core::conversion::ConversionResponse::for_request(request);
-                response.success(converted)
+                Ok(response.success(converted))
             }
         }
     })
