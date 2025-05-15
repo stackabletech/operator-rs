@@ -16,6 +16,44 @@
                 "spec": {
                     "username": "sbernauer"
                 }
+            },
+            {
+                "apiVersion": "v1alpha2",
+                "kind": "Person",
+                "spec": {
+                    "username": "sbernauer",
+                    "firstName": "Sebastian",
+                    "lastName": "Bernauer"
+                }
+            },
+            {
+                "apiVersion": "v1beta1",
+                "kind": "Person",
+                "spec": {
+                    "username": "sbernauer",
+                    "firstName": "Sebastian",
+                    "lastName": "Bernauer"
+                }
+            },
+            {
+                "apiVersion": "v2",
+                "kind": "Person",
+                "spec": {
+                    "username": "sbernauer",
+                    "firstName": "Sebastian",
+                    "lastName": "Bernauer",
+                    "gender": "Male"
+                }
+            },
+            {
+                "apiVersion": "v3",
+                "kind": "Person",
+                "spec": {
+                    "username": "sbernauer",
+                    "firstName": "Sebastian",
+                    "lastName": "Bernauer",
+                    "gender": "Male"
+                }
             }
         ]
     }

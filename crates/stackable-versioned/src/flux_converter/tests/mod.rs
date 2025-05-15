@@ -133,12 +133,16 @@ mod tests {
         glob!("../../../fixtures/inputs/pass/", "*.json", |path| {
             let (review, response) = run_for_file(path);
 
-            assert_eq!(response.result.status, Some(StatusSummary::Success));
-            assert_eq!(review.request.unwrap().uid, response.uid);
-
             let formatted = serde_json::to_string_pretty(&response)
                 .expect("Failed to serialize ConversionResponse");
             assert_snapshot!(formatted);
+
+            assert_eq!(
+                response.result.status,
+                Some(StatusSummary::Success),
+                "File {path:?} should be converted successfully"
+            );
+            assert_eq!(review.request.unwrap().uid, response.uid);
         })
     }
 
@@ -147,14 +151,18 @@ mod tests {
         glob!("../../../fixtures/inputs/fail/", "*.json", |path| {
             let (review, response) = run_for_file(path);
 
-            assert_eq!(response.result.status, Some(StatusSummary::Failure));
-            if let Some(request) = &review.request {
-                assert_eq!(request.uid, response.uid);
-            }
-
             let formatted = serde_json::to_string_pretty(&response)
                 .expect("Failed to serialize ConversionResponse");
             assert_snapshot!(formatted);
+
+            assert_eq!(
+                response.result.status,
+                Some(StatusSummary::Failure),
+                "File {path:?} should *not* be converted successfully"
+            );
+            if let Some(request) = &review.request {
+                assert_eq!(request.uid, response.uid);
+            }
         })
     }
 

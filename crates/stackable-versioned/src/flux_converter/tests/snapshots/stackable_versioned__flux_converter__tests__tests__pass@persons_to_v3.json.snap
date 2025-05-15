@@ -14,6 +14,30 @@ input_file: crates/stackable-versioned/fixtures/inputs/pass/persons_to_v3.json
       "gender": "Unknown",
       "lastName": "",
       "username": "sbernauer"
+    },
+    {
+      "firstName": "Sebastian",
+      "gender": "Unknown",
+      "lastName": "Bernauer",
+      "username": "sbernauer"
+    },
+    {
+      "firstName": "Sebastian",
+      "gender": "Unknown",
+      "lastName": "Bernauer",
+      "username": "sbernauer"
+    },
+    {
+      "firstName": "Sebastian",
+      "gender": "Male",
+      "lastName": "Bernauer",
+      "username": "sbernauer"
+    },
+    {
+      "firstName": "Sebastian",
+      "gender": "Male",
+      "lastName": "Bernauer",
+      "username": "sbernauer"
     }
   ]
 }
