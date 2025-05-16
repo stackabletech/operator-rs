@@ -17,7 +17,8 @@ pub(crate) fn generate_kubernetes_conversion(
     let conversion_chain = generate_conversion_chain(versions);
 
     let matches = conversion_chain.into_iter().map(
-        |((src, src_lower), (dst, _dst_lower), version_chain)| {
+        |((src, src_lower), (dst, dst_lower), version_chain)| {
+            let steps = version_chain.len();
             let version_chain_string = version_chain.iter()
                 .map(|(_,v)| v.parse::<TokenStream>()
                     .expect("The versions always needs to be a valid TokenStream"));
@@ -33,6 +34,14 @@ pub(crate) fn generate_kubernetes_conversion(
                     let resource: #version_chain_string::#struct_ident = resource.into();
                 )*
 
+                tracing::trace!(
+                    from = stringify!(#src_lower),
+                    to = stringify!(#dst_lower),
+                    conversion.steps = #steps,
+                    "Successfully converted {type} object",
+                    type = stringify!(#enum_ident),
+                );
+
                 converted.push(
                     serde_json::to_value(resource)
                         .map_err(|err| ConversionError::SerializeObjectSpec{source: err, kind: stringify!(#enum_ident).to_string()})?
@@ -44,6 +53,13 @@ pub(crate) fn generate_kubernetes_conversion(
     Some(quote! {
         #[automatically_derived]
         impl #enum_ident {
+            #[tracing::instrument(
+                skip_all,
+                fields(
+                    conversion.kind = review.types.kind,
+                    conversion.api_version = review.types.api_version,
+                )
+            )]
             pub fn convert(review: kube::core::conversion::ConversionReview) -> kube::core::conversion::ConversionResponse {
                 // Intentionally not using `snafu::ResultExt` here to keep the number of dependencies minimal
                 use kube::core::conversion::{ConversionRequest, ConversionResponse};
@@ -53,6 +69,11 @@ pub(crate) fn generate_kubernetes_conversion(
                 let request = match ConversionRequest::from_review(review) {
                     Ok(request) => request,
                     Err(err) => {
+                        tracing::warn!(
+                            ?err,
+                            "Invalid ConversionReview send by Kubernetes apiserver. It probably did not include a request"
+                        );
+
                         return ConversionResponse::invalid(
                             kube::client::Status {
                                 status: Some(StatusSummary::Failure),
@@ -70,9 +91,20 @@ pub(crate) fn generate_kubernetes_conversion(
                 let conversion_response = ConversionResponse::for_request(request);
                 match converted {
                     Ok(converted) => {
+                        tracing::debug!(
+                            "Successfully converted {num} objects of type {type}",
+                            num = converted.len(),
+                            type = stringify!(#enum_ident),
+                        );
+
                         conversion_response.success(converted)
                     },
                     Err(err) => {
+                        tracing::debug!(
+                            "Failed to converted objects of type {type}",
+                            type = stringify!(#enum_ident),
+                        );
+
                         let error_message = err.as_human_readable_error_message();
 
                         conversion_response.failure(
