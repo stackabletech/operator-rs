@@ -7,6 +7,9 @@ use kube::Client;
 ///
 /// For example, you want to prevent stable versions (v1) from having any
 /// change.
+
+// FIXME(Nick): Remove unused
+#[allow(unused)]
 pub trait ApplyResource: Resource {
     type Error;
 
