@@ -334,13 +334,17 @@ wait_for_termination $!"
         shell_script
     }
 
-    fn env_var_from_secret(var_name: &str, secret: &str, secret_key: &str) -> EnvVar {
+    fn env_var_from_secret(
+        var_name: impl Into<String>,
+        secret: impl Into<String>,
+        secret_key: impl Into<String>,
+    ) -> EnvVar {
         EnvVar {
-            name: var_name.to_string(),
+            name: var_name.into(),
             value_from: Some(EnvVarSource {
                 secret_key_ref: Some(SecretKeySelector {
-                    name: secret.to_string(),
-                    key: secret_key.to_string(),
+                    name: secret.into(),
+                    key: secret_key.into(),
                     ..Default::default()
                 }),
                 ..Default::default()
