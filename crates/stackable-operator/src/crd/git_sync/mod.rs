@@ -51,8 +51,12 @@ pub mod versioned {
         /// as described [here](https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual).
         pub credentials_secret: Option<String>,
 
-        /// A map of optional configuration settings that are listed in the [git-sync documentation](https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual).
-        /// Read the [git sync example](DOCS_BASE_URL_PLACEHOLDER/airflow/usage-guide/mounting-dags#_example).
+        /// A map of optional configuration settings that are listed in the git-sync [documentation].
+        ///
+        /// Also read the git-sync [example] in our documentation.
+        ///
+        /// [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
+        /// [example]: DOCS_BASE_URL_PLACEHOLDER/airflow/usage-guide/mounting-dags#_example
         #[serde(default)]
         pub git_sync_conf: BTreeMap<String, String>,
     }
