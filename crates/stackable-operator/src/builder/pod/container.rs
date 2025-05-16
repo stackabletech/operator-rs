@@ -522,7 +522,11 @@ mod tests {
             container.lifecycle,
             Some(Lifecycle {
                 post_start: Some(post_start),
-                pre_stop: Some(pre_stop)
+                pre_stop: Some(pre_stop),
+                // Field was added in k8s 1.33 *and* requires the ContainerStopSignals feature gate,
+                // so we can't use it yet.
+                // See https://kubernetes.io/blog/2025/05/14/kubernetes-v1-33-updates-to-container-lifecycle/
+                stop_signal: None,
             })
         );
     }
