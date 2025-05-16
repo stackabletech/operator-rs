@@ -112,6 +112,22 @@ impl ::std::fmt::Display for FooBar {
     }
 }
 #[automatically_derived]
+impl ::std::str::FromStr for FooBar {
+    type Err = stackable_versioned::ParseResourceVersionError;
+    fn from_str(version: &str) -> Result<Self, Self::Err> {
+        match version {
+            "v1alpha1" => Ok(Self::V1Alpha1),
+            "v1beta1" => Ok(Self::V1Beta1),
+            "v1" => Ok(Self::V1),
+            _ => {
+                Err(stackable_versioned::ParseResourceVersionError::UnknownResourceVersion {
+                    version: version.to_string(),
+                })
+            }
+        }
+    }
+}
+#[automatically_derived]
 impl FooBar {
     /// Generates a merged CRD containing all versions and marking `stored_apiversion` as stored.
     pub fn merged_crd(

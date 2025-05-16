@@ -25,8 +25,9 @@ normal = ["k8s-openapi", "kube"]
 proc-macro = true
 
 [features]
-full = ["k8s"]
+full = ["k8s", "flux-converter"]
 k8s = ["dep:kube", "dep:k8s-openapi"]
+flux-converter = ["k8s"]
 
 [dependencies]
 k8s-version = { path = "../k8s-version", features = ["darling"] }

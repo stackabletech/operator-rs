@@ -8,7 +8,11 @@ use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use opentelemetry::trace::{FutureExt, SpanKind};
 use snafu::{ResultExt, Snafu};
-use stackable_certs::{CertificatePairError, ca::CertificateAuthority, keys::rsa};
+use stackable_certs::{
+    CertificatePairError,
+    ca::{CertificateAuthority, DEFAULT_CA_VALIDITY_SECONDS},
+    keys::ecdsa,
+};
 use stackable_operator::time::Duration;
 use tokio::net::TcpListener;
 use tokio_rustls::{
@@ -44,12 +48,12 @@ pub enum Error {
 
     #[snafu(display("failed to encode leaf certificate as DER"))]
     EncodeCertificateDer {
-        source: CertificatePairError<rsa::Error>,
+        source: CertificatePairError<ecdsa::Error>,
     },
 
     #[snafu(display("failed to encode private key as DER"))]
     EncodePrivateKeyDer {
-        source: CertificatePairError<rsa::Error>,
+        source: CertificatePairError<ecdsa::Error>,
     },
 
     #[snafu(display("failed to set safe TLS protocol versions"))]
@@ -62,7 +66,7 @@ pub enum Error {
 /// Custom implementation of [`std::cmp::PartialEq`] because some inner types
 /// don't implement it.
 ///
-/// Note that this implementation is restritced to testing because there are
+/// Note that this implementation is restricted to testing because there are
 /// variants that use [`stackable_certs::ca::Error`] which only implements
 /// [`PartialEq`] for tests.
 #[cfg(test)]
@@ -84,7 +88,7 @@ impl PartialEq for Error {
     }
 }
 
-/// A server which terminates TLS connections and allows clients to commnunicate
+/// A server which terminates TLS connections and allows clients to communicate
 /// via HTTPS with the underlying HTTP router.
 pub struct TlsServer {
     config: Arc<ServerConfig>,
@@ -96,17 +100,20 @@ impl TlsServer {
     #[instrument(name = "create_tls_server", skip(router))]
     pub async fn new(socket_addr: SocketAddr, router: Router) -> Result<Self> {
         // NOTE(@NickLarsenNZ): This code is not async, and does take some
-        // non-negligable amount of time to complete (moreso in debug ).
+        // non-negligible amount of time to complete (moreso in debug).
         // We run this in a thread reserved for blocking code so that the Tokio
         // executor is able to make progress on other futures instead of being
         // blocked.
         // See https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html
         let task = tokio::task::spawn_blocking(move || {
             let mut certificate_authority =
-                CertificateAuthority::new_rsa().context(CreateCertificateAuthoritySnafu)?;
-
+                CertificateAuthority::new_ecdsa().context(CreateCertificateAuthoritySnafu)?;
             let leaf_certificate = certificate_authority
-                .generate_rsa_leaf_certificate("Leaf", "webhook", Duration::from_secs(3600))
+                .generate_ecdsa_leaf_certificate(
+                    "Leaf",
+                    "webhook",
+                    Duration::from_secs(DEFAULT_CA_VALIDITY_SECONDS),
+                )
                 .context(GenerateLeafCertificateSnafu)?;
 
             let certificate_der = leaf_certificate

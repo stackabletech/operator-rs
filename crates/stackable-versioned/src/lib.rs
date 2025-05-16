@@ -12,8 +12,23 @@
 //! See [`versioned`] for an in-depth usage guide and a list of supported
 //! parameters.
 
-// Re-export macro
+use snafu::Snafu;
 pub use stackable_versioned_macros::*;
+
+#[cfg(feature = "flux-converter")]
+mod flux_converter;
+
+#[cfg(feature = "k8s")]
+mod apply_resource;
+
+#[cfg(feature = "flux-converter")]
+pub use flux_converter::ConversionError;
+
+#[derive(Debug, Snafu)]
+pub enum ParseResourceVersionError {
+    #[snafu(display("the resource version \"{version}\" is not known"))]
+    UnknownResourceVersion { version: String },
+}
 
 // Unused for now, might get picked up again in the future.
 #[doc(hidden)]
