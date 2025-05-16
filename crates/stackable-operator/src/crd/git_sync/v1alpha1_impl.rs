@@ -161,7 +161,7 @@ impl GitSyncResources {
                 container_log_config,
             )?;
 
-            let volume = VolumeBuilder::new(volume_name.to_owned())
+            let volume = VolumeBuilder::new(volume_name.clone())
                 .empty_dir(EmptyDirVolumeSource::default())
                 .build();
 
