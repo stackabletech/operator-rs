@@ -46,9 +46,12 @@ pub mod versioned {
         pub wait: Duration,
 
         /// The name of the Secret used to access the repository if it is not public.
-        /// This should include two fields: `user` and `password`.
+        ///
+        /// The referenced Secret must include two fields: `user` and `password`.
         /// The `password` field can either be an actual password (not recommended) or a GitHub token,
-        /// as described [here](https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual).
+        /// as described in the git-sync [documentation].
+        ///
+        /// [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
         pub credentials_secret: Option<String>,
 
         /// A map of optional configuration settings that are listed in the [git-sync documentation](https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual).
