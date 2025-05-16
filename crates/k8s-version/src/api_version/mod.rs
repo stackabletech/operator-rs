@@ -6,6 +6,9 @@ use snafu::{ResultExt, Snafu};
 
 use crate::{Group, ParseGroupError, ParseVersionError, Version};
 
+#[cfg(feature = "serde")]
+mod serde;
+
 /// Error variants which can be encountered when creating a new [`ApiVersion`]
 /// from unparsed input.
 #[derive(Debug, PartialEq, Snafu)]

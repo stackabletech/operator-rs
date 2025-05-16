@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add support for serialization and deserialization via `serde`. This feature is enabled via the
+  `serde` feature flag ([#1034]).
+
+[#1034]: https://github.com/stackabletech/operator-rs/pull/1034
+
 ## [0.1.2] - 2024-09-19
 
 ### Changed

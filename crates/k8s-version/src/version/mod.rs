@@ -1,11 +1,15 @@
 use std::{cmp::Ordering, fmt::Display, num::ParseIntError, str::FromStr, sync::LazyLock};
 
-#[cfg(feature = "darling")]
-use darling::FromMeta;
 use regex::Regex;
 use snafu::{OptionExt, ResultExt, Snafu};
 
 use crate::{Level, ParseLevelError};
+
+#[cfg(feature = "serde")]
+mod serde;
+
+#[cfg(feature = "darling")]
+mod darling;
 
 static VERSION_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^v(?P<major>\d+)(?P<level>[a-z0-9][a-z0-9-]{0,60}[a-z0-9])?$")
@@ -103,13 +107,6 @@ impl Display for Version {
     }
 }
 
-#[cfg(feature = "darling")]
-impl FromMeta for Version {
-    fn from_string(value: &str) -> darling::Result<Self> {
-        Self::from_str(value).map_err(darling::Error::custom)
-    }
-}
-
 impl Version {
     pub fn new(major: u64, level: Option<Level>) -> Self {
         Self { major, level }
@@ -118,18 +115,10 @@ impl Version {
 
 #[cfg(test)]
 mod test {
-    #[cfg(feature = "darling")]
-    use quote::quote;
     use rstest::rstest;
     use rstest_reuse::{apply, template};
 
     use super::*;
-
-    #[cfg(feature = "darling")]
-    fn parse_meta(tokens: proc_macro2::TokenStream) -> ::std::result::Result<syn::Meta, String> {
-        let attribute: syn::Attribute = syn::parse_quote!(#[#tokens]);
-        Ok(attribute.meta)
-    }
 
     #[template]
     #[rstest]
@@ -166,17 +155,5 @@ mod test {
     #[apply(ord_cases)]
     fn partial_ord(input: Version, other: Version, expected: Ordering) {
         assert_eq!(input.partial_cmp(&other), Some(expected))
-    }
-
-    #[cfg(feature = "darling")]
-    #[rstest]
-    #[case(quote!(ignore = "v1alpha12"), Version { major: 1, level: Some(Level::Alpha(12)) })]
-    #[case(quote!(ignore = "v1alpha1"), Version { major: 1, level: Some(Level::Alpha(1)) })]
-    #[case(quote!(ignore = "v1beta1"), Version { major: 1, level: Some(Level::Beta(1)) })]
-    #[case(quote!(ignore = "v1"), Version { major: 1, level: None })]
-    fn from_meta(#[case] input: proc_macro2::TokenStream, #[case] expected: Version) {
-        let meta = parse_meta(input).expect("valid attribute tokens");
-        let version = Version::from_meta(&meta).expect("version must parse from attribute");
-        assert_eq!(version, expected);
     }
 }
