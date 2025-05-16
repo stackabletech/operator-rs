@@ -14,6 +14,8 @@ all-features = true
 full = ["k8s", "flux-converter"]
 k8s = [
   "stackable-versioned-macros/k8s", # Forward the k8s feature to the underlying macro crate
+  "dep:kube",
+  "dep:k8s-openapi",
 ]
 flux-converter = [
   "k8s",

@@ -18,6 +18,9 @@ pub use stackable_versioned_macros::*;
 #[cfg(feature = "flux-converter")]
 mod flux_converter;
 
+#[cfg(feature = "k8s")]
+mod apply_resource;
+
 #[cfg(feature = "flux-converter")]
 pub use flux_converter::ConversionError;
 
