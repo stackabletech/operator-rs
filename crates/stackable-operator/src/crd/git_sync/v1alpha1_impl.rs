@@ -126,8 +126,8 @@ impl GitSyncResources {
             let mount_path = format!("{MOUNT_PATH_PREFIX}-{i}");
 
             let git_sync_root_volume_mount = VolumeMount {
-                name: volume_name.to_owned(),
-                mount_path: GIT_SYNC_ROOT_DIR.to_string(),
+                name: volume_name.clone(),
+                mount_path: GIT_SYNC_ROOT_DIR.to_owned(),
                 ..VolumeMount::default()
             };
 
