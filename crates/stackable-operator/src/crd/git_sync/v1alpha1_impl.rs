@@ -250,12 +250,10 @@ impl GitSyncResources {
             ("--one-time".to_string(), one_time.to_string()),
         ]);
 
-        let internal_git_config = [(
-            GIT_SYNC_SAFE_DIR_OPTION.to_string(),
-            GIT_SYNC_ROOT_DIR.to_string(),
-        )]
-        .into_iter()
-        .collect::<BTreeMap<_, _>>();
+        let internal_git_config = BTreeMap::from([(
+            GIT_SYNC_SAFE_DIR_OPTION.to_owned(),
+            GIT_SYNC_ROOT_DIR.to_owned(),
+        )]);
 
         let mut user_defined_args = BTreeMap::new();
         // The key and value in Git configs are separated by a colon, but both
