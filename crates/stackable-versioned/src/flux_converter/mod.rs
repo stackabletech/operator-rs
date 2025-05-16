@@ -9,6 +9,8 @@ use snafu::Snafu;
 
 use crate::ParseResourceVersionError;
 
+mod apply_crd;
+
 #[cfg(test)]
 mod tests;
 
