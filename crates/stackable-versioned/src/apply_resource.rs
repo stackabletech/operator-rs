@@ -1,15 +1,13 @@
 use k8s_openapi::Resource;
 use kube::Client;
-use serde::Serialize;
-
 /// Given a [kube::Client], apply a resource to the server.
 ///
-/// This is esspecially useful when you have custom requirements for deploying
+/// This is especially useful when you have custom requirements for deploying
 /// CRDs to clusters which already have a definition.
 ///
 /// For example, you want to prevent stable versions (v1) from having any
 /// change.
-pub trait ApplyResource: Resource + Serialize {
+pub trait ApplyResource: Resource {
     type Error;
 
     /// Apply a resource to a cluster
