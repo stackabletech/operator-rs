@@ -237,21 +237,18 @@ impl GitSyncResources {
         one_time: bool,
         container_log_config: &ContainerLogConfig,
     ) -> String {
-        let internal_args = [
-            Some(("--repo".to_string(), git_sync.repo.as_str().to_owned())),
-            Some(("--ref".to_string(), git_sync.branch.to_owned())),
-            Some(("--depth".to_string(), git_sync.depth.to_string())),
-            Some((
+        let internal_args = BTreeMap::from([
+            ("--repo".to_string(), git_sync.repo.as_str().to_owned()),
+            ("--ref".to_string(), git_sync.branch.to_owned()),
+            ("--depth".to_string(), git_sync.depth.to_string()),
+            (
                 "--period".to_string(),
                 format!("{}s", git_sync.wait.as_secs()),
-            )),
-            Some(("--link".to_string(), GIT_SYNC_LINK.to_string())),
-            Some(("--root".to_string(), GIT_SYNC_ROOT_DIR.to_string())),
-            one_time.then_some(("--one-time".to_string(), "true".to_string())),
-        ]
-        .into_iter()
-        .flatten()
-        .collect::<BTreeMap<_, _>>();
+            ),
+            ("--link".to_string(), GIT_SYNC_LINK.to_string()),
+            ("--root".to_string(), GIT_SYNC_ROOT_DIR.to_string()),
+            ("--one-time".to_string(), one_time.to_string()),
+        ]);
 
         let internal_git_config = [(
             GIT_SYNC_SAFE_DIR_OPTION.to_string(),
@@ -505,7 +502,7 @@ mod tests {
   }
 
   prepare_signal_handlers
-  /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git' --link=current --period=20s --ref=main --repo=https://github.com/stackabletech/repo1 --root=/tmp/git &
+  /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git' --link=current --one-time=false --period=20s --ref=main --repo=https://github.com/stackabletech/repo1 --root=/tmp/git &
   wait_for_termination $!
 command:
 - /bin/bash
@@ -574,7 +571,7 @@ volumeMounts:
   }
 
   prepare_signal_handlers
-  /stackable/git-sync --depth=3 --git-config='safe.directory:/tmp/git,http.sslCAInfo:/tmp/ca-cert/ca.crt' --link=current --period=60s --ref=trunk --repo=https://github.com/stackabletech/repo2 --rev=HEAD --root=/tmp/git &
+  /stackable/git-sync --depth=3 --git-config='safe.directory:/tmp/git,http.sslCAInfo:/tmp/ca-cert/ca.crt' --link=current --one-time=false --period=60s --ref=trunk --repo=https://github.com/stackabletech/repo2 --rev=HEAD --root=/tmp/git &
   wait_for_termination $!
 command:
 - /bin/bash
@@ -648,7 +645,7 @@ volumeMounts:
   }
 
   prepare_signal_handlers
-  /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git,k1:v1,k2:v2,safe.directory:/safe-dir,k3:v3,k4:v4' --link=current --period=20s --ref=feat/git-sync --repo=https://github.com/stackabletech/repo3 --root=/tmp/git &
+  /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git,k1:v1,k2:v2,safe.directory:/safe-dir,k3:v3,k4:v4' --link=current --one-time=false --period=20s --ref=feat/git-sync --repo=https://github.com/stackabletech/repo3 --root=/tmp/git &
   wait_for_termination $!
 command:
 - /bin/bash
