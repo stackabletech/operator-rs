@@ -153,8 +153,9 @@ impl Enum {
                 let variants: TokenStream = self
                     .variants
                     .iter()
-                    .map(|v| v.generate_for_upgrade_from_impl(version, next_version, enum_ident))
-                    .flatten()
+                    .filter_map(|v| {
+                        v.generate_for_upgrade_from_impl(version, next_version, enum_ident)
+                    })
                     .collect();
 
                 // Include allow(deprecated) only when this or the next version is
@@ -212,8 +213,9 @@ impl Enum {
                 let variants: TokenStream = self
                     .variants
                     .iter()
-                    .map(|v| v.generate_for_downgrade_from_impl(version, next_version, enum_ident))
-                    .flatten()
+                    .filter_map(|v| {
+                        v.generate_for_downgrade_from_impl(version, next_version, enum_ident)
+                    })
                     .collect();
 
                 // Only add the #[automatically_derived] attribute only if this impl is used
