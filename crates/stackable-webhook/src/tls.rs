@@ -62,7 +62,7 @@ pub enum Error {
 /// Custom implementation of [`std::cmp::PartialEq`] because some inner types
 /// don't implement it.
 ///
-/// Note that this implementation is restritced to testing because there are
+/// Note that this implementation is restricted to testing because there are
 /// variants that use [`stackable_certs::ca::Error`] which only implements
 /// [`PartialEq`] for tests.
 #[cfg(test)]
@@ -84,7 +84,7 @@ impl PartialEq for Error {
     }
 }
 
-/// A server which terminates TLS connections and allows clients to commnunicate
+/// A server which terminates TLS connections and allows clients to communicate
 /// via HTTPS with the underlying HTTP router.
 pub struct TlsServer {
     config: Arc<ServerConfig>,
@@ -96,7 +96,7 @@ impl TlsServer {
     #[instrument(name = "create_tls_server", skip(router))]
     pub async fn new(socket_addr: SocketAddr, router: Router) -> Result<Self> {
         // NOTE(@NickLarsenNZ): This code is not async, and does take some
-        // non-negligable amount of time to complete (moreso in debug ).
+        // non-negligible amount of time to complete (moreso in debug).
         // We run this in a thread reserved for blocking code so that the Tokio
         // executor is able to make progress on other futures instead of being
         // blocked.
