@@ -21,6 +21,15 @@ impl ::std::convert::From<v1alpha1::Foo> for v1alpha2::Foo {
     }
 }
 #[automatically_derived]
+impl ::std::convert::From<v1alpha2::Foo> for v1alpha1::Foo {
+    fn from(__sv_foo: v1alpha2::Foo) -> Self {
+        match __sv_foo {
+            v1alpha2::Foo::Foo => v1alpha1::Foo::Foo,
+            v1alpha2::Foo::Bar(__sv_0, __sv_1) => v1alpha1::Foo::Bar(__sv_0, __sv_1),
+        }
+    }
+}
+#[automatically_derived]
 mod v1alpha2 {
     use super::*;
     pub enum Foo {

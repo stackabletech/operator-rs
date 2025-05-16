@@ -25,8 +25,23 @@ impl ::std::convert::From<v1alpha1::Foo> for v1::Foo {
     }
 }
 #[automatically_derived]
+impl ::std::convert::From<v1::Foo> for v1alpha1::Foo {
+    fn from(__sv_foo: v1::Foo) -> Self {
+        Self {
+            bar: __sv_foo.bar.into(),
+            foo: __sv_foo.foo.into(),
+        }
+    }
+}
+#[automatically_derived]
 impl ::std::convert::From<v1alpha1::Bar> for v1::Bar {
     fn from(__sv_bar: v1alpha1::Bar) -> Self {
+        Self { baz: __sv_bar.baz.into() }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1::Bar> for v1alpha1::Bar {
+    fn from(__sv_bar: v1::Bar) -> Self {
         Self { baz: __sv_bar.baz.into() }
     }
 }
@@ -54,8 +69,25 @@ impl ::std::convert::From<v1::Foo> for v2alpha1::Foo {
     }
 }
 #[automatically_derived]
+#[allow(deprecated)]
+impl ::std::convert::From<v2alpha1::Foo> for v1::Foo {
+    fn from(__sv_foo: v2alpha1::Foo) -> Self {
+        Self {
+            bar: __sv_foo.bar.into(),
+            baz: __sv_foo.baz.into(),
+            foo: __sv_foo.deprecated_foo.into(),
+        }
+    }
+}
+#[automatically_derived]
 impl ::std::convert::From<v1::Bar> for v2alpha1::Bar {
     fn from(__sv_bar: v1::Bar) -> Self {
+        Self { baz: __sv_bar.baz.into() }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v2alpha1::Bar> for v1::Bar {
+    fn from(__sv_bar: v2alpha1::Bar) -> Self {
         Self { baz: __sv_bar.baz.into() }
     }
 }

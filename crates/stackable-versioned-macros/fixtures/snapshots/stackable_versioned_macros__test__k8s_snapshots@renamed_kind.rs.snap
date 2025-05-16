@@ -20,7 +20,8 @@ pub mod v1alpha1 {
         kind = "FooBar",
         singular = "foo",
         plural = "foos",
-        namespaced
+        namespaced,
+        status = FooBarStatus
     )]
     pub struct FooSpec {
         pub baz: bool,
@@ -31,6 +32,14 @@ impl ::std::convert::From<v1alpha1::FooSpec> for v1beta1::FooSpec {
     fn from(__sv_foospec: v1alpha1::FooSpec) -> Self {
         Self {
             bah: ::std::default::Default::default(),
+            baz: __sv_foospec.baz.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1beta1::FooSpec> for v1alpha1::FooSpec {
+    fn from(__sv_foospec: v1beta1::FooSpec) -> Self {
+        Self {
             baz: __sv_foospec.baz.into(),
         }
     }
@@ -52,7 +61,8 @@ pub mod v1beta1 {
         kind = "FooBar",
         singular = "foo",
         plural = "foos",
-        namespaced
+        namespaced,
+        status = FooBarStatus
     )]
     pub struct FooSpec {
         pub bah: u16,
@@ -64,6 +74,15 @@ impl ::std::convert::From<v1beta1::FooSpec> for v1::FooSpec {
     fn from(__sv_foospec: v1beta1::FooSpec) -> Self {
         Self {
             bar: __sv_foospec.bah.into(),
+            baz: __sv_foospec.baz.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1::FooSpec> for v1beta1::FooSpec {
+    fn from(__sv_foospec: v1::FooSpec) -> Self {
+        Self {
+            bah: __sv_foospec.bar.into(),
             baz: __sv_foospec.baz.into(),
         }
     }
@@ -85,7 +104,8 @@ pub mod v1 {
         kind = "FooBar",
         singular = "foo",
         plural = "foos",
-        namespaced
+        namespaced,
+        status = FooBarStatus
     )]
     pub struct FooSpec {
         pub bar: usize,
@@ -129,4 +149,15 @@ impl FooBar {
             &stored_apiversion.to_string(),
         )
     }
+}
+#[derive(
+    ::core::clone::Clone,
+    ::core::fmt::Debug,
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    ::schemars::JsonSchema
+)]
+#[serde(rename_all = "camelCase")]
+pub struct FooBarStatus {
+    pub crd_values: ::stackable_versioned::CrdValues,
 }
