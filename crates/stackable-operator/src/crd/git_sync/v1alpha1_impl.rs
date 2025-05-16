@@ -65,12 +65,16 @@ impl GitSync {
 pub struct GitSyncResources {
     /// GitSync containers with regular synchronizations
     pub git_sync_containers: Vec<Container>,
+
     /// GitSync init containers with a one-time synchronizations
     pub git_sync_init_containers: Vec<Container>,
+
     /// GitSync volumes containing the synchronized repository
     pub git_content_volumes: Vec<Volume>,
+
     /// Volume mounts for the GitSync volumes
     pub git_content_volume_mounts: Vec<VolumeMount>,
+
     /// Absolute paths to the Git contents in the mounted volumes
     pub git_content_folders: Vec<PathBuf>,
 }
