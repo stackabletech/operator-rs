@@ -22,7 +22,8 @@ pub(crate) mod v1alpha1 {
         version = "v1alpha1",
         kind = "Foo",
         plural = "foos",
-        namespaced
+        namespaced,
+        status = FooStatus
     )]
     pub struct FooSpec {
         pub bar: usize,
@@ -40,7 +41,8 @@ pub(crate) mod v1alpha1 {
         group = "bar.example.org",
         version = "v1alpha1",
         kind = "Bar",
-        plural = "bars"
+        plural = "bars",
+        status = BarStatus
     )]
     pub struct BarSpec {
         pub baz: String,
@@ -57,11 +59,26 @@ impl ::std::convert::From<v1alpha1::Baz> for v1::Baz {
     }
 }
 #[automatically_derived]
+impl ::std::convert::From<v1::Baz> for v1alpha1::Baz {
+    fn from(__sv_baz: v1::Baz) -> Self {
+        Self { boom: __sv_baz.boom.into() }
+    }
+}
+#[automatically_derived]
 impl ::std::convert::From<v1alpha1::FooSpec> for v1::FooSpec {
     fn from(__sv_foospec: v1alpha1::FooSpec) -> Self {
         Self {
             bar: __sv_foospec.bar.into(),
             baz: ::std::default::Default::default(),
+            foo: __sv_foospec.foo.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1::FooSpec> for v1alpha1::FooSpec {
+    fn from(__sv_foospec: v1::FooSpec) -> Self {
+        Self {
+            bar: __sv_foospec.bar.into(),
             foo: __sv_foospec.foo.into(),
         }
     }
@@ -75,11 +92,28 @@ impl ::std::convert::From<v1alpha1::BarSpec> for v1::BarSpec {
     }
 }
 #[automatically_derived]
+impl ::std::convert::From<v1::BarSpec> for v1alpha1::BarSpec {
+    fn from(__sv_barspec: v1::BarSpec) -> Self {
+        Self {
+            baz: __sv_barspec.baz.into(),
+        }
+    }
+}
+#[automatically_derived]
 impl ::std::convert::From<v1alpha1::Boom> for v1::Boom {
     fn from(__sv_boom: v1alpha1::Boom) -> Self {
         match __sv_boom {
             v1alpha1::Boom::Big => v1::Boom::Big,
             v1alpha1::Boom::Shaq => v1::Boom::Shaq,
+        }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1::Boom> for v1alpha1::Boom {
+    fn from(__sv_boom: v1::Boom) -> Self {
+        match __sv_boom {
+            v1::Boom::Big => v1alpha1::Boom::Big,
+            v1::Boom::Shaq => v1alpha1::Boom::Shaq,
         }
     }
 }
@@ -102,7 +136,8 @@ pub(crate) mod v1 {
         version = "v1",
         kind = "Foo",
         plural = "foos",
-        namespaced
+        namespaced,
+        status = FooStatus
     )]
     pub struct FooSpec {
         pub bar: usize,
@@ -117,7 +152,13 @@ pub(crate) mod v1 {
         schemars::JsonSchema,
         kube::CustomResource,
     )]
-    #[kube(group = "bar.example.org", version = "v1", kind = "Bar", plural = "bars")]
+    #[kube(
+        group = "bar.example.org",
+        version = "v1",
+        kind = "Bar",
+        plural = "bars",
+        status = BarStatus
+    )]
     pub struct BarSpec {
         pub baz: String,
     }
@@ -133,6 +174,12 @@ impl ::std::convert::From<v1::Baz> for v2alpha1::Baz {
     }
 }
 #[automatically_derived]
+impl ::std::convert::From<v2alpha1::Baz> for v1::Baz {
+    fn from(__sv_baz: v2alpha1::Baz) -> Self {
+        Self { boom: __sv_baz.boom.into() }
+    }
+}
+#[automatically_derived]
 #[allow(deprecated)]
 impl ::std::convert::From<v1::FooSpec> for v2alpha1::FooSpec {
     fn from(__sv_foospec: v1::FooSpec) -> Self {
@@ -140,6 +187,17 @@ impl ::std::convert::From<v1::FooSpec> for v2alpha1::FooSpec {
             bar: __sv_foospec.bar.into(),
             baz: __sv_foospec.baz.into(),
             deprecated_foo: __sv_foospec.foo.into(),
+        }
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl ::std::convert::From<v2alpha1::FooSpec> for v1::FooSpec {
+    fn from(__sv_foospec: v2alpha1::FooSpec) -> Self {
+        Self {
+            bar: __sv_foospec.bar.into(),
+            baz: __sv_foospec.baz.into(),
+            foo: __sv_foospec.deprecated_foo.into(),
         }
     }
 }
@@ -152,11 +210,28 @@ impl ::std::convert::From<v1::BarSpec> for v2alpha1::BarSpec {
     }
 }
 #[automatically_derived]
+impl ::std::convert::From<v2alpha1::BarSpec> for v1::BarSpec {
+    fn from(__sv_barspec: v2alpha1::BarSpec) -> Self {
+        Self {
+            baz: __sv_barspec.baz.into(),
+        }
+    }
+}
+#[automatically_derived]
 impl ::std::convert::From<v1::Boom> for v2alpha1::Boom {
     fn from(__sv_boom: v1::Boom) -> Self {
         match __sv_boom {
             v1::Boom::Big => v2alpha1::Boom::Big,
             v1::Boom::Shaq => v2alpha1::Boom::Shaq,
+        }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v2alpha1::Boom> for v1::Boom {
+    fn from(__sv_boom: v2alpha1::Boom) -> Self {
+        match __sv_boom {
+            v2alpha1::Boom::Big => v1::Boom::Big,
+            v2alpha1::Boom::Shaq => v1::Boom::Shaq,
         }
     }
 }
@@ -179,7 +254,8 @@ pub(crate) mod v2alpha1 {
         version = "v2alpha1",
         kind = "Foo",
         plural = "foos",
-        namespaced
+        namespaced,
+        status = FooStatus
     )]
     pub struct FooSpec {
         pub bar: usize,
@@ -199,7 +275,8 @@ pub(crate) mod v2alpha1 {
         group = "bar.example.org",
         version = "v2alpha1",
         kind = "Bar",
-        plural = "bars"
+        plural = "bars",
+        status = BarStatus
     )]
     pub struct BarSpec {
         pub baz: String,
@@ -247,6 +324,17 @@ impl Foo {
         )
     }
 }
+#[derive(
+    ::core::clone::Clone,
+    ::core::fmt::Debug,
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    ::schemars::JsonSchema
+)]
+#[serde(rename_all = "camelCase")]
+pub struct FooStatus {
+    pub crd_values: ::stackable_versioned::CrdValues,
+}
 #[automatically_derived]
 pub(crate) enum Bar {
     V1Alpha1,
@@ -284,4 +372,15 @@ impl Bar {
             &stored_apiversion.to_string(),
         )
     }
+}
+#[derive(
+    ::core::clone::Clone,
+    ::core::fmt::Debug,
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    ::schemars::JsonSchema
+)]
+#[serde(rename_all = "camelCase")]
+pub struct BarStatus {
+    pub crd_values: ::stackable_versioned::CrdValues,
 }

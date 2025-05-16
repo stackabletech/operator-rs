@@ -20,6 +20,12 @@ impl ::std::convert::From<v1alpha1::Foo> for v1beta1::Foo {
     }
 }
 #[automatically_derived]
+impl ::std::convert::From<v1beta1::Foo> for v1alpha1::Foo {
+    fn from(__sv_foo: v1beta1::Foo) -> Self {
+        Self { baz: __sv_foo.baz.into() }
+    }
+}
+#[automatically_derived]
 pub mod v1beta1 {
     use super::*;
     pub struct Foo {

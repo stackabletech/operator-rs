@@ -240,13 +240,13 @@ impl CommonItemAttributes {
 
             // The convert_with argument only makes sense to use when the
             // type changed
-            if let Some(convert_func) = change.convert_with.as_ref() {
+            if let Some(upgrade_func) = change.upgrade_with.as_ref() {
                 if change.from_type.is_none() {
                     errors.push(
                         Error::custom(
                             "the `convert_with` argument must be used in combination with `from_type`",
                         )
-                        .with_span(&convert_func.span()),
+                        .with_span(&upgrade_func.span()),
                     );
                 }
             }
@@ -315,7 +315,8 @@ impl CommonItemAttributes {
                     .unwrap_or(ty.clone());
 
                 actions.insert(*change.since, ItemStatus::Change {
-                    convert_with: change.convert_with.as_deref().cloned(),
+                    downgrade_with: change.downgrade_with.as_deref().cloned(),
+                    upgrade_with: change.upgrade_with.as_deref().cloned(),
                     from_ident: from_ident.clone(),
                     from_type: from_ty.clone(),
                     to_ident: ident,
@@ -359,7 +360,8 @@ impl CommonItemAttributes {
                     .unwrap_or(ty.clone());
 
                 actions.insert(*change.since, ItemStatus::Change {
-                    convert_with: change.convert_with.as_deref().cloned(),
+                    downgrade_with: change.downgrade_with.as_deref().cloned(),
+                    upgrade_with: change.upgrade_with.as_deref().cloned(),
                     from_ident: from_ident.clone(),
                     from_type: from_ty.clone(),
                     to_ident: ident,
@@ -435,7 +437,8 @@ pub struct ChangedAttributes {
     pub since: SpannedValue<Version>,
     pub from_name: Option<SpannedValue<String>>,
     pub from_type: Option<SpannedValue<Type>>,
-    pub convert_with: Option<SpannedValue<Path>>,
+    pub upgrade_with: Option<SpannedValue<Path>>,
+    pub downgrade_with: Option<SpannedValue<Path>>,
 }
 
 /// For the deprecated() action

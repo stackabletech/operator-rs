@@ -61,9 +61,10 @@ pub(crate) struct KubernetesSkipArguments {
 /// This struct contains crate overrides to be passed to `#[kube]`.
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct KubernetesCrateArguments {
-    pub(crate) kube_core: Option<Path>,
-    pub(crate) k8s_openapi: Option<Path>,
-    pub(crate) schemars: Option<Path>,
-    pub(crate) serde: Option<Path>,
-    pub(crate) serde_json: Option<Path>,
+    pub kube_core: Option<Path>,
+    pub k8s_openapi: Option<Path>,
+    pub schemars: Option<Path>,
+    pub serde: Option<Path>,
+    pub serde_json: Option<Path>,
+    pub versioned: Option<Path>,
 }

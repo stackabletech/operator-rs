@@ -27,6 +27,18 @@ where
     }
 }
 #[automatically_derived]
+impl<T> ::std::convert::From<v1::Foo<T>> for v1alpha1::Foo<T>
+where
+    T: Default,
+{
+    fn from(__sv_foo: v1::Foo<T>) -> Self {
+        Self {
+            bar: __sv_foo.bar.into(),
+            baz: __sv_foo.baz.into(),
+        }
+    }
+}
+#[automatically_derived]
 pub mod v1 {
     use super::*;
     pub struct Foo<T = String>

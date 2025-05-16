@@ -81,7 +81,8 @@ pub enum ItemStatus {
         ty: Type,
     },
     Change {
-        convert_with: Option<Path>,
+        downgrade_with: Option<Path>,
+        upgrade_with: Option<Path>,
         from_ident: IdentString,
         to_ident: IdentString,
         from_type: Type,
@@ -107,7 +108,7 @@ impl ItemStatus {
             ItemStatus::Change { to_ident, .. } => to_ident,
             ItemStatus::Deprecation { ident, .. } => ident,
             ItemStatus::NoChange { ident, .. } => ident,
-            ItemStatus::NotPresent => unreachable!(),
+            ItemStatus::NotPresent => unreachable!("ItemStatus::NotPresent does not have an ident"),
         }
     }
 }

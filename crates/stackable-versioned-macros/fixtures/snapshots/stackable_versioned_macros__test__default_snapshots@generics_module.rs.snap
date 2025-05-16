@@ -33,6 +33,17 @@ pub mod versioned {
             }
         }
     }
+    impl<T> ::std::convert::From<v1::Foo<T>> for v1alpha1::Foo<T>
+    where
+        T: Default,
+    {
+        fn from(__sv_foo: v1::Foo<T>) -> Self {
+            Self {
+                bar: __sv_foo.bar.into(),
+                baz: __sv_foo.baz.into(),
+            }
+        }
+    }
     impl<T> ::std::convert::From<v1alpha1::Boom<T>> for v1::Boom<T>
     where
         T: Default,
@@ -41,6 +52,17 @@ pub mod versioned {
             match __sv_boom {
                 v1alpha1::Boom::Big(__sv_0) => v1::Boom::Big(__sv_0),
                 v1alpha1::Boom::Shaq => v1::Boom::Shaq,
+            }
+        }
+    }
+    impl<T> ::std::convert::From<v1::Boom<T>> for v1alpha1::Boom<T>
+    where
+        T: Default,
+    {
+        fn from(__sv_boom: v1::Boom<T>) -> Self {
+            match __sv_boom {
+                v1::Boom::Big(__sv_0) => v1alpha1::Boom::Big(__sv_0),
+                v1::Boom::Shaq => v1alpha1::Boom::Shaq,
             }
         }
     }

@@ -19,6 +19,12 @@ impl ::std::convert::From<v1alpha1::Foo> for v1::Foo {
     }
 }
 #[automatically_derived]
+impl ::std::convert::From<v1::Foo> for v1alpha1::Foo {
+    fn from(__sv_foo: v1::Foo) -> Self {
+        Self { bar: __sv_foo.baz.into() }
+    }
+}
+#[automatically_derived]
 mod v1 {
     use super::*;
     pub struct Foo {
@@ -31,6 +37,12 @@ impl ::std::convert::From<v1::Foo> for v2::Foo {
         Self {
             baz: u32_to_u64(__sv_foo.baz),
         }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v2::Foo> for v1::Foo {
+    fn from(__sv_foo: v2::Foo) -> Self {
+        Self { baz: __sv_foo.baz.into() }
     }
 }
 #[automatically_derived]

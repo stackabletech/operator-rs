@@ -21,6 +21,15 @@ impl ::std::convert::From<v1alpha1::Foo> for v1beta1::Foo {
     }
 }
 #[automatically_derived]
+impl ::std::convert::From<v1beta1::Foo> for v1alpha1::Foo {
+    fn from(__sv_foo: v1beta1::Foo) -> Self {
+        match __sv_foo {
+            v1beta1::Foo::Bar => v1alpha1::Foo::Bar,
+            v1beta1::Foo::Baz => v1alpha1::Foo::Baz,
+        }
+    }
+}
+#[automatically_derived]
 mod v1beta1 {
     use super::*;
     pub enum Foo {
@@ -35,6 +44,15 @@ impl ::std::convert::From<v1beta1::Foo> for v1::Foo {
         match __sv_foo {
             v1beta1::Foo::Bar => v1::Foo::DeprecatedBar,
             v1beta1::Foo::Baz => v1::Foo::Baz,
+        }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1::Foo> for v1beta1::Foo {
+    fn from(__sv_foo: v1::Foo) -> Self {
+        match __sv_foo {
+            v1::Foo::DeprecatedBar => v1beta1::Foo::Bar,
+            v1::Foo::Baz => v1beta1::Foo::Baz,
         }
     }
 }
@@ -58,6 +76,15 @@ impl ::std::convert::From<v1::Foo> for v2::Foo {
     }
 }
 #[automatically_derived]
+impl ::std::convert::From<v2::Foo> for v1::Foo {
+    fn from(__sv_foo: v2::Foo) -> Self {
+        match __sv_foo {
+            v2::Foo::DeprecatedBar => v1::Foo::DeprecatedBar,
+            v2::Foo::Baz => v1::Foo::Baz,
+        }
+    }
+}
+#[automatically_derived]
 mod v2 {
     use super::*;
     pub enum Foo {
@@ -73,6 +100,15 @@ impl ::std::convert::From<v2::Foo> for v3::Foo {
         match __sv_foo {
             v2::Foo::DeprecatedBar => v3::Foo::DeprecatedBar,
             v2::Foo::Baz => v3::Foo::Baz,
+        }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v3::Foo> for v2::Foo {
+    fn from(__sv_foo: v3::Foo) -> Self {
+        match __sv_foo {
+            v3::Foo::DeprecatedBar => v2::Foo::DeprecatedBar,
+            v3::Foo::Baz => v2::Foo::Baz,
         }
     }
 }

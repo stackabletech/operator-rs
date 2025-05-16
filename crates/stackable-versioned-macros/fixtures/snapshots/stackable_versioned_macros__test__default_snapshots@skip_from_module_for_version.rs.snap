@@ -23,12 +23,24 @@ impl ::std::convert::From<v1alpha1::Foo> for v1beta1::Foo {
     }
 }
 #[automatically_derived]
+impl ::std::convert::From<v1beta1::Foo> for v1alpha1::Foo {
+    fn from(__sv_foo: v1beta1::Foo) -> Self {
+        Self { bar: __sv_foo.bar.into() }
+    }
+}
+#[automatically_derived]
 impl ::std::convert::From<v1alpha1::Bar> for v1beta1::Bar {
     fn from(__sv_bar: v1alpha1::Bar) -> Self {
         Self {
             foo: __sv_bar.foo.into(),
             faz: ::std::default::Default::default(),
         }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1beta1::Bar> for v1alpha1::Bar {
+    fn from(__sv_bar: v1beta1::Bar) -> Self {
+        Self { foo: __sv_bar.foo.into() }
     }
 }
 #[automatically_derived]

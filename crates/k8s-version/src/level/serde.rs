@@ -11,7 +11,7 @@ impl<'de> Deserialize<'de> for Level {
     {
         struct LevelVisitor;
 
-        impl<'de> Visitor<'de> for LevelVisitor {
+        impl Visitor<'_> for LevelVisitor {
             type Value = Level;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
