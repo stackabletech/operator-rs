@@ -28,7 +28,7 @@ pub mod versioned {
         #[serde(default = "GitSync::default_branch")]
         pub branch: String,
 
-        /// Location in the Git repository containing the resource.
+        /// Location in the Git repository containing the resource; defaults to the root folder.
         ///
         /// It can optionally start with `/`, however, no trailing slash is recommended.
         /// An empty string (``) or slash (`/`) corresponds to the root folder in Git.
