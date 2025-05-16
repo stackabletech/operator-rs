@@ -113,7 +113,7 @@ mod tests {
         tls_verification::{CaCert, Tls, TlsClientDetails, TlsServerVerification, TlsVerification},
     };
 
-    // We cant test the correct resolve, as we can't mock the k8s API.
+    // We can't test the correct resolve, as we can't mock the k8s API.
     #[test]
     fn http_endpoint() {
         let s3 = ResolvedConnection {
