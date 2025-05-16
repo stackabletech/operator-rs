@@ -91,7 +91,7 @@ impl GitSyncResources {
     pub fn git_content_folders_as_string(&self) -> Vec<String> {
         self.git_content_folders
             .iter()
-            .map(|path| path.to_str().expect("The path names of the git_content_folders are created as valid UTF-8 strings, so Path::to_str should not fail.").to_string())
+            .map(|path| path.to_str().expect("The path names of the git_content_folders are created as valid UTF-8 strings, so Path::to_str should not fail.").to_owned())
             .collect()
     }
 
