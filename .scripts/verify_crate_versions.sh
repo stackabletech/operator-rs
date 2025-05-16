@@ -40,7 +40,8 @@ for CRATE in $(find ./crates/ -mindepth 2 -name Cargo.toml -print0 | xargs -0 -n
             echo "Ensure the version in ./crates/$CRATE/Cargo.toml matches the version in ./crates/$ASSOCIATED_CRATE/Cargo.toml" >&2
             exit 23
         )
-
+    elif [ "$CRATE" = "stackable-crd-previewer" ]; then
+        : # Skip stackable-crd-previewer crate for now, it's not a "real"/user-facing crate
     else
         # Get the latest documented version from the CHANGELOG.md
         CHANGELOG_VERSION=$(grep -oE '\[[0-9]+\.[0-9]+\.[0-9]+\]' "./crates/$CRATE/CHANGELOG.md" | head -1 | tr -d '[]')
