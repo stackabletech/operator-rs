@@ -166,8 +166,8 @@ impl GitSyncResources {
                 .build();
 
             let git_content_volume_mount = VolumeMount {
-                name: volume_name.to_owned(),
-                mount_path: mount_path.to_owned(),
+                name: volume_name.clone(),
+                mount_path: mount_path.clone(),
                 ..VolumeMount::default()
             };
 
