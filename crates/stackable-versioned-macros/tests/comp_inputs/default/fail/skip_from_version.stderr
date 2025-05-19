@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> tests/default/fail/skip_from_version.rs:23:32
+  --> tests/comp_inputs/default/fail/skip_from_version.rs:23:32
    |
 23 |     let foo_v1 = v1::Foo::from(foo_v1beta1);
    |                  ------------- ^^^^^^^^^^^ expected `main::v1::Foo`, found `v1beta1::Foo`
@@ -8,7 +8,7 @@ error[E0308]: mismatched types
    |
    = note: `v1beta1::Foo` and `main::v1::Foo` have similar names, but are actually distinct types
 note: `v1beta1::Foo` is defined in module `crate::main::v1beta1` of the current crate
-  --> tests/default/fail/skip_from_version.rs:4:5
+  --> tests/comp_inputs/default/fail/skip_from_version.rs:4:5
    |
 4  | /     #[versioned(
 5  | |         version(name = "v1alpha1"),
@@ -17,7 +17,7 @@ note: `v1beta1::Foo` is defined in module `crate::main::v1beta1` of the current 
 8  | |     )]
    | |______^
 note: `main::v1::Foo` is defined in module `crate::main::v1` of the current crate
-  --> tests/default/fail/skip_from_version.rs:4:5
+  --> tests/comp_inputs/default/fail/skip_from_version.rs:4:5
    |
 4  | /     #[versioned(
 5  | |         version(name = "v1alpha1"),

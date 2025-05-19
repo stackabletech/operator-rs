@@ -15,32 +15,33 @@
 // syntax highlighting and code completion. You will need to comment them out
 // again but before running tests, otherwise compilation will fail (as expected).
 #[allow(dead_code)]
-mod default {
-    // mod fail {
-    //     mod deprecate;
-    //     mod skip_from_all;
-    //     mod skip_from_version;
-    // }
+mod inputs {
+    mod default {
+        // mod fail {
+        //     mod deprecate;
+        //     mod skip_from_all;
+        //     mod skip_from_version;
+        // }
+    }
+
+    #[cfg(feature = "k8s")]
+    mod k8s {
+        // mod fail {
+        //     mod crd;
+        // }
+    }
 }
 
 #[test]
-fn default_macros() {
+fn default() {
     let t = trybuild::TestCases::new();
-    t.compile_fail("tests/default/fail/*.rs");
-    t.pass("tests/default/pass/*.rs");
-}
-
-#[cfg(feature = "k8s")]
-#[allow(dead_code)]
-mod k8s {
-    // mod fail {
-    //     mod crd;
-    // }
+    t.compile_fail("tests/comp_inputs/default/fail/*.rs");
+    t.pass("tests/comp_inputs/default/pass/*.rs");
 }
 
 #[cfg(feature = "k8s")]
 #[test]
-fn k8s_macros() {
+fn k8s() {
     let t = trybuild::TestCases::new();
-    t.compile_fail("tests/k8s/fail/*.rs");
+    t.compile_fail("tests/comp_inputs/k8s/fail/*.rs");
 }
