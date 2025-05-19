@@ -121,17 +121,17 @@ mod tests {
     use std::{fs::File, path::Path};
 
     use insta::{assert_snapshot, glob};
-    use kube::core::{
-        conversion::{ConversionResponse, ConversionReview},
-        response::StatusSummary,
-    };
+    use kube::core::{conversion::ConversionReview, response::StatusSummary};
 
     use super::Person;
 
     #[test]
     fn pass() {
         glob!("../../../fixtures/inputs/pass/", "*.json", |path| {
-            let (review, response) = run_for_file(path);
+            let (request, response) = run_for_file(path);
+            let response = response
+                .response
+                .expect("ConversionReview had no response!");
 
             let formatted = serde_json::to_string_pretty(&response)
                 .expect("Failed to serialize ConversionResponse");
@@ -142,14 +142,17 @@ mod tests {
                 Some(StatusSummary::Success),
                 "File {path:?} should be converted successfully"
             );
-            assert_eq!(review.request.unwrap().uid, response.uid);
+            assert_eq!(request.request.unwrap().uid, response.uid);
         })
     }
 
     #[test]
     fn fail() {
         glob!("../../../fixtures/inputs/fail/", "*.json", |path| {
-            let (review, response) = run_for_file(path);
+            let (request, response) = run_for_file(path);
+            let response = response
+                .response
+                .expect("ConversionReview had no response!");
 
             let formatted = serde_json::to_string_pretty(&response)
                 .expect("Failed to serialize ConversionResponse");
@@ -160,18 +163,18 @@ mod tests {
                 Some(StatusSummary::Failure),
                 "File {path:?} should *not* be converted successfully"
             );
-            if let Some(request) = &review.request {
+            if let Some(request) = &request.request {
                 assert_eq!(request.uid, response.uid);
             }
         })
     }
 
-    fn run_for_file(path: &Path) -> (ConversionReview, ConversionResponse) {
-        let review: ConversionReview =
+    fn run_for_file(path: &Path) -> (ConversionReview, ConversionReview) {
+        let request: ConversionReview =
             serde_json::from_reader(File::open(path).expect("failed to open test file"))
                 .expect("failed to parse ConversionReview from test file");
-        let response = Person::convert(review.clone());
+        let response = Person::convert(request.clone());
 
-        (review, response)
+        (request, response)
     }
 }

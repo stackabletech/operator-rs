@@ -39,9 +39,9 @@ pub struct ConversionWebhookServer {
 
 impl ConversionWebhookServer {
     /// Creates a new conversion webhook server **without** state which expects
-    /// POST requests being made to the `/convert` endpoint.
+    /// POST requests being made to the `/convert/{kind}` endpoints.
     ///
-    /// Each request is handled by the provided `handler` function. Any function
+    /// Each request is handled by the provided `handler` functions. Any function
     /// with the signature `(ConversionReview) -> ConversionReview` can be
     /// provided. The [`ConversionReview`] type can be imported via a re-export at
     /// [`crate::servers::ConversionReview`].
@@ -49,40 +49,44 @@ impl ConversionWebhookServer {
     /// # Example
     ///
     /// ```
+    /// use stackable_operator::crd::authentication::core::AuthenticationClass;
     /// use stackable_webhook::{
     ///     servers::{ConversionReview, ConversionWebhookServer},
     ///     Options
     /// };
     ///
-    /// // Construct the conversion webhook server
-    /// let server = ConversionWebhookServer::new(handler, Options::default());
+    /// let handlers = [(
+    ///     "AuthenticationClass",
+    ///     AuthenticationClass::convert as fn(ConversionReview) -> ConversionReview,
+    /// )];
     ///
-    /// // Define the handler function
-    /// fn handler(req: ConversionReview) -> ConversionReview {
-    ///    // In here we can do the CRD conversion
-    ///    req
-    /// }
+    /// // Construct the conversion webhook server
+    /// let server = ConversionWebhookServer::new(handlers, Options::default());
     /// ```
-    #[instrument(name = "create_conversion_webhook_server", skip(handler))]
-    pub fn new<H>(handler: H, options: Options) -> Self
+    #[instrument(name = "create_conversion_webhook_server", skip(handlers))]
+    pub fn new<'a, H>(handlers: impl IntoIterator<Item = (&'a str, H)>, options: Options) -> Self
     where
         H: WebhookHandler<ConversionReview, ConversionReview> + Clone + Send + Sync + 'static,
     {
-        tracing::debug!("create new conversion webhook server");
+        tracing::debug!("creating new conversion webhook server");
 
-        let handler_fn = |Json(review): Json<ConversionReview>| async {
-            let review = handler.call(review);
-            Json(review)
-        };
+        let mut router = Router::new();
+        for (kind, handler) in handlers {
+            let handler_fn = |Json(review): Json<ConversionReview>| async {
+                let review = handler.call(review);
+                Json(review)
+            };
 
-        let router = Router::new().route("/convert", post(handler_fn));
+            router = router.route(&format!("/convert/{kind}"), post(handler_fn));
+        }
+
         Self { router, options }
     }
 
-    /// Creates a new conversion webhook server **with** state which expects
-    /// POST requests being made to the `/convert` endpoint.
+    /// Creates a new conversion webhook server **without** state which expects
+    /// POST requests being made to the `/convert/{kind}` endpoints.
     ///
-    /// Each request is handled by the provided `handler` function. Any function
+    /// Each request is handled by the provided `handler` functions. Any function
     /// with the signature `(ConversionReview, S) -> ConversionReview` can be
     /// provided. The [`ConversionReview`] type can be imported via a re-export at
     /// [`crate::servers::ConversionReview`].
@@ -104,21 +108,30 @@ impl ConversionWebhookServer {
     /// #[derive(Debug, Clone)]
     /// struct State {}
     ///
+    /// let handlers = [(
+    ///     "AuthenticationClass",
+    ///     auth_class_handler as fn(ConversionReview, state: Arc<State>) -> ConversionReview,
+    /// )];
+    ///
     /// let shared_state = Arc::new(State {});
     /// let server = ConversionWebhookServer::new_with_state(
-    ///     handler,
+    ///     handlers,
     ///     shared_state,
     ///     Options::default(),
     /// );
     ///
     /// // Define the handler function
-    /// fn handler(req: ConversionReview, state: Arc<State>) -> ConversionReview {
+    /// fn auth_class_handler(req: ConversionReview, state: Arc<State>) -> ConversionReview {
     ///    // In here we can do the CRD conversion
     ///    req
     /// }
     /// ```
-    #[instrument(name = "create_conversion_webhook_server_with_state", skip(handler))]
-    pub fn new_with_state<H, S>(handler: H, state: S, options: Options) -> Self
+    #[instrument(name = "create_conversion_webhook_server_with_state", skip(handlers))]
+    pub fn new_with_state<'a, H, S>(
+        handlers: impl IntoIterator<Item = (&'a str, H)>,
+        state: S,
+        options: Options,
+    ) -> Self
     where
         H: StatefulWebhookHandler<ConversionReview, ConversionReview, S>
             + Clone
@@ -127,23 +140,25 @@ impl ConversionWebhookServer {
             + 'static,
         S: Clone + Debug + Send + Sync + 'static,
     {
-        tracing::debug!("create new conversion webhook server with state");
+        tracing::debug!("creating new conversion webhook server with state");
 
-        // NOTE (@Techassi): Initially, after adding the state extractor, the
-        // compiler kept throwing a trait error at me stating that the closure
-        // below doesn't implement the Handler trait from Axum. This had nothing
-        // to do with the state itself, but rather the order of extractors. All
-        // body consuming extractors, like the JSON extractor need to come last
-        // in the handler.
-        // https://docs.rs/axum/latest/axum/extract/index.html#the-order-of-extractors
-        let handler_fn = |State(state): State<S>, Json(review): Json<ConversionReview>| async {
-            let review = handler.call(review, state);
-            Json(review)
-        };
+        let mut router = Router::new();
+        for (kind, handler) in handlers {
+            // NOTE (@Techassi): Initially, after adding the state extractor, the
+            // compiler kept throwing a trait error at me stating that the closure
+            // below doesn't implement the Handler trait from Axum. This had nothing
+            // to do with the state itself, but rather the order of extractors. All
+            // body consuming extractors, like the JSON extractor need to come last
+            // in the handler.
+            // https://docs.rs/axum/latest/axum/extract/index.html#the-order-of-extractors
+            let handler_fn = |State(state): State<S>, Json(review): Json<ConversionReview>| async {
+                let review = handler.call(review, state);
+                Json(review)
+            };
 
-        let router = Router::new()
-            .route("/convert", post(handler_fn))
-            .with_state(state);
+            router = router.route(&format!("/convert/{kind}"), post(handler_fn));
+        }
+        let router = router.with_state(state);
 
         Self { router, options }
     }

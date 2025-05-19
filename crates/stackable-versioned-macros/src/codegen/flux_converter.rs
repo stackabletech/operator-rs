@@ -60,7 +60,7 @@ pub(crate) fn generate_kubernetes_conversion(
                     conversion.api_version = review.types.api_version,
                 )
             )]
-            pub fn convert(review: kube::core::conversion::ConversionReview) -> kube::core::conversion::ConversionResponse {
+            pub fn convert(review: kube::core::conversion::ConversionReview) -> kube::core::conversion::ConversionReview {
                 // Intentionally not using `snafu::ResultExt` here to keep the number of dependencies minimal
                 use kube::core::conversion::{ConversionRequest, ConversionResponse};
                 use kube::core::response::StatusSummary;
@@ -82,7 +82,7 @@ pub(crate) fn generate_kubernetes_conversion(
                                 reason: "ConversionReview request missing".to_string(),
                                 details: None,
                             },
-                        );
+                        ).into_review();
                     }
                 };
 
@@ -97,7 +97,7 @@ pub(crate) fn generate_kubernetes_conversion(
                             type = stringify!(#enum_ident),
                         );
 
-                        conversion_response.success(converted)
+                        conversion_response.success(converted).into_review()
                     },
                     Err(err) => {
                         tracing::debug!(
@@ -115,11 +115,15 @@ pub(crate) fn generate_kubernetes_conversion(
                                 reason: error_message,
                                 details: None,
                             },
-                        )
+                        ).into_review()
                     }
                 }
             }
 
+            #[tracing::instrument(
+                skip_all,
+                err
+            )]
             fn try_convert(request: &kube::core::conversion::ConversionRequest) -> Result<Vec<serde_json::Value>, stackable_versioned::ConversionError> {
                 use stackable_versioned::ConversionError;
 
