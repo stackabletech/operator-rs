@@ -70,7 +70,7 @@ fn prepare_from_string(input: String) -> Result<(TokenStream, Item), Error> {
 pub(crate) fn set_snapshot_path() -> Settings {
     let dir = std::env::var("CARGO_MANIFEST_DIR").expect("env var CARGO_MANIFEST_DIR must be set");
     let mut settings = Settings::clone_current();
-    settings.set_snapshot_path(PathBuf::from(dir).join("fixtures/snapshots"));
+    settings.set_snapshot_path(PathBuf::from(dir).join("tests/snapshots"));
 
     settings
 }
