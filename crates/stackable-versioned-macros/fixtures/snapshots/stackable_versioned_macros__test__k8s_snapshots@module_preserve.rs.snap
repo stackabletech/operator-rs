@@ -252,7 +252,13 @@ pub(crate) mod versioned {
     }
     #[automatically_derived]
     impl Foo {
-        #[tracing::instrument(skip_all)]
+        #[tracing::instrument(
+            skip_all,
+            fields(
+                conversion.kind = review.types.kind,
+                conversion.api_version = review.types.api_version,
+            )
+        )]
         pub fn convert(
             review: kube::core::conversion::ConversionReview,
         ) -> kube::core::conversion::ConversionReview {
@@ -629,7 +635,13 @@ pub(crate) mod versioned {
     }
     #[automatically_derived]
     impl Bar {
-        #[tracing::instrument(skip_all)]
+        #[tracing::instrument(
+            skip_all,
+            fields(
+                conversion.kind = review.types.kind,
+                conversion.api_version = review.types.api_version,
+            )
+        )]
         pub fn convert(
             review: kube::core::conversion::ConversionReview,
         ) -> kube::core::conversion::ConversionReview {
