@@ -922,7 +922,7 @@ where
 }
 
 #[cfg(test)]
-mod snapshots {
+mod snapshot_tests {
     use insta::{assert_snapshot, glob};
 
     use super::*;
@@ -931,7 +931,7 @@ mod snapshots {
     fn default() {
         let _settings_guard = test_utils::set_snapshot_path().bind_to_scope();
 
-        glob!("../tests/inputs/default", "*.rs", |path| {
+        glob!("../tests/inputs/default/pass", "*.rs", |path| {
             let formatted = test_utils::expand_from_file(path)
                 .inspect_err(|err| eprintln!("{err}"))
                 .unwrap();
@@ -944,7 +944,7 @@ mod snapshots {
     fn k8s() {
         let _settings_guard = test_utils::set_snapshot_path().bind_to_scope();
 
-        glob!("../tests/inputs/k8s", "*.rs", |path| {
+        glob!("../tests/inputs/k8s/pass", "*.rs", |path| {
             let formatted = test_utils::expand_from_file(path)
                 .inspect_err(|err| eprintln!("{err}"))
                 .unwrap();
