@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.93.1] - 2025-05-20
+
 ### Added
 
 - Add git-sync support ([#1024]).
