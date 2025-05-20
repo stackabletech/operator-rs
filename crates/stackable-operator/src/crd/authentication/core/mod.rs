@@ -127,11 +127,13 @@ pub mod versioned {
     #[serde(rename_all = "camelCase")]
     #[schemars(description = "")]
     pub struct ClientAuthenticationDetails<O = ()> {
-        /// Name of the [AuthenticationClass](https://docs.stackable.tech/home/nightly/concepts/authentication) used to
-        /// authenticate users.
+        /// Name of the [`AuthenticationClass`] used to authenticate users.
         ///
         /// To get the concrete [`AuthenticationClass`], we must resolve it. This resolution can be
         /// achieved by using [`ClientAuthenticationDetails::resolve_class`].
+        #[schemars(
+            description = "Name of the [AuthenticationClass](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication) used to authenticate users"
+        )]
         #[serde(rename = "authenticationClass")]
         authentication_class_ref: String,
 
@@ -145,6 +147,9 @@ pub mod versioned {
         // added, so that user can not configure multiple options at the same time (yes we are aware
         // that this makes a changing the type of an AuthenticationClass harder). This is a
         // non-breaking change though :)
+        #[schemars(
+            description = "This field contains OIDC-specific configuration. It is only required in case OIDC is used."
+        )]
         oidc: Option<oidc::v1alpha1::ClientAuthenticationOptions<O>>,
     }
 }
