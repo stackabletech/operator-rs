@@ -56,7 +56,7 @@ pub mod versioned {
 
         /// A map of optional configuration settings that are listed in the git-sync [documentation].
         ///
-        /// Also read the git-sync [example] in our documentation.
+        /// Also read the git-sync [example] in our documentation. These settings are not verified.
         ///
         /// [documentation]: https://github.com/kubernetes/git-sync/tree/v4.2.4?tab=readme-ov-file#manual
         /// [example]: DOCS_BASE_URL_PLACEHOLDER/airflow/usage-guide/mounting-dags#_example
