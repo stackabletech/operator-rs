@@ -255,33 +255,26 @@ impl GitSyncResources {
             GIT_SYNC_ROOT_DIR.to_owned(),
         )]);
 
-        let mut user_defined_args = BTreeMap::new();
-        // The key and value in Git configs are separated by a colon, but both
-        // can contain either escaped colons or unescaped colons if enclosed in
-        // quotes. To avoid parsing, just a vector is used instead of a map.
-        let mut user_defined_git_configs = Vec::new();
+        let mut git_sync_config = git_sync.git_sync_conf.clone();
 
-        for (key, value) in &git_sync.git_sync_conf {
-            // The initial git-sync implementation in the airflow-operator
-            // (https://github.com/stackabletech/airflow-operator/pull/381)
-            // used this condition to find Git configs. It is also used here
-            // for backwards-compatibility:
-            if key.to_lowercase().ends_with("-git-config") {
-                // Roughly check if the user defined config contains an
-                // internally defined config and emit a warning in case.
-                if internal_git_config.keys().any(|key| value.contains(key)) {
-                    tracing::warn!("Config option {value:?} contains a value for {GIT_SYNC_SAFE_DIR_OPTION} that overrides
-                                the value of this operator. Git-sync functionality will probably not work as expected!");
-                }
-                user_defined_git_configs.push(value.to_owned());
-            } else if internal_args.contains_key(key) {
-                tracing::warn!(
-                    "The git-sync option {key:?} is already internally defined and will be ignored."
-                );
-            } else {
-                // The user-defined arguments are not validated.
-                user_defined_args.insert(key.to_owned(), value.to_owned());
-            }
+        // The key and value in Git configs are separated by a colon, but both can contain either
+        // escaped colons or unescaped colons if enclosed in quotes. To avoid parsing, just a String
+        // is used instead of a key-value pair.
+        let user_defined_git_config = git_sync_config.remove("--git-config");
+
+        if let Some(git_config) = &user_defined_git_config {
+            // Roughly check if the user defined Git config contains an internally defined config
+            // and emit a warning in case.
+            internal_git_config
+                .keys()
+                .filter(|key| git_config.contains(*key))
+                .for_each(|key| {
+                    tracing::warn!(
+                        "The Git config option {git_config:?} contains a value for {key} that \
+                        overrides the value of this operator. Git-sync functionality will probably \
+                        not work as expected!"
+                    );
+                });
         }
 
         // The user-defined Git config is just appended.
@@ -289,9 +282,22 @@ impl GitSyncResources {
         let git_config = internal_git_config
             .into_iter()
             .map(|(key, value)| format!("{key}:{value}"))
-            .chain(user_defined_git_configs)
+            .chain(user_defined_git_config)
             .collect::<Vec<_>>()
             .join(",");
+
+        let mut user_defined_args = BTreeMap::new();
+
+        for (key, value) in git_sync_config {
+            if internal_args.contains_key(&key) {
+                tracing::warn!(
+                    "The git-sync option {key:?} is already internally defined and will be ignored."
+                );
+            } else {
+                // The user-defined arguments are not validated.
+                user_defined_args.insert(key, value);
+            }
+        }
 
         let mut args = internal_args;
         args.extend(user_defined_args);
@@ -425,11 +431,8 @@ mod tests {
               --ref: internal option which should be ignored
               --repo: internal option which should be ignored
               --root: internal option which should be ignored
-              --GIT-CONFIG: k1:v1
               # safe.directory should be accepted but a warning will be emitted
-              --git-config: k2:v2,safe.directory:/safe-dir
-              -GIT-CONFIG: k3:v3
-              -git-config: k4:v4
+              --git-config: key:value,safe.directory:/safe-dir
           "#;
 
         let deserializer = serde_yaml::Deserializer::from_str(git_sync_spec);
@@ -647,7 +650,7 @@ volumeMounts:
   }
 
   prepare_signal_handlers
-  /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git,k1:v1,k2:v2,safe.directory:/safe-dir,k3:v3,k4:v4' --link=current --one-time=false --period=20s --ref=feat/git-sync --repo=https://github.com/stackabletech/repo3 --root=/tmp/git &
+  /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git,key:value,safe.directory:/safe-dir' --link=current --one-time=false --period=20s --ref=feat/git-sync --repo=https://github.com/stackabletech/repo3 --root=/tmp/git &
   wait_for_termination $!
 command:
 - /bin/bash
@@ -766,7 +769,7 @@ volumeMounts:
             r#"args:
 - |-
   mkdir --parents /stackable/log/git-sync-2-init && exec > >(tee /stackable/log/git-sync-2-init/container.stdout.log) 2> >(tee /stackable/log/git-sync-2-init/container.stderr.log >&2)
-  /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git,k1:v1,k2:v2,safe.directory:/safe-dir,k3:v3,k4:v4' --link=current --one-time=true --period=20s --ref=feat/git-sync --repo=https://github.com/stackabletech/repo3 --root=/tmp/git
+  /stackable/git-sync --depth=1 --git-config='safe.directory:/tmp/git,key:value,safe.directory:/safe-dir' --link=current --one-time=true --period=20s --ref=feat/git-sync --repo=https://github.com/stackabletech/repo3 --root=/tmp/git
 command:
 - /bin/bash
 - -x
