@@ -6,7 +6,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 pub const DEFAULT_HTTPS_PORT: u16 = 8443;
 
 /// The default IP address [`Ipv4Addr::UNSPECIFIED`] (`0.0.0.0`) the webhook server binds to,
-/// which represents binding on all network interfaces.
+/// which represents binding on all network addresses.
 pub const DEFAULT_LISTEN_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
 
 /// The default socket address `0.0.0.0:8443` the webhook server binds to.

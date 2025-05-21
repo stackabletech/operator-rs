@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - BREAKING: The constant `DEFAULT_IP_ADDRESS` has been renamed to `DEFAULT_LISTEN_ADDRESS` and binds to all
-  interfaces (instead of only loopback) by default. This was changed because all the webhooks
+  addresses (instead of only loopback) by default. This was changed because all the webhooks
   deployed to Kubernetes (e.g. conversion or mutating - which this crate targets) need to be
   accessible by it, which is not the case when only using loopback ([#1045]).
 
