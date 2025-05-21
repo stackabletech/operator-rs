@@ -1,10 +1,10 @@
 //! Utility types and functions to easily create ready-to-use webhook servers
 //! which can handle different tasks, for example CRD conversions. All webhook
-//! servers use HTTPS by defaultThis library is fully compatible with the
+//! servers use HTTPS by default. This library is fully compatible with the
 //! [`tracing`] crate and emits debug level tracing data.
 //!
 //! Most users will only use the top-level exported generic [`WebhookServer`]
-//! which enables complete control over the [Router] which handles registering
+//! which enables complete control over the [`Router`] which handles registering
 //! routes and their handler functions.
 //!
 //! ```
@@ -20,7 +20,7 @@
 //! only required parameters are a conversion handler function and [`Options`].
 //!
 //! This library additionally also exposes lower-level structs and functions to
-//! enable complete controll over these details if needed.
+//! enable complete control over these details if needed.
 //!
 //! [1]: crate::servers::ConversionWebhookServer
 use axum::{Router, routing::get};
