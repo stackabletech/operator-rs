@@ -1,6 +1,6 @@
 use k8s_openapi::api::core::v1::{Volume, VolumeMount};
 use snafu::{ResultExt as _, Snafu};
-use url::{ParseError, Url};
+use url::Url;
 
 use crate::{
     builder::{
@@ -22,7 +22,7 @@ pub enum Error {
     BindCredentials { source: SecretClassVolumeError },
 
     #[snafu(display("failed to parse LDAP endpoint url"))]
-    ParseLdapEndpointUrl { source: ParseError },
+    ParseLdapEndpointUrl { source: url::ParseError },
 
     #[snafu(display("failed to add LDAP TLS client details volumes and volume mounts"))]
     AddLdapTlsClientDetailsVolumes { source: TlsClientDetailsError },

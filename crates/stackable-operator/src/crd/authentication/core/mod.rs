@@ -1,15 +1,19 @@
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use stackable_versioned::versioned;
+
+use crate::versioned::versioned;
 
 mod v1alpha1_impl;
 
 #[versioned(version(name = "v1alpha1"))]
 pub mod versioned {
-    // This makes v1alpha1 versions of all authentication providers available to the
-    // AuthenticationClassProvider enum below.
-    mod v1alpha1 {
+    pub mod v1alpha1 {
+        // Re-export the v1alpha1-specific error type from the private impl module.
+        pub use v1alpha1_impl::Error;
+
+        // This makes v1alpha1 versions of all authentication providers available to the
+        // AuthenticationClassProvider enum below.
         use crate::crd::authentication::{kerberos, ldap, oidc, r#static, tls};
     }
     /// The Stackable Platform uses the AuthenticationClass as a central mechanism to handle user
@@ -79,18 +83,20 @@ pub mod versioned {
         Oidc(oidc::v1alpha1::AuthenticationProvider),
 
         /// The [TLS provider](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication#_tls).
-        /// The TLS AuthenticationClass is used when users should authenticate themselves with a TLS certificate.
+        /// The TLS AuthenticationClass is used when users should authenticate themselves with a
+        /// TLS certificate.
         Tls(tls::v1alpha1::AuthenticationProvider),
 
         /// The [Kerberos provider](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication#_kerberos).
-        /// The Kerberos AuthenticationClass is used when users should authenticate themselves via Kerberos.
+        /// The Kerberos AuthenticationClass is used when users should authenticate themselves via
+        /// Kerberos.
         Kerberos(kerberos::v1alpha1::AuthenticationProvider),
     }
 
-    /// Common [`v1alpha1::ClientAuthenticationDetails`] which is specified at the client/ product
-    /// cluster level. It provides a name (key) to resolve a particular [`AuthenticationClass`].
-    /// Additionally, it provides authentication provider specific configuration (OIDC and LDAP for
-    /// example).
+    /// Common client authentication details which is specified at the client/ product cluster level.
+    ///
+    /// It provides a name (key) to resolve a particular [`AuthenticationClass`]. Additionally, it
+    /// provides authentication provider specific configuration (OIDC and LDAP for example).
     ///
     /// If the product needs additional (product specific) authentication options, it is recommended
     /// to wrap this struct and use `#[serde(flatten)]` on the field.
@@ -121,21 +127,29 @@ pub mod versioned {
     #[serde(rename_all = "camelCase")]
     #[schemars(description = "")]
     pub struct ClientAuthenticationDetails<O = ()> {
-        /// Name of the [AuthenticationClass](https://docs.stackable.tech/home/nightly/concepts/authentication) used to
-        /// authenticate users.
-        //
-        // To get the concrete [`AuthenticationClass`], we must resolve it. This resolution can be achieved by using
-        // [`ClientAuthenticationDetails::resolve_class`].
+        /// Name of the [`AuthenticationClass`] used to authenticate users.
+        ///
+        /// To get the concrete [`AuthenticationClass`], we must resolve it. This resolution can be
+        /// achieved by using [`ClientAuthenticationDetails::resolve_class`].
+        #[schemars(
+            description = "Name of the [AuthenticationClass](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication) used to authenticate users"
+        )]
         #[serde(rename = "authenticationClass")]
         authentication_class_ref: String,
 
-        /// This field contains OIDC-specific configuration. It is only required in case OIDC is used.
+        /// This field contains OIDC-specific configuration. It is only required in case OIDC is
+        /// used.
+        ///
+        /// Use [`ClientAuthenticationDetails::oidc_or_error`] to get the value or report an error
+        /// to the user.
         //
-        // Use [`ClientAuthenticationDetails::oidc_or_error`] to get the value or report an error to the user.
-        // TODO: Ideally we want this to be an enum once other `ClientAuthenticationOptions` are added, so
-        // that user can not configure multiple options at the same time (yes we are aware that this makes a
-        // changing the type of an AuthenticationClass harder).
-        // This is a non-breaking change though :)
+        // TODO: Ideally we want this to be an enum once other `ClientAuthenticationOptions` are
+        // added, so that user can not configure multiple options at the same time (yes we are aware
+        // that this makes a changing the type of an AuthenticationClass harder). This is a
+        // non-breaking change though :)
+        #[schemars(
+            description = "This field contains OIDC-specific configuration. It is only required in case OIDC is used."
+        )]
         oidc: Option<oidc::v1alpha1::ClientAuthenticationOptions<O>>,
     }
 }

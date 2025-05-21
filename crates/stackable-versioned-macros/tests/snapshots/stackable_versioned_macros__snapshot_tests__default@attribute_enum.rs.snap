@@ -1,0 +1,95 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+expression: formatted
+input_file: crates/stackable-versioned-macros/tests/inputs/default/pass/attribute_enum.rs
+---
+#[automatically_derived]
+mod v1alpha1 {
+    use super::*;
+    #[derive(Default)]
+    pub enum Foo {
+        /// This variant is available in every version (so far).
+        #[default]
+        Foo,
+        /// Keep the main field docs the same, even after the field is
+        /// deprecated.
+        Bar,
+        /// This is will keep changing over time.
+        Qoox,
+    }
+}
+#[automatically_derived]
+mod v1beta1 {
+    use super::*;
+    ///Additional docs for this version which are purposefully long to
+    ///show how manual line wrapping works. \
+    ///Multi-line docs are also supported, as per regular doc-comments.
+    #[derive(Default)]
+    pub enum Foo {
+        /// This variant is available in every version (so far).
+        #[default]
+        Foo,
+        /// Keep the main field docs the same, even after the field is
+        /// deprecated.
+        #[deprecated = "gone"]
+        DeprecatedBar,
+        /// This is for baz
+        Baz,
+        /// This is will keep changing over time.
+        Qaax,
+    }
+}
+#[automatically_derived]
+mod v1beta2 {
+    use super::*;
+    #[derive(Default)]
+    pub enum Foo {
+        /// This variant is available in every version (so far).
+        #[default]
+        Foo,
+        /// Keep the main field docs the same, even after the field is
+        /// deprecated.
+        #[deprecated]
+        DeprecatedBar,
+        /// This is for baz
+        Baz,
+        /// This is will keep changing over time.
+        Qaax,
+    }
+}
+#[automatically_derived]
+mod v1 {
+    use super::*;
+    #[derive(Default)]
+    pub enum Foo {
+        /// This variant is available in every version (so far).
+        #[default]
+        Foo,
+        /// Keep the main field docs the same, even after the field is
+        /// deprecated.
+        #[deprecated]
+        DeprecatedBar,
+        /// This is for baz
+        Baz,
+        /// This is will keep changing over time.
+        Quux,
+    }
+}
+#[automatically_derived]
+mod v2 {
+    use super::*;
+    #[derive(Default)]
+    pub enum Foo {
+        /// This variant is available in every version (so far).
+        #[default]
+        Foo,
+        /// Keep the main field docs the same, even after the field is
+        /// deprecated.
+        #[deprecated]
+        DeprecatedBar,
+        /// This is for baz
+        Baz,
+        /// This is will keep changing over time.
+        Quux,
+    }
+}

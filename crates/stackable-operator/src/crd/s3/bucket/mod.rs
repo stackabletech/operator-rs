@@ -1,30 +1,17 @@
 use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use snafu::Snafu;
-use stackable_versioned::versioned;
 
-use crate::crd::s3::{ConnectionError, connection::v1alpha1 as conn_v1alpha1};
+use crate::{crd::s3::connection::v1alpha1 as conn_v1alpha1, versioned::versioned};
 
 mod v1alpha1_impl;
 
-// NOTE (@Techassi): Where should this error be placed? Technically errors can
-// change between version, because version-specific impl blocks might need
-// different variants or might use a completely different error type.
-#[derive(Debug, Snafu)]
-pub enum BucketError {
-    #[snafu(display("failed to retrieve S3 connection '{s3_connection}'"))]
-    RetrieveS3Connection {
-        source: crate::client::Error,
-        s3_connection: String,
-    },
-
-    #[snafu(display("failed to resolve S3 connection"))]
-    ResolveConnection { source: ConnectionError },
-}
-
 #[versioned(version(name = "v1alpha1"))]
 pub mod versioned {
+    pub mod v1alpha1 {
+        pub use v1alpha1_impl::BucketError;
+    }
+
     /// S3 bucket specification containing the bucket name and an inlined or referenced connection specification.
     /// Learn more on the [S3 concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
     #[versioned(k8s(

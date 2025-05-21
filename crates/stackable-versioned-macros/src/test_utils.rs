@@ -7,7 +7,7 @@ use std::{
 use insta::Settings;
 use proc_macro2::TokenStream;
 use regex::Regex;
-use snafu::{OptionExt, ResultExt, Snafu};
+use snafu::{NoneError, OptionExt, ResultExt, Snafu};
 use syn::Item;
 
 use crate::versioned_impl;
@@ -24,8 +24,8 @@ pub(crate) enum Error {
     #[snafu(display("failed to read input file"))]
     ReadFile { source: std::io::Error },
 
-    #[snafu(display("failed to find delimiter"))]
-    MissingDelimiter,
+    #[snafu(display("failed to find delimiters"))]
+    MissingDelimiters,
 
     #[snafu(display("failed to find regex match group"))]
     MissingRegexMatchGroup,
@@ -51,7 +51,13 @@ pub(crate) fn expand_from_file(path: &Path) -> Result<String, Error> {
 }
 
 fn prepare_from_string(input: String) -> Result<(TokenStream, Item), Error> {
-    let (attrs, input) = input.split_once(DELIMITER).context(MissingDelimiterSnafu)?;
+    let parts: [&str; 4] = input
+        .split(DELIMITER)
+        .collect::<Vec<_>>()
+        .try_into()
+        .map_err(|_| NoneError)
+        .context(MissingDelimitersSnafu)?;
+    let [_, attrs, input, _] = parts;
 
     let attrs = REGEX
         .captures(attrs)
@@ -70,7 +76,7 @@ fn prepare_from_string(input: String) -> Result<(TokenStream, Item), Error> {
 pub(crate) fn set_snapshot_path() -> Settings {
     let dir = std::env::var("CARGO_MANIFEST_DIR").expect("env var CARGO_MANIFEST_DIR must be set");
     let mut settings = Settings::clone_current();
-    settings.set_snapshot_path(PathBuf::from(dir).join("fixtures/snapshots"));
+    settings.set_snapshot_path(PathBuf::from(dir).join("tests/snapshots"));
 
     settings
 }

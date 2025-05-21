@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `kube_client` crate override to `k8s(crates())` to specify a custom import path. This override
+  will not be passed to the `#[kube()]` attribute, but will only be available to internal
+  `#[versioned]` macro code ([#1038]).
+
+### Fixed
+
+- Correctly handle fields added in later versions ([#1031]).
+
+[#1031]: https://github.com/stackabletech/operator-rs/pull/1031
+[#1038]: https://github.com/stackabletech/operator-rs/pull/1038
+
 ## [0.7.1] - 2025-04-02
 
 ### Fixed
