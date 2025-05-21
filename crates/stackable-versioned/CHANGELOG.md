@@ -8,14 +8,15 @@ All notable changes to this project will be documented in this file.
 
 - Implement basic ground work for downgrading custom resources ([#1033]).
   - Emit `From` implementations to downgrade custom resource specs.
-  - Emit a status struct when multiple versions are defined to be able to track
-    values required during downgrades and upgrades of custom resources.
-
-### Changed
+  - Emit a status struct when multiple versions are defined to be able to track values required
+    during downgrades and upgrades of custom resources.
 
 - Add `kube_client` crate override to `k8s(crates())` to specify a custom import path. This override
   will not be passed to the `#[kube()]` attribute, but will only be available to internal
   `#[versioned]` macro code ([#1038]).
+
+### Changed
+
 - BREAKING: The `convert_with` parameter of the `changed()` action was renamed and split into two
   parts to be able to control the conversion during upgrades and downgrades: `upgrade_with` and
   `downgrade_with` ([#1033]).
