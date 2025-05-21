@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.3] - 2025-05-19
+
 ### Added
 
 - Add support for serialization and deserialization via `serde`. This feature is enabled via the

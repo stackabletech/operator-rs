@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.93.1] - 2025-05-20
+
+### Added
+
+- Add git-sync support ([#1024]).
+
+[#1024]: https://github.com/stackabletech/operator-rs/pull/1024
+
+## [0.93.0] - 2025-05-19
+
 ### Changed
 
 - BREAKING: Version common CRD structs and enums ([#968]).
