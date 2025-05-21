@@ -22,8 +22,7 @@ pub(crate) mod v1alpha1 {
         version = "v1alpha1",
         kind = "Foo",
         plural = "foos",
-        namespaced,
-        status = FooStatus
+        namespaced
     )]
     pub struct FooSpec {
         pub bar: usize,
@@ -41,8 +40,7 @@ pub(crate) mod v1alpha1 {
         group = "bar.example.org",
         version = "v1alpha1",
         kind = "Bar",
-        plural = "bars",
-        status = BarStatus
+        plural = "bars"
     )]
     pub struct BarSpec {
         pub baz: String,
@@ -136,8 +134,7 @@ pub(crate) mod v1 {
         version = "v1",
         kind = "Foo",
         plural = "foos",
-        namespaced,
-        status = FooStatus
+        namespaced
     )]
     pub struct FooSpec {
         pub bar: usize,
@@ -152,13 +149,7 @@ pub(crate) mod v1 {
         schemars::JsonSchema,
         kube::CustomResource,
     )]
-    #[kube(
-        group = "bar.example.org",
-        version = "v1",
-        kind = "Bar",
-        plural = "bars",
-        status = BarStatus
-    )]
+    #[kube(group = "bar.example.org", version = "v1", kind = "Bar", plural = "bars")]
     pub struct BarSpec {
         pub baz: String,
     }
@@ -254,8 +245,7 @@ pub(crate) mod v2alpha1 {
         version = "v2alpha1",
         kind = "Foo",
         plural = "foos",
-        namespaced,
-        status = FooStatus
+        namespaced
     )]
     pub struct FooSpec {
         pub bar: usize,
@@ -275,8 +265,7 @@ pub(crate) mod v2alpha1 {
         group = "bar.example.org",
         version = "v2alpha1",
         kind = "Bar",
-        plural = "bars",
-        status = BarStatus
+        plural = "bars"
     )]
     pub struct BarSpec {
         pub baz: String,
@@ -333,7 +322,7 @@ impl Foo {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct FooStatus {
-    pub crd_values: ::stackable_versioned::CrdValues,
+    pub changed_values: ::stackable_versioned::ChangedValues,
 }
 #[automatically_derived]
 pub(crate) enum Bar {
@@ -382,5 +371,5 @@ impl Bar {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct BarStatus {
-    pub crd_values: ::stackable_versioned::CrdValues,
+    pub changed_values: ::stackable_versioned::ChangedValues,
 }

@@ -23,8 +23,7 @@ pub(crate) mod versioned {
             version = "v1alpha1",
             kind = "Foo",
             plural = "foos",
-            namespaced,
-            status = FooStatus
+            namespaced
         )]
         pub struct FooSpec {
             pub bar: usize,
@@ -42,8 +41,7 @@ pub(crate) mod versioned {
             group = "bar.example.org",
             version = "v1alpha1",
             kind = "Bar",
-            plural = "bars",
-            status = BarStatus
+            plural = "bars"
         )]
         pub struct BarSpec {
             pub baz: String,
@@ -128,8 +126,7 @@ pub(crate) mod versioned {
             version = "v1",
             kind = "Foo",
             plural = "foos",
-            namespaced,
-            status = FooStatus
+            namespaced
         )]
         pub struct FooSpec {
             pub bar: usize,
@@ -144,13 +141,7 @@ pub(crate) mod versioned {
             schemars::JsonSchema,
             kube::CustomResource,
         )]
-        #[kube(
-            group = "bar.example.org",
-            version = "v1",
-            kind = "Bar",
-            plural = "bars",
-            status = BarStatus
-        )]
+        #[kube(group = "bar.example.org", version = "v1", kind = "Bar", plural = "bars")]
         pub struct BarSpec {
             pub baz: String,
         }
@@ -237,8 +228,7 @@ pub(crate) mod versioned {
             version = "v2alpha1",
             kind = "Foo",
             plural = "foos",
-            namespaced,
-            status = FooStatus
+            namespaced
         )]
         pub struct FooSpec {
             pub bar: usize,
@@ -258,8 +248,7 @@ pub(crate) mod versioned {
             group = "bar.example.org",
             version = "v2alpha1",
             kind = "Bar",
-            plural = "bars",
-            status = BarStatus
+            plural = "bars"
         )]
         pub struct BarSpec {
             pub baz: String,
@@ -313,7 +302,7 @@ pub(crate) mod versioned {
     )]
     #[serde(rename_all = "camelCase")]
     pub struct FooStatus {
-        pub crd_values: ::stackable_versioned::CrdValues,
+        pub changed_values: ::stackable_versioned::ChangedValues,
     }
     pub enum Bar {
         V1Alpha1,
@@ -359,6 +348,6 @@ pub(crate) mod versioned {
     )]
     #[serde(rename_all = "camelCase")]
     pub struct BarStatus {
-        pub crd_values: ::stackable_versioned::CrdValues,
+        pub changed_values: ::stackable_versioned::ChangedValues,
     }
 }

@@ -20,8 +20,7 @@ pub mod v1alpha1 {
         kind = "FooBar",
         singular = "foo",
         plural = "foos",
-        namespaced,
-        status = FooBarStatus
+        namespaced
     )]
     pub struct FooSpec {
         pub baz: bool,
@@ -61,8 +60,7 @@ pub mod v1beta1 {
         kind = "FooBar",
         singular = "foo",
         plural = "foos",
-        namespaced,
-        status = FooBarStatus
+        namespaced
     )]
     pub struct FooSpec {
         pub bah: u16,
@@ -104,8 +102,7 @@ pub mod v1 {
         kind = "FooBar",
         singular = "foo",
         plural = "foos",
-        namespaced,
-        status = FooBarStatus
+        namespaced
     )]
     pub struct FooSpec {
         pub bar: usize,
@@ -159,5 +156,5 @@ impl FooBar {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct FooBarStatus {
-    pub crd_values: ::stackable_versioned::CrdValues,
+    pub changed_values: ::stackable_versioned::ChangedValues,
 }

@@ -21,8 +21,7 @@ pub mod v1alpha1 {
         singular = "foo",
         plural = "foos",
         namespaced,
-        crates(kube_core = ::kube::core),
-        status = FooStatus
+        crates(kube_core = ::kube::core)
     )]
     pub struct FooSpec {
         pub baz: bool,
@@ -63,8 +62,7 @@ pub mod v1beta1 {
         singular = "foo",
         plural = "foos",
         namespaced,
-        crates(kube_core = ::kube::core),
-        status = FooStatus
+        crates(kube_core = ::kube::core)
     )]
     pub struct FooSpec {
         pub bah: u16,
@@ -107,8 +105,7 @@ pub mod v1 {
         singular = "foo",
         plural = "foos",
         namespaced,
-        crates(kube_core = ::kube::core),
-        status = FooStatus
+        crates(kube_core = ::kube::core)
     )]
     pub struct FooSpec {
         pub bar: usize,
@@ -162,5 +159,5 @@ impl Foo {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct FooStatus {
-    pub crd_values: ::stackable_versioned::CrdValues,
+    pub changed_values: ::stackable_versioned::ChangedValues,
 }
