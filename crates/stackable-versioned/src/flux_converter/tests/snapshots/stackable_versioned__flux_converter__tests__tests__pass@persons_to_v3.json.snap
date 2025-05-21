@@ -4,40 +4,69 @@ expression: formatted
 input_file: crates/stackable-versioned/fixtures/inputs/pass/persons_to_v3.json
 ---
 {
-  "uid": "c4e55572-ee1f-4e94-9097-28936985d45f",
-  "result": {
-    "status": "Success"
-  },
-  "convertedObjects": [
-    {
-      "firstName": "",
-      "gender": "Unknown",
-      "lastName": "",
-      "username": "sbernauer"
+  "apiVersion": "apiextensions.k8s.io/v1",
+  "kind": "ConversionReview",
+  "response": {
+    "uid": "c4e55572-ee1f-4e94-9097-28936985d45f",
+    "result": {
+      "status": "Success"
     },
-    {
-      "firstName": "Sebastian",
-      "gender": "Unknown",
-      "lastName": "Bernauer",
-      "username": "sbernauer"
-    },
-    {
-      "firstName": "Sebastian",
-      "gender": "Unknown",
-      "lastName": "Bernauer",
-      "username": "sbernauer"
-    },
-    {
-      "firstName": "Sebastian",
-      "gender": "Male",
-      "lastName": "Bernauer",
-      "username": "sbernauer"
-    },
-    {
-      "firstName": "Sebastian",
-      "gender": "Male",
-      "lastName": "Bernauer",
-      "username": "sbernauer"
-    }
-  ]
+    "convertedObjects": [
+      {
+        "apiVersion": "test.stackable.tech/v3",
+        "kind": "Person",
+        "metadata": {
+          "name": "sbernauer",
+          "namespace": "default",
+          "uid": "d41e2019-5de3-409c-a7b2-0799ecb95e4b"
+        },
+        "spec": {
+          "firstName": "",
+          "gender": "Unknown",
+          "lastName": "",
+          "username": "sbernauer"
+        }
+      },
+      {
+        "apiVersion": "test.stackable.tech/v3",
+        "kind": "Person",
+        "spec": {
+          "firstName": "Sebastian",
+          "gender": "Unknown",
+          "lastName": "Bernauer",
+          "username": "sbernauer"
+        }
+      },
+      {
+        "apiVersion": "test.stackable.tech/v3",
+        "kind": "Person",
+        "spec": {
+          "firstName": "Sebastian",
+          "gender": "Unknown",
+          "lastName": "Bernauer",
+          "username": "sbernauer"
+        }
+      },
+      {
+        "apiVersion": "test.stackable.tech/v3",
+        "kind": "Person",
+        "spec": {
+          "firstName": "Sebastian",
+          "gender": "Male",
+          "lastName": "Bernauer",
+          "username": "sbernauer"
+        }
+      },
+      {
+        "apiVersion": "test.stackable.tech/v3",
+        "kind": "Person",
+        "spec": {
+          "firstName": "Sebastian",
+          "gender": "Male",
+          "lastName": "Bernauer",
+          "username": "sbernauer"
+        }
+      }
+    ]
+  }
 }

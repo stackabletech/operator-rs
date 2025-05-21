@@ -120,6 +120,7 @@ impl Container {
             &s.common.idents.original,
             enum_variant_idents,
             enum_variant_strings,
+            kubernetes_options,
         ));
 
         Some(tokens)

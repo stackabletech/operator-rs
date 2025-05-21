@@ -353,7 +353,11 @@ impl Struct {
 
         match &self.common.options.kubernetes_options {
             Some(kubernetes_options) if !kubernetes_options.skip_merged_crd => {
+                let k8s_group = &kubernetes_options.group;
                 let enum_ident = &self.common.idents.kubernetes;
+                let api_versions = enum_variant_strings
+                    .iter()
+                    .map(|version| format!("{k8s_group}/{version}"));
 
                 // Only add the #[automatically_derived] attribute if this impl is used outside of a
                 // module (in standalone mode).
@@ -363,6 +367,9 @@ impl Struct {
                 // Get the crate paths
                 let k8s_openapi_path = &*kubernetes_options.crates.k8s_openapi;
                 let kube_core_path = &*kubernetes_options.crates.kube_core;
+
+                // FIXME
+                let versioned_path = quote! { stackable_versioned };
 
                 Some(quote! {
                     #automatically_derived
@@ -379,14 +386,26 @@ impl Struct {
                         }
                     }
 
+                    /// Parses the version, such as `v1alpha1`
                     #automatically_derived
                     impl ::std::str::FromStr for #enum_ident {
-                        type Err = stackable_versioned::ParseResourceVersionError;
+                        type Err = #versioned_path::ParseResourceVersionError;
 
                         fn from_str(version: &str) -> Result<Self, Self::Err> {
                             match version {
                                 #(#enum_variant_strings => Ok(Self::#enum_variant_idents),)*
-                                _ => Err(stackable_versioned::ParseResourceVersionError::UnknownResourceVersion{version: version.to_string()}),
+                                _ => Err(#versioned_path::ParseResourceVersionError::UnknownResourceVersion{version: version.to_string()}),
+                            }
+                        }
+                    }
+
+                    /// Parses the entire `apiVersion`, such as `zookeeper.stackable.tech/v1alpha1`.
+                    #automatically_derived
+                    impl #enum_ident {
+                        pub fn from_api_version(api_version: &str) -> Result<Self, #versioned_path::ParseResourceVersionError> {
+                            match api_version {
+                                #(#api_versions => Ok(Self::#enum_variant_idents),)*
+                                _ => Err(#versioned_path::ParseResourceVersionError::UnknownApiVersion{api_version: api_version.to_string()}),
                             }
                         }
                     }

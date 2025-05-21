@@ -102,10 +102,10 @@ impl Foo {
         )
     )]
     pub fn convert(
-        review: kube::core::conversion::ConversionReview,
-    ) -> kube::core::conversion::ConversionReview {
-        use kube::core::conversion::{ConversionRequest, ConversionResponse};
-        use kube::core::response::StatusSummary;
+        review: ::kube::core::conversion::ConversionReview,
+    ) -> ::kube::core::conversion::ConversionReview {
+        use ::kube::core::conversion::{ConversionRequest, ConversionResponse};
+        use ::kube::core::response::StatusSummary;
         use stackable_versioned::ConversionError;
         let request = match ConversionRequest::from_review(review) {
             Ok(request) => request,
@@ -137,9 +137,6 @@ impl Foo {
                 conversion_response.success(converted).into_review()
             }
             Err(err) => {
-                tracing::debug!(
-                    "Failed to converted objects of type {type}", type = stringify!(Foo),
-                );
                 let error_message = err.as_human_readable_error_message();
                 conversion_response
                     .failure(kube::client::Status {
@@ -155,12 +152,10 @@ impl Foo {
     }
     #[tracing::instrument(skip_all, err)]
     fn try_convert(
-        request: &kube::core::conversion::ConversionRequest,
+        request: &::kube::core::conversion::ConversionRequest,
     ) -> Result<Vec<serde_json::Value>, stackable_versioned::ConversionError> {
         use stackable_versioned::ConversionError;
-        let desired_object_version = <Self as std::str::FromStr>::from_str(
-                &request.desired_api_version,
-            )
+        let desired_object_version = Self::from_api_version(&request.desired_api_version)
             .map_err(|err| ConversionError::ParseDesiredResourceVersion {
                 source: err,
                 version: request.desired_api_version.to_string(),
@@ -197,9 +192,7 @@ impl Foo {
                     send_kind: object_kind.to_string(),
                 });
             }
-            let current_object_version = <Self as std::str::FromStr>::from_str(
-                    object_version,
-                )
+            let current_object_version = Self::from_api_version(object_version)
                 .map_err(|err| ConversionError::ParseCurrentResourceVersion {
                     source: err,
                     version: object_version.to_string(),

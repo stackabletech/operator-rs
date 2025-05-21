@@ -28,6 +28,9 @@ pub use flux_converter::ConversionError;
 pub enum ParseResourceVersionError {
     #[snafu(display("the resource version \"{version}\" is not known"))]
     UnknownResourceVersion { version: String },
+
+    #[snafu(display("the api version \"{api_version}\" is not known"))]
+    UnknownApiVersion { api_version: String },
 }
 
 // Unused for now, might get picked up again in the future.

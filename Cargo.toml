@@ -11,7 +11,7 @@ repository = "https://github.com/stackabletech/operator-rs"
 [workspace.dependencies]
 product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.7.0" }
 
-axum = "0.8.1"
+axum = { version = "0.8.1", features = ["http2"] }
 chrono = { version = "0.4.38", default-features = false }
 clap = { version = "4.5.17", features = ["derive", "cargo", "env"] }
 const_format = "0.2.33"
@@ -64,7 +64,8 @@ syn = "2.0.77"
 tempfile = "3.12.0"
 time = { version = "0.3.36" }
 tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread", "fs"] }
-tokio-rustls = "0.26.0"
+# Use ring instead of aws-lc-rs
+tokio-rustls = { version = "0.26.0", default-features = false, features = ["ring", "logging", "tls12"] }
 tokio-test = "0.4.4"
 tower = { version = "0.5.1", features = ["util"] }
 tower-http = { version = "0.6.1", features = ["trace"] }

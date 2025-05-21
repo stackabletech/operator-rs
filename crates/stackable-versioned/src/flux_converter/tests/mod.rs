@@ -78,7 +78,7 @@ impl From<String> for Gender {
     }
 }
 
-/// TEMP, we need to implement downgrades manually
+// TEMP, we need to implement downgrades manually
 impl From<v1alpha2::PersonSpec> for v1alpha1::PersonSpec {
     fn from(value: v1alpha2::PersonSpec) -> Self {
         Self {
@@ -114,7 +114,7 @@ impl From<v3::PersonSpec> for v2::PersonSpec {
         }
     }
 }
-/// END TEMP
+// END TEMP
 
 #[cfg(test)]
 mod tests {
@@ -129,13 +129,14 @@ mod tests {
     fn pass() {
         glob!("../../../fixtures/inputs/pass/", "*.json", |path| {
             let (request, response) = run_for_file(path);
-            let response = response
-                .response
-                .expect("ConversionReview had no response!");
 
             let formatted = serde_json::to_string_pretty(&response)
                 .expect("Failed to serialize ConversionResponse");
             assert_snapshot!(formatted);
+
+            let response = response
+                .response
+                .expect("ConversionReview had no response!");
 
             assert_eq!(
                 response.result.status,
@@ -150,13 +151,14 @@ mod tests {
     fn fail() {
         glob!("../../../fixtures/inputs/fail/", "*.json", |path| {
             let (request, response) = run_for_file(path);
-            let response = response
-                .response
-                .expect("ConversionReview had no response!");
 
             let formatted = serde_json::to_string_pretty(&response)
                 .expect("Failed to serialize ConversionResponse");
             assert_snapshot!(formatted);
+
+            let response = response
+                .response
+                .expect("ConversionReview had no response!");
 
             assert_eq!(
                 response.result.status,

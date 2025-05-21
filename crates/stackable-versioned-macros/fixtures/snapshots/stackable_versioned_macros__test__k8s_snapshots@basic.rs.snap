@@ -111,6 +111,7 @@ impl ::std::fmt::Display for Foo {
         }
     }
 }
+/// Parses the version, such as `v1alpha1`
 #[automatically_derived]
 impl ::std::str::FromStr for Foo {
     type Err = stackable_versioned::ParseResourceVersionError;
@@ -122,6 +123,24 @@ impl ::std::str::FromStr for Foo {
             _ => {
                 Err(stackable_versioned::ParseResourceVersionError::UnknownResourceVersion {
                     version: version.to_string(),
+                })
+            }
+        }
+    }
+}
+/// Parses the entire `apiVersion`, such as `zookeeper.stackable.tech/v1alpha1`.
+#[automatically_derived]
+impl Foo {
+    pub fn from_api_version(
+        api_version: &str,
+    ) -> Result<Self, stackable_versioned::ParseResourceVersionError> {
+        match api_version {
+            "stackable.tech/v1alpha1" => Ok(Self::V1Alpha1),
+            "stackable.tech/v1beta1" => Ok(Self::V1Beta1),
+            "stackable.tech/v1" => Ok(Self::V1),
+            _ => {
+                Err(stackable_versioned::ParseResourceVersionError::UnknownApiVersion {
+                    api_version: api_version.to_string(),
                 })
             }
         }
@@ -156,10 +175,10 @@ impl Foo {
         )
     )]
     pub fn convert(
-        review: kube::core::conversion::ConversionReview,
-    ) -> kube::core::conversion::ConversionReview {
-        use kube::core::conversion::{ConversionRequest, ConversionResponse};
-        use kube::core::response::StatusSummary;
+        review: ::kube::core::conversion::ConversionReview,
+    ) -> ::kube::core::conversion::ConversionReview {
+        use ::kube::core::conversion::{ConversionRequest, ConversionResponse};
+        use ::kube::core::response::StatusSummary;
         use stackable_versioned::ConversionError;
         let request = match ConversionRequest::from_review(review) {
             Ok(request) => request,
@@ -191,9 +210,6 @@ impl Foo {
                 conversion_response.success(converted).into_review()
             }
             Err(err) => {
-                tracing::debug!(
-                    "Failed to converted objects of type {type}", type = stringify!(Foo),
-                );
                 let error_message = err.as_human_readable_error_message();
                 conversion_response
                     .failure(kube::client::Status {
@@ -209,12 +225,10 @@ impl Foo {
     }
     #[tracing::instrument(skip_all, err)]
     fn try_convert(
-        request: &kube::core::conversion::ConversionRequest,
+        request: &::kube::core::conversion::ConversionRequest,
     ) -> Result<Vec<serde_json::Value>, stackable_versioned::ConversionError> {
         use stackable_versioned::ConversionError;
-        let desired_object_version = <Self as std::str::FromStr>::from_str(
-                &request.desired_api_version,
-            )
+        let desired_object_version = Self::from_api_version(&request.desired_api_version)
             .map_err(|err| ConversionError::ParseDesiredResourceVersion {
                 source: err,
                 version: request.desired_api_version.to_string(),
@@ -251,16 +265,14 @@ impl Foo {
                     send_kind: object_kind.to_string(),
                 });
             }
-            let current_object_version = <Self as std::str::FromStr>::from_str(
-                    object_version,
-                )
+            let current_object_version = Self::from_api_version(object_version)
                 .map_err(|err| ConversionError::ParseCurrentResourceVersion {
                     source: err,
                     version: object_version.to_string(),
                 })?;
             match (&current_object_version, &desired_object_version) {
                 (Self::V1Alpha1, Self::V1Alpha1) => {
-                    let resource: v1alpha1::FooSpec = serde_json::from_value(
+                    let resource_spec: v1alpha1::FooSpec = serde_json::from_value(
                             object_spec.clone(),
                         )
                         .map_err(|err| ConversionError::DeserializeObjectSpec {
@@ -272,87 +284,119 @@ impl Foo {
                         conversion.steps = 0usize,
                         "Successfully converted {type} object", type = stringify!(Foo),
                     );
-                    converted
-                        .push(
-                            serde_json::to_value(resource)
-                                .map_err(|err| ConversionError::SerializeObjectSpec {
-                                    source: err,
-                                    kind: stringify!(Foo).to_string(),
-                                })?,
-                        );
+                    let mut object = object.clone();
+                    *object
+                        .get_mut("spec")
+                        .ok_or_else(|| ConversionError::ObjectHasNoSpec {
+                        })? = serde_json::to_value(resource_spec)
+                        .map_err(|err| ConversionError::SerializeObjectSpec {
+                            source: err,
+                            kind: stringify!(Foo).to_string(),
+                        })?;
+                    *object
+                        .get_mut("apiVersion")
+                        .ok_or_else(|| ConversionError::ObjectHasNoApiVersion {
+                        })? = serde_json::Value::String(
+                        request.desired_api_version.clone(),
+                    );
+                    converted.push(object);
                 }
                 (Self::V1Alpha1, Self::V1Beta1) => {
-                    let resource: v1alpha1::FooSpec = serde_json::from_value(
+                    let resource_spec: v1alpha1::FooSpec = serde_json::from_value(
                             object_spec.clone(),
                         )
                         .map_err(|err| ConversionError::DeserializeObjectSpec {
                             source: err,
                             kind: stringify!(Foo).to_string(),
                         })?;
-                    let resource: v1beta1::FooSpec = resource.into();
+                    let resource_spec: v1beta1::FooSpec = resource_spec.into();
                     tracing::trace!(
                         from = stringify!(v1alpha1), to = stringify!("v1beta1"),
                         conversion.steps = 1usize,
                         "Successfully converted {type} object", type = stringify!(Foo),
                     );
-                    converted
-                        .push(
-                            serde_json::to_value(resource)
-                                .map_err(|err| ConversionError::SerializeObjectSpec {
-                                    source: err,
-                                    kind: stringify!(Foo).to_string(),
-                                })?,
-                        );
+                    let mut object = object.clone();
+                    *object
+                        .get_mut("spec")
+                        .ok_or_else(|| ConversionError::ObjectHasNoSpec {
+                        })? = serde_json::to_value(resource_spec)
+                        .map_err(|err| ConversionError::SerializeObjectSpec {
+                            source: err,
+                            kind: stringify!(Foo).to_string(),
+                        })?;
+                    *object
+                        .get_mut("apiVersion")
+                        .ok_or_else(|| ConversionError::ObjectHasNoApiVersion {
+                        })? = serde_json::Value::String(
+                        request.desired_api_version.clone(),
+                    );
+                    converted.push(object);
                 }
                 (Self::V1Alpha1, Self::V1) => {
-                    let resource: v1alpha1::FooSpec = serde_json::from_value(
+                    let resource_spec: v1alpha1::FooSpec = serde_json::from_value(
                             object_spec.clone(),
                         )
                         .map_err(|err| ConversionError::DeserializeObjectSpec {
                             source: err,
                             kind: stringify!(Foo).to_string(),
                         })?;
-                    let resource: v1beta1::FooSpec = resource.into();
-                    let resource: v1::FooSpec = resource.into();
+                    let resource_spec: v1beta1::FooSpec = resource_spec.into();
+                    let resource_spec: v1::FooSpec = resource_spec.into();
                     tracing::trace!(
                         from = stringify!(v1alpha1), to = stringify!("v1"), conversion
                         .steps = 2usize, "Successfully converted {type} object", type =
                         stringify!(Foo),
                     );
-                    converted
-                        .push(
-                            serde_json::to_value(resource)
-                                .map_err(|err| ConversionError::SerializeObjectSpec {
-                                    source: err,
-                                    kind: stringify!(Foo).to_string(),
-                                })?,
-                        );
+                    let mut object = object.clone();
+                    *object
+                        .get_mut("spec")
+                        .ok_or_else(|| ConversionError::ObjectHasNoSpec {
+                        })? = serde_json::to_value(resource_spec)
+                        .map_err(|err| ConversionError::SerializeObjectSpec {
+                            source: err,
+                            kind: stringify!(Foo).to_string(),
+                        })?;
+                    *object
+                        .get_mut("apiVersion")
+                        .ok_or_else(|| ConversionError::ObjectHasNoApiVersion {
+                        })? = serde_json::Value::String(
+                        request.desired_api_version.clone(),
+                    );
+                    converted.push(object);
                 }
                 (Self::V1Beta1, Self::V1Alpha1) => {
-                    let resource: v1beta1::FooSpec = serde_json::from_value(
+                    let resource_spec: v1beta1::FooSpec = serde_json::from_value(
                             object_spec.clone(),
                         )
                         .map_err(|err| ConversionError::DeserializeObjectSpec {
                             source: err,
                             kind: stringify!(Foo).to_string(),
                         })?;
-                    let resource: v1alpha1::FooSpec = resource.into();
+                    let resource_spec: v1alpha1::FooSpec = resource_spec.into();
                     tracing::trace!(
                         from = stringify!(v1beta1), to = stringify!("v1alpha1"),
                         conversion.steps = 1usize,
                         "Successfully converted {type} object", type = stringify!(Foo),
                     );
-                    converted
-                        .push(
-                            serde_json::to_value(resource)
-                                .map_err(|err| ConversionError::SerializeObjectSpec {
-                                    source: err,
-                                    kind: stringify!(Foo).to_string(),
-                                })?,
-                        );
+                    let mut object = object.clone();
+                    *object
+                        .get_mut("spec")
+                        .ok_or_else(|| ConversionError::ObjectHasNoSpec {
+                        })? = serde_json::to_value(resource_spec)
+                        .map_err(|err| ConversionError::SerializeObjectSpec {
+                            source: err,
+                            kind: stringify!(Foo).to_string(),
+                        })?;
+                    *object
+                        .get_mut("apiVersion")
+                        .ok_or_else(|| ConversionError::ObjectHasNoApiVersion {
+                        })? = serde_json::Value::String(
+                        request.desired_api_version.clone(),
+                    );
+                    converted.push(object);
                 }
                 (Self::V1Beta1, Self::V1Beta1) => {
-                    let resource: v1beta1::FooSpec = serde_json::from_value(
+                    let resource_spec: v1beta1::FooSpec = serde_json::from_value(
                             object_spec.clone(),
                         )
                         .map_err(|err| ConversionError::DeserializeObjectSpec {
@@ -364,87 +408,119 @@ impl Foo {
                         conversion.steps = 0usize,
                         "Successfully converted {type} object", type = stringify!(Foo),
                     );
-                    converted
-                        .push(
-                            serde_json::to_value(resource)
-                                .map_err(|err| ConversionError::SerializeObjectSpec {
-                                    source: err,
-                                    kind: stringify!(Foo).to_string(),
-                                })?,
-                        );
+                    let mut object = object.clone();
+                    *object
+                        .get_mut("spec")
+                        .ok_or_else(|| ConversionError::ObjectHasNoSpec {
+                        })? = serde_json::to_value(resource_spec)
+                        .map_err(|err| ConversionError::SerializeObjectSpec {
+                            source: err,
+                            kind: stringify!(Foo).to_string(),
+                        })?;
+                    *object
+                        .get_mut("apiVersion")
+                        .ok_or_else(|| ConversionError::ObjectHasNoApiVersion {
+                        })? = serde_json::Value::String(
+                        request.desired_api_version.clone(),
+                    );
+                    converted.push(object);
                 }
                 (Self::V1Beta1, Self::V1) => {
-                    let resource: v1beta1::FooSpec = serde_json::from_value(
+                    let resource_spec: v1beta1::FooSpec = serde_json::from_value(
                             object_spec.clone(),
                         )
                         .map_err(|err| ConversionError::DeserializeObjectSpec {
                             source: err,
                             kind: stringify!(Foo).to_string(),
                         })?;
-                    let resource: v1::FooSpec = resource.into();
+                    let resource_spec: v1::FooSpec = resource_spec.into();
                     tracing::trace!(
                         from = stringify!(v1beta1), to = stringify!("v1"), conversion
                         .steps = 1usize, "Successfully converted {type} object", type =
                         stringify!(Foo),
                     );
-                    converted
-                        .push(
-                            serde_json::to_value(resource)
-                                .map_err(|err| ConversionError::SerializeObjectSpec {
-                                    source: err,
-                                    kind: stringify!(Foo).to_string(),
-                                })?,
-                        );
+                    let mut object = object.clone();
+                    *object
+                        .get_mut("spec")
+                        .ok_or_else(|| ConversionError::ObjectHasNoSpec {
+                        })? = serde_json::to_value(resource_spec)
+                        .map_err(|err| ConversionError::SerializeObjectSpec {
+                            source: err,
+                            kind: stringify!(Foo).to_string(),
+                        })?;
+                    *object
+                        .get_mut("apiVersion")
+                        .ok_or_else(|| ConversionError::ObjectHasNoApiVersion {
+                        })? = serde_json::Value::String(
+                        request.desired_api_version.clone(),
+                    );
+                    converted.push(object);
                 }
                 (Self::V1, Self::V1Alpha1) => {
-                    let resource: v1::FooSpec = serde_json::from_value(
+                    let resource_spec: v1::FooSpec = serde_json::from_value(
                             object_spec.clone(),
                         )
                         .map_err(|err| ConversionError::DeserializeObjectSpec {
                             source: err,
                             kind: stringify!(Foo).to_string(),
                         })?;
-                    let resource: v1beta1::FooSpec = resource.into();
-                    let resource: v1alpha1::FooSpec = resource.into();
+                    let resource_spec: v1beta1::FooSpec = resource_spec.into();
+                    let resource_spec: v1alpha1::FooSpec = resource_spec.into();
                     tracing::trace!(
                         from = stringify!(v1), to = stringify!("v1alpha1"), conversion
                         .steps = 2usize, "Successfully converted {type} object", type =
                         stringify!(Foo),
                     );
-                    converted
-                        .push(
-                            serde_json::to_value(resource)
-                                .map_err(|err| ConversionError::SerializeObjectSpec {
-                                    source: err,
-                                    kind: stringify!(Foo).to_string(),
-                                })?,
-                        );
+                    let mut object = object.clone();
+                    *object
+                        .get_mut("spec")
+                        .ok_or_else(|| ConversionError::ObjectHasNoSpec {
+                        })? = serde_json::to_value(resource_spec)
+                        .map_err(|err| ConversionError::SerializeObjectSpec {
+                            source: err,
+                            kind: stringify!(Foo).to_string(),
+                        })?;
+                    *object
+                        .get_mut("apiVersion")
+                        .ok_or_else(|| ConversionError::ObjectHasNoApiVersion {
+                        })? = serde_json::Value::String(
+                        request.desired_api_version.clone(),
+                    );
+                    converted.push(object);
                 }
                 (Self::V1, Self::V1Beta1) => {
-                    let resource: v1::FooSpec = serde_json::from_value(
+                    let resource_spec: v1::FooSpec = serde_json::from_value(
                             object_spec.clone(),
                         )
                         .map_err(|err| ConversionError::DeserializeObjectSpec {
                             source: err,
                             kind: stringify!(Foo).to_string(),
                         })?;
-                    let resource: v1beta1::FooSpec = resource.into();
+                    let resource_spec: v1beta1::FooSpec = resource_spec.into();
                     tracing::trace!(
                         from = stringify!(v1), to = stringify!("v1beta1"), conversion
                         .steps = 1usize, "Successfully converted {type} object", type =
                         stringify!(Foo),
                     );
-                    converted
-                        .push(
-                            serde_json::to_value(resource)
-                                .map_err(|err| ConversionError::SerializeObjectSpec {
-                                    source: err,
-                                    kind: stringify!(Foo).to_string(),
-                                })?,
-                        );
+                    let mut object = object.clone();
+                    *object
+                        .get_mut("spec")
+                        .ok_or_else(|| ConversionError::ObjectHasNoSpec {
+                        })? = serde_json::to_value(resource_spec)
+                        .map_err(|err| ConversionError::SerializeObjectSpec {
+                            source: err,
+                            kind: stringify!(Foo).to_string(),
+                        })?;
+                    *object
+                        .get_mut("apiVersion")
+                        .ok_or_else(|| ConversionError::ObjectHasNoApiVersion {
+                        })? = serde_json::Value::String(
+                        request.desired_api_version.clone(),
+                    );
+                    converted.push(object);
                 }
                 (Self::V1, Self::V1) => {
-                    let resource: v1::FooSpec = serde_json::from_value(
+                    let resource_spec: v1::FooSpec = serde_json::from_value(
                             object_spec.clone(),
                         )
                         .map_err(|err| ConversionError::DeserializeObjectSpec {
@@ -456,14 +532,22 @@ impl Foo {
                         0usize, "Successfully converted {type} object", type =
                         stringify!(Foo),
                     );
-                    converted
-                        .push(
-                            serde_json::to_value(resource)
-                                .map_err(|err| ConversionError::SerializeObjectSpec {
-                                    source: err,
-                                    kind: stringify!(Foo).to_string(),
-                                })?,
-                        );
+                    let mut object = object.clone();
+                    *object
+                        .get_mut("spec")
+                        .ok_or_else(|| ConversionError::ObjectHasNoSpec {
+                        })? = serde_json::to_value(resource_spec)
+                        .map_err(|err| ConversionError::SerializeObjectSpec {
+                            source: err,
+                            kind: stringify!(Foo).to_string(),
+                        })?;
+                    *object
+                        .get_mut("apiVersion")
+                        .ok_or_else(|| ConversionError::ObjectHasNoApiVersion {
+                        })? = serde_json::Value::String(
+                        request.desired_api_version.clone(),
+                    );
+                    converted.push(object);
                 }
             }
         }
