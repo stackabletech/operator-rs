@@ -10,5 +10,5 @@ pub const DEFAULT_HTTPS_PORT: u16 = 8443;
 pub const DEFAULT_LISTEN_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
 
 /// The default socket address `0.0.0.0:8443` the webhook server binds to.
-pub const DEFAULT_SOCKET_ADDR: SocketAddr =
+pub const DEFAULT_SOCKET_ADDRESS: SocketAddr =
     SocketAddr::new(DEFAULT_LISTEN_ADDRESS, DEFAULT_HTTPS_PORT);

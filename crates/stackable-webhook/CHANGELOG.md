@@ -13,7 +13,8 @@ All notable changes to this project will be documented in this file.
 - BREAKING: The constant `DEFAULT_IP_ADDRESS` has been renamed to `DEFAULT_LISTEN_ADDRESS` and binds to all
   addresses (instead of only loopback) by default. This was changed because all the webhooks
   deployed to Kubernetes (e.g. conversion or mutating - which this crate targets) need to be
-  accessible by it, which is not the case when only using loopback ([#1045]).
+  accessible by it, which is not the case when only using loopback.
+  Also, the constant `DEFAULT_SOCKET_ADDR` has been renamed to `DEFAULT_SOCKET_ADDRESS` ([#1045]).
 
 [#1043]: https://github.com/stackabletech/operator-rs/pull/1043
 [#1045]: https://github.com/stackabletech/operator-rs/pull/1045
