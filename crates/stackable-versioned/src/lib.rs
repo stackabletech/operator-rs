@@ -20,16 +20,16 @@ use schemars::schema::{InstanceType, Schema, SchemaObject, SingleOrVec};
 pub use stackable_versioned_macros::*;
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-pub struct CrdValues {
+pub struct ChangedValues {
     /// List of values needed when downgrading to a particular version.
-    pub downgrades: HashMap<Version, Vec<CrdValue>>,
+    pub downgrades: HashMap<Version, Vec<ChangedValue>>,
 
     /// List of values needed when upgrading to a particular version.
-    pub upgrades: HashMap<Version, Vec<CrdValue>>,
+    pub upgrades: HashMap<Version, Vec<ChangedValue>>,
 }
 
 #[derive(Clone, Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
-pub struct CrdValue {
+pub struct ChangedValue {
     /// The name of the field of the custom resource this value is for.
     pub name: String,
 
