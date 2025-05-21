@@ -238,15 +238,26 @@ impl CommonItemAttributes {
                 }
             }
 
-            // The convert_with argument only makes sense to use when the
-            // type changed
-            if let Some(upgrade_func) = change.upgrade_with.as_ref() {
-                if change.from_type.is_none() {
+            if change.from_type.is_none() {
+                // The upgrade_with argument only makes sense to use when the
+                // type changed
+                if let Some(upgrade_func) = change.upgrade_with.as_ref() {
                     errors.push(
                         Error::custom(
-                            "the `convert_with` argument must be used in combination with `from_type`",
+                            "the `upgrade_with` argument must be used in combination with `from_type`",
                         )
                         .with_span(&upgrade_func.span()),
+                    );
+                }
+
+                // The downgrade_with argument only makes sense to use when the
+                // type changed
+                if let Some(downgrade_func) = change.downgrade_with.as_ref() {
+                    errors.push(
+                        Error::custom(
+                            "the `downgrade_with` argument must be used in combination with `from_type`",
+                        )
+                        .with_span(&downgrade_func.span()),
                     );
                 }
             }
