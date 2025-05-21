@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Removed
+
+- Remove instrumenation from uninteresting funtions ([#1023]).
+
+[#1023]: https://github.com/stackabletech/operator-rs/pull/1023
+
 ## [0.93.1] - 2025-05-20
 
 ### Added
