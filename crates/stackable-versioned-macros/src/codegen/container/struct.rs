@@ -326,92 +326,96 @@ impl Struct {
     pub fn generate_kube_attribute(
         &self,
         version: &VersionDefinition,
-        multiple_versions: bool,
+        _multiple_versions: bool,
     ) -> Option<TokenStream> {
-        match &self.common.options.kubernetes_options {
-            Some(kubernetes_options) => {
-                // Required arguments
-                let group = &kubernetes_options.group;
-                let version = version.inner.to_string();
-                let kind = kubernetes_options
-                    .kind
-                    .as_ref()
-                    .map_or(self.common.idents.kubernetes.to_string(), |kind| {
-                        kind.clone()
-                    });
+        let kubernetes_options = self.common.options.kubernetes_options.as_ref()?;
 
-                // Optional arguments
-                let singular = kubernetes_options
-                    .singular
-                    .as_ref()
-                    .map(|s| quote! { , singular = #s });
+        // Required arguments
+        let group = &kubernetes_options.group;
+        let version = version.inner.to_string();
+        let kind = kubernetes_options
+            .kind
+            .as_ref()
+            .map_or(self.common.idents.kubernetes.to_string(), |kind| {
+                kind.clone()
+            });
 
-                let plural = kubernetes_options
-                    .plural
-                    .as_ref()
-                    .map(|p| quote! { , plural = #p });
+        // Optional arguments
+        let singular = kubernetes_options
+            .singular
+            .as_ref()
+            .map(|s| quote! { , singular = #s });
 
-                let namespaced = kubernetes_options
-                    .namespaced
-                    .then_some(quote! { , namespaced });
-                let crates = kubernetes_options.crates.to_token_stream();
+        let plural = kubernetes_options
+            .plural
+            .as_ref()
+            .map(|p| quote! { , plural = #p });
 
-                let status = if multiple_versions {
-                    let status_ident = format_ident!(
-                        "{struct_ident}Status",
-                        struct_ident = self.common.idents.kubernetes.as_ident()
-                    );
-                    Some(quote! { , status = #status_ident })
-                } else {
-                    kubernetes_options
-                        .status
-                        .as_ref()
-                        .map(|s| quote! { , status = #s })
-                };
+        let namespaced = kubernetes_options
+            .namespaced
+            .then_some(quote! { , namespaced });
+        let crates = kubernetes_options.crates.to_token_stream();
 
-                let shortnames: TokenStream = kubernetes_options
-                    .shortnames
-                    .iter()
-                    .map(|s| quote! { , shortname = #s })
-                    .collect();
+        // TODO (@Techassi): Comment back in, once we are happy with the status struct
+        // let status = if multiple_versions {
+        //     let status_ident = format_ident!(
+        //         "{struct_ident}Status",
+        //         struct_ident = self.common.idents.kubernetes.as_ident()
+        //     );
+        //     Some(quote! { , status = #status_ident })
+        // } else {
+        //     kubernetes_options
+        //         .status
+        //         .as_ref()
+        //         .map(|s| quote! { , status = #s })
+        // };
 
-                Some(quote! {
-                    // The end-developer needs to derive CustomResource and JsonSchema.
-                    // This is because we don't know if they want to use a re-exported or renamed import.
-                    #[kube(
-                        // These must be comma separated (except the last) as they always exist:
-                        group = #group, version = #version, kind = #kind
-                        // These fields are optional, and therefore the token stream must prefix each with a comma:
-                        #singular #plural #namespaced #crates #status #shortnames
-                    )]
-                })
-            }
-            None => None,
-        }
+        let status = kubernetes_options
+            .status
+            .as_ref()
+            .map(|s| quote! { , status = #s });
+
+        let shortnames: TokenStream = kubernetes_options
+            .shortnames
+            .iter()
+            .map(|s| quote! { , shortname = #s })
+            .collect();
+
+        Some(quote! {
+            // The end-developer needs to derive CustomResource and JsonSchema.
+            // This is because we don't know if they want to use a re-exported or renamed import.
+            #[kube(
+                // These must be comma separated (except the last) as they always exist:
+                group = #group, version = #version, kind = #kind
+                // These fields are optional, and therefore the token stream must prefix each with a comma:
+                #singular #plural #namespaced #crates #status #shortnames
+            )]
+        })
     }
 
     pub fn generate_kubernetes_item(
         &self,
         version: &VersionDefinition,
     ) -> Option<(IdentString, String, TokenStream)> {
-        match &self.common.options.kubernetes_options {
-            Some(options) if !options.skip_merged_crd => {
-                let kube_core_crate = &*options.crates.kube_core;
+        let kubernetes_options = self.common.options.kubernetes_options.as_ref()?;
 
-                let enum_variant_ident = version.inner.as_variant_ident();
-                let enum_variant_string = version.inner.to_string();
+        if !kubernetes_options.skip_merged_crd {
+            let kube_core_crate = &*kubernetes_options.crates.kube_core;
 
-                let struct_ident = &self.common.idents.kubernetes;
-                let module_ident = &version.ident;
-                let qualified_path: Path = parse_quote!(#module_ident::#struct_ident);
+            let enum_variant_ident = version.inner.as_variant_ident();
+            let enum_variant_string = version.inner.to_string();
 
-                let merge_crds_fn_call = quote! {
-                    <#qualified_path as #kube_core_crate::CustomResourceExt>::crd()
-                };
+            let struct_ident = &self.common.idents.kubernetes;
+            let module_ident = &version.ident;
+            let qualified_path: Path = parse_quote!(#module_ident::#struct_ident);
 
-                Some((enum_variant_ident, enum_variant_string, merge_crds_fn_call))
-            }
-            _ => None,
+            let merge_crds_fn_call = quote! {
+                <#qualified_path as #kube_core_crate::CustomResourceExt>::crd()
+            };
+
+            Some((enum_variant_ident, enum_variant_string, merge_crds_fn_call))
+        } else {
+            None
         }
     }
 
@@ -423,94 +427,82 @@ impl Struct {
         vis: &Visibility,
         is_nested: bool,
     ) -> Option<TokenStream> {
-        match &self.common.options.kubernetes_options {
-            Some(kubernetes_options) if !kubernetes_options.skip_merged_crd => {
-                let enum_ident = &self.common.idents.kubernetes;
+        let kubernetes_options = self.common.options.kubernetes_options.as_ref()?;
 
-                // Only add the #[automatically_derived] attribute if this impl is used outside of a
-                // module (in standalone mode).
-                let automatically_derived =
-                    is_nested.not().then(|| quote! {#[automatically_derived]});
+        if !kubernetes_options.skip_merged_crd {
+            let enum_ident = &self.common.idents.kubernetes;
 
-                // Get the crate paths
-                let k8s_openapi_path = &*kubernetes_options.crates.k8s_openapi;
-                let kube_core_path = &*kubernetes_options.crates.kube_core;
+            // Only add the #[automatically_derived] attribute if this impl is used outside of a
+            // module (in standalone mode).
+            let automatically_derived = is_nested.not().then(|| quote! {#[automatically_derived]});
 
-                Some(quote! {
-                    #automatically_derived
-                    #vis enum #enum_ident {
-                        #(#enum_variant_idents),*
-                    }
+            // Get the crate paths
+            let k8s_openapi_path = &*kubernetes_options.crates.k8s_openapi;
+            let kube_core_path = &*kubernetes_options.crates.kube_core;
 
-                    #automatically_derived
-                    impl ::std::fmt::Display for #enum_ident {
-                        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::result::Result<(), ::std::fmt::Error> {
-                            match self {
-                                #(Self::#enum_variant_idents => f.write_str(#enum_variant_strings)),*
-                            }
+            Some(quote! {
+                #automatically_derived
+                #vis enum #enum_ident {
+                    #(#enum_variant_idents),*
+                }
+
+                #automatically_derived
+                impl ::std::fmt::Display for #enum_ident {
+                    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::result::Result<(), ::std::fmt::Error> {
+                        match self {
+                            #(Self::#enum_variant_idents => f.write_str(#enum_variant_strings)),*
                         }
                     }
+                }
 
-                    #automatically_derived
-                    impl #enum_ident {
-                        /// Generates a merged CRD containing all versions and marking `stored_apiversion` as stored.
-                        pub fn merged_crd(
-                            stored_apiversion: Self
-                        ) -> ::std::result::Result<#k8s_openapi_path::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition, #kube_core_path::crd::MergeError> {
-                            #kube_core_path::crd::merge_crds(vec![#(#fn_calls),*], &stored_apiversion.to_string())
-                        }
+                #automatically_derived
+                impl #enum_ident {
+                    /// Generates a merged CRD containing all versions and marking `stored_apiversion` as stored.
+                    pub fn merged_crd(
+                        stored_apiversion: Self
+                    ) -> ::std::result::Result<#k8s_openapi_path::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition, #kube_core_path::crd::MergeError> {
+                        #kube_core_path::crd::merge_crds(vec![#(#fn_calls),*], &stored_apiversion.to_string())
                     }
-                })
-            }
-            _ => None,
+                }
+            })
+        } else {
+            None
         }
     }
 
     pub fn generate_kubernetes_status_struct(&self) -> Option<TokenStream> {
-        match &self.common.options.kubernetes_options {
-            Some(kubernetes_options) => {
-                let status_ident = format_ident!(
-                    "{struct_ident}Status",
-                    struct_ident = self.common.idents.kubernetes.as_ident()
-                );
+        let kubernetes_options = self.common.options.kubernetes_options.as_ref()?;
 
-                let versioned_crate = &*kubernetes_options.crates.versioned;
-                let schemars_crate = &*kubernetes_options.crates.schemars;
-                let serde_crate = &*kubernetes_options.crates.serde;
+        let status_ident = format_ident!(
+            "{struct_ident}Status",
+            struct_ident = self.common.idents.kubernetes.as_ident()
+        );
 
-                match &kubernetes_options.status {
-                    Some(status) => Some(quote! {
-                        #[derive(
-                            ::core::clone::Clone,
-                            ::core::fmt::Debug,
-                            #serde_crate::Deserialize,
-                            #serde_crate::Serialize,
-                            #schemars_crate::JsonSchema
-                        )]
-                        #[serde(rename_all = "camelCase")]
-                        pub struct #status_ident {
-                            pub crd_values: #versioned_crate::CrdValues,
+        let versioned_crate = &*kubernetes_options.crates.versioned;
+        let schemars_crate = &*kubernetes_options.crates.schemars;
+        let serde_crate = &*kubernetes_options.crates.serde;
 
-                            #[serde(flatten)]
-                            pub status: #status,
-                        }
-                    }),
-                    None => Some(quote! {
-                        #[derive(
-                            ::core::clone::Clone,
-                            ::core::fmt::Debug,
-                            #serde_crate::Deserialize,
-                            #serde_crate::Serialize,
-                            #schemars_crate::JsonSchema
-                        )]
-                        #[serde(rename_all = "camelCase")]
-                        pub struct #status_ident {
-                            pub crd_values: #versioned_crate::CrdValues,
-                        }
-                    }),
-                }
+        let status = kubernetes_options.status.as_ref().map(|status| {
+            quote! {
+                #[serde(flatten)]
+                pub status: #status,
             }
-            None => None,
-        }
+        });
+
+        Some(quote! {
+            #[derive(
+                ::core::clone::Clone,
+                ::core::fmt::Debug,
+                #serde_crate::Deserialize,
+                #serde_crate::Serialize,
+                #schemars_crate::JsonSchema
+            )]
+            #[serde(rename_all = "camelCase")]
+            pub struct #status_ident {
+                pub changed_values: #versioned_crate::ChangedValues,
+
+                #status
+            }
+        })
     }
 }
