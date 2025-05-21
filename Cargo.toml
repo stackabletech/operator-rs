@@ -33,6 +33,7 @@ itertools = "0.14.0"
 json-patch = "4.0.0"
 k8s-openapi = { version = "0.25.0", default-features = false, features = ["schemars", "v1_33"] }
 # We use rustls instead of openssl for easier portability, e.g. so that we can build stackablectl without the need to vendor (build from source) openssl
+# Use ring instead of aws-lc-rs, as this currently fails to build in "make run-dev"
 kube = { version = "1.0.0", default-features = false, features = ["client", "jsonpatch", "runtime", "derive", "rustls-tls", "ring"] }
 opentelemetry = "0.29.1"
 opentelemetry_sdk = { version = "0.29.0", features = ["rt-tokio"] }
@@ -64,7 +65,7 @@ syn = "2.0.77"
 tempfile = "3.12.0"
 time = { version = "0.3.36" }
 tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread", "fs"] }
-# Use ring instead of aws-lc-rs
+# Use ring instead of aws-lc-rs, as this currently fails to build in "make run-dev"
 tokio-rustls = { version = "0.26.0", default-features = false, features = ["ring", "logging", "tls12"] }
 tokio-test = "0.4.4"
 tower = { version = "0.5.1", features = ["util"] }
