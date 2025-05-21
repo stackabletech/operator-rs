@@ -127,11 +127,13 @@ pub mod versioned {
     #[serde(rename_all = "camelCase")]
     #[schemars(description = "")]
     pub struct ClientAuthenticationDetails<O = ()> {
-        /// Name of the [AuthenticationClass](https://docs.stackable.tech/home/nightly/concepts/authentication) used to
-        /// authenticate users.
+        /// Name of the [`AuthenticationClass`] used to authenticate users.
         ///
         /// To get the concrete [`AuthenticationClass`], we must resolve it. This resolution can be
         /// achieved by using [`ClientAuthenticationDetails::resolve_class`].
+        #[schemars(
+            description = "Name of the [AuthenticationClass](DOCS_BASE_URL_PLACEHOLDER/concepts/authentication) used to authenticate users"
+        )]
         #[serde(rename = "authenticationClass")]
         authentication_class_ref: String,
 

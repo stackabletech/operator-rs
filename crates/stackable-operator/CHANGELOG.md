@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.93.1] - 2025-05-20
+
+### Added
+
+- Add git-sync support ([#1024]).
+
+[#1024]: https://github.com/stackabletech/operator-rs/pull/1024
+
+## [0.93.0] - 2025-05-19
+
 ### Changed
 
 - BREAKING: Version common CRD structs and enums ([#968]).
@@ -11,6 +21,8 @@ All notable changes to this project will be documented in this file.
   - Each CRD-related struct and enum has been versioned. The initial version is `v1alpha1`.
   - The `static` authentication provider must now be imported using `r#static`.
   - Import are now more granular in general.
+- BREAKING: Update to `kube` to `1.0.0` and `k8s-openapi` to `0.25.0`.
+  Use k8s `1.33` for compilation ([#1037]).
 
 ### Fixed
 
@@ -20,6 +32,7 @@ All notable changes to this project will be documented in this file.
 [#968]: https://github.com/stackabletech/operator-rs/pull/968
 [#1025]: https://github.com/stackabletech/operator-rs/pull/1025
 [#1029]: https://github.com/stackabletech/operator-rs/pull/1029
+[#1037]: https://github.com/stackabletech/operator-rs/pull/1037
 
 ## [0.92.0] - 2025-04-14
 
