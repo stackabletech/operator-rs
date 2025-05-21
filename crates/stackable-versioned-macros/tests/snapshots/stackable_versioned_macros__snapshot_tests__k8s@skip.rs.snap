@@ -1,0 +1,122 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+expression: formatted
+input_file: crates/stackable-versioned-macros/tests/inputs/k8s/pass/skip.rs
+---
+#[automatically_derived]
+pub mod v1alpha1 {
+    use super::*;
+    #[derive(
+        Clone,
+        Debug,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+        kube::CustomResource,
+    )]
+    #[kube(
+        group = "stackable.tech",
+        version = "v1alpha1",
+        kind = "Foo",
+        singular = "foo",
+        plural = "foos",
+        namespaced
+    )]
+    pub struct FooSpec {
+        pub baz: bool,
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1alpha1::FooSpec> for v1beta1::FooSpec {
+    fn from(__sv_foospec: v1alpha1::FooSpec) -> Self {
+        Self {
+            bah: ::std::default::Default::default(),
+            baz: __sv_foospec.baz.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1beta1::FooSpec> for v1alpha1::FooSpec {
+    fn from(__sv_foospec: v1beta1::FooSpec) -> Self {
+        Self {
+            baz: __sv_foospec.baz.into(),
+        }
+    }
+}
+#[automatically_derived]
+pub mod v1beta1 {
+    use super::*;
+    #[derive(
+        Clone,
+        Debug,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+        kube::CustomResource,
+    )]
+    #[kube(
+        group = "stackable.tech",
+        version = "v1beta1",
+        kind = "Foo",
+        singular = "foo",
+        plural = "foos",
+        namespaced
+    )]
+    pub struct FooSpec {
+        pub bah: u16,
+        pub baz: bool,
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1beta1::FooSpec> for v1::FooSpec {
+    fn from(__sv_foospec: v1beta1::FooSpec) -> Self {
+        Self {
+            bar: __sv_foospec.bah.into(),
+            baz: __sv_foospec.baz.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1::FooSpec> for v1beta1::FooSpec {
+    fn from(__sv_foospec: v1::FooSpec) -> Self {
+        Self {
+            bah: __sv_foospec.bar.into(),
+            baz: __sv_foospec.baz.into(),
+        }
+    }
+}
+#[automatically_derived]
+pub mod v1 {
+    use super::*;
+    #[derive(
+        Clone,
+        Debug,
+        serde::Deserialize,
+        serde::Serialize,
+        schemars::JsonSchema,
+        kube::CustomResource,
+    )]
+    #[kube(
+        group = "stackable.tech",
+        version = "v1",
+        kind = "Foo",
+        singular = "foo",
+        plural = "foos",
+        namespaced
+    )]
+    pub struct FooSpec {
+        pub bar: usize,
+        pub baz: bool,
+    }
+}
+#[derive(
+    ::core::clone::Clone,
+    ::core::fmt::Debug,
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    ::schemars::JsonSchema
+)]
+#[serde(rename_all = "camelCase")]
+pub struct FooStatus {
+    pub changed_values: ::stackable_versioned::ChangedValues,
+}

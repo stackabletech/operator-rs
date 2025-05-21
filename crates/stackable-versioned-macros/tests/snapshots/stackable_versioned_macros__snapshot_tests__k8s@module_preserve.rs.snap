@@ -1,0 +1,353 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+expression: formatted
+input_file: crates/stackable-versioned-macros/tests/inputs/k8s/pass/module_preserve.rs
+---
+#[automatically_derived]
+pub(crate) mod versioned {
+    pub mod v1alpha1 {
+        use super::*;
+        pub struct Baz {
+            pub boom: Option<u16>,
+        }
+        #[derive(
+            Clone,
+            Debug,
+            serde::Deserialize,
+            serde::Serialize,
+            schemars::JsonSchema,
+            kube::CustomResource,
+        )]
+        #[kube(
+            group = "foo.example.org",
+            version = "v1alpha1",
+            kind = "Foo",
+            plural = "foos",
+            namespaced
+        )]
+        pub struct FooSpec {
+            pub bar: usize,
+            pub foo: String,
+        }
+        #[derive(
+            Clone,
+            Debug,
+            serde::Deserialize,
+            serde::Serialize,
+            schemars::JsonSchema,
+            kube::CustomResource,
+        )]
+        #[kube(
+            group = "bar.example.org",
+            version = "v1alpha1",
+            kind = "Bar",
+            plural = "bars"
+        )]
+        pub struct BarSpec {
+            pub baz: String,
+        }
+        pub enum Boom {
+            Big,
+            Shaq,
+        }
+    }
+    impl ::std::convert::From<v1alpha1::Baz> for v1::Baz {
+        fn from(__sv_baz: v1alpha1::Baz) -> Self {
+            Self { boom: __sv_baz.boom.into() }
+        }
+    }
+    impl ::std::convert::From<v1::Baz> for v1alpha1::Baz {
+        fn from(__sv_baz: v1::Baz) -> Self {
+            Self { boom: __sv_baz.boom.into() }
+        }
+    }
+    impl ::std::convert::From<v1alpha1::FooSpec> for v1::FooSpec {
+        fn from(__sv_foospec: v1alpha1::FooSpec) -> Self {
+            Self {
+                bar: __sv_foospec.bar.into(),
+                baz: ::std::default::Default::default(),
+                foo: __sv_foospec.foo.into(),
+            }
+        }
+    }
+    impl ::std::convert::From<v1::FooSpec> for v1alpha1::FooSpec {
+        fn from(__sv_foospec: v1::FooSpec) -> Self {
+            Self {
+                bar: __sv_foospec.bar.into(),
+                foo: __sv_foospec.foo.into(),
+            }
+        }
+    }
+    impl ::std::convert::From<v1alpha1::BarSpec> for v1::BarSpec {
+        fn from(__sv_barspec: v1alpha1::BarSpec) -> Self {
+            Self {
+                baz: __sv_barspec.baz.into(),
+            }
+        }
+    }
+    impl ::std::convert::From<v1::BarSpec> for v1alpha1::BarSpec {
+        fn from(__sv_barspec: v1::BarSpec) -> Self {
+            Self {
+                baz: __sv_barspec.baz.into(),
+            }
+        }
+    }
+    impl ::std::convert::From<v1alpha1::Boom> for v1::Boom {
+        fn from(__sv_boom: v1alpha1::Boom) -> Self {
+            match __sv_boom {
+                v1alpha1::Boom::Big => v1::Boom::Big,
+                v1alpha1::Boom::Shaq => v1::Boom::Shaq,
+            }
+        }
+    }
+    impl ::std::convert::From<v1::Boom> for v1alpha1::Boom {
+        fn from(__sv_boom: v1::Boom) -> Self {
+            match __sv_boom {
+                v1::Boom::Big => v1alpha1::Boom::Big,
+                v1::Boom::Shaq => v1alpha1::Boom::Shaq,
+            }
+        }
+    }
+    pub mod v1 {
+        use super::*;
+        pub struct Baz {
+            pub boom: Option<u16>,
+        }
+        #[derive(
+            Clone,
+            Debug,
+            serde::Deserialize,
+            serde::Serialize,
+            schemars::JsonSchema,
+            kube::CustomResource,
+        )]
+        #[kube(
+            group = "foo.example.org",
+            version = "v1",
+            kind = "Foo",
+            plural = "foos",
+            namespaced
+        )]
+        pub struct FooSpec {
+            pub bar: usize,
+            pub baz: bool,
+            pub foo: String,
+        }
+        #[derive(
+            Clone,
+            Debug,
+            serde::Deserialize,
+            serde::Serialize,
+            schemars::JsonSchema,
+            kube::CustomResource,
+        )]
+        #[kube(group = "bar.example.org", version = "v1", kind = "Bar", plural = "bars")]
+        pub struct BarSpec {
+            pub baz: String,
+        }
+        pub enum Boom {
+            Big,
+            Shaq,
+        }
+    }
+    impl ::std::convert::From<v1::Baz> for v2alpha1::Baz {
+        fn from(__sv_baz: v1::Baz) -> Self {
+            Self { boom: __sv_baz.boom.into() }
+        }
+    }
+    impl ::std::convert::From<v2alpha1::Baz> for v1::Baz {
+        fn from(__sv_baz: v2alpha1::Baz) -> Self {
+            Self { boom: __sv_baz.boom.into() }
+        }
+    }
+    #[allow(deprecated)]
+    impl ::std::convert::From<v1::FooSpec> for v2alpha1::FooSpec {
+        fn from(__sv_foospec: v1::FooSpec) -> Self {
+            Self {
+                bar: __sv_foospec.bar.into(),
+                baz: __sv_foospec.baz.into(),
+                deprecated_foo: __sv_foospec.foo.into(),
+            }
+        }
+    }
+    #[allow(deprecated)]
+    impl ::std::convert::From<v2alpha1::FooSpec> for v1::FooSpec {
+        fn from(__sv_foospec: v2alpha1::FooSpec) -> Self {
+            Self {
+                bar: __sv_foospec.bar.into(),
+                baz: __sv_foospec.baz.into(),
+                foo: __sv_foospec.deprecated_foo.into(),
+            }
+        }
+    }
+    impl ::std::convert::From<v1::BarSpec> for v2alpha1::BarSpec {
+        fn from(__sv_barspec: v1::BarSpec) -> Self {
+            Self {
+                baz: __sv_barspec.baz.into(),
+            }
+        }
+    }
+    impl ::std::convert::From<v2alpha1::BarSpec> for v1::BarSpec {
+        fn from(__sv_barspec: v2alpha1::BarSpec) -> Self {
+            Self {
+                baz: __sv_barspec.baz.into(),
+            }
+        }
+    }
+    impl ::std::convert::From<v1::Boom> for v2alpha1::Boom {
+        fn from(__sv_boom: v1::Boom) -> Self {
+            match __sv_boom {
+                v1::Boom::Big => v2alpha1::Boom::Big,
+                v1::Boom::Shaq => v2alpha1::Boom::Shaq,
+            }
+        }
+    }
+    impl ::std::convert::From<v2alpha1::Boom> for v1::Boom {
+        fn from(__sv_boom: v2alpha1::Boom) -> Self {
+            match __sv_boom {
+                v2alpha1::Boom::Big => v1::Boom::Big,
+                v2alpha1::Boom::Shaq => v1::Boom::Shaq,
+            }
+        }
+    }
+    pub mod v2alpha1 {
+        use super::*;
+        pub struct Baz {
+            pub boom: Option<u16>,
+        }
+        #[derive(
+            Clone,
+            Debug,
+            serde::Deserialize,
+            serde::Serialize,
+            schemars::JsonSchema,
+            kube::CustomResource,
+        )]
+        #[kube(
+            group = "foo.example.org",
+            version = "v2alpha1",
+            kind = "Foo",
+            plural = "foos",
+            namespaced
+        )]
+        pub struct FooSpec {
+            pub bar: usize,
+            pub baz: bool,
+            #[deprecated]
+            pub deprecated_foo: String,
+        }
+        #[derive(
+            Clone,
+            Debug,
+            serde::Deserialize,
+            serde::Serialize,
+            schemars::JsonSchema,
+            kube::CustomResource,
+        )]
+        #[kube(
+            group = "bar.example.org",
+            version = "v2alpha1",
+            kind = "Bar",
+            plural = "bars"
+        )]
+        pub struct BarSpec {
+            pub baz: String,
+        }
+        pub enum Boom {
+            Big,
+            Shaq,
+        }
+    }
+    pub enum Foo {
+        V1Alpha1,
+        V1,
+        V2Alpha1,
+    }
+    impl ::std::fmt::Display for Foo {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> ::std::result::Result<(), ::std::fmt::Error> {
+            match self {
+                Self::V1Alpha1 => f.write_str("v1alpha1"),
+                Self::V1 => f.write_str("v1"),
+                Self::V2Alpha1 => f.write_str("v2alpha1"),
+            }
+        }
+    }
+    impl Foo {
+        /// Generates a merged CRD containing all versions and marking `stored_apiversion` as stored.
+        pub fn merged_crd(
+            stored_apiversion: Self,
+        ) -> ::std::result::Result<
+            ::k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition,
+            ::kube::core::crd::MergeError,
+        > {
+            ::kube::core::crd::merge_crds(
+                vec![
+                    < v1alpha1::Foo as ::kube::core::CustomResourceExt > ::crd(), <
+                    v1::Foo as ::kube::core::CustomResourceExt > ::crd(), < v2alpha1::Foo
+                    as ::kube::core::CustomResourceExt > ::crd()
+                ],
+                &stored_apiversion.to_string(),
+            )
+        }
+    }
+    #[derive(
+        ::core::clone::Clone,
+        ::core::fmt::Debug,
+        ::serde::Deserialize,
+        ::serde::Serialize,
+        ::schemars::JsonSchema
+    )]
+    #[serde(rename_all = "camelCase")]
+    pub struct FooStatus {
+        pub changed_values: ::stackable_versioned::ChangedValues,
+    }
+    pub enum Bar {
+        V1Alpha1,
+        V1,
+        V2Alpha1,
+    }
+    impl ::std::fmt::Display for Bar {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> ::std::result::Result<(), ::std::fmt::Error> {
+            match self {
+                Self::V1Alpha1 => f.write_str("v1alpha1"),
+                Self::V1 => f.write_str("v1"),
+                Self::V2Alpha1 => f.write_str("v2alpha1"),
+            }
+        }
+    }
+    impl Bar {
+        /// Generates a merged CRD containing all versions and marking `stored_apiversion` as stored.
+        pub fn merged_crd(
+            stored_apiversion: Self,
+        ) -> ::std::result::Result<
+            ::k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition,
+            ::kube::core::crd::MergeError,
+        > {
+            ::kube::core::crd::merge_crds(
+                vec![
+                    < v1alpha1::Bar as ::kube::core::CustomResourceExt > ::crd(), <
+                    v1::Bar as ::kube::core::CustomResourceExt > ::crd(), < v2alpha1::Bar
+                    as ::kube::core::CustomResourceExt > ::crd()
+                ],
+                &stored_apiversion.to_string(),
+            )
+        }
+    }
+    #[derive(
+        ::core::clone::Clone,
+        ::core::fmt::Debug,
+        ::serde::Deserialize,
+        ::serde::Serialize,
+        ::schemars::JsonSchema
+    )]
+    #[serde(rename_all = "camelCase")]
+    pub struct BarStatus {
+        pub changed_values: ::stackable_versioned::ChangedValues,
+    }
+}

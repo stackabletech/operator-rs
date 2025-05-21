@@ -62,6 +62,7 @@ pub(crate) struct KubernetesSkipArguments {
 #[derive(Clone, Debug, FromMeta)]
 pub(crate) struct KubernetesCrateArguments {
     pub kube_core: Option<Path>,
+    pub kube_client: Option<Path>,
     pub k8s_openapi: Option<Path>,
     pub schemars: Option<Path>,
     pub serde: Option<Path>,

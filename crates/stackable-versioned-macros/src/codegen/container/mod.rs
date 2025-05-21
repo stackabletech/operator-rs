@@ -357,6 +357,7 @@ impl From<KubernetesArguments> for KubernetesOptions {
 
 #[derive(Debug)]
 pub struct KubernetesCrateOptions {
+    pub kube_client: Override<Path>,
     pub kube_core: Override<Path>,
     pub k8s_openapi: Override<Path>,
     pub schemars: Override<Path>,
@@ -369,6 +370,7 @@ impl Default for KubernetesCrateOptions {
     fn default() -> Self {
         Self {
             versioned: Override::Default(parse_quote! { ::stackable_versioned }),
+            kube_client: Override::Default(parse_quote! { ::kube::client }),
             k8s_openapi: Override::Default(parse_quote! { ::k8s_openapi }),
             serde_json: Override::Default(parse_quote! { ::serde_json }),
             kube_core: Override::Default(parse_quote! { ::kube::core }),
@@ -394,6 +396,10 @@ impl From<KubernetesCrateArguments> for KubernetesCrateOptions {
             crate_options.kube_core = Override::Overridden(kube_core);
         }
 
+        if let Some(kube_client) = args.kube_client {
+            crate_options.kube_client = Override::Overridden(kube_client);
+        }
+
         if let Some(schemars) = args.schemars {
             crate_options.schemars = Override::Overridden(schemars);
         }
@@ -415,6 +421,7 @@ impl ToTokens for KubernetesCrateOptions {
         let mut crate_overrides = TokenStream::new();
 
         let KubernetesCrateOptions {
+            kube_client: _,
             k8s_openapi,
             serde_json,
             kube_core,
