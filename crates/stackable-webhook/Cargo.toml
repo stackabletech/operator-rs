@@ -11,7 +11,7 @@ stackable-certs = { path = "../stackable-certs", features = ["rustls"] }
 stackable-telemetry = { path = "../stackable-telemetry" }
 stackable-operator = { path = "../stackable-operator" }
 
-axum = { workspace = true, features = ["http2"] }
+axum.workspace = true
 futures-util.workspace = true
 hyper-util.workspace = true
 hyper.workspace = true

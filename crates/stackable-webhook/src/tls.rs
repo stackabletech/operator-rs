@@ -15,7 +15,7 @@ use tokio_rustls::{
     TlsAcceptor,
     rustls::{
         ServerConfig,
-        crypto::aws_lc_rs::default_provider,
+        crypto::ring::default_provider,
         version::{TLS12, TLS13},
     },
 };
