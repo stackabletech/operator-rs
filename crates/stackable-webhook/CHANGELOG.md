@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Don't pull in the `aws-lc-rs` crate, as this currently fails to build in "make run-dev" ([#1043]).
+
+[#1043]: https://github.com/stackabletech/operator-rs/pull/1043
+
 ## [0.3.1] - 2024-07-10
 
 ## Changed
