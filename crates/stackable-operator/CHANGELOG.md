@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Removed
+
+- Remove instrumenation from uninteresting funtions ([#1023]).
+
+[#1023]: https://github.com/stackabletech/operator-rs/pull/1023
+
 ## [0.93.1] - 2025-05-20
 
 ### Added
@@ -23,6 +29,7 @@ All notable changes to this project will be documented in this file.
   - Import are now more granular in general.
 - BREAKING: Update to `kube` to `1.0.0` and `k8s-openapi` to `0.25.0`.
   Use k8s `1.33` for compilation ([#1037]).
+- Separate some developer docs from CRD descriptions ([#1040]).
 
 ### Fixed
 
@@ -33,6 +40,7 @@ All notable changes to this project will be documented in this file.
 [#1025]: https://github.com/stackabletech/operator-rs/pull/1025
 [#1029]: https://github.com/stackabletech/operator-rs/pull/1029
 [#1037]: https://github.com/stackabletech/operator-rs/pull/1037
+[#1040]: https://github.com/stackabletech/operator-rs/pull/1040
 
 ## [0.92.0] - 2025-04-14
 
