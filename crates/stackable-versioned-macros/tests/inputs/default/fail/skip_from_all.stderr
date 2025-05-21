@@ -1,0 +1,35 @@
+error[E0308]: mismatched types
+  --> tests/inputs/default/fail/skip_from_all.rs:23:42
+   |
+23 |     let foo_v1beta1 = v1beta1::Foo::from(foo_v1alpha1);
+   |                       ------------------ ^^^^^^^^^^^^ expected `v1beta1::Foo`, found `v1alpha1::Foo`
+   |                       |
+   |                       arguments to this function are incorrect
+   |
+   = note: `v1alpha1::Foo` and `v1beta1::Foo` have similar names, but are actually distinct types
+note: `v1alpha1::Foo` is defined in module `crate::main::v1alpha1` of the current crate
+  --> tests/inputs/default/fail/skip_from_all.rs:4:5
+   |
+4  | /     #[versioned(
+5  | |         version(name = "v1alpha1"),
+6  | |         version(name = "v1beta1"),
+7  | |         version(name = "v1"),
+8  | |         options(skip(from))
+9  | |     )]
+   | |______^
+note: `v1beta1::Foo` is defined in module `crate::main::v1beta1` of the current crate
+  --> tests/inputs/default/fail/skip_from_all.rs:4:5
+   |
+4  | /     #[versioned(
+5  | |         version(name = "v1alpha1"),
+6  | |         version(name = "v1beta1"),
+7  | |         version(name = "v1"),
+8  | |         options(skip(from))
+9  | |     )]
+   | |______^
+note: associated function defined here
+  --> $RUST/core/src/convert/mod.rs
+   |
+   |     fn from(value: T) -> Self;
+   |        ^^^^
+   = note: this error originates in the attribute macro `versioned` (in Nightly builds, run with -Z macro-backtrace for more info)

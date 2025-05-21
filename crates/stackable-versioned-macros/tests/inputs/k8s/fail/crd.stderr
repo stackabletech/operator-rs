@@ -1,0 +1,11 @@
+error: struct name needs to include the `Spec` suffix if Kubernetes features are enabled via `#[versioned(k8s())]`
+  --> tests/inputs/k8s/fail/crd.rs:14:16
+   |
+14 |     pub struct Foo {
+   |                ^^^
+
+error[E0433]: failed to resolve: use of undeclared type `Foo`
+  --> tests/inputs/k8s/fail/crd.rs:23:22
+   |
+23 |     let merged_crd = Foo::merged_crd("v1").unwrap();
+   |                      ^^^ use of undeclared type `Foo`
