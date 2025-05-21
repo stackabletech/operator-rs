@@ -218,6 +218,15 @@ impl Enum {
                     })
                     .collect();
 
+                // Include allow(deprecated) only when this or the next version is
+                // deprecated. Also include it, when a variant in this or the next
+                // version is deprecated.
+                let allow_attribute = (version.deprecated.is_some()
+                    || next_version.deprecated.is_some()
+                    || self.is_any_variant_deprecated(version)
+                    || self.is_any_variant_deprecated(next_version))
+                .then_some(quote! { #[allow(deprecated)] });
+
                 // Only add the #[automatically_derived] attribute only if this impl is used
                 // outside of a module (in standalone mode).
                 let automatically_derived = add_attributes
@@ -226,6 +235,7 @@ impl Enum {
 
                 Some(quote! {
                     #automatically_derived
+                    #allow_attribute
                     impl #impl_generics ::std::convert::From<#from_module_ident::#enum_ident #type_generics> for #for_module_ident::#enum_ident #type_generics
                         #where_clause
                     {

@@ -35,6 +35,5 @@ mod v1alpha2 {
     pub enum Foo {
         Foo,
         Bar(u32, String),
-        Baz { id: u32, name: String },
     }
 }

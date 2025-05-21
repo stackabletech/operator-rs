@@ -48,6 +48,7 @@ impl ::std::convert::From<v1beta1::Foo> for v1::Foo {
     }
 }
 #[automatically_derived]
+#[allow(deprecated)]
 impl ::std::convert::From<v1::Foo> for v1beta1::Foo {
     fn from(__sv_foo: v1::Foo) -> Self {
         match __sv_foo {
@@ -76,6 +77,7 @@ impl ::std::convert::From<v1::Foo> for v2::Foo {
     }
 }
 #[automatically_derived]
+#[allow(deprecated)]
 impl ::std::convert::From<v2::Foo> for v1::Foo {
     fn from(__sv_foo: v2::Foo) -> Self {
         match __sv_foo {
@@ -104,6 +106,7 @@ impl ::std::convert::From<v2::Foo> for v3::Foo {
     }
 }
 #[automatically_derived]
+#[allow(deprecated)]
 impl ::std::convert::From<v3::Foo> for v2::Foo {
     fn from(__sv_foo: v3::Foo) -> Self {
         match __sv_foo {

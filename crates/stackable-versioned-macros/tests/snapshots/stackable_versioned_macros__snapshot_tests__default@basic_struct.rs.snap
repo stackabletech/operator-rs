@@ -28,7 +28,7 @@ impl ::std::convert::From<v1alpha1::Foo> for v1beta1::Foo {
 impl ::std::convert::From<v1beta1::Foo> for v1alpha1::Foo {
     fn from(__sv_foo: v1beta1::Foo) -> Self {
         Self {
-            jjj: __sv_foo.bar.into(),
+            jjj: u16_to_u8(__sv_foo.bar),
             baz: __sv_foo.baz.into(),
         }
     }
@@ -56,7 +56,7 @@ impl ::std::convert::From<v1beta1::Foo> for v1::Foo {
 impl ::std::convert::From<v1::Foo> for v1beta1::Foo {
     fn from(__sv_foo: v1::Foo) -> Self {
         Self {
-            bar: __sv_foo.bar.into(),
+            bar: usize_to_u16(__sv_foo.bar),
             baz: __sv_foo.baz.into(),
         }
     }

@@ -7,18 +7,18 @@ struct Foo {
         // This tests two additional things:
         // - that both unquoted and quoted usage works
         // - that the renamed name does get picked up correctly by the conversion function
-        changed(since = "v1", from_type = "u16", from_name = "bar", upgrade_with = u16_to_u32),
-        changed(since = "v2", from_type = "u32", upgrade_with = "u32_to_u64")
+        changed(since = "v1", from_type = "u16", from_name = "bar", downgrade_with = u32_to_u16),
+        changed(since = "v2", from_type = "u32", downgrade_with = "u64_to_u32")
     )]
     baz: u64,
 }
 // ---
 fn main() {}
 
-fn u16_to_u32(input: u16) -> u32 {
-    input as u32
+fn u32_to_u16(input: u32) -> u16 {
+    input.try_into().unwrap()
 }
 
-fn u32_to_u64(input: u32) -> u64 {
-    input as u64
+fn u64_to_u32(input: u64) -> u32 {
+    input.try_into().unwrap()
 }
