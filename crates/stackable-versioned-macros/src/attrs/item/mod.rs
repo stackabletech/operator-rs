@@ -442,7 +442,8 @@ fn default_default_fn() -> SpannedValue<Path> {
 /// Example usage:
 /// - `changed(since = "...", from_name = "...")`
 /// - `changed(since = "...", from_name = "...", from_type="...")`
-/// - `changed(since = "...", from_name = "...", from_type="...", convert_with = "...")`
+/// - `changed(since = "...", from_name = "...", from_type="...", upgrade_with = "...")`
+/// - `changed(since = "...", from_name = "...", from_type="...", downgrade_with = "...")`
 #[derive(Clone, Debug, FromMeta)]
 pub struct ChangedAttributes {
     pub since: SpannedValue<Version>,

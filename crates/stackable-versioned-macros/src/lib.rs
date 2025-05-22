@@ -463,11 +463,14 @@ mod utils;
 /// - `since` to indicate since which version the item is changed.
 /// - `from_name` to indicate from which previous name the field is renamed.
 /// - `from_type` to indicate from which previous type the field is changed.
-/// - `convert_with` to provide a custom conversion function instead of using
-///   a [`From`] implementation by default. This argument can only be used in
-///   combination with the `from_type` argument. The expected function signature
-///   is: `fn (OLD_TYPE) -> NEW_TYPE`. This function must not fail.
-///
+/// - `upgrade_with` to provide a custom upgrade function. This argument can
+///   only be used in combination with the `from_type` argument. The expected
+///   function signature is: `fn (OLD_TYPE) -> NEW_TYPE`. This function must
+///   not fail.
+///- `downgrade_with` to provide a custom downgrade function. This argument can
+///   only be used in combination with the `from_type` argument. The expected
+///   function signature is: `fn (NEW_TYPE) -> OLD_TYPE`. This function must
+///   not fail.
 /// ```
 /// # use stackable_versioned_macros::versioned;
 /// #[versioned(
