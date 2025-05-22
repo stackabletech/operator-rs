@@ -313,17 +313,6 @@ impl Foo {
         )
     }
 }
-#[derive(
-    ::core::clone::Clone,
-    ::core::fmt::Debug,
-    ::serde::Deserialize,
-    ::serde::Serialize,
-    ::schemars::JsonSchema
-)]
-#[serde(rename_all = "camelCase")]
-pub struct FooStatus {
-    pub changed_values: ::stackable_versioned::ChangedValues,
-}
 #[automatically_derived]
 pub(crate) enum Bar {
     V1Alpha1,
@@ -361,15 +350,4 @@ impl Bar {
             &stored_apiversion.to_string(),
         )
     }
-}
-#[derive(
-    ::core::clone::Clone,
-    ::core::fmt::Debug,
-    ::serde::Deserialize,
-    ::serde::Serialize,
-    ::schemars::JsonSchema
-)]
-#[serde(rename_all = "camelCase")]
-pub struct BarStatus {
-    pub changed_values: ::stackable_versioned::ChangedValues,
 }

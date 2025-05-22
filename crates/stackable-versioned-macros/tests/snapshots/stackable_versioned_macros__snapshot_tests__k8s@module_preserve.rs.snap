@@ -293,17 +293,6 @@ pub(crate) mod versioned {
             )
         }
     }
-    #[derive(
-        ::core::clone::Clone,
-        ::core::fmt::Debug,
-        ::serde::Deserialize,
-        ::serde::Serialize,
-        ::schemars::JsonSchema
-    )]
-    #[serde(rename_all = "camelCase")]
-    pub struct FooStatus {
-        pub changed_values: ::stackable_versioned::ChangedValues,
-    }
     pub enum Bar {
         V1Alpha1,
         V1,
@@ -338,16 +327,5 @@ pub(crate) mod versioned {
                 &stored_apiversion.to_string(),
             )
         }
-    }
-    #[derive(
-        ::core::clone::Clone,
-        ::core::fmt::Debug,
-        ::serde::Deserialize,
-        ::serde::Serialize,
-        ::schemars::JsonSchema
-    )]
-    #[serde(rename_all = "camelCase")]
-    pub struct BarStatus {
-        pub changed_values: ::stackable_versioned::ChangedValues,
     }
 }

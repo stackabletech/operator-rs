@@ -14,14 +14,7 @@ pub mod v1alpha1 {
         schemars::JsonSchema,
         kube::CustomResource,
     )]
-    #[kube(
-        group = "stackable.tech",
-        version = "v1alpha1",
-        kind = "Foo",
-        singular = "foo",
-        plural = "foos",
-        namespaced
-    )]
+    #[kube(group = "stackable.tech", version = "v1alpha1", kind = "Foo")]
     pub struct FooSpec {
         pub baz: bool,
     }
@@ -54,16 +47,9 @@ pub mod v1beta1 {
         schemars::JsonSchema,
         kube::CustomResource,
     )]
-    #[kube(
-        group = "stackable.tech",
-        version = "v1beta1",
-        kind = "Foo",
-        singular = "foo",
-        plural = "foos",
-        namespaced
-    )]
+    #[kube(group = "stackable.tech", version = "v1beta1", kind = "Foo")]
     pub struct FooSpec {
-        pub bah: u16,
+        pub bah: usize,
         pub baz: bool,
     }
 }
@@ -96,27 +82,9 @@ pub mod v1 {
         schemars::JsonSchema,
         kube::CustomResource,
     )]
-    #[kube(
-        group = "stackable.tech",
-        version = "v1",
-        kind = "Foo",
-        singular = "foo",
-        plural = "foos",
-        namespaced
-    )]
+    #[kube(group = "stackable.tech", version = "v1", kind = "Foo")]
     pub struct FooSpec {
         pub bar: usize,
         pub baz: bool,
     }
-}
-#[derive(
-    ::core::clone::Clone,
-    ::core::fmt::Debug,
-    ::serde::Deserialize,
-    ::serde::Serialize,
-    ::schemars::JsonSchema
-)]
-#[serde(rename_all = "camelCase")]
-pub struct FooStatus {
-    pub changed_values: ::stackable_versioned::ChangedValues,
 }

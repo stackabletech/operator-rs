@@ -18,10 +18,7 @@ pub mod v1alpha1 {
         group = "foo.example.org",
         version = "v1alpha1",
         kind = "Foo",
-        singular = "foo",
-        plural = "foos",
-        namespaced,
-        crates(kube_core = ::kube::core)
+        crates(kube_core = ::kube::core, schemars = ::schemars)
     )]
     pub struct FooSpec {
         pub baz: bool,
@@ -59,13 +56,10 @@ pub mod v1beta1 {
         group = "foo.example.org",
         version = "v1beta1",
         kind = "Foo",
-        singular = "foo",
-        plural = "foos",
-        namespaced,
-        crates(kube_core = ::kube::core)
+        crates(kube_core = ::kube::core, schemars = ::schemars)
     )]
     pub struct FooSpec {
-        pub bah: u16,
+        pub bah: usize,
         pub baz: bool,
     }
 }
@@ -102,10 +96,7 @@ pub mod v1 {
         group = "foo.example.org",
         version = "v1",
         kind = "Foo",
-        singular = "foo",
-        plural = "foos",
-        namespaced,
-        crates(kube_core = ::kube::core)
+        crates(kube_core = ::kube::core, schemars = ::schemars)
     )]
     pub struct FooSpec {
         pub bar: usize,
@@ -149,15 +140,4 @@ impl Foo {
             &stored_apiversion.to_string(),
         )
     }
-}
-#[derive(
-    ::core::clone::Clone,
-    ::core::fmt::Debug,
-    ::serde::Deserialize,
-    ::serde::Serialize,
-    ::schemars::JsonSchema
-)]
-#[serde(rename_all = "camelCase")]
-pub struct FooStatus {
-    pub changed_values: ::stackable_versioned::ChangedValues,
 }

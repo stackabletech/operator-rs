@@ -77,4 +77,5 @@ fn default() {
 fn k8s() {
     let t = trybuild::TestCases::new();
     t.compile_fail("tests/inputs/k8s/fail/*.rs");
+    t.pass("tests/inputs/k8s/pass/*.rs");
 }
