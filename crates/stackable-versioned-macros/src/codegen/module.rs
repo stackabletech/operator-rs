@@ -149,7 +149,6 @@ impl Module {
 
         let mut kubernetes_container_items: HashMap<Ident, KubernetesItems> = HashMap::new();
         let mut versions = self.versions.iter().peekable();
-        let multiple_versions = self.versions.len() > 1;
 
         while let Some(version) = versions.next() {
             let next_version = versions.peek().copied();
@@ -159,8 +158,7 @@ impl Module {
             let version_ident = &version.ident;
 
             for container in &self.containers {
-                container_definitions
-                    .extend(container.generate_definition(version, multiple_versions));
+                container_definitions.extend(container.generate_definition(version));
 
                 if !self.skip_from {
                     from_impls.extend(container.generate_upgrade_from_impl(

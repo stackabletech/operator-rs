@@ -8,7 +8,7 @@ use syn::{Attribute, Ident, ItemEnum, ItemStruct, Path, Visibility, parse_quote}
 use crate::{
     attrs::{
         container::StandaloneContainerAttributes,
-        k8s::{KubernetesArguments, KubernetesCrateArguments},
+        k8s::{KubernetesArguments, KubernetesCrateArguments, RawKubernetesOptions},
     },
     codegen::{
         VersionDefinition,
@@ -44,13 +44,9 @@ pub enum Container {
 
 impl Container {
     /// Generates the container definition for the specified `version`.
-    pub(crate) fn generate_definition(
-        &self,
-        version: &VersionDefinition,
-        multiple_versions: bool,
-    ) -> TokenStream {
+    pub(crate) fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
         match self {
-            Container::Struct(s) => s.generate_definition(version, multiple_versions),
+            Container::Struct(s) => s.generate_definition(version),
             Container::Enum(e) => e.generate_definition(version),
         }
     }
@@ -206,12 +202,9 @@ impl StandaloneContainer {
         let mut kubernetes_enum_variant_strings = Vec::new();
 
         let mut versions = self.versions.iter().peekable();
-        let multiple_versions = versions.len() > 1;
 
         while let Some(version) = versions.next() {
-            let container_definition = self
-                .container
-                .generate_definition(version, multiple_versions);
+            let container_definition = self.container.generate_definition(version);
 
             // NOTE (@Techassi): Using '.copied()' here does not copy or clone the data, but instead
             // removes one level of indirection of the double reference '&&'.
@@ -266,9 +259,7 @@ impl StandaloneContainer {
             false,
         ));
 
-        if multiple_versions {
-            tokens.extend(self.container.generate_kubernetes_status_struct());
-        }
+        tokens.extend(self.container.generate_kubernetes_status_struct());
 
         tokens
     }
@@ -314,6 +305,8 @@ pub struct ContainerOptions {
     pub skip_from: bool,
 }
 
+// TODO (@Techassi): Get rid of this whole mess. There should be an elegant way of using the
+// attributes directly (with all defaults set and validation done).
 #[derive(Debug)]
 pub struct KubernetesOptions {
     pub group: String,
@@ -335,6 +328,7 @@ pub struct KubernetesOptions {
     // annotation
     // label
     pub skip_merged_crd: bool,
+    pub config_options: KubernetesConfigOptions,
 }
 
 impl From<KubernetesArguments> for KubernetesOptions {
@@ -351,6 +345,7 @@ impl From<KubernetesArguments> for KubernetesOptions {
             status: args.status,
             shortnames: args.shortnames,
             skip_merged_crd: args.skip.is_some_and(|s| s.merged_crd.is_present()),
+            config_options: args.options.into(),
         }
     }
 }
@@ -470,6 +465,19 @@ impl<T> Deref for Override<T> {
         match &self {
             Override::Default(inner) => inner,
             Override::Overridden(inner) => inner,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct KubernetesConfigOptions {
+    experimental_conversion_tracking: bool,
+}
+
+impl From<RawKubernetesOptions> for KubernetesConfigOptions {
+    fn from(options: RawKubernetesOptions) -> Self {
+        Self {
+            experimental_conversion_tracking: options.experimental_conversion_tracking.is_present(),
         }
     }
 }

@@ -134,11 +134,7 @@ pub struct Struct {
 // Common token generation
 impl Struct {
     /// Generates code for the struct definition.
-    pub fn generate_definition(
-        &self,
-        version: &VersionDefinition,
-        multiple_versions: bool,
-    ) -> TokenStream {
+    pub fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
         let where_clause = self.generics.where_clause.as_ref();
         let type_generics = &self.generics;
 
@@ -152,7 +148,7 @@ impl Struct {
         }
 
         // This only returns Some, if K8s features are enabled
-        let kube_attribute = self.generate_kube_attribute(version, multiple_versions);
+        let kube_attribute = self.generate_kube_attribute(version);
 
         quote! {
             #(#[doc = #version_docs])*
@@ -323,11 +319,7 @@ impl Struct {
 // makes keeping track of interconnected parts easier.
 // Kubernetes-specific token generation
 impl Struct {
-    pub fn generate_kube_attribute(
-        &self,
-        version: &VersionDefinition,
-        _multiple_versions: bool,
-    ) -> Option<TokenStream> {
+    pub fn generate_kube_attribute(&self, version: &VersionDefinition) -> Option<TokenStream> {
         let kubernetes_options = self.common.options.kubernetes_options.as_ref()?;
 
         // Required arguments
@@ -356,24 +348,16 @@ impl Struct {
             .then_some(quote! { , namespaced });
         let crates = kubernetes_options.crates.to_token_stream();
 
-        // TODO (@Techassi): Comment back in, once we are happy with the status struct
-        // let status = if multiple_versions {
-        //     let status_ident = format_ident!(
-        //         "{struct_ident}Status",
-        //         struct_ident = self.common.idents.kubernetes.as_ident()
-        //     );
-        //     Some(quote! { , status = #status_ident })
-        // } else {
-        //     kubernetes_options
-        //         .status
-        //         .as_ref()
-        //         .map(|s| quote! { , status = #s })
-        // };
-
         let status = kubernetes_options
-            .status
-            .as_ref()
-            .map(|s| quote! { , status = #s });
+            .config_options
+            .experimental_conversion_tracking
+            .then(|| {
+                let status_ident = format_ident!(
+                    "{struct_ident}Status",
+                    struct_ident = self.common.idents.kubernetes.as_ident()
+                );
+                quote! { , status = #status_ident }
+            });
 
         let shortnames: TokenStream = kubernetes_options
             .shortnames
@@ -473,36 +457,42 @@ impl Struct {
     pub fn generate_kubernetes_status_struct(&self) -> Option<TokenStream> {
         let kubernetes_options = self.common.options.kubernetes_options.as_ref()?;
 
-        let status_ident = format_ident!(
-            "{struct_ident}Status",
-            struct_ident = self.common.idents.kubernetes.as_ident()
-        );
+        kubernetes_options
+            .config_options
+            .experimental_conversion_tracking
+            .then(|| {
+                let status_ident = format_ident!(
+                    "{struct_ident}Status",
+                    struct_ident = self.common.idents.kubernetes.as_ident()
+                );
 
-        let versioned_crate = &*kubernetes_options.crates.versioned;
-        let schemars_crate = &*kubernetes_options.crates.schemars;
-        let serde_crate = &*kubernetes_options.crates.serde;
+                let versioned_crate = &*kubernetes_options.crates.versioned;
+                let schemars_crate = &*kubernetes_options.crates.schemars;
+                let serde_crate = &*kubernetes_options.crates.serde;
 
-        let status = kubernetes_options.status.as_ref().map(|status| {
-            quote! {
-                #[serde(flatten)]
-                pub status: #status,
-            }
-        });
+                // TODO (@Techassi): Validate that users don't specify the status we generate
+                let status = kubernetes_options.status.as_ref().map(|status| {
+                    quote! {
+                        #[serde(flatten)]
+                        pub status: #status,
+                    }
+                });
 
-        Some(quote! {
-            #[derive(
-                ::core::clone::Clone,
-                ::core::fmt::Debug,
-                #serde_crate::Deserialize,
-                #serde_crate::Serialize,
-                #schemars_crate::JsonSchema
-            )]
-            #[serde(rename_all = "camelCase")]
-            pub struct #status_ident {
-                pub changed_values: #versioned_crate::ChangedValues,
+                quote! {
+                    #[derive(
+                        ::core::clone::Clone,
+                        ::core::fmt::Debug,
+                        #serde_crate::Deserialize,
+                        #serde_crate::Serialize,
+                        #schemars_crate::JsonSchema
+                    )]
+                    #[serde(rename_all = "camelCase")]
+                    pub struct #status_ident {
+                        pub changed_values: #versioned_crate::ChangedValues,
 
-                #status
-            }
-        })
+                        #status
+                    }
+                }
+            })
     }
 }
