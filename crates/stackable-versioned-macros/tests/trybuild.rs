@@ -21,7 +21,7 @@ mod inputs {
             // mod attribute_enum;
             // mod attribute_struct;
             // mod basic_struct;
-            // mod convert_with;
+            // mod downgrade_with;
             // mod deprecate_enum;
             // mod deprecate_struct;
             // mod enum_data_simple;
