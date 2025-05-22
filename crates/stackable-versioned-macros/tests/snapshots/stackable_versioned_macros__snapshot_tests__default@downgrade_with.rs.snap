@@ -1,7 +1,7 @@
 ---
 source: crates/stackable-versioned-macros/src/lib.rs
 expression: formatted
-input_file: crates/stackable-versioned-macros/tests/inputs/default/pass/convert_with.rs
+input_file: crates/stackable-versioned-macros/tests/inputs/default/pass/downgrade_with.rs
 ---
 #[automatically_derived]
 mod v1alpha1 {
