@@ -11,7 +11,7 @@ pub(crate) mod v1alpha1 {
         group = "stackable.tech",
         version = "v1alpha1",
         kind = "Foo",
-        status = FooStatus
+        status = FooStatusWithChangedValues
     )]
     pub struct FooSpec {
         pub baz: bool,
@@ -42,7 +42,7 @@ pub(crate) mod v1beta1 {
         group = "stackable.tech",
         version = "v1beta1",
         kind = "Foo",
-        status = FooStatus
+        status = FooStatusWithChangedValues
     )]
     pub struct FooSpec {
         pub bah: usize,
@@ -71,7 +71,12 @@ impl ::std::convert::From<v1::FooSpec> for v1beta1::FooSpec {
 pub(crate) mod v1 {
     use super::*;
     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
-    #[kube(group = "stackable.tech", version = "v1", kind = "Foo", status = FooStatus)]
+    #[kube(
+        group = "stackable.tech",
+        version = "v1",
+        kind = "Foo",
+        status = FooStatusWithChangedValues
+    )]
     pub struct FooSpec {
         pub bar: usize,
         pub baz: bool,
@@ -123,7 +128,7 @@ impl Foo {
     ::schemars::JsonSchema
 )]
 #[serde(rename_all = "camelCase")]
-pub struct FooStatus {
+pub struct FooStatusWithChangedValues {
     pub changed_values: ::stackable_versioned::ChangedValues,
     #[serde(flatten)]
     pub status: MyStatus,

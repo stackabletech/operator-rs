@@ -348,12 +348,14 @@ impl Struct {
             .then_some(quote! { , namespaced });
         let crates = kubernetes_options.crates.to_token_stream();
 
+        // TODO (@Techassi): This struct name should be defined once in a single place instead
+        // of constructing it in two different places which can lead to de-synchronization.
         let status = kubernetes_options
             .config_options
             .experimental_conversion_tracking
             .then(|| {
                 let status_ident = format_ident!(
-                    "{struct_ident}Status",
+                    "{struct_ident}StatusWithChangedValues",
                     struct_ident = self.common.idents.kubernetes.as_ident()
                 );
                 quote! { , status = #status_ident }
@@ -462,7 +464,7 @@ impl Struct {
             .experimental_conversion_tracking
             .then(|| {
                 let status_ident = format_ident!(
-                    "{struct_ident}Status",
+                    "{struct_ident}StatusWithChangedValues",
                     struct_ident = self.common.idents.kubernetes.as_ident()
                 );
 
