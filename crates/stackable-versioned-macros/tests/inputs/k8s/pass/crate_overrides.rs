@@ -6,11 +6,9 @@ use stackable_versioned::versioned;
     version(name = "v1"),
     k8s(
         group = "foo.example.org",
-        singular = "foo",
-        plural = "foos",
-        namespaced,
         crates(
-            kube_core = ::kube::core
+            kube_core = ::kube::core,
+            schemars = ::schemars
         )
     )
 )]
@@ -19,10 +17,7 @@ use stackable_versioned::versioned;
     Clone, Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema, kube::CustomResource,
 )]
 pub struct FooSpec {
-    #[versioned(
-        added(since = "v1beta1"),
-        changed(since = "v1", from_name = "bah", from_type = "u16")
-    )]
+    #[versioned(added(since = "v1beta1"), changed(since = "v1", from_name = "bah"))]
     bar: usize,
     baz: bool,
 }

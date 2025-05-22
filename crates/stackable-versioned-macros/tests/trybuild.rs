@@ -21,7 +21,7 @@ mod inputs {
             // mod attribute_enum;
             // mod attribute_struct;
             // mod basic_struct;
-            // mod convert_with;
+            // mod downgrade_with;
             // mod deprecate_enum;
             // mod deprecate_struct;
             // mod enum_data_simple;
@@ -50,6 +50,7 @@ mod inputs {
     mod k8s {
         mod pass {
             // mod basic;
+            // mod conversion_tracking;
             // mod crate_overrides;
             // mod module;
             // mod module_preserve;
@@ -76,4 +77,5 @@ fn default() {
 fn k8s() {
     let t = trybuild::TestCases::new();
     t.compile_fail("tests/inputs/k8s/fail/*.rs");
+    t.pass("tests/inputs/k8s/pass/*.rs");
 }

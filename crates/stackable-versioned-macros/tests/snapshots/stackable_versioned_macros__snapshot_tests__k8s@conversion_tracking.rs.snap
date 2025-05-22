@@ -1,24 +1,17 @@
 ---
 source: crates/stackable-versioned-macros/src/lib.rs
 expression: formatted
-input_file: crates/stackable-versioned-macros/tests/inputs/k8s/pass/crate_overrides.rs
+input_file: crates/stackable-versioned-macros/tests/inputs/k8s/pass/conversion_tracking.rs
 ---
 #[automatically_derived]
-pub mod v1alpha1 {
+pub(crate) mod v1alpha1 {
     use super::*;
-    #[derive(
-        Clone,
-        Debug,
-        serde::Deserialize,
-        serde::Serialize,
-        schemars::JsonSchema,
-        kube::CustomResource,
-    )]
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
     #[kube(
-        group = "foo.example.org",
+        group = "stackable.tech",
         version = "v1alpha1",
         kind = "Foo",
-        crates(kube_core = ::kube::core, schemars = ::schemars)
+        status = FooStatusWithChangedValues
     )]
     pub struct FooSpec {
         pub baz: bool,
@@ -42,21 +35,14 @@ impl ::std::convert::From<v1beta1::FooSpec> for v1alpha1::FooSpec {
     }
 }
 #[automatically_derived]
-pub mod v1beta1 {
+pub(crate) mod v1beta1 {
     use super::*;
-    #[derive(
-        Clone,
-        Debug,
-        serde::Deserialize,
-        serde::Serialize,
-        schemars::JsonSchema,
-        kube::CustomResource,
-    )]
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
     #[kube(
-        group = "foo.example.org",
+        group = "stackable.tech",
         version = "v1beta1",
         kind = "Foo",
-        crates(kube_core = ::kube::core, schemars = ::schemars)
+        status = FooStatusWithChangedValues
     )]
     pub struct FooSpec {
         pub bah: usize,
@@ -82,21 +68,14 @@ impl ::std::convert::From<v1::FooSpec> for v1beta1::FooSpec {
     }
 }
 #[automatically_derived]
-pub mod v1 {
+pub(crate) mod v1 {
     use super::*;
-    #[derive(
-        Clone,
-        Debug,
-        serde::Deserialize,
-        serde::Serialize,
-        schemars::JsonSchema,
-        kube::CustomResource,
-    )]
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
     #[kube(
-        group = "foo.example.org",
+        group = "stackable.tech",
         version = "v1",
         kind = "Foo",
-        crates(kube_core = ::kube::core, schemars = ::schemars)
+        status = FooStatusWithChangedValues
     )]
     pub struct FooSpec {
         pub bar: usize,
@@ -104,7 +83,7 @@ pub mod v1 {
     }
 }
 #[automatically_derived]
-pub enum Foo {
+pub(crate) enum Foo {
     V1Alpha1,
     V1Beta1,
     V1,
@@ -140,4 +119,17 @@ impl Foo {
             &stored_apiversion.to_string(),
         )
     }
+}
+#[derive(
+    ::core::clone::Clone,
+    ::core::fmt::Debug,
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    ::schemars::JsonSchema
+)]
+#[serde(rename_all = "camelCase")]
+pub struct FooStatusWithChangedValues {
+    pub changed_values: ::stackable_versioned::ChangedValues,
+    #[serde(flatten)]
+    pub status: FooStatus,
 }

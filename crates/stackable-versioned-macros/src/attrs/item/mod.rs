@@ -238,15 +238,26 @@ impl CommonItemAttributes {
                 }
             }
 
-            // The convert_with argument only makes sense to use when the
-            // type changed
-            if let Some(convert_func) = change.convert_with.as_ref() {
-                if change.from_type.is_none() {
+            if change.from_type.is_none() {
+                // The upgrade_with argument only makes sense to use when the
+                // type changed
+                if let Some(upgrade_func) = change.upgrade_with.as_ref() {
                     errors.push(
                         Error::custom(
-                            "the `convert_with` argument must be used in combination with `from_type`",
+                            "the `upgrade_with` argument must be used in combination with `from_type`",
                         )
-                        .with_span(&convert_func.span()),
+                        .with_span(&upgrade_func.span()),
+                    );
+                }
+
+                // The downgrade_with argument only makes sense to use when the
+                // type changed
+                if let Some(downgrade_func) = change.downgrade_with.as_ref() {
+                    errors.push(
+                        Error::custom(
+                            "the `downgrade_with` argument must be used in combination with `from_type`",
+                        )
+                        .with_span(&downgrade_func.span()),
                     );
                 }
             }
@@ -315,7 +326,8 @@ impl CommonItemAttributes {
                     .unwrap_or(ty.clone());
 
                 actions.insert(*change.since, ItemStatus::Change {
-                    convert_with: change.convert_with.as_deref().cloned(),
+                    downgrade_with: change.downgrade_with.as_deref().cloned(),
+                    upgrade_with: change.upgrade_with.as_deref().cloned(),
                     from_ident: from_ident.clone(),
                     from_type: from_ty.clone(),
                     to_ident: ident,
@@ -359,7 +371,8 @@ impl CommonItemAttributes {
                     .unwrap_or(ty.clone());
 
                 actions.insert(*change.since, ItemStatus::Change {
-                    convert_with: change.convert_with.as_deref().cloned(),
+                    downgrade_with: change.downgrade_with.as_deref().cloned(),
+                    upgrade_with: change.upgrade_with.as_deref().cloned(),
                     from_ident: from_ident.clone(),
                     from_type: from_ty.clone(),
                     to_ident: ident,
@@ -429,13 +442,15 @@ fn default_default_fn() -> SpannedValue<Path> {
 /// Example usage:
 /// - `changed(since = "...", from_name = "...")`
 /// - `changed(since = "...", from_name = "...", from_type="...")`
-/// - `changed(since = "...", from_name = "...", from_type="...", convert_with = "...")`
+/// - `changed(since = "...", from_name = "...", from_type="...", upgrade_with = "...")`
+/// - `changed(since = "...", from_name = "...", from_type="...", downgrade_with = "...")`
 #[derive(Clone, Debug, FromMeta)]
 pub struct ChangedAttributes {
     pub since: SpannedValue<Version>,
     pub from_name: Option<SpannedValue<String>>,
     pub from_type: Option<SpannedValue<Type>>,
-    pub convert_with: Option<SpannedValue<Path>>,
+    pub upgrade_with: Option<SpannedValue<Path>>,
+    pub downgrade_with: Option<SpannedValue<Path>>,
 }
 
 /// For the deprecated() action

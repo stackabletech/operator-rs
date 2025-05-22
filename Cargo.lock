@@ -3043,6 +3043,11 @@ dependencies = [
 name = "stackable-versioned"
 version = "0.7.1"
 dependencies = [
+ "k8s-version",
+ "schemars",
+ "serde",
+ "serde_json",
+ "serde_yaml",
  "stackable-versioned-macros",
 ]
 

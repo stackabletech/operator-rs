@@ -151,6 +151,7 @@ impl Module {
         let mut versions = self.versions.iter().peekable();
 
         while let Some(version) = versions.next() {
+            let next_version = versions.peek().copied();
             let mut container_definitions = TokenStream::new();
             let mut from_impls = TokenStream::new();
 
@@ -160,9 +161,15 @@ impl Module {
                 container_definitions.extend(container.generate_definition(version));
 
                 if !self.skip_from {
-                    from_impls.extend(container.generate_from_impl(
+                    from_impls.extend(container.generate_upgrade_from_impl(
                         version,
-                        versions.peek().copied(),
+                        next_version,
+                        self.preserve_module,
+                    ));
+
+                    from_impls.extend(container.generate_downgrade_from_impl(
+                        version,
+                        next_version,
                         self.preserve_module,
                     ));
                 }
@@ -228,6 +235,8 @@ impl Module {
                     version_module_vis,
                     self.preserve_module,
                 ));
+
+                kubernetes_tokens.extend(container.generate_kubernetes_status_struct());
             }
         }
 
