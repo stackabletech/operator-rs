@@ -9,7 +9,7 @@ use stackable_versioned::versioned;
     version(name = "v1"),
     k8s(
         group = "stackable.tech",
-        status = MyStatus,
+        status = FooStatus,
         options(experimental_conversion_tracking),
     )
 )]
@@ -24,7 +24,7 @@ pub(crate) struct FooSpec {
 fn main() {}
 
 #[derive(Clone, Debug, JsonSchema, Deserialize, Serialize)]
-pub struct MyStatus {
+pub struct FooStatus {
     foo: String,
 }
 
