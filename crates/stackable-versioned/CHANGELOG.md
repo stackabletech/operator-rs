@@ -8,9 +8,12 @@ All notable changes to this project will be documented in this file.
 
 - Implement basic ground work for downgrading custom resources ([#1033]).
   - Emit `From` implementations to downgrade custom resource specs.
-  - Emit a status struct when multiple versions are defined to be able to track values required
-    during downgrades and upgrades of custom resources.
-
+  - Emit a status struct to be able to track values required during downgrades and upgrades of
+    custom resources. The generation of code for this feature is opt-in and must be enabled by
+    adding the `k8s(options(experimental_conversion_tracking))` flag.
+  - Add `versioned` crate override to `k8s(crates())` to specify a custom import path. This override
+    will not be passed to the `#[kube()]` attribute, but will only be available to internal
+    `#[versioned]` macro code.
 - Add `kube_client` crate override to `k8s(crates())` to specify a custom import path. This override
   will not be passed to the `#[kube()]` attribute, but will only be available to internal
   `#[versioned]` macro code ([#1038]).
@@ -25,9 +28,19 @@ All notable changes to this project will be documented in this file.
 
 - Correctly handle fields added in later versions ([#1031]).
 
+### Removed
+
+- BREAKING: Remove unused `AsVersionStr` trait ([#1033]).
+
+### Miscellaneous
+
+- Fix and add snapshot/compile tests for Kubernetes-specific features ([#1033]).
+- Combine snapshot and compile tests ([#1041]).
+
 [#1031]: https://github.com/stackabletech/operator-rs/pull/1031
 [#1033]: https://github.com/stackabletech/operator-rs/pull/1033
 [#1038]: https://github.com/stackabletech/operator-rs/pull/1038
+[#1041]: https://github.com/stackabletech/operator-rs/pull/1041
 
 ## [0.7.1] - 2025-04-02
 
