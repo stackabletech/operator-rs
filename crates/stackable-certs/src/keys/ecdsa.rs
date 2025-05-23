@@ -22,28 +22,26 @@ pub enum Error {
 #[derive(Debug)]
 pub struct SigningKey(p256::ecdsa::SigningKey);
 
-impl SigningKey {
-    #[instrument(name = "create_ecdsa_signing_key")]
-    pub fn new() -> Result<Self> {
-        let mut csprng = OsRng;
-        Self::new_with_rng(&mut csprng)
-    }
-
-    #[instrument(name = "create_ecdsa_signing_key_custom_rng", skip_all)]
-    pub fn new_with_rng<R>(csprng: &mut R) -> Result<Self>
-    where
-        R: CryptoRngCore + Sized,
-    {
-        let signing_key = p256::ecdsa::SigningKey::random(csprng);
-        Ok(Self(signing_key))
-    }
-}
-
 impl CertificateKeypair for SigningKey {
     type Error = Error;
     type Signature = ecdsa::der::Signature<NistP256>;
     type SigningKey = p256::ecdsa::SigningKey;
     type VerifyingKey = p256::ecdsa::VerifyingKey;
+
+    #[instrument(name = "create_ecdsa_signing_key")]
+    fn new() -> Result<Self> {
+        let mut csprng = OsRng;
+        Self::new_with_rng(&mut csprng)
+    }
+
+    #[instrument(name = "create_ecdsa_signing_key_custom_rng", skip_all)]
+    fn new_with_rng<Rng>(rng: &mut Rng) -> Result<Self>
+    where
+        Rng: CryptoRngCore + Sized,
+    {
+        let signing_key = p256::ecdsa::SigningKey::random(rng);
+        Ok(Self(signing_key))
+    }
 
     fn signing_key(&self) -> &Self::SigningKey {
         &self.0
