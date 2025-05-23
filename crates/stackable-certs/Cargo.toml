@@ -13,6 +13,7 @@ rustls = ["dep:tokio-rustls"]
 [dependencies]
 stackable-operator = { path = "../stackable-operator" }
 
+bon.workspace = true
 const-oid.workspace = true
 ecdsa.workspace = true
 k8s-openapi.workspace = true

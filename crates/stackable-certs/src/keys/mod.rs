@@ -9,8 +9,8 @@
 //! [`ecdsa`], which provides primitives and traits, and [`p256`] which
 //! implements the NIST P-256 elliptic curve and supports ECDSA.
 //!
-//! ```ignore
-//! use stackable_certs::keys::ecdsa::SigningKey;
+//! ```no_run
+//! use stackable_certs::keys::{ecdsa::SigningKey, CertificateKeypair};
 //! let key = SigningKey::new().unwrap();
 //! ```
 //!
@@ -18,9 +18,9 @@
 //!
 //! In order to work with RSA keys, this crate requires the [`rsa`] dependency.
 //!
-//! ```ignore
-//! use stackable_certs::keys::rsa::SigningKey;
-//! let key = SigningKey::new().unwrap();
+//! ```no_run
+//! use stackable_certs::keys::{rsa::SigningKey, CertificateKeypair};
+//! let key = SigningKey::new().unwrap();;
 //! ```
 //!
 //! It should be noted, that the crate is currently vulnerable to the recently
@@ -32,6 +32,7 @@
 use std::fmt::Debug;
 
 use p256::pkcs8::EncodePrivateKey;
+use rand_core::CryptoRngCore;
 use signature::{Keypair, Signer};
 use x509_cert::spki::{EncodePublicKey, SignatureAlgorithmIdentifier, SignatureBitStringEncoding};
 
@@ -53,6 +54,14 @@ where
     type VerifyingKey: EncodePublicKey;
 
     type Error: std::error::Error + 'static;
+
+    /// Generates a new key with the default random-number generator [`rand_core::OsRng`].
+    fn new() -> Result<Self, Self::Error>;
+
+    /// Generates a new key with a custom random-number generator.
+    fn new_with_rng<Rng>(rng: &mut Rng) -> Result<Self, Self::Error>
+    where
+        Rng: CryptoRngCore + Sized;
 
     /// Returns the signing (private) key half of the keypair.
     fn signing_key(&self) -> &Self::SigningKey;

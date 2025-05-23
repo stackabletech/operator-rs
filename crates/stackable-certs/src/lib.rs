@@ -34,7 +34,10 @@ use {
 use crate::keys::CertificateKeypair;
 
 pub mod ca;
+mod cert_builder;
 pub mod keys;
+
+pub use cert_builder::*;
 
 /// Error variants which can be encountered when creating a new
 /// [`CertificatePair`].
@@ -43,7 +46,7 @@ pub enum CertificatePairError<E>
 where
     E: std::error::Error + 'static,
 {
-    #[snafu(display("failed to seralize certificate as {key_encoding}"))]
+    #[snafu(display("failed to serialize certificate as {key_encoding}"))]
     SerializeCertificate {
         source: x509_cert::der::Error,
         key_encoding: KeyEncoding,
@@ -74,7 +77,8 @@ where
     ReadFile { source: std::io::Error },
 }
 
-/// Custom implementation of [`std::cmp::PartialEq`] because [`std::io::Error`] doesn't implement it, but [`std::io::ErrorKind`] does.
+/// Custom implementation of [`std::cmp::PartialEq`] because [`std::io::Error`] doesn't implement it,
+/// but [`std::io::ErrorKind`] does.
 impl<E: snafu::Error + std::cmp::PartialEq> PartialEq for CertificatePairError<E> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -110,6 +114,13 @@ where
     S: CertificateKeypair,
     <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
+    pub fn new(certificate: Certificate, key_pair: S) -> Self {
+        Self {
+            certificate,
+            key_pair,
+        }
+    }
+
     /// Returns a reference to the [`Certificate`].
     pub fn certificate(&self) -> &Certificate {
         &self.certificate

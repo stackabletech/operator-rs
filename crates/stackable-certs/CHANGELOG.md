@@ -6,13 +6,14 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- BREAKING: `CertificateAuthority::generate_leaf_certificate` (and `generate_rsa_leaf_certificate` and `generate_ecdsa_leaf_certificate`)
-  now take an additional parameter `subject_alterative_dns_names`. The passed SANs are added to the generated certificate,
-  this is needed for basically all modern TLS certificate validations when used with HTTPS.
-  Pass an empty list (`[]`) to keep the existing behavior ([#1044]).
+- Support adding SAN entries to generated certificates, this is needed for basically all modern TLS
+  certificate validations when used with HTTPS ([#1044]).
 - BREAKING: The constant `DEFAULT_CA_VALIDITY_SECONDS` has been renamed to `DEFAULT_CA_VALIDITY` and now is of type `stackable_operator::time::Duration`.
   Also, the constant `ROOT_CA_SUBJECT` has been renamed to `SDP_ROOT_CA_SUBJECT` ([#1044]).
-- Added the function `CertificateAuthority::ca_cert` to easily get the CA `Certificate` ([#1044]).
+
+### Changed
+
+- GIGA BREAKING: Rewrite entire CA and cert generation to use a builder pattern ([#1044]).
 
 ## [0.3.1] - 2024-07-10
 

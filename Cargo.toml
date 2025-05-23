@@ -12,6 +12,7 @@ repository = "https://github.com/stackabletech/operator-rs"
 product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.7.0" }
 
 axum = { version = "0.8.1", features = ["http2"] }
+bon = "3.6.3"
 chrono = { version = "0.4.38", default-features = false }
 clap = { version = "4.5.17", features = ["derive", "cargo", "env"] }
 const_format = "0.2.33"
