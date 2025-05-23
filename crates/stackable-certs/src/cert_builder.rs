@@ -5,7 +5,7 @@ use const_oid::db::rfc5280::{ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH};
 use rsa::pkcs8::EncodePublicKey;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::time::Duration;
-use tracing::debug;
+use tracing::{debug, warn};
 use x509_cert::{
     builder::{Builder, Profile},
     der::{DecodePem, asn1::Ia5String},
@@ -129,8 +129,7 @@ where
     ) -> Result<CertificatePair<KP>, CreateCertificateError<KP::Error>> {
         let serial_number =
             SerialNumber::from(self.serial_number.unwrap_or_else(|| rand::random::<u64>()));
-        // NOTE (@Techassi): Should we validate that the validity is shorter
-        // than the validity of the issuing CA?
+
         let validity = Validity::from_now(*self.validity).context(ParseValiditySnafu)?;
         let subject: Name = self.subject.parse().context(ParseSubjectSnafu {
             subject: self.subject,
@@ -139,6 +138,20 @@ where
             Some(key_pair) => key_pair,
             None => KP::new().context(CreateKeyPairSnafu)?,
         };
+
+        let ca_validity = self.signed_by.ca_cert().tbs_certificate.validity;
+        let ca_not_after = ca_validity.not_after.to_system_time();
+        let cert_not_after = validity.not_after.to_system_time();
+        if ca_not_after < cert_not_after {
+            warn!(
+                ca.validity = ?ca_validity,
+                cert.validity = ?validity,
+                ca.not_after = ?ca_not_after,
+                cert.not_after = ?cert_not_after,
+                subject = ?subject,
+                "The lifetime of certificate authority is shorted than the lifetime of the generated certificate",
+            );
+        }
 
         let spki_pem = key_pair
             .verifying_key()
