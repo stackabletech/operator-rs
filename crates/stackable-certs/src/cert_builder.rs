@@ -74,16 +74,17 @@ where
 /// };
 ///
 /// let ca = CertificateAuthority::<ecdsa::SigningKey>::builder()
-///     .build_ca()
+///     .build()
 ///     .expect("failed to build CA");
 ///
 /// let certificate = CertificatePair::builder()
 ///     .subject("CN=trino-coordinator-default-0")
 ///     .signed_by(&ca)
-///     .build_certificate()
+///     .build()
 ///     .expect("failed to build certificate");
 /// ```
 #[derive(Builder)]
+#[builder(finish_fn = finish_builder)]
 pub struct CertificateBuilder<'a, KP>
 where
     KP: CertificateKeypair,
@@ -123,11 +124,9 @@ where
     <KP::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
     S: certificate_builder_builder::IsComplete,
 {
-    /// Convenience function to avoid calling `builder().build().build_certificate()`
-    pub fn build_certificate(
-        self,
-    ) -> Result<CertificatePair<KP>, CreateCertificateError<KP::Error>> {
-        self.build().build_certificate()
+    /// Convenience function to avoid calling `builder().finish_builder().build()`
+    pub fn build(self) -> Result<CertificatePair<KP>, CreateCertificateError<KP::Error>> {
+        self.finish_builder().build()
     }
 }
 
@@ -136,9 +135,7 @@ where
     KP: CertificateKeypair,
     <KP::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
-    pub fn build_certificate(
-        self,
-    ) -> Result<CertificatePair<KP>, CreateCertificateError<KP::Error>> {
+    pub fn build(self) -> Result<CertificatePair<KP>, CreateCertificateError<KP::Error>> {
         let serial_number =
             SerialNumber::from(self.serial_number.unwrap_or_else(|| rand::random::<u64>()));
 
@@ -241,7 +238,6 @@ mod tests {
             .subject("CN=trino-coordinator-default-0")
             .signed_by(&ca)
             .build()
-            .build_certificate()
             .expect("failed to build certificate");
 
         assert_certificate_attributes(
@@ -268,7 +264,6 @@ mod tests {
             .key_pair(rsa::SigningKey::new().unwrap())
             .signed_by(&ca)
             .build()
-            .build_certificate()
             .expect("failed to build certificate");
 
         assert_certificate_attributes(
@@ -329,14 +324,12 @@ mod tests {
     fn get_ecdsa_ca() -> CertificateAuthority<ecdsa::SigningKey> {
         CertificateAuthorityBuilder::builder()
             .build()
-            .build_ca()
             .expect("failed to build CA")
     }
 
     fn get_rsa_ca() -> CertificateAuthority<rsa::SigningKey> {
         CertificateAuthorityBuilder::builder()
             .build()
-            .build_ca()
             .expect("failed to build CA")
     }
 }

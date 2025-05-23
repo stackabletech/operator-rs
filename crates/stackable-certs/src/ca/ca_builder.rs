@@ -67,10 +67,11 @@ where
 /// };
 ///
 /// let ca = CertificateAuthority::<ecdsa::SigningKey>::builder()
-///     .build_ca()
+///     .build()
 ///     .expect("failed to build CA");
 /// ```
 #[derive(Builder)]
+#[builder(finish_fn = finish_builder)]
 pub struct CertificateAuthorityBuilder<'a, SKP>
 where
     SKP: CertificateKeypair,
@@ -103,11 +104,11 @@ where
     <SKP::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
     S: certificate_authority_builder_builder::IsComplete,
 {
-    /// Convenience function to avoid calling `builder().build().build_ca()`
-    pub fn build_ca(
+    /// Convenience function to avoid calling `builder().finish_builder().build()`
+    pub fn build(
         self: Self,
     ) -> Result<CertificateAuthority<SKP>, CreateCertificateAuthorityError<SKP::Error>> {
-        self.build().build_ca()
+        self.finish_builder().build()
     }
 }
 
@@ -116,7 +117,7 @@ where
     SKP: CertificateKeypair,
     <SKP::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
-    pub fn build_ca(
+    pub fn build(
         self,
     ) -> Result<CertificateAuthority<SKP>, CreateCertificateAuthorityError<SKP::Error>> {
         let serial_number =
@@ -196,7 +197,6 @@ mod tests {
     fn minimal_ca() {
         let ca: CertificateAuthority<ecdsa::SigningKey> = CertificateAuthorityBuilder::builder()
             .build()
-            .build_ca()
             .expect("failed to build CA");
 
         assert_ca_cert_attributes(
@@ -215,7 +215,6 @@ mod tests {
             .signing_key_pair(rsa::SigningKey::new().unwrap())
             .validity(Duration::from_days_unchecked(13))
             .build()
-            .build_ca()
             .expect("failed to build CA");
 
         assert_ca_cert_attributes(

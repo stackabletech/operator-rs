@@ -110,13 +110,13 @@ impl TlsServer {
         // See https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html
         let task = tokio::task::spawn_blocking(move || {
             let ca: CertificateAuthority<ecdsa::SigningKey> = CertificateAuthority::builder()
-                .build_ca()
+                .build()
                 .context(CreateCertificateAuthoritySnafu)?;
 
             let certificate = CertificatePair::builder()
                 .subject("CN=webhook")
                 .signed_by(&ca)
-                .build_certificate()
+                .build()
                 .context(CreateCertificateSnafu)?;
 
             let certificate_der = certificate
