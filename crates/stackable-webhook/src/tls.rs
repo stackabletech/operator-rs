@@ -111,14 +111,12 @@ impl TlsServer {
         let task = tokio::task::spawn_blocking(move || {
             let ca: CertificateAuthority<ecdsa::SigningKey> =
                 CertificateAuthorityBuilder::builder()
-                    .build()
                     .build_ca()
                     .context(CreateCertificateAuthoritySnafu)?;
 
             let certificate = CertificateBuilder::builder()
                 .subject("CN=webhook")
                 .signed_by(&ca)
-                .build()
                 .build_certificate()
                 .context(CreateCertificateSnafu)?;
 

@@ -68,7 +68,6 @@ where
 /// };
 ///
 /// let ca: CertificateAuthority<ecdsa::SigningKey> = CertificateAuthorityBuilder::builder()
-///     .build()
 ///     .build_ca()
 ///     .expect("failed to build CA");
 /// ```
@@ -97,6 +96,20 @@ where
     ///
     /// If not specified a random keypair will be generated.
     signing_key_pair: Option<SKP>,
+}
+
+impl<SKP, S> CertificateAuthorityBuilderBuilder<'_, SKP, S>
+where
+    SKP: CertificateKeypair,
+    <SKP::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
+    S: certificate_authority_builder_builder::IsComplete,
+{
+    /// Convenience function to avoid calling `builder().build().build_ca()`
+    pub fn build_ca(
+        self: Self,
+    ) -> Result<CertificateAuthority<SKP>, CreateCertificateAuthorityError<SKP::Error>> {
+        self.build().build_ca()
+    }
 }
 
 impl<SKP> CertificateAuthorityBuilder<'_, SKP>

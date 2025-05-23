@@ -74,14 +74,12 @@ where
 /// };
 ///
 /// let ca: CertificateAuthority<ecdsa::SigningKey> = CertificateAuthorityBuilder::builder()
-///     .build()
 ///     .build_ca()
 ///     .expect("failed to build CA");
 ///
 /// let certificate = CertificateBuilder::builder()
 ///     .subject("CN=trino-coordinator-default-0")
 ///     .signed_by(&ca)
-///     .build()
 ///     .build_certificate()
 ///     .expect("failed to build certificate");
 /// ```
@@ -117,6 +115,20 @@ where
 
     /// Mandatorily sign the certificate using the provided [`CertificateAuthority`].
     signed_by: &'a CertificateAuthority<KP>,
+}
+
+impl<KP, S> CertificateBuilderBuilder<'_, KP, S>
+where
+    KP: CertificateKeypair,
+    <KP::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
+    S: certificate_builder_builder::IsComplete,
+{
+    /// Convenience function to avoid calling `builder().build().build_certificate()`
+    pub fn build_certificate(
+        self,
+    ) -> Result<CertificatePair<KP>, CreateCertificateError<KP::Error>> {
+        self.build().build_certificate()
+    }
 }
 
 impl<KP> CertificateBuilder<'_, KP>
