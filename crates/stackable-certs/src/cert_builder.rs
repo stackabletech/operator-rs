@@ -22,7 +22,7 @@ use crate::{
     keys::CertificateKeypair,
 };
 
-/// Defines all error variants which can occur when creating a CertificateRequest
+/// Defines all error variants which can occur when creating a certificate
 #[derive(Debug, Snafu)]
 pub enum CreateCertificateError<E>
 where
@@ -37,8 +37,6 @@ where
         subject: String,
     },
 
-    // #[snafu(display("failed to create key pair"))]
-    // CreateKeyPair { source: Box<dyn std::error::Error> },
     #[snafu(display("failed to create key pair"))]
     CreateKeyPair { source: E },
 
@@ -275,9 +273,9 @@ mod tests {
             .find(|ext| ext.extn_id == ID_CE_SUBJECT_ALT_NAME)
             .expect("cert had no SAN extension");
 
-        let actual_sans = SubjectAltName::from_der(san_extension.extn_value.as_bytes())
+        let san_extension = SubjectAltName::from_der(san_extension.extn_value.as_bytes())
             .expect("failed to parse SAN");
-        let actual_sans = actual_sans
+        let actual_sans = san_extension
             .0
             .iter()
             .filter_map(|san| match san {

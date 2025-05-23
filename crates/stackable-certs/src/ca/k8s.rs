@@ -10,8 +10,7 @@ use crate::{CertificatePair, keys::CertificateKeypair};
 
 pub const TLS_SECRET_TYPE: &str = "kubernetes.io/tls";
 
-/// Defines all error variants which can occur when loading a CA from a
-/// Kubernetes [`Secret`].
+/// Defines all error variants which can occur when loading a CA from a Kubernetes [`Secret`].
 #[derive(Debug, Snafu)]
 pub enum SecretError<E>
 where
@@ -50,7 +49,7 @@ where
 
 /// Create a [`CertificateAuthority`] from a Kubernetes [`Secret`].
 ///
-/// Both the  `certificate_key` and `private_key_key` parameters describe
+/// Both the `certificate_key` and `private_key_key` parameters describe
 /// the _key_ used to lookup the certificate and private key value in the
 /// Kubernetes [`Secret`]. Common keys are `ca.crt` and `ca.key`.
 #[instrument(skip(secret))]
@@ -71,7 +70,7 @@ where
         secret: ObjectRef::from_obj(&secret),
     })?;
 
-    debug!("retrieving certificate data from secret via key {certificate_key:?}");
+    debug!("retrieving certificate data from secret via key \"{certificate_key}\"");
     let certificate_data = data
         .get(certificate_key)
         .with_context(|| NoCertificateDataSnafu {
@@ -84,7 +83,7 @@ where
         })?
         .remove(0);
 
-    debug!("retrieving private key data from secret via key {private_key_key:?}");
+    debug!("retrieving private key data from secret via key \"{private_key_key}\"");
     let private_key_data = data
         .get(private_key_key)
         .with_context(|| NoPrivateKeyDataSnafu {
@@ -107,8 +106,8 @@ where
 #[instrument(skip(secret_ref, client))]
 pub async fn ca_from_k8s_secret_ref<SK>(
     secret_ref: &SecretReference,
-    key_certificate: &str,
-    key_private_key: &str,
+    certificate_key: &str,
+    private_key_key: &str,
     client: &Client,
 ) -> Result<CertificateAuthority<SK>, SecretError<SK::Error>>
 where
@@ -123,5 +122,5 @@ where
             secret_ref: secret_ref.to_owned(),
         })?;
 
-    ca_from_k8s_secret(secret, key_certificate, key_private_key)
+    ca_from_k8s_secret(secret, certificate_key, private_key_key)
 }

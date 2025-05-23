@@ -114,6 +114,7 @@ impl TlsServer {
                     .build()
                     .build_ca()
                     .context(CreateCertificateAuthoritySnafu)?;
+
             let certificate = CertificateBuilder::builder()
                 .subject("CN=webhook")
                 .signed_by(&ca)

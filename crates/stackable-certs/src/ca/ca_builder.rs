@@ -157,12 +157,11 @@ where
         )
         .context(CreateCertificateBuilderSnafu)?;
 
-        // Add extension constructed above
         builder
             .add_extension(&aki)
             .context(AddCertificateExtensionSnafu)?;
 
-        debug!("create and sign CA certificate");
+        debug!("creating and signing CA certificate");
         let certificate = builder.build().context(BuildCertificateSnafu)?;
 
         Ok(CertificateAuthority {

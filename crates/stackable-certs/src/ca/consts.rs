@@ -10,4 +10,5 @@ pub const DEFAULT_CERTIFICATE_VALIDITY: Duration = Duration::from_hours_unchecke
 /// The root CA subject name containing only the common name.
 pub const SDP_ROOT_CA_SUBJECT: &str = "CN=Stackable Data Platform Internal CA";
 
+/// As we are mostly on Unix systems, we are using `\ņ`.
 pub const PEM_LINE_ENDING: LineEnding = LineEnding::LF;

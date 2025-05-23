@@ -20,7 +20,7 @@
 //!
 //! ```no_run
 //! use stackable_certs::keys::{rsa::SigningKey, CertificateKeypair};
-//! let key = SigningKey::new().unwrap();;
+//! let key = SigningKey::new().unwrap();
 //! ```
 //!
 //! It should be noted, that the crate is currently vulnerable to the recently
