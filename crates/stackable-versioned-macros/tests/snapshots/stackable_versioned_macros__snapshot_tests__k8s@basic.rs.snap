@@ -36,6 +36,14 @@ impl ::std::convert::From<v1alpha1::FooSpec> for v1beta1::FooSpec {
     }
 }
 #[automatically_derived]
+impl ::std::convert::From<v1beta1::FooSpec> for v1alpha1::FooSpec {
+    fn from(__sv_foospec: v1beta1::FooSpec) -> Self {
+        Self {
+            baz: __sv_foospec.baz.into(),
+        }
+    }
+}
+#[automatically_derived]
 pub(crate) mod v1beta1 {
     use super::*;
     #[derive(
@@ -64,6 +72,15 @@ impl ::std::convert::From<v1beta1::FooSpec> for v1::FooSpec {
     fn from(__sv_foospec: v1beta1::FooSpec) -> Self {
         Self {
             bar: __sv_foospec.bah.into(),
+            baz: __sv_foospec.baz.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1::FooSpec> for v1beta1::FooSpec {
+    fn from(__sv_foospec: v1::FooSpec) -> Self {
+        Self {
+            bah: usize_to_u16(__sv_foospec.bar),
             baz: __sv_foospec.baz.into(),
         }
     }

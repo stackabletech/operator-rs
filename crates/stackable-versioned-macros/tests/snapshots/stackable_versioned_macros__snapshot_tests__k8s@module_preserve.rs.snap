@@ -56,11 +56,24 @@ pub(crate) mod versioned {
             Self { boom: __sv_baz.boom.into() }
         }
     }
+    impl ::std::convert::From<v1::Baz> for v1alpha1::Baz {
+        fn from(__sv_baz: v1::Baz) -> Self {
+            Self { boom: __sv_baz.boom.into() }
+        }
+    }
     impl ::std::convert::From<v1alpha1::FooSpec> for v1::FooSpec {
         fn from(__sv_foospec: v1alpha1::FooSpec) -> Self {
             Self {
                 bar: __sv_foospec.bar.into(),
                 baz: ::std::default::Default::default(),
+                foo: __sv_foospec.foo.into(),
+            }
+        }
+    }
+    impl ::std::convert::From<v1::FooSpec> for v1alpha1::FooSpec {
+        fn from(__sv_foospec: v1::FooSpec) -> Self {
+            Self {
+                bar: __sv_foospec.bar.into(),
                 foo: __sv_foospec.foo.into(),
             }
         }
@@ -72,11 +85,26 @@ pub(crate) mod versioned {
             }
         }
     }
+    impl ::std::convert::From<v1::BarSpec> for v1alpha1::BarSpec {
+        fn from(__sv_barspec: v1::BarSpec) -> Self {
+            Self {
+                baz: __sv_barspec.baz.into(),
+            }
+        }
+    }
     impl ::std::convert::From<v1alpha1::Boom> for v1::Boom {
         fn from(__sv_boom: v1alpha1::Boom) -> Self {
             match __sv_boom {
                 v1alpha1::Boom::Big => v1::Boom::Big,
                 v1alpha1::Boom::Shaq => v1::Boom::Shaq,
+            }
+        }
+    }
+    impl ::std::convert::From<v1::Boom> for v1alpha1::Boom {
+        fn from(__sv_boom: v1::Boom) -> Self {
+            match __sv_boom {
+                v1::Boom::Big => v1alpha1::Boom::Big,
+                v1::Boom::Shaq => v1alpha1::Boom::Shaq,
             }
         }
     }
@@ -127,6 +155,11 @@ pub(crate) mod versioned {
             Self { boom: __sv_baz.boom.into() }
         }
     }
+    impl ::std::convert::From<v2alpha1::Baz> for v1::Baz {
+        fn from(__sv_baz: v2alpha1::Baz) -> Self {
+            Self { boom: __sv_baz.boom.into() }
+        }
+    }
     #[allow(deprecated)]
     impl ::std::convert::From<v1::FooSpec> for v2alpha1::FooSpec {
         fn from(__sv_foospec: v1::FooSpec) -> Self {
@@ -137,8 +170,25 @@ pub(crate) mod versioned {
             }
         }
     }
+    #[allow(deprecated)]
+    impl ::std::convert::From<v2alpha1::FooSpec> for v1::FooSpec {
+        fn from(__sv_foospec: v2alpha1::FooSpec) -> Self {
+            Self {
+                bar: __sv_foospec.bar.into(),
+                baz: __sv_foospec.baz.into(),
+                foo: __sv_foospec.deprecated_foo.into(),
+            }
+        }
+    }
     impl ::std::convert::From<v1::BarSpec> for v2alpha1::BarSpec {
         fn from(__sv_barspec: v1::BarSpec) -> Self {
+            Self {
+                baz: __sv_barspec.baz.into(),
+            }
+        }
+    }
+    impl ::std::convert::From<v2alpha1::BarSpec> for v1::BarSpec {
+        fn from(__sv_barspec: v2alpha1::BarSpec) -> Self {
             Self {
                 baz: __sv_barspec.baz.into(),
             }
@@ -149,6 +199,14 @@ pub(crate) mod versioned {
             match __sv_boom {
                 v1::Boom::Big => v2alpha1::Boom::Big,
                 v1::Boom::Shaq => v2alpha1::Boom::Shaq,
+            }
+        }
+    }
+    impl ::std::convert::From<v2alpha1::Boom> for v1::Boom {
+        fn from(__sv_boom: v2alpha1::Boom) -> Self {
+            match __sv_boom {
+                v2alpha1::Boom::Big => v1::Boom::Big,
+                v2alpha1::Boom::Shaq => v1::Boom::Shaq,
             }
         }
     }
