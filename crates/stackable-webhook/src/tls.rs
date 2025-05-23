@@ -9,8 +9,8 @@ use hyper_util::rt::{TokioExecutor, TokioIo};
 use opentelemetry::trace::{FutureExt, SpanKind};
 use snafu::{ResultExt, Snafu};
 use stackable_certs::{
-    CertificateBuilder, CertificatePairError, CreateCertificateError,
-    ca::{CertificateAuthority, CertificateAuthorityBuilder, CreateCertificateAuthorityError},
+    CertificatePair, CertificatePairError, CreateCertificateError,
+    ca::{CertificateAuthority, CreateCertificateAuthorityError},
     keys::ecdsa,
 };
 use tokio::net::TcpListener;
@@ -109,12 +109,11 @@ impl TlsServer {
         // blocked.
         // See https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html
         let task = tokio::task::spawn_blocking(move || {
-            let ca: CertificateAuthority<ecdsa::SigningKey> =
-                CertificateAuthorityBuilder::builder()
-                    .build_ca()
-                    .context(CreateCertificateAuthoritySnafu)?;
+            let ca: CertificateAuthority<ecdsa::SigningKey> = CertificateAuthority::builder()
+                .build_ca()
+                .context(CreateCertificateAuthoritySnafu)?;
 
-            let certificate = CertificateBuilder::builder()
+            let certificate = CertificatePair::builder()
                 .subject("CN=webhook")
                 .signed_by(&ca)
                 .build_certificate()

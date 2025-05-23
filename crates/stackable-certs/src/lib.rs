@@ -121,6 +121,10 @@ where
         }
     }
 
+    pub fn builder() -> CertificateBuilderBuilder<'static, S> {
+        CertificateBuilder::builder()
+    }
+
     /// Returns a reference to the [`Certificate`].
     pub fn certificate(&self) -> &Certificate {
         &self.certificate

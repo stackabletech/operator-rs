@@ -24,16 +24,20 @@ where
     certificate_pair: CertificatePair<SK>,
 }
 
-impl<S> CertificateAuthority<S>
+impl<SK> CertificateAuthority<SK>
 where
-    S: CertificateKeypair,
-    <S::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
+    SK: CertificateKeypair,
+    <SK::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
-    pub fn new(certificate_pair: CertificatePair<S>) -> Self {
+    pub fn new(certificate_pair: CertificatePair<SK>) -> Self {
         Self { certificate_pair }
     }
 
-    pub fn signing_key(&self) -> &S::SigningKey {
+    pub fn builder() -> CertificateAuthorityBuilderBuilder<'static, SK> {
+        CertificateAuthorityBuilder::builder()
+    }
+
+    pub fn signing_key(&self) -> &SK::SigningKey {
         self.certificate_pair.key_pair().signing_key()
     }
 

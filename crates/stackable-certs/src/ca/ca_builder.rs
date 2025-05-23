@@ -63,11 +63,10 @@ where
 ///
 /// ```no_run
 /// use stackable_certs::{
-///     keys::ecdsa,
-///     ca::{CertificateAuthority, CertificateAuthorityBuilder},
+///     keys::ecdsa, ca::CertificateAuthority,
 /// };
 ///
-/// let ca: CertificateAuthority<ecdsa::SigningKey> = CertificateAuthorityBuilder::builder()
+/// let ca = CertificateAuthority::<ecdsa::SigningKey>::builder()
 ///     .build_ca()
 ///     .expect("failed to build CA");
 /// ```

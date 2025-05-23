@@ -69,15 +69,15 @@ where
 /// ```no_run
 /// use stackable_certs::{
 ///     keys::ecdsa,
-///     ca::{CertificateAuthority, CertificateAuthorityBuilder},
-///     CertificateBuilder,
+///     ca::CertificateAuthority,
+///     CertificatePair,
 /// };
 ///
-/// let ca: CertificateAuthority<ecdsa::SigningKey> = CertificateAuthorityBuilder::builder()
+/// let ca = CertificateAuthority::<ecdsa::SigningKey>::builder()
 ///     .build_ca()
 ///     .expect("failed to build CA");
 ///
-/// let certificate = CertificateBuilder::builder()
+/// let certificate = CertificatePair::builder()
 ///     .subject("CN=trino-coordinator-default-0")
 ///     .signed_by(&ca)
 ///     .build_certificate()
