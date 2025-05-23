@@ -1,4 +1,4 @@
-use hickory_resolver::{system_conf::read_system_conf, Resolver};
+use hickory_resolver::{Resolver, system_conf::read_system_conf};
 use local_ip_address::list_afinet_netifas;
 use serde::Serialize;
 use std::{

@@ -42,7 +42,7 @@ impl SystemInformation {
     /// Collects static information that doesn't need to be refreshed.
     #[tracing::instrument(name = "SystemInformation::init")]
     pub fn init() -> CollectContext {
-        tracing::info!("initializing");
+        tracing::debug!("initializing");
         let mut ctx = CollectContext {
             // Each module is responsible for updating the information that it cares about.
             system: sysinfo::System::new(),
@@ -53,14 +53,14 @@ impl SystemInformation {
                 "failed to initialize user module, ignoring but this will likely cause collection errors..."
             );
         }
-        tracing::info!("init finished");
+        tracing::debug!("init finished");
         ctx
     }
 
     /// Collects and reports
     #[tracing::instrument(name = "SystemInformation::collect", skip(ctx))]
     pub fn collect(ctx: &mut CollectContext) -> Self {
-        tracing::info!("Starting data collection");
+        tracing::debug!("Starting data collection");
 
         let info = Self {
             resources: Some(resources::Resources::collect(&mut ctx.system)),
@@ -74,7 +74,7 @@ impl SystemInformation {
             // ..Default::default()
         };
 
-        tracing::info!("Data collection finished");
+        tracing::debug!("Data collection finished");
         info
     }
 }

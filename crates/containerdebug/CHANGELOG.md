@@ -7,8 +7,10 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Increased the default `--loop` interval from every minute to every 30 minutes ([#23]).
+- Collect and output the open files limit ([#45])
 
 [#23]: https://github.com/stackabletech/containerdebug/pull/23
+[#45]: https://github.com/stackabletech/containerdebug/pull/45
 
 ## [0.1.1] - 2024-12-16
 

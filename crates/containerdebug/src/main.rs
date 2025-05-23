@@ -1,11 +1,12 @@
 mod error;
 mod system_information;
 
-use clap::{crate_description, crate_version, Parser};
-use stackable_operator::logging::TracingTarget;
+use clap::{Parser, crate_description, crate_version};
+use stackable_operator::telemetry::Tracing;
 use std::path::PathBuf;
 
 use crate::system_information::SystemInformation;
+use stackable_operator::telemetry::tracing::TelemetryOptions;
 use std::time::Instant;
 
 const APP_NAME: &str = "containerdebug";
@@ -27,9 +28,8 @@ struct Opts {
     #[clap(long, short = 'o')]
     output: Option<PathBuf>,
 
-    /// Tracing log collector system
-    #[arg(long, env, default_value_t, value_enum)]
-    pub tracing_target: TracingTarget,
+    #[clap(flatten)]
+    pub telemetry_arguments: TelemetryOptions,
 }
 
 mod built_info {
@@ -38,11 +38,10 @@ mod built_info {
 
 fn main() {
     let opts = Opts::parse();
-    stackable_operator::logging::initialize_logging(
-        "CONTAINERDEBUG_LOG",
-        APP_NAME,
-        opts.tracing_target,
-    );
+
+    let _trace_guard = Tracing::pre_configured(APP_NAME, opts.telemetry_arguments)
+        .init()
+        .unwrap();
 
     // Wrap *all* output in a span, to separate it from main app output.
     let _span = tracing::error_span!("containerdebug").entered();
