@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-05-26
+
 ### Changed
 
 - Increased the default `--loop` interval from every minute to every 30 minutes ([#23]).
