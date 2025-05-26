@@ -990,22 +990,28 @@ mod test {
                 log_format: Default::default()
             }
         );
-        assert_eq!(trace_guard.file_log_settings, FileLogSettings::Enabled {
-            common_settings: Settings {
-                environment_variable: "ABC_FILE",
-                default_level: LevelFilter::INFO
-            },
-            file_log_dir: PathBuf::from("/abc_file_dir"),
-            rotation_period: Rotation::NEVER,
-            filename_suffix: "tracing-rs.json".to_owned(),
-            max_log_files: None,
-        });
-        assert_eq!(trace_guard.otlp_log_settings, OtlpLogSettings::Enabled {
-            common_settings: Settings {
-                environment_variable: "ABC_OTLP_LOG",
-                default_level: LevelFilter::DEBUG
-            },
-        });
+        assert_eq!(
+            trace_guard.file_log_settings,
+            FileLogSettings::Enabled {
+                common_settings: Settings {
+                    environment_variable: "ABC_FILE",
+                    default_level: LevelFilter::INFO
+                },
+                file_log_dir: PathBuf::from("/abc_file_dir"),
+                rotation_period: Rotation::NEVER,
+                filename_suffix: "tracing-rs.json".to_owned(),
+                max_log_files: None,
+            }
+        );
+        assert_eq!(
+            trace_guard.otlp_log_settings,
+            OtlpLogSettings::Enabled {
+                common_settings: Settings {
+                    environment_variable: "ABC_OTLP_LOG",
+                    default_level: LevelFilter::DEBUG
+                },
+            }
+        );
         assert_eq!(
             trace_guard.otlp_trace_settings,
             OtlpTraceSettings::Enabled {
@@ -1057,15 +1063,18 @@ mod test {
 
     #[test]
     fn pre_configured() {
-        let tracing = Tracing::pre_configured("test", TelemetryOptions {
-            console_log_disabled: false,
-            console_log_format: Default::default(),
-            file_log_directory: None,
-            file_log_rotation_period: None,
-            file_log_max_files: None,
-            otel_trace_exporter_enabled: true,
-            otel_log_exporter_enabled: false,
-        });
+        let tracing = Tracing::pre_configured(
+            "test",
+            TelemetryOptions {
+                console_log_disabled: false,
+                console_log_format: Default::default(),
+                file_log_directory: None,
+                file_log_rotation_period: None,
+                file_log_max_files: None,
+                otel_trace_exporter_enabled: true,
+                otel_log_exporter_enabled: false,
+            },
+        );
 
         assert!(tracing.otlp_trace_settings.is_enabled());
     }
