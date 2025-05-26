@@ -1,0 +1,12 @@
+[package]
+name = "xtask"
+edition = "2024"
+publish = false
+
+[dependencies]
+stackable-operator = { path = "../stackable-operator" }
+
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+snafu.workspace = true

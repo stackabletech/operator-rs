@@ -12,11 +12,6 @@ repos:
         args: ["--allow-missing-credentials"]
       - id: detect-private-key
 
-  - repo: https://github.com/doublify/pre-commit-rust
-    rev: eeee35a89e69d5772bdee97db1a6a898467b686e # 1.0
-    hooks:
-      - id: clippy
-        args: ["--all-targets", "--", "-D", "warnings"]
   - repo: https://github.com/adrienverge/yamllint
     rev: 81e9f98ffd059efe8aa9c1b1a42e5cce61b640c6 # 1.35.1
     hooks:
@@ -52,10 +47,27 @@ repos:
         stages: [pre-commit, pre-merge-commit, manual]
         pass_filenames: false
 
-      - id: rustfmt
-        name: rustfmt
+      - id: cargo-rustfmt
+        name: cargo-rustfmt
         language: system
         # Pinning to a specific rustc version, so that we get consistent formatting
         entry: cargo +nightly-2025-01-15 fmt --all -- --check
-        stages: [pre-commit]
+        stages: [pre-commit, pre-merge-commit]
         pass_filenames: false
+        files: \.rs$
+
+      - id: cargo-clippy
+        name: cargo-clippy
+        language: system
+        entry: cargo clippy --all-targets -- -D warnings
+        stages: [pre-commit, pre-merge-commit]
+        pass_filenames: false
+        files: \.rs$
+
+      - id: crd-preview
+        name: crd-preview
+        language: system
+        entry: cargo xtask crd preview
+        stages: [pre-commit, pre-merge-commit]
+        pass_filenames: false
+        files: \.rs$

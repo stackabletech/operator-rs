@@ -1,95 +1,19 @@
-use std::fs::create_dir_all;
-
-use snafu::{Report, ResultExt, Snafu};
+use serde::{Deserialize, Serialize};
 use stackable_operator::{
-    YamlSchema,
     commons::resources::{JvmHeapLimits, Resources},
     config::fragment::Fragment,
-    crd::{
-        authentication::core::AuthenticationClass,
-        listener::{Listener, ListenerClass, PodListeners},
-        s3::{S3Bucket, S3Connection},
-    },
-    k8s_openapi::serde::{Deserialize, Serialize},
-    kube::{CustomResource, core::crd::MergeError},
+    kube::CustomResource,
     role_utils::Role,
-    schemars::JsonSchema,
-    shared::yaml::SerializeOptions,
+    schemars::{self, JsonSchema},
     status::condition::ClusterCondition,
+    versioned::versioned,
 };
-use stackable_versioned::versioned;
-
-const OPERATOR_VERSION: &str = "0.0.0-dev";
-const OUTPUT_DIR: &str = "../../generated-crd-previews";
-
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("Failed to merge CRD for CRD {crd}"))]
-    MergeCRD { source: MergeError, crd: String },
-
-    #[snafu(display("Failed to create output directory {dir}"))]
-    CreateOutputDir { source: std::io::Error, dir: String },
-
-    #[snafu(display("Failed to write CRD to output file"))]
-    WriteCRD {
-        source: stackable_shared::yaml::Error,
-    },
-}
-
-pub fn main() -> Report<Error> {
-    Report::capture(write_crds)
-}
-
-macro_rules! write_crd {
-    ($crd_name:ident, $stored_crd_version:ident) => {
-        $crd_name::merged_crd($crd_name::$stored_crd_version)
-            .with_context(|_| MergeCRDSnafu {
-                crd: stringify!($crd_name),
-            })?
-            .write_yaml_schema(
-                format!("{OUTPUT_DIR}/{}.yaml", stringify!($crd_name)),
-                OPERATOR_VERSION,
-                SerializeOptions::default(),
-            )
-            .context(WriteCRDSnafu)?;
-    };
-}
-
-pub fn write_crds() -> Result<(), Error> {
-    create_dir_all(OUTPUT_DIR).with_context(|_| CreateOutputDirSnafu {
-        dir: OUTPUT_DIR.to_string(),
-    })?;
-
-    // AuthenticationClass::merged_crd(AuthenticationClass::V1Alpha1)
-    //     .with_context(|_| MergeCRDSnafu {
-    //         crd: "AuthenticationClass".to_string(),
-    //     })?
-    //     .write_yaml_schema(
-    //         format!("{OUTPUT_DIR}/{}.yaml", "AuthenticationClass"),
-    //         OPERATOR_VERSION,
-    //         SerializeOptions::default(),
-    //     )
-    //     .context(WriteCRDSnafu)?;
-
-    write_crd!(AuthenticationClass, V1Alpha1);
-    write_crd!(Listener, V1Alpha1);
-    write_crd!(ListenerClass, V1Alpha1);
-    write_crd!(PodListeners, V1Alpha1);
-    write_crd!(S3Bucket, V1Alpha1);
-    write_crd!(S3Connection, V1Alpha1);
-
-    // Also write a CRD with all sorts of common structs
-    write_crd!(DummyCluster, V1Alpha1);
-
-    Ok(())
-}
 
 #[versioned(version(name = "v1alpha1"))]
 pub mod versioned {
-
     #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
     #[versioned(k8s(
-        group = "zookeeper.stackable.tech",
+        group = "dummy.stackable.tech",
         kind = "DummyCluster",
         status = "v1alpha1::DummyClusterStatus",
         namespaced,
@@ -99,6 +23,7 @@ pub mod versioned {
             schemars = "stackable_operator::schemars"
         )
     ))]
+    #[schemars(crate = "stackable_operator::schemars")]
     #[serde(rename_all = "camelCase")]
     pub struct DummyClusterSpec {
         nodes: Option<Role<ProductConfigFragment>>,
@@ -126,8 +51,10 @@ pub mod versioned {
     #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]
     #[fragment_attrs(
         derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema),
+        schemars(crate = "stackable_operator::schemars"),
         serde(rename_all = "camelCase")
     )]
+    #[schemars(crate = "stackable_operator::schemars")]
     pub struct ProductConfig {
         #[fragment_attrs(serde(default))]
         resources: Resources<ProductStorageConfig, JvmHeapLimits>,
@@ -136,13 +63,16 @@ pub mod versioned {
     #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]
     #[fragment_attrs(
         derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema),
+        schemars(crate = "stackable_operator::schemars"),
         serde(rename_all = "camelCase")
     )]
+    #[schemars(crate = "stackable_operator::schemars")]
     pub struct ProductStorageConfig {
         data_storage: stackable_operator::commons::resources::PvcConfig,
     }
 
     #[derive(Clone, Default, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+    #[schemars(crate = "stackable_operator::schemars")]
     #[serde(rename_all = "camelCase")]
     pub struct DummyClusterStatus {
         pub conditions: Vec<ClusterCondition>,

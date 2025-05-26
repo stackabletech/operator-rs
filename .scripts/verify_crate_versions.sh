@@ -12,6 +12,10 @@ set -euo pipefail
 # stackable-webhook-0.3.1
 
 for CRATE in $(find ./crates/ -mindepth 2 -name Cargo.toml -print0 | xargs -0 -n 1 dirname | xargs -n 1 basename | sort); do
+    if [ "$CRATE" = "xtask" ]; then
+        continue # Skip xtask binary, because it is not published and only used for internal tooling
+    fi
+
     # Get the version in Cargo.toml
     CRATE_VERSION=$(grep 'version' "./crates/$CRATE/Cargo.toml" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
     [ -n "$CRATE_VERSION" ] || (
@@ -40,8 +44,6 @@ for CRATE in $(find ./crates/ -mindepth 2 -name Cargo.toml -print0 | xargs -0 -n
             echo "Ensure the version in ./crates/$CRATE/Cargo.toml matches the version in ./crates/$ASSOCIATED_CRATE/Cargo.toml" >&2
             exit 23
         )
-    elif [ "$CRATE" = "stackable-crd-previewer" ]; then
-        : # Skip stackable-crd-previewer crate for now, it's not a "real"/user-facing crate
     else
         # Get the latest documented version from the CHANGELOG.md
         CHANGELOG_VERSION=$(grep -oE '\[[0-9]+\.[0-9]+\.[0-9]+\]' "./crates/$CRATE/CHANGELOG.md" | head -1 | tr -d '[]')
