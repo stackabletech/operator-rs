@@ -22,27 +22,30 @@ use syn::Path;
 ///   times.
 /// - `skip`: Controls skipping parts of the generation.
 #[derive(Clone, Debug, FromMeta)]
-pub(crate) struct KubernetesArguments {
-    pub(crate) group: String,
-    pub(crate) kind: Option<String>,
-    pub(crate) singular: Option<String>,
-    pub(crate) plural: Option<String>,
-    pub(crate) namespaced: Flag,
+pub struct KubernetesArguments {
+    pub group: String,
+    pub kind: Option<String>,
+    pub singular: Option<String>,
+    pub plural: Option<String>,
+    pub namespaced: Flag,
     // root
-    pub(crate) crates: Option<KubernetesCrateArguments>,
-    pub(crate) status: Option<Path>,
+    pub crates: Option<KubernetesCrateArguments>,
+    pub status: Option<Path>,
     // derive
     // schema
     // scale
     // printcolumn
     #[darling(multiple, rename = "shortname")]
-    pub(crate) shortnames: Vec<String>,
+    pub shortnames: Vec<String>,
     // category
     // selectable
     // doc
     // annotation
     // label
-    pub(crate) skip: Option<KubernetesSkipArguments>,
+    pub skip: Option<KubernetesSkipArguments>,
+
+    #[darling(default)]
+    pub options: RawKubernetesOptions,
 }
 
 /// This struct contains supported kubernetes skip arguments.
@@ -52,18 +55,25 @@ pub(crate) struct KubernetesArguments {
 /// - `merged_crd` flag, which skips generating the `crd()` and `merged_crd()` functions are
 ///    generated.
 #[derive(Clone, Debug, FromMeta)]
-pub(crate) struct KubernetesSkipArguments {
+pub struct KubernetesSkipArguments {
     /// Whether the `crd()` and `merged_crd()` generation should be skipped for
     /// this container.
-    pub(crate) merged_crd: Flag,
+    pub merged_crd: Flag,
 }
 
 /// This struct contains crate overrides to be passed to `#[kube]`.
 #[derive(Clone, Debug, FromMeta)]
-pub(crate) struct KubernetesCrateArguments {
-    pub(crate) kube_core: Option<Path>,
-    pub(crate) k8s_openapi: Option<Path>,
-    pub(crate) schemars: Option<Path>,
-    pub(crate) serde: Option<Path>,
-    pub(crate) serde_json: Option<Path>,
+pub struct KubernetesCrateArguments {
+    pub kube_core: Option<Path>,
+    pub kube_client: Option<Path>,
+    pub k8s_openapi: Option<Path>,
+    pub schemars: Option<Path>,
+    pub serde: Option<Path>,
+    pub serde_json: Option<Path>,
+    pub versioned: Option<Path>,
+}
+
+#[derive(Clone, Default, Debug, FromMeta)]
+pub struct RawKubernetesOptions {
+    pub experimental_conversion_tracking: Flag,
 }

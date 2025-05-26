@@ -7,7 +7,6 @@ use k8s_openapi::api::core::v1::{
     SecurityContext, VolumeMount,
 };
 use snafu::{ResultExt as _, Snafu};
-use tracing::instrument;
 #[cfg(doc)]
 use {k8s_openapi::api::core::v1::PodSpec, std::collections::BTreeMap};
 
@@ -211,7 +210,6 @@ impl ContainerBuilder {
     ///
     /// Previously, this function unconditionally added [`VolumeMount`]s, which resulted in invalid
     /// [`PodSpec`]s.
-    #[instrument(skip(self))]
     fn add_volume_mount_impl(&mut self, volume_mount: VolumeMount) -> Result<&mut Self> {
         if let Some(existing_volume_mount) = self.volume_mounts.get(&volume_mount.mount_path) {
             if existing_volume_mount != &volume_mount {
@@ -522,7 +520,11 @@ mod tests {
             container.lifecycle,
             Some(Lifecycle {
                 post_start: Some(post_start),
-                pre_stop: Some(pre_stop)
+                pre_stop: Some(pre_stop),
+                // Field was added in k8s 1.33 *and* requires the ContainerStopSignals feature gate,
+                // so we can't use it yet.
+                // See https://kubernetes.io/blog/2025/05/14/kubernetes-v1-33-updates-to-container-lifecycle/
+                stop_signal: None,
             })
         );
     }
