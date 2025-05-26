@@ -2954,6 +2954,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "stackable-crd-previewer"
+version = "0.1.0"
+dependencies = [
+ "kube",
+ "schemars",
+ "serde",
+ "serde_json",
+ "snafu 0.8.5",
+ "stackable-operator",
+ "stackable-shared",
+ "stackable-versioned",
+]
+
+[[package]]
 name = "stackable-operator"
 version = "0.93.1"
 dependencies = [
