@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, net::IpAddr};
 
 use bon::Builder;
 use const_oid::db::rfc5280::{ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH};
@@ -52,9 +52,11 @@ where
     #[snafu(display("failed to add certificate extension"))]
     AddCertificateExtension { source: x509_cert::builder::Error },
 
-    #[snafu(display("The subject alternative DNS name \"{dns_name}\" is not a Ia5String"))]
-    SaDnsNameNotAIa5String {
-        dns_name: String,
+    #[snafu(display(
+        "failed to parse subject alternative DNS name \"{subject_alternative_dns_name}\" as a Ia5 string"
+    ))]
+    ParseSubjectAlternativeDnsName {
+        subject_alternative_dns_name: String,
         source: x509_cert::der::Error,
     },
 
@@ -93,10 +95,15 @@ where
     /// Required subject of the certificate, usually starts with `CN=`.
     subject: &'a str,
 
-    /// Optional list of subject alternative names (SAN) DNS entries,
+    /// Optional list of subject alternative name DNS entries
     /// that are added to the certificate.
     #[builder(default)]
     subject_alterative_dns_names: &'a [&'a str],
+
+    /// Optional list of subject alternative name IP address entries
+    /// that are added to the certificate.
+    #[builder(default)]
+    subject_alterative_ip_addresses: &'a [IpAddr],
 
     /// Validity/lifetime of the certificate.
     ///
@@ -194,17 +201,23 @@ where
             ]))
             .context(AddCertificateExtensionSnafu)?;
 
-        let sans = self
-            .subject_alterative_dns_names
+        let san_dns = self.subject_alterative_dns_names.iter().map(|dns_name| {
+            Ok(GeneralName::DnsName(
+                Ia5String::new(dns_name).with_context(|_| ParseSubjectAlternativeDnsNameSnafu {
+                    subject_alternative_dns_name: dns_name.to_string(),
+                })?,
+            ))
+        });
+        let san_ips = self
+            .subject_alterative_ip_addresses
             .iter()
-            .map(|dns_name| {
-                Ok(GeneralName::DnsName(Ia5String::new(dns_name).context(
-                    SaDnsNameNotAIa5StringSnafu {
-                        dns_name: dns_name.to_string(),
-                    },
-                )?))
-            })
+            .copied()
+            .map(GeneralName::from)
+            .map(Result::Ok);
+        let sans = san_dns
+            .chain(san_ips)
             .collect::<Result<Vec<_>, CreateCertificateError<KP::Error>>>()?;
+
         builder
             .add_extension(&SubjectAltName(sans))
             .context(AddCertificateExtensionSnafu)?;
@@ -221,6 +234,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::net::{Ipv4Addr, Ipv6Addr};
+
     use x509_cert::{
         certificate::TbsCertificateInner, der::Decode, ext::pkix::ID_CE_SUBJECT_ALT_NAME,
     };
@@ -247,6 +262,7 @@ mod tests {
             &certificate.certificate.tbs_certificate,
             "CN=trino-coordinator-default-0",
             &[],
+            &[],
             DEFAULT_CERTIFICATE_VALIDITY,
             None,
         );
@@ -262,10 +278,12 @@ mod tests {
             "trino-coordinator-default-0.trino-coordinator-default.default.svc.cluster-local",
             "trino-coordinator-default.default.svc.cluster-local",
         ];
+        let san_ips = ["10.0.0.1".parse().unwrap(), "fe80::42".parse().unwrap()];
 
         let certificate = CertificateBuilder::builder()
             .subject("CN=trino-coordinator-default-0")
             .subject_alterative_dns_names(&sans)
+            .subject_alterative_ip_addresses(&san_ips)
             .serial_number(08121997)
             .validity(Duration::from_days_unchecked(42))
             .key_pair(rsa::SigningKey::new().unwrap())
@@ -277,6 +295,7 @@ mod tests {
             &certificate.certificate.tbs_certificate,
             "CN=trino-coordinator-default-0",
             &sans,
+            &san_ips,
             Duration::from_days_unchecked(42),
             Some(08121997),
         );
@@ -286,6 +305,7 @@ mod tests {
         certificate: &TbsCertificateInner,
         subject: &str,
         sans: &[&str],
+        san_ips: &[IpAddr],
         validity: Duration,
         serial_number: Option<u64>,
     ) {
@@ -300,10 +320,10 @@ mod tests {
             .find(|ext| ext.extn_id == ID_CE_SUBJECT_ALT_NAME)
             .expect("cert had no SAN extension");
 
-        let san_extension = SubjectAltName::from_der(san_extension.extn_value.as_bytes())
-            .expect("failed to parse SAN");
-        let actual_sans = san_extension
-            .0
+        let san_entries = SubjectAltName::from_der(san_extension.extn_value.as_bytes())
+            .expect("failed to parse SAN")
+            .0;
+        let actual_sans = san_entries
             .iter()
             .filter_map(|san| match san {
                 GeneralName::DnsName(dns_name) => Some(dns_name.as_str()),
@@ -311,6 +331,14 @@ mod tests {
             })
             .collect::<Vec<_>>();
         assert_eq!(actual_sans, sans);
+        let actual_san_ips = san_entries
+            .iter()
+            .filter_map(|san| match san {
+                GeneralName::IpAddress(ip) => Some(bytes_to_ip_addr(ip.as_bytes())),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(actual_san_ips, san_ips);
 
         let not_before = certificate.validity.not_before.to_system_time();
         let not_after = certificate.validity.not_after.to_system_time();
@@ -325,6 +353,25 @@ mod tests {
             assert_eq!(certificate.serial_number, SerialNumber::from(serial_number))
         } else {
             assert_ne!(certificate.serial_number, SerialNumber::from(0_u64))
+        }
+    }
+
+    fn bytes_to_ip_addr(bytes: &[u8]) -> IpAddr {
+        match bytes.len() {
+            4 => {
+                let mut array = [0u8; 4];
+                array.copy_from_slice(bytes);
+                IpAddr::V4(Ipv4Addr::from(array))
+            }
+            16 => {
+                let mut array = [0u8; 16];
+                array.copy_from_slice(bytes);
+                IpAddr::V6(Ipv6Addr::from(array))
+            }
+            _ => panic!(
+                "Invalid IP byte length: expected 4 or 16, got {}",
+                bytes.len()
+            ),
         }
     }
 }
