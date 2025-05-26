@@ -304,11 +304,14 @@ impl CommonItemAttributes {
 
             let mut actions = BTreeMap::new();
 
-            actions.insert(*deprecated.since, ItemStatus::Deprecation {
-                previous_ident: ident.clone(),
-                ident: deprecated_ident.clone(),
-                note: deprecated.note.as_deref().cloned(),
-            });
+            actions.insert(
+                *deprecated.since,
+                ItemStatus::Deprecation {
+                    previous_ident: ident.clone(),
+                    ident: deprecated_ident.clone(),
+                    note: deprecated.note.as_deref().cloned(),
+                },
+            );
 
             for change in self.changes.iter().rev() {
                 let from_ident = if let Some(from) = change.from_name.as_deref() {
@@ -325,14 +328,17 @@ impl CommonItemAttributes {
                     .map(|sv| sv.deref().clone())
                     .unwrap_or(ty.clone());
 
-                actions.insert(*change.since, ItemStatus::Change {
-                    downgrade_with: change.downgrade_with.as_deref().cloned(),
-                    upgrade_with: change.upgrade_with.as_deref().cloned(),
-                    from_ident: from_ident.clone(),
-                    from_type: from_ty.clone(),
-                    to_ident: ident,
-                    to_type: ty,
-                });
+                actions.insert(
+                    *change.since,
+                    ItemStatus::Change {
+                        downgrade_with: change.downgrade_with.as_deref().cloned(),
+                        upgrade_with: change.upgrade_with.as_deref().cloned(),
+                        from_ident: from_ident.clone(),
+                        from_type: from_ty.clone(),
+                        to_ident: ident,
+                        to_type: ty,
+                    },
+                );
 
                 ident = from_ident;
                 ty = from_ty;
@@ -341,11 +347,14 @@ impl CommonItemAttributes {
             // After the last iteration above (if any) we use the ident for the
             // added action if there is any.
             if let Some(added) = self.added {
-                actions.insert(*added.since, ItemStatus::Addition {
-                    default_fn: added.default_fn.deref().clone(),
-                    ident,
-                    ty,
-                });
+                actions.insert(
+                    *added.since,
+                    ItemStatus::Addition {
+                        default_fn: added.default_fn.deref().clone(),
+                        ident,
+                        ty,
+                    },
+                );
             }
 
             Some(actions)
@@ -370,14 +379,17 @@ impl CommonItemAttributes {
                     .map(|sv| sv.deref().clone())
                     .unwrap_or(ty.clone());
 
-                actions.insert(*change.since, ItemStatus::Change {
-                    downgrade_with: change.downgrade_with.as_deref().cloned(),
-                    upgrade_with: change.upgrade_with.as_deref().cloned(),
-                    from_ident: from_ident.clone(),
-                    from_type: from_ty.clone(),
-                    to_ident: ident,
-                    to_type: ty,
-                });
+                actions.insert(
+                    *change.since,
+                    ItemStatus::Change {
+                        downgrade_with: change.downgrade_with.as_deref().cloned(),
+                        upgrade_with: change.upgrade_with.as_deref().cloned(),
+                        from_ident: from_ident.clone(),
+                        from_type: from_ty.clone(),
+                        to_ident: ident,
+                        to_type: ty,
+                    },
+                );
 
                 ident = from_ident;
                 ty = from_ty;
@@ -386,11 +398,14 @@ impl CommonItemAttributes {
             // After the last iteration above (if any) we use the ident for the
             // added action if there is any.
             if let Some(added) = self.added {
-                actions.insert(*added.since, ItemStatus::Addition {
-                    default_fn: added.default_fn.deref().clone(),
-                    ident,
-                    ty,
-                });
+                actions.insert(
+                    *added.since,
+                    ItemStatus::Addition {
+                        default_fn: added.default_fn.deref().clone(),
+                        ident,
+                        ty,
+                    },
+                );
             }
 
             Some(actions)
@@ -398,11 +413,14 @@ impl CommonItemAttributes {
             if let Some(added) = self.added {
                 let mut actions = BTreeMap::new();
 
-                actions.insert(*added.since, ItemStatus::Addition {
-                    default_fn: added.default_fn.deref().clone(),
-                    ident: ident.deref().clone(),
-                    ty,
-                });
+                actions.insert(
+                    *added.since,
+                    ItemStatus::Addition {
+                        default_fn: added.default_fn.deref().clone(),
+                        ident: ident.deref().clone(),
+                        ty,
+                    },
+                );
 
                 return Some(actions);
             }

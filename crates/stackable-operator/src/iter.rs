@@ -110,12 +110,14 @@ mod tests {
     #[test]
     fn reverse_if_marble_test() {
         let values = [0, 1, 2, 3];
-        assert_eq!(reverse_if(false, values.iter()).collect::<Vec<_>>(), [
-            &0, &1, &2, &3
-        ]);
-        assert_eq!(reverse_if(true, values.iter()).collect::<Vec<_>>(), [
-            &3, &2, &1, &0
-        ]);
+        assert_eq!(
+            reverse_if(false, values.iter()).collect::<Vec<_>>(),
+            [&0, &1, &2, &3]
+        );
+        assert_eq!(
+            reverse_if(true, values.iter()).collect::<Vec<_>>(),
+            [&3, &2, &1, &0]
+        );
     }
 
     #[test]
@@ -126,14 +128,10 @@ mod tests {
             Err(5),
             Ok(vec![Ok(6)]),
         ];
-        assert_eq!(try_flatten(stream).collect::<Vec<_>>(), vec![
-            Ok(1),
-            Err(2),
-            Ok(3),
-            Err(4),
-            Err(5),
-            Ok(6)
-        ],);
+        assert_eq!(
+            try_flatten(stream).collect::<Vec<_>>(),
+            vec![Ok(1), Err(2), Ok(3), Err(4), Err(5), Ok(6)],
+        );
     }
 
     #[test]

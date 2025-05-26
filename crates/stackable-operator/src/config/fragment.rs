@@ -207,10 +207,13 @@ impl FromFragment for PodTemplateSpec {
 ///
 /// When validating a [`RoleGroup`]'s configuration, consider using [`RoleGroup::validate_config`] instead.
 pub fn validate<T: FromFragment>(fragment: T::Fragment) -> Result<T, ValidationError> {
-    T::from_fragment(fragment, Validator {
-        ident: None,
-        parent: None,
-    })
+    T::from_fragment(
+        fragment,
+        Validator {
+            ident: None,
+            parent: None,
+        },
+    )
 }
 
 #[cfg(test)]

@@ -56,6 +56,6 @@ repos:
         name: rustfmt
         language: system
         # Pinning to a specific rustc version, so that we get consistent formatting
-        entry: cargo +nightly-2025-01-15 fmt --all -- --check
+        entry: cargo +nightly-2025-05-26 fmt --all -- --check
         stages: [pre-commit]
         pass_filenames: false

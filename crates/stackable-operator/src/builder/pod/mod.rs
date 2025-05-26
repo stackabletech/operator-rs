@@ -767,11 +767,12 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(pod.spec.unwrap().image_pull_secrets.unwrap(), vec![
-            LocalObjectReference {
+        assert_eq!(
+            pod.spec.unwrap().image_pull_secrets.unwrap(),
+            vec![LocalObjectReference {
                 name: "company-registry-secret".to_string()
-            }
-        ]);
+            }]
+        );
     }
 
     #[rstest]
