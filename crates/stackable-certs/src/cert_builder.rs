@@ -233,7 +233,10 @@ mod tests {
 
     #[test]
     fn minimal_certificate() {
-        let ca = get_ecdsa_ca();
+        let ca = CertificateAuthorityBuilder::<ecdsa::SigningKey>::builder()
+            .build()
+            .expect("failed to build CA");
+
         let certificate = CertificateBuilder::builder()
             .subject("CN=trino-coordinator-default-0")
             .signed_by(&ca)
@@ -251,11 +254,15 @@ mod tests {
 
     #[test]
     fn customized_certificate() {
-        let ca = get_rsa_ca();
+        let ca = CertificateAuthorityBuilder::builder()
+            .build()
+            .expect("failed to build CA");
+
         let sans = [
             "trino-coordinator-default-0.trino-coordinator-default.default.svc.cluster-local",
             "trino-coordinator-default.default.svc.cluster-local",
         ];
+
         let certificate = CertificateBuilder::builder()
             .subject("CN=trino-coordinator-default-0")
             .subject_alterative_dns_names(&sans)
@@ -319,17 +326,5 @@ mod tests {
         } else {
             assert_ne!(certificate.serial_number, SerialNumber::from(0_u64))
         }
-    }
-
-    fn get_ecdsa_ca() -> CertificateAuthority<ecdsa::SigningKey> {
-        CertificateAuthorityBuilder::builder()
-            .build()
-            .expect("failed to build CA")
-    }
-
-    fn get_rsa_ca() -> CertificateAuthority<rsa::SigningKey> {
-        CertificateAuthorityBuilder::builder()
-            .build()
-            .expect("failed to build CA")
     }
 }
