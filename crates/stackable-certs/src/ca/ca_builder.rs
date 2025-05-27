@@ -81,6 +81,19 @@ where
 ///     .build()
 ///     .expect("failed to build CA");
 /// ```
+///
+/// Instead of using generics to determine the algorithm to use you can also use [`CertificateAuthority::builder_with_rsa`]
+/// or [`CertificateAuthority::builder_with_ecdsa`] instead:
+///
+/// ```no_run
+/// use stackable_certs::{
+///     keys::ecdsa, ca::CertificateAuthority,
+/// };
+///
+/// let ca = CertificateAuthority::builder_with_ecdsa()
+///     .build()
+///     .expect("failed to build CA");
+/// ```
 #[derive(Builder)]
 #[builder(start_fn = start_builder, finish_fn = finish_builder)]
 pub struct CertificateAuthorityBuilder<'a, SKP>
@@ -211,11 +224,11 @@ mod tests {
     use x509_cert::certificate::TbsCertificateInner;
 
     use super::*;
-    use crate::keys::{ecdsa, rsa};
+    use crate::keys::rsa;
 
     #[test]
     fn minimal_ca() {
-        let ca: CertificateAuthority<ecdsa::SigningKey> = CertificateAuthority::builder()
+        let ca = CertificateAuthority::builder_with_ecdsa()
             .build()
             .expect("failed to build CA");
 

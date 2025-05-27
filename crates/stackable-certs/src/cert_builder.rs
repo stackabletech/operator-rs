@@ -267,11 +267,11 @@ mod tests {
     };
 
     use super::*;
-    use crate::keys::{ecdsa, rsa};
+    use crate::keys::rsa;
 
     #[test]
     fn minimal_certificate() {
-        let ca = CertificateAuthority::<ecdsa::SigningKey>::builder()
+        let ca = CertificateAuthority::builder_with_ecdsa()
             .build()
             .expect("failed to build CA");
 
@@ -292,7 +292,7 @@ mod tests {
 
     #[test]
     fn customized_certificate() {
-        let ca = CertificateAuthority::builder()
+        let ca = CertificateAuthority::builder_with_rsa()
             .build()
             .expect("failed to build CA");
 

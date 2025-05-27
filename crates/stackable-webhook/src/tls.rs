@@ -109,7 +109,7 @@ impl TlsServer {
         // blocked.
         // See https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html
         let task = tokio::task::spawn_blocking(move || {
-            let ca = CertificateAuthority::<ecdsa::SigningKey>::builder()
+            let ca = CertificateAuthority::builder_with_ecdsa()
                 .build()
                 .context(CreateCertificateAuthoritySnafu)?;
 

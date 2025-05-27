@@ -99,6 +99,8 @@ impl<E: snafu::Error + std::cmp::PartialEq> PartialEq for CertificatePairError<E
 /// internally to store the signing key pair which is used to sign the CA
 /// itself (self-signed) and all child leaf certificates. Leaf certificates on
 /// the other hand use this to store the bound keypair.
+///
+/// Use [`CertificateBuilder`] to create new certificates.
 #[derive(Debug)]
 pub struct CertificatePair<S>
 where
@@ -121,6 +123,7 @@ where
         }
     }
 
+    /// Use this function in combination with [`CertificateBuilder`] to create new CAs.
     pub fn builder() -> CertificateBuilderBuilder<'static, S> {
         CertificateBuilder::start_builder()
     }
