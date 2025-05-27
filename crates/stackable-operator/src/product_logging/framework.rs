@@ -1564,9 +1564,12 @@ mod tests {
     #[test]
     fn log4j2_config() {
         let log_config = AutomaticContainerLogConfig {
-            loggers: vec![("ROOT".to_string(), LoggerConfig {
-                level: LogLevel::INFO,
-            })]
+            loggers: vec![(
+                "ROOT".to_string(),
+                LoggerConfig {
+                    level: LogLevel::INFO,
+                },
+            )]
             .into_iter()
             .collect::<BTreeMap<String, LoggerConfig>>(),
             console: Some(AppenderConfig {
@@ -1596,15 +1599,24 @@ mod tests {
     fn log4j2_config_with_additional_loggers() {
         let log_config = AutomaticContainerLogConfig {
             loggers: vec![
-                ("ROOT".to_string(), LoggerConfig {
-                    level: LogLevel::INFO,
-                }),
-                ("test".to_string(), LoggerConfig {
-                    level: LogLevel::INFO,
-                }),
-                ("test_2".to_string(), LoggerConfig {
-                    level: LogLevel::DEBUG,
-                }),
+                (
+                    "ROOT".to_string(),
+                    LoggerConfig {
+                        level: LogLevel::INFO,
+                    },
+                ),
+                (
+                    "test".to_string(),
+                    LoggerConfig {
+                        level: LogLevel::INFO,
+                    },
+                ),
+                (
+                    "test_2".to_string(),
+                    LoggerConfig {
+                        level: LogLevel::DEBUG,
+                    },
+                ),
             ]
             .into_iter()
             .collect::<BTreeMap<String, LoggerConfig>>(),

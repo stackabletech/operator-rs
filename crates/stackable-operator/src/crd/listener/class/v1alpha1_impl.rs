@@ -12,6 +12,10 @@ impl ListenerClassSpec {
         PreferredAddressType::HostnameConservative
     }
 
+    pub(super) const fn default_load_balancer_allocate_node_ports() -> bool {
+        true
+    }
+
     /// Resolves [`Self::preferred_address_type`]'s "smart" modes depending on the rest of `self`.
     pub fn resolve_preferred_address_type(&self) -> AddressType {
         self.preferred_address_type.resolve(self)

@@ -4,10 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.93.2] - 2025-05-26
+
+### Added
+
+- Added `ListenerClass.spec.loadBalancerClass` and `.loadBalancerAllocateNodePorts` fields ([#986]).
+
 ### Removed
 
-- Remove instrumenation from uninteresting funtions ([#1023]).
+- Remove instrumentation from uninteresting functions ([#1023]).
 
+[#986]: https://github.com/stackabletech/operator-rs/pull/986
 [#1023]: https://github.com/stackabletech/operator-rs/pull/1023
 
 ## [0.93.1] - 2025-05-20

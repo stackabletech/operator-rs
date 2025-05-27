@@ -115,27 +115,34 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
                         from_ident,
                         from_type,
                         ..
-                    } => self.insert(version.inner, ItemStatus::NoChange {
-                        previously_deprecated: false,
-                        ident: from_ident.clone(),
-                        ty: from_type.clone(),
-                    }),
-                    ItemStatus::Deprecation { previous_ident, .. } => {
-                        self.insert(version.inner, ItemStatus::NoChange {
+                    } => self.insert(
+                        version.inner,
+                        ItemStatus::NoChange {
+                            previously_deprecated: false,
+                            ident: from_ident.clone(),
+                            ty: from_type.clone(),
+                        },
+                    ),
+                    ItemStatus::Deprecation { previous_ident, .. } => self.insert(
+                        version.inner,
+                        ItemStatus::NoChange {
                             previously_deprecated: false,
                             ident: previous_ident.clone(),
                             ty: ty.clone(),
-                        })
-                    }
+                        },
+                    ),
                     ItemStatus::NoChange {
                         previously_deprecated,
                         ident,
                         ty,
-                    } => self.insert(version.inner, ItemStatus::NoChange {
-                        previously_deprecated: *previously_deprecated,
-                        ident: ident.clone(),
-                        ty: ty.clone(),
-                    }),
+                    } => self.insert(
+                        version.inner,
+                        ItemStatus::NoChange {
+                            previously_deprecated: *previously_deprecated,
+                            ident: ident.clone(),
+                            ty: ty.clone(),
+                        },
+                    ),
                     ItemStatus::NotPresent => unreachable!(),
                 },
                 (Some(status), None) => {
@@ -154,11 +161,14 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
                         ItemStatus::NotPresent => unreachable!(),
                     };
 
-                    self.insert(version.inner, ItemStatus::NoChange {
-                        previously_deprecated,
-                        ident: ident.clone(),
-                        ty: ty.clone(),
-                    })
+                    self.insert(
+                        version.inner,
+                        ItemStatus::NoChange {
+                            previously_deprecated,
+                            ident: ident.clone(),
+                            ty: ty.clone(),
+                        },
+                    )
                 }
                 (Some(status), Some(_)) => {
                     let (ident, ty, previously_deprecated) = match status {
@@ -181,11 +191,14 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
                         _ => unreachable!(),
                     };
 
-                    self.insert(version.inner, ItemStatus::NoChange {
-                        previously_deprecated,
-                        ident: ident.clone(),
-                        ty: ty.clone(),
-                    })
+                    self.insert(
+                        version.inner,
+                        ItemStatus::NoChange {
+                            previously_deprecated,
+                            ident: ident.clone(),
+                            ty: ty.clone(),
+                        },
+                    )
                 }
                 _ => unreachable!(),
             };

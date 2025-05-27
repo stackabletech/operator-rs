@@ -20,7 +20,8 @@ pub(crate) mod v1alpha1 {
         kind = "Foo",
         singular = "foo",
         plural = "foos",
-        namespaced
+        namespaced,
+        status = FooStatus
     )]
     pub struct FooSpec {
         pub baz: bool,
@@ -60,7 +61,8 @@ pub(crate) mod v1beta1 {
         kind = "Foo",
         singular = "foo",
         plural = "foos",
-        namespaced
+        namespaced,
+        status = FooStatus
     )]
     pub struct FooSpec {
         pub bah: u16,
@@ -102,7 +104,8 @@ pub(crate) mod v1 {
         kind = "Foo",
         singular = "foo",
         plural = "foos",
-        namespaced
+        namespaced,
+        status = FooStatus
     )]
     pub struct FooSpec {
         pub bar: usize,

@@ -67,10 +67,13 @@ pub fn derive(input: DeriveInput) -> TokenStream {
 
     let (ty, variants) = match data {
         // Structs are almost single-variant enums, so we can reuse most of the same matching code for both cases
-        Data::Struct(fields) => (InputType::Struct, vec![MergeVariant {
-            ident: Ident::new("__placeholder", Span::call_site()),
-            fields,
-        }]),
+        Data::Struct(fields) => (
+            InputType::Struct,
+            vec![MergeVariant {
+                ident: Ident::new("__placeholder", Span::call_site()),
+                fields,
+            }],
+        ),
         Data::Enum(variants) => (InputType::Enum, variants),
     };
     let merge_variants = variants
