@@ -347,8 +347,7 @@ mod tests {
             .signed_by(&ca)
             .validity(Duration::from_days_unchecked(366))
             .build()
-            .err()
-            .expect("Certificate creation must error");
+            .expect_err("Certificate creation must error");
         assert!(matches!(err, CreateCertificateError::CertOutlivesCa { .. }));
     }
 
