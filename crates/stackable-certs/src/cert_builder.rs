@@ -66,7 +66,21 @@ where
 
 /// This builder builds certificates of type [`CertificatePair`].
 ///
-/// Example code to construct a certificate:
+/// Currently you are required to specify a [`CertificateAuthority`], which is used to create a leaf
+/// certificate, which is signed by this CA.
+///
+/// These leaf certificates can be used for client/server authentication, because they include
+/// [`ID_KP_CLIENT_AUTH`] and [`ID_KP_SERVER_AUTH`] in the extended key usage extension.
+///
+/// This builder has many default values, notably;
+///
+/// - A default validity of [`DEFAULT_CERTIFICATE_VALIDITY`]
+/// - A randomly generated serial number
+/// - In case no `key_pair` was provided, a fresh keypair will be created. The algorithm
+/// (`rsa`/`ecdsa`) is chosen by the generic [`CertificateKeypair`] type of this struct,
+/// which is normally inferred from the [`CertificateAuthority`].
+///
+/// Example code to construct a CA and a signed certificate:
 ///
 /// ```no_run
 /// use stackable_certs::{
@@ -92,7 +106,7 @@ where
     KP: CertificateKeypair,
     <KP::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
-    /// Required subject of the certificate, usually starts with `CN=`.
+    /// Required subject of the certificate, usually starts with `CN=`, e.g. `CN=mypod`.
     subject: &'a str,
 
     /// Optional list of subject alternative name DNS entries
@@ -151,6 +165,9 @@ where
             Some(key_pair) => key_pair,
             None => SKP::new().context(CreateKeyPairSnafu)?,
         };
+
+        // By choosing a random serial number we can make the reasonable assumption that we generate
+        // a unique serial for each certificate.
         let serial_number = SerialNumber::from(rand::random::<u64>());
 
         let ca_validity = self.signed_by.ca_cert().tbs_certificate.validity;

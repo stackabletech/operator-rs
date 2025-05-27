@@ -59,6 +59,17 @@ where
 
 /// This builder builds certificate authorities of type [`CertificateAuthority`].
 ///
+/// It has many default values, notably;
+///
+/// - A default validity of [`DEFAULT_CA_VALIDITY`]
+/// - A default subject of [`SDP_ROOT_CA_SUBJECT`]
+/// - A randomly generated serial number
+/// - In case no `signing_key_pair` was provided, a fresh keypair will be created. The algorithm
+/// (`rsa`/`ecdsa`) is chosen by the generic [`CertificateKeypair`] type of this struct.
+///
+/// The CA contains the public half of the provided `signing_key_pair` and is signed by the private
+/// half of said key.
+///
 /// Example code to construct a CA:
 ///
 /// ```no_run
@@ -101,7 +112,7 @@ where
 {
     /// Convenience function to avoid calling `builder().finish_builder().build()`
     pub fn build(
-        self: Self,
+        self,
     ) -> Result<CertificateAuthority<SKP>, CreateCertificateAuthorityError<SKP::Error>> {
         self.finish_builder().build()
     }
@@ -128,6 +139,9 @@ where
             Some(signing_key_pair) => signing_key_pair,
             None => SKP::new().context(CreateSigningKeyPairSnafu)?,
         };
+
+        // By choosing a random serial number we can make the reasonable assumption that we generate
+        // a unique serial for each CA.
         let serial_number = SerialNumber::from(rand::random::<u64>());
 
         let spki_pem = signing_key_pair
