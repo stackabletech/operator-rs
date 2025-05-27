@@ -71,7 +71,7 @@ where
 ///     .expect("failed to build CA");
 /// ```
 #[derive(Builder)]
-#[builder(finish_fn = finish_builder)]
+#[builder(start_fn = start_builder, finish_fn = finish_builder)]
 pub struct CertificateAuthorityBuilder<'a, SKP>
 where
     SKP: CertificateKeypair,
@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn minimal_ca() {
-        let ca: CertificateAuthority<ecdsa::SigningKey> = CertificateAuthorityBuilder::builder()
+        let ca: CertificateAuthority<ecdsa::SigningKey> = CertificateAuthority::builder()
             .build()
             .expect("failed to build CA");
 
@@ -209,7 +209,7 @@ mod tests {
 
     #[test]
     fn customized_ca() {
-        let ca = CertificateAuthorityBuilder::builder()
+        let ca = CertificateAuthority::builder()
             .subject("CN=Test")
             .serial_number(42)
             .signing_key_pair(rsa::SigningKey::new().unwrap())

@@ -122,7 +122,7 @@ where
     }
 
     pub fn builder() -> CertificateBuilderBuilder<'static, S> {
-        CertificateBuilder::builder()
+        CertificateBuilder::start_builder()
     }
 
     /// Returns a reference to the [`Certificate`].

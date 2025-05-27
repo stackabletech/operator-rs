@@ -34,7 +34,7 @@ where
     }
 
     pub fn builder() -> CertificateAuthorityBuilderBuilder<'static, SK> {
-        CertificateAuthorityBuilder::builder()
+        CertificateAuthorityBuilder::start_builder()
     }
 
     pub fn signing_key(&self) -> &SK::SigningKey {

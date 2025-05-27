@@ -86,7 +86,7 @@ where
 ///     .expect("failed to build certificate");
 /// ```
 #[derive(Builder)]
-#[builder(finish_fn = finish_builder)]
+#[builder(start_fn = start_builder, finish_fn = finish_builder)]
 pub struct CertificateBuilder<'a, KP>
 where
     KP: CertificateKeypair,
@@ -241,18 +241,15 @@ mod tests {
     };
 
     use super::*;
-    use crate::{
-        ca::CertificateAuthorityBuilder,
-        keys::{ecdsa, rsa},
-    };
+    use crate::keys::{ecdsa, rsa};
 
     #[test]
     fn minimal_certificate() {
-        let ca = CertificateAuthorityBuilder::<ecdsa::SigningKey>::builder()
+        let ca = CertificateAuthority::<ecdsa::SigningKey>::builder()
             .build()
             .expect("failed to build CA");
 
-        let certificate = CertificateBuilder::builder()
+        let certificate = CertificatePair::builder()
             .subject("CN=trino-coordinator-default-0")
             .signed_by(&ca)
             .build()
@@ -270,7 +267,7 @@ mod tests {
 
     #[test]
     fn customized_certificate() {
-        let ca = CertificateAuthorityBuilder::builder()
+        let ca = CertificateAuthority::builder()
             .build()
             .expect("failed to build CA");
 
@@ -280,7 +277,7 @@ mod tests {
         ];
         let san_ips = ["10.0.0.1".parse().unwrap(), "fe80::42".parse().unwrap()];
 
-        let certificate = CertificateBuilder::builder()
+        let certificate = CertificatePair::builder()
             .subject("CN=trino-coordinator-default-0")
             .subject_alterative_dns_names(&sans)
             .subject_alterative_ip_addresses(&san_ips)
