@@ -190,13 +190,16 @@ where
         let cert_not_after = validity.not_after.to_system_time();
         let cert_not_before = validity.not_before.to_system_time();
 
-        ensure!(ca_not_after > cert_not_after, CertOutlivesCaSnafu {
-            subject: subject_for_error.to_string(),
-            ca_not_after,
-            ca_not_before,
-            cert_not_after,
-            cert_not_before,
-        });
+        ensure!(
+            ca_not_after > cert_not_after,
+            CertOutlivesCaSnafu {
+                subject: subject_for_error.to_string(),
+                ca_not_after,
+                ca_not_before,
+                cert_not_after,
+                cert_not_before,
+            }
+        );
 
         let spki_pem = key_pair
             .verifying_key()
