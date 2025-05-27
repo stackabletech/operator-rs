@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Update to `kube` 1.1.0 ([#1049]).
+- Update `kube` to `1.1.0` ([#1049]).
 
 ## [0.93.2] - 2025-05-26
 
