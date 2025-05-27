@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Update to `kube` 1.1.0 ([#1049]).
+
 ## [0.93.2] - 2025-05-26
 
 ### Added
@@ -16,6 +20,7 @@ All notable changes to this project will be documented in this file.
 
 [#986]: https://github.com/stackabletech/operator-rs/pull/986
 [#1023]: https://github.com/stackabletech/operator-rs/pull/1023
+[#1049]: https://github.com/stackabletech/operator-rs/pull/1049
 
 ## [0.93.1] - 2025-05-20
 
