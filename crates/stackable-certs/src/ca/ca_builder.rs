@@ -65,7 +65,7 @@ where
 /// - A default subject of [`SDP_ROOT_CA_SUBJECT`]
 /// - A randomly generated serial number
 /// - In case no `signing_key_pair` was provided, a fresh keypair will be created. The algorithm
-/// (`rsa`/`ecdsa`) is chosen by the generic [`CertificateKeypair`] type of this struct.
+///   (`rsa`/`ecdsa`) is chosen by the generic [`CertificateKeypair`] type of this struct.
 ///
 /// The CA contains the public half of the provided `signing_key_pair` and is signed by the private
 /// half of said key.

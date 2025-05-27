@@ -1,9 +1,9 @@
-use std::{fmt::Debug, net::IpAddr};
+use std::{fmt::Debug, net::IpAddr, time::SystemTime};
 
 use bon::Builder;
 use const_oid::db::rfc5280::{ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH};
 use rsa::pkcs8::EncodePublicKey;
-use snafu::{ResultExt, Snafu};
+use snafu::{ResultExt, Snafu, ensure};
 use stackable_operator::time::Duration;
 use tracing::{debug, instrument, warn};
 use x509_cert::{
@@ -62,6 +62,19 @@ where
 
     #[snafu(display("failed to build certificate"))]
     BuildCertificate { source: x509_cert::builder::Error },
+
+    #[snafu(display(
+        "the generated certificate would outlive the CA, subject {subject:?}, \
+        CA notAfter {ca_not_after:?}, CA notBefore {ca_not_before:?}, \
+        cert notAfter {cert_not_after:?}, cert notBefore {cert_not_before:?}"
+    ))]
+    CertOutlivesCa {
+        subject: String,
+        ca_not_after: SystemTime,
+        ca_not_before: SystemTime,
+        cert_not_after: SystemTime,
+        cert_not_before: SystemTime,
+    },
 }
 
 /// This builder builds certificates of type [`CertificatePair`].
@@ -77,8 +90,8 @@ where
 /// - A default validity of [`DEFAULT_CERTIFICATE_VALIDITY`]
 /// - A randomly generated serial number
 /// - In case no `key_pair` was provided, a fresh keypair will be created. The algorithm
-/// (`rsa`/`ecdsa`) is chosen by the generic [`CertificateKeypair`] type of this struct,
-/// which is normally inferred from the [`CertificateAuthority`].
+///   (`rsa`/`ecdsa`) is chosen by the generic [`CertificateKeypair`] type of this struct,
+///   which is normally inferred from the [`CertificateAuthority`].
 ///
 /// Example code to construct a CA and a signed certificate:
 ///
@@ -158,6 +171,7 @@ where
     )]
     pub fn build(self) -> Result<CertificatePair<SKP>, CreateCertificateError<SKP::Error>> {
         let validity = Validity::from_now(*self.validity).context(ParseValiditySnafu)?;
+        let subject_for_error = &self.subject;
         let subject: Name = self.subject.parse().context(ParseSubjectSnafu {
             subject: self.subject,
         })?;
@@ -172,17 +186,17 @@ where
 
         let ca_validity = self.signed_by.ca_cert().tbs_certificate.validity;
         let ca_not_after = ca_validity.not_after.to_system_time();
+        let ca_not_before = ca_validity.not_before.to_system_time();
         let cert_not_after = validity.not_after.to_system_time();
-        if ca_not_after < cert_not_after {
-            warn!(
-                ca.validity = ?ca_validity,
-                cert.validity = ?validity,
-                ca.not_after = ?ca_not_after,
-                cert.not_after = ?cert_not_after,
-                subject = ?subject,
-                "The lifetime of certificate authority is shorted than the lifetime of the generated certificate",
-            );
-        }
+        let cert_not_before = validity.not_before.to_system_time();
+
+        ensure!(ca_not_after > cert_not_after, CertOutlivesCaSnafu {
+            subject: subject_for_error.to_string(),
+            ca_not_after,
+            ca_not_before,
+            cert_not_after,
+            cert_not_before,
+        });
 
         let spki_pem = key_pair
             .verifying_key()
@@ -306,7 +320,7 @@ mod tests {
             .subject("CN=trino-coordinator-default-0")
             .subject_alternative_dns_names(&sans)
             .subject_alternative_ip_addresses(&san_ips)
-            .validity(Duration::from_days_unchecked(42))
+            .validity(Duration::from_hours_unchecked(12))
             .key_pair(rsa::SigningKey::new().unwrap())
             .signed_by(&ca)
             .build()
@@ -317,8 +331,25 @@ mod tests {
             "CN=trino-coordinator-default-0",
             &sans,
             &san_ips,
-            Duration::from_days_unchecked(42),
+            Duration::from_hours_unchecked(12),
         );
+    }
+
+    #[test]
+    fn cert_outlives_ca() {
+        let ca = CertificateAuthority::builder_with_ecdsa()
+            .validity(Duration::from_days_unchecked(365))
+            .build()
+            .expect("failed to build CA");
+
+        let err = CertificatePair::builder()
+            .subject("CN=Test")
+            .signed_by(&ca)
+            .validity(Duration::from_days_unchecked(366))
+            .build()
+            .err()
+            .expect("Certificate creation must error");
+        assert!(matches!(err, CreateCertificateError::CertOutlivesCa { .. }));
     }
 
     fn assert_certificate_attributes(

@@ -2,7 +2,7 @@ use rsa::pkcs8::LineEnding;
 use stackable_operator::time::Duration;
 
 /// The default CA validity time span of one hour.
-pub const DEFAULT_CA_VALIDITY: Duration = Duration::from_hours_unchecked(1);
+pub const DEFAULT_CA_VALIDITY: Duration = Duration::from_days_unchecked(1);
 
 /// The default certificate validity time span of one hour.
 pub const DEFAULT_CERTIFICATE_VALIDITY: Duration = Duration::from_hours_unchecked(1);
