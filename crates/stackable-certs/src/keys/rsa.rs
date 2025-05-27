@@ -79,4 +79,12 @@ impl CertificateKeypair for SigningKey {
 
         Ok(Self(signing_key))
     }
+
+    fn algorithm_name() -> &'static str {
+        "rsa"
+    }
+
+    fn key_size() -> usize {
+        KEY_SIZE
+    }
 }

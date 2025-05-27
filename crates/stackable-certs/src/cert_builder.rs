@@ -5,7 +5,7 @@ use const_oid::db::rfc5280::{ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH};
 use rsa::pkcs8::EncodePublicKey;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::time::Duration;
-use tracing::{debug, warn};
+use tracing::{debug, instrument, warn};
 use x509_cert::{
     builder::{Builder, Profile},
     der::{DecodePem, asn1::Ia5String},
@@ -98,12 +98,12 @@ where
     /// Optional list of subject alternative name DNS entries
     /// that are added to the certificate.
     #[builder(default)]
-    subject_alterative_dns_names: &'a [&'a str],
+    subject_alternative_dns_names: &'a [&'a str],
 
     /// Optional list of subject alternative name IP address entries
     /// that are added to the certificate.
     #[builder(default)]
-    subject_alterative_ip_addresses: &'a [IpAddr],
+    subject_alternative_ip_addresses: &'a [IpAddr],
 
     /// Validity/lifetime of the certificate.
     ///
@@ -132,19 +132,24 @@ where
     }
 }
 
-impl<KP> CertificateBuilder<'_, KP>
+impl<SKP> CertificateBuilder<'_, SKP>
 where
-    KP: CertificateKeypair,
-    <KP::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
+    SKP: CertificateKeypair,
+    <SKP::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
-    pub fn build(self) -> Result<CertificatePair<KP>, CreateCertificateError<KP::Error>> {
+    #[instrument(
+        name = "build_certificate",
+        skip(self),
+        fields(subject = self.subject),
+    )]
+    pub fn build(self) -> Result<CertificatePair<SKP>, CreateCertificateError<SKP::Error>> {
         let validity = Validity::from_now(*self.validity).context(ParseValiditySnafu)?;
         let subject: Name = self.subject.parse().context(ParseSubjectSnafu {
             subject: self.subject,
         })?;
         let key_pair = match self.key_pair {
             Some(key_pair) => key_pair,
-            None => KP::new().context(CreateKeyPairSnafu)?,
+            None => SKP::new().context(CreateKeyPairSnafu)?,
         };
         let serial_number = SerialNumber::from(rand::random::<u64>());
 
@@ -170,6 +175,18 @@ where
         let spki = SubjectPublicKeyInfoOwned::from_pem(spki_pem.as_bytes())
             .context(DecodeSpkiFromPemSnafu)?;
 
+        debug!(
+            certificate.subject = %subject,
+            certificate.not_after = %validity.not_after,
+            certificate.not_before = %validity.not_before,
+            certificate.serial = %serial_number,
+            certificate.san.dns_names = ?self.subject_alternative_dns_names,
+            certificate.san.ip_addresses = ?self.subject_alternative_ip_addresses,
+            certificate.signed_by.issuer = %self.signed_by.issuer_name(),
+            certificate.public_key.algorithm = SKP::algorithm_name(),
+            certificate.public_key.size = SKP::key_size(),
+            "creating and signing certificate"
+        );
         let signing_key = self.signed_by.signing_key();
         let mut builder = x509_cert::builder::CertificateBuilder::new(
             Profile::Leaf {
@@ -194,7 +211,7 @@ where
             ]))
             .context(AddCertificateExtensionSnafu)?;
 
-        let san_dns = self.subject_alterative_dns_names.iter().map(|dns_name| {
+        let san_dns = self.subject_alternative_dns_names.iter().map(|dns_name| {
             Ok(GeneralName::DnsName(
                 Ia5String::new(dns_name).with_context(|_| ParseSubjectAlternativeDnsNameSnafu {
                     subject_alternative_dns_name: dns_name.to_string(),
@@ -202,20 +219,19 @@ where
             ))
         });
         let san_ips = self
-            .subject_alterative_ip_addresses
+            .subject_alternative_ip_addresses
             .iter()
             .copied()
             .map(GeneralName::from)
             .map(Result::Ok);
         let sans = san_dns
             .chain(san_ips)
-            .collect::<Result<Vec<_>, CreateCertificateError<KP::Error>>>()?;
+            .collect::<Result<Vec<_>, CreateCertificateError<SKP::Error>>>()?;
 
         builder
             .add_extension(&SubjectAltName(sans))
             .context(AddCertificateExtensionSnafu)?;
 
-        debug!("create and sign leaf certificate");
         let certificate = builder.build().context(BuildCertificateSnafu)?;
 
         Ok(CertificatePair {
@@ -271,8 +287,8 @@ mod tests {
 
         let certificate = CertificatePair::builder()
             .subject("CN=trino-coordinator-default-0")
-            .subject_alterative_dns_names(&sans)
-            .subject_alterative_ip_addresses(&san_ips)
+            .subject_alternative_dns_names(&sans)
+            .subject_alternative_ip_addresses(&san_ips)
             .validity(Duration::from_days_unchecked(42))
             .key_pair(rsa::SigningKey::new().unwrap())
             .signed_by(&ca)

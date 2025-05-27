@@ -2,7 +2,7 @@ use bon::Builder;
 use rsa::pkcs8::EncodePublicKey;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::time::Duration;
-use tracing::debug;
+use tracing::{debug, instrument};
 use x509_cert::{
     builder::{Builder, CertificateBuilder, Profile},
     der::{DecodePem, referenced::OwnedToRef},
@@ -112,6 +112,11 @@ where
     SKP: CertificateKeypair,
     <SKP::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
+    #[instrument(
+        name = "build_certificate_authority",
+        skip(self),
+        fields(subject = self.subject),
+    )]
     pub fn build(
         self,
     ) -> Result<CertificateAuthority<SKP>, CreateCertificateAuthorityError<SKP::Error>> {
@@ -153,6 +158,15 @@ where
         let aki = AuthorityKeyIdentifier::try_from(spki.owned_to_ref())
             .context(ParseAuthorityKeyIdentifierSnafu)?;
 
+        debug!(
+            ca.subject = %subject,
+            ca.not_after = %validity.not_after,
+            ca.not_before = %validity.not_before,
+            ca.serial = ?serial_number,
+            ca.public_key.algorithm = SKP::algorithm_name(),
+            ca.public_key.size = SKP::key_size(),
+            "creating certificate authority"
+        );
         let signer = signing_key_pair.signing_key();
         let mut builder = CertificateBuilder::new(
             Profile::Root,
@@ -167,8 +181,6 @@ where
         builder
             .add_extension(&aki)
             .context(AddCertificateExtensionSnafu)?;
-
-        debug!("creating and signing CA certificate");
         let certificate = builder.build().context(BuildCertificateSnafu)?;
 
         Ok(CertificateAuthority {

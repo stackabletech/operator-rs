@@ -58,4 +58,13 @@ impl CertificateKeypair for SigningKey {
 
         Ok(Self(signing_key))
     }
+
+    fn algorithm_name() -> &'static str {
+        "ecdsa"
+    }
+
+    fn key_size() -> usize {
+        // Different than by RSA, we can not pass the key size during construction
+        256
+    }
 }

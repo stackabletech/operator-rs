@@ -71,4 +71,10 @@ where
 
     /// Creates a signing key pair from the PEM-encoded private key.
     fn from_pkcs8_pem(input: &str) -> Result<Self, Self::Error>;
+
+    /// The name of the algorithm such as `rsa` or `ecdsa`.
+    fn algorithm_name() -> &'static str;
+
+    /// The key length in bits
+    fn key_size() -> usize;
 }
