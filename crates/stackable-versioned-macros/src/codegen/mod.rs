@@ -7,6 +7,7 @@ use crate::attrs::{container::StandaloneContainerAttributes, module::ModuleAttri
 
 pub(crate) mod changes;
 pub(crate) mod container;
+pub(crate) mod flux_converter;
 pub(crate) mod item;
 pub(crate) mod module;
 

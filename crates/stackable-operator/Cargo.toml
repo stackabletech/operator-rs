@@ -16,7 +16,7 @@ versioned = []
 
 [dependencies]
 stackable-telemetry = { path = "../stackable-telemetry", features = ["clap"] }
-stackable-versioned = { path = "../stackable-versioned", features = ["k8s"] }
+stackable-versioned = { path = "../stackable-versioned", features = ["k8s", "flux-converter"] }
 stackable-operator-derive = { path = "../stackable-operator-derive" }
 stackable-shared = { path = "../stackable-shared" }
 

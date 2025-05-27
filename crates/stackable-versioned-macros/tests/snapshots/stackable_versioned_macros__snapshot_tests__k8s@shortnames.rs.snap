@@ -53,3 +53,174 @@ impl Foo {
         )
     }
 }
+#[automatically_derived]
+/// Parses the version, such as `v1alpha1`
+impl ::std::str::FromStr for Foo {
+    type Err = ::stackable_versioned::ParseResourceVersionError;
+    fn from_str(version: &str) -> Result<Self, Self::Err> {
+        match version {
+            "v1alpha1" => Ok(Self::V1Alpha1),
+            _ => {
+                Err(::stackable_versioned::ParseResourceVersionError::UnknownResourceVersion {
+                    version: version.to_string(),
+                })
+            }
+        }
+    }
+}
+/// Parses the entire `apiVersion`, such as `zookeeper.stackable.tech/v1alpha1`.
+impl Foo {
+    pub fn from_api_version(
+        api_version: &str,
+    ) -> Result<Self, ::stackable_versioned::ParseResourceVersionError> {
+        match api_version {
+            "stackable.tech/v1alpha1" => Ok(Self::V1Alpha1),
+            _ => {
+                Err(::stackable_versioned::ParseResourceVersionError::UnknownApiVersion {
+                    api_version: api_version.to_string(),
+                })
+            }
+        }
+    }
+}
+#[automatically_derived]
+impl Foo {
+    #[tracing::instrument(
+        skip_all,
+        fields(
+            conversion.kind = review.types.kind,
+            conversion.api_version = review.types.api_version,
+        )
+    )]
+    pub fn convert(
+        review: ::kube::core::conversion::ConversionReview,
+    ) -> ::kube::core::conversion::ConversionReview {
+        use ::kube::core::conversion::{ConversionRequest, ConversionResponse};
+        use ::kube::core::response::StatusSummary;
+        use ::stackable_versioned::ConversionError;
+        let request = match ConversionRequest::from_review(review) {
+            Ok(request) => request,
+            Err(err) => {
+                tracing::warn!(
+                    ? err,
+                    "Invalid ConversionReview send by Kubernetes apiserver. It probably did not include a request"
+                );
+                return ConversionResponse::invalid(::kube::client::Status {
+                        status: Some(StatusSummary::Failure),
+                        code: 400,
+                        message: format!(
+                            "The ConversionReview send did not include any request: {err}"
+                        ),
+                        reason: "ConversionReview request missing".to_string(),
+                        details: None,
+                    })
+                    .into_review();
+            }
+        };
+        let converted = Self::try_convert(&request);
+        let conversion_response = ConversionResponse::for_request(request);
+        match converted {
+            Ok(converted) => {
+                tracing::debug!(
+                    "Successfully converted {num} objects of type {type}", num =
+                    converted.len(), type = stringify!(Foo),
+                );
+                conversion_response.success(converted).into_review()
+            }
+            Err(err) => {
+                let error_message = err.as_human_readable_error_message();
+                conversion_response
+                    .failure(::kube::client::Status {
+                        status: Some(StatusSummary::Failure),
+                        code: err.http_return_code(),
+                        message: error_message.clone(),
+                        reason: error_message,
+                        details: None,
+                    })
+                    .into_review()
+            }
+        }
+    }
+    #[tracing::instrument(skip_all, err)]
+    fn try_convert(
+        request: &::kube::core::conversion::ConversionRequest,
+    ) -> Result<Vec<serde_json::Value>, ::stackable_versioned::ConversionError> {
+        use ::stackable_versioned::ConversionError;
+        let desired_object_version = Self::from_api_version(&request.desired_api_version)
+            .map_err(|err| ConversionError::ParseDesiredResourceVersion {
+                source: err,
+                version: request.desired_api_version.to_string(),
+            })?;
+        let mut converted: Vec<serde_json::Value> = Vec::with_capacity(
+            request.objects.len(),
+        );
+        for object in &request.objects {
+            let object_spec = object
+                .get("spec")
+                .ok_or_else(|| ConversionError::ObjectHasNoSpec {
+                })?;
+            let object_kind = object
+                .get("kind")
+                .ok_or_else(|| ConversionError::ObjectHasNoKind {
+                })?;
+            let object_kind = object_kind
+                .as_str()
+                .ok_or_else(|| ConversionError::ObjectKindNotString {
+                    kind: object_kind.clone(),
+                })?;
+            let object_version = object
+                .get("apiVersion")
+                .ok_or_else(|| ConversionError::ObjectHasNoApiVersion {
+                })?;
+            let object_version = object_version
+                .as_str()
+                .ok_or_else(|| ConversionError::ObjectApiVersionNotString {
+                    api_version: object_version.clone(),
+                })?;
+            if object_kind != stringify!(Foo) {
+                return Err(ConversionError::WrongObjectKind {
+                    expected_kind: stringify!(Foo).to_string(),
+                    send_kind: object_kind.to_string(),
+                });
+            }
+            let current_object_version = Self::from_api_version(object_version)
+                .map_err(|err| ConversionError::ParseCurrentResourceVersion {
+                    source: err,
+                    version: object_version.to_string(),
+                })?;
+            match (&current_object_version, &desired_object_version) {
+                (Self::V1Alpha1, Self::V1Alpha1) => {
+                    let resource_spec: v1alpha1::FooSpec = serde_json::from_value(
+                            object_spec.clone(),
+                        )
+                        .map_err(|err| ConversionError::DeserializeObjectSpec {
+                            source: err,
+                            kind: stringify!(Foo).to_string(),
+                        })?;
+                    tracing::trace!(
+                        from = stringify!(v1alpha1), to = stringify!("v1alpha1"),
+                        conversion.steps = 0usize,
+                        "Successfully converted {type} object", type = stringify!(Foo),
+                    );
+                    let mut object = object.clone();
+                    *object
+                        .get_mut("spec")
+                        .ok_or_else(|| ConversionError::ObjectHasNoSpec {
+                        })? = serde_json::to_value(resource_spec)
+                        .map_err(|err| ConversionError::SerializeObjectSpec {
+                            source: err,
+                            kind: stringify!(Foo).to_string(),
+                        })?;
+                    *object
+                        .get_mut("apiVersion")
+                        .ok_or_else(|| ConversionError::ObjectHasNoApiVersion {
+                        })? = serde_json::Value::String(
+                        request.desired_api_version.clone(),
+                    );
+                    converted.push(object);
+                }
+            }
+        }
+        Ok(converted)
+    }
+}

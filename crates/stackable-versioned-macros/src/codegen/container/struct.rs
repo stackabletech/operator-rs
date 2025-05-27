@@ -419,6 +419,8 @@ impl Struct {
         vis: &Visibility,
         is_nested: bool,
     ) -> Option<TokenStream> {
+        assert_eq!(enum_variant_idents.len(), enum_variant_strings.len());
+
         let kubernetes_options = self.common.options.kubernetes_options.as_ref()?;
 
         if !kubernetes_options.skip_merged_crd {
@@ -452,7 +454,10 @@ impl Struct {
                     /// Generates a merged CRD containing all versions and marking `stored_apiversion` as stored.
                     pub fn merged_crd(
                         stored_apiversion: Self
-                    ) -> ::std::result::Result<#k8s_openapi_path::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition, #kube_core_path::crd::MergeError> {
+                    ) -> ::std::result::Result<
+                        #k8s_openapi_path::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition,
+                        #kube_core_path::crd::MergeError>
+                    {
                         #kube_core_path::crd::merge_crds(vec![#(#fn_calls),*], &stored_apiversion.to_string())
                     }
                 }
@@ -460,6 +465,57 @@ impl Struct {
         } else {
             None
         }
+    }
+
+    pub fn generate_from_functions(
+        &self,
+        enum_variant_idents: &[IdentString],
+        enum_variant_strings: &[String],
+        is_nested: bool,
+    ) -> Option<TokenStream> {
+        assert_eq!(enum_variant_idents.len(), enum_variant_strings.len());
+
+        let enum_ident = &self.common.idents.kubernetes;
+        let kubernetes_options = self.common.options.kubernetes_options.as_ref()?;
+        let k8s_group = &kubernetes_options.group;
+        let api_versions = enum_variant_strings
+            .iter()
+            .map(|version| format!("{k8s_group}/{version}"));
+
+        let versioned_path = &*kubernetes_options.crates.versioned;
+
+        // Only add the #[automatically_derived] attribute if this impl is used outside of a
+        // module (in standalone mode).
+        let automatically_derived = is_nested.not().then(|| quote! {#[automatically_derived]});
+
+        Some(quote! {
+            #automatically_derived
+            /// Parses the version, such as `v1alpha1`
+            impl ::std::str::FromStr for #enum_ident {
+                type Err = #versioned_path::ParseResourceVersionError;
+
+                fn from_str(version: &str) -> Result<Self, Self::Err> {
+                    match version {
+                        #(#enum_variant_strings => Ok(Self::#enum_variant_idents),)*
+                        _ => Err(#versioned_path::ParseResourceVersionError::UnknownResourceVersion{
+                            version: version.to_string()
+                        }),
+                    }
+                }
+            }
+
+            /// Parses the entire `apiVersion`, such as `zookeeper.stackable.tech/v1alpha1`.
+            impl #enum_ident {
+                pub fn from_api_version(api_version: &str) -> Result<Self, #versioned_path::ParseResourceVersionError> {
+                    match api_version {
+                        #(#api_versions => Ok(Self::#enum_variant_idents),)*
+                        _ => Err(#versioned_path::ParseResourceVersionError::UnknownApiVersion{
+                            api_version: api_version.to_string()
+                        }),
+                    }
+                }
+            }
+        })
     }
 
     pub fn generate_kubernetes_status_struct(&self) -> Option<TokenStream> {
