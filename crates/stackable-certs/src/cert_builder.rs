@@ -111,11 +111,6 @@ where
     #[builder(default = DEFAULT_CERTIFICATE_VALIDITY)]
     validity: Duration,
 
-    /// Serial number of the generated certificate.
-    ///
-    /// If not specified a random serial will be generated.
-    serial_number: Option<u64>,
-
     /// Cryptographic keypair used to for the certificates.
     ///
     /// If not specified a random keypair will be generated.
@@ -143,9 +138,6 @@ where
     <KP::SigningKey as signature::Keypair>::VerifyingKey: EncodePublicKey,
 {
     pub fn build(self) -> Result<CertificatePair<KP>, CreateCertificateError<KP::Error>> {
-        let serial_number =
-            SerialNumber::from(self.serial_number.unwrap_or_else(|| rand::random::<u64>()));
-
         let validity = Validity::from_now(*self.validity).context(ParseValiditySnafu)?;
         let subject: Name = self.subject.parse().context(ParseSubjectSnafu {
             subject: self.subject,
@@ -154,6 +146,7 @@ where
             Some(key_pair) => key_pair,
             None => KP::new().context(CreateKeyPairSnafu)?,
         };
+        let serial_number = SerialNumber::from(rand::random::<u64>());
 
         let ca_validity = self.signed_by.ca_cert().tbs_certificate.validity;
         let ca_not_after = ca_validity.not_after.to_system_time();
@@ -261,7 +254,6 @@ mod tests {
             &[],
             &[],
             DEFAULT_CERTIFICATE_VALIDITY,
-            None,
         );
     }
 
@@ -281,7 +273,6 @@ mod tests {
             .subject("CN=trino-coordinator-default-0")
             .subject_alterative_dns_names(&sans)
             .subject_alterative_ip_addresses(&san_ips)
-            .serial_number(08121997)
             .validity(Duration::from_days_unchecked(42))
             .key_pair(rsa::SigningKey::new().unwrap())
             .signed_by(&ca)
@@ -294,7 +285,6 @@ mod tests {
             &sans,
             &san_ips,
             Duration::from_days_unchecked(42),
-            Some(08121997),
         );
     }
 
@@ -304,7 +294,6 @@ mod tests {
         sans: &[&str],
         san_ips: &[IpAddr],
         validity: Duration,
-        serial_number: Option<u64>,
     ) {
         assert_eq!(certificate.subject, subject.parse().unwrap());
 
@@ -345,12 +334,6 @@ mod tests {
                 .expect("Failed to calculate duration between notBefore and notAfter"),
             *validity
         );
-
-        if let Some(serial_number) = serial_number {
-            assert_eq!(certificate.serial_number, SerialNumber::from(serial_number))
-        } else {
-            assert_ne!(certificate.serial_number, SerialNumber::from(0_u64))
-        }
     }
 
     fn bytes_to_ip_addr(bytes: &[u8]) -> IpAddr {

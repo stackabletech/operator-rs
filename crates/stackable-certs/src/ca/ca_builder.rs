@@ -87,11 +87,6 @@ where
     #[builder(default = DEFAULT_CA_VALIDITY)]
     validity: Duration,
 
-    /// Serial number of the generated certificate.
-    ///
-    /// If not specified a random serial will be generated.
-    serial_number: Option<u64>,
-
     /// Cryptographic keypair used to sign leaf certificates.
     ///
     /// If not specified a random keypair will be generated.
@@ -120,8 +115,6 @@ where
     pub fn build(
         self,
     ) -> Result<CertificateAuthority<SKP>, CreateCertificateAuthorityError<SKP::Error>> {
-        let serial_number =
-            SerialNumber::from(self.serial_number.unwrap_or_else(|| rand::random::<u64>()));
         let validity = Validity::from_now(*self.validity).context(ParseValiditySnafu)?;
         let subject: Name = self.subject.parse().context(ParseSubjectSnafu {
             subject: self.subject,
@@ -130,6 +123,7 @@ where
             Some(signing_key_pair) => signing_key_pair,
             None => SKP::new().context(CreateSigningKeyPairSnafu)?,
         };
+        let serial_number = SerialNumber::from(rand::random::<u64>());
 
         let spki_pem = signing_key_pair
             .verifying_key()
@@ -203,7 +197,6 @@ mod tests {
             &ca.ca_cert().tbs_certificate,
             SDP_ROOT_CA_SUBJECT,
             DEFAULT_CA_VALIDITY,
-            None,
         )
     }
 
@@ -211,7 +204,6 @@ mod tests {
     fn customized_ca() {
         let ca = CertificateAuthority::builder()
             .subject("CN=Test")
-            .serial_number(42)
             .signing_key_pair(rsa::SigningKey::new().unwrap())
             .validity(Duration::from_days_unchecked(13))
             .build()
@@ -221,16 +213,10 @@ mod tests {
             &ca.ca_cert().tbs_certificate,
             "CN=Test",
             Duration::from_days_unchecked(13),
-            Some(42),
         )
     }
 
-    fn assert_ca_cert_attributes(
-        ca_cert: &TbsCertificateInner,
-        subject: &str,
-        validity: Duration,
-        serial_number: Option<u64>,
-    ) {
+    fn assert_ca_cert_attributes(ca_cert: &TbsCertificateInner, subject: &str, validity: Duration) {
         assert_eq!(ca_cert.subject, subject.parse().unwrap());
 
         let not_before = ca_cert.validity.not_before.to_system_time();
@@ -241,11 +227,5 @@ mod tests {
                 .expect("Failed to calculate duration between notBefore and notAfter"),
             *validity
         );
-
-        if let Some(serial_number) = serial_number {
-            assert_eq!(ca_cert.serial_number, SerialNumber::from(serial_number))
-        } else {
-            assert_ne!(ca_cert.serial_number, SerialNumber::from(0_u64))
-        }
     }
 }
