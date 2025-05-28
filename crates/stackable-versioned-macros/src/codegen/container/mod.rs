@@ -133,27 +133,26 @@ impl Container {
                 vis,
                 is_nested,
             ));
-        }
 
-        tokens.extend(s.generate_from_functions(
-            enum_variant_idents,
-            enum_variant_strings,
-            is_nested,
-        ));
-        // TODO: Do we need a kubernetes_options.skip_conversion as well?
-        tokens.extend(generate_kubernetes_conversion(
-            &s.common.idents.kubernetes,
-            &s.common.idents.original,
-            enum_variant_idents,
-            enum_variant_strings,
-            kubernetes_options,
-        ));
-        tokens.extend(generate_kubernetes_conversion_tests(
-            &s.common.idents.kubernetes,
-            &s.common.idents.original,
-            enum_variant_strings,
-            kubernetes_options,
-        ));
+            tokens.extend(s.generate_from_functions(
+                enum_variant_idents,
+                enum_variant_strings,
+                is_nested,
+            ));
+            tokens.extend(generate_kubernetes_conversion(
+                &s.common.idents.kubernetes,
+                &s.common.idents.original,
+                enum_variant_idents,
+                enum_variant_strings,
+                kubernetes_options,
+            ));
+            tokens.extend(generate_kubernetes_conversion_tests(
+                &s.common.idents.kubernetes,
+                &s.common.idents.original,
+                enum_variant_strings,
+                kubernetes_options,
+            ));
+        }
 
         Some(tokens)
     }
