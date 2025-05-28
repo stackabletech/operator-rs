@@ -185,12 +185,12 @@ pub(crate) fn generate_kubernetes_conversion_tests(
 
     let k8s_group = &kubernetes_options.group;
 
-    let earliest_version = enum_variant_strings
-        .first()
-        .expect("There must be a earliest version in the list of versions");
-    let latest_version = enum_variant_strings
-        .last()
-        .expect("There must be a latest version in the list of versions");
+    let earliest_version = enum_variant_strings.first().expect(&format!(
+        "There must be a earliest version in the list of versions for {enum_ident}"
+    ));
+    let latest_version = enum_variant_strings.last().expect(&format!(
+        "There must be a latest version in the list of versions for {enum_ident}"
+    ));
     let earliest_api_version = format!("{k8s_group}/{earliest_version}");
     let latest_api_version = format!("{k8s_group}/{latest_version}");
 

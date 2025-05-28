@@ -174,7 +174,7 @@ impl FooBar {
     ) -> ::kube::core::conversion::ConversionReview {
         use ::kube::core::conversion::{ConversionRequest, ConversionResponse};
         use ::kube::core::response::StatusSummary;
-        use ::stackable_versioned::ConversionError;
+        use ::stackable_versioned::flux_converter::ConversionError;
         let request = match ConversionRequest::from_review(review) {
             Ok(request) => request,
             Err(err) => {
@@ -221,8 +221,11 @@ impl FooBar {
     #[tracing::instrument(skip_all, err)]
     fn try_convert(
         request: &::kube::core::conversion::ConversionRequest,
-    ) -> Result<Vec<serde_json::Value>, ::stackable_versioned::ConversionError> {
-        use ::stackable_versioned::ConversionError;
+    ) -> Result<
+        Vec<serde_json::Value>,
+        ::stackable_versioned::flux_converter::ConversionError,
+    > {
+        use ::stackable_versioned::flux_converter::ConversionError;
         let desired_object_version = Self::from_api_version(&request.desired_api_version)
             .map_err(|err| ConversionError::ParseDesiredResourceVersion {
                 source: err,
@@ -552,4 +555,28 @@ impl FooBar {
         }
         Ok(converted)
     }
+}
+#[cfg(test)]
+#[test]
+fn FooBar_roundtrip_down_up() {
+    ::stackable_versioned::flux_converter::test_utils::test_roundtrip::<
+        v1::FooSpec,
+    >(
+        stringify!(FooBar),
+        "stackable.tech/v1",
+        "stackable.tech/v1alpha1",
+        FooBar::convert,
+    );
+}
+#[cfg(test)]
+#[test]
+fn FooBar_roundtrip_up_down() {
+    ::stackable_versioned::flux_converter::test_utils::test_roundtrip::<
+        v1alpha1::FooSpec,
+    >(
+        stringify!(FooBar),
+        "stackable.tech/v1alpha1",
+        "stackable.tech/v1",
+        FooBar::convert,
+    );
 }
