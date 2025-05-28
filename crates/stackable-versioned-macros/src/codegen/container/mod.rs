@@ -5,6 +5,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{ToTokens, quote};
 use syn::{Attribute, Ident, ItemEnum, ItemStruct, Path, Visibility, parse_quote};
 
+use super::flux_converter::{generate_kubernetes_conversion, generate_kubernetes_conversion_tests};
 use crate::{
     attrs::{
         container::StandaloneContainerAttributes,
@@ -140,10 +141,16 @@ impl Container {
             is_nested,
         ));
         // TODO: Do we need a kubernetes_options.skip_conversion as well?
-        tokens.extend(super::flux_converter::generate_kubernetes_conversion(
+        tokens.extend(generate_kubernetes_conversion(
             &s.common.idents.kubernetes,
             &s.common.idents.original,
             enum_variant_idents,
+            enum_variant_strings,
+            kubernetes_options,
+        ));
+        tokens.extend(generate_kubernetes_conversion_tests(
+            &s.common.idents.kubernetes,
+            &s.common.idents.original,
             enum_variant_strings,
             kubernetes_options,
         ));

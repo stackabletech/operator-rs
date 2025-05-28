@@ -1,6 +1,8 @@
+use std::cmp::Ordering;
+
 use darling::util::IdentString;
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 
 use super::container::KubernetesOptions;
 
@@ -74,7 +76,7 @@ pub(crate) fn generate_kubernetes_conversion(
                 // Intentionally not using `snafu::ResultExt` here to keep the number of dependencies minimal
                 use #kube_core_path::conversion::{ConversionRequest, ConversionResponse};
                 use #kube_core_path::response::StatusSummary;
-                use #versioned_path::ConversionError;
+                use #versioned_path::flux_converter::ConversionError;
 
                 let request = match ConversionRequest::from_review(review) {
                     Ok(request) => request,
@@ -129,8 +131,11 @@ pub(crate) fn generate_kubernetes_conversion(
                 skip_all,
                 err
             )]
-            fn try_convert(request: &#kube_core_path::conversion::ConversionRequest) -> Result<Vec<serde_json::Value>, #versioned_path::ConversionError> {
-                use #versioned_path::ConversionError;
+            fn try_convert(request: &#kube_core_path::conversion::ConversionRequest) -> Result<
+                Vec<serde_json::Value>,
+                #versioned_path::flux_converter::ConversionError
+            > {
+                use #versioned_path::flux_converter::ConversionError;
 
                 // FIXME: Check that request.types.{kind,api_version} match the expected values
 
@@ -169,6 +174,60 @@ pub(crate) fn generate_kubernetes_conversion(
     })
 }
 
+pub(crate) fn generate_kubernetes_conversion_tests(
+    enum_ident: &IdentString,
+    struct_ident: &IdentString,
+    enum_variant_strings: &[String],
+    kubernetes_options: &KubernetesOptions,
+) -> TokenStream {
+    // Get the crate paths
+    let versioned_path = &*kubernetes_options.crates.versioned;
+
+    let k8s_group = &kubernetes_options.group;
+
+    let earliest_version = enum_variant_strings
+        .first()
+        .expect("There must be a earliest version in the list of versions");
+    let latest_version = enum_variant_strings
+        .last()
+        .expect("There must be a latest version in the list of versions");
+    let earliest_api_version = format!("{k8s_group}/{earliest_version}");
+    let latest_api_version = format!("{k8s_group}/{latest_version}");
+
+    let earliest_version_ident = format_ident!("{earliest_version}");
+    let latest_version_ident = format_ident!("{latest_version}");
+    let test_function_down_up = format_ident!("{enum_ident}_roundtrip_down_up");
+    let test_function_up_down = format_ident!("{enum_ident}_roundtrip_up_down");
+
+    quote! {
+        #[cfg(test)]
+        #[test]
+        fn #test_function_down_up() {
+            #versioned_path::flux_converter::test_utils::test_roundtrip::<
+                #latest_version_ident::#struct_ident,
+            >(
+                stringify!(#enum_ident),
+                #latest_api_version,
+                #earliest_api_version,
+                #enum_ident::convert,
+            );
+        }
+
+        #[cfg(test)]
+        #[test]
+        fn #test_function_up_down() {
+            #versioned_path::flux_converter::test_utils::test_roundtrip::<
+                #earliest_version_ident::#struct_ident,
+            >(
+                stringify!(#enum_ident),
+                #earliest_api_version,
+                #latest_api_version,
+                #enum_ident::convert,
+            );
+        }
+    }
+}
+
 pub fn generate_conversion_chain<Version: Clone>(
     versions: Vec<Version>,
 ) -> Vec<(Version, Version, Vec<Version>)> {
@@ -179,13 +238,13 @@ pub fn generate_conversion_chain<Version: Clone>(
         for j in 0..n {
             let source = versions[i].clone();
             let destination = versions[j].clone();
-            let chain = if i == j {
-                vec![]
-            } else if i < j {
-                versions[i + 1..=j].to_vec()
-            } else {
-                versions[j..i].iter().rev().cloned().collect()
+
+            let chain = match i.cmp(&j) {
+                Ordering::Equal => vec![],
+                Ordering::Less => versions[i + 1..=j].to_vec(),
+                Ordering::Greater => versions[j..i].iter().rev().cloned().collect(),
             };
+
             result.push((source, destination, chain));
         }
     }

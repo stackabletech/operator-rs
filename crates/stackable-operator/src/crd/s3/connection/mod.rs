@@ -102,6 +102,38 @@ pub mod versioned {
 }
 
 #[cfg(test)]
+impl stackable_versioned::flux_converter::test_utils::RoundtripTestData
+    for v1alpha1::ConnectionSpec
+{
+    fn get_roundtrip_test_data() -> Vec<Self> {
+        crate::utils::yaml_from_str_singleton_map(indoc::indoc! {"
+            - host: s3.example.com
+            - host: s3.example.com
+              port: 1234
+              accessStyle: VirtualHosted
+              credentials:
+                secretClass: s3-credentials
+              region:
+                name: eu-west-1
+              tls: null
+            - host: s3.example.com
+              region:
+                name: us-east-1
+              tls:
+                verification:
+                  none: {}
+            - host: s3.example.com
+              tls:
+                verification:
+                  server:
+                    caCert:
+                      secretClass: s3-cert
+        "})
+        .expect("Failed to parse ConnectionSpec YAML")
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
 

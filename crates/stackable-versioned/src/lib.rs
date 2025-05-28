@@ -23,9 +23,7 @@ pub use k8s::*;
 
 // Behind flux-converter feature
 #[cfg(feature = "flux-converter")]
-mod flux_converter;
-#[cfg(feature = "flux-converter")]
-pub use flux_converter::*;
+pub mod flux_converter;
 
 #[derive(Debug, Snafu)]
 pub enum ParseResourceVersionError {

@@ -3,6 +3,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use stackable_versioned_macros::versioned;
 
+use super::test_utils::RoundtripTestData;
+
 #[versioned(
     k8s(group = "test.stackable.tech", crates(versioned = "crate")),
     version(name = "v1alpha1"),
@@ -73,6 +75,38 @@ impl From<String> for Gender {
             "Female" => Self::Female,
             _ => Self::Unknown,
         }
+    }
+}
+
+impl RoundtripTestData for v1alpha1::PersonSpec {
+    fn get_roundtrip_test_data() -> Vec<Self> {
+        vec![
+            Self {
+                username: "sbernauer".to_string(),
+            },
+            Self {
+                username: "".to_string(),
+            },
+        ]
+    }
+}
+
+impl RoundtripTestData for v3::PersonSpec {
+    fn get_roundtrip_test_data() -> Vec<Self> {
+        vec![
+            Self {
+                username: "sbernauer".to_string(),
+                first_name: "Sebastian".to_string(),
+                last_name: "Bernauer".to_string(),
+                gender: "Male".to_string(),
+            },
+            Self {
+                username: "".to_string(),
+                first_name: "".to_string(),
+                last_name: "".to_string(),
+                gender: "".to_string(),
+            },
+        ]
     }
 }
 
