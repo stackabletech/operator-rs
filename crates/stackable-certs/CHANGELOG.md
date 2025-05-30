@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Support adding SAN entries to generated certificates, this is needed for basically all modern TLS
+  certificate validations when used with HTTPS ([#1044]).
+
+### Changed
+
+- GIGA BREAKING: Rewrite entire CA and cert generation to use a builder pattern ([#1044]).
+- BREAKING: The constant `DEFAULT_CA_VALIDITY_SECONDS` has been renamed to `DEFAULT_CA_VALIDITY` and now is of type `stackable_operator::time::Duration`.
+  Also, the constant `ROOT_CA_SUBJECT` has been renamed to `SDP_ROOT_CA_SUBJECT` ([#1044]).
+
 ## [0.3.1] - 2024-07-10
 
 ### Changed
@@ -11,6 +22,7 @@ All notable changes to this project will be documented in this file.
 - Bump rust-toolchain to 1.79.0 ([#822]).
 
 [#822]: https://github.com/stackabletech/operator-rs/pull/822
+[#1044]: https://github.com/stackabletech/operator-rs/pull/1044
 
 ## [0.3.0] - 2024-05-08
 
