@@ -17,6 +17,9 @@ All notable changes to this project will be documented in this file.
 - Add `kube_client` crate override to `k8s(crates())` to specify a custom import path. This override
   will not be passed to the `#[kube()]` attribute, but will only be available to internal
   `#[versioned]` macro code ([#1038]).
+- Add `flux-converter`, which adds the `convert` function, which takes a `ConversionReview` and
+  produces a `ConversionReview` out of it. It creates and uses the needed transitive `.into()` call
+  chains ([#XXXX]).
 
 ### Changed
 

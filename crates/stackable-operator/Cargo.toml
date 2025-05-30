@@ -16,7 +16,7 @@ versioned = []
 
 [dependencies]
 stackable-telemetry = { path = "../stackable-telemetry", features = ["clap"] }
-stackable-versioned = { path = "../stackable-versioned", features = ["k8s"] }
+stackable-versioned = { path = "../stackable-versioned", features = ["k8s", "flux-converter"] }
 stackable-operator-derive = { path = "../stackable-operator-derive" }
 stackable-shared = { path = "../stackable-shared" }
 
@@ -28,6 +28,7 @@ dockerfile-parser.workspace = true
 either.workspace = true
 educe.workspace = true
 futures.workspace = true
+indoc.workspace = true
 indexmap.workspace = true
 json-patch.workspace = true
 k8s-openapi.workspace = true

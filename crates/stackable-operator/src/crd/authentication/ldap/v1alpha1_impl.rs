@@ -169,7 +169,7 @@ impl Default for FieldNames {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commons::secret_class::SecretClassVolume;
+    use crate::{commons::secret_class::SecretClassVolume, utils::yaml_from_str_singleton_map};
 
     #[test]
     fn minimal() {
@@ -213,9 +213,7 @@ mod tests {
                   caCert:
                     secretClass: ldap-ca-cert
         "#;
-        let deserializer = serde_yaml::Deserializer::from_str(input);
-        let ldap: AuthenticationProvider =
-            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+        let ldap: AuthenticationProvider = yaml_from_str_singleton_map(input).unwrap();
 
         assert_eq!(ldap.port(), 42);
         assert!(ldap.tls.uses_tls());

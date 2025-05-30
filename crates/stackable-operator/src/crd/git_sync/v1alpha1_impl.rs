@@ -365,7 +365,7 @@ mod tests {
     use super::*;
     use crate::{
         config::fragment::validate, product_config_utils::env_vars_from,
-        product_logging::spec::default_container_log_config,
+        product_logging::spec::default_container_log_config, utils::yaml_from_str_singleton_map,
     };
 
     #[test]
@@ -435,9 +435,7 @@ mod tests {
               --git-config: key:value,safe.directory:/safe-dir
           "#;
 
-        let deserializer = serde_yaml::Deserializer::from_str(git_sync_spec);
-        let git_syncs: Vec<GitSync> =
-            serde_yaml::with::singleton_map_recursive::deserialize(deserializer).unwrap();
+        let git_syncs: Vec<GitSync> = yaml_from_str_singleton_map(git_sync_spec).unwrap();
 
         let resolved_product_image = ResolvedProductImage {
             image: "oci.stackable.tech/sdp/product:latest".to_string(),

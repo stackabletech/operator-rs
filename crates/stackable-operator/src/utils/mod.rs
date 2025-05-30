@@ -25,3 +25,11 @@ pub use self::{option::OptionExt, url::UrlExt};
 pub(crate) fn format_full_controller_name(operator: &str, controller: &str) -> String {
     format!("{operator}_{controller}")
 }
+
+pub fn yaml_from_str_singleton_map<'a, D>(input: &'a str) -> Result<D, serde_yaml::Error>
+where
+    D: serde::Deserialize<'a>,
+{
+    let deserializer = serde_yaml::Deserializer::from_str(input);
+    serde_yaml::with::singleton_map_recursive::deserialize(deserializer)
+}

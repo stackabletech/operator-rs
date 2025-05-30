@@ -163,3 +163,56 @@ pub mod versioned {
         Cluster,
     }
 }
+
+#[cfg(test)]
+impl stackable_versioned::flux_converter::test_utils::RoundtripTestData for v1alpha1::ListenerSpec {
+    fn get_roundtrip_test_data() -> Vec<Self> {
+        crate::utils::yaml_from_str_singleton_map(indoc::indoc! {"
+          - {}
+          - className: cluster-internal
+            extraPodLabelSelectorLabels: {}
+            ports: []
+            publishNotReadyAddresses: true
+          - className: external-unstable
+            extraPodLabelSelectorLabels:
+              foo: bar
+            ports:
+              - name: http
+                port: 8080
+                protocol: TCP
+            publishNotReadyAddresses: true
+        "})
+        .expect("Failed to parse ListenerSpec YAML")
+    }
+}
+
+#[cfg(test)]
+impl stackable_versioned::flux_converter::test_utils::RoundtripTestData
+    for v1alpha1::PodListenersSpec
+{
+    fn get_roundtrip_test_data() -> Vec<Self> {
+        crate::utils::yaml_from_str_singleton_map(indoc::indoc! {"
+          - listeners: {}
+          - listeners:
+              foo:
+                scope: Node
+          - listeners:
+              foo:
+                scope: Cluster
+                ingressAddresses:
+                  - address: 1.2.3.4
+                    addressType: IP
+                    ports: {}
+          - listeners:
+              foo:
+                scope: Cluster
+                ingressAddresses:
+                  - address: foo.bar
+                    addressType: Hostname
+                    ports:
+                      http: 8080
+                      https: 8443
+        "})
+        .expect("Failed to parse PodListenersSpec YAML")
+    }
+}

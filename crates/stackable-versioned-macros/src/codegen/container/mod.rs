@@ -5,6 +5,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{ToTokens, quote};
 use syn::{Attribute, Ident, ItemEnum, ItemStruct, Path, Visibility, parse_quote};
 
+use super::flux_converter::{generate_kubernetes_conversion, generate_kubernetes_conversion_tests};
 use crate::{
     attrs::{
         container::StandaloneContainerAttributes,
@@ -105,11 +106,11 @@ impl Container {
         }
     }
 
-    /// Generates Kubernetes specific code to merge two or more CRDs into one.
+    /// Generates Kubernetes specific code to merge two CRDs or convert between different versions.
     ///
     /// This function only returns `Some` if it is a struct. Enums cannot be used to define
     /// Kubernetes custom resources.
-    pub fn generate_kubernetes_merge_crds(
+    pub fn generate_kubernetes_code(
         &self,
         enum_variant_idents: &[IdentString],
         enum_variant_strings: &[String],
@@ -117,16 +118,43 @@ impl Container {
         vis: &Visibility,
         is_nested: bool,
     ) -> Option<TokenStream> {
-        match self {
-            Container::Struct(s) => s.generate_kubernetes_merge_crds(
+        let Container::Struct(s) = self else {
+            return None;
+        };
+        let kubernetes_options = s.common.options.kubernetes_options.as_ref()?;
+
+        let mut tokens = TokenStream::new();
+
+        if !kubernetes_options.skip_merged_crd {
+            tokens.extend(s.generate_kubernetes_merge_crds(
                 enum_variant_idents,
                 enum_variant_strings,
                 fn_calls,
                 vis,
                 is_nested,
-            ),
-            Container::Enum(_) => None,
+            ));
+
+            tokens.extend(s.generate_from_functions(
+                enum_variant_idents,
+                enum_variant_strings,
+                is_nested,
+            ));
+            tokens.extend(generate_kubernetes_conversion(
+                &s.common.idents.kubernetes,
+                &s.common.idents.original,
+                enum_variant_idents,
+                enum_variant_strings,
+                kubernetes_options,
+            ));
+            tokens.extend(generate_kubernetes_conversion_tests(
+                &s.common.idents.kubernetes,
+                &s.common.idents.original,
+                enum_variant_strings,
+                kubernetes_options,
+            ));
         }
+
+        Some(tokens)
     }
 
     pub fn generate_kubernetes_status_struct(&self) -> Option<TokenStream> {
@@ -251,7 +279,7 @@ impl StandaloneContainer {
             });
         }
 
-        tokens.extend(self.container.generate_kubernetes_merge_crds(
+        tokens.extend(self.container.generate_kubernetes_code(
             &kubernetes_enum_variant_idents,
             &kubernetes_enum_variant_strings,
             &kubernetes_merge_crds_fn_calls,
