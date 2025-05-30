@@ -42,7 +42,7 @@ quote.workspace = true
 
 [dev-dependencies]
 # Only needed for doc tests / examples
-stackable-versioned = { path = "../stackable-versioned", features = ["k8s"] }
+stackable-versioned = { path = "../stackable-versioned", features = ["k8s", "flux-converter"] }
 
 insta.workspace = true
 prettyplease.workspace = true
