@@ -4,7 +4,7 @@ default_language_version:
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: 2c9f875913ee60ca25ce70243dc24d5b6415598c # 4.6.0
+    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b # 5.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -18,12 +18,12 @@ repos:
       - id: clippy
         args: ["--all-targets", "--", "-D", "warnings"]
   - repo: https://github.com/adrienverge/yamllint
-    rev: 81e9f98ffd059efe8aa9c1b1a42e5cce61b640c6 # 1.35.1
+    rev: 79a6b2b1392eaf49cdd32ac4f14be1a809bbd8f7 # 1.37.1
     hooks:
       - id: yamllint
 
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: f295829140d25717bc79368d3f966fc1f67a824f # 0.41.0
+    rev: 192ad822316c3a22fb3d3cc8aa6eafa0b8488360 # 0.45.0
     hooks:
       - id: markdownlint
 
@@ -34,7 +34,7 @@ repos:
         args: ["--severity=info"]
 
   - repo: https://github.com/rhysd/actionlint
-    rev: 62dc61a45fc95efe8c800af7a557ab0b9165d63b # 1.7.1
+    rev: 03d0035246f3e81f36aed592ffb4bebf33a03106 # 1.7.7
     hooks:
       - id: actionlint
 
