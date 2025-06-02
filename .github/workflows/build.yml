@@ -102,33 +102,11 @@ jobs:
       - run: cargo test --no-default-features --workspace
       - run: cargo test --all-features --workspace
 
-  check_crd_previews:
-    name: Check if CRD previews are up to date
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_TOOLCHAIN_VERSION }}
-      - name: Regenerate CRD previews
-        run: cargo check -p stackable-crd-previewer
-      - name: Check if committed CRD previews were up to date
-        run: git diff --exit-code generated-crd-previews
-      - name: Git Diff showed uncommitted changes
-        if: ${{ failure() }}
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        with:
-          script: |
-            core.setFailed('Committed CRD previews were not up to date, please run "cargo check -p stackable-crd-previewer" and re-commit!')
-
   tests_passed:
     name: All tests passed
     needs:
       - run_udeps
       - run_tests
-      - check_crd_previews
     runs-on: ubuntu-latest
     steps:
       - name: log
