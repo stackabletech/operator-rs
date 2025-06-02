@@ -11,7 +11,7 @@ impl<'de> Deserialize<'de> for ApiVersion {
     {
         struct ApiVersionVisitor;
 
-        impl<'de> Visitor<'de> for ApiVersionVisitor {
+        impl Visitor<'_> for ApiVersionVisitor {
             type Value = ApiVersion;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

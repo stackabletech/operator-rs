@@ -365,48 +365,51 @@ mod tests {
             .win_run_as_user_name("winuser")
             .build();
 
-        assert_eq!(context, PodSecurityContext {
-            fs_group: Some(1000),
-            fs_group_change_policy: Some("policy".to_string()),
-            run_as_user: Some(1001),
-            run_as_group: Some(1001),
-            run_as_non_root: Some(true),
-            supplemental_groups: Some(vec![1002, 1003]),
-            se_linux_options: Some(SELinuxOptions {
-                level: Some("level".to_string()),
-                role: Some("role".to_string()),
-                type_: Some("type".to_string()),
-                user: Some("user".to_string()),
-            }),
-            seccomp_profile: Some(SeccompProfile {
-                localhost_profile: Some("localhost".to_string()),
-                type_: "type".to_string(),
-            }),
-            sysctls: Some(vec![
-                Sysctl {
-                    name: "param1".to_string(),
-                    value: "value1".to_string(),
-                },
-                Sysctl {
-                    name: "param2".to_string(),
-                    value: "value2".to_string(),
-                },
-            ]),
-            windows_options: Some(WindowsSecurityContextOptions {
-                gmsa_credential_spec: Some("spec".to_string()),
-                gmsa_credential_spec_name: Some("name".to_string()),
-                run_as_user_name: Some("winuser".to_string()),
-                ..Default::default()
-            }),
-            // This attribute is supported starting with Kubernetes 1.30.
-            // Because we support older Kubernetes versions as well, we can
-            // not use it for now, as we would not work on older Kubernetes
-            // clusters.
-            app_armor_profile: None,
-            // This attribute is supported starting with Kubernetes 1.31.
-            supplemental_groups_policy: None,
-            // This attribute is supported starting with Kubernetes 1.32.
-            se_linux_change_policy: None,
-        });
+        assert_eq!(
+            context,
+            PodSecurityContext {
+                fs_group: Some(1000),
+                fs_group_change_policy: Some("policy".to_string()),
+                run_as_user: Some(1001),
+                run_as_group: Some(1001),
+                run_as_non_root: Some(true),
+                supplemental_groups: Some(vec![1002, 1003]),
+                se_linux_options: Some(SELinuxOptions {
+                    level: Some("level".to_string()),
+                    role: Some("role".to_string()),
+                    type_: Some("type".to_string()),
+                    user: Some("user".to_string()),
+                }),
+                seccomp_profile: Some(SeccompProfile {
+                    localhost_profile: Some("localhost".to_string()),
+                    type_: "type".to_string(),
+                }),
+                sysctls: Some(vec![
+                    Sysctl {
+                        name: "param1".to_string(),
+                        value: "value1".to_string(),
+                    },
+                    Sysctl {
+                        name: "param2".to_string(),
+                        value: "value2".to_string(),
+                    },
+                ]),
+                windows_options: Some(WindowsSecurityContextOptions {
+                    gmsa_credential_spec: Some("spec".to_string()),
+                    gmsa_credential_spec_name: Some("name".to_string()),
+                    run_as_user_name: Some("winuser".to_string()),
+                    ..Default::default()
+                }),
+                // This attribute is supported starting with Kubernetes 1.30.
+                // Because we support older Kubernetes versions as well, we can
+                // not use it for now, as we would not work on older Kubernetes
+                // clusters.
+                app_armor_profile: None,
+                // This attribute is supported starting with Kubernetes 1.31.
+                supplemental_groups_policy: None,
+                // This attribute is supported starting with Kubernetes 1.32.
+                se_linux_change_policy: None,
+            }
+        );
     }
 }

@@ -7,7 +7,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_TOOLCHAIN_VERSION: "nightly-2025-01-15"
+  RUST_TOOLCHAIN_VERSION: "nightly-2025-05-26"
 
 permissions: {}
 

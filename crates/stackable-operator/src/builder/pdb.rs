@@ -229,22 +229,28 @@ mod tests {
             .with_min_available(42)
             .build();
 
-        assert_eq!(pdb, PodDisruptionBudget {
-            metadata: ObjectMeta {
-                name: Some("trino".to_string()),
-                namespace: Some("default".to_string()),
-                ..Default::default()
-            },
-            spec: Some(PodDisruptionBudgetSpec {
-                min_available: Some(IntOrString::Int(42)),
-                selector: Some(LabelSelector {
-                    match_expressions: None,
-                    match_labels: Some(BTreeMap::from([("foo".to_string(), "bar".to_string())])),
+        assert_eq!(
+            pdb,
+            PodDisruptionBudget {
+                metadata: ObjectMeta {
+                    name: Some("trino".to_string()),
+                    namespace: Some("default".to_string()),
+                    ..Default::default()
+                },
+                spec: Some(PodDisruptionBudgetSpec {
+                    min_available: Some(IntOrString::Int(42)),
+                    selector: Some(LabelSelector {
+                        match_expressions: None,
+                        match_labels: Some(BTreeMap::from([(
+                            "foo".to_string(),
+                            "bar".to_string()
+                        )])),
+                    }),
+                    ..Default::default()
                 }),
                 ..Default::default()
-            }),
-            ..Default::default()
-        })
+            }
+        )
     }
 
     #[test]
@@ -283,54 +289,57 @@ mod tests {
         .with_max_unavailable(2)
         .build();
 
-        assert_eq!(pdb, PodDisruptionBudget {
-            metadata: ObjectMeta {
-                name: Some("simple-trino-worker".to_string()),
-                namespace: Some("default".to_string()),
-                labels: Some(BTreeMap::from([
-                    ("app.kubernetes.io/name".to_string(), "trino".to_string()),
-                    (
-                        "app.kubernetes.io/instance".to_string(),
-                        "simple-trino".to_string()
-                    ),
-                    (
-                        "app.kubernetes.io/managed-by".to_string(),
-                        "trino.stackable.tech_trino-operator-trino-controller".to_string()
-                    ),
-                    (
-                        "app.kubernetes.io/component".to_string(),
-                        "worker".to_string()
-                    )
-                ])),
-                owner_references: Some(vec![
-                    OwnerReferenceBuilder::new()
-                        .initialize_from_resource(&trino)
-                        .block_owner_deletion_opt(None)
-                        .controller_opt(Some(true))
-                        .build()
-                        .unwrap()
-                ]),
-                ..Default::default()
-            },
-            spec: Some(PodDisruptionBudgetSpec {
-                max_unavailable: Some(IntOrString::Int(2)),
-                selector: Some(LabelSelector {
-                    match_expressions: None,
-                    match_labels: Some(BTreeMap::from([
+        assert_eq!(
+            pdb,
+            PodDisruptionBudget {
+                metadata: ObjectMeta {
+                    name: Some("simple-trino-worker".to_string()),
+                    namespace: Some("default".to_string()),
+                    labels: Some(BTreeMap::from([
                         ("app.kubernetes.io/name".to_string(), "trino".to_string()),
                         (
                             "app.kubernetes.io/instance".to_string(),
                             "simple-trino".to_string()
                         ),
                         (
+                            "app.kubernetes.io/managed-by".to_string(),
+                            "trino.stackable.tech_trino-operator-trino-controller".to_string()
+                        ),
+                        (
                             "app.kubernetes.io/component".to_string(),
                             "worker".to_string()
                         )
                     ])),
+                    owner_references: Some(vec![
+                        OwnerReferenceBuilder::new()
+                            .initialize_from_resource(&trino)
+                            .block_owner_deletion_opt(None)
+                            .controller_opt(Some(true))
+                            .build()
+                            .unwrap()
+                    ]),
+                    ..Default::default()
+                },
+                spec: Some(PodDisruptionBudgetSpec {
+                    max_unavailable: Some(IntOrString::Int(2)),
+                    selector: Some(LabelSelector {
+                        match_expressions: None,
+                        match_labels: Some(BTreeMap::from([
+                            ("app.kubernetes.io/name".to_string(), "trino".to_string()),
+                            (
+                                "app.kubernetes.io/instance".to_string(),
+                                "simple-trino".to_string()
+                            ),
+                            (
+                                "app.kubernetes.io/component".to_string(),
+                                "worker".to_string()
+                            )
+                        ])),
+                    }),
+                    ..Default::default()
                 }),
                 ..Default::default()
-            }),
-            ..Default::default()
-        })
+            }
+        )
     }
 }

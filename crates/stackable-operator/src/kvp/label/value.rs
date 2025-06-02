@@ -56,9 +56,12 @@ impl FromStr for LabelValue {
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         // The length of the value cannot exceed 63 characters, but can be
         // empty
-        ensure!(input.len() <= LABEL_VALUE_MAX_LEN, ValueTooLongSnafu {
-            length: input.len()
-        });
+        ensure!(
+            input.len() <= LABEL_VALUE_MAX_LEN,
+            ValueTooLongSnafu {
+                length: input.len()
+            }
+        );
 
         // The value cannot contain non-ascii characters
         ensure!(input.is_ascii(), ValueNotAsciiSnafu);

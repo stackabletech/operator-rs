@@ -216,9 +216,12 @@ impl FromStr for KeyPrefix {
         ensure!(!input.is_empty(), PrefixEmptySnafu);
 
         // The length of the prefix cannot exceed 253 characters
-        ensure!(input.len() <= KEY_PREFIX_MAX_LEN, PrefixTooLongSnafu {
-            length: input.len()
-        });
+        ensure!(
+            input.len() <= KEY_PREFIX_MAX_LEN,
+            PrefixTooLongSnafu {
+                length: input.len()
+            }
+        );
 
         // The prefix cannot contain non-ascii characters
         ensure!(input.is_ascii(), PrefixNotAsciiSnafu);
@@ -297,9 +300,12 @@ impl FromStr for KeyName {
         ensure!(!input.is_empty(), NameEmptySnafu);
 
         // The length of the name cannot exceed 63 characters
-        ensure!(input.len() <= KEY_NAME_MAX_LEN, NameTooLongSnafu {
-            length: input.len()
-        });
+        ensure!(
+            input.len() <= KEY_NAME_MAX_LEN,
+            NameTooLongSnafu {
+                length: input.len()
+            }
+        );
 
         // The name cannot contain non-ascii characters
         ensure!(input.is_ascii(), NameNotAsciiSnafu);

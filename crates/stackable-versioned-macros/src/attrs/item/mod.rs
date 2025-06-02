@@ -238,15 +238,26 @@ impl CommonItemAttributes {
                 }
             }
 
-            // The convert_with argument only makes sense to use when the
-            // type changed
-            if let Some(convert_func) = change.convert_with.as_ref() {
-                if change.from_type.is_none() {
+            if change.from_type.is_none() {
+                // The upgrade_with argument only makes sense to use when the
+                // type changed
+                if let Some(upgrade_func) = change.upgrade_with.as_ref() {
                     errors.push(
                         Error::custom(
-                            "the `convert_with` argument must be used in combination with `from_type`",
+                            "the `upgrade_with` argument must be used in combination with `from_type`",
                         )
-                        .with_span(&convert_func.span()),
+                        .with_span(&upgrade_func.span()),
+                    );
+                }
+
+                // The downgrade_with argument only makes sense to use when the
+                // type changed
+                if let Some(downgrade_func) = change.downgrade_with.as_ref() {
+                    errors.push(
+                        Error::custom(
+                            "the `downgrade_with` argument must be used in combination with `from_type`",
+                        )
+                        .with_span(&downgrade_func.span()),
                     );
                 }
             }
@@ -293,11 +304,14 @@ impl CommonItemAttributes {
 
             let mut actions = BTreeMap::new();
 
-            actions.insert(*deprecated.since, ItemStatus::Deprecation {
-                previous_ident: ident.clone(),
-                ident: deprecated_ident.clone(),
-                note: deprecated.note.as_deref().cloned(),
-            });
+            actions.insert(
+                *deprecated.since,
+                ItemStatus::Deprecation {
+                    previous_ident: ident.clone(),
+                    ident: deprecated_ident.clone(),
+                    note: deprecated.note.as_deref().cloned(),
+                },
+            );
 
             for change in self.changes.iter().rev() {
                 let from_ident = if let Some(from) = change.from_name.as_deref() {
@@ -314,13 +328,17 @@ impl CommonItemAttributes {
                     .map(|sv| sv.deref().clone())
                     .unwrap_or(ty.clone());
 
-                actions.insert(*change.since, ItemStatus::Change {
-                    convert_with: change.convert_with.as_deref().cloned(),
-                    from_ident: from_ident.clone(),
-                    from_type: from_ty.clone(),
-                    to_ident: ident,
-                    to_type: ty,
-                });
+                actions.insert(
+                    *change.since,
+                    ItemStatus::Change {
+                        downgrade_with: change.downgrade_with.as_deref().cloned(),
+                        upgrade_with: change.upgrade_with.as_deref().cloned(),
+                        from_ident: from_ident.clone(),
+                        from_type: from_ty.clone(),
+                        to_ident: ident,
+                        to_type: ty,
+                    },
+                );
 
                 ident = from_ident;
                 ty = from_ty;
@@ -329,11 +347,14 @@ impl CommonItemAttributes {
             // After the last iteration above (if any) we use the ident for the
             // added action if there is any.
             if let Some(added) = self.added {
-                actions.insert(*added.since, ItemStatus::Addition {
-                    default_fn: added.default_fn.deref().clone(),
-                    ident,
-                    ty,
-                });
+                actions.insert(
+                    *added.since,
+                    ItemStatus::Addition {
+                        default_fn: added.default_fn.deref().clone(),
+                        ident,
+                        ty,
+                    },
+                );
             }
 
             Some(actions)
@@ -358,13 +379,17 @@ impl CommonItemAttributes {
                     .map(|sv| sv.deref().clone())
                     .unwrap_or(ty.clone());
 
-                actions.insert(*change.since, ItemStatus::Change {
-                    convert_with: change.convert_with.as_deref().cloned(),
-                    from_ident: from_ident.clone(),
-                    from_type: from_ty.clone(),
-                    to_ident: ident,
-                    to_type: ty,
-                });
+                actions.insert(
+                    *change.since,
+                    ItemStatus::Change {
+                        downgrade_with: change.downgrade_with.as_deref().cloned(),
+                        upgrade_with: change.upgrade_with.as_deref().cloned(),
+                        from_ident: from_ident.clone(),
+                        from_type: from_ty.clone(),
+                        to_ident: ident,
+                        to_type: ty,
+                    },
+                );
 
                 ident = from_ident;
                 ty = from_ty;
@@ -373,11 +398,14 @@ impl CommonItemAttributes {
             // After the last iteration above (if any) we use the ident for the
             // added action if there is any.
             if let Some(added) = self.added {
-                actions.insert(*added.since, ItemStatus::Addition {
-                    default_fn: added.default_fn.deref().clone(),
-                    ident,
-                    ty,
-                });
+                actions.insert(
+                    *added.since,
+                    ItemStatus::Addition {
+                        default_fn: added.default_fn.deref().clone(),
+                        ident,
+                        ty,
+                    },
+                );
             }
 
             Some(actions)
@@ -385,11 +413,14 @@ impl CommonItemAttributes {
             if let Some(added) = self.added {
                 let mut actions = BTreeMap::new();
 
-                actions.insert(*added.since, ItemStatus::Addition {
-                    default_fn: added.default_fn.deref().clone(),
-                    ident: ident.deref().clone(),
-                    ty,
-                });
+                actions.insert(
+                    *added.since,
+                    ItemStatus::Addition {
+                        default_fn: added.default_fn.deref().clone(),
+                        ident: ident.deref().clone(),
+                        ty,
+                    },
+                );
 
                 return Some(actions);
             }
@@ -429,13 +460,15 @@ fn default_default_fn() -> SpannedValue<Path> {
 /// Example usage:
 /// - `changed(since = "...", from_name = "...")`
 /// - `changed(since = "...", from_name = "...", from_type="...")`
-/// - `changed(since = "...", from_name = "...", from_type="...", convert_with = "...")`
+/// - `changed(since = "...", from_name = "...", from_type="...", upgrade_with = "...")`
+/// - `changed(since = "...", from_name = "...", from_type="...", downgrade_with = "...")`
 #[derive(Clone, Debug, FromMeta)]
 pub struct ChangedAttributes {
     pub since: SpannedValue<Version>,
     pub from_name: Option<SpannedValue<String>>,
     pub from_type: Option<SpannedValue<Type>>,
-    pub convert_with: Option<SpannedValue<Path>>,
+    pub upgrade_with: Option<SpannedValue<Path>>,
+    pub downgrade_with: Option<SpannedValue<Path>>,
 }
 
 /// For the deprecated() action

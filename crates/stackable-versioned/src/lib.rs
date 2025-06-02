@@ -13,14 +13,9 @@
 //! parameters.
 
 // Re-export macro
-pub use stackable_versioned_macros::*;
+#[cfg(feature = "k8s")]
+pub use k8s::*;
+pub use stackable_versioned_macros::versioned;
 
-// Unused for now, might get picked up again in the future.
-#[doc(hidden)]
-pub trait AsVersionStr {
-    const VERSION: &'static str;
-
-    fn as_version_str(&self) -> &'static str {
-        Self::VERSION
-    }
-}
+#[cfg(feature = "k8s")]
+mod k8s;
