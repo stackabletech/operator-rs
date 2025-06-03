@@ -29,7 +29,7 @@ impl Container {
         }
 
         let options = ContainerOptions {
-            kubernetes_options: None,
+            kubernetes_arguments: None,
             skip_from: attributes
                 .common
                 .options
@@ -67,7 +67,7 @@ impl Container {
         }
 
         let options = ContainerOptions {
-            kubernetes_options: None,
+            kubernetes_arguments: None,
             skip_from: attributes.options.skip.is_some_and(|s| s.from.is_present()),
         };
 
