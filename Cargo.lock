@@ -4119,6 +4119,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a62ce76d9b56901b19a74f19431b0d8b3bc7ca4ad685a746dfd78ca8f4fc6bda"
 
 [[package]]
+name = "xtask"
+version = "0.0.0"
+dependencies = [
+ "clap",
+ "serde",
+ "serde_json",
+ "snafu 0.8.5",
+ "stackable-operator",
+]
+
+[[package]]
 name = "yoke"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

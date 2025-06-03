@@ -106,7 +106,7 @@ pub mod versioned {
         ///
         /// [1]: crate::crd::authentication::core::v1alpha1::AuthenticationClass
         #[schemars(
-            description = "An optional list of extra scopes which get merged with the scopes defined in the `AuthenticationClass`."
+            description = "An optional list of extra scopes which get merged with the scopes defined in the AuthenticationClass"
         )]
         #[serde(default)]
         pub extra_scopes: Vec<String>,
