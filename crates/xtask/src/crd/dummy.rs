@@ -4,14 +4,13 @@ use stackable_operator::{
     config::fragment::Fragment,
     kube::CustomResource,
     role_utils::Role,
-    schemars::{self, JsonSchema},
+    schemars::JsonSchema,
     status::condition::ClusterCondition,
     versioned::versioned,
 };
 
 #[versioned(version(name = "v1alpha1"))]
 pub mod versioned {
-    #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
     #[versioned(k8s(
         group = "dummy.stackable.tech",
         kind = "DummyCluster",
@@ -23,6 +22,7 @@ pub mod versioned {
             schemars = "stackable_operator::schemars"
         )
     ))]
+    #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
     #[schemars(crate = "stackable_operator::schemars")]
     #[serde(rename_all = "camelCase")]
     pub struct DummyClusterSpec {
