@@ -10,7 +10,7 @@ use crate::{
     codegen::{VersionDefinition, container::Container},
 };
 
-pub(crate) type KubernetesItems = (Vec<TokenStream>, Vec<IdentString>, Vec<String>);
+pub type KubernetesItems = (Vec<TokenStream>, Vec<IdentString>, Vec<String>);
 
 /// A versioned module.
 ///

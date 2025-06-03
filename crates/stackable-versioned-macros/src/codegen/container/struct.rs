@@ -17,7 +17,7 @@ use crate::{
 };
 
 impl Container {
-    pub(crate) fn new_standalone_struct(
+    pub fn new_standalone_struct(
         item_struct: ItemStruct,
         attributes: StandaloneContainerAttributes,
         versions: &[VersionDefinition],
@@ -31,12 +31,12 @@ impl Container {
             versioned_fields.push(versioned_field);
         }
 
-        let kubernetes_options = attributes.kubernetes_arguments.map(Into::into);
-        let idents = ContainerIdents::from(item_struct.ident, kubernetes_options.as_ref());
+        let kubernetes_arguments = attributes.kubernetes_arguments;
+        let idents = ContainerIdents::from(item_struct.ident, kubernetes_arguments.as_ref());
 
         // Validate K8s specific requirements
         // Ensure that the struct name includes the 'Spec' suffix.
-        if kubernetes_options.is_some() && !idents.original.as_str().ends_with("Spec") {
+        if kubernetes_arguments.is_some() && !idents.original.as_str().ends_with("Spec") {
             return Err(Error::custom(
                 "struct name needs to include the `Spec` suffix if Kubernetes features are enabled via `#[versioned(k8s())]`"
             ).with_span(&idents.original.span()));
@@ -48,7 +48,7 @@ impl Container {
                 .options
                 .skip
                 .is_some_and(|s| s.from.is_present()),
-            kubernetes_options,
+            kubernetes_arguments,
         };
 
         let common = CommonContainerData {
@@ -65,7 +65,7 @@ impl Container {
     }
 
     // TODO (@Techassi): See what can be unified into a single 'new' function
-    pub(crate) fn new_struct_nested(
+    pub fn new_struct_nested(
         item_struct: ItemStruct,
         versions: &[VersionDefinition],
     ) -> Result<Self> {
@@ -78,12 +78,12 @@ impl Container {
             versioned_fields.push(versioned_field);
         }
 
-        let kubernetes_options = attributes.kubernetes_arguments.map(Into::into);
-        let idents = ContainerIdents::from(item_struct.ident, kubernetes_options.as_ref());
+        let kubernetes_arguments = attributes.kubernetes_arguments;
+        let idents = ContainerIdents::from(item_struct.ident, kubernetes_arguments.as_ref());
 
         // Validate K8s specific requirements
         // Ensure that the struct name includes the 'Spec' suffix.
-        if kubernetes_options.is_some() && !idents.original.as_str().ends_with("Spec") {
+        if kubernetes_arguments.is_some() && !idents.original.as_str().ends_with("Spec") {
             return Err(Error::custom(
                 "struct name needs to include the `Spec` suffix if Kubernetes features are enabled via `#[versioned(k8s())]`"
             ).with_span(&idents.original.span()));
@@ -91,7 +91,7 @@ impl Container {
 
         let options = ContainerOptions {
             skip_from: attributes.options.skip.is_some_and(|s| s.from.is_present()),
-            kubernetes_options,
+            kubernetes_arguments,
         };
 
         // Nested structs
@@ -320,12 +320,12 @@ impl Struct {
 // Kubernetes-specific token generation
 impl Struct {
     pub fn generate_kube_attribute(&self, version: &VersionDefinition) -> Option<TokenStream> {
-        let kubernetes_options = self.common.options.kubernetes_options.as_ref()?;
+        let kubernetes_arguments = self.common.options.kubernetes_arguments.as_ref()?;
 
         // Required arguments
-        let group = &kubernetes_options.group;
+        let group = &kubernetes_arguments.group;
         let version = version.inner.to_string();
-        let kind = kubernetes_options
+        let kind = kubernetes_arguments
             .kind
             .as_ref()
             .map_or(self.common.idents.kubernetes.to_string(), |kind| {
@@ -333,26 +333,28 @@ impl Struct {
             });
 
         // Optional arguments
-        let singular = kubernetes_options
+        let singular = kubernetes_arguments
             .singular
             .as_ref()
             .map(|s| quote! { , singular = #s });
 
-        let plural = kubernetes_options
+        let plural = kubernetes_arguments
             .plural
             .as_ref()
             .map(|p| quote! { , plural = #p });
 
-        let namespaced = kubernetes_options
+        let namespaced = kubernetes_arguments
             .namespaced
+            .is_present()
             .then_some(quote! { , namespaced });
-        let crates = kubernetes_options.crates.to_token_stream();
+        let crates = kubernetes_arguments.crates.to_token_stream();
 
         let status = match (
-            kubernetes_options
-                .config_options
-                .experimental_conversion_tracking,
-            &kubernetes_options.status,
+            kubernetes_arguments
+                .options
+                .experimental_conversion_tracking
+                .is_present(),
+            &kubernetes_arguments.status,
         ) {
             (true, _) => {
                 // TODO (@Techassi): This struct name should be defined once in a single place instead
@@ -367,7 +369,7 @@ impl Struct {
             (_, _) => None,
         };
 
-        let shortnames: TokenStream = kubernetes_options
+        let shortnames: TokenStream = kubernetes_arguments
             .shortnames
             .iter()
             .map(|s| quote! { , shortname = #s })
@@ -389,10 +391,14 @@ impl Struct {
         &self,
         version: &VersionDefinition,
     ) -> Option<(IdentString, String, TokenStream)> {
-        let kubernetes_options = self.common.options.kubernetes_options.as_ref()?;
+        let kubernetes_arguments = self.common.options.kubernetes_arguments.as_ref()?;
 
-        if !kubernetes_options.skip_merged_crd {
-            let kube_core_crate = &*kubernetes_options.crates.kube_core;
+        if !kubernetes_arguments
+            .skip
+            .as_ref()
+            .is_some_and(|s| s.merged_crd.is_present())
+        {
+            let kube_core_crate = &*kubernetes_arguments.crates.kube_core;
 
             let enum_variant_ident = version.inner.as_variant_ident();
             let enum_variant_string = version.inner.to_string();
@@ -421,9 +427,13 @@ impl Struct {
     ) -> Option<TokenStream> {
         assert_eq!(enum_variant_idents.len(), enum_variant_strings.len());
 
-        let kubernetes_options = self.common.options.kubernetes_options.as_ref()?;
+        let kubernetes_arguments = self.common.options.kubernetes_arguments.as_ref()?;
 
-        if !kubernetes_options.skip_merged_crd {
+        if !kubernetes_arguments
+            .skip
+            .as_ref()
+            .is_some_and(|s| s.merged_crd.is_present())
+        {
             let enum_ident = &self.common.idents.kubernetes;
 
             // Only add the #[automatically_derived] attribute if this impl is used outside of a
@@ -431,8 +441,8 @@ impl Struct {
             let automatically_derived = is_nested.not().then(|| quote! {#[automatically_derived]});
 
             // Get the crate paths
-            let k8s_openapi_path = &*kubernetes_options.crates.k8s_openapi;
-            let kube_core_path = &*kubernetes_options.crates.kube_core;
+            let k8s_openapi_path = &*kubernetes_arguments.crates.k8s_openapi;
+            let kube_core_path = &*kubernetes_arguments.crates.kube_core;
 
             Some(quote! {
                 #automatically_derived
@@ -476,13 +486,13 @@ impl Struct {
         assert_eq!(enum_variant_idents.len(), enum_variant_strings.len());
 
         let enum_ident = &self.common.idents.kubernetes;
-        let kubernetes_options = self.common.options.kubernetes_options.as_ref()?;
-        let k8s_group = &kubernetes_options.group;
+        let kubernetes_arguments = self.common.options.kubernetes_arguments.as_ref()?;
+        let k8s_group = &kubernetes_arguments.group;
         let api_versions = enum_variant_strings
             .iter()
             .map(|version| format!("{k8s_group}/{version}"));
 
-        let versioned_path = &*kubernetes_options.crates.versioned;
+        let versioned_path = &*kubernetes_arguments.crates.versioned;
 
         // Only add the #[automatically_derived] attribute if this impl is used outside of a
         // module (in standalone mode).
@@ -519,23 +529,24 @@ impl Struct {
     }
 
     pub fn generate_kubernetes_status_struct(&self) -> Option<TokenStream> {
-        let kubernetes_options = self.common.options.kubernetes_options.as_ref()?;
+        let kubernetes_arguments = self.common.options.kubernetes_arguments.as_ref()?;
 
-        kubernetes_options
-            .config_options
+        kubernetes_arguments
+            .options
             .experimental_conversion_tracking
+            .is_present()
             .then(|| {
                 let status_ident = format_ident!(
                     "{struct_ident}StatusWithChangedValues",
                     struct_ident = self.common.idents.kubernetes.as_ident()
                 );
 
-                let versioned_crate = &*kubernetes_options.crates.versioned;
-                let schemars_crate = &*kubernetes_options.crates.schemars;
-                let serde_crate = &*kubernetes_options.crates.serde;
+                let versioned_crate = &*kubernetes_arguments.crates.versioned;
+                let schemars_crate = &*kubernetes_arguments.crates.schemars;
+                let serde_crate = &*kubernetes_arguments.crates.serde;
 
                 // TODO (@Techassi): Validate that users don't specify the status we generate
-                let status = kubernetes_options.status.as_ref().map(|status| {
+                let status = kubernetes_arguments.status.as_ref().map(|status| {
                     quote! {
                         #[serde(flatten)]
                         pub status: #status,

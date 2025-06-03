@@ -4,14 +4,14 @@ use darling::util::IdentString;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use super::container::KubernetesOptions;
+use crate::attrs::container::k8s::KubernetesArguments;
 
 pub(crate) fn generate_kubernetes_conversion(
     enum_ident: &IdentString,
     struct_ident: &IdentString,
     enum_variant_idents: &[IdentString],
     enum_variant_strings: &[String],
-    kubernetes_options: &KubernetesOptions,
+    kubernetes_options: &KubernetesArguments,
 ) -> Option<TokenStream> {
     assert_eq!(enum_variant_idents.len(), enum_variant_strings.len());
 
@@ -178,7 +178,7 @@ pub(crate) fn generate_kubernetes_conversion_tests(
     enum_ident: &IdentString,
     struct_ident: &IdentString,
     enum_variant_strings: &[String],
-    kubernetes_options: &KubernetesOptions,
+    kubernetes_options: &KubernetesArguments,
 ) -> TokenStream {
     // Get the crate paths
     let versioned_path = &*kubernetes_options.crates.versioned;
