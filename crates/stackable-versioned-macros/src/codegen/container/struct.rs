@@ -17,7 +17,7 @@ use crate::{
 };
 
 impl Container {
-    pub(crate) fn new_standalone_struct(
+    pub fn new_standalone_struct(
         item_struct: ItemStruct,
         attributes: StandaloneContainerAttributes,
         versions: &[VersionDefinition],
@@ -65,7 +65,7 @@ impl Container {
     }
 
     // TODO (@Techassi): See what can be unified into a single 'new' function
-    pub(crate) fn new_struct_nested(
+    pub fn new_struct_nested(
         item_struct: ItemStruct,
         versions: &[VersionDefinition],
     ) -> Result<Self> {

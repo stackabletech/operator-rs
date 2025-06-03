@@ -6,7 +6,7 @@ use k8s_version::Version;
 use quote::{ToTokens, format_ident};
 use syn::{Ident, spanned::Spanned};
 
-pub(crate) trait VersionExt {
+pub trait VersionExt {
     fn as_variant_ident(&self) -> IdentString;
 }
 
@@ -17,7 +17,7 @@ impl VersionExt for Version {
 }
 
 /// Provides extra functionality on top of [`IdentString`]s used to name containers.
-pub(crate) trait ContainerIdentExt {
+pub trait ContainerIdentExt {
     /// Removes the 'Spec' suffix from the [`IdentString`].
     fn as_cleaned_kubernetes_ident(&self) -> IdentString;
 
@@ -37,7 +37,7 @@ impl ContainerIdentExt for Ident {
     }
 }
 
-pub(crate) trait ItemIdentExt: Deref<Target = IdentString> + From<Ident> + Spanned {
+pub trait ItemIdentExt: Deref<Target = IdentString> + From<Ident> + Spanned {
     const DEPRECATED_PREFIX: &'static str;
 
     fn deprecated_prefix(&self) -> &'static str {
@@ -52,7 +52,7 @@ pub(crate) trait ItemIdentExt: Deref<Target = IdentString> + From<Ident> + Spann
     fn as_cleaned_ident(&self) -> IdentString;
 }
 
-pub(crate) struct FieldIdent(IdentString);
+pub struct FieldIdent(IdentString);
 
 impl ItemIdentExt for FieldIdent {
     const DEPRECATED_PREFIX: &'static str = "deprecated_";
@@ -84,7 +84,7 @@ impl ToTokens for FieldIdent {
     }
 }
 
-pub(crate) struct VariantIdent(IdentString);
+pub struct VariantIdent(IdentString);
 
 impl ItemIdentExt for VariantIdent {
     const DEPRECATED_PREFIX: &'static str = "Deprecated";
