@@ -15,15 +15,15 @@ use crate::{
     utils::VariantIdent,
 };
 
-pub(crate) struct VersionedVariant {
-    pub(crate) original_attributes: Vec<Attribute>,
-    pub(crate) changes: Option<BTreeMap<Version, ItemStatus>>,
-    pub(crate) ident: VariantIdent,
-    pub(crate) fields: Fields,
+pub struct VersionedVariant {
+    pub original_attributes: Vec<Attribute>,
+    pub changes: Option<BTreeMap<Version, ItemStatus>>,
+    pub ident: VariantIdent,
+    pub fields: Fields,
 }
 
 impl VersionedVariant {
-    pub(crate) fn new(variant: Variant, versions: &[VersionDefinition]) -> Result<Self> {
+    pub fn new(variant: Variant, versions: &[VersionDefinition]) -> Result<Self> {
         let variant_attributes = VariantAttributes::from_variant(&variant)?;
         variant_attributes.validate_versions(versions)?;
 
@@ -45,7 +45,7 @@ impl VersionedVariant {
         })
     }
 
-    pub(crate) fn insert_container_versions(&mut self, versions: &[VersionDefinition]) {
+    pub fn insert_container_versions(&mut self, versions: &[VersionDefinition]) {
         if let Some(changes) = &mut self.changes {
             // FIXME (@Techassi): Support enum variants with data
             let ty = Type::Never(TypeNever {
@@ -57,10 +57,7 @@ impl VersionedVariant {
     }
 
     /// Generates tokens to be used in a container definition.
-    pub(crate) fn generate_for_container(
-        &self,
-        version: &VersionDefinition,
-    ) -> Option<TokenStream> {
+    pub fn generate_for_container(&self, version: &VersionDefinition) -> Option<TokenStream> {
         let original_attributes = &self.original_attributes;
         let fields = &self.fields;
 

@@ -15,15 +15,15 @@ use crate::{
     utils::FieldIdent,
 };
 
-pub(crate) struct VersionedField {
-    pub(crate) original_attributes: Vec<Attribute>,
-    pub(crate) changes: Option<BTreeMap<Version, ItemStatus>>,
-    pub(crate) ident: FieldIdent,
-    pub(crate) ty: Type,
+pub struct VersionedField {
+    pub original_attributes: Vec<Attribute>,
+    pub changes: Option<BTreeMap<Version, ItemStatus>>,
+    pub ident: FieldIdent,
+    pub ty: Type,
 }
 
 impl VersionedField {
-    pub(crate) fn new(field: Field, versions: &[VersionDefinition]) -> Result<Self> {
+    pub fn new(field: Field, versions: &[VersionDefinition]) -> Result<Self> {
         let field_attributes = FieldAttributes::from_field(&field)?;
         field_attributes.validate_versions(versions)?;
 
@@ -44,16 +44,13 @@ impl VersionedField {
         })
     }
 
-    pub(crate) fn insert_container_versions(&mut self, versions: &[VersionDefinition]) {
+    pub fn insert_container_versions(&mut self, versions: &[VersionDefinition]) {
         if let Some(changes) = &mut self.changes {
             changes.insert_container_versions(versions, &self.ty);
         }
     }
 
-    pub(crate) fn generate_for_container(
-        &self,
-        version: &VersionDefinition,
-    ) -> Option<TokenStream> {
+    pub fn generate_for_container(&self, version: &VersionDefinition) -> Option<TokenStream> {
         let original_attributes = &self.original_attributes;
 
         match &self.changes {

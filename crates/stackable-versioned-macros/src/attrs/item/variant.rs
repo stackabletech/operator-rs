@@ -23,20 +23,20 @@ use crate::{attrs::item::CommonItemAttributes, codegen::VersionDefinition, utils
     forward_attrs,
     and_then = VariantAttributes::validate
 )]
-pub(crate) struct VariantAttributes {
+pub struct VariantAttributes {
     #[darling(flatten)]
-    pub(crate) common: CommonItemAttributes,
+    pub common: CommonItemAttributes,
 
     // The ident (automatically extracted by darling) cannot be moved into the
     // shared item attributes because for struct fields, the type is
     // `Option<Ident>`, while for enum variants, the type is `Ident`.
-    pub(crate) ident: Ident,
+    pub ident: Ident,
 
     // This must be named `attrs` for darling to populate it accordingly, and
     // cannot live in common because Vec<Attribute> is not implemented for
     // FromMeta.
     /// The original attributes for the field.
-    pub(crate) attrs: Vec<Attribute>,
+    pub attrs: Vec<Attribute>,
 }
 
 impl VariantAttributes {
@@ -69,7 +69,7 @@ impl VariantAttributes {
         errors.finish_with(self)
     }
 
-    pub(crate) fn validate_versions(&self, versions: &[VersionDefinition]) -> Result<()> {
+    pub fn validate_versions(&self, versions: &[VersionDefinition]) -> Result<()> {
         self.common.validate_versions(versions)
     }
 }

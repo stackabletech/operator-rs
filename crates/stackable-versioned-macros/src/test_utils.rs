@@ -20,7 +20,7 @@ static REGEX: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 #[derive(Debug, Snafu)]
-pub(crate) enum Error {
+pub enum Error {
     #[snafu(display("failed to read input file"))]
     ReadFile { source: std::io::Error },
 
@@ -40,7 +40,7 @@ pub(crate) enum Error {
     ParseOutputFile { source: syn::Error },
 }
 
-pub(crate) fn expand_from_file(path: &Path) -> Result<String, Error> {
+pub fn expand_from_file(path: &Path) -> Result<String, Error> {
     let input = std::fs::read_to_string(path).context(ReadFileSnafu)?;
     let (attrs, input) = prepare_from_string(input)?;
 
@@ -73,7 +73,7 @@ fn prepare_from_string(input: String) -> Result<(TokenStream, Item), Error> {
     Ok((attrs, input))
 }
 
-pub(crate) fn set_snapshot_path() -> Settings {
+pub fn set_snapshot_path() -> Settings {
     let dir = std::env::var("CARGO_MANIFEST_DIR").expect("env var CARGO_MANIFEST_DIR must be set");
     let mut settings = Settings::clone_current();
     settings.set_snapshot_path(PathBuf::from(dir).join("tests/snapshots"));

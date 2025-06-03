@@ -16,7 +16,7 @@ use crate::{
 };
 
 impl Container {
-    pub(crate) fn new_standalone_enum(
+    pub fn new_standalone_enum(
         item_enum: ItemEnum,
         attributes: StandaloneContainerAttributes,
         versions: &[VersionDefinition],
@@ -29,7 +29,7 @@ impl Container {
         }
 
         let options = ContainerOptions {
-            kubernetes_options: None,
+            kubernetes_arguments: None,
             skip_from: attributes
                 .common
                 .options
@@ -53,10 +53,7 @@ impl Container {
     }
 
     // TODO (@Techassi): See what can be unified into a single 'new' function
-    pub(crate) fn new_enum_nested(
-        item_enum: ItemEnum,
-        versions: &[VersionDefinition],
-    ) -> Result<Self> {
+    pub fn new_enum_nested(item_enum: ItemEnum, versions: &[VersionDefinition]) -> Result<Self> {
         let attributes = NestedContainerAttributes::from_attributes(&item_enum.attrs)?;
 
         let mut versioned_variants = Vec::new();
@@ -67,7 +64,7 @@ impl Container {
         }
 
         let options = ContainerOptions {
-            kubernetes_options: None,
+            kubernetes_arguments: None,
             skip_from: attributes.options.skip.is_some_and(|s| s.from.is_present()),
         };
 
@@ -88,13 +85,13 @@ impl Container {
 }
 
 /// A versioned enum.
-pub(crate) struct Enum {
+pub struct Enum {
     /// List of variants defined in the original enum. How, and if, an item
     /// should generate code, is decided by the currently generated version.
-    pub(crate) variants: Vec<VersionedVariant>,
+    pub variants: Vec<VersionedVariant>,
 
     /// Common container data which is shared between enums and structs.
-    pub(crate) common: CommonContainerData,
+    pub common: CommonContainerData,
 
     /// Generic types of the enum
     pub generics: Generics,
@@ -103,7 +100,7 @@ pub(crate) struct Enum {
 // Common token generation
 impl Enum {
     /// Generates code for the enum definition.
-    pub(crate) fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
+    pub fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
         let where_clause = self.generics.where_clause.as_ref();
         let type_generics = &self.generics;
 

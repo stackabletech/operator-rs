@@ -5,7 +5,7 @@ use syn::Type;
 
 use crate::codegen::{ItemStatus, VersionDefinition};
 
-pub(crate) trait Neighbors<K, V>
+pub trait Neighbors<K, V>
 where
     K: Ord + Eq,
 {
@@ -78,7 +78,7 @@ where
     }
 }
 
-pub(crate) trait BTreeMapExt<K, V>
+pub trait BTreeMapExt<K, V>
 where
     K: Ord,
 {
@@ -95,7 +95,7 @@ impl<V> BTreeMapExt<Version, V> for BTreeMap<Version, V> {
     }
 }
 
-pub(crate) trait ChangesetExt {
+pub trait ChangesetExt {
     fn insert_container_versions(&mut self, versions: &[VersionDefinition], ty: &Type);
 }
 

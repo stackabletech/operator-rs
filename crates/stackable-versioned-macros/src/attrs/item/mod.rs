@@ -12,10 +12,10 @@ use crate::{
 };
 
 mod field;
-pub(crate) use field::*;
+pub use field::*;
 
 mod variant;
-pub(crate) use variant::*;
+pub use variant::*;
 
 /// These attributes are meant to be used in super structs, which add
 /// [`Field`](syn::Field) or [`Variant`](syn::Variant) specific attributes via
@@ -30,19 +30,19 @@ pub(crate) use variant::*;
 /// - An item can only be deprecated once. A field or variant not marked as
 ///   'deprecated' will be included up until the latest version.
 #[derive(Debug, FromMeta)]
-pub(crate) struct CommonItemAttributes {
+pub struct CommonItemAttributes {
     /// This parses the `added` attribute on items (fields or variants). It can
     /// only be present at most once.
-    pub(crate) added: Option<AddedAttributes>,
+    pub added: Option<AddedAttributes>,
 
     /// This parses the `changed` attribute on items (fields or variants). It
     /// can be present 0..n times.
     #[darling(multiple, rename = "changed")]
-    pub(crate) changes: Vec<ChangedAttributes>,
+    pub changes: Vec<ChangedAttributes>,
 
     /// This parses the `deprecated` attribute on items (fields or variants). It
     /// can only be present at most once.
-    pub(crate) deprecated: Option<DeprecatedAttributes>,
+    pub deprecated: Option<DeprecatedAttributes>,
 }
 
 // This impl block ONLY contains validation. The main entrypoint is the associated 'validate'
@@ -50,11 +50,7 @@ pub(crate) struct CommonItemAttributes {
 // it contains functions which can only be called after the initial parsing and validation because
 // they need additional context, namely the list of versions defined on the container or module.
 impl CommonItemAttributes {
-    pub(crate) fn validate(
-        &self,
-        item_ident: impl ItemIdentExt,
-        item_attrs: &[Attribute],
-    ) -> Result<()> {
+    pub fn validate(&self, item_ident: impl ItemIdentExt, item_attrs: &[Attribute]) -> Result<()> {
         let mut errors = Error::accumulator();
 
         errors.handle(self.validate_action_combinations(&item_ident));
@@ -67,7 +63,7 @@ impl CommonItemAttributes {
         errors.finish()
     }
 
-    pub(crate) fn validate_versions(&self, versions: &[VersionDefinition]) -> Result<()> {
+    pub fn validate_versions(&self, versions: &[VersionDefinition]) -> Result<()> {
         let mut errors = Error::accumulator();
 
         if let Some(added) = &self.added {
@@ -225,8 +221,14 @@ impl CommonItemAttributes {
     fn validate_changed_action(&self, item_ident: &impl ItemIdentExt) -> Result<()> {
         let mut errors = Error::accumulator();
 
-        // This ensures that `from_name` doesn't include the deprecation prefix.
         for change in &self.changes {
+            if change.from_name.is_none() && change.from_type.is_none() {
+                errors.push(Error::custom(
+                    "both `from_name` and `from_type` are unset. Is this `changed()` action needed?"
+                ).with_span(&change.since.span()));
+            }
+
+            // This ensures that `from_name` doesn't include the deprecation prefix.
             if let Some(from_name) = change.from_name.as_ref() {
                 if from_name.starts_with(item_ident.deprecated_prefix()) {
                     errors.push(
@@ -287,7 +289,7 @@ impl CommonItemAttributes {
 }
 
 impl CommonItemAttributes {
-    pub(crate) fn into_changeset(
+    pub fn into_changeset(
         self,
         ident: &impl ItemIdentExt,
         ty: Type,
@@ -436,11 +438,11 @@ impl CommonItemAttributes {
 /// - `added(since = "...")`
 /// - `added(since = "...", default_fn = "custom_fn")`
 #[derive(Clone, Debug, FromMeta)]
-pub(crate) struct AddedAttributes {
-    pub(crate) since: SpannedValue<Version>,
+pub struct AddedAttributes {
+    pub since: SpannedValue<Version>,
 
     #[darling(rename = "default", default = "default_default_fn")]
-    pub(crate) default_fn: SpannedValue<Path>,
+    pub default_fn: SpannedValue<Path>,
 }
 
 fn default_default_fn() -> SpannedValue<Path> {
@@ -451,10 +453,6 @@ fn default_default_fn() -> SpannedValue<Path> {
     )
 }
 
-// TODO (@Techassi): Add validation for when from_name AND from_type are both
-// none => is this action needed in the first place?
-// TODO (@Techassi): Add validation that the from_name mustn't include the
-// deprecated prefix.
 /// For the changed() action
 ///
 /// Example usage:
@@ -477,7 +475,7 @@ pub struct ChangedAttributes {
 /// - `deprecated(since = "...")`
 /// - `deprecated(since = "...", note = "...")`
 #[derive(Clone, Debug, FromMeta)]
-pub(crate) struct DeprecatedAttributes {
-    pub(crate) since: SpannedValue<Version>,
-    pub(crate) note: Option<SpannedValue<String>>,
+pub struct DeprecatedAttributes {
+    pub since: SpannedValue<Version>,
+    pub note: Option<SpannedValue<String>>,
 }
