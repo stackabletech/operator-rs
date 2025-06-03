@@ -221,8 +221,14 @@ impl CommonItemAttributes {
     fn validate_changed_action(&self, item_ident: &impl ItemIdentExt) -> Result<()> {
         let mut errors = Error::accumulator();
 
-        // This ensures that `from_name` doesn't include the deprecation prefix.
         for change in &self.changes {
+            if change.from_name.is_none() && change.from_type.is_none() {
+                errors.push(Error::custom(
+                    "both `from_name` and `from_type` are unset. Is this `changed()` action needed?"
+                ).with_span(&change.since.span()));
+            }
+
+            // This ensures that `from_name` doesn't include the deprecation prefix.
             if let Some(from_name) = change.from_name.as_ref() {
                 if from_name.starts_with(item_ident.deprecated_prefix()) {
                     errors.push(
@@ -447,10 +453,6 @@ fn default_default_fn() -> SpannedValue<Path> {
     )
 }
 
-// TODO (@Techassi): Add validation for when from_name AND from_type are both
-// none => is this action needed in the first place?
-// TODO (@Techassi): Add validation that the from_name mustn't include the
-// deprecated prefix.
 /// For the changed() action
 ///
 /// Example usage:
