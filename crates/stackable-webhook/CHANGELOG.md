@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Use `ecdsa` keys instead of `rsa`. This is because generating 4096 bit `rsa` keys takes forever,
+  thus making webhook development nearly impossible ([#1044]).
+
 ### Fixed
 
 - Don't pull in the `aws-lc-rs` crate, as this currently fails to build in `make run-dev` ([#1043]).
@@ -17,6 +22,7 @@ All notable changes to this project will be documented in this file.
   Also, the constant `DEFAULT_SOCKET_ADDR` has been renamed to `DEFAULT_SOCKET_ADDRESS` ([#1045]).
 
 [#1043]: https://github.com/stackabletech/operator-rs/pull/1043
+[#1044]: https://github.com/stackabletech/operator-rs/pull/1044
 [#1045]: https://github.com/stackabletech/operator-rs/pull/1045
 
 ## [0.3.1] - 2024-07-10
