@@ -47,13 +47,13 @@ impl FromStr for Group {
         ensure!(group.len() <= MAX_GROUP_LENGTH, TooLongSnafu);
         ensure!(API_GROUP_REGEX.is_match(group), InvalidFormatSnafu);
 
-        Ok(Self(group.to_string()))
+        Ok(Self(group.to_owned()))
     }
 }
 
 impl fmt::Display for Group {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        f.write_str(&*self)
     }
 }
 
