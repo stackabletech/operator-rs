@@ -1,13 +1,12 @@
 use darling::{Result, util::IdentString};
 use proc_macro2::{Span, TokenStream};
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{Attribute, Ident, ItemEnum, ItemStruct, Visibility};
 
-use super::flux_converter::{generate_kubernetes_conversion, generate_kubernetes_conversion_tests};
 use crate::{
     attrs::container::{StandaloneContainerAttributes, k8s::KubernetesArguments},
     codegen::{
-        VersionDefinition,
+        KubernetesTokens, VersionDefinition,
         container::{r#enum::Enum, r#struct::Struct},
     },
     utils::ContainerIdentExt,
@@ -81,84 +80,25 @@ impl Container {
         }
     }
 
-    /// Generates Kubernetes specific code snippets.
-    ///
-    /// This function returns three values:
-    ///
-    /// - an enum variant ident,
-    /// - an enum variant display string,
-    /// - and a `CustomResource::crd()` call
-    ///
-    /// This function only returns `Some` if it is a struct. Enums cannot be used to define
-    /// Kubernetes custom resources.
-    pub fn generate_kubernetes_item(
+    pub fn generate_kubernetes_code(
         &self,
-        version: &VersionDefinition,
-    ) -> Option<(IdentString, String, TokenStream)> {
+        versions: &[VersionDefinition],
+        tokens: &KubernetesTokens,
+        vis: &Visibility,
+        is_nested: bool,
+    ) -> Option<TokenStream> {
         match self {
-            Container::Struct(s) => s.generate_kubernetes_item(version),
+            Container::Struct(s) => s.generate_kubernetes_code(versions, tokens, vis, is_nested),
             Container::Enum(_) => None,
         }
     }
 
-    /// Generates Kubernetes specific code to merge two CRDs or convert between different versions.
-    ///
-    /// This function only returns `Some` if it is a struct. Enums cannot be used to define
-    /// Kubernetes custom resources.
-    pub fn generate_kubernetes_code(
+    pub fn generate_kubernetes_version_items(
         &self,
-        enum_variant_idents: &[IdentString],
-        enum_variant_strings: &[String],
-        fn_calls: &[TokenStream],
-        vis: &Visibility,
-        is_nested: bool,
-    ) -> Option<TokenStream> {
-        let Container::Struct(s) = self else {
-            return None;
-        };
-        let kubernetes_arguments = s.common.options.kubernetes_arguments.as_ref()?;
-
-        let mut tokens = TokenStream::new();
-
-        if !kubernetes_arguments
-            .skip
-            .as_ref()
-            .is_some_and(|s| s.merged_crd.is_present())
-        {
-            tokens.extend(s.generate_kubernetes_merge_crds(
-                enum_variant_idents,
-                enum_variant_strings,
-                fn_calls,
-                vis,
-                is_nested,
-            ));
-
-            tokens.extend(s.generate_from_functions(
-                enum_variant_idents,
-                enum_variant_strings,
-                is_nested,
-            ));
-            tokens.extend(generate_kubernetes_conversion(
-                &s.common.idents.kubernetes,
-                &s.common.idents.original,
-                enum_variant_idents,
-                enum_variant_strings,
-                kubernetes_arguments,
-            ));
-            tokens.extend(generate_kubernetes_conversion_tests(
-                &s.common.idents.kubernetes,
-                &s.common.idents.original,
-                enum_variant_strings,
-                kubernetes_arguments,
-            ));
-        }
-
-        Some(tokens)
-    }
-
-    pub fn generate_kubernetes_status_struct(&self) -> Option<TokenStream> {
+        version: &VersionDefinition,
+    ) -> Option<(TokenStream, IdentString, TokenStream, String)> {
         match self {
-            Container::Struct(s) => s.generate_kubernetes_status_struct(),
+            Container::Struct(s) => s.generate_kubernetes_version_items(version),
             Container::Enum(_) => None,
         }
     }
@@ -222,16 +162,14 @@ impl StandaloneContainer {
     pub fn generate_tokens(&self) -> TokenStream {
         let vis = &self.vis;
 
+        let mut kubernetes_tokens = KubernetesTokens::default();
         let mut tokens = TokenStream::new();
-
-        let mut kubernetes_merge_crds_fn_calls = Vec::new();
-        let mut kubernetes_enum_variant_idents = Vec::new();
-        let mut kubernetes_enum_variant_strings = Vec::new();
 
         let mut versions = self.versions.iter().peekable();
 
         while let Some(version) = versions.next() {
             let container_definition = self.container.generate_definition(version);
+            let module_ident = &version.idents.module;
 
             // NOTE (@Techassi): Using '.copied()' here does not copy or clone the data, but instead
             // removes one level of indirection of the double reference '&&'.
@@ -253,22 +191,16 @@ impl StandaloneContainer {
                 .as_ref()
                 .map(|note| quote! { #[deprecated = #note] });
 
-            // Generate Kubernetes specific code which is placed outside of the container
-            // definition.
-            if let Some((enum_variant_ident, enum_variant_string, fn_call)) =
-                self.container.generate_kubernetes_item(version)
-            {
-                kubernetes_merge_crds_fn_calls.push(fn_call);
-                kubernetes_enum_variant_idents.push(enum_variant_ident);
-                kubernetes_enum_variant_strings.push(enum_variant_string);
+            // Generate Kubernetes specific code (for a particular version) which is placed outside
+            // of the container definition.
+            if let Some(items) = self.container.generate_kubernetes_version_items(version) {
+                kubernetes_tokens.push(items);
             }
-
-            let version_ident = &version.ident;
 
             tokens.extend(quote! {
                 #[automatically_derived]
                 #deprecated_attribute
-                #vis mod #version_ident {
+                #vis mod #module_ident {
                     use super::*;
                     #container_definition
                 }
@@ -278,15 +210,13 @@ impl StandaloneContainer {
             });
         }
 
+        // Finally add tokens outside of the container definitions
         tokens.extend(self.container.generate_kubernetes_code(
-            &kubernetes_enum_variant_idents,
-            &kubernetes_enum_variant_strings,
-            &kubernetes_merge_crds_fn_calls,
+            &self.versions,
+            &kubernetes_tokens,
             vis,
             false,
         ));
-
-        tokens.extend(self.container.generate_kubernetes_status_struct());
 
         tokens
     }
@@ -295,32 +225,53 @@ impl StandaloneContainer {
 /// A collection of container idents used for different purposes.
 #[derive(Debug)]
 pub struct ContainerIdents {
-    /// The ident used in the context of Kubernetes specific code. This ident
-    /// removes the 'Spec' suffix present in the definition container.
+    /// This ident removes the 'Spec' suffix present in the definition container.
+    /// This ident is only used in the context of Kubernetes specific code.
     pub kubernetes: IdentString,
+
+    /// This ident uses the base Kubernetes ident to construct an appropriate ident
+    /// for auto-generated status structs. This ident is only used in the context of
+    /// Kubernetes specific code.
+    pub kubernetes_status: IdentString,
+
+    /// This ident uses the base Kubernetes ident to construct an appropriate ident
+    /// for auto-generated version enums. This enum is used to select the stored
+    /// api version when merging CRDs. This ident is only used in the context of
+    /// Kubernetes specific code.
+    pub kubernetes_version: IdentString,
+
+    // TODO (@Techassi): Add comment
+    pub kubernetes_parameter: IdentString,
 
     /// The original ident, or name, of the versioned container.
     pub original: IdentString,
 
-    /// The ident used in the [`From`] impl.
-    pub from: IdentString,
+    /// The ident used as a parameter.
+    pub parameter: IdentString,
 }
 
 impl ContainerIdents {
     pub fn from(ident: Ident, kubernetes_arguments: Option<&KubernetesArguments>) -> Self {
-        let kubernetes = kubernetes_arguments.map_or_else(
-            || ident.as_cleaned_kubernetes_ident(),
-            |options| {
-                options.kind.as_ref().map_or_else(
-                    || ident.as_cleaned_kubernetes_ident(),
-                    |kind| IdentString::from(Ident::new(kind, Span::call_site())),
-                )
+        let kubernetes = match kubernetes_arguments {
+            Some(args) => match &args.kind {
+                Some(kind) => IdentString::from(Ident::new(kind, Span::call_site())),
+                None => ident.as_cleaned_kubernetes_ident(),
             },
-        );
+            None => ident.as_cleaned_kubernetes_ident(),
+        };
+
+        let kubernetes_status =
+            IdentString::from(format_ident!("{kubernetes}StatusWithChangedValues"));
+
+        let kubernetes_version = IdentString::from(format_ident!("{kubernetes}Version"));
+        let kubernetes_parameter = kubernetes.as_parameter_ident();
 
         Self {
-            from: ident.as_from_impl_ident(),
+            parameter: ident.as_parameter_ident(),
             original: ident.into(),
+            kubernetes_parameter,
+            kubernetes_version,
+            kubernetes_status,
             kubernetes,
         }
     }

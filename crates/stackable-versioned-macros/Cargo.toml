@@ -33,6 +33,7 @@ k8s-version = { path = "../k8s-version", features = ["darling"] }
 
 convert_case.workspace = true
 darling.workspace = true
+indoc.workspace = true
 itertools.workspace = true
 k8s-openapi = { workspace = true, optional = true }
 kube = { workspace = true, optional = true }

@@ -146,8 +146,8 @@ impl VersionedVariant {
                 match (change, next_change) {
                     (_, ItemStatus::Addition { .. }) => None,
                     (old, next) => {
-                        let next_version_ident = &next_version.ident;
-                        let old_version_ident = &version.ident;
+                        let next_version_ident = &next_version.idents.module;
+                        let old_version_ident = &version.idents.module;
 
                         let next_variant_ident = next.get_ident();
                         let old_variant_ident = old.get_ident();
@@ -166,8 +166,8 @@ impl VersionedVariant {
                 }
             }
             None => {
-                let next_version_ident = &next_version.ident;
-                let old_version_ident = &version.ident;
+                let next_version_ident = &next_version.idents.module;
+                let old_version_ident = &version.idents.module;
                 let variant_ident = &*self.ident;
 
                 let old = quote! {
@@ -200,8 +200,8 @@ impl VersionedVariant {
                 match (change, next_change) {
                     (_, ItemStatus::Addition { .. }) => None,
                     (old, next) => {
-                        let next_version_ident = &next_version.ident;
-                        let old_version_ident = &version.ident;
+                        let next_version_ident = &next_version.idents.module;
+                        let old_version_ident = &version.idents.module;
 
                         let next_variant_ident = next.get_ident();
                         let old_variant_ident = old.get_ident();
@@ -220,8 +220,8 @@ impl VersionedVariant {
                 }
             }
             None => {
-                let next_version_ident = &next_version.ident;
-                let old_version_ident = &version.ident;
+                let next_version_ident = &next_version.idents.module;
+                let old_version_ident = &version.idents.module;
                 let variant_ident = &*self.ident;
 
                 let old = quote! {

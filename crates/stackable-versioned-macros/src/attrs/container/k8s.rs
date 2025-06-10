@@ -176,4 +176,5 @@ impl ToTokens for KubernetesCrateArguments {
 #[derive(Clone, Default, Debug, FromMeta)]
 pub struct KubernetesConfigOptions {
     pub experimental_conversion_tracking: Flag,
+    pub enable_tracing: Flag,
 }

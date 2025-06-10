@@ -22,14 +22,29 @@ mod k8s;
 pub use k8s::*;
 
 // Behind flux-converter feature
-#[cfg(feature = "flux-converter")]
-pub mod flux_converter;
+// #[cfg(feature = "flux-converter")]
+// pub mod flux_converter;
 
 #[derive(Debug, Snafu)]
-pub enum ParseResourceVersionError {
-    #[snafu(display("the resource version \"{version}\" is not known"))]
-    UnknownResourceVersion { version: String },
+pub enum ParseObjectError {
+    #[snafu(display(r#"failed to find "apiVersion" field"#))]
+    FieldNotPresent,
 
-    #[snafu(display("the api version \"{api_version}\" is not known"))]
+    #[snafu(display(r#"the "apiVersion" field is not a string"#))]
+    FieldNotStr,
+
+    #[snafu(display("encountered unknown object api version {api_version:?}"))]
     UnknownApiVersion { api_version: String },
+
+    #[snafu(display("failed to deserialize object from json"))]
+    Deserialize { source: serde_json::Error },
+}
+
+#[derive(Debug, Snafu)]
+pub enum ConvertObjectError {
+    #[snafu(display("failed to parse object"))]
+    Parse { source: ParseObjectError },
+
+    #[snafu(display("failed to serialize object into json"))]
+    Serialize { source: serde_json::Error },
 }
