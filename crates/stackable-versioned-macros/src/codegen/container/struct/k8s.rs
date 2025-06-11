@@ -304,9 +304,7 @@ impl Struct {
     ) -> Option<TokenStream> {
         let kubernetes_arguments = self.common.options.kubernetes_arguments.as_ref()?;
 
-        let variant_data_ident = &self.common.idents.kubernetes_parameter;
         let struct_ident = &self.common.idents.kubernetes;
-        let spec_ident = &self.common.idents.original;
 
         let kube_client_path = &*kubernetes_arguments.crates.kube_client;
         let serde_json_path = &*kubernetes_arguments.crates.serde_json;
@@ -316,8 +314,146 @@ impl Struct {
         let convert_object_error = quote! { #versioned_path::ConvertObjectError };
 
         // Generate conversion paths and the match arms for these paths
+        let match_arms =
+            self.generate_kubernetes_conversion_match_arms(versions, kubernetes_arguments);
+
+        // TODO (@Techassi): Make this a feature, drop the option from the macro arguments
+        // Generate tracing attributes and events if tracing is enabled
+        let TracingTokens {
+            successful_conversion_response_event,
+            convert_objects_instrumentation,
+            invalid_conversion_review_event,
+            try_convert_instrumentation,
+        } = self.generate_kubernetes_conversion_tracing(kubernetes_arguments);
+
+        // Generate doc comments
+        let conversion_review_reference =
+            path_to_string(&parse_quote! { #kube_core_path::conversion::ConversionReview });
+
+        let docs = formatdoc! {"
+            Tries to convert a list of objects of kind [`{struct_ident}`] to the desired API version
+            specified in the [`ConversionReview`][cr].
+
+            The returned [`ConversionReview`][cr] either indicates a success or a failure, which
+            is handed back to the Kubernetes API server.
+
+            [cr]: {conversion_review_reference}"
+        }
+        .into_doc_comments();
+
+        Some(quote! {
+            #(#[doc = #docs])*
+            #try_convert_instrumentation
+            pub fn try_convert(review: #kube_core_path::conversion::ConversionReview)
+                -> #kube_core_path::conversion::ConversionReview
+            {
+                // First, turn the review into a conversion request
+                let request = match #kube_core_path::conversion::ConversionRequest::from_review(review) {
+                    ::std::result::Result::Ok(request) => request,
+                    ::std::result::Result::Err(err) => {
+                        #invalid_conversion_review_event
+
+                        return #kube_core_path::conversion::ConversionResponse::invalid(
+                            #kube_client_path::Status {
+                                status: Some(#kube_core_path::response::StatusSummary::Failure),
+                                message: err.to_string(),
+                                reason: err.to_string(),
+                                details: None,
+                                code: 400,
+                            }
+                        ).into_review()
+                    }
+                };
+
+                // Extract the desired api version
+                let desired_api_version = request.desired_api_version.as_str();
+
+                // Convert all objects into the desired version
+                let response = match Self::convert_objects(request.objects, desired_api_version) {
+                    ::std::result::Result::Ok(converted_objects) => {
+                        #successful_conversion_response_event
+
+                        // We construct the response from the ground up as the helper functions
+                        // don't provide any benefit over manually doing it. Constructing a
+                        // ConversionResponse via for_request is not possible due to a partial move
+                        // of request.objects. The function internally doesn't even use the list of
+                        // objects. The success function on ConversionResponse basically only sets
+                        // the result to success and the converted objects to the provided list.
+                        // The below code does the same thing.
+                        #kube_core_path::conversion::ConversionResponse {
+                            result: #kube_client_path::Status::success(),
+                            types: request.types,
+                            uid: request.uid,
+                            converted_objects,
+                        }
+                    },
+                    ::std::result::Result::Err(err) => {
+                        let code = err.http_status_code();
+                        let message = err.join_errors();
+
+                        #kube_core_path::conversion::ConversionResponse {
+                            result: #kube_client_path::Status {
+                                status: Some(#kube_core_path::response::StatusSummary::Failure),
+                                message: message.clone(),
+                                reason: message,
+                                details: None,
+                                code,
+                            },
+                            types: request.types,
+                            uid: request.uid,
+                            converted_objects: vec![],
+                        }
+                    },
+                };
+
+                response.into_review()
+            }
+
+            #convert_objects_instrumentation
+            fn convert_objects(
+                objects: ::std::vec::Vec<#serde_json_path::Value>,
+                desired_api_version: &str,
+            )
+                -> ::std::result::Result<::std::vec::Vec<#serde_json_path::Value>, #convert_object_error>
+            {
+                let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
+
+                for object in objects {
+                    // This clone is required because in the noop case we move the object into
+                    // the converted objects vec.
+                    let current_object = Self::from_json_value(object.clone())
+                        .map_err(|source| #convert_object_error::Parse { source })?;
+
+                    match (current_object, desired_api_version) {
+                        #(#match_arms,)*
+                        // If no match arm matches, this is a noop. This is the case if the desired
+                        // version matches the current object api version.
+                        // NOTE (@Techassi): I'm curious if this will ever happen? In theory the K8s
+                        // apiserver should never send such a conversion review.
+                        _ => converted_objects.push(object),
+                    }
+                }
+
+                ::std::result::Result::Ok(converted_objects)
+            }
+        })
+    }
+
+    fn generate_kubernetes_conversion_match_arms(
+        &self,
+        versions: &[VersionDefinition],
+        kubernetes_arguments: &KubernetesArguments,
+    ) -> Vec<TokenStream> {
+        let variant_data_ident = &self.common.idents.kubernetes_parameter;
+        let struct_ident = &self.common.idents.kubernetes;
+        let spec_ident = &self.common.idents.original;
+
+        let versioned_path = &*kubernetes_arguments.crates.versioned;
+        let convert_object_error = quote! { #versioned_path::ConvertObjectError };
+
         let conversion_chain = conversion_path(versions);
-        let match_arms: Vec<_> = conversion_chain
+
+        conversion_chain
             .iter()
             .map(|(start, path)| {
                 let current_object_version_ident = &start.idents.variant;
@@ -347,8 +483,8 @@ impl Struct {
 
                 let convert_object_trace = kubernetes_arguments.options.enable_tracing.is_present().then(|| quote! {
                     ::tracing::trace!(
-                        k8s.crd.conversion.api_version = #current_object_version_string,
                         k8s.crd.conversion.desired_api_version = #desired_object_version_string,
+                        k8s.crd.conversion.api_version = #current_object_version_string,
                         k8s.crd.conversion.steps = #steps,
                         k8s.crd.kind = #kind,
                         "Successfully converted object"
@@ -373,119 +509,65 @@ impl Struct {
                     }
                 }
             })
-            .collect();
-
-        // Generate tracing attribute of tracing is enabled
-        let (try_convert_instrumentation, convert_objects_instrumentation) = kubernetes_arguments
-            .options
-            .enable_tracing
-            .is_present()
-            .then(|| {
-                // TODO (@Techassi): Make tracing path configurable. Currently not possible, needs
-                // upstream change
-                let try_convert_instrumentation = quote! {
-                    #[::tracing::instrument(
-                        skip_all,
-                        fields(
-                            k8s.crd.conversion.kind = review.types.kind,
-                            k8s.crd.conversion.api_version = review.types.api_version,
-                        )
-                    )]
-                };
-
-                let convert_objects_instrumentation = quote! {
-                    #[::tracing::instrument(
-                        skip_all,
-                        err
-                    )]
-                };
-
-                (try_convert_instrumentation, convert_objects_instrumentation)
-            })
-            .unzip();
-
-        // Generate doc comments
-        let conversion_review_reference =
-            path_to_string(&parse_quote! { #kube_core_path::conversion::ConversionReview });
-
-        let docs = formatdoc! {"
-            Tries to convert a list of objects of kind [`{struct_ident}`] to the desired API version
-            specified in the [`ConversionReview`][cr].
-
-            The returned [`ConversionReview`][cr] either indicates a success or a failure, which
-            is handed back to the Kubernetes API server.
-
-            [cr]: {conversion_review_reference}"
-        }
-        .into_doc_comments();
-
-        Some(quote! {
-            #(#[doc = #docs])*
-            #try_convert_instrumentation
-            pub fn try_convert(review: #kube_core_path::conversion::ConversionReview)
-                -> #kube_core_path::conversion::ConversionReview
-            {
-                // First, turn the review into a conversion request
-                // TODO (@Techassi): Handle this error and return status Invalid
-                let request = #kube_core_path::conversion::ConversionRequest::from_review(review).unwrap();
-
-                // Extract the desired api version
-                let desired_api_version = request.desired_api_version.as_str();
-
-                // Convert all objects into the desired version
-                let response = match Self::convert_objects(request.objects, desired_api_version) {
-                    ::std::result::Result::Ok(converted_objects) => {
-                        // We construct the response from the ground up as the helper functions
-                        // don't provide any benefit over manually doing it. Constructing a
-                        // ConversionResponse via for_request is not possible due to a partial move
-                        // of request.objects. The function internally doesn't even use the list of
-                        // objects. The success function on ConversionResponse basically only sets
-                        // the result to success and the converted objects to the provided list.
-                        // The below code does the same thing.
-                        #kube_core_path::conversion::ConversionResponse {
-                            result: #kube_client_path::Status::success(),
-                            types: request.types,
-                            uid: request.uid,
-                            converted_objects,
-                        }
-                    },
-                    ::std::result::Result::Err(_) => todo!(),
-                };
-
-                response.into_review()
-            }
-
-            #convert_objects_instrumentation
-            fn convert_objects(
-                objects: ::std::vec::Vec<#serde_json_path::Value>,
-                desired_api_version: &str,
-            )
-                -> ::std::result::Result<::std::vec::Vec<#serde_json_path::Value>, #convert_object_error>
-            {
-                let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
-
-                for object in objects {
-                    // This clone is required because in the noop case we move the object into
-                    // the converted objects vec.
-                    let current_object = Self::from_json_value(object.clone())
-                        .map_err(|source| #convert_object_error::Parse { source })?;
-
-                    match (current_object, desired_api_version) {
-                        #(#match_arms,)*
-                        // If no match arm matches, this is a noop. This is the case if the desired
-                        // version matches the current object api version.
-                        // NOTE (@Techassi): I'm curious if this will ever happen? In theory the K8s
-                        // apiserver should never send such a conversion review.
-                        _ => converted_objects.push(object),
-                    }
-
-
-                }
-
-                ::std::result::Result::Ok(converted_objects)
-            }
-        })
+            .collect()
     }
+
+    fn generate_kubernetes_conversion_tracing(
+        &self,
+        kubernetes_arguments: &KubernetesArguments,
+    ) -> TracingTokens {
+        if kubernetes_arguments.options.enable_tracing.is_present() {
+            // TODO (@Techassi): Make tracing path configurable. Currently not possible, needs
+            // upstream change
+            let kind = self.common.idents.kubernetes.to_string();
+
+            let successful_conversion_response_event = Some(quote! {
+                ::tracing::debug!(
+                    k8s.crd.conversion.converted_object_count = converted_objects.len(),
+                    k8s.crd.kind = #kind,
+                    "Successfully converted objects"
+                );
+            });
+
+            let convert_objects_instrumentation = Some(quote! {
+                #[::tracing::instrument(
+                    skip_all,
+                    err
+                )]
+            });
+
+            let invalid_conversion_review_event = Some(quote! {
+                ::tracing::warn!(?err, "received invalid conversion review");
+            });
+
+            let try_convert_instrumentation = Some(quote! {
+                #[::tracing::instrument(
+                    skip_all,
+                    fields(
+                        k8s.crd.conversion.api_version = review.types.api_version,
+                        k8s.crd.kind = review.types.kind,
+                    )
+                )]
+            });
+
+            TracingTokens {
+                successful_conversion_response_event,
+                convert_objects_instrumentation,
+                invalid_conversion_review_event,
+                try_convert_instrumentation,
+            }
+        } else {
+            TracingTokens::default()
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct TracingTokens {
+    successful_conversion_response_event: Option<TokenStream>,
+    convert_objects_instrumentation: Option<TokenStream>,
+    invalid_conversion_review_event: Option<TokenStream>,
+    try_convert_instrumentation: Option<TokenStream>,
 }
 
 fn conversion_path<'a, T>(elements: &'a [T]) -> Vec<(&'a T, Cow<'a, [T]>)>

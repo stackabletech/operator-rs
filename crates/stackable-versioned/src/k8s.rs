@@ -4,7 +4,7 @@ use k8s_version::Version;
 #[cfg(doc)]
 use kube::core::conversion::ConversionReview;
 use schemars::schema::{InstanceType, Schema, SchemaObject, SingleOrVec};
-use snafu::Snafu;
+use snafu::{ErrorCompat, Snafu};
 
 // NOTE (@Techassi): This struct represents a rough first draft of how tracking values across
 // CRD versions can be achieved. It is currently untested and unproven and might change down the
@@ -71,4 +71,26 @@ pub enum ConvertObjectError {
 
     #[snafu(display("failed to serialize object into json"))]
     Serialize { source: serde_json::Error },
+}
+
+impl ConvertObjectError {
+    /// Joins the error and its sources using colons.
+    pub fn join_errors(&self) -> String {
+        // NOTE (@Techassi): This can be done with itertools in a way shorter
+        // fashion but obviously brings in another dependency. Which of those
+        // two solutions performs better needs to evaluated.
+        // self.iter_chain().join(": ")
+        self.iter_chain()
+            .map(|err| err.to_string())
+            .collect::<Vec<String>>()
+            .join(": ")
+    }
+
+    /// Returns a HTTP status code based on the underlying error.
+    pub fn http_status_code(&self) -> u16 {
+        match self {
+            ConvertObjectError::Parse { .. } => 400,
+            ConvertObjectError::Serialize { .. } => 500,
+        }
+    }
 }

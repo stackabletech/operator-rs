@@ -25,19 +25,19 @@ k8s = [
   "dep:serde_json",
   "dep:serde_yaml",
   "dep:serde",
+  "dep:snafu"
 ]
 
 [dependencies]
 k8s-version = { path = "../k8s-version", features = ["serde"], optional = true }
 stackable-versioned-macros = { path = "../stackable-versioned-macros" }
 
-snafu.workspace = true
-
 kube = { workspace = true, optional = true }
 schemars = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 serde_yaml = { workspace = true, optional = true }
+snafu = { workspace = true, optional = true }
 k8s-openapi = { workspace = true, optional = true }
 tracing = { workspace = true, optional = true }
 
