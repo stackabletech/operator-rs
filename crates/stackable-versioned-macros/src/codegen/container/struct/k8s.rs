@@ -1,4 +1,4 @@
-use std::{borrow::Cow, ops::Not as _};
+use std::{borrow::Cow, cmp::Ordering, ops::Not as _};
 
 use darling::util::IdentString;
 use indoc::formatdoc;
@@ -580,7 +580,7 @@ struct TracingTokens {
     try_convert_instrumentation: Option<TokenStream>,
 }
 
-fn conversion_path<'a, T>(elements: &'a [T]) -> Vec<(&'a T, Cow<'a, [T]>)>
+fn conversion_path<T>(elements: &[T]) -> Vec<(&T, Cow<'_, [T]>)>
 where
     T: Clone + Ord,
 {
@@ -611,26 +611,28 @@ where
             elements.iter().position(|v| v == start),
             elements.iter().position(|v| v == end),
         ) {
-            let path = if start_index < end_index {
-                // If the start index is smaller than the end index (upgrade), we can return
-                // a slice pointing directly into the original slice. That's why Cow::Borrowed
-                // can be used here.
-                Cow::Borrowed(&elements[start_index + 1..=end_index])
-            } else if start_index > end_index {
-                // If the start index is bigger than the end index (downgrade), we need to reverse
-                // the elements. With a slice, this is only possible to do in place, which is not
-                // what we want in this case. Instead, the data is reversed and cloned and collected
-                // into a Vec and Cow::Owned is used.
-                let path = elements[end_index..start_index]
-                    .iter()
-                    .rev()
-                    .cloned()
-                    .collect();
-                Cow::Owned(path)
-            } else {
-                unreachable!(
+            let path = match start_index.cmp(&end_index) {
+                Ordering::Less => {
+                    // If the start index is smaller than the end index (upgrade), we can return
+                    // a slice pointing directly into the original slice. That's why Cow::Borrowed
+                    // can be used here.
+                    Cow::Borrowed(&elements[start_index + 1..=end_index])
+                }
+                Ordering::Greater => {
+                    // If the start index is bigger than the end index (downgrade), we need to reverse
+                    // the elements. With a slice, this is only possible to do in place, which is not
+                    // what we want in this case. Instead, the data is reversed and cloned and collected
+                    // into a Vec and Cow::Owned is used.
+                    let path = elements[end_index..start_index]
+                        .iter()
+                        .rev()
+                        .cloned()
+                        .collect();
+                    Cow::Owned(path)
+                }
+                Ordering::Equal => unreachable!(
                     "start and end index cannot be the same due to selecting permutations"
-                );
+                ),
             };
 
             chain.push((start, path));
