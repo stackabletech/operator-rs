@@ -495,12 +495,18 @@ impl Struct {
                     );
                 });
 
+                // Carry over the status field if the user set a status subresource
+                let status_field = kubernetes_arguments.status
+                    .is_some()
+                    .then(|| quote! { status: #variant_data_ident.status, });
+
                 quote! {
                     (Self::#current_object_version_ident(#variant_data_ident), #desired_object_version_string) => {
                         #(#conversions)*
 
                         let desired_object = Self::#desired_object_variant_ident(#desired_object_module_ident::#struct_ident {
                             metadata: #variant_data_ident.metadata,
+                            #status_field
                             spec: converted,
                         });
 
