@@ -11,13 +11,7 @@ repository.workspace = true
 all-features = true
 
 [features]
-full = ["k8s", "flux-converter"]
-flux-converter = [
-  "k8s",
-  "dep:k8s-openapi",
-  "dep:kube",
-  "dep:tracing",
-]
+full = ["k8s"]
 k8s = [
   "stackable-versioned-macros/k8s", # Forward the k8s feature to the underlying macro crate
   "dep:k8s-version",
