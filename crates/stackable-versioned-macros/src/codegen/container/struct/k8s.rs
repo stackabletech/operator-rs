@@ -206,6 +206,10 @@ impl Struct {
         })
     }
 
+    ////////////////////
+    // Merge CRD Code //
+    ////////////////////
+
     fn generate_kubernetes_version_enum(
         &self,
         tokens: &KubernetesTokens,
