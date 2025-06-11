@@ -15,11 +15,12 @@ full = ["k8s"]
 k8s = [
   "stackable-versioned-macros/k8s", # Forward the k8s feature to the underlying macro crate
   "dep:k8s-version",
+  "dep:kube",
   "dep:schemars",
   "dep:serde_json",
   "dep:serde_yaml",
   "dep:serde",
-  "dep:snafu"
+  "dep:snafu",
 ]
 
 [dependencies]
