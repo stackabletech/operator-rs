@@ -68,24 +68,3 @@ pub mod versioned {
         pub preferred_address_type: core_v1alpha1::PreferredAddressType,
     }
 }
-
-#[cfg(test)]
-impl stackable_versioned::flux_converter::test_utils::RoundtripTestData
-    for v1alpha1::ListenerClassSpec
-{
-    fn get_roundtrip_test_data() -> Vec<Self> {
-        crate::utils::yaml_from_str_singleton_map(indoc::indoc! {"
-          - serviceType: ClusterIP
-          - serviceType: NodePort
-          - serviceType: LoadBalancer
-          - serviceType: ClusterIP
-            loadBalancerAllocateNodePorts: false
-            loadBalancerClass: foo
-            serviceAnnotations:
-              foo: bar
-            serviceExternalTrafficPolicy: Local
-            preferredAddressType: HostnameConservative
-        "})
-        .expect("Failed to parse ListenerClassSpec YAML")
-    }
-}

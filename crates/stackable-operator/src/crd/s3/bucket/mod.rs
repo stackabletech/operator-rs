@@ -49,34 +49,3 @@ pub mod versioned {
         pub connection: conn_v1alpha1::ConnectionSpec,
     }
 }
-
-#[cfg(test)]
-impl stackable_versioned::flux_converter::test_utils::RoundtripTestData for v1alpha1::BucketSpec {
-    fn get_roundtrip_test_data() -> Vec<Self> {
-        crate::utils::yaml_from_str_singleton_map(indoc::indoc! {"
-          - bucketName: my-example-bucket
-            connection:
-              reference: my-connection-resource
-          - bucketName: foo
-            connection:
-              inline:
-                host: s3.example.com
-          - bucketName: foo
-            connection:
-              inline:
-                host: s3.example.com
-                port: 1234
-                accessStyle: VirtualHosted
-                credentials:
-                  secretClass: s3-credentials
-                region:
-                  name: eu-west-1
-                tls:
-                  verification:
-                    server:
-                      caCert:
-                        secretClass: s3-cert
-        "})
-        .expect("Failed to parse BucketSpec YAML")
-    }
-}
