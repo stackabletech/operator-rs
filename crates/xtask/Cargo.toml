@@ -7,6 +7,7 @@ publish = false
 stackable-operator = { path = "../stackable-operator" }
 
 clap.workspace = true
+paste.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 snafu.workspace = true
