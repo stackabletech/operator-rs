@@ -13,6 +13,12 @@ use crate::{
     utils::{doc_comments::DocComments, path_to_string},
 };
 
+const CONVERTED_OBJECT_COUNT_ATTRIBUTE: &str = "k8s.crd.conversion.converted_object_count";
+const DESIRED_API_VERSION_ATTRIBUTE: &str = "k8s.crd.conversion.desired_api_version";
+const API_VERSION_ATTRIBUTE: &str = "k8s.crd.conversion.api_version";
+const STEPS_ATTRIBUTE: &str = "k8s.crd.conversion.steps";
+const KIND_ATTRIBUTE: &str = "k8s.crd.conversion.kind";
+
 impl Struct {
     pub fn generate_kube_attribute(&self, version: &VersionDefinition) -> Option<TokenStream> {
         let kubernetes_arguments = self.common.options.kubernetes_arguments.as_ref()?;
@@ -487,10 +493,10 @@ impl Struct {
 
                 let convert_object_trace = kubernetes_arguments.options.enable_tracing.is_present().then(|| quote! {
                     ::tracing::trace!(
-                        k8s.crd.conversion.desired_api_version = #desired_object_version_string,
-                        k8s.crd.conversion.api_version = #current_object_version_string,
-                        k8s.crd.conversion.steps = #steps,
-                        k8s.crd.kind = #kind,
+                        #DESIRED_API_VERSION_ATTRIBUTE = #desired_object_version_string,
+                        #API_VERSION_ATTRIBUTE = #current_object_version_string,
+                        #STEPS_ATTRIBUTE = #steps,
+                        #KIND_ATTRIBUTE = #kind,
                         "Successfully converted object"
                     );
                 });
@@ -533,8 +539,8 @@ impl Struct {
 
             let successful_conversion_response_event = Some(quote! {
                 ::tracing::debug!(
-                    k8s.crd.conversion.converted_object_count = converted_objects.len(),
-                    k8s.crd.kind = #kind,
+                    #CONVERTED_OBJECT_COUNT_ATTRIBUTE = converted_objects.len(),
+                    #KIND_ATTRIBUTE = #kind,
                     "Successfully converted objects"
                 );
             });
@@ -550,6 +556,8 @@ impl Struct {
                 ::tracing::warn!(?err, "received invalid conversion review");
             });
 
+            // NOTE (@Techassi): We sadly cannot use the constants here, because
+            // the fields only accept idents, which strings are not.
             let try_convert_instrumentation = Some(quote! {
                 #[::tracing::instrument(
                     skip_all,
