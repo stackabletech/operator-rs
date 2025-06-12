@@ -2983,7 +2983,6 @@ dependencies = [
  "either",
  "futures",
  "indexmap 2.9.0",
- "indoc",
  "json-patch",
  "k8s-openapi",
  "kube",
@@ -3061,17 +3060,13 @@ dependencies = [
 name = "stackable-versioned"
 version = "0.7.1"
 dependencies = [
- "insta",
- "k8s-openapi",
  "k8s-version",
- "kube",
  "schemars",
  "serde",
  "serde_json",
  "serde_yaml",
  "snafu 0.8.5",
  "stackable-versioned-macros",
- "tracing",
 ]
 
 [[package]]

@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
 use k8s_version::Version;
-#[cfg(doc)]
-use kube::core::conversion::ConversionReview;
 use schemars::schema::{InstanceType, Schema, SchemaObject, SingleOrVec};
 use snafu::{ErrorCompat, Snafu};
 
@@ -46,7 +44,7 @@ fn raw_object_schema(_: &mut schemars::r#gen::SchemaGenerator) -> Schema {
     })
 }
 
-/// This error indicates that parsing an object from a [`ConversionReview`] failed.
+/// This error indicates that parsing an object from a conversion review failed.
 #[derive(Debug, Snafu)]
 pub enum ParseObjectError {
     #[snafu(display(r#"failed to find "apiVersion" field"#))]
@@ -62,7 +60,7 @@ pub enum ParseObjectError {
     Deserialize { source: serde_json::Error },
 }
 
-/// This error indicates that converting an object from a [`ConversionReview`] to the desired
+/// This error indicates that converting an object from a conversion review to the desired
 /// version failed.
 #[derive(Debug, Snafu)]
 pub enum ConvertObjectError {

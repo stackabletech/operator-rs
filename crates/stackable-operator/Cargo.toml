@@ -28,7 +28,6 @@ dockerfile-parser.workspace = true
 either.workspace = true
 educe.workspace = true
 futures.workspace = true
-indoc.workspace = true
 indexmap.workspace = true
 json-patch.workspace = true
 k8s-openapi.workspace = true
