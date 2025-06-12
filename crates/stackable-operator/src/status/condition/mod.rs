@@ -93,17 +93,18 @@ pub struct ClusterCondition {
     #[serde(skip_serializing_if = "Option::is_none")]
     /// Last time the condition transitioned from one status to another.
     pub last_transition_time: Option<Time>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    /// The last time this condition was updated.
-    pub last_update_time: Option<Time>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     /// A human readable message indicating details about the transition.
     pub message: Option<String>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     /// The reason for the condition's last transition.
     pub reason: Option<String>,
+
     /// Status of the condition, one of True, False, Unknown.
     pub status: ClusterConditionStatus,
+
     /// Type of deployment condition.
     #[serde(rename = "type")]
     pub type_: ClusterConditionType,
@@ -349,14 +350,12 @@ fn update_timestamps(
     // No change in status -> update "last_update_time" and keep "last_transition_time"
     if old_condition.status == new_condition.status {
         ClusterCondition {
-            last_update_time: Some(now),
             last_transition_time: old_condition.last_transition_time,
             ..new_condition
         }
     // Change in status -> set new "last_update_time" and "last_transition_time"
     } else {
         ClusterCondition {
-            last_update_time: Some(now.clone()),
             last_transition_time: Some(now),
             ..new_condition
         }
