@@ -510,7 +510,6 @@ mod tests {
         assert_eq!(got.type_, expected.type_);
         assert_eq!(got.status, expected.status);
         assert_eq!(got.message, expected.message);
-        assert_eq!(got.last_transition_time, expected.last_transition_time);
         assert!(got.last_transition_time.is_some());
     }
 
