@@ -347,13 +347,13 @@ fn update_timestamps(
     assert_eq!(old_condition.type_, new_condition.type_);
 
     let now = Time(Utc::now());
-    // No change in status -> update "last_update_time" and keep "last_transition_time"
+    // No change in status -> keep "last_transition_time"
     if old_condition.status == new_condition.status {
         ClusterCondition {
             last_transition_time: old_condition.last_transition_time,
             ..new_condition
         }
-    // Change in status -> set new "last_update_time" and "last_transition_time"
+    // Change in status -> set new "last_transition_time"
     } else {
         ClusterCondition {
             last_transition_time: Some(now),
@@ -510,7 +510,7 @@ mod tests {
         assert_eq!(got.type_, expected.type_);
         assert_eq!(got.status, expected.status);
         assert_eq!(got.message, expected.message);
-        assert_eq!(got.last_transition_time, got.last_update_time);
+        assert_eq!(got.last_transition_time, expected.last_transition_time);
         assert!(got.last_transition_time.is_some());
     }
 
