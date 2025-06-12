@@ -461,9 +461,9 @@ impl Struct {
         let versioned_path = &*kubernetes_arguments.crates.versioned;
         let convert_object_error = quote! { #versioned_path::ConvertObjectError };
 
-        let conversion_chain = conversion_path(versions);
+        let conversion_paths = conversion_paths(versions);
 
-        conversion_chain
+        conversion_paths
             .iter()
             .map(|(start, path)| {
                 let current_object_version_ident = &start.idents.variant;
@@ -588,7 +588,7 @@ struct TracingTokens {
     try_convert_instrumentation: Option<TokenStream>,
 }
 
-fn conversion_path<T>(elements: &[T]) -> Vec<(&T, Cow<'_, [T]>)>
+fn conversion_paths<T>(elements: &[T]) -> Vec<(&T, Cow<'_, [T]>)>
 where
     T: Clone + Ord,
 {
@@ -652,28 +652,31 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::{ops::Deref as _, str::FromStr as _};
-
-    use k8s_version::Version;
-
     use super::*;
 
     #[test]
-    fn two_chainz() {
-        let versions = ["v1alpha1", "v1alpha2", "v1beta1", "v1", "v2"]
-            .iter()
-            .map(|i| Version::from_str(i))
-            .collect::<Result<Vec<Version>, _>>()
-            .expect("static strings are valid K8s version");
+    fn the_path_is_the_goal() {
+        let paths = conversion_paths(&["v1alpha1", "v1alpha2", "v1beta1", "v1"]);
+        assert_eq!(paths.len(), 12);
 
-        let chains = conversion_path(&versions);
+        let expected = vec![
+            ("v1alpha1", vec!["v1alpha2"]),
+            ("v1alpha1", vec!["v1alpha2", "v1beta1"]),
+            ("v1alpha1", vec!["v1alpha2", "v1beta1", "v1"]),
+            ("v1alpha2", vec!["v1alpha1"]),
+            ("v1alpha2", vec!["v1beta1"]),
+            ("v1alpha2", vec!["v1beta1", "v1"]),
+            ("v1beta1", vec!["v1alpha2", "v1alpha1"]),
+            ("v1beta1", vec!["v1alpha2"]),
+            ("v1beta1", vec!["v1"]),
+            ("v1", vec!["v1beta1", "v1alpha2", "v1alpha1"]),
+            ("v1", vec!["v1beta1", "v1alpha2"]),
+            ("v1", vec!["v1beta1"]),
+        ];
 
-        // TODO (@Techassi): Actually test that the function generates the paths we expect
-        for (start, path) in chains {
-            println!(
-                "start: {start}, path: {path}",
-                path = path.deref().iter().join(", ")
-            );
+        for (result, expected) in paths.iter().zip(expected) {
+            assert_eq!(*result.0, expected.0);
+            assert_eq!(result.1.to_vec(), expected.1);
         }
     }
 }
