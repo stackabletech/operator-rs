@@ -463,11 +463,14 @@ mod utils;
 /// - `since` to indicate since which version the item is changed.
 /// - `from_name` to indicate from which previous name the field is renamed.
 /// - `from_type` to indicate from which previous type the field is changed.
-/// - `convert_with` to provide a custom conversion function instead of using
-///   a [`From`] implementation by default. This argument can only be used in
-///   combination with the `from_type` argument. The expected function signature
-///   is: `fn (OLD_TYPE) -> NEW_TYPE`. This function must not fail.
-///
+/// - `upgrade_with` to provide a custom upgrade function. This argument can
+///   only be used in combination with the `from_type` argument. The expected
+///   function signature is: `fn (OLD_TYPE) -> NEW_TYPE`. This function must
+///   not fail.
+///- `downgrade_with` to provide a custom downgrade function. This argument can
+///   only be used in combination with the `from_type` argument. The expected
+///   function signature is: `fn (NEW_TYPE) -> OLD_TYPE`. This function must
+///   not fail.
 /// ```
 /// # use stackable_versioned_macros::versioned;
 /// #[versioned(
@@ -478,10 +481,15 @@ mod utils;
 ///     #[versioned(changed(
 ///         since = "v1beta1",
 ///         from_name = "prev_bar",
-///         from_type = "u16"
+///         from_type = "u16",
+///         downgrade_with = usize_to_u16
 ///     ))]
 ///     bar: usize,
 ///     baz: bool,
+/// }
+///
+/// fn usize_to_u16(input: usize) -> u16 {
+///     input.try_into().unwrap()
 /// }
 /// ```
 ///
@@ -591,8 +599,8 @@ mod utils;
 /// ### Custom conversion function at field level
 ///
 /// As stated in the [`changed()`](#changed-action) section, a custom conversion
-/// function can be provided using the `convert_with` argument. A simple example
-/// looks like this:
+/// function can be provided using the `downgrade_with` and `upgrade_with`
+/// argument. A simple example looks like this:
 ///
 /// ```
 /// # use stackable_versioned_macros::versioned;
@@ -604,13 +612,13 @@ mod utils;
 ///     #[versioned(changed(
 ///         since = "v1beta1",
 ///         from_type = "u8",
-///         convert_with = "u8_to_u16"
+///         downgrade_with = "u16_to_u8"
 ///     ))]
 ///     bar: u16,
 /// }
 ///
-/// fn u8_to_u16(old: u8) -> u16 {
-///     old as u16
+/// fn u16_to_u8(input: u16) -> u8 {
+///     input.try_into().unwrap()
 /// }
 /// ```
 ///
@@ -628,7 +636,15 @@ mod utils;
 /// impl ::std::convert::From<v1alpha1::Foo> for v1beta1::Foo {
 ///     fn from(__sv_foo: v1alpha1::Foo) -> Self {
 ///         Self {
-///             bar: u8_to_u16(__sv_foo.bar),
+///             bar: __sv_foo.bar.into(),
+///         }
+///     }
+/// }
+///
+/// impl ::std::convert::From<v1beta1::Foo> for v1alpha1::Foo {
+///     fn from(__sv_foo: v1beta1::Foo) -> Self {
+///         Self {
+///             bar: u16_to_u8(__sv_foo.bar),
 ///         }
 ///     }
 /// }
@@ -700,7 +716,7 @@ especially for CustomResourceDefinitions (CRDs). These features are
 completely opt-in. You need to enable the `k8s` feature (which enables
 optional dependencies) and use the `k8s()` parameter in the macro.
 
-You need to derive both [`kube::CustomResource`] and [`schemars::JsonSchema`].
+You need to derive both [`kube::CustomResource`] and [`schemars::JsonSchema`][1].
 
 ```
 # use stackable_versioned_macros::versioned;
@@ -718,10 +734,14 @@ use serde::{Deserialize, Serialize};
 pub struct FooSpec {
     #[versioned(
         added(since = "v1beta1"),
-        changed(since = "v1", from_name = "prev_bar", from_type = "u16")
+        changed(since = "v1", from_name = "prev_bar", from_type = "u16", downgrade_with = usize_to_u16)
     )]
     bar: usize,
     baz: bool,
+}
+
+fn usize_to_u16(input: usize) -> u16 {
+    input.try_into().unwrap()
 }
 
 # fn main() {
@@ -730,7 +750,7 @@ println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
 # }
 ```
 
-The generated `merged_crd` method is a wrapper around [kube's `merge_crds`][1]
+The generated `merged_crd` method is a wrapper around [kube's `merge_crds`][2]
 function. It automatically calls the `crd` methods of the CRD in all of its
 versions and additionally provides a strongly typed selector for the stored
 API version.
@@ -846,6 +866,9 @@ mod v1 {
 It is possible to include structs and enums which are not CRDs. They are instead
 versioned as expected (without adding the `#[kube]` derive macro and generating
 code to merge CRD versions).
+
+[1]: https://docs.rs/schemars/latest/schemars/derive.JsonSchema.html
+[2]: https://docs.rs/kube/latest/kube/core/crd/fn.merge_crds.html
 "#
 )]
 #[proc_macro_attribute]
@@ -919,16 +942,16 @@ where
 }
 
 #[cfg(test)]
-mod test {
+mod snapshot_tests {
     use insta::{assert_snapshot, glob};
 
     use super::*;
 
     #[test]
-    fn default_snapshots() {
+    fn default() {
         let _settings_guard = test_utils::set_snapshot_path().bind_to_scope();
 
-        glob!("../fixtures/inputs/default", "*.rs", |path| {
+        glob!("../tests/inputs/default/pass", "*.rs", |path| {
             let formatted = test_utils::expand_from_file(path)
                 .inspect_err(|err| eprintln!("{err}"))
                 .unwrap();
@@ -938,10 +961,10 @@ mod test {
 
     #[cfg(feature = "k8s")]
     #[test]
-    fn k8s_snapshots() {
+    fn k8s() {
         let _settings_guard = test_utils::set_snapshot_path().bind_to_scope();
 
-        glob!("../fixtures/inputs/k8s", "*.rs", |path| {
+        glob!("../tests/inputs/k8s/pass", "*.rs", |path| {
             let formatted = test_utils::expand_from_file(path)
                 .inspect_err(|err| eprintln!("{err}"))
                 .unwrap();

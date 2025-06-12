@@ -1,6 +1,8 @@
+use std::ops::Deref;
+
 use darling::{
     Error, FromMeta, Result,
-    util::{Flag, Override, SpannedValue},
+    util::{Flag, Override as FlagOrOverride, SpannedValue},
 };
 use itertools::Itertools;
 use k8s_version::Version;
@@ -11,15 +13,15 @@ pub trait CommonOptions {
 
 #[derive(Debug, FromMeta)]
 #[darling(and_then = CommonRootArguments::validate)]
-pub(crate) struct CommonRootArguments<T>
+pub struct CommonRootArguments<T>
 where
     T: CommonOptions + Default,
 {
     #[darling(default)]
-    pub(crate) options: T,
+    pub options: T,
 
     #[darling(multiple, rename = "version")]
-    pub(crate) versions: SpannedValue<Vec<VersionArguments>>,
+    pub versions: SpannedValue<Vec<VersionArguments>>,
 }
 
 impl<T> CommonRootArguments<T>
@@ -78,11 +80,11 @@ where
 /// - `skip` option to skip generating various pieces of code.
 /// - `doc` option to add version-specific documentation.
 #[derive(Clone, Debug, FromMeta)]
-pub(crate) struct VersionArguments {
-    pub(crate) deprecated: Option<Override<String>>,
-    pub(crate) name: Version,
-    pub(crate) skip: Option<SkipArguments>,
-    pub(crate) doc: Option<String>,
+pub struct VersionArguments {
+    pub deprecated: Option<FlagOrOverride<String>>,
+    pub skip: Option<SkipArguments>,
+    pub doc: Option<String>,
+    pub name: Version,
 }
 
 /// This struct contains supported common skip arguments.
@@ -91,8 +93,35 @@ pub(crate) struct VersionArguments {
 ///
 /// - `from` flag, which skips generating [`From`] implementations when provided.
 #[derive(Clone, Debug, Default, FromMeta)]
-pub(crate) struct SkipArguments {
+pub struct SkipArguments {
     /// Whether the [`From`] implementation generation should be skipped for all versions of this
     /// container.
-    pub(crate) from: Flag,
+    pub from: Flag,
+}
+
+/// Wraps a value to indicate whether it is original or has been overridden.
+#[derive(Clone, Debug)]
+pub enum Override<T> {
+    Default(T),
+    Explicit(T),
+}
+
+impl<T> FromMeta for Override<T>
+where
+    T: FromMeta,
+{
+    fn from_meta(item: &syn::Meta) -> Result<Self> {
+        FromMeta::from_meta(item).map(Override::Explicit)
+    }
+}
+
+impl<T> Deref for Override<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        match &self {
+            Override::Default(inner) => inner,
+            Override::Explicit(inner) => inner,
+        }
+    }
 }

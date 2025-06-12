@@ -190,12 +190,17 @@ fn validate_all(validations: impl IntoIterator<Item = Result<(), Error>>) -> Res
 pub fn is_domain(value: &str) -> Result {
     validate_all([
         validate_str_length(value, DOMAIN_MAX_LENGTH),
-        validate_str_regex(value, &DOMAIN_REGEX, DOMAIN_ERROR_MSG, &[
-            "example.com",
-            "example.com.",
-            "cluster.local",
-            "cluster.local.",
-        ]),
+        validate_str_regex(
+            value,
+            &DOMAIN_REGEX,
+            DOMAIN_ERROR_MSG,
+            &[
+                "example.com",
+                "example.com.",
+                "cluster.local",
+                "cluster.local.",
+            ],
+        ),
     ])
 }
 
@@ -217,10 +222,12 @@ pub fn is_rfc_1123_subdomain(value: &str) -> Result {
 pub fn is_rfc_1123_label(value: &str) -> Result {
     validate_all([
         validate_str_length(value, RFC_1123_LABEL_MAX_LENGTH),
-        validate_str_regex(value, &RFC_1123_LABEL_REGEX, RFC_1123_LABEL_ERROR_MSG, &[
-            "example-label",
-            "1-label-1",
-        ]),
+        validate_str_regex(
+            value,
+            &RFC_1123_LABEL_REGEX,
+            RFC_1123_LABEL_ERROR_MSG,
+            &["example-label", "1-label-1"],
+        ),
     ])
 }
 
@@ -228,9 +235,12 @@ pub fn is_rfc_1123_label(value: &str) -> Result {
 pub fn is_rfc_1035_label(value: &str) -> Result {
     validate_all([
         validate_str_length(value, RFC_1035_LABEL_MAX_LENGTH),
-        validate_str_regex(value, &RFC_1035_LABEL_REGEX, RFC_1035_LABEL_ERROR_MSG, &[
-            "my-name", "abc-123",
-        ]),
+        validate_str_regex(
+            value,
+            &RFC_1035_LABEL_REGEX,
+            RFC_1035_LABEL_ERROR_MSG,
+            &["my-name", "abc-123"],
+        ),
     ])
 }
 

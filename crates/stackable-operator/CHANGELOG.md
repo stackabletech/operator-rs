@@ -4,6 +4,102 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Update `kube` to `1.1.0` ([#1049]).
+
+## [0.93.2] - 2025-05-26
+
+### Added
+
+- Added `ListenerClass.spec.loadBalancerClass` and `.loadBalancerAllocateNodePorts` fields ([#986]).
+
+### Removed
+
+- Remove instrumentation from uninteresting functions ([#1023]).
+
+[#986]: https://github.com/stackabletech/operator-rs/pull/986
+[#1023]: https://github.com/stackabletech/operator-rs/pull/1023
+[#1049]: https://github.com/stackabletech/operator-rs/pull/1049
+
+## [0.93.1] - 2025-05-20
+
+### Added
+
+- Add git-sync support ([#1024]).
+
+[#1024]: https://github.com/stackabletech/operator-rs/pull/1024
+
+## [0.93.0] - 2025-05-19
+
+### Changed
+
+- BREAKING: Version common CRD structs and enums ([#968]).
+  - All CRD-related types and function now reside in the `stackable_operator::crd` module.
+  - Each CRD-related struct and enum has been versioned. The initial version is `v1alpha1`.
+  - The `static` authentication provider must now be imported using `r#static`.
+  - Import are now more granular in general.
+- BREAKING: Update to `kube` to `1.0.0` and `k8s-openapi` to `0.25.0`.
+  Use k8s `1.33` for compilation ([#1037]).
+- Separate some developer docs from CRD descriptions ([#1040]).
+
+### Fixed
+
+- Re-export versioned CRD-specific error types ([#1025]).
+- Re-export versioned common CRD enums ([#1029]).
+
+[#968]: https://github.com/stackabletech/operator-rs/pull/968
+[#1025]: https://github.com/stackabletech/operator-rs/pull/1025
+[#1029]: https://github.com/stackabletech/operator-rs/pull/1029
+[#1037]: https://github.com/stackabletech/operator-rs/pull/1037
+[#1040]: https://github.com/stackabletech/operator-rs/pull/1040
+
+## [0.92.0] - 2025-04-14
+
+### Added
+
+- Adds new CLI arguments and environment variables ([#1010], [#1012]).
+  - Use `--file-log-max-files` (or `FILE_LOG_MAX_FILES`) to limit the number of log files kept.
+  - Use `--console-log-format` (or `CONSOLE_LOG_FORMAT`) to set the format to `plain` (default) or `json`.
+  - See detailed [stackable-telemetry changelog](../stackable-telemetry/CHANGELOG.md#060---2025-04-14).
+
+### Changed
+
+- BREAKING: Update and align telemetry related CLI arguments of `ProductOperatorRun`, see detailed
+  changelog [stackable-telemetry changelog](../stackable-telemetry/CHANGELOG.md#060---2025-04-14) ([#1009]).
+
+[#1009]: https://github.com/stackabletech/operator-rs/pull/1009
+[#1010]: https://github.com/stackabletech/operator-rs/pull/1010
+[#1012]: https://github.com/stackabletech/operator-rs/pull/1012
+
+## [0.91.1] - 2025-04-09
+
+### Added
+
+- Add re-exports for `stackable-telemetry` and `stackable-versioned` ([#1007]).
+- Add new features: `default`, `full`, `telemetry`, and `versioned` ([#1007]).
+
+[#1007]: https://github.com/stackabletech/operator-rs/pull/1007
+
+## [0.91.0] - 2025-04-08
+
+### Changed
+
+- BREAKING: Remove `cli::TelemetryArguments` and `cli::RollingPeriod` which are both replaced by
+  types from `stackable_telemetry` ([#1001]).
+- BREAKING: The `ProductOperatorRun` struct now uses `stackable_telemetry::tracing::TelemetryOptions`
+  for the `telemetry_arguments` field ([#1001]).
+
+[#1001]: https://github.com/stackabletech/operator-rs/pull/1001
+
+## [0.90.0] - 2025-04-07
+
+### Added
+
+- BREAKING: Inject vector aggregator address into vector config file using an environment variable ([#1000]).
+
+[#1000]: https://github.com/stackabletech/operator-rs/pull/1000
+
 ## [0.89.1] - 2025-04-02
 
 ### Changed

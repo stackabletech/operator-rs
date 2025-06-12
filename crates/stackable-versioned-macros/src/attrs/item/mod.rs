@@ -12,10 +12,10 @@ use crate::{
 };
 
 mod field;
-pub(crate) use field::*;
+pub use field::*;
 
 mod variant;
-pub(crate) use variant::*;
+pub use variant::*;
 
 /// These attributes are meant to be used in super structs, which add
 /// [`Field`](syn::Field) or [`Variant`](syn::Variant) specific attributes via
@@ -30,19 +30,19 @@ pub(crate) use variant::*;
 /// - An item can only be deprecated once. A field or variant not marked as
 ///   'deprecated' will be included up until the latest version.
 #[derive(Debug, FromMeta)]
-pub(crate) struct CommonItemAttributes {
+pub struct CommonItemAttributes {
     /// This parses the `added` attribute on items (fields or variants). It can
     /// only be present at most once.
-    pub(crate) added: Option<AddedAttributes>,
+    pub added: Option<AddedAttributes>,
 
     /// This parses the `changed` attribute on items (fields or variants). It
     /// can be present 0..n times.
     #[darling(multiple, rename = "changed")]
-    pub(crate) changes: Vec<ChangedAttributes>,
+    pub changes: Vec<ChangedAttributes>,
 
     /// This parses the `deprecated` attribute on items (fields or variants). It
     /// can only be present at most once.
-    pub(crate) deprecated: Option<DeprecatedAttributes>,
+    pub deprecated: Option<DeprecatedAttributes>,
 }
 
 // This impl block ONLY contains validation. The main entrypoint is the associated 'validate'
@@ -50,11 +50,7 @@ pub(crate) struct CommonItemAttributes {
 // it contains functions which can only be called after the initial parsing and validation because
 // they need additional context, namely the list of versions defined on the container or module.
 impl CommonItemAttributes {
-    pub(crate) fn validate(
-        &self,
-        item_ident: impl ItemIdentExt,
-        item_attrs: &[Attribute],
-    ) -> Result<()> {
+    pub fn validate(&self, item_ident: impl ItemIdentExt, item_attrs: &[Attribute]) -> Result<()> {
         let mut errors = Error::accumulator();
 
         errors.handle(self.validate_action_combinations(&item_ident));
@@ -67,7 +63,7 @@ impl CommonItemAttributes {
         errors.finish()
     }
 
-    pub(crate) fn validate_versions(&self, versions: &[VersionDefinition]) -> Result<()> {
+    pub fn validate_versions(&self, versions: &[VersionDefinition]) -> Result<()> {
         let mut errors = Error::accumulator();
 
         if let Some(added) = &self.added {
@@ -225,8 +221,14 @@ impl CommonItemAttributes {
     fn validate_changed_action(&self, item_ident: &impl ItemIdentExt) -> Result<()> {
         let mut errors = Error::accumulator();
 
-        // This ensures that `from_name` doesn't include the deprecation prefix.
         for change in &self.changes {
+            if change.from_name.is_none() && change.from_type.is_none() {
+                errors.push(Error::custom(
+                    "both `from_name` and `from_type` are unset. Is this `changed()` action needed?"
+                ).with_span(&change.since.span()));
+            }
+
+            // This ensures that `from_name` doesn't include the deprecation prefix.
             if let Some(from_name) = change.from_name.as_ref() {
                 if from_name.starts_with(item_ident.deprecated_prefix()) {
                     errors.push(
@@ -238,15 +240,26 @@ impl CommonItemAttributes {
                 }
             }
 
-            // The convert_with argument only makes sense to use when the
-            // type changed
-            if let Some(convert_func) = change.convert_with.as_ref() {
-                if change.from_type.is_none() {
+            if change.from_type.is_none() {
+                // The upgrade_with argument only makes sense to use when the
+                // type changed
+                if let Some(upgrade_func) = change.upgrade_with.as_ref() {
                     errors.push(
                         Error::custom(
-                            "the `convert_with` argument must be used in combination with `from_type`",
+                            "the `upgrade_with` argument must be used in combination with `from_type`",
                         )
-                        .with_span(&convert_func.span()),
+                        .with_span(&upgrade_func.span()),
+                    );
+                }
+
+                // The downgrade_with argument only makes sense to use when the
+                // type changed
+                if let Some(downgrade_func) = change.downgrade_with.as_ref() {
+                    errors.push(
+                        Error::custom(
+                            "the `downgrade_with` argument must be used in combination with `from_type`",
+                        )
+                        .with_span(&downgrade_func.span()),
                     );
                 }
             }
@@ -276,7 +289,7 @@ impl CommonItemAttributes {
 }
 
 impl CommonItemAttributes {
-    pub(crate) fn into_changeset(
+    pub fn into_changeset(
         self,
         ident: &impl ItemIdentExt,
         ty: Type,
@@ -293,11 +306,14 @@ impl CommonItemAttributes {
 
             let mut actions = BTreeMap::new();
 
-            actions.insert(*deprecated.since, ItemStatus::Deprecation {
-                previous_ident: ident.clone(),
-                ident: deprecated_ident.clone(),
-                note: deprecated.note.as_deref().cloned(),
-            });
+            actions.insert(
+                *deprecated.since,
+                ItemStatus::Deprecation {
+                    previous_ident: ident.clone(),
+                    ident: deprecated_ident.clone(),
+                    note: deprecated.note.as_deref().cloned(),
+                },
+            );
 
             for change in self.changes.iter().rev() {
                 let from_ident = if let Some(from) = change.from_name.as_deref() {
@@ -314,13 +330,17 @@ impl CommonItemAttributes {
                     .map(|sv| sv.deref().clone())
                     .unwrap_or(ty.clone());
 
-                actions.insert(*change.since, ItemStatus::Change {
-                    convert_with: change.convert_with.as_deref().cloned(),
-                    from_ident: from_ident.clone(),
-                    from_type: from_ty.clone(),
-                    to_ident: ident,
-                    to_type: ty,
-                });
+                actions.insert(
+                    *change.since,
+                    ItemStatus::Change {
+                        downgrade_with: change.downgrade_with.as_deref().cloned(),
+                        upgrade_with: change.upgrade_with.as_deref().cloned(),
+                        from_ident: from_ident.clone(),
+                        from_type: from_ty.clone(),
+                        to_ident: ident,
+                        to_type: ty,
+                    },
+                );
 
                 ident = from_ident;
                 ty = from_ty;
@@ -329,11 +349,14 @@ impl CommonItemAttributes {
             // After the last iteration above (if any) we use the ident for the
             // added action if there is any.
             if let Some(added) = self.added {
-                actions.insert(*added.since, ItemStatus::Addition {
-                    default_fn: added.default_fn.deref().clone(),
-                    ident,
-                    ty,
-                });
+                actions.insert(
+                    *added.since,
+                    ItemStatus::Addition {
+                        default_fn: added.default_fn.deref().clone(),
+                        ident,
+                        ty,
+                    },
+                );
             }
 
             Some(actions)
@@ -358,13 +381,17 @@ impl CommonItemAttributes {
                     .map(|sv| sv.deref().clone())
                     .unwrap_or(ty.clone());
 
-                actions.insert(*change.since, ItemStatus::Change {
-                    convert_with: change.convert_with.as_deref().cloned(),
-                    from_ident: from_ident.clone(),
-                    from_type: from_ty.clone(),
-                    to_ident: ident,
-                    to_type: ty,
-                });
+                actions.insert(
+                    *change.since,
+                    ItemStatus::Change {
+                        downgrade_with: change.downgrade_with.as_deref().cloned(),
+                        upgrade_with: change.upgrade_with.as_deref().cloned(),
+                        from_ident: from_ident.clone(),
+                        from_type: from_ty.clone(),
+                        to_ident: ident,
+                        to_type: ty,
+                    },
+                );
 
                 ident = from_ident;
                 ty = from_ty;
@@ -373,11 +400,14 @@ impl CommonItemAttributes {
             // After the last iteration above (if any) we use the ident for the
             // added action if there is any.
             if let Some(added) = self.added {
-                actions.insert(*added.since, ItemStatus::Addition {
-                    default_fn: added.default_fn.deref().clone(),
-                    ident,
-                    ty,
-                });
+                actions.insert(
+                    *added.since,
+                    ItemStatus::Addition {
+                        default_fn: added.default_fn.deref().clone(),
+                        ident,
+                        ty,
+                    },
+                );
             }
 
             Some(actions)
@@ -385,11 +415,14 @@ impl CommonItemAttributes {
             if let Some(added) = self.added {
                 let mut actions = BTreeMap::new();
 
-                actions.insert(*added.since, ItemStatus::Addition {
-                    default_fn: added.default_fn.deref().clone(),
-                    ident: ident.deref().clone(),
-                    ty,
-                });
+                actions.insert(
+                    *added.since,
+                    ItemStatus::Addition {
+                        default_fn: added.default_fn.deref().clone(),
+                        ident: ident.deref().clone(),
+                        ty,
+                    },
+                );
 
                 return Some(actions);
             }
@@ -405,11 +438,11 @@ impl CommonItemAttributes {
 /// - `added(since = "...")`
 /// - `added(since = "...", default_fn = "custom_fn")`
 #[derive(Clone, Debug, FromMeta)]
-pub(crate) struct AddedAttributes {
-    pub(crate) since: SpannedValue<Version>,
+pub struct AddedAttributes {
+    pub since: SpannedValue<Version>,
 
     #[darling(rename = "default", default = "default_default_fn")]
-    pub(crate) default_fn: SpannedValue<Path>,
+    pub default_fn: SpannedValue<Path>,
 }
 
 fn default_default_fn() -> SpannedValue<Path> {
@@ -420,22 +453,20 @@ fn default_default_fn() -> SpannedValue<Path> {
     )
 }
 
-// TODO (@Techassi): Add validation for when from_name AND from_type are both
-// none => is this action needed in the first place?
-// TODO (@Techassi): Add validation that the from_name mustn't include the
-// deprecated prefix.
 /// For the changed() action
 ///
 /// Example usage:
 /// - `changed(since = "...", from_name = "...")`
 /// - `changed(since = "...", from_name = "...", from_type="...")`
-/// - `changed(since = "...", from_name = "...", from_type="...", convert_with = "...")`
+/// - `changed(since = "...", from_name = "...", from_type="...", upgrade_with = "...")`
+/// - `changed(since = "...", from_name = "...", from_type="...", downgrade_with = "...")`
 #[derive(Clone, Debug, FromMeta)]
 pub struct ChangedAttributes {
     pub since: SpannedValue<Version>,
     pub from_name: Option<SpannedValue<String>>,
     pub from_type: Option<SpannedValue<Type>>,
-    pub convert_with: Option<SpannedValue<Path>>,
+    pub upgrade_with: Option<SpannedValue<Path>>,
+    pub downgrade_with: Option<SpannedValue<Path>>,
 }
 
 /// For the deprecated() action
@@ -444,7 +475,7 @@ pub struct ChangedAttributes {
 /// - `deprecated(since = "...")`
 /// - `deprecated(since = "...", note = "...")`
 #[derive(Clone, Debug, FromMeta)]
-pub(crate) struct DeprecatedAttributes {
-    pub(crate) since: SpannedValue<Version>,
-    pub(crate) note: Option<SpannedValue<String>>,
+pub struct DeprecatedAttributes {
+    pub since: SpannedValue<Version>,
+    pub note: Option<SpannedValue<String>>,
 }

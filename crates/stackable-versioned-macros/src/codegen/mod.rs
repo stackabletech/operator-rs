@@ -5,27 +5,27 @@ use syn::{Path, Type};
 
 use crate::attrs::{container::StandaloneContainerAttributes, module::ModuleAttributes};
 
-pub(crate) mod changes;
-pub(crate) mod container;
-pub(crate) mod item;
-pub(crate) mod module;
+pub mod changes;
+pub mod container;
+pub mod item;
+pub mod module;
 
 #[derive(Debug)]
-pub(crate) struct VersionDefinition {
+pub struct VersionDefinition {
     /// Indicates that the container version is deprecated.
-    pub(crate) deprecated: Option<String>,
+    pub deprecated: Option<String>,
 
     /// Indicates that the generation of `From<OLD> for NEW` should be skipped.
-    pub(crate) skip_from: bool,
+    pub skip_from: bool,
 
     /// A validated Kubernetes API version.
-    pub(crate) inner: Version,
+    pub inner: Version,
 
     /// The ident of the container.
-    pub(crate) ident: IdentString,
+    pub ident: IdentString,
 
     /// Store additional doc-comment lines for this version.
-    pub(crate) docs: Vec<String>,
+    pub docs: Vec<String>,
 }
 
 // NOTE (@Techassi): Can we maybe unify these two impls?
@@ -81,7 +81,8 @@ pub enum ItemStatus {
         ty: Type,
     },
     Change {
-        convert_with: Option<Path>,
+        downgrade_with: Option<Path>,
+        upgrade_with: Option<Path>,
         from_ident: IdentString,
         to_ident: IdentString,
         from_type: Type,
@@ -101,13 +102,13 @@ pub enum ItemStatus {
 }
 
 impl ItemStatus {
-    pub(crate) fn get_ident(&self) -> &IdentString {
+    pub fn get_ident(&self) -> &IdentString {
         match &self {
             ItemStatus::Addition { ident, .. } => ident,
             ItemStatus::Change { to_ident, .. } => to_ident,
             ItemStatus::Deprecation { ident, .. } => ident,
             ItemStatus::NoChange { ident, .. } => ident,
-            ItemStatus::NotPresent => unreachable!(),
+            ItemStatus::NotPresent => unreachable!("ItemStatus::NotPresent does not have an ident"),
         }
     }
 }

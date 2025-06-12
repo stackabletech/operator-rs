@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
+use k8s_openapi::api::core::v1::EnvVar;
 use product_config::{ProductConfigManager, PropertyValidationResult, types::PropertyNameKind};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -526,6 +527,156 @@ where
     }
 
     Ok(final_overrides)
+}
+
+/// Extract the environment variables of a rolegroup config into a vector of EnvVars.
+///
+/// # Example
+///
+/// ```
+/// use std::collections::{BTreeMap, HashMap};
+///
+/// use k8s_openapi::api::core::v1::EnvVar;
+/// use product_config::types::PropertyNameKind;
+/// use stackable_operator::product_config_utils::env_vars_from_rolegroup_config;
+///
+/// let rolegroup_config = [(
+///     PropertyNameKind::Env,
+///     [
+///         ("VAR1".to_string(), "value 1".to_string()),
+///         ("VAR2".to_string(), "value 2".to_string()),
+///     ]
+///     .into_iter()
+///     .collect::<BTreeMap<_, _>>(),
+/// )]
+/// .into_iter()
+/// .collect::<HashMap<_, _>>();
+///
+/// let expected_env_vars = vec![
+///     EnvVar {
+///         name: "VAR1".to_string(),
+///         value: Some("value 1".to_string()),
+///         value_from: None,
+///     },
+///     EnvVar {
+///         name: "VAR2".to_string(),
+///         value: Some("value 2".to_string()),
+///         value_from: None,
+///     },
+/// ];
+/// assert_eq!(
+///     expected_env_vars,
+///     env_vars_from_rolegroup_config(&rolegroup_config)
+/// );
+/// ```
+pub fn env_vars_from_rolegroup_config(
+    rolegroup_config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+) -> Vec<EnvVar> {
+    env_vars_from(
+        rolegroup_config
+            .get(&PropertyNameKind::Env)
+            .cloned()
+            .unwrap_or_default(),
+    )
+}
+
+/// Convert key-value structures into a vector of EnvVars.
+///
+/// # Example
+///
+/// ```
+/// use k8s_openapi::api::core::v1::EnvVar;
+/// use stackable_operator::{product_config_utils::env_vars_from, role_utils::CommonConfiguration};
+///
+/// let common_config = CommonConfiguration::<(), ()> {
+///     env_overrides: [("VAR".to_string(), "value".to_string())]
+///         .into_iter()
+///         .collect(),
+///     ..Default::default()
+/// };
+///
+/// let env_vars = env_vars_from(common_config.env_overrides);
+///
+/// let expected_env_vars = vec![EnvVar {
+///     name: "VAR".to_string(),
+///     value: Some("value".to_string()),
+///     value_from: None
+/// }];
+///
+/// assert_eq!(expected_env_vars, env_vars);
+/// ```
+pub fn env_vars_from<I, K, V>(env_vars: I) -> Vec<EnvVar>
+where
+    I: IntoIterator<Item = (K, V)>,
+    K: Clone + Into<String>,
+    V: Clone + Into<String>,
+{
+    env_vars.into_iter().map(env_var_from_tuple).collect()
+}
+
+/// Convert a tuple of strings into an EnvVar
+///
+/// # Example
+///
+/// ```
+/// use k8s_openapi::api::core::v1::EnvVar;
+/// use stackable_operator::product_config_utils::env_var_from_tuple;
+///
+/// let tuple = ("VAR", "value");
+///
+/// let env_var = env_var_from_tuple(tuple);
+///
+/// let expected_env_var = EnvVar {
+///     name: "VAR".to_string(),
+///     value: Some("value".to_string()),
+///     value_from: None,
+/// };
+/// assert_eq!(expected_env_var, env_var);
+/// ```
+pub fn env_var_from_tuple(entry: (impl Into<String>, impl Into<String>)) -> EnvVar {
+    EnvVar {
+        name: entry.0.into(),
+        value: Some(entry.1.into()),
+        value_from: None,
+    }
+}
+
+/// Inserts or updates the EnvVars from `env_overrides` in `env_vars`.
+///
+/// The resulting vector is sorted by the EnvVar names.
+///
+/// # Example
+///
+/// ```
+/// use stackable_operator::product_config_utils::{env_vars_from, insert_or_update_env_vars};
+///
+/// let env_vars = env_vars_from([
+///     ("VAR1", "original value 1"),
+///     ("VAR2", "original value 2")
+/// ]);
+/// let env_overrides = env_vars_from([
+///     ("VAR2", "overriden value 2"),
+///     ("VAR3", "new value 3")
+/// ]);
+///
+/// let combined_env_vars = insert_or_update_env_vars(&env_vars, &env_overrides);
+///
+/// let expected_result = env_vars_from([
+///     ("VAR1", "original value 1"),
+///     ("VAR2", "overriden value 2"),
+///     ("VAR3", "new value 3"),
+/// ]);
+///
+/// assert_eq!(expected_result, combined_env_vars);
+/// ```
+pub fn insert_or_update_env_vars(env_vars: &[EnvVar], env_overrides: &[EnvVar]) -> Vec<EnvVar> {
+    let mut combined = BTreeMap::new();
+
+    for env_var in env_vars.iter().chain(env_overrides) {
+        combined.insert(env_var.name.to_owned(), env_var.to_owned());
+    }
+
+    combined.into_values().collect()
 }
 
 #[cfg(test)]

@@ -1,0 +1,94 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+expression: formatted
+input_file: crates/stackable-versioned-macros/tests/inputs/default/pass/added.rs
+---
+#[automatically_derived]
+mod v1alpha1 {
+    use super::*;
+    pub struct Foo {
+        pub username: String,
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1alpha1::Foo> for v1alpha2::Foo {
+    fn from(__sv_foo: v1alpha1::Foo) -> Self {
+        Self {
+            username: __sv_foo.username.into(),
+            first_name: default_first_name(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1alpha2::Foo> for v1alpha1::Foo {
+    fn from(__sv_foo: v1alpha2::Foo) -> Self {
+        Self {
+            username: __sv_foo.username.into(),
+        }
+    }
+}
+#[automatically_derived]
+mod v1alpha2 {
+    use super::*;
+    pub struct Foo {
+        pub username: String,
+        pub first_name: String,
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1alpha2::Foo> for v1beta1::Foo {
+    fn from(__sv_foo: v1alpha2::Foo) -> Self {
+        Self {
+            username: __sv_foo.username.into(),
+            first_name: __sv_foo.first_name.into(),
+            last_name: ::std::default::Default::default(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1beta1::Foo> for v1alpha2::Foo {
+    fn from(__sv_foo: v1beta1::Foo) -> Self {
+        Self {
+            username: __sv_foo.username.into(),
+            first_name: __sv_foo.first_name.into(),
+        }
+    }
+}
+#[automatically_derived]
+mod v1beta1 {
+    use super::*;
+    pub struct Foo {
+        pub username: String,
+        pub first_name: String,
+        pub last_name: String,
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1beta1::Foo> for v1::Foo {
+    fn from(__sv_foo: v1beta1::Foo) -> Self {
+        Self {
+            username: __sv_foo.username.into(),
+            first_name: __sv_foo.first_name.into(),
+            last_name: __sv_foo.last_name.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::std::convert::From<v1::Foo> for v1beta1::Foo {
+    fn from(__sv_foo: v1::Foo) -> Self {
+        Self {
+            username: __sv_foo.username.into(),
+            first_name: __sv_foo.first_name.into(),
+            last_name: __sv_foo.last_name.into(),
+        }
+    }
+}
+#[automatically_derived]
+mod v1 {
+    use super::*;
+    pub struct Foo {
+        pub username: String,
+        pub first_name: String,
+        pub last_name: String,
+    }
+}

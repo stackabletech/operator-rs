@@ -5,7 +5,7 @@ use syn::Type;
 
 use crate::codegen::{ItemStatus, VersionDefinition};
 
-pub(crate) trait Neighbors<K, V>
+pub trait Neighbors<K, V>
 where
     K: Ord + Eq,
 {
@@ -78,7 +78,7 @@ where
     }
 }
 
-pub(crate) trait BTreeMapExt<K, V>
+pub trait BTreeMapExt<K, V>
 where
     K: Ord,
 {
@@ -95,7 +95,7 @@ impl<V> BTreeMapExt<Version, V> for BTreeMap<Version, V> {
     }
 }
 
-pub(crate) trait ChangesetExt {
+pub trait ChangesetExt {
     fn insert_container_versions(&mut self, versions: &[VersionDefinition], ty: &Type);
 }
 
@@ -115,27 +115,34 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
                         from_ident,
                         from_type,
                         ..
-                    } => self.insert(version.inner, ItemStatus::NoChange {
-                        previously_deprecated: false,
-                        ident: from_ident.clone(),
-                        ty: from_type.clone(),
-                    }),
-                    ItemStatus::Deprecation { previous_ident, .. } => {
-                        self.insert(version.inner, ItemStatus::NoChange {
+                    } => self.insert(
+                        version.inner,
+                        ItemStatus::NoChange {
+                            previously_deprecated: false,
+                            ident: from_ident.clone(),
+                            ty: from_type.clone(),
+                        },
+                    ),
+                    ItemStatus::Deprecation { previous_ident, .. } => self.insert(
+                        version.inner,
+                        ItemStatus::NoChange {
                             previously_deprecated: false,
                             ident: previous_ident.clone(),
                             ty: ty.clone(),
-                        })
-                    }
+                        },
+                    ),
                     ItemStatus::NoChange {
                         previously_deprecated,
                         ident,
                         ty,
-                    } => self.insert(version.inner, ItemStatus::NoChange {
-                        previously_deprecated: *previously_deprecated,
-                        ident: ident.clone(),
-                        ty: ty.clone(),
-                    }),
+                    } => self.insert(
+                        version.inner,
+                        ItemStatus::NoChange {
+                            previously_deprecated: *previously_deprecated,
+                            ident: ident.clone(),
+                            ty: ty.clone(),
+                        },
+                    ),
                     ItemStatus::NotPresent => unreachable!(),
                 },
                 (Some(status), None) => {
@@ -154,11 +161,14 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
                         ItemStatus::NotPresent => unreachable!(),
                     };
 
-                    self.insert(version.inner, ItemStatus::NoChange {
-                        previously_deprecated,
-                        ident: ident.clone(),
-                        ty: ty.clone(),
-                    })
+                    self.insert(
+                        version.inner,
+                        ItemStatus::NoChange {
+                            previously_deprecated,
+                            ident: ident.clone(),
+                            ty: ty.clone(),
+                        },
+                    )
                 }
                 (Some(status), Some(_)) => {
                     let (ident, ty, previously_deprecated) = match status {
@@ -172,16 +182,23 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
                             ty,
                             ..
                         } => (ident, ty, *previously_deprecated),
+                        ItemStatus::NotPresent => {
+                            self.insert(version.inner, ItemStatus::NotPresent);
+                            continue;
+                        }
                         // TODO (@NickLarsenNZ): Explain why it is unreachable, as it can be reached during testing.
                         // To reproduce, use an invalid version, eg: #[versioned(deprecated(since = "v99"))]
                         _ => unreachable!(),
                     };
 
-                    self.insert(version.inner, ItemStatus::NoChange {
-                        previously_deprecated,
-                        ident: ident.clone(),
-                        ty: ty.clone(),
-                    })
+                    self.insert(
+                        version.inner,
+                        ItemStatus::NoChange {
+                            previously_deprecated,
+                            ident: ident.clone(),
+                            ty: ty.clone(),
+                        },
+                    )
                 }
                 _ => unreachable!(),
             };

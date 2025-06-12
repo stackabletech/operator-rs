@@ -15,15 +15,15 @@ use crate::{
     utils::VariantIdent,
 };
 
-pub(crate) struct VersionedVariant {
-    pub(crate) original_attributes: Vec<Attribute>,
-    pub(crate) changes: Option<BTreeMap<Version, ItemStatus>>,
-    pub(crate) ident: VariantIdent,
-    pub(crate) fields: Fields,
+pub struct VersionedVariant {
+    pub original_attributes: Vec<Attribute>,
+    pub changes: Option<BTreeMap<Version, ItemStatus>>,
+    pub ident: VariantIdent,
+    pub fields: Fields,
 }
 
 impl VersionedVariant {
-    pub(crate) fn new(variant: Variant, versions: &[VersionDefinition]) -> Result<Self> {
+    pub fn new(variant: Variant, versions: &[VersionDefinition]) -> Result<Self> {
         let variant_attributes = VariantAttributes::from_variant(&variant)?;
         variant_attributes.validate_versions(versions)?;
 
@@ -45,7 +45,7 @@ impl VersionedVariant {
         })
     }
 
-    pub(crate) fn insert_container_versions(&mut self, versions: &[VersionDefinition]) {
+    pub fn insert_container_versions(&mut self, versions: &[VersionDefinition]) {
         if let Some(changes) = &mut self.changes {
             // FIXME (@Techassi): Support enum variants with data
             let ty = Type::Never(TypeNever {
@@ -57,10 +57,7 @@ impl VersionedVariant {
     }
 
     /// Generates tokens to be used in a container definition.
-    pub(crate) fn generate_for_container(
-        &self,
-        version: &VersionDefinition,
-    ) -> Option<TokenStream> {
+    pub fn generate_for_container(&self, version: &VersionDefinition) -> Option<TokenStream> {
         let original_attributes = &self.original_attributes;
         let fields = &self.fields;
 
@@ -133,40 +130,13 @@ impl VersionedVariant {
         }
     }
 
-    pub(crate) fn generate_for_from_impl(
+    pub fn generate_for_upgrade_from_impl(
         &self,
         version: &VersionDefinition,
         next_version: &VersionDefinition,
         enum_ident: &IdentString,
     ) -> Option<TokenStream> {
-        let variant_fields = match &self.fields {
-            Fields::Named(fields_named) => {
-                let fields: Vec<_> = fields_named
-                    .named
-                    .iter()
-                    .map(|field| {
-                        field
-                            .ident
-                            .as_ref()
-                            .expect("named fields always have an ident")
-                            .clone()
-                    })
-                    .collect();
-
-                quote! { { #(#fields),* } }
-            }
-            Fields::Unnamed(fields_unnamed) => {
-                let fields: Vec<_> = fields_unnamed
-                    .unnamed
-                    .iter()
-                    .enumerate()
-                    .map(|(index, _)| format_ident!("__sv_{index}"))
-                    .collect();
-
-                quote! { ( #(#fields),* ) }
-            }
-            Fields::Unit => TokenStream::new(),
-        };
+        let variant_fields = self.fields_as_token_stream();
 
         match &self.changes {
             Some(changes) => {
@@ -211,6 +181,90 @@ impl VersionedVariant {
                     #old => #next,
                 })
             }
+        }
+    }
+
+    pub fn generate_for_downgrade_from_impl(
+        &self,
+        version: &VersionDefinition,
+        next_version: &VersionDefinition,
+        enum_ident: &IdentString,
+    ) -> Option<TokenStream> {
+        let variant_fields = self.fields_as_token_stream();
+
+        match &self.changes {
+            Some(changes) => {
+                let next_change = changes.get_expect(&next_version.inner);
+                let change = changes.get_expect(&version.inner);
+
+                match (change, next_change) {
+                    (_, ItemStatus::Addition { .. }) => None,
+                    (old, next) => {
+                        let next_version_ident = &next_version.ident;
+                        let old_version_ident = &version.ident;
+
+                        let next_variant_ident = next.get_ident();
+                        let old_variant_ident = old.get_ident();
+
+                        let old = quote! {
+                            #old_version_ident::#enum_ident::#old_variant_ident #variant_fields
+                        };
+                        let next = quote! {
+                            #next_version_ident::#enum_ident::#next_variant_ident #variant_fields
+                        };
+
+                        Some(quote! {
+                            #next => #old,
+                        })
+                    }
+                }
+            }
+            None => {
+                let next_version_ident = &next_version.ident;
+                let old_version_ident = &version.ident;
+                let variant_ident = &*self.ident;
+
+                let old = quote! {
+                    #old_version_ident::#enum_ident::#variant_ident #variant_fields
+                };
+                let next = quote! {
+                    #next_version_ident::#enum_ident::#variant_ident #variant_fields
+                };
+
+                Some(quote! {
+                    #next => #old,
+                })
+            }
+        }
+    }
+
+    fn fields_as_token_stream(&self) -> Option<TokenStream> {
+        match &self.fields {
+            Fields::Named(fields_named) => {
+                let fields: Vec<_> = fields_named
+                    .named
+                    .iter()
+                    .map(|field| {
+                        field
+                            .ident
+                            .as_ref()
+                            .expect("named fields always have an ident")
+                    })
+                    .collect();
+
+                Some(quote! { { #(#fields),* } })
+            }
+            Fields::Unnamed(fields_unnamed) => {
+                let fields: Vec<_> = fields_unnamed
+                    .unnamed
+                    .iter()
+                    .enumerate()
+                    .map(|(index, _)| format_ident!("__sv_{index}"))
+                    .collect();
+
+                Some(quote! { ( #(#fields),* ) })
+            }
+            Fields::Unit => None,
         }
     }
 }

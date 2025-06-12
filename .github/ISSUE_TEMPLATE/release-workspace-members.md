@@ -1,7 +1,7 @@
 ---
 name: Pre-Release Workspace Member Updates and Releases
 about: This template can be used to track the updates and releases of all workspace members leading up to the next Stackable release
-title: "chore: Update and release workspace members"
+title: "chore: Update and release workspace members for Stackable Release YY.M.X"
 labels: ['epic']
 assignees: ''
 ---
@@ -11,7 +11,7 @@ assignees: ''
     This was created by an issue template: https://github.com/stackabletech/operator-rs/issues/new/choose.
 -->
 
-## Update and Release Workspace Members for Stackable Release XX.(X)X
+Part of stackabletech/issues#xxx.
 
 > [!NOTE]
 > During a Stackable release we update all dependencies in the `operator-rs`
@@ -21,15 +21,12 @@ assignees: ''
 
 Replace the items in the task lists below with the applicable Pull Requests
 
-```[tasklist]
-### Tasks
 - [ ] Update Rust version and workflow actions, see below for more details.
 - [ ] Update Rust dependencies, see below for more details.
 - [ ] Adjust and then verify crate versions using `.scripts/verify_crate_versions.sh`.
 - [ ] Push the release tags using `.scripts/tag_and_push_release.sh`.
-```
 
-### Update Rust Version and Workflow Actions
+## Update Rust Version and Workflow Actions
 
 > [!NOTE]
 > The PR is usually titled: `chore: Bump Rust version and workflow actions`
@@ -45,7 +42,7 @@ Replace the items in the task lists below with the applicable Pull Requests
    make sure that the `cargo-udeps` action is up-to-date, otherwise the CI might
    report errors.
 
-### Update Rust Dependencies
+## Update Rust Dependencies
 
 > [!NOTE]
 > This PR is usually titled: `chore: Bump Rust dependencies`
@@ -59,7 +56,7 @@ Replace the items in the task lists below with the applicable Pull Requests
        override the dependency.
 5. Add a changelog entry if required.
 
-### Adjust and Verify Crate Versions
+## Adjust and Verify Crate Versions
 
 > [!WARNING]
 > Currently, all workspace members use `0.X.Y` versions. This means we can

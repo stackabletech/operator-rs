@@ -183,68 +183,73 @@ mod tests {
         role_affinity.merge(&default_affinity);
         let merged_affinity: StackableAffinity = fragment::validate(role_affinity).unwrap();
 
-        assert_eq!(merged_affinity, StackableAffinity {
-            pod_affinity: Some(PodAffinity {
-                preferred_during_scheduling_ignored_during_execution: None,
-                required_during_scheduling_ignored_during_execution: Some(vec![PodAffinityTerm {
-                    label_selector: Some(LabelSelector {
-                        match_expressions: Some(vec![LabelSelectorRequirement {
-                            key: "app.kubernetes.io/name".to_string(),
-                            operator: "In".to_string(),
-                            values: Some(vec!["foo".to_string(), "bar".to_string()])
-                        }]),
-                        match_labels: None,
-                    }),
-                    topology_key: "".to_string(),
-                    ..Default::default()
-                }])
-            }),
-            pod_anti_affinity: Some(PodAntiAffinity {
-                preferred_during_scheduling_ignored_during_execution: Some(vec![
-                    WeightedPodAffinityTerm {
-                        pod_affinity_term: PodAffinityTerm {
+        assert_eq!(
+            merged_affinity,
+            StackableAffinity {
+                pod_affinity: Some(PodAffinity {
+                    preferred_during_scheduling_ignored_during_execution: None,
+                    required_during_scheduling_ignored_during_execution: Some(vec![
+                        PodAffinityTerm {
                             label_selector: Some(LabelSelector {
-                                match_expressions: None,
-                                match_labels: Some(BTreeMap::from([
-                                    ("app.kubernetes.io/name".to_string(), "kafka".to_string(),),
-                                    (
-                                        "app.kubernetes.io/instance".to_string(),
-                                        "simple-kafka".to_string(),
-                                    ),
-                                    (
-                                        "app.kubernetes.io/component".to_string(),
-                                        "broker".to_string(),
-                                    )
-                                ]))
+                                match_expressions: Some(vec![LabelSelectorRequirement {
+                                    key: "app.kubernetes.io/name".to_string(),
+                                    operator: "In".to_string(),
+                                    values: Some(vec!["foo".to_string(), "bar".to_string()])
+                                }]),
+                                match_labels: None,
                             }),
-                            topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
+                            topology_key: "".to_string(),
                             ..Default::default()
-                        },
-                        weight: 70
-                    }
-                ]),
-                required_during_scheduling_ignored_during_execution: None,
-            }),
-            node_affinity: Some(NodeAffinity {
-                preferred_during_scheduling_ignored_during_execution: None,
-                required_during_scheduling_ignored_during_execution: Some(NodeSelector {
-                    node_selector_terms: vec![NodeSelectorTerm {
-                        match_expressions: Some(vec![NodeSelectorRequirement {
-                            key: "topology.kubernetes.io/zone".to_string(),
-                            operator: "In".to_string(),
-                            values: Some(vec![
-                                "antarctica-east1".to_string(),
-                                "antarctica-west1".to_string()
-                            ]),
-                        }]),
-                        match_fields: None,
-                    }]
+                        }
+                    ])
                 }),
-            }),
-            node_selector: Some(StackableNodeSelector {
-                node_selector: BTreeMap::from([("disktype".to_string(), "ssd".to_string())])
-            }),
-        });
+                pod_anti_affinity: Some(PodAntiAffinity {
+                    preferred_during_scheduling_ignored_during_execution: Some(vec![
+                        WeightedPodAffinityTerm {
+                            pod_affinity_term: PodAffinityTerm {
+                                label_selector: Some(LabelSelector {
+                                    match_expressions: None,
+                                    match_labels: Some(BTreeMap::from([
+                                        ("app.kubernetes.io/name".to_string(), "kafka".to_string(),),
+                                        (
+                                            "app.kubernetes.io/instance".to_string(),
+                                            "simple-kafka".to_string(),
+                                        ),
+                                        (
+                                            "app.kubernetes.io/component".to_string(),
+                                            "broker".to_string(),
+                                        )
+                                    ]))
+                                }),
+                                topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
+                                ..Default::default()
+                            },
+                            weight: 70
+                        }
+                    ]),
+                    required_during_scheduling_ignored_during_execution: None,
+                }),
+                node_affinity: Some(NodeAffinity {
+                    preferred_during_scheduling_ignored_during_execution: None,
+                    required_during_scheduling_ignored_during_execution: Some(NodeSelector {
+                        node_selector_terms: vec![NodeSelectorTerm {
+                            match_expressions: Some(vec![NodeSelectorRequirement {
+                                key: "topology.kubernetes.io/zone".to_string(),
+                                operator: "In".to_string(),
+                                values: Some(vec![
+                                    "antarctica-east1".to_string(),
+                                    "antarctica-west1".to_string()
+                                ]),
+                            }]),
+                            match_fields: None,
+                        }]
+                    }),
+                }),
+                node_selector: Some(StackableNodeSelector {
+                    node_selector: BTreeMap::from([("disktype".to_string(), "ssd".to_string())])
+                }),
+            }
+        );
     }
 
     #[test]
@@ -279,11 +284,50 @@ mod tests {
         role_affinity.merge(&default_affinity);
         let merged_affinity: StackableAffinity = fragment::validate(role_affinity).unwrap();
 
-        assert_eq!(merged_affinity, StackableAffinity {
-            pod_affinity: None,
-            pod_anti_affinity: Some(PodAntiAffinity {
-                preferred_during_scheduling_ignored_during_execution: None,
-                required_during_scheduling_ignored_during_execution: Some(vec![PodAffinityTerm {
+        assert_eq!(
+            merged_affinity,
+            StackableAffinity {
+                pod_affinity: None,
+                pod_anti_affinity: Some(PodAntiAffinity {
+                    preferred_during_scheduling_ignored_during_execution: None,
+                    required_during_scheduling_ignored_during_execution: Some(vec![
+                        PodAffinityTerm {
+                            label_selector: Some(LabelSelector {
+                                match_expressions: None,
+                                match_labels: Some(BTreeMap::from([
+                                    ("app.kubernetes.io/name".to_string(), "kafka".to_string(),),
+                                    (
+                                        "app.kubernetes.io/instance".to_string(),
+                                        "simple-kafka".to_string(),
+                                    ),
+                                    (
+                                        "app.kubernetes.io/component".to_string(),
+                                        "broker".to_string(),
+                                    )
+                                ]))
+                            }),
+                            topology_key: "topology.kubernetes.io/zone".to_string(),
+                            ..Default::default()
+                        }
+                    ]),
+                }),
+                node_affinity: None,
+                node_selector: None,
+            }
+        );
+    }
+
+    #[test]
+    fn between_role_pods() {
+        let app_name = "kafka";
+        let cluster_name = "simple-kafka";
+        let role = "broker";
+
+        let anti_affinity = affinity_between_role_pods(app_name, cluster_name, role, 70);
+        assert_eq!(
+            anti_affinity,
+            WeightedPodAffinityTerm {
+                pod_affinity_term: PodAffinityTerm {
                     label_selector: Some(LabelSelector {
                         match_expressions: None,
                         match_labels: Some(BTreeMap::from([
@@ -298,43 +342,12 @@ mod tests {
                             )
                         ]))
                     }),
-                    topology_key: "topology.kubernetes.io/zone".to_string(),
+                    topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
                     ..Default::default()
-                }]),
-            }),
-            node_affinity: None,
-            node_selector: None,
-        });
-    }
-
-    #[test]
-    fn between_role_pods() {
-        let app_name = "kafka";
-        let cluster_name = "simple-kafka";
-        let role = "broker";
-
-        let anti_affinity = affinity_between_role_pods(app_name, cluster_name, role, 70);
-        assert_eq!(anti_affinity, WeightedPodAffinityTerm {
-            pod_affinity_term: PodAffinityTerm {
-                label_selector: Some(LabelSelector {
-                    match_expressions: None,
-                    match_labels: Some(BTreeMap::from([
-                        ("app.kubernetes.io/name".to_string(), "kafka".to_string(),),
-                        (
-                            "app.kubernetes.io/instance".to_string(),
-                            "simple-kafka".to_string(),
-                        ),
-                        (
-                            "app.kubernetes.io/component".to_string(),
-                            "broker".to_string(),
-                        )
-                    ]))
-                }),
-                topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
-                ..Default::default()
-            },
-            weight: 70
-        });
+                },
+                weight: 70
+            }
+        );
     }
 
     #[test]
@@ -343,22 +356,25 @@ mod tests {
         let cluster_name = "simple-kafka";
 
         let anti_affinity = affinity_between_cluster_pods(app_name, cluster_name, 20);
-        assert_eq!(anti_affinity, WeightedPodAffinityTerm {
-            pod_affinity_term: PodAffinityTerm {
-                label_selector: Some(LabelSelector {
-                    match_expressions: None,
-                    match_labels: Some(BTreeMap::from([
-                        ("app.kubernetes.io/name".to_string(), "kafka".to_string(),),
-                        (
-                            "app.kubernetes.io/instance".to_string(),
-                            "simple-kafka".to_string(),
-                        )
-                    ]))
-                }),
-                topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
-                ..Default::default()
-            },
-            weight: 20
-        });
+        assert_eq!(
+            anti_affinity,
+            WeightedPodAffinityTerm {
+                pod_affinity_term: PodAffinityTerm {
+                    label_selector: Some(LabelSelector {
+                        match_expressions: None,
+                        match_labels: Some(BTreeMap::from([
+                            ("app.kubernetes.io/name".to_string(), "kafka".to_string(),),
+                            (
+                                "app.kubernetes.io/instance".to_string(),
+                                "simple-kafka".to_string(),
+                            )
+                        ]))
+                    }),
+                    topology_key: TOPOLOGY_KEY_HOSTNAME.to_string(),
+                    ..Default::default()
+                },
+                weight: 20
+            }
+        );
     }
 }
