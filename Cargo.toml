@@ -40,7 +40,7 @@ opentelemetry = "0.29.1"
 opentelemetry_sdk = { version = "0.29.0", features = ["rt-tokio"] }
 opentelemetry-appender-tracing = "0.29.1"
 opentelemetry-otlp = "0.29.0"
-# opentelemetry-semantic-conventions = "0.28.0"
+opentelemetry-semantic-conventions = "0.29.0"
 p256 = { version = "0.13.2", features = ["ecdsa"] }
 paste = "1.0.15"
 pin-project = "1.1.5"

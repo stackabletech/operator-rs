@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Use constants from `opentelemetry-semantic-conventions` instead of hard-coded strings ([#1055]).
 - Bump `opentelemetry` and related crates to `0.29.x` and `tracing-opentelemetry` to `0.30.0` ([#1021]).
 
 ### Fixed
@@ -14,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 [#1021]: https://github.com/stackabletech/operator-rs/pull/1021
 [#1026]: https://github.com/stackabletech/operator-rs/pull/1026
+[#1055]: https://github.com/stackabletech/operator-rs/pull/1055
 
 ## [0.6.0] - 2025-04-14
 
