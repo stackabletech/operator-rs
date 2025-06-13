@@ -25,7 +25,8 @@ educe =  { version = "0.6.0", default-features = false, features = ["Clone", "De
 either = "1.13.0"
 futures = "0.3.30"
 futures-util = "0.3.30"
-indexmap = "2.5"
+indexmap = "2.5.0"
+indoc = "2.0.6"
 insta = { version= "1.40", features = ["glob"] }
 hyper = { version = "1.4.1", features = ["full"] }
 hyper-util = "0.1.8"
@@ -41,6 +42,7 @@ opentelemetry-appender-tracing = "0.29.1"
 opentelemetry-otlp = "0.29.0"
 # opentelemetry-semantic-conventions = "0.28.0"
 p256 = { version = "0.13.2", features = ["ecdsa"] }
+paste = "1.0.15"
 pin-project = "1.1.5"
 prettyplease = "0.2.22"
 proc-macro2 = "1.0.86"

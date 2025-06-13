@@ -1,13 +1,14 @@
 use std::{cmp::Ordering, fmt::Display, str::FromStr};
 
-#[cfg(feature = "darling")]
-use darling::FromMeta;
 use snafu::{ResultExt, Snafu};
 
 use crate::{Group, ParseGroupError, ParseVersionError, Version};
 
 #[cfg(feature = "serde")]
 mod serde;
+
+#[cfg(feature = "darling")]
+mod darling;
 
 /// Error variants which can be encountered when creating a new [`ApiVersion`]
 /// from unparsed input.
@@ -45,13 +46,13 @@ impl FromStr for ApiVersion {
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let (group, version) = if let Some((group, version)) = input.split_once('/') {
             let group = Group::from_str(group).context(ParseGroupSnafu)?;
+            let version = Version::from_str(version).context(ParseVersionSnafu)?;
 
-            (
-                Some(group),
-                Version::from_str(version).context(ParseVersionSnafu)?,
-            )
+            (Some(group), version)
         } else {
-            (None, Version::from_str(input).context(ParseVersionSnafu)?)
+            let version = Version::from_str(input).context(ParseVersionSnafu)?;
+
+            (None, version)
         };
 
         Ok(Self { group, version })
@@ -77,13 +78,6 @@ impl Display for ApiVersion {
     }
 }
 
-#[cfg(feature = "darling")]
-impl FromMeta for ApiVersion {
-    fn from_string(value: &str) -> darling::Result<Self> {
-        Self::from_str(value).map_err(darling::Error::custom)
-    }
-}
-
 impl ApiVersion {
     /// Create a new Kubernetes API version.
     pub fn new(group: Option<Group>, version: Version) -> Self {
@@ -104,18 +98,10 @@ impl ApiVersion {
 
 #[cfg(test)]
 mod test {
-    #[cfg(feature = "darling")]
-    use quote::quote;
     use rstest::rstest;
 
     use super::*;
     use crate::Level;
-
-    #[cfg(feature = "darling")]
-    fn parse_meta(tokens: proc_macro2::TokenStream) -> ::std::result::Result<syn::Meta, String> {
-        let attribute: syn::Attribute = syn::parse_quote!(#[#tokens]);
-        Ok(attribute.meta)
-    }
 
     #[rstest]
     #[case("extensions/v1beta1", ApiVersion { group: Some("extensions".parse().unwrap()), version: Version { major: 1, level: Some(Level::Beta(1)) } })]
@@ -144,16 +130,5 @@ mod test {
     #[case(Version {major: 1, level: None}, Version {major: 2, level: None}, Ordering::Less)]
     fn partial_ord(#[case] input: Version, #[case] other: Version, #[case] expected: Ordering) {
         assert_eq!(input.partial_cmp(&other), Some(expected));
-    }
-
-    #[cfg(feature = "darling")]
-    #[rstest]
-    #[case(quote!(ignore = "extensions/v1beta1"), ApiVersion { group: Some("extensions".parse().unwrap()), version: Version { major: 1, level: Some(Level::Beta(1)) } })]
-    #[case(quote!(ignore = "v1beta1"), ApiVersion { group: None, version: Version { major: 1, level: Some(Level::Beta(1)) } })]
-    #[case(quote!(ignore = "v1"), ApiVersion { group: None, version: Version { major: 1, level: None } })]
-    fn from_meta(#[case] input: proc_macro2::TokenStream, #[case] expected: ApiVersion) {
-        let meta = parse_meta(input).expect("valid attribute tokens");
-        let api_version = ApiVersion::from_meta(&meta).expect("version must parse from attribute");
-        assert_eq!(api_version, expected);
     }
 }

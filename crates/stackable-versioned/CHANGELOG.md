@@ -6,6 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add support for CRD conversions via ConversionReviews ([#1050]).
+  - Add new `try_convert` function to convert objects received via a ConversionReview.
+  - Add new `enable_tracing` option to `#[versioned(k8s(options(...)))]`.
 - Implement basic ground work for downgrading custom resources ([#1033]).
   - Emit `From` implementations to downgrade custom resource specs.
   - Emit a status struct to be able to track values required during downgrades and upgrades of
@@ -20,6 +23,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- BREAKING: The version enum used in `merged_crd` is now suffixed with `Version` ([#1050]).
 - BREAKING: The `convert_with` parameter of the `changed()` action was renamed and split into two
   parts to be able to control the conversion during upgrades and downgrades: `upgrade_with` and
   `downgrade_with` ([#1033]).
@@ -32,6 +36,7 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
+- BREAKING: The `#[versioned(k8s(skip(merged_crd)))]` flag has been removed ([#1050]).
 - BREAKING: Remove unused `AsVersionStr` trait ([#1033]).
 
 ### Miscellaneous
@@ -44,6 +49,7 @@ All notable changes to this project will be documented in this file.
 [#1038]: https://github.com/stackabletech/operator-rs/pull/1038
 [#1041]: https://github.com/stackabletech/operator-rs/pull/1041
 [#1046]: https://github.com/stackabletech/operator-rs/pull/1046
+[#1050]: https://github.com/stackabletech/operator-rs/pull/1050
 
 ## [0.7.1] - 2025-04-02
 

@@ -3,16 +3,27 @@ use std::ops::Deref;
 use convert_case::{Case, Casing};
 use darling::util::IdentString;
 use k8s_version::Version;
+use proc_macro2::Span;
 use quote::{ToTokens, format_ident};
-use syn::{Ident, spanned::Spanned};
+use syn::{Ident, Path, spanned::Spanned};
+
+pub mod doc_comments;
 
 pub trait VersionExt {
     fn as_variant_ident(&self) -> IdentString;
+    fn as_module_ident(&self) -> IdentString;
 }
 
 impl VersionExt for Version {
     fn as_variant_ident(&self) -> IdentString {
-        format_ident!("{ident}", ident = self.to_string().to_case(Case::Pascal)).into()
+        IdentString::new(Ident::new(
+            &self.to_string().to_case(Case::Pascal),
+            Span::call_site(),
+        ))
+    }
+
+    fn as_module_ident(&self) -> IdentString {
+        IdentString::new(Ident::new(&self.to_string(), Span::call_site()))
     }
 }
 
@@ -22,7 +33,7 @@ pub trait ContainerIdentExt {
     fn as_cleaned_kubernetes_ident(&self) -> IdentString;
 
     /// Transforms the [`IdentString`] into one usable in the [`From`] impl.
-    fn as_from_impl_ident(&self) -> IdentString;
+    fn as_parameter_ident(&self) -> IdentString;
 }
 
 impl ContainerIdentExt for Ident {
@@ -31,9 +42,19 @@ impl ContainerIdentExt for Ident {
         IdentString::new(ident)
     }
 
-    fn as_from_impl_ident(&self) -> IdentString {
+    fn as_parameter_ident(&self) -> IdentString {
         let ident = format_ident!("__sv_{}", self.to_string().to_lowercase());
         IdentString::new(ident)
+    }
+}
+
+impl ContainerIdentExt for IdentString {
+    fn as_cleaned_kubernetes_ident(&self) -> IdentString {
+        self.as_ident().as_cleaned_kubernetes_ident()
+    }
+
+    fn as_parameter_ident(&self) -> IdentString {
+        self.as_ident().as_parameter_ident()
     }
 }
 
@@ -113,5 +134,19 @@ impl Deref for VariantIdent {
 impl ToTokens for VariantIdent {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         self.0.to_tokens(tokens);
+    }
+}
+
+pub fn path_to_string(path: &Path) -> String {
+    let pretty_path = path
+        .segments
+        .iter()
+        .map(|s| s.ident.to_string())
+        .collect::<Vec<String>>()
+        .join("::");
+
+    match path.leading_colon {
+        Some(_) => format!("::{}", pretty_path),
+        None => pretty_path,
     }
 }

@@ -21,7 +21,7 @@ pub mod versioned {
         crates(
             kube_core = "kube::core",
             k8s_openapi = "k8s_openapi",
-            schemars = "schemars"
+            schemars = "schemars",
         ),
         namespaced
     ))]

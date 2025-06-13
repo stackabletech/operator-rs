@@ -18,8 +18,10 @@ pub mod versioned {
         namespaced,
         crates(
             kube_core = "stackable_operator::kube::core",
+            kube_client = "stackable_operator::kube::client",
             k8s_openapi = "stackable_operator::k8s_openapi",
-            schemars = "stackable_operator::schemars"
+            schemars = "stackable_operator::schemars",
+            versioned = "stackable_operator::versioned"
         )
     ))]
     #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
