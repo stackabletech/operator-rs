@@ -4,6 +4,8 @@
   "rust-analyzer.rustfmt.overrideCommand": [
     "rustfmt",
     "+nightly-2025-05-26",
+    "--edition",
+    "2024",
     "--"
   ]
 }
