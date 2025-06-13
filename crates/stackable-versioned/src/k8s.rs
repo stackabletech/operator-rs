@@ -53,7 +53,7 @@ pub enum ParseObjectError {
     #[snafu(display(r#"the "apiVersion" field must be a string"#))]
     FieldNotStr,
 
-    #[snafu(display("encountered unknown object api version {api_version:?}"))]
+    #[snafu(display("encountered unknown object API version {api_version:?}"))]
     UnknownApiVersion { api_version: String },
 
     #[snafu(display("failed to deserialize object from JSON"))]
