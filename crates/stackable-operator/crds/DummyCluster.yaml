@@ -1090,11 +1090,6 @@ spec:
                       format: date-time
                       nullable: true
                       type: string
-                    lastUpdateTime:
-                      description: The last time this condition was updated.
-                      format: date-time
-                      nullable: true
-                      type: string
                     message:
                       description: A human readable message indicating details about the transition.
                       nullable: true
