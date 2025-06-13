@@ -80,6 +80,9 @@ impl Container {
         }
     }
 
+    /// Generates Kubernetes specific code for the container.
+    ///
+    /// This includes CRD merging, CRD conversion, and the conversion tracking status struct.
     pub fn generate_kubernetes_code(
         &self,
         versions: &[VersionDefinition],
@@ -93,6 +96,7 @@ impl Container {
         }
     }
 
+    /// Generates KUbernetes specific code for individual versions.
     pub fn generate_kubernetes_version_items(
         &self,
         version: &VersionDefinition,
@@ -103,6 +107,7 @@ impl Container {
         }
     }
 
+    /// Returns the original ident of the container.
     pub fn get_original_ident(&self) -> &Ident {
         match &self {
             Container::Struct(s) => s.common.idents.original.as_ident(),
