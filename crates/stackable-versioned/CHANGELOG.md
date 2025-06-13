@@ -7,8 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add support for CRD conversions via ConversionReviews ([#1050]).
-  - Add new `try_convert` function to convert objects received via a ConversionReview
-  - Add new `enable_tracing` option to `#[versioned(k8s(options(...)))]`
+  - Add new `try_convert` function to convert objects received via a ConversionReview.
+  - Add new `enable_tracing` option to `#[versioned(k8s(options(...)))]`.
 - Implement basic ground work for downgrading custom resources ([#1033]).
   - Emit `From` implementations to downgrade custom resource specs.
   - Emit a status struct to be able to track values required during downgrades and upgrades of

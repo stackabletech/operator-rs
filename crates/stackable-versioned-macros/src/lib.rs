@@ -864,7 +864,7 @@ of other generated items, like the status struct (if used) or the version enum.
 
 ### `#[versioned(k8s(singular = "..."))]`
 
-Set the singular name. Defaults to lowercased .kind value.
+Set the singular name. Defaults to lowercased `kind` value.
 
 ### `#[versioned(k8s(plural = "..."))]`
 
@@ -943,7 +943,7 @@ pub struct FooSpec {
 
 # fn main() {
 let merged_crd = Foo::merged_crd(FooVersion::V1Beta1).unwrap();
-println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
+println!("{yaml}", yaml = serde_yaml::to_string(&merged_crd).unwrap());
 # }
 ```
 

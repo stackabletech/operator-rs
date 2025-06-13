@@ -50,13 +50,13 @@ pub enum ParseObjectError {
     #[snafu(display(r#"failed to find "apiVersion" field"#))]
     FieldNotPresent,
 
-    #[snafu(display(r#"the "apiVersion" field is not a string"#))]
+    #[snafu(display(r#"the "apiVersion" field must be a string"#))]
     FieldNotStr,
 
     #[snafu(display("encountered unknown object api version {api_version:?}"))]
     UnknownApiVersion { api_version: String },
 
-    #[snafu(display("failed to deserialize object from json"))]
+    #[snafu(display("failed to deserialize object from JSON"))]
     Deserialize { source: serde_json::Error },
 }
 
