@@ -47,23 +47,8 @@ pub struct KubernetesArguments {
     // doc
     // annotation
     // label
-    pub skip: Option<KubernetesSkipArguments>,
-
     #[darling(default)]
     pub options: KubernetesConfigOptions,
-}
-
-/// This struct contains supported kubernetes skip arguments.
-///
-/// Supported arguments are:
-///
-/// - `merged_crd` flag, which skips generating the `crd()` and `merged_crd()` functions are
-///    generated.
-#[derive(Clone, Debug, FromMeta)]
-pub struct KubernetesSkipArguments {
-    /// Whether the `crd()` and `merged_crd()` generation should be skipped for
-    /// this container.
-    pub merged_crd: Flag,
 }
 
 /// This struct contains crate overrides to be passed to `#[kube]`.
@@ -176,4 +161,5 @@ impl ToTokens for KubernetesCrateArguments {
 #[derive(Clone, Default, Debug, FromMeta)]
 pub struct KubernetesConfigOptions {
     pub experimental_conversion_tracking: Flag,
+    pub enable_tracing: Flag,
 }

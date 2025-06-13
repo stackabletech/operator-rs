@@ -1417,6 +1417,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "indoc"
+version = "2.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4c7245a08504955605670dbf141fceab975f15ca21570696aebe9d2e71576bd"
+
+[[package]]
 name = "insta"
 version = "1.43.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1990,6 +1996,12 @@ dependencies = [
  "smallvec",
  "windows-targets 0.52.6",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "pem"
@@ -3060,6 +3072,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "snafu 0.8.5",
  "stackable-versioned-macros",
 ]
 
@@ -3069,6 +3082,7 @@ version = "0.7.1"
 dependencies = [
  "convert_case",
  "darling",
+ "indoc",
  "insta",
  "itertools",
  "k8s-openapi",
@@ -3086,6 +3100,7 @@ dependencies = [
  "snafu 0.8.5",
  "stackable-versioned",
  "syn 2.0.101",
+ "tracing",
  "trybuild",
 ]
 
@@ -4117,6 +4132,7 @@ name = "xtask"
 version = "0.0.0"
 dependencies = [
  "clap",
+ "paste",
  "serde",
  "serde_json",
  "snafu 0.8.5",

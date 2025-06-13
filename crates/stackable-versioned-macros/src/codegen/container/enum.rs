@@ -141,11 +141,11 @@ impl Enum {
                 // advise against using generic types, but if you have to, avoid removing it in
                 // later versions.
                 let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
+                let from_enum_ident = &self.common.idents.parameter;
                 let enum_ident = &self.common.idents.original;
-                let from_enum_ident = &self.common.idents.from;
 
-                let for_module_ident = &next_version.ident;
-                let from_module_ident = &version.ident;
+                let for_module_ident = &next_version.idents.module;
+                let from_module_ident = &version.idents.module;
 
                 let variants: TokenStream = self
                     .variants
@@ -201,11 +201,11 @@ impl Enum {
         match next_version {
             Some(next_version) => {
                 let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
+                let from_enum_ident = &self.common.idents.parameter;
                 let enum_ident = &self.common.idents.original;
-                let from_enum_ident = &self.common.idents.from;
 
-                let for_module_ident = &version.ident;
-                let from_module_ident = &next_version.ident;
+                let from_module_ident = &next_version.idents.module;
+                let for_module_ident = &version.idents.module;
 
                 let variants: TokenStream = self
                     .variants
