@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
-- Removed `last_update_time` from CRD ClusterCondition status ([#1054]).
+- BREAKING: Removed `last_update_time` from CRD ClusterCondition status ([#1054]).
 
 [#1049]: https://github.com/stackabletech/operator-rs/pull/1049
 [#1054]: https://github.com/stackabletech/operator-rs/pull/1054
