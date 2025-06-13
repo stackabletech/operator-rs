@@ -8,8 +8,11 @@ use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use opentelemetry::trace::{FutureExt, SpanKind};
 use snafu::{ResultExt, Snafu};
-use stackable_certs::{CertificatePairError, ca::CertificateAuthority, keys::rsa};
-use stackable_operator::time::Duration;
+use stackable_certs::{
+    CertificatePair, CertificatePairError, CreateCertificateError,
+    ca::{CertificateAuthority, CreateCertificateAuthorityError},
+    keys::ecdsa,
+};
 use tokio::net::TcpListener;
 use tokio_rustls::{
     TlsAcceptor,
@@ -36,20 +39,24 @@ pub enum Error {
         socket_addr: SocketAddr,
     },
 
-    #[snafu(display("failed to create CA to generate and sign webhook leaf certificate"))]
-    CreateCertificateAuthority { source: stackable_certs::ca::Error },
+    #[snafu(display("failed to create certificate authority"))]
+    CreateCertificateAuthority {
+        source: CreateCertificateAuthorityError<ecdsa::Error>,
+    },
 
-    #[snafu(display("failed to generate webhook leaf certificate"))]
-    GenerateLeafCertificate { source: stackable_certs::ca::Error },
+    #[snafu(display("failed to create certificate"))]
+    CreateCertificate {
+        source: CreateCertificateError<ecdsa::Error>,
+    },
 
     #[snafu(display("failed to encode leaf certificate as DER"))]
     EncodeCertificateDer {
-        source: CertificatePairError<rsa::Error>,
+        source: CertificatePairError<ecdsa::Error>,
     },
 
     #[snafu(display("failed to encode private key as DER"))]
     EncodePrivateKeyDer {
-        source: CertificatePairError<rsa::Error>,
+        source: CertificatePairError<ecdsa::Error>,
     },
 
     #[snafu(display("failed to set safe TLS protocol versions"))]
@@ -102,18 +109,21 @@ impl TlsServer {
         // blocked.
         // See https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html
         let task = tokio::task::spawn_blocking(move || {
-            let mut certificate_authority =
-                CertificateAuthority::new_rsa().context(CreateCertificateAuthoritySnafu)?;
+            let ca = CertificateAuthority::builder_with_ecdsa()
+                .build()
+                .context(CreateCertificateAuthoritySnafu)?;
 
-            let leaf_certificate = certificate_authority
-                .generate_rsa_leaf_certificate("Leaf", "webhook", Duration::from_secs(3600))
-                .context(GenerateLeafCertificateSnafu)?;
+            let certificate = CertificatePair::builder()
+                .subject("CN=webhook")
+                .signed_by(&ca)
+                .build()
+                .context(CreateCertificateSnafu)?;
 
-            let certificate_der = leaf_certificate
+            let certificate_der = certificate
                 .certificate_der()
                 .context(EncodeCertificateDerSnafu)?;
 
-            let private_key_der = leaf_certificate
+            let private_key_der = certificate
                 .private_key_der()
                 .context(EncodePrivateKeyDerSnafu)?;
 
