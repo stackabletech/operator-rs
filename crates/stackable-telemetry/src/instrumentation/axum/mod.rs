@@ -25,6 +25,14 @@ use opentelemetry::{
     Context,
     trace::{SpanKind, TraceContextExt},
 };
+use opentelemetry_semantic_conventions::{
+    attribute::{OTEL_STATUS_CODE, OTEL_STATUS_DESCRIPTION},
+    trace::{
+        CLIENT_ADDRESS, CLIENT_PORT, HTTP_REQUEST_HEADER, HTTP_REQUEST_METHOD,
+        HTTP_RESPONSE_STATUS_CODE, HTTP_ROUTE, SERVER_ADDRESS, SERVER_PORT, URL_PATH, URL_QUERY,
+        URL_SCHEME, USER_AGENT_ORIGINAL,
+    },
+};
 use pin_project::pin_project;
 use snafu::{ResultExt, Snafu};
 use tower::{Layer, Service};
@@ -40,6 +48,14 @@ pub use injector::*;
 const X_FORWARDED_HOST_HEADER_KEY: &str = "X-Forwarded-Host";
 const DEFAULT_HTTPS_PORT: u16 = 443;
 const DEFAULT_HTTP_PORT: u16 = 80;
+
+// NOTE (@Techassi): These constants are defined here because they are private in
+// the tracing-opentelemetry crate.
+const OTEL_NAME: &str = "otel.name";
+const OTEL_KIND: &str = "otel.kind";
+
+const OTEL_TRACE_ID_FROM: &str = "opentelemetry.trace_id.from";
+const OTEL_TRACE_ID_TO: &str = "opentelemetry.trace_id.to";
 
 /// A Tower [`Layer`][1] which decorates [`TraceService`].
 ///
@@ -414,21 +430,23 @@ impl SpanExt for Span {
 
         let span = tracing::trace_span!(
             "HTTP request",
-            "otel.name" = span_name,
-            "otel.kind" = ?SpanKind::Server,
-            "otel.status_code" = Empty,
-            "otel.status_message" = Empty,
-            "http.request.method" = http_method,
-            "http.response.status_code" = Empty,
-            "http.route" = Empty,
-            "url.path" = url.path(),
-            "url.query" = url.query(),
-            "url.scheme" = url.scheme_str().unwrap_or_default(),
-            "user_agent.original" = Empty,
-            "server.address" = Empty,
-            "server.port" = Empty,
-            "client.address" = Empty,
-            "client.port" = Empty,
+            { OTEL_NAME } = span_name,
+            { OTEL_KIND } = ?SpanKind::Server,
+            { OTEL_STATUS_CODE } = Empty,
+            // The current tracing-opentelemetry version still uses the old semantic convention
+            // See https://github.com/tokio-rs/tracing-opentelemetry/pull/209
+            { OTEL_STATUS_DESCRIPTION } = Empty,
+            { HTTP_REQUEST_METHOD } = http_method,
+            { HTTP_RESPONSE_STATUS_CODE } = Empty,
+            { HTTP_ROUTE } = Empty,
+            { URL_PATH } = url.path(),
+            { URL_QUERY } = url.query(),
+            { URL_SCHEME } = url.scheme_str().unwrap_or_default(),
+            { USER_AGENT_ORIGINAL } = Empty,
+            { SERVER_ADDRESS } = Empty,
+            { SERVER_PORT } = Empty,
+            { CLIENT_ADDRESS } = Empty,
+            { CLIENT_PORT } = Empty,
             // TODO (@Techassi): Add network.protocol.version
         );
 
@@ -462,8 +480,8 @@ impl SpanExt for Span {
 
         if new_span_context != current_span_context {
             tracing::trace!(
-                opentelemetry.trace_id.from = ?current_span_context.trace_id(),
-                opentelemetry.trace_id.to = ?new_span_context.trace_id(),
+                { OTEL_TRACE_ID_FROM } = ?current_span_context.trace_id(),
+                { OTEL_TRACE_ID_TO } = ?new_span_context.trace_id(),
                 "set parent span context based on context extracted from request headers"
             );
 
@@ -473,7 +491,7 @@ impl SpanExt for Span {
         }
 
         if let Some(user_agent) = req.user_agent() {
-            span.record("user_agent.original", user_agent);
+            span.record(USER_AGENT_ORIGINAL, user_agent);
         }
 
         // Setting server.address and server.port
@@ -483,21 +501,21 @@ impl SpanExt for Span {
             // NOTE (@Techassi): We cast to i64, because otherwise the field
             // will NOT be recorded as a number but as a string. This is likely
             // an issue in the tracing-opentelemetry crate.
-            span.record("server.address", host)
-                .record("server.port", port as i64);
+            span.record(SERVER_ADDRESS, host)
+                .record(SERVER_PORT, port as i64);
         }
 
         // Setting fields according to the HTTP server semantic conventions
         // See https://opentelemetry.io/docs/specs/semconv/http/http-spans/#http-server-semantic-conventions
 
         if let Some(client_socket_address) = req.client_socket_address() {
-            span.record("client.address", client_socket_address.ip().to_string());
+            span.record(CLIENT_ADDRESS, client_socket_address.ip().to_string());
 
             if opt_in {
                 // NOTE (@Techassi): We cast to i64, because otherwise the field
                 // will NOT be recorded as a number but as a string. This is
                 // likely an issue in the tracing-opentelemetry crate.
-                span.record("client.port", client_socket_address.port() as i64);
+                span.record(CLIENT_PORT, client_socket_address.port() as i64);
             }
         }
 
@@ -511,7 +529,7 @@ impl SpanExt for Span {
         // See: https://github.com/tokio-rs/tracing/issues/1343
 
         if let Some(http_route) = req.matched_path() {
-            span.record("http.route", http_route.as_str());
+            span.record(HTTP_ROUTE, http_route.as_str());
         }
 
         span
@@ -525,7 +543,7 @@ impl SpanExt for Span {
             // header_name.as_str() always returns lowercase strings and thus we
             // don't need to call to_lowercase on it.
             let header_name = header_name.as_str();
-            let field_name = format!("http.request.header.{header_name}");
+            let field_name = format!("{HTTP_REQUEST_HEADER}.{header_name}");
 
             self.record(
                 field_name.as_str(),
@@ -540,7 +558,7 @@ impl SpanExt for Span {
         // NOTE (@Techassi): We cast to i64, because otherwise the field will
         // NOT be recorded as a number but as a string. This is likely an issue
         // in the tracing-opentelemetry crate.
-        self.record("http.response.status_code", status_code.as_u16() as i64);
+        self.record(HTTP_RESPONSE_STATUS_CODE, status_code.as_u16() as i64);
 
         // Only set the span status to "Error" when we encountered an server
         // error. See:
@@ -548,7 +566,7 @@ impl SpanExt for Span {
         // - https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
         // - https://github.com/open-telemetry/opentelemetry-specification/blob/v1.26.0/specification/trace/api.md#set-status
         if status_code.is_server_error() {
-            self.record("otel.status_code", "Error");
+            self.record(OTEL_STATUS_CODE, "Error");
             // NOTE (@Techassi): Can we add a status_description here as well?
         }
 
@@ -561,8 +579,9 @@ impl SpanExt for Span {
         E: std::error::Error,
     {
         // NOTE (@Techassi): This field might get renamed: https://github.com/tokio-rs/tracing-opentelemetry/issues/115
-        self.record("otel.status_code", "Error")
-            .record("otel.status_message", error.to_string());
+        // NOTE (@Techassi): It got renamed, a fixed version of tracing-opentelemetry is not available yet
+        self.record(OTEL_STATUS_CODE, "Error")
+            .record(OTEL_STATUS_DESCRIPTION, error.to_string());
     }
 }
 

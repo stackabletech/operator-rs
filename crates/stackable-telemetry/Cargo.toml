@@ -16,7 +16,7 @@ futures-util.workspace = true
 opentelemetry = { workspace = true, features = ["logs"] }
 opentelemetry-appender-tracing.workspace = true
 opentelemetry-otlp = { workspace = true, features = ["grpc-tonic", "gzip-tonic", "logs"] }
-# opentelemetry-semantic-conventions.workspace = true
+opentelemetry-semantic-conventions.workspace = true
 opentelemetry_sdk = { workspace = true, features = ["logs", "rt-tokio", "spec_unstable_logs_enabled"] }
 pin-project.workspace = true
 snafu.workspace = true
