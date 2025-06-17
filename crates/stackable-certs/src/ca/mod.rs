@@ -68,9 +68,11 @@ pub enum Error {
     #[snafu(display("failed to parse AuthorityKeyIdentifier"))]
     ParseAuthorityKeyIdentifier { source: x509_cert::der::Error },
 
-    #[snafu(display("The subject alternative DNS name \"{dns_name}\" is not a Ia5String"))]
-    SaDnsNameNotAIa5String {
-        dns_name: String,
+    #[snafu(display(
+        "failed to parse subject alternative DNS name \"{subject_alternative_dns_name}\" as a Ia5 string"
+    ))]
+    ParseSubjectAlternativeDnsName {
+        subject_alternative_dns_name: String,
         source: x509_cert::der::Error,
     },
 }
@@ -341,8 +343,8 @@ where
             .into_iter()
             .map(|dns_name| {
                 Ok(GeneralName::DnsName(Ia5String::new(dns_name).context(
-                    SaDnsNameNotAIa5StringSnafu {
-                        dns_name: dns_name.to_string(),
+                    ParseSubjectAlternativeDnsNameSnafu {
+                        subject_alternative_dns_name: dns_name.to_string(),
                     },
                 )?))
             })
