@@ -2,17 +2,19 @@ use darling::{Error, FromAttributes, FromMeta, Result, util::Flag};
 
 use crate::attrs::{
     common::{CommonOptions, CommonRootArguments, SkipArguments},
-    k8s::KubernetesArguments,
+    container::k8s::KubernetesArguments,
 };
+
+pub mod k8s;
 
 #[derive(Debug, FromMeta)]
 #[darling(and_then = StandaloneContainerAttributes::validate)]
-pub(crate) struct StandaloneContainerAttributes {
+pub struct StandaloneContainerAttributes {
     #[darling(rename = "k8s")]
-    pub(crate) kubernetes_arguments: Option<KubernetesArguments>,
+    pub kubernetes_arguments: Option<KubernetesArguments>,
 
     #[darling(flatten)]
-    pub(crate) common: CommonRootArguments<StandaloneContainerOptions>,
+    pub common: CommonRootArguments<StandaloneContainerOptions>,
 }
 
 impl StandaloneContainerAttributes {
@@ -28,9 +30,9 @@ impl StandaloneContainerAttributes {
 }
 
 #[derive(Debug, FromMeta, Default)]
-pub(crate) struct StandaloneContainerOptions {
-    pub(crate) allow_unsorted: Flag,
-    pub(crate) skip: Option<SkipArguments>,
+pub struct StandaloneContainerOptions {
+    pub allow_unsorted: Flag,
+    pub skip: Option<SkipArguments>,
 }
 
 impl CommonOptions for StandaloneContainerOptions {
@@ -44,12 +46,12 @@ impl CommonOptions for StandaloneContainerOptions {
     attributes(versioned),
     and_then = NestedContainerAttributes::validate
 )]
-pub(crate) struct NestedContainerAttributes {
+pub struct NestedContainerAttributes {
     #[darling(rename = "k8s")]
-    pub(crate) kubernetes_arguments: Option<KubernetesArguments>,
+    pub kubernetes_arguments: Option<KubernetesArguments>,
 
     #[darling(default)]
-    pub(crate) options: NestedContainerOptionArguments,
+    pub options: NestedContainerOptionArguments,
 }
 
 impl NestedContainerAttributes {
@@ -65,6 +67,6 @@ impl NestedContainerAttributes {
 }
 
 #[derive(Debug, Default, FromMeta)]
-pub(crate) struct NestedContainerOptionArguments {
-    pub(crate) skip: Option<SkipArguments>,
+pub struct NestedContainerOptionArguments {
+    pub skip: Option<SkipArguments>,
 }

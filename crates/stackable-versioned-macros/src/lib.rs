@@ -16,8 +16,6 @@ mod utils;
 
 /// This macro enables generating versioned structs and enums.
 ///
-/// # Usage Guide
-///
 /// In this guide, code blocks usually come in pairs. The first code block
 /// describes how the macro is used. The second expandable block displays the
 /// generated piece of code for explanation purposes. It should be noted, that
@@ -36,7 +34,7 @@ mod utils;
 ///
 /// </div>
 ///
-/// ## Declaring Versions
+/// # Declaring Versions
 ///
 /// Before any of the fields or variants can be versioned, versions need to be
 /// declared at the container level. Each version currently supports two
@@ -90,7 +88,7 @@ mod utils;
 /// ```
 /// </details>
 ///
-/// ### Deprecation of a Version
+/// ## Deprecation of a Version
 ///
 /// The `deprecated` flag marks the version as deprecated. This currently adds
 /// the `#[deprecated]` attribute to the appropriate piece of code.
@@ -121,12 +119,19 @@ mod utils;
 /// ```
 /// </details>
 ///
-/// ### Version Sorting
+/// ## Version Sorting
 ///
 /// Additionally, it is ensured that each version is unique. Declaring the same
 /// version multiple times will result in an error. Furthermore, declaring the
 /// versions out-of-order is prohibited by default. It is possible to opt-out
-/// of this check by setting `options(allow_unsorted)`:
+/// of this check by setting `options(allow_unsorted)`.
+///
+/// <div class="warning">
+///
+/// It is **not** recommended to use this setting and instead use sorted versions
+/// across all versioned items.
+///
+/// </div>
 ///
 /// ```
 /// # use stackable_versioned_macros::versioned;
@@ -140,7 +145,7 @@ mod utils;
 /// }
 /// ```
 ///
-/// ## Versioning Items in a Module
+/// # Versioning Items in a Module
 ///
 /// Using the macro on structs and enums is explained in detail in the following
 /// sections. This section is dedicated to explain the usage of the macro when
@@ -237,7 +242,7 @@ mod utils;
 /// **not** at the struct / enum level. Item actions describes in the following
 /// section can be used as expected.
 ///
-/// ### Preserve Module
+/// ## Preserve Module
 ///
 /// The previous examples completely replaced the `versioned` module with
 /// top-level version modules. This is the default behaviour. Preserving the
@@ -261,7 +266,7 @@ mod utils;
 /// }
 /// ```
 ///
-/// ### Re-emitting and merging Submodules
+/// ## Re-emitting and merging Submodules
 ///
 /// Modules defined in the versioned module will be re-emitted. This allows for
 /// composition of re-exports to compose easier to use imports for downstream
@@ -328,7 +333,7 @@ mod utils;
 ///
 /// </details>
 ///
-/// ## Item Actions
+/// # Item Actions
 ///
 /// This crate currently supports three different item actions. Items can
 /// be added, changed, and deprecated. The macro ensures that these actions
@@ -350,7 +355,7 @@ mod utils;
 ///   removing fields in CRDs entirely. Instead, they should be marked as
 ///   deprecated. By convention this is done with the `deprecated` prefix.
 ///
-/// ### Added Action
+/// ## Added Action
 ///
 /// This action indicates that an item is added in a particular version.
 /// Available parameters are:
@@ -408,7 +413,7 @@ mod utils;
 /// ```
 /// </details>
 ///
-/// #### Custom Default Function
+/// ### Custom Default Function
 ///
 /// To customize the default function used in the generated `From` implementation
 /// you can use the `default` parameter. It expects a path to a function without
@@ -454,7 +459,7 @@ mod utils;
 /// ```
 /// </details>
 ///
-/// ### Changed Action
+/// ## Changed Action
 ///
 /// This action indicates that an item is changed in a particular version. It
 /// combines renames and type changes into a single action. You can choose to
@@ -529,7 +534,7 @@ mod utils;
 /// ```
 /// </details>
 ///
-/// ### Deprecated Action
+/// ## Deprecated Action
 ///
 /// This action indicates that an item is deprecated in a particular version.
 /// Deprecated items are not removed.
@@ -585,7 +590,7 @@ mod utils;
 /// ```
 /// </details>
 ///
-/// ## Auto-generated `From` Implementations
+/// # Auto-generated `From` Implementations
 ///
 /// To enable smooth container version upgrades, the macro automatically
 /// generates `From` implementations. On a high level, code generated for two
@@ -659,7 +664,7 @@ mod utils;
 ///
 /// </details>
 ///
-/// ### Skipping at the Container Level
+/// ## Skipping at the Container Level
 ///
 /// Disabling this behavior at the container level results in no `From`
 /// implementation for all versions.
@@ -682,7 +687,7 @@ mod utils;
 /// }
 /// ```
 ///
-/// ### Skipping at the Version Level
+/// ## Skipping at the Version Level
 ///
 /// Disabling this behavior at the version level results in no `From`
 /// implementation for that particular version. This can be read as "skip
@@ -709,7 +714,7 @@ mod utils;
 #[cfg_attr(
     feature = "k8s",
     doc = r#"
-## Kubernetes-specific Features
+# Kubernetes-specific Features
 
 This macro also offers support for Kubernetes-specific versioning,
 especially for CustomResourceDefinitions (CRDs). These features are
@@ -717,6 +722,8 @@ completely opt-in. You need to enable the `k8s` feature (which enables
 optional dependencies) and use the `k8s()` parameter in the macro.
 
 You need to derive both [`kube::CustomResource`] and [`schemars::JsonSchema`][1].
+
+## Simple Versioning
 
 ```
 # use stackable_versioned_macros::versioned;
@@ -734,7 +741,12 @@ use serde::{Deserialize, Serialize};
 pub struct FooSpec {
     #[versioned(
         added(since = "v1beta1"),
-        changed(since = "v1", from_name = "prev_bar", from_type = "u16", downgrade_with = usize_to_u16)
+        changed(
+            since = "v1",
+            from_name = "prev_bar",
+            from_type = "u16",
+            downgrade_with = usize_to_u16
+        )
     )]
     bar: usize,
     baz: bool,
@@ -743,34 +755,10 @@ pub struct FooSpec {
 fn usize_to_u16(input: usize) -> u16 {
     input.try_into().unwrap()
 }
-
-# fn main() {
-let merged_crd = Foo::merged_crd(Foo::V1).unwrap();
-println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
-# }
+# fn main() {}
 ```
 
-The generated `merged_crd` method is a wrapper around [kube's `merge_crds`][2]
-function. It automatically calls the `crd` methods of the CRD in all of its
-versions and additionally provides a strongly typed selector for the stored
-API version.
-
-Currently, the following arguments are supported:
-
-- `group`: Set the group of the CR object, usually the domain of the company.
-  This argument is Required.
-- `kind`: Override the kind field of the CR object. This defaults to the struct
-   name (without the 'Spec' suffix).
-- `singular`: Set the singular name of the CR object.
-- `plural`: Set the plural name of the CR object.
-- `namespaced`: Indicate that this is a namespaced scoped resource rather than a
-   cluster scoped resource.
-- `crates`: Override specific crates.
-- `status`: Set the specified struct as the status subresource.
-- `shortname`: Set a shortname for the CR object. This can be specified multiple
-  times.
-
-### Versioning Items in a Module
+## Versioning Items in a Module
 
 Versioning multiple CRD related structs via a module is supported and common
 rules from [above](#versioning-items-in-a-module) apply here as well. It should
@@ -800,11 +788,7 @@ mod versioned {
         baz: String,
     }
 }
-
-# fn main() {
-let merged_crd = Foo::merged_crd(Foo::V1).unwrap();
-println!("{}", serde_yaml::to_string(&merged_crd).unwrap());
-# }
+# fn main() {}
 ```
 
 <details>
@@ -834,8 +818,6 @@ mod v1alpha1 {
     }
 }
 
-// Automatic From implementations for conversion between versions ...
-
 mod v1 {
     use super::*;
     #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, CustomResource)]
@@ -858,14 +840,156 @@ mod v1 {
         pub bar: usize,
     }
 }
-
-// Implementations to create the merged CRDs ...
 ```
 </details>
 
 It is possible to include structs and enums which are not CRDs. They are instead
 versioned as expected (without adding the `#[kube]` derive macro and generating
 code to merge CRD versions).
+
+## Arguments
+
+Currently, the following Kubernetes (kube) specific arguments are supported
+
+### `#[versioned(k8s(group = "..."))]`
+
+**Required.** Set the group of the CRD, usually the domain of the company, like
+`example.com`.
+
+### `#[versioned(k8s(kind = "..."))]`
+
+Override the kind field of the CRD. This defaults to the struct name
+(without the `Spec` suffix). Overriding this value will also influence the names
+of other generated items, like the status struct (if used) or the version enum.
+
+### `#[versioned(k8s(singular = "..."))]`
+
+Set the singular name. Defaults to lowercased `kind` value.
+
+### `#[versioned(k8s(plural = "..."))]`
+
+Set the plural name. Defaults to inferring from singular.
+
+### `#[versioned(k8s(namespaced))]`
+
+Indicate that this is a namespaced scoped resource rather than a cluster scoped
+resource.
+
+### `#[versioned(k8s(crates(...)))]`
+
+Override the import path of specific crates. The following code block depicts
+supported overrides and their default values.
+
+```ignore
+#[versioned(k8s(crates(
+    kube_core = ::kube::core,
+    kube_client = ::kube::client,
+    k8s_openapi = ::k8s_openapi,
+    schemars = ::schemars,
+    serde = ::serde,
+    serde_json = ::serde_json,
+    versioned = ::stackable_versioned,
+)))]
+pub struct Foo {}
+```
+
+### `#[versioned(k8s(status = "..."))]`
+
+Set the specified struct as the status subresource. If conversion tracking is
+enabled, this struct will be automatically merged into the generated tracking
+status struct.
+
+### `#[versioned(k8s(shortname = "..."))]`
+
+Set a shortname. This can be specified multiple times.
+
+### `#[versioned(k8s(options(...)))]`
+
+```ignore
+#[versioned(k8s(options(
+    // Highly experimental conversion tracking. Opting into this feature will
+    // introduce frequent breaking changes.
+    experimental_conversion_tracking,
+
+    // Enables instrumentation and log events via the tracing crate.
+    enable_tracing,
+)))]
+pub struct Foo {}
+```
+
+## Merge CRDs
+
+The generated `merged_crd` method is a wrapper around [kube's `merge_crds`][2]
+function. It automatically calls the `crd` methods of the CRD in all of its
+versions and additionally provides a strongly typed selector for the stored
+API version.
+
+```
+# use stackable_versioned_macros::versioned;
+# use kube::CustomResource;
+# use schemars::JsonSchema;
+# use serde::{Deserialize, Serialize};
+#[versioned(
+    version(name = "v1alpha1"),
+    version(name = "v1beta1"),
+    k8s(group = "example.com")
+)]
+#[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
+pub struct FooSpec {
+    #[versioned(added(since = "v1beta1"))]
+    bar: usize,
+    baz: bool,
+}
+
+# fn main() {
+let merged_crd = Foo::merged_crd(FooVersion::V1Beta1).unwrap();
+println!("{yaml}", yaml = serde_yaml::to_string(&merged_crd).unwrap());
+# }
+```
+
+## Convert CRDs
+
+The conversion of CRDs is tightly integrated with ConversionReviews, the payload
+which a conversion webhook receives from the K8s apiserver. Naturally, the
+`try_convert` function takes in ConversionReview as a parameter and also returns
+a ConversionReview indicating success or failure.
+
+```ignore
+# use stackable_versioned_macros::versioned;
+# use kube::CustomResource;
+# use schemars::JsonSchema;
+# use serde::{Deserialize, Serialize};
+#[versioned(
+    version(name = "v1alpha1"),
+    version(name = "v1beta1"),
+    k8s(group = "example.com")
+)]
+#[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
+pub struct FooSpec {
+    #[versioned(added(since = "v1beta1"))]
+    bar: usize,
+    baz: bool,
+}
+
+# fn main() {
+let conversion_review = Foo::try_convert(conversion_review);
+# }
+```
+
+## OpenTelemetry Semantic Conventions
+
+If tracing is enabled, various traces and events are emitted. The fields of these
+signals follow the general rules of OpenTelemetry semantic conventions. There are
+currently no agreed-upon semantic conventions for CRD conversions. In the meantime
+these fields are used:
+
+| Field | Type (Example) | Description |
+| :---- | :------------- | :---------- |
+| `k8s.crd.conversion.converted_object_count` | usize (6) | The number of successfully converted objects sent back in a conversion review |
+| `k8s.crd.conversion.desired_api_version` | String (v1alpha1) | The desired api version received via a conversion review |
+| `k8s.crd.conversion.api_version` | String (v1beta1) | The current api version of an object received via a conversion review |
+| `k8s.crd.conversion.steps` | usize (2) | The number of steps required to convert a single object from the current to the desired version |
+| `k8s.crd.conversion.kind` | String (Foo) | The kind of the CRD |
 
 [1]: https://docs.rs/schemars/latest/schemars/derive.JsonSchema.html
 [2]: https://docs.rs/kube/latest/kube/core/crd/fn.merge_crds.html

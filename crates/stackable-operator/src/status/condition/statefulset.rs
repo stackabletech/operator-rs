@@ -64,7 +64,6 @@ impl StatefulSetConditionBuilder {
             status: available,
             type_: ClusterConditionType::Available,
             last_transition_time: None,
-            last_update_time: None,
         }
     }
 

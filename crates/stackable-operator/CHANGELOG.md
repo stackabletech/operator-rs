@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Update `kube` to `1.1.0` ([#1049]).
+
+### Removed
+
+- BREAKING: Removed `last_update_time` from CRD ClusterCondition status ([#1054]).
+
+[#1049]: https://github.com/stackabletech/operator-rs/pull/1049
+[#1054]: https://github.com/stackabletech/operator-rs/pull/1054
+
 ## [0.93.2] - 2025-05-26
 
 ### Added

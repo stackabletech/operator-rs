@@ -13,8 +13,8 @@ mod class;
 mod core;
 mod listeners;
 
-pub use class::ListenerClass;
-pub use listeners::{Listener, PodListeners};
+pub use class::{ListenerClass, ListenerClassVersion};
+pub use listeners::{Listener, ListenerVersion, PodListeners, PodListenersVersion};
 
 // Group all v1alpha1 items in one module.
 pub mod v1alpha1 {
