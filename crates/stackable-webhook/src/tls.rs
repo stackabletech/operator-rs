@@ -8,8 +8,11 @@ use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use opentelemetry::trace::{FutureExt, SpanKind};
 use snafu::{ResultExt, Snafu};
-use stackable_certs::{CertificatePairError, ca::CertificateAuthority, keys::rsa};
-use stackable_operator::time::Duration;
+use stackable_certs::{
+    CertificatePairError,
+    ca::{CertificateAuthority, DEFAULT_CA_VALIDITY},
+    keys::rsa,
+};
 use tokio::net::TcpListener;
 use tokio_rustls::{
     TlsAcceptor,
@@ -106,7 +109,7 @@ impl TlsServer {
                 CertificateAuthority::new_rsa().context(CreateCertificateAuthoritySnafu)?;
 
             let leaf_certificate = certificate_authority
-                .generate_rsa_leaf_certificate("Leaf", "webhook", Duration::from_secs(3600))
+                .generate_rsa_leaf_certificate("Leaf", "webhook", [], DEFAULT_CA_VALIDITY)
                 .context(GenerateLeafCertificateSnafu)?;
 
             let certificate_der = leaf_certificate
