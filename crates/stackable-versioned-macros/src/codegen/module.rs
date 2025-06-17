@@ -7,7 +7,10 @@ use syn::{Ident, Item, ItemMod, ItemUse, Visibility, token::Pub};
 
 use crate::{
     ModuleAttributes,
-    codegen::{KubernetesTokens, VersionDefinition, container::Container},
+    codegen::{
+        KubernetesTokens, VersionDefinition,
+        container::{Container, Direction},
+    },
 };
 
 /// A versioned module.
@@ -60,12 +63,18 @@ impl Module {
         for item in items {
             match item {
                 Item::Enum(item_enum) => {
-                    let container = Container::new_enum_nested(item_enum, &versions)?;
-                    containers.push(container);
+                    if let Some(container) =
+                        errors.handle(Container::new_enum_nested(item_enum, &versions))
+                    {
+                        containers.push(container);
+                    };
                 }
                 Item::Struct(item_struct) => {
-                    let container = Container::new_struct_nested(item_struct, &versions)?;
-                    containers.push(container);
+                    if let Some(container) =
+                        errors.handle(Container::new_struct_nested(item_struct, &versions))
+                    {
+                        containers.push(container);
+                    }
                 }
                 Item::Mod(submodule) => {
                     if !versions
@@ -159,13 +168,15 @@ impl Module {
                 container_definitions.extend(container.generate_definition(version));
 
                 if !self.skip_from {
-                    from_impls.extend(container.generate_upgrade_from_impl(
+                    from_impls.extend(container.generate_from_impl(
+                        Direction::Upgrade,
                         version,
                         next_version,
                         self.preserve_module,
                     ));
 
-                    from_impls.extend(container.generate_downgrade_from_impl(
+                    from_impls.extend(container.generate_from_impl(
+                        Direction::Downgrade,
                         version,
                         next_version,
                         self.preserve_module,
