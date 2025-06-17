@@ -187,7 +187,7 @@ impl Struct {
 
                     let object = match api_version {
                         #(#api_versions => {
-                                let object = #serde_json_path::from_value(value)
+                            let object = #serde_json_path::from_value(value)
                                 .map_err(|source| #parse_object_error::Deserialize { source })?;
 
                             Self::#variant_idents(object)
