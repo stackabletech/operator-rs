@@ -69,6 +69,9 @@ pub enum ConvertObjectError {
 
     #[snafu(display("failed to serialize object into json"))]
     Serialize { source: serde_json::Error },
+
+    #[snafu(display("unknown desired API version {unknown_desired_api_version:?}"))]
+    DesiredApiVersionUnknown { unknown_desired_api_version: String },
 }
 
 impl ConvertObjectError {
@@ -89,6 +92,8 @@ impl ConvertObjectError {
         match self {
             ConvertObjectError::Parse { .. } => 400,
             ConvertObjectError::Serialize { .. } => 500,
+            // This is likely the clients fault, as it is requesting a unsupported version
+            ConvertObjectError::DesiredApiVersionUnknown { .. } => 400,
         }
     }
 }

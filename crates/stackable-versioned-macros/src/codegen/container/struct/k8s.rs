@@ -186,8 +186,8 @@ impl Struct {
                         .ok_or_else(|| #parse_object_error::FieldNotStr)?;
 
                     let object = match api_version {
-                        #(#api_versions | #variant_strings => {
-                            let object = #serde_json_path::from_value(value)
+                        #(#api_versions => {
+                                let object = #serde_json_path::from_value(value)
                                 .map_err(|source| #parse_object_error::Deserialize { source })?;
 
                             Self::#variant_idents(object)
@@ -324,8 +324,10 @@ impl Struct {
         let convert_object_error = quote! { #versioned_path::ConvertObjectError };
 
         // Generate conversion paths and the match arms for these paths
-        let match_arms =
+        let conversion_match_arms =
             self.generate_kubernetes_conversion_match_arms(versions, kubernetes_arguments);
+        let noop_match_arms =
+            self.generate_kubernetes_noop_match_arms(versions, kubernetes_arguments);
 
         // TODO (@Techassi): Make this a feature, drop the option from the macro arguments
         // Generate tracing attributes and events if tracing is enabled
@@ -435,12 +437,13 @@ impl Struct {
                         .map_err(|source| #convert_object_error::Parse { source })?;
 
                     match (current_object, desired_api_version) {
-                        #(#match_arms,)*
-                        // If no match arm matches, this is a noop. This is the case if the desired
-                        // version matches the current object api version.
-                        // NOTE (@Techassi): I'm curious if this will ever happen? In theory the K8s
-                        // apiserver should never send such a conversion review.
-                        _ => converted_objects.push(object),
+                        #(#conversion_match_arms,)*
+                        #(#noop_match_arms,)*
+                        (_, unknown_desired_api_version) => return ::std::result::Result::Err(
+                            #convert_object_error::DesiredApiVersionUnknown{
+                                unknown_desired_api_version: unknown_desired_api_version.to_string()
+                            }
+                        )
                     }
                 }
 
@@ -454,6 +457,7 @@ impl Struct {
         versions: &[VersionDefinition],
         kubernetes_arguments: &KubernetesArguments,
     ) -> Vec<TokenStream> {
+        let group = &kubernetes_arguments.group;
         let variant_data_ident = &self.common.idents.kubernetes_parameter;
         let struct_ident = &self.common.idents.kubernetes;
         let spec_ident = &self.common.idents.original;
@@ -470,7 +474,10 @@ impl Struct {
                 let current_object_version_string = &start.inner.to_string();
 
                 let desired_object_version = path.last().expect("the path always contains at least one element");
-                let desired_object_version_string = desired_object_version.inner.to_string();
+                let desired_object_api_version_string = format!(
+                    "{group}/{desired_object_version}",
+                    desired_object_version= desired_object_version.inner
+                );
                 let desired_object_variant_ident = &desired_object_version.idents.variant;
                 let desired_object_module_ident = &desired_object_version.idents.module;
 
@@ -493,7 +500,7 @@ impl Struct {
 
                 let convert_object_trace = kubernetes_arguments.options.enable_tracing.is_present().then(|| quote! {
                     ::tracing::trace!(
-                        #DESIRED_API_VERSION_ATTRIBUTE = #desired_object_version_string,
+                        #DESIRED_API_VERSION_ATTRIBUTE = #desired_object_api_version_string,
                         #API_VERSION_ATTRIBUTE = #current_object_version_string,
                         #STEPS_ATTRIBUTE = #steps,
                         #KIND_ATTRIBUTE = #kind,
@@ -507,7 +514,7 @@ impl Struct {
                     .then(|| quote! { status: #variant_data_ident.status, });
 
                 quote! {
-                    (Self::#current_object_version_ident(#variant_data_ident), #desired_object_version_string) => {
+                    (Self::#current_object_version_ident(#variant_data_ident), #desired_object_api_version_string) => {
                         #(#conversions)*
 
                         let desired_object = Self::#desired_object_variant_ident(#desired_object_module_ident::#struct_ident {
@@ -523,6 +530,30 @@ impl Struct {
 
                         converted_objects.push(desired_object);
                     }
+                }
+            })
+            .collect()
+    }
+
+    fn generate_kubernetes_noop_match_arms(
+        &self,
+        versions: &[VersionDefinition],
+        kubernetes_arguments: &KubernetesArguments,
+    ) -> Vec<TokenStream> {
+        let group = &kubernetes_arguments.group;
+
+        versions
+            .iter()
+            .map(|version| {
+                let version_ident = &version.idents.variant;
+                let version_string = version.inner.to_string();
+                let api_version_string = format!("{group}/{version_string}");
+
+                quote! {
+                    // This is the case if the desired version matches the current object api version.
+                    // NOTE (@Techassi): I'm curious if this will ever happen? In theory the K8s
+                    // apiserver should never send such a conversion review.
+                    (Self::#version_ident(_), #api_version_string) => converted_objects.push(object)
                 }
             })
             .collect()
