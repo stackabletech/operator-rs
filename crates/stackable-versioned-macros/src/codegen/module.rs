@@ -60,12 +60,18 @@ impl Module {
         for item in items {
             match item {
                 Item::Enum(item_enum) => {
-                    let container = Container::new_enum_nested(item_enum, &versions)?;
-                    containers.push(container);
+                    if let Some(container) =
+                        errors.handle(Container::new_enum_nested(item_enum, &versions))
+                    {
+                        containers.push(container);
+                    };
                 }
                 Item::Struct(item_struct) => {
-                    let container = Container::new_struct_nested(item_struct, &versions)?;
-                    containers.push(container);
+                    if let Some(container) =
+                        errors.handle(Container::new_struct_nested(item_struct, &versions))
+                    {
+                        containers.push(container);
+                    }
                 }
                 Item::Mod(submodule) => {
                     if !versions
