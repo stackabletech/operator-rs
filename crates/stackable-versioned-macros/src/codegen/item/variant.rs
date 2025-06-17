@@ -11,6 +11,7 @@ use crate::{
     codegen::{
         ItemStatus, VersionDefinition,
         changes::{BTreeMapExt, ChangesetExt},
+        container::Direction,
     },
     utils::VariantIdent,
 };
@@ -130,8 +131,9 @@ impl VersionedVariant {
         }
     }
 
-    pub fn generate_for_upgrade_from_impl(
+    pub fn generate_for_from_impl(
         &self,
+        direction: Direction,
         version: &VersionDefinition,
         next_version: &VersionDefinition,
         enum_ident: &IdentString,
@@ -159,9 +161,10 @@ impl VersionedVariant {
                             #next_version_ident::#enum_ident::#next_variant_ident #variant_fields
                         };
 
-                        Some(quote! {
-                            #old => #next,
-                        })
+                        match direction {
+                            Direction::Upgrade => Some(quote! { #old => #next, }),
+                            Direction::Downgrade => Some(quote! { #next => #old, }),
+                        }
                     }
                 }
             }
@@ -177,63 +180,10 @@ impl VersionedVariant {
                     #next_version_ident::#enum_ident::#variant_ident #variant_fields
                 };
 
-                Some(quote! {
-                    #old => #next,
-                })
-            }
-        }
-    }
-
-    pub fn generate_for_downgrade_from_impl(
-        &self,
-        version: &VersionDefinition,
-        next_version: &VersionDefinition,
-        enum_ident: &IdentString,
-    ) -> Option<TokenStream> {
-        let variant_fields = self.fields_as_token_stream();
-
-        match &self.changes {
-            Some(changes) => {
-                let next_change = changes.get_expect(&next_version.inner);
-                let change = changes.get_expect(&version.inner);
-
-                match (change, next_change) {
-                    (_, ItemStatus::Addition { .. }) => None,
-                    (old, next) => {
-                        let next_version_ident = &next_version.idents.module;
-                        let old_version_ident = &version.idents.module;
-
-                        let next_variant_ident = next.get_ident();
-                        let old_variant_ident = old.get_ident();
-
-                        let old = quote! {
-                            #old_version_ident::#enum_ident::#old_variant_ident #variant_fields
-                        };
-                        let next = quote! {
-                            #next_version_ident::#enum_ident::#next_variant_ident #variant_fields
-                        };
-
-                        Some(quote! {
-                            #next => #old,
-                        })
-                    }
+                match direction {
+                    Direction::Upgrade => Some(quote! { #old => #next, }),
+                    Direction::Downgrade => Some(quote! { #next => #old, }),
                 }
-            }
-            None => {
-                let next_version_ident = &next_version.idents.module;
-                let old_version_ident = &version.idents.module;
-                let variant_ident = &*self.ident;
-
-                let old = quote! {
-                    #old_version_ident::#enum_ident::#variant_ident #variant_fields
-                };
-                let next = quote! {
-                    #next_version_ident::#enum_ident::#variant_ident #variant_fields
-                };
-
-                Some(quote! {
-                    #next => #old,
-                })
             }
         }
     }

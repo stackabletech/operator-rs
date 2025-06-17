@@ -11,6 +11,7 @@ use crate::{
     codegen::{
         ItemStatus, VersionDefinition,
         changes::{BTreeMapExt, ChangesetExt},
+        container::Direction,
     },
     utils::FieldIdent,
 };
@@ -140,13 +141,13 @@ impl VersionedField {
         }
     }
 
-    // TODO (@Techassi): This should probably return an optional token stream.
-    pub fn generate_for_upgrade_from_impl(
+    pub fn generate_for_from_impl(
         &self,
+        direction: Direction,
         version: &VersionDefinition,
         next_version: &VersionDefinition,
         from_struct_ident: &IdentString,
-    ) -> TokenStream {
+    ) -> Option<TokenStream> {
         match &self.changes {
             Some(changes) => {
                 let next_change = changes.get_expect(&next_version.inner);
@@ -156,93 +157,45 @@ impl VersionedField {
                     // If both this status and the next one is NotPresent, which means
                     // a field was introduced after a bunch of versions, we don't
                     // need to generate any code for the From impl.
-                    (ItemStatus::NotPresent, ItemStatus::NotPresent) => {
-                        quote! {}
-                    }
+                    (ItemStatus::NotPresent, ItemStatus::NotPresent) => None,
                     (
                         _,
                         ItemStatus::Addition {
                             ident, default_fn, ..
                         },
-                    ) => quote! {
-                        #ident: #default_fn(),
+                    ) => match direction {
+                        Direction::Upgrade => Some(quote! { #ident: #default_fn(), }),
+                        Direction::Downgrade => None,
                     },
-                    (
-                        _,
-                        ItemStatus::Change {
-                            from_ident: old_field_ident,
-                            upgrade_with,
-                            to_ident,
-                            ..
-                        },
-                    ) => match upgrade_with {
-                        // The user specified a custom conversion function which
-                        // will be used here instead of the default .into() call
-                        // which utilizes From impls.
-                        Some(upgrade_fn) => quote! {
-                            #to_ident: #upgrade_fn(#from_struct_ident.#old_field_ident),
-                        },
-                        // Default .into() call using From impls.
-                        None => quote! {
-                            #to_ident: #from_struct_ident.#old_field_ident.into(),
-                        },
-                    },
-                    (old, next) => {
-                        let next_field_ident = next.get_ident();
-                        let old_field_ident = old.get_ident();
-
-                        // NOTE (@Techassi): Do we really need .into() here. I'm
-                        // currently not sure why it is there and if it is needed
-                        // in some edge cases.
-                        quote! {
-                            #next_field_ident: #from_struct_ident.#old_field_ident.into(),
-                        }
-                    }
-                }
-            }
-            None => {
-                let field_ident = &*self.ident;
-
-                quote! {
-                    #field_ident: #from_struct_ident.#field_ident.into(),
-                }
-            }
-        }
-    }
-
-    pub fn generate_for_downgrade_from_impl(
-        &self,
-        version: &VersionDefinition,
-        next_version: &VersionDefinition,
-        from_struct_ident: &IdentString,
-    ) -> TokenStream {
-        match &self.changes {
-            Some(changes) => {
-                let next_change = changes.get_expect(&next_version.inner);
-                let change = changes.get_expect(&version.inner);
-
-                match (change, next_change) {
-                    // If both this status and the next one is NotPresent, which means
-                    // a field was introduced after a bunch of versions, we don't
-                    // need to generate any code for the From impl.
-                    (ItemStatus::NotPresent, ItemStatus::NotPresent) => {
-                        quote! {}
-                    }
-                    (_, ItemStatus::Addition { .. }) => quote! {},
                     (
                         _,
                         ItemStatus::Change {
                             downgrade_with,
-                            from_ident: old_field_ident,
+                            upgrade_with,
+                            from_ident,
                             to_ident,
                             ..
                         },
-                    ) => match downgrade_with {
-                        Some(downgrade_fn) => quote! {
-                            #old_field_ident: #downgrade_fn(#from_struct_ident.#to_ident),
+                    ) => match direction {
+                        Direction::Upgrade => match upgrade_with {
+                            // The user specified a custom conversion function which
+                            // will be used here instead of the default .into() call
+                            // which utilizes From impls.
+                            Some(upgrade_fn) => Some(quote! {
+                                #to_ident: #upgrade_fn(#from_struct_ident.#from_ident),
+                            }),
+                            // Default .into() call using From impls.
+                            None => Some(quote! {
+                                #to_ident: #from_struct_ident.#from_ident.into(),
+                            }),
                         },
-                        None => quote! {
-                            #old_field_ident: #from_struct_ident.#to_ident.into(),
+                        Direction::Downgrade => match downgrade_with {
+                            Some(downgrade_fn) => Some(quote! {
+                                #from_ident: #downgrade_fn(#from_struct_ident.#to_ident),
+                            }),
+                            None => Some(quote! {
+                                #from_ident: #from_struct_ident.#to_ident.into(),
+                            }),
                         },
                     },
                     (old, next) => {
@@ -252,8 +205,13 @@ impl VersionedField {
                         // NOTE (@Techassi): Do we really need .into() here. I'm
                         // currently not sure why it is there and if it is needed
                         // in some edge cases.
-                        quote! {
-                            #old_field_ident: #from_struct_ident.#next_field_ident.into(),
+                        match direction {
+                            Direction::Upgrade => Some(quote! {
+                                #next_field_ident: #from_struct_ident.#old_field_ident.into(),
+                            }),
+                            Direction::Downgrade => Some(quote! {
+                                #old_field_ident: #from_struct_ident.#next_field_ident.into(),
+                            }),
                         }
                     }
                 }
@@ -261,9 +219,9 @@ impl VersionedField {
             None => {
                 let field_ident = &*self.ident;
 
-                quote! {
+                Some(quote! {
                     #field_ident: #from_struct_ident.#field_ident.into(),
-                }
+                })
             }
         }
     }

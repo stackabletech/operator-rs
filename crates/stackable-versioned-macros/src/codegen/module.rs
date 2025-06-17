@@ -7,7 +7,10 @@ use syn::{Ident, Item, ItemMod, ItemUse, Visibility, token::Pub};
 
 use crate::{
     ModuleAttributes,
-    codegen::{KubernetesTokens, VersionDefinition, container::Container},
+    codegen::{
+        KubernetesTokens, VersionDefinition,
+        container::{Container, Direction},
+    },
 };
 
 /// A versioned module.
@@ -172,13 +175,15 @@ impl Module {
                 container_definitions.extend(container.generate_definition(version));
 
                 if !self.skip_from {
-                    from_impls.extend(container.generate_upgrade_from_impl(
+                    from_impls.extend(container.generate_from_impl(
+                        Direction::Upgrade,
                         version,
                         next_version,
                         self.preserve_module,
                     ));
 
-                    from_impls.extend(container.generate_downgrade_from_impl(
+                    from_impls.extend(container.generate_from_impl(
+                        Direction::Downgrade,
                         version,
                         next_version,
                         self.preserve_module,
