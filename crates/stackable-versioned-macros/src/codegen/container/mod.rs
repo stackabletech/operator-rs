@@ -46,36 +46,20 @@ impl Container {
         }
     }
 
-    /// Generates the `From<Version> for NextVersion` implementation for the container.
-    pub fn generate_upgrade_from_impl(
+    pub fn generate_from_impl(
         &self,
+        direction: Direction,
         version: &VersionDefinition,
         next_version: Option<&VersionDefinition>,
         add_attributes: bool,
     ) -> Option<TokenStream> {
         match self {
             Container::Struct(s) => {
-                s.generate_upgrade_from_impl(version, next_version, add_attributes)
+                // TODO (@Techassi): Decide here (based on K8s args) what we want to generate
+                s.generate_from_impl(direction, version, next_version, add_attributes)
             }
             Container::Enum(e) => {
-                e.generate_upgrade_from_impl(version, next_version, add_attributes)
-            }
-        }
-    }
-
-    /// Generates the `From<NextVersion> for Version` implementation for the container.
-    pub fn generate_downgrade_from_impl(
-        &self,
-        version: &VersionDefinition,
-        next_version: Option<&VersionDefinition>,
-        add_attributes: bool,
-    ) -> Option<TokenStream> {
-        match self {
-            Container::Struct(s) => {
-                s.generate_downgrade_from_impl(version, next_version, add_attributes)
-            }
-            Container::Enum(e) => {
-                e.generate_downgrade_from_impl(version, next_version, add_attributes)
+                e.generate_from_impl(direction, version, next_version, add_attributes)
             }
         }
     }
@@ -183,12 +167,15 @@ impl StandaloneContainer {
             // Generate the From impl for upgrading the CRD.
             let upgrade_from_impl =
                 self.container
-                    .generate_upgrade_from_impl(version, next_version, false);
+                    .generate_from_impl(Direction::Upgrade, version, next_version, false);
 
             // Generate the From impl for downgrading the CRD.
-            let downgrade_from_impl =
-                self.container
-                    .generate_downgrade_from_impl(version, next_version, false);
+            let downgrade_from_impl = self.container.generate_from_impl(
+                Direction::Downgrade,
+                version,
+                next_version,
+                false,
+            );
 
             // Add the #[deprecated] attribute when the version is marked as deprecated.
             let deprecated_attribute = version
@@ -286,4 +273,10 @@ impl ContainerIdents {
 pub struct ContainerOptions {
     pub kubernetes_arguments: Option<KubernetesArguments>,
     pub skip_from: bool,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Direction {
+    Upgrade,
+    Downgrade,
 }

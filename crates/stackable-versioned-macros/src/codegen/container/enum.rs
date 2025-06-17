@@ -10,7 +10,7 @@ use crate::{
     codegen::{
         ItemStatus, StandaloneContainerAttributes, VersionDefinition,
         changes::Neighbors,
-        container::{CommonContainerData, Container, ContainerIdents, ContainerOptions},
+        container::{CommonContainerData, Container, ContainerIdents, ContainerOptions, Direction},
         item::VersionedVariant,
     },
 };
@@ -122,9 +122,10 @@ impl Enum {
         }
     }
 
-    /// Generates code for the `From<Version> for NextVersion` implementation.
-    pub fn generate_upgrade_from_impl(
+    // TODO (@Techassi): Add doc comments
+    pub fn generate_from_impl(
         &self,
+        direction: Direction,
         version: &VersionDefinition,
         next_version: Option<&VersionDefinition>,
         add_attributes: bool,
@@ -133,119 +134,69 @@ impl Enum {
             return None;
         }
 
-        match next_version {
-            Some(next_version) => {
-                // TODO (@Techassi): Support generic types which have been removed in newer versions,
-                // but need to exist for older versions How do we represent that? Because the
-                // defined struct always represents the latest version. I guess we could generally
-                // advise against using generic types, but if you have to, avoid removing it in
-                // later versions.
-                let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
-                let from_enum_ident = &self.common.idents.parameter;
-                let enum_ident = &self.common.idents.original;
+        next_version.map(|next_version| {
+            // TODO (@Techassi): Support generic types which have been removed in newer versions,
+            // but need to exist for older versions How do we represent that? Because the
+            // defined struct always represents the latest version. I guess we could generally
+            // advise against using generic types, but if you have to, avoid removing it in
+            // later versions.
+            let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
+            let from_enum_ident = &self.common.idents.parameter;
+            let enum_ident = &self.common.idents.original;
 
-                let for_module_ident = &next_version.idents.module;
-                let from_module_ident = &version.idents.module;
+            // Include allow(deprecated) only when this or the next version is
+            // deprecated. Also include it, when a variant in this or the next
+            // version is deprecated.
+            let allow_attribute = (version.deprecated.is_some()
+                || next_version.deprecated.is_some()
+                || self.is_any_variant_deprecated(version)
+                || self.is_any_variant_deprecated(next_version))
+            .then_some(quote! { #[allow(deprecated)] });
 
-                let variants: TokenStream = self
-                    .variants
+            // Only add the #[automatically_derived] attribute only if this impl is used
+            // outside of a module (in standalone mode).
+            let automatically_derived = add_attributes
+                .not()
+                .then(|| quote! {#[automatically_derived]});
+
+            let variants = |direction: Direction| -> TokenStream {
+                self.variants
                     .iter()
                     .filter_map(|v| {
-                        v.generate_for_upgrade_from_impl(version, next_version, enum_ident)
+                        v.generate_for_from_impl(direction, version, next_version, enum_ident)
                     })
-                    .collect();
+                    .collect()
+            };
 
-                // Include allow(deprecated) only when this or the next version is
-                // deprecated. Also include it, when a variant in this or the next
-                // version is deprecated.
-                let allow_attribute = (version.deprecated.is_some()
-                    || next_version.deprecated.is_some()
-                    || self.is_any_variant_deprecated(version)
-                    || self.is_any_variant_deprecated(next_version))
-                .then_some(quote! { #[allow(deprecated)] });
+            let (variants, for_module_ident, from_module_ident) = match direction {
+                Direction::Upgrade => {
+                    let for_module_ident = &next_version.idents.module;
+                    let from_module_ident = &version.idents.module;
 
-                // Only add the #[automatically_derived] attribute only if this impl is used
-                // outside of a module (in standalone mode).
-                let automatically_derived = add_attributes
-                    .not()
-                    .then(|| quote! {#[automatically_derived]});
+                    (variants(Direction::Upgrade), for_module_ident, from_module_ident)
+                },
+                Direction::Downgrade => {
+                    let for_module_ident = &version.idents.module;
+                    let from_module_ident = &next_version.idents.module;
 
-                Some(quote! {
-                    #automatically_derived
-                    #allow_attribute
-                    impl #impl_generics ::std::convert::From<#from_module_ident::#enum_ident #type_generics> for #for_module_ident::#enum_ident #type_generics
-                        #where_clause
-                    {
-                        fn from(#from_enum_ident: #from_module_ident::#enum_ident #type_generics) -> Self {
-                            match #from_enum_ident {
-                                #variants
-                            }
+                    (variants(Direction::Downgrade), for_module_ident, from_module_ident)
+                },
+            };
+
+            quote! {
+                #automatically_derived
+                #allow_attribute
+                impl #impl_generics ::std::convert::From<#from_module_ident::#enum_ident #type_generics> for #for_module_ident::#enum_ident #type_generics
+                    #where_clause
+                {
+                    fn from(#from_enum_ident: #from_module_ident::#enum_ident #type_generics) -> Self {
+                        match #from_enum_ident {
+                            #variants
                         }
                     }
-                })
+                }
             }
-            None => None,
-        }
-    }
-
-    pub fn generate_downgrade_from_impl(
-        &self,
-        version: &VersionDefinition,
-        next_version: Option<&VersionDefinition>,
-        add_attributes: bool,
-    ) -> Option<TokenStream> {
-        if version.skip_from || self.common.options.skip_from {
-            return None;
-        }
-
-        match next_version {
-            Some(next_version) => {
-                let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
-                let from_enum_ident = &self.common.idents.parameter;
-                let enum_ident = &self.common.idents.original;
-
-                let from_module_ident = &next_version.idents.module;
-                let for_module_ident = &version.idents.module;
-
-                let variants: TokenStream = self
-                    .variants
-                    .iter()
-                    .filter_map(|v| {
-                        v.generate_for_downgrade_from_impl(version, next_version, enum_ident)
-                    })
-                    .collect();
-
-                // Include allow(deprecated) only when this or the next version is
-                // deprecated. Also include it, when a variant in this or the next
-                // version is deprecated.
-                let allow_attribute = (version.deprecated.is_some()
-                    || next_version.deprecated.is_some()
-                    || self.is_any_variant_deprecated(version)
-                    || self.is_any_variant_deprecated(next_version))
-                .then_some(quote! { #[allow(deprecated)] });
-
-                // Only add the #[automatically_derived] attribute only if this impl is used
-                // outside of a module (in standalone mode).
-                let automatically_derived = add_attributes
-                    .not()
-                    .then(|| quote! {#[automatically_derived]});
-
-                Some(quote! {
-                    #automatically_derived
-                    #allow_attribute
-                    impl #impl_generics ::std::convert::From<#from_module_ident::#enum_ident #type_generics> for #for_module_ident::#enum_ident #type_generics
-                        #where_clause
-                    {
-                        fn from(#from_enum_ident: #from_module_ident::#enum_ident #type_generics) -> Self {
-                            match #from_enum_ident {
-                                #variants
-                            }
-                        }
-                    }
-                })
-            }
-            None => None,
-        }
+        })
     }
 
     /// Returns whether any variant is deprecated in the provided `version`.
