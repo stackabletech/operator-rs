@@ -9,10 +9,10 @@ All notable changes to this project will be documented in this file.
 - BREAKING: `CertificateAuthority::generate_leaf_certificate` (and `generate_rsa_leaf_certificate` and `generate_ecdsa_leaf_certificate`)
   now take an additional parameter `subject_alterative_dns_names`. The passed SANs are added to the generated certificate,
   this is needed for basically all modern TLS certificate validations when used with HTTPS.
-  Pass an empty list (`[]`) to keep the existing behavior ([#XXXX]).
+  Pass an empty list (`[]`) to keep the existing behavior ([#1057]).
 - BREAKING: The constant `DEFAULT_CA_VALIDITY_SECONDS` has been renamed to `DEFAULT_CA_VALIDITY` and now is of type `stackable_operator::time::Duration`.
-  Also, the constant `ROOT_CA_SUBJECT` has been renamed to `SDP_ROOT_CA_SUBJECT` ([#XXXX]).
-- Added the function `CertificateAuthority::ca_cert` to easily get the CA `Certificate` ([#XXXX]).
+  Also, the constant `ROOT_CA_SUBJECT` has been renamed to `SDP_ROOT_CA_SUBJECT` ([#1057]).
+- Added the function `CertificateAuthority::ca_cert` to easily get the CA `Certificate` ([#1057]).
 
 ## [0.3.1] - 2024-07-10
 
@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
 - Bump rust-toolchain to 1.79.0 ([#822]).
 
 [#822]: https://github.com/stackabletech/operator-rs/pull/822
+[#1057]: https://github.com/stackabletech/operator-rs/pull/1057
 
 ## [0.3.0] - 2024-05-08
 
