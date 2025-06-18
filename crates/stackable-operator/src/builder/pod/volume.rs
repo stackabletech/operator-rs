@@ -471,7 +471,6 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
 ///         &ListenerReference::ListenerClass("nodeport".into()),
 ///         &labels,
 ///     )
-///     .unwrap()
 ///     .build_ephemeral()
 ///     .unwrap();
 ///
