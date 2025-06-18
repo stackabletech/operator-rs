@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Update `kube` to `1.1.0` ([#1049]).
+- BREAKING: Return type for `ListenerOperatorVolumeSourceBuilder::new()` is no onger a `Result` ([#1058]).
 
 ### Removed
 
@@ -14,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 [#1049]: https://github.com/stackabletech/operator-rs/pull/1049
 [#1054]: https://github.com/stackabletech/operator-rs/pull/1054
+[#1058]: https://github.com/stackabletech/operator-rs/pull/1058
 
 ## [0.93.2] - 2025-05-26
 

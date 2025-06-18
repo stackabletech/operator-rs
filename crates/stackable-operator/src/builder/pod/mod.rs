@@ -396,7 +396,6 @@ impl PodBuilder {
     ) -> Result<&mut Self> {
         let listener_reference = ListenerReference::ListenerClass(listener_class.to_string());
         let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference, labels)
-            .context(ListenerVolumeSnafu { name: volume_name })?
             .build_ephemeral()
             .context(ListenerVolumeSnafu { name: volume_name })?;
 
@@ -483,7 +482,6 @@ impl PodBuilder {
     ) -> Result<&mut Self> {
         let listener_reference = ListenerReference::ListenerName(listener_name.to_string());
         let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference, labels)
-            .context(ListenerVolumeSnafu { name: volume_name })?
             .build_ephemeral()
             .context(ListenerVolumeSnafu { name: volume_name })?;
 
