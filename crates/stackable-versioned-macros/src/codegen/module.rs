@@ -108,7 +108,14 @@ impl Module {
                         ),
                     }
                 }
-                _ => continue,
+                // NOTE (@NickLarsenNZ): We throw an error here so the developer isn't surprised when items they have
+                // defined in the module are no longer accessible (because they are not re-emitted).
+                disallowed_item => errors.push(
+                    Error::custom(
+                        "Item not allowed here. Please move it ouside of the versioned module",
+                    )
+                    .with_span(&disallowed_item),
+                ),
             };
         }
 
