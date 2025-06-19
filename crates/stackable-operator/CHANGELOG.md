@@ -11,9 +11,11 @@ All notable changes to this project will be documented in this file.
 ### Removed
 
 - BREAKING: Removed `last_update_time` from CRD ClusterCondition status ([#1054]).
+- BREAKING: Removed role binding to legacy service accounts ([#1060]).
 
 [#1049]: https://github.com/stackabletech/operator-rs/pull/1049
 [#1054]: https://github.com/stackabletech/operator-rs/pull/1054
+[#1060]: lttps://github.com/stackabletech/operator-rs/pull/1060
 
 ## [0.93.2] - 2025-05-26
 
