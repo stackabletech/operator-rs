@@ -1,5 +1,5 @@
 ---
-source: crates/stackable-versioned/src/tests.rs
+source: crates/stackable-versioned/src/tests/mod.rs
 expression: formatted
 input_file: crates/stackable-versioned/fixtures/inputs/pass/persons_to_v3.json
 ---

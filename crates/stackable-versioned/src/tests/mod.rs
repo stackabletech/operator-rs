@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn pass() {
-        glob!("../fixtures/inputs/pass/", "*.json", |path| {
+        glob!("../../fixtures/inputs/pass/", "*.json", |path| {
             let (request, response) = run_for_file(path);
 
             let formatted = serde_json::to_string_pretty(&response)
@@ -109,7 +109,7 @@ mod tests {
 
     #[test]
     fn fail() {
-        glob!("../fixtures/inputs/fail/", "*.json", |path| {
+        glob!("../../fixtures/inputs/fail/", "*.json", |path| {
             let (request, response) = run_for_file(path);
 
             let formatted = serde_json::to_string_pretty(&response)
