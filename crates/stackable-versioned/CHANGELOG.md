@@ -33,6 +33,7 @@ All notable changes to this project will be documented in this file.
 - Fix regression introduced in [#1033]. The `#[kube(status = ...)]` attribute is generated correctly
   again ([#1046]).
 - Correctly handle fields added in later versions ([#1031]).
+- BREAKING: Unsupported items in a versioned module now emit an error instead of silently being dropped ([#1059]).
 
 ### Removed
 
@@ -50,6 +51,7 @@ All notable changes to this project will be documented in this file.
 [#1041]: https://github.com/stackabletech/operator-rs/pull/1041
 [#1046]: https://github.com/stackabletech/operator-rs/pull/1046
 [#1050]: https://github.com/stackabletech/operator-rs/pull/1050
+[#1059]: https://github.com/stackabletech/operator-rs/pull/1059
 
 ## [0.7.1] - 2025-04-02
 
