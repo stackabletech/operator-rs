@@ -60,9 +60,9 @@ pub enum ParseObjectError {
     Deserialize { source: serde_json::Error },
 
     #[snafu(display(
-        "wrong object kind {kind:?}. The conversion can only convert objects of kind {supported_kind:?}"
+        "unexpected object kind {kind:?}. The conversion can only convert objects of kind {supported_kind:?}"
     ))]
-    WrongObjectKind {
+    UnexpectedObjectKind {
         kind: String,
         supported_kind: String,
     },

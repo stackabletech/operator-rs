@@ -178,8 +178,24 @@ impl Struct {
 
                 #convert_method
 
-                fn from_json_value(value: #serde_json_path::Value) -> ::std::result::Result<Self, #parse_object_error> {
-                    let api_version = value
+                fn from_json_value(object: #serde_json_path::Value) -> ::std::result::Result<Self, #parse_object_error> {
+                    let object_kind = object
+                        .get("kind")
+                        .ok_or_else(|| #parse_object_error::FieldMissing{ field: "kind".to_string() })?
+                        .as_str()
+                        .ok_or_else(|| #parse_object_error::FieldNotStr{ field: "kind".to_string() })?;
+
+                    // Note(@sbernauer): One could argue we don't need to check the kind, but this
+                    // is a nice sanity check. If for *some* reason a unexpected kind ends up at a
+                    // conversion, the problem might be very hard to spot without this.
+                    if object_kind != stringify!(#enum_ident) {
+                        return Err(#parse_object_error::UnexpectedObjectKind{
+                            kind: object_kind.to_string(),
+                            supported_kind: stringify!(#enum_ident).to_string(),
+                        });
+                    }
+
+                    let api_version = object
                         .get("apiVersion")
                         .ok_or_else(|| #parse_object_error::FieldMissing{ field: "apiVersion".to_string() })?
                         .as_str()
@@ -187,7 +203,7 @@ impl Struct {
 
                     let object = match api_version {
                         #(#api_versions => {
-                            let object = #serde_json_path::from_value(value)
+                            let object = #serde_json_path::from_value(object)
                                 .map_err(|source| #parse_object_error::Deserialize { source })?;
 
                             Self::#variant_idents(object)
@@ -321,7 +337,6 @@ impl Struct {
         let versioned_path = &*kubernetes_arguments.crates.versioned;
         let kube_core_path = &*kubernetes_arguments.crates.kube_core;
 
-        let parse_object_error = quote! { #versioned_path::ParseObjectError };
         let convert_object_error = quote! { #versioned_path::ConvertObjectError };
 
         // Generate conversion paths and the match arms for these paths
@@ -432,27 +447,6 @@ impl Struct {
                 let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
 
                 for object in objects {
-                    let object_kind = object
-                        .get("kind")
-                        .ok_or_else(|| #convert_object_error::Parse {
-                            source: #parse_object_error::FieldMissing{ field: "kind".to_string() }
-                        })?
-                        .as_str()
-                        .ok_or_else(|| #convert_object_error::Parse {
-                            source: #parse_object_error::FieldNotStr{ field: "kind".to_string() }
-                        })?;
-                    // Note(@sbernauer): One could argue we don't need to check the send kind, but
-                    // IMHO this is a nice sanity check. If for *some* reason a wrong kind ends up
-                    // at a conversion, the problem might be very hard to spot without this.
-                    if object_kind != stringify!(#struct_ident) {
-                        return Err(#convert_object_error::Parse {
-                            source: #parse_object_error::WrongObjectKind{
-                                kind: object_kind.to_string(),
-                                supported_kind: stringify!(#struct_ident).to_string(),
-                            }
-                        })
-                    }
-
                     // This clone is required because in the noop case we move the object into
                     // the converted objects vec.
                     let current_object = Self::from_json_value(object.clone())

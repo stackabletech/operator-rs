@@ -11,8 +11,8 @@ input_file: crates/stackable-versioned/src/tests/fixtures/inputs/fail/wrong_kind
     "result": {
       "status": "Failure",
       "code": 400,
-      "message": "failed to parse object: wrong object kind \"SomeOtherResource\". The conversion can only convert objects of kind \"Person\"",
-      "reason": "failed to parse object: wrong object kind \"SomeOtherResource\". The conversion can only convert objects of kind \"Person\""
+      "message": "failed to parse object: unexpected object kind \"SomeOtherResource\". The conversion can only convert objects of kind \"Person\"",
+      "reason": "failed to parse object: unexpected object kind \"SomeOtherResource\". The conversion can only convert objects of kind \"Person\""
     },
     "convertedObjects": []
   }

@@ -178,27 +178,6 @@ impl FooBar {
     > {
         let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
         for object in objects {
-            let object_kind = object
-                .get("kind")
-                .ok_or_else(|| ::stackable_versioned::ConvertObjectError::Parse {
-                    source: ::stackable_versioned::ParseObjectError::FieldMissing {
-                        field: "kind".to_string(),
-                    },
-                })?
-                .as_str()
-                .ok_or_else(|| ::stackable_versioned::ConvertObjectError::Parse {
-                    source: ::stackable_versioned::ParseObjectError::FieldNotStr {
-                        field: "kind".to_string(),
-                    },
-                })?;
-            if object_kind != stringify!(FooBar) {
-                return Err(::stackable_versioned::ConvertObjectError::Parse {
-                    source: ::stackable_versioned::ParseObjectError::WrongObjectKind {
-                        kind: object_kind.to_string(),
-                        supported_kind: stringify!(FooBar).to_string(),
-                    },
-                });
-            }
             let current_object = Self::from_json_value(object.clone())
                 .map_err(|source| ::stackable_versioned::ConvertObjectError::Parse {
                     source,
@@ -302,9 +281,24 @@ impl FooBar {
         ::std::result::Result::Ok(converted_objects)
     }
     fn from_json_value(
-        value: ::serde_json::Value,
+        object: ::serde_json::Value,
     ) -> ::std::result::Result<Self, ::stackable_versioned::ParseObjectError> {
-        let api_version = value
+        let object_kind = object
+            .get("kind")
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
+                field: "kind".to_string(),
+            })?
+            .as_str()
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr {
+                field: "kind".to_string(),
+            })?;
+        if object_kind != stringify!(FooBar) {
+            return Err(::stackable_versioned::ParseObjectError::UnexpectedObjectKind {
+                kind: object_kind.to_string(),
+                supported_kind: stringify!(FooBar).to_string(),
+            });
+        }
+        let api_version = object
             .get("apiVersion")
             .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
                 field: "apiVersion".to_string(),
@@ -315,21 +309,21 @@ impl FooBar {
             })?;
         let object = match api_version {
             "stackable.tech/v1alpha1" => {
-                let object = ::serde_json::from_value(value)
+                let object = ::serde_json::from_value(object)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
                 Self::V1Alpha1(object)
             }
             "stackable.tech/v1beta1" => {
-                let object = ::serde_json::from_value(value)
+                let object = ::serde_json::from_value(object)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
                 Self::V1Beta1(object)
             }
             "stackable.tech/v1" => {
-                let object = ::serde_json::from_value(value)
+                let object = ::serde_json::from_value(object)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
