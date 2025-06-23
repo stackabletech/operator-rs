@@ -109,7 +109,7 @@ impl FooBar {
                 v1beta1::FooBar as ::kube::core::CustomResourceExt > ::crd(), <
                 v1::FooBar as ::kube::core::CustomResourceExt > ::crd()
             ],
-            stored_apiversion.as_str(),
+            stored_apiversion.as_version_str(),
         )
     }
     ///Tries to convert a list of objects of kind [`FooBar`] to the desired API version
@@ -137,10 +137,9 @@ impl FooBar {
                     .into_review();
             }
         };
-        let desired_api_version = request.desired_api_version.as_str();
         let response = match Self::convert_objects(
             request.objects,
-            desired_api_version,
+            &request.desired_api_version,
         ) {
             ::std::result::Result::Ok(converted_objects) => {
                 ::kube::core::conversion::ConversionResponse {
@@ -176,14 +175,17 @@ impl FooBar {
         ::std::vec::Vec<::serde_json::Value>,
         ::stackable_versioned::ConvertObjectError,
     > {
+        let desired_api_version = FooBarVersion::try_from_api_version(
+            desired_api_version,
+        )?;
         let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
         for object in objects {
             let current_object = Self::from_json_value(object.clone())
                 .map_err(|source| ::stackable_versioned::ConvertObjectError::Parse {
                     source,
                 })?;
-            match (current_object, desired_api_version) {
-                (Self::V1Alpha1(__sv_foobar), "stackable.tech/v1beta1") => {
+            match (current_object, &desired_api_version) {
+                (Self::V1Alpha1(__sv_foobar), FooBarVersion::V1Beta1) => {
                     let converted: v1beta1::FooSpec = __sv_foobar.spec.into();
                     let desired_object = Self::V1Beta1(v1beta1::FooBar {
                         metadata: __sv_foobar.metadata,
@@ -196,7 +198,7 @@ impl FooBar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Alpha1(__sv_foobar), "stackable.tech/v1") => {
+                (Self::V1Alpha1(__sv_foobar), FooBarVersion::V1) => {
                     let converted: v1beta1::FooSpec = __sv_foobar.spec.into();
                     let converted: v1::FooSpec = converted.into();
                     let desired_object = Self::V1(v1::FooBar {
@@ -210,7 +212,7 @@ impl FooBar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Beta1(__sv_foobar), "stackable.tech/v1alpha1") => {
+                (Self::V1Beta1(__sv_foobar), FooBarVersion::V1Alpha1) => {
                     let converted: v1alpha1::FooSpec = __sv_foobar.spec.into();
                     let desired_object = Self::V1Alpha1(v1alpha1::FooBar {
                         metadata: __sv_foobar.metadata,
@@ -223,7 +225,7 @@ impl FooBar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Beta1(__sv_foobar), "stackable.tech/v1") => {
+                (Self::V1Beta1(__sv_foobar), FooBarVersion::V1) => {
                     let converted: v1::FooSpec = __sv_foobar.spec.into();
                     let desired_object = Self::V1(v1::FooBar {
                         metadata: __sv_foobar.metadata,
@@ -236,7 +238,7 @@ impl FooBar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1(__sv_foobar), "stackable.tech/v1alpha1") => {
+                (Self::V1(__sv_foobar), FooBarVersion::V1Alpha1) => {
                     let converted: v1beta1::FooSpec = __sv_foobar.spec.into();
                     let converted: v1alpha1::FooSpec = converted.into();
                     let desired_object = Self::V1Alpha1(v1alpha1::FooBar {
@@ -250,7 +252,7 @@ impl FooBar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1(__sv_foobar), "stackable.tech/v1beta1") => {
+                (Self::V1(__sv_foobar), FooBarVersion::V1Beta1) => {
                     let converted: v1beta1::FooSpec = __sv_foobar.spec.into();
                     let desired_object = Self::V1Beta1(v1beta1::FooBar {
                         metadata: __sv_foobar.metadata,
@@ -263,19 +265,13 @@ impl FooBar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Alpha1(_), "stackable.tech/v1alpha1") => {
+                (Self::V1Alpha1(_), FooBarVersion::V1Alpha1) => {
                     converted_objects.push(object)
                 }
-                (Self::V1Beta1(_), "stackable.tech/v1beta1") => {
+                (Self::V1Beta1(_), FooBarVersion::V1Beta1) => {
                     converted_objects.push(object)
                 }
-                (Self::V1(_), "stackable.tech/v1") => converted_objects.push(object),
-                (_, unknown_desired_api_version) => {
-                    return ::std::result::Result::Err(::stackable_versioned::ConvertObjectError::DesiredApiVersionUnknown {
-                        unknown_desired_api_version: unknown_desired_api_version
-                            .to_string(),
-                    });
-                }
+                (Self::V1(_), FooBarVersion::V1) => converted_objects.push(object),
             }
         }
         ::std::result::Result::Ok(converted_objects)
@@ -359,16 +355,37 @@ impl ::std::fmt::Display for FooBarVersion {
         &self,
         f: &mut ::std::fmt::Formatter<'_>,
     ) -> ::std::result::Result<(), ::std::fmt::Error> {
-        f.write_str(self.as_str())
+        f.write_str(self.as_version_str())
     }
 }
 #[automatically_derived]
 impl FooBarVersion {
-    pub fn as_str(&self) -> &str {
+    pub fn as_version_str(&self) -> &str {
         match self {
             V1Alpha1 => "v1alpha1",
             V1Beta1 => "v1beta1",
             V1 => "v1",
+        }
+    }
+    pub fn as_api_version_str(&self) -> &str {
+        match self {
+            V1Alpha1 => "stackable.tech/v1alpha1",
+            V1Beta1 => "stackable.tech/v1beta1",
+            V1 => "stackable.tech/v1",
+        }
+    }
+    pub fn try_from_api_version(
+        api_version: &str,
+    ) -> Result<Self, ::stackable_versioned::ConvertObjectError> {
+        match api_version {
+            "stackable.tech/v1alpha1" => Ok(Self::V1Alpha1),
+            "stackable.tech/v1beta1" => Ok(Self::V1Beta1),
+            "stackable.tech/v1" => Ok(Self::V1),
+            _ => {
+                Err(::stackable_versioned::ConvertObjectError::DesiredApiVersionUnknown {
+                    unknown_desired_api_version: api_version.to_string(),
+                })
+            }
         }
     }
 }

@@ -124,7 +124,7 @@ impl Foo {
                 v1beta1::Foo as ::kube::core::CustomResourceExt > ::crd(), < v1::Foo as
                 ::kube::core::CustomResourceExt > ::crd()
             ],
-            stored_apiversion.as_str(),
+            stored_apiversion.as_version_str(),
         )
     }
     ///Tries to convert a list of objects of kind [`Foo`] to the desired API version
@@ -152,10 +152,9 @@ impl Foo {
                     .into_review();
             }
         };
-        let desired_api_version = request.desired_api_version.as_str();
         let response = match Self::convert_objects(
             request.objects,
-            desired_api_version,
+            &request.desired_api_version,
         ) {
             ::std::result::Result::Ok(converted_objects) => {
                 ::kube::core::conversion::ConversionResponse {
@@ -191,14 +190,15 @@ impl Foo {
         ::std::vec::Vec<::serde_json::Value>,
         ::stackable_versioned::ConvertObjectError,
     > {
+        let desired_api_version = FooVersion::try_from_api_version(desired_api_version)?;
         let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
         for object in objects {
             let current_object = Self::from_json_value(object.clone())
                 .map_err(|source| ::stackable_versioned::ConvertObjectError::Parse {
                     source,
                 })?;
-            match (current_object, desired_api_version) {
-                (Self::V1Alpha1(__sv_foo), "foo.example.org/v1beta1") => {
+            match (current_object, &desired_api_version) {
+                (Self::V1Alpha1(__sv_foo), FooVersion::V1Beta1) => {
                     let converted: v1beta1::FooSpec = __sv_foo.spec.into();
                     let desired_object = Self::V1Beta1(v1beta1::Foo {
                         metadata: __sv_foo.metadata,
@@ -211,7 +211,7 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Alpha1(__sv_foo), "foo.example.org/v1") => {
+                (Self::V1Alpha1(__sv_foo), FooVersion::V1) => {
                     let converted: v1beta1::FooSpec = __sv_foo.spec.into();
                     let converted: v1::FooSpec = converted.into();
                     let desired_object = Self::V1(v1::Foo {
@@ -225,7 +225,7 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Beta1(__sv_foo), "foo.example.org/v1alpha1") => {
+                (Self::V1Beta1(__sv_foo), FooVersion::V1Alpha1) => {
                     let converted: v1alpha1::FooSpec = __sv_foo.spec.into();
                     let desired_object = Self::V1Alpha1(v1alpha1::Foo {
                         metadata: __sv_foo.metadata,
@@ -238,7 +238,7 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Beta1(__sv_foo), "foo.example.org/v1") => {
+                (Self::V1Beta1(__sv_foo), FooVersion::V1) => {
                     let converted: v1::FooSpec = __sv_foo.spec.into();
                     let desired_object = Self::V1(v1::Foo {
                         metadata: __sv_foo.metadata,
@@ -251,7 +251,7 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1(__sv_foo), "foo.example.org/v1alpha1") => {
+                (Self::V1(__sv_foo), FooVersion::V1Alpha1) => {
                     let converted: v1beta1::FooSpec = __sv_foo.spec.into();
                     let converted: v1alpha1::FooSpec = converted.into();
                     let desired_object = Self::V1Alpha1(v1alpha1::Foo {
@@ -265,7 +265,7 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1(__sv_foo), "foo.example.org/v1beta1") => {
+                (Self::V1(__sv_foo), FooVersion::V1Beta1) => {
                     let converted: v1beta1::FooSpec = __sv_foo.spec.into();
                     let desired_object = Self::V1Beta1(v1beta1::Foo {
                         metadata: __sv_foo.metadata,
@@ -278,19 +278,11 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Alpha1(_), "foo.example.org/v1alpha1") => {
+                (Self::V1Alpha1(_), FooVersion::V1Alpha1) => {
                     converted_objects.push(object)
                 }
-                (Self::V1Beta1(_), "foo.example.org/v1beta1") => {
-                    converted_objects.push(object)
-                }
-                (Self::V1(_), "foo.example.org/v1") => converted_objects.push(object),
-                (_, unknown_desired_api_version) => {
-                    return ::std::result::Result::Err(::stackable_versioned::ConvertObjectError::DesiredApiVersionUnknown {
-                        unknown_desired_api_version: unknown_desired_api_version
-                            .to_string(),
-                    });
-                }
+                (Self::V1Beta1(_), FooVersion::V1Beta1) => converted_objects.push(object),
+                (Self::V1(_), FooVersion::V1) => converted_objects.push(object),
             }
         }
         ::std::result::Result::Ok(converted_objects)
@@ -374,16 +366,37 @@ impl ::std::fmt::Display for FooVersion {
         &self,
         f: &mut ::std::fmt::Formatter<'_>,
     ) -> ::std::result::Result<(), ::std::fmt::Error> {
-        f.write_str(self.as_str())
+        f.write_str(self.as_version_str())
     }
 }
 #[automatically_derived]
 impl FooVersion {
-    pub fn as_str(&self) -> &str {
+    pub fn as_version_str(&self) -> &str {
         match self {
             V1Alpha1 => "v1alpha1",
             V1Beta1 => "v1beta1",
             V1 => "v1",
+        }
+    }
+    pub fn as_api_version_str(&self) -> &str {
+        match self {
+            V1Alpha1 => "foo.example.org/v1alpha1",
+            V1Beta1 => "foo.example.org/v1beta1",
+            V1 => "foo.example.org/v1",
+        }
+    }
+    pub fn try_from_api_version(
+        api_version: &str,
+    ) -> Result<Self, ::stackable_versioned::ConvertObjectError> {
+        match api_version {
+            "foo.example.org/v1alpha1" => Ok(Self::V1Alpha1),
+            "foo.example.org/v1beta1" => Ok(Self::V1Beta1),
+            "foo.example.org/v1" => Ok(Self::V1),
+            _ => {
+                Err(::stackable_versioned::ConvertObjectError::DesiredApiVersionUnknown {
+                    unknown_desired_api_version: api_version.to_string(),
+                })
+            }
         }
     }
 }
