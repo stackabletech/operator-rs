@@ -441,6 +441,9 @@ impl Struct {
                         .ok_or_else(|| #convert_object_error::Parse {
                             source: #parse_object_error::FieldNotStr{ field: "kind".to_string() }
                         })?;
+                    // Note(@sbernauer): One could argue we don't need to check the send kind, but
+                    // IMHO this is a nice sanity check. If for *some* reason a wrong kind ends up
+                    // at a conversion, the problem might be very hard to spot without this.
                     if object_kind != stringify!(#struct_ident) {
                         return Err(#convert_object_error::Parse {
                             source: #parse_object_error::WrongObjectKind{
