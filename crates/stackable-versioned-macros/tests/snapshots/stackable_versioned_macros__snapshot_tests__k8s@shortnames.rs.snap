@@ -107,12 +107,41 @@ impl Foo {
     > {
         let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
         for object in objects {
+            let object_kind = object
+                .get("kind")
+                .ok_or_else(|| ::stackable_versioned::ConvertObjectError::Parse {
+                    source: ::stackable_versioned::ParseObjectError::FieldMissing {
+                        field: "kind".to_string(),
+                    },
+                })?
+                .as_str()
+                .ok_or_else(|| ::stackable_versioned::ConvertObjectError::Parse {
+                    source: ::stackable_versioned::ParseObjectError::FieldNotStr {
+                        field: "kind".to_string(),
+                    },
+                })?;
+            if object_kind != stringify!(Foo) {
+                return Err(::stackable_versioned::ConvertObjectError::Parse {
+                    source: ::stackable_versioned::ParseObjectError::WrongObjectKind {
+                        kind: object_kind.to_string(),
+                        supported_kind: stringify!(Foo).to_string(),
+                    },
+                });
+            }
             let current_object = Self::from_json_value(object.clone())
                 .map_err(|source| ::stackable_versioned::ConvertObjectError::Parse {
                     source,
                 })?;
             match (current_object, desired_api_version) {
-                _ => converted_objects.push(object),
+                (Self::V1Alpha1(_), "stackable.tech/v1alpha1") => {
+                    converted_objects.push(object)
+                }
+                (_, unknown_desired_api_version) => {
+                    return ::std::result::Result::Err(::stackable_versioned::ConvertObjectError::DesiredApiVersionUnknown {
+                        unknown_desired_api_version: unknown_desired_api_version
+                            .to_string(),
+                    });
+                }
             }
         }
         ::std::result::Result::Ok(converted_objects)
@@ -122,11 +151,15 @@ impl Foo {
     ) -> ::std::result::Result<Self, ::stackable_versioned::ParseObjectError> {
         let api_version = value
             .get("apiVersion")
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotPresent)?
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
+                field: "apiVersion".to_string(),
+            })?
             .as_str()
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr)?;
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr {
+                field: "apiVersion".to_string(),
+            })?;
         let object = match api_version {
-            "stackable.tech/v1alpha1" | "v1alpha1" => {
+            "stackable.tech/v1alpha1" => {
                 let object = ::serde_json::from_value(value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,

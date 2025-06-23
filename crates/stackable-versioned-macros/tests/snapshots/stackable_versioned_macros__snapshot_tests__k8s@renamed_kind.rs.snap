@@ -178,12 +178,33 @@ impl FooBar {
     > {
         let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
         for object in objects {
+            let object_kind = object
+                .get("kind")
+                .ok_or_else(|| ::stackable_versioned::ConvertObjectError::Parse {
+                    source: ::stackable_versioned::ParseObjectError::FieldMissing {
+                        field: "kind".to_string(),
+                    },
+                })?
+                .as_str()
+                .ok_or_else(|| ::stackable_versioned::ConvertObjectError::Parse {
+                    source: ::stackable_versioned::ParseObjectError::FieldNotStr {
+                        field: "kind".to_string(),
+                    },
+                })?;
+            if object_kind != stringify!(FooBar) {
+                return Err(::stackable_versioned::ConvertObjectError::Parse {
+                    source: ::stackable_versioned::ParseObjectError::WrongObjectKind {
+                        kind: object_kind.to_string(),
+                        supported_kind: stringify!(FooBar).to_string(),
+                    },
+                });
+            }
             let current_object = Self::from_json_value(object.clone())
                 .map_err(|source| ::stackable_versioned::ConvertObjectError::Parse {
                     source,
                 })?;
             match (current_object, desired_api_version) {
-                (Self::V1Alpha1(__sv_foobar), "v1beta1") => {
+                (Self::V1Alpha1(__sv_foobar), "stackable.tech/v1beta1") => {
                     let converted: v1beta1::FooSpec = __sv_foobar.spec.into();
                     let desired_object = Self::V1Beta1(v1beta1::FooBar {
                         metadata: __sv_foobar.metadata,
@@ -196,7 +217,7 @@ impl FooBar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Alpha1(__sv_foobar), "v1") => {
+                (Self::V1Alpha1(__sv_foobar), "stackable.tech/v1") => {
                     let converted: v1beta1::FooSpec = __sv_foobar.spec.into();
                     let converted: v1::FooSpec = converted.into();
                     let desired_object = Self::V1(v1::FooBar {
@@ -210,7 +231,7 @@ impl FooBar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Beta1(__sv_foobar), "v1alpha1") => {
+                (Self::V1Beta1(__sv_foobar), "stackable.tech/v1alpha1") => {
                     let converted: v1alpha1::FooSpec = __sv_foobar.spec.into();
                     let desired_object = Self::V1Alpha1(v1alpha1::FooBar {
                         metadata: __sv_foobar.metadata,
@@ -223,7 +244,7 @@ impl FooBar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Beta1(__sv_foobar), "v1") => {
+                (Self::V1Beta1(__sv_foobar), "stackable.tech/v1") => {
                     let converted: v1::FooSpec = __sv_foobar.spec.into();
                     let desired_object = Self::V1(v1::FooBar {
                         metadata: __sv_foobar.metadata,
@@ -236,7 +257,7 @@ impl FooBar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1(__sv_foobar), "v1alpha1") => {
+                (Self::V1(__sv_foobar), "stackable.tech/v1alpha1") => {
                     let converted: v1beta1::FooSpec = __sv_foobar.spec.into();
                     let converted: v1alpha1::FooSpec = converted.into();
                     let desired_object = Self::V1Alpha1(v1alpha1::FooBar {
@@ -250,7 +271,7 @@ impl FooBar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1(__sv_foobar), "v1beta1") => {
+                (Self::V1(__sv_foobar), "stackable.tech/v1beta1") => {
                     let converted: v1beta1::FooSpec = __sv_foobar.spec.into();
                     let desired_object = Self::V1Beta1(v1beta1::FooBar {
                         metadata: __sv_foobar.metadata,
@@ -263,7 +284,19 @@ impl FooBar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                _ => converted_objects.push(object),
+                (Self::V1Alpha1(_), "stackable.tech/v1alpha1") => {
+                    converted_objects.push(object)
+                }
+                (Self::V1Beta1(_), "stackable.tech/v1beta1") => {
+                    converted_objects.push(object)
+                }
+                (Self::V1(_), "stackable.tech/v1") => converted_objects.push(object),
+                (_, unknown_desired_api_version) => {
+                    return ::std::result::Result::Err(::stackable_versioned::ConvertObjectError::DesiredApiVersionUnknown {
+                        unknown_desired_api_version: unknown_desired_api_version
+                            .to_string(),
+                    });
+                }
             }
         }
         ::std::result::Result::Ok(converted_objects)
@@ -273,25 +306,29 @@ impl FooBar {
     ) -> ::std::result::Result<Self, ::stackable_versioned::ParseObjectError> {
         let api_version = value
             .get("apiVersion")
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotPresent)?
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
+                field: "apiVersion".to_string(),
+            })?
             .as_str()
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr)?;
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr {
+                field: "apiVersion".to_string(),
+            })?;
         let object = match api_version {
-            "stackable.tech/v1alpha1" | "v1alpha1" => {
+            "stackable.tech/v1alpha1" => {
                 let object = ::serde_json::from_value(value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
                 Self::V1Alpha1(object)
             }
-            "stackable.tech/v1beta1" | "v1beta1" => {
+            "stackable.tech/v1beta1" => {
                 let object = ::serde_json::from_value(value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
                 Self::V1Beta1(object)
             }
-            "stackable.tech/v1" | "v1" => {
+            "stackable.tech/v1" => {
                 let object = ::serde_json::from_value(value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,

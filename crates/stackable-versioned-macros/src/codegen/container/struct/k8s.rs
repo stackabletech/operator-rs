@@ -181,9 +181,9 @@ impl Struct {
                 fn from_json_value(value: #serde_json_path::Value) -> ::std::result::Result<Self, #parse_object_error> {
                     let api_version = value
                         .get("apiVersion")
-                        .ok_or_else(|| #parse_object_error::FieldNotPresent)?
+                        .ok_or_else(|| #parse_object_error::FieldMissing{ field: "apiVersion".to_string() })?
                         .as_str()
-                        .ok_or_else(|| #parse_object_error::FieldNotStr)?;
+                        .ok_or_else(|| #parse_object_error::FieldNotStr{ field: "apiVersion".to_string() })?;
 
                     let object = match api_version {
                         #(#api_versions => {
@@ -321,6 +321,7 @@ impl Struct {
         let versioned_path = &*kubernetes_arguments.crates.versioned;
         let kube_core_path = &*kubernetes_arguments.crates.kube_core;
 
+        let parse_object_error = quote! { #versioned_path::ParseObjectError };
         let convert_object_error = quote! { #versioned_path::ConvertObjectError };
 
         // Generate conversion paths and the match arms for these paths
@@ -431,6 +432,24 @@ impl Struct {
                 let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
 
                 for object in objects {
+                    let object_kind = object
+                        .get("kind")
+                        .ok_or_else(|| #convert_object_error::Parse {
+                            source: #parse_object_error::FieldMissing{ field: "kind".to_string() }
+                        })?
+                        .as_str()
+                        .ok_or_else(|| #convert_object_error::Parse {
+                            source: #parse_object_error::FieldNotStr{ field: "kind".to_string() }
+                        })?;
+                    if object_kind != stringify!(#struct_ident) {
+                        return Err(#convert_object_error::Parse {
+                            source: #parse_object_error::WrongObjectKind{
+                                kind: object_kind.to_string(),
+                                supported_kind: stringify!(#struct_ident).to_string(),
+                            }
+                        })
+                    }
+
                     // This clone is required because in the noop case we move the object into
                     // the converted objects vec.
                     let current_object = Self::from_json_value(object.clone())

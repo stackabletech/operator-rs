@@ -47,17 +47,25 @@ fn raw_object_schema(_: &mut schemars::r#gen::SchemaGenerator) -> Schema {
 /// This error indicates that parsing an object from a conversion review failed.
 #[derive(Debug, Snafu)]
 pub enum ParseObjectError {
-    #[snafu(display(r#"failed to find "apiVersion" field"#))]
-    FieldNotPresent,
+    #[snafu(display("the field {field:?} is missing"))]
+    FieldMissing { field: String },
 
-    #[snafu(display(r#"the "apiVersion" field must be a string"#))]
-    FieldNotStr,
+    #[snafu(display(r#"the field {field:?} must be a string"#))]
+    FieldNotStr { field: String },
 
     #[snafu(display("encountered unknown object API version {api_version:?}"))]
     UnknownApiVersion { api_version: String },
 
     #[snafu(display("failed to deserialize object from JSON"))]
     Deserialize { source: serde_json::Error },
+
+    #[snafu(display(
+        "wrong object kind {kind:?}. The conversion can only convert objects of kind {supported_kind:?}"
+    ))]
+    WrongObjectKind {
+        kind: String,
+        supported_kind: String,
+    },
 }
 
 /// This error indicates that converting an object from a conversion review to the desired
