@@ -1,0 +1,76 @@
+---
+source: crates/stackable-versioned/src/tests/mod.rs
+expression: formatted
+input_file: crates/stackable-versioned/src/tests/fixtures/inputs/pass/persons_to_v3.json
+---
+{
+  "apiVersion": "apiextensions.k8s.io/v1",
+  "kind": "ConversionReview",
+  "response": {
+    "uid": "c4e55572-ee1f-4e94-9097-28936985d45f",
+    "result": {
+      "status": "Success"
+    },
+    "convertedObjects": [
+      {
+        "apiVersion": "test.stackable.tech/v3",
+        "kind": "Person",
+        "metadata": {
+          "name": "sbernauer",
+          "namespace": "default",
+          "uid": "d41e2019-5de3-409c-a7b2-0799ecb95e4b"
+        },
+        "spec": {
+          "firstName": "",
+          "gender": "Unknown",
+          "lastName": "",
+          "username": "sbernauer"
+        }
+      },
+      {
+        "apiVersion": "test.stackable.tech/v3",
+        "kind": "Person",
+        "metadata": {},
+        "spec": {
+          "firstName": "Sebastian",
+          "gender": "Unknown",
+          "lastName": "Bernauer",
+          "username": "sbernauer"
+        }
+      },
+      {
+        "apiVersion": "test.stackable.tech/v3",
+        "kind": "Person",
+        "metadata": {},
+        "spec": {
+          "firstName": "Sebastian",
+          "gender": "Unknown",
+          "lastName": "Bernauer",
+          "username": "sbernauer"
+        }
+      },
+      {
+        "apiVersion": "test.stackable.tech/v3",
+        "kind": "Person",
+        "metadata": {},
+        "spec": {
+          "firstName": "Sebastian",
+          "gender": "Male",
+          "lastName": "Bernauer",
+          "username": "sbernauer"
+        }
+      },
+      {
+        "apiVersion": "test.stackable.tech/v3",
+        "kind": "Person",
+        "metadata": {},
+        "spec": {
+          "firstName": "Sebastian",
+          "gender": "Male",
+          "lastName": "Bernauer",
+          "username": "sbernauer"
+        }
+      }
+    ]
+  }
+}

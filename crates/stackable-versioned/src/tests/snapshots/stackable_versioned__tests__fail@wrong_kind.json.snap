@@ -1,0 +1,19 @@
+---
+source: crates/stackable-versioned/src/tests/mod.rs
+expression: formatted
+input_file: crates/stackable-versioned/src/tests/fixtures/inputs/fail/wrong_kind.json
+---
+{
+  "apiVersion": "apiextensions.k8s.io/v1",
+  "kind": "ConversionReview",
+  "response": {
+    "uid": "c4e55572-ee1f-4e94-9097-28936985d45f",
+    "result": {
+      "status": "Failure",
+      "code": 400,
+      "message": "failed to parse object: wrong object kind \"SomeOtherResource\". The conversion can only convert objects of kind \"Person\"",
+      "reason": "failed to parse object: wrong object kind \"SomeOtherResource\". The conversion can only convert objects of kind \"Person\""
+    },
+    "convertedObjects": []
+  }
+}
