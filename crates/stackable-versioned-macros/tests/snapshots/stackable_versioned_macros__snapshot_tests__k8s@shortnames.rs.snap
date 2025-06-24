@@ -114,7 +114,7 @@ impl Foo {
                 .map_err(|source| ::stackable_versioned::ConvertObjectError::Parse {
                     source,
                 })?;
-            match (current_object, &desired_api_version) {
+            match (current_object, desired_api_version) {
                 (Self::V1Alpha1(_), FooVersion::V1Alpha1) => {
                     converted_objects.push(object)
                 }
@@ -174,6 +174,7 @@ impl Foo {
     }
 }
 #[automatically_derived]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum FooVersion {
     V1Alpha1,
 }

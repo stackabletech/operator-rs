@@ -200,7 +200,7 @@ impl Foo {
                 .map_err(|source| ::stackable_versioned::ConvertObjectError::Parse {
                     source,
                 })?;
-            match (current_object, &desired_api_version) {
+            match (current_object, desired_api_version) {
                 (Self::V1Alpha1(__sv_foo), FooVersion::V1Beta1) => {
                     let converted: v1beta1::FooSpec = __sv_foo.spec.into();
                     let desired_object = Self::V1Beta1(v1beta1::Foo {
@@ -358,6 +358,7 @@ impl Foo {
     }
 }
 #[automatically_derived]
+#[derive(Copy, Clone, Debug)]
 pub enum FooVersion {
     V1Alpha1,
     V1Beta1,

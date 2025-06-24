@@ -263,6 +263,7 @@ impl Struct {
 
         quote! {
             #automatically_derived
+            #[derive(Copy, Clone, Debug)]
             #vis enum #enum_ident {
                 #(#variant_idents),*
             }
@@ -481,7 +482,7 @@ impl Struct {
                     let current_object = Self::try_from_json_object(object.clone())
                         .map_err(|source| #convert_object_error::Parse { source })?;
 
-                    match (current_object, &desired_api_version) {
+                    match (current_object, desired_api_version) {
                         #(#conversion_match_arms,)*
                         // We explicitly list the remaining no-op cases, so the compiler ensures we
                         // did not miss a conversion.
