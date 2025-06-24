@@ -467,7 +467,6 @@ impl Struct {
                 -> ::std::result::Result<::std::vec::Vec<#serde_json_path::Value>, #convert_object_error>
             {
                 let desired_api_version = #version_enum_ident::try_from_api_version(desired_api_version)?;
-                // let desired_api_version: #version_enum_ident = desired_api_version.try_into()?;
 
                 let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
 
