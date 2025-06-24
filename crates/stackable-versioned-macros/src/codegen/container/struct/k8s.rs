@@ -183,9 +183,9 @@ impl Struct {
                 fn from_json_value(object: #serde_json_path::Value) -> ::std::result::Result<Self, #parse_object_error> {
                     let object_kind = object
                         .get("kind")
-                        .ok_or_else(|| #parse_object_error::FieldMissing{ field: "kind".to_string() })?
+                        .ok_or_else(|| #parse_object_error::FieldMissing{ field: "kind".to_owned() })?
                         .as_str()
-                        .ok_or_else(|| #parse_object_error::FieldNotStr{ field: "kind".to_string() })?;
+                        .ok_or_else(|| #parse_object_error::FieldNotStr{ field: "kind".to_owned() })?;
 
                     // Note(@sbernauer): The kind must be checked here, because it is
                     // possible for the wrong object to be deserialized.
