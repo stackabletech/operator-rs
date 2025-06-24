@@ -201,9 +201,9 @@ impl Struct {
 
                     let api_version = object
                         .get("apiVersion")
-                        .ok_or_else(|| #parse_object_error::FieldMissing{ field: "apiVersion".to_string() })?
+                        .ok_or_else(|| #parse_object_error::FieldMissing{ field: "apiVersion".to_owned() })?
                         .as_str()
-                        .ok_or_else(|| #parse_object_error::FieldNotStr{ field: "apiVersion".to_string() })?;
+                        .ok_or_else(|| #parse_object_error::FieldNotStr{ field: "apiVersion".to_owned() })?;
 
                     let object = match api_version {
                         #(#api_versions => {
