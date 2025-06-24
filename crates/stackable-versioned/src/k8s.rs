@@ -50,7 +50,7 @@ pub enum ParseObjectError {
     #[snafu(display("the field {field:?} is missing"))]
     FieldMissing { field: String },
 
-    #[snafu(display(r#"the field {field:?} must be a string"#))]
+    #[snafu(display("the field {field:?} must be a string"))]
     FieldNotStr { field: String },
 
     #[snafu(display("encountered unknown object API version {api_version:?}"))]
