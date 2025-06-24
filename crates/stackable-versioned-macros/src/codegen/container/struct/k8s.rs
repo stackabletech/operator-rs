@@ -186,9 +186,11 @@ impl Struct {
                         .as_str()
                         .ok_or_else(|| #parse_object_error::FieldNotStr{ field: "kind".to_string() })?;
 
-                    // Note(@sbernauer): One could argue we don't need to check the kind, but this
-                    // is a nice sanity check. If for *some* reason a unexpected kind ends up at a
-                    // conversion, the problem might be very hard to spot without this.
+                    // Note(@sbernauer): The kind must be checked here, because it is
+                    // possible for the wrong object to be deserialized.
+                    // Checking here stops us assuming the kind is correct and
+                    // accidentally updating upgrade/downgrade information in the
+                    // status in a later step.
                     if object_kind != stringify!(#enum_ident) {
                         return Err(#parse_object_error::UnexpectedObjectKind{
                             kind: object_kind.to_string(),
