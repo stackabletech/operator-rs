@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: `CertificateAuthority::generate_leaf_certificate` (and `generate_rsa_leaf_certificate` and `generate_ecdsa_leaf_certificate`)
   now take an additional parameter `subject_alterative_dns_names`. The passed SANs are added to the generated certificate,
-  this is needed for basically all modern TLS certificate validations when used with HTTPS.
+  this is needed when the HTTPS server is accessible on multiple DNS names and/or IPs.
   Pass an empty list (`[]`) to keep the existing behavior ([#1057]).
 - BREAKING: The constant `DEFAULT_CA_VALIDITY_SECONDS` has been renamed to `DEFAULT_CA_VALIDITY` and now is of type `stackable_operator::time::Duration`.
   Also, the constant `ROOT_CA_SUBJECT` has been renamed to `SDP_ROOT_CA_SUBJECT` ([#1057]).
