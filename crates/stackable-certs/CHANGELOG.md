@@ -10,8 +10,9 @@ All notable changes to this project will be documented in this file.
   now take an additional parameter `subject_alterative_dns_names`. The passed SANs are added to the generated certificate,
   this is needed when the HTTPS server is accessible on multiple DNS names and/or IPs.
   Pass an empty list (`[]`) to keep the existing behavior ([#1057]).
-- BREAKING: The constant `DEFAULT_CA_VALIDITY_SECONDS` has been renamed to `DEFAULT_CA_VALIDITY` and now is of type `stackable_operator::time::Duration`.
-  Also, the constant `ROOT_CA_SUBJECT` has been renamed to `SDP_ROOT_CA_SUBJECT` ([#1057]).
+- BREAKING: Constants have been renamed/retyped ([#1057]):
+  - `DEFAULT_CA_VALIDITY_SECONDS` has been renamed to `DEFAULT_CA_VALIDITY` and now is of type `stackable_operator::time::Duration`.
+  - `ROOT_CA_SUBJECT` has been renamed to `SDP_ROOT_CA_SUBJECT`.
 - Added the function `CertificateAuthority::ca_cert` to easily get the CA `Certificate` ([#1057]).
 
 ## [0.3.1] - 2024-07-10
