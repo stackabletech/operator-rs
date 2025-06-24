@@ -604,11 +604,11 @@ mod tests {
         assert!(ContainerBuilder::new("name-with-hyphen").is_ok());
         assert_container_builder_err(
             ContainerBuilder::new("ends-with-hyphen-"),
-            &format!("regex used for validation is \"{RFC_1123_LABEL_FMT}\""),
+            &format!(r#"regex used for validation is "{RFC_1123_LABEL_FMT}""#),
         );
         assert_container_builder_err(
             ContainerBuilder::new("-starts-with-hyphen"),
-            &format!("regex used for validation is \"{RFC_1123_LABEL_FMT}\""),
+            &format!(r#"regex used for validation is "{RFC_1123_LABEL_FMT}""#),
         );
     }
 
@@ -623,7 +623,7 @@ mod tests {
         assert_container_builder_err(
             ContainerBuilder::new("name_name"),
             &format!(
-                "(e.g. \"example-label\", or \"1-label-1\", regex used for validation is \"{RFC_1123_LABEL_FMT}\""
+                r#"(e.g. "example-label", or "1-label-1", regex used for validation is "{RFC_1123_LABEL_FMT}""#
             ),
         );
     }
