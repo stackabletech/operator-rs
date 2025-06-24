@@ -194,8 +194,8 @@ impl Struct {
                     // status in a later step.
                     if object_kind != #enum_ident_string {
                         return Err(#parse_object_error::UnexpectedKind{
-                            kind: object_kind.to_string(),
-                            expected: #enum_ident_string.to_string(),
+                            kind: object_kind.to_owned(),
+                            expected: #enum_ident_string.to_owned(),
                         });
                     }
 

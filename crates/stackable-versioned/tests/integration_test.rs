@@ -66,9 +66,9 @@ pub enum Gender {
 impl From<Gender> for String {
     fn from(value: Gender) -> Self {
         match value {
-            Gender::Unknown => "Unknown".to_string(),
-            Gender::Male => "Male".to_string(),
-            Gender::Female => "Female".to_string(),
+            Gender::Unknown => "Unknown".to_owned(),
+            Gender::Male => "Male".to_owned(),
+            Gender::Female => "Female".to_owned(),
         }
     }
 }
