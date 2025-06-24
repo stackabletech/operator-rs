@@ -368,7 +368,7 @@ impl Foo {
             })?;
         let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
         for object in objects {
-            let current_object = Self::from_json_value(object.clone())
+            let current_object = Self::try_from_json_object(object.clone())
                 .map_err(|source| ::stackable_versioned::ConvertObjectError::Parse {
                     source,
                 })?;
@@ -464,10 +464,10 @@ impl Foo {
         }
         ::std::result::Result::Ok(converted_objects)
     }
-    fn from_json_value(
-        object: ::serde_json::Value,
+    fn try_from_json_object(
+        object_value: ::serde_json::Value,
     ) -> ::std::result::Result<Self, ::stackable_versioned::ParseObjectError> {
-        let object_kind = object
+        let object_kind = object_value
             .get("kind")
             .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
                 field: "kind".to_owned(),
@@ -478,11 +478,11 @@ impl Foo {
             })?;
         if object_kind != "Foo" {
             return Err(::stackable_versioned::ParseObjectError::UnexpectedKind {
-                kind: object_kind.to_string(),
-                expected: "Foo".to_string(),
+                kind: object_kind.to_owned(),
+                expected: "Foo".to_owned(),
             });
         }
-        let api_version = object
+        let api_version = object_value
             .get("apiVersion")
             .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
                 field: "apiVersion".to_owned(),
@@ -493,21 +493,21 @@ impl Foo {
             })?;
         let object = match api_version {
             "foo.example.org/v1alpha1" => {
-                let object = ::serde_json::from_value(object)
+                let object = ::serde_json::from_value(object_value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
                 Self::V1Alpha1(object)
             }
             "foo.example.org/v1" => {
-                let object = ::serde_json::from_value(object)
+                let object = ::serde_json::from_value(object_value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
                 Self::V1(object)
             }
             "foo.example.org/v2alpha1" => {
-                let object = ::serde_json::from_value(object)
+                let object = ::serde_json::from_value(object_value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
@@ -670,7 +670,7 @@ impl Bar {
             })?;
         let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
         for object in objects {
-            let current_object = Self::from_json_value(object.clone())
+            let current_object = Self::try_from_json_object(object.clone())
                 .map_err(|source| ::stackable_versioned::ConvertObjectError::Parse {
                     source,
                 })?;
@@ -766,10 +766,10 @@ impl Bar {
         }
         ::std::result::Result::Ok(converted_objects)
     }
-    fn from_json_value(
-        object: ::serde_json::Value,
+    fn try_from_json_object(
+        object_value: ::serde_json::Value,
     ) -> ::std::result::Result<Self, ::stackable_versioned::ParseObjectError> {
-        let object_kind = object
+        let object_kind = object_value
             .get("kind")
             .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
                 field: "kind".to_owned(),
@@ -780,11 +780,11 @@ impl Bar {
             })?;
         if object_kind != "Bar" {
             return Err(::stackable_versioned::ParseObjectError::UnexpectedKind {
-                kind: object_kind.to_string(),
-                expected: "Bar".to_string(),
+                kind: object_kind.to_owned(),
+                expected: "Bar".to_owned(),
             });
         }
-        let api_version = object
+        let api_version = object_value
             .get("apiVersion")
             .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
                 field: "apiVersion".to_owned(),
@@ -795,21 +795,21 @@ impl Bar {
             })?;
         let object = match api_version {
             "bar.example.org/v1alpha1" => {
-                let object = ::serde_json::from_value(object)
+                let object = ::serde_json::from_value(object_value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
                 Self::V1Alpha1(object)
             }
             "bar.example.org/v1" => {
-                let object = ::serde_json::from_value(object)
+                let object = ::serde_json::from_value(object_value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
                 Self::V1(object)
             }
             "bar.example.org/v2alpha1" => {
-                let object = ::serde_json::from_value(object)
+                let object = ::serde_json::from_value(object_value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;

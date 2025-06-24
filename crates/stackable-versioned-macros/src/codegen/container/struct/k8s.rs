@@ -180,8 +180,8 @@ impl Struct {
 
                 #convert_method
 
-                fn from_json_value(object: #serde_json_path::Value) -> ::std::result::Result<Self, #parse_object_error> {
-                    let object_kind = object
+                fn try_from_json_object(object_value: #serde_json_path::Value) -> ::std::result::Result<Self, #parse_object_error> {
+                    let object_kind = object_value
                         .get("kind")
                         .ok_or_else(|| #parse_object_error::FieldMissing{ field: "kind".to_owned() })?
                         .as_str()
@@ -199,7 +199,7 @@ impl Struct {
                         });
                     }
 
-                    let api_version = object
+                    let api_version = object_value
                         .get("apiVersion")
                         .ok_or_else(|| #parse_object_error::FieldMissing{ field: "apiVersion".to_owned() })?
                         .as_str()
@@ -207,7 +207,7 @@ impl Struct {
 
                     let object = match api_version {
                         #(#api_versions => {
-                            let object = #serde_json_path::from_value(object)
+                            let object = #serde_json_path::from_value(object_value)
                                 .map_err(|source| #parse_object_error::Deserialize { source })?;
 
                             Self::#variant_idents(object)
@@ -478,7 +478,7 @@ impl Struct {
                 for object in objects {
                     // This clone is required because in the noop case we move the object into
                     // the converted objects vec.
-                    let current_object = Self::from_json_value(object.clone())
+                    let current_object = Self::try_from_json_object(object.clone())
                         .map_err(|source| #convert_object_error::Parse { source })?;
 
                     match (current_object, &desired_api_version) {
