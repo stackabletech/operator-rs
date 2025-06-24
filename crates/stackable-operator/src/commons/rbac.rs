@@ -28,9 +28,13 @@ pub enum Error {
 }
 
 /// Build RBAC objects for the product workloads.
-/// The names of the service account and role binding match the following templates:
+/// The names of the service account and role binding match the following patterns:
 /// - `{resource_name}-serviceaccount`
 /// - `{resource_name}-rolebinding`
+///
+/// A previous version of this function used the `product_name` instead of the `resource_name`,
+/// but this caused conflicts when deploying multiple instances of a product in the same namespace.
+/// See <https://stackable.atlassian.net/browse/SUP-148> for more details.
 ///
 /// The service account is bound to a cluster role named `{product_name}-clusterrole` which
 /// must already exist.
