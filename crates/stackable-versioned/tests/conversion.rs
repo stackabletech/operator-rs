@@ -85,7 +85,7 @@ impl From<String> for Gender {
 
 #[test]
 fn pass() {
-    glob!("./fixtures/inputs/pass/", "*.json", |path| {
+    glob!("./inputs/conversions/pass/", "*.json", |path| {
         let (request, response) = run_for_file(path);
 
         let formatted = serde_json::to_string_pretty(&response)
@@ -107,7 +107,7 @@ fn pass() {
 
 #[test]
 fn fail() {
-    glob!("./fixtures/inputs/fail/", "*.json", |path| {
+    glob!("./inputs/conversions/fail/", "*.json", |path| {
         let (request, response) = run_for_file(path);
 
         let formatted = serde_json::to_string_pretty(&response)
