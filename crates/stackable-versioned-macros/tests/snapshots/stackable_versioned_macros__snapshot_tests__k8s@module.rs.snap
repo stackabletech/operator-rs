@@ -473,10 +473,10 @@ impl Foo {
             .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr {
                 field: "kind".to_string(),
             })?;
-        if object_kind != stringify!(Foo) {
+        if object_kind != "Foo" {
             return Err(::stackable_versioned::ParseObjectError::UnexpectedObjectKind {
                 kind: object_kind.to_string(),
-                supported_kind: stringify!(Foo).to_string(),
+                supported_kind: "Foo".to_string(),
             });
         }
         let api_version = object
@@ -772,10 +772,10 @@ impl Bar {
             .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr {
                 field: "kind".to_string(),
             })?;
-        if object_kind != stringify!(Bar) {
+        if object_kind != "Bar" {
             return Err(::stackable_versioned::ParseObjectError::UnexpectedObjectKind {
                 kind: object_kind.to_string(),
-                supported_kind: stringify!(Bar).to_string(),
+                supported_kind: "Bar".to_string(),
             });
         }
         let api_version = object

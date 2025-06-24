@@ -129,6 +129,7 @@ impl Struct {
         let variant_data_ident = &self.common.idents.kubernetes_parameter;
         let version_enum_ident = &self.common.idents.kubernetes_version;
         let enum_ident = &self.common.idents.kubernetes;
+        let enum_ident_string = enum_ident.to_string();
 
         // Only add the #[automatically_derived] attribute if this impl is used outside of a
         // module (in standalone mode).
@@ -191,10 +192,10 @@ impl Struct {
                     // Checking here stops us assuming the kind is correct and
                     // accidentally updating upgrade/downgrade information in the
                     // status in a later step.
-                    if object_kind != stringify!(#enum_ident) {
+                    if object_kind != #enum_ident_string {
                         return Err(#parse_object_error::UnexpectedObjectKind{
                             kind: object_kind.to_string(),
-                            supported_kind: stringify!(#enum_ident).to_string(),
+                            supported_kind: #enum_ident_string.to_string(),
                         });
                     }
 
