@@ -250,7 +250,7 @@ impl Struct {
         let automatically_derived = is_nested.not().then(|| quote! {#[automatically_derived]});
 
         let versioned_path = &*kubernetes_arguments.crates.versioned;
-        let convert_object_error = quote! { #versioned_path::ConvertObjectError };
+        let parse_api_version_error = quote! { #versioned_path::ParseApiVersionError };
 
         // Get the per-version items to be able to iterate over them via quote
         let variant_strings = &tokens.variant_strings;
@@ -288,11 +288,11 @@ impl Struct {
                     }
                 }
 
-                pub fn try_from_api_version(api_version: &str) -> Result<Self, #convert_object_error> {
+                pub fn try_from_api_version(api_version: &str) -> Result<Self, #parse_api_version_error> {
                     match api_version {
                         #(#api_versions => Ok(Self::#variant_idents)),*,
-                        _ => Err(#convert_object_error::DesiredApiVersionUnknown {
-                            unknown_desired_api_version: api_version.to_string(),
+                        _ => Err(#parse_api_version_error::UnknownVersion {
+                            api_version: api_version.to_string(),
                         }),
                     }
                 }
@@ -469,7 +469,8 @@ impl Struct {
             )
                 -> ::std::result::Result<::std::vec::Vec<#serde_json_path::Value>, #convert_object_error>
             {
-                let desired_api_version = #version_enum_ident::try_from_api_version(desired_api_version)?;
+                let desired_api_version = #version_enum_ident::try_from_api_version(desired_api_version)
+                    .map_err(|source| #convert_object_error::ParseDesiredApiVersion { source })?;
 
                 let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
 

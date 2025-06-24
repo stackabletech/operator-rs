@@ -344,8 +344,11 @@ pub(crate) mod versioned {
             ::stackable_versioned::ConvertObjectError,
         > {
             let desired_api_version = FooVersion::try_from_api_version(
-                desired_api_version,
-            )?;
+                    desired_api_version,
+                )
+                .map_err(|source| ::stackable_versioned::ConvertObjectError::ParseDesiredApiVersion {
+                    source,
+                })?;
             let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
             for object in objects {
                 let current_object = Self::from_json_value(object.clone())
@@ -457,9 +460,9 @@ pub(crate) mod versioned {
                     field: "kind".to_string(),
                 })?;
             if object_kind != "Foo" {
-                return Err(::stackable_versioned::ParseObjectError::UnexpectedObjectKind {
+                return Err(::stackable_versioned::ParseObjectError::UnexpectedKind {
                     kind: object_kind.to_string(),
-                    supported_kind: "Foo".to_string(),
+                    expected: "Foo".to_string(),
                 });
             }
             let api_version = object
@@ -541,14 +544,14 @@ pub(crate) mod versioned {
         }
         pub fn try_from_api_version(
             api_version: &str,
-        ) -> Result<Self, ::stackable_versioned::ConvertObjectError> {
+        ) -> Result<Self, ::stackable_versioned::ParseApiVersionError> {
             match api_version {
                 "foo.example.org/v1alpha1" => Ok(Self::V1Alpha1),
                 "foo.example.org/v1" => Ok(Self::V1),
                 "foo.example.org/v2alpha1" => Ok(Self::V2Alpha1),
                 _ => {
-                    Err(::stackable_versioned::ConvertObjectError::DesiredApiVersionUnknown {
-                        unknown_desired_api_version: api_version.to_string(),
+                    Err(::stackable_versioned::ParseApiVersionError::UnknownVersion {
+                        api_version: api_version.to_string(),
                     })
                 }
             }
@@ -640,8 +643,11 @@ pub(crate) mod versioned {
             ::stackable_versioned::ConvertObjectError,
         > {
             let desired_api_version = BarVersion::try_from_api_version(
-                desired_api_version,
-            )?;
+                    desired_api_version,
+                )
+                .map_err(|source| ::stackable_versioned::ConvertObjectError::ParseDesiredApiVersion {
+                    source,
+                })?;
             let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
             for object in objects {
                 let current_object = Self::from_json_value(object.clone())
@@ -753,9 +759,9 @@ pub(crate) mod versioned {
                     field: "kind".to_string(),
                 })?;
             if object_kind != "Bar" {
-                return Err(::stackable_versioned::ParseObjectError::UnexpectedObjectKind {
+                return Err(::stackable_versioned::ParseObjectError::UnexpectedKind {
                     kind: object_kind.to_string(),
-                    supported_kind: "Bar".to_string(),
+                    expected: "Bar".to_string(),
                 });
             }
             let api_version = object
@@ -837,14 +843,14 @@ pub(crate) mod versioned {
         }
         pub fn try_from_api_version(
             api_version: &str,
-        ) -> Result<Self, ::stackable_versioned::ConvertObjectError> {
+        ) -> Result<Self, ::stackable_versioned::ParseApiVersionError> {
             match api_version {
                 "bar.example.org/v1alpha1" => Ok(Self::V1Alpha1),
                 "bar.example.org/v1" => Ok(Self::V1),
                 "bar.example.org/v2alpha1" => Ok(Self::V2Alpha1),
                 _ => {
-                    Err(::stackable_versioned::ConvertObjectError::DesiredApiVersionUnknown {
-                        unknown_desired_api_version: api_version.to_string(),
+                    Err(::stackable_versioned::ParseApiVersionError::UnknownVersion {
+                        api_version: api_version.to_string(),
                     })
                 }
             }

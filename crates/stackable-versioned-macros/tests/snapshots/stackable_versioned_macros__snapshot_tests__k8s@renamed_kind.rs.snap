@@ -176,8 +176,11 @@ impl FooBar {
         ::stackable_versioned::ConvertObjectError,
     > {
         let desired_api_version = FooBarVersion::try_from_api_version(
-            desired_api_version,
-        )?;
+                desired_api_version,
+            )
+            .map_err(|source| ::stackable_versioned::ConvertObjectError::ParseDesiredApiVersion {
+                source,
+            })?;
         let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
         for object in objects {
             let current_object = Self::from_json_value(object.clone())
@@ -289,9 +292,9 @@ impl FooBar {
                 field: "kind".to_string(),
             })?;
         if object_kind != "FooBar" {
-            return Err(::stackable_versioned::ParseObjectError::UnexpectedObjectKind {
+            return Err(::stackable_versioned::ParseObjectError::UnexpectedKind {
                 kind: object_kind.to_string(),
-                supported_kind: "FooBar".to_string(),
+                expected: "FooBar".to_string(),
             });
         }
         let api_version = object
@@ -376,14 +379,14 @@ impl FooBarVersion {
     }
     pub fn try_from_api_version(
         api_version: &str,
-    ) -> Result<Self, ::stackable_versioned::ConvertObjectError> {
+    ) -> Result<Self, ::stackable_versioned::ParseApiVersionError> {
         match api_version {
             "stackable.tech/v1alpha1" => Ok(Self::V1Alpha1),
             "stackable.tech/v1beta1" => Ok(Self::V1Beta1),
             "stackable.tech/v1" => Ok(Self::V1),
             _ => {
-                Err(::stackable_versioned::ConvertObjectError::DesiredApiVersionUnknown {
-                    unknown_desired_api_version: api_version.to_string(),
+                Err(::stackable_versioned::ParseApiVersionError::UnknownVersion {
+                    api_version: api_version.to_string(),
                 })
             }
         }
