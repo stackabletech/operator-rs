@@ -289,7 +289,7 @@ impl Struct {
                     }
                 }
 
-                pub fn try_from_api_version(api_version: &str) -> Result<Self, #unknown_desired_api_version_error> {
+                pub fn from_api_version(api_version: &str) -> Result<Self, #unknown_desired_api_version_error> {
                     match api_version {
                         #(#api_versions => Ok(Self::#variant_idents)),*,
                         _ => Err(#unknown_desired_api_version_error {
@@ -470,7 +470,7 @@ impl Struct {
             )
                 -> ::std::result::Result<::std::vec::Vec<#serde_json_path::Value>, #convert_object_error>
             {
-                let desired_api_version = #version_enum_ident::try_from_api_version(desired_api_version)
+                let desired_api_version = #version_enum_ident::from_api_version(desired_api_version)
                     .map_err(|source| #convert_object_error::ParseDesiredApiVersion { source })?;
 
                 let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());

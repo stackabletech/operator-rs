@@ -190,7 +190,7 @@ impl Foo {
         ::std::vec::Vec<::serde_json::Value>,
         ::stackable_versioned::ConvertObjectError,
     > {
-        let desired_api_version = FooVersion::try_from_api_version(desired_api_version)
+        let desired_api_version = FooVersion::from_api_version(desired_api_version)
             .map_err(|source| ::stackable_versioned::ConvertObjectError::ParseDesiredApiVersion {
                 source,
             })?;
@@ -388,7 +388,7 @@ impl FooVersion {
             V1 => "foo.example.org/v1",
         }
     }
-    pub fn try_from_api_version(
+    pub fn from_api_version(
         api_version: &str,
     ) -> Result<Self, ::stackable_versioned::UnknownDesiredApiVersionError> {
         match api_version {
