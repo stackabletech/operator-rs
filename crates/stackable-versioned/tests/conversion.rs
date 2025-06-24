@@ -86,7 +86,7 @@ impl From<String> for Gender {
 #[test]
 fn pass() {
     glob!("./inputs/conversions/pass/", "*.json", |path| {
-        let (request, response) = run_for_file(path);
+        let (request, response) = convert_via_file(path);
 
         let formatted = serde_json::to_string_pretty(&response)
             .expect("Failed to serialize ConversionResponse");
@@ -108,7 +108,7 @@ fn pass() {
 #[test]
 fn fail() {
     glob!("./inputs/conversions/fail/", "*.json", |path| {
-        let (request, response) = run_for_file(path);
+        let (request, response) = convert_via_file(path);
 
         let formatted = serde_json::to_string_pretty(&response)
             .expect("Failed to serialize ConversionResponse");
@@ -129,7 +129,7 @@ fn fail() {
     })
 }
 
-fn run_for_file(path: &Path) -> (ConversionReview, ConversionReview) {
+fn convert_via_file(path: &Path) -> (ConversionReview, ConversionReview) {
     let request: ConversionReview =
         serde_json::from_reader(File::open(path).expect("failed to open test file"))
             .expect("failed to parse ConversionReview from test file");
