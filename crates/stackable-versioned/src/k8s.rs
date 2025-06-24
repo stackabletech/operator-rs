@@ -59,13 +59,8 @@ pub enum ParseObjectError {
     #[snafu(display("failed to deserialize object from JSON"))]
     Deserialize { source: serde_json::Error },
 
-    #[snafu(display(
-        "unexpected object kind {kind:?}. The conversion can only convert objects of kind {supported_kind:?}"
-    ))]
-    UnexpectedObjectKind {
-        kind: String,
-        supported_kind: String,
-    },
+    #[snafu(display("unexpected object kind {kind:?}, expected {expected:?}"))]
+    UnexpectedKind { kind: String, expected: String },
 }
 
 /// This error indicates that converting an object from a conversion review to the desired

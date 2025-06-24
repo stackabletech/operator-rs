@@ -193,9 +193,9 @@ impl Struct {
                     // accidentally updating upgrade/downgrade information in the
                     // status in a later step.
                     if object_kind != #enum_ident_string {
-                        return Err(#parse_object_error::UnexpectedObjectKind{
+                        return Err(#parse_object_error::UnexpectedKind{
                             kind: object_kind.to_string(),
-                            supported_kind: #enum_ident_string.to_string(),
+                            expected: #enum_ident_string.to_string(),
                         });
                     }
 
