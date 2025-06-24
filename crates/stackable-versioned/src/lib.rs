@@ -17,6 +17,3 @@ pub use stackable_versioned_macros::versioned;
 mod k8s;
 #[cfg(feature = "k8s")]
 pub use k8s::*;
-
-#[cfg(test)]
-mod tests;

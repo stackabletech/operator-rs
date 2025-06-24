@@ -74,7 +74,9 @@ pub enum ConvertObjectError {
     Serialize { source: serde_json::Error },
 
     #[snafu(display("failed to parse desired API version"))]
-    ParseDesiredApiVersion { source: ParseApiVersionError },
+    ParseDesiredApiVersion {
+        source: UnknownDesiredApiVersionError,
+    },
 }
 
 impl ConvertObjectError {
@@ -98,15 +100,14 @@ impl ConvertObjectError {
 
             // This is likely the clients fault, as it is requesting a unsupported version
             ConvertObjectError::ParseDesiredApiVersion {
-                source: ParseApiVersionError::UnknownVersion { .. },
-                ..
+                source: UnknownDesiredApiVersionError { .. },
             } => 400,
         }
     }
 }
 
 #[derive(Debug, Snafu)]
-pub enum ParseApiVersionError {
-    #[snafu(display("unknown apiVersion {api_version:?}"))]
-    UnknownVersion { api_version: String },
+#[snafu(display("unknown API version {api_version:?}"))]
+pub struct UnknownDesiredApiVersionError {
+    pub api_version: String,
 }

@@ -1,0 +1,19 @@
+---
+source: crates/stackable-versioned/tests/integration_test.rs
+expression: formatted
+input_file: crates/stackable-versioned/tests/fixtures/inputs/fail/unkown_desired_version.json
+---
+{
+  "apiVersion": "apiextensions.k8s.io/v1",
+  "kind": "ConversionReview",
+  "response": {
+    "uid": "c4e55572-ee1f-4e94-9097-28936985d45f",
+    "result": {
+      "status": "Failure",
+      "code": 400,
+      "message": "failed to parse desired API version: unknown API version \"test.stackable.tech/v99\"",
+      "reason": "failed to parse desired API version: unknown API version \"test.stackable.tech/v99\""
+    },
+    "convertedObjects": []
+  }
+}

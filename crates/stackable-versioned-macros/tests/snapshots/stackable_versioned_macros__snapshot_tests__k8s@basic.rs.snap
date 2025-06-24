@@ -311,11 +311,11 @@ impl Foo {
         let object_kind = object
             .get("kind")
             .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
-                field: "kind".to_string(),
+                field: "kind".to_owned(),
             })?
             .as_str()
             .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr {
-                field: "kind".to_string(),
+                field: "kind".to_owned(),
             })?;
         if object_kind != "Foo" {
             return Err(::stackable_versioned::ParseObjectError::UnexpectedKind {
@@ -326,11 +326,11 @@ impl Foo {
         let api_version = object
             .get("apiVersion")
             .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
-                field: "apiVersion".to_string(),
+                field: "apiVersion".to_owned(),
             })?
             .as_str()
             .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr {
-                field: "apiVersion".to_string(),
+                field: "apiVersion".to_owned(),
             })?;
         let object = match api_version {
             "stackable.tech/v1alpha1" => {
@@ -405,14 +405,14 @@ impl FooVersion {
     }
     pub fn try_from_api_version(
         api_version: &str,
-    ) -> Result<Self, ::stackable_versioned::ParseApiVersionError> {
+    ) -> Result<Self, ::stackable_versioned::UnknownDesiredApiVersionError> {
         match api_version {
             "stackable.tech/v1alpha1" => Ok(Self::V1Alpha1),
             "stackable.tech/v1beta1" => Ok(Self::V1Beta1),
             "stackable.tech/v1" => Ok(Self::V1),
             _ => {
-                Err(::stackable_versioned::ParseApiVersionError::UnknownVersion {
-                    api_version: api_version.to_string(),
+                Err(::stackable_versioned::UnknownDesiredApiVersionError {
+                    api_version: api_version.to_owned(),
                 })
             }
         }

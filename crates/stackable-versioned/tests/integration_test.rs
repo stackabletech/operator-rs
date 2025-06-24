@@ -7,10 +7,10 @@ use kube::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use stackable_versioned_macros::versioned;
+use stackable_versioned::versioned;
 
 #[versioned(
-    k8s(group = "test.stackable.tech", crates(versioned = "crate")),
+    k8s(group = "test.stackable.tech",),
     version(name = "v1alpha1"),
     version(name = "v1alpha2"),
     version(name = "v1beta1"),

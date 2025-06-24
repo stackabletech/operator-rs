@@ -250,7 +250,8 @@ impl Struct {
         let automatically_derived = is_nested.not().then(|| quote! {#[automatically_derived]});
 
         let versioned_path = &*kubernetes_arguments.crates.versioned;
-        let parse_api_version_error = quote! { #versioned_path::ParseApiVersionError };
+        let unknown_desired_api_version_error =
+            quote! { #versioned_path::UnknownDesiredApiVersionError };
 
         // Get the per-version items to be able to iterate over them via quote
         let variant_strings = &tokens.variant_strings;
@@ -288,11 +289,11 @@ impl Struct {
                     }
                 }
 
-                pub fn try_from_api_version(api_version: &str) -> Result<Self, #parse_api_version_error> {
+                pub fn try_from_api_version(api_version: &str) -> Result<Self, #unknown_desired_api_version_error> {
                     match api_version {
                         #(#api_versions => Ok(Self::#variant_idents)),*,
-                        _ => Err(#parse_api_version_error::UnknownVersion {
-                            api_version: api_version.to_string(),
+                        _ => Err(#unknown_desired_api_version_error {
+                            api_version: api_version.to_owned(),
                         }),
                     }
                 }
