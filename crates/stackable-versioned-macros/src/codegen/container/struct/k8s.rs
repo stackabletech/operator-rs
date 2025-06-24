@@ -516,7 +516,7 @@ impl Struct {
                 let desired_object_version = path.last().expect("the path always contains at least one element");
                 let desired_object_api_version_string = format!(
                     "{group}/{desired_object_version}",
-                    desired_object_version= desired_object_version.inner
+                    desired_object_version = desired_object_version.inner
                 );
                 let desired_object_variant_ident = &desired_object_version.idents.variant;
                 let desired_object_module_ident = &desired_object_version.idents.module;
