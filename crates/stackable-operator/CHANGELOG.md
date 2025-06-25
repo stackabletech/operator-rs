@@ -9,6 +9,10 @@ All notable changes to this project will be documented in this file.
 - Update `kube` to `1.1.0` ([#1049]).
 - BREAKING: Return type for `ListenerOperatorVolumeSourceBuilder::new()` is no onger a `Result` ([#1058]).
 
+### Fixed
+
+- Allow uppercase characters in domain names ([#1064]).
+
 ### Removed
 
 - BREAKING: Removed `last_update_time` from CRD ClusterCondition status ([#1054]).
@@ -18,6 +22,7 @@ All notable changes to this project will be documented in this file.
 [#1054]: https://github.com/stackabletech/operator-rs/pull/1054
 [#1058]: https://github.com/stackabletech/operator-rs/pull/1058
 [#1060]: https://github.com/stackabletech/operator-rs/pull/1060
+[#1064]: https://github.com/stackabletech/operator-rs/pull/1064
 
 ## [0.93.2] - 2025-05-26
 
