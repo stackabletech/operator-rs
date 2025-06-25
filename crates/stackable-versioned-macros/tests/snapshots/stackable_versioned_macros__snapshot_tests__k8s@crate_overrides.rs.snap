@@ -196,7 +196,7 @@ impl Foo {
             })?;
         let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
         for object in objects {
-            let current_object = Self::try_from_json_object(object.clone())
+            let current_object = Self::from_json_object(object.clone())
                 .map_err(|source| ::stackable_versioned::ConvertObjectError::Parse {
                     source,
                 })?;
@@ -290,7 +290,7 @@ impl Foo {
         }
         ::std::result::Result::Ok(converted_objects)
     }
-    fn try_from_json_object(
+    fn from_json_object(
         object_value: ::serde_json::Value,
     ) -> ::std::result::Result<Self, ::stackable_versioned::ParseObjectError> {
         let object_kind = object_value
