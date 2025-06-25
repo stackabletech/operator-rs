@@ -1,5 +1,5 @@
 ---
-source: crates/stackable-versioned/tests/conversion.rs
+source: crates/stackable-versioned/tests/conversions.rs
 expression: formatted
 input_file: crates/stackable-versioned/tests/inputs/conversions/fail/wrong_kind.json
 ---
