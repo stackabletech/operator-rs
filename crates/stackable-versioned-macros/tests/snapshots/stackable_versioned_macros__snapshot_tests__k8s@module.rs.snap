@@ -296,7 +296,7 @@ impl Foo {
                 as ::kube::core::CustomResourceExt > ::crd(), < v2alpha1::Foo as
                 ::kube::core::CustomResourceExt > ::crd()
             ],
-            stored_apiversion.as_str(),
+            stored_apiversion.as_version_str(),
         )
     }
     ///Tries to convert a list of objects of kind [`Foo`] to the desired API version
@@ -324,10 +324,9 @@ impl Foo {
                     .into_review();
             }
         };
-        let desired_api_version = request.desired_api_version.as_str();
         let response = match Self::convert_objects(
             request.objects,
-            desired_api_version,
+            &request.desired_api_version,
         ) {
             ::std::result::Result::Ok(converted_objects) => {
                 ::kube::core::conversion::ConversionResponse {
@@ -363,14 +362,18 @@ impl Foo {
         ::std::vec::Vec<::serde_json::Value>,
         ::stackable_versioned::ConvertObjectError,
     > {
+        let desired_api_version = FooVersion::from_api_version(desired_api_version)
+            .map_err(|source| ::stackable_versioned::ConvertObjectError::ParseDesiredApiVersion {
+                source,
+            })?;
         let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
         for object in objects {
-            let current_object = Self::from_json_value(object.clone())
+            let current_object = Self::from_json_object(object.clone())
                 .map_err(|source| ::stackable_versioned::ConvertObjectError::Parse {
                     source,
                 })?;
             match (current_object, desired_api_version) {
-                (Self::V1Alpha1(__sv_foo), "v1") => {
+                (Self::V1Alpha1(__sv_foo), FooVersion::V1) => {
                     let converted: v1::FooSpec = __sv_foo.spec.into();
                     let desired_object = Self::V1(v1::Foo {
                         metadata: __sv_foo.metadata,
@@ -383,7 +386,7 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Alpha1(__sv_foo), "v2alpha1") => {
+                (Self::V1Alpha1(__sv_foo), FooVersion::V2Alpha1) => {
                     let converted: v1::FooSpec = __sv_foo.spec.into();
                     let converted: v2alpha1::FooSpec = converted.into();
                     let desired_object = Self::V2Alpha1(v2alpha1::Foo {
@@ -397,7 +400,7 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1(__sv_foo), "v1alpha1") => {
+                (Self::V1(__sv_foo), FooVersion::V1Alpha1) => {
                     let converted: v1alpha1::FooSpec = __sv_foo.spec.into();
                     let desired_object = Self::V1Alpha1(v1alpha1::Foo {
                         metadata: __sv_foo.metadata,
@@ -410,7 +413,7 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1(__sv_foo), "v2alpha1") => {
+                (Self::V1(__sv_foo), FooVersion::V2Alpha1) => {
                     let converted: v2alpha1::FooSpec = __sv_foo.spec.into();
                     let desired_object = Self::V2Alpha1(v2alpha1::Foo {
                         metadata: __sv_foo.metadata,
@@ -423,7 +426,7 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V2Alpha1(__sv_foo), "v1alpha1") => {
+                (Self::V2Alpha1(__sv_foo), FooVersion::V1Alpha1) => {
                     let converted: v1::FooSpec = __sv_foo.spec.into();
                     let converted: v1alpha1::FooSpec = converted.into();
                     let desired_object = Self::V1Alpha1(v1alpha1::Foo {
@@ -437,7 +440,7 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V2Alpha1(__sv_foo), "v1") => {
+                (Self::V2Alpha1(__sv_foo), FooVersion::V1) => {
                     let converted: v1::FooSpec = __sv_foo.spec.into();
                     let desired_object = Self::V1(v1::Foo {
                         metadata: __sv_foo.metadata,
@@ -455,31 +458,50 @@ impl Foo {
         }
         ::std::result::Result::Ok(converted_objects)
     }
-    fn from_json_value(
-        value: ::serde_json::Value,
+    fn from_json_object(
+        object_value: ::serde_json::Value,
     ) -> ::std::result::Result<Self, ::stackable_versioned::ParseObjectError> {
-        let api_version = value
-            .get("apiVersion")
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotPresent)?
+        let object_kind = object_value
+            .get("kind")
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
+                field: "kind".to_owned(),
+            })?
             .as_str()
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr)?;
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr {
+                field: "kind".to_owned(),
+            })?;
+        if object_kind != "Foo" {
+            return Err(::stackable_versioned::ParseObjectError::UnexpectedKind {
+                kind: object_kind.to_owned(),
+                expected: "Foo".to_owned(),
+            });
+        }
+        let api_version = object_value
+            .get("apiVersion")
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
+                field: "apiVersion".to_owned(),
+            })?
+            .as_str()
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr {
+                field: "apiVersion".to_owned(),
+            })?;
         let object = match api_version {
-            "foo.example.org/v1alpha1" | "v1alpha1" => {
-                let object = ::serde_json::from_value(value)
+            "foo.example.org/v1alpha1" => {
+                let object = ::serde_json::from_value(object_value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
                 Self::V1Alpha1(object)
             }
-            "foo.example.org/v1" | "v1" => {
-                let object = ::serde_json::from_value(value)
+            "foo.example.org/v1" => {
+                let object = ::serde_json::from_value(object_value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
                 Self::V1(object)
             }
-            "foo.example.org/v2alpha1" | "v2alpha1" => {
-                let object = ::serde_json::from_value(value)
+            "foo.example.org/v2alpha1" => {
+                let object = ::serde_json::from_value(object_value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
@@ -504,6 +526,7 @@ impl Foo {
     }
 }
 #[automatically_derived]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum FooVersion {
     V1Alpha1,
     V1,
@@ -515,16 +538,37 @@ impl ::std::fmt::Display for FooVersion {
         &self,
         f: &mut ::std::fmt::Formatter<'_>,
     ) -> ::std::result::Result<(), ::std::fmt::Error> {
-        f.write_str(self.as_str())
+        f.write_str(self.as_version_str())
     }
 }
 #[automatically_derived]
 impl FooVersion {
-    pub fn as_str(&self) -> &str {
+    pub fn as_version_str(&self) -> &str {
         match self {
             V1Alpha1 => "v1alpha1",
             V1 => "v1",
             V2Alpha1 => "v2alpha1",
+        }
+    }
+    pub fn as_api_version_str(&self) -> &str {
+        match self {
+            V1Alpha1 => "foo.example.org/v1alpha1",
+            V1 => "foo.example.org/v1",
+            V2Alpha1 => "foo.example.org/v2alpha1",
+        }
+    }
+    pub fn from_api_version(
+        api_version: &str,
+    ) -> Result<Self, ::stackable_versioned::UnknownDesiredApiVersionError> {
+        match api_version {
+            "foo.example.org/v1alpha1" => Ok(Self::V1Alpha1),
+            "foo.example.org/v1" => Ok(Self::V1),
+            "foo.example.org/v2alpha1" => Ok(Self::V2Alpha1),
+            _ => {
+                Err(::stackable_versioned::UnknownDesiredApiVersionError {
+                    api_version: api_version.to_owned(),
+                })
+            }
         }
     }
 }
@@ -549,7 +593,7 @@ impl Bar {
                 as ::kube::core::CustomResourceExt > ::crd(), < v2alpha1::Bar as
                 ::kube::core::CustomResourceExt > ::crd()
             ],
-            stored_apiversion.as_str(),
+            stored_apiversion.as_version_str(),
         )
     }
     ///Tries to convert a list of objects of kind [`Bar`] to the desired API version
@@ -577,10 +621,9 @@ impl Bar {
                     .into_review();
             }
         };
-        let desired_api_version = request.desired_api_version.as_str();
         let response = match Self::convert_objects(
             request.objects,
-            desired_api_version,
+            &request.desired_api_version,
         ) {
             ::std::result::Result::Ok(converted_objects) => {
                 ::kube::core::conversion::ConversionResponse {
@@ -616,14 +659,18 @@ impl Bar {
         ::std::vec::Vec<::serde_json::Value>,
         ::stackable_versioned::ConvertObjectError,
     > {
+        let desired_api_version = BarVersion::from_api_version(desired_api_version)
+            .map_err(|source| ::stackable_versioned::ConvertObjectError::ParseDesiredApiVersion {
+                source,
+            })?;
         let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
         for object in objects {
-            let current_object = Self::from_json_value(object.clone())
+            let current_object = Self::from_json_object(object.clone())
                 .map_err(|source| ::stackable_versioned::ConvertObjectError::Parse {
                     source,
                 })?;
             match (current_object, desired_api_version) {
-                (Self::V1Alpha1(__sv_bar), "v1") => {
+                (Self::V1Alpha1(__sv_bar), BarVersion::V1) => {
                     let converted: v1::BarSpec = __sv_bar.spec.into();
                     let desired_object = Self::V1(v1::Bar {
                         metadata: __sv_bar.metadata,
@@ -636,7 +683,7 @@ impl Bar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Alpha1(__sv_bar), "v2alpha1") => {
+                (Self::V1Alpha1(__sv_bar), BarVersion::V2Alpha1) => {
                     let converted: v1::BarSpec = __sv_bar.spec.into();
                     let converted: v2alpha1::BarSpec = converted.into();
                     let desired_object = Self::V2Alpha1(v2alpha1::Bar {
@@ -650,7 +697,7 @@ impl Bar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1(__sv_bar), "v1alpha1") => {
+                (Self::V1(__sv_bar), BarVersion::V1Alpha1) => {
                     let converted: v1alpha1::BarSpec = __sv_bar.spec.into();
                     let desired_object = Self::V1Alpha1(v1alpha1::Bar {
                         metadata: __sv_bar.metadata,
@@ -663,7 +710,7 @@ impl Bar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1(__sv_bar), "v2alpha1") => {
+                (Self::V1(__sv_bar), BarVersion::V2Alpha1) => {
                     let converted: v2alpha1::BarSpec = __sv_bar.spec.into();
                     let desired_object = Self::V2Alpha1(v2alpha1::Bar {
                         metadata: __sv_bar.metadata,
@@ -676,7 +723,7 @@ impl Bar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V2Alpha1(__sv_bar), "v1alpha1") => {
+                (Self::V2Alpha1(__sv_bar), BarVersion::V1Alpha1) => {
                     let converted: v1::BarSpec = __sv_bar.spec.into();
                     let converted: v1alpha1::BarSpec = converted.into();
                     let desired_object = Self::V1Alpha1(v1alpha1::Bar {
@@ -690,7 +737,7 @@ impl Bar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V2Alpha1(__sv_bar), "v1") => {
+                (Self::V2Alpha1(__sv_bar), BarVersion::V1) => {
                     let converted: v1::BarSpec = __sv_bar.spec.into();
                     let desired_object = Self::V1(v1::Bar {
                         metadata: __sv_bar.metadata,
@@ -708,31 +755,50 @@ impl Bar {
         }
         ::std::result::Result::Ok(converted_objects)
     }
-    fn from_json_value(
-        value: ::serde_json::Value,
+    fn from_json_object(
+        object_value: ::serde_json::Value,
     ) -> ::std::result::Result<Self, ::stackable_versioned::ParseObjectError> {
-        let api_version = value
-            .get("apiVersion")
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotPresent)?
+        let object_kind = object_value
+            .get("kind")
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
+                field: "kind".to_owned(),
+            })?
             .as_str()
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr)?;
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr {
+                field: "kind".to_owned(),
+            })?;
+        if object_kind != "Bar" {
+            return Err(::stackable_versioned::ParseObjectError::UnexpectedKind {
+                kind: object_kind.to_owned(),
+                expected: "Bar".to_owned(),
+            });
+        }
+        let api_version = object_value
+            .get("apiVersion")
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
+                field: "apiVersion".to_owned(),
+            })?
+            .as_str()
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr {
+                field: "apiVersion".to_owned(),
+            })?;
         let object = match api_version {
-            "bar.example.org/v1alpha1" | "v1alpha1" => {
-                let object = ::serde_json::from_value(value)
+            "bar.example.org/v1alpha1" => {
+                let object = ::serde_json::from_value(object_value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
                 Self::V1Alpha1(object)
             }
-            "bar.example.org/v1" | "v1" => {
-                let object = ::serde_json::from_value(value)
+            "bar.example.org/v1" => {
+                let object = ::serde_json::from_value(object_value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
                 Self::V1(object)
             }
-            "bar.example.org/v2alpha1" | "v2alpha1" => {
-                let object = ::serde_json::from_value(value)
+            "bar.example.org/v2alpha1" => {
+                let object = ::serde_json::from_value(object_value)
                     .map_err(|source| ::stackable_versioned::ParseObjectError::Deserialize {
                         source,
                     })?;
@@ -757,6 +823,7 @@ impl Bar {
     }
 }
 #[automatically_derived]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum BarVersion {
     V1Alpha1,
     V1,
@@ -768,16 +835,37 @@ impl ::std::fmt::Display for BarVersion {
         &self,
         f: &mut ::std::fmt::Formatter<'_>,
     ) -> ::std::result::Result<(), ::std::fmt::Error> {
-        f.write_str(self.as_str())
+        f.write_str(self.as_version_str())
     }
 }
 #[automatically_derived]
 impl BarVersion {
-    pub fn as_str(&self) -> &str {
+    pub fn as_version_str(&self) -> &str {
         match self {
             V1Alpha1 => "v1alpha1",
             V1 => "v1",
             V2Alpha1 => "v2alpha1",
+        }
+    }
+    pub fn as_api_version_str(&self) -> &str {
+        match self {
+            V1Alpha1 => "bar.example.org/v1alpha1",
+            V1 => "bar.example.org/v1",
+            V2Alpha1 => "bar.example.org/v2alpha1",
+        }
+    }
+    pub fn from_api_version(
+        api_version: &str,
+    ) -> Result<Self, ::stackable_versioned::UnknownDesiredApiVersionError> {
+        match api_version {
+            "bar.example.org/v1alpha1" => Ok(Self::V1Alpha1),
+            "bar.example.org/v1" => Ok(Self::V1),
+            "bar.example.org/v2alpha1" => Ok(Self::V2Alpha1),
+            _ => {
+                Err(::stackable_versioned::UnknownDesiredApiVersionError {
+                    api_version: api_version.to_owned(),
+                })
+            }
         }
     }
 }

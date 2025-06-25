@@ -31,3 +31,8 @@ serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 serde_yaml = { workspace = true, optional = true }
 snafu = { workspace = true, optional = true }
+
+[dev-dependencies]
+insta.workspace = true
+k8s-openapi.workspace = true
+kube.workspace = true

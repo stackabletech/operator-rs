@@ -47,17 +47,20 @@ fn raw_object_schema(_: &mut schemars::r#gen::SchemaGenerator) -> Schema {
 /// This error indicates that parsing an object from a conversion review failed.
 #[derive(Debug, Snafu)]
 pub enum ParseObjectError {
-    #[snafu(display(r#"failed to find "apiVersion" field"#))]
-    FieldNotPresent,
+    #[snafu(display("the field {field:?} is missing"))]
+    FieldMissing { field: String },
 
-    #[snafu(display(r#"the "apiVersion" field must be a string"#))]
-    FieldNotStr,
+    #[snafu(display("the field {field:?} must be a string"))]
+    FieldNotStr { field: String },
 
     #[snafu(display("encountered unknown object API version {api_version:?}"))]
     UnknownApiVersion { api_version: String },
 
     #[snafu(display("failed to deserialize object from JSON"))]
     Deserialize { source: serde_json::Error },
+
+    #[snafu(display("unexpected object kind {kind:?}, expected {expected:?}"))]
+    UnexpectedKind { kind: String, expected: String },
 }
 
 /// This error indicates that converting an object from a conversion review to the desired
@@ -69,6 +72,11 @@ pub enum ConvertObjectError {
 
     #[snafu(display("failed to serialize object into json"))]
     Serialize { source: serde_json::Error },
+
+    #[snafu(display("failed to parse desired API version"))]
+    ParseDesiredApiVersion {
+        source: UnknownDesiredApiVersionError,
+    },
 }
 
 impl ConvertObjectError {
@@ -89,6 +97,17 @@ impl ConvertObjectError {
         match self {
             ConvertObjectError::Parse { .. } => 400,
             ConvertObjectError::Serialize { .. } => 500,
+
+            // This is likely the clients fault, as it is requesting a unsupported version
+            ConvertObjectError::ParseDesiredApiVersion {
+                source: UnknownDesiredApiVersionError { .. },
+            } => 400,
         }
     }
+}
+
+#[derive(Debug, Snafu)]
+#[snafu(display("unknown API version {api_version:?}"))]
+pub struct UnknownDesiredApiVersionError {
+    pub api_version: String,
 }

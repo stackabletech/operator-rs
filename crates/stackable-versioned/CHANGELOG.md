@@ -6,9 +6,11 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add support for CRD conversions via ConversionReviews ([#1050]).
+- Add support for CRD conversions via ConversionReviews ([#1050], [#1061]).
   - Add new `try_convert` function to convert objects received via a ConversionReview.
   - Add new `enable_tracing` option to `#[versioned(k8s(options(...)))]`.
+  - Add a `<Object>Version` enum with `from_api_version`, `as_version_str` and `as_api_version_str`
+    functions.
 - Implement basic ground work for downgrading custom resources ([#1033]).
   - Emit `From` implementations to downgrade custom resource specs.
   - Emit a status struct to be able to track values required during downgrades and upgrades of
@@ -52,6 +54,7 @@ All notable changes to this project will be documented in this file.
 [#1046]: https://github.com/stackabletech/operator-rs/pull/1046
 [#1050]: https://github.com/stackabletech/operator-rs/pull/1050
 [#1059]: https://github.com/stackabletech/operator-rs/pull/1059
+[#1061]: https://github.com/stackabletech/operator-rs/pull/1061
 
 ## [0.7.1] - 2025-04-02
 
