@@ -534,7 +534,7 @@ mod tests {
         );
 
         // Test SAN extension is present
-        let extensions = cert.extensions.as_ref().expect("cert had no extension");
+        let extensions = cert.extensions.as_ref().expect("cert must have extensions");
         assert!(
             extensions
                 .iter()
