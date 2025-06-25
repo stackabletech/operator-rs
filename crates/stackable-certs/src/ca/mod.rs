@@ -547,7 +547,7 @@ mod tests {
         assert_eq!(
             not_after
                 .duration_since(not_before)
-                .expect("Failed to calculate duration between notBefore and notAfter"),
+                .expect("notBefore must be before notAfter"),
             *TEST_CERT_LIFETIME
         );
     }
