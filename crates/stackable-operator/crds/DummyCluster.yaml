@@ -58,8 +58,8 @@ spec:
                     type: boolean
                 type: object
               domainName:
-                description: A validated domain name type conforming to RFC 1123, so e.g. not an IP addresses
-                pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\.?$
+                description: A validated domain name type conforming to RFC 1123, so e.g. not an IP address
+                pattern: ^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?)*\.?$
                 type: string
               hostName:
                 type: string

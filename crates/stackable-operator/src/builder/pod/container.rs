@@ -441,6 +441,7 @@ mod tests {
             resources::ResourceRequirementsBuilder,
         },
         commons::resources::ResourceRequirementsType,
+        validation::RFC_1123_LABEL_FMT,
     };
 
     #[test]
@@ -603,11 +604,11 @@ mod tests {
         assert!(ContainerBuilder::new("name-with-hyphen").is_ok());
         assert_container_builder_err(
             ContainerBuilder::new("ends-with-hyphen-"),
-            "regex used for validation is \"[a-z0-9]([-a-z0-9]*[a-z0-9])?\"",
+            &format!(r#"regex used for validation is "{RFC_1123_LABEL_FMT}""#),
         );
         assert_container_builder_err(
             ContainerBuilder::new("-starts-with-hyphen"),
-            "regex used for validation is \"[a-z0-9]([-a-z0-9]*[a-z0-9])?\"",
+            &format!(r#"regex used for validation is "{RFC_1123_LABEL_FMT}""#),
         );
     }
 
@@ -621,7 +622,9 @@ mod tests {
         assert!(ContainerBuilder::new("name_name").is_err());
         assert_container_builder_err(
             ContainerBuilder::new("name_name"),
-            "(e.g. \"example-label\", or \"1-label-1\", regex used for validation is \"[a-z0-9]([-a-z0-9]*[a-z0-9])?\")",
+            &format!(
+                r#"(e.g. "example-label", or "1-label-1", regex used for validation is "{RFC_1123_LABEL_FMT}""#
+            ),
         );
     }
 
