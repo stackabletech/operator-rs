@@ -509,7 +509,7 @@ mod tests {
         let mut ca = CertificateAuthority::new_rsa().unwrap();
         let cert = ca
             .generate_rsa_leaf_certificate("Airflow", "pod", [TEST_SAN], TEST_CERT_LIFETIME)
-            .expect("RSA certificate generation failed");
+            .expect("Must be able to generate an RSA certificate. Perhaps there was an RNG failure");
 
         assert_cert_attributes(cert.certificate());
     }
