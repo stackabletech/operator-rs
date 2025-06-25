@@ -209,7 +209,7 @@ where
         // created by us should contain the same subject consisting a common set
         // of distinguished names (DNs).
         let subject = Name::from_str(SDP_ROOT_CA_SUBJECT)
-            .expect("The SDP_ROOT_CA_SUBJECT must be a valid subject");
+            .expect("the SDP_ROOT_CA_SUBJECT must be a valid subject");
 
         let spki_pem = signing_key_pair
             .verifying_key()
