@@ -69,7 +69,7 @@ pub enum Error {
     ParseAuthorityKeyIdentifier { source: x509_cert::der::Error },
 
     #[snafu(display(
-        "failed to parse subject alternative DNS name \"{subject_alternative_dns_name}\" as a Ia5 string"
+        "failed to parse subject alternative DNS name {subject_alternative_dns_name:?} as a Ia5 string"
     ))]
     ParseSubjectAlternativeDnsName {
         subject_alternative_dns_name: String,
