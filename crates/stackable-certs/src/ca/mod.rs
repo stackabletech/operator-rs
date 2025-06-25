@@ -502,13 +502,13 @@ mod tests {
     use super::*;
 
     const TEST_CERT_LIFETIME: Duration = Duration::from_hours_unchecked(1);
-    const TEST_SAN: &str = "airflow-0.airflow.default.svc.cluster.local";
+    const TEST_SAN: &str = "product-0.product.default.svc.cluster.local";
 
     #[tokio::test]
     async fn rsa_key_generation() {
         let mut ca = CertificateAuthority::new_rsa().unwrap();
         let cert = ca
-            .generate_rsa_leaf_certificate("Airflow", "pod", [TEST_SAN], TEST_CERT_LIFETIME)
+            .generate_rsa_leaf_certificate("Product", "pod", [TEST_SAN], TEST_CERT_LIFETIME)
             .expect("Must be able to generate an RSA certificate. Perhaps there was an RNG failure");
 
         assert_cert_attributes(cert.certificate());
@@ -518,7 +518,7 @@ mod tests {
     async fn ecdsa_key_generation() {
         let mut ca = CertificateAuthority::new_ecdsa().unwrap();
         let cert = ca
-            .generate_ecdsa_leaf_certificate("Airflow", "pod", [TEST_SAN], TEST_CERT_LIFETIME)
+            .generate_ecdsa_leaf_certificate("Product", "pod", [TEST_SAN], TEST_CERT_LIFETIME)
             .expect("ecdsa certificate generation failed");
 
         assert_cert_attributes(cert.certificate());
@@ -529,7 +529,7 @@ mod tests {
         // Test subject
         assert_eq!(
             cert.subject,
-            Name::from_str("CN=Airflow Certificate for pod").unwrap()
+            Name::from_str("CN=Product Certificate for pod").unwrap()
         );
 
         // Test SAN extension is present
