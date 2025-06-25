@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
   - Add new `try_convert` function to convert objects received via a ConversionReview.
   - Add new `enable_tracing` option to `#[versioned(k8s(options(...)))]`.
   - Add a `<Object>Version` enum with `from_api_version`, `as_version_str` and `as_api_version_str`
-    functions
+    functions.
 - Implement basic ground work for downgrading custom resources ([#1033]).
   - Emit `From` implementations to downgrade custom resource specs.
   - Emit a status struct to be able to track values required during downgrades and upgrades of
