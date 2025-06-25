@@ -342,11 +342,10 @@ where
         let sans = subject_alterative_dns_names
             .into_iter()
             .map(|dns_name| {
-                let ia5_dns_name = Ia5String::new(dns_name).context(
-                    ParseSubjectAlternativeDnsNameSnafu {
+                let ia5_dns_name =
+                    Ia5String::new(dns_name).context(ParseSubjectAlternativeDnsNameSnafu {
                         subject_alternative_dns_name: dns_name.to_string(),
-                    },
-                )?;
+                    })?;
                 Ok(GeneralName::DnsName(ia5_dns_name))
             })
             .collect::<Result<Vec<_>, Error>>()?;
