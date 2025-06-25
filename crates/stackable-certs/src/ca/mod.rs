@@ -521,7 +521,9 @@ mod tests {
         let mut ca = CertificateAuthority::new_ecdsa().unwrap();
         let cert = ca
             .generate_ecdsa_leaf_certificate("Product", "pod", [TEST_SAN], TEST_CERT_LIFETIME)
-            .expect("ecdsa certificate generation failed");
+            .expect(
+                "Must be able to generate an ECDSA certificate. Perhaps there was an RNG failure",
+            );
 
         assert_cert_attributes(cert.certificate());
     }
