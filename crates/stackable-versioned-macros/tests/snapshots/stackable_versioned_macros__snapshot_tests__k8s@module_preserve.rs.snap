@@ -434,11 +434,9 @@ pub(crate) mod versioned {
                             })?;
                         converted_objects.push(desired_object);
                     }
-                    (Self::V1Alpha1(_), FooVersion::V1Alpha1) => {
-                        converted_objects.push(object)
-                    }
-                    (Self::V1(_), FooVersion::V1) => converted_objects.push(object),
-                    (Self::V2Alpha1(_), FooVersion::V2Alpha1) => {
+                    (Self::V1Alpha1(_), FooVersion::V1Alpha1)
+                    | (Self::V1(_), FooVersion::V1)
+                    | (Self::V2Alpha1(_), FooVersion::V2Alpha1) => {
                         converted_objects.push(object)
                     }
                 }
@@ -732,11 +730,9 @@ pub(crate) mod versioned {
                             })?;
                         converted_objects.push(desired_object);
                     }
-                    (Self::V1Alpha1(_), BarVersion::V1Alpha1) => {
-                        converted_objects.push(object)
-                    }
-                    (Self::V1(_), BarVersion::V1) => converted_objects.push(object),
-                    (Self::V2Alpha1(_), BarVersion::V2Alpha1) => {
+                    (Self::V1Alpha1(_), BarVersion::V1Alpha1)
+                    | (Self::V1(_), BarVersion::V1)
+                    | (Self::V2Alpha1(_), BarVersion::V2Alpha1) => {
                         converted_objects.push(object)
                     }
                 }

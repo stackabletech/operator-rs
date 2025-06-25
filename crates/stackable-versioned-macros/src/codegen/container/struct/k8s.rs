@@ -373,7 +373,7 @@ impl Struct {
         // Generate conversion paths and the match arms for these paths
         let conversion_match_arms =
             self.generate_kubernetes_conversion_match_arms(versions, kubernetes_arguments);
-        let noop_match_arms = self.generate_kubernetes_noop_match_arms(versions);
+        let noop_match_arm = self.generate_kubernetes_noop_match_arm(versions);
 
         // TODO (@Techassi): Make this a feature, drop the option from the macro arguments
         // Generate tracing attributes and events if tracing is enabled
@@ -486,7 +486,7 @@ impl Struct {
                         #(#conversion_match_arms,)*
                         // We explicitly list the remaining no-op cases, so the compiler ensures we
                         // did not miss a conversion.
-                        #(#noop_match_arms,)*
+                        #noop_match_arm,
                     }
                 }
 
@@ -579,25 +579,18 @@ impl Struct {
             .collect()
     }
 
-    fn generate_kubernetes_noop_match_arms(
-        &self,
-        versions: &[VersionDefinition],
-    ) -> Vec<TokenStream> {
+    fn generate_kubernetes_noop_match_arm(&self, versions: &[VersionDefinition]) -> TokenStream {
         let version_enum_ident = &self.common.idents.kubernetes_version;
+        let version_idents = versions.iter().map(|v| &v.idents.variant);
 
-        versions
-            .iter()
-            .map(|version| {
-                let version_ident = &version.idents.variant;
-
-                quote! {
-                    // This is the case if the desired version matches the current object api version.
-                    // NOTE (@Techassi): I'm curious if this will ever happen? In theory the K8s
-                    // apiserver should never send such a conversion review.
-                    (Self::#version_ident(_), #version_enum_ident::#version_ident) => converted_objects.push(object)
-                }
-            })
-            .collect()
+        quote! {
+            // This is the case if the desired version matches the current object api version.
+            // NOTE (@Techassi): I'm curious if this will ever happen? In theory the K8s
+            // apiserver should never send such a conversion review.
+            #(
+                (Self::#version_idents(_), #version_enum_ident::#version_idents)
+            )|* => converted_objects.push(object)
+        }
     }
 
     fn generate_kubernetes_conversion_tracing(
