@@ -362,7 +362,6 @@ impl Struct {
 
         let struct_ident = &self.common.idents.kubernetes;
         let version_enum_ident = &self.common.idents.kubernetes_version;
-        let version_idents = versions.iter().map(|v| &v.idents.variant);
 
         let kube_client_path = &*kubernetes_arguments.crates.kube_client;
         let serde_json_path = &*kubernetes_arguments.crates.serde_json;
@@ -487,14 +486,16 @@ impl Struct {
                         // In case the desired version matches the current object api version, we
                         // don't need to do anything.
                         //
-                        // We explicitly list the remaining no-op cases, so the compiler ensures we
-                        // did not miss a conversion.
-                        //
                         // NOTE (@Techassi): I'm curious if this will ever happen? In theory the K8s
                         // apiserver should never send such a conversion review.
-                        #(
-                            (Self::#version_idents(_), #version_enum_ident::#version_idents)
-                        )|* => converted_objects.push(object)
+                        //
+                        // Note(@sbernauer): I would prefer to explicitly list the remaining no-op
+                        // cases, so the compiler ensures we did not miss a conversion
+                        // // let version_idents = versions.iter().map(|v| &v.idents.variant);
+                        // #(
+                        //     (Self::#version_idents(_), #version_enum_ident::#version_idents)
+                        // )|* => converted_objects.push(object)
+                        _ => converted_objects.push(object),
                     }
                 }
 

@@ -453,11 +453,7 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Alpha1(_), FooVersion::V1Alpha1)
-                | (Self::V1(_), FooVersion::V1)
-                | (Self::V2Alpha1(_), FooVersion::V2Alpha1) => {
-                    converted_objects.push(object)
-                }
+                _ => converted_objects.push(object),
             }
         }
         ::std::result::Result::Ok(converted_objects)
@@ -754,11 +750,7 @@ impl Bar {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Alpha1(_), BarVersion::V1Alpha1)
-                | (Self::V1(_), BarVersion::V1)
-                | (Self::V2Alpha1(_), BarVersion::V2Alpha1) => {
-                    converted_objects.push(object)
-                }
+                _ => converted_objects.push(object),
             }
         }
         ::std::result::Result::Ok(converted_objects)

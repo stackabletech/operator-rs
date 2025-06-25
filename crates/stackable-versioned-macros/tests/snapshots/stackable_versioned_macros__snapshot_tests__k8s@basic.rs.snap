@@ -296,9 +296,7 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Alpha1(_), FooVersion::V1Alpha1)
-                | (Self::V1Beta1(_), FooVersion::V1Beta1)
-                | (Self::V1(_), FooVersion::V1) => converted_objects.push(object),
+                _ => converted_objects.push(object),
             }
         }
         ::std::result::Result::Ok(converted_objects)

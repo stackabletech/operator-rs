@@ -115,9 +115,7 @@ impl Foo {
                     source,
                 })?;
             match (current_object, desired_api_version) {
-                (Self::V1Alpha1(_), FooVersion::V1Alpha1) => {
-                    converted_objects.push(object)
-                }
+                _ => converted_objects.push(object),
             }
         }
         ::std::result::Result::Ok(converted_objects)
