@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add the function `CertificateAuthority::ca_cert` to easily get the CA `Certificate` ([#1057]).
+
+### Changed
+
+- BREAKING: The functions `generate_leaf_certificate`, `generate_rsa_leaf_certificate` and
+  `generate_ecdsa_leaf_certificate` of `CertificateAuthority` accept an additional parameter
+  `subject_alterative_dns_names` ([#1057]).
+  - The passed SANs are added to the generated certificate, this is needed when the HTTPS server is
+    accessible on multiple DNS names and/or IPs.
+  - Pass an empty list (`[]`) to keep the existing behavior.
+- BREAKING: Constants have been renamed/retyped ([#1057]):
+  - `DEFAULT_CA_VALIDITY_SECONDS` has been renamed to `DEFAULT_CA_VALIDITY` and now is of type `stackable_operator::time::Duration`.
+  - `ROOT_CA_SUBJECT` has been renamed to `SDP_ROOT_CA_SUBJECT`.
+
+[#1057]: https://github.com/stackabletech/operator-rs/pull/1057
+
 ## [0.3.1] - 2024-07-10
 
 ### Changed
