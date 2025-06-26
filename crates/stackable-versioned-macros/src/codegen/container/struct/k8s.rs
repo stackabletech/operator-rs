@@ -280,7 +280,7 @@ impl Struct {
             impl #enum_ident {
                 pub fn as_version_str(&self) -> &str {
                     match self {
-                        #(#variant_idents => #variant_strings),*
+                        #(#enum_ident::#variant_idents => #variant_strings),*
                     }
                 }
 

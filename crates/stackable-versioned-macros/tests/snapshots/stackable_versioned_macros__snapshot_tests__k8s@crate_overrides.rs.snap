@@ -373,9 +373,9 @@ impl ::std::fmt::Display for FooVersion {
 impl FooVersion {
     pub fn as_version_str(&self) -> &str {
         match self {
-            V1Alpha1 => "v1alpha1",
-            V1Beta1 => "v1beta1",
-            V1 => "v1",
+            FooVersion::V1Alpha1 => "v1alpha1",
+            FooVersion::V1Beta1 => "v1beta1",
+            FooVersion::V1 => "v1",
         }
     }
     pub fn as_api_version_str(&self) -> &str {

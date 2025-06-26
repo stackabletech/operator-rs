@@ -523,9 +523,9 @@ pub(crate) mod versioned {
     impl FooVersion {
         pub fn as_version_str(&self) -> &str {
             match self {
-                V1Alpha1 => "v1alpha1",
-                V1 => "v1",
-                V2Alpha1 => "v2alpha1",
+                FooVersion::V1Alpha1 => "v1alpha1",
+                FooVersion::V1 => "v1",
+                FooVersion::V2Alpha1 => "v2alpha1",
             }
         }
         pub fn as_api_version_str(&self) -> &str {
@@ -815,9 +815,9 @@ pub(crate) mod versioned {
     impl BarVersion {
         pub fn as_version_str(&self) -> &str {
             match self {
-                V1Alpha1 => "v1alpha1",
-                V1 => "v1",
-                V2Alpha1 => "v2alpha1",
+                BarVersion::V1Alpha1 => "v1alpha1",
+                BarVersion::V1 => "v1",
+                BarVersion::V2Alpha1 => "v2alpha1",
             }
         }
         pub fn as_api_version_str(&self) -> &str {
