@@ -32,6 +32,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- Fix incorrectly generated match arms for the version enum ([#1065]).
 - Fix regression introduced in [#1033]. The `#[kube(status = ...)]` attribute is generated correctly
   again ([#1046]).
 - Correctly handle fields added in later versions ([#1031]).
@@ -55,6 +56,7 @@ All notable changes to this project will be documented in this file.
 [#1050]: https://github.com/stackabletech/operator-rs/pull/1050
 [#1059]: https://github.com/stackabletech/operator-rs/pull/1059
 [#1061]: https://github.com/stackabletech/operator-rs/pull/1061
+[#1065]: https://github.com/stackabletech/operator-rs/pull/1065
 
 ## [0.7.1] - 2025-04-02
 

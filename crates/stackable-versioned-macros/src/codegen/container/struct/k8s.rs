@@ -280,19 +280,19 @@ impl Struct {
             impl #enum_ident {
                 pub fn as_version_str(&self) -> &str {
                     match self {
-                        #(#variant_idents => #variant_strings),*
+                        #(#enum_ident::#variant_idents => #variant_strings),*
                     }
                 }
 
                 pub fn as_api_version_str(&self) -> &str {
                     match self {
-                        #(#variant_idents => #api_versions),*
+                        #(#enum_ident::#variant_idents => #api_versions),*
                     }
                 }
 
                 pub fn from_api_version(api_version: &str) -> Result<Self, #unknown_desired_api_version_error> {
                     match api_version {
-                        #(#api_versions => Ok(Self::#variant_idents)),*,
+                        #(#api_versions => Ok(#enum_ident::#variant_idents)),*,
                         _ => Err(#unknown_desired_api_version_error {
                             api_version: api_version.to_owned(),
                         }),
