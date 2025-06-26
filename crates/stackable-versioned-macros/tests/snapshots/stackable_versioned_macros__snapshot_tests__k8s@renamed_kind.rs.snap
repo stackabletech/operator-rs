@@ -365,18 +365,18 @@ impl FooBarVersion {
     }
     pub fn as_api_version_str(&self) -> &str {
         match self {
-            V1Alpha1 => "stackable.tech/v1alpha1",
-            V1Beta1 => "stackable.tech/v1beta1",
-            V1 => "stackable.tech/v1",
+            FooBarVersion::V1Alpha1 => "stackable.tech/v1alpha1",
+            FooBarVersion::V1Beta1 => "stackable.tech/v1beta1",
+            FooBarVersion::V1 => "stackable.tech/v1",
         }
     }
     pub fn from_api_version(
         api_version: &str,
     ) -> Result<Self, ::stackable_versioned::UnknownDesiredApiVersionError> {
         match api_version {
-            "stackable.tech/v1alpha1" => Ok(Self::V1Alpha1),
-            "stackable.tech/v1beta1" => Ok(Self::V1Beta1),
-            "stackable.tech/v1" => Ok(Self::V1),
+            "stackable.tech/v1alpha1" => Ok(FooBarVersion::V1Alpha1),
+            "stackable.tech/v1beta1" => Ok(FooBarVersion::V1Beta1),
+            "stackable.tech/v1" => Ok(FooBarVersion::V1),
             _ => {
                 Err(::stackable_versioned::UnknownDesiredApiVersionError {
                     api_version: api_version.to_owned(),

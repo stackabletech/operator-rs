@@ -552,18 +552,18 @@ impl FooVersion {
     }
     pub fn as_api_version_str(&self) -> &str {
         match self {
-            V1Alpha1 => "foo.example.org/v1alpha1",
-            V1 => "foo.example.org/v1",
-            V2Alpha1 => "foo.example.org/v2alpha1",
+            FooVersion::V1Alpha1 => "foo.example.org/v1alpha1",
+            FooVersion::V1 => "foo.example.org/v1",
+            FooVersion::V2Alpha1 => "foo.example.org/v2alpha1",
         }
     }
     pub fn from_api_version(
         api_version: &str,
     ) -> Result<Self, ::stackable_versioned::UnknownDesiredApiVersionError> {
         match api_version {
-            "foo.example.org/v1alpha1" => Ok(Self::V1Alpha1),
-            "foo.example.org/v1" => Ok(Self::V1),
-            "foo.example.org/v2alpha1" => Ok(Self::V2Alpha1),
+            "foo.example.org/v1alpha1" => Ok(FooVersion::V1Alpha1),
+            "foo.example.org/v1" => Ok(FooVersion::V1),
+            "foo.example.org/v2alpha1" => Ok(FooVersion::V2Alpha1),
             _ => {
                 Err(::stackable_versioned::UnknownDesiredApiVersionError {
                     api_version: api_version.to_owned(),
@@ -849,18 +849,18 @@ impl BarVersion {
     }
     pub fn as_api_version_str(&self) -> &str {
         match self {
-            V1Alpha1 => "bar.example.org/v1alpha1",
-            V1 => "bar.example.org/v1",
-            V2Alpha1 => "bar.example.org/v2alpha1",
+            BarVersion::V1Alpha1 => "bar.example.org/v1alpha1",
+            BarVersion::V1 => "bar.example.org/v1",
+            BarVersion::V2Alpha1 => "bar.example.org/v2alpha1",
         }
     }
     pub fn from_api_version(
         api_version: &str,
     ) -> Result<Self, ::stackable_versioned::UnknownDesiredApiVersionError> {
         match api_version {
-            "bar.example.org/v1alpha1" => Ok(Self::V1Alpha1),
-            "bar.example.org/v1" => Ok(Self::V1),
-            "bar.example.org/v2alpha1" => Ok(Self::V2Alpha1),
+            "bar.example.org/v1alpha1" => Ok(BarVersion::V1Alpha1),
+            "bar.example.org/v1" => Ok(BarVersion::V1),
+            "bar.example.org/v2alpha1" => Ok(BarVersion::V2Alpha1),
             _ => {
                 Err(::stackable_versioned::UnknownDesiredApiVersionError {
                     api_version: api_version.to_owned(),
