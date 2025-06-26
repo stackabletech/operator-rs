@@ -42,6 +42,7 @@ impl Struct {
             return None;
         }
 
+        let version_enum_ident = &spec_gen_ctx.kubernetes_idents.version;
         let struct_ident = &spec_gen_ctx.kubernetes_idents.kind;
 
         let kube_client_path = &*mod_gen_ctx.crates.kube_client;
@@ -52,7 +53,8 @@ impl Struct {
         let convert_object_error = quote! { #versioned_path::ConvertObjectError };
 
         // Generate conversion paths and the match arms for these paths
-        let match_arms = self.generate_conversion_match_arms(versions, mod_gen_ctx, spec_gen_ctx);
+        let conversion_match_arms =
+            self.generate_conversion_match_arms(versions, mod_gen_ctx, spec_gen_ctx);
 
         // TODO (@Techassi): Make this a feature, drop the option from the macro arguments
         // Generate tracing attributes and events if tracing is enabled
@@ -102,11 +104,8 @@ impl Struct {
                     }
                 };
 
-                // Extract the desired api version
-                let desired_api_version = request.desired_api_version.as_str();
-
                 // Convert all objects into the desired version
-                let response = match Self::convert_objects(request.objects, desired_api_version) {
+                let response = match Self::convert_objects(request.objects, &request.desired_api_version) {
                     ::std::result::Result::Ok(converted_objects) => {
                         #successful_conversion_response_event
 
@@ -153,20 +152,31 @@ impl Struct {
             )
                 -> ::std::result::Result<::std::vec::Vec<#serde_json_path::Value>, #convert_object_error>
             {
+                let desired_api_version = #version_enum_ident::from_api_version(desired_api_version)
+                    .map_err(|source| #convert_object_error::ParseDesiredApiVersion { source })?;
+
                 let mut converted_objects = ::std::vec::Vec::with_capacity(objects.len());
 
                 for object in objects {
                     // This clone is required because in the noop case we move the object into
                     // the converted objects vec.
-                    let current_object = Self::from_json_value(object.clone())
+                    let current_object = Self::from_json_object(object.clone())
                         .map_err(|source| #convert_object_error::Parse { source })?;
 
                     match (current_object, desired_api_version) {
-                        #(#match_arms,)*
-                        // If no match arm matches, this is a noop. This is the case if the desired
-                        // version matches the current object api version.
+                        #(#conversion_match_arms,)*
+                        // In case the desired version matches the current object api version, we
+                        // don't need to do anything.
+                        //
                         // NOTE (@Techassi): I'm curious if this will ever happen? In theory the K8s
                         // apiserver should never send such a conversion review.
+                        //
+                        // Note(@sbernauer): I would prefer to explicitly list the remaining no-op
+                        // cases, so the compiler ensures we did not miss a conversion
+                        // // let version_idents = versions.iter().map(|v| &v.idents.variant);
+                        // #(
+                        //     (Self::#version_idents(_), #version_enum_ident::#version_idents)
+                        // )|* => converted_objects.push(object)
                         _ => converted_objects.push(object),
                     }
                 }
@@ -227,7 +237,7 @@ impl Struct {
         })
     }
 
-    pub(super) fn generate_from_json_value_fn(
+    pub(super) fn generate_from_json_object_fn(
         &self,
         mod_gen_ctx: ModuleGenerationContext<'_>,
         spec_gen_ctx: &SpecGenerationContext<'_>,
@@ -240,6 +250,7 @@ impl Struct {
         let versioned_path = &*mod_gen_ctx.crates.versioned;
 
         let parse_object_error = quote! { #versioned_path::ParseObjectError };
+        let enum_ident_string = spec_gen_ctx.kubernetes_idents.kind.to_string();
 
         let version_strings = &spec_gen_ctx.version_strings;
         let variant_idents = &spec_gen_ctx.variant_idents;
@@ -252,16 +263,33 @@ impl Struct {
         });
 
         Some(quote! {
-            fn from_json_value(value: #serde_json_path::Value) -> ::std::result::Result<Self, #parse_object_error> {
-                let api_version = value
-                    .get("apiVersion")
-                    .ok_or_else(|| #parse_object_error::FieldNotPresent)?
+            fn from_json_object(object_value: #serde_json_path::Value) -> ::std::result::Result<Self, #parse_object_error> {
+                let object_kind = object_value
+                    .get("kind")
+                    .ok_or_else(|| #parse_object_error::FieldMissing{ field: "kind".to_owned() })?
                     .as_str()
-                    .ok_or_else(|| #parse_object_error::FieldNotStr)?;
+                    .ok_or_else(|| #parse_object_error::FieldNotStr{ field: "kind".to_owned() })?;
+
+                // Note(@sbernauer): The kind must be checked here, because it is possible for the
+                // wrong object to be deserialized. Checking here stops us assuming the kind is
+                // correct and accidentally updating upgrade/downgrade information in the status in
+                // a later step.
+                if object_kind != #enum_ident_string {
+                    return Err(#parse_object_error::UnexpectedKind{
+                        kind: object_kind.to_owned(),
+                        expected: #enum_ident_string.to_owned(),
+                    });
+                }
+
+                let api_version = object_value
+                    .get("apiVersion")
+                    .ok_or_else(|| #parse_object_error::FieldMissing{ field: "apiVersion".to_owned() })?
+                    .as_str()
+                    .ok_or_else(|| #parse_object_error::FieldNotStr{ field: "apiVersion".to_owned() })?;
 
                 let object = match api_version {
-                    #(#api_versions | #version_strings => {
-                        let object = #serde_json_path::from_value(value)
+                    #(#api_versions  => {
+                        let object = #serde_json_path::from_value(object_value)
                             .map_err(|source| #parse_object_error::Deserialize { source })?;
 
                         Self::#variant_idents(object)
@@ -302,6 +330,7 @@ impl Struct {
         spec_gen_ctx: &SpecGenerationContext<'_>,
     ) -> Vec<TokenStream> {
         let variant_data_ident = &spec_gen_ctx.kubernetes_idents.parameter;
+        let version_enum_ident = &spec_gen_ctx.kubernetes_idents.version;
         let struct_ident = &spec_gen_ctx.kubernetes_idents.kind;
 
         let versioned_path = &*mod_gen_ctx.crates.versioned;
@@ -344,7 +373,7 @@ impl Struct {
 
                 let convert_object_trace = mod_gen_ctx.kubernetes_options.enable_tracing.is_present().then(|| quote! {
                     ::tracing::trace!(
-                        #DESIRED_API_VERSION_ATTRIBUTE = #desired_object_version_string,
+                        #DESIRED_API_VERSION_ATTRIBUTE = #desired_object_api_version_string,
                         #API_VERSION_ATTRIBUTE = #current_object_version_string,
                         #STEPS_ATTRIBUTE = #steps,
                         #KIND_ATTRIBUTE = #kind,
@@ -354,7 +383,7 @@ impl Struct {
 
 
                 quote! {
-                    (Self::#current_object_version_ident(#variant_data_ident), #desired_object_api_version_string | #desired_object_version_string) => {
+                    (Self::#current_object_version_ident(#variant_data_ident), #version_enum_ident::#desired_object_variant_ident) => {
                         #(#conversions)*
 
                         let desired_object = Self::#desired_object_variant_ident(converted);

@@ -1,6 +1,6 @@
 //! Contains types and functions to generate and sign certificate authorities
 //! (CAs).
-use std::str::FromStr;
+use std::{fmt::Debug, str::FromStr};
 
 use const_oid::db::rfc5280::{ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH};
 use k8s_openapi::api::core::v1::Secret;
@@ -9,9 +9,10 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_operator::{client::Client, commons::secret::SecretReference, time::Duration};
 use tracing::{debug, instrument};
 use x509_cert::{
+    Certificate,
     builder::{Builder, CertificateBuilder, Profile},
-    der::{DecodePem, pem::LineEnding, referenced::OwnedToRef},
-    ext::pkix::{AuthorityKeyIdentifier, ExtendedKeyUsage},
+    der::{DecodePem, asn1::Ia5String, pem::LineEnding, referenced::OwnedToRef},
+    ext::pkix::{AuthorityKeyIdentifier, ExtendedKeyUsage, SubjectAltName, name::GeneralName},
     name::Name,
     serial_number::SerialNumber,
     spki::{EncodePublicKey, SubjectPublicKeyInfoOwned},
@@ -66,14 +67,22 @@ pub enum Error {
 
     #[snafu(display("failed to parse AuthorityKeyIdentifier"))]
     ParseAuthorityKeyIdentifier { source: x509_cert::der::Error },
+
+    #[snafu(display(
+        "failed to parse subject alternative DNS name {subject_alternative_dns_name:?} as a Ia5 string"
+    ))]
+    ParseSubjectAlternativeDnsName {
+        subject_alternative_dns_name: String,
+        source: x509_cert::der::Error,
+    },
 }
 
 /// Custom implementation of [`std::cmp::PartialEq`] because some inner types
 /// don't implement it.
 ///
-/// Note that this implementation is restritced to testing because there is a
+/// Note that this implementation is restricted to testing because there is a
 /// variant that is impossible to compare, and will cause a panic if it is
-/// attemped.
+/// attempted.
 #[cfg(test)]
 impl PartialEq for Error {
     fn eq(&self, other: &Self) -> bool {
@@ -170,7 +179,7 @@ where
     /// These parameters include:
     ///
     /// - a randomly generated serial number
-    /// - a default validity of one hour (see [`DEFAULT_CA_VALIDITY_SECONDS`])
+    /// - a default validity of one hour (see [`DEFAULT_CA_VALIDITY`])
     ///
     /// The CA contains the public half of the provided `signing_key` and is
     /// signed by the private half of said key.
@@ -181,9 +190,8 @@ where
     #[instrument(name = "create_certificate_authority", skip(signing_key_pair))]
     pub fn new(signing_key_pair: S) -> Result<Self> {
         let serial_number = rand::random::<u64>();
-        let validity = Duration::from_secs(DEFAULT_CA_VALIDITY_SECONDS);
 
-        Self::new_with(signing_key_pair, serial_number, validity)
+        Self::new_with(signing_key_pair, serial_number, DEFAULT_CA_VALIDITY)
     }
 
     /// Creates a new CA certificate.
@@ -200,9 +208,8 @@ where
         // We don't allow customization of the CA subject by callers. Every CA
         // created by us should contain the same subject consisting a common set
         // of distinguished names (DNs).
-        let subject = Name::from_str(ROOT_CA_SUBJECT).context(ParseSubjectSnafu {
-            subject: ROOT_CA_SUBJECT,
-        })?;
+        let subject = Name::from_str(SDP_ROOT_CA_SUBJECT)
+            .expect("the SDP_ROOT_CA_SUBJECT must be a valid subject");
 
         let spki_pem = signing_key_pair
             .verifying_key()
@@ -267,15 +274,16 @@ where
     /// authentication, because they include [`ID_KP_CLIENT_AUTH`] and
     /// [`ID_KP_SERVER_AUTH`] in the extended key usage extension.
     ///
-    /// It is also possible to directly greate RSA or ECDSA-based leaf
+    /// It is also possible to directly create RSA or ECDSA-based leaf
     /// certificates using [`CertificateAuthority::generate_rsa_leaf_certificate`]
     /// and [`CertificateAuthority::generate_ecdsa_leaf_certificate`].
     #[instrument(skip(self, key_pair))]
-    pub fn generate_leaf_certificate<T>(
+    pub fn generate_leaf_certificate<'a, T>(
         &mut self,
         key_pair: T,
         name: &str,
         scope: &str,
+        subject_alterative_dns_names: impl IntoIterator<Item = &'a str> + Debug,
         validity: Duration,
     ) -> Result<CertificatePair<T>>
     where
@@ -301,10 +309,6 @@ where
         let spki = SubjectPublicKeyInfoOwned::from_pem(spki_pem.as_bytes())
             .context(DecodeSpkiFromPemSnafu)?;
 
-        // The leaf certificate can be used for WWW client and server
-        // authentication. This is a base requirement for TLS certs.
-        let eku = ExtendedKeyUsage(vec![ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH]);
-
         let signer = self.certificate_pair.key_pair.signing_key();
         let mut builder = CertificateBuilder::new(
             Profile::Leaf {
@@ -325,9 +329,27 @@ where
         )
         .context(CreateCertificateBuilderSnafu)?;
 
-        // Again, add the extension created above.
+        // The leaf certificate can be used for WWW client and server
+        // authentication. This is a base requirement for TLS certs.
         builder
-            .add_extension(&eku)
+            .add_extension(&ExtendedKeyUsage(vec![
+                ID_KP_CLIENT_AUTH,
+                ID_KP_SERVER_AUTH,
+            ]))
+            .context(AddCertificateExtensionSnafu)?;
+
+        let sans = subject_alterative_dns_names
+            .into_iter()
+            .map(|dns_name| {
+                let ia5_dns_name =
+                    Ia5String::new(dns_name).context(ParseSubjectAlternativeDnsNameSnafu {
+                        subject_alternative_dns_name: dns_name.to_string(),
+                    })?;
+                Ok(GeneralName::DnsName(ia5_dns_name))
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
+        builder
+            .add_extension(&SubjectAltName(sans))
             .context(AddCertificateExtensionSnafu)?;
 
         debug!("create and sign leaf certificate");
@@ -344,14 +366,15 @@ where
     /// See [`CertificateAuthority::generate_leaf_certificate`] for more
     /// information.
     #[instrument(skip(self))]
-    pub fn generate_rsa_leaf_certificate(
+    pub fn generate_rsa_leaf_certificate<'a>(
         &mut self,
         name: &str,
         scope: &str,
+        subject_alterative_dns_names: impl IntoIterator<Item = &'a str> + Debug,
         validity: Duration,
     ) -> Result<CertificatePair<rsa::SigningKey>> {
         let key = rsa::SigningKey::new().context(GenerateRsaSigningKeySnafu)?;
-        self.generate_leaf_certificate(key, name, scope, validity)
+        self.generate_leaf_certificate(key, name, scope, subject_alterative_dns_names, validity)
     }
 
     /// Generates an ECDSAasync -based leaf certificate which is signed by this CA.
@@ -359,14 +382,15 @@ where
     /// See [`CertificateAuthority::generate_leaf_certificate`] for more
     /// information.
     #[instrument(skip(self))]
-    pub fn generate_ecdsa_leaf_certificate(
+    pub fn generate_ecdsa_leaf_certificate<'a>(
         &mut self,
         name: &str,
         scope: &str,
+        subject_alterative_dns_names: impl IntoIterator<Item = &'a str> + Debug,
         validity: Duration,
     ) -> Result<CertificatePair<ecdsa::SigningKey>> {
         let key = ecdsa::SigningKey::new().context(GenerateEcdsaSigningKeySnafu)?;
-        self.generate_leaf_certificate(key, name, scope, validity)
+        self.generate_leaf_certificate(key, name, scope, subject_alterative_dns_names, validity)
     }
 
     /// Create a [`CertificateAuthority`] from a Kubernetes [`Secret`].
@@ -443,6 +467,11 @@ where
 
         Self::from_secret(secret, key_certificate, key_private_key)
     }
+
+    /// Returns the ca certificate.
+    pub fn ca_cert(&self) -> &Certificate {
+        &self.certificate_pair.certificate
+    }
 }
 
 impl CertificateAuthority<rsa::SigningKey> {
@@ -468,19 +497,61 @@ fn format_leaf_certificate_subject(name: &str, scope: &str) -> Result<Name> {
 
 #[cfg(test)]
 mod tests {
+    use const_oid::ObjectIdentifier;
+
     use super::*;
+
+    const TEST_CERT_LIFETIME: Duration = Duration::from_hours_unchecked(1);
+    const TEST_SAN: &str = "product-0.product.default.svc.cluster.local";
 
     #[tokio::test]
     async fn rsa_key_generation() {
         let mut ca = CertificateAuthority::new_rsa().unwrap();
-        ca.generate_rsa_leaf_certificate("Airflow", "pod", Duration::from_secs(3600))
-            .unwrap();
+        let cert = ca
+            .generate_rsa_leaf_certificate("Product", "pod", [TEST_SAN], TEST_CERT_LIFETIME)
+            .expect(
+                "Must be able to generate an RSA certificate. Perhaps there was an RNG failure",
+            );
+
+        assert_cert_attributes(cert.certificate());
     }
 
     #[tokio::test]
     async fn ecdsa_key_generation() {
         let mut ca = CertificateAuthority::new_ecdsa().unwrap();
-        ca.generate_ecdsa_leaf_certificate("Airflow", "pod", Duration::from_secs(3600))
-            .unwrap();
+        let cert = ca
+            .generate_ecdsa_leaf_certificate("Product", "pod", [TEST_SAN], TEST_CERT_LIFETIME)
+            .expect(
+                "Must be able to generate an ECDSA certificate. Perhaps there was an RNG failure",
+            );
+
+        assert_cert_attributes(cert.certificate());
+    }
+
+    fn assert_cert_attributes(cert: &Certificate) {
+        let cert = &cert.tbs_certificate;
+        // Test subject
+        assert_eq!(
+            cert.subject,
+            Name::from_str("CN=Product Certificate for pod").unwrap()
+        );
+
+        // Test SAN extension is present
+        let extensions = cert.extensions.as_ref().expect("cert must have extensions");
+        assert!(
+            extensions
+                .iter()
+                .any(|ext| ext.extn_id == ObjectIdentifier::new_unwrap("2.5.29.17"))
+        );
+
+        // Test lifetime
+        let not_before = cert.validity.not_before.to_system_time();
+        let not_after = cert.validity.not_after.to_system_time();
+        assert_eq!(
+            not_after
+                .duration_since(not_before)
+                .expect("notBefore must be before notAfter"),
+            *TEST_CERT_LIFETIME
+        );
     }
 }

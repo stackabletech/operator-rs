@@ -49,7 +49,6 @@ impl<'a> ClusterOperationsConditionBuilder<'a> {
             status,
             type_: ClusterConditionType::ReconciliationPaused,
             last_transition_time: None,
-            last_update_time: None,
         }
     }
 
@@ -82,7 +81,6 @@ impl<'a> ClusterOperationsConditionBuilder<'a> {
             status,
             type_: ClusterConditionType::Stopped,
             last_transition_time: None,
-            last_update_time: None,
         }
     }
 }

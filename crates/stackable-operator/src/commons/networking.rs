@@ -6,7 +6,7 @@ use snafu::Snafu;
 
 use crate::validation;
 
-/// A validated domain name type conforming to RFC 1123, so e.g. not an IP addresses
+/// A validated domain name type conforming to RFC 1123, so e.g. not an IP address
 #[derive(
     Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, JsonSchema,
 )]
