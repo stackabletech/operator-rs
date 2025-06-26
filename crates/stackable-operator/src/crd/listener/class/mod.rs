@@ -25,7 +25,7 @@ pub mod versioned {
     /// Defines a policy for how [Listeners](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listener) should be exposed.
     /// Read the [ListenerClass documentation](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listenerclass)
     /// for more information.
-    #[versioned(k8s(group = "listeners.stackable.tech"))]
+    #[versioned(crd(group = "listeners.stackable.tech"))]
     #[derive(CustomResource, Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
     #[serde(rename_all = "camelCase")]
     pub struct ListenerClassSpec {
