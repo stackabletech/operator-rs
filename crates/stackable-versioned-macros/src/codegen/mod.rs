@@ -4,7 +4,7 @@ use proc_macro2::TokenStream;
 use syn::{Path, Type};
 
 use crate::{
-    attrs::{container::StandaloneContainerAttributes, module::ModuleAttributes},
+    attrs::module::ModuleAttributes,
     utils::{VersionExt, doc_comments::DocComments},
 };
 
@@ -43,35 +43,9 @@ impl Ord for VersionDefinition {
     }
 }
 
-// NOTE (@Techassi): Can we maybe unify these two impls?
-impl From<&StandaloneContainerAttributes> for Vec<VersionDefinition> {
-    fn from(attributes: &StandaloneContainerAttributes) -> Self {
-        attributes
-            .common
-            .versions
-            .iter()
-            .map(|v| VersionDefinition {
-                skip_from: v.skip.as_ref().is_some_and(|s| s.from.is_present()),
-                idents: VersionIdents {
-                    module: v.name.as_module_ident(),
-                    variant: v.name.as_variant_ident(),
-                },
-                deprecated: v.deprecated.as_ref().map(|r#override| {
-                    r#override
-                        .clone()
-                        .unwrap_or(format!("Version {version} is deprecated", version = v.name))
-                }),
-                docs: v.doc.as_deref().into_doc_comments(),
-                inner: v.name,
-            })
-            .collect()
-    }
-}
-
 impl From<&ModuleAttributes> for Vec<VersionDefinition> {
     fn from(attributes: &ModuleAttributes) -> Self {
         attributes
-            .common
             .versions
             .iter()
             .map(|v| VersionDefinition {

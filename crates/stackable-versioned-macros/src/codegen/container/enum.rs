@@ -16,45 +16,8 @@ use crate::{
 };
 
 impl Container {
-    pub fn new_standalone_enum(
-        item_enum: ItemEnum,
-        attributes: StandaloneContainerAttributes,
-        versions: &[VersionDefinition],
-    ) -> Result<Self> {
-        let mut versioned_variants = Vec::new();
-        for variant in item_enum.variants {
-            let mut versioned_variant = VersionedVariant::new(variant, versions)?;
-            versioned_variant.insert_container_versions(versions);
-            versioned_variants.push(versioned_variant);
-        }
-
-        let options = ContainerOptions {
-            kubernetes_arguments: None,
-            skip_from: attributes
-                .common
-                .options
-                .skip
-                .is_some_and(|s| s.from.is_present()),
-        };
-
-        let idents = ContainerIdents::from(item_enum.ident, None);
-
-        let common = CommonContainerData {
-            original_attributes: item_enum.attrs,
-            options,
-            idents,
-        };
-
-        Ok(Self::Enum(Enum {
-            generics: item_enum.generics,
-            variants: versioned_variants,
-            common,
-        }))
-    }
-
-    // TODO (@Techassi): See what can be unified into a single 'new' function
-    pub fn new_enum_nested(item_enum: ItemEnum, versions: &[VersionDefinition]) -> Result<Self> {
-        let attributes = NestedContainerAttributes::from_attributes(&item_enum.attrs)?;
+    pub fn new_enum(item_enum: ItemEnum, versions: &[VersionDefinition]) -> Result<Self> {
+        let attributes = ContainerAttributes::from_attributes(&item_enum.attrs)?;
 
         let mut versioned_variants = Vec::new();
         for variant in item_enum.variants {

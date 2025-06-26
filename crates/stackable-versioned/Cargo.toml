@@ -10,27 +10,15 @@ repository.workspace = true
 [package.metadata."docs.rs"]
 all-features = true
 
-[features]
-full = ["k8s"]
-k8s = [
-  "stackable-versioned-macros/k8s", # Forward the k8s feature to the underlying macro crate
-  "dep:k8s-version",
-  "dep:schemars",
-  "dep:serde_json",
-  "dep:serde_yaml",
-  "dep:serde",
-  "dep:snafu",
-]
-
 [dependencies]
-k8s-version = { path = "../k8s-version", features = ["serde"], optional = true }
 stackable-versioned-macros = { path = "../stackable-versioned-macros" }
+k8s-version = { path = "../k8s-version", features = ["serde"] }
 
-schemars = { workspace = true, optional = true }
-serde = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
-serde_yaml = { workspace = true, optional = true }
-snafu = { workspace = true, optional = true }
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+snafu.workspace = true
 
 [dev-dependencies]
 insta.workspace = true

@@ -18,59 +18,8 @@ use crate::{
 mod k8s;
 
 impl Container {
-    pub fn new_standalone_struct(
-        item_struct: ItemStruct,
-        attributes: StandaloneContainerAttributes,
-        versions: &[VersionDefinition],
-    ) -> Result<Self> {
-        // NOTE (@Techassi): Should we check if the fields are named here?
-        let mut versioned_fields = Vec::new();
-
-        for field in item_struct.fields {
-            let mut versioned_field = VersionedField::new(field, versions)?;
-            versioned_field.insert_container_versions(versions);
-            versioned_fields.push(versioned_field);
-        }
-
-        let kubernetes_arguments = attributes.kubernetes_arguments;
-        let idents = ContainerIdents::from(item_struct.ident, kubernetes_arguments.as_ref());
-
-        // Validate K8s specific requirements
-        // Ensure that the struct name includes the 'Spec' suffix.
-        if kubernetes_arguments.is_some() && !idents.original.as_str().ends_with("Spec") {
-            return Err(Error::custom(
-                "struct name needs to include the `Spec` suffix if Kubernetes features are enabled via `#[versioned(k8s())]`"
-            ).with_span(&idents.original.span()));
-        }
-
-        let options = ContainerOptions {
-            skip_from: attributes
-                .common
-                .options
-                .skip
-                .is_some_and(|s| s.from.is_present()),
-            kubernetes_arguments,
-        };
-
-        let common = CommonContainerData {
-            original_attributes: item_struct.attrs,
-            options,
-            idents,
-        };
-
-        Ok(Self::Struct(Struct {
-            generics: item_struct.generics,
-            fields: versioned_fields,
-            common,
-        }))
-    }
-
-    // TODO (@Techassi): See what can be unified into a single 'new' function
-    pub fn new_struct_nested(
-        item_struct: ItemStruct,
-        versions: &[VersionDefinition],
-    ) -> Result<Self> {
-        let attributes = NestedContainerAttributes::from_attributes(&item_struct.attrs)?;
+    pub fn new_struct(item_struct: ItemStruct, versions: &[VersionDefinition]) -> Result<Self> {
+        let attributes = ContainerAttributes::from_attributes(&item_struct.attrs)?;
 
         let mut versioned_fields = Vec::new();
         for field in item_struct.fields {
@@ -128,8 +77,15 @@ pub struct Struct {
     /// Common container data which is shared between structs and enums.
     pub common: CommonContainerData,
 
+    pub kubernetes_data: Option<KubernetesData>,
+
     /// Generic types of the struct
     pub generics: Generics,
+}
+
+pub struct KubernetesData {
+    pub kubernetes_arguments: StructCrdArguments,
+    pub kubernetes_idents: KubernetesIdents,
 }
 
 // Common token generation
