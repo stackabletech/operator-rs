@@ -3,15 +3,16 @@ use std::collections::BTreeMap;
 use darling::{FromField, Result, util::IdentString};
 use k8s_version::Version;
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{Attribute, Field, Type};
 
 use crate::{
     attrs::item::FieldAttributes,
     codegen::{
-        ItemStatus, VersionDefinition,
+        Direction, VersionDefinition,
         changes::{BTreeMapExt, ChangesetExt},
-        container::Direction,
+        item::ItemStatus,
+        module::ModuleGenerationContext,
     },
     utils::FieldIdent,
 };
@@ -20,6 +21,7 @@ pub struct VersionedField {
     pub original_attributes: Vec<Attribute>,
     pub changes: Option<BTreeMap<Version, ItemStatus>>,
     pub ident: FieldIdent,
+    pub nested: bool,
     pub ty: Type,
 }
 
@@ -28,20 +30,22 @@ impl VersionedField {
         let field_attributes = FieldAttributes::from_field(&field)?;
         field_attributes.validate_versions(versions)?;
 
-        let field_ident = FieldIdent::from(
-            field
-                .ident
-                .expect("internal error: field must have an ident"),
-        );
+        let ident = field
+            .ident
+            .expect("internal error: field must have an ident");
+        let idents = ident.into();
+
         let changes = field_attributes
             .common
-            .into_changeset(&field_ident, field.ty.clone());
+            .into_changeset(&idents, field.ty.clone());
+        let nested = field_attributes.nested.is_present();
 
         Ok(Self {
             original_attributes: field_attributes.attrs,
-            ident: field_ident,
+            ident: idents,
             ty: field.ty,
             changes,
+            nested,
         })
     }
 
@@ -185,17 +189,41 @@ impl VersionedField {
                                 #to_ident: #upgrade_fn(#from_struct_ident.#from_ident),
                             }),
                             // Default .into() call using From impls.
-                            None => Some(quote! {
-                                #to_ident: #from_struct_ident.#from_ident.into(),
-                            }),
+                            None => {
+                                let json_path_ident =
+                                    format_ident!("__sv_{ident}_path", ident = to_ident.as_ident());
+
+                                if self.nested {
+                                    Some(quote! {
+                                        #to_ident: #from_struct_ident.#from_ident.tracking_into(status, #json_path_ident),
+                                    })
+                                } else {
+                                    Some(quote! {
+                                        #to_ident: #from_struct_ident.#from_ident.into(),
+                                    })
+                                }
+                            }
                         },
                         Direction::Downgrade => match downgrade_with {
                             Some(downgrade_fn) => Some(quote! {
                                 #from_ident: #downgrade_fn(#from_struct_ident.#to_ident),
                             }),
-                            None => Some(quote! {
-                                #from_ident: #from_struct_ident.#to_ident.into(),
-                            }),
+                            None => {
+                                let json_path_ident = format_ident!(
+                                    "__sv_{ident}_path",
+                                    ident = from_ident.as_ident()
+                                );
+
+                                if self.nested {
+                                    Some(quote! {
+                                        #from_ident: #from_struct_ident.#to_ident.tracking_into(status, #json_path_ident),
+                                    })
+                                } else {
+                                    Some(quote! {
+                                        #from_ident: #from_struct_ident.#to_ident.into(),
+                                    })
+                                }
+                            }
                         },
                     },
                     (old, next) => {
@@ -206,9 +234,22 @@ impl VersionedField {
                         // currently not sure why it is there and if it is needed
                         // in some edge cases.
                         match direction {
-                            Direction::Upgrade => Some(quote! {
-                                #next_field_ident: #from_struct_ident.#old_field_ident.into(),
-                            }),
+                            Direction::Upgrade => {
+                                let json_path_ident = format_ident!(
+                                    "__sv_{ident}_path",
+                                    ident = next_field_ident.as_ident()
+                                );
+
+                                if self.nested {
+                                    Some(quote! {
+                                        #next_field_ident: #from_struct_ident.#old_field_ident.tracking_into(status, #json_path_ident),
+                                    })
+                                } else {
+                                    Some(quote! {
+                                        #next_field_ident: #from_struct_ident.#old_field_ident.into(),
+                                    })
+                                }
+                            }
                             Direction::Downgrade => Some(quote! {
                                 #old_field_ident: #from_struct_ident.#next_field_ident.into(),
                             }),
@@ -218,10 +259,125 @@ impl VersionedField {
             }
             None => {
                 let field_ident = &*self.ident;
+                let json_path_ident =
+                    format_ident!("__sv_{ident}_path", ident = field_ident.as_ident());
 
+                if self.nested {
+                    Some(quote! {
+                        #field_ident: #from_struct_ident.#field_ident.tracking_into(status, &#json_path_ident)
+                    })
+                } else {
+                    Some(quote! {
+                        #field_ident: #from_struct_ident.#field_ident.into(),
+                    })
+                }
+            }
+        }
+    }
+
+    pub fn generate_for_status_insertion(
+        &self,
+        direction: Direction,
+        next_version: &VersionDefinition,
+        from_struct_ident: &IdentString,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+    ) -> Option<TokenStream> {
+        let changes = self.changes.as_ref()?;
+
+        match direction {
+            // This arm is only relevant for removed fields which are currently
+            // not supported.
+            Direction::Upgrade => None,
+
+            // When we generate code for a downgrade, any changes which need to
+            // be tracked need to be inserted into the upgrade section for the
+            // next time an upgrade needs to be done.
+            Direction::Downgrade => {
+                let next_change = changes.get_expect(&next_version.inner);
+
+                let serde_yaml_path = &*mod_gen_ctx.crates.serde_yaml;
+                let versioned_path = &*mod_gen_ctx.crates.versioned;
+
+                match next_change {
+                    ItemStatus::Addition { ident, .. } => {
+                        // TODO (@Techassi): Only do this formatting once, but that requires extensive
+                        // changes to the field ident and changeset generation
+                        let json_path_ident =
+                            format_ident!("__sv_{ident}_path", ident = ident.as_ident());
+
+                        Some(quote! {
+                            upgrades.push(#versioned_path::ChangedValue {
+                                field_name: #json_path_ident,
+                                value: #serde_yaml_path::to_value(&#from_struct_ident.#ident).unwrap(),
+                            });
+                        })
+                    }
+                    _ => None,
+                }
+            }
+        }
+    }
+
+    pub fn generate_for_status_removal(
+        &self,
+        direction: Direction,
+        next_version: &VersionDefinition,
+    ) -> Option<TokenStream> {
+        // If there are no changes for this field, there is also no need to generate a match arm
+        // for applying a tracked value.
+        let changes = self.changes.as_ref()?;
+
+        match direction {
+            Direction::Upgrade => {
+                let next_change = changes.get_expect(&next_version.inner);
+
+                let ident = &self.ident;
+                let json_path_ident = format_ident!("__sv_{}_path", &self.ident.as_ident());
+
+                match next_change {
+                    ItemStatus::NotPresent | ItemStatus::NoChange { .. } => None,
+                    _ => Some(quote! {
+                        field_name if field_name == #json_path_ident => {
+                            spec.#ident = serde_yaml::from_value(value).unwrap();
+                        },
+                    }),
+                }
+            }
+            Direction::Downgrade => None,
+        }
+    }
+
+    pub fn generate_for_json_path(&self, next_version: &VersionDefinition) -> Option<TokenStream> {
+        match (&self.changes, self.nested) {
+            // If there are no changes and the field also not marked as nested, there is no need to
+            // generate a path variable for that field as no tracked values need to be applied/inserted
+            // and the tracking mechanism doesn't need to be forwarded to a sub struct.
+            (None, false) => None,
+
+            // If the field is marked as nested, a path variable for that field needs to be generated
+            // which is then passed down to the sub struct. There is however no need to look determine
+            // if the field itself also has changes. This is explicitly handled by the following match
+            // arm.
+            (_, true) => {
+                let field_ident = format_ident!("__sv_{}_path", &self.ident.as_ident());
+                let child_string = &self.ident.to_string();
                 Some(quote! {
-                    #field_ident: #from_struct_ident.#field_ident.into(),
+                    let #field_ident = ::stackable_versioned::jthong_path(parent, #child_string);
                 })
+            }
+            (Some(changes), _) => {
+                let next_change = changes.get_expect(&next_version.inner);
+
+                match next_change {
+                    ItemStatus::NoChange { .. } | ItemStatus::NotPresent => None,
+                    _ => {
+                        let field_ident = format_ident!("__sv_{}_path", &self.ident.as_ident());
+                        let child_string = &self.ident.to_string();
+                        Some(quote! {
+                            let #field_ident = ::stackable_versioned::jthong_path(parent, #child_string);
+                        })
+                    }
+                }
             }
         }
     }

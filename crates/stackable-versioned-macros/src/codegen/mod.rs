@@ -1,7 +1,5 @@
 use darling::util::IdentString;
 use k8s_version::Version;
-use proc_macro2::TokenStream;
-use syn::{Path, Type};
 
 use crate::{
     attrs::module::ModuleAttributes,
@@ -72,63 +70,27 @@ pub struct VersionIdents {
     pub variant: IdentString,
 }
 
-#[derive(Debug, PartialEq)]
-pub enum ItemStatus {
-    Addition {
-        ident: IdentString,
-        default_fn: Path,
-        // NOTE (@Techassi): We need to carry idents and type information in
-        // nearly every status. Ideally, we would store this in separate maps.
-        ty: Type,
-    },
-    Change {
-        downgrade_with: Option<Path>,
-        upgrade_with: Option<Path>,
-        from_ident: IdentString,
-        to_ident: IdentString,
-        from_type: Type,
-        to_type: Type,
-    },
-    Deprecation {
-        previous_ident: IdentString,
-        note: Option<String>,
-        ident: IdentString,
-    },
-    NoChange {
-        previously_deprecated: bool,
-        ident: IdentString,
-        ty: Type,
-    },
-    NotPresent,
+#[derive(Clone, Copy, Debug)]
+pub struct VersionContext<'a> {
+    pub version: &'a VersionDefinition,
+    pub next_version: Option<&'a VersionDefinition>,
 }
 
-impl ItemStatus {
-    pub fn get_ident(&self) -> &IdentString {
-        match &self {
-            ItemStatus::Addition { ident, .. } => ident,
-            ItemStatus::Change { to_ident, .. } => to_ident,
-            ItemStatus::Deprecation { ident, .. } => ident,
-            ItemStatus::NoChange { ident, .. } => ident,
-            ItemStatus::NotPresent => unreachable!("ItemStatus::NotPresent does not have an ident"),
+impl<'a> VersionContext<'a> {
+    pub fn new(
+        version: &'a VersionDefinition,
+        next_version: Option<&'a VersionDefinition>,
+    ) -> Self {
+        Self {
+            version,
+            next_version,
         }
     }
 }
 
-// This contains all generated Kubernetes tokens for a particular version.
-// This struct can then be used to fully generate the combined final Kubernetes code.
-#[derive(Debug, Default)]
-pub struct KubernetesTokens {
-    variant_idents: Vec<IdentString>,
-    variant_data: Vec<TokenStream>,
-    variant_strings: Vec<String>,
-    crd_fns: Vec<TokenStream>,
-}
-
-impl KubernetesTokens {
-    pub fn push(&mut self, items: (TokenStream, IdentString, TokenStream, String)) {
-        self.crd_fns.push(items.0);
-        self.variant_idents.push(items.1);
-        self.variant_data.push(items.2);
-        self.variant_strings.push(items.3);
-    }
+/// Describes the direction of [`From`] implementations.
+#[derive(Copy, Clone, Debug)]
+pub enum Direction {
+    Upgrade,
+    Downgrade,
 }

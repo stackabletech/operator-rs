@@ -1,4 +1,4 @@
-use darling::{FromField, Result};
+use darling::{FromField, Result, util::Flag};
 use syn::{Attribute, Ident};
 
 use crate::{attrs::item::CommonItemAttributes, codegen::VersionDefinition, utils::FieldIdent};
@@ -36,6 +36,11 @@ pub struct FieldAttributes {
     // FromMeta.
     /// The original attributes for the field.
     pub attrs: Vec<Attribute>,
+
+    /// Indicates that this field's type is a nested sub struct. The indicator
+    /// is needed to let the macro know to generate conversion code with support
+    /// for tracking across struct boundaries.
+    pub nested: Flag,
 }
 
 impl FieldAttributes {

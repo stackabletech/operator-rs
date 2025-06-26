@@ -13,7 +13,7 @@ pub struct ContainerAttributes {
 
 impl ContainerAttributes {
     fn validate(self) -> Result<Self> {
-        if self.crd_arguments.is_some()
+        if self.crd_arguments.is_none()
             && (self.skip.object_from.is_present()
                 || self.skip.merged_crd.is_present()
                 || self.skip.try_convert.is_present())

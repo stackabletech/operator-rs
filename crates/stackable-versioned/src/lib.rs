@@ -11,7 +11,6 @@
 
 use std::collections::HashMap;
 
-use k8s_version::Version;
 use schemars::schema::{InstanceType, Schema, SchemaObject, SingleOrVec};
 use snafu::{ErrorCompat, Snafu};
 // Re-export
@@ -26,11 +25,8 @@ where
     Self: Sized,
     S: TrackingStatus + Default,
 {
-    /// Describes the parent field of `Self`. None indicates that `Self` is at the root.
-    const PARENT: Option<&str>;
-
     /// Convert `T` into `Self`.
-    fn tracking_from(value: T, status: &mut S) -> Self;
+    fn tracking_from(value: T, status: &mut S, parent: &str) -> Self;
 }
 
 /// A value-to-value conversion that consumes the input value while tracking changes via a
@@ -44,7 +40,7 @@ where
     S: TrackingStatus + Default,
 {
     /// Convert `Self` into `T`.
-    fn tracking_into(self, status: &mut S) -> T;
+    fn tracking_into(self, status: &mut S, parent: &str) -> T;
 }
 
 impl<T, U, S> TrackingInto<U, S> for T
@@ -52,8 +48,8 @@ where
     S: TrackingStatus + Default,
     U: TrackingFrom<T, S>,
 {
-    fn tracking_into(self, status: &mut S) -> U {
-        U::tracking_from(self, status)
+    fn tracking_into(self, status: &mut S, parent: &str) -> U {
+        U::tracking_from(self, status, parent)
     }
 }
 
@@ -70,10 +66,10 @@ pub trait TrackingStatus {
 #[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct ChangedValues {
     /// List of values needed when downgrading to a particular version.
-    pub downgrades: HashMap<Version, Vec<ChangedValue>>,
+    pub downgrades: HashMap<String, Vec<ChangedValue>>,
 
     /// List of values needed when upgrading to a particular version.
-    pub upgrades: HashMap<Version, Vec<ChangedValue>>,
+    pub upgrades: HashMap<String, Vec<ChangedValue>>,
     // TODO (@Techassi): Add a version indicator here if we ever decide to change the tracking
     // mechanism.
 }
@@ -108,17 +104,20 @@ fn raw_object_schema(_: &mut schemars::r#gen::SchemaGenerator) -> Schema {
 /// This error indicates that parsing an object from a conversion review failed.
 #[derive(Debug, Snafu)]
 pub enum ParseObjectError {
-    #[snafu(display(r#"failed to find "apiVersion" field"#))]
-    FieldNotPresent,
+    #[snafu(display("the field {field:?} is missing"))]
+    FieldNotPresent { field: String },
 
-    #[snafu(display(r#"the "apiVersion" field must be a string"#))]
-    FieldNotStr,
+    #[snafu(display("the field {field:?} must be a string"))]
+    FieldNotStr { field: String },
 
     #[snafu(display("encountered unknown object API version {api_version:?}"))]
     UnknownApiVersion { api_version: String },
 
     #[snafu(display("failed to deserialize object from JSON"))]
     Deserialize { source: serde_json::Error },
+
+    #[snafu(display("unexpected object kind {kind:?}, expected {expected:?}"))]
+    UnexpectedKind { kind: String, expected: String },
 }
 
 /// This error indicates that converting an object from a conversion review to the desired
@@ -130,6 +129,11 @@ pub enum ConvertObjectError {
 
     #[snafu(display("failed to serialize object into json"))]
     Serialize { source: serde_json::Error },
+
+    #[snafu(display("failed to parse desired API version"))]
+    ParseDesiredApiVersion {
+        source: UnknownDesiredApiVersionError,
+    },
 }
 
 impl ConvertObjectError {
@@ -150,6 +154,24 @@ impl ConvertObjectError {
         match self {
             ConvertObjectError::Parse { .. } => 400,
             ConvertObjectError::Serialize { .. } => 500,
+
+            // This is likely the clients fault, as it is requesting a unsupported version
+            ConvertObjectError::ParseDesiredApiVersion {
+                source: UnknownDesiredApiVersionError { .. },
+            } => 400,
         }
+    }
+}
+
+#[derive(Debug, Snafu)]
+#[snafu(display("unknown API version {api_version:?}"))]
+pub struct UnknownDesiredApiVersionError {
+    pub api_version: String,
+}
+
+pub fn jthong_path(parent: &str, child: &str) -> String {
+    match parent.is_empty() {
+        true => child.to_owned(),
+        false => format!("{parent}.{child}"),
     }
 }

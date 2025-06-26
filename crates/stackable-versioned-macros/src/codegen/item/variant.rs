@@ -9,9 +9,9 @@ use syn::{Attribute, Fields, Type, TypeNever, Variant, token::Not};
 use crate::{
     attrs::item::VariantAttributes,
     codegen::{
-        ItemStatus, VersionDefinition,
+        Direction, VersionDefinition,
         changes::{BTreeMapExt, ChangesetExt},
-        container::Direction,
+        item::ItemStatus,
     },
     utils::VariantIdent,
 };

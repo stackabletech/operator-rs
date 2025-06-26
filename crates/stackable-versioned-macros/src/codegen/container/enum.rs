@@ -6,12 +6,15 @@ use quote::quote;
 use syn::{Generics, ItemEnum};
 
 use crate::{
-    attrs::container::NestedContainerAttributes,
+    attrs::container::ContainerAttributes,
     codegen::{
-        ItemStatus, StandaloneContainerAttributes, VersionDefinition,
+        Direction, VersionContext, VersionDefinition,
         changes::Neighbors,
-        container::{CommonContainerData, Container, ContainerIdents, ContainerOptions, Direction},
-        item::VersionedVariant,
+        container::{
+            CommonContainerData, Container, ContainerIdents, ContainerOptions, ContainerTokens,
+            ExtendContainerTokens, ModuleGenerationContext,
+        },
+        item::{ItemStatus, VersionedVariant},
     },
 };
 
@@ -27,11 +30,13 @@ impl Container {
         }
 
         let options = ContainerOptions {
-            kubernetes_arguments: None,
-            skip_from: attributes.options.skip.is_some_and(|s| s.from.is_present()),
+            skip_from: attributes.skip.from.is_present(),
+            skip_object_from: attributes.skip.object_from.is_present(),
+            skip_merged_crd: attributes.skip.merged_crd.is_present(),
+            skip_try_convert: attributes.skip.try_convert.is_present(),
         };
 
-        let idents = ContainerIdents::from(item_enum.ident, None);
+        let idents = ContainerIdents::from(item_enum.ident);
 
         let common = CommonContainerData {
             original_attributes: item_enum.attrs,
@@ -62,18 +67,43 @@ pub struct Enum {
 
 // Common token generation
 impl Enum {
+    pub fn generate_tokens<'a>(
+        &'a self,
+        versions: &'a [VersionDefinition],
+        gen_ctx: ModuleGenerationContext<'a>,
+    ) -> ContainerTokens<'a> {
+        let mut versions = versions.iter().peekable();
+        let mut container_tokens = ContainerTokens::default();
+
+        while let Some(version) = versions.next() {
+            let next_version = versions.peek().copied();
+            let ver_ctx = VersionContext::new(version, next_version);
+
+            let enum_definition = self.generate_definition(ver_ctx);
+            let upgrade_from = self.generate_from_impl(Direction::Upgrade, ver_ctx, gen_ctx);
+            let downgrade_from = self.generate_from_impl(Direction::Downgrade, ver_ctx, gen_ctx);
+
+            container_tokens
+                .extend_inner(&version.inner, enum_definition)
+                .extend_between(&version.inner, upgrade_from)
+                .extend_between(&version.inner, downgrade_from);
+        }
+
+        container_tokens
+    }
+
     /// Generates code for the enum definition.
-    pub fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
+    pub fn generate_definition(&self, ver_ctx: VersionContext<'_>) -> TokenStream {
         let where_clause = self.generics.where_clause.as_ref();
         let type_generics = &self.generics;
 
         let original_attributes = &self.common.original_attributes;
         let ident = &self.common.idents.original;
-        let version_docs = &version.docs;
+        let version_docs = &ver_ctx.version.docs;
 
         let mut variants = TokenStream::new();
         for variant in &self.variants {
-            variants.extend(variant.generate_for_container(version));
+            variants.extend(variant.generate_for_container(ver_ctx.version));
         }
 
         quote! {
@@ -89,15 +119,16 @@ impl Enum {
     pub fn generate_from_impl(
         &self,
         direction: Direction,
-        version: &VersionDefinition,
-        next_version: Option<&VersionDefinition>,
-        add_attributes: bool,
+        ver_ctx: VersionContext<'_>,
+        gen_ctx: ModuleGenerationContext<'_>,
     ) -> Option<TokenStream> {
-        if version.skip_from || self.common.options.skip_from {
+        if ver_ctx.version.skip_from || self.common.options.skip_from {
             return None;
         }
 
-        next_version.map(|next_version| {
+        let version = ver_ctx.version;
+
+        ver_ctx.next_version.map(|next_version| {
             // TODO (@Techassi): Support generic types which have been removed in newer versions,
             // but need to exist for older versions How do we represent that? Because the
             // defined struct always represents the latest version. I guess we could generally
@@ -118,7 +149,7 @@ impl Enum {
 
             // Only add the #[automatically_derived] attribute only if this impl is used
             // outside of a module (in standalone mode).
-            let automatically_derived = add_attributes
+            let automatically_derived = gen_ctx.add_attributes
                 .not()
                 .then(|| quote! {#[automatically_derived]});
 

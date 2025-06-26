@@ -1,13 +1,17 @@
-use darling::{Result, util::IdentString};
-use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote};
-use syn::{Attribute, Ident, ItemEnum, ItemStruct, Visibility};
+use std::collections::HashMap;
+
+use darling::util::IdentString;
+use k8s_version::Version;
+use proc_macro2::{Span, TokenStream, TokenTree};
+use quote::format_ident;
+use syn::{Attribute, Ident};
 
 use crate::{
-    attrs::container::{StandaloneContainerAttributes, k8s::KubernetesArguments},
+    attrs::container::StructCrdArguments,
     codegen::{
-        KubernetesTokens, VersionDefinition,
+        VersionDefinition,
         container::{r#enum::Enum, r#struct::Struct},
+        module::ModuleGenerationContext,
     },
     utils::ContainerIdentExt,
 };
@@ -37,57 +41,117 @@ pub enum Container {
     Enum(Enum),
 }
 
+#[derive(Debug, Default)]
+pub struct ContainerTokens<'a> {
+    pub versioned: HashMap<&'a Version, VersionedContainerTokens>,
+    pub outer: TokenStream,
+}
+
+#[derive(Debug, Default)]
+/// A collection of generated tokens for a container per version.
+pub struct VersionedContainerTokens {
+    /// The inner tokens are placed inside the version module. These tokens mostly only include the
+    /// container definition with attributes, doc comments, etc.
+    pub inner: TokenStream,
+
+    /// These tokens are placed between version modules. These could technically be grouped together
+    /// with the outer tokens, but it makes sense to keep them separate to achieve a more structured
+    /// code generation. These tokens mostly only include `From` impls to convert between two versions
+    pub between: TokenStream,
+}
+
+pub trait ExtendContainerTokens<'a, T> {
+    fn extend_inner<I: IntoIterator<Item = T>>(
+        &mut self,
+        version: &'a Version,
+        streams: I,
+    ) -> &mut Self;
+    fn extend_between<I: IntoIterator<Item = T>>(
+        &mut self,
+        version: &'a Version,
+        streams: I,
+    ) -> &mut Self;
+    fn extend_outer<I: IntoIterator<Item = T>>(&mut self, streams: I) -> &mut Self;
+}
+
+impl<'a> ExtendContainerTokens<'a, TokenStream> for ContainerTokens<'a> {
+    fn extend_inner<I: IntoIterator<Item = TokenStream>>(
+        &mut self,
+        version: &'a Version,
+        streams: I,
+    ) -> &mut Self {
+        self.versioned
+            .entry(version)
+            .or_default()
+            .inner
+            .extend(streams);
+        self
+    }
+
+    fn extend_between<I: IntoIterator<Item = TokenStream>>(
+        &mut self,
+        version: &'a Version,
+        streams: I,
+    ) -> &mut Self {
+        self.versioned
+            .entry(version)
+            .or_default()
+            .between
+            .extend(streams);
+        self
+    }
+
+    fn extend_outer<I: IntoIterator<Item = TokenStream>>(&mut self, streams: I) -> &mut Self {
+        self.outer.extend(streams);
+        self
+    }
+}
+
+impl<'a> ExtendContainerTokens<'a, TokenTree> for ContainerTokens<'a> {
+    fn extend_inner<I: IntoIterator<Item = TokenTree>>(
+        &mut self,
+        version: &'a Version,
+        streams: I,
+    ) -> &mut Self {
+        self.versioned
+            .entry(version)
+            .or_default()
+            .inner
+            .extend(streams);
+        self
+    }
+
+    fn extend_between<I: IntoIterator<Item = TokenTree>>(
+        &mut self,
+        version: &'a Version,
+        streams: I,
+    ) -> &mut Self {
+        self.versioned
+            .entry(version)
+            .or_default()
+            .between
+            .extend(streams);
+        self
+    }
+
+    fn extend_outer<I: IntoIterator<Item = TokenTree>>(&mut self, streams: I) -> &mut Self {
+        self.outer.extend(streams);
+        self
+    }
+}
+
 impl Container {
-    /// Generates the container definition for the specified `version`.
-    pub fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
+    // TODO (@Techassi): Only have a single function here. It should return and store all generated
+    // tokens. It should also have access to a single GenerationContext, which provides all external
+    // parameters which influence code generation.
+    pub fn generate_tokens<'a>(
+        &'a self,
+        versions: &'a [VersionDefinition],
+        ctx: ModuleGenerationContext<'a>,
+    ) -> ContainerTokens<'a> {
         match self {
-            Container::Struct(s) => s.generate_definition(version),
-            Container::Enum(e) => e.generate_definition(version),
-        }
-    }
-
-    pub fn generate_from_impl(
-        &self,
-        direction: Direction,
-        version: &VersionDefinition,
-        next_version: Option<&VersionDefinition>,
-        add_attributes: bool,
-    ) -> Option<TokenStream> {
-        match self {
-            Container::Struct(s) => {
-                // TODO (@Techassi): Decide here (based on K8s args) what we want to generate
-                s.generate_from_impl(direction, version, next_version, add_attributes)
-            }
-            Container::Enum(e) => {
-                e.generate_from_impl(direction, version, next_version, add_attributes)
-            }
-        }
-    }
-
-    /// Generates Kubernetes specific code for the container.
-    ///
-    /// This includes CRD merging, CRD conversion, and the conversion tracking status struct.
-    pub fn generate_kubernetes_code(
-        &self,
-        versions: &[VersionDefinition],
-        tokens: &KubernetesTokens,
-        vis: &Visibility,
-        is_nested: bool,
-    ) -> Option<TokenStream> {
-        match self {
-            Container::Struct(s) => s.generate_kubernetes_code(versions, tokens, vis, is_nested),
-            Container::Enum(_) => None,
-        }
-    }
-
-    /// Generates KUbernetes specific code for individual versions.
-    pub fn generate_kubernetes_version_items(
-        &self,
-        version: &VersionDefinition,
-    ) -> Option<(TokenStream, IdentString, TokenStream, String)> {
-        match self {
-            Container::Struct(s) => s.generate_kubernetes_version_items(version),
-            Container::Enum(_) => None,
+            Container::Struct(s) => s.generate_tokens(versions, ctx),
+            Container::Enum(e) => e.generate_tokens(versions, ctx),
         }
     }
 
@@ -162,12 +226,8 @@ impl KubernetesIdents {
 
 #[derive(Debug)]
 pub struct ContainerOptions {
-    pub kubernetes_arguments: Option<KubernetesArguments>,
     pub skip_from: bool,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum Direction {
-    Upgrade,
-    Downgrade,
+    pub skip_object_from: bool,
+    pub skip_merged_crd: bool,
+    pub skip_try_convert: bool,
 }

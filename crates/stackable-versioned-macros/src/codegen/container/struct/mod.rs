@@ -1,21 +1,24 @@
-use std::ops::Not;
-
-use darling::{Error, FromAttributes, Result};
+use darling::{Error, FromAttributes, Result, util::IdentString};
+use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Generics, ItemStruct};
 
 use crate::{
-    attrs::container::NestedContainerAttributes,
+    attrs::container::{ContainerAttributes, StructCrdArguments},
     codegen::{
-        ItemStatus, StandaloneContainerAttributes, VersionDefinition,
+        Direction, VersionContext, VersionDefinition,
         changes::Neighbors,
-        container::{CommonContainerData, Container, ContainerIdents, ContainerOptions, Direction},
-        item::VersionedField,
+        container::{
+            CommonContainerData, Container, ContainerIdents, ContainerOptions, ContainerTokens,
+            ExtendContainerTokens as _, KubernetesIdents, ModuleGenerationContext,
+        },
+        item::{ItemStatus, VersionedField},
     },
 };
 
-mod k8s;
+mod conversion;
+mod merge;
 
 impl Container {
     pub fn new_struct(item_struct: ItemStruct, versions: &[VersionDefinition]) -> Result<Self> {
@@ -28,20 +31,29 @@ impl Container {
             versioned_fields.push(versioned_field);
         }
 
-        let kubernetes_arguments = attributes.kubernetes_arguments;
-        let idents = ContainerIdents::from(item_struct.ident, kubernetes_arguments.as_ref());
+        let idents = ContainerIdents::from(item_struct.ident);
+
+        let kubernetes_data = attributes.crd_arguments.map(|arguments| {
+            let idents = KubernetesIdents::from(&idents.original, &arguments);
+            KubernetesData {
+                kubernetes_arguments: arguments,
+                kubernetes_idents: idents,
+            }
+        });
 
         // Validate K8s specific requirements
         // Ensure that the struct name includes the 'Spec' suffix.
-        if kubernetes_arguments.is_some() && !idents.original.as_str().ends_with("Spec") {
+        if kubernetes_data.is_some() && !idents.original.as_str().ends_with("Spec") {
             return Err(Error::custom(
                 "struct name needs to include the `Spec` suffix if Kubernetes features are enabled via `#[versioned(k8s())]`"
             ).with_span(&idents.original.span()));
         }
 
         let options = ContainerOptions {
-            skip_from: attributes.options.skip.is_some_and(|s| s.from.is_present()),
-            kubernetes_arguments,
+            skip_from: attributes.skip.from.is_present(),
+            skip_object_from: attributes.skip.object_from.is_present(),
+            skip_merged_crd: attributes.skip.merged_crd.is_present(),
+            skip_try_convert: attributes.skip.try_convert.is_present(),
         };
 
         // Nested structs
@@ -62,6 +74,7 @@ impl Container {
 
         Ok(Self::Struct(Struct {
             generics: item_struct.generics,
+            kubernetes_data,
             fields: versioned_fields,
             common,
         }))
@@ -90,22 +103,96 @@ pub struct KubernetesData {
 
 // Common token generation
 impl Struct {
+    pub fn generate_tokens<'a>(
+        &self,
+        versions: &'a [VersionDefinition],
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+    ) -> ContainerTokens<'a> {
+        let mut versions_iter = versions.iter().peekable();
+        let mut container_tokens = ContainerTokens::default();
+
+        let spec_gen_ctx =
+            SpecGenerationContext::new(self.kubernetes_data.as_ref(), versions, mod_gen_ctx);
+
+        while let Some(version) = versions_iter.next() {
+            let next_version = versions_iter.peek().copied();
+            let ver_ctx = VersionContext::new(version, next_version);
+
+            let struct_definition =
+                self.generate_definition(ver_ctx, mod_gen_ctx, spec_gen_ctx.as_ref());
+
+            let upgrade_from = self.generate_from_impl(Direction::Upgrade, ver_ctx, mod_gen_ctx);
+            let downgrade_from =
+                self.generate_from_impl(Direction::Downgrade, ver_ctx, mod_gen_ctx);
+
+            // Generate code which is only needed for the top-level CRD spec
+            if let Some(spec_gen_ctx) = &spec_gen_ctx {
+                let upgrade_spec_from = self.generate_object_from_impl(
+                    Direction::Upgrade,
+                    ver_ctx,
+                    mod_gen_ctx,
+                    spec_gen_ctx,
+                );
+
+                let downgrade_spec_from = self.generate_object_from_impl(
+                    Direction::Downgrade,
+                    ver_ctx,
+                    mod_gen_ctx,
+                    spec_gen_ctx,
+                );
+
+                container_tokens
+                    .extend_between(&version.inner, upgrade_spec_from)
+                    .extend_between(&version.inner, downgrade_spec_from);
+            }
+
+            container_tokens
+                .extend_inner(&version.inner, struct_definition)
+                .extend_between(&version.inner, upgrade_from)
+                .extend_between(&version.inner, downgrade_from);
+        }
+
+        // Generate code which is only needed for the top-level CRD spec
+        if let Some(spec_gen_ctx) = spec_gen_ctx {
+            let entry_enum = self.generate_entry_enum(mod_gen_ctx, &spec_gen_ctx);
+            let entry_enum_impl =
+                self.generate_entry_impl_block(versions, mod_gen_ctx, &spec_gen_ctx);
+            let version_enum = self.generate_version_enum(mod_gen_ctx, &spec_gen_ctx);
+            let status_struct = self.generate_status_struct(mod_gen_ctx, &spec_gen_ctx);
+
+            container_tokens
+                .extend_outer(entry_enum)
+                .extend_outer(entry_enum_impl)
+                .extend_outer(version_enum)
+                .extend_outer(status_struct);
+        }
+
+        container_tokens
+    }
+
     /// Generates code for the struct definition.
-    pub fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
+    fn generate_definition(
+        &self,
+        ver_ctx: VersionContext<'_>,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+        spec_gen_ctx: Option<&SpecGenerationContext<'_>>,
+    ) -> TokenStream {
         let where_clause = self.generics.where_clause.as_ref();
         let type_generics = &self.generics;
 
         let original_attributes = &self.common.original_attributes;
         let ident = &self.common.idents.original;
-        let version_docs = &version.docs;
+        let version_docs = &ver_ctx.version.docs;
 
-        let mut fields = TokenStream::new();
-        for field in &self.fields {
-            fields.extend(field.generate_for_container(version));
-        }
+        let fields: TokenStream = self
+            .fields
+            .iter()
+            .filter_map(|field| field.generate_for_container(ver_ctx.version))
+            .collect();
 
-        // This only returns Some, if K8s features are enabled
-        let kube_attribute = self.generate_kube_attribute(version);
+        let kube_attribute = spec_gen_ctx.and_then(|spec_gen_ctx| {
+            self.generate_kube_attribute(ver_ctx, mod_gen_ctx, spec_gen_ctx)
+        });
 
         quote! {
             #(#[doc = #version_docs])*
@@ -117,90 +204,236 @@ impl Struct {
         }
     }
 
-    // TODO (@Techassi): Adjust doc comment
-    /// Generates code for the `From<Version> for NextVersion` implementation.
-    ///
-    /// The `add_attributes` parameter declares if attributes (macros) should be added to the
-    /// generated `From` impl block.
-    pub fn generate_from_impl(
+    fn generate_kube_attribute(
         &self,
-        direction: Direction,
-        version: &VersionDefinition,
-        next_version: Option<&VersionDefinition>,
-        add_attributes: bool,
+        ver_ctx: VersionContext<'_>,
+        gen_ctx: ModuleGenerationContext<'_>,
+        spec_gen_ctx: &SpecGenerationContext<'_>,
     ) -> Option<TokenStream> {
-        if version.skip_from || self.common.options.skip_from {
+        // Required arguments
+        let group = &spec_gen_ctx.kubernetes_arguments.group;
+        let version = ver_ctx.version.inner.to_string();
+        let kind = spec_gen_ctx
+            .kubernetes_arguments
+            .kind
+            .as_ref()
+            .map_or(spec_gen_ctx.kubernetes_idents.kind.to_string(), |kind| {
+                kind.clone()
+            });
+
+        // Optional arguments
+        let singular = spec_gen_ctx
+            .kubernetes_arguments
+            .singular
+            .as_ref()
+            .map(|s| quote! { , singular = #s });
+
+        let plural = spec_gen_ctx
+            .kubernetes_arguments
+            .plural
+            .as_ref()
+            .map(|p| quote! { , plural = #p });
+
+        let crates = gen_ctx.crates;
+
+        let namespaced = spec_gen_ctx
+            .kubernetes_arguments
+            .namespaced
+            .is_present()
+            .then_some(quote! { , namespaced });
+
+        let status = match (
+            gen_ctx
+                .kubernetes_options
+                .experimental_conversion_tracking
+                .is_present(),
+            &spec_gen_ctx.kubernetes_arguments.status,
+        ) {
+            (true, _) => {
+                let status_ident = &spec_gen_ctx.kubernetes_idents.status;
+                Some(quote! { , status = #status_ident })
+            }
+            (_, Some(status_ident)) => Some(quote! { , status = #status_ident }),
+            (_, _) => None,
+        };
+
+        let shortnames: TokenStream = spec_gen_ctx
+            .kubernetes_arguments
+            .shortnames
+            .iter()
+            .map(|s| quote! { , shortname = #s })
+            .collect();
+
+        Some(quote! {
+            // The end-developer needs to derive CustomResource and JsonSchema.
+            // This is because we don't know if they want to use a re-exported or renamed import.
+            #[kube(
+                // These must be comma separated (except the last) as they always exist:
+                group = #group, version = #version, kind = #kind
+                // These fields are optional, and therefore the token stream must prefix each with a comma:
+                #singular #plural #namespaced #crates #status #shortnames
+            )]
+        })
+    }
+
+    fn generate_entry_enum(
+        &self,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+        spec_gen_ctx: &SpecGenerationContext<'_>,
+    ) -> TokenStream {
+        let enum_ident = &spec_gen_ctx.kubernetes_idents.kind;
+        let vis = mod_gen_ctx.vis;
+
+        let variant_idents = &spec_gen_ctx.variant_idents;
+        let variant_data = &spec_gen_ctx.variant_data;
+
+        let automatically_derived = mod_gen_ctx.automatically_derived_attr();
+
+        quote! {
+            #automatically_derived
+            #[derive(::core::fmt::Debug)]
+            #vis enum #enum_ident {
+                #(#variant_idents(#variant_data)),*
+            }
+        }
+    }
+
+    fn generate_entry_impl_block(
+        &self,
+        versions: &[VersionDefinition],
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+        spec_gen_ctx: &SpecGenerationContext<'_>,
+    ) -> TokenStream {
+        let enum_ident = &spec_gen_ctx.kubernetes_idents.kind;
+
+        // Only generate merged_crd associated function if not opted out
+        let merged_crd_fn =
+            if !mod_gen_ctx.skip.merged_crd.is_present() && !self.common.options.skip_merged_crd {
+                Some(self.generate_merged_crd_fn(mod_gen_ctx, spec_gen_ctx))
+            } else {
+                None
+            };
+
+        let try_convert_fn = self.generate_try_convert_fn(versions, mod_gen_ctx, spec_gen_ctx);
+        let from_json_value_fn = self.generate_from_json_value_fn(mod_gen_ctx, spec_gen_ctx);
+        let into_json_value_fn = self.generate_into_json_value_fn(mod_gen_ctx, spec_gen_ctx);
+
+        let automatically_derived = mod_gen_ctx.automatically_derived_attr();
+
+        quote! {
+            #automatically_derived
+            impl #enum_ident {
+                #merged_crd_fn
+                #try_convert_fn
+                #from_json_value_fn
+                #into_json_value_fn
+            }
+        }
+    }
+
+    fn generate_version_enum(
+        &self,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+        spec_gen_ctx: &SpecGenerationContext<'_>,
+    ) -> Option<TokenStream> {
+        if (mod_gen_ctx.skip.merged_crd.is_present() || self.common.options.skip_merged_crd)
+            && (mod_gen_ctx.skip.try_convert.is_present() || self.common.options.skip_try_convert)
+        {
             return None;
         }
 
-        next_version.map(|next_version| {
-            // TODO (@Techassi): Support generic types which have been removed in newer versions,
-            // but need to exist for older versions How do we represent that? Because the
-            // defined struct always represents the latest version. I guess we could generally
-            // advise against using generic types, but if you have to, avoid removing it in
-            // later versions.
-            let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
-            let from_struct_ident = &self.common.idents.parameter;
-            let struct_ident = &self.common.idents.original;
+        let enum_ident = &spec_gen_ctx.kubernetes_idents.version;
+        let vis = mod_gen_ctx.vis;
 
-            // Include allow(deprecated) only when this or the next version is
-            // deprecated. Also include it, when a field in this or the next
-            // version is deprecated.
-            let allow_attribute = (version.deprecated.is_some()
-                || next_version.deprecated.is_some()
-                || self.is_any_field_deprecated(version)
-                || self.is_any_field_deprecated(next_version))
-            .then(|| quote! { #[allow(deprecated)] });
+        let versioned_path = &*mod_gen_ctx.crates.versioned;
+        let unknown_desired_api_version_error =
+            quote! { #versioned_path::UnknownDesiredApiVersionError };
 
-            // Only add the #[automatically_derived] attribute only if this impl is used
-            // outside of a module (in standalone mode).
-            let automatically_derived = add_attributes
-                .not()
-                .then(|| quote! {#[automatically_derived]});
+        let version_strings = &spec_gen_ctx.version_strings;
+        let variant_idents = &spec_gen_ctx.variant_idents;
 
-            let fields = |direction: Direction| -> TokenStream {
-                self
-                    .fields
-                    .iter()
-                    .filter_map(|f| {
-                        f.generate_for_from_impl(
-                            direction,
-                            version,
-                            next_version,
-                            from_struct_ident,
-                        )
-                    })
-                    .collect()
-            };
+        let automatically_derived = mod_gen_ctx.automatically_derived_attr();
 
-            let (fields, for_module_ident, from_module_ident) = match direction {
-                Direction::Upgrade => {
-                    let from_module_ident = &version.idents.module;
-                    let for_module_ident = &next_version.idents.module;
+        // TODO (@Techassi): Generate this once
+        let api_versions = version_strings
+            .iter()
+            .map(|version| {
+                format!(
+                    "{group}/{version}",
+                    group = &spec_gen_ctx.kubernetes_arguments.group
+                )
+            })
+            .collect::<Vec<_>>();
 
-                    (fields(Direction::Upgrade), for_module_ident, from_module_ident)
+        Some(quote! {
+            #automatically_derived
+            #[derive(
+                ::core::marker::Copy,
+                ::core::clone::Clone,
+                ::core::fmt::Debug
+            )]
+            #vis enum #enum_ident {
+                #(#variant_idents),*
+            }
+
+            #automatically_derived
+            impl ::core::fmt::Display for #enum_ident {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::std::result::Result<(), ::std::fmt::Error> {
+                    // The version (without the Kubernetes group) is probably more human-readable
+                    f.write_str(self.as_version_str())
                 }
-                Direction::Downgrade => {
-                    let from_module_ident = &next_version.idents.module;
-                    let for_module_ident = &version.idents.module;
+            }
 
-                    (fields(Direction::Downgrade), for_module_ident, from_module_ident)
+            #automatically_derived
+            impl #enum_ident {
+                pub fn as_version_str(&self) -> &str {
+                    match self {
+                        #(#enum_ident::#variant_idents => #version_strings),*
+                    }
                 }
-            };
 
-            quote! {
-                #automatically_derived
-                #allow_attribute
-                impl #impl_generics ::std::convert::From<#from_module_ident::#struct_ident #type_generics> for #for_module_ident::#struct_ident #type_generics
-                    #where_clause
-                {
-                    fn from(#from_struct_ident: #from_module_ident::#struct_ident #type_generics) -> Self {
-                        Self {
-                            #fields
-                        }
+                pub fn as_api_version_str(&self) -> &str {
+                    match self {
+                        #(#enum_ident::#variant_idents => #api_versions),*
+                    }
+                }
+
+                pub fn from_api_version(api_version: &str) -> Result<Self, #unknown_desired_api_version_error> {
+                    match api_version {
+                        #(#api_versions => Ok(#enum_ident::#variant_idents)),*,
+                        _ => Err(#unknown_desired_api_version_error {
+                            api_version: api_version.to_owned(),
+                        }),
                     }
                 }
             }
+        })
+    }
+
+    /// Generates the Kubernetes specific From impl for all structs which are part of a spec.
+    fn generate_from_impl(
+        &self,
+        direction: Direction,
+        ver_ctx: VersionContext<'_>,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+    ) -> Option<TokenStream> {
+        if mod_gen_ctx.skip.from.is_present() || self.common.options.skip_from {
+            return None;
+        }
+
+        if !mod_gen_ctx
+            .kubernetes_options
+            .experimental_conversion_tracking
+            .is_present()
+        {
+            return None;
+        }
+
+        let next_version = ver_ctx.next_version;
+        let version = ver_ctx.version;
+
+        next_version.map(|next_version| {
+            self.generate_tracking_from_impl(direction, version, next_version, mod_gen_ctx)
         })
     }
 
@@ -213,9 +446,9 @@ impl Struct {
         // ensure it is deprecated.
         self.fields.iter().any(|f| {
             f.changes.as_ref().is_some_and(|c| {
-                c.value_is(&version.inner, |a| {
+                c.value_is(&version.inner, |s| {
                     matches!(
-                        a,
+                        s,
                         ItemStatus::Deprecation { .. }
                             | ItemStatus::NoChange {
                                 previously_deprecated: true,
@@ -225,5 +458,67 @@ impl Struct {
                 })
             })
         })
+    }
+}
+
+#[derive(Debug)]
+pub struct SpecGenerationContext<'a> {
+    pub kubernetes_arguments: &'a StructCrdArguments,
+    pub kubernetes_idents: &'a KubernetesIdents,
+
+    pub crd_fns: Vec<TokenStream>,
+    pub variant_idents: Vec<IdentString>,
+    pub variant_data: Vec<TokenStream>,
+    pub version_strings: Vec<String>,
+}
+
+impl<'a> SpecGenerationContext<'a> {
+    pub fn new(
+        data: Option<&'a KubernetesData>,
+        versions: &[VersionDefinition],
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+    ) -> Option<Self> {
+        match data {
+            Some(KubernetesData {
+                kubernetes_arguments,
+                kubernetes_idents,
+            }) => {
+                let (crd_fns, variant_idents, variant_data, version_strings) = versions
+                    .iter()
+                    .map(|version| {
+                        Self::generate_version_items(version, mod_gen_ctx, &kubernetes_idents.kind)
+                    })
+                    .multiunzip::<(Vec<_>, Vec<_>, Vec<_>, Vec<_>)>();
+
+                Some(Self {
+                    kubernetes_arguments,
+                    kubernetes_idents,
+                    crd_fns,
+                    variant_idents,
+                    variant_data,
+                    version_strings,
+                })
+            }
+            None => None,
+        }
+    }
+
+    fn generate_version_items(
+        version: &VersionDefinition,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+        struct_ident: &IdentString,
+    ) -> (TokenStream, IdentString, TokenStream, String) {
+        let module_ident = &version.idents.module;
+
+        let kube_core_path = &*mod_gen_ctx.crates.kube_core;
+
+        let variant_data = quote! { #module_ident::#struct_ident };
+        let crd_fn = quote! {
+            <#module_ident::#struct_ident as #kube_core_path::CustomResourceExt>::crd()
+        };
+        let variant_ident = version.idents.variant.clone();
+        let version_string = version.inner.to_string();
+
+        (crd_fn, variant_ident, variant_data, version_string)
     }
 }
