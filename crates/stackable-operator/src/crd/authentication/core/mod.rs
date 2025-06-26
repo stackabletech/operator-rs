@@ -6,7 +6,14 @@ use crate::versioned::versioned;
 
 mod v1alpha1_impl;
 
-#[versioned(version(name = "v1alpha1"))]
+#[versioned(
+    version(name = "v1alpha1"),
+    crates(
+        kube_core = "kube::core",
+        k8s_openapi = "k8s_openapi",
+        schemars = "schemars",
+    )
+)]
 pub mod versioned {
     pub mod v1alpha1 {
         // Re-export the v1alpha1-specific error type from the private impl module.
@@ -26,14 +33,9 @@ pub mod versioned {
     ///
     /// [1]: DOCS_BASE_URL_PLACEHOLDER/concepts/authentication
     /// [2]: DOCS_BASE_URL_PLACEHOLDER/tutorials/authentication_with_openldap
-    #[versioned(k8s(
+    #[versioned(crd(
         group = "authentication.stackable.tech",
         plural = "authenticationclasses",
-        crates(
-            kube_core = "kube::core",
-            k8s_openapi = "k8s_openapi",
-            schemars = "schemars",
-        )
     ))]
     #[derive(
         Clone,
