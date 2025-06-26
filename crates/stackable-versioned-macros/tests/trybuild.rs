@@ -21,9 +21,9 @@ mod inputs {
             // mod attribute_enum;
             // mod attribute_struct;
             // mod basic_struct;
-            // mod downgrade_with;
             // mod deprecate_enum;
             // mod deprecate_struct;
+            // mod downgrade_with;
             // mod enum_data_simple;
             // mod generics_defaults;
             // mod generics_module;
@@ -46,7 +46,6 @@ mod inputs {
         }
     }
 
-    #[cfg(feature = "k8s")]
     mod k8s {
         mod pass {
             // mod basic;
@@ -72,7 +71,6 @@ fn default() {
     t.pass("tests/inputs/default/pass/*.rs");
 }
 
-#[cfg(feature = "k8s")]
 #[test]
 fn k8s() {
     let t = trybuild::TestCases::new();
