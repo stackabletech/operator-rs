@@ -11,7 +11,7 @@ use crate::{
     codegen::{
         ItemStatus, VersionDefinition,
         changes::{BTreeMapExt, ChangesetExt},
-        container::Direction,
+        container::{Direction, ModuleGenerationContext},
     },
     utils::FieldIdent,
 };
@@ -223,6 +223,47 @@ impl VersionedField {
                     #field_ident: #from_struct_ident.#field_ident.into(),
                 })
             }
+        }
+    }
+
+    pub fn generate_for_status_insertion(
+        &self,
+        direction: Direction,
+        next_version: &VersionDefinition,
+        from_struct_ident: &IdentString,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+    ) -> Option<TokenStream> {
+        match &self.changes {
+            Some(changes) => match direction {
+                // This arm is only relevant for removed fields which are currently
+                // not supported.
+                Direction::Upgrade => None,
+
+                // When we generate code for a downgrade, any changes which need to
+                // be tracked need to be inserted into the upgrade section for the
+                // next time an upgrade needs to be done.
+                Direction::Downgrade => {
+                    let next_change = changes.get_expect(&next_version.inner);
+
+                    let serde_yaml_path = &*mod_gen_ctx.crates.serde_yaml;
+                    let versioned_path = &*mod_gen_ctx.crates.versioned;
+
+                    match next_change {
+                        ItemStatus::Addition { ident, .. } => {
+                            let ident_str = ident.as_str();
+
+                            Some(quote! {
+                                entry.push(#versioned_path::ChangedValue {
+                                    field_name: #ident_str.to_owned(),
+                                    value: #serde_yaml_path::to_value(&#from_struct_ident.#ident).unwrap(),
+                                });
+                            })
+                        }
+                        _ => None,
+                    }
+                }
+            },
+            None => None,
         }
     }
 }

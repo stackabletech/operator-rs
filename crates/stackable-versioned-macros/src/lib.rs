@@ -2,10 +2,7 @@ use darling::{FromMeta, ast::NestedMeta};
 use proc_macro::TokenStream;
 use syn::{Error, Item, spanned::Spanned};
 
-use crate::{
-    attrs::{container::StandaloneContainerAttributes, module::ModuleAttributes},
-    codegen::{container::StandaloneContainer, module::Module},
-};
+use crate::{attrs::module::ModuleAttributes, codegen::module::Module};
 
 #[cfg(test)]
 mod test_utils;
@@ -1014,39 +1011,9 @@ fn versioned_impl(attrs: proc_macro2::TokenStream, input: Item) -> proc_macro2::
 
             module.generate_tokens()
         }
-        Item::Enum(item_enum) => {
-            let container_attributes: StandaloneContainerAttributes =
-                match parse_outer_attributes(attrs) {
-                    Ok(ca) => ca,
-                    Err(err) => return err.write_errors(),
-                };
-
-            let standalone_enum =
-                match StandaloneContainer::new_enum(item_enum, container_attributes) {
-                    Ok(standalone_enum) => standalone_enum,
-                    Err(err) => return err.write_errors(),
-                };
-
-            standalone_enum.generate_tokens()
-        }
-        Item::Struct(item_struct) => {
-            let container_attributes: StandaloneContainerAttributes =
-                match parse_outer_attributes(attrs) {
-                    Ok(ca) => ca,
-                    Err(err) => return err.write_errors(),
-                };
-
-            let standalone_struct =
-                match StandaloneContainer::new_struct(item_struct, container_attributes) {
-                    Ok(standalone_struct) => standalone_struct,
-                    Err(err) => return err.write_errors(),
-                };
-
-            standalone_struct.generate_tokens()
-        }
         _ => Error::new(
             input.span(),
-            "attribute macro `versioned` can be only be applied to modules, structs and enums",
+            "attribute macro `versioned` can be only be applied to modules",
         )
         .into_compile_error(),
     }
@@ -1066,6 +1033,7 @@ mod snapshot_tests {
 
     use super::*;
 
+    // TODO (@Techassi): Combine tests, there are no default/k8s-specific tests anymore
     #[test]
     fn default() {
         let _settings_guard = test_utils::set_snapshot_path().bind_to_scope();
@@ -1078,7 +1046,6 @@ mod snapshot_tests {
         });
     }
 
-    #[cfg(feature = "k8s")]
     #[test]
     fn k8s() {
         let _settings_guard = test_utils::set_snapshot_path().bind_to_scope();
