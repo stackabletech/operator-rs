@@ -26,3 +26,4 @@ tower-http.workspace = true
 tower.workspace = true
 tracing.workspace = true
 tracing-opentelemetry.workspace = true
+x509-cert.workspace = true

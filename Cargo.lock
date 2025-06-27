@@ -3129,6 +3129,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-opentelemetry",
+ "x509-cert",
 ]
 
 [[package]]

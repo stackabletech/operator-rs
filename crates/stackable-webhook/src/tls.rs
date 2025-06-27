@@ -9,11 +9,10 @@ use hyper_util::rt::{TokioExecutor, TokioIo};
 use opentelemetry::trace::{FutureExt, SpanKind};
 use snafu::{ResultExt, Snafu};
 use stackable_certs::{
-    CertificatePairError,
-    ca::{CertificateAuthority, DEFAULT_CA_VALIDITY},
-    keys::rsa,
+    CertificatePair, CertificatePairError, DEFAULT_CERTIFICATE_VALIDITY, ca::CertificateAuthority,
+    keys::ecdsa,
 };
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, sync::mpsc};
 use tokio_rustls::{
     TlsAcceptor,
     rustls::{
@@ -25,6 +24,7 @@ use tokio_rustls::{
 use tower::{Service, ServiceExt};
 use tracing::{Instrument, Span, field::Empty, instrument};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
+use x509_cert::Certificate;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -47,12 +47,12 @@ pub enum Error {
 
     #[snafu(display("failed to encode leaf certificate as DER"))]
     EncodeCertificateDer {
-        source: CertificatePairError<rsa::Error>,
+        source: CertificatePairError<ecdsa::Error>,
     },
 
     #[snafu(display("failed to encode private key as DER"))]
     EncodePrivateKeyDer {
-        source: CertificatePairError<rsa::Error>,
+        source: CertificatePairError<ecdsa::Error>,
     },
 
     #[snafu(display("failed to set safe TLS protocol versions"))]
@@ -60,6 +60,9 @@ pub enum Error {
 
     #[snafu(display("failed to run task in blocking thread"))]
     TokioSpawnBlocking { source: tokio::task::JoinError },
+
+    #[snafu(display("failed send certificate to channel"))]
+    SendCertificateToChannel,
 }
 
 /// Custom implementation of [`std::cmp::PartialEq`] because some inner types
@@ -91,56 +94,81 @@ impl PartialEq for Error {
 /// via HTTPS with the underlying HTTP router.
 pub struct TlsServer {
     config: Arc<ServerConfig>,
+
     socket_addr: SocketAddr,
     router: Router,
 }
 
 impl TlsServer {
     #[instrument(name = "create_tls_server", skip(router))]
-    pub async fn new(socket_addr: SocketAddr, router: Router) -> Result<Self> {
-        // NOTE(@NickLarsenNZ): This code is not async, and does take some
-        // non-negligable amount of time to complete (moreso in debug ).
-        // We run this in a thread reserved for blocking code so that the Tokio
-        // executor is able to make progress on other futures instead of being
-        // blocked.
-        // See https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html
-        let task = tokio::task::spawn_blocking(move || {
-            let mut certificate_authority =
-                CertificateAuthority::new_rsa().context(CreateCertificateAuthoritySnafu)?;
-
-            let leaf_certificate = certificate_authority
-                .generate_rsa_leaf_certificate("Leaf", "webhook", [], DEFAULT_CA_VALIDITY)
-                .context(GenerateLeafCertificateSnafu)?;
-
-            let certificate_der = leaf_certificate
-                .certificate_der()
-                .context(EncodeCertificateDerSnafu)?;
-
-            let private_key_der = leaf_certificate
-                .private_key_der()
-                .context(EncodePrivateKeyDerSnafu)?;
-
-            let tls_provider = default_provider();
-            let mut config = ServerConfig::builder_with_provider(tls_provider.into())
-                .with_protocol_versions(&[&TLS12, &TLS13])
-                .context(SetSafeTlsProtocolVersionsSnafu)?
-                .with_no_client_auth()
-                .with_single_cert(vec![certificate_der], private_key_der)
-                .context(InvalidTlsPrivateKeySnafu)?;
-
-            config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
-            let config = Arc::new(config);
-
-            Ok(Self {
-                socket_addr,
-                config,
-                router,
-            })
+    pub async fn new<'a>(
+        socket_addr: SocketAddr,
+        router: Router,
+        subject_alterative_dns_names: Vec<String>,
+        cert_tx: mpsc::Sender<Certificate>,
+    ) -> Result<Self> {
+        // The certificate generations can take a while, so we use `spawn_blocking`
+        let (ca, certificate) = tokio::task::spawn_blocking(move || {
+            Self::generate_ca_and_certificate(subject_alterative_dns_names)
         })
         .await
         .context(TokioSpawnBlockingSnafu)??;
 
-        Ok(task)
+        let config = Self::config_from_certificate(certificate)?;
+
+        cert_tx
+            .send(ca.ca_cert().clone())
+            .await
+            // We intentionally drop the error, as it contains the gigantic certificate
+            .map_err(|_err| Error::SendCertificateToChannel)?;
+
+        Ok(Self {
+            config: Arc::new(config),
+            socket_addr,
+            router,
+        })
+    }
+
+    fn config_from_certificate(
+        certificate: CertificatePair<ecdsa::SigningKey>,
+    ) -> Result<ServerConfig> {
+        let certificate_der = certificate
+            .certificate_der()
+            .context(EncodeCertificateDerSnafu)?;
+        let private_key_der = certificate
+            .private_key_der()
+            .context(EncodePrivateKeyDerSnafu)?;
+
+        let tls_provider = default_provider();
+        let mut config = ServerConfig::builder_with_provider(tls_provider.into())
+            .with_protocol_versions(&[&TLS12, &TLS13])
+            .context(SetSafeTlsProtocolVersionsSnafu)?
+            .with_no_client_auth()
+            .with_single_cert(vec![certificate_der], private_key_der)
+            .context(InvalidTlsPrivateKeySnafu)?;
+
+        config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+        Ok(config)
+    }
+
+    fn generate_ca_and_certificate(
+        subject_alterative_dns_names: Vec<String>,
+    ) -> Result<(
+        CertificateAuthority<ecdsa::SigningKey>,
+        CertificatePair<ecdsa::SigningKey>,
+    )> {
+        let mut ca = CertificateAuthority::new_ecdsa().context(CreateCertificateAuthoritySnafu)?;
+
+        let certificate = ca
+            .generate_ecdsa_leaf_certificate(
+                "Leaf",
+                "webhook",
+                subject_alterative_dns_names.iter().map(|san| san.as_str()),
+                DEFAULT_CERTIFICATE_VALIDITY,
+            )
+            .context(GenerateLeafCertificateSnafu)?;
+
+        Ok((ca, certificate))
     }
 
     /// Runs the TLS server by listening for incoming TCP connections on the

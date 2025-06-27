@@ -1,6 +1,6 @@
 //! Utility types and functions to easily create ready-to-use webhook servers
 //! which can handle different tasks, for example CRD conversions. All webhook
-//! servers use HTTPS by defaultThis library is fully compatible with the
+//! servers use HTTPS by default. This library is fully compatible with the
 //! [`tracing`] crate and emits debug level tracing data.
 //!
 //! Most users will only use the top-level exported generic [`WebhookServer`]
@@ -10,25 +10,30 @@
 //! ```
 //! use stackable_webhook::{WebhookServer, Options};
 //! use axum::Router;
+//! use tokio::sync::mpsc;
 //!
+//! let (cert_tx, _cert_rx) = mpsc::channel(1);
 //! let router = Router::new();
-//! let server = WebhookServer::new(router, Options::default());
+//! let server = WebhookServer::new(router, Options::default(), vec![], cert_tx);
 //! ```
 //!
 //! For some usages, complete end-to-end [`WebhookServer`] implementations
-//! exist. One such implementation is the [`ConversionWebhookServer`][1]. The
-//! only required parameters are a conversion handler function and [`Options`].
+//! exist. One such implementation is the [`ConversionWebhookServer`][1].
 //!
 //! This library additionally also exposes lower-level structs and functions to
-//! enable complete controll over these details if needed.
+//! enable complete control over these details if needed.
 //!
 //! [1]: crate::servers::ConversionWebhookServer
 use axum::{Router, routing::get};
 use futures_util::{FutureExt as _, pin_mut, select};
 use snafu::{ResultExt, Snafu};
 use stackable_telemetry::AxumTraceLayer;
-use tokio::signal::unix::{SignalKind, signal};
+use tokio::{
+    signal::unix::{SignalKind, signal},
+    sync::mpsc,
+};
 use tower::ServiceBuilder;
+use x509_cert::Certificate;
 
 // use tower_http::trace::TraceLayer;
 use crate::tls::TlsServer;
@@ -41,10 +46,6 @@ pub mod tls;
 // Selected re-exports
 pub use crate::options::Options;
 
-/// A result type alias with the library-level [`Error`] type as teh default
-/// error type.
-pub type Result<T, E = Error> = std::result::Result<T, E>;
-
 /// A generic webhook handler receiving a request and sending back a response.
 ///
 /// This trait is not intended to be implemented by external crates and this
@@ -52,24 +53,12 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 /// implementation is part of the [`ConversionWebhookServer`][1].
 ///
 /// [1]: crate::servers::ConversionWebhookServer
-pub(crate) trait WebhookHandler<Req, Res> {
+pub trait WebhookHandler<Req, Res> {
     fn call(self, req: Req) -> Res;
 }
 
-/// A generic webhook handler receiving a request and state and sending back
-/// a response.
-///
-/// This trait is not intended to be  implemented by external crates and this
-/// library provides various ready-to-use implementations for it. One such an
-/// implementation is part of the [`ConversionWebhookServer`][1].
-///
-/// [1]: crate::servers::ConversionWebhookServer
-pub(crate) trait StatefulWebhookHandler<Req, Res, S> {
-    fn call(self, req: Req, state: S) -> Res;
-}
-
 #[derive(Debug, Snafu)]
-pub enum Error {
+pub enum WebhookError {
     #[snafu(display("failed to create TLS server"))]
     CreateTlsServer { source: tls::Error },
 
@@ -88,8 +77,7 @@ pub enum Error {
 ///
 /// [1]: crate::servers::ConversionWebhookServer
 pub struct WebhookServer {
-    options: Options,
-    router: Router,
+    tls_server: TlsServer,
 }
 
 impl WebhookServer {
@@ -108,9 +96,11 @@ impl WebhookServer {
     /// ```
     /// use stackable_webhook::{WebhookServer, Options};
     /// use axum::Router;
+    /// use tokio::sync::mpsc;
     ///
+    /// let (cert_tx, _cert_rx) = mpsc::channel(1);
     /// let router = Router::new();
-    /// let server = WebhookServer::new(router, Options::default());
+    /// let server = WebhookServer::new(router, Options::default(), vec![], cert_tx);
     /// ```
     ///
     /// ### Example with Custom Options
@@ -118,23 +108,61 @@ impl WebhookServer {
     /// ```
     /// use stackable_webhook::{WebhookServer, Options};
     /// use axum::Router;
+    /// use tokio::sync::mpsc;
     ///
+    /// let (cert_tx, _cert_rx) = mpsc::channel(1);
     /// let options = Options::builder()
     ///     .bind_address([127, 0, 0, 1], 8080)
     ///     .build();
+    /// let sans = vec!["my-san-entry".to_string()];
     ///
     /// let router = Router::new();
-    /// let server = WebhookServer::new(router, options);
+    /// let server = WebhookServer::new(router, options, sans, cert_tx);
     /// ```
-    pub fn new(router: Router, options: Options) -> Self {
+    pub async fn new(
+        router: Router,
+        options: Options,
+        subject_alterative_dns_names: Vec<String>,
+        cert_tx: mpsc::Sender<Certificate>,
+    ) -> Result<Self, WebhookError> {
         tracing::trace!("create new webhook server");
-        Self { options, router }
+
+        // TODO (@Techassi): Make opt-in configurable from the outside
+        // Create an OpenTelemetry tracing layer
+        tracing::trace!("create tracing service (layer)");
+        let trace_layer = AxumTraceLayer::new().with_opt_in();
+
+        // Use a service builder to provide multiple layers at once. Recommended
+        // by the Axum project.
+        //
+        // See https://docs.rs/axum/latest/axum/middleware/index.html#applying-multiple-middleware
+        // TODO (@NickLarsenNZ): rename this server_builder and keep it specific to tracing, since it's placement in the chain is important
+        let service_builder = ServiceBuilder::new().layer(trace_layer);
+
+        // Create the root router and merge the provided router into it.
+        tracing::debug!("create core router and merge provided router");
+        let router = router
+            .layer(service_builder)
+            // The health route is below the AxumTraceLayer so as not to be instrumented
+            .route("/health", get(|| async { "ok" }));
+
+        tracing::debug!("create TLS server");
+        let tls_server = TlsServer::new(
+            options.socket_addr,
+            router,
+            subject_alterative_dns_names,
+            cert_tx,
+        )
+        .await
+        .context(CreateTlsServerSnafu)?;
+
+        Ok(Self { tls_server })
     }
 
     /// Runs the Webhook server and sets up signal handlers for shutting down.
     ///
     /// This does not implement graceful shutdown of the underlying server.
-    pub async fn run(self) -> Result<()> {
+    pub async fn run(self) -> Result<(), WebhookError> {
         let future_server = self.run_server();
         let future_signal = async {
             let mut sigint = signal(SignalKind::interrupt()).expect("create SIGINT listener");
@@ -167,36 +195,9 @@ impl WebhookServer {
 
     /// Runs the webhook server by creating a TCP listener and binding it to
     /// the specified socket address.
-    async fn run_server(self) -> Result<()> {
+    async fn run_server(self) -> Result<(), WebhookError> {
         tracing::debug!("run webhook server");
 
-        // TODO (@Techassi): Make opt-in configurable from the outside
-        // Create an OpenTelemetry tracing layer
-        tracing::trace!("create tracing service (layer)");
-        let trace_layer = AxumTraceLayer::new().with_opt_in();
-
-        // Use a service builder to provide multiple layers at once. Recommended
-        // by the Axum project.
-        //
-        // See https://docs.rs/axum/latest/axum/middleware/index.html#applying-multiple-middleware
-        // TODO (@NickLarsenNZ): rename this server_builder and keep it specific to tracing, since it's placement in the chain is important
-        let service_builder = ServiceBuilder::new().layer(trace_layer);
-
-        // Create the root router and merge the provided router into it.
-        tracing::debug!("create core router and merge provided router");
-        let router = self
-            .router
-            .layer(service_builder)
-            // The health route is below the AxumTraceLayer so as not to be instrumented
-            .route("/health", get(|| async { "ok" }));
-
-        // Create server for TLS termination
-        tracing::debug!("create TLS server");
-        let tls_server = TlsServer::new(self.options.socket_addr, router)
-            .await
-            .context(CreateTlsServerSnafu)?;
-
-        tracing::info!("running TLS server");
-        tls_server.run().await.context(RunTlsServerSnafu)
+        self.tls_server.run().await.context(RunTlsServerSnafu)
     }
 }

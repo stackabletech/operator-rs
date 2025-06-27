@@ -163,7 +163,7 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 /// Can be embedded into an extended argument set:
 ///
 /// ```rust
-/// # use stackable_operator::cli::{Command, ProductOperatorRun, ProductConfigPath};
+/// # use stackable_operator::cli::{Command, OperatorEnvironmentOpts, ProductOperatorRun, ProductConfigPath};
 /// use clap::Parser;
 /// use stackable_operator::namespace::WatchNamespace;
 /// use stackable_telemetry::tracing::TelemetryOptions;
@@ -176,7 +176,20 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///     common: ProductOperatorRun,
 /// }
 ///
-/// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar", "--watch-namespace", "foobar"]);
+/// let opts = Command::<Run>::parse_from([
+///     "foobar-operator",
+///     "run",
+///     "--name",
+///     "foo",
+///     "--product-config",
+///     "bar",
+///     "--watch-namespace",
+///     "foobar",
+///     "--operator-namespace",
+///     "stackable-operators",
+///     "--operator-service-name",
+///     "foo-operator",
+/// ]);
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
 ///     common: ProductOperatorRun {
@@ -184,6 +197,10 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///         watch_namespace: WatchNamespace::One("foobar".to_string()),
 ///         telemetry_arguments: TelemetryOptions::default(),
 ///         cluster_info_opts: Default::default(),
+///         operator_environment: OperatorEnvironmentOpts {
+///             operator_namespace: "stackable-operators".to_string(),
+///             operator_service_name: "foo-operator".to_string(),
+///         },
 ///     },
 /// }));
 /// ```
@@ -215,6 +232,9 @@ pub struct ProductOperatorRun {
     /// Provides a specific namespace to watch (instead of watching all namespaces)
     #[arg(long, env, default_value = "")]
     pub watch_namespace: WatchNamespace,
+
+    #[command(flatten)]
+    pub operator_environment: OperatorEnvironmentOpts,
 
     #[command(flatten)]
     pub telemetry_arguments: TelemetryOptions,
@@ -278,6 +298,18 @@ impl ProductConfigPath {
     }
 }
 
+#[derive(clap::Parser, Debug, PartialEq, Eq)]
+pub struct OperatorEnvironmentOpts {
+    /// The namespace the operator is running in, usually `stackable-operators`.
+    #[arg(long, env)]
+    pub operator_namespace: String,
+
+    /// The name of the service the operator is reachable at, usually
+    /// something like `<product>-operator`.
+    #[arg(long, env)]
+    pub operator_service_name: String,
+}
+
 #[cfg(test)]
 mod tests {
     use std::{env, fs::File};
@@ -292,6 +324,8 @@ mod tests {
     const DEPLOY_FILE_PATH: &str = "deploy_config_spec_properties.yaml";
     const DEFAULT_FILE_PATH: &str = "default_file_path_properties.yaml";
     const WATCH_NAMESPACE: &str = "WATCH_NAMESPACE";
+    const OPERATOR_NAMESPACE: &str = "OPERATOR_NAMESPACE";
+    const OPERATOR_SERVICE_NAME: &str = "OPERATOR_SERVICE_NAME";
 
     #[test]
     fn verify_cli() {
@@ -388,6 +422,10 @@ mod tests {
             "bar",
             "--watch-namespace",
             "foo",
+            "--operator-namespace",
+            "stackable-operators",
+            "--operator-service-name",
+            "foo-operator",
         ]);
         assert_eq!(
             opts,
@@ -396,11 +434,23 @@ mod tests {
                 watch_namespace: WatchNamespace::One("foo".to_string()),
                 cluster_info_opts: Default::default(),
                 telemetry_arguments: Default::default(),
+                operator_environment: OperatorEnvironmentOpts {
+                    operator_namespace: "stackable-operators".to_string(),
+                    operator_service_name: "foo-operator".to_string(),
+                }
             }
         );
 
         // no cli / no env
-        let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
+        let opts = ProductOperatorRun::parse_from([
+            "run",
+            "--product-config",
+            "bar",
+            "--operator-namespace",
+            "stackable-operators",
+            "--operator-service-name",
+            "foo-operator",
+        ]);
         assert_eq!(
             opts,
             ProductOperatorRun {
@@ -408,11 +458,18 @@ mod tests {
                 watch_namespace: WatchNamespace::All,
                 cluster_info_opts: Default::default(),
                 telemetry_arguments: Default::default(),
+                operator_environment: OperatorEnvironmentOpts {
+                    operator_namespace: "stackable-operators".to_string(),
+                    operator_service_name: "foo-operator".to_string(),
+                }
             }
         );
 
         // env with namespace
         unsafe { env::set_var(WATCH_NAMESPACE, "foo") };
+        unsafe { env::set_var(OPERATOR_SERVICE_NAME, "foo-operator") };
+        unsafe { env::set_var(OPERATOR_NAMESPACE, "stackable-operators") };
+
         let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
         assert_eq!(
             opts,
@@ -421,6 +478,10 @@ mod tests {
                 watch_namespace: WatchNamespace::One("foo".to_string()),
                 cluster_info_opts: Default::default(),
                 telemetry_arguments: Default::default(),
+                operator_environment: OperatorEnvironmentOpts {
+                    operator_namespace: "stackable-operators".to_string(),
+                    operator_service_name: "foo-operator".to_string(),
+                }
             }
         );
     }
