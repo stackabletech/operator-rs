@@ -60,10 +60,10 @@ pub trait WebhookHandler<Req, Res> {
 #[derive(Debug, Snafu)]
 pub enum WebhookError {
     #[snafu(display("failed to create TLS server"))]
-    CreateTlsServer { source: tls::Error },
+    CreateTlsServer { source: tls::TlsServerError },
 
     #[snafu(display("failed to run TLS server"))]
-    RunTlsServer { source: tls::Error },
+    RunTlsServer { source: tls::TlsServerError },
 }
 
 /// A ready-to-use webhook server.
@@ -123,8 +123,7 @@ impl WebhookServer {
         router: Router,
         options: Options,
         subject_alterative_dns_names: Vec<String>,
-        cert_tx: mpsc::Sender<Certificate>,
-    ) -> Result<Self, WebhookError> {
+    ) -> Result<(Self, mpsc::Receiver<Certificate>), WebhookError> {
         tracing::trace!("create new webhook server");
 
         // TODO (@Techassi): Make opt-in configurable from the outside
@@ -147,16 +146,12 @@ impl WebhookServer {
             .route("/health", get(|| async { "ok" }));
 
         tracing::debug!("create TLS server");
-        let tls_server = TlsServer::new(
-            options.socket_addr,
-            router,
-            subject_alterative_dns_names,
-            cert_tx,
-        )
-        .await
-        .context(CreateTlsServerSnafu)?;
+        let (tls_server, cert_rx) =
+            TlsServer::new(options.socket_addr, router, subject_alterative_dns_names)
+                .await
+                .context(CreateTlsServerSnafu)?;
 
-        Ok(Self { tls_server })
+        Ok((Self { tls_server }, cert_rx))
     }
 
     /// Runs the Webhook server and sets up signal handlers for shutting down.

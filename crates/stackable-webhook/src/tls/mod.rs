@@ -3,16 +3,14 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use axum::{Router, extract::Request};
+use cert_resolver::{CertificateResolver, CertificateResolverError};
 use futures_util::pin_mut;
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use opentelemetry::trace::{FutureExt, SpanKind};
 use snafu::{ResultExt, Snafu};
-use stackable_certs::{
-    CertificatePair, CertificatePairError, DEFAULT_CERTIFICATE_VALIDITY, ca::CertificateAuthority,
-    keys::ecdsa,
-};
-use tokio::{net::TcpListener, sync::mpsc};
+use stackable_operator::time::Duration;
+use tokio::{net::TcpListener, sync::mpsc, time::interval};
 use tokio_rustls::{
     TlsAcceptor,
     rustls::{
@@ -26,12 +24,17 @@ use tracing::{Instrument, Span, field::Empty, instrument};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use x509_cert::Certificate;
 
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+mod cert_resolver;
+
+pub const WEBHOOK_CERTIFICATE_LIFETIME: Duration = Duration::from_minutes_unchecked(2);
+pub const WEBHOOK_CERTIFICATE_ROTATION_INTERVAL: Duration = Duration::from_minutes_unchecked(1);
+
+pub type Result<T, E = TlsServerError> = std::result::Result<T, E>;
 
 #[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("failed to construct TLS server config, bad certificate/key"))]
-    InvalidTlsPrivateKey { source: tokio_rustls::rustls::Error },
+pub enum TlsServerError {
+    #[snafu(display("failed to create certificate resolver"))]
+    CreateCertificateResolver { source: CertificateResolverError },
 
     #[snafu(display("failed to create TCP listener by binding to socket address {socket_addr:?}"))]
     BindTcpListener {
@@ -39,61 +42,18 @@ pub enum Error {
         socket_addr: SocketAddr,
     },
 
-    #[snafu(display("failed to create CA to generate and sign webhook leaf certificate"))]
-    CreateCertificateAuthority { source: stackable_certs::ca::Error },
-
-    #[snafu(display("failed to generate webhook leaf certificate"))]
-    GenerateLeafCertificate { source: stackable_certs::ca::Error },
-
-    #[snafu(display("failed to encode leaf certificate as DER"))]
-    EncodeCertificateDer {
-        source: CertificatePairError<ecdsa::Error>,
-    },
-
-    #[snafu(display("failed to encode private key as DER"))]
-    EncodePrivateKeyDer {
-        source: CertificatePairError<ecdsa::Error>,
-    },
+    #[snafu(display("failed to rotate certificate"))]
+    RotateCertificate { source: CertificateResolverError },
 
     #[snafu(display("failed to set safe TLS protocol versions"))]
     SetSafeTlsProtocolVersions { source: tokio_rustls::rustls::Error },
-
-    #[snafu(display("failed to run task in blocking thread"))]
-    TokioSpawnBlocking { source: tokio::task::JoinError },
-
-    #[snafu(display("failed send certificate to channel"))]
-    SendCertificateToChannel,
 }
 
-/// Custom implementation of [`std::cmp::PartialEq`] because some inner types
-/// don't implement it.
-///
-/// Note that this implementation is restritced to testing because there are
-/// variants that use [`stackable_certs::ca::Error`] which only implements
-/// [`PartialEq`] for tests.
-#[cfg(test)]
-impl PartialEq for Error {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (
-                Self::BindTcpListener {
-                    source: lhs_source,
-                    socket_addr: lhs_socket_addr,
-                },
-                Self::BindTcpListener {
-                    source: rhs_source,
-                    socket_addr: rhs_socket_addr,
-                },
-            ) => lhs_socket_addr == rhs_socket_addr && lhs_source.kind() == rhs_source.kind(),
-            (lhs, rhs) => lhs == rhs,
-        }
-    }
-}
-
-/// A server which terminates TLS connections and allows clients to commnunicate
+/// A server which terminates TLS connections and allows clients to communicate
 /// via HTTPS with the underlying HTTP router.
 pub struct TlsServer {
-    config: Arc<ServerConfig>,
+    config: ServerConfig,
+    cert_resolver: Arc<CertificateResolver>,
 
     socket_addr: SocketAddr,
     router: Router,
@@ -105,70 +65,31 @@ impl TlsServer {
         socket_addr: SocketAddr,
         router: Router,
         subject_alterative_dns_names: Vec<String>,
-        cert_tx: mpsc::Sender<Certificate>,
-    ) -> Result<Self> {
-        // The certificate generations can take a while, so we use `spawn_blocking`
-        let (ca, certificate) = tokio::task::spawn_blocking(move || {
-            Self::generate_ca_and_certificate(subject_alterative_dns_names)
-        })
-        .await
-        .context(TokioSpawnBlockingSnafu)??;
-
-        let config = Self::config_from_certificate(certificate)?;
-
-        cert_tx
-            .send(ca.ca_cert().clone())
-            .await
-            // We intentionally drop the error, as it contains the gigantic certificate
-            .map_err(|_err| Error::SendCertificateToChannel)?;
-
-        Ok(Self {
-            config: Arc::new(config),
-            socket_addr,
-            router,
-        })
-    }
-
-    fn config_from_certificate(
-        certificate: CertificatePair<ecdsa::SigningKey>,
-    ) -> Result<ServerConfig> {
-        let certificate_der = certificate
-            .certificate_der()
-            .context(EncodeCertificateDerSnafu)?;
-        let private_key_der = certificate
-            .private_key_der()
-            .context(EncodePrivateKeyDerSnafu)?;
+    ) -> Result<(Self, mpsc::Receiver<Certificate>)> {
+        let (cert_tx, cert_rx) = mpsc::channel(1);
+        let cert_resolver = Arc::new(
+            CertificateResolver::new(subject_alterative_dns_names, cert_tx)
+                .await
+                .context(CreateCertificateResolverSnafu)?,
+        );
 
         let tls_provider = default_provider();
         let mut config = ServerConfig::builder_with_provider(tls_provider.into())
             .with_protocol_versions(&[&TLS12, &TLS13])
             .context(SetSafeTlsProtocolVersionsSnafu)?
             .with_no_client_auth()
-            .with_single_cert(vec![certificate_der], private_key_der)
-            .context(InvalidTlsPrivateKeySnafu)?;
-
+            .with_cert_resolver(cert_resolver.clone());
         config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
-        Ok(config)
-    }
 
-    fn generate_ca_and_certificate(
-        subject_alterative_dns_names: Vec<String>,
-    ) -> Result<(
-        CertificateAuthority<ecdsa::SigningKey>,
-        CertificatePair<ecdsa::SigningKey>,
-    )> {
-        let mut ca = CertificateAuthority::new_ecdsa().context(CreateCertificateAuthoritySnafu)?;
-
-        let certificate = ca
-            .generate_ecdsa_leaf_certificate(
-                "Leaf",
-                "webhook",
-                subject_alterative_dns_names.iter().map(|san| san.as_str()),
-                DEFAULT_CERTIFICATE_VALIDITY,
-            )
-            .context(GenerateLeafCertificateSnafu)?;
-
-        Ok((ca, certificate))
+        Ok((
+            Self {
+                config,
+                cert_resolver,
+                socket_addr,
+                router,
+            },
+            cert_rx,
+        ))
     }
 
     /// Runs the TLS server by listening for incoming TCP connections on the
@@ -176,7 +97,9 @@ impl TlsServer {
     /// TLS stream get handled by a Hyper service, which in turn is an Axum
     /// router.
     pub async fn run(self) -> Result<()> {
-        let tls_acceptor = TlsAcceptor::from(self.config);
+        tokio::spawn(async { Self::run_certificate_rotation_loop(self.cert_resolver).await });
+
+        let tls_acceptor = TlsAcceptor::from(Arc::new(self.config));
         let tcp_listener =
             TcpListener::bind(self.socket_addr)
                 .await
@@ -290,6 +213,22 @@ impl TlsServer {
                 }
                 .instrument(span),
             );
+        }
+    }
+
+    async fn run_certificate_rotation_loop(cert_resolver: Arc<CertificateResolver>) -> Result<()> {
+        let mut interval = interval(*WEBHOOK_CERTIFICATE_ROTATION_INTERVAL);
+        // Let the interval tick once, so that the first loop iteration does not start immediately,
+        // thus generating a new cert.
+        interval.tick().await;
+
+        loop {
+            interval.tick().await;
+
+            cert_resolver
+                .rotate_certificate()
+                .await
+                .context(RotateCertificateSnafu)?;
         }
     }
 }
