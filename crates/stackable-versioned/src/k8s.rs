@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use k8s_version::Version;
+use kube::core::conversion::ConversionReview;
 use schemars::schema::{InstanceType, Schema, SchemaObject, SingleOrVec};
 use snafu::{ErrorCompat, Snafu};
 
@@ -61,6 +62,10 @@ pub enum ParseObjectError {
 
     #[snafu(display("unexpected object kind {kind:?}, expected {expected:?}"))]
     UnexpectedKind { kind: String, expected: String },
+}
+
+pub trait KubernetesConvertable {
+    fn try_convert(review: ConversionReview) -> ConversionReview;
 }
 
 /// This error indicates that converting an object from a conversion review to the desired

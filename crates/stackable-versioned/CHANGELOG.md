@@ -7,7 +7,8 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add support for CRD conversions via ConversionReviews ([#1050], [#1061]).
-  - Add new `try_convert` function to convert objects received via a ConversionReview.
+  - Implement the new `KubernetesConvertable` trait with the `try_convert` function to convert
+    objects received via a ConversionReview.
   - Add new `enable_tracing` option to `#[versioned(k8s(options(...)))]`.
   - Add a `<Object>Version` enum with `from_api_version`, `as_version_str` and `as_api_version_str`
     functions.
