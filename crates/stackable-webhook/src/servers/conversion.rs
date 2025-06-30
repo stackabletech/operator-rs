@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::fmt::Debug;
 
 use axum::{Json, Router, routing::post};
 use k8s_openapi::{
@@ -74,7 +74,7 @@ pub struct ConversionWebhookServer {
     cert_rx: mpsc::Receiver<Certificate>,
     client: Client,
     field_manager: String,
-    crds: HashMap<String, CustomResourceDefinition>,
+    crds: Vec<CustomResourceDefinition>,
     operator_environment: OperatorEnvironmentOpts,
 }
 
@@ -106,7 +106,7 @@ impl ConversionWebhookServer {
     /// # async fn test() {
     /// let crds_and_handlers = [
     ///     (
-    ///         S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1).unwrap(),
+    ///         S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1).expect("failed to merge S3Connection CRD"),
     ///         S3Connection::try_convert as fn(ConversionReview) -> ConversionReview,
     ///     ),
     /// ];
@@ -151,7 +151,7 @@ impl ConversionWebhookServer {
         let field_manager: String = field_manager.into();
 
         let mut router = Router::new();
-        let mut crds = HashMap::new();
+        let mut crds = Vec::new();
         for (crd, handler) in crds_and_handlers {
             let crd_name = crd.name_any();
             let handler_fn = |Json(review): Json<ConversionReview>| async {
@@ -160,7 +160,7 @@ impl ConversionWebhookServer {
             };
 
             router = router.route(&format!("/convert/{crd_name}"), post(handler_fn));
-            crds.insert(crd_name, crd);
+            crds.push(crd);
         }
 
         // This is how Kubernetes calls us, so it decides about the naming.
@@ -238,7 +238,7 @@ impl ConversionWebhookServer {
         mut cert_rx: mpsc::Receiver<Certificate>,
         client: &Client,
         field_manager: &str,
-        crds: &HashMap<String, CustomResourceDefinition>,
+        crds: &[CustomResourceDefinition],
         operator_environment: &OperatorEnvironmentOpts,
     ) -> Result<(), ConversionWebhookError> {
         while let Some(current_cert) = cert_rx.recv().await {
@@ -259,18 +259,21 @@ impl ConversionWebhookServer {
     async fn reconcile_crds(
         client: &Client,
         field_manager: &str,
-        crds: &HashMap<String, CustomResourceDefinition>,
+        crds: &[CustomResourceDefinition],
         operator_environment: &OperatorEnvironmentOpts,
         current_cert: &Certificate,
     ) -> Result<(), ConversionWebhookError> {
-        tracing::info!(kinds = ?crds.keys(), "Reconciling CRDs");
+        tracing::info!(
+            crds = ?crds.iter().map(CustomResourceDefinition::name_any).collect::<Vec<_>>(),
+            "Reconciling CRDs"
+        );
         let ca_bundle = current_cert
             .to_pem(LineEnding::LF)
             .context(ConvertCaToPemSnafu)?;
 
         let crd_api: Api<CustomResourceDefinition> = Api::all(client.clone());
-        for (kind, crd) in crds {
-            let mut crd = crd.clone();
+        for mut crd in crds.iter().cloned() {
+            let crd_name = crd.name_any();
 
             crd.spec.conversion = Some(CustomResourceConversion {
                 strategy: "Webhook".to_string(),
@@ -283,7 +286,7 @@ impl ConversionWebhookServer {
                         service: Some(ServiceReference {
                             name: operator_environment.operator_service_name.clone(),
                             namespace: operator_environment.operator_namespace.clone(),
-                            path: Some(format!("/convert/{kind}")),
+                            path: Some(format!("/convert/{crd_name}")),
                             port: Some(DEFAULT_HTTPS_PORT.into()),
                         }),
                         ca_bundle: Some(ByteString(ca_bundle.as_bytes().to_vec())),
@@ -292,8 +295,6 @@ impl ConversionWebhookServer {
                 }),
             });
 
-            // TODO: Move this into function and do a more clever update mechanism
-            let crd_name = crd.name_any();
             let patch = Patch::Apply(&crd);
             let patch_params = PatchParams::apply(field_manager);
             crd_api
@@ -302,7 +303,6 @@ impl ConversionWebhookServer {
                 .with_context(|_| UpdateCRDSnafu {
                     crd_name: crd_name.to_string(),
                 })?;
-            tracing::info!(crd.name = crd_name, "Reconciled CRD");
         }
         Ok(())
     }
