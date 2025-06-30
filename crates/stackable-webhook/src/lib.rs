@@ -56,6 +56,9 @@ pub trait WebhookHandler<Req, Res> {
     fn call(self, req: Req) -> Res;
 }
 
+/// A result type alias with the library-level [`Error`] type as the default error type.
+pub type Result<T, E = WebhookError> = std::result::Result<T, E>;
+
 #[derive(Debug, Snafu)]
 pub enum WebhookError {
     #[snafu(display("failed to create TLS server"))]
@@ -120,7 +123,7 @@ impl WebhookServer {
         router: Router,
         options: Options,
         subject_alterative_dns_names: Vec<String>,
-    ) -> Result<(Self, mpsc::Receiver<Certificate>), WebhookError> {
+    ) -> Result<(Self, mpsc::Receiver<Certificate>)> {
         tracing::trace!("create new webhook server");
 
         // TODO (@Techassi): Make opt-in configurable from the outside
@@ -154,7 +157,7 @@ impl WebhookServer {
     /// Runs the Webhook server and sets up signal handlers for shutting down.
     ///
     /// This does not implement graceful shutdown of the underlying server.
-    pub async fn run(self) -> Result<(), WebhookError> {
+    pub async fn run(self) -> Result<()> {
         let future_server = self.run_server();
         let future_signal = async {
             let mut sigint = signal(SignalKind::interrupt()).expect("create SIGINT listener");
@@ -187,7 +190,7 @@ impl WebhookServer {
 
     /// Runs the webhook server by creating a TCP listener and binding it to
     /// the specified socket address.
-    async fn run_server(self) -> Result<(), WebhookError> {
+    async fn run_server(self) -> Result<()> {
         tracing::debug!("run webhook server");
 
         self.tls_server.run().await.context(RunTlsServerSnafu)
