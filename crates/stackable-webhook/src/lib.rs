@@ -12,9 +12,8 @@
 //! use axum::Router;
 //! use tokio::sync::mpsc;
 //!
-//! let (cert_tx, _cert_rx) = mpsc::channel(1);
 //! let router = Router::new();
-//! let server = WebhookServer::new(router, Options::default(), vec![], cert_tx);
+//! let server = WebhookServer::new(router, Options::default(), vec![]);
 //! ```
 //!
 //! For some usages, complete end-to-end [`WebhookServer`] implementations
@@ -98,9 +97,8 @@ impl WebhookServer {
     /// use axum::Router;
     /// use tokio::sync::mpsc;
     ///
-    /// let (cert_tx, _cert_rx) = mpsc::channel(1);
     /// let router = Router::new();
-    /// let server = WebhookServer::new(router, Options::default(), vec![], cert_tx);
+    /// let server = WebhookServer::new(router, Options::default(), vec![]);
     /// ```
     ///
     /// ### Example with Custom Options
@@ -110,14 +108,13 @@ impl WebhookServer {
     /// use axum::Router;
     /// use tokio::sync::mpsc;
     ///
-    /// let (cert_tx, _cert_rx) = mpsc::channel(1);
     /// let options = Options::builder()
     ///     .bind_address([127, 0, 0, 1], 8080)
     ///     .build();
     /// let sans = vec!["my-san-entry".to_string()];
     ///
     /// let router = Router::new();
-    /// let server = WebhookServer::new(router, options, sans, cert_tx);
+    /// let server = WebhookServer::new(router, options, sans);
     /// ```
     pub async fn new(
         router: Router,

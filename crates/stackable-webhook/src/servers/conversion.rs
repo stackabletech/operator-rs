@@ -130,8 +130,7 @@ impl ConversionWebhookServer {
     /// .await
     /// .expect("failed to create ConversionWebhookServer");
     ///
-    /// // Bootstrap CRDs first to avoid "too old resource version" error
-    /// conversion_webhook.reconcile_crds().await.expect("failed to reconcile CRDs");
+    /// conversion_webhook.run().await.expect("failed to run ConversionWebhookServer");
     /// # }
     /// ```
     #[instrument(
