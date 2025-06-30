@@ -285,11 +285,7 @@ impl ConversionWebhookServer {
                             name: operator_environment.operator_service_name.clone(),
                             namespace: operator_environment.operator_namespace.clone(),
                             path: Some(format!("/convert/{kind}")),
-                            port: Some(
-                                DEFAULT_HTTPS_PORT
-                                    .try_into()
-                                    .expect("DEFAULT_HTTPS_PORT must be convertible into i32"),
-                            ),
+                            port: Some(DEFAULT_HTTPS_PORT.into()),
                         }),
                         ca_bundle: Some(ByteString(ca_bundle.as_bytes().to_vec())),
                         url: None,
