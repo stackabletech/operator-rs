@@ -56,7 +56,7 @@ pub trait WebhookHandler<Req, Res> {
     fn call(self, req: Req) -> Res;
 }
 
-/// A result type alias with the library-level [`Error`] type as the default error type.
+/// A result type alias with the [`WebhookError`] type as the default error type.
 pub type Result<T, E = WebhookError> = std::result::Result<T, E>;
 
 #[derive(Debug, Snafu)]
