@@ -22,7 +22,6 @@
 use std::ops::Deref;
 
 use snafu::Snafu;
-use stackable_operator::time::Duration;
 use x509_cert::{Certificate, spki::EncodePublicKey};
 #[cfg(feature = "rustls")]
 use {
@@ -36,9 +35,6 @@ use crate::keys::CertificateKeypair;
 
 pub mod ca;
 pub mod keys;
-
-/// The default certificate validity time span
-pub const DEFAULT_CERTIFICATE_VALIDITY: Duration = Duration::from_hours_unchecked(1);
 
 /// Error variants which can be encountered when creating a new
 /// [`CertificatePair`].

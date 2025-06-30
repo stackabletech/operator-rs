@@ -26,6 +26,7 @@ use x509_cert::Certificate;
 
 mod cert_resolver;
 
+pub const WEBHOOK_CA_LIFETIME: Duration = Duration::from_minutes_unchecked(3);
 pub const WEBHOOK_CERTIFICATE_LIFETIME: Duration = Duration::from_minutes_unchecked(2);
 pub const WEBHOOK_CERTIFICATE_ROTATION_INTERVAL: Duration = Duration::from_minutes_unchecked(1);
 

@@ -3125,6 +3125,7 @@ dependencies = [
  "k8s-openapi",
  "kube",
  "opentelemetry",
+ "rand 0.9.1",
  "serde_json",
  "snafu 0.8.5",
  "stackable-certs",

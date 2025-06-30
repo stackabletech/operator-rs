@@ -9,7 +9,7 @@ use tokio_rustls::rustls::{
 };
 use x509_cert::Certificate;
 
-use super::WEBHOOK_CERTIFICATE_LIFETIME;
+use super::{WEBHOOK_CA_LIFETIME, WEBHOOK_CERTIFICATE_LIFETIME};
 
 type Result<T, E = CertificateResolverError> = std::result::Result<T, E>;
 
@@ -17,6 +17,9 @@ type Result<T, E = CertificateResolverError> = std::result::Result<T, E>;
 pub enum CertificateResolverError {
     #[snafu(display("failed send certificate to channel"))]
     SendCertificateToChannel,
+
+    #[snafu(display("failed to generate ECDSA signing key"))]
+    GenerateEcdsaSigningKey { source: ecdsa::Error },
 
     #[snafu(display("failed to generate new certificate"))]
     GenerateNewCertificate {
@@ -106,8 +109,10 @@ impl CertificateResolver {
         tokio::task::spawn_blocking(move || {
             let tls_provider = default_provider();
 
+            let ca_key = ecdsa::SigningKey::new().context(GenerateEcdsaSigningKeySnafu)?;
             let mut ca =
-                CertificateAuthority::new_ecdsa().context(CreateCertificateAuthoritySnafu)?;
+                CertificateAuthority::new_with(ca_key, rand::random::<u64>(), WEBHOOK_CA_LIFETIME)
+                    .context(CreateCertificateAuthoritySnafu)?;
 
             let certificate = ca
                 .generate_ecdsa_leaf_certificate(
