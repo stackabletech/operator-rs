@@ -106,14 +106,16 @@ impl ConversionWebhookServer {
     /// # async fn test() {
     /// let crds_and_handlers = [
     ///     (
-    ///         S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1).expect("failed to merge S3Connection CRD"),
+    ///         S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1)
+    ///             .expect("failed to merge S3Connection CRD"),
     ///         S3Connection::try_convert as fn(ConversionReview) -> ConversionReview,
     ///     ),
     /// ];
     ///
     /// const OPERATOR_NAME: &str = "PRODUCT_OPERATOR";
     /// let client = Client::try_default().await.expect("failed to create Kubernetes client");
-    /// // Normally you would get this from the CLI arguments in `ProductOperatorRun::operator_environment`
+    /// // Normally you would get this from the CLI arguments in
+    /// // `ProductOperatorRun::operator_environment`
     /// let operator_environment = OperatorEnvironmentOpts {
     ///     operator_namespace: "stackable-operator".to_string(),
     ///     operator_service_name: "product-operator".to_string(),

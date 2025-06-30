@@ -50,6 +50,11 @@ pub enum CertificateResolverError {
     TokioSpawnBlocking { source: tokio::task::JoinError },
 }
 
+/// This struct serves as [`ResolvesServerCert`] to always hand out the current certificate for TLS
+/// client connections.
+///
+/// It offers the [`Self::rotate_certificate`] function to create a fresh certificate and basically
+/// hot-reload the certificate in the running webhook.
 #[derive(Debug)]
 pub struct CertificateResolver {
     /// Using a [`ArcSwap`] (over e.g. [`tokio::sync::RwLock`]), so that we can easily
