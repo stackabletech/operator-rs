@@ -32,11 +32,19 @@ pub enum Error {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct ProxyConfigResponse {
+    kubeletconfig: KubeletConfig,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct KubeletConfig {
     pub cluster_domain: DomainName,
 }
 
 impl KubeletConfig {
+
+    /// Fetches the kubelet configuration from the "first" node in the Kubernetes cluster.
     pub async fn fetch(client: &Client) -> Result<Self, Error> {
         let api: Api<Node> = Api::all(client.clone());
         let nodes = api
@@ -53,18 +61,11 @@ impl KubeletConfig {
             .body(Default::default())
             .context(ConfigzRequestSnafu)?;
 
-        // Deserialize JSON response as a JSON value. Alternatively, a type that
-        // implements `Deserialize` can be used.
         let resp = client
-            .request::<serde_json::Value>(req)
+            .request::<ProxyConfigResponse>(req)
             .await
             .context(FetchNodeKubeletConfigSnafu { node: name })?;
 
-        // Our JSON value is an object so we can treat it like a dictionary.
-        let summary = resp
-            .get("kubeletconfig")
-            .context(KubeletConfigJsonKeySnafu)?;
-
-        serde_json::from_value::<KubeletConfig>(summary.to_owned()).context(KubeletConfigJsonSnafu)
+        Ok(resp.kubeletconfig)
     }
 }
