@@ -54,7 +54,6 @@ impl KubeletConfig {
 
         let name = node.name_any();
 
-        // Query kukbelet config
         let url = format!("/api/v1/nodes/{}/proxy/configz", name);
         let req = http::Request::get(url)
             .body(Default::default())
