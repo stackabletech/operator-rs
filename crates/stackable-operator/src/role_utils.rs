@@ -353,20 +353,23 @@ where
                 .role_groups
                 .into_iter()
                 .map(|(name, group)| {
-                    (name, RoleGroup {
-                        config: CommonConfiguration {
-                            config: Box::new(group.config.config)
-                                as Box<dyn Configuration<Configurable = T::Configurable>>,
-                            config_overrides: group.config.config_overrides,
-                            env_overrides: group.config.env_overrides,
-                            cli_overrides: group.config.cli_overrides,
-                            pod_overrides: group.config.pod_overrides,
-                            product_specific_common_config: group
-                                .config
-                                .product_specific_common_config,
+                    (
+                        name,
+                        RoleGroup {
+                            config: CommonConfiguration {
+                                config: Box::new(group.config.config)
+                                    as Box<dyn Configuration<Configurable = T::Configurable>>,
+                                config_overrides: group.config.config_overrides,
+                                env_overrides: group.config.env_overrides,
+                                cli_overrides: group.config.cli_overrides,
+                                pod_overrides: group.config.pod_overrides,
+                                product_specific_common_config: group
+                                    .config
+                                    .product_specific_common_config,
+                            },
+                            replicas: group.replicas,
                         },
-                        replicas: group.replicas,
-                    })
+                    )
                 })
                 .collect(),
         }
@@ -556,11 +559,14 @@ mod tests {
             "-Dhttps.proxyPort=1234".to_owned(),
         ]);
 
-        assert_eq!(merged_jvm_argument_overrides, JvmArgumentOverrides {
-            add: expected.clone(),
-            remove: HashSet::new(),
-            remove_regex: Vec::new()
-        });
+        assert_eq!(
+            merged_jvm_argument_overrides,
+            JvmArgumentOverrides {
+                add: expected.clone(),
+                remove: HashSet::new(),
+                remove_regex: Vec::new()
+            }
+        );
 
         assert_eq!(
             merged_jvm_argument_overrides.effective_jvm_config_after_merging(),

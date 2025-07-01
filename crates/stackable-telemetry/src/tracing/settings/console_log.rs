@@ -24,7 +24,9 @@ pub enum ConsoleLogSettings {
 /// Console subscriber log event output formats.
 ///
 /// Currently, only [Plain][Format::Plain] is supported.
-#[derive(Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, strum::EnumString, strum::Display)]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[strum(serialize_all = "snake_case")]
 pub enum Format {
     /// Use the plain unstructured log output.
     ///
@@ -34,7 +36,9 @@ pub enum Format {
     /// See: [`Layer::with_ansi`][tracing_subscriber::fmt::Layer::with_ansi].
     #[default]
     Plain,
-    // Json { pretty: bool },
+
+    /// Use structured JSON log output.
+    Json,
     // LogFmt,
 }
 

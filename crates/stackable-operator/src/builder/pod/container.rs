@@ -7,7 +7,6 @@ use k8s_openapi::api::core::v1::{
     SecurityContext, VolumeMount,
 };
 use snafu::{ResultExt as _, Snafu};
-use tracing::instrument;
 #[cfg(doc)]
 use {k8s_openapi::api::core::v1::PodSpec, std::collections::BTreeMap};
 
@@ -121,13 +120,16 @@ impl ContainerBuilder {
         name: impl Into<String>,
         field_path: FieldPathEnvVar,
     ) -> &mut Self {
-        self.add_env_var_from_source(name, EnvVarSource {
-            field_ref: Some(ObjectFieldSelector {
-                field_path: field_path.to_string(),
-                ..ObjectFieldSelector::default()
-            }),
-            ..EnvVarSource::default()
-        });
+        self.add_env_var_from_source(
+            name,
+            EnvVarSource {
+                field_ref: Some(ObjectFieldSelector {
+                    field_path: field_path.to_string(),
+                    ..ObjectFieldSelector::default()
+                }),
+                ..EnvVarSource::default()
+            },
+        );
         self
     }
 
@@ -138,14 +140,17 @@ impl ContainerBuilder {
         secret_name: impl Into<String>,
         secret_key: impl Into<String>,
     ) -> &mut Self {
-        self.add_env_var_from_source(name, EnvVarSource {
-            secret_key_ref: Some(SecretKeySelector {
-                name: secret_name.into(),
-                key: secret_key.into(),
+        self.add_env_var_from_source(
+            name,
+            EnvVarSource {
+                secret_key_ref: Some(SecretKeySelector {
+                    name: secret_name.into(),
+                    key: secret_key.into(),
+                    ..Default::default()
+                }),
                 ..Default::default()
-            }),
-            ..Default::default()
-        });
+            },
+        );
         self
     }
 
@@ -156,14 +161,17 @@ impl ContainerBuilder {
         config_map_name: impl Into<String>,
         config_map_key: impl Into<String>,
     ) -> &mut Self {
-        self.add_env_var_from_source(name, EnvVarSource {
-            config_map_key_ref: Some(ConfigMapKeySelector {
-                name: config_map_name.into(),
-                key: config_map_key.into(),
+        self.add_env_var_from_source(
+            name,
+            EnvVarSource {
+                config_map_key_ref: Some(ConfigMapKeySelector {
+                    name: config_map_name.into(),
+                    key: config_map_key.into(),
+                    ..Default::default()
+                }),
                 ..Default::default()
-            }),
-            ..Default::default()
-        });
+            },
+        );
         self
     }
 
@@ -211,7 +219,6 @@ impl ContainerBuilder {
     ///
     /// Previously, this function unconditionally added [`VolumeMount`]s, which resulted in invalid
     /// [`PodSpec`]s.
-    #[instrument(skip(self))]
     fn add_volume_mount_impl(&mut self, volume_mount: VolumeMount) -> Result<&mut Self> {
         if let Some(existing_volume_mount) = self.volume_mounts.get(&volume_mount.mount_path) {
             if existing_volume_mount != &volume_mount {
@@ -434,6 +441,7 @@ mod tests {
             resources::ResourceRequirementsBuilder,
         },
         commons::resources::ResourceRequirementsType,
+        validation::RFC_1123_LABEL_FMT,
     };
 
     #[test]
@@ -522,7 +530,11 @@ mod tests {
             container.lifecycle,
             Some(Lifecycle {
                 post_start: Some(post_start),
-                pre_stop: Some(pre_stop)
+                pre_stop: Some(pre_stop),
+                // Field was added in k8s 1.33 *and* requires the ContainerStopSignals feature gate,
+                // so we can't use it yet.
+                // See https://kubernetes.io/blog/2025/05/14/kubernetes-v1-33-updates-to-container-lifecycle/
+                stop_signal: None,
             })
         );
     }
@@ -592,11 +604,11 @@ mod tests {
         assert!(ContainerBuilder::new("name-with-hyphen").is_ok());
         assert_container_builder_err(
             ContainerBuilder::new("ends-with-hyphen-"),
-            "regex used for validation is \"[a-z0-9]([-a-z0-9]*[a-z0-9])?\"",
+            &format!(r#"regex used for validation is "{RFC_1123_LABEL_FMT}""#),
         );
         assert_container_builder_err(
             ContainerBuilder::new("-starts-with-hyphen"),
-            "regex used for validation is \"[a-z0-9]([-a-z0-9]*[a-z0-9])?\"",
+            &format!(r#"regex used for validation is "{RFC_1123_LABEL_FMT}""#),
         );
     }
 
@@ -610,7 +622,9 @@ mod tests {
         assert!(ContainerBuilder::new("name_name").is_err());
         assert_container_builder_err(
             ContainerBuilder::new("name_name"),
-            "(e.g. \"example-label\", or \"1-label-1\", regex used for validation is \"[a-z0-9]([-a-z0-9]*[a-z0-9])?\")",
+            &format!(
+                r#"(e.g. "example-label", or "1-label-1", regex used for validation is "{RFC_1123_LABEL_FMT}""#
+            ),
         );
     }
 

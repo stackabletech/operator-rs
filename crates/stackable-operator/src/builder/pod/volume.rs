@@ -471,7 +471,6 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
 ///         &ListenerReference::ListenerClass("nodeport".into()),
 ///         &labels,
 ///     )
-///     .unwrap()
 ///     .build_ephemeral()
 ///     .unwrap();
 ///
@@ -497,11 +496,11 @@ impl ListenerOperatorVolumeSourceBuilder {
     pub fn new(
         listener_reference: &ListenerReference,
         labels: &Labels,
-    ) -> Result<ListenerOperatorVolumeSourceBuilder, ListenerOperatorVolumeSourceBuilderError> {
-        Ok(Self {
+    ) -> ListenerOperatorVolumeSourceBuilder {
+        Self {
             listener_reference: listener_reference.to_owned(),
             labels: labels.to_owned(),
-        })
+        }
     }
 
     fn build_spec(&self) -> PersistentVolumeClaimSpec {
@@ -636,8 +635,7 @@ mod tests {
         let builder = ListenerOperatorVolumeSourceBuilder::new(
             &ListenerReference::ListenerClass("public".into()),
             &labels,
-        )
-        .unwrap();
+        );
 
         let volume_source = builder.build_ephemeral().unwrap();
 

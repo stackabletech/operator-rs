@@ -1,31 +1,46 @@
 use darling::util::IdentString;
 use k8s_version::Version;
-use quote::format_ident;
+use proc_macro2::TokenStream;
 use syn::{Path, Type};
 
-use crate::attrs::{container::StandaloneContainerAttributes, module::ModuleAttributes};
+use crate::{
+    attrs::{container::StandaloneContainerAttributes, module::ModuleAttributes},
+    utils::{VersionExt, doc_comments::DocComments},
+};
 
-pub(crate) mod changes;
-pub(crate) mod container;
-pub(crate) mod item;
-pub(crate) mod module;
+pub mod changes;
+pub mod container;
+pub mod item;
+pub mod module;
 
-#[derive(Debug)]
-pub(crate) struct VersionDefinition {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VersionDefinition {
     /// Indicates that the container version is deprecated.
-    pub(crate) deprecated: Option<String>,
+    pub deprecated: Option<String>,
 
     /// Indicates that the generation of `From<OLD> for NEW` should be skipped.
-    pub(crate) skip_from: bool,
+    pub skip_from: bool,
 
     /// A validated Kubernetes API version.
-    pub(crate) inner: Version,
+    pub inner: Version,
 
     /// The ident of the container.
-    pub(crate) ident: IdentString,
+    pub idents: VersionIdents,
 
     /// Store additional doc-comment lines for this version.
-    pub(crate) docs: Vec<String>,
+    pub docs: Vec<String>,
+}
+
+impl PartialOrd for VersionDefinition {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for VersionDefinition {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.inner.cmp(&other.inner)
+    }
 }
 
 // NOTE (@Techassi): Can we maybe unify these two impls?
@@ -37,13 +52,16 @@ impl From<&StandaloneContainerAttributes> for Vec<VersionDefinition> {
             .iter()
             .map(|v| VersionDefinition {
                 skip_from: v.skip.as_ref().is_some_and(|s| s.from.is_present()),
-                ident: format_ident!("{version}", version = v.name.to_string()).into(),
+                idents: VersionIdents {
+                    module: v.name.as_module_ident(),
+                    variant: v.name.as_variant_ident(),
+                },
                 deprecated: v.deprecated.as_ref().map(|r#override| {
                     r#override
                         .clone()
                         .unwrap_or(format!("Version {version} is deprecated", version = v.name))
                 }),
-                docs: process_docs(&v.doc),
+                docs: v.doc.as_deref().into_doc_comments(),
                 inner: v.name,
             })
             .collect()
@@ -58,17 +76,26 @@ impl From<&ModuleAttributes> for Vec<VersionDefinition> {
             .iter()
             .map(|v| VersionDefinition {
                 skip_from: v.skip.as_ref().is_some_and(|s| s.from.is_present()),
-                ident: format_ident!("{version}", version = v.name.to_string()).into(),
+                idents: VersionIdents {
+                    module: v.name.as_module_ident(),
+                    variant: v.name.as_variant_ident(),
+                },
                 deprecated: v.deprecated.as_ref().map(|r#override| {
                     r#override
                         .clone()
                         .unwrap_or(format!("Version {version} is deprecated", version = v.name))
                 }),
-                docs: process_docs(&v.doc),
+                docs: v.doc.as_deref().into_doc_comments(),
                 inner: v.name,
             })
             .collect()
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VersionIdents {
+    pub module: IdentString,
+    pub variant: IdentString,
 }
 
 #[derive(Debug, PartialEq)]
@@ -81,7 +108,8 @@ pub enum ItemStatus {
         ty: Type,
     },
     Change {
-        convert_with: Option<Path>,
+        downgrade_with: Option<Path>,
+        upgrade_with: Option<Path>,
         from_ident: IdentString,
         to_ident: IdentString,
         from_type: Type,
@@ -101,30 +129,32 @@ pub enum ItemStatus {
 }
 
 impl ItemStatus {
-    pub(crate) fn get_ident(&self) -> &IdentString {
+    pub fn get_ident(&self) -> &IdentString {
         match &self {
             ItemStatus::Addition { ident, .. } => ident,
             ItemStatus::Change { to_ident, .. } => to_ident,
             ItemStatus::Deprecation { ident, .. } => ident,
             ItemStatus::NoChange { ident, .. } => ident,
-            ItemStatus::NotPresent => unreachable!(),
+            ItemStatus::NotPresent => unreachable!("ItemStatus::NotPresent does not have an ident"),
         }
     }
 }
 
-/// Converts lines of doc-comments into a trimmed list.
-fn process_docs(input: &Option<String>) -> Vec<String> {
-    if let Some(input) = input {
-        input
-            // Trim the leading and trailing whitespace, deleting superfluous
-            // empty lines.
-            .trim()
-            .lines()
-            // Trim the leading and trailing whitespace on each line that can be
-            // introduced when the developer indents multi-line comments.
-            .map(|line| line.trim().to_owned())
-            .collect()
-    } else {
-        Vec::new()
+// This contains all generated Kubernetes tokens for a particular version.
+// This struct can then be used to fully generate the combined final Kubernetes code.
+#[derive(Debug, Default)]
+pub struct KubernetesTokens {
+    variant_idents: Vec<IdentString>,
+    variant_data: Vec<TokenStream>,
+    variant_strings: Vec<String>,
+    crd_fns: Vec<TokenStream>,
+}
+
+impl KubernetesTokens {
+    pub fn push(&mut self, items: (TokenStream, IdentString, TokenStream, String)) {
+        self.crd_fns.push(items.0);
+        self.variant_idents.push(items.1);
+        self.variant_data.push(items.2);
+        self.variant_strings.push(items.3);
     }
 }

@@ -10,7 +10,6 @@ use k8s_openapi::{
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
 };
 use snafu::{OptionExt, ResultExt, Snafu};
-use tracing::{instrument, warn};
 
 use crate::{
     builder::{
@@ -291,7 +290,6 @@ impl PodBuilder {
     ///
     /// Previously, this function unconditionally added [`Volume`]s, which resulted in invalid
     /// [`PodSpec`]s.
-    #[instrument(skip(self))]
     pub fn add_volume(&mut self, volume: Volume) -> Result<&mut Self> {
         if let Some(existing_volume) = self.volumes.get(&volume.name) {
             if existing_volume != &volume {
@@ -398,7 +396,6 @@ impl PodBuilder {
     ) -> Result<&mut Self> {
         let listener_reference = ListenerReference::ListenerClass(listener_class.to_string());
         let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference, labels)
-            .context(ListenerVolumeSnafu { name: volume_name })?
             .build_ephemeral()
             .context(ListenerVolumeSnafu { name: volume_name })?;
 
@@ -485,7 +482,6 @@ impl PodBuilder {
     ) -> Result<&mut Self> {
         let listener_reference = ListenerReference::ListenerName(listener_name.to_string());
         let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference, labels)
-            .context(ListenerVolumeSnafu { name: volume_name })?
             .build_ephemeral()
             .context(ListenerVolumeSnafu { name: volume_name })?;
 
@@ -610,19 +606,19 @@ impl PodBuilder {
 
         pod_spec
             .check_resource_requirement(ResourceRequirementsType::Limits, "cpu")
-            .unwrap_or_else(|err| warn!("{}", err));
+            .unwrap_or_else(|err| tracing::warn!("{err}"));
 
         pod_spec
             .check_resource_requirement(ResourceRequirementsType::Limits, "memory")
-            .unwrap_or_else(|err| warn!("{}", err));
+            .unwrap_or_else(|err| tracing::warn!("{err}"));
 
         pod_spec
             .check_limit_to_request_ratio(&ComputeResource::Cpu, LIMIT_REQUEST_RATIO_CPU)
-            .unwrap_or_else(|err| warn!("{}", err));
+            .unwrap_or_else(|err| tracing::warn!("{err}"));
 
         pod_spec
             .check_limit_to_request_ratio(&ComputeResource::Memory, LIMIT_REQUEST_RATIO_MEMORY)
-            .unwrap_or_else(|err| warn!("{}", err));
+            .unwrap_or_else(|err| tracing::warn!("{err}"));
 
         pod_spec
     }
@@ -769,11 +765,12 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(pod.spec.unwrap().image_pull_secrets.unwrap(), vec![
-            LocalObjectReference {
+        assert_eq!(
+            pod.spec.unwrap().image_pull_secrets.unwrap(),
+            vec![LocalObjectReference {
                 name: "company-registry-secret".to_string()
-            }
-        ]);
+            }]
+        );
     }
 
     #[rstest]

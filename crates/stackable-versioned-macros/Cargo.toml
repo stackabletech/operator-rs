@@ -33,6 +33,7 @@ k8s-version = { path = "../k8s-version", features = ["darling"] }
 
 convert_case.workspace = true
 darling.workspace = true
+indoc.workspace = true
 itertools.workspace = true
 k8s-openapi = { workspace = true, optional = true }
 kube = { workspace = true, optional = true }
@@ -43,7 +44,6 @@ quote.workspace = true
 [dev-dependencies]
 # Only needed for doc tests / examples
 stackable-versioned = { path = "../stackable-versioned", features = ["k8s"] }
-k8s-openapi.workspace = true
 
 insta.workspace = true
 prettyplease.workspace = true
@@ -54,4 +54,5 @@ serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
 snafu.workspace = true
+tracing.workspace = true
 trybuild.workspace = true

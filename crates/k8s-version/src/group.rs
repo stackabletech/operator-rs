@@ -35,6 +35,7 @@ pub enum ParseGroupError {
 /// ### See
 ///
 /// - <https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#api-conventions>
+#[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd)]
 pub struct Group(String);
 
@@ -46,13 +47,13 @@ impl FromStr for Group {
         ensure!(group.len() <= MAX_GROUP_LENGTH, TooLongSnafu);
         ensure!(API_GROUP_REGEX.is_match(group), InvalidFormatSnafu);
 
-        Ok(Self(group.to_string()))
+        Ok(Self(group.to_owned()))
     }
 }
 
 impl fmt::Display for Group {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        f.write_str(self)
     }
 }
 
@@ -61,5 +62,25 @@ impl Deref for Group {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+#[cfg(feature = "serde")]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deserialize() {
+        let _: Group = serde_yaml::from_str("extensions.k8s.io").expect("group is valid");
+    }
+
+    #[test]
+    fn serialize() {
+        let group = Group("extensions.k8s.io".into());
+        assert_eq!(
+            "extensions.k8s.io\n",
+            serde_yaml::to_string(&group).expect("group must serialize")
+        );
     }
 }

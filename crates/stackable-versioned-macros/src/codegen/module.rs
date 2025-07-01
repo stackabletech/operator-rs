@@ -7,10 +7,8 @@ use syn::{Ident, Item, ItemMod, ItemUse, Visibility, token::Pub};
 
 use crate::{
     ModuleAttributes,
-    codegen::{VersionDefinition, container::Container},
+    codegen::{KubernetesTokens, VersionDefinition, container::Container},
 };
-
-pub(crate) type KubernetesItems = (Vec<TokenStream>, Vec<IdentString>, Vec<String>);
 
 /// A versioned module.
 ///
@@ -72,7 +70,7 @@ impl Module {
                 Item::Mod(submodule) => {
                     if !versions
                         .iter()
-                        .any(|v| v.ident.as_ident() == &submodule.ident)
+                        .any(|v| v.idents.module.as_ident() == &submodule.ident)
                     {
                         errors.push(
                             Error::custom(
@@ -110,7 +108,14 @@ impl Module {
                         ),
                     }
                 }
-                _ => continue,
+                // NOTE (@NickLarsenNZ): We throw an error here so the developer isn't surprised when items they have
+                // defined in the module are no longer accessible (because they are not re-emitted).
+                disallowed_item => errors.push(
+                    Error::custom(
+                        "Item not allowed here. Please move it ouside of the versioned module",
+                    )
+                    .with_span(&disallowed_item),
+                ),
             };
         }
 
@@ -147,38 +152,41 @@ impl Module {
         let mut kubernetes_tokens = TokenStream::new();
         let mut tokens = TokenStream::new();
 
-        let mut kubernetes_container_items: HashMap<Ident, KubernetesItems> = HashMap::new();
+        let mut kubernetes_container_items: HashMap<Ident, KubernetesTokens> = HashMap::new();
         let mut versions = self.versions.iter().peekable();
 
         while let Some(version) = versions.next() {
+            let next_version = versions.peek().copied();
             let mut container_definitions = TokenStream::new();
             let mut from_impls = TokenStream::new();
 
-            let version_ident = &version.ident;
+            let version_module_ident = &version.idents.module;
 
             for container in &self.containers {
                 container_definitions.extend(container.generate_definition(version));
 
                 if !self.skip_from {
-                    from_impls.extend(container.generate_from_impl(
+                    from_impls.extend(container.generate_upgrade_from_impl(
                         version,
-                        versions.peek().copied(),
+                        next_version,
+                        self.preserve_module,
+                    ));
+
+                    from_impls.extend(container.generate_downgrade_from_impl(
+                        version,
+                        next_version,
                         self.preserve_module,
                     ));
                 }
 
                 // Generate Kubernetes specific code which is placed outside of the container
                 // definition.
-                if let Some((enum_variant_ident, enum_variant_string, fn_call)) =
-                    container.generate_kubernetes_item(version)
-                {
+                if let Some(items) = container.generate_kubernetes_version_items(version) {
                     let entry = kubernetes_container_items
                         .entry(container.get_original_ident().clone())
                         .or_default();
 
-                    entry.0.push(fn_call);
-                    entry.1.push(enum_variant_ident);
-                    entry.2.push(enum_variant_string);
+                    entry.push(items);
                 }
             }
 
@@ -200,7 +208,7 @@ impl Module {
             tokens.extend(quote! {
                 #automatically_derived
                 #deprecated_attribute
-                #version_module_vis mod #version_ident {
+                #version_module_vis mod #version_module_ident {
                     use super::*;
 
                     #submodule_imports
@@ -215,16 +223,10 @@ impl Module {
         // Generate the final Kubernetes specific code for each container (which uses Kubernetes
         // specific features) which is appended to the end of container definitions.
         for container in &self.containers {
-            if let Some((
-                kubernetes_merge_crds_fn_calls,
-                kubernetes_enum_variant_idents,
-                kubernetes_enum_variant_strings,
-            )) = kubernetes_container_items.get(container.get_original_ident())
-            {
-                kubernetes_tokens.extend(container.generate_kubernetes_merge_crds(
-                    kubernetes_enum_variant_idents,
-                    kubernetes_enum_variant_strings,
-                    kubernetes_merge_crds_fn_calls,
+            if let Some(items) = kubernetes_container_items.get(container.get_original_ident()) {
+                kubernetes_tokens.extend(container.generate_kubernetes_code(
+                    &self.versions,
+                    items,
                     version_module_vis,
                     self.preserve_module,
                 ));
@@ -250,10 +252,12 @@ impl Module {
     /// Optionally generates imports (which can be re-exports) located in submodules for the
     /// specified `version`.
     fn generate_submodule_imports(&self, version: &VersionDefinition) -> Option<TokenStream> {
-        self.submodules.get(&version.ident).map(|use_statements| {
-            quote! {
-                #(#use_statements)*
-            }
-        })
+        self.submodules
+            .get(&version.idents.module)
+            .map(|use_statements| {
+                quote! {
+                    #(#use_statements)*
+                }
+            })
     }
 }
