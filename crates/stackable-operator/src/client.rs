@@ -21,7 +21,10 @@ use tracing::trace;
 
 use crate::{
     kvp::LabelSelectorExt,
-    utils::cluster_info::{KubernetesClusterInfo, KubernetesClusterInfoOpts},
+    utils::{
+        cluster_info::{KubernetesClusterInfo, KubernetesClusterInfoOpts},
+        kubelet,
+    },
 };
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -84,6 +87,9 @@ pub enum Error {
 
     #[snafu(display("unable to create kubernetes client"))]
     CreateKubeClient { source: kube::Error },
+
+    #[snafu(display("unable to fetch kubelet config"))]
+    KubeletConfig { source: kubelet::Error },
 }
 
 /// This `Client` can be used to access Kubernetes.
@@ -651,7 +657,10 @@ pub async fn initialize_operator(
         .context(InferKubeConfigSnafu)?;
     let default_namespace = kubeconfig.default_namespace.clone();
     let client = kube::Client::try_from(kubeconfig).context(CreateKubeClientSnafu)?;
-    let cluster_info = KubernetesClusterInfo::new(cluster_info_opts);
+    let kubelet_config = kubelet::KubeletConfig::fetch(&client)
+        .await
+        .context(KubeletConfigSnafu)?;
+    let cluster_info = KubernetesClusterInfo::new(&kubelet_config, cluster_info_opts);
 
     Ok(Client::new(
         client,

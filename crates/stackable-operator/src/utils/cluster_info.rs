@@ -1,8 +1,5 @@
-use std::str::FromStr;
-
+use super::kubelet::KubeletConfig;
 use crate::commons::networking::DomainName;
-
-const KUBERNETES_CLUSTER_DOMAIN_DEFAULT: &str = "cluster.local";
 
 /// Some information that we know about the Kubernetes cluster.
 #[derive(Debug, Clone)]
@@ -21,7 +18,10 @@ pub struct KubernetesClusterInfoOpts {
 }
 
 impl KubernetesClusterInfo {
-    pub fn new(cluster_info_opts: &KubernetesClusterInfoOpts) -> Self {
+    pub fn new(
+        kubelet_config: &KubeletConfig,
+        cluster_info_opts: &KubernetesClusterInfoOpts,
+    ) -> Self {
         let cluster_domain = match &cluster_info_opts.kubernetes_cluster_domain {
             Some(cluster_domain) => {
                 tracing::info!(%cluster_domain, "Using configured Kubernetes cluster domain");
@@ -29,12 +29,8 @@ impl KubernetesClusterInfo {
                 cluster_domain.clone()
             }
             None => {
-                // TODO(sbernauer): Do some sort of advanced auto-detection, see https://github.com/stackabletech/issues/issues/436.
-                // There have been attempts of parsing the `/etc/resolv.conf`, but they have been
-                // reverted. Please read on the linked issue for details.
-                let cluster_domain = DomainName::from_str(KUBERNETES_CLUSTER_DOMAIN_DEFAULT)
-                    .expect("KUBERNETES_CLUSTER_DOMAIN_DEFAULT constant must a valid domain");
-                tracing::info!(%cluster_domain, "Defaulting Kubernetes cluster domain as it has not been configured");
+                let cluster_domain = kubelet_config.cluster_domain.clone();
+                tracing::info!(%cluster_domain, "Using kubelet config cluster domain");
 
                 cluster_domain
             }
