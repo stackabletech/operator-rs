@@ -43,7 +43,6 @@ pub struct KubeletConfig {
 }
 
 impl KubeletConfig {
-
     /// Fetches the kubelet configuration from the "first" node in the Kubernetes cluster.
     pub async fn fetch(client: &Client) -> Result<Self, Error> {
         let api: Api<Node> = Api::all(client.clone());

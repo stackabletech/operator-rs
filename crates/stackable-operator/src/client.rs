@@ -657,10 +657,25 @@ pub async fn initialize_operator(
         .context(InferKubeConfigSnafu)?;
     let default_namespace = kubeconfig.default_namespace.clone();
     let client = kube::Client::try_from(kubeconfig).context(CreateKubeClientSnafu)?;
-    let kubelet_config = kubelet::KubeletConfig::fetch(&client)
-        .await
-        .context(KubeletConfigSnafu)?;
-    let cluster_info = KubernetesClusterInfo::new(&kubelet_config, cluster_info_opts);
+
+    let local_cluster_info_opts = match cluster_info_opts.kubernetes_cluster_domain {
+        None => {
+            trace!("Cluster domain not set, fetching kubelet config to determine cluster domain.");
+
+            let kubelet_config = kubelet::KubeletConfig::fetch(&client)
+                .await
+                .context(KubeletConfigSnafu)?;
+
+            KubernetesClusterInfoOpts {
+                kubernetes_cluster_domain: Some(kubelet_config.cluster_domain),
+            }
+        }
+        _ => KubernetesClusterInfoOpts {
+            kubernetes_cluster_domain: cluster_info_opts.kubernetes_cluster_domain.clone(),
+        },
+    };
+
+    let cluster_info = KubernetesClusterInfo::new(&local_cluster_info_opts);
 
     Ok(Client::new(
         client,
