@@ -1,6 +1,7 @@
 pub mod bash;
 pub mod cluster_info;
 pub mod crds;
+mod kubelet;
 pub mod logging;
 mod option;
 mod url;
