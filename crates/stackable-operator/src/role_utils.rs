@@ -469,6 +469,17 @@ impl<K: Resource> RoleGroupRef<K> {
     pub fn object_name(&self) -> String {
         format!("{}-{}-{}", self.cluster.name, self.role, self.role_group)
     }
+
+    /// Set of functions to define service names on rolegroup level.
+    /// Headless service for cluster internal purposes only.
+    pub fn rolegroup_headless_service_name(&self) -> String {
+        format!("{name}-headless", name = self.object_name())
+    }
+
+    /// Headless metrics service exposes Prometheus endpoint only
+    pub fn rolegroup_headless_metrics_service_name(&self) -> String {
+        format!("{name}-metrics", name = self.object_name())
+    }
 }
 
 impl<K: Resource> Display for RoleGroupRef<K> {
