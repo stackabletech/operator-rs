@@ -108,7 +108,7 @@ impl ConversionWebhookServer {
     ///     (
     ///         S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1)
     ///             .expect("failed to merge S3Connection CRD"),
-    ///         S3Connection::try_convert as fn(ConversionReview) -> ConversionReview,
+    ///         S3Connection::try_convert as fn(_) -> _,
     ///     ),
     /// ];
     ///
