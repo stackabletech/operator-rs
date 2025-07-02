@@ -220,7 +220,7 @@ impl ConversionWebhookServer {
 
         try_join!(
             Self::run_webhook_server(server),
-            Self::run_cert_update_loop(
+            Self::run_crd_reconciliation_loop(
                 cert_rx,
                 &client,
                 &field_manager,
@@ -236,7 +236,7 @@ impl ConversionWebhookServer {
         server.run().await.context(RunWebhookServerSnafu)
     }
 
-    async fn run_cert_update_loop(
+    async fn run_crd_reconciliation_loop(
         mut cert_rx: mpsc::Receiver<Certificate>,
         client: &Client,
         field_manager: &str,

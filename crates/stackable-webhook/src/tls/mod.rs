@@ -10,7 +10,7 @@ use hyper_util::rt::{TokioExecutor, TokioIo};
 use opentelemetry::trace::{FutureExt, SpanKind};
 use snafu::{ResultExt, Snafu};
 use stackable_operator::time::Duration;
-use tokio::{net::TcpListener, sync::mpsc, time::interval};
+use tokio::{net::TcpListener, select, sync::mpsc, time::interval};
 use tokio_rustls::{
     TlsAcceptor,
     rustls::{
@@ -48,6 +48,9 @@ pub enum TlsServerError {
 
     #[snafu(display("failed to set safe TLS protocol versions"))]
     SetSafeTlsProtocolVersions { source: tokio_rustls::rustls::Error },
+
+    #[snafu(display("failed to run certificate rotation loop"))]
+    RunCertificateRotationLoop { source: tokio::task::JoinError },
 }
 
 /// A server which terminates TLS connections and allows clients to communicate
@@ -98,7 +101,8 @@ impl TlsServer {
     /// TLS stream get handled by a Hyper service, which in turn is an Axum
     /// router.
     pub async fn run(self) -> Result<()> {
-        tokio::spawn(async { Self::run_certificate_rotation_loop(self.cert_resolver).await });
+        let certificate_rotation_loop =
+            tokio::spawn(async { Self::run_certificate_rotation_loop(self.cert_resolver).await });
 
         let tls_acceptor = TlsAcceptor::from(Arc::new(self.config));
         let tcp_listener =
@@ -123,12 +127,21 @@ impl TlsServer {
             .router
             .into_make_service_with_connect_info::<SocketAddr>();
 
-        pin_mut!(tcp_listener);
+        pin_mut!(certificate_rotation_loop);
         loop {
             let tls_acceptor = tls_acceptor.clone();
 
-            // Wait for new tcp connection
-            let (tcp_stream, remote_addr) = match tcp_listener.accept().await {
+            // Wait for either a new TCP connection or the certificate rotation loop to exit
+            let tcp_stream = select! {
+                loop_result = &mut certificate_rotation_loop => {
+                    return loop_result.context(RunCertificateRotationLoopSnafu)?;
+                }
+                tcp_stream = tcp_listener.accept() => {
+                    tcp_stream
+                }
+            };
+
+            let (tcp_stream, remote_addr) = match tcp_stream {
                 Ok((stream, addr)) => (stream, addr),
                 Err(err) => {
                     tracing::trace!(%err, "failed to accept incoming TCP connection");
