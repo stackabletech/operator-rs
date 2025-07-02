@@ -107,6 +107,7 @@ impl CertificateResolver {
 
     /// FIXME: This should *not* construct a CA cert and cert, but only a cert!
     /// This needs some changes in stackable-certs though.
+    /// See https://github.com/stackabletech/decisions/issues/56
     async fn generate_new_cert(
         subject_alterative_dns_names: Arc<Vec<String>>,
     ) -> Result<(Certificate, Arc<CertifiedKey>)> {
