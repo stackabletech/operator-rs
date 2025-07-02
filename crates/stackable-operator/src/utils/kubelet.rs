@@ -15,8 +15,11 @@ pub enum Error {
     #[snafu(display("failed to list nodes"))]
     ListNodes { source: kube::Error },
 
-    #[snafu(display("failed to build \"/proxy/configz\" request"))]
-    ConfigzRequest { source: http::Error },
+    #[snafu(display("failed to build \"/api/v1/nodes/{node_name}/proxy/configz\" request"))]
+    ConfigzRequest {
+        source: http::Error,
+        node_name: String,
+    },
 
     #[snafu(display("failed to fetch kubelet config from node {node:?}"))]
     FetchNodeKubeletConfig { source: kube::Error, node: String },
@@ -27,7 +30,9 @@ pub enum Error {
     #[snafu(display("failed to deserialize kubelet config JSON"))]
     KubeletConfigJson { source: serde_json::Error },
 
-    #[snafu(display("empty Kubernetes nodes list"))]
+    #[snafu(display(
+        "empty Kubernetes nodes list. At least one node is required to fetch the cluster domain from the kubelet config"
+    ))]
     EmptyKubernetesNodesList,
 }
 
@@ -54,15 +59,18 @@ impl KubeletConfig {
         let node = nodes.iter().next().context(EmptyKubernetesNodesListSnafu)?;
         let node_name = node.name_any();
 
-        let url = format!("/api/v1/nodes/{name_name}/proxy/configz");
-        let req = http::Request::get(url)
-            .body(Default::default())
-            .context(ConfigzRequestSnafu)?;
+        let url = format!("/api/v1/nodes/{node_name}/proxy/configz");
+        let req =
+            http::Request::get(url)
+                .body(Default::default())
+                .context(ConfigzRequestSnafu {
+                    node_name: node_name.clone(),
+                })?;
 
         let resp = client
             .request::<ProxyConfigResponse>(req)
             .await
-            .context(FetchNodeKubeletConfigSnafu { node: name })?;
+            .context(FetchNodeKubeletConfigSnafu { node: node_name })?;
 
         Ok(resp.kubeletconfig)
     }
