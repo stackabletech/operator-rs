@@ -21,10 +21,7 @@ use tracing::trace;
 
 use crate::{
     kvp::LabelSelectorExt,
-    utils::{
-        cluster_info::{KubernetesClusterInfo, KubernetesClusterInfoOpts},
-        kubelet,
-    },
+    utils::cluster_info::{KubernetesClusterInfo, KubernetesClusterInfoOpts},
 };
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -88,8 +85,10 @@ pub enum Error {
     #[snafu(display("unable to create kubernetes client"))]
     CreateKubeClient { source: kube::Error },
 
-    #[snafu(display("unable to fetch kubelet config"))]
-    KubeletConfig { source: kubelet::Error },
+    #[snafu(display("unable to fetch cluster information from kubelet"))]
+    NewKubeletClusterInfo {
+        source: crate::utils::cluster_info::Error,
+    },
 }
 
 /// This `Client` can be used to access Kubernetes.
@@ -657,25 +656,9 @@ pub async fn initialize_operator(
         .context(InferKubeConfigSnafu)?;
     let default_namespace = kubeconfig.default_namespace.clone();
     let client = kube::Client::try_from(kubeconfig).context(CreateKubeClientSnafu)?;
-
-    let local_cluster_info_opts = match cluster_info_opts.kubernetes_cluster_domain {
-        None => {
-            trace!("Cluster domain not set, fetching kubelet config to determine cluster domain.");
-
-            let kubelet_config = kubelet::KubeletConfig::fetch(&client)
-                .await
-                .context(KubeletConfigSnafu)?;
-
-            KubernetesClusterInfoOpts {
-                kubernetes_cluster_domain: Some(kubelet_config.cluster_domain),
-            }
-        }
-        _ => KubernetesClusterInfoOpts {
-            kubernetes_cluster_domain: cluster_info_opts.kubernetes_cluster_domain.clone(),
-        },
-    };
-
-    let cluster_info = KubernetesClusterInfo::new(&local_cluster_info_opts);
+    let cluster_info = KubernetesClusterInfo::new(&client, cluster_info_opts)
+        .await
+        .context(NewKubeletClusterInfoSnafu)?;
 
     Ok(Client::new(
         client,

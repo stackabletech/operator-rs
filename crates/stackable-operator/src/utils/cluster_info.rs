@@ -1,10 +1,14 @@
-use std::str::FromStr;
+use kube::Client;
+use snafu::{ResultExt, Snafu};
 
-use crate::commons::networking::DomainName;
+use crate::{commons::networking::DomainName, utils::kubelet};
 
-const KUBERNETES_CLUSTER_DOMAIN_DEFAULT: &str = "cluster.local";
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("unable to fetch kubelet config"))]
+    KubeletConfig { source: kubelet::Error },
+}
 
-/// Some information that we know about the Kubernetes cluster.
 #[derive(Debug, Clone)]
 pub struct KubernetesClusterInfo {
     /// The Kubernetes cluster domain, typically `cluster.local`.
@@ -21,7 +25,10 @@ pub struct KubernetesClusterInfoOpts {
 }
 
 impl KubernetesClusterInfo {
-    pub fn new(cluster_info_opts: &KubernetesClusterInfoOpts) -> Self {
+    pub async fn new(
+        client: &Client,
+        cluster_info_opts: &KubernetesClusterInfoOpts,
+    ) -> Result<Self, Error> {
         let cluster_domain = match &cluster_info_opts.kubernetes_cluster_domain {
             Some(cluster_domain) => {
                 tracing::info!(%cluster_domain, "Using configured Kubernetes cluster domain");
@@ -29,17 +36,17 @@ impl KubernetesClusterInfo {
                 cluster_domain.clone()
             }
             None => {
-                // TODO(sbernauer): Do some sort of advanced auto-detection, see https://github.com/stackabletech/issues/issues/436.
-                // There have been attempts of parsing the `/etc/resolv.conf`, but they have been
-                // reverted. Please read on the linked issue for details.
-                let cluster_domain = DomainName::from_str(KUBERNETES_CLUSTER_DOMAIN_DEFAULT)
-                    .expect("KUBERNETES_CLUSTER_DOMAIN_DEFAULT constant must a valid domain");
-                tracing::info!(%cluster_domain, "Defaulting Kubernetes cluster domain as it has not been configured");
+                let kubelet_config = kubelet::KubeletConfig::fetch(client)
+                    .await
+                    .context(KubeletConfigSnafu)?;
+
+                let cluster_domain = kubelet_config.cluster_domain;
+                tracing::info!(%cluster_domain, "Using Kubernetes cluster domain from the kubelet config");
 
                 cluster_domain
             }
         };
 
-        Self { cluster_domain }
+        Ok(Self { cluster_domain })
     }
 }
