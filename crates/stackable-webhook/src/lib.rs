@@ -52,7 +52,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 /// implementation is part of the [`ConversionWebhookServer`][1].
 ///
 /// [1]: crate::servers::ConversionWebhookServer
-pub(crate) trait WebhookHandler<Req, Res> {
+pub trait WebhookHandler<Req, Res> {
     fn call(self, req: Req) -> Res;
 }
 
@@ -64,7 +64,7 @@ pub(crate) trait WebhookHandler<Req, Res> {
 /// implementation is part of the [`ConversionWebhookServer`][1].
 ///
 /// [1]: crate::servers::ConversionWebhookServer
-pub(crate) trait StatefulWebhookHandler<Req, Res, S> {
+pub trait StatefulWebhookHandler<Req, Res, S> {
     fn call(self, req: Req, state: S) -> Res;
 }
 
