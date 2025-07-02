@@ -14,10 +14,11 @@ use crate::commons::networking::DomainName;
 pub enum Error {
     #[snafu(display("failed to list nodes"))]
     ListNodes { source: kube::Error },
-    #[snafu(display("failed to build proxy/configz request"))]
+
+    #[snafu(display("failed to build \"/proxy/configz\" request"))]
     ConfigzRequest { source: http::Error },
 
-    #[snafu(display("failed to fetch kubelet config from node {node}"))]
+    #[snafu(display("failed to fetch kubelet config from node {node:?}"))]
     FetchNodeKubeletConfig { source: kube::Error, node: String },
 
     #[snafu(display("failed to fetch `kubeletconfig` JSON key from configz response"))]
@@ -51,10 +52,9 @@ impl KubeletConfig {
             .await
             .context(ListNodesSnafu)?;
         let node = nodes.iter().next().context(EmptyKubernetesNodesListSnafu)?;
+        let node_name = node.name_any();
 
-        let name = node.name_any();
-
-        let url = format!("/api/v1/nodes/{}/proxy/configz", name);
+        let url = format!("/api/v1/nodes/{name_name}/proxy/configz");
         let req = http::Request::get(url)
             .body(Default::default())
             .context(ConfigzRequestSnafu)?;
