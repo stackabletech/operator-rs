@@ -6,7 +6,18 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- The default Kubernetes cluster domain name is now fetched from the kubelet API unless explicitely configured ([#1068]).
+- The default Kubernetes cluster domain name is now fetched from the kubelet API unless explicitly configured ([#1068])<br>
+  This requires operators to have the RBAC permission to `get` `nodes/proxy` in the apiGroup "", an example RBAC rule could look like:
+  ```yaml
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    name: operator-cluster-role
+  rules:
+    - apiGroups: [""]
+      resources: [nodes/proxy]
+      verbs: [get]
 
 ### Changed
 
