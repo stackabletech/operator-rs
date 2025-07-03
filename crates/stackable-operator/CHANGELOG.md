@@ -6,8 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- The default Kubernetes cluster domain name is now fetched from the kubelet API unless explicitly configured ([#1068])<br>
+- The default Kubernetes cluster domain name is now fetched from the kubelet API unless explicitly configured ([#1068])
   This requires operators to have the RBAC permission to `get` `nodes/proxy` in the apiGroup "", an example RBAC rule could look like:
+
   ```yaml
   ---
   apiVersion: rbac.authorization.k8s.io/v1
@@ -18,6 +19,7 @@ All notable changes to this project will be documented in this file.
     - apiGroups: [""]
       resources: [nodes/proxy]
       verbs: [get]
+  ```
 
 ### Changed
 
@@ -164,7 +166,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add Deployments to `ClusterResource`s ([#992]).
-- Add `DeploymentConditionBuilder`  ([#993]).
+- Add `DeploymentConditionBuilder` ([#993]).
 
 ### Changed
 
@@ -385,7 +387,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - BREAKING: `KeyValuePairs::insert` (as well as `Labels::`/`Annotations::` via it) now overwrites
-  the old value if the key already exists. Previously, `iter()` would return *both* values in
+  the old value if the key already exists. Previously, `iter()` would return _both_ values in
   lexicographical order (causing further conversions like `Into<BTreeMap>` to prefer the maximum
   value) ([#888]).
 
@@ -650,7 +652,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Implement `PartialEq` for most *Snafu* Error enums ([#757]).
+- Implement `PartialEq` for most _Snafu_ Error enums ([#757]).
 - Update Rust to 1.77 ([#759])
 
 ### Fixed
@@ -1401,7 +1403,7 @@ This is a rerelease of 0.25.1 which some last-minute incompatible API changes to
 ### Changed
 
 - Objects are now streamed rather than polled when waiting for them to be deleted ([#452]).
-- serde\_yaml 0.8.26 -> 0.9.9 ([#450])
+- serde_yaml 0.8.26 -> 0.9.9 ([#450])
 
 [#450]: https://github.com/stackabletech/operator-rs/pull/450
 [#452]: https://github.com/stackabletech/operator-rs/pull/452
