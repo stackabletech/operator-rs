@@ -388,38 +388,61 @@ mod tests {
             "bar",
             "--watch-namespace",
             "foo",
+            "--kubernetes-node-name",
+            "baz",
         ]);
         assert_eq!(
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
-                cluster_info_opts: Default::default(),
+                cluster_info_opts: KubernetesClusterInfoOpts {
+                    kubernetes_cluster_domain: None,
+                    kubernetes_node_name: "baz".to_string()
+                },
                 telemetry_arguments: Default::default(),
             }
         );
 
         // no cli / no env
-        let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
+        let opts = ProductOperatorRun::parse_from([
+            "run",
+            "--product-config",
+            "bar",
+            "--kubernetes-node-name",
+            "baz",
+        ]);
         assert_eq!(
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::All,
-                cluster_info_opts: Default::default(),
+                cluster_info_opts: KubernetesClusterInfoOpts {
+                    kubernetes_cluster_domain: None,
+                    kubernetes_node_name: "baz".to_string()
+                },
                 telemetry_arguments: Default::default(),
             }
         );
 
         // env with namespace
         unsafe { env::set_var(WATCH_NAMESPACE, "foo") };
-        let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
+        let opts = ProductOperatorRun::parse_from([
+            "run",
+            "--product-config",
+            "bar",
+            "--kubernetes-node-name",
+            "baz",
+        ]);
         assert_eq!(
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
-                cluster_info_opts: Default::default(),
+                cluster_info_opts: KubernetesClusterInfoOpts {
+                    kubernetes_cluster_domain: None,
+                    kubernetes_node_name: "baz".to_string()
+                },
                 telemetry_arguments: Default::default(),
             }
         );
