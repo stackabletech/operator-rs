@@ -15,10 +15,10 @@ pub enum Error {
     #[snafu(display("failed to list nodes"))]
     ListNodes { source: kube::Error },
 
-    #[snafu(display("failed to build \"/api/v1/nodes/{node_name}/proxy/configz\" request"))]
-    ConfigzRequest {
+    #[snafu(display("failed to build request for url path \"{url_path}\""))]
+    BuildConfigzRequest {
         source: http::Error,
-        node_name: String,
+        url_path: String,
     },
 
     #[snafu(display("failed to fetch kubelet config from node {node:?}"))]
@@ -59,13 +59,10 @@ impl KubeletConfig {
         let node = nodes.iter().next().context(EmptyKubernetesNodesListSnafu)?;
         let node_name = node.name_any();
 
-        let url = format!("/api/v1/nodes/{node_name}/proxy/configz");
-        let req =
-            http::Request::get(url)
-                .body(Default::default())
-                .context(ConfigzRequestSnafu {
-                    node_name: node_name.clone(),
-                })?;
+        let url_path = format!("/api/v1/nodes/{node_name}/proxy/configz");
+        let req = http::Request::get(url_path.clone())
+            .body(Default::default())
+            .context(BuildConfigzRequestSnafu { url_path })?;
 
         let resp = client
             .request::<ProxyConfigResponse>(req)
