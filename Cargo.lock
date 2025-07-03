@@ -2969,6 +2969,7 @@ dependencies = [
  "educe",
  "either",
  "futures",
+ "http",
  "indexmap",
  "json-patch",
  "k8s-openapi",

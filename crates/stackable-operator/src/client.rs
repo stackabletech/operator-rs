@@ -84,6 +84,11 @@ pub enum Error {
 
     #[snafu(display("unable to create kubernetes client"))]
     CreateKubeClient { source: kube::Error },
+
+    #[snafu(display("unable to fetch cluster information from kubelet"))]
+    NewKubeletClusterInfo {
+        source: crate::utils::cluster_info::Error,
+    },
 }
 
 /// This `Client` can be used to access Kubernetes.
@@ -651,7 +656,9 @@ pub async fn initialize_operator(
         .context(InferKubeConfigSnafu)?;
     let default_namespace = kubeconfig.default_namespace.clone();
     let client = kube::Client::try_from(kubeconfig).context(CreateKubeClientSnafu)?;
-    let cluster_info = KubernetesClusterInfo::new(cluster_info_opts);
+    let cluster_info = KubernetesClusterInfo::new(&client, cluster_info_opts)
+        .await
+        .context(NewKubeletClusterInfoSnafu)?;
 
     Ok(Client::new(
         client,
