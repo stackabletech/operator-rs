@@ -15,13 +15,16 @@ pub struct KubernetesClusterInfo {
     pub cluster_domain: DomainName,
 }
 
-#[derive(clap::Parser, Debug, Default, PartialEq, Eq)]
+#[derive(clap::Parser, Debug, PartialEq, Eq)]
 pub struct KubernetesClusterInfoOpts {
     /// Kubernetes cluster domain, usually this is `cluster.local`.
-    // We are not using a default value here, as operators will probably do an more advanced
-    // auto-detection of the cluster domain in case it is not specified in the future.
+    // We are not using a default value here, as we query the cluster if it is not specified.
     #[arg(long, env)]
     pub kubernetes_cluster_domain: Option<DomainName>,
+
+    /// Name of the Kubernetes Node that the operator is running on.
+    #[arg(long, env)]
+    pub kubernetes_node_name: String,
 }
 
 impl KubernetesClusterInfo {
@@ -29,14 +32,21 @@ impl KubernetesClusterInfo {
         client: &Client,
         cluster_info_opts: &KubernetesClusterInfoOpts,
     ) -> Result<Self, Error> {
-        let cluster_domain = match &cluster_info_opts.kubernetes_cluster_domain {
-            Some(cluster_domain) => {
+        let cluster_domain = match cluster_info_opts {
+            KubernetesClusterInfoOpts {
+                kubernetes_cluster_domain: Some(cluster_domain),
+                ..
+            } => {
                 tracing::info!(%cluster_domain, "Using configured Kubernetes cluster domain");
 
                 cluster_domain.clone()
             }
-            None => {
-                let kubelet_config = kubelet::KubeletConfig::fetch(client)
+            KubernetesClusterInfoOpts {
+                kubernetes_node_name: node_name,
+                ..
+            } => {
+                tracing::info!(%node_name, "Fetching Kubernetes cluster domain from the local kubelet");
+                let kubelet_config = kubelet::KubeletConfig::fetch(client, node_name)
                     .await
                     .context(KubeletConfigSnafu)?;
 
