@@ -523,15 +523,19 @@ impl Client {
     ///
     /// ```no_run
     /// use std::time::Duration;
+    /// use clap::Parser;
     /// use tokio::time::error::Elapsed;
     /// use kube::runtime::watcher;
     /// use k8s_openapi::api::core::v1::Pod;
-    /// use stackable_operator::client::{Client, initialize_operator};
+    /// use stackable_operator::{
+    ///     client::{Client, initialize_operator},
+    ///     utils::cluster_info::KubernetesClusterInfoOpts,
+    /// };
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///
-    /// let client = initialize_operator(None, &Default::default())
+    /// let cluster_info_opts = KubernetesClusterInfoOpts::parse();
+    /// let client = initialize_operator(None, &cluster_info_opts)
     ///     .await
     ///     .expect("Unable to construct client.");
     /// let watcher_config: watcher::Config =

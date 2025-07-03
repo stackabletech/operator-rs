@@ -165,7 +165,7 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 /// ```rust
 /// # use stackable_operator::cli::{Command, ProductOperatorRun, ProductConfigPath};
 /// use clap::Parser;
-/// use stackable_operator::namespace::WatchNamespace;
+/// use stackable_operator::{namespace::WatchNamespace, utils::cluster_info::KubernetesClusterInfoOpts};
 /// use stackable_telemetry::tracing::TelemetryOptions;
 ///
 /// #[derive(clap::Parser, Debug, PartialEq, Eq)]
@@ -176,14 +176,17 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///     common: ProductOperatorRun,
 /// }
 ///
-/// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar", "--watch-namespace", "foobar"]);
+/// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar", "--watch-namespace", "foobar", "--kubernetes-node-name", "baz"]);
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
 ///     common: ProductOperatorRun {
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
 ///         watch_namespace: WatchNamespace::One("foobar".to_string()),
 ///         telemetry_arguments: TelemetryOptions::default(),
-///         cluster_info_opts: Default::default(),
+///         cluster_info_opts: KubernetesClusterInfoOpts {
+///             kubernetes_cluster_domain: None,
+///             kubernetes_node_name: "baz".to_string(),
+///         },
 ///     },
 /// }));
 /// ```
