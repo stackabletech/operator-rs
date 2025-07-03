@@ -15,6 +15,8 @@ full = ["k8s"]
 k8s = [
   "stackable-versioned-macros/k8s", # Forward the k8s feature to the underlying macro crate
   "dep:k8s-version",
+  "dep:k8s-openapi",
+  "dep:kube",
   "dep:schemars",
   "dep:serde_json",
   "dep:serde_yaml",
@@ -26,6 +28,8 @@ k8s = [
 k8s-version = { path = "../k8s-version", features = ["serde"], optional = true }
 stackable-versioned-macros = { path = "../stackable-versioned-macros" }
 
+k8s-openapi = { workspace = true, optional = true }
+kube = { workspace = true, optional = true }
 schemars = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }

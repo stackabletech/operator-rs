@@ -112,62 +112,6 @@ impl FooBar {
             stored_apiversion.as_version_str(),
         )
     }
-    ///Tries to convert a list of objects of kind [`FooBar`] to the desired API version
-    ///specified in the [`ConversionReview`][cr].
-    ///
-    ///The returned [`ConversionReview`][cr] either indicates a success or a failure, which
-    ///is handed back to the Kubernetes API server.
-    ///
-    ///[cr]: ::kube::core::conversion::ConversionReview
-    pub fn try_convert(
-        review: ::kube::core::conversion::ConversionReview,
-    ) -> ::kube::core::conversion::ConversionReview {
-        let request = match ::kube::core::conversion::ConversionRequest::from_review(
-            review,
-        ) {
-            ::std::result::Result::Ok(request) => request,
-            ::std::result::Result::Err(err) => {
-                return ::kube::core::conversion::ConversionResponse::invalid(::kube::client::Status {
-                        status: Some(::kube::core::response::StatusSummary::Failure),
-                        message: err.to_string(),
-                        reason: err.to_string(),
-                        details: None,
-                        code: 400,
-                    })
-                    .into_review();
-            }
-        };
-        let response = match Self::convert_objects(
-            request.objects,
-            &request.desired_api_version,
-        ) {
-            ::std::result::Result::Ok(converted_objects) => {
-                ::kube::core::conversion::ConversionResponse {
-                    result: ::kube::client::Status::success(),
-                    types: request.types,
-                    uid: request.uid,
-                    converted_objects,
-                }
-            }
-            ::std::result::Result::Err(err) => {
-                let code = err.http_status_code();
-                let message = err.join_errors();
-                ::kube::core::conversion::ConversionResponse {
-                    result: ::kube::client::Status {
-                        status: Some(::kube::core::response::StatusSummary::Failure),
-                        message: message.clone(),
-                        reason: message,
-                        details: None,
-                        code,
-                    },
-                    types: request.types,
-                    uid: request.uid,
-                    converted_objects: vec![],
-                }
-            }
-        };
-        response.into_review()
-    }
     fn convert_objects(
         objects: ::std::vec::Vec<::serde_json::Value>,
         desired_api_version: &str,
@@ -336,6 +280,64 @@ impl FooBar {
             Self::V1Beta1(__sv_foobar) => Ok(::serde_json::to_value(__sv_foobar)?),
             Self::V1(__sv_foobar) => Ok(::serde_json::to_value(__sv_foobar)?),
         }
+    }
+}
+impl ::stackable_versioned::KubernetesConvertable for FooBar {
+    ///Tries to convert a list of objects of kind [`FooBar`] to the desired API version
+    ///specified in the [`ConversionReview`][cr].
+    ///
+    ///The returned [`ConversionReview`][cr] either indicates a success or a failure, which
+    ///is handed back to the Kubernetes API server.
+    ///
+    ///[cr]: ::kube::core::conversion::ConversionReview
+    fn try_convert(
+        review: ::kube::core::conversion::ConversionReview,
+    ) -> ::kube::core::conversion::ConversionReview {
+        let request = match ::kube::core::conversion::ConversionRequest::from_review(
+            review,
+        ) {
+            ::std::result::Result::Ok(request) => request,
+            ::std::result::Result::Err(err) => {
+                return ::kube::core::conversion::ConversionResponse::invalid(::kube::client::Status {
+                        status: Some(::kube::core::response::StatusSummary::Failure),
+                        message: err.to_string(),
+                        reason: err.to_string(),
+                        details: None,
+                        code: 400,
+                    })
+                    .into_review();
+            }
+        };
+        let response = match Self::convert_objects(
+            request.objects,
+            &request.desired_api_version,
+        ) {
+            ::std::result::Result::Ok(converted_objects) => {
+                ::kube::core::conversion::ConversionResponse {
+                    result: ::kube::client::Status::success(),
+                    types: request.types,
+                    uid: request.uid,
+                    converted_objects,
+                }
+            }
+            ::std::result::Result::Err(err) => {
+                let code = err.http_status_code();
+                let message = err.join_errors();
+                ::kube::core::conversion::ConversionResponse {
+                    result: ::kube::client::Status {
+                        status: Some(::kube::core::response::StatusSummary::Failure),
+                        message: message.clone(),
+                        reason: message,
+                        details: None,
+                        code,
+                    },
+                    types: request.types,
+                    uid: request.uid,
+                    converted_objects: vec![],
+                }
+            }
+        };
+        response.into_review()
     }
 }
 #[automatically_derived]

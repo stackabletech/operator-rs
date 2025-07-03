@@ -2,6 +2,7 @@ use std::{fs::File, path::Path};
 
 use insta::{assert_snapshot, glob};
 use kube::core::{conversion::ConversionReview, response::StatusSummary};
+use stackable_versioned::KubernetesConvertable;
 
 use crate::person::Person;
 
