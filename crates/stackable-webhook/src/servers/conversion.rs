@@ -63,7 +63,7 @@ impl ConversionWebhookServer {
     ///    req
     /// }
     /// ```
-    #[instrument(name = "create_conversion_webhhok_server", skip(handler))]
+    #[instrument(name = "create_conversion_webhook_server", skip(handler))]
     pub fn new<H>(handler: H, options: Options) -> Self
     where
         H: WebhookHandler<ConversionReview, ConversionReview> + Clone + Send + Sync + 'static,
