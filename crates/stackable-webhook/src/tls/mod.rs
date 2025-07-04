@@ -7,7 +7,6 @@ use axum::{
     extract::{ConnectInfo, Request},
     middleware::AddExtension,
 };
-use cert_resolver::{CertificateResolver, CertificateResolverError};
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use opentelemetry::trace::{FutureExt, SpanKind};
@@ -31,6 +30,8 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 use x509_cert::Certificate;
 
 mod cert_resolver;
+
+pub use cert_resolver::{CertificateResolver, CertificateResolverError};
 
 pub const WEBHOOK_CA_LIFETIME: Duration = Duration::from_minutes_unchecked(3);
 pub const WEBHOOK_CERTIFICATE_LIFETIME: Duration = Duration::from_minutes_unchecked(2);
