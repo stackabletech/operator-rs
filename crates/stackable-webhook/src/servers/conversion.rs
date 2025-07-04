@@ -168,7 +168,9 @@ impl ConversionWebhookServer {
             service_name = operator_environment.operator_service_name,
             operator_namespace = operator_environment.operator_namespace,
         );
-        options.subject_alterative_dns_names.push(subject_alterative_dns_name);
+        options
+            .subject_alterative_dns_names
+            .push(subject_alterative_dns_name);
 
         let (server, mut cert_rx) = WebhookServer::new(router, options)
             .await

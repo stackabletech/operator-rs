@@ -154,10 +154,13 @@ impl WebhookServer {
             .route("/health", get(|| async { "ok" }));
 
         tracing::debug!("create TLS server");
-        let (tls_server, cert_rx) =
-            TlsServer::new(options.socket_addr, router, options.subject_alterative_dns_names)
-                .await
-                .context(CreateTlsServerSnafu)?;
+        let (tls_server, cert_rx) = TlsServer::new(
+            options.socket_addr,
+            router,
+            options.subject_alterative_dns_names,
+        )
+        .await
+        .context(CreateTlsServerSnafu)?;
 
         Ok((Self { tls_server }, cert_rx))
     }
