@@ -164,6 +164,11 @@ impl Struct {
             }
         };
 
+        // FIXME (@Techassi): Both inserts and removals currently "leak" how the fields are named
+        // internally in Rust and not what they are serialized as (camelCase most of the time). This
+        // can be especially confusing for users who look at the status and see those field names.
+        // Ideally we would integrate with the serde(rename) functionality to produce these field
+        // names.
         let inserts = self.generate_tracking_inserts(direction, next_version, mod_gen_ctx);
         let removals = self.generate_tracking_removals(direction, next_version, mod_gen_ctx);
         let json_paths = self.generate_json_paths(next_version);
