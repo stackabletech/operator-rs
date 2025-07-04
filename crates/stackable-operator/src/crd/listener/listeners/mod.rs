@@ -49,7 +49,7 @@ pub mod versioned {
     ///    ["sticky" scheduling](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listener#_sticky_scheduling).
     ///
     /// Learn more in the [Listener documentation](DOCS_BASE_URL_PLACEHOLDER/listener-operator/listener).
-    #[versioned(k8s(
+    #[versioned(crd(
         group = "listeners.stackable.tech",
         status = "v1alpha1::ListenerStatus",
         namespaced
@@ -79,7 +79,7 @@ pub mod versioned {
     /// This is not expected to be created or modified by users. It will be created by
     /// the Stackable Listener Operator when mounting the listener volume, and is always
     /// named `pod-{pod.metadata.uid}`.
-    #[versioned(k8s(
+    #[versioned(crd(
         group = "listeners.stackable.tech",
         plural = "podlisteners",
         namespaced,
@@ -112,7 +112,7 @@ pub mod versioned {
     }
 
     /// Informs users about how to reach the Listener.
-    #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
+    #[derive(Serialize, Deserialize, Clone, Debug, Default, JsonSchema, PartialEq, Eq)]
     #[serde(rename_all = "camelCase")]
     pub struct ListenerStatus {
         /// The backing Kubernetes Service.

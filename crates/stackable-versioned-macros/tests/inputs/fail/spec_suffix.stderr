@@ -1,0 +1,5 @@
+error: struct name needs to include the `Spec` suffix if CRD features are enabled via `#[versioned(crd())]`
+  --> tests/inputs/fail/spec_suffix.rs:13:16
+   |
+13 |     pub struct Foo {
+   |                ^^^

@@ -16,7 +16,14 @@ mod v1alpha1_impl;
 /// Use this type in you operator!
 pub type ResolvedConnection = v1alpha1::ConnectionSpec;
 
-#[versioned(version(name = "v1alpha1"))]
+#[versioned(
+    version(name = "v1alpha1"),
+    crates(
+        kube_core = "kube::core",
+        k8s_openapi = "k8s_openapi",
+        schemars = "schemars",
+    )
+)]
 pub mod versioned {
     pub mod v1alpha1 {
         pub use v1alpha1_impl::ConnectionError;
@@ -24,15 +31,10 @@ pub mod versioned {
 
     /// S3 connection definition as a resource.
     /// Learn more on the [S3 concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
-    #[versioned(k8s(
+    #[versioned(crd(
         group = "s3.stackable.tech",
         kind = "S3Connection",
         plural = "s3connections",
-        crates(
-            kube_core = "kube::core",
-            k8s_openapi = "k8s_openapi",
-            schemars = "schemars",
-        ),
         namespaced
     ))]
     #[derive(CustomResource, Clone, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]

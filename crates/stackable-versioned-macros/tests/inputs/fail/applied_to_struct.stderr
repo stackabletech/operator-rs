@@ -1,0 +1,5 @@
+error: attribute macro `versioned` can be only be applied to modules
+ --> tests/inputs/fail/applied_to_struct.rs:4:1
+  |
+4 | pub struct Foo {}
+  | ^^^

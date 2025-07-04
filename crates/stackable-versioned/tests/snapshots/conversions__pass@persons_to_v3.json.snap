@@ -24,7 +24,17 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "firstName": "",
           "gender": "Unknown",
           "lastName": "",
+          "socials": {
+            "email": "jdoe@example.com",
+            "mastodon": ""
+          },
           "username": "sbernauer"
+        },
+        "status": {
+          "changedValues": {
+            "downgrades": {},
+            "upgrades": {}
+          }
         }
       },
       {
@@ -35,7 +45,17 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "firstName": "Sebastian",
           "gender": "Unknown",
           "lastName": "Bernauer",
+          "socials": {
+            "email": "jdoe@example.com",
+            "mastodon": ""
+          },
           "username": "sbernauer"
+        },
+        "status": {
+          "changedValues": {
+            "downgrades": {},
+            "upgrades": {}
+          }
         }
       },
       {
@@ -46,7 +66,17 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "firstName": "Sebastian",
           "gender": "Unknown",
           "lastName": "Bernauer",
+          "socials": {
+            "email": "jdoe@example.com",
+            "mastodon": "@jdoe@example.com"
+          },
           "username": "sbernauer"
+        },
+        "status": {
+          "changedValues": {
+            "downgrades": {},
+            "upgrades": {}
+          }
         }
       },
       {
@@ -57,7 +87,17 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "firstName": "Sebastian",
           "gender": "Male",
           "lastName": "Bernauer",
+          "socials": {
+            "email": "jdoe@example.com",
+            "mastodon": "@jdoe@example.com"
+          },
           "username": "sbernauer"
+        },
+        "status": {
+          "changedValues": {
+            "downgrades": {},
+            "upgrades": {}
+          }
         }
       },
       {
@@ -68,6 +108,10 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "firstName": "Sebastian",
           "gender": "Male",
           "lastName": "Bernauer",
+          "socials": {
+            "email": "jdoe@example.com",
+            "mastodon": "@jdoe@example.com"
+          },
           "username": "sbernauer"
         }
       }

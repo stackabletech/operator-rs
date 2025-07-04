@@ -1,16 +1,12 @@
-use std::{fs::File, path::Path};
-
 use insta::{assert_snapshot, glob};
-use kube::core::{conversion::ConversionReview, response::StatusSummary};
-
-use crate::person::Person;
+use kube::core::response::StatusSummary;
 
 mod person;
 
 #[test]
 fn pass() {
     glob!("./inputs/conversions/pass/", "*.json", |path| {
-        let (request, response) = convert_via_file(path);
+        let (request, response) = person::convert_via_file(path);
 
         let formatted = serde_json::to_string_pretty(&response)
             .expect("Failed to serialize ConversionResponse");
@@ -32,7 +28,7 @@ fn pass() {
 #[test]
 fn fail() {
     glob!("./inputs/conversions/fail/", "*.json", |path| {
-        let (request, response) = convert_via_file(path);
+        let (request, response) = person::convert_via_file(path);
 
         let formatted = serde_json::to_string_pretty(&response)
             .expect("Failed to serialize ConversionResponse");
@@ -51,13 +47,4 @@ fn fail() {
             assert_eq!(request.uid, response.uid);
         }
     })
-}
-
-fn convert_via_file(path: &Path) -> (ConversionReview, ConversionReview) {
-    let request: ConversionReview =
-        serde_json::from_reader(File::open(path).expect("failed to open test file"))
-            .expect("failed to parse ConversionReview from test file");
-    let response = Person::try_convert(request.clone());
-
-    (request, response)
 }
