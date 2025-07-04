@@ -1,6 +1,6 @@
 use stackable_operator::time::Duration;
 
-/// The default CA validity time span of one hour (3600 seconds).
+/// The default CA validity time span
 pub const DEFAULT_CA_VALIDITY: Duration = Duration::from_hours_unchecked(1);
 
 /// The root CA subject name containing only the common name.
