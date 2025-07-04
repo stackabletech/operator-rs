@@ -73,8 +73,8 @@ impl TlsServer {
         let (cert_tx, cert_rx) = mpsc::channel(1);
 
         let cert_resolver = CertificateResolver::new(subject_alterative_dns_names, cert_tx)
-                .await
-                .context(CreateCertificateResolverSnafu)?
+            .await
+            .context(CreateCertificateResolverSnafu)?;
         let cert_resolver = Arc::new(cert_resolver);
 
         let tls_provider = default_provider();
