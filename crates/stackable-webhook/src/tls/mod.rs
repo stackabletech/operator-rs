@@ -55,6 +55,8 @@ pub enum TlsServerError {
 
 /// A server which terminates TLS connections and allows clients to communicate
 /// via HTTPS with the underlying HTTP router.
+///
+/// It also rotates the generated certificates as needed.
 pub struct TlsServer {
     config: ServerConfig,
     cert_resolver: Arc<CertificateResolver>,
@@ -99,6 +101,8 @@ impl TlsServer {
     /// bound socket address. It only accepts TLS connections. Internally each
     /// TLS stream get handled by a Hyper service, which in turn is an Axum
     /// router.
+    ///
+    /// It also starts a background task to rotate the certificate as needed.
     pub async fn run(self) -> Result<()> {
         let certificate_rotation_loop =
             tokio::spawn(async { Self::run_certificate_rotation_loop(self.cert_resolver).await });
