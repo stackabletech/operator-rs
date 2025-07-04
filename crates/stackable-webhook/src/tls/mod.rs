@@ -1,6 +1,6 @@
 //! This module contains structs and functions to easily create a TLS termination
 //! server, which can be used in combination with an Axum [`Router`].
-use std::{net::SocketAddr, sync::Arc};
+use std::{convert::Infallible, net::SocketAddr, sync::Arc};
 
 use axum::{
     Router,
@@ -169,7 +169,8 @@ impl TlsServer {
 
                     // Here, the connect info is extracted by calling Tower's Service
                     // trait function on `IntoMakeServiceWithConnectInfo`
-                    let tower_service = router.call(remote_addr).await.unwrap();
+                    let tower_service: Result<_, Infallible> = router.call(remote_addr).await;
+                    let tower_service = tower_service.expect("Infallible error can never happen");
 
                     let span = tracing::debug_span!("accept tcp connection");
                     tokio::spawn(async move {
