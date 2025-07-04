@@ -2,15 +2,21 @@
 //! server, which can be used in combination with an Axum [`Router`].
 use std::{net::SocketAddr, sync::Arc};
 
-use axum::{Router, extract::Request};
+use axum::{
+    Router,
+    extract::{ConnectInfo, Request},
+    middleware::AddExtension,
+};
 use cert_resolver::{CertificateResolver, CertificateResolverError};
-use futures_util::pin_mut;
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use opentelemetry::trace::{FutureExt, SpanKind};
 use snafu::{ResultExt, Snafu};
 use stackable_operator::time::Duration;
-use tokio::{net::TcpListener, select, sync::mpsc, time::interval};
+use tokio::{
+    net::{TcpListener, TcpStream},
+    sync::mpsc,
+};
 use tokio_rustls::{
     TlsAcceptor,
     rustls::{
@@ -48,9 +54,6 @@ pub enum TlsServerError {
 
     #[snafu(display("failed to set safe TLS protocol versions"))]
     SetSafeTlsProtocolVersions { source: tokio_rustls::rustls::Error },
-
-    #[snafu(display("failed to run certificate rotation loop"))]
-    RunCertificateRotationLoop { source: tokio::task::JoinError },
 }
 
 /// A server which terminates TLS connections and allows clients to communicate
@@ -109,8 +112,8 @@ impl TlsServer {
     ///
     /// It also starts a background task to rotate the certificate as needed.
     pub async fn run(self) -> Result<()> {
-        let certificate_rotation_loop =
-            tokio::spawn(async { Self::run_certificate_rotation_loop(self.cert_resolver).await });
+        let start = tokio::time::Instant::now() + *WEBHOOK_CERTIFICATE_ROTATION_INTERVAL;
+        let mut interval = tokio::time::interval_at(start, *WEBHOOK_CERTIFICATE_ROTATION_INTERVAL);
 
         let tls_acceptor = TlsAcceptor::from(Arc::new(self.config));
         let tcp_listener =
@@ -135,123 +138,123 @@ impl TlsServer {
             .router
             .into_make_service_with_connect_info::<SocketAddr>();
 
-        pin_mut!(certificate_rotation_loop);
         loop {
             let tls_acceptor = tls_acceptor.clone();
 
-            // Wait for either a new TCP connection or the certificate rotation loop to exit
-            let tcp_stream = select! {
-                loop_result = &mut certificate_rotation_loop => {
-                    return loop_result.context(RunCertificateRotationLoopSnafu)?;
-                }
-                tcp_stream = tcp_listener.accept() => {
-                    tcp_stream
-                }
-            };
+            // Wait for either a new TCP connection or the certificate rotation interval tick
+            tokio::select! {
+                // We opt for a biased execution of arms to make sure we always check if the
+                // certificate needs rotation based on the interval. This ensures, we always use
+                // a valid certificate for the TLS connection.
+                biased;
 
-            let (tcp_stream, remote_addr) = match tcp_stream {
-                Ok((stream, addr)) => (stream, addr),
-                Err(err) => {
-                    tracing::trace!(%err, "failed to accept incoming TCP connection");
-                    continue;
-                }
-            };
-
-            // Here, the connect info is extracted by calling Tower's Service
-            // trait function on `IntoMakeServiceWithConnectInfo`
-            let tower_service = router.call(remote_addr).await.unwrap();
-
-            let span = tracing::debug_span!("accept tcp connection");
-            tokio::spawn(
-                async move {
-                    let span = tracing::trace_span!(
-                        "accept tls connection",
-                        "otel.kind" = ?SpanKind::Server,
-                        "otel.status_code" = Empty,
-                        "otel.status_message" = Empty,
-                        "client.address" = remote_addr.ip().to_string(),
-                        "client.port" = remote_addr.port() as i64,
-                        "server.address" = Empty,
-                        "server.port" = Empty,
-                        "network.peer.address" = remote_addr.ip().to_string(),
-                        "network.peer.port" = remote_addr.port() as i64,
-                        "network.local.address" = Empty,
-                        "network.local.port" = Empty,
-                        "network.transport" = "tcp",
-                        "network.type" = self.socket_addr.semantic_convention_network_type(),
-                    );
-
-                    if let Ok(local_addr) = tcp_stream.local_addr() {
-                        let addr = &local_addr.ip().to_string();
-                        let port = local_addr.port();
-                        span.record("server.address", addr)
-                            .record("server.port", port as i64)
-                            .record("network.local.address", addr)
-                            .record("network.local.port", port as i64);
-                    }
-
-                    // Wait for tls handshake to happen
-                    let tls_stream = match tls_acceptor
-                        .accept(tcp_stream)
-                        .instrument(span.clone())
+                // This is cancellation-safe. If this branch is cancelled, the tick is NOT consumed.
+                // As such, we will not miss rotating the certificate.
+                _ = interval.tick() => {
+                    self.cert_resolver
+                        .rotate_certificate()
                         .await
-                    {
-                        Ok(tls_stream) => tls_stream,
+                        .context(RotateCertificateSnafu)?
+                }
+
+                // This is cancellation-safe. If cancelled, no new connections are accepted.
+                tcp_connection = tcp_listener.accept() => {
+                    let (tcp_stream, remote_addr) = match tcp_connection {
+                        Ok((stream, addr)) => (stream, addr),
                         Err(err) => {
-                            span.record("otel.status_code", "Error")
-                                .record("otel.status_message", err.to_string());
-                            tracing::trace!(%remote_addr, "error during tls handshake connection");
-                            return;
+                            tracing::trace!(%err, "failed to accept incoming TCP connection");
+                            continue;
                         }
                     };
 
-                    // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
-                    // `TokioIo` converts between them.
-                    let tls_stream = TokioIo::new(tls_stream);
+                    // Here, the connect info is extracted by calling Tower's Service
+                    // trait function on `IntoMakeServiceWithConnectInfo`
+                    let tower_service = router.call(remote_addr).await.unwrap();
 
-                    // Hyper also has its own `Service` trait and doesn't use tower. We can use
-                    // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
-                    // `tower::Service::call`.
-                    let hyper_service = service_fn(move |request: Request<Incoming>| {
-                        // This carries the current context with the trace id so that the TraceLayer can use that as a parent
-                        let otel_context = Span::current().context();
-                        // We need to clone here, because oneshot consumes self
-                        tower_service
-                            .clone()
-                            .oneshot(request)
-                            .with_context(otel_context)
-                    });
-
-                    let span = tracing::debug_span!("serve connection");
-                    hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
-                        .serve_connection_with_upgrades(tls_stream, hyper_service)
-                        .instrument(span.clone())
-                        .await
-                        .unwrap_or_else(|err| {
-                            span.record("otel.status_code", "Error")
-                                .record("otel.status_message", err.to_string());
-                            tracing::warn!(%err, %remote_addr, "failed to serve connection");
-                        })
+                    let span = tracing::debug_span!("accept tcp connection");
+                    tokio::spawn(async move {
+                        Self::handle_request(tcp_stream, remote_addr, tls_acceptor, tower_service, self.socket_addr)
+                    }.instrument(span));
                 }
-                .instrument(span),
-            );
+            };
         }
     }
 
-    async fn run_certificate_rotation_loop(cert_resolver: Arc<CertificateResolver>) -> Result<()> {
-        let mut interval = interval(*WEBHOOK_CERTIFICATE_ROTATION_INTERVAL);
-        // Let the interval tick once, so that the first loop iteration does not start immediately,
-        // thus generating a new cert.
-        interval.tick().await;
+    async fn handle_request(
+        tcp_stream: TcpStream,
+        remote_addr: SocketAddr,
+        tls_acceptor: TlsAcceptor,
+        tower_service: AddExtension<Router, ConnectInfo<SocketAddr>>,
+        socket_addr: SocketAddr,
+    ) {
+        let span = tracing::trace_span!(
+            "accept tls connection",
+            "otel.kind" = ?SpanKind::Server,
+            "otel.status_code" = Empty,
+            "otel.status_message" = Empty,
+            "client.address" = remote_addr.ip().to_string(),
+            "client.port" = remote_addr.port() as i64,
+            "server.address" = Empty,
+            "server.port" = Empty,
+            "network.peer.address" = remote_addr.ip().to_string(),
+            "network.peer.port" = remote_addr.port() as i64,
+            "network.local.address" = Empty,
+            "network.local.port" = Empty,
+            "network.transport" = "tcp",
+            "network.type" = socket_addr.semantic_convention_network_type(),
+        );
 
-        loop {
-            interval.tick().await;
-
-            cert_resolver
-                .rotate_certificate()
-                .await
-                .context(RotateCertificateSnafu)?;
+        if let Ok(local_addr) = tcp_stream.local_addr() {
+            let addr = &local_addr.ip().to_string();
+            let port = local_addr.port();
+            span.record("server.address", addr)
+                .record("server.port", port as i64)
+                .record("network.local.address", addr)
+                .record("network.local.port", port as i64);
         }
+
+        // Wait for tls handshake to happen
+        let tls_stream = match tls_acceptor
+            .accept(tcp_stream)
+            .instrument(span.clone())
+            .await
+        {
+            Ok(tls_stream) => tls_stream,
+            Err(err) => {
+                span.record("otel.status_code", "Error")
+                    .record("otel.status_message", err.to_string());
+                tracing::trace!(%remote_addr, "error during tls handshake connection");
+                return;
+            }
+        };
+
+        // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
+        // `TokioIo` converts between them.
+        let tls_stream = TokioIo::new(tls_stream);
+
+        // Hyper also has its own `Service` trait and doesn't use tower. We can use
+        // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
+        // `tower::Service::call`.
+        let hyper_service = service_fn(move |request: Request<Incoming>| {
+            // This carries the current context with the trace id so that the TraceLayer can use that as a parent
+            let otel_context = Span::current().context();
+            // We need to clone here, because oneshot consumes self
+            tower_service
+                .clone()
+                .oneshot(request)
+                .with_context(otel_context)
+        });
+
+        let span = tracing::debug_span!("serve connection");
+        hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
+            .serve_connection_with_upgrades(tls_stream, hyper_service)
+            .instrument(span.clone())
+            .await
+            .unwrap_or_else(|err| {
+                span.record("otel.status_code", "Error")
+                    .record("otel.status_message", err.to_string());
+                tracing::warn!(%err, %remote_addr, "failed to serve connection");
+            })
     }
 }
 
