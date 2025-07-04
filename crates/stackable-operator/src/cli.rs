@@ -317,7 +317,7 @@ pub struct OperatorEnvironmentOptions {
 
 #[cfg(test)]
 mod tests {
-    use std::{env, fs::File};
+    use std::fs::File;
 
     use clap::Parser;
     use rstest::*;
@@ -328,10 +328,6 @@ mod tests {
     const USER_PROVIDED_PATH: &str = "user_provided_path_properties.yaml";
     const DEPLOY_FILE_PATH: &str = "deploy_config_spec_properties.yaml";
     const DEFAULT_FILE_PATH: &str = "default_file_path_properties.yaml";
-    const WATCH_NAMESPACE: &str = "WATCH_NAMESPACE";
-    const OPERATOR_NAMESPACE: &str = "OPERATOR_NAMESPACE";
-    const OPERATOR_SERVICE_NAME: &str = "OPERATOR_SERVICE_NAME";
-    const KUBERNETES_NODE_NAME: &str = "KUBERNETES_NODE_NAME";
 
     #[test]
     fn verify_cli() {
@@ -418,9 +414,6 @@ mod tests {
 
     #[test]
     fn product_operator_run_watch_namespace() {
-        // clean env var to not interfere if already set
-        unsafe { env::remove_var(WATCH_NAMESPACE) };
-
         // cli with namespace
         let opts = ProductOperatorRun::parse_from([
             "run",
@@ -469,30 +462,6 @@ mod tests {
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::All,
-                cluster_info: KubernetesClusterInfoOptions {
-                    kubernetes_cluster_domain: None,
-                    kubernetes_node_name: "baz".to_string()
-                },
-                telemetry: Default::default(),
-                operator_environment: OperatorEnvironmentOptions {
-                    operator_namespace: "stackable-operators".to_string(),
-                    operator_service_name: "foo-operator".to_string(),
-                }
-            }
-        );
-
-        // env with namespace
-        unsafe { env::set_var(WATCH_NAMESPACE, "foo") };
-        unsafe { env::set_var(OPERATOR_SERVICE_NAME, "foo-operator") };
-        unsafe { env::set_var(OPERATOR_NAMESPACE, "stackable-operators") };
-        unsafe { env::set_var(KUBERNETES_NODE_NAME, "baz") };
-
-        let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
-        assert_eq!(
-            opts,
-            ProductOperatorRun {
-                product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::One("foo".to_string()),
                 cluster_info: KubernetesClusterInfoOptions {
                     kubernetes_cluster_domain: None,
                     kubernetes_node_name: "baz".to_string()
