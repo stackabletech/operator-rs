@@ -12,7 +12,6 @@ all-features = true
 
 [dependencies]
 stackable-versioned-macros = { path = "../stackable-versioned-macros" }
-k8s-version = { path = "../k8s-version", features = ["serde"] }
 
 schemars.workspace = true
 serde.workspace = true
