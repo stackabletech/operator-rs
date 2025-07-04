@@ -306,6 +306,10 @@ impl ProductConfigPath {
 #[derive(clap::Parser, Debug, PartialEq, Eq)]
 pub struct OperatorEnvironmentOptions {
     /// The namespace the operator is running in, usually `stackable-operators`.
+    ///
+    /// Note that when running the operator on Kubernetes we recommend to use the
+    /// [downward API](https://kubernetes.io/docs/concepts/workloads/pods/downward-api/)
+    /// to let Kubernetes mount the namespace as the `OPERATOR_NAMESPACE` env variable.
     #[arg(long, env)]
     pub operator_namespace: String,
 
