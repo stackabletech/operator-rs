@@ -165,7 +165,7 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 /// ```rust
 /// # use stackable_operator::cli::{Command, OperatorEnvironmentOpts, ProductOperatorRun, ProductConfigPath};
 /// use clap::Parser;
-/// use stackable_operator::namespace::WatchNamespace;
+/// use stackable_operator::{namespace::WatchNamespace, utils::cluster_info::KubernetesClusterInfoOpts};
 /// use stackable_telemetry::tracing::TelemetryOptions;
 ///
 /// #[derive(clap::Parser, Debug, PartialEq, Eq)]
@@ -189,6 +189,8 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///     "stackable-operators",
 ///     "--operator-service-name",
 ///     "foo-operator",
+///     "--kubernetes-node-name",
+///     "baz",
 /// ]);
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
@@ -196,7 +198,10 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
 ///         watch_namespace: WatchNamespace::One("foobar".to_string()),
 ///         telemetry_arguments: TelemetryOptions::default(),
-///         cluster_info_opts: Default::default(),
+///         cluster_info_opts: KubernetesClusterInfoOpts {
+///             kubernetes_cluster_domain: None,
+///             kubernetes_node_name: "baz".to_string(),
+///         },
 ///         operator_environment: OperatorEnvironmentOpts {
 ///             operator_namespace: "stackable-operators".to_string(),
 ///             operator_service_name: "foo-operator".to_string(),
@@ -326,6 +331,7 @@ mod tests {
     const WATCH_NAMESPACE: &str = "WATCH_NAMESPACE";
     const OPERATOR_NAMESPACE: &str = "OPERATOR_NAMESPACE";
     const OPERATOR_SERVICE_NAME: &str = "OPERATOR_SERVICE_NAME";
+    const KUBERNETES_NODE_NAME: &str = "KUBERNETES_NODE_NAME";
 
     #[test]
     fn verify_cli() {
@@ -426,13 +432,18 @@ mod tests {
             "stackable-operators",
             "--operator-service-name",
             "foo-operator",
+            "--kubernetes-node-name",
+            "baz",
         ]);
         assert_eq!(
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
-                cluster_info_opts: Default::default(),
+                cluster_info_opts: KubernetesClusterInfoOpts {
+                    kubernetes_cluster_domain: None,
+                    kubernetes_node_name: "baz".to_string()
+                },
                 telemetry_arguments: Default::default(),
                 operator_environment: OperatorEnvironmentOpts {
                     operator_namespace: "stackable-operators".to_string(),
@@ -450,13 +461,18 @@ mod tests {
             "stackable-operators",
             "--operator-service-name",
             "foo-operator",
+            "--kubernetes-node-name",
+            "baz",
         ]);
         assert_eq!(
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::All,
-                cluster_info_opts: Default::default(),
+                cluster_info_opts: KubernetesClusterInfoOpts {
+                    kubernetes_cluster_domain: None,
+                    kubernetes_node_name: "baz".to_string()
+                },
                 telemetry_arguments: Default::default(),
                 operator_environment: OperatorEnvironmentOpts {
                     operator_namespace: "stackable-operators".to_string(),
@@ -469,6 +485,7 @@ mod tests {
         unsafe { env::set_var(WATCH_NAMESPACE, "foo") };
         unsafe { env::set_var(OPERATOR_SERVICE_NAME, "foo-operator") };
         unsafe { env::set_var(OPERATOR_NAMESPACE, "stackable-operators") };
+        unsafe { env::set_var(KUBERNETES_NODE_NAME, "baz") };
 
         let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
         assert_eq!(
@@ -476,7 +493,10 @@ mod tests {
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
-                cluster_info_opts: Default::default(),
+                cluster_info_opts: KubernetesClusterInfoOpts {
+                    kubernetes_cluster_domain: None,
+                    kubernetes_node_name: "baz".to_string()
+                },
                 telemetry_arguments: Default::default(),
                 operator_environment: OperatorEnvironmentOpts {
                     operator_namespace: "stackable-operators".to_string(),
