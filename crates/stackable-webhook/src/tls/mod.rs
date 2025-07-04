@@ -66,6 +66,11 @@ pub struct TlsServer {
 }
 
 impl TlsServer {
+    /// Create a new [`TlsServer`].
+    ///
+    /// This create a [`CertificateResolver`] with the provided `subject_alterative_dns_names`,
+    /// which takes care of the certificate rotation. Afterwards it create the [`ServerConfig`],
+    /// which let's the [`CertificateResolver`] provide the needed certificates.
     #[instrument(name = "create_tls_server", skip(router))]
     pub async fn new(
         socket_addr: SocketAddr,
