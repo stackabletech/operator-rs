@@ -10,7 +10,6 @@
 //! ```
 //! use stackable_webhook::{WebhookServer, Options};
 //! use axum::Router;
-//! use tokio::sync::mpsc;
 //!
 //! let router = Router::new();
 //! let server = WebhookServer::new(router, Options::default());
@@ -98,7 +97,6 @@ impl WebhookServer {
     /// ```
     /// use stackable_webhook::{WebhookServer, Options};
     /// use axum::Router;
-    /// use tokio::sync::mpsc;
     ///
     /// let router = Router::new();
     /// let server = WebhookServer::new(router, Options::default());
@@ -109,7 +107,6 @@ impl WebhookServer {
     /// ```
     /// use stackable_webhook::{WebhookServer, Options};
     /// use axum::Router;
-    /// use tokio::sync::mpsc;
     ///
     /// let options = Options::builder()
     ///     .bind_address([127, 0, 0, 1], 8080)
