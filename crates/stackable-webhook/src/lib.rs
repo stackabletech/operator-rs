@@ -13,7 +13,7 @@
 //! use tokio::sync::mpsc;
 //!
 //! let router = Router::new();
-//! let server = WebhookServer::new(router, Options::default(), vec![]);
+//! let server = WebhookServer::new(router, Options::default());
 //! ```
 //!
 //! For some usages, complete end-to-end [`WebhookServer`] implementations
@@ -101,7 +101,7 @@ impl WebhookServer {
     /// use tokio::sync::mpsc;
     ///
     /// let router = Router::new();
-    /// let server = WebhookServer::new(router, Options::default(), vec![]);
+    /// let server = WebhookServer::new(router, Options::default());
     /// ```
     ///
     /// ### Example with Custom Options
@@ -113,16 +113,15 @@ impl WebhookServer {
     ///
     /// let options = Options::builder()
     ///     .bind_address([127, 0, 0, 1], 8080)
+    ///     .add_subject_alterative_dns_name("my-san-entry")
     ///     .build();
-    /// let sans = vec!["my-san-entry".to_string()];
     ///
     /// let router = Router::new();
-    /// let server = WebhookServer::new(router, options, sans);
+    /// let server = WebhookServer::new(router, options);
     /// ```
     pub async fn new(
         router: Router,
         options: Options,
-        subject_alterative_dns_names: Vec<String>,
     ) -> Result<(Self, mpsc::Receiver<Certificate>)> {
         tracing::trace!("create new webhook server");
 
@@ -147,7 +146,7 @@ impl WebhookServer {
 
         tracing::debug!("create TLS server");
         let (tls_server, cert_rx) =
-            TlsServer::new(options.socket_addr, router, subject_alterative_dns_names)
+            TlsServer::new(options.socket_addr, router, options.subject_alterative_dns_names)
                 .await
                 .context(CreateTlsServerSnafu)?;
 

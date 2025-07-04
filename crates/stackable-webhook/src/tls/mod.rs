@@ -65,7 +65,7 @@ pub struct TlsServer {
 
 impl TlsServer {
     #[instrument(name = "create_tls_server", skip(router))]
-    pub async fn new<'a>(
+    pub async fn new(
         socket_addr: SocketAddr,
         router: Router,
         subject_alterative_dns_names: Vec<String>,

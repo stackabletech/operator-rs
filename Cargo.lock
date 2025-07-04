@@ -3101,6 +3101,7 @@ version = "0.3.1"
 dependencies = [
  "arc-swap",
  "axum",
+ "clap",
  "futures-util",
  "hyper",
  "hyper-util",

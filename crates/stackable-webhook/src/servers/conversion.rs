@@ -95,11 +95,12 @@ impl ConversionWebhookServer {
     /// # Example
     ///
     /// ```no_run
+    /// use clap::Parser;
     /// use stackable_webhook::{
     ///     servers::{ConversionReview, ConversionWebhookServer},
     ///     Options
     /// };
-    /// use stackable_operator::cli::OperatorEnvironmentOpts;
+    /// use stackable_operator::cli::OperatorEnvironmentOptions;
     /// use stackable_operator::kube::Client;
     /// use stackable_operator::crd::s3::{S3Connection, S3ConnectionVersion};
     ///
@@ -114,12 +115,7 @@ impl ConversionWebhookServer {
     ///
     /// const OPERATOR_NAME: &str = "PRODUCT_OPERATOR";
     /// let client = Client::try_default().await.expect("failed to create Kubernetes client");
-    /// // Normally you would get this from the CLI arguments in
-    /// // `ProductOperatorRun::operator_environment`
-    /// let operator_environment = OperatorEnvironmentOpts {
-    ///     operator_namespace: "stackable-operator".to_string(),
-    ///     operator_service_name: "product-operator".to_string(),
-    /// };
+    /// let operator_environment = OperatorEnvironmentOptions::parse();
     ///
     /// // Construct the conversion webhook server
     /// let conversion_webhook = ConversionWebhookServer::new(
@@ -141,7 +137,7 @@ impl ConversionWebhookServer {
     )]
     pub async fn new<H>(
         crds_and_handlers: impl IntoIterator<Item = (CustomResourceDefinition, H)>,
-        options: Options,
+        mut options: Options,
         client: Client,
         field_manager: impl Into<String> + Debug,
         operator_environment: OperatorEnvironmentOptions,
@@ -167,13 +163,14 @@ impl ConversionWebhookServer {
 
         // This is how Kubernetes calls us, so it decides about the naming.
         // AFAIK we can not influence this, so this is the only SAN entry needed.
-        let sans = vec![format!(
+        let subject_alterative_dns_name = format!(
             "{service_name}.{operator_namespace}.svc",
             service_name = operator_environment.operator_service_name,
             operator_namespace = operator_environment.operator_namespace,
-        )];
+        );
+        options.subject_alterative_dns_names.push(subject_alterative_dns_name);
 
-        let (server, mut cert_rx) = WebhookServer::new(router, options, sans)
+        let (server, mut cert_rx) = WebhookServer::new(router, options)
             .await
             .context(CreateWebhookServerSnafu)?;
 
