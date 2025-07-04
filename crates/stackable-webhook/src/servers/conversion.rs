@@ -18,7 +18,7 @@ use kube::{
     api::{Patch, PatchParams},
 };
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::cli::OperatorEnvironmentOpts;
+use stackable_operator::cli::OperatorEnvironmentOptions;
 use tokio::{sync::mpsc, try_join};
 use tracing::instrument;
 use x509_cert::{
@@ -75,7 +75,7 @@ pub struct ConversionWebhookServer {
     client: Client,
     field_manager: String,
     crds: Vec<CustomResourceDefinition>,
-    operator_environment: OperatorEnvironmentOpts,
+    operator_environment: OperatorEnvironmentOptions,
 }
 
 impl ConversionWebhookServer {
@@ -144,7 +144,7 @@ impl ConversionWebhookServer {
         options: Options,
         client: Client,
         field_manager: impl Into<String> + Debug,
-        operator_environment: OperatorEnvironmentOpts,
+        operator_environment: OperatorEnvironmentOptions,
     ) -> Result<Self, ConversionWebhookError>
     where
         H: WebhookHandler<ConversionReview, ConversionReview> + Clone + Send + Sync + 'static,
@@ -241,7 +241,7 @@ impl ConversionWebhookServer {
         client: &Client,
         field_manager: &str,
         crds: &[CustomResourceDefinition],
-        operator_environment: &OperatorEnvironmentOpts,
+        operator_environment: &OperatorEnvironmentOptions,
     ) -> Result<(), ConversionWebhookError> {
         while let Some(current_cert) = cert_rx.recv().await {
             Self::reconcile_crds(
@@ -262,7 +262,7 @@ impl ConversionWebhookServer {
         client: &Client,
         field_manager: &str,
         crds: &[CustomResourceDefinition],
-        operator_environment: &OperatorEnvironmentOpts,
+        operator_environment: &OperatorEnvironmentOptions,
         current_cert: &Certificate,
     ) -> Result<(), ConversionWebhookError> {
         tracing::info!(

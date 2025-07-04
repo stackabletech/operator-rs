@@ -37,6 +37,9 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Return type for `ListenerOperatorVolumeSourceBuilder::new()` is no longer a `Result` ([#1058]).
 - BREAKING: Require two new CLI arguments: `--operator-namespace` and `-operator-service-name`.
   These are required, so that the operator knows what Service it needs to enter as CRD conversion webhook ([#1066]).
+- BREAKING: The `ProductOperatorRun` used for CLI arguments has some field renamed for consistency ([#1066]):
+  - `telemetry_arguments` -> `telemetry`
+  - `cluster_info_opts` -> `cluster_info`
 
 ### Fixed
 
