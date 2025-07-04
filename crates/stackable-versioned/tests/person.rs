@@ -1,6 +1,9 @@
 use std::{fs::File, path::Path};
 
-use kube::{CustomResource, core::conversion::ConversionReview};
+use kube::{
+    CustomResource,
+    core::conversion::{ConversionRequest, ConversionReview},
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use stackable_versioned::versioned;
@@ -16,6 +19,24 @@ pub fn convert_via_file(path: &Path) -> (ConversionReview, ConversionReview) {
     let response = Person::try_convert(request.clone());
 
     (request, response)
+}
+
+#[allow(dead_code)]
+pub fn roundtrip_conversion_review(
+    response_review: ConversionReview,
+    desired_api_version: PersonVersion,
+) -> ConversionReview {
+    let response = response_review.response.unwrap();
+    ConversionReview {
+        types: response_review.types,
+        request: Some(ConversionRequest {
+            desired_api_version: desired_api_version.as_api_version_str().to_owned(),
+            objects: response.converted_objects,
+            types: response.types,
+            uid: response.uid,
+        }),
+        response: None,
+    }
 }
 
 #[versioned(
