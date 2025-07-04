@@ -71,11 +71,11 @@ impl TlsServer {
         subject_alterative_dns_names: Vec<String>,
     ) -> Result<(Self, mpsc::Receiver<Certificate>)> {
         let (cert_tx, cert_rx) = mpsc::channel(1);
-        let cert_resolver = Arc::new(
-            CertificateResolver::new(subject_alterative_dns_names, cert_tx)
+
+        let cert_resolver = CertificateResolver::new(subject_alterative_dns_names, cert_tx)
                 .await
-                .context(CreateCertificateResolverSnafu)?,
-        );
+                .context(CreateCertificateResolverSnafu)?
+        let cert_resolver = Arc::new(cert_resolver);
 
         let tls_provider = default_provider();
         let mut config = ServerConfig::builder_with_provider(tls_provider.into())
