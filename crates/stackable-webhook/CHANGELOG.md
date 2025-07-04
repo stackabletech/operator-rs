@@ -24,8 +24,6 @@ All notable changes to this project will be documented in this file.
   deployed to Kubernetes (e.g. conversion or mutating - which this crate targets) need to be
   accessible by it, which is not the case when only using loopback.
   Also, the constant `DEFAULT_SOCKET_ADDR` has been renamed to `DEFAULT_SOCKET_ADDRESS` ([#1045]).
-- BREAKING: The `TlsServer` now requires you to pass SAN (subject alternative name) DNS entries,
-  so the caller will trust the issued certificate ([#1066]).
 
 [#1043]: https://github.com/stackabletech/operator-rs/pull/1043
 [#1045]: https://github.com/stackabletech/operator-rs/pull/1045
