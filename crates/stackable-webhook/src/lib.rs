@@ -11,8 +11,12 @@
 //! use stackable_webhook::{WebhookServer, Options};
 //! use axum::Router;
 //!
+//! # async fn test() {
 //! let router = Router::new();
-//! let server = WebhookServer::new(router, Options::default());
+//! let (server, cert_rx) = WebhookServer::new(router, Options::default())
+//!     .await
+//!     .expect("failed to create WebhookServer");
+//! # }
 //! ```
 //!
 //! For some usages, complete end-to-end [`WebhookServer`] implementations
@@ -98,8 +102,12 @@ impl WebhookServer {
     /// use stackable_webhook::{WebhookServer, Options};
     /// use axum::Router;
     ///
+    /// # async fn test() {
     /// let router = Router::new();
-    /// let server = WebhookServer::new(router, Options::default());
+    /// let (server, cert_rx) = WebhookServer::new(router, Options::default())
+    ///     .await
+    ///     .expect("failed to create WebhookServer");
+    /// # }
     /// ```
     ///
     /// ### Example with Custom Options
@@ -108,13 +116,17 @@ impl WebhookServer {
     /// use stackable_webhook::{WebhookServer, Options};
     /// use axum::Router;
     ///
+    /// # async fn test() {
     /// let options = Options::builder()
     ///     .bind_address([127, 0, 0, 1], 8080)
     ///     .add_subject_alterative_dns_name("my-san-entry")
     ///     .build();
     ///
     /// let router = Router::new();
-    /// let server = WebhookServer::new(router, options);
+    /// let (server, cert_rx) = WebhookServer::new(router, options)
+    ///     .await
+    ///     .expect("failed to create WebhookServer");
+    /// # }
     /// ```
     pub async fn new(
         router: Router,
