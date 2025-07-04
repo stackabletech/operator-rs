@@ -101,7 +101,7 @@ impl Struct {
 
             quote! {
                 #automatically_derived
-                impl ::std::convert::From<#from_module_ident::#object_struct_ident> for #for_module_ident::#object_struct_ident {
+                impl ::core::convert::From<#from_module_ident::#object_struct_ident> for #for_module_ident::#object_struct_ident {
                     fn from(#from_struct_parameter_ident: #from_module_ident::#object_struct_ident) -> Self {
                         #from_inner
                     }
@@ -551,7 +551,7 @@ impl Struct {
                         field: "kind".to_owned()
                     })?;
 
-                if kind == #enum_ident_string {
+                if kind != #enum_ident_string {
                     return Err(#parse_object_error::UnexpectedKind{
                         kind: kind.to_owned(),
                         expected: #enum_ident_string.to_owned(),

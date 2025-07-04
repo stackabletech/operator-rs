@@ -180,7 +180,7 @@ impl Enum {
             quote! {
                 #automatically_derived
                 #allow_attribute
-                impl #impl_generics ::std::convert::From<#from_module_ident::#enum_ident #type_generics> for #for_module_ident::#enum_ident #type_generics
+                impl #impl_generics ::core::convert::From<#from_module_ident::#enum_ident #type_generics> for #for_module_ident::#enum_ident #type_generics
                     #where_clause
                 {
                     fn from(#from_enum_ident: #from_module_ident::#enum_ident #type_generics) -> Self {
