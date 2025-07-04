@@ -137,7 +137,6 @@ impl Module {
         }
 
         let preserve_module = self.options.common.preserve_module.is_present();
-        let allow_unsorted = self.options.common.allow_unsorted.is_present();
 
         let module_ident = &self.ident;
         let module_vis = &self.vis;
@@ -146,7 +145,7 @@ impl Module {
         // of version modules (eg. 'v1alpha1') to be public, so that they are accessible inside the
         // preserved (wrapping) module. Otherwise, we can inherit the visibility from the module
         // which will be erased.
-        let version_module_vis = if allow_unsorted {
+        let version_module_vis = if preserve_module {
             &Visibility::Public(Pub::default())
         } else {
             &self.vis

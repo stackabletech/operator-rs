@@ -432,7 +432,7 @@ impl Struct {
                 for object in objects {
                     // This clone is required because in the noop case we move the object into
                     // the converted objects vec.
-                    let current_object = Self::from_json_value(object.clone())
+                    let current_object = Self::from_json_object(object.clone())
                         .map_err(|source| #convert_object_error::Parse { source })?;
 
                     match (current_object, desired_api_version) {
@@ -513,7 +513,7 @@ impl Struct {
         })
     }
 
-    pub(super) fn generate_from_json_value_fn(
+    pub(super) fn generate_from_json_object_fn(
         &self,
         mod_gen_ctx: ModuleGenerationContext<'_>,
         spec_gen_ctx: &SpecGenerationContext<'_>,
@@ -540,7 +540,7 @@ impl Struct {
         });
 
         Some(quote! {
-            fn from_json_value(object_value: #serde_json_path::Value) -> ::std::result::Result<Self, #parse_object_error> {
+            fn from_json_object(object_value: #serde_json_path::Value) -> ::std::result::Result<Self, #parse_object_error> {
                 let kind = object_value
                     .get("kind")
                     .ok_or_else(|| #parse_object_error::FieldNotPresent {

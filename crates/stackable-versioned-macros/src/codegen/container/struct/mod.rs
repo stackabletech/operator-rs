@@ -318,7 +318,7 @@ impl Struct {
 
         let merged_crd_fn = self.generate_merged_crd_fn(mod_gen_ctx, spec_gen_ctx);
         let try_convert_fn = self.generate_try_convert_fn(versions, mod_gen_ctx, spec_gen_ctx);
-        let from_json_value_fn = self.generate_from_json_value_fn(mod_gen_ctx, spec_gen_ctx);
+        let from_json_object_fn = self.generate_from_json_object_fn(mod_gen_ctx, spec_gen_ctx);
         let into_json_value_fn = self.generate_into_json_value_fn(mod_gen_ctx, spec_gen_ctx);
 
         let automatically_derived = mod_gen_ctx.automatically_derived_attr();
@@ -328,7 +328,7 @@ impl Struct {
             impl #enum_ident {
                 #merged_crd_fn
                 #try_convert_fn
-                #from_json_value_fn
+                #from_json_object_fn
                 #into_json_value_fn
             }
         }
