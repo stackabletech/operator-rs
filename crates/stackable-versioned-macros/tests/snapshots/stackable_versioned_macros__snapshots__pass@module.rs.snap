@@ -1,7 +1,7 @@
 ---
 source: crates/stackable-versioned-macros/src/lib.rs
 expression: formatted
-input_file: crates/stackable-versioned-macros/tests/inputs/k8s/pass/module.rs
+input_file: crates/stackable-versioned-macros/tests/inputs/pass/module.rs
 ---
 #[automatically_derived]
 pub(crate) mod v1alpha1 {
@@ -51,19 +51,37 @@ pub(crate) mod v1alpha1 {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1alpha1::Baz> for v1::Baz {
+impl ::core::convert::From<v1alpha1::Baz> for v1::Baz {
     fn from(__sv_baz: v1alpha1::Baz) -> Self {
         Self { boom: __sv_baz.boom.into() }
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1::Baz> for v1alpha1::Baz {
+impl ::core::convert::From<v1::Baz> for v1alpha1::Baz {
     fn from(__sv_baz: v1::Baz) -> Self {
         Self { boom: __sv_baz.boom.into() }
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1alpha1::FooSpec> for v1::FooSpec {
+impl ::core::convert::From<v1alpha1::Foo> for v1::Foo {
+    fn from(__sv_foo: v1alpha1::Foo) -> Self {
+        Self {
+            metadata: __sv_foo.metadata,
+            spec: __sv_foo.spec.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1::Foo> for v1alpha1::Foo {
+    fn from(__sv_foo: v1::Foo) -> Self {
+        Self {
+            metadata: __sv_foo.metadata,
+            spec: __sv_foo.spec.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha1::FooSpec> for v1::FooSpec {
     fn from(__sv_foospec: v1alpha1::FooSpec) -> Self {
         Self {
             bar: __sv_foospec.bar.into(),
@@ -73,7 +91,7 @@ impl ::std::convert::From<v1alpha1::FooSpec> for v1::FooSpec {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1::FooSpec> for v1alpha1::FooSpec {
+impl ::core::convert::From<v1::FooSpec> for v1alpha1::FooSpec {
     fn from(__sv_foospec: v1::FooSpec) -> Self {
         Self {
             bar: __sv_foospec.bar.into(),
@@ -82,7 +100,25 @@ impl ::std::convert::From<v1::FooSpec> for v1alpha1::FooSpec {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1alpha1::BarSpec> for v1::BarSpec {
+impl ::core::convert::From<v1alpha1::Bar> for v1::Bar {
+    fn from(__sv_bar: v1alpha1::Bar) -> Self {
+        Self {
+            metadata: __sv_bar.metadata,
+            spec: __sv_bar.spec.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1::Bar> for v1alpha1::Bar {
+    fn from(__sv_bar: v1::Bar) -> Self {
+        Self {
+            metadata: __sv_bar.metadata,
+            spec: __sv_bar.spec.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha1::BarSpec> for v1::BarSpec {
     fn from(__sv_barspec: v1alpha1::BarSpec) -> Self {
         Self {
             baz: __sv_barspec.baz.into(),
@@ -90,7 +126,7 @@ impl ::std::convert::From<v1alpha1::BarSpec> for v1::BarSpec {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1::BarSpec> for v1alpha1::BarSpec {
+impl ::core::convert::From<v1::BarSpec> for v1alpha1::BarSpec {
     fn from(__sv_barspec: v1::BarSpec) -> Self {
         Self {
             baz: __sv_barspec.baz.into(),
@@ -98,7 +134,7 @@ impl ::std::convert::From<v1::BarSpec> for v1alpha1::BarSpec {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1alpha1::Boom> for v1::Boom {
+impl ::core::convert::From<v1alpha1::Boom> for v1::Boom {
     fn from(__sv_boom: v1alpha1::Boom) -> Self {
         match __sv_boom {
             v1alpha1::Boom::Big => v1::Boom::Big,
@@ -107,7 +143,7 @@ impl ::std::convert::From<v1alpha1::Boom> for v1::Boom {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1::Boom> for v1alpha1::Boom {
+impl ::core::convert::From<v1::Boom> for v1alpha1::Boom {
     fn from(__sv_boom: v1::Boom) -> Self {
         match __sv_boom {
             v1::Boom::Big => v1alpha1::Boom::Big,
@@ -159,20 +195,38 @@ pub(crate) mod v1 {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1::Baz> for v2alpha1::Baz {
+impl ::core::convert::From<v1::Baz> for v2alpha1::Baz {
     fn from(__sv_baz: v1::Baz) -> Self {
         Self { boom: __sv_baz.boom.into() }
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v2alpha1::Baz> for v1::Baz {
+impl ::core::convert::From<v2alpha1::Baz> for v1::Baz {
     fn from(__sv_baz: v2alpha1::Baz) -> Self {
         Self { boom: __sv_baz.boom.into() }
     }
 }
 #[automatically_derived]
+impl ::core::convert::From<v1::Foo> for v2alpha1::Foo {
+    fn from(__sv_foo: v1::Foo) -> Self {
+        Self {
+            metadata: __sv_foo.metadata,
+            spec: __sv_foo.spec.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v2alpha1::Foo> for v1::Foo {
+    fn from(__sv_foo: v2alpha1::Foo) -> Self {
+        Self {
+            metadata: __sv_foo.metadata,
+            spec: __sv_foo.spec.into(),
+        }
+    }
+}
+#[automatically_derived]
 #[allow(deprecated)]
-impl ::std::convert::From<v1::FooSpec> for v2alpha1::FooSpec {
+impl ::core::convert::From<v1::FooSpec> for v2alpha1::FooSpec {
     fn from(__sv_foospec: v1::FooSpec) -> Self {
         Self {
             bar: __sv_foospec.bar.into(),
@@ -183,7 +237,7 @@ impl ::std::convert::From<v1::FooSpec> for v2alpha1::FooSpec {
 }
 #[automatically_derived]
 #[allow(deprecated)]
-impl ::std::convert::From<v2alpha1::FooSpec> for v1::FooSpec {
+impl ::core::convert::From<v2alpha1::FooSpec> for v1::FooSpec {
     fn from(__sv_foospec: v2alpha1::FooSpec) -> Self {
         Self {
             bar: __sv_foospec.bar.into(),
@@ -193,7 +247,25 @@ impl ::std::convert::From<v2alpha1::FooSpec> for v1::FooSpec {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1::BarSpec> for v2alpha1::BarSpec {
+impl ::core::convert::From<v1::Bar> for v2alpha1::Bar {
+    fn from(__sv_bar: v1::Bar) -> Self {
+        Self {
+            metadata: __sv_bar.metadata,
+            spec: __sv_bar.spec.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v2alpha1::Bar> for v1::Bar {
+    fn from(__sv_bar: v2alpha1::Bar) -> Self {
+        Self {
+            metadata: __sv_bar.metadata,
+            spec: __sv_bar.spec.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1::BarSpec> for v2alpha1::BarSpec {
     fn from(__sv_barspec: v1::BarSpec) -> Self {
         Self {
             baz: __sv_barspec.baz.into(),
@@ -201,7 +273,7 @@ impl ::std::convert::From<v1::BarSpec> for v2alpha1::BarSpec {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v2alpha1::BarSpec> for v1::BarSpec {
+impl ::core::convert::From<v2alpha1::BarSpec> for v1::BarSpec {
     fn from(__sv_barspec: v2alpha1::BarSpec) -> Self {
         Self {
             baz: __sv_barspec.baz.into(),
@@ -209,7 +281,7 @@ impl ::std::convert::From<v2alpha1::BarSpec> for v1::BarSpec {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1::Boom> for v2alpha1::Boom {
+impl ::core::convert::From<v1::Boom> for v2alpha1::Boom {
     fn from(__sv_boom: v1::Boom) -> Self {
         match __sv_boom {
             v1::Boom::Big => v2alpha1::Boom::Big,
@@ -218,7 +290,7 @@ impl ::std::convert::From<v1::Boom> for v2alpha1::Boom {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v2alpha1::Boom> for v1::Boom {
+impl ::core::convert::From<v2alpha1::Boom> for v1::Boom {
     fn from(__sv_boom: v2alpha1::Boom) -> Self {
         match __sv_boom {
             v2alpha1::Boom::Big => v1::Boom::Big,
@@ -276,6 +348,7 @@ pub(crate) mod v2alpha1 {
     }
 }
 #[automatically_derived]
+#[derive(::core::fmt::Debug)]
 pub(crate) enum Foo {
     V1Alpha1(v1alpha1::Foo),
     V1(v1::Foo),
@@ -374,11 +447,8 @@ impl Foo {
                 })?;
             match (current_object, desired_api_version) {
                 (Self::V1Alpha1(__sv_foo), FooVersion::V1) => {
-                    let converted: v1::FooSpec = __sv_foo.spec.into();
-                    let desired_object = Self::V1(v1::Foo {
-                        metadata: __sv_foo.metadata,
-                        spec: converted,
-                    });
+                    let converted: v1::Foo = __sv_foo.into();
+                    let desired_object = Self::V1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -387,12 +457,9 @@ impl Foo {
                     converted_objects.push(desired_object);
                 }
                 (Self::V1Alpha1(__sv_foo), FooVersion::V2Alpha1) => {
-                    let converted: v1::FooSpec = __sv_foo.spec.into();
-                    let converted: v2alpha1::FooSpec = converted.into();
-                    let desired_object = Self::V2Alpha1(v2alpha1::Foo {
-                        metadata: __sv_foo.metadata,
-                        spec: converted,
-                    });
+                    let converted: v1::Foo = __sv_foo.into();
+                    let converted: v2alpha1::Foo = converted.into();
+                    let desired_object = Self::V2Alpha1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -401,11 +468,8 @@ impl Foo {
                     converted_objects.push(desired_object);
                 }
                 (Self::V1(__sv_foo), FooVersion::V1Alpha1) => {
-                    let converted: v1alpha1::FooSpec = __sv_foo.spec.into();
-                    let desired_object = Self::V1Alpha1(v1alpha1::Foo {
-                        metadata: __sv_foo.metadata,
-                        spec: converted,
-                    });
+                    let converted: v1alpha1::Foo = __sv_foo.into();
+                    let desired_object = Self::V1Alpha1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -414,11 +478,8 @@ impl Foo {
                     converted_objects.push(desired_object);
                 }
                 (Self::V1(__sv_foo), FooVersion::V2Alpha1) => {
-                    let converted: v2alpha1::FooSpec = __sv_foo.spec.into();
-                    let desired_object = Self::V2Alpha1(v2alpha1::Foo {
-                        metadata: __sv_foo.metadata,
-                        spec: converted,
-                    });
+                    let converted: v2alpha1::Foo = __sv_foo.into();
+                    let desired_object = Self::V2Alpha1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -427,12 +488,9 @@ impl Foo {
                     converted_objects.push(desired_object);
                 }
                 (Self::V2Alpha1(__sv_foo), FooVersion::V1Alpha1) => {
-                    let converted: v1::FooSpec = __sv_foo.spec.into();
-                    let converted: v1alpha1::FooSpec = converted.into();
-                    let desired_object = Self::V1Alpha1(v1alpha1::Foo {
-                        metadata: __sv_foo.metadata,
-                        spec: converted,
-                    });
+                    let converted: v1::Foo = __sv_foo.into();
+                    let converted: v1alpha1::Foo = converted.into();
+                    let desired_object = Self::V1Alpha1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -441,11 +499,8 @@ impl Foo {
                     converted_objects.push(desired_object);
                 }
                 (Self::V2Alpha1(__sv_foo), FooVersion::V1) => {
-                    let converted: v1::FooSpec = __sv_foo.spec.into();
-                    let desired_object = Self::V1(v1::Foo {
-                        metadata: __sv_foo.metadata,
-                        spec: converted,
-                    });
+                    let converted: v1::Foo = __sv_foo.into();
+                    let desired_object = Self::V1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -461,24 +516,24 @@ impl Foo {
     fn from_json_object(
         object_value: ::serde_json::Value,
     ) -> ::std::result::Result<Self, ::stackable_versioned::ParseObjectError> {
-        let object_kind = object_value
+        let kind = object_value
             .get("kind")
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotPresent {
                 field: "kind".to_owned(),
             })?
             .as_str()
             .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr {
                 field: "kind".to_owned(),
             })?;
-        if object_kind != "Foo" {
+        if kind != "Foo" {
             return Err(::stackable_versioned::ParseObjectError::UnexpectedKind {
-                kind: object_kind.to_owned(),
+                kind: kind.to_owned(),
                 expected: "Foo".to_owned(),
             });
         }
         let api_version = object_value
             .get("apiVersion")
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotPresent {
                 field: "apiVersion".to_owned(),
             })?
             .as_str()
@@ -526,17 +581,17 @@ impl Foo {
     }
 }
 #[automatically_derived]
-#[derive(Copy, Clone, Debug)]
+#[derive(::core::marker::Copy, ::core::clone::Clone, ::core::fmt::Debug)]
 pub(crate) enum FooVersion {
     V1Alpha1,
     V1,
     V2Alpha1,
 }
 #[automatically_derived]
-impl ::std::fmt::Display for FooVersion {
+impl ::core::fmt::Display for FooVersion {
     fn fmt(
         &self,
-        f: &mut ::std::fmt::Formatter<'_>,
+        f: &mut ::core::fmt::Formatter<'_>,
     ) -> ::std::result::Result<(), ::std::fmt::Error> {
         f.write_str(self.as_version_str())
     }
@@ -573,6 +628,7 @@ impl FooVersion {
     }
 }
 #[automatically_derived]
+#[derive(::core::fmt::Debug)]
 pub(crate) enum Bar {
     V1Alpha1(v1alpha1::Bar),
     V1(v1::Bar),
@@ -671,11 +727,8 @@ impl Bar {
                 })?;
             match (current_object, desired_api_version) {
                 (Self::V1Alpha1(__sv_bar), BarVersion::V1) => {
-                    let converted: v1::BarSpec = __sv_bar.spec.into();
-                    let desired_object = Self::V1(v1::Bar {
-                        metadata: __sv_bar.metadata,
-                        spec: converted,
-                    });
+                    let converted: v1::Bar = __sv_bar.into();
+                    let desired_object = Self::V1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -684,12 +737,9 @@ impl Bar {
                     converted_objects.push(desired_object);
                 }
                 (Self::V1Alpha1(__sv_bar), BarVersion::V2Alpha1) => {
-                    let converted: v1::BarSpec = __sv_bar.spec.into();
-                    let converted: v2alpha1::BarSpec = converted.into();
-                    let desired_object = Self::V2Alpha1(v2alpha1::Bar {
-                        metadata: __sv_bar.metadata,
-                        spec: converted,
-                    });
+                    let converted: v1::Bar = __sv_bar.into();
+                    let converted: v2alpha1::Bar = converted.into();
+                    let desired_object = Self::V2Alpha1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -698,11 +748,8 @@ impl Bar {
                     converted_objects.push(desired_object);
                 }
                 (Self::V1(__sv_bar), BarVersion::V1Alpha1) => {
-                    let converted: v1alpha1::BarSpec = __sv_bar.spec.into();
-                    let desired_object = Self::V1Alpha1(v1alpha1::Bar {
-                        metadata: __sv_bar.metadata,
-                        spec: converted,
-                    });
+                    let converted: v1alpha1::Bar = __sv_bar.into();
+                    let desired_object = Self::V1Alpha1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -711,11 +758,8 @@ impl Bar {
                     converted_objects.push(desired_object);
                 }
                 (Self::V1(__sv_bar), BarVersion::V2Alpha1) => {
-                    let converted: v2alpha1::BarSpec = __sv_bar.spec.into();
-                    let desired_object = Self::V2Alpha1(v2alpha1::Bar {
-                        metadata: __sv_bar.metadata,
-                        spec: converted,
-                    });
+                    let converted: v2alpha1::Bar = __sv_bar.into();
+                    let desired_object = Self::V2Alpha1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -724,12 +768,9 @@ impl Bar {
                     converted_objects.push(desired_object);
                 }
                 (Self::V2Alpha1(__sv_bar), BarVersion::V1Alpha1) => {
-                    let converted: v1::BarSpec = __sv_bar.spec.into();
-                    let converted: v1alpha1::BarSpec = converted.into();
-                    let desired_object = Self::V1Alpha1(v1alpha1::Bar {
-                        metadata: __sv_bar.metadata,
-                        spec: converted,
-                    });
+                    let converted: v1::Bar = __sv_bar.into();
+                    let converted: v1alpha1::Bar = converted.into();
+                    let desired_object = Self::V1Alpha1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -738,11 +779,8 @@ impl Bar {
                     converted_objects.push(desired_object);
                 }
                 (Self::V2Alpha1(__sv_bar), BarVersion::V1) => {
-                    let converted: v1::BarSpec = __sv_bar.spec.into();
-                    let desired_object = Self::V1(v1::Bar {
-                        metadata: __sv_bar.metadata,
-                        spec: converted,
-                    });
+                    let converted: v1::Bar = __sv_bar.into();
+                    let desired_object = Self::V1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -758,24 +796,24 @@ impl Bar {
     fn from_json_object(
         object_value: ::serde_json::Value,
     ) -> ::std::result::Result<Self, ::stackable_versioned::ParseObjectError> {
-        let object_kind = object_value
+        let kind = object_value
             .get("kind")
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotPresent {
                 field: "kind".to_owned(),
             })?
             .as_str()
             .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr {
                 field: "kind".to_owned(),
             })?;
-        if object_kind != "Bar" {
+        if kind != "Bar" {
             return Err(::stackable_versioned::ParseObjectError::UnexpectedKind {
-                kind: object_kind.to_owned(),
+                kind: kind.to_owned(),
                 expected: "Bar".to_owned(),
             });
         }
         let api_version = object_value
             .get("apiVersion")
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotPresent {
                 field: "apiVersion".to_owned(),
             })?
             .as_str()
@@ -823,17 +861,17 @@ impl Bar {
     }
 }
 #[automatically_derived]
-#[derive(Copy, Clone, Debug)]
+#[derive(::core::marker::Copy, ::core::clone::Clone, ::core::fmt::Debug)]
 pub(crate) enum BarVersion {
     V1Alpha1,
     V1,
     V2Alpha1,
 }
 #[automatically_derived]
-impl ::std::fmt::Display for BarVersion {
+impl ::core::fmt::Display for BarVersion {
     fn fmt(
         &self,
-        f: &mut ::std::fmt::Formatter<'_>,
+        f: &mut ::core::fmt::Formatter<'_>,
     ) -> ::std::result::Result<(), ::std::fmt::Error> {
         f.write_str(self.as_version_str())
     }

@@ -1,7 +1,7 @@
 ---
 source: crates/stackable-versioned-macros/src/lib.rs
 expression: formatted
-input_file: crates/stackable-versioned-macros/tests/inputs/default/pass/rename.rs
+input_file: crates/stackable-versioned-macros/tests/inputs/pass/renamed_field.rs
 ---
 #[automatically_derived]
 mod v1alpha1 {
@@ -12,7 +12,7 @@ mod v1alpha1 {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1alpha1::Foo> for v1beta1::Foo {
+impl ::core::convert::From<v1alpha1::Foo> for v1beta1::Foo {
     fn from(__sv_foo: v1alpha1::Foo) -> Self {
         Self {
             bar: __sv_foo.bat.into(),
@@ -21,7 +21,7 @@ impl ::std::convert::From<v1alpha1::Foo> for v1beta1::Foo {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1beta1::Foo> for v1alpha1::Foo {
+impl ::core::convert::From<v1beta1::Foo> for v1alpha1::Foo {
     fn from(__sv_foo: v1beta1::Foo) -> Self {
         Self {
             bat: __sv_foo.bar.into(),
@@ -38,7 +38,7 @@ mod v1beta1 {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1beta1::Foo> for v1::Foo {
+impl ::core::convert::From<v1beta1::Foo> for v1::Foo {
     fn from(__sv_foo: v1beta1::Foo) -> Self {
         Self {
             bar: __sv_foo.bar.into(),
@@ -47,7 +47,7 @@ impl ::std::convert::From<v1beta1::Foo> for v1::Foo {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1::Foo> for v1beta1::Foo {
+impl ::core::convert::From<v1::Foo> for v1beta1::Foo {
     fn from(__sv_foo: v1::Foo) -> Self {
         Self {
             bar: __sv_foo.bar.into(),

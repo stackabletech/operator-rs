@@ -1028,29 +1028,17 @@ where
 }
 
 #[cfg(test)]
-mod snapshot_tests {
+mod snapshots {
     use insta::{assert_snapshot, glob};
 
     use super::*;
 
-    // TODO (@Techassi): Combine tests, there are no default/k8s-specific tests anymore
     #[test]
-    fn default() {
+    fn pass() {
+        // TODO (@Techassi): Re-add skip tests
         let _settings_guard = test_utils::set_snapshot_path().bind_to_scope();
 
-        glob!("../tests/inputs/default/pass", "*.rs", |path| {
-            let formatted = test_utils::expand_from_file(path)
-                .inspect_err(|err| eprintln!("{err}"))
-                .unwrap();
-            assert_snapshot!(formatted);
-        });
-    }
-
-    #[test]
-    fn k8s() {
-        let _settings_guard = test_utils::set_snapshot_path().bind_to_scope();
-
-        glob!("../tests/inputs/k8s/pass", "*.rs", |path| {
+        glob!("../tests/inputs/pass", "*.rs", |path| {
             let formatted = test_utils::expand_from_file(path)
                 .inspect_err(|err| eprintln!("{err}"))
                 .unwrap();

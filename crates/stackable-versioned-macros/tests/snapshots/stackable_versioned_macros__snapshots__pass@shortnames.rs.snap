@@ -1,7 +1,7 @@
 ---
 source: crates/stackable-versioned-macros/src/lib.rs
 expression: formatted
-input_file: crates/stackable-versioned-macros/tests/inputs/k8s/pass/shortnames.rs
+input_file: crates/stackable-versioned-macros/tests/inputs/pass/shortnames.rs
 ---
 #[automatically_derived]
 pub(crate) mod v1alpha1 {
@@ -24,6 +24,7 @@ pub(crate) mod v1alpha1 {
     pub struct FooSpec {}
 }
 #[automatically_derived]
+#[derive(::core::fmt::Debug)]
 pub(crate) enum Foo {
     V1Alpha1(v1alpha1::Foo),
 }
@@ -123,24 +124,24 @@ impl Foo {
     fn from_json_object(
         object_value: ::serde_json::Value,
     ) -> ::std::result::Result<Self, ::stackable_versioned::ParseObjectError> {
-        let object_kind = object_value
+        let kind = object_value
             .get("kind")
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotPresent {
                 field: "kind".to_owned(),
             })?
             .as_str()
             .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr {
                 field: "kind".to_owned(),
             })?;
-        if object_kind != "Foo" {
+        if kind != "Foo" {
             return Err(::stackable_versioned::ParseObjectError::UnexpectedKind {
-                kind: object_kind.to_owned(),
+                kind: kind.to_owned(),
                 expected: "Foo".to_owned(),
             });
         }
         let api_version = object_value
             .get("apiVersion")
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotPresent {
                 field: "apiVersion".to_owned(),
             })?
             .as_str()
@@ -172,15 +173,15 @@ impl Foo {
     }
 }
 #[automatically_derived]
-#[derive(Copy, Clone, Debug)]
+#[derive(::core::marker::Copy, ::core::clone::Clone, ::core::fmt::Debug)]
 pub(crate) enum FooVersion {
     V1Alpha1,
 }
 #[automatically_derived]
-impl ::std::fmt::Display for FooVersion {
+impl ::core::fmt::Display for FooVersion {
     fn fmt(
         &self,
-        f: &mut ::std::fmt::Formatter<'_>,
+        f: &mut ::core::fmt::Formatter<'_>,
     ) -> ::std::result::Result<(), ::std::fmt::Error> {
         f.write_str(self.as_version_str())
     }

@@ -1,0 +1,247 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+expression: formatted
+input_file: crates/stackable-versioned-macros/tests/inputs/pass/docs.rs
+---
+#[automatically_derived]
+mod v1alpha1 {
+    use super::*;
+    /// Test
+    #[derive(Default)]
+    pub struct Foo {
+        /// This field is available in every version (so far).
+        pub foo: String,
+        /// Keep the main field docs the same, even after the field is deprecated.
+        pub bar: String,
+        /// This is will keep changing over time.
+        pub qoox: String,
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl<S> ::stackable_versioned::TrackingFrom<v1alpha1::Foo, S> for v1beta1::Foo
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_foo: v1alpha1::Foo, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
+        let __sv_baz_path = ::stackable_versioned::jthong_path(parent, "baz");
+        let mut spec = Self {
+            foo: __sv_foo.foo.into(),
+            deprecated_bar: __sv_foo.bar.into(),
+            baz: ::std::default::Default::default(),
+            qaax: __sv_foo.qoox.into(),
+        };
+        if let Some(upgrades) = status.changes().upgrades.remove(&"v1beta1".to_owned()) {
+            for ::stackable_versioned::ChangedValue { field_name, value } in upgrades {
+                match field_name {
+                    field_name if field_name == __sv_baz_path => {
+                        spec.baz = serde_yaml::from_value(value).unwrap();
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+        spec
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl<S> ::stackable_versioned::TrackingFrom<v1beta1::Foo, S> for v1alpha1::Foo
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_foo: v1beta1::Foo, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
+        let __sv_baz_path = ::stackable_versioned::jthong_path(parent, "baz");
+        let upgrades = status
+            .changes()
+            .upgrades
+            .entry("v1beta1".to_owned())
+            .or_default();
+        upgrades
+            .push(::stackable_versioned::ChangedValue {
+                field_name: __sv_baz_path,
+                value: ::serde_yaml::to_value(&__sv_foo.baz).unwrap(),
+            });
+        let mut spec = Self {
+            foo: __sv_foo.foo.into(),
+            bar: __sv_foo.deprecated_bar.into(),
+            qoox: __sv_foo.qaax.into(),
+        };
+        spec
+    }
+}
+#[automatically_derived]
+mod v1beta1 {
+    use super::*;
+    ///Additional docs for this version which are purposefully long to
+    ///show how manual line wrapping works. \
+    ///Multi-line docs are also supported, as per regular doc-comments.
+    /// Test
+    #[derive(Default)]
+    pub struct Foo {
+        /// This field is available in every version (so far).
+        pub foo: String,
+        /// Keep the main field docs the same, even after the field is deprecated.
+        #[deprecated = "gone"]
+        pub deprecated_bar: String,
+        /// This is for baz
+        pub baz: String,
+        /// This is will keep changing over time.
+        pub qaax: String,
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl<S> ::stackable_versioned::TrackingFrom<v1beta1::Foo, S> for v1beta2::Foo
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_foo: v1beta1::Foo, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
+        let mut spec = Self {
+            foo: __sv_foo.foo.into(),
+            deprecated_bar: __sv_foo.deprecated_bar.into(),
+            baz: __sv_foo.baz.into(),
+            qaax: __sv_foo.qaax.into(),
+        };
+        spec
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl<S> ::stackable_versioned::TrackingFrom<v1beta2::Foo, S> for v1beta1::Foo
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_foo: v1beta2::Foo, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
+        let mut spec = Self {
+            foo: __sv_foo.foo.into(),
+            deprecated_bar: __sv_foo.deprecated_bar.into(),
+            baz: __sv_foo.baz.into(),
+            qaax: __sv_foo.qaax.into(),
+        };
+        spec
+    }
+}
+#[automatically_derived]
+mod v1beta2 {
+    use super::*;
+    /// Test
+    #[derive(Default)]
+    pub struct Foo {
+        /// This field is available in every version (so far).
+        pub foo: String,
+        /// Keep the main field docs the same, even after the field is deprecated.
+        #[deprecated]
+        pub deprecated_bar: String,
+        /// This is for baz
+        pub baz: String,
+        /// This is will keep changing over time.
+        pub qaax: String,
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl<S> ::stackable_versioned::TrackingFrom<v1beta2::Foo, S> for v1::Foo
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_foo: v1beta2::Foo, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
+        let mut spec = Self {
+            foo: __sv_foo.foo.into(),
+            deprecated_bar: __sv_foo.deprecated_bar.into(),
+            baz: __sv_foo.baz.into(),
+            quux: __sv_foo.qaax.into(),
+        };
+        spec
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl<S> ::stackable_versioned::TrackingFrom<v1::Foo, S> for v1beta2::Foo
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_foo: v1::Foo, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
+        let mut spec = Self {
+            foo: __sv_foo.foo.into(),
+            deprecated_bar: __sv_foo.deprecated_bar.into(),
+            baz: __sv_foo.baz.into(),
+            qaax: __sv_foo.quux.into(),
+        };
+        spec
+    }
+}
+#[automatically_derived]
+mod v1 {
+    use super::*;
+    /// Test
+    #[derive(Default)]
+    pub struct Foo {
+        /// This field is available in every version (so far).
+        pub foo: String,
+        /// Keep the main field docs the same, even after the field is deprecated.
+        #[deprecated]
+        pub deprecated_bar: String,
+        /// This is for baz
+        pub baz: String,
+        /// This is will keep changing over time.
+        pub quux: String,
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl<S> ::stackable_versioned::TrackingFrom<v1::Foo, S> for v2::Foo
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_foo: v1::Foo, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
+        let mut spec = Self {
+            foo: __sv_foo.foo.into(),
+            deprecated_bar: __sv_foo.deprecated_bar.into(),
+            baz: __sv_foo.baz.into(),
+            quux: __sv_foo.quux.into(),
+        };
+        spec
+    }
+}
+#[automatically_derived]
+#[allow(deprecated)]
+impl<S> ::stackable_versioned::TrackingFrom<v2::Foo, S> for v1::Foo
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_foo: v2::Foo, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
+        let mut spec = Self {
+            foo: __sv_foo.foo.into(),
+            deprecated_bar: __sv_foo.deprecated_bar.into(),
+            baz: __sv_foo.baz.into(),
+            quux: __sv_foo.quux.into(),
+        };
+        spec
+    }
+}
+#[automatically_derived]
+mod v2 {
+    use super::*;
+    /// Test
+    #[derive(Default)]
+    pub struct Foo {
+        /// This field is available in every version (so far).
+        pub foo: String,
+        /// Keep the main field docs the same, even after the field is deprecated.
+        #[deprecated]
+        pub deprecated_bar: String,
+        /// This is for baz
+        pub baz: String,
+        /// This is will keep changing over time.
+        pub quux: String,
+    }
+}

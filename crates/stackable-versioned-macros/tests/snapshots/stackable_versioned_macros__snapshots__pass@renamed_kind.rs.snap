@@ -1,10 +1,10 @@
 ---
 source: crates/stackable-versioned-macros/src/lib.rs
 expression: formatted
-input_file: crates/stackable-versioned-macros/tests/inputs/k8s/pass/basic.rs
+input_file: crates/stackable-versioned-macros/tests/inputs/pass/renamed_kind.rs
 ---
 #[automatically_derived]
-pub(crate) mod v1alpha1 {
+pub mod v1alpha1 {
     use super::*;
     #[derive(
         Clone,
@@ -14,21 +14,31 @@ pub(crate) mod v1alpha1 {
         schemars::JsonSchema,
         kube::CustomResource,
     )]
-    #[kube(
-        group = "stackable.tech",
-        version = "v1alpha1",
-        kind = "Foo",
-        singular = "foo",
-        plural = "foos",
-        namespaced,
-        status = FooStatus
-    )]
+    #[kube(group = "stackable.tech", version = "v1alpha1", kind = "FooBar", namespaced)]
     pub struct FooSpec {
         pub baz: bool,
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1alpha1::FooSpec> for v1beta1::FooSpec {
+impl ::core::convert::From<v1alpha1::FooBar> for v1beta1::FooBar {
+    fn from(__sv_foobar: v1alpha1::FooBar) -> Self {
+        Self {
+            metadata: __sv_foobar.metadata,
+            spec: __sv_foobar.spec.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1beta1::FooBar> for v1alpha1::FooBar {
+    fn from(__sv_foobar: v1beta1::FooBar) -> Self {
+        Self {
+            metadata: __sv_foobar.metadata,
+            spec: __sv_foobar.spec.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha1::FooSpec> for v1beta1::FooSpec {
     fn from(__sv_foospec: v1alpha1::FooSpec) -> Self {
         Self {
             bah: ::std::default::Default::default(),
@@ -37,7 +47,7 @@ impl ::std::convert::From<v1alpha1::FooSpec> for v1beta1::FooSpec {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1beta1::FooSpec> for v1alpha1::FooSpec {
+impl ::core::convert::From<v1beta1::FooSpec> for v1alpha1::FooSpec {
     fn from(__sv_foospec: v1beta1::FooSpec) -> Self {
         Self {
             baz: __sv_foospec.baz.into(),
@@ -45,7 +55,7 @@ impl ::std::convert::From<v1beta1::FooSpec> for v1alpha1::FooSpec {
     }
 }
 #[automatically_derived]
-pub(crate) mod v1beta1 {
+pub mod v1beta1 {
     use super::*;
     #[derive(
         Clone,
@@ -55,22 +65,32 @@ pub(crate) mod v1beta1 {
         schemars::JsonSchema,
         kube::CustomResource,
     )]
-    #[kube(
-        group = "stackable.tech",
-        version = "v1beta1",
-        kind = "Foo",
-        singular = "foo",
-        plural = "foos",
-        namespaced,
-        status = FooStatus
-    )]
+    #[kube(group = "stackable.tech", version = "v1beta1", kind = "FooBar", namespaced)]
     pub struct FooSpec {
-        pub bah: u16,
+        pub bah: usize,
         pub baz: bool,
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1beta1::FooSpec> for v1::FooSpec {
+impl ::core::convert::From<v1beta1::FooBar> for v1::FooBar {
+    fn from(__sv_foobar: v1beta1::FooBar) -> Self {
+        Self {
+            metadata: __sv_foobar.metadata,
+            spec: __sv_foobar.spec.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1::FooBar> for v1beta1::FooBar {
+    fn from(__sv_foobar: v1::FooBar) -> Self {
+        Self {
+            metadata: __sv_foobar.metadata,
+            spec: __sv_foobar.spec.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1beta1::FooSpec> for v1::FooSpec {
     fn from(__sv_foospec: v1beta1::FooSpec) -> Self {
         Self {
             bar: __sv_foospec.bah.into(),
@@ -79,16 +99,16 @@ impl ::std::convert::From<v1beta1::FooSpec> for v1::FooSpec {
     }
 }
 #[automatically_derived]
-impl ::std::convert::From<v1::FooSpec> for v1beta1::FooSpec {
+impl ::core::convert::From<v1::FooSpec> for v1beta1::FooSpec {
     fn from(__sv_foospec: v1::FooSpec) -> Self {
         Self {
-            bah: usize_to_u16(__sv_foospec.bar),
+            bah: __sv_foospec.bar.into(),
             baz: __sv_foospec.baz.into(),
         }
     }
 }
 #[automatically_derived]
-pub(crate) mod v1 {
+pub mod v1 {
     use super::*;
     #[derive(
         Clone,
@@ -98,45 +118,38 @@ pub(crate) mod v1 {
         schemars::JsonSchema,
         kube::CustomResource,
     )]
-    #[kube(
-        group = "stackable.tech",
-        version = "v1",
-        kind = "Foo",
-        singular = "foo",
-        plural = "foos",
-        namespaced,
-        status = FooStatus
-    )]
+    #[kube(group = "stackable.tech", version = "v1", kind = "FooBar", namespaced)]
     pub struct FooSpec {
         pub bar: usize,
         pub baz: bool,
     }
 }
 #[automatically_derived]
-pub(crate) enum Foo {
-    V1Alpha1(v1alpha1::Foo),
-    V1Beta1(v1beta1::Foo),
-    V1(v1::Foo),
+#[derive(::core::fmt::Debug)]
+pub enum FooBar {
+    V1Alpha1(v1alpha1::FooBar),
+    V1Beta1(v1beta1::FooBar),
+    V1(v1::FooBar),
 }
 #[automatically_derived]
-impl Foo {
+impl FooBar {
     /// Generates a merged CRD containing all versions and marking `stored_apiversion` as stored.
     pub fn merged_crd(
-        stored_apiversion: FooVersion,
+        stored_apiversion: FooBarVersion,
     ) -> ::std::result::Result<
         ::k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition,
         ::kube::core::crd::MergeError,
     > {
         ::kube::core::crd::merge_crds(
             vec![
-                < v1alpha1::Foo as ::kube::core::CustomResourceExt > ::crd(), <
-                v1beta1::Foo as ::kube::core::CustomResourceExt > ::crd(), < v1::Foo as
-                ::kube::core::CustomResourceExt > ::crd()
+                < v1alpha1::FooBar as ::kube::core::CustomResourceExt > ::crd(), <
+                v1beta1::FooBar as ::kube::core::CustomResourceExt > ::crd(), <
+                v1::FooBar as ::kube::core::CustomResourceExt > ::crd()
             ],
             stored_apiversion.as_version_str(),
         )
     }
-    ///Tries to convert a list of objects of kind [`Foo`] to the desired API version
+    ///Tries to convert a list of objects of kind [`FooBar`] to the desired API version
     ///specified in the [`ConversionReview`][cr].
     ///
     ///The returned [`ConversionReview`][cr] either indicates a success or a failure, which
@@ -199,7 +212,7 @@ impl Foo {
         ::std::vec::Vec<::serde_json::Value>,
         ::stackable_versioned::ConvertObjectError,
     > {
-        let desired_api_version = FooVersion::from_api_version(desired_api_version)
+        let desired_api_version = FooBarVersion::from_api_version(desired_api_version)
             .map_err(|source| ::stackable_versioned::ConvertObjectError::ParseDesiredApiVersion {
                 source,
             })?;
@@ -210,13 +223,9 @@ impl Foo {
                     source,
                 })?;
             match (current_object, desired_api_version) {
-                (Self::V1Alpha1(__sv_foo), FooVersion::V1Beta1) => {
-                    let converted: v1beta1::FooSpec = __sv_foo.spec.into();
-                    let desired_object = Self::V1Beta1(v1beta1::Foo {
-                        metadata: __sv_foo.metadata,
-                        status: __sv_foo.status,
-                        spec: converted,
-                    });
+                (Self::V1Alpha1(__sv_foobar), FooBarVersion::V1Beta1) => {
+                    let converted: v1beta1::FooBar = __sv_foobar.into();
+                    let desired_object = Self::V1Beta1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -224,14 +233,10 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Alpha1(__sv_foo), FooVersion::V1) => {
-                    let converted: v1beta1::FooSpec = __sv_foo.spec.into();
-                    let converted: v1::FooSpec = converted.into();
-                    let desired_object = Self::V1(v1::Foo {
-                        metadata: __sv_foo.metadata,
-                        status: __sv_foo.status,
-                        spec: converted,
-                    });
+                (Self::V1Alpha1(__sv_foobar), FooBarVersion::V1) => {
+                    let converted: v1beta1::FooBar = __sv_foobar.into();
+                    let converted: v1::FooBar = converted.into();
+                    let desired_object = Self::V1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -239,13 +244,9 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Beta1(__sv_foo), FooVersion::V1Alpha1) => {
-                    let converted: v1alpha1::FooSpec = __sv_foo.spec.into();
-                    let desired_object = Self::V1Alpha1(v1alpha1::Foo {
-                        metadata: __sv_foo.metadata,
-                        status: __sv_foo.status,
-                        spec: converted,
-                    });
+                (Self::V1Beta1(__sv_foobar), FooBarVersion::V1Alpha1) => {
+                    let converted: v1alpha1::FooBar = __sv_foobar.into();
+                    let desired_object = Self::V1Alpha1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -253,13 +254,9 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1Beta1(__sv_foo), FooVersion::V1) => {
-                    let converted: v1::FooSpec = __sv_foo.spec.into();
-                    let desired_object = Self::V1(v1::Foo {
-                        metadata: __sv_foo.metadata,
-                        status: __sv_foo.status,
-                        spec: converted,
-                    });
+                (Self::V1Beta1(__sv_foobar), FooBarVersion::V1) => {
+                    let converted: v1::FooBar = __sv_foobar.into();
+                    let desired_object = Self::V1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -267,14 +264,10 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1(__sv_foo), FooVersion::V1Alpha1) => {
-                    let converted: v1beta1::FooSpec = __sv_foo.spec.into();
-                    let converted: v1alpha1::FooSpec = converted.into();
-                    let desired_object = Self::V1Alpha1(v1alpha1::Foo {
-                        metadata: __sv_foo.metadata,
-                        status: __sv_foo.status,
-                        spec: converted,
-                    });
+                (Self::V1(__sv_foobar), FooBarVersion::V1Alpha1) => {
+                    let converted: v1beta1::FooBar = __sv_foobar.into();
+                    let converted: v1alpha1::FooBar = converted.into();
+                    let desired_object = Self::V1Alpha1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -282,13 +275,9 @@ impl Foo {
                         })?;
                     converted_objects.push(desired_object);
                 }
-                (Self::V1(__sv_foo), FooVersion::V1Beta1) => {
-                    let converted: v1beta1::FooSpec = __sv_foo.spec.into();
-                    let desired_object = Self::V1Beta1(v1beta1::Foo {
-                        metadata: __sv_foo.metadata,
-                        status: __sv_foo.status,
-                        spec: converted,
-                    });
+                (Self::V1(__sv_foobar), FooBarVersion::V1Beta1) => {
+                    let converted: v1beta1::FooBar = __sv_foobar.into();
+                    let desired_object = Self::V1Beta1(converted);
                     let desired_object = desired_object
                         .into_json_value()
                         .map_err(|source| ::stackable_versioned::ConvertObjectError::Serialize {
@@ -304,24 +293,24 @@ impl Foo {
     fn from_json_object(
         object_value: ::serde_json::Value,
     ) -> ::std::result::Result<Self, ::stackable_versioned::ParseObjectError> {
-        let object_kind = object_value
+        let kind = object_value
             .get("kind")
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotPresent {
                 field: "kind".to_owned(),
             })?
             .as_str()
             .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotStr {
                 field: "kind".to_owned(),
             })?;
-        if object_kind != "Foo" {
+        if kind != "FooBar" {
             return Err(::stackable_versioned::ParseObjectError::UnexpectedKind {
-                kind: object_kind.to_owned(),
-                expected: "Foo".to_owned(),
+                kind: kind.to_owned(),
+                expected: "FooBar".to_owned(),
             });
         }
         let api_version = object_value
             .get("apiVersion")
-            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldMissing {
+            .ok_or_else(|| ::stackable_versioned::ParseObjectError::FieldNotPresent {
                 field: "apiVersion".to_owned(),
             })?
             .as_str()
@@ -362,51 +351,51 @@ impl Foo {
         self,
     ) -> ::std::result::Result<::serde_json::Value, ::serde_json::Error> {
         match self {
-            Self::V1Alpha1(__sv_foo) => Ok(::serde_json::to_value(__sv_foo)?),
-            Self::V1Beta1(__sv_foo) => Ok(::serde_json::to_value(__sv_foo)?),
-            Self::V1(__sv_foo) => Ok(::serde_json::to_value(__sv_foo)?),
+            Self::V1Alpha1(__sv_foobar) => Ok(::serde_json::to_value(__sv_foobar)?),
+            Self::V1Beta1(__sv_foobar) => Ok(::serde_json::to_value(__sv_foobar)?),
+            Self::V1(__sv_foobar) => Ok(::serde_json::to_value(__sv_foobar)?),
         }
     }
 }
 #[automatically_derived]
-#[derive(Copy, Clone, Debug)]
-pub(crate) enum FooVersion {
+#[derive(::core::marker::Copy, ::core::clone::Clone, ::core::fmt::Debug)]
+pub enum FooBarVersion {
     V1Alpha1,
     V1Beta1,
     V1,
 }
 #[automatically_derived]
-impl ::std::fmt::Display for FooVersion {
+impl ::core::fmt::Display for FooBarVersion {
     fn fmt(
         &self,
-        f: &mut ::std::fmt::Formatter<'_>,
+        f: &mut ::core::fmt::Formatter<'_>,
     ) -> ::std::result::Result<(), ::std::fmt::Error> {
         f.write_str(self.as_version_str())
     }
 }
 #[automatically_derived]
-impl FooVersion {
+impl FooBarVersion {
     pub fn as_version_str(&self) -> &str {
         match self {
-            FooVersion::V1Alpha1 => "v1alpha1",
-            FooVersion::V1Beta1 => "v1beta1",
-            FooVersion::V1 => "v1",
+            FooBarVersion::V1Alpha1 => "v1alpha1",
+            FooBarVersion::V1Beta1 => "v1beta1",
+            FooBarVersion::V1 => "v1",
         }
     }
     pub fn as_api_version_str(&self) -> &str {
         match self {
-            FooVersion::V1Alpha1 => "stackable.tech/v1alpha1",
-            FooVersion::V1Beta1 => "stackable.tech/v1beta1",
-            FooVersion::V1 => "stackable.tech/v1",
+            FooBarVersion::V1Alpha1 => "stackable.tech/v1alpha1",
+            FooBarVersion::V1Beta1 => "stackable.tech/v1beta1",
+            FooBarVersion::V1 => "stackable.tech/v1",
         }
     }
     pub fn from_api_version(
         api_version: &str,
     ) -> Result<Self, ::stackable_versioned::UnknownDesiredApiVersionError> {
         match api_version {
-            "stackable.tech/v1alpha1" => Ok(FooVersion::V1Alpha1),
-            "stackable.tech/v1beta1" => Ok(FooVersion::V1Beta1),
-            "stackable.tech/v1" => Ok(FooVersion::V1),
+            "stackable.tech/v1alpha1" => Ok(FooBarVersion::V1Alpha1),
+            "stackable.tech/v1beta1" => Ok(FooBarVersion::V1Beta1),
+            "stackable.tech/v1" => Ok(FooBarVersion::V1),
             _ => {
                 Err(::stackable_versioned::UnknownDesiredApiVersionError {
                     api_version: api_version.to_owned(),
