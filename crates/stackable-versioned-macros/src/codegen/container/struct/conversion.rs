@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cmp::Ordering, ops::Not as _};
+use std::{borrow::Cow, cmp::Ordering};
 
 use indoc::formatdoc;
 use itertools::Itertools as _;
@@ -44,14 +44,6 @@ impl Struct {
             return None;
         }
 
-        if !mod_gen_ctx
-            .kubernetes_options
-            .experimental_conversion_tracking
-            .is_present()
-        {
-            return None;
-        }
-
         let next_version = ver_ctx.next_version;
         let version = ver_ctx.version;
 
@@ -69,29 +61,49 @@ impl Struct {
                 Direction::Downgrade => (&version.idents.module, &next_version.idents.module),
             };
 
+            // NOTE (@Techassi): This if statement can be removed once experimental_conversion_tracking
+            // is gone.
+            let from_inner = if mod_gen_ctx.kubernetes_options.experimental_conversion_tracking.is_present() {
+                quote! {
+                    // The status is optional. The be able to track changes in nested sub structs it needs
+                    // to be initialized with a default value.
+                    let mut status = #from_struct_parameter_ident.status.unwrap_or_default();
+
+                    // Convert the spec and track values in the status
+                    let spec =
+                        <#for_module_ident::#spec_struct_ident as #versioned_path::TrackingFrom<_, _>>::tracking_from(
+                            #from_struct_parameter_ident.spec,
+                            &mut status,
+                            "",
+                        );
+
+                    // Construct the final object by copying over the metadata, setting the status and
+                    // using the converted spec.
+                    Self {
+                        metadata: #from_struct_parameter_ident.metadata,
+                        status: Some(status),
+                        spec,
+                    }
+                }
+            } else {
+                let status = spec_gen_ctx.kubernetes_arguments.status
+                    .as_ref()
+                    .map(|_| quote! { status:  #from_struct_parameter_ident.status,});
+
+                quote! {
+                    Self {
+                        metadata: #from_struct_parameter_ident.metadata,
+                        spec: #from_struct_parameter_ident.spec.into(),
+                        #status
+                    }
+                }
+            };
+
             quote! {
                 #automatically_derived
                 impl ::std::convert::From<#from_module_ident::#object_struct_ident> for #for_module_ident::#object_struct_ident {
                     fn from(#from_struct_parameter_ident: #from_module_ident::#object_struct_ident) -> Self {
-                        // The status is optional. The be able to track changes in nested sub structs it needs
-                        // to be initialized with a default value.
-                        let mut status = #from_struct_parameter_ident.status.unwrap_or_default();
-
-                        // Convert the spec and track values in the status
-                        let spec =
-                            <#for_module_ident::#spec_struct_ident as #versioned_path::TrackingFrom<_, _>>::tracking_from(
-                                #from_struct_parameter_ident.spec,
-                                &mut status,
-                                "",
-                            );
-
-                        // Construct the final object by copying over the metadata, setting the status and
-                        // using the converted spec.
-                        Self {
-                            metadata: #from_struct_parameter_ident.metadata,
-                            status: Some(status),
-                            spec,
-                        }
+                        #from_inner
                     }
                 }
             }
@@ -126,10 +138,7 @@ impl Struct {
 
         // Only add the #[automatically_derived] attribute only if this impl is used
         // outside of a module (in standalone mode).
-        let automatically_derived = mod_gen_ctx
-            .add_attributes
-            .not()
-            .then(|| quote! {#[automatically_derived]});
+        let automatically_derived = mod_gen_ctx.automatically_derived_attr();
 
         let fields = |direction: Direction| -> TokenStream {
             self.fields
@@ -169,8 +178,8 @@ impl Struct {
             where
                 S: #versioned_path::TrackingStatus + ::core::default::Default
             {
-                #[allow(unused)]
                 fn tracking_from(#from_struct_ident: #from_module_ident::#struct_ident, status: &mut S, parent: &str) -> Self {
+                    // TODO (@Techassi): Only emit this if any of the fields below need it
                     use #versioned_path::TrackingInto as _;
 
                     #json_paths
@@ -275,10 +284,6 @@ impl Struct {
     }
 
     fn generate_json_paths(&self, next_version: &VersionDefinition) -> Option<TokenStream> {
-        // if !self.needs_tracking(next_version) {
-        //     return None;
-        // }
-
         let json_paths = self
             .fields
             .iter()
@@ -585,6 +590,10 @@ impl Struct {
         mod_gen_ctx: ModuleGenerationContext<'_>,
         spec_gen_ctx: &SpecGenerationContext<'_>,
     ) -> Option<TokenStream> {
+        if mod_gen_ctx.skip.try_convert.is_present() || self.common.options.skip_try_convert {
+            return None;
+        }
+
         let variant_data_ident = &spec_gen_ctx.kubernetes_idents.parameter;
         let variant_idents = &spec_gen_ctx.variant_idents;
 

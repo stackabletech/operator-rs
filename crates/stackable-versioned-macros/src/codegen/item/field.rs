@@ -331,16 +331,19 @@ impl VersionedField {
             Direction::Upgrade => {
                 let next_change = changes.get_expect(&next_version.inner);
 
-                let ident = &self.ident;
-                let json_path_ident = format_ident!("__sv_{}_path", &self.ident.as_ident());
-
                 match next_change {
-                    ItemStatus::NotPresent | ItemStatus::NoChange { .. } => None,
-                    _ => Some(quote! {
-                        field_name if field_name == #json_path_ident => {
-                            spec.#ident = serde_yaml::from_value(value).unwrap();
-                        },
-                    }),
+                    // NOTE (@Techassi): We currently only support tracking added fields. As such
+                    // we only need to generate code if the next change is "Addition".
+                    ItemStatus::Addition { ident, .. } => {
+                        let json_path_ident = format_ident!("__sv_{}_path", ident.as_ident());
+
+                        Some(quote! {
+                            field_name if field_name == #json_path_ident => {
+                                spec.#ident = serde_yaml::from_value(value).unwrap();
+                            },
+                        })
+                    }
+                    _ => None,
                 }
             }
             Direction::Downgrade => None,
@@ -369,14 +372,15 @@ impl VersionedField {
                 let next_change = changes.get_expect(&next_version.inner);
 
                 match next_change {
-                    ItemStatus::NoChange { .. } | ItemStatus::NotPresent => None,
-                    _ => {
-                        let field_ident = format_ident!("__sv_{}_path", &self.ident.as_ident());
-                        let child_string = &self.ident.to_string();
+                    ItemStatus::Addition { ident, .. } => {
+                        let field_ident = format_ident!("__sv_{}_path", ident.as_ident());
+                        let child_string = ident.to_string();
+
                         Some(quote! {
                             let #field_ident = ::stackable_versioned::jthong_path(parent, #child_string);
                         })
                     }
+                    _ => None,
                 }
             }
         }

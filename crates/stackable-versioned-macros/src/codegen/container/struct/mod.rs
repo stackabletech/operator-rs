@@ -45,7 +45,7 @@ impl Container {
         // Ensure that the struct name includes the 'Spec' suffix.
         if kubernetes_data.is_some() && !idents.original.as_str().ends_with("Spec") {
             return Err(Error::custom(
-                "struct name needs to include the `Spec` suffix if Kubernetes features are enabled via `#[versioned(k8s())]`"
+                "struct name needs to include the `Spec` suffix if CRD features are enabled via `#[versioned(crd())]`"
             ).with_span(&idents.original.span()));
         }
 
@@ -207,7 +207,7 @@ impl Struct {
     fn generate_kube_attribute(
         &self,
         ver_ctx: VersionContext<'_>,
-        gen_ctx: ModuleGenerationContext<'_>,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
         spec_gen_ctx: &SpecGenerationContext<'_>,
     ) -> Option<TokenStream> {
         // Required arguments
@@ -234,7 +234,7 @@ impl Struct {
             .as_ref()
             .map(|p| quote! { , plural = #p });
 
-        let crates = gen_ctx.crates;
+        let crates = mod_gen_ctx.crates;
 
         let namespaced = spec_gen_ctx
             .kubernetes_arguments
@@ -242,19 +242,29 @@ impl Struct {
             .is_present()
             .then_some(quote! { , namespaced });
 
+        // NOTE (@Techassi): What an abomination
         let status = match (
-            gen_ctx
+            mod_gen_ctx
                 .kubernetes_options
                 .experimental_conversion_tracking
                 .is_present(),
             &spec_gen_ctx.kubernetes_arguments.status,
         ) {
-            (true, _) => {
-                let status_ident = &spec_gen_ctx.kubernetes_idents.status;
-                Some(quote! { , status = #status_ident })
+            (true, status_path) => {
+                if (mod_gen_ctx.skip.merged_crd.is_present() || self.common.options.skip_merged_crd)
+                    && (mod_gen_ctx.skip.try_convert.is_present()
+                        || self.common.options.skip_try_convert)
+                {
+                    status_path
+                        .as_ref()
+                        .map(|status_path| quote! { , status = #status_path })
+                } else {
+                    let status_ident = &spec_gen_ctx.kubernetes_idents.status;
+                    Some(quote! { , status = #status_ident })
+                }
             }
-            (_, Some(status_ident)) => Some(quote! { , status = #status_ident }),
-            (_, _) => None,
+            (false, Some(status_path)) => Some(quote! { , status = #status_path }),
+            _ => None,
         };
 
         let shortnames: TokenStream = spec_gen_ctx
@@ -306,14 +316,7 @@ impl Struct {
     ) -> TokenStream {
         let enum_ident = &spec_gen_ctx.kubernetes_idents.kind;
 
-        // Only generate merged_crd associated function if not opted out
-        let merged_crd_fn =
-            if !mod_gen_ctx.skip.merged_crd.is_present() && !self.common.options.skip_merged_crd {
-                Some(self.generate_merged_crd_fn(mod_gen_ctx, spec_gen_ctx))
-            } else {
-                None
-            };
-
+        let merged_crd_fn = self.generate_merged_crd_fn(mod_gen_ctx, spec_gen_ctx);
         let try_convert_fn = self.generate_try_convert_fn(versions, mod_gen_ctx, spec_gen_ctx);
         let from_json_value_fn = self.generate_from_json_value_fn(mod_gen_ctx, spec_gen_ctx);
         let into_json_value_fn = self.generate_into_json_value_fn(mod_gen_ctx, spec_gen_ctx);
@@ -421,20 +424,82 @@ impl Struct {
             return None;
         }
 
-        if !mod_gen_ctx
-            .kubernetes_options
-            .experimental_conversion_tracking
-            .is_present()
-        {
-            return None;
-        }
-
         let next_version = ver_ctx.next_version;
         let version = ver_ctx.version;
 
         next_version.map(|next_version| {
-            self.generate_tracking_from_impl(direction, version, next_version, mod_gen_ctx)
+            if mod_gen_ctx
+                .kubernetes_options
+                .experimental_conversion_tracking
+                .is_present()
+            {
+                self.generate_tracking_from_impl(direction, version, next_version, mod_gen_ctx)
+            } else {
+                self.generate_plain_from_impl(direction, version, next_version, mod_gen_ctx)
+            }
         })
+    }
+
+    fn generate_plain_from_impl(
+        &self,
+        direction: Direction,
+        version: &VersionDefinition,
+        next_version: &VersionDefinition,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+    ) -> TokenStream {
+        // TODO (@Techassi): A bunch this stuff is duplicated in self.generate_tracking_from_impl.
+        // Ideally we remove that duplication.
+        let from_struct_ident = &self.common.idents.parameter;
+        let struct_ident = &self.common.idents.original;
+
+        // Include allow(deprecated) only when this or the next version is
+        // deprecated. Also include it, when a field in this or the next
+        // version is deprecated.
+        let allow_attribute = (version.deprecated.is_some()
+            || next_version.deprecated.is_some()
+            || self.is_any_field_deprecated(version)
+            || self.is_any_field_deprecated(next_version))
+        .then(|| quote! { #[allow(deprecated)] });
+
+        // Only add the #[automatically_derived] attribute only if this impl is used
+        // outside of a module (in standalone mode).
+        let automatically_derived = mod_gen_ctx.automatically_derived_attr();
+
+        let fields = |direction: Direction| -> TokenStream {
+            self.fields
+                .iter()
+                .filter_map(|f| {
+                    f.generate_for_from_impl(direction, version, next_version, from_struct_ident)
+                })
+                .collect()
+        };
+
+        let (fields, for_module_ident, from_module_ident) = match direction {
+            direction @ Direction::Upgrade => {
+                let from_module_ident = &version.idents.module;
+                let for_module_ident = &next_version.idents.module;
+
+                (fields(direction), for_module_ident, from_module_ident)
+            }
+            direction @ Direction::Downgrade => {
+                let from_module_ident = &next_version.idents.module;
+                let for_module_ident = &version.idents.module;
+
+                (fields(direction), for_module_ident, from_module_ident)
+            }
+        };
+
+        quote! {
+            #automatically_derived
+            #allow_attribute
+            impl ::core::convert::From<#from_module_ident::#struct_ident> for #for_module_ident::#struct_ident {
+                fn from(#from_struct_ident: #from_module_ident::#struct_ident) -> Self {
+                    Self {
+                        #fields
+                    }
+                }
+            }
+        }
     }
 
     /// Returns whether any field is deprecated in the provided `version`.
