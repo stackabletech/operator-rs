@@ -85,15 +85,14 @@ impl TlsServer {
             .with_cert_resolver(cert_resolver.clone());
         config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
 
-        Ok((
-            Self {
-                config,
-                cert_resolver,
-                socket_addr,
-                router,
-            },
-            cert_rx,
-        ))
+        let tls_server = Self {
+            config,
+            cert_resolver,
+            socket_addr,
+            router,
+        };
+
+        Ok((tls_server, cert_rx))
     }
 
     /// Runs the TLS server by listening for incoming TCP connections on the
