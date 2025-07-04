@@ -157,7 +157,8 @@ impl ConversionWebhookServer {
                 Json(review)
             };
 
-            router = router.route(&format!("/convert/{crd_name}"), post(handler_fn));
+            let route = format!("/convert/{crd_name}");
+            router = router.route(&route, post(handler_fn));
             crds.push(crd);
         }
 
