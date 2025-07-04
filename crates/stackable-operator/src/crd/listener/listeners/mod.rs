@@ -112,7 +112,7 @@ pub mod versioned {
     }
 
     /// Informs users about how to reach the Listener.
-    #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, PartialEq, Eq)]
+    #[derive(Serialize, Deserialize, Clone, Debug, Default, JsonSchema, PartialEq, Eq)]
     #[serde(rename_all = "camelCase")]
     pub struct ListenerStatus {
         /// The backing Kubernetes Service.
