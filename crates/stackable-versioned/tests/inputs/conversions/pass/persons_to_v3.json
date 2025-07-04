@@ -14,7 +14,10 @@
                     "uid": "d41e2019-5de3-409c-a7b2-0799ecb95e4b"
                 },
                 "spec": {
-                    "username": "sbernauer"
+                    "username": "sbernauer",
+                    "socials": {
+                        "email": "jdoe@example.com"
+                    }
                 }
             },
             {
@@ -24,7 +27,10 @@
                 "spec": {
                     "username": "sbernauer",
                     "firstName": "Sebastian",
-                    "lastName": "Bernauer"
+                    "lastName": "Bernauer",
+                    "socials": {
+                        "email": "jdoe@example.com"
+                    }
                 }
             },
             {
@@ -34,7 +40,11 @@
                 "spec": {
                     "username": "sbernauer",
                     "firstName": "Sebastian",
-                    "lastName": "Bernauer"
+                    "lastName": "Bernauer",
+                    "socials": {
+                        "email": "jdoe@example.com",
+                        "mastodon": "@jdoe@example.com"
+                    }
                 }
             },
             {
@@ -45,7 +55,11 @@
                     "username": "sbernauer",
                     "firstName": "Sebastian",
                     "lastName": "Bernauer",
-                    "gender": "Male"
+                    "gender": "Male",
+                    "socials": {
+                        "email": "jdoe@example.com",
+                        "mastodon": "@jdoe@example.com"
+                    }
                 }
             },
             {
@@ -56,7 +70,11 @@
                     "username": "sbernauer",
                     "firstName": "Sebastian",
                     "lastName": "Bernauer",
-                    "gender": "Male"
+                    "gender": "Male",
+                    "socials": {
+                        "email": "jdoe@example.com",
+                        "mastodon": "@jdoe@example.com"
+                    }
                 }
             }
         ]

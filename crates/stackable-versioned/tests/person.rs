@@ -1,50 +1,78 @@
-use kube::CustomResource;
+use std::{fs::File, path::Path};
+
+use kube::{CustomResource, core::conversion::ConversionReview};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use stackable_versioned::versioned;
 
+// Fixes an error with this function being marked as unused. See
+// - https://stackoverflow.com/a/67902444
+// - https://github.com/rust-lang/rust/issues/46379
+#[allow(dead_code)]
+pub fn convert_via_file(path: &Path) -> (ConversionReview, ConversionReview) {
+    let request: ConversionReview =
+        serde_json::from_reader(File::open(path).expect("failed to open test file"))
+            .expect("failed to parse ConversionReview from test file");
+    let response = Person::try_convert(request.clone());
+
+    (request, response)
+}
+
 #[versioned(
-    k8s(group = "test.stackable.tech",),
     version(name = "v1alpha1"),
     version(name = "v1alpha2"),
     version(name = "v1beta1"),
     version(name = "v2"),
-    version(name = "v3")
+    version(name = "v3"),
+    options(k8s(experimental_conversion_tracking))
 )]
-#[derive(
-    Clone,
-    Debug,
-    Eq,
-    Hash,
-    Ord,
-    PartialEq,
-    PartialOrd,
-    CustomResource,
-    Deserialize,
-    JsonSchema,
-    Serialize,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct PersonSpec {
-    username: String,
-
-    // In v1alpha2 first and last name have been added
-    #[versioned(added(since = "v1alpha2"))]
-    first_name: String,
-    #[versioned(added(since = "v1alpha2"))]
-    last_name: String,
-
-    // We started out with a enum. As we *need* to provide a default, we have a Unknown variant.
-    // Afterwards we figured let's be more flexible and accept any arbitrary String.
-    #[versioned(
-        added(since = "v2", default = "default_gender"),
-        changed(since = "v3", from_type = "Gender")
+pub mod versioned {
+    #[versioned(crd(group = "test.stackable.tech"))]
+    #[derive(
+        Clone,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+        CustomResource,
+        Deserialize,
+        JsonSchema,
+        Serialize,
     )]
-    gender: String,
-}
+    #[serde(rename_all = "camelCase")]
+    pub struct PersonSpec {
+        username: String,
 
-fn default_gender() -> Gender {
-    Gender::Unknown
+        // In v1alpha2 first and last name have been added
+        #[versioned(added(since = "v1alpha2"))]
+        first_name: String,
+
+        #[versioned(added(since = "v1alpha2"))]
+        last_name: String,
+
+        // We started out with a enum. As we *need* to provide a default, we have a Unknown variant.
+        // Afterwards we figured let's be more flexible and accept any arbitrary String.
+        #[versioned(
+            added(since = "v2", default = "default_gender"),
+            changed(since = "v3", from_type = "Gender")
+        )]
+        gender: String,
+
+        #[versioned(nested)]
+        socials: Socials,
+    }
+
+    #[derive(
+        Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord, Deserialize, Serialize, JsonSchema,
+    )]
+    pub struct Socials {
+        email: String,
+
+        #[versioned(added(since = "v1beta1"))]
+        mastodon: String,
+    }
 }
 
 #[derive(
@@ -55,6 +83,10 @@ pub enum Gender {
     Unknown,
     Male,
     Female,
+}
+
+fn default_gender() -> Gender {
+    Gender::Unknown
 }
 
 impl From<Gender> for String {
