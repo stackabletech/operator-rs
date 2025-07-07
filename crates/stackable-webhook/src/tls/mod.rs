@@ -174,9 +174,13 @@ impl TlsServer {
                     let tower_service = tower_service.expect("Infallible error can never happen");
 
                     let span = tracing::debug_span!("accept tcp connection");
-                    tokio::spawn(async move {
-                        Self::handle_request(tcp_stream, remote_addr, tls_acceptor, tower_service, self.socket_addr)
-                    }.instrument(span));
+                    tokio::spawn(
+                        async move {
+                            Self::handle_request(tcp_stream, remote_addr, tls_acceptor, tower_service, self.socket_addr)
+                            .instrument(span)
+                            .await
+                        }
+                    );
                 }
             };
         }
