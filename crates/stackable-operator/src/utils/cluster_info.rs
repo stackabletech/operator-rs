@@ -26,7 +26,7 @@ pub struct KubernetesClusterInfoOptions {
     ///
     /// Note that when running the operator on Kubernetes we recommend to use the
     /// [downward API](https://kubernetes.io/docs/concepts/workloads/pods/downward-api/)
-    /// to let Kubernetes mount the namespace as the `KUBERNETES_NODE_NAME` env variable.
+    /// to let Kubernetes project the namespace as the `KUBERNETES_NODE_NAME` env variable.
     #[arg(long, env)]
     pub kubernetes_node_name: String,
 }
