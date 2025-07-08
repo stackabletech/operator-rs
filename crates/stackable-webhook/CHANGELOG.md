@@ -25,6 +25,12 @@ All notable changes to this project will be documented in this file.
   accessible by it, which is not the case when only using loopback.
   Also, the constant `DEFAULT_SOCKET_ADDR` has been renamed to `DEFAULT_SOCKET_ADDRESS` ([#1045]).
 
+### Removed
+
+- Remove `StatefulWebhookHandler` to reduce maintenance effort.
+  Also, webhooks are ideally stateless, so that they can be scaled horizontally.
+  It can be re-added once needed ([#1066]).
+
 [#1043]: https://github.com/stackabletech/operator-rs/pull/1043
 [#1045]: https://github.com/stackabletech/operator-rs/pull/1045
 [#1066]: https://github.com/stackabletech/operator-rs/pull/1066
