@@ -655,29 +655,12 @@ mod utils;
 /// calls an entry enum. When defining the following three versions: `v1alpha1`,
 /// `v1beta1`, and `v1` the following entry enum will be generated:
 ///
-/// ```
-/// # use stackable_versioned_macros::versioned;
-/// # use kube::CustomResource;
-/// # use schemars::JsonSchema;
-/// # use serde::{Deserialize, Serialize};
-/// # #[versioned(
-/// #     version(name = "v1alpha1"),
-/// #     version(name = "v1beta1"),
-/// #     version(name = "v1"),
-/// #     skip(merged_crd, try_convert)
-/// # )]
-/// # mod versioned {
-/// #     #[versioned(crd(group = "example.com"))]
-/// #     #[derive(Clone, Debug, Deserialize, Serialize, CustomResource, JsonSchema)]
-/// #     pub struct FooSpec {}
-/// # }
-/// #[derive(::core::fmt::Debug)]
+/// ```ignore
 /// pub enum Foo {
 ///     V1Alpha1(v1alpha1::Foo),
 ///     V1Beta1(v1beta1::Foo),
 ///     V1(v1::Foo),
 /// }
-/// # fn main() {}
 /// ```
 ///
 /// ## Merge CRD Versions
