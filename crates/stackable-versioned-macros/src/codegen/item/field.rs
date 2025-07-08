@@ -151,7 +151,13 @@ impl VersionedField {
         version: &VersionDefinition,
         next_version: &VersionDefinition,
         from_struct_ident: &IdentString,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
     ) -> Option<TokenStream> {
+        let experimental_conversion_tracking = mod_gen_ctx
+            .kubernetes_options
+            .experimental_conversion_tracking
+            .is_present();
+
         match &self.changes {
             Some(changes) => {
                 let next_change = changes.get_expect(&next_version.inner);
@@ -190,10 +196,12 @@ impl VersionedField {
                             }),
                             // Default .into() call using From impls.
                             None => {
-                                let json_path_ident =
-                                    format_ident!("__sv_{ident}_path", ident = to_ident.as_ident());
+                                if self.nested && experimental_conversion_tracking {
+                                    let json_path_ident = format_ident!(
+                                        "__sv_{ident}_path",
+                                        ident = to_ident.as_ident()
+                                    );
 
-                                if self.nested {
                                     Some(quote! {
                                         #to_ident: #from_struct_ident.#from_ident.tracking_into(status, #json_path_ident),
                                     })
@@ -209,12 +217,12 @@ impl VersionedField {
                                 #from_ident: #downgrade_fn(#from_struct_ident.#to_ident),
                             }),
                             None => {
-                                let json_path_ident = format_ident!(
-                                    "__sv_{ident}_path",
-                                    ident = from_ident.as_ident()
-                                );
+                                if self.nested && experimental_conversion_tracking {
+                                    let json_path_ident = format_ident!(
+                                        "__sv_{ident}_path",
+                                        ident = from_ident.as_ident()
+                                    );
 
-                                if self.nested {
                                     Some(quote! {
                                         #from_ident: #from_struct_ident.#to_ident.tracking_into(status, #json_path_ident),
                                     })
@@ -235,12 +243,12 @@ impl VersionedField {
                         // in some edge cases.
                         match direction {
                             Direction::Upgrade => {
-                                let json_path_ident = format_ident!(
-                                    "__sv_{ident}_path",
-                                    ident = next_field_ident.as_ident()
-                                );
+                                if self.nested && experimental_conversion_tracking {
+                                    let json_path_ident = format_ident!(
+                                        "__sv_{ident}_path",
+                                        ident = next_field_ident.as_ident()
+                                    );
 
-                                if self.nested {
                                     Some(quote! {
                                         #next_field_ident: #from_struct_ident.#old_field_ident.tracking_into(status, #json_path_ident),
                                     })
@@ -259,10 +267,11 @@ impl VersionedField {
             }
             None => {
                 let field_ident = &*self.ident;
-                let json_path_ident =
-                    format_ident!("__sv_{ident}_path", ident = field_ident.as_ident());
 
-                if self.nested {
+                if self.nested && experimental_conversion_tracking {
+                    let json_path_ident =
+                        format_ident!("__sv_{ident}_path", ident = field_ident.as_ident());
+
                     Some(quote! {
                         #field_ident: #from_struct_ident.#field_ident.tracking_into(status, &#json_path_ident),
                     })

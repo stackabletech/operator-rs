@@ -469,7 +469,13 @@ impl Struct {
             self.fields
                 .iter()
                 .filter_map(|f| {
-                    f.generate_for_from_impl(direction, version, next_version, from_struct_ident)
+                    f.generate_for_from_impl(
+                        direction,
+                        version,
+                        next_version,
+                        from_struct_ident,
+                        mod_gen_ctx,
+                    )
                 })
                 .collect()
         };
