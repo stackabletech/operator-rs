@@ -264,7 +264,7 @@ impl VersionedField {
 
                 if self.nested {
                     Some(quote! {
-                        #field_ident: #from_struct_ident.#field_ident.tracking_into(status, &#json_path_ident)
+                        #field_ident: #from_struct_ident.#field_ident.tracking_into(status, &#json_path_ident),
                     })
                 } else {
                     Some(quote! {
