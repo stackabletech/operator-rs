@@ -20,6 +20,7 @@
           }
         },
         "status": {
+          "alive": true,
           "changedValues": {
             "downgrades": {},
             "upgrades": {}

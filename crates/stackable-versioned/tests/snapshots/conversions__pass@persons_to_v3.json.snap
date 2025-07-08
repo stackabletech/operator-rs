@@ -31,6 +31,7 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "username": "sbernauer"
         },
         "status": {
+          "alive": true,
           "changedValues": {
             "downgrades": {},
             "upgrades": {}
@@ -52,6 +53,7 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "username": "sbernauer"
         },
         "status": {
+          "alive": true,
           "changedValues": {
             "downgrades": {},
             "upgrades": {}
@@ -73,6 +75,7 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "username": "sbernauer"
         },
         "status": {
+          "alive": true,
           "changedValues": {
             "downgrades": {},
             "upgrades": {}
@@ -94,6 +97,7 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
           "username": "sbernauer"
         },
         "status": {
+          "alive": true,
           "changedValues": {
             "downgrades": {},
             "upgrades": {}

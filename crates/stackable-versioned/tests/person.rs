@@ -48,20 +48,8 @@ pub fn roundtrip_conversion_review(
     options(k8s(experimental_conversion_tracking))
 )]
 pub mod versioned {
-    #[versioned(crd(group = "test.stackable.tech"))]
-    #[derive(
-        Clone,
-        Debug,
-        Eq,
-        Hash,
-        Ord,
-        PartialEq,
-        PartialOrd,
-        CustomResource,
-        Deserialize,
-        JsonSchema,
-        Serialize,
-    )]
+    #[versioned(crd(group = "test.stackable.tech", status = "PersonStatus"))]
+    #[derive(Clone, Debug, CustomResource, Deserialize, JsonSchema, Serialize)]
     #[serde(rename_all = "camelCase")]
     pub struct PersonSpec {
         username: String,
@@ -85,9 +73,7 @@ pub mod versioned {
         socials: Socials,
     }
 
-    #[derive(
-        Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord, Deserialize, Serialize, JsonSchema,
-    )]
+    #[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
     pub struct Socials {
         email: String,
 
@@ -96,9 +82,18 @@ pub mod versioned {
     }
 }
 
-#[derive(
-    Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, JsonSchema, Serialize,
-)]
+#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+pub struct PersonStatus {
+    pub alive: bool,
+}
+
+impl Default for PersonStatus {
+    fn default() -> Self {
+        Self { alive: true }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "PascalCase")]
 pub enum Gender {
     Unknown,
