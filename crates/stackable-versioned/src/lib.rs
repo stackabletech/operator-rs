@@ -9,7 +9,7 @@
 //!
 //! See [`versioned`] for an in-depth usage guide and a list of supported arguments.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use schemars::schema::{InstanceType, Schema, SchemaObject, SingleOrVec};
 use snafu::{ErrorCompat, Snafu};
@@ -67,10 +67,10 @@ pub trait TrackingStatus {
 #[derive(Clone, Debug, Default, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
 pub struct ChangedValues {
     /// List of values needed when downgrading to a particular version.
-    pub downgrades: HashMap<String, Vec<ChangedValue>>,
+    pub downgrades: BTreeMap<String, Vec<ChangedValue>>,
 
     /// List of values needed when upgrading to a particular version.
-    pub upgrades: HashMap<String, Vec<ChangedValue>>,
+    pub upgrades: BTreeMap<String, Vec<ChangedValue>>,
     // TODO (@Techassi): Add a version indicator here if we ever decide to change the tracking
     // mechanism.
 }
