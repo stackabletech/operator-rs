@@ -171,8 +171,5 @@ pub struct UnknownDesiredApiVersionError {
 }
 
 pub fn jthong_path(parent: &str, child: &str) -> String {
-    match parent.is_empty() {
-        true => child.to_owned(),
-        false => format!("{parent}.{child}"),
-    }
+    format!("{parent}.{child}")
 }

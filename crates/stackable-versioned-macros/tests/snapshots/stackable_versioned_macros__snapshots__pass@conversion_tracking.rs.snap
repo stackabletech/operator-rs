@@ -24,7 +24,7 @@ impl ::core::convert::From<v1alpha1::Foo> for v1beta1::Foo {
         let spec = <v1beta1::FooSpec as ::stackable_versioned::TrackingFrom<
             _,
             _,
-        >>::tracking_from(__sv_foo.spec, &mut status, "");
+        >>::tracking_from(__sv_foo.spec, &mut status, "$");
         Self {
             metadata: __sv_foo.metadata,
             status: Some(status),
@@ -39,7 +39,7 @@ impl ::core::convert::From<v1beta1::Foo> for v1alpha1::Foo {
         let spec = <v1alpha1::FooSpec as ::stackable_versioned::TrackingFrom<
             _,
             _,
-        >>::tracking_from(__sv_foo.spec, &mut status, "");
+        >>::tracking_from(__sv_foo.spec, &mut status, "$");
         Self {
             metadata: __sv_foo.metadata,
             status: Some(status),
@@ -126,7 +126,7 @@ impl ::core::convert::From<v1beta1::Foo> for v1::Foo {
         let spec = <v1::FooSpec as ::stackable_versioned::TrackingFrom<
             _,
             _,
-        >>::tracking_from(__sv_foo.spec, &mut status, "");
+        >>::tracking_from(__sv_foo.spec, &mut status, "$");
         Self {
             metadata: __sv_foo.metadata,
             status: Some(status),
@@ -141,7 +141,7 @@ impl ::core::convert::From<v1::Foo> for v1beta1::Foo {
         let spec = <v1beta1::FooSpec as ::stackable_versioned::TrackingFrom<
             _,
             _,
-        >>::tracking_from(__sv_foo.spec, &mut status, "");
+        >>::tracking_from(__sv_foo.spec, &mut status, "$");
         Self {
             metadata: __sv_foo.metadata,
             status: Some(status),

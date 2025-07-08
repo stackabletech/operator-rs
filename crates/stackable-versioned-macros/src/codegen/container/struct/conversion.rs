@@ -74,7 +74,7 @@ impl Struct {
                         <#for_module_ident::#spec_struct_ident as #versioned_path::TrackingFrom<_, _>>::tracking_from(
                             #from_struct_parameter_ident.spec,
                             &mut status,
-                            "",
+                            "$",
                         );
 
                     // Construct the final object by copying over the metadata, setting the status and

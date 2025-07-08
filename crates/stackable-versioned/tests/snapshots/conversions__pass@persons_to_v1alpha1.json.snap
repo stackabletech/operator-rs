@@ -44,11 +44,11 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
             "upgrades": {
               "v1alpha2": [
                 {
-                  "fieldName": "first_name",
+                  "fieldName": "$.first_name",
                   "value": "John"
                 },
                 {
-                  "fieldName": "last_name",
+                  "fieldName": "$.last_name",
                   "value": "Doe"
                 }
               ]
@@ -73,17 +73,17 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
             "upgrades": {
               "v1alpha2": [
                 {
-                  "fieldName": "first_name",
+                  "fieldName": "$.first_name",
                   "value": "John"
                 },
                 {
-                  "fieldName": "last_name",
+                  "fieldName": "$.last_name",
                   "value": "Doe"
                 }
               ],
               "v1beta1": [
                 {
-                  "fieldName": "socials.mastodon",
+                  "fieldName": "$.socials.mastodon",
                   "value": "@jdoe@example.com"
                 }
               ]
@@ -108,23 +108,23 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
             "upgrades": {
               "v1alpha2": [
                 {
-                  "fieldName": "first_name",
+                  "fieldName": "$.first_name",
                   "value": "John"
                 },
                 {
-                  "fieldName": "last_name",
+                  "fieldName": "$.last_name",
                   "value": "Doe"
                 }
               ],
               "v1beta1": [
                 {
-                  "fieldName": "socials.mastodon",
+                  "fieldName": "$.socials.mastodon",
                   "value": "@jdoe@example.com"
                 }
               ],
               "v2": [
                 {
-                  "fieldName": "gender",
+                  "fieldName": "$.gender",
                   "value": "Male"
                 }
               ]
@@ -149,23 +149,23 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
             "upgrades": {
               "v1alpha2": [
                 {
-                  "fieldName": "first_name",
+                  "fieldName": "$.first_name",
                   "value": "John"
                 },
                 {
-                  "fieldName": "last_name",
+                  "fieldName": "$.last_name",
                   "value": "Doe"
                 }
               ],
               "v1beta1": [
                 {
-                  "fieldName": "socials.mastodon",
+                  "fieldName": "$.socials.mastodon",
                   "value": "@jdoe@example.com"
                 }
               ],
               "v2": [
                 {
-                  "fieldName": "gender",
+                  "fieldName": "$.gender",
                   "value": "Male"
                 }
               ]
