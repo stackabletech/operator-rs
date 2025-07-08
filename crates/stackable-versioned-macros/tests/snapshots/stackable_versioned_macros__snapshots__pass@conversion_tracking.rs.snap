@@ -64,9 +64,9 @@ where
             baz: __sv_foospec.baz.into(),
         };
         if let Some(upgrades) = status.changes().upgrades.remove(&"v1beta1".to_owned()) {
-            for ::stackable_versioned::ChangedValue { field_name, value } in upgrades {
-                match field_name {
-                    field_name if field_name == __sv_bah_path => {
+            for ::stackable_versioned::ChangedValue { json_path, value } in upgrades {
+                match json_path {
+                    json_path if json_path == __sv_bah_path => {
                         spec.bah = serde_yaml::from_value(value).unwrap();
                     }
                     _ => unreachable!(),
@@ -95,7 +95,7 @@ where
             .or_default();
         upgrades
             .push(::stackable_versioned::ChangedValue {
-                field_name: __sv_bah_path,
+                json_path: __sv_bah_path,
                 value: ::serde_yaml::to_value(&__sv_foospec.bah).unwrap(),
             });
         let mut spec = Self {

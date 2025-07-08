@@ -316,7 +316,7 @@ impl VersionedField {
 
                         Some(quote! {
                             upgrades.push(#versioned_path::ChangedValue {
-                                field_name: #json_path_ident,
+                                json_path: #json_path_ident,
                                 value: #serde_yaml_path::to_value(&#from_struct_ident.#ident).unwrap(),
                             });
                         })
@@ -347,7 +347,7 @@ impl VersionedField {
                         let json_path_ident = format_ident!("__sv_{}_path", ident.as_ident());
 
                         Some(quote! {
-                            field_name if field_name == #json_path_ident => {
+                            json_path if json_path == #json_path_ident => {
                                 spec.#ident = serde_yaml::from_value(value).unwrap();
                             },
                         })

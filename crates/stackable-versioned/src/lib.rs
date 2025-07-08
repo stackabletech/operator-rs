@@ -80,7 +80,7 @@ pub struct ChangedValues {
 #[serde(rename_all = "camelCase")]
 pub struct ChangedValue {
     /// The name of the field of the custom resource this value is for.
-    pub field_name: String,
+    pub json_path: String,
 
     /// The value to be used when upgrading or downgrading the custom resource.
     #[schemars(schema_with = "raw_object_schema")]

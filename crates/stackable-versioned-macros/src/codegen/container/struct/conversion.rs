@@ -280,8 +280,8 @@ impl Struct {
                 Some(quote! {
                     // NOTE (@Techassi): This is an awkward thing to do. Can we possibly use &str for the keys here?
                     if let Some(upgrades) = status.changes().upgrades.remove(&#next_version_string.to_owned()) {
-                        for #versioned_path::ChangedValue { field_name, value } in upgrades {
-                            match field_name {
+                        for #versioned_path::ChangedValue { json_path, value } in upgrades {
+                            match json_path {
                                 #match_arms
                                 _ => unreachable!(),
                             }
