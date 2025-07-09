@@ -17,7 +17,8 @@ use crate::{
 pub enum ConnectionError {
     #[snafu(display("failed to retrieve S3 connection '{s3_connection}'"))]
     RetrieveS3Connection {
-        source: crate::client::Error,
+        #[snafu(source(from(crate::client::Error, Box::new)))]
+        source: Box<crate::client::Error>,
         s3_connection: String,
     },
 
@@ -37,11 +38,15 @@ pub enum ConnectionError {
     AddS3TlsClientDetailsVolumes { source: TlsClientDetailsError },
 
     #[snafu(display("failed to add required volumes"))]
-    AddVolumes { source: crate::builder::pod::Error },
+    AddVolumes {
+        #[snafu(source(from(crate::builder::pod::Error, Box::new)))]
+        source: Box<crate::builder::pod::Error>,
+    },
 
     #[snafu(display("failed to add required volumeMounts"))]
     AddVolumeMounts {
-        source: crate::builder::pod::container::Error,
+        #[snafu(source(from(crate::builder::pod::container::Error, Box::new)))]
+        source: Box<crate::builder::pod::container::Error>,
     },
 }
 

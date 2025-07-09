@@ -160,6 +160,7 @@ pub fn config_for_role_and_group<'a>(
     Ok(result)
 }
 
+#[allow(clippy::doc_overindented_list_items)]
 /// Given the configuration parameters of all `roles` partition them by `PropertyNameKind` and
 /// merge them with the role groups configuration parameters.
 ///
@@ -197,6 +198,7 @@ where
     Ok(result)
 }
 
+#[allow(clippy::doc_overindented_list_items)]
 /// Validates a product configuration for all roles and role_groups. Requires a valid product config
 /// and [`RoleConfigByPropertyKind`] which can be obtained via `transform_all_roles_to_config`.
 ///
@@ -239,6 +241,7 @@ pub fn validate_all_roles_and_groups_config(
     Ok(result)
 }
 
+#[allow(clippy::doc_overindented_list_items)]
 /// Calculates and validates a product configuration for a role and group. Requires a valid
 /// product config and existing [`RoleConfigByPropertyKind`] that can be obtained via
 /// `transform_all_roles_to_config`.
@@ -283,6 +286,7 @@ fn validate_role_and_group_config(
     Ok(result)
 }
 
+#[allow(clippy::doc_overindented_list_items)]
 /// This transforms the [`product_config::PropertyValidationResult`] back into a pure BTreeMap which can be used
 /// to set properties for config files, cli or environmental variables.
 /// Default values are ignored, Recommended and Valid values are used as is. For Warning and
