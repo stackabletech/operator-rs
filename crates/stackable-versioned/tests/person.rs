@@ -63,10 +63,7 @@ pub mod versioned {
 
         // We started out with a enum. As we *need* to provide a default, we have a Unknown variant.
         // Afterwards we figured let's be more flexible and accept any arbitrary String.
-        #[versioned(
-            added(since = "v2", default = "default_gender"),
-            changed(since = "v3", from_type = "Gender")
-        )]
+        #[versioned(added(since = "v2"), changed(since = "v3", from_type = "Gender"))]
         gender: String,
 
         #[versioned(nested)]
@@ -93,16 +90,13 @@ impl Default for PersonStatus {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
 #[serde(rename_all = "PascalCase")]
 pub enum Gender {
+    #[default]
     Unknown,
     Male,
     Female,
-}
-
-fn default_gender() -> Gender {
-    Gender::Unknown
 }
 
 impl From<Gender> for String {
