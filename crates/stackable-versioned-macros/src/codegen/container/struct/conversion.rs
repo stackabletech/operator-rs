@@ -310,7 +310,14 @@ impl Struct {
                 c.value_is(&version.inner, |s| {
                     // For now, only added fields need to be tracked. In the future, removals and
                     // type changes also need to be tracked
-                    matches!(s, ItemStatus::Addition { .. })
+                    match s {
+                        ItemStatus::Addition { .. } => true,
+                        // TODO (@Techassi): Support tracking for changed fields
+                        ItemStatus::Change { .. }
+                        | ItemStatus::Deprecation { .. }
+                        | ItemStatus::NoChange { .. }
+                        | ItemStatus::NotPresent => false,
+                    }
                 })
             })
         })
