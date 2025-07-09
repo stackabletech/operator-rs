@@ -34,6 +34,8 @@ convert_case.workspace = true
 darling.workspace = true
 indoc.workspace = true
 itertools.workspace = true
+k8s-openapi.workspace = true
+kube.workspace = true
 proc-macro2.workspace = true
 syn.workspace = true
 quote.workspace = true
@@ -43,8 +45,6 @@ quote.workspace = true
 stackable-versioned = { path = "../stackable-versioned" }
 
 insta.workspace = true
-k8s-openapi.workspace = true
-kube.workspace = true
 prettyplease.workspace = true
 regex.workspace = true
 rstest.workspace = true
