@@ -84,6 +84,11 @@ pub enum Error {
 
     #[snafu(display("unable to create kubernetes client"))]
     CreateKubeClient { source: kube::Error },
+
+    #[snafu(display("unable to fetch cluster information from kubelet"))]
+    NewKubeletClusterInfo {
+        source: crate::utils::cluster_info::Error,
+    },
 }
 
 /// This `Client` can be used to access Kubernetes.
@@ -518,15 +523,19 @@ impl Client {
     ///
     /// ```no_run
     /// use std::time::Duration;
+    /// use clap::Parser;
     /// use tokio::time::error::Elapsed;
     /// use kube::runtime::watcher;
     /// use k8s_openapi::api::core::v1::Pod;
-    /// use stackable_operator::client::{Client, initialize_operator};
+    /// use stackable_operator::{
+    ///     client::{Client, initialize_operator},
+    ///     utils::cluster_info::KubernetesClusterInfoOpts,
+    /// };
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///
-    /// let client = initialize_operator(None, &Default::default())
+    /// let cluster_info_opts = KubernetesClusterInfoOpts::parse();
+    /// let client = initialize_operator(None, &cluster_info_opts)
     ///     .await
     ///     .expect("Unable to construct client.");
     /// let watcher_config: watcher::Config =
@@ -651,7 +660,9 @@ pub async fn initialize_operator(
         .context(InferKubeConfigSnafu)?;
     let default_namespace = kubeconfig.default_namespace.clone();
     let client = kube::Client::try_from(kubeconfig).context(CreateKubeClientSnafu)?;
-    let cluster_info = KubernetesClusterInfo::new(cluster_info_opts);
+    let cluster_info = KubernetesClusterInfo::new(&client, cluster_info_opts)
+        .await
+        .context(NewKubeletClusterInfoSnafu)?;
 
     Ok(Client::new(
         client,
@@ -676,10 +687,26 @@ mod tests {
     };
     use tokio::time::error::Elapsed;
 
+    use crate::utils::cluster_info::KubernetesClusterInfoOpts;
+
+    async fn test_cluster_info_opts() -> KubernetesClusterInfoOpts {
+        KubernetesClusterInfoOpts {
+            // We have to hard-code a made-up cluster domain,
+            // since kubernetes_node_name (probably) won't be a valid Node that we can query.
+            kubernetes_cluster_domain: Some(
+                "fake-cluster.local"
+                    .parse()
+                    .expect("hard-coded cluster domain must be valid"),
+            ),
+            // Tests aren't running in a kubelet, so make up a name of one.
+            kubernetes_node_name: "fake-node-name".to_string(),
+        }
+    }
+
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created() {
-        let client = super::initialize_operator(None, &Default::default())
+        let client = super::initialize_operator(None, &test_cluster_info_opts().await)
             .await
             .expect("KUBECONFIG variable must be configured.");
 
@@ -757,7 +784,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_wait_created_timeout() {
-        let client = super::initialize_operator(None, &Default::default())
+        let client = super::initialize_operator(None, &test_cluster_info_opts().await)
             .await
             .expect("KUBECONFIG variable must be configured.");
 
@@ -777,7 +804,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "Tests depending on Kubernetes are not ran by default"]
     async fn k8s_test_list_with_label_selector() {
-        let client = super::initialize_operator(None, &Default::default())
+        let client = super::initialize_operator(None, &test_cluster_info_opts().await)
             .await
             .expect("KUBECONFIG variable must be configured.");
 
