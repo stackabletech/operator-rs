@@ -203,7 +203,7 @@ impl VersionedField {
                                     );
 
                                     Some(quote! {
-                                        #to_ident: #from_struct_ident.#from_ident.tracking_into(status, #json_path_ident),
+                                        #to_ident: #from_struct_ident.#from_ident.tracking_into(status, &#json_path_ident),
                                     })
                                 } else {
                                     Some(quote! {
@@ -224,7 +224,7 @@ impl VersionedField {
                                     );
 
                                     Some(quote! {
-                                        #from_ident: #from_struct_ident.#to_ident.tracking_into(status, #json_path_ident),
+                                        #from_ident: #from_struct_ident.#to_ident.tracking_into(status, &#json_path_ident),
                                     })
                                 } else {
                                     Some(quote! {
@@ -250,7 +250,7 @@ impl VersionedField {
                                     );
 
                                     Some(quote! {
-                                        #next_field_ident: #from_struct_ident.#old_field_ident.tracking_into(status, #json_path_ident),
+                                        #next_field_ident: #from_struct_ident.#old_field_ident.tracking_into(status, &#json_path_ident),
                                     })
                                 } else {
                                     Some(quote! {
