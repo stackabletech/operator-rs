@@ -881,6 +881,7 @@ mod utils;
 /// #[versioned(
 ///     version(name = "v1alpha1"),
 ///     version(name = "v1beta1"),
+///     options(k8s(experimental_conversion_tracking))
 /// )]
 /// mod versioned {
 ///     #[versioned(crd(group = "example.com"))]
