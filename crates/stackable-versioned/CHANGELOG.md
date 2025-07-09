@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.8.0] - 2025-07-09
+
 ### Added
 
 - Add support for CRD conversions via ConversionReviews ([#1050], [#1061]).

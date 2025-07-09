@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.94.0] - 2025-07-09
+
 ### Added
 
 - The default Kubernetes cluster domain name is now fetched from the kubelet API unless explicitly configured ([#1068], [#1071])
