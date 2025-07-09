@@ -26,9 +26,14 @@ pub struct VersionedField {
 }
 
 impl VersionedField {
-    pub fn new(field: Field, versions: &[VersionDefinition]) -> Result<Self> {
+    pub fn new(
+        field: Field,
+        versions: &[VersionDefinition],
+        experimental_conversion_tracking: bool,
+    ) -> Result<Self> {
         let field_attributes = FieldAttributes::from_field(&field)?;
         field_attributes.validate_versions(versions)?;
+        field_attributes.validate_nested_flag(experimental_conversion_tracking)?;
 
         let ident = field
             .ident
@@ -151,13 +156,7 @@ impl VersionedField {
         version: &VersionDefinition,
         next_version: &VersionDefinition,
         from_struct_ident: &IdentString,
-        mod_gen_ctx: ModuleGenerationContext<'_>,
     ) -> Option<TokenStream> {
-        let experimental_conversion_tracking = mod_gen_ctx
-            .kubernetes_options
-            .experimental_conversion_tracking
-            .is_present();
-
         match &self.changes {
             Some(changes) => {
                 let next_change = changes.get_expect(&next_version.inner);
@@ -196,7 +195,7 @@ impl VersionedField {
                             }),
                             // Default .into() call using From impls.
                             None => {
-                                if self.nested && experimental_conversion_tracking {
+                                if self.nested {
                                     let json_path_ident = format_ident!(
                                         "__sv_{ident}_path",
                                         ident = to_ident.as_ident()
@@ -217,7 +216,7 @@ impl VersionedField {
                                 #from_ident: #downgrade_fn(#from_struct_ident.#to_ident),
                             }),
                             None => {
-                                if self.nested && experimental_conversion_tracking {
+                                if self.nested {
                                     let json_path_ident = format_ident!(
                                         "__sv_{ident}_path",
                                         ident = from_ident.as_ident()
@@ -243,7 +242,7 @@ impl VersionedField {
                         // in some edge cases.
                         match direction {
                             Direction::Upgrade => {
-                                if self.nested && experimental_conversion_tracking {
+                                if self.nested {
                                     let json_path_ident = format_ident!(
                                         "__sv_{ident}_path",
                                         ident = next_field_ident.as_ident()
@@ -268,7 +267,7 @@ impl VersionedField {
             None => {
                 let field_ident = &*self.ident;
 
-                if self.nested && experimental_conversion_tracking {
+                if self.nested {
                     let json_path_ident =
                         format_ident!("__sv_{ident}_path", ident = field_ident.as_ident());
 

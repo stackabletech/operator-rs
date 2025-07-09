@@ -60,9 +60,17 @@ impl Module {
                     };
                 }
                 Item::Struct(item_struct) => {
-                    if let Some(container) =
-                        errors.handle(Container::new_struct(item_struct, &versions))
-                    {
+                    let experimental_conversion_tracking = module_attributes
+                        .options
+                        .kubernetes
+                        .experimental_conversion_tracking
+                        .is_present();
+
+                    if let Some(container) = errors.handle(Container::new_struct(
+                        item_struct,
+                        &versions,
+                        experimental_conversion_tracking,
+                    )) {
                         containers.push(container);
                     }
                 }

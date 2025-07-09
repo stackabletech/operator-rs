@@ -21,12 +21,17 @@ mod conversion;
 mod merge;
 
 impl Container {
-    pub fn new_struct(item_struct: ItemStruct, versions: &[VersionDefinition]) -> Result<Self> {
+    pub fn new_struct(
+        item_struct: ItemStruct,
+        versions: &[VersionDefinition],
+        experimental_conversion_tracking: bool,
+    ) -> Result<Self> {
         let attributes = ContainerAttributes::from_attributes(&item_struct.attrs)?;
 
         let mut versioned_fields = Vec::new();
         for field in item_struct.fields {
-            let mut versioned_field = VersionedField::new(field, versions)?;
+            let mut versioned_field =
+                VersionedField::new(field, versions, experimental_conversion_tracking)?;
             versioned_field.insert_container_versions(versions);
             versioned_fields.push(versioned_field);
         }
@@ -469,13 +474,7 @@ impl Struct {
             self.fields
                 .iter()
                 .filter_map(|f| {
-                    f.generate_for_from_impl(
-                        direction,
-                        version,
-                        next_version,
-                        from_struct_ident,
-                        mod_gen_ctx,
-                    )
+                    f.generate_for_from_impl(direction, version, next_version, from_struct_ident)
                 })
                 .collect()
         };
