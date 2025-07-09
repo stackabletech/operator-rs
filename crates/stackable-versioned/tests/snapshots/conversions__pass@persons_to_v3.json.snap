@@ -16,7 +16,7 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "apiVersion": "test.stackable.tech/v3",
         "kind": "Person",
         "metadata": {
-          "name": "sbernauer",
+          "name": "jdoe",
           "namespace": "default",
           "uid": "d41e2019-5de3-409c-a7b2-0799ecb95e4b"
         },
@@ -28,7 +28,7 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
             "email": "jdoe@example.com",
             "mastodon": ""
           },
-          "username": "sbernauer"
+          "username": "jdoe"
         },
         "status": {
           "alive": true,
@@ -43,14 +43,14 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "kind": "Person",
         "metadata": {},
         "spec": {
-          "firstName": "Sebastian",
+          "firstName": "John",
           "gender": "Unknown",
-          "lastName": "Bernauer",
+          "lastName": "Doe",
           "socials": {
             "email": "jdoe@example.com",
             "mastodon": ""
           },
-          "username": "sbernauer"
+          "username": "jdoe"
         },
         "status": {
           "alive": true,
@@ -65,14 +65,14 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "kind": "Person",
         "metadata": {},
         "spec": {
-          "firstName": "Sebastian",
+          "firstName": "John",
           "gender": "Unknown",
-          "lastName": "Bernauer",
+          "lastName": "Doe",
           "socials": {
             "email": "jdoe@example.com",
             "mastodon": "@jdoe@example.com"
           },
-          "username": "sbernauer"
+          "username": "jdoe"
         },
         "status": {
           "alive": true,
@@ -87,14 +87,14 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "kind": "Person",
         "metadata": {},
         "spec": {
-          "firstName": "Sebastian",
+          "firstName": "John",
           "gender": "Male",
-          "lastName": "Bernauer",
+          "lastName": "Doe",
           "socials": {
             "email": "jdoe@example.com",
             "mastodon": "@jdoe@example.com"
           },
-          "username": "sbernauer"
+          "username": "jdoe"
         },
         "status": {
           "alive": true,
@@ -109,14 +109,14 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "kind": "Person",
         "metadata": {},
         "spec": {
-          "firstName": "Sebastian",
+          "firstName": "John",
           "gender": "Male",
-          "lastName": "Bernauer",
+          "lastName": "Doe",
           "socials": {
             "email": "jdoe@example.com",
             "mastodon": "@jdoe@example.com"
           },
-          "username": "sbernauer"
+          "username": "jdoe"
         }
       }
     ]
