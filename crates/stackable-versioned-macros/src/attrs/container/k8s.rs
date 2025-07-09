@@ -15,11 +15,11 @@ use crate::attrs::common::Override;
 /// - `group`: Set the group of the CR object, usually the domain of the company.
 ///   This argument is Required.
 /// - `kind`: Override the kind field of the CR object. This defaults to the struct
-///    name (without the 'Spec' suffix).
+///   name (without the 'Spec' suffix).
 /// - `singular`: Set the singular name of the CR object.
 /// - `plural`: Set the plural name of the CR object.
 /// - `namespaced`: Indicate that this is a namespaced scoped resource rather than a
-///    cluster scoped resource.
+///   cluster scoped resource.
 /// - `crates`: Override specific crates.
 /// - `status`: Set the specified struct as the status subresource.
 /// - `shortname`: Set a shortname for the CR object. This can be specified multiple
