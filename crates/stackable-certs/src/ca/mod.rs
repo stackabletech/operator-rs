@@ -128,7 +128,8 @@ where
 {
     #[snafu(display("failed to retrieve secret \"{secret_ref}\""))]
     GetSecret {
-        source: kube::Error,
+        #[snafu(source(from(kube::Error, Box::new)))]
+        source: Box<kube::Error>,
         secret_ref: SecretReference,
     },
 
@@ -146,7 +147,8 @@ where
 
     #[snafu(display("failed to read PEM-encoded certificate chain from secret {secret:?}"))]
     ReadChain {
-        source: x509_cert::der::Error,
+        #[snafu(source(from(x509_cert::der::Error, Box::new)))]
+        source: Box<x509_cert::der::Error>,
         secret: ObjectRef<Secret>,
     },
 
@@ -154,7 +156,10 @@ where
     DecodeUtf8String { source: std::str::Utf8Error },
 
     #[snafu(display("failed to deserialize private key from PEM"))]
-    DeserializeKeyFromPem { source: E },
+    DeserializeKeyFromPem {
+        #[snafu(source(from(E, Box::new)))]
+        source: Box<E>,
+    },
 }
 
 /// A certificate authority (CA) which is used to generate and sign

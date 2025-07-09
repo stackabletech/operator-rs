@@ -517,7 +517,7 @@ mod utils;
 ///   only be used in combination with the `from_type` argument. The expected
 ///   function signature is: `fn (OLD_TYPE) -> NEW_TYPE`. This function must
 ///   not fail.
-///- `downgrade_with` to provide a custom downgrade function. This argument can
+/// - `downgrade_with` to provide a custom downgrade function. This argument can
 ///   only be used in combination with the `from_type` argument. The expected
 ///   function signature is: `fn (NEW_TYPE) -> OLD_TYPE`. This function must
 ///   not fail.
@@ -551,7 +551,7 @@ mod utils;
 /// 1. In version `v1alpha1` the field is named `prev_bar` and uses a `u16`.
 /// 2. In the next version, `v1beta1`, the field is now named `bar` and uses
 ///    `usize` instead of a `u16`. The conversion implementations transforms the
-///     type automatically.
+///    type automatically.
 ///
 /// ```ignore
 /// pub mod v1alpha1 {

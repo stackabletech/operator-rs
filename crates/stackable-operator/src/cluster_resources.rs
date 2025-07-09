@@ -53,7 +53,10 @@ pub enum Error {
     MissingObjectKey { key: &'static str },
 
     #[snafu(display("failed to list cluster resources with label selector"))]
-    ListClusterResources { source: crate::client::Error },
+    ListClusterResources {
+        #[snafu(source(from(crate::client::Error, Box::new)))]
+        source: Box<crate::client::Error>,
+    },
 
     #[snafu(display("label {label:?} is missing"))]
     MissingLabel { label: &'static str },
@@ -68,13 +71,22 @@ pub enum Error {
     },
 
     #[snafu(display("failed to get resource"))]
-    GetResource { source: crate::client::Error },
+    GetResource {
+        #[snafu(source(from(crate::client::Error, Box::new)))]
+        source: Box<crate::client::Error>,
+    },
 
     #[snafu(display("failed to apply patch"))]
-    ApplyPatch { source: crate::client::Error },
+    ApplyPatch {
+        #[snafu(source(from(crate::client::Error, Box::new)))]
+        source: Box<crate::client::Error>,
+    },
 
     #[snafu(display("failed to delete orphaned resource"))]
-    DeleteOrphanedResource { source: crate::client::Error },
+    DeleteOrphanedResource {
+        #[snafu(source(from(crate::client::Error, Box::new)))]
+        source: Box<crate::client::Error>,
+    },
 }
 
 /// A cluster resource handled by [`ClusterResources`].

@@ -36,6 +36,7 @@ pub struct CommonContainerData {
 /// Abstracting away with kind of container is generated makes it possible to create a list of
 /// containers when the macro is used on modules. This enum provides functions to generate code
 /// which then internally call the appropriate function based on the variant.
+#[allow(clippy::large_enum_variant)]
 pub enum Container {
     Struct(Struct),
     Enum(Enum),
