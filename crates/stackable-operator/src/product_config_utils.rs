@@ -167,9 +167,9 @@ pub fn config_for_role_and_group<'a>(
 /// the values are the merged configuration properties "bucketed" by `PropertyNameKind`.
 ///
 /// # Arguments
-/// - `resource`  - Not used directly. It's passed on to the `Configuration::compute_*` calls.
-/// - `roles`     - A map keyed by role names. The value is a tuple of a vector of `PropertyNameKind`
-///                 like (Cli, Env or Files) and [`crate::role_utils::Role`] with a boxed [`Configuration`].
+/// - `resource`: Not used directly. It's passed on to the `Configuration::compute_*` calls.
+/// - `roles`: A map keyed by role names. The value is a tuple of a vector of `PropertyNameKind`
+///   like (Cli, Env or Files) and [`crate::role_utils::Role`] with a boxed [`Configuration`].
 #[allow(clippy::type_complexity)]
 pub fn transform_all_roles_to_config<T, U, ProductSpecificCommonConfig>(
     resource: &T::Configurable,
@@ -201,15 +201,15 @@ where
 /// and [`RoleConfigByPropertyKind`] which can be obtained via `transform_all_roles_to_config`.
 ///
 /// # Arguments
-/// - `version`            - The version of the product to be configured.
-/// - `role_config`        - Collected information about all roles, role groups, required
-///                          properties sorted by config files, CLI parameters and ENV variables.
-/// - `product_config`     - The [`product_config::ProductConfigManager`] used to validate the provided
-///                          user data.
-/// - `ignore_warn`        - A switch to ignore product config warnings and continue with
-///                          the value anyways. Not recommended!
-/// - `ignore_err`         - A switch to ignore product config errors and continue with
-///                          the value anyways. Not recommended!
+/// - `version`: The version of the product to be configured.
+/// - `role_config`: Collected information about all roles, role groups, required properties sorted
+///   by config files, CLI parameters and ENV variables.
+/// - `product_config`: The [`product_config::ProductConfigManager`] used to validate the provided
+///   user data.
+/// - `ignore_warn`: A switch to ignore product config warnings and continue with the value anyways.
+///   Not recommended!
+/// - `ignore_err`: A switch to ignore product config errors and continue with the value anyways.
+///   Not recommended!
 pub fn validate_all_roles_and_groups_config(
     version: &str,
     role_config: &RoleConfigByPropertyKind,
@@ -244,16 +244,16 @@ pub fn validate_all_roles_and_groups_config(
 /// `transform_all_roles_to_config`.
 ///
 /// # Arguments
-/// - `role`               - The name of the role
-/// - `version`            - The version of the product to be configured.
-/// - `properties_by_kind` - Config properties sorted by PropertyKind
-///                          and the resulting user configuration data. See [`RoleConfigByPropertyKind`].
-/// - `product_config`     - The [`product_config::ProductConfigManager`] used to validate the provided
-///                          user data.
-/// - `ignore_warn`        - A switch to ignore product config warnings and continue with
-///                          the value anyways. Not recommended!
-/// - `ignore_err`         - A switch to ignore product config errors and continue with
-///                          the value anyways. Not recommended!
+/// - `role`: The name of the role
+/// - `version`: The version of the product to be configured.
+/// - `properties_by_kind`: Config properties sorted by PropertyKind and the resulting user
+///   configuration data. See [`RoleConfigByPropertyKind`].
+/// - `product_config`: The [`product_config::ProductConfigManager`] used to validate the provided
+///   user data.
+/// - `ignore_warn`: A switch to ignore product config warnings and continue with the value anyways.
+///   Not recommended!
+/// - `ignore_err`: A switch to ignore product config errors and continue with the value anyways.
+///   Not recommended!
 fn validate_role_and_group_config(
     version: &str,
     role: &str,
@@ -290,11 +290,11 @@ fn validate_role_and_group_config(
 /// If you want to use the values anyways please check the "ignore_warn" and "ignore_err" switches.
 ///
 /// # Arguments
-/// - `validation_result`   - The product config validation result for each property name.
-/// - `ignore_warn`         - A switch to ignore product config warnings and continue with
-///                           the value anyways. Not recommended!
-/// - `ignore_err`          - A switch to ignore product config errors and continue with
-///                           the value anyways. Not recommended!
+/// - `validation_result`: The product config validation result for each property name.
+/// - `ignore_warn`: A switch to ignore product config warnings and continue with the value anyways.
+///   Not recommended!
+/// - `ignore_err`: A switch to ignore product config errors and continue with the value anyways.
+///   Not recommended!
 // TODO: boolean flags suck, move ignore_warn to be a flag
 fn process_validation_result(
     validation_result: &BTreeMap<String, PropertyValidationResult>,
