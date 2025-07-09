@@ -473,14 +473,24 @@ impl<K: Resource> RoleGroupRef<K> {
         format!("{}-{}-{}", self.cluster.name, self.role, self.role_group)
     }
 
-    /// Set of functions to define service names on rolegroup level.
-    /// Headless service for cluster internal purposes only.
+    /// Returns the service name used by rolegroups for cluster internal communication only.
+    ///
+    /// The internal use of of this service name is indicated by the `-headless` suffix.
+    /// This service should not be used for communication to external services or clients
+    /// and also should not be used to export metrics (like Prometheus). Metrics should be
+    /// instead exposed via a dedicated service. Use [`Self::rolegroup_metrics_service_name`]
+    /// instead.
     pub fn rolegroup_headless_service_name(&self) -> String {
         format!("{name}-headless", name = self.object_name())
     }
 
-    /// Headless metrics service exposes Prometheus endpoint only
-    pub fn rolegroup_headless_metrics_service_name(&self) -> String {
+    /// Returns the service name used by rolegroups to expose metrics (like Prometheus).
+    ///
+    /// The use for metrics only is indicated by the `-metrics` suffix. This service
+    /// should not be used for any internal communication or any other external
+    /// communication. For internal communication, use [`Self::rolegroup_headless_service_name`]
+    /// instead.
+    pub fn rolegroup_metrics_service_name(&self) -> String {
         format!("{name}-metrics", name = self.object_name())
     }
 }
