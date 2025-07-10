@@ -31,6 +31,8 @@ All notable changes to this project will be documented in this file.
         fieldPath: spec.nodeName
   ```
 
+- Add associated functions on `RoleGroupRef` to return the rolegroup headless and metrics service name ([#1069]).
+
 ### Changed
 
 - Update `kube` to `1.1.0` ([#1049]).
@@ -51,6 +53,7 @@ All notable changes to this project will be documented in this file.
 [#1060]: https://github.com/stackabletech/operator-rs/pull/1060
 [#1064]: https://github.com/stackabletech/operator-rs/pull/1064
 [#1068]: https://github.com/stackabletech/operator-rs/pull/1068
+[#1069]: https://github.com/stackabletech/operator-rs/pull/1069
 [#1071]: https://github.com/stackabletech/operator-rs/pull/1071
 
 ## [0.93.2] - 2025-05-26
