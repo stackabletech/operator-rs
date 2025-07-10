@@ -16,12 +16,15 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "apiVersion": "test.stackable.tech/v1alpha1",
         "kind": "Person",
         "metadata": {
-          "name": "sbernauer",
+          "name": "jdoe",
           "namespace": "default",
           "uid": "d41e2019-5de3-409c-a7b2-0799ecb95e4b"
         },
         "spec": {
-          "username": "sbernauer"
+          "socials": {
+            "email": "jdoe@example.com"
+          },
+          "username": "jdoe"
         }
       },
       {
@@ -29,7 +32,28 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "kind": "Person",
         "metadata": {},
         "spec": {
-          "username": "sbernauer"
+          "socials": {
+            "email": "jdoe@example.com"
+          },
+          "username": "jdoe"
+        },
+        "status": {
+          "alive": true,
+          "changedValues": {
+            "downgrades": {},
+            "upgrades": {
+              "v1alpha2": [
+                {
+                  "jsonPath": "$.first_name",
+                  "value": "John"
+                },
+                {
+                  "jsonPath": "$.last_name",
+                  "value": "Doe"
+                }
+              ]
+            }
+          }
         }
       },
       {
@@ -37,7 +61,34 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "kind": "Person",
         "metadata": {},
         "spec": {
-          "username": "sbernauer"
+          "socials": {
+            "email": "jdoe@example.com"
+          },
+          "username": "jdoe"
+        },
+        "status": {
+          "alive": true,
+          "changedValues": {
+            "downgrades": {},
+            "upgrades": {
+              "v1alpha2": [
+                {
+                  "jsonPath": "$.first_name",
+                  "value": "John"
+                },
+                {
+                  "jsonPath": "$.last_name",
+                  "value": "Doe"
+                }
+              ],
+              "v1beta1": [
+                {
+                  "jsonPath": "$.socials.mastodon",
+                  "value": "@jdoe@example.com"
+                }
+              ]
+            }
+          }
         }
       },
       {
@@ -45,7 +96,40 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "kind": "Person",
         "metadata": {},
         "spec": {
-          "username": "sbernauer"
+          "socials": {
+            "email": "jdoe@example.com"
+          },
+          "username": "jdoe"
+        },
+        "status": {
+          "alive": true,
+          "changedValues": {
+            "downgrades": {},
+            "upgrades": {
+              "v1alpha2": [
+                {
+                  "jsonPath": "$.first_name",
+                  "value": "John"
+                },
+                {
+                  "jsonPath": "$.last_name",
+                  "value": "Doe"
+                }
+              ],
+              "v1beta1": [
+                {
+                  "jsonPath": "$.socials.mastodon",
+                  "value": "@jdoe@example.com"
+                }
+              ],
+              "v2": [
+                {
+                  "jsonPath": "$.gender",
+                  "value": "Male"
+                }
+              ]
+            }
+          }
         }
       },
       {
@@ -53,7 +137,40 @@ input_file: crates/stackable-versioned/tests/inputs/conversions/pass/persons_to_
         "kind": "Person",
         "metadata": {},
         "spec": {
-          "username": "sbernauer"
+          "socials": {
+            "email": "jdoe@example.com"
+          },
+          "username": "jdoe"
+        },
+        "status": {
+          "alive": true,
+          "changedValues": {
+            "downgrades": {},
+            "upgrades": {
+              "v1alpha2": [
+                {
+                  "jsonPath": "$.first_name",
+                  "value": "John"
+                },
+                {
+                  "jsonPath": "$.last_name",
+                  "value": "Doe"
+                }
+              ],
+              "v1beta1": [
+                {
+                  "jsonPath": "$.socials.mastodon",
+                  "value": "@jdoe@example.com"
+                }
+              ],
+              "v2": [
+                {
+                  "jsonPath": "$.gender",
+                  "value": "Male"
+                }
+              ]
+            }
+          }
         }
       }
     ]

@@ -3,14 +3,16 @@ use std::collections::BTreeMap;
 use darling::{FromField, Result, util::IdentString};
 use k8s_version::Version;
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{Attribute, Field, Type};
 
 use crate::{
     attrs::item::FieldAttributes,
     codegen::{
-        ItemStatus, VersionDefinition,
+        Direction, VersionDefinition,
         changes::{BTreeMapExt, ChangesetExt},
+        item::ItemStatus,
+        module::ModuleGenerationContext,
     },
     utils::FieldIdent,
 };
@@ -19,28 +21,36 @@ pub struct VersionedField {
     pub original_attributes: Vec<Attribute>,
     pub changes: Option<BTreeMap<Version, ItemStatus>>,
     pub ident: FieldIdent,
+    pub nested: bool,
     pub ty: Type,
 }
 
 impl VersionedField {
-    pub fn new(field: Field, versions: &[VersionDefinition]) -> Result<Self> {
+    pub fn new(
+        field: Field,
+        versions: &[VersionDefinition],
+        experimental_conversion_tracking: bool,
+    ) -> Result<Self> {
         let field_attributes = FieldAttributes::from_field(&field)?;
         field_attributes.validate_versions(versions)?;
+        field_attributes.validate_nested_flag(experimental_conversion_tracking)?;
 
-        let field_ident = FieldIdent::from(
-            field
-                .ident
-                .expect("internal error: field must have an ident"),
-        );
+        let ident = field
+            .ident
+            .expect("internal error: field must have an ident");
+        let idents = ident.into();
+
         let changes = field_attributes
             .common
-            .into_changeset(&field_ident, field.ty.clone());
+            .into_changeset(&idents, field.ty.clone());
+        let nested = field_attributes.nested.is_present();
 
         Ok(Self {
             original_attributes: field_attributes.attrs,
-            ident: field_ident,
+            ident: idents,
             ty: field.ty,
             changes,
+            nested,
         })
     }
 
@@ -140,13 +150,13 @@ impl VersionedField {
         }
     }
 
-    // TODO (@Techassi): This should probably return an optional token stream.
-    pub fn generate_for_upgrade_from_impl(
+    pub fn generate_for_from_impl(
         &self,
+        direction: Direction,
         version: &VersionDefinition,
         next_version: &VersionDefinition,
         from_struct_ident: &IdentString,
-    ) -> TokenStream {
+    ) -> Option<TokenStream> {
         match &self.changes {
             Some(changes) => {
                 let next_change = changes.get_expect(&next_version.inner);
@@ -156,35 +166,71 @@ impl VersionedField {
                     // If both this status and the next one is NotPresent, which means
                     // a field was introduced after a bunch of versions, we don't
                     // need to generate any code for the From impl.
-                    (ItemStatus::NotPresent, ItemStatus::NotPresent) => {
-                        quote! {}
-                    }
+                    (ItemStatus::NotPresent, ItemStatus::NotPresent) => None,
                     (
                         _,
                         ItemStatus::Addition {
                             ident, default_fn, ..
                         },
-                    ) => quote! {
-                        #ident: #default_fn(),
+                    ) => match direction {
+                        Direction::Upgrade => Some(quote! { #ident: #default_fn(), }),
+                        Direction::Downgrade => None,
                     },
                     (
                         _,
                         ItemStatus::Change {
-                            from_ident: old_field_ident,
+                            downgrade_with,
                             upgrade_with,
+                            from_ident,
                             to_ident,
                             ..
                         },
-                    ) => match upgrade_with {
-                        // The user specified a custom conversion function which
-                        // will be used here instead of the default .into() call
-                        // which utilizes From impls.
-                        Some(upgrade_fn) => quote! {
-                            #to_ident: #upgrade_fn(#from_struct_ident.#old_field_ident),
+                    ) => match direction {
+                        Direction::Upgrade => match upgrade_with {
+                            // The user specified a custom conversion function which
+                            // will be used here instead of the default .into() call
+                            // which utilizes From impls.
+                            Some(upgrade_fn) => Some(quote! {
+                                #to_ident: #upgrade_fn(#from_struct_ident.#from_ident),
+                            }),
+                            // Default .into() call using From impls.
+                            None => {
+                                if self.nested {
+                                    let json_path_ident = format_ident!(
+                                        "__sv_{ident}_path",
+                                        ident = to_ident.as_ident()
+                                    );
+
+                                    Some(quote! {
+                                        #to_ident: #from_struct_ident.#from_ident.tracking_into(status, &#json_path_ident),
+                                    })
+                                } else {
+                                    Some(quote! {
+                                        #to_ident: #from_struct_ident.#from_ident.into(),
+                                    })
+                                }
+                            }
                         },
-                        // Default .into() call using From impls.
-                        None => quote! {
-                            #to_ident: #from_struct_ident.#old_field_ident.into(),
+                        Direction::Downgrade => match downgrade_with {
+                            Some(downgrade_fn) => Some(quote! {
+                                #from_ident: #downgrade_fn(#from_struct_ident.#to_ident),
+                            }),
+                            None => {
+                                if self.nested {
+                                    let json_path_ident = format_ident!(
+                                        "__sv_{ident}_path",
+                                        ident = from_ident.as_ident()
+                                    );
+
+                                    Some(quote! {
+                                        #from_ident: #from_struct_ident.#to_ident.tracking_into(status, &#json_path_ident),
+                                    })
+                                } else {
+                                    Some(quote! {
+                                        #from_ident: #from_struct_ident.#to_ident.into(),
+                                    })
+                                }
+                            }
                         },
                     },
                     (old, next) => {
@@ -194,8 +240,26 @@ impl VersionedField {
                         // NOTE (@Techassi): Do we really need .into() here. I'm
                         // currently not sure why it is there and if it is needed
                         // in some edge cases.
-                        quote! {
-                            #next_field_ident: #from_struct_ident.#old_field_ident.into(),
+                        match direction {
+                            Direction::Upgrade => {
+                                if self.nested {
+                                    let json_path_ident = format_ident!(
+                                        "__sv_{ident}_path",
+                                        ident = next_field_ident.as_ident()
+                                    );
+
+                                    Some(quote! {
+                                        #next_field_ident: #from_struct_ident.#old_field_ident.tracking_into(status, &#json_path_ident),
+                                    })
+                                } else {
+                                    Some(quote! {
+                                        #next_field_ident: #from_struct_ident.#old_field_ident.into(),
+                                    })
+                                }
+                            }
+                            Direction::Downgrade => Some(quote! {
+                                #old_field_ident: #from_struct_ident.#next_field_ident.into(),
+                            }),
                         }
                     }
                 }
@@ -203,66 +267,128 @@ impl VersionedField {
             None => {
                 let field_ident = &*self.ident;
 
-                quote! {
-                    #field_ident: #from_struct_ident.#field_ident.into(),
+                if self.nested {
+                    let json_path_ident =
+                        format_ident!("__sv_{ident}_path", ident = field_ident.as_ident());
+
+                    Some(quote! {
+                        #field_ident: #from_struct_ident.#field_ident.tracking_into(status, &#json_path_ident),
+                    })
+                } else {
+                    Some(quote! {
+                        #field_ident: #from_struct_ident.#field_ident.into(),
+                    })
                 }
             }
         }
     }
 
-    pub fn generate_for_downgrade_from_impl(
+    pub fn generate_for_status_insertion(
         &self,
-        version: &VersionDefinition,
+        direction: Direction,
         next_version: &VersionDefinition,
         from_struct_ident: &IdentString,
-    ) -> TokenStream {
-        match &self.changes {
-            Some(changes) => {
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+    ) -> Option<TokenStream> {
+        let changes = self.changes.as_ref()?;
+
+        match direction {
+            // This arm is only relevant for removed fields which are currently
+            // not supported.
+            Direction::Upgrade => None,
+
+            // When we generate code for a downgrade, any changes which need to
+            // be tracked need to be inserted into the upgrade section for the
+            // next time an upgrade needs to be done.
+            Direction::Downgrade => {
                 let next_change = changes.get_expect(&next_version.inner);
-                let change = changes.get_expect(&version.inner);
 
-                match (change, next_change) {
-                    // If both this status and the next one is NotPresent, which means
-                    // a field was introduced after a bunch of versions, we don't
-                    // need to generate any code for the From impl.
-                    (ItemStatus::NotPresent, ItemStatus::NotPresent) => {
-                        quote! {}
-                    }
-                    (_, ItemStatus::Addition { .. }) => quote! {},
-                    (
-                        _,
-                        ItemStatus::Change {
-                            downgrade_with,
-                            from_ident: old_field_ident,
-                            to_ident,
-                            ..
-                        },
-                    ) => match downgrade_with {
-                        Some(downgrade_fn) => quote! {
-                            #old_field_ident: #downgrade_fn(#from_struct_ident.#to_ident),
-                        },
-                        None => quote! {
-                            #old_field_ident: #from_struct_ident.#to_ident.into(),
-                        },
-                    },
-                    (old, next) => {
-                        let next_field_ident = next.get_ident();
-                        let old_field_ident = old.get_ident();
+                let serde_yaml_path = &*mod_gen_ctx.crates.serde_yaml;
+                let versioned_path = &*mod_gen_ctx.crates.versioned;
 
-                        // NOTE (@Techassi): Do we really need .into() here. I'm
-                        // currently not sure why it is there and if it is needed
-                        // in some edge cases.
-                        quote! {
-                            #old_field_ident: #from_struct_ident.#next_field_ident.into(),
-                        }
+                match next_change {
+                    ItemStatus::Addition { ident, .. } => {
+                        // TODO (@Techassi): Only do this formatting once, but that requires extensive
+                        // changes to the field ident and changeset generation
+                        let json_path_ident =
+                            format_ident!("__sv_{ident}_path", ident = ident.as_ident());
+
+                        Some(quote! {
+                            upgrades.push(#versioned_path::ChangedValue {
+                                json_path: #json_path_ident,
+                                value: #serde_yaml_path::to_value(&#from_struct_ident.#ident).unwrap(),
+                            });
+                        })
                     }
+                    _ => None,
                 }
             }
-            None => {
-                let field_ident = &*self.ident;
+        }
+    }
 
-                quote! {
-                    #field_ident: #from_struct_ident.#field_ident.into(),
+    pub fn generate_for_status_removal(
+        &self,
+        direction: Direction,
+        next_version: &VersionDefinition,
+    ) -> Option<TokenStream> {
+        // If there are no changes for this field, there is also no need to generate a match arm
+        // for applying a tracked value.
+        let changes = self.changes.as_ref()?;
+
+        match direction {
+            Direction::Upgrade => {
+                let next_change = changes.get_expect(&next_version.inner);
+
+                match next_change {
+                    // NOTE (@Techassi): We currently only support tracking added fields. As such
+                    // we only need to generate code if the next change is "Addition".
+                    ItemStatus::Addition { ident, .. } => {
+                        let json_path_ident = format_ident!("__sv_{}_path", ident.as_ident());
+
+                        Some(quote! {
+                            json_path if json_path == #json_path_ident => {
+                                spec.#ident = serde_yaml::from_value(value).unwrap();
+                            },
+                        })
+                    }
+                    _ => None,
+                }
+            }
+            Direction::Downgrade => None,
+        }
+    }
+
+    pub fn generate_for_json_path(&self, next_version: &VersionDefinition) -> Option<TokenStream> {
+        match (&self.changes, self.nested) {
+            // If there are no changes and the field also not marked as nested, there is no need to
+            // generate a path variable for that field as no tracked values need to be applied/inserted
+            // and the tracking mechanism doesn't need to be forwarded to a sub struct.
+            (None, false) => None,
+
+            // If the field is marked as nested, a path variable for that field needs to be generated
+            // which is then passed down to the sub struct. There is however no need to look determine
+            // if the field itself also has changes. This is explicitly handled by the following match
+            // arm.
+            (_, true) => {
+                let field_ident = format_ident!("__sv_{}_path", &self.ident.as_ident());
+                let child_string = &self.ident.to_string();
+                Some(quote! {
+                    let #field_ident = ::stackable_versioned::jthong_path(parent, #child_string);
+                })
+            }
+            (Some(changes), _) => {
+                let next_change = changes.get_expect(&next_version.inner);
+
+                match next_change {
+                    ItemStatus::Addition { ident, .. } => {
+                        let field_ident = format_ident!("__sv_{}_path", ident.as_ident());
+                        let child_string = ident.to_string();
+
+                        Some(quote! {
+                            let #field_ident = ::stackable_versioned::jthong_path(parent, #child_string);
+                        })
+                    }
+                    _ => None,
                 }
             }
         }
