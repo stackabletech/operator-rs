@@ -31,9 +31,7 @@ All notable changes to this project will be documented in this file.
         fieldPath: spec.nodeName
   ```
 
-- Methods on RoleGroupRef to return the rolegroup service `-headless` and `-metrics` name ([#1069]).
-
-### Changed
+- Add associated functions on `RoleGroupRef` to return the rolegroup headless and metrics service name ([#1069]).
 
 - Update `kube` to `1.1.0` ([#1049]).
 - BREAKING: Return type for `ListenerOperatorVolumeSourceBuilder::new()` is no onger a `Result` ([#1058]).
