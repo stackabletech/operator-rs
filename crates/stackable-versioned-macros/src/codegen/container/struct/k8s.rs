@@ -156,7 +156,8 @@ impl Struct {
         let status_struct = self.generate_kubernetes_status_struct(kubernetes_arguments, is_nested);
         let version_enum =
             self.generate_kubernetes_version_enum(kubernetes_arguments, tokens, vis, is_nested);
-        let convert_method = self.generate_kubernetes_conversion(versions);
+        let (try_convert_fn, convert_objects_fn) =
+            self.generate_kubernetes_conversion_functions(versions);
 
         let parse_object_error = quote! { #versioned_path::ParseObjectError };
 
@@ -178,7 +179,7 @@ impl Struct {
                     #kube_core_path::crd::merge_crds(vec![#(#crd_fns),*], stored_apiversion.as_version_str())
                 }
 
-                #convert_method
+                #convert_objects_fn
 
                 fn from_json_object(object_value: #serde_json_path::Value) -> ::std::result::Result<Self, #parse_object_error> {
                     let object_kind = object_value
@@ -225,6 +226,10 @@ impl Struct {
                         #(Self::#variant_idents(#variant_data_ident) => Ok(#serde_json_path::to_value(#variant_data_ident)?),)*
                     }
                 }
+            }
+
+            impl #versioned_path::KubernetesConvertable for #enum_ident {
+                #try_convert_fn
             }
 
             #version_enum
@@ -354,11 +359,23 @@ impl Struct {
             })
     }
 
-    fn generate_kubernetes_conversion(
+    /// Generates functions that are related to Kubernetes conversion.
+    ///
+    /// It will return two functions:
+    ///
+    /// 1. `try_convert`: This function should be used to implement the
+    ///   `stackable_versioned::KubernetesConvertable` trait.
+    /// 2. `convert_objects`: This is an internal helper for `try_convert`
+    fn generate_kubernetes_conversion_functions(
         &self,
         versions: &[VersionDefinition],
-    ) -> Option<TokenStream> {
-        let kubernetes_arguments = self.common.options.kubernetes_arguments.as_ref()?;
+    ) -> (TokenStream, TokenStream) {
+        let kubernetes_arguments = self
+            .common
+            .options
+            .kubernetes_arguments
+            .as_ref()
+            .expect("The kubernetes arguments must be present when generating Kubernetes conversion functions");
 
         let struct_ident = &self.common.idents.kubernetes;
         let version_enum_ident = &self.common.idents.kubernetes_version;
@@ -398,10 +415,10 @@ impl Struct {
         }
         .into_doc_comments();
 
-        Some(quote! {
+        let try_convert_fn = quote! {
             #(#[doc = #docs])*
             #try_convert_instrumentation
-            pub fn try_convert(review: #kube_core_path::conversion::ConversionReview)
+            fn try_convert(review: #kube_core_path::conversion::ConversionReview)
                 -> #kube_core_path::conversion::ConversionReview
             {
                 // First, turn the review into a conversion request
@@ -462,7 +479,8 @@ impl Struct {
 
                 response.into_review()
             }
-
+        };
+        let convert_objects_fn = quote! {
             #convert_objects_instrumentation
             fn convert_objects(
                 objects: ::std::vec::Vec<#serde_json_path::Value>,
@@ -501,7 +519,9 @@ impl Struct {
 
                 ::std::result::Result::Ok(converted_objects)
             }
-        })
+        };
+
+        (try_convert_fn, convert_objects_fn)
     }
 
     fn generate_kubernetes_conversion_match_arms(
