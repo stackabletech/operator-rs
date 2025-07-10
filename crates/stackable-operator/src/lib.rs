@@ -26,7 +26,6 @@ pub mod product_config_utils;
 pub mod product_logging;
 pub mod role_utils;
 pub mod status;
-pub mod time;
 pub mod utils;
 pub mod validation;
 
@@ -37,9 +36,13 @@ pub use schemars;
 // Internal re-exports
 // TODO (@Techassi): Ideally we would want webhook and certs exported here as
 // well, but that would require some restructuring of crates.
+#[cfg(feature = "certs")]
+pub use stackable_certs as certs;
 pub use stackable_shared as shared;
 pub use stackable_shared::{crd::CustomResourceExt, yaml::YamlSchema};
 #[cfg(feature = "telemetry")]
 pub use stackable_telemetry as telemetry;
 #[cfg(feature = "versioned")]
 pub use stackable_versioned as versioned;
+#[cfg(feature = "webhook")]
+pub use stackable_webhook as webhook;

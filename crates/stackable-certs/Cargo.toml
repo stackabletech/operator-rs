@@ -11,7 +11,7 @@ default = []
 rustls = ["dep:tokio-rustls"]
 
 [dependencies]
-stackable-operator = { path = "../stackable-operator" }
+stackable-shared = { path = "../stackable-shared" }
 
 const-oid.workspace = true
 ecdsa.workspace = true

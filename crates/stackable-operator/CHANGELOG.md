@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Re-export `stackable-certs` and `stackable-webhook` crates ([#XXXX]).
+
+### Changed
+
+- BREAKING: Some modules have been moved into the `stackable-shared` crate, so that they can also be
+  used in `stackable-certs` and `stackable-webhook` ([#XXXX]):
+  - The module `stackable_operator::time` has moved to `stackable_operator::shared::time`
+  - The module `stackable_operator::commons::secret` has moved to `stackable_operator::shared::commons::secret`
+
+[#XXXX]: https://github.com/stackabletech/operator-rs/pull/XXXX
+
 ## [0.94.0] - 2025-07-10
 
 ### Added

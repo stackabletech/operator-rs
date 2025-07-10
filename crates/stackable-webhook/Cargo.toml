@@ -9,7 +9,6 @@ repository.workspace = true
 [dependencies]
 stackable-certs = { path = "../stackable-certs", features = ["rustls"] }
 stackable-telemetry = { path = "../stackable-telemetry" }
-stackable-operator = { path = "../stackable-operator" }
 
 axum.workspace = true
 futures-util.workspace = true

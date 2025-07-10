@@ -1,4 +1,4 @@
-use stackable_operator::time::Duration;
+use stackable_shared::time::Duration;
 
 /// The default CA validity time span of one hour (3600 seconds).
 pub const DEFAULT_CA_VALIDITY: Duration = Duration::from_hours_unchecked(1);
