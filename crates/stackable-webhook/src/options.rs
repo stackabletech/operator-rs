@@ -41,6 +41,10 @@ pub struct Options {
     /// The default HTTPS socket address the [`TcpListener`][tokio::net::TcpListener]
     /// binds to.
     pub socket_addr: SocketAddr,
+
+    /// The subject alterative DNS names that should be added to the certificates generated for this
+    /// webhook.
+    pub subject_alterative_dns_names: Vec<String>,
 }
 
 impl Default for Options {
@@ -66,6 +70,7 @@ impl Options {
 #[derive(Debug, Default)]
 pub struct OptionsBuilder {
     socket_addr: Option<SocketAddr>,
+    subject_alterative_dns_names: Vec<String>,
 }
 
 impl OptionsBuilder {
@@ -91,11 +96,32 @@ impl OptionsBuilder {
         self
     }
 
+    /// Sets the subject alterative DNS names that should be added to the certificates generated for
+    /// this webhook.
+    pub fn subject_alterative_dns_names(
+        mut self,
+        subject_alterative_dns_name: Vec<String>,
+    ) -> Self {
+        self.subject_alterative_dns_names = subject_alterative_dns_name;
+        self
+    }
+
+    /// Adds the (subject alterative DNS name to the list of names.
+    pub fn add_subject_alterative_dns_name(
+        mut self,
+        subject_alterative_dns_name: impl Into<String>,
+    ) -> Self {
+        self.subject_alterative_dns_names
+            .push(subject_alterative_dns_name.into());
+        self
+    }
+
     /// Builds the final [`Options`] by using default values for any not
     /// explicitly set option.
     pub fn build(self) -> Options {
         Options {
             socket_addr: self.socket_addr.unwrap_or(DEFAULT_SOCKET_ADDRESS),
+            subject_alterative_dns_names: self.subject_alterative_dns_names,
         }
     }
 }

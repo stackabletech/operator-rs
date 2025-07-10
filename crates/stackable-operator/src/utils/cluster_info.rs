@@ -16,13 +16,17 @@ pub struct KubernetesClusterInfo {
 }
 
 #[derive(clap::Parser, Debug, PartialEq, Eq)]
-pub struct KubernetesClusterInfoOpts {
+pub struct KubernetesClusterInfoOptions {
     /// Kubernetes cluster domain, usually this is `cluster.local`.
     // We are not using a default value here, as we query the cluster if it is not specified.
     #[arg(long, env)]
     pub kubernetes_cluster_domain: Option<DomainName>,
 
     /// Name of the Kubernetes Node that the operator is running on.
+    ///
+    /// Note that when running the operator on Kubernetes we recommend to use the
+    /// [downward API](https://kubernetes.io/docs/concepts/workloads/pods/downward-api/)
+    /// to let Kubernetes project the namespace as the `KUBERNETES_NODE_NAME` env variable.
     #[arg(long, env)]
     pub kubernetes_node_name: String,
 }
@@ -30,10 +34,10 @@ pub struct KubernetesClusterInfoOpts {
 impl KubernetesClusterInfo {
     pub async fn new(
         client: &Client,
-        cluster_info_opts: &KubernetesClusterInfoOpts,
+        cluster_info_opts: &KubernetesClusterInfoOptions,
     ) -> Result<Self, Error> {
         let cluster_domain = match cluster_info_opts {
-            KubernetesClusterInfoOpts {
+            KubernetesClusterInfoOptions {
                 kubernetes_cluster_domain: Some(cluster_domain),
                 ..
             } => {
@@ -41,7 +45,7 @@ impl KubernetesClusterInfo {
 
                 cluster_domain.clone()
             }
-            KubernetesClusterInfoOpts {
+            KubernetesClusterInfoOptions {
                 kubernetes_node_name: node_name,
                 ..
             } => {

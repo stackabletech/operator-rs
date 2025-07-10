@@ -36,7 +36,12 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Update `kube` to `1.1.0` ([#1049]).
-- BREAKING: Return type for `ListenerOperatorVolumeSourceBuilder::new()` is no onger a `Result` ([#1058]).
+- BREAKING: Return type for `ListenerOperatorVolumeSourceBuilder::new()` is no longer a `Result` ([#1058]).
+- BREAKING: Require two new CLI arguments: `--operator-namespace` and `-operator-service-name`.
+  These are required, so that the operator knows what Service it needs to enter as CRD conversion webhook ([#1066]).
+- BREAKING: The `ProductOperatorRun` used for CLI arguments has some field renamed for consistency ([#1066]):
+  - `telemetry_arguments` -> `telemetry`
+  - `cluster_info_opts` -> `cluster_info`
 
 ### Fixed
 
@@ -52,6 +57,7 @@ All notable changes to this project will be documented in this file.
 [#1058]: https://github.com/stackabletech/operator-rs/pull/1058
 [#1060]: https://github.com/stackabletech/operator-rs/pull/1060
 [#1064]: https://github.com/stackabletech/operator-rs/pull/1064
+[#1066]: https://github.com/stackabletech/operator-rs/pull/1066
 [#1068]: https://github.com/stackabletech/operator-rs/pull/1068
 [#1069]: https://github.com/stackabletech/operator-rs/pull/1069
 [#1071]: https://github.com/stackabletech/operator-rs/pull/1071
