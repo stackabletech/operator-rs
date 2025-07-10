@@ -9,6 +9,5 @@ pub mod pdb;
 pub mod product_image_selection;
 pub mod rbac;
 pub mod resources;
-pub mod secret;
 pub mod secret_class;
 pub mod tls_verification;

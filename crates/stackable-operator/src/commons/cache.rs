@@ -3,8 +3,7 @@ use std::marker::PhantomData;
 use educe::Educe;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-use crate::time::Duration;
+use stackable_shared::time::Duration;
 
 /// [`TtlCache`] with sensible defaults for a user information cache
 pub type UserInformationCache = TtlCache<UserInformationCacheDefaults>;

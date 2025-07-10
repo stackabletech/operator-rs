@@ -10,6 +10,7 @@ use k8s_openapi::{
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
 };
 use snafu::{OptionExt, ResultExt, Snafu};
+use stackable_shared::time::Duration;
 
 use crate::{
     builder::{
@@ -25,7 +26,6 @@ use crate::{
         },
     },
     kvp::Labels,
-    time::Duration,
 };
 
 pub mod container;

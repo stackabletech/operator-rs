@@ -4,9 +4,10 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 use schemars::{self, JsonSchema};
 use serde::{Deserialize, Serialize};
+use stackable_shared::time::Duration;
 use url::Url;
 
-use crate::{time::Duration, versioned::versioned};
+use crate::versioned::versioned;
 
 mod v1alpha1_impl;
 
