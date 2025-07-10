@@ -15,10 +15,10 @@ telemetry = []
 versioned = []
 
 [dependencies]
-stackable-telemetry = { path = "../stackable-telemetry", features = ["clap"] }
-stackable-versioned = { path = "../stackable-versioned", features = ["k8s"] }
 stackable-operator-derive = { path = "../stackable-operator-derive" }
 stackable-shared = { path = "../stackable-shared" }
+stackable-telemetry = { path = "../stackable-telemetry", features = ["clap"] }
+stackable-versioned = { path = "../stackable-versioned" }
 
 chrono.workspace = true
 clap.workspace = true

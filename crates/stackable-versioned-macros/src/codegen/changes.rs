@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, ops::Bound};
 use k8s_version::Version;
 use syn::Type;
 
-use crate::codegen::{ItemStatus, VersionDefinition};
+use crate::codegen::{VersionDefinition, item::ItemStatus};
 
 pub trait Neighbors<K, V>
 where

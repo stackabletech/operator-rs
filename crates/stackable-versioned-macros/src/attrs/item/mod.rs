@@ -7,7 +7,7 @@ use quote::format_ident;
 use syn::{Attribute, Path, Type, spanned::Spanned};
 
 use crate::{
-    codegen::{ItemStatus, VersionDefinition},
+    codegen::{VersionDefinition, item::ItemStatus},
     utils::ItemIdentExt,
 };
 

@@ -3062,7 +3062,6 @@ version = "0.8.0"
 dependencies = [
  "insta",
  "k8s-openapi",
- "k8s-version",
  "kube",
  "schemars",
  "serde",

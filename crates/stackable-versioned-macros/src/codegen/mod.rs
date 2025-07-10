@@ -1,10 +1,8 @@
 use darling::util::IdentString;
 use k8s_version::Version;
-use proc_macro2::TokenStream;
-use syn::{Path, Type};
 
 use crate::{
-    attrs::{container::StandaloneContainerAttributes, module::ModuleAttributes},
+    attrs::module::ModuleAttributes,
     utils::{VersionExt, doc_comments::DocComments},
 };
 
@@ -43,35 +41,9 @@ impl Ord for VersionDefinition {
     }
 }
 
-// NOTE (@Techassi): Can we maybe unify these two impls?
-impl From<&StandaloneContainerAttributes> for Vec<VersionDefinition> {
-    fn from(attributes: &StandaloneContainerAttributes) -> Self {
-        attributes
-            .common
-            .versions
-            .iter()
-            .map(|v| VersionDefinition {
-                skip_from: v.skip.as_ref().is_some_and(|s| s.from.is_present()),
-                idents: VersionIdents {
-                    module: v.name.as_module_ident(),
-                    variant: v.name.as_variant_ident(),
-                },
-                deprecated: v.deprecated.as_ref().map(|r#override| {
-                    r#override
-                        .clone()
-                        .unwrap_or(format!("Version {version} is deprecated", version = v.name))
-                }),
-                docs: v.doc.as_deref().into_doc_comments(),
-                inner: v.name,
-            })
-            .collect()
-    }
-}
-
 impl From<&ModuleAttributes> for Vec<VersionDefinition> {
     fn from(attributes: &ModuleAttributes) -> Self {
         attributes
-            .common
             .versions
             .iter()
             .map(|v| VersionDefinition {
@@ -98,63 +70,27 @@ pub struct VersionIdents {
     pub variant: IdentString,
 }
 
-#[derive(Debug, PartialEq)]
-pub enum ItemStatus {
-    Addition {
-        ident: IdentString,
-        default_fn: Path,
-        // NOTE (@Techassi): We need to carry idents and type information in
-        // nearly every status. Ideally, we would store this in separate maps.
-        ty: Box<Type>,
-    },
-    Change {
-        downgrade_with: Option<Path>,
-        upgrade_with: Option<Path>,
-        from_ident: IdentString,
-        to_ident: IdentString,
-        from_type: Box<Type>,
-        to_type: Box<Type>,
-    },
-    Deprecation {
-        previous_ident: IdentString,
-        note: Option<String>,
-        ident: IdentString,
-    },
-    NoChange {
-        previously_deprecated: bool,
-        ident: IdentString,
-        ty: Box<Type>,
-    },
-    NotPresent,
+#[derive(Clone, Copy, Debug)]
+pub struct VersionContext<'a> {
+    pub version: &'a VersionDefinition,
+    pub next_version: Option<&'a VersionDefinition>,
 }
 
-impl ItemStatus {
-    pub fn get_ident(&self) -> &IdentString {
-        match &self {
-            ItemStatus::Addition { ident, .. } => ident,
-            ItemStatus::Change { to_ident, .. } => to_ident,
-            ItemStatus::Deprecation { ident, .. } => ident,
-            ItemStatus::NoChange { ident, .. } => ident,
-            ItemStatus::NotPresent => unreachable!("ItemStatus::NotPresent does not have an ident"),
+impl<'a> VersionContext<'a> {
+    pub fn new(
+        version: &'a VersionDefinition,
+        next_version: Option<&'a VersionDefinition>,
+    ) -> Self {
+        Self {
+            version,
+            next_version,
         }
     }
 }
 
-// This contains all generated Kubernetes tokens for a particular version.
-// This struct can then be used to fully generate the combined final Kubernetes code.
-#[derive(Debug, Default)]
-pub struct KubernetesTokens {
-    variant_idents: Vec<IdentString>,
-    variant_data: Vec<TokenStream>,
-    variant_strings: Vec<String>,
-    crd_fns: Vec<TokenStream>,
-}
-
-impl KubernetesTokens {
-    pub fn push(&mut self, items: (TokenStream, IdentString, TokenStream, String)) {
-        self.crd_fns.push(items.0);
-        self.variant_idents.push(items.1);
-        self.variant_data.push(items.2);
-        self.variant_strings.push(items.3);
-    }
+/// Describes the direction of [`From`] implementations.
+#[derive(Copy, Clone, Debug)]
+pub enum Direction {
+    Upgrade,
+    Downgrade,
 }

@@ -16,66 +16,34 @@
 // again but before running tests, otherwise compilation will fail (as expected).
 #[allow(dead_code)]
 mod inputs {
-    mod default {
-        mod pass {
-            // mod attribute_enum;
-            // mod attribute_struct;
-            // mod basic_struct;
-            // mod downgrade_with;
-            // mod deprecate_enum;
-            // mod deprecate_struct;
-            // mod enum_data_simple;
-            // mod generics_defaults;
-            // mod generics_module;
-            // mod generics_struct;
-            // mod module;
-            // mod module_preserve;
-            // mod rename;
-            // mod skip_from_for_version;
-            // mod skip_from_module;
-            // mod skip_from_module_for_version;
-            // mod submodule;
-        }
-        mod fail {
-            // mod changed;
-            // mod deprecate;
-            // mod skip_from_all;
-            // mod skip_from_version;
-            // mod submodule_invalid_name;
-            // mod submodule_use_statement;
-        }
+    mod pass {
+        // mod added;
+        // mod basic;
+        // mod conversion_tracking;
+        // mod crate_overrides;
+        // mod docs;
+        // mod downgrade_with;
+        // mod module;
+        // mod module_preserve;
+        // mod renamed_field;
+        // mod renamed_kind;
+        // mod shortnames;
+        // mod submodule;
     }
 
-    #[cfg(feature = "k8s")]
-    mod k8s {
-        mod pass {
-            // mod basic;
-            // mod conversion_tracking;
-            // mod crate_overrides;
-            // mod module;
-            // mod module_preserve;
-            // mod renamed_kind;
-            // mod shortnames;
-            // mod skip;
-        }
-
-        mod fail {
-            // mod crd;
-        }
+    mod fail {
+        // mod applied_to_struct;
+        // mod changed;
+        // mod deprecate;
+        // mod spec_suffix;
+        // mod unknown_version;
+        // mod submodule_invalid_name;
     }
 }
 
 #[test]
-fn default() {
+fn ui() {
     let t = trybuild::TestCases::new();
-    t.compile_fail("tests/inputs/default/fail/*.rs");
-    t.pass("tests/inputs/default/pass/*.rs");
-}
-
-#[cfg(feature = "k8s")]
-#[test]
-fn k8s() {
-    let t = trybuild::TestCases::new();
-    t.compile_fail("tests/inputs/k8s/fail/*.rs");
-    t.pass("tests/inputs/k8s/pass/*.rs");
+    t.pass("tests/inputs/pass/*.rs");
+    t.compile_fail("tests/inputs/fail/*.rs");
 }

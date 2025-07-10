@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add support for conversion tracking ([#1056]).
+  - Add new `nested` attribute which can be applied to struct fields to be able
+    to track nested conversions in sub structs.
+  - Re-introduce `skip` arguments: `skip(from, object_from, merged_crd, try_convert)`. Consult the
+    documentation for details about these flags and where they can be applied.
 - Add support for CRD conversions via ConversionReviews ([#1050], [#1061]).
   - Add new `try_convert` function to convert objects received via a ConversionReview.
   - Add new `enable_tracing` option to `#[versioned(k8s(options(...)))]`.
@@ -27,6 +32,11 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Introduce various breaking changed to the macro attribute interface ([#1056]).
+  - BREAKING: The macro can only be applied to modules now.
+  - BREAKING: Crate overrides are now done at the module level, not the container level.
+  - BREAKING: Top-level CRD specs now use `crd(...)` instead of `k8s(...)`.
+- BREAKING: The (optional) status of a CRD needs to implement `Default` ([#1056]).
 - BREAKING: The version enum used in `merged_crd` is now suffixed with `Version` ([#1050]).
 - BREAKING: The `convert_with` parameter of the `changed()` action was renamed and split into two
   parts to be able to control the conversion during upgrades and downgrades: `upgrade_with` and
@@ -56,6 +66,7 @@ All notable changes to this project will be documented in this file.
 [#1041]: https://github.com/stackabletech/operator-rs/pull/1041
 [#1046]: https://github.com/stackabletech/operator-rs/pull/1046
 [#1050]: https://github.com/stackabletech/operator-rs/pull/1050
+[#1056]: https://github.com/stackabletech/operator-rs/pull/1056
 [#1059]: https://github.com/stackabletech/operator-rs/pull/1059
 [#1061]: https://github.com/stackabletech/operator-rs/pull/1061
 [#1065]: https://github.com/stackabletech/operator-rs/pull/1065

@@ -12,21 +12,20 @@ all-features = true
 
 [package.metadata.cargo-udeps.ignore]
 # cargo-udeps throws an error stating that these dependencies are unused. They
-# are, however, used in K8s specific test cases. This is a false-positive and an
-# apparent limitation of cargo-udeps. These entries can be removed once
-# cargo-udeps supports detecting usage of such dependencies.
-development = ["k8s-openapi", "schemars", "serde_yaml", "stackable-versioned"]
-
-# cargo-udeps throws an error stating that these dependencies are unused. They are all marked as
-# optional, which trips up cargo-udeps for whatever reason...
-normal = ["k8s-openapi", "kube"]
+# are, however, used in test cases. This is a false-positive and an apparent
+# limitation of cargo-udeps. These entries can be removed once cargo-udeps
+# supports detecting usage of such dependencies.
+development = [
+  "k8s-openapi",
+  "kube",
+  "schemars",
+  "serde_yaml",
+  "stackable-versioned",
+  "tracing",
+]
 
 [lib]
 proc-macro = true
-
-[features]
-full = ["k8s"]
-k8s = ["dep:kube", "dep:k8s-openapi"]
 
 [dependencies]
 k8s-version = { path = "../k8s-version", features = ["darling"] }
@@ -35,15 +34,15 @@ convert_case.workspace = true
 darling.workspace = true
 indoc.workspace = true
 itertools.workspace = true
-k8s-openapi = { workspace = true, optional = true }
-kube = { workspace = true, optional = true }
+k8s-openapi.workspace = true
+kube.workspace = true
 proc-macro2.workspace = true
 syn.workspace = true
 quote.workspace = true
 
 [dev-dependencies]
 # Only needed for doc tests / examples
-stackable-versioned = { path = "../stackable-versioned", features = ["k8s"] }
+stackable-versioned = { path = "../stackable-versioned" }
 
 insta.workspace = true
 prettyplease.workspace = true
