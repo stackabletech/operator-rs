@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-07-10
+
 ### Fixed
 
 - Don't pull in the `aws-lc-rs` crate, as this currently fails to build in `make run-dev` ([#1043]).

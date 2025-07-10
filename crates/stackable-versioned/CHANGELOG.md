@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.8.0] - 2025-07-10
+
 ### Added
 
 - Add support for conversion tracking ([#1056]).

@@ -2947,7 +2947,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "stackable-certs"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "const-oid",
  "ecdsa",
@@ -2970,7 +2970,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.93.2"
+version = "0.94.0"
 dependencies = [
  "chrono",
  "clap",
@@ -3033,7 +3033,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-telemetry"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "axum",
  "clap",
@@ -3058,7 +3058,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "insta",
  "k8s-openapi",
@@ -3073,7 +3073,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned-macros"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "convert_case",
  "darling",
@@ -3101,7 +3101,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-webhook"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "axum",
  "futures-util",

@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.94.0] - 2025-07-10
+
 ### Added
 
 - The default Kubernetes cluster domain name is now fetched from the kubelet API unless explicitly configured ([#1068], [#1071])
@@ -36,7 +38,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Update `kube` to `1.1.0` ([#1049]).
-- BREAKING: Return type for `ListenerOperatorVolumeSourceBuilder::new()` is no onger a `Result` ([#1058]).
+- BREAKING: Return type for `ListenerOperatorVolumeSourceBuilder::new()` is no longer a `Result` ([#1058]).
 
 ### Fixed
 
