@@ -31,7 +31,7 @@ All notable changes to this project will be documented in this file.
         fieldPath: spec.nodeName
   ```
 
-- Methods on RoleGroupRef to return the rolegroup service `-headless` and `-metrics` name ([#1069]).
+- Add associated functions on `RoleGroupRef` to return the rolegroup headless and metrics service name ([#1069]).
 
 ### Changed
 
