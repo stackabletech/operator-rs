@@ -4,25 +4,27 @@ use stackable_operator::{
     config::fragment::Fragment,
     kube::CustomResource,
     role_utils::Role,
-    schemars::JsonSchema,
+    schemars::{self, JsonSchema},
     status::condition::ClusterCondition,
     versioned::versioned,
 };
 
-#[versioned(version(name = "v1alpha1"))]
+#[versioned(
+    version(name = "v1alpha1"),
+    crates(
+        kube_core = "stackable_operator::kube::core",
+        kube_client = "stackable_operator::kube::client",
+        k8s_openapi = "stackable_operator::k8s_openapi",
+        schemars = "stackable_operator::schemars",
+        versioned = "stackable_operator::versioned"
+    )
+)]
 pub mod versioned {
-    #[versioned(k8s(
+    #[versioned(crd(
         group = "dummy.stackable.tech",
         kind = "DummyCluster",
         status = "v1alpha1::DummyClusterStatus",
         namespaced,
-        crates(
-            kube_core = "stackable_operator::kube::core",
-            kube_client = "stackable_operator::kube::client",
-            k8s_openapi = "stackable_operator::k8s_openapi",
-            schemars = "stackable_operator::schemars",
-            versioned = "stackable_operator::versioned"
-        )
     ))]
     #[derive(Clone, CustomResource, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
     #[schemars(crate = "stackable_operator::schemars")]

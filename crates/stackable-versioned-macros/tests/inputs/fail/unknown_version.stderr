@@ -1,0 +1,5 @@
+error: the `added` action uses a version which is not declared via `#[versioned(version)]`
+ --> tests/inputs/fail/unknown_version.rs:6:35
+  |
+6 |         #[versioned(added(since = "v1alpha2"))]
+  |                                   ^^^^^^^^^^

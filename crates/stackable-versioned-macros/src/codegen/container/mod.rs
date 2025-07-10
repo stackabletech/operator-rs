@@ -1,13 +1,17 @@
-use darling::{Result, util::IdentString};
-use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote};
-use syn::{Attribute, Ident, ItemEnum, ItemStruct, Visibility};
+use std::collections::HashMap;
+
+use darling::util::IdentString;
+use k8s_version::Version;
+use proc_macro2::{Span, TokenStream, TokenTree};
+use quote::format_ident;
+use syn::{Attribute, Ident};
 
 use crate::{
-    attrs::container::{StandaloneContainerAttributes, k8s::KubernetesArguments},
+    attrs::container::StructCrdArguments,
     codegen::{
-        KubernetesTokens, VersionDefinition,
+        VersionDefinition,
         container::{r#enum::Enum, r#struct::Struct},
+        module::ModuleGenerationContext,
     },
     utils::ContainerIdentExt,
 };
@@ -32,78 +36,123 @@ pub struct CommonContainerData {
 /// Abstracting away with kind of container is generated makes it possible to create a list of
 /// containers when the macro is used on modules. This enum provides functions to generate code
 /// which then internally call the appropriate function based on the variant.
+#[allow(clippy::large_enum_variant)]
 pub enum Container {
     Struct(Struct),
     Enum(Enum),
 }
 
+#[derive(Debug, Default)]
+pub struct ContainerTokens<'a> {
+    pub versioned: HashMap<&'a Version, VersionedContainerTokens>,
+    pub outer: TokenStream,
+}
+
+#[derive(Debug, Default)]
+/// A collection of generated tokens for a container per version.
+pub struct VersionedContainerTokens {
+    /// The inner tokens are placed inside the version module. These tokens mostly only include the
+    /// container definition with attributes, doc comments, etc.
+    pub inner: TokenStream,
+
+    /// These tokens are placed between version modules. These could technically be grouped together
+    /// with the outer tokens, but it makes sense to keep them separate to achieve a more structured
+    /// code generation. These tokens mostly only include `From` impls to convert between two versions
+    pub between: TokenStream,
+}
+
+pub trait ExtendContainerTokens<'a, T> {
+    fn extend_inner<I: IntoIterator<Item = T>>(
+        &mut self,
+        version: &'a Version,
+        streams: I,
+    ) -> &mut Self;
+    fn extend_between<I: IntoIterator<Item = T>>(
+        &mut self,
+        version: &'a Version,
+        streams: I,
+    ) -> &mut Self;
+    fn extend_outer<I: IntoIterator<Item = T>>(&mut self, streams: I) -> &mut Self;
+}
+
+impl<'a> ExtendContainerTokens<'a, TokenStream> for ContainerTokens<'a> {
+    fn extend_inner<I: IntoIterator<Item = TokenStream>>(
+        &mut self,
+        version: &'a Version,
+        streams: I,
+    ) -> &mut Self {
+        self.versioned
+            .entry(version)
+            .or_default()
+            .inner
+            .extend(streams);
+        self
+    }
+
+    fn extend_between<I: IntoIterator<Item = TokenStream>>(
+        &mut self,
+        version: &'a Version,
+        streams: I,
+    ) -> &mut Self {
+        self.versioned
+            .entry(version)
+            .or_default()
+            .between
+            .extend(streams);
+        self
+    }
+
+    fn extend_outer<I: IntoIterator<Item = TokenStream>>(&mut self, streams: I) -> &mut Self {
+        self.outer.extend(streams);
+        self
+    }
+}
+
+impl<'a> ExtendContainerTokens<'a, TokenTree> for ContainerTokens<'a> {
+    fn extend_inner<I: IntoIterator<Item = TokenTree>>(
+        &mut self,
+        version: &'a Version,
+        streams: I,
+    ) -> &mut Self {
+        self.versioned
+            .entry(version)
+            .or_default()
+            .inner
+            .extend(streams);
+        self
+    }
+
+    fn extend_between<I: IntoIterator<Item = TokenTree>>(
+        &mut self,
+        version: &'a Version,
+        streams: I,
+    ) -> &mut Self {
+        self.versioned
+            .entry(version)
+            .or_default()
+            .between
+            .extend(streams);
+        self
+    }
+
+    fn extend_outer<I: IntoIterator<Item = TokenTree>>(&mut self, streams: I) -> &mut Self {
+        self.outer.extend(streams);
+        self
+    }
+}
+
 impl Container {
-    /// Generates the container definition for the specified `version`.
-    pub fn generate_definition(&self, version: &VersionDefinition) -> TokenStream {
+    // TODO (@Techassi): Only have a single function here. It should return and store all generated
+    // tokens. It should also have access to a single GenerationContext, which provides all external
+    // parameters which influence code generation.
+    pub fn generate_tokens<'a>(
+        &'a self,
+        versions: &'a [VersionDefinition],
+        ctx: ModuleGenerationContext<'a>,
+    ) -> ContainerTokens<'a> {
         match self {
-            Container::Struct(s) => s.generate_definition(version),
-            Container::Enum(e) => e.generate_definition(version),
-        }
-    }
-
-    /// Generates the `From<Version> for NextVersion` implementation for the container.
-    pub fn generate_upgrade_from_impl(
-        &self,
-        version: &VersionDefinition,
-        next_version: Option<&VersionDefinition>,
-        add_attributes: bool,
-    ) -> Option<TokenStream> {
-        match self {
-            Container::Struct(s) => {
-                s.generate_upgrade_from_impl(version, next_version, add_attributes)
-            }
-            Container::Enum(e) => {
-                e.generate_upgrade_from_impl(version, next_version, add_attributes)
-            }
-        }
-    }
-
-    /// Generates the `From<NextVersion> for Version` implementation for the container.
-    pub fn generate_downgrade_from_impl(
-        &self,
-        version: &VersionDefinition,
-        next_version: Option<&VersionDefinition>,
-        add_attributes: bool,
-    ) -> Option<TokenStream> {
-        match self {
-            Container::Struct(s) => {
-                s.generate_downgrade_from_impl(version, next_version, add_attributes)
-            }
-            Container::Enum(e) => {
-                e.generate_downgrade_from_impl(version, next_version, add_attributes)
-            }
-        }
-    }
-
-    /// Generates Kubernetes specific code for the container.
-    ///
-    /// This includes CRD merging, CRD conversion, and the conversion tracking status struct.
-    pub fn generate_kubernetes_code(
-        &self,
-        versions: &[VersionDefinition],
-        tokens: &KubernetesTokens,
-        vis: &Visibility,
-        is_nested: bool,
-    ) -> Option<TokenStream> {
-        match self {
-            Container::Struct(s) => s.generate_kubernetes_code(versions, tokens, vis, is_nested),
-            Container::Enum(_) => None,
-        }
-    }
-
-    /// Generates KUbernetes specific code for individual versions.
-    pub fn generate_kubernetes_version_items(
-        &self,
-        version: &VersionDefinition,
-    ) -> Option<(TokenStream, IdentString, TokenStream, String)> {
-        match self {
-            Container::Struct(s) => s.generate_kubernetes_version_items(version),
-            Container::Enum(_) => None,
+            Container::Struct(s) => s.generate_tokens(versions, ctx),
+            Container::Enum(e) => e.generate_tokens(versions, ctx),
         }
     }
 
@@ -116,138 +165,9 @@ impl Container {
     }
 }
 
-/// A versioned standalone container.
-///
-/// A standalone container is a container defined outside of a versioned module. See [`Module`][1]
-/// for more information about versioned modules.
-///
-/// [1]: crate::codegen::module::Module
-pub struct StandaloneContainer {
-    versions: Vec<VersionDefinition>,
-    container: Container,
-    vis: Visibility,
-}
-
-impl StandaloneContainer {
-    /// Creates a new versioned standalone struct.
-    pub fn new_struct(
-        item_struct: ItemStruct,
-        attributes: StandaloneContainerAttributes,
-    ) -> Result<Self> {
-        let versions: Vec<_> = (&attributes).into();
-        let vis = item_struct.vis.clone();
-
-        let container = Container::new_standalone_struct(item_struct, attributes, &versions)?;
-
-        Ok(Self {
-            container,
-            versions,
-            vis,
-        })
-    }
-
-    /// Creates a new versioned standalone enum.
-    pub fn new_enum(
-        item_enum: ItemEnum,
-        attributes: StandaloneContainerAttributes,
-    ) -> Result<Self> {
-        let versions: Vec<_> = (&attributes).into();
-        let vis = item_enum.vis.clone();
-
-        let container = Container::new_standalone_enum(item_enum, attributes, &versions)?;
-
-        Ok(Self {
-            container,
-            versions,
-            vis,
-        })
-    }
-
-    /// Generate tokens containing every piece of code required for a standalone container.
-    pub fn generate_tokens(&self) -> TokenStream {
-        let vis = &self.vis;
-
-        let mut kubernetes_tokens = KubernetesTokens::default();
-        let mut tokens = TokenStream::new();
-
-        let mut versions = self.versions.iter().peekable();
-
-        while let Some(version) = versions.next() {
-            let container_definition = self.container.generate_definition(version);
-            let module_ident = &version.idents.module;
-
-            // NOTE (@Techassi): Using '.copied()' here does not copy or clone the data, but instead
-            // removes one level of indirection of the double reference '&&'.
-            let next_version = versions.peek().copied();
-
-            // Generate the From impl for upgrading the CRD.
-            let upgrade_from_impl =
-                self.container
-                    .generate_upgrade_from_impl(version, next_version, false);
-
-            // Generate the From impl for downgrading the CRD.
-            let downgrade_from_impl =
-                self.container
-                    .generate_downgrade_from_impl(version, next_version, false);
-
-            // Add the #[deprecated] attribute when the version is marked as deprecated.
-            let deprecated_attribute = version
-                .deprecated
-                .as_ref()
-                .map(|note| quote! { #[deprecated = #note] });
-
-            // Generate Kubernetes specific code (for a particular version) which is placed outside
-            // of the container definition.
-            if let Some(items) = self.container.generate_kubernetes_version_items(version) {
-                kubernetes_tokens.push(items);
-            }
-
-            tokens.extend(quote! {
-                #[automatically_derived]
-                #deprecated_attribute
-                #vis mod #module_ident {
-                    use super::*;
-                    #container_definition
-                }
-
-                #upgrade_from_impl
-                #downgrade_from_impl
-            });
-        }
-
-        // Finally add tokens outside of the container definitions
-        tokens.extend(self.container.generate_kubernetes_code(
-            &self.versions,
-            &kubernetes_tokens,
-            vis,
-            false,
-        ));
-
-        tokens
-    }
-}
-
 /// A collection of container idents used for different purposes.
 #[derive(Debug)]
 pub struct ContainerIdents {
-    /// This ident removes the 'Spec' suffix present in the definition container.
-    /// This ident is only used in the context of Kubernetes specific code.
-    pub kubernetes: IdentString,
-
-    /// This ident uses the base Kubernetes ident to construct an appropriate ident
-    /// for auto-generated status structs. This ident is only used in the context of
-    /// Kubernetes specific code.
-    pub kubernetes_status: IdentString,
-
-    /// This ident uses the base Kubernetes ident to construct an appropriate ident
-    /// for auto-generated version enums. This enum is used to select the stored
-    /// api version when merging CRDs. This ident is only used in the context of
-    /// Kubernetes specific code.
-    pub kubernetes_version: IdentString,
-
-    // TODO (@Techassi): Add comment
-    pub kubernetes_parameter: IdentString,
-
     /// The original ident, or name, of the versioned container.
     pub original: IdentString,
 
@@ -255,35 +175,60 @@ pub struct ContainerIdents {
     pub parameter: IdentString,
 }
 
-impl ContainerIdents {
-    pub fn from(ident: Ident, kubernetes_arguments: Option<&KubernetesArguments>) -> Self {
-        let kubernetes = match kubernetes_arguments {
-            Some(args) => match &args.kind {
-                Some(kind) => IdentString::from(Ident::new(kind, Span::call_site())),
-                None => ident.as_cleaned_kubernetes_ident(),
-            },
-            None => ident.as_cleaned_kubernetes_ident(),
-        };
+#[derive(Debug)]
+pub struct KubernetesIdents {
+    /// This ident removes the 'Spec' suffix present in the definition container.
+    /// This ident is only used in the context of Kubernetes specific code.
+    pub kind: IdentString,
 
-        let kubernetes_status =
-            IdentString::from(format_ident!("{kubernetes}StatusWithChangedValues"));
+    /// This ident uses the base Kubernetes ident to construct an appropriate ident
+    /// for auto-generated status structs. This ident is only used in the context of
+    /// Kubernetes specific code.
+    pub status: IdentString,
 
-        let kubernetes_version = IdentString::from(format_ident!("{kubernetes}Version"));
-        let kubernetes_parameter = kubernetes.as_parameter_ident();
+    /// This ident uses the base Kubernetes ident to construct an appropriate ident
+    /// for auto-generated version enums. This enum is used to select the stored
+    /// api version when merging CRDs. This ident is only used in the context of
+    /// Kubernetes specific code.
+    pub version: IdentString,
 
+    // TODO (@Techassi): Add comment
+    pub parameter: IdentString,
+}
+
+impl From<Ident> for ContainerIdents {
+    fn from(ident: Ident) -> Self {
         Self {
             parameter: ident.as_parameter_ident(),
             original: ident.into(),
-            kubernetes_parameter,
-            kubernetes_version,
-            kubernetes_status,
-            kubernetes,
+        }
+    }
+}
+
+impl KubernetesIdents {
+    pub fn from(ident: &IdentString, arguments: &StructCrdArguments) -> Self {
+        let kind = match &arguments.kind {
+            Some(kind) => IdentString::from(Ident::new(kind, Span::call_site())),
+            None => ident.as_cleaned_kubernetes_ident(),
+        };
+
+        let status = IdentString::from(format_ident!("{kind}StatusWithChangedValues"));
+        let version = IdentString::from(format_ident!("{kind}Version"));
+        let parameter = kind.as_parameter_ident();
+
+        Self {
+            parameter,
+            version,
+            status,
+            kind,
         }
     }
 }
 
 #[derive(Debug)]
 pub struct ContainerOptions {
-    pub kubernetes_arguments: Option<KubernetesArguments>,
     pub skip_from: bool,
+    pub skip_object_from: bool,
+    pub skip_merged_crd: bool,
+    pub skip_try_convert: bool,
 }

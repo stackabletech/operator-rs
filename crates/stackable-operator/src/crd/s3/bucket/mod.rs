@@ -6,7 +6,14 @@ use crate::{crd::s3::connection::v1alpha1 as conn_v1alpha1, versioned::versioned
 
 mod v1alpha1_impl;
 
-#[versioned(version(name = "v1alpha1"))]
+#[versioned(
+    version(name = "v1alpha1"),
+    crates(
+        kube_core = "kube::core",
+        k8s_openapi = "k8s_openapi",
+        schemars = "schemars",
+    )
+)]
 pub mod versioned {
     pub mod v1alpha1 {
         pub use v1alpha1_impl::BucketError;
@@ -14,15 +21,10 @@ pub mod versioned {
 
     /// S3 bucket specification containing the bucket name and an inlined or referenced connection specification.
     /// Learn more on the [S3 concept documentation](DOCS_BASE_URL_PLACEHOLDER/concepts/s3).
-    #[versioned(k8s(
+    #[versioned(crd(
         group = "s3.stackable.tech",
         kind = "S3Bucket",
         plural = "s3buckets",
-        crates(
-            kube_core = "kube::core",
-            k8s_openapi = "k8s_openapi",
-            schemars = "schemars",
-        ),
         namespaced
     ))]
     #[derive(Clone, CustomResource, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]

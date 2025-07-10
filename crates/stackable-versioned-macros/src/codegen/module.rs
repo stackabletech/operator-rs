@@ -3,11 +3,17 @@ use std::{collections::HashMap, ops::Not};
 use darling::{Error, Result, util::IdentString};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Ident, Item, ItemMod, ItemUse, Visibility, token::Pub};
+use syn::{Item, ItemMod, ItemUse, Visibility, token::Pub};
 
 use crate::{
-    ModuleAttributes,
-    codegen::{KubernetesTokens, VersionDefinition, container::Container},
+    attrs::module::{
+        CrateArguments, KubernetesConfigOptions, ModuleAttributes, ModuleOptions,
+        ModuleSkipArguments,
+    },
+    codegen::{
+        VersionDefinition,
+        container::{Container, ContainerTokens, VersionedContainerTokens},
+    },
 };
 
 /// A versioned module.
@@ -24,9 +30,9 @@ pub struct Module {
     ident: IdentString,
     vis: Visibility,
 
-    // Flags which influence generation
-    preserve_module: bool,
-    skip_from: bool,
+    crates: CrateArguments,
+    options: ModuleOptions,
+    skip: ModuleSkipArguments,
 }
 
 impl Module {
@@ -40,19 +46,6 @@ impl Module {
 
         let versions: Vec<VersionDefinition> = (&module_attributes).into();
 
-        let preserve_module = module_attributes
-            .common
-            .options
-            .preserve_module
-            .is_present();
-
-        let skip_from = module_attributes
-            .common
-            .options
-            .skip
-            .as_ref()
-            .is_some_and(|opts| opts.from.is_present());
-
         let mut errors = Error::accumulator();
         let mut submodules = HashMap::new();
         let mut containers = Vec::new();
@@ -60,12 +53,26 @@ impl Module {
         for item in items {
             match item {
                 Item::Enum(item_enum) => {
-                    let container = Container::new_enum_nested(item_enum, &versions)?;
-                    containers.push(container);
+                    if let Some(container) =
+                        errors.handle(Container::new_enum(item_enum, &versions))
+                    {
+                        containers.push(container);
+                    };
                 }
                 Item::Struct(item_struct) => {
-                    let container = Container::new_struct_nested(item_struct, &versions)?;
-                    containers.push(container);
+                    let experimental_conversion_tracking = module_attributes
+                        .options
+                        .kubernetes
+                        .experimental_conversion_tracking
+                        .is_present();
+
+                    if let Some(container) = errors.handle(Container::new_struct(
+                        item_struct,
+                        &versions,
+                        experimental_conversion_tracking,
+                    )) {
+                        containers.push(container);
+                    }
                 }
                 Item::Mod(submodule) => {
                     if !versions
@@ -112,7 +119,7 @@ impl Module {
                 // defined in the module are no longer accessible (because they are not re-emitted).
                 disallowed_item => errors.push(
                     Error::custom(
-                        "Item not allowed here. Please move it ouside of the versioned module",
+                        "Item not allowed here. Please move it outside of the versioned module",
                     )
                     .with_span(&disallowed_item),
                 ),
@@ -120,12 +127,13 @@ impl Module {
         }
 
         errors.finish_with(Self {
+            options: module_attributes.options,
+            crates: module_attributes.crates,
+            skip: module_attributes.skip,
             ident: item_mod.ident.into(),
             vis: item_mod.vis,
-            preserve_module,
             containers,
             submodules,
-            skip_from,
             versions,
         })
     }
@@ -136,6 +144,8 @@ impl Module {
             return quote! {};
         }
 
+        let preserve_module = self.options.common.preserve_module.is_present();
+
         let module_ident = &self.ident;
         let module_vis = &self.vis;
 
@@ -143,67 +153,62 @@ impl Module {
         // of version modules (eg. 'v1alpha1') to be public, so that they are accessible inside the
         // preserved (wrapping) module. Otherwise, we can inherit the visibility from the module
         // which will be erased.
-        let version_module_vis = if self.preserve_module {
+        let version_module_vis = if preserve_module {
             &Visibility::Public(Pub::default())
         } else {
             &self.vis
         };
 
-        let mut kubernetes_tokens = TokenStream::new();
+        let mut inner_and_between_tokens = HashMap::new();
+        let mut outer_tokens = TokenStream::new();
         let mut tokens = TokenStream::new();
 
-        let mut kubernetes_container_items: HashMap<Ident, KubernetesTokens> = HashMap::new();
-        let mut versions = self.versions.iter().peekable();
+        let ctx = ModuleGenerationContext {
+            kubernetes_options: &self.options.kubernetes,
+            add_attributes: preserve_module,
+            vis: version_module_vis,
+            crates: &self.crates,
+            skip: &self.skip,
+        };
 
-        while let Some(version) = versions.next() {
-            let next_version = versions.peek().copied();
-            let mut container_definitions = TokenStream::new();
-            let mut from_impls = TokenStream::new();
+        for container in &self.containers {
+            let ContainerTokens { versioned, outer } =
+                container.generate_tokens(&self.versions, ctx);
 
-            let version_module_ident = &version.idents.module;
+            inner_and_between_tokens.insert(container.get_original_ident(), versioned);
+            outer_tokens.extend(outer);
+        }
+
+        // Only add #[automatically_derived] here if the user doesn't want to preserve the
+        // module.
+        let automatically_derived = preserve_module
+            .not()
+            .then(|| quote! {#[automatically_derived]});
+
+        for version in &self.versions {
+            let mut inner_tokens = TokenStream::new();
+            let mut between_tokens = TokenStream::new();
 
             for container in &self.containers {
-                container_definitions.extend(container.generate_definition(version));
+                let versioned = inner_and_between_tokens
+                    .get_mut(container.get_original_ident())
+                    .unwrap();
+                let VersionedContainerTokens { inner, between } =
+                    versioned.remove(&version.inner).unwrap();
 
-                if !self.skip_from {
-                    from_impls.extend(container.generate_upgrade_from_impl(
-                        version,
-                        next_version,
-                        self.preserve_module,
-                    ));
-
-                    from_impls.extend(container.generate_downgrade_from_impl(
-                        version,
-                        next_version,
-                        self.preserve_module,
-                    ));
-                }
-
-                // Generate Kubernetes specific code which is placed outside of the container
-                // definition.
-                if let Some(items) = container.generate_kubernetes_version_items(version) {
-                    let entry = kubernetes_container_items
-                        .entry(container.get_original_ident().clone())
-                        .or_default();
-
-                    entry.push(items);
-                }
+                inner_tokens.extend(inner);
+                between_tokens.extend(between);
             }
 
-            let submodule_imports = self.generate_submodule_imports(version);
-
-            // Only add #[automatically_derived] here if the user doesn't want to preserve the
-            // module.
-            let automatically_derived = self
-                .preserve_module
-                .not()
-                .then(|| quote! {#[automatically_derived]});
+            let version_module_ident = &version.idents.module;
 
             // Add the #[deprecated] attribute when the version is marked as deprecated.
             let deprecated_attribute = version
                 .deprecated
                 .as_ref()
                 .map(|note| quote! { #[deprecated = #note] });
+
+            let submodule_imports = self.generate_submodule_imports(version);
 
             tokens.extend(quote! {
                 #automatically_derived
@@ -212,39 +217,25 @@ impl Module {
                     use super::*;
 
                     #submodule_imports
-
-                    #container_definitions
+                    #inner_tokens
                 }
 
-                #from_impls
+                #between_tokens
             });
         }
 
-        // Generate the final Kubernetes specific code for each container (which uses Kubernetes
-        // specific features) which is appended to the end of container definitions.
-        for container in &self.containers {
-            if let Some(items) = kubernetes_container_items.get(container.get_original_ident()) {
-                kubernetes_tokens.extend(container.generate_kubernetes_code(
-                    &self.versions,
-                    items,
-                    version_module_vis,
-                    self.preserve_module,
-                ));
-            }
-        }
-
-        if self.preserve_module {
+        if preserve_module {
             quote! {
                 #[automatically_derived]
                 #module_vis mod #module_ident {
                     #tokens
-                    #kubernetes_tokens
+                    #outer_tokens
                 }
             }
         } else {
             quote! {
                 #tokens
-                #kubernetes_tokens
+                #outer_tokens
             }
         }
     }
@@ -259,5 +250,23 @@ impl Module {
                     #(#use_statements)*
                 }
             })
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ModuleGenerationContext<'a> {
+    pub kubernetes_options: &'a KubernetesConfigOptions,
+    pub skip: &'a ModuleSkipArguments,
+    pub crates: &'a CrateArguments,
+    pub vis: &'a Visibility,
+
+    pub add_attributes: bool,
+}
+
+impl ModuleGenerationContext<'_> {
+    pub fn automatically_derived_attr(&self) -> Option<TokenStream> {
+        self.add_attributes
+            .not()
+            .then(|| quote! { #[automatically_derived] })
     }
 }

@@ -9,12 +9,15 @@
                 "apiVersion": "test.stackable.tech/v1alpha1",
                 "kind": "Person",
                 "metadata": {
-                    "name": "sbernauer",
+                    "name": "jdoe",
                     "namespace": "default",
                     "uid": "d41e2019-5de3-409c-a7b2-0799ecb95e4b"
                 },
                 "spec": {
-                    "username": "sbernauer"
+                    "username": "jdoe",
+                    "socials": {
+                        "email": "jdoe@example.com"
+                    }
                 }
             },
             {
@@ -22,9 +25,12 @@
                 "kind": "Person",
                 "metadata": {},
                 "spec": {
-                    "username": "sbernauer",
-                    "firstName": "Sebastian",
-                    "lastName": "Bernauer"
+                    "username": "jdoe",
+                    "firstName": "John",
+                    "lastName": "Doe",
+                    "socials": {
+                        "email": "jdoe@example.com"
+                    }
                 }
             },
             {
@@ -32,9 +38,13 @@
                 "kind": "Person",
                 "metadata": {},
                 "spec": {
-                    "username": "sbernauer",
-                    "firstName": "Sebastian",
-                    "lastName": "Bernauer"
+                    "username": "jdoe",
+                    "firstName": "John",
+                    "lastName": "Doe",
+                    "socials": {
+                        "email": "jdoe@example.com",
+                        "mastodon": "@jdoe@example.com"
+                    }
                 }
             },
             {
@@ -42,10 +52,14 @@
                 "kind": "Person",
                 "metadata": {},
                 "spec": {
-                    "username": "sbernauer",
-                    "firstName": "Sebastian",
-                    "lastName": "Bernauer",
-                    "gender": "Male"
+                    "username": "jdoe",
+                    "firstName": "John",
+                    "lastName": "Doe",
+                    "gender": "Male",
+                    "socials": {
+                        "email": "jdoe@example.com",
+                        "mastodon": "@jdoe@example.com"
+                    }
                 }
             },
             {
@@ -53,10 +67,14 @@
                 "kind": "Person",
                 "metadata": {},
                 "spec": {
-                    "username": "sbernauer",
-                    "firstName": "Sebastian",
-                    "lastName": "Bernauer",
-                    "gender": "Male"
+                    "username": "jdoe",
+                    "firstName": "John",
+                    "lastName": "Doe",
+                    "gender": "Male",
+                    "socials": {
+                        "email": "jdoe@example.com",
+                        "mastodon": "@jdoe@example.com"
+                    }
                 }
             }
         ]
