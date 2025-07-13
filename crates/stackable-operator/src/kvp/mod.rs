@@ -2,7 +2,7 @@
 //! key/value pairs, like labels and annotations.
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fmt::Display,
+    fmt::{Debug, Display},
     ops::Deref,
     str::FromStr,
 };
@@ -90,13 +90,22 @@ where
 ///
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/>
 /// - <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyValuePair<T>
 where
     T: Value,
 {
     key: Key,
     value: T,
+}
+
+impl<T> Debug for KeyValuePair<T>
+where
+    T: Value + Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}: {:?}", self.key, self.value)
+    }
 }
 
 impl<K, V, T> TryFrom<(K, V)> for KeyValuePair<T>
