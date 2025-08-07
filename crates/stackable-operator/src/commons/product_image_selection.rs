@@ -111,9 +111,8 @@ impl ProductImage {
             ProductImageSelection::Custom(image_selection) => {
                 let image = ImageRef::parse(&image_selection.custom);
                 let image_tag_or_hash = image.tag.or(image.hash).unwrap_or("latest".to_string());
-                let mut app_version_label = format!("{}-{}", product_version, image_tag_or_hash);
-                // TODO Use new label mechanism once added
-                app_version_label.truncate(63);
+                let app_version_label =
+                    Self::build_app_version_label(&product_version, &image_tag_or_hash);
 
                 ResolvedProductImage {
                     product_version,
@@ -173,6 +172,26 @@ impl ProductImage {
                 ..
             }) => pv,
         }
+    }
+
+    /// Format the `image_tag_or_hash` for special characters not allowed in labels and build the
+    /// full app_version_label with a max length of 63 characters.
+    ///
+    /// A docker image with hash usually looks like:
+    ///
+    /// Without product or stackable version:
+    /// oci.stackable.tech/sdp/spark-k8s@sha256:c8b77ba72de6f8ddb99cb484b5ee79c43623cc2514d1448243f7d65d0ef66212
+    ///
+    /// With product and stackable version:
+    /// oci.stackable.tech/sdp/spark-k8s:3.5.6-stackable25.7.0@sha256:c8b77ba72de6f8ddb99cb484b5ee79c43623cc2514d1448243f7d65d0ef66212
+    ///
+    /// Using the hash we have to avoid adding characters like ":" to the image with is against Kubernetes policy.
+    fn build_app_version_label(product_version: &str, image_tag_or_hash: &str) -> String {
+        let formatted_image_tag_or_hash = image_tag_or_hash.replace(":", "-");
+        let mut app_version_label = format!("{}-{}", product_version, formatted_image_tag_or_hash);
+        // TODO Use new label mechanism once added
+        app_version_label.truncate(63);
+        app_version_label
     }
 }
 
