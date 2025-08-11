@@ -46,13 +46,13 @@ pub enum ConversionWebhookError {
     ConvertCaToPem { source: x509_cert::der::Error },
 
     #[snafu(display("failed to reconcile CRDs"))]
-    ReconcileCRDs {
+    ReconcileCrds {
         #[snafu(source(from(ConversionWebhookError, Box::new)))]
         source: Box<ConversionWebhookError>,
     },
 
     #[snafu(display("failed to update CRD {crd_name:?}"))]
-    UpdateCRD {
+    UpdateCrd {
         source: stackable_operator::kube::Error,
         crd_name: String,
     },
@@ -237,7 +237,7 @@ impl ConversionWebhookServer {
             current_cert,
         )
         .await
-        .context(ReconcileCRDsSnafu)?;
+        .context(ReconcileCrdsSnafu)?;
 
         try_join!(
             Self::run_webhook_server(server),
@@ -273,7 +273,7 @@ impl ConversionWebhookServer {
                 current_cert,
             )
             .await
-            .context(ReconcileCRDsSnafu)?;
+            .context(ReconcileCrdsSnafu)?;
         }
         Ok(())
     }
@@ -323,7 +323,7 @@ impl ConversionWebhookServer {
             crd_api
                 .patch(&crd_name, &patch_params, &patch)
                 .await
-                .with_context(|_| UpdateCRDSnafu {
+                .with_context(|_| UpdateCrdSnafu {
                     crd_name: crd_name.to_string(),
                 })?;
         }
