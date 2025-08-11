@@ -1,11 +1,12 @@
 use std::{fmt::Display, ops::Deref, str::FromStr, sync::LazyLock};
 
 use regex::Regex;
+use schemars::JsonSchema;
 use snafu::{Snafu, ensure};
 
 use crate::kvp::Value;
 
-const LABEL_VALUE_MAX_LEN: usize = 63;
+pub const LABEL_VALUE_MAX_LEN: usize = 63;
 
 // Lazily initialized regular expressions
 static LABEL_VALUE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
@@ -43,7 +44,7 @@ pub enum LabelValueError {
 /// unvalidated mutable access to inner values.
 ///
 /// [k8s-labels]: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
 pub struct LabelValue(String);
 
 impl Value for LabelValue {

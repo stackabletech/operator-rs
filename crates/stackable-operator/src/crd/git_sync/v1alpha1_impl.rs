@@ -374,7 +374,9 @@ mod tests {
 
         let resolved_product_image = ResolvedProductImage {
             image: "oci.stackable.tech/sdp/product:latest".to_string(),
-            app_version_label: "1.0.0-latest".to_string(),
+            app_version_label: "1.0.0-latest"
+                .parse()
+                .expect("static app version label is always valid"),
             product_version: "1.0.0".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
@@ -439,7 +441,9 @@ mod tests {
 
         let resolved_product_image = ResolvedProductImage {
             image: "oci.stackable.tech/sdp/product:latest".to_string(),
-            app_version_label: "1.0.0-latest".to_string(),
+            app_version_label: "1.0.0-latest"
+                .parse()
+                .expect("static app version label is always valid"),
             product_version: "1.0.0".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
