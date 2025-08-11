@@ -6,6 +6,19 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- BREAKING: Add two new required CLI arguments: `--operator-namespace` and `-operator-service-name`.
+  These two values are used to construct the service name in the CRD conversion webhook ([#1066]).
+
+### Changed
+
+- BREAKING: Rename two fields of the `ProductOperatorRun` struct for consistency and clarity ([#1066]):
+  - `telemetry_arguments` -> `telemetry`
+  - `cluster_info_opts` -> `cluster_info`
+
+## [0.94.0] - 2025-07-10
+
+### Added
+
 - The default Kubernetes cluster domain name is now fetched from the kubelet API unless explicitly configured ([#1068], [#1071])
   This requires operators to have the RBAC permission to `get` `nodes/proxy` in the apiGroup "", an example RBAC rule could look like:
 
@@ -31,15 +44,12 @@ All notable changes to this project will be documented in this file.
         fieldPath: spec.nodeName
   ```
 
+- Add associated functions on `RoleGroupRef` to return the rolegroup headless and metrics service name ([#1069]).
+
 ### Changed
 
 - Update `kube` to `1.1.0` ([#1049]).
 - BREAKING: Return type for `ListenerOperatorVolumeSourceBuilder::new()` is no longer a `Result` ([#1058]).
-- BREAKING: Require two new CLI arguments: `--operator-namespace` and `-operator-service-name`.
-  These are required, so that the operator knows what Service it needs to enter as CRD conversion webhook ([#1066]).
-- BREAKING: The `ProductOperatorRun` used for CLI arguments has some field renamed for consistency ([#1066]):
-  - `telemetry_arguments` -> `telemetry`
-  - `cluster_info_opts` -> `cluster_info`
 
 ### Fixed
 
@@ -57,6 +67,7 @@ All notable changes to this project will be documented in this file.
 [#1064]: https://github.com/stackabletech/operator-rs/pull/1064
 [#1066]: https://github.com/stackabletech/operator-rs/pull/1066
 [#1068]: https://github.com/stackabletech/operator-rs/pull/1068
+[#1069]: https://github.com/stackabletech/operator-rs/pull/1069
 [#1071]: https://github.com/stackabletech/operator-rs/pull/1071
 
 ## [0.93.2] - 2025-05-26

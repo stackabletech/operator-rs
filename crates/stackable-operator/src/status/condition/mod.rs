@@ -26,11 +26,11 @@ pub trait ConditionBuilder {
 /// # Arguments
 ///
 /// * `resource` - A cluster resource or status implementing [`HasStatusCondition`] in order to
-///    retrieve the "current" conditions set in the cluster. This is required to  compute
-///    condition change and set proper update / transition times.
+///   retrieve the "current" conditions set in the cluster. This is required to  compute
+///   condition change and set proper update / transition times.
 /// * `condition_builders` - A slice of structs implementing [`ConditionBuilder`]. This can be a
-///    one of the predefined ConditionBuilders like `DaemonSetConditionBuilder` or a custom
-///    implementation for special resources or different behavior.
+///   one of the predefined ConditionBuilders like `DaemonSetConditionBuilder` or a custom
+///   implementation for special resources or different behavior.
 ///
 /// # Examples
 /// ```

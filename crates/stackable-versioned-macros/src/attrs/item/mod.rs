@@ -7,7 +7,7 @@ use quote::format_ident;
 use syn::{Attribute, Path, Type, spanned::Spanned};
 
 use crate::{
-    codegen::{ItemStatus, VersionDefinition},
+    codegen::{VersionDefinition, item::ItemStatus},
     utils::ItemIdentExt,
 };
 
@@ -336,9 +336,9 @@ impl CommonItemAttributes {
                         downgrade_with: change.downgrade_with.as_deref().cloned(),
                         upgrade_with: change.upgrade_with.as_deref().cloned(),
                         from_ident: from_ident.clone(),
-                        from_type: from_ty.clone(),
+                        from_type: Box::new(from_ty.clone()),
                         to_ident: ident,
-                        to_type: ty,
+                        to_type: Box::new(ty),
                     },
                 );
 
@@ -354,7 +354,7 @@ impl CommonItemAttributes {
                     ItemStatus::Addition {
                         default_fn: added.default_fn.deref().clone(),
                         ident,
-                        ty,
+                        ty: Box::new(ty),
                     },
                 );
             }
@@ -387,9 +387,9 @@ impl CommonItemAttributes {
                         downgrade_with: change.downgrade_with.as_deref().cloned(),
                         upgrade_with: change.upgrade_with.as_deref().cloned(),
                         from_ident: from_ident.clone(),
-                        from_type: from_ty.clone(),
+                        from_type: Box::new(from_ty.clone()),
                         to_ident: ident,
-                        to_type: ty,
+                        to_type: Box::new(ty),
                     },
                 );
 
@@ -405,7 +405,7 @@ impl CommonItemAttributes {
                     ItemStatus::Addition {
                         default_fn: added.default_fn.deref().clone(),
                         ident,
-                        ty,
+                        ty: Box::new(ty),
                     },
                 );
             }
@@ -420,7 +420,7 @@ impl CommonItemAttributes {
                     ItemStatus::Addition {
                         default_fn: added.default_fn.deref().clone(),
                         ident: ident.deref().clone(),
-                        ty,
+                        ty: Box::new(ty),
                     },
                 );
 

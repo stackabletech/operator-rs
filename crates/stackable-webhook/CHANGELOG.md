@@ -13,6 +13,8 @@ All notable changes to this project will be documented in this file.
   Also, `TlsServer::new` now returns an additional `mpsc::Receiver<Certificate>`, so that the caller
   can get notified about certificate rotations happening ([#1066]).
 
+## [0.4.0] - 2025-07-10
+
 ### Fixed
 
 - Don't pull in the `aws-lc-rs` crate, as this currently fails to build in `make run-dev` ([#1043]).

@@ -1,4 +1,4 @@
-use darling::{FromField, Result};
+use darling::{Error, FromField, Result, util::Flag};
 use syn::{Attribute, Ident};
 
 use crate::{attrs::item::CommonItemAttributes, codegen::VersionDefinition, utils::FieldIdent};
@@ -36,6 +36,11 @@ pub struct FieldAttributes {
     // FromMeta.
     /// The original attributes for the field.
     pub attrs: Vec<Attribute>,
+
+    /// Indicates that this field's type is a nested sub struct. The indicator
+    /// is needed to let the macro know to generate conversion code with support
+    /// for tracking across struct boundaries.
+    pub nested: Flag,
 }
 
 impl FieldAttributes {
@@ -58,5 +63,16 @@ impl FieldAttributes {
 
     pub fn validate_versions(&self, versions: &[VersionDefinition]) -> Result<()> {
         self.common.validate_versions(versions)
+    }
+
+    pub fn validate_nested_flag(&self, experimental_conversion_tracking: bool) -> Result<()> {
+        if self.nested.is_present() && !experimental_conversion_tracking {
+            return Err(
+                Error::custom("the `nested` argument can only be used if the module-level `experimental_conversion_tracking` flag is set")
+                    .with_span(&self.nested.span())
+            );
+        }
+
+        Ok(())
     }
 }

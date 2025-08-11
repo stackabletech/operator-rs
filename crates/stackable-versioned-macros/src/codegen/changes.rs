@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, ops::Bound};
 use k8s_version::Version;
 use syn::Type;
 
-use crate::codegen::{ItemStatus, VersionDefinition};
+use crate::codegen::{VersionDefinition, item::ItemStatus};
 
 pub trait Neighbors<K, V>
 where
@@ -128,7 +128,7 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
                         ItemStatus::NoChange {
                             previously_deprecated: false,
                             ident: previous_ident.clone(),
-                            ty: ty.clone(),
+                            ty: Box::new(ty.clone()),
                         },
                     ),
                     ItemStatus::NoChange {
@@ -151,7 +151,9 @@ impl ChangesetExt for BTreeMap<Version, ItemStatus> {
                         ItemStatus::Change {
                             to_ident, to_type, ..
                         } => (to_ident, to_type, false),
-                        ItemStatus::Deprecation { ident, .. } => (ident, ty, true),
+                        ItemStatus::Deprecation { ident, .. } => {
+                            (ident, &Box::new(ty.clone()), true)
+                        }
                         ItemStatus::NoChange {
                             previously_deprecated,
                             ident,
