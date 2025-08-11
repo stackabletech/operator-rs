@@ -13,6 +13,14 @@ All notable changes to this project will be documented in this file.
   Also, `TlsServer::new` now returns an additional `mpsc::Receiver<Certificate>`, so that the caller
   can get notified about certificate rotations happening ([#1066]).
 
+### Removed
+
+- Remove `StatefulWebhookHandler` to reduce maintenance effort.
+  Also, webhooks are ideally stateless, so that they can be scaled horizontally.
+  It can be re-added once needed ([#1066]).
+
+[#1066]: https://github.com/stackabletech/operator-rs/pull/1066
+
 ## [0.4.0] - 2025-07-10
 
 ### Fixed
@@ -27,15 +35,9 @@ All notable changes to this project will be documented in this file.
   accessible by it, which is not the case when only using loopback.
   Also, the constant `DEFAULT_SOCKET_ADDR` has been renamed to `DEFAULT_SOCKET_ADDRESS` ([#1045]).
 
-### Removed
-
-- Remove `StatefulWebhookHandler` to reduce maintenance effort.
-  Also, webhooks are ideally stateless, so that they can be scaled horizontally.
-  It can be re-added once needed ([#1066]).
 
 [#1043]: https://github.com/stackabletech/operator-rs/pull/1043
 [#1045]: https://github.com/stackabletech/operator-rs/pull/1045
-[#1066]: https://github.com/stackabletech/operator-rs/pull/1066
 
 ## [0.3.1] - 2024-07-10
 
