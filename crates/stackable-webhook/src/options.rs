@@ -10,34 +10,33 @@ use crate::constants::DEFAULT_SOCKET_ADDRESS;
 
 /// Specifies available webhook server options.
 ///
-/// The [`Default`] implemention for this struct contains the following
-/// values:
+/// The [`Default`] implementation for this struct contains the following values:
 ///
 /// - The socket binds to 127.0.0.1 on port 8443 (HTTPS)
-/// - The TLS cert used gets auto-generated
+/// - An empty list of SANs is provided to the certificate the TLS server uses.
 ///
 /// ### Example with Custom HTTPS IP Address and Port
 ///
 /// ```
-/// use stackable_webhook::Options;
+/// use stackable_webhook::WebhookOptions;
 ///
 /// // Set IP address and port at the same time
-/// let options = Options::builder()
+/// let options = WebhookOptions::builder()
 ///     .bind_address([0, 0, 0, 0], 12345)
 ///     .build();
 ///
 /// // Set IP address only
-/// let options = Options::builder()
+/// let options = WebhookOptions::builder()
 ///     .bind_ip([0, 0, 0, 0])
 ///     .build();
 ///
 /// // Set port only
-/// let options = Options::builder()
+/// let options = WebhookOptions::builder()
 ///     .bind_port(12345)
 ///     .build();
 /// ```
 #[derive(Debug)]
-pub struct Options {
+pub struct WebhookOptions {
     /// The default HTTPS socket address the [`TcpListener`][tokio::net::TcpListener]
     /// binds to.
     pub socket_addr: SocketAddr,
@@ -47,15 +46,15 @@ pub struct Options {
     pub subject_alterative_dns_names: Vec<String>,
 }
 
-impl Default for Options {
+impl Default for WebhookOptions {
     fn default() -> Self {
         Self::builder().build()
     }
 }
 
-impl Options {
+impl WebhookOptions {
     /// Returns the default [`OptionsBuilder`] which allows to selectively
-    /// customize the options. See the documention for [`Options`] for more
+    /// customize the options. See the documentation for [`Options`] for more
     /// information on available functions.
     pub fn builder() -> OptionsBuilder {
         OptionsBuilder::default()
@@ -106,7 +105,7 @@ impl OptionsBuilder {
         self
     }
 
-    /// Adds the (subject alterative DNS name to the list of names.
+    /// Adds the subject alterative DNS name to the list of names.
     pub fn add_subject_alterative_dns_name(
         mut self,
         subject_alterative_dns_name: impl Into<String>,
@@ -118,8 +117,8 @@ impl OptionsBuilder {
 
     /// Builds the final [`Options`] by using default values for any not
     /// explicitly set option.
-    pub fn build(self) -> Options {
-        Options {
+    pub fn build(self) -> WebhookOptions {
+        WebhookOptions {
             socket_addr: self.socket_addr.unwrap_or(DEFAULT_SOCKET_ADDRESS),
             subject_alterative_dns_names: self.subject_alterative_dns_names,
         }

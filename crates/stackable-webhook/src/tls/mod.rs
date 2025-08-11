@@ -10,6 +10,7 @@ use axum::{
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use opentelemetry::trace::{FutureExt, SpanKind};
+use opentelemetry_semantic_conventions as semconv;
 use snafu::{ResultExt, Snafu};
 use stackable_operator::time::Duration;
 use tokio::{
@@ -29,9 +30,12 @@ use tracing::{Instrument, Span, field::Empty, instrument};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use x509_cert::Certificate;
 
-mod cert_resolver;
+use crate::{
+    options::WebhookOptions,
+    tls::cert_resolver::{CertificateResolver, CertificateResolverError},
+};
 
-pub use cert_resolver::{CertificateResolver, CertificateResolverError};
+mod cert_resolver;
 
 pub const WEBHOOK_CA_LIFETIME: Duration = Duration::from_minutes_unchecked(3);
 pub const WEBHOOK_CERTIFICATE_LIFETIME: Duration = Duration::from_minutes_unchecked(2);
@@ -77,11 +81,15 @@ impl TlsServer {
     /// which let's the [`CertificateResolver`] provide the needed certificates.
     #[instrument(name = "create_tls_server", skip(router))]
     pub async fn new(
-        socket_addr: SocketAddr,
         router: Router,
-        subject_alterative_dns_names: Vec<String>,
+        options: WebhookOptions,
     ) -> Result<(Self, mpsc::Receiver<Certificate>)> {
         let (cert_tx, cert_rx) = mpsc::channel(1);
+
+        let WebhookOptions {
+            socket_addr,
+            subject_alterative_dns_names,
+        } = options;
 
         let cert_resolver = CertificateResolver::new(subject_alterative_dns_names, cert_tx)
             .await
@@ -196,27 +204,27 @@ impl TlsServer {
         let span = tracing::trace_span!(
             "accept tls connection",
             "otel.kind" = ?SpanKind::Server,
-            "otel.status_code" = Empty,
-            "otel.status_message" = Empty,
-            "client.address" = remote_addr.ip().to_string(),
-            "client.port" = remote_addr.port() as i64,
-            "server.address" = Empty,
-            "server.port" = Empty,
-            "network.peer.address" = remote_addr.ip().to_string(),
-            "network.peer.port" = remote_addr.port() as i64,
-            "network.local.address" = Empty,
-            "network.local.port" = Empty,
-            "network.transport" = "tcp",
-            "network.type" = socket_addr.semantic_convention_network_type(),
+            { semconv::attribute::OTEL_STATUS_CODE } = Empty,
+            { semconv::attribute::OTEL_STATUS_DESCRIPTION } = Empty,
+            { semconv::trace::CLIENT_ADDRESS } = remote_addr.ip().to_string(),
+            { semconv::trace::CLIENT_PORT } = remote_addr.port() as i64,
+            { semconv::trace::SERVER_ADDRESS } = Empty,
+            { semconv::trace::SERVER_PORT } = Empty,
+            { semconv::trace::NETWORK_PEER_ADDRESS } = remote_addr.ip().to_string(),
+            { semconv::trace::NETWORK_PEER_PORT } = remote_addr.port() as i64,
+            { semconv::trace::NETWORK_LOCAL_ADDRESS } = Empty,
+            { semconv::trace::NETWORK_LOCAL_PORT } = Empty,
+            { semconv::trace::NETWORK_TRANSPORT } = "tcp",
+            { semconv::trace::NETWORK_TYPE } = socket_addr.semantic_convention_network_type(),
         );
 
         if let Ok(local_addr) = tcp_stream.local_addr() {
             let addr = &local_addr.ip().to_string();
             let port = local_addr.port();
-            span.record("server.address", addr)
-                .record("server.port", port as i64)
-                .record("network.local.address", addr)
-                .record("network.local.port", port as i64);
+            span.record(semconv::trace::SERVER_ADDRESS, addr)
+                .record(semconv::trace::SERVER_PORT, port as i64)
+                .record(semconv::trace::NETWORK_LOCAL_ADDRESS, addr)
+                .record(semconv::trace::NETWORK_LOCAL_PORT, port as i64);
         }
 
         // Wait for tls handshake to happen
@@ -227,8 +235,8 @@ impl TlsServer {
         {
             Ok(tls_stream) => tls_stream,
             Err(err) => {
-                span.record("otel.status_code", "Error")
-                    .record("otel.status_message", err.to_string());
+                span.record(semconv::attribute::OTEL_STATUS_CODE, "Error")
+                    .record(semconv::attribute::OTEL_STATUS_DESCRIPTION, err.to_string());
                 tracing::trace!(%remote_addr, "error during tls handshake connection");
                 return;
             }
@@ -257,8 +265,8 @@ impl TlsServer {
             .instrument(span.clone())
             .await
             .unwrap_or_else(|err| {
-                span.record("otel.status_code", "Error")
-                    .record("otel.status_message", err.to_string());
+                span.record(semconv::attribute::OTEL_STATUS_CODE, "Error")
+                    .record(semconv::attribute::OTEL_STATUS_DESCRIPTION, err.to_string());
                 tracing::warn!(%err, %remote_addr, "failed to serve connection");
             })
     }

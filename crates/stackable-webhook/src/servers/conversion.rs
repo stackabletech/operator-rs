@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, net::SocketAddr};
 
 use axum::{Json, Router, routing::post};
 use k8s_openapi::{
@@ -27,7 +27,8 @@ use x509_cert::{
 };
 
 use crate::{
-    WebhookError, WebhookHandler, WebhookServer, constants::DEFAULT_HTTPS_PORT, options::Options,
+    WebhookError, WebhookHandler, WebhookServer, constants::DEFAULT_HTTPS_PORT,
+    options::WebhookOptions,
 };
 
 #[derive(Debug, Snafu)]
@@ -66,16 +67,29 @@ where
     }
 }
 
+// TODO: Add a builder, maybe with `bon`.
+#[derive(Debug)]
+pub struct ConversionWebhookOptions {
+    /// The environment the operator is running in, notably the namespace and service name it is
+    /// reachable at.
+    pub operator_environment: OperatorEnvironmentOptions,
+
+    /// The bind address to bind the HTTPS server to.
+    pub socket_addr: SocketAddr,
+
+    /// The field manager used to apply Kubernetes objects, typically the operator name, e.g.
+    /// `airflow-operator`.
+    pub field_manager: String,
+}
+
 /// A ready-to-use CRD conversion webhook server.
 ///
 /// See [`ConversionWebhookServer::new()`] for usage examples.
 pub struct ConversionWebhookServer {
-    server: WebhookServer,
-    cert_rx: mpsc::Receiver<Certificate>,
-    client: Client,
-    field_manager: String,
     crds: Vec<CustomResourceDefinition>,
-    operator_environment: OperatorEnvironmentOptions,
+    options: ConversionWebhookOptions,
+    router: Router,
+    client: Client,
 }
 
 impl ConversionWebhookServer {
@@ -97,12 +111,14 @@ impl ConversionWebhookServer {
     /// ```no_run
     /// use clap::Parser;
     /// use stackable_webhook::{
-    ///     servers::{ConversionReview, ConversionWebhookServer},
-    ///     Options
+    ///     servers::{ConversionReview, ConversionWebhookServer, ConversionWebhookOptions},
+    ///     WebhookOptions
     /// };
-    /// use stackable_operator::cli::OperatorEnvironmentOptions;
-    /// use stackable_operator::kube::Client;
-    /// use stackable_operator::crd::s3::{S3Connection, S3ConnectionVersion};
+    /// use stackable_operator::{
+    ///     kube::Client,
+    ///     crd::s3::{S3Connection, S3ConnectionVersion},
+    ///     cli::OperatorEnvironmentOptions,
+    /// };
     ///
     /// # async fn test() {
     /// let crds_and_handlers = [
@@ -113,17 +129,20 @@ impl ConversionWebhookServer {
     ///     ),
     /// ];
     ///
-    /// const OPERATOR_NAME: &str = "PRODUCT_OPERATOR";
     /// let client = Client::try_default().await.expect("failed to create Kubernetes client");
     /// let operator_environment = OperatorEnvironmentOptions::parse();
+    ///
+    /// let options = ConversionWebhookOptions {
+    ///     operator_environment,
+    ///     socket_addr: "127.0.0.1:8080".parse().unwrap(),
+    ///     field_manager: String::from("product-operator"),
+    /// };
     ///
     /// // Construct the conversion webhook server
     /// let conversion_webhook = ConversionWebhookServer::new(
     ///     crds_and_handlers,
-    ///     stackable_webhook::Options::default(),
+    ///     options,
     ///     client,
-    ///     OPERATOR_NAME,
-    ///     operator_environment,
     /// )
     /// .await
     /// .expect("failed to create ConversionWebhookServer");
@@ -137,16 +156,13 @@ impl ConversionWebhookServer {
     )]
     pub async fn new<H>(
         crds_and_handlers: impl IntoIterator<Item = (CustomResourceDefinition, H)>,
-        mut options: Options,
+        options: ConversionWebhookOptions,
         client: Client,
-        field_manager: impl Into<String> + Debug,
-        operator_environment: OperatorEnvironmentOptions,
     ) -> Result<Self, ConversionWebhookError>
     where
         H: WebhookHandler<ConversionReview, ConversionReview> + Clone + Send + Sync + 'static,
     {
         tracing::debug!("create new conversion webhook server");
-        let field_manager: String = field_manager.into();
 
         let mut router = Router::new();
         let mut crds = Vec::new();
@@ -162,18 +178,45 @@ impl ConversionWebhookServer {
             crds.push(crd);
         }
 
+        Ok(Self {
+            options,
+            router,
+            client,
+            crds,
+        })
+    }
+
+    pub async fn run(self) -> Result<(), ConversionWebhookError> {
+        tracing::info!("starting conversion webhook server");
+
+        let Self {
+            options,
+            router,
+            client,
+            crds,
+        } = self;
+
+        let ConversionWebhookOptions {
+            operator_environment:
+                OperatorEnvironmentOptions {
+                    operator_namespace,
+                    operator_service_name,
+                },
+            socket_addr,
+            field_manager,
+        } = &options;
+
         // This is how Kubernetes calls us, so it decides about the naming.
         // AFAIK we can not influence this, so this is the only SAN entry needed.
-        let subject_alterative_dns_name = format!(
-            "{service_name}.{operator_namespace}.svc",
-            service_name = operator_environment.operator_service_name,
-            operator_namespace = operator_environment.operator_namespace,
-        );
-        options
-            .subject_alterative_dns_names
-            .push(subject_alterative_dns_name);
+        let subject_alterative_dns_name =
+            format!("{operator_service_name}.{operator_namespace}.svc",);
 
-        let (server, mut cert_rx) = WebhookServer::new(router, options)
+        let webhook_options = WebhookOptions {
+            subject_alterative_dns_names: vec![subject_alterative_dns_name],
+            socket_addr: *socket_addr,
+        };
+
+        let (server, mut cert_rx) = WebhookServer::new(router, webhook_options)
             .await
             .context(CreateWebhookServerSnafu)?;
 
@@ -188,44 +231,22 @@ impl ConversionWebhookServer {
             .context(ReceiverCertificateFromChannelSnafu)?;
         Self::reconcile_crds(
             &client,
-            &field_manager,
+            field_manager,
             &crds,
-            &operator_environment,
-            &current_cert,
+            &options.operator_environment,
+            current_cert,
         )
         .await
         .context(ReconcileCRDsSnafu)?;
-
-        Ok(Self {
-            server,
-            cert_rx,
-            client,
-            field_manager,
-            crds,
-            operator_environment,
-        })
-    }
-
-    pub async fn run(self) -> Result<(), ConversionWebhookError> {
-        tracing::info!("starting conversion webhook server");
-
-        let Self {
-            server,
-            cert_rx,
-            client,
-            field_manager,
-            crds,
-            operator_environment,
-        } = self;
 
         try_join!(
             Self::run_webhook_server(server),
             Self::run_crd_reconciliation_loop(
                 cert_rx,
                 &client,
-                &field_manager,
+                field_manager,
                 &crds,
-                &operator_environment
+                &options.operator_environment,
             ),
         )?;
 
@@ -249,7 +270,7 @@ impl ConversionWebhookServer {
                 field_manager,
                 crds,
                 operator_environment,
-                &current_cert,
+                current_cert,
             )
             .await
             .context(ReconcileCRDsSnafu)?;
@@ -263,7 +284,7 @@ impl ConversionWebhookServer {
         field_manager: &str,
         crds: &[CustomResourceDefinition],
         operator_environment: &OperatorEnvironmentOptions,
-        current_cert: &Certificate,
+        current_cert: Certificate,
     ) -> Result<(), ConversionWebhookError> {
         tracing::info!(
             crds = ?crds.iter().map(CustomResourceDefinition::name_any).collect::<Vec<_>>(),
@@ -286,8 +307,8 @@ impl ConversionWebhookServer {
                     conversion_review_versions: vec!["v1".to_string()],
                     client_config: Some(WebhookClientConfig {
                         service: Some(ServiceReference {
-                            name: operator_environment.operator_service_name.clone(),
-                            namespace: operator_environment.operator_namespace.clone(),
+                            name: operator_environment.operator_service_name.to_owned(),
+                            namespace: operator_environment.operator_namespace.to_owned(),
                             path: Some(format!("/convert/{crd_name}")),
                             port: Some(DEFAULT_HTTPS_PORT.into()),
                         }),

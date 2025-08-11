@@ -19,6 +19,7 @@ hyper.workspace = true
 k8s-openapi.workspace = true
 kube.workspace = true
 opentelemetry.workspace = true
+opentelemetry-semantic-conventions.workspace = true
 rand.workspace = true
 serde_json.workspace = true
 snafu.workspace = true

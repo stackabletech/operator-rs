@@ -8,12 +8,12 @@
 //! routes and their handler functions.
 //!
 //! ```
-//! use stackable_webhook::{WebhookServer, Options};
+//! use stackable_webhook::{WebhookServer, WebhookOptions};
 //! use axum::Router;
 //!
 //! # async fn test() {
 //! let router = Router::new();
-//! let (server, cert_rx) = WebhookServer::new(router, Options::default())
+//! let (server, cert_rx) = WebhookServer::new(router, WebhookOptions::default())
 //!     .await
 //!     .expect("failed to create WebhookServer");
 //! # }
@@ -46,7 +46,7 @@ pub mod servers;
 pub mod tls;
 
 // Selected re-exports
-pub use crate::options::Options;
+pub use crate::options::WebhookOptions;
 
 /// A generic webhook handler receiving a request and sending back a response.
 ///
@@ -88,10 +88,10 @@ pub struct WebhookServer {
 impl WebhookServer {
     /// Creates a new ready-to-use webhook server.
     ///
-    /// The server listens on `socket_addr` which is provided via the [`Options`]
-    /// and handles routing based on the provided Axum `router`. Most of the time
-    /// it is sufficient to use [`Options::default()`]. See the documentation
-    /// for [`Options`] for more details on the default values.
+    /// The server listens on `socket_addr` which is provided via the [`WebhookOptions`] and handles
+    /// routing based on the provided Axum `router`. Most of the time it is sufficient to use
+    /// [`WebhookOptions::default()`]. See the documentation for [`WebhookOptions`] for more details
+    /// on the default values.
     ///
     /// To start the server, use the [`WebhookServer::run()`] function. This will
     /// run the server using the Tokio runtime until it is terminated.
@@ -99,12 +99,12 @@ impl WebhookServer {
     /// ### Basic Example
     ///
     /// ```
-    /// use stackable_webhook::{WebhookServer, Options};
+    /// use stackable_webhook::{WebhookServer, WebhookOptions};
     /// use axum::Router;
     ///
     /// # async fn test() {
     /// let router = Router::new();
-    /// let (server, cert_rx) = WebhookServer::new(router, Options::default())
+    /// let (server, cert_rx) = WebhookServer::new(router, WebhookOptions::default())
     ///     .await
     ///     .expect("failed to create WebhookServer");
     /// # }
@@ -113,11 +113,11 @@ impl WebhookServer {
     /// ### Example with Custom Options
     ///
     /// ```
-    /// use stackable_webhook::{WebhookServer, Options};
+    /// use stackable_webhook::{WebhookServer, WebhookOptions};
     /// use axum::Router;
     ///
     /// # async fn test() {
-    /// let options = Options::builder()
+    /// let options = WebhookOptions::builder()
     ///     .bind_address([127, 0, 0, 1], 8080)
     ///     .add_subject_alterative_dns_name("my-san-entry")
     ///     .build();
@@ -130,7 +130,7 @@ impl WebhookServer {
     /// ```
     pub async fn new(
         router: Router,
-        options: Options,
+        options: WebhookOptions,
     ) -> Result<(Self, mpsc::Receiver<Certificate>)> {
         tracing::trace!("create new webhook server");
 
@@ -154,13 +154,9 @@ impl WebhookServer {
             .route("/health", get(|| async { "ok" }));
 
         tracing::debug!("create TLS server");
-        let (tls_server, cert_rx) = TlsServer::new(
-            options.socket_addr,
-            router,
-            options.subject_alterative_dns_names,
-        )
-        .await
-        .context(CreateTlsServerSnafu)?;
+        let (tls_server, cert_rx) = TlsServer::new(router, options)
+            .await
+            .context(CreateTlsServerSnafu)?;
 
         Ok((Self { tls_server }, cert_rx))
     }

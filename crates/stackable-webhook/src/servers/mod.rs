@@ -2,5 +2,5 @@
 //! purposes.
 mod conversion;
 
-pub use conversion::{ConversionWebhookError, ConversionWebhookServer};
+pub use conversion::{ConversionWebhookError, ConversionWebhookOptions, ConversionWebhookServer};
 pub use kube::core::conversion::ConversionReview;
