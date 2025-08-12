@@ -374,7 +374,7 @@ mod tests {
 
         let resolved_product_image = ResolvedProductImage {
             image: "oci.stackable.tech/sdp/product:latest".to_string(),
-            app_version_label: "1.0.0-latest"
+            app_version_label_value: "1.0.0-latest"
                 .parse()
                 .expect("static app version label is always valid"),
             product_version: "1.0.0".to_string(),
@@ -441,7 +441,7 @@ mod tests {
 
         let resolved_product_image = ResolvedProductImage {
             image: "oci.stackable.tech/sdp/product:latest".to_string(),
-            app_version_label: "1.0.0-latest"
+            app_version_label_value: "1.0.0-latest"
                 .parse()
                 .expect("static app version label is always valid"),
             product_version: "1.0.0".to_string(),
