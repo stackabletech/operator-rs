@@ -380,7 +380,7 @@ pub struct ObjectLabels<'a, T> {
     ///
     /// However, this is pure documentation and should not be parsed.
     ///
-    /// [avl]: crate::commons::product_image_selection::ResolvedProductImage::app_version_label
+    /// [avl]: crate::commons::product_image_selection::ResolvedProductImage::app_version_label_value
     pub app_version: &'a str,
 
     /// The DNS-style name of the operator managing the object (such as `zookeeper.stackable.tech`)
