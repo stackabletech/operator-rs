@@ -54,7 +54,7 @@ impl Default for WebhookOptions {
 
 impl WebhookOptions {
     /// Returns the default [`OptionsBuilder`] which allows to selectively
-    /// customize the options. See the documentation for [`Options`] for more
+    /// customize the options. See the documentation for [`WebhookOptions`] for more
     /// information on available functions.
     pub fn builder() -> OptionsBuilder {
         OptionsBuilder::default()
@@ -62,10 +62,10 @@ impl WebhookOptions {
 }
 
 /// The [`OptionsBuilder`] which allows to selectively customize the webhook
-/// server [`Options`].
+/// server [`WebhookOptions`].
 ///
 /// Usually, this struct is not constructed manually, but instead by calling
-/// [`Options::builder()`] or [`OptionsBuilder::default()`].
+/// [`WebhookOptions::builder()`] or [`OptionsBuilder::default()`].
 #[derive(Debug, Default)]
 pub struct OptionsBuilder {
     socket_addr: Option<SocketAddr>,
@@ -115,7 +115,7 @@ impl OptionsBuilder {
         self
     }
 
-    /// Builds the final [`Options`] by using default values for any not
+    /// Builds the final [`WebhookOptions`] by using default values for any not
     /// explicitly set option.
     pub fn build(self) -> WebhookOptions {
         WebhookOptions {
