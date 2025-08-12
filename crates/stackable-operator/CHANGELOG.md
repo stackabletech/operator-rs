@@ -4,11 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: The `ResolvedProductImage` field `app_version_label` was renamed to `app_version_label_value` to match changes to its type ([#1076]).
+
 ### Fixed
 
 - BREAKING: Fix bug where `ResolvedProductImage::app_version_label` could not be used as a label value because it can contain invalid characters.
-  This is the case when referencing custom images via a `@sha256:...` hash. As such, the `product_image_selection::resolve` function is now fallible.
-  The `ResolvedProductImage` field `app_version_label` was renamed to `app_version_label_value` to match its type ([#1076]).
+  This is the case when referencing custom images via a `@sha256:...` hash. As such, the `product_image_selection::resolve` function is now fallible ([#1076]).
+
 
 [#1076]: https://github.com/stackabletech/operator-rs/pull/1076
 
