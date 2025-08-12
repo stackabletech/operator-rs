@@ -474,6 +474,7 @@ impl ClusterResources {
         Ok(labels)
     }
 
+    // TODO (@Techassi): T should guarantee (by it's type) that required labels are set.
     /// Adds a resource to the cluster resources.
     ///
     /// The resource will be patched and the patched resource will be returned.

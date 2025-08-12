@@ -1,14 +1,13 @@
-//! This module provides various types and functions to construct valid Kubernetes
-//! annotations. Annotations are key/value pairs, where the key must meet certain
-//! requirementens regarding length and character set. The value can contain
-//! **any** valid UTF-8 data.
+//! This module provides various types and functions to construct valid Kubernetes annotations.
+//! Annotations are key/value pairs, where the key must meet certain requirements regarding length
+//! and character set. The value can contain **any** valid UTF-8 data.
 //!
-//! Additionally, the [`Annotation`] struct provides various helper functions to
-//! construct commonly used annotations across the Stackable Data Platform, like
-//! the secret scope or class.
+//! Additionally, the [`Annotation`] struct provides various helper functions to construct commonly
+//! used annotations across the Stackable Data Platform, like the secret scope or class.
 //!
-//! See <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
-//! for more information on Kubernetes annotations.
+//! See [the documentation][1] for more information on Kubernetes annotations.
+//!
+//! [1]: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
 use std::convert::Infallible;
 
 use crate::kvp::{KeyValuePair, KeyValuePairError, KeyValuePairs};
@@ -17,25 +16,20 @@ mod value;
 
 pub use value::*;
 
-/// A type alias for errors returned when construction or manipulation of a set
-/// of annotations fails.
+/// A type alias for errors returned when construction or manipulation of a set of annotations fails.
 pub type AnnotationError = KeyValuePairError<Infallible>;
 
-/// A specialized implementation of a key/value pair representing Kubernetes
-/// annotations.
+/// A specialized implementation of a key/value pair representing Kubernetes annotations.
 ///
-/// The validation of the annotation value can **never** fail, as [`str`] is
-/// guaranteed  to only contain valid UTF-8 data - which is the only
-/// requirement for a valid Kubernetes annotation value.
+/// The validation of the annotation value can **never** fail, as [`str`] is guaranteed  to only
+/// contain valid UTF-8 data - which is the only requirement for a valid Kubernetes annotation value.
 ///
-/// See <https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/>
-/// for more information on Kubernetes annotations.
+/// See [the documentation][1] for more information on Kubernetes annotations.
+///
+/// [1]: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
 pub type Annotation = KeyValuePair<AnnotationValue>;
 
 /// A validated set/list of Kubernetes annotations.
-///
-/// It provides selected associated functions to manipulate the set of
-/// annotations, like inserting or extending.
 ///
 /// ## Examples
 ///
