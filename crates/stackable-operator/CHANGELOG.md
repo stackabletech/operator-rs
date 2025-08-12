@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - BREAKING: Fixed bug where `app_version_label` could not be used for metadata `Label` when using a hash in custom images.
-  The `product_image_selection::resolve` now returns a `Result<ResolvedProductImage,Error>` instead of a `ResolvedProductImage` ([#1076]).
+  The `product_image_selection::resolve` now returns a `Result<ResolvedProductImage, Error>` instead of a `ResolvedProductImage` ([#1076]).
 
 [#1076]: https://github.com/stackabletech/operator-rs/pull/1076
 

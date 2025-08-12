@@ -11,7 +11,7 @@ pub const STACKABLE_DOCKER_REPO: &str = "oci.stackable.tech/sdp";
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("could not parse or create label from app version `{app_version}`"))]
+    #[snafu(display("could not parse or create label from app version {app_version:?}"))]
     AppVersionLabelParseFailed {
         source: LabelValueError,
         app_version: String,
