@@ -1,10 +1,10 @@
-use serde::{de::Visitor, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Visitor};
 
 use crate::time::Duration;
 
 struct DurationVisitor;
 
-impl<'de> Visitor<'de> for DurationVisitor {
+impl Visitor<'_> for DurationVisitor {
     type Value = Duration;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

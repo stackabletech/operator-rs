@@ -1,18 +1,24 @@
 [package]
 name = "stackable-operator"
 description = "Stackable Operator Framework"
-version = "0.78.0"
+version = "0.94.0"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
 repository.workspace = true
 
 [features]
+full = ["time", "telemetry", "versioned"]
+default = ["telemetry", "versioned"]
 time = ["dep:time"]
+telemetry = []
+versioned = []
 
 [dependencies]
 stackable-operator-derive = { path = "../stackable-operator-derive" }
 stackable-shared = { path = "../stackable-shared" }
+stackable-telemetry = { path = "../stackable-telemetry", features = ["clap"] }
+stackable-versioned = { path = "../stackable-versioned" }
 
 chrono.workspace = true
 clap.workspace = true
@@ -20,13 +26,13 @@ const_format.workspace = true
 derivative.workspace = true
 dockerfile-parser.workspace = true
 either.workspace = true
+educe.workspace = true
 futures.workspace = true
+http.workspace = true
 indexmap.workspace = true
 json-patch.workspace = true
 k8s-openapi.workspace = true
 kube.workspace = true
-opentelemetry_sdk.workspace = true
-opentelemetry-jaeger.workspace = true
 product-config.workspace = true
 regex.workspace = true
 schemars.workspace = true
@@ -40,7 +46,6 @@ time = { workspace = true, optional = true }
 tokio.workspace = true
 tracing.workspace = true
 tracing-appender.workspace = true
-tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 url.workspace = true
 

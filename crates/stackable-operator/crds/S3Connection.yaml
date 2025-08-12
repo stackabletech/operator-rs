@@ -1,0 +1,139 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: s3connections.s3.stackable.tech
+spec:
+  group: s3.stackable.tech
+  names:
+    categories: []
+    kind: S3Connection
+    plural: s3connections
+    shortNames: []
+    singular: s3connection
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns: []
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Auto-generated derived type for ConnectionSpec via `CustomResource`
+        properties:
+          spec:
+            description: S3 connection definition as a resource. Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/nightly/concepts/s3).
+            properties:
+              accessStyle:
+                default: VirtualHosted
+                description: Which access style to use. Defaults to virtual hosted-style as most of the data products out there. Have a look at the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html).
+                enum:
+                - Path
+                - VirtualHosted
+                type: string
+              credentials:
+                description: If the S3 uses authentication you have to specify you S3 credentials. In the most cases a [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing `accessKey` and `secretKey` is sufficient.
+                nullable: true
+                properties:
+                  scope:
+                    description: '[Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).'
+                    nullable: true
+                    properties:
+                      listenerVolumes:
+                        default: []
+                        description: The listener volume scope allows Node and Service scopes to be inferred from the applicable listeners. This must correspond to Volume names in the Pod that mount Listeners.
+                        items:
+                          type: string
+                        type: array
+                      node:
+                        default: false
+                        description: The node scope is resolved to the name of the Kubernetes Node object that the Pod is running on. This will typically be the DNS name of the node.
+                        type: boolean
+                      pod:
+                        default: false
+                        description: The pod scope is resolved to the name of the Kubernetes Pod. This allows the secret to differentiate between StatefulSet replicas.
+                        type: boolean
+                      services:
+                        default: []
+                        description: The service scope allows Pod objects to specify custom scopes. This should typically correspond to Service objects that the Pod participates in.
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  secretClass:
+                    description: '[SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) containing the LDAP bind credentials.'
+                    type: string
+                required:
+                - secretClass
+                type: object
+              host:
+                description: 'Host of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.'
+                type: string
+              port:
+                description: Port the S3 server listens on. If not specified the product will determine the port to use.
+                format: uint16
+                minimum: 0.0
+                nullable: true
+                type: integer
+              region:
+                default:
+                  name: us-east-1
+                description: |-
+                  Bucket region used for signing headers (sigv4).
+
+                  This defaults to `us-east-1` which is compatible with other implementations such as Minio.
+
+                  WARNING: Some products use the Hadoop S3 implementation which falls back to us-east-2.
+                properties:
+                  name:
+                    default: us-east-1
+                    type: string
+                type: object
+              tls:
+                description: Use a TLS connection. If not specified no TLS will be used.
+                nullable: true
+                properties:
+                  verification:
+                    description: The verification method used to verify the certificates of the server and/or the client.
+                    oneOf:
+                    - required:
+                      - none
+                    - required:
+                      - server
+                    properties:
+                      none:
+                        description: Use TLS but don't verify certificates.
+                        type: object
+                      server:
+                        description: Use TLS and a CA certificate to verify the server.
+                        properties:
+                          caCert:
+                            description: CA cert to verify the server.
+                            oneOf:
+                            - required:
+                              - webPki
+                            - required:
+                              - secretClass
+                            properties:
+                              secretClass:
+                                description: Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate. Note that a SecretClass does not need to have a key but can also work with just a CA certificate, so if you got provided with a CA cert but don't have access to the key you can still use this method.
+                                type: string
+                              webPki:
+                                description: Use TLS and the CA certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
+                                type: object
+                            type: object
+                        required:
+                        - caCert
+                        type: object
+                    type: object
+                required:
+                - verification
+                type: object
+            required:
+            - host
+            type: object
+        required:
+        - spec
+        title: S3Connection
+        type: object
+    served: true
+    storage: true
+    subresources: {}

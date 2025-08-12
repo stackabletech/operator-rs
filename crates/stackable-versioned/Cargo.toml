@@ -1,6 +1,6 @@
 [package]
 name = "stackable-versioned"
-version = "0.4.0"
+version = "0.8.0"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -10,18 +10,16 @@ repository.workspace = true
 [package.metadata."docs.rs"]
 all-features = true
 
-[features]
-full = ["k8s"]
-k8s = [
-  "stackable-versioned-macros/k8s", # Forward the k8s feature to the underlying macro crate
-  "dep:stackable-shared",
-  "dep:snafu",
-  "dep:kube",
-]
-
 [dependencies]
 stackable-versioned-macros = { path = "../stackable-versioned-macros" }
-stackable-shared = { path = "../stackable-shared", optional = true }
 
-kube = { workspace = true, optional = true }
-snafu = { workspace = true, optional = true }
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+snafu.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+k8s-openapi.workspace = true
+kube.workspace = true

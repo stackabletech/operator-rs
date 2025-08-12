@@ -66,9 +66,8 @@ pub type Labels = KeyValuePairs<LabelValue>;
 
 /// Well-known labels used by other tools or standard conventions.
 pub mod well_known {
-    use crate::utils::format_full_controller_name;
-
     use super::{Label, LabelError, Labels};
+    use crate::utils::format_full_controller_name;
 
     /// Creates the `app.kubernetes.io/component` label.
     ///
@@ -124,9 +123,8 @@ pub mod well_known {
     pub mod sets {
         use kube::{Resource, ResourceExt};
 
-        use crate::kvp::ObjectLabels;
-
         use super::{Label, LabelError, Labels};
+        use crate::kvp::ObjectLabels;
 
         /// Returns the recommended set of labels.
         ///

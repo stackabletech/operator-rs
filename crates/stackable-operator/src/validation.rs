@@ -15,19 +15,23 @@ use const_format::concatcp;
 use regex::Regex;
 use snafu::Snafu;
 
-// FIXME: According to https://www.rfc-editor.org/rfc/rfc1035#section-2.3.1 domain names must start with a letter
-// (and not a number).
-const RFC_1123_LABEL_FMT: &str = "[a-z0-9]([-a-z0-9]*[a-z0-9])?";
+/// Minimal length required by RFC 1123 is 63. Up to 255 allowed, unsupported by k8s.
+const RFC_1123_LABEL_MAX_LENGTH: usize = 63;
+pub const RFC_1123_LABEL_FMT: &str = "[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?";
+const RFC_1123_LABEL_ERROR_MSG: &str = "a RFC 1123 label must consist of alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
+
+/// This is a subdomain's max length in DNS (RFC 1123)
+const RFC_1123_SUBDOMAIN_MAX_LENGTH: usize = 253;
 const RFC_1123_SUBDOMAIN_FMT: &str =
     concatcp!(RFC_1123_LABEL_FMT, "(\\.", RFC_1123_LABEL_FMT, ")*");
-const RFC_1123_SUBDOMAIN_ERROR_MSG: &str = "a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
-const RFC_1123_LABEL_ERROR_MSG: &str = "a lowercase RFC 1123 label must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
 
-// This is a subdomain's max length in DNS (RFC 1123)
-const RFC_1123_SUBDOMAIN_MAX_LENGTH: usize = 253;
-// Minimal length required by RFC 1123 is 63. Up to 255 allowed, unsupported by k8s.
-const RFC_1123_LABEL_MAX_LENGTH: usize = 63;
+const DOMAIN_MAX_LENGTH: usize = RFC_1123_SUBDOMAIN_MAX_LENGTH;
+/// Same as [`RFC_1123_SUBDOMAIN_FMT`], but allows a trailing dot
+const DOMAIN_FMT: &str = concatcp!(RFC_1123_SUBDOMAIN_FMT, "\\.?");
+const DOMAIN_ERROR_MSG: &str = "a domain must consist of alphanumeric characters, '-' or '.', and must start with an alphanumeric character and end with an alphanumeric character or '.'";
 
+// FIXME: According to https://www.rfc-editor.org/rfc/rfc1035#section-2.3.1 domain names must start with a letter
+// (and not a number).
 const RFC_1035_LABEL_FMT: &str = "[a-z]([-a-z0-9]*[a-z0-9])?";
 const RFC_1035_LABEL_ERROR_MSG: &str = "a DNS-1035 label must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character";
 
@@ -46,9 +50,8 @@ const KERBEROS_REALM_NAME_ERROR_MSG: &str =
     "Kerberos realm name must only contain alphanumeric characters, '-', and '.'";
 
 // Lazily initialized regular expressions
-pub(crate) static RFC_1123_SUBDOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(&format!("^{RFC_1123_SUBDOMAIN_FMT}$"))
-        .expect("failed to compile RFC 1123 subdomain regex")
+pub(crate) static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(&format!("^{DOMAIN_FMT}$")).expect("failed to compile domain regex")
 });
 
 static RFC_1123_LABEL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
@@ -178,15 +181,19 @@ fn validate_all(validations: impl IntoIterator<Item = Result<(), Error>>) -> Res
     }
 }
 
-/// Tests for a string that conforms to the definition of a subdomain in DNS (RFC 1123).
-pub fn is_rfc_1123_subdomain(value: &str) -> Result {
+pub fn is_domain(value: &str) -> Result {
     validate_all([
-        validate_str_length(value, RFC_1123_SUBDOMAIN_MAX_LENGTH),
+        validate_str_length(value, DOMAIN_MAX_LENGTH),
         validate_str_regex(
             value,
-            &RFC_1123_SUBDOMAIN_REGEX,
-            RFC_1123_SUBDOMAIN_ERROR_MSG,
-            &["example.com"],
+            &DOMAIN_REGEX,
+            DOMAIN_ERROR_MSG,
+            &[
+                "example.com",
+                "example.com.",
+                "cluster.local",
+                "cluster.local.",
+            ],
         ),
     ])
 }
@@ -241,22 +248,6 @@ fn mask_trailing_dash(mut name: String) -> String {
     name
 }
 
-/// name_is_dns_subdomain checks whether the passed in name is a valid
-/// DNS subdomain name
-///
-/// # Arguments
-///
-/// * `name` - is the name to check for validity
-/// * `prefix` - indicates whether `name` is just a prefix (ending in a dash, which would otherwise not be legal at the end)
-pub fn name_is_dns_subdomain(name: &str, prefix: bool) -> Result {
-    let mut name = name.to_string();
-    if prefix {
-        name = mask_trailing_dash(name);
-    }
-
-    is_rfc_1123_subdomain(&name)
-}
-
 /// name_is_dns_label checks whether the passed in name is a valid DNS label
 /// according to RFC 1035.
 ///
@@ -282,17 +273,32 @@ pub fn validate_namespace_name(name: &str, prefix: bool) -> Result {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
+
+    const RFC_1123_SUBDOMAIN_ERROR_MSG: &str = "a RFC 1123 subdomain must consist of alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
+
+    static RFC_1123_SUBDOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(&format!("^{RFC_1123_SUBDOMAIN_FMT}$"))
+            .expect("failed to compile RFC 1123 subdomain regex")
+    });
+
+    /// Tests for a string that conforms to the definition of a subdomain in DNS (RFC 1123).
+    fn is_rfc_1123_subdomain(value: &str) -> Result {
+        validate_all([
+            validate_str_length(value, RFC_1123_SUBDOMAIN_MAX_LENGTH),
+            validate_str_regex(
+                value,
+                &RFC_1123_SUBDOMAIN_REGEX,
+                RFC_1123_SUBDOMAIN_ERROR_MSG,
+                &["example.com"],
+            ),
+        ])
+    }
 
     #[rstest]
     #[case("")]
-    #[case("A")]
-    #[case("ABC")]
-    #[case("aBc")]
-    #[case("A1")]
-    #[case("A-1")]
-    #[case("1-A")]
     #[case("-")]
     #[case("a-")]
     #[case("-a")]
@@ -319,24 +325,6 @@ mod tests {
     #[case("1 ")]
     #[case(" 1")]
     #[case("1 2")]
-    #[case("A.a")]
-    #[case("aB.a")]
-    #[case("ab.A")]
-    #[case("A1.a")]
-    #[case("a1.A")]
-    #[case("A.1")]
-    #[case("aB.1")]
-    #[case("A1.1")]
-    #[case("1A.1")]
-    #[case("0.A")]
-    #[case("01.A")]
-    #[case("012.A")]
-    #[case("1A.a")]
-    #[case("1a.A")]
-    #[case("A.B.C.D.E")]
-    #[case("AA.BB.CC.DD.EE")]
-    #[case("a.B.c.d.e")]
-    #[case("aa.bB.cc.dd.ee")]
     #[case("a@b")]
     #[case("a,b")]
     #[case("a_b")]
@@ -352,48 +340,83 @@ mod tests {
 
     #[rstest]
     #[case("a")]
+    #[case("A")]
     #[case("ab")]
     #[case("abc")]
+    #[case("aBc")]
+    #[case("ABC")]
     #[case("a1")]
+    #[case("A1")]
     #[case("a-1")]
+    #[case("A-1")]
     #[case("a--1--2--b")]
     #[case("0")]
     #[case("01")]
     #[case("012")]
     #[case("1a")]
     #[case("1-a")]
+    #[case("1-A")]
     #[case("1--a--b--2")]
     #[case("a.a")]
+    #[case("A.a")]
     #[case("ab.a")]
+    #[case("aB.a")]
+    #[case("ab.A")]
     #[case("abc.a")]
     #[case("a1.a")]
+    #[case("A1.a")]
+    #[case("a1.A")]
     #[case("a-1.a")]
     #[case("a--1--2--b.a")]
     #[case("a.1")]
+    #[case("A.1")]
     #[case("ab.1")]
+    #[case("aB.1")]
     #[case("abc.1")]
     #[case("a1.1")]
+    #[case("A1.1")]
     #[case("a-1.1")]
     #[case("a--1--2--b.1")]
     #[case("0.a")]
+    #[case("0.A")]
     #[case("01.a")]
+    #[case("01.A")]
     #[case("012.a")]
+    #[case("012.A")]
     #[case("1a.a")]
+    #[case("1A.a")]
+    #[case("1a.A")]
     #[case("1-a.a")]
     #[case("1--a--b--2")]
     #[case("0.1")]
     #[case("01.1")]
     #[case("012.1")]
     #[case("1a.1")]
+    #[case("1A.1")]
     #[case("1-a.1")]
     #[case("1--a--b--2.1")]
     #[case("a.b.c.d.e")]
+    #[case("a.B.c.d.e")]
+    #[case("A.B.C.D.E")]
     #[case("aa.bb.cc.dd.ee")]
+    #[case("aa.bB.cc.dd.ee")]
+    #[case("AA.BB.CC.DD.EE")]
     #[case("1.2.3.4.5")]
     #[case("11.22.33.44.55")]
     #[case(&"a".repeat(253))]
     fn is_rfc_1123_subdomain_pass(#[case] value: &str) {
         assert!(is_rfc_1123_subdomain(value).is_ok());
+        // Every valid RFC1123 is also a valid domain
+        assert!(is_domain(value).is_ok());
+    }
+
+    #[rstest]
+    #[case("cluster.local")]
+    #[case("CLUSTER.LOCAL")]
+    #[case("cluster.local.")]
+    #[case("CLUSTER.LOCAL.")]
+    fn is_domain_pass(#[case] value: &str) {
+        assert!(is_domain(value).is_ok());
     }
 
     #[test]

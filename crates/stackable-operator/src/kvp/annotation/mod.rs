@@ -123,5 +123,13 @@ pub mod well_known {
                 password,
             ))
         }
+
+        /// Constructs a `secrets.stackable.tech/backend.autotls.cert.lifetime` annotation.
+        pub fn auto_tls_cert_lifetime(lifetime: &str) -> Result<Annotation, AnnotationError> {
+            Annotation::try_from((
+                "secrets.stackable.tech/backend.autotls.cert.lifetime",
+                lifetime,
+            ))
+        }
     }
 }

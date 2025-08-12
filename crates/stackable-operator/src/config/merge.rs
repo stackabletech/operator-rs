@@ -1,13 +1,15 @@
-use k8s_openapi::{
-    api::core::v1::{NodeAffinity, PodAffinity, PodAntiAffinity, PodTemplateSpec},
-    apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
-    DeepMerge,
-};
+//! Automatically merges objects *deeply*, especially fragments.
+
 use std::{
-    collections::{btree_map, hash_map, BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, btree_map, hash_map},
     hash::Hash,
 };
 
+use k8s_openapi::{
+    DeepMerge,
+    api::core::v1::{NodeAffinity, PodAffinity, PodAntiAffinity, PodTemplateSpec},
+    apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
+};
 pub use stackable_operator_derive::Merge;
 
 use crate::time::Duration;
@@ -144,7 +146,7 @@ impl Atomic for bool {}
 impl Atomic for String {}
 impl Atomic for Quantity {}
 impl Atomic for Duration {}
-impl<'a> Atomic for &'a str {}
+impl Atomic for &str {}
 impl Atomic for LabelSelector {}
 impl Atomic for PodAffinity {}
 impl Atomic for PodAntiAffinity {}
@@ -160,10 +162,11 @@ impl<T: Atomic> Merge for Option<T> {
 
 #[cfg(test)]
 mod tests {
-    use k8s_openapi::api::core::v1::{PodSpec, PodTemplateSpec};
     use std::collections::{BTreeMap, HashMap};
 
-    use super::{merge, Merge};
+    use k8s_openapi::api::core::v1::{PodSpec, PodTemplateSpec};
+
+    use super::{Merge, merge};
 
     #[derive(Debug, PartialEq, Eq, Clone)]
     struct Accumulator(u8);

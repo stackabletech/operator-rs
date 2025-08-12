@@ -1,6 +1,6 @@
 [package]
 name = "stackable-webhook"
-version = "0.3.1"
+version = "0.4.0"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -11,7 +11,7 @@ stackable-certs = { path = "../stackable-certs", features = ["rustls"] }
 stackable-telemetry = { path = "../stackable-telemetry" }
 stackable-operator = { path = "../stackable-operator" }
 
-axum = { workspace = true, features = ["http2"] }
+axum.workspace = true
 futures-util.workspace = true
 hyper-util.workspace = true
 hyper.workspace = true

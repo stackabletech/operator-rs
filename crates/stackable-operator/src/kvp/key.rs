@@ -1,7 +1,7 @@
 use std::{fmt::Display, ops::Deref, str::FromStr, sync::LazyLock};
 
 use regex::Regex;
-use snafu::{ensure, ResultExt, Snafu};
+use snafu::{ResultExt, Snafu, ensure};
 
 const KEY_PREFIX_MAX_LEN: usize = 253;
 const KEY_NAME_MAX_LEN: usize = 63;
@@ -190,7 +190,9 @@ pub enum KeyPrefixError {
     /// Indicates that the key prefix segment exceeds the mamximum length of
     /// 253 ASCII characters. It additionally reports how many characters were
     /// encountered during parsing / validation.
-    #[snafu(display("prefix segment of key exceeds the maximum length - expected 253 characters or less, got {length}"))]
+    #[snafu(display(
+        "prefix segment of key exceeds the maximum length - expected 253 characters or less, got {length}"
+    ))]
     PrefixTooLong { length: usize },
 
     /// Indidcates that the key prefix segment contains non-ASCII characters
@@ -272,7 +274,9 @@ pub enum KeyNameError {
     /// Indicates that the key name sgement exceeds the maximum length of 63
     /// ASCII characters. It additionally reports how many characters were
     /// encountered during parsing / validation.
-    #[snafu(display("name segment of key exceeds the maximum length - expected 63 characters or less, got {length}"))]
+    #[snafu(display(
+        "name segment of key exceeds the maximum length - expected 63 characters or less, got {length}"
+    ))]
     NameTooLong { length: usize },
 
     /// Indidcates that the key name segment contains non-ASCII characters
@@ -347,9 +351,8 @@ where
 mod test {
     use rstest::rstest;
 
-    use crate::kvp::Label;
-
     use super::*;
+    use crate::kvp::Label;
 
     #[test]
     fn key_with_prefix() {

@@ -4,8 +4,8 @@ use snafu::{ResultExt, Snafu};
 use tracing::warn;
 
 use crate::kvp::{
-    label, Annotation, Annotations, KeyValuePairs, KeyValuePairsExt, Label, LabelError, Labels,
-    ObjectLabels,
+    Annotation, Annotations, KeyValuePairs, KeyValuePairsExt, Label, LabelError, Labels,
+    ObjectLabels, label,
 };
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -314,9 +314,10 @@ impl OwnerReferenceBuilder {
 
 #[cfg(test)]
 mod tests {
+    use k8s_openapi::api::core::v1::Pod;
+
     use super::*;
     use crate::builder::meta::ObjectMetaBuilder;
-    use k8s_openapi::api::core::v1::Pod;
 
     #[test]
     fn objectmeta_builder() {

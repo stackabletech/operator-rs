@@ -1,6 +1,6 @@
 ---
 image:
-  repository: docker.stackable.tech/stackable/zookeeper-operator
+  repository: oci.stackable.tech/sdp/zookeeper-operator
   pullPolicy: IfNotPresent
   pullSecrets: []
 nameOverride: ''

@@ -2,15 +2,14 @@
 
 use std::{borrow::Cow, collections::BTreeMap, fmt::Display};
 
-use crate::config::{
-    fragment::{self, Fragment, FromFragment},
-    merge::Atomic,
-    merge::Merge,
-};
-
-use derivative::Derivative;
+use educe::Educe;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+use crate::config::{
+    fragment::{self, Fragment, FromFragment},
+    merge::{Atomic, Merge},
+};
 
 /// Logging configuration
 ///
@@ -46,21 +45,21 @@ use serde::{Deserialize, Serialize};
 ///
 /// let logging = product_logging::spec::default_logging::<Container>();
 /// ```
-#[derive(Clone, Debug, Derivative, Eq, Fragment, JsonSchema, PartialEq)]
-#[derivative(Default(bound = ""))]
+#[derive(Clone, Debug, Eq, Fragment, JsonSchema, PartialEq, Educe)]
+#[educe(Default)]
 #[fragment(path_overrides(fragment = "crate::config::fragment"))]
 #[fragment_attrs(
     derive(
         Clone,
         Debug,
-        Derivative,
         Deserialize,
         JsonSchema,
         Merge,
         PartialEq,
-        Serialize
+        Serialize,
+        Educe,
     ),
-    derivative(Default(bound = "")),
+    educe(Default),
     merge(path_overrides(merge = "crate::config::merge")),
     serde(
         bound(serialize = "T: Serialize", deserialize = "T: Deserialize<'de>",),
@@ -75,6 +74,7 @@ where
 {
     /// Wether or not to deploy a container with the Vector log agent.
     pub enable_vector_agent: bool,
+
     /// Log configuration per container.
     #[fragment_attrs(serde(default))]
     pub containers: BTreeMap<T, ContainerLogConfig>,
@@ -119,25 +119,27 @@ pub struct ContainerLogConfig {
 /// Custom or automatic log configuration
 ///
 /// The custom log configuration takes precedence over the automatic one.
-#[derive(Clone, Debug, Derivative, Eq, JsonSchema, PartialEq)]
-#[derivative(Default)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Educe)]
+#[educe(Default)]
 pub enum ContainerLogConfigChoice {
     /// Custom log configuration provided in a ConfigMap
     Custom(CustomContainerLogConfig),
+
     /// Automatic log configuration according to the given values
-    #[derivative(Default)]
+    #[educe(Default)]
     Automatic(AutomaticContainerLogConfig),
 }
 
-#[derive(Clone, Debug, Derivative, Deserialize, JsonSchema, Merge, PartialEq, Serialize)]
-#[derivative(Default)]
+#[derive(Clone, Debug, Deserialize, JsonSchema, Merge, PartialEq, Serialize, Educe)]
+#[educe(Default)]
 #[merge(path_overrides(merge = "crate::config::merge"))]
 #[serde(untagged)]
 pub enum ContainerLogConfigChoiceFragment {
     /// Custom log configuration provided in a ConfigMap
     Custom(CustomContainerLogConfigFragment),
-    #[derivative(Default)]
+
     /// Automatic log configuration according to the given values
+    #[educe(Default)]
     Automatic(AutomaticContainerLogConfigFragment),
 }
 
@@ -306,7 +308,7 @@ pub struct AppenderConfig {
     Clone,
     Copy,
     Debug,
-    Derivative,
+    Default,
     Deserialize,
     Eq,
     JsonSchema,
@@ -316,11 +318,10 @@ pub struct AppenderConfig {
     Serialize,
     strum::Display,
 )]
-#[derivative(Default)]
 pub enum LogLevel {
     TRACE,
     DEBUG,
-    #[derivative(Default)]
+    #[default]
     INFO,
     WARN,
     ERROR,
@@ -449,8 +450,6 @@ pub fn default_container_log_config() -> ContainerLogConfigFragment {
 mod tests {
     use std::collections::BTreeMap;
 
-    use crate::config::{fragment, merge};
-
     use super::{
         AppenderConfig, AppenderConfigFragment, AutomaticContainerLogConfig,
         AutomaticContainerLogConfigFragment, ConfigMapLogConfig, ConfigMapLogConfigFragment,
@@ -458,6 +457,7 @@ mod tests {
         ContainerLogConfigFragment, CustomContainerLogConfig, CustomContainerLogConfigFragment,
         LogLevel,
     };
+    use crate::config::{fragment, merge};
 
     #[test]
     fn serialize_container_log_config() {

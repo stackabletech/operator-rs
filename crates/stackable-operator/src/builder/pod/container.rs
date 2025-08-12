@@ -1,8 +1,5 @@
 use std::fmt;
 
-#[cfg(doc)]
-use {k8s_openapi::api::core::v1::PodSpec, std::collections::BTreeMap};
-
 use indexmap::IndexMap;
 use k8s_openapi::api::core::v1::{
     ConfigMapKeySelector, Container, ContainerPort, EnvVar, EnvVarSource, Lifecycle,
@@ -10,7 +7,8 @@ use k8s_openapi::api::core::v1::{
     SecurityContext, VolumeMount,
 };
 use snafu::{ResultExt as _, Snafu};
-use tracing::instrument;
+#[cfg(doc)]
+use {k8s_openapi::api::core::v1::PodSpec, std::collections::BTreeMap};
 
 use crate::{
     commons::product_image_selection::ResolvedProductImage,
@@ -221,7 +219,6 @@ impl ContainerBuilder {
     ///
     /// Previously, this function unconditionally added [`VolumeMount`]s, which resulted in invalid
     /// [`PodSpec`]s.
-    #[instrument(skip(self))]
     fn add_volume_mount_impl(&mut self, volume_mount: VolumeMount) -> Result<&mut Self> {
         if let Some(existing_volume_mount) = self.volume_mounts.get(&volume_mount.mount_path) {
             if existing_volume_mount != &volume_mount {
@@ -444,6 +441,7 @@ mod tests {
             resources::ResourceRequirementsBuilder,
         },
         commons::resources::ResourceRequirementsType,
+        validation::RFC_1123_LABEL_FMT,
     };
 
     #[test]
@@ -470,9 +468,11 @@ mod tests {
             .expect("add volume mount")
             .add_container_port(container_port_name, container_port)
             .resources(resources.clone())
-            .add_container_ports(vec![ContainerPortBuilder::new(container_port_1)
-                .name(container_port_name_1)
-                .build()])
+            .add_container_ports(vec![
+                ContainerPortBuilder::new(container_port_1)
+                    .name(container_port_name_1)
+                    .build(),
+            ])
             .build();
 
         assert_eq!(container.name, "testcontainer");
@@ -530,7 +530,11 @@ mod tests {
             container.lifecycle,
             Some(Lifecycle {
                 post_start: Some(post_start),
-                pre_stop: Some(pre_stop)
+                pre_stop: Some(pre_stop),
+                // Field was added in k8s 1.33 *and* requires the ContainerStopSignals feature gate,
+                // so we can't use it yet.
+                // See https://kubernetes.io/blog/2025/05/14/kubernetes-v1-33-updates-to-container-lifecycle/
+                stop_signal: None,
             })
         );
     }
@@ -600,11 +604,11 @@ mod tests {
         assert!(ContainerBuilder::new("name-with-hyphen").is_ok());
         assert_container_builder_err(
             ContainerBuilder::new("ends-with-hyphen-"),
-            "regex used for validation is \"[a-z0-9]([-a-z0-9]*[a-z0-9])?\"",
+            &format!(r#"regex used for validation is "{RFC_1123_LABEL_FMT}""#),
         );
         assert_container_builder_err(
             ContainerBuilder::new("-starts-with-hyphen"),
-            "regex used for validation is \"[a-z0-9]([-a-z0-9]*[a-z0-9])?\"",
+            &format!(r#"regex used for validation is "{RFC_1123_LABEL_FMT}""#),
         );
     }
 
@@ -618,7 +622,9 @@ mod tests {
         assert!(ContainerBuilder::new("name_name").is_err());
         assert_container_builder_err(
             ContainerBuilder::new("name_name"),
-            "(e.g. \"example-label\", or \"1-label-1\", regex used for validation is \"[a-z0-9]([-a-z0-9]*[a-z0-9])?\")",
+            &format!(
+                r#"(e.g. "example-label", or "1-label-1", regex used for validation is "{RFC_1123_LABEL_FMT}""#
+            ),
         );
     }
 

@@ -1,6 +1,6 @@
 use schemars::schema::Schema;
 
-pub fn raw_object_schema(_: &mut schemars::gen::SchemaGenerator) -> Schema {
+pub fn raw_object_schema(_: &mut schemars::r#gen::SchemaGenerator) -> Schema {
     serde_json::from_value(serde_json::json!({
         "type": "object",
         "x-kubernetes-preserve-unknown-fields": true,
@@ -8,7 +8,7 @@ pub fn raw_object_schema(_: &mut schemars::gen::SchemaGenerator) -> Schema {
     .expect("Failed to parse JSON of custom raw object schema")
 }
 
-pub fn raw_optional_object_schema(_: &mut schemars::gen::SchemaGenerator) -> Schema {
+pub fn raw_optional_object_schema(_: &mut schemars::r#gen::SchemaGenerator) -> Schema {
     serde_json::from_value(serde_json::json!({
         "type": "object",
         "nullable": true,
@@ -17,7 +17,7 @@ pub fn raw_optional_object_schema(_: &mut schemars::gen::SchemaGenerator) -> Sch
     .expect("Failed to parse JSON of custom optional raw object schema")
 }
 
-pub fn raw_object_list_schema(_: &mut schemars::gen::SchemaGenerator) -> Schema {
+pub fn raw_object_list_schema(_: &mut schemars::r#gen::SchemaGenerator) -> Schema {
     serde_json::from_value(serde_json::json!({
         "type": "array",
         "items": {
@@ -93,7 +93,7 @@ mod tests {
             spec:
               containers:
                 - name: nifi
-                  image: docker.stackable.tech/stackable/nifi:1.23.2-stackable23.11.0
+                  image: oci.stackable.tech/sdp/nifi:1.23.2-stackable23.11.0
                   volumeMounts:
                     - name: jar
                       mountPath: /stackable/nifi/lib/wifi.png
@@ -116,7 +116,7 @@ mod tests {
           podOverrides:
             spec:
               containers:
-                - image: docker.stackable.tech/stackable/nifi:1.23.2-stackable23.11.0
+                - image: oci.stackable.tech/sdp/nifi:1.23.2-stackable23.11.0
         "#;
 
         // FIXME: Ideally we would require the names of the containers to be set. We had users using podOverrides

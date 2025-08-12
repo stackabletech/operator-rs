@@ -17,15 +17,15 @@ pub mod label;
 mod key;
 mod value;
 
+#[cfg(doc)]
+use std::ops::Deref;
+
 pub use annotation::{Annotation, AnnotationError, AnnotationValue, Annotations};
+#[cfg(doc)]
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 pub use key::*;
 pub use label::{Label, LabelError, LabelSelectorExt, LabelValue, Labels, SelectorError};
 pub use value::*;
-
-#[cfg(doc)]
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
-#[cfg(doc)]
-use std::ops::Deref;
 
 /// The error type for key/value pair parsing/validating operations.
 #[derive(Debug, PartialEq, Snafu)]

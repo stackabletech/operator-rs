@@ -6,7 +6,7 @@ use std::{
 
 use stackable_certs::PrivateKeyType;
 
-use crate::constants::DEFAULT_SOCKET_ADDR;
+use crate::constants::DEFAULT_SOCKET_ADDRESS;
 
 /// Specifies available webhook server options.
 ///
@@ -78,7 +78,7 @@ impl OptionsBuilder {
     /// Sets the IP address of the socket address the webhook server uses to
     /// bind for HTTPS.
     pub fn bind_ip(mut self, bind_ip: impl Into<IpAddr>) -> Self {
-        let addr = self.socket_addr.get_or_insert(DEFAULT_SOCKET_ADDR);
+        let addr = self.socket_addr.get_or_insert(DEFAULT_SOCKET_ADDRESS);
         addr.set_ip(bind_ip.into());
         self
     }
@@ -86,7 +86,7 @@ impl OptionsBuilder {
     /// Sets the port of the socket address the webhook server uses to bind
     /// for HTTPS.
     pub fn bind_port(mut self, bind_port: u16) -> Self {
-        let addr = self.socket_addr.get_or_insert(DEFAULT_SOCKET_ADDR);
+        let addr = self.socket_addr.get_or_insert(DEFAULT_SOCKET_ADDRESS);
         addr.set_port(bind_port);
         self
     }
@@ -95,7 +95,7 @@ impl OptionsBuilder {
     /// explicitly set option.
     pub fn build(self) -> Options {
         Options {
-            socket_addr: self.socket_addr.unwrap_or(DEFAULT_SOCKET_ADDR),
+            socket_addr: self.socket_addr.unwrap_or(DEFAULT_SOCKET_ADDRESS),
         }
     }
 }

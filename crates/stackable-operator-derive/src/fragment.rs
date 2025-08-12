@@ -1,9 +1,9 @@
-use darling::{ast::Data, FromDeriveInput, FromField, FromMeta, FromVariant};
+use darling::{FromDeriveInput, FromField, FromMeta, FromVariant, ast::Data};
 use proc_macro2::{Ident, TokenStream, TokenTree};
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use syn::{
-    parse_quote, Attribute, DeriveInput, Generics, Meta, MetaList, Path, Type, Visibility,
-    WherePredicate,
+    Attribute, DeriveInput, Generics, Meta, MetaList, Path, Type, Visibility, WherePredicate,
+    parse_quote,
 };
 
 #[derive(FromMeta)]
@@ -125,7 +125,7 @@ pub fn derive(input: DeriveInput) -> TokenStream {
         Data::Enum(_) => {
             return quote! {
                 compile_error!("`#[derive(Fragment)]` does not currently support enums");
-            }
+            };
         }
         Data::Struct(fields) => fields.fields,
     };

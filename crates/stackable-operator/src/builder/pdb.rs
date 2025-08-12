@@ -10,7 +10,7 @@ use snafu::{ResultExt, Snafu};
 
 use crate::{
     builder::meta::ObjectMetaBuilder,
-    kvp::{label, KeyValuePairsExt},
+    kvp::{KeyValuePairsExt, label},
 };
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -205,13 +205,12 @@ mod tests {
         api::policy::v1::{PodDisruptionBudget, PodDisruptionBudgetSpec},
         apimachinery::pkg::{apis::meta::v1::LabelSelector, util::intstr::IntOrString},
     };
-    use kube::{core::ObjectMeta, CustomResource};
+    use kube::{CustomResource, core::ObjectMeta};
     use schemars::JsonSchema;
     use serde::{Deserialize, Serialize};
 
+    use super::*;
     use crate::builder::meta::{ObjectMetaBuilder, OwnerReferenceBuilder};
-
-    use super::PodDisruptionBudgetBuilder;
 
     #[test]
     pub fn normal_build() {
@@ -311,12 +310,14 @@ mod tests {
                             "worker".to_string()
                         )
                     ])),
-                    owner_references: Some(vec![OwnerReferenceBuilder::new()
-                        .initialize_from_resource(&trino)
-                        .block_owner_deletion_opt(None)
-                        .controller_opt(Some(true))
-                        .build()
-                        .unwrap()]),
+                    owner_references: Some(vec![
+                        OwnerReferenceBuilder::new()
+                            .initialize_from_resource(&trino)
+                            .block_owner_deletion_opt(None)
+                            .controller_opt(Some(true))
+                            .build()
+                            .unwrap()
+                    ]),
                     ..Default::default()
                 },
                 spec: Some(PodDisruptionBudgetSpec {

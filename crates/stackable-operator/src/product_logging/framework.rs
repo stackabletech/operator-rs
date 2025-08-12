@@ -13,11 +13,10 @@ use crate::{
     },
     kube::Resource,
     memory::{BinaryMultiple, MemoryQuantity},
+    product_logging::spec::{
+        AutomaticContainerLogConfig, ContainerLogConfig, ContainerLogConfigChoice, LogLevel,
+    },
     role_utils::RoleGroupRef,
-};
-
-use super::spec::{
-    AutomaticContainerLogConfig, ContainerLogConfig, ContainerLogConfigChoice, LogLevel,
 };
 
 /// Config directory used in the Vector log agent container
@@ -32,6 +31,10 @@ const SHUTDOWN_FILE: &str = "shutdown";
 
 /// File name of the Vector config file
 pub const VECTOR_CONFIG_FILE: &str = "vector.yaml";
+/// Key in the discovery ConfigMap that holds the vector aggregator address
+const VECTOR_AGGREGATOR_CM_KEY: &str = "ADDRESS";
+/// Name of the env var in the vector container that holds the vector aggregator address
+const VECTOR_AGGREGATOR_ENV_NAME: &str = "VECTOR_AGGREGATOR_ADDRESS";
 
 #[derive(Debug, Snafu)]
 pub enum LoggingError {
@@ -225,10 +228,10 @@ pub fn capture_shell_output(
 ///
 /// * `log_dir` - Directory where the log files are stored
 /// * `log_file` - Name of the active log file; When the file is rolled over then a number is
-///       appended.
+///   appended.
 /// * `max_size_in_mib` - Maximum size of all log files in MiB; This value can be slightly
-///       exceeded. The value is set to 2 if the given value is lower (1 MiB for the active log
-///       file and 1 MiB for the archived one).
+///   exceeded. The value is set to 2 if the given value is lower (1 MiB for the active log
+///   file and 1 MiB for the archived one).
 /// * `console_conversion_pattern` - Logback conversion pattern for the console appender
 /// * `config` - The logging configuration for the container
 ///
@@ -346,10 +349,10 @@ log4j.appender.FILE.layout=org.apache.log4j.xml.XMLLayout
 ///
 /// * `log_dir` - Directory where the log files are stored
 /// * `log_file` - Name of the active log file; When the file is rolled over then a number is
-///       appended.
+///   appended.
 /// * `max_size_in_mib` - Maximum size of all log files in MiB; This value can be slightly
-///       exceeded. The value is set to 2 if the given value is lower (1 MiB for the active log
-///       file and 1 MiB for the archived one).
+///   exceeded. The value is set to 2 if the given value is lower (1 MiB for the active log
+///   file and 1 MiB for the archived one).
 /// * `console_conversion_pattern` - Log4j2 conversion pattern for the console appender
 /// * `config` - The logging configuration for the container
 ///
@@ -490,15 +493,15 @@ rootLogger.appenderRef.FILE.ref = FILE"#,
 ///
 /// * `log_dir` - Directory where the log files are stored
 /// * `log_file` - Name of the active log file; When the file is rolled over then a number is
-///       appended.
+///   appended.
 /// * `max_size_in_mib` - Maximum size of all log files in MiB; This value can be slightly
-///       exceeded. The value is set to 2 if the given value is lower (1 MiB for the active log
-///       file and 1 MiB for the archived one).
+///   exceeded. The value is set to 2 if the given value is lower (1 MiB for the active log
+///   file and 1 MiB for the archived one).
 /// * `console_conversion_pattern` - Logback conversion pattern for the console appender
 /// * `config` - The logging configuration for the container
 /// * `additional_config` - Optional unstructured parameter to add special cases that are not
-///       covered in the logging configuration. Must adhere to the inner logback XML schema as
-///       shown in the example below. It is not parsed or checked and added as is to the `logback.xml`.
+///   covered in the logging configuration. Must adhere to the inner logback XML schema as
+///   shown in the example below. It is not parsed or checked and added as is to the `logback.xml`.
 ///
 /// # Example
 ///
@@ -679,7 +682,6 @@ pub fn create_logback_config(
 /// # }
 /// #
 /// # let logging = fragment::validate::<Logging<Container>>(default_logging()).unwrap();
-/// # let vector_aggregator_address = "vector-aggregator:6000";
 /// # let role_group = RoleGroupRef {
 /// #     cluster: ObjectRef::<Pod>::new("test-cluster"),
 /// #     role: "role".into(),
@@ -703,7 +705,6 @@ pub fn create_logback_config(
 ///         product_logging::framework::VECTOR_CONFIG_FILE,
 ///         product_logging::framework::create_vector_config(
 ///             &role_group,
-///             vector_aggregator_address,
 ///             vector_log_config,
 ///         ),
 ///     );
@@ -713,7 +714,6 @@ pub fn create_logback_config(
 /// ```
 pub fn create_vector_config<T>(
     role_group: &RoleGroupRef<T>,
-    vector_aggregator_address: &str,
     config: Option<&AutomaticContainerLogConfig>,
 ) -> String
 where
@@ -1331,7 +1331,7 @@ sinks:
     inputs:
       - extended_logs
     type: vector
-    address: {vector_aggregator_address}
+    address: ${VECTOR_AGGREGATOR_ENV_NAME}
 "#,
         namespace = role_group.cluster.namespace.clone().unwrap_or_default(),
         cluster_name = role_group.cluster.name,
@@ -1383,10 +1383,11 @@ sinks:
 /// # let resolved_product_image = ResolvedProductImage {
 /// #     product_version: "1.0.0".into(),
 /// #     app_version_label: "1.0.0".into(),
-/// #     image: "docker.stackable.tech/stackable/my-product:1.0.0-stackable1.0.0".into(),
+/// #     image: "oci.stackable.tech/sdp/my-product:1.0.0-stackable1.0.0".into(),
 /// #     image_pull_policy: "Always".into(),
 /// #     pull_secrets: None,
 /// # };
+/// # let vector_aggregator_config_map_name = "vector-aggregator-discovery";
 ///
 /// let mut pod_builder = PodBuilder::new();
 /// pod_builder.metadata(ObjectMetaBuilder::default().build());
@@ -1426,6 +1427,7 @@ sinks:
 ///         "log",
 ///         logging.containers.get(&Container::Vector),
 ///         resources,
+///         vector_aggregator_config_map_name,
 ///     ).unwrap());
 /// }
 ///
@@ -1437,6 +1439,7 @@ pub fn vector_container(
     log_volume_name: &str,
     log_config: Option<&ContainerLogConfig>,
     resources: ResourceRequirements,
+    vector_aggregator_config_map_name: &str,
 ) -> Result<Container, LoggingError> {
     let log_level = if let Some(ContainerLogConfig {
         choice: Some(ContainerLogConfigChoice::Automatic(automatic_log_config)),
@@ -1474,6 +1477,11 @@ kill $vector_pid
 "
         )])
         .add_env_var("VECTOR_LOG", log_level.to_vector_literal())
+        .add_env_var_from_config_map(
+            VECTOR_AGGREGATOR_ENV_NAME,
+            vector_aggregator_config_map_name,
+            VECTOR_AGGREGATOR_CM_KEY,
+        )
         .add_volume_mount(config_volume_name, STACKABLE_CONFIG_DIR)
         .context(AddVolumeMountsSnafu)?
         .add_volume_mount(log_volume_name, STACKABLE_LOG_DIR)
@@ -1503,7 +1511,7 @@ kill $vector_pid
 ///
 /// let container = ContainerBuilder::new("init")
 ///     .unwrap()
-///     .image("docker.stackable.tech/stackable/my-product:1.0.0-stackable1.0.0")
+///     .image("oci.stackable.tech/sdp/my-product:1.0.0-stackable1.0.0")
 ///     .command(vec!["bash".to_string(), "-c".to_string()])
 ///     .args(vec![args.join(" && ")])
 ///     .add_volume_mount("log", STACKABLE_LOG_DIR)
@@ -1525,10 +1533,12 @@ pub fn remove_vector_shutdown_file_command(stackable_log_dir: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
+    use rstest::rstest;
+
     use super::*;
     use crate::product_logging::spec::{AppenderConfig, LoggerConfig};
-    use rstest::rstest;
-    use std::collections::BTreeMap;
 
     #[rstest]
     #[case("0Mi", &[])]

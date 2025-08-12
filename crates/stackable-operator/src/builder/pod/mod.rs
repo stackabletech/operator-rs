@@ -10,23 +10,23 @@ use k8s_openapi::{
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::ObjectMeta},
 };
 use snafu::{OptionExt, ResultExt, Snafu};
-use tracing::{instrument, warn};
 
-use crate::kvp::Labels;
 use crate::{
-    builder::meta::ObjectMetaBuilder,
+    builder::{
+        meta::ObjectMetaBuilder,
+        pod::volume::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder},
+    },
     commons::{
         affinity::StackableAffinity,
         product_image_selection::ResolvedProductImage,
         resources::{
-            ComputeResource, ResourceRequirementsExt, ResourceRequirementsType,
-            LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
+            ComputeResource, LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
+            ResourceRequirementsExt, ResourceRequirementsType,
         },
     },
+    kvp::Labels,
     time::Duration,
 };
-
-use self::volume::{ListenerOperatorVolumeSourceBuilder, ListenerReference, VolumeBuilder};
 
 pub mod container;
 pub mod resources;
@@ -290,7 +290,6 @@ impl PodBuilder {
     ///
     /// Previously, this function unconditionally added [`Volume`]s, which resulted in invalid
     /// [`PodSpec`]s.
-    #[instrument(skip(self))]
     pub fn add_volume(&mut self, volume: Volume) -> Result<&mut Self> {
         if let Some(existing_volume) = self.volumes.get(&volume.name) {
             if existing_volume != &volume {
@@ -398,7 +397,6 @@ impl PodBuilder {
     ) -> Result<&mut Self> {
         let listener_reference = ListenerReference::ListenerClass(listener_class.to_string());
         let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference, labels)
-            .context(ListenerVolumeSnafu { name: volume_name })?
             .build_ephemeral()
             .context(ListenerVolumeSnafu { name: volume_name })?;
 
@@ -486,7 +484,6 @@ impl PodBuilder {
     ) -> Result<&mut Self> {
         let listener_reference = ListenerReference::ListenerName(listener_name.to_string());
         let volume = ListenerOperatorVolumeSourceBuilder::new(&listener_reference, labels)
-            .context(ListenerVolumeSnafu { name: volume_name })?
             .build_ephemeral()
             .context(ListenerVolumeSnafu { name: volume_name })?;
 
@@ -559,7 +556,9 @@ impl PodBuilder {
     /// or [`Deployment`](`k8s_openapi::api::apps::v1::Deployment`)
     pub fn build_template(&self) -> PodTemplateSpec {
         if self.status.is_some() {
-            tracing::warn!("Tried building a PodTemplate for a PodBuilder with a status, the status will be ignored...");
+            tracing::warn!(
+                "Tried building a PodTemplate for a PodBuilder with a status, the status will be ignored..."
+            );
         }
 
         PodTemplateSpec {
@@ -609,19 +608,19 @@ impl PodBuilder {
 
         pod_spec
             .check_resource_requirement(ResourceRequirementsType::Limits, "cpu")
-            .unwrap_or_else(|err| warn!("{}", err));
+            .unwrap_or_else(|err| tracing::warn!("{err}"));
 
         pod_spec
             .check_resource_requirement(ResourceRequirementsType::Limits, "memory")
-            .unwrap_or_else(|err| warn!("{}", err));
+            .unwrap_or_else(|err| tracing::warn!("{err}"));
 
         pod_spec
             .check_limit_to_request_ratio(&ComputeResource::Cpu, LIMIT_REQUEST_RATIO_CPU)
-            .unwrap_or_else(|err| warn!("{}", err));
+            .unwrap_or_else(|err| tracing::warn!("{err}"));
 
         pod_spec
             .check_limit_to_request_ratio(&ComputeResource::Memory, LIMIT_REQUEST_RATIO_MEMORY)
-            .unwrap_or_else(|err| warn!("{}", err));
+            .unwrap_or_else(|err| tracing::warn!("{err}"));
 
         pod_spec
     }
@@ -635,6 +634,7 @@ mod tests {
     };
     use rstest::*;
 
+    use super::*;
     use crate::builder::{
         meta::ObjectMetaBuilder,
         pod::{
@@ -642,8 +642,6 @@ mod tests {
             volume::VolumeBuilder,
         },
     };
-
-    use super::*;
 
     // A simple [`Container`] with a name and image.
     #[fixture]

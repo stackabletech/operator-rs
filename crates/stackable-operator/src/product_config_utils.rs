@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
 
-use product_config::{types::PropertyNameKind, ProductConfigManager, PropertyValidationResult};
+use k8s_openapi::api::core::v1::EnvVar;
+use product_config::{ProductConfigManager, PropertyValidationResult, types::PropertyNameKind};
 use schemars::JsonSchema;
 use serde::Serialize;
 use snafu::{ResultExt, Snafu};
@@ -28,7 +29,9 @@ pub enum Error {
     #[snafu(display("missing role {role:?}. This should not happen. Will requeue."))]
     MissingRole { role: String },
 
-    #[snafu(display("missing roleGroup {role_group:?} for role {role:?}. This might happen after custom resource changes. Will requeue."))]
+    #[snafu(display(
+        "missing roleGroup {role_group:?} for role {role:?}. This might happen after custom resource changes. Will requeue."
+    ))]
     MissingRoleGroup { role: String, role_group: String },
 
     // We need this for product specific errors that implement the Configuration trait and are not related to the
@@ -140,7 +143,7 @@ pub fn config_for_role_and_group<'a>(
             return MissingRoleSnafu {
                 role: role.to_string(),
             }
-            .fail()
+            .fail();
         }
         Some(group_config) => match group_config.get(group) {
             None => {
@@ -148,7 +151,7 @@ pub fn config_for_role_and_group<'a>(
                     role: role.to_string(),
                     role_group: group.to_string(),
                 }
-                .fail()
+                .fail();
             }
             Some(config_by_property_kind) => config_by_property_kind,
         },
@@ -164,16 +167,24 @@ pub fn config_for_role_and_group<'a>(
 /// the values are the merged configuration properties "bucketed" by `PropertyNameKind`.
 ///
 /// # Arguments
-/// - `resource`  - Not used directly. It's passed on to the `Configuration::compute_*` calls.
-/// - `roles`     - A map keyed by role names. The value is a tuple of a vector of `PropertyNameKind`
-///                 like (Cli, Env or Files) and [`crate::role_utils::Role`] with a boxed [`Configuration`].
-pub fn transform_all_roles_to_config<T, U>(
+/// - `resource`: Not used directly. It's passed on to the `Configuration::compute_*` calls.
+/// - `roles`: A map keyed by role names. The value is a tuple of a vector of `PropertyNameKind`
+///   like (Cli, Env or Files) and [`crate::role_utils::Role`] with a boxed [`Configuration`].
+#[allow(clippy::type_complexity)]
+pub fn transform_all_roles_to_config<T, U, ProductSpecificCommonConfig>(
     resource: &T::Configurable,
-    roles: HashMap<String, (Vec<PropertyNameKind>, Role<T, U>)>,
+    roles: HashMap<
+        String,
+        (
+            Vec<PropertyNameKind>,
+            Role<T, U, ProductSpecificCommonConfig>,
+        ),
+    >,
 ) -> Result<RoleConfigByPropertyKind>
 where
     T: Configuration,
     U: Default + JsonSchema + Serialize,
+    ProductSpecificCommonConfig: Default + JsonSchema + Serialize,
 {
     let mut result = HashMap::new();
 
@@ -190,15 +201,15 @@ where
 /// and [`RoleConfigByPropertyKind`] which can be obtained via `transform_all_roles_to_config`.
 ///
 /// # Arguments
-/// - `version`            - The version of the product to be configured.
-/// - `role_config`        - Collected information about all roles, role groups, required
-///                          properties sorted by config files, CLI parameters and ENV variables.
-/// - `product_config`     - The [`product_config::ProductConfigManager`] used to validate the provided
-///                          user data.
-/// - `ignore_warn`        - A switch to ignore product config warnings and continue with
-///                          the value anyways. Not recommended!
-/// - `ignore_err`         - A switch to ignore product config errors and continue with
-///                          the value anyways. Not recommended!
+/// - `version`: The version of the product to be configured.
+/// - `role_config`: Collected information about all roles, role groups, required properties sorted
+///   by config files, CLI parameters and ENV variables.
+/// - `product_config`: The [`product_config::ProductConfigManager`] used to validate the provided
+///   user data.
+/// - `ignore_warn`: A switch to ignore product config warnings and continue with the value anyways.
+///   Not recommended!
+/// - `ignore_err`: A switch to ignore product config errors and continue with the value anyways.
+///   Not recommended!
 pub fn validate_all_roles_and_groups_config(
     version: &str,
     role_config: &RoleConfigByPropertyKind,
@@ -233,16 +244,16 @@ pub fn validate_all_roles_and_groups_config(
 /// `transform_all_roles_to_config`.
 ///
 /// # Arguments
-/// - `role`               - The name of the role
-/// - `version`            - The version of the product to be configured.
-/// - `properties_by_kind` - Config properties sorted by PropertyKind
-///                          and the resulting user configuration data. See [`RoleConfigByPropertyKind`].
-/// - `product_config`     - The [`product_config::ProductConfigManager`] used to validate the provided
-///                          user data.
-/// - `ignore_warn`        - A switch to ignore product config warnings and continue with
-///                          the value anyways. Not recommended!
-/// - `ignore_err`         - A switch to ignore product config errors and continue with
-///                          the value anyways. Not recommended!
+/// - `role`: The name of the role
+/// - `version`: The version of the product to be configured.
+/// - `properties_by_kind`: Config properties sorted by PropertyKind and the resulting user
+///   configuration data. See [`RoleConfigByPropertyKind`].
+/// - `product_config`: The [`product_config::ProductConfigManager`] used to validate the provided
+///   user data.
+/// - `ignore_warn`: A switch to ignore product config warnings and continue with the value anyways.
+///   Not recommended!
+/// - `ignore_err`: A switch to ignore product config errors and continue with the value anyways.
+///   Not recommended!
 fn validate_role_and_group_config(
     version: &str,
     role: &str,
@@ -279,11 +290,11 @@ fn validate_role_and_group_config(
 /// If you want to use the values anyways please check the "ignore_warn" and "ignore_err" switches.
 ///
 /// # Arguments
-/// - `validation_result`   - The product config validation result for each property name.
-/// - `ignore_warn`         - A switch to ignore product config warnings and continue with
-///                           the value anyways. Not recommended!
-/// - `ignore_err`          - A switch to ignore product config errors and continue with
-///                           the value anyways. Not recommended!
+/// - `validation_result`: The product config validation result for each property name.
+/// - `ignore_warn`: A switch to ignore product config warnings and continue with the value anyways.
+///   Not recommended!
+/// - `ignore_err`: A switch to ignore product config errors and continue with the value anyways.
+///   Not recommended!
 // TODO: boolean flags suck, move ignore_warn to be a flag
 fn process_validation_result(
     validation_result: &BTreeMap<String, PropertyValidationResult>,
@@ -296,7 +307,10 @@ fn process_validation_result(
     for (key, result) in validation_result.iter() {
         match result {
             PropertyValidationResult::Default(value) => {
-                debug!("Property [{}] is not explicitly set, will set and rely to the default instead ([{}])", key, value);
+                debug!(
+                    "Property [{}] is not explicitly set, will set and rely to the default instead ([{}])",
+                    key, value
+                );
                 properties.insert(key.clone(), value.clone());
             }
             PropertyValidationResult::RecommendedDefault(value) => {
@@ -318,13 +332,19 @@ fn process_validation_result(
                 properties.insert(key.clone(), value.clone());
             }
             PropertyValidationResult::Warn(value, err) => {
-                warn!("Property [{}] is set to value [{}] which causes a warning, `ignore_warn` is {}: {:?}", key, value, ignore_warn, err);
+                warn!(
+                    "Property [{}] is set to value [{}] which causes a warning, `ignore_warn` is {}: {:?}",
+                    key, value, ignore_warn, err
+                );
                 if ignore_warn {
                     properties.insert(key.clone(), value.clone());
                 }
             }
             PropertyValidationResult::Error(value, err) => {
-                error!("Property [{}] is set to value [{}] which causes an error, `ignore_err` is {}: {:?}", key, value, ignore_err, err);
+                error!(
+                    "Property [{}] is set to value [{}] which causes an error, `ignore_err` is {}: {:?}",
+                    key, value, ignore_err, err
+                );
                 if ignore_err {
                     properties.insert(key.clone(), value.clone());
                 } else {
@@ -359,15 +379,16 @@ fn process_validation_result(
 /// - `role_name`      - The name of the role.
 /// - `role`           - The role for which to transform the configuration parameters.
 /// - `property_kinds` - Used as "buckets" to partition the configuration properties by.
-fn transform_role_to_config<T, U>(
+fn transform_role_to_config<T, U, ProductSpecificCommonConfig>(
     resource: &T::Configurable,
     role_name: &str,
-    role: &Role<T, U>,
+    role: &Role<T, U, ProductSpecificCommonConfig>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<RoleGroupConfigByPropertyKind>
 where
     T: Configuration,
     U: Default + JsonSchema + Serialize,
+    ProductSpecificCommonConfig: Default + JsonSchema + Serialize,
 {
     let mut result = HashMap::new();
 
@@ -422,10 +443,10 @@ where
 /// - `role_name`      - Not used directly but passed on to the `Configuration::compute_*` calls.
 /// - `config`         - The configuration properties to partition.
 /// - `property_kinds` - The "buckets" used to partition the configuration properties.
-fn parse_role_config<T>(
+fn parse_role_config<T, ProductSpecificCommonConfig>(
     resource: &<T as Configuration>::Configurable,
     role_name: &str,
-    config: &CommonConfiguration<T>,
+    config: &CommonConfiguration<T, ProductSpecificCommonConfig>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
@@ -452,8 +473,8 @@ where
     Ok(result)
 }
 
-fn parse_role_overrides<T>(
-    config: &CommonConfiguration<T>,
+fn parse_role_overrides<T, ProductSpecificCommonConfig>(
+    config: &CommonConfiguration<T, ProductSpecificCommonConfig>,
     property_kinds: &[PropertyNameKind],
 ) -> Result<HashMap<PropertyNameKind, BTreeMap<String, Option<String>>>>
 where
@@ -489,8 +510,8 @@ where
     Ok(result)
 }
 
-fn parse_file_overrides<T>(
-    config: &CommonConfiguration<T>,
+fn parse_file_overrides<T, ProductSpecificCommonConfig>(
+    config: &CommonConfiguration<T, ProductSpecificCommonConfig>,
     file: &str,
 ) -> Result<BTreeMap<String, Option<String>>>
 where
@@ -508,25 +529,176 @@ where
     Ok(final_overrides)
 }
 
+/// Extract the environment variables of a rolegroup config into a vector of EnvVars.
+///
+/// # Example
+///
+/// ```
+/// use std::collections::{BTreeMap, HashMap};
+///
+/// use k8s_openapi::api::core::v1::EnvVar;
+/// use product_config::types::PropertyNameKind;
+/// use stackable_operator::product_config_utils::env_vars_from_rolegroup_config;
+///
+/// let rolegroup_config = [(
+///     PropertyNameKind::Env,
+///     [
+///         ("VAR1".to_string(), "value 1".to_string()),
+///         ("VAR2".to_string(), "value 2".to_string()),
+///     ]
+///     .into_iter()
+///     .collect::<BTreeMap<_, _>>(),
+/// )]
+/// .into_iter()
+/// .collect::<HashMap<_, _>>();
+///
+/// let expected_env_vars = vec![
+///     EnvVar {
+///         name: "VAR1".to_string(),
+///         value: Some("value 1".to_string()),
+///         value_from: None,
+///     },
+///     EnvVar {
+///         name: "VAR2".to_string(),
+///         value: Some("value 2".to_string()),
+///         value_from: None,
+///     },
+/// ];
+/// assert_eq!(
+///     expected_env_vars,
+///     env_vars_from_rolegroup_config(&rolegroup_config)
+/// );
+/// ```
+pub fn env_vars_from_rolegroup_config(
+    rolegroup_config: &HashMap<PropertyNameKind, BTreeMap<String, String>>,
+) -> Vec<EnvVar> {
+    env_vars_from(
+        rolegroup_config
+            .get(&PropertyNameKind::Env)
+            .cloned()
+            .unwrap_or_default(),
+    )
+}
+
+/// Convert key-value structures into a vector of EnvVars.
+///
+/// # Example
+///
+/// ```
+/// use k8s_openapi::api::core::v1::EnvVar;
+/// use stackable_operator::{product_config_utils::env_vars_from, role_utils::CommonConfiguration};
+///
+/// let common_config = CommonConfiguration::<(), ()> {
+///     env_overrides: [("VAR".to_string(), "value".to_string())]
+///         .into_iter()
+///         .collect(),
+///     ..Default::default()
+/// };
+///
+/// let env_vars = env_vars_from(common_config.env_overrides);
+///
+/// let expected_env_vars = vec![EnvVar {
+///     name: "VAR".to_string(),
+///     value: Some("value".to_string()),
+///     value_from: None
+/// }];
+///
+/// assert_eq!(expected_env_vars, env_vars);
+/// ```
+pub fn env_vars_from<I, K, V>(env_vars: I) -> Vec<EnvVar>
+where
+    I: IntoIterator<Item = (K, V)>,
+    K: Clone + Into<String>,
+    V: Clone + Into<String>,
+{
+    env_vars.into_iter().map(env_var_from_tuple).collect()
+}
+
+/// Convert a tuple of strings into an EnvVar
+///
+/// # Example
+///
+/// ```
+/// use k8s_openapi::api::core::v1::EnvVar;
+/// use stackable_operator::product_config_utils::env_var_from_tuple;
+///
+/// let tuple = ("VAR", "value");
+///
+/// let env_var = env_var_from_tuple(tuple);
+///
+/// let expected_env_var = EnvVar {
+///     name: "VAR".to_string(),
+///     value: Some("value".to_string()),
+///     value_from: None,
+/// };
+/// assert_eq!(expected_env_var, env_var);
+/// ```
+pub fn env_var_from_tuple(entry: (impl Into<String>, impl Into<String>)) -> EnvVar {
+    EnvVar {
+        name: entry.0.into(),
+        value: Some(entry.1.into()),
+        value_from: None,
+    }
+}
+
+/// Inserts or updates the EnvVars from `env_overrides` in `env_vars`.
+///
+/// The resulting vector is sorted by the EnvVar names.
+///
+/// # Example
+///
+/// ```
+/// use stackable_operator::product_config_utils::{env_vars_from, insert_or_update_env_vars};
+///
+/// let env_vars = env_vars_from([
+///     ("VAR1", "original value 1"),
+///     ("VAR2", "original value 2")
+/// ]);
+/// let env_overrides = env_vars_from([
+///     ("VAR2", "overriden value 2"),
+///     ("VAR3", "new value 3")
+/// ]);
+///
+/// let combined_env_vars = insert_or_update_env_vars(&env_vars, &env_overrides);
+///
+/// let expected_result = env_vars_from([
+///     ("VAR1", "original value 1"),
+///     ("VAR2", "overriden value 2"),
+///     ("VAR3", "new value 3"),
+/// ]);
+///
+/// assert_eq!(expected_result, combined_env_vars);
+/// ```
+pub fn insert_or_update_env_vars(env_vars: &[EnvVar], env_overrides: &[EnvVar]) -> Vec<EnvVar> {
+    let mut combined = BTreeMap::new();
+
+    for env_var in env_vars.iter().chain(env_overrides) {
+        combined.insert(env_var.name.to_owned(), env_var.to_owned());
+    }
+
+    combined.into_values().collect()
+}
+
 #[cfg(test)]
 mod tests {
     macro_rules! collection {
         // map-like
-        ($($k:expr => $v:expr),* $(,)?) => {
+        ($($k:expr_2021 => $v:expr_2021),* $(,)?) => {
             [$(($k, $v),)*].into()
         };
         // set-like
-        ($($v:expr),* $(,)?) => {
+        ($($v:expr_2021),* $(,)?) => {
             [$($v,)*].into()
         };
     }
 
-    use super::*;
-    use crate::role_utils::{Role, RoleGroup};
+    use std::{collections::HashMap, str::FromStr};
+
     use k8s_openapi::api::core::v1::PodTemplateSpec;
     use rstest::*;
-    use std::collections::HashMap;
-    use std::str::FromStr;
+
+    use super::*;
+    use crate::role_utils::{GenericProductSpecificCommonConfig, Role, RoleGroup};
 
     const ROLE_GROUP: &str = "role_group";
 
@@ -610,13 +782,14 @@ mod tests {
         config_overrides: Option<HashMap<String, HashMap<String, String>>>,
         env_overrides: Option<HashMap<String, String>>,
         cli_overrides: Option<BTreeMap<String, String>>,
-    ) -> CommonConfiguration<Box<TestConfig>> {
+    ) -> CommonConfiguration<Box<TestConfig>, GenericProductSpecificCommonConfig> {
         CommonConfiguration {
             config: test_config.unwrap_or_default(),
             config_overrides: config_overrides.unwrap_or_default(),
             env_overrides: env_overrides.unwrap_or_default(),
             cli_overrides: cli_overrides.unwrap_or_default(),
             pod_overrides: PodTemplateSpec::default(),
+            product_specific_common_config: GenericProductSpecificCommonConfig::default(),
         }
     }
 

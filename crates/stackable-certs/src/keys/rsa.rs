@@ -2,7 +2,7 @@
 //! which abstract away the generation of RSA keys used for signing of CAs
 //! and other certificates.
 use rand_core::{CryptoRngCore, OsRng};
-use rsa::{pkcs8::DecodePrivateKey, RsaPrivateKey};
+use rsa::{RsaPrivateKey, pkcs8::DecodePrivateKey};
 use signature::Keypair;
 use snafu::{ResultExt, Snafu};
 use tracing::instrument;
@@ -60,10 +60,10 @@ impl SigningKey {
 }
 
 impl CertificateKeypair for SigningKey {
-    type SigningKey = rsa::pkcs1v15::SigningKey<sha2::Sha256>;
-    type Signature = rsa::pkcs1v15::Signature;
-    type VerifyingKey = rsa::pkcs1v15::VerifyingKey<sha2::Sha256>;
     type Error = Error;
+    type Signature = rsa::pkcs1v15::Signature;
+    type SigningKey = rsa::pkcs1v15::SigningKey<sha2::Sha256>;
+    type VerifyingKey = rsa::pkcs1v15::VerifyingKey<sha2::Sha256>;
 
     fn signing_key(&self) -> &Self::SigningKey {
         &self.0

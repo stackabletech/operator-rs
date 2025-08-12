@@ -1,2 +1,3 @@
+crates/stackable-operator/crds/*.yaml linguist-generated
 *.stderr linguist-generated
 *.snap linguist-generated

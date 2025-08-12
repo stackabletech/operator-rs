@@ -1,8 +1,7 @@
 //! This module contains a common [`Duration`] struct which is able to parse
 //! human-readable duration formats, like `5s`, `24h`, `2y2h20m42s` or`15d2m2s`. It
-//! additionally implements many required traits, like [`Derivative`],
-//! [`JsonSchema`], [`Deserialize`][serde::Deserialize], and
-//! [`Serialize`][serde::Serialize].
+//! additionally implements many required traits, like [`JsonSchema`],
+//! [`Deserialize`][serde::Deserialize], and [`Serialize`][serde::Serialize].
 //!
 //! Furthermore, it implements [`Deref`], which enables us to use all associated
 //! functions of [`std::time::Duration`] without re-implementing the public
@@ -20,7 +19,6 @@ use std::{
     str::FromStr,
 };
 
-use derivative::Derivative;
 use schemars::JsonSchema;
 use snafu::{OptionExt, ResultExt, Snafu};
 use strum::IntoEnumIterator;
@@ -63,7 +61,7 @@ pub enum DurationParseError {
 /// A common [`Duration`] struct which is able to parse human-readable duration
 /// formats, like `5s`, `24h`, `2y2h20m42s` or`15d2m2s`. It additionally
 /// implements many required traits (for CRD deserialization and serialization).
-#[derive(Clone, Copy, Debug, Derivative, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Duration(std::time::Duration);
 
 impl FromStr for Duration {
@@ -117,7 +115,7 @@ impl FromStr for Duration {
                             previous: last_unit,
                             current: unit,
                         }
-                        .fail()
+                        .fail();
                     }
                     Ordering::Equal => return DuplicateUnitSnafu { unit }.fail(),
                     _ => (),
@@ -172,8 +170,8 @@ impl JsonSchema for Duration {
         "Duration".to_string()
     }
 
-    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
-        String::json_schema(gen)
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
+        String::json_schema(generator)
     }
 }
 
@@ -423,9 +421,10 @@ impl DurationUnit {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use rstest::rstest;
     use serde::{Deserialize, Serialize};
+
+    use super::*;
 
     #[test]
     fn const_from() {

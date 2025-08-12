@@ -1,10 +1,10 @@
 use darling::{
-    ast::{Data, Fields},
     FromDeriveInput, FromField, FromMeta, FromVariant,
+    ast::{Data, Fields},
 };
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{parse_quote, DeriveInput, Generics, Index, Path, WherePredicate};
+use syn::{DeriveInput, Generics, Index, Path, WherePredicate, parse_quote};
 
 #[derive(FromMeta)]
 struct PathOverrides {

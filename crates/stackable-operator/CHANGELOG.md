@@ -4,15 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
-
-- Re-export the `YamlSchema` trait and the `stackable-shared` crate as the `shared` module ([#883]).
-- BREAKING: Added `preferredAddressType` field to ListenerClass CRD ([#885]).
-
 ### Changed
 
-- BREAKING: The `CustomResourceExt` trait is now re-exported from the `stackable-shared` crate. The
-  trait functions use the same parameters but return a different error type ([#883]).
 - BREAKING: `KeyValuePairs<V>` (and `Annotations`/`Labels`) is now an alias for `BTreeMap<Key, V>` ([#889]).
   - Generally, this means that the API now behaves like a map rather than a set. For example, duplicate keys are no longer allowed (as was already documented before).
   - Some `KeyValuePairs` methods have been renamed for certain use cases:
@@ -28,6 +21,409 @@ All notable changes to this project will be documented in this file.
 
 - `KeyValuePairs` will now consistently use the last-written value for a given key ([#889]).
 
+## [0.94.0] - 2025-07-10
+
+### Added
+
+- The default Kubernetes cluster domain name is now fetched from the kubelet API unless explicitly configured ([#1068], [#1071])
+  This requires operators to have the RBAC permission to `get` `nodes/proxy` in the apiGroup "", an example RBAC rule could look like:
+
+  ```yaml
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    name: operator-cluster-role
+  rules:
+    - apiGroups: [""]
+      resources: [nodes/proxy]
+      verbs: [get]
+  ```
+
+  In addition, they must be provided the environment variable `KUBERNETES_NODE_NAME` like this:
+
+  ```yaml
+  env:
+  - name: KUBERNETES_NODE_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: spec.nodeName
+  ```
+
+- Add associated functions on `RoleGroupRef` to return the rolegroup headless and metrics service name ([#1069]).
+
+### Changed
+
+- Update `kube` to `1.1.0` ([#1049]).
+- BREAKING: Return type for `ListenerOperatorVolumeSourceBuilder::new()` is no longer a `Result` ([#1058]).
+
+### Fixed
+
+- Allow uppercase characters in domain names ([#1064]).
+
+### Removed
+
+- BREAKING: Removed `last_update_time` from CRD ClusterCondition status ([#1054]).
+- BREAKING: Removed role binding to legacy service accounts ([#1060]).
+
+[#1049]: https://github.com/stackabletech/operator-rs/pull/1049
+[#1054]: https://github.com/stackabletech/operator-rs/pull/1054
+[#1058]: https://github.com/stackabletech/operator-rs/pull/1058
+[#1060]: https://github.com/stackabletech/operator-rs/pull/1060
+[#1064]: https://github.com/stackabletech/operator-rs/pull/1064
+[#1068]: https://github.com/stackabletech/operator-rs/pull/1068
+[#1069]: https://github.com/stackabletech/operator-rs/pull/1069
+[#1071]: https://github.com/stackabletech/operator-rs/pull/1071
+
+## [0.93.2] - 2025-05-26
+
+### Added
+
+- Added `ListenerClass.spec.loadBalancerClass` and `.loadBalancerAllocateNodePorts` fields ([#986]).
+
+### Removed
+
+- Remove instrumentation from uninteresting functions ([#1023]).
+
+[#986]: https://github.com/stackabletech/operator-rs/pull/986
+[#1023]: https://github.com/stackabletech/operator-rs/pull/1023
+
+## [0.93.1] - 2025-05-20
+
+### Added
+
+- Add git-sync support ([#1024]).
+
+[#1024]: https://github.com/stackabletech/operator-rs/pull/1024
+
+## [0.93.0] - 2025-05-19
+
+### Changed
+
+- BREAKING: Version common CRD structs and enums ([#968]).
+  - All CRD-related types and function now reside in the `stackable_operator::crd` module.
+  - Each CRD-related struct and enum has been versioned. The initial version is `v1alpha1`.
+  - The `static` authentication provider must now be imported using `r#static`.
+  - Import are now more granular in general.
+- BREAKING: Update to `kube` to `1.0.0` and `k8s-openapi` to `0.25.0`.
+  Use k8s `1.33` for compilation ([#1037]).
+- Separate some developer docs from CRD descriptions ([#1040]).
+
+### Fixed
+
+- Re-export versioned CRD-specific error types ([#1025]).
+- Re-export versioned common CRD enums ([#1029]).
+
+[#968]: https://github.com/stackabletech/operator-rs/pull/968
+[#1025]: https://github.com/stackabletech/operator-rs/pull/1025
+[#1029]: https://github.com/stackabletech/operator-rs/pull/1029
+[#1037]: https://github.com/stackabletech/operator-rs/pull/1037
+[#1040]: https://github.com/stackabletech/operator-rs/pull/1040
+
+## [0.92.0] - 2025-04-14
+
+### Added
+
+- Adds new CLI arguments and environment variables ([#1010], [#1012]).
+  - Use `--file-log-max-files` (or `FILE_LOG_MAX_FILES`) to limit the number of log files kept.
+  - Use `--console-log-format` (or `CONSOLE_LOG_FORMAT`) to set the format to `plain` (default) or `json`.
+  - See detailed [stackable-telemetry changelog](../stackable-telemetry/CHANGELOG.md#060---2025-04-14).
+
+### Changed
+
+- BREAKING: Update and align telemetry related CLI arguments of `ProductOperatorRun`, see detailed
+  changelog [stackable-telemetry changelog](../stackable-telemetry/CHANGELOG.md#060---2025-04-14) ([#1009]).
+
+[#1009]: https://github.com/stackabletech/operator-rs/pull/1009
+[#1010]: https://github.com/stackabletech/operator-rs/pull/1010
+[#1012]: https://github.com/stackabletech/operator-rs/pull/1012
+
+## [0.91.1] - 2025-04-09
+
+### Added
+
+- Add re-exports for `stackable-telemetry` and `stackable-versioned` ([#1007]).
+- Add new features: `default`, `full`, `telemetry`, and `versioned` ([#1007]).
+
+[#1007]: https://github.com/stackabletech/operator-rs/pull/1007
+
+## [0.91.0] - 2025-04-08
+
+### Changed
+
+- BREAKING: Remove `cli::TelemetryArguments` and `cli::RollingPeriod` which are both replaced by
+  types from `stackable_telemetry` ([#1001]).
+- BREAKING: The `ProductOperatorRun` struct now uses `stackable_telemetry::tracing::TelemetryOptions`
+  for the `telemetry_arguments` field ([#1001]).
+
+[#1001]: https://github.com/stackabletech/operator-rs/pull/1001
+
+## [0.90.0] - 2025-04-07
+
+### Added
+
+- BREAKING: Inject vector aggregator address into vector config file using an environment variable ([#1000]).
+
+[#1000]: https://github.com/stackabletech/operator-rs/pull/1000
+
+## [0.89.1] - 2025-04-02
+
+### Changed
+
+- Make fields of `TelemetryArguments` public ([#998]).
+
+[#998]: https://github.com/stackabletech/operator-rs/pull/998
+
+## [0.89.0] - 2025-04-02
+
+### Added
+
+- Add more granular telemetry related arguments to `ProductOperatorRun` ([#977]).
+  - `--no-console-output`: Disables output of `tracing` events to the console (stdout)
+  - `--rolling-logs`: Enables output `tracing` events to a rolling log file
+  - `--rolling-logs-period`: Sets the time period after which log files are rolled over
+  - `--otlp-traces`: Enables exporting of traces via OTLP
+  - `--otlp-logs`: Enables exporting of logs via OTLP
+
+### Removed
+
+- BREAKING: Remove `--tracing-target` argument and field from `ProductOperatorRun`.
+  Use the new, more granular arguments instead ([#977]).
+- BREAKING: Remove `initialize_logging` helper function from `stackable_operator::logging` ([#977]).
+- Remove `opentelemetry-jaeger` dependency ([#977]).
+
+[#977]: https://github.com/stackabletech/operator-rs/pull/977
+
+## [0.88.0] - 2025-04-02
+
+### Added
+
+- Add Deployments to `ClusterResource`s ([#992]).
+- Add `DeploymentConditionBuilder` ([#993]).
+
+### Changed
+
+- Deprecate `stackable_operator::logging::initialize_logging()`.
+  It's recommended to use `stackable-telemetry` or `#[allow(deprecated)]` instead ([#950], [#989]).
+
+[#950]: https://github.com/stackabletech/operator-rs/pull/950
+[#989]: https://github.com/stackabletech/operator-rs/pull/989
+[#992]: https://github.com/stackabletech/operator-rs/pull/992
+[#993]: https://github.com/stackabletech/operator-rs/pull/993
+
+## [0.87.5] - 2025-03-19
+
+### Fixed
+
+- Enable the `kube/ring` feature to use ring as the crypto provider for `rustls`. This will
+  otherwise cause runtime errors which result in panics ([#988]).
+
+[#988]: https://github.com/stackabletech/operator-rs/pull/988
+
+## [0.87.4] - 2025-03-17
+
+### Changed
+
+- Bump `kube` to 0.99.0 and `json-patch` to 4.0.0 ([#982]).
+
+[#982]: https://github.com/stackabletech/operator-rs/pull/982
+
+## [0.87.3] - 2025-03-14
+
+### Added
+
+- Add a `Region::is_default_config` function to determine if a region sticks to the default config ([#983]).
+
+[#983]: https://github.com/stackabletech/operator-rs/pull/983
+
+## [0.87.2] - 2025-03-10
+
+### Changed
+
+- Make `region.name` field in in S3ConnectionSpec public ([#980]).
+
+[#980]: https://github.com/stackabletech/operator-rs/pull/980
+
+## [0.87.1] - 2025-03-10
+
+### Changed
+
+- Refactor `region` field in S3ConnectionSpec ([#976]).
+
+[#976]: https://github.com/stackabletech/operator-rs/pull/976
+
+## [0.87.0] - 2025-02-28
+
+### Changed
+
+- BREAKING: Update `strum` to `0.27.1` (clients need to also update strum!), `rand` to `0.9.0` and `convert_case` to `0.8.0` ([#972]).
+
+[#972]: https://github.com/stackabletech/operator-rs/pull/972
+
+## [0.86.2] - 2025-02-21
+
+### Fix
+
+- BREAKING: Improve `AwsRegion::name()` ergonomics: borrow self and return `Option<&str>` ([#963]).
+
+[#963]: https://github.com/stackabletech/operator-rs/pull/963
+
+## [0.86.1] - 2025-02-21
+
+### Added
+
+- BREAKING: Add `region` field to S3ConnectionSpec (defaults to `us-east-1`) ([#959]).
+
+[#959]: https://github.com/stackabletech/operator-rs/pull/959
+
+## [0.86.0] - 2025-01-30
+
+### Added
+
+- Add generic `TtlCache` structure as well as a `UserInformationCache` type ([#943]).
+
+[#943]: https://github.com/stackabletech/operator-rs/pull/943
+
+## [0.85.0] - 2025-01-28
+
+### Changed
+
+- Change constant used for product image selection so that it defaults to OCI ([#945]).
+
+[#945]: https://github.com/stackabletech/operator-rs/pull/945
+
+## [0.84.1] - 2025-01-22
+
+### Fixed
+
+- Remove `Merge` trait bound from `erase` and make `product_specific_common_config` public ([#946]).
+- BREAKING: Revert the change of appending a dot to the default cluster domain to make it a FQDN, it is now `cluster.local` again. Users can instead explicitly opt-in to FQDNs via the ENV variable `KUBERNETES_CLUSTER_DOMAIN`. ([#947]).
+
+[#946]: https://github.com/stackabletech/operator-rs/pull/946
+[#947]: https://github.com/stackabletech/operator-rs/pull/947
+
+## [0.84.0] - 2025-01-16
+
+### Added
+
+- BREAKING: Aggregate emitted Kubernetes events on the CustomResources thanks to the new
+  [kube feature](https://github.com/kube-rs/controller-rs/pull/116). Instead of reporting the same
+  event multiple times it now uses `EventSeries` to aggregate these events to single entry with an
+  age like `3s (x11 over 53s)` ([#938]):
+  - The `report_controller_error` function now needs to be async.
+  - It now takes `Recorder` as a parameter instead of a `Client`.
+  - The `Recorder` instance needs to be available across all `reconcile` invocations, to ensure
+    aggregation works correctly.
+  - The operator needs permission to `patch` events (previously only `create` was needed).
+- Add `ProductSpecificCommonConfig`, so that product operators can have custom fields within `commonConfig`.
+  Also add a `JavaCommonConfig`, which can be used by JVM-based tools to offer `jvmArgumentOverrides` with this mechanism ([#931])
+
+### Changed
+
+- BREAKING: Bump Rust dependencies to enable Kubernetes 1.32 (via `kube` 0.98.0 and `k8s-openapi` 0.23.0) ([#938]).
+- BREAKING: Append a dot to the default cluster domain to make it a FQDN and allow FQDNs when validating a `DomainName` ([#939]).
+
+[#931]: https://github.com/stackabletech/operator-rs/pull/931
+[#938]: https://github.com/stackabletech/operator-rs/pull/938
+[#939]: https://github.com/stackabletech/operator-rs/pull/939
+
+## [0.83.0] - 2024-12-03
+
+### Added
+
+- Added cert lifetime setter to `SecretOperatorVolumeSourceBuilder` ([#915])
+
+### Changed
+
+- Replace unmaintained `derivative` crate with `educe` ([#907]).
+- Bump dependencies, notably rustls 0.23.15 to 0.23.19 to fix [RUSTSEC-2024-0399] ([#917]).
+
+[#907]: https://github.com/stackabletech/operator-rs/pull/907
+[#915]: https://github.com/stackabletech/operator-rs/pull/915
+[#917]: https://github.com/stackabletech/operator-rs/pull/917
+[RUSTSEC-2024-0399]: https://rustsec.org/advisories/RUSTSEC-2024-0399
+
+## [0.82.0] - 2024-11-23
+
+### Fixed
+
+- Fixed URL handling related to OIDC and `rootPath` with and without trailing slashes. Also added a bunch of tests ([#910]).
+
+### Changed
+
+- BREAKING: Made `DEFAULT_OIDC_WELLKNOWN_PATH` private. Use `AuthenticationProvider::well_known_config_url` instead ([#910]).
+- BREAKING: Changed visibility of `commons::rbac::service_account_name` and `commons::rbac::role_binding_name` to
+  private, as these functions should not be called directly by the operators. This is likely to result in naming conflicts
+  as the result is completely dependent on what is passed to this function. Operators should instead rely on the roleBinding
+  and serviceAccount objects created by `commons::rbac::build_rbac_resources` and retrieve the name from the returned
+  objects if they need it ([#909]).
+- Changed the names of the objects that are returned from `commons::rbac::build_rbac_resources` to not rely solely on the product
+  they refer to (e.g. "nifi-rolebinding") but instead include the name of the resource to be unique per cluster
+  (e.g. simple-nifi-rolebinding) ([#909]).
+
+[#909]: https://github.com/stackabletech/operator-rs/pull/909
+[#910]: https://github.com/stackabletech/operator-rs/pull/910
+
+## [0.81.0] - 2024-11-05
+
+### Added
+
+- Add new `PreferredAddressType::HostnameConservative` ([#903]).
+
+### Changed
+
+- BREAKING: Split `ListenerClass.spec.preferred_address_type` into a new `PreferredAddressType` type. Use `resolve_preferred_address_type()` to access the `AddressType` as before ([#903]).
+
+[#903]: https://github.com/stackabletech/operator-rs/pull/903
+
+## [0.80.0] - 2024-10-23
+
+### Changed
+
+- BREAKING: Don't parse `/etc/resolv.conf` to auto-detect the Kubernetes cluster domain in case it is not explicitly configured.
+  Instead the operator will default to `cluster.local`. We revert this now after some concerns where raised, we will
+  create a follow-up decision instead addressing how we will continue with this ([#896]).
+- Update Rust dependencies (Both `json-patch` and opentelemetry crates cannot be updated because of conflicts) ([#897]):
+  - Bump `kube` to `0.96.0`,
+  - `rstest` to `0.23.0` and
+  - `tower-http` to `0.6.1`
+
+### Fixed
+
+- Fix Kubernetes cluster domain parsing from resolv.conf, e.g. on AWS EKS.
+  We now only consider Kubernetes services domains instead of all domains (which could include non-Kubernetes domains) ([#895]).
+
+[#895]: https://github.com/stackabletech/operator-rs/pull/895
+[#896]: https://github.com/stackabletech/operator-rs/pull/896
+[#897]: https://github.com/stackabletech/operator-rs/pull/897
+
+## [0.79.0] - 2024-10-18
+
+### Added
+
+- Re-export the `YamlSchema` trait and the `stackable-shared` crate as the `shared` module ([#883]).
+- BREAKING: Added `preferredAddressType` field to ListenerClass CRD ([#885]).
+- BREAKING: The cluster domain (default: `cluster.local`) can now be configured in the individual
+  operators via the ENV variable `KUBERNETES_CLUSTER_DOMAIN` or resolved automatically by parsing
+  the `/etc/resolve.conf` file. This requires using `initialize_operator` instead of `create_client`
+  in the `main.rs` of the individual operators ([#893]).
+
+### Changed
+
+- BREAKING: The `CustomResourceExt` trait is now re-exported from the `stackable-shared` crate. The
+  trait functions use the same parameters but return a different error type ([#883]).
+- BREAKING: `KeyValuePairs` (as well as `Labels`/`Annotations` via it) is now backed by a `BTreeMap`
+  rather than a `BTreeSet` ([#888]).
+  - The `Deref` impl now returns a `BTreeMap` instead.
+  - `iter()` now clones the values.
+
+### Fixed
+
+- BREAKING: `KeyValuePairs::insert` (as well as `Labels::`/`Annotations::` via it) now overwrites
+  the old value if the key already exists. Previously, `iter()` would return _both_ values in
+  lexicographical order (causing further conversions like `Into<BTreeMap>` to prefer the maximum
+  value) ([#888]).
+
 ### Removed
 
 - BREAKING: The `CustomResourceExt` trait doesn't provide a `generate_yaml_schema` function any
@@ -36,7 +432,8 @@ All notable changes to this project will be documented in this file.
 
 [#883]: https://github.com/stackabletech/operator-rs/pull/883
 [#885]: https://github.com/stackabletech/operator-rs/pull/885
-[#889]: https://github.com/stackabletech/operator-rs/pull/889
+[#888]: https://github.com/stackabletech/operator-rs/pull/888
+[#893]: https://github.com/stackabletech/operator-rs/pull/893
 
 ## [0.78.0] - 2024-09-30
 
@@ -225,7 +622,7 @@ All notable changes to this project will be documented in this file.
 
 [#808]: https://github.com/stackabletech/operator-rs/pull/808
 
-## [0.69.1]  2024-06-10
+## [0.69.1] - 2024-06-10
 
 ### Added
 
@@ -1039,7 +1436,7 @@ This is a rerelease of 0.25.1 which some last-minute incompatible API changes to
 ### Changed
 
 - Objects are now streamed rather than polled when waiting for them to be deleted ([#452]).
-- serde\_yaml 0.8.26 -> 0.9.9 ([#450])
+- serde_yaml 0.8.26 -> 0.9.9 ([#450])
 
 [#450]: https://github.com/stackabletech/operator-rs/pull/450
 [#452]: https://github.com/stackabletech/operator-rs/pull/452

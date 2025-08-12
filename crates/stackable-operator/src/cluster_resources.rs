@@ -1,25 +1,18 @@
 //! A structure containing the cluster resources.
 
-use crate::{
-    client::{Client, GetApi},
-    commons::{
-        cluster_operation::ClusterOperation,
-        listener::Listener,
-        resources::{
-            ComputeResource, ResourceRequirementsExt, ResourceRequirementsType,
-            LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
-        },
-    },
-    kvp::{
-        consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
-        label, LabelError, Labels,
-    },
-    utils::format_full_controller_name,
+use std::{
+    collections::{BTreeMap, HashSet},
+    fmt::Debug,
 };
 
+#[cfg(doc)]
+use k8s_openapi::api::core::v1::{NodeSelector, Pod};
 use k8s_openapi::{
+    NamespaceResourceScope,
     api::{
-        apps::v1::{DaemonSet, DaemonSetSpec, StatefulSet, StatefulSetSpec},
+        apps::v1::{
+            DaemonSet, DaemonSetSpec, Deployment, DeploymentSpec, StatefulSet, StatefulSetSpec,
+        },
         batch::v1::Job,
         core::v1::{
             ConfigMap, ObjectReference, PodSpec, PodTemplateSpec, Secret, Service, ServiceAccount,
@@ -28,22 +21,29 @@ use k8s_openapi::{
         rbac::v1::RoleBinding,
     },
     apimachinery::pkg::apis::meta::v1::{LabelSelector, LabelSelectorRequirement},
-    NamespaceResourceScope,
 };
-use kube::{core::ErrorResponse, Resource, ResourceExt};
-use serde::{de::DeserializeOwned, Serialize};
+use kube::{Resource, ResourceExt, core::ErrorResponse};
+use serde::{Serialize, de::DeserializeOwned};
 use snafu::{OptionExt, ResultExt, Snafu};
-use std::{
-    collections::{BTreeMap, HashSet},
-    fmt::Debug,
-};
 use strum::Display;
 use tracing::{debug, info, warn};
 
-#[cfg(doc)]
-use crate::k8s_openapi::api::{
-    apps::v1::Deployment,
-    core::v1::{NodeSelector, Pod},
+use crate::{
+    client::{Client, GetApi},
+    commons::{
+        cluster_operation::ClusterOperation,
+        resources::{
+            ComputeResource, LIMIT_REQUEST_RATIO_CPU, LIMIT_REQUEST_RATIO_MEMORY,
+            ResourceRequirementsExt, ResourceRequirementsType,
+        },
+    },
+    crd::listener,
+    kvp::{
+        LabelError, Labels,
+        consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
+        label,
+    },
+    utils::format_full_controller_name,
 };
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -54,12 +54,17 @@ pub enum Error {
     MissingObjectKey { key: &'static str },
 
     #[snafu(display("failed to list cluster resources with label selector"))]
-    ListClusterResources { source: crate::client::Error },
+    ListClusterResources {
+        #[snafu(source(from(crate::client::Error, Box::new)))]
+        source: Box<crate::client::Error>,
+    },
 
     #[snafu(display("label {label:?} is missing"))]
     MissingLabel { label: &'static str },
 
-    #[snafu(display("label {label:?} contains unexpected values - expected {expected_content:?}, got {actual_content:?}"))]
+    #[snafu(display(
+        "label {label:?} contains unexpected values - expected {expected_content:?}, got {actual_content:?}"
+    ))]
     UnexpectedLabelContent {
         label: &'static str,
         expected_content: String,
@@ -67,13 +72,22 @@ pub enum Error {
     },
 
     #[snafu(display("failed to get resource"))]
-    GetResource { source: crate::client::Error },
+    GetResource {
+        #[snafu(source(from(crate::client::Error, Box::new)))]
+        source: Box<crate::client::Error>,
+    },
 
     #[snafu(display("failed to apply patch"))]
-    ApplyPatch { source: crate::client::Error },
+    ApplyPatch {
+        #[snafu(source(from(crate::client::Error, Box::new)))]
+        source: Box<crate::client::Error>,
+    },
 
     #[snafu(display("failed to delete orphaned resource"))]
-    DeleteOrphanedResource { source: crate::client::Error },
+    DeleteOrphanedResource {
+        #[snafu(source(from(crate::client::Error, Box::new)))]
+        source: Box<crate::client::Error>,
+    },
 }
 
 /// A cluster resource handled by [`ClusterResources`].
@@ -204,7 +218,7 @@ impl ClusterResource for Service {}
 impl ClusterResource for ServiceAccount {}
 impl ClusterResource for RoleBinding {}
 impl ClusterResource for PodDisruptionBudget {}
-impl ClusterResource for Listener {}
+impl ClusterResource for listener::v1alpha1::Listener {}
 
 impl ClusterResource for Job {
     fn pod_spec(&self) -> Option<&PodSpec> {
@@ -262,6 +276,29 @@ impl ClusterResource for DaemonSet {
                         }),
                         ..self.spec.clone().unwrap_or_default().template
                     },
+                    ..self.spec.unwrap_or_default()
+                }),
+                ..self
+            },
+            ClusterResourceApplyStrategy::Default
+            | ClusterResourceApplyStrategy::ReconciliationPaused
+            | ClusterResourceApplyStrategy::NoApply => self,
+        }
+    }
+
+    fn pod_spec(&self) -> Option<&PodSpec> {
+        self.spec
+            .as_ref()
+            .and_then(|spec| spec.template.spec.as_ref())
+    }
+}
+
+impl ClusterResource for Deployment {
+    fn maybe_mutate(self, strategy: &ClusterResourceApplyStrategy) -> Self {
+        match strategy {
+            ClusterResourceApplyStrategy::ClusterStopped => Deployment {
+                spec: Some(DeploymentSpec {
+                    replicas: Some(0),
                     ..self.spec.unwrap_or_default()
                 }),
                 ..self
@@ -623,7 +660,7 @@ impl ClusterResources {
             self.delete_orphaned_resources_of_kind::<ServiceAccount>(client),
             self.delete_orphaned_resources_of_kind::<RoleBinding>(client),
             self.delete_orphaned_resources_of_kind::<PodDisruptionBudget>(client),
-            self.delete_orphaned_resources_of_kind::<Listener>(client),
+            self.delete_orphaned_resources_of_kind::<listener::v1alpha1::Listener>(client),
         )?;
 
         Ok(())

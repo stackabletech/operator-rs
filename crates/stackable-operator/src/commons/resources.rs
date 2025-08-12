@@ -38,7 +38,7 @@
 //!     crates(
 //!         kube_core = "stackable_operator::kube::core",
 //!         k8s_openapi = "stackable_operator::k8s_openapi",
-//!         schemars = "stackable_operator::schemars"
+//!         schemars = "stackable_operator::schemars",
 //!     )
 //! )]
 //! #[serde(rename_all = "camelCase")]
@@ -68,6 +68,24 @@
 //! }
 //! ```
 
+use std::{collections::BTreeMap, fmt::Debug};
+
+use educe::Educe;
+use k8s_openapi::{
+    api::core::v1::{
+        Container, PersistentVolumeClaim, PersistentVolumeClaimSpec, PodSpec, ResourceRequirements,
+        VolumeResourceRequirements,
+    },
+    apimachinery::pkg::{
+        api::resource::Quantity,
+        apis::meta::v1::{LabelSelector, ObjectMeta},
+    },
+};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
+use strum::Display;
+
 use crate::{
     config::{
         fragment::{Fragment, FromFragment},
@@ -76,18 +94,6 @@ use crate::{
     cpu::CpuQuantity,
     memory::MemoryQuantity,
 };
-use derivative::Derivative;
-use k8s_openapi::api::core::v1::{
-    Container, PersistentVolumeClaim, PersistentVolumeClaimSpec, PodSpec, ResourceRequirements,
-    VolumeResourceRequirements,
-};
-use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::{LabelSelector, ObjectMeta};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use snafu::{ResultExt, Snafu};
-use std::{collections::BTreeMap, fmt::Debug};
-use strum::Display;
 
 pub const LIMIT_REQUEST_RATIO_CPU: f32 = 5.0;
 pub const LIMIT_REQUEST_RATIO_MEMORY: f32 = 1.0;
@@ -105,7 +111,9 @@ pub enum Error {
         resource_type: ResourceRequirementsType,
     },
 
-    #[snafu(display("{resource_key:?} max limit to request ratio for Container {container_name:?} is {allowed_ration:?}, but ratio was exceeded or request and limit where not set explicitly"))]
+    #[snafu(display(
+        "{resource_key:?} max limit to request ratio for Container {container_name:?} is {allowed_ration:?}, but ratio was exceeded or request and limit where not set explicitly"
+    ))]
     LimitToRequestRatioExceeded {
         container_name: String,
         resource_key: String,
@@ -133,13 +141,8 @@ pub enum Error {
     path_overrides(fragment = "crate::config::fragment")
 )]
 #[fragment_attrs(
-    derive(Merge, Serialize, Deserialize, JsonSchema, Derivative),
-    derivative(
-        Default(bound = "T::Fragment: Default, K::Fragment: Default"),
-        Debug(bound = "T::Fragment: Debug, K::Fragment: Debug"),
-        Clone(bound = "T::Fragment: Clone, K::Fragment: Clone"),
-        PartialEq(bound = "T::Fragment: PartialEq, K::Fragment: PartialEq")
-    ),
+    derive(Merge, Serialize, Deserialize, JsonSchema, Educe),
+    educe(Clone, Debug, Default, PartialEq),
     merge(
         bound = "T::Fragment: Merge, K::Fragment: Merge",
         path_overrides(merge = "crate::config::merge")
@@ -172,13 +175,8 @@ pub struct Resources<T, K = NoRuntimeLimits> {
     path_overrides(fragment = "crate::config::fragment")
 )]
 #[fragment_attrs(
-    derive(Merge, Serialize, Deserialize, JsonSchema, Derivative),
-    derivative(
-        Default(bound = "T::Fragment: Default"),
-        Debug(bound = "T::Fragment: Debug"),
-        Clone(bound = "T::Fragment: Clone"),
-        PartialEq(bound = "T::Fragment: PartialEq")
-    ),
+    derive(Merge, Serialize, Deserialize, JsonSchema, Educe),
+    educe(Clone, Debug, Default, PartialEq),
     merge(
         bound = "T::Fragment: Merge",
         path_overrides(merge = "crate::config::merge")
@@ -532,17 +530,19 @@ impl ResourceRequirementsExt for PodSpec {
 
 #[cfg(test)]
 mod tests {
-    use crate::builder::pod::resources::ResourceRequirementsBuilder;
-    use crate::commons::resources::{PvcConfig, PvcConfigFragment, Resources, ResourcesFragment};
-    use crate::config::{
-        fragment::{self, Fragment},
-        merge::Merge,
-    };
     use k8s_openapi::api::core::v1::{Container, PersistentVolumeClaim, ResourceRequirements};
     use rstest::rstest;
     use serde::{Deserialize, Serialize};
 
     use super::*;
+    use crate::{
+        builder::pod::resources::ResourceRequirementsBuilder,
+        commons::resources::{PvcConfig, PvcConfigFragment, Resources, ResourcesFragment},
+        config::{
+            fragment::{self, Fragment},
+            merge::Merge,
+        },
+    };
 
     #[derive(Clone, Debug, Default, Fragment)]
     #[fragment(path_overrides(fragment = "crate::config::fragment"))]

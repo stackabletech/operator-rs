@@ -1,30 +1,37 @@
 [package]
 name = "stackable-telemetry"
-version = "0.2.0"
+version = "0.6.1"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true
 repository.workspace = true
 
+[features]
+clap = ["dep:clap"]
+
 [dependencies]
 axum.workspace = true
+clap = { workspace = true, optional = true }
 futures-util.workspace = true
 opentelemetry = { workspace = true, features = ["logs"] }
 opentelemetry-appender-tracing.workspace = true
-opentelemetry-otlp = { workspace = true, features = ["gzip-tonic", "logs"] }
+opentelemetry-otlp = { workspace = true, features = ["grpc-tonic", "gzip-tonic", "logs"] }
 opentelemetry-semantic-conventions.workspace = true
-opentelemetry_sdk = { workspace = true, features = ["logs", "rt-tokio", "logs_level_enabled"] }
+opentelemetry_sdk = { workspace = true, features = ["logs", "rt-tokio", "spec_unstable_logs_enabled"] }
 pin-project.workspace = true
 snafu.workspace = true
+strum.workspace = true
 tokio.workspace = true
 tower.workspace = true
 tracing.workspace = true
+tracing-appender.workspace = true
 tracing-opentelemetry.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [dev-dependencies]
 tokio.workspace = true
 tracing-opentelemetry.workspace = true
+rstest.workspace = true
 stackable-webhook = { path = "../stackable-webhook" }
 
 [package.metadata.cargo-udeps.ignore]

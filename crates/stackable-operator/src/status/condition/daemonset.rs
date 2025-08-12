@@ -1,11 +1,12 @@
+use std::cmp;
+
+use k8s_openapi::api::apps::v1::DaemonSet;
+use kube::ResourceExt;
+
 use crate::status::condition::{
     ClusterCondition, ClusterConditionSet, ClusterConditionStatus, ClusterConditionType,
     ConditionBuilder,
 };
-
-use k8s_openapi::api::apps::v1::DaemonSet;
-use kube::ResourceExt;
-use std::cmp;
 
 /// Default implementation to build [`ClusterCondition`]s for
 /// `DaemonSet` resources.
@@ -62,7 +63,6 @@ impl DaemonSetConditionBuilder {
             status: available,
             type_: ClusterConditionType::Available,
             last_transition_time: None,
-            last_update_time: None,
         }
     }
 
@@ -91,8 +91,8 @@ mod tests {
     use k8s_openapi::api::apps::v1::{DaemonSet, DaemonSetStatus};
 
     use crate::status::condition::{
-        daemonset::DaemonSetConditionBuilder, ClusterCondition, ClusterConditionStatus,
-        ClusterConditionType, ConditionBuilder,
+        ClusterCondition, ClusterConditionStatus, ClusterConditionType, ConditionBuilder,
+        daemonset::DaemonSetConditionBuilder,
     };
 
     fn build_ds(number_ready: i32) -> DaemonSet {

@@ -2,25 +2,28 @@
 //! server, which can be used in combination with an Axum [`Router`].
 use std::{net::SocketAddr, sync::Arc};
 
-use axum::{extract::Request, Router};
+use axum::{Router, extract::Request};
 use futures_util::pin_mut;
 use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use opentelemetry::trace::{FutureExt, SpanKind};
 use snafu::{ResultExt, Snafu};
-use stackable_certs::{ca::CertificateAuthority, keys::rsa, CertificatePairError};
-use stackable_operator::time::Duration;
+use stackable_certs::{
+    CertificatePairError,
+    ca::{CertificateAuthority, DEFAULT_CA_VALIDITY},
+    keys::rsa,
+};
 use tokio::net::TcpListener;
 use tokio_rustls::{
-    rustls::{
-        crypto::aws_lc_rs::default_provider,
-        version::{TLS12, TLS13},
-        ServerConfig,
-    },
     TlsAcceptor,
+    rustls::{
+        ServerConfig,
+        crypto::ring::default_provider,
+        version::{TLS12, TLS13},
+    },
 };
 use tower::{Service, ServiceExt};
-use tracing::{field::Empty, instrument, Instrument, Span};
+use tracing::{Instrument, Span, field::Empty, instrument};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -30,9 +33,7 @@ pub enum Error {
     #[snafu(display("failed to construct TLS server config, bad certificate/key"))]
     InvalidTlsPrivateKey { source: tokio_rustls::rustls::Error },
 
-    #[snafu(display(
-        "failed to create TCP listener by binding to socket address {socket_addr:?}"
-    ))]
+    #[snafu(display("failed to create TCP listener by binding to socket address {socket_addr:?}"))]
     BindTcpListener {
         source: std::io::Error,
         socket_addr: SocketAddr,
@@ -108,7 +109,7 @@ impl TlsServer {
                 CertificateAuthority::new_rsa().context(CreateCertificateAuthoritySnafu)?;
 
             let leaf_certificate = certificate_authority
-                .generate_rsa_leaf_certificate("Leaf", "webhook", Duration::from_secs(3600))
+                .generate_rsa_leaf_certificate("Leaf", "webhook", [], DEFAULT_CA_VALIDITY)
                 .context(GenerateLeafCertificateSnafu)?;
 
             let certificate_der = leaf_certificate

@@ -8,17 +8,15 @@ use std::{
     hash::Hash,
 };
 
-use super::merge::Atomic;
+use k8s_openapi::api::core::v1::PodTemplateSpec;
+use snafu::Snafu;
+pub use stackable_operator_derive::Fragment;
 
+use super::merge::Atomic;
 #[cfg(doc)]
 use super::merge::Merge;
 #[cfg(doc)]
 use crate::role_utils::{Role, RoleGroup};
-
-use k8s_openapi::api::core::v1::PodTemplateSpec;
-use snafu::Snafu;
-
-pub use stackable_operator_derive::Fragment;
 
 /// Contains context used for generating validation errors
 ///
@@ -28,7 +26,7 @@ pub struct Validator<'a> {
     parent: Option<&'a Validator<'a>>,
 }
 
-impl<'a> Validator<'a> {
+impl Validator<'_> {
     /// Creates a `Validator` for a subfield of the current object
     pub fn field<'b>(&'b self, ident: &'b dyn Display) -> Validator<'b> {
         Validator {
@@ -109,7 +107,7 @@ pub trait FromFragment: Sized {
     /// For complex structs, this should be a variant of `Self` where each field is replaced by its respective `Fragment` type. This can be derived using
     /// [`Fragment`].
     type Fragment;
-    /// A variant of [`Self::Fragment`] that is used when the container already provides a to indicate that a value is optional.
+    /// A variant of [`Self::Fragment`] that is used when the container already provides a way to indicate that a value is optional.
     ///
     /// For example, there's no use marking a value as [`Option`]al again if the value is already contained in an `Option`.
     ///
@@ -220,9 +218,9 @@ pub fn validate<T: FromFragment>(fragment: T::Fragment) -> Result<T, ValidationE
 
 #[cfg(test)]
 mod tests {
-    use schemars::{schema_for, JsonSchema};
+    use schemars::{JsonSchema, schema_for};
 
-    use super::{validate, Fragment};
+    use super::{Fragment, validate};
 
     #[derive(Fragment, Debug, PartialEq, Eq)]
     #[fragment(path_overrides(fragment = "super"))]

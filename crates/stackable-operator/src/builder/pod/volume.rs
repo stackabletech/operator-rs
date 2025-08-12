@@ -8,13 +8,13 @@ use k8s_openapi::{
     },
     apimachinery::pkg::api::resource::Quantity,
 };
-
 use snafu::{ResultExt, Snafu};
 use tracing::warn;
 
 use crate::{
     builder::meta::ObjectMetaBuilder,
-    kvp::{annotation, Annotation, AnnotationError, Annotations, LabelError, Labels},
+    kvp::{Annotation, AnnotationError, Annotations, LabelError, Labels, annotation},
+    time::Duration,
 };
 
 /// A builder to build [`Volume`] objects. May only contain one `volume_source`
@@ -280,6 +280,7 @@ pub struct SecretOperatorVolumeSourceBuilder {
     format: Option<SecretFormat>,
     kerberos_service_names: Vec<String>,
     tls_pkcs12_password: Option<String>,
+    auto_tls_cert_lifetime: Option<Duration>,
 }
 
 impl SecretOperatorVolumeSourceBuilder {
@@ -290,7 +291,13 @@ impl SecretOperatorVolumeSourceBuilder {
             format: None,
             kerberos_service_names: Vec::new(),
             tls_pkcs12_password: None,
+            auto_tls_cert_lifetime: None,
         }
+    }
+
+    pub fn with_auto_tls_cert_lifetime(&mut self, lifetime: impl Into<Duration>) -> &mut Self {
+        self.auto_tls_cert_lifetime = Some(lifetime.into());
+        self
     }
 
     pub fn with_node_scope(&mut self) -> &mut Self {
@@ -371,6 +378,15 @@ impl SecretOperatorVolumeSourceBuilder {
                 )
                 .context(ParseAnnotationSnafu)?]);
             }
+        }
+
+        if let Some(lifetime) = &self.auto_tls_cert_lifetime {
+            annotations.extend([
+                annotation::well_known::secret_volume::auto_tls_cert_lifetime(
+                    &lifetime.to_string(),
+                )
+                .context(ParseAnnotationSnafu)?,
+            ]);
         }
 
         Ok(EphemeralVolumeSource {
@@ -466,7 +482,6 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
 ///         &ListenerReference::ListenerClass("nodeport".into()),
 ///         &labels,
 ///     )
-///     .unwrap()
 ///     .build_ephemeral()
 ///     .unwrap();
 ///
@@ -492,11 +507,11 @@ impl ListenerOperatorVolumeSourceBuilder {
     pub fn new(
         listener_reference: &ListenerReference,
         labels: &Labels,
-    ) -> Result<ListenerOperatorVolumeSourceBuilder, ListenerOperatorVolumeSourceBuilderError> {
-        Ok(Self {
+    ) -> ListenerOperatorVolumeSourceBuilder {
+        Self {
             listener_reference: listener_reference.to_owned(),
             labels: labels.to_owned(),
-        })
+        }
     }
 
     fn build_spec(&self) -> PersistentVolumeClaimSpec {
@@ -562,8 +577,9 @@ impl ListenerOperatorVolumeSourceBuilder {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
+
+    use super::*;
 
     #[test]
     fn builder() {
@@ -628,8 +644,7 @@ mod tests {
         let builder = ListenerOperatorVolumeSourceBuilder::new(
             &ListenerReference::ListenerClass("public".into()),
             &labels,
-        )
-        .unwrap();
+        );
 
         let volume_source = builder.build_ephemeral().unwrap();
 

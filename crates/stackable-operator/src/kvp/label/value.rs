@@ -1,7 +1,7 @@
 use std::{fmt::Display, ops::Deref, str::FromStr, sync::LazyLock};
 
 use regex::Regex;
-use snafu::{ensure, Snafu};
+use snafu::{Snafu, ensure};
 
 use crate::kvp::Value;
 
@@ -89,8 +89,9 @@ impl Display for LabelValue {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use rstest::rstest;
+
+    use super::*;
 
     #[rstest]
     #[case("a".repeat(64), LabelValueError::ValueTooLong { length: 64 })]

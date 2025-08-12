@@ -6,14 +6,16 @@ use std::{
 };
 
 use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
-use serde::{de::Visitor, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Visitor};
 use snafu::{ResultExt, Snafu};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum Error {
-    #[snafu(display("unsupported precision {value:?}. Kubernetes doesn't allow you to specify CPU resources with a precision finer than 1m. Because of this, it's useful to specify CPU units less than 1.0 or 1000m using the milliCPU form; for example, 5m rather than 0.005"))]
+    #[snafu(display(
+        "unsupported precision {value:?}. Kubernetes doesn't allow you to specify CPU resources with a precision finer than 1m. Because of this, it's useful to specify CPU units less than 1.0 or 1000m using the milliCPU form; for example, 5m rather than 0.005"
+    ))]
     UnsupportedCpuQuantityPrecision { value: String },
 
     #[snafu(display("invalid cpu integer quantity {value:?}"))]
@@ -70,7 +72,7 @@ impl<'de> Deserialize<'de> for CpuQuantity {
     {
         struct CpuQuantityVisitor;
 
-        impl<'de> Visitor<'de> for CpuQuantityVisitor {
+        impl Visitor<'_> for CpuQuantityVisitor {
             type Value = CpuQuantity;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -229,8 +231,9 @@ impl Sum for CpuQuantity {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rstest::*;
+
+    use super::*;
 
     #[rstest]
     #[case("1", 1000)]

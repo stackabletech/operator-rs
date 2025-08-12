@@ -1,7 +1,7 @@
 //! Abstraction layer around the [`ecdsa`] crate. This module provides types
 //! which abstract away the generation of ECDSA keys used for signing of CAs
 //! and other certificates.
-use p256::{pkcs8::DecodePrivateKey, NistP256};
+use p256::{NistP256, pkcs8::DecodePrivateKey};
 use rand_core::{CryptoRngCore, OsRng};
 use snafu::{ResultExt, Snafu};
 use tracing::instrument;
@@ -40,11 +40,10 @@ impl SigningKey {
 }
 
 impl CertificateKeypair for SigningKey {
-    type SigningKey = p256::ecdsa::SigningKey;
-    type Signature = ecdsa::der::Signature<NistP256>;
-    type VerifyingKey = p256::ecdsa::VerifyingKey;
-
     type Error = Error;
+    type Signature = ecdsa::der::Signature<NistP256>;
+    type SigningKey = p256::ecdsa::SigningKey;
+    type VerifyingKey = p256::ecdsa::VerifyingKey;
 
     fn signing_key(&self) -> &Self::SigningKey {
         &self.0

@@ -1,11 +1,12 @@
+use std::cmp;
+
+use k8s_openapi::api::apps::v1::StatefulSet;
+use kube::ResourceExt;
+
 use crate::status::condition::{
     ClusterCondition, ClusterConditionSet, ClusterConditionStatus, ClusterConditionType,
     ConditionBuilder,
 };
-
-use k8s_openapi::api::apps::v1::StatefulSet;
-use kube::ResourceExt;
-use std::cmp;
 
 /// Default implementation to build [`ClusterCondition`]s for
 /// `StatefulSet` resources.
@@ -63,7 +64,6 @@ impl StatefulSetConditionBuilder {
             status: available,
             type_: ClusterConditionType::Available,
             last_transition_time: None,
-            last_update_time: None,
         }
     }
 
@@ -95,8 +95,8 @@ mod tests {
     use k8s_openapi::api::apps::v1::{StatefulSet, StatefulSetSpec, StatefulSetStatus};
 
     use crate::status::condition::{
-        statefulset::StatefulSetConditionBuilder, ClusterCondition, ClusterConditionStatus,
-        ClusterConditionType, ConditionBuilder,
+        ClusterCondition, ClusterConditionStatus, ClusterConditionType, ConditionBuilder,
+        statefulset::StatefulSetConditionBuilder,
     };
 
     fn build_sts(spec_replicas: i32, available_replicas: i32) -> StatefulSet {

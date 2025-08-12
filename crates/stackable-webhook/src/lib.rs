@@ -23,14 +23,14 @@
 //! enable complete controll over these details if needed.
 //!
 //! [1]: crate::servers::ConversionWebhookServer
-use axum::{routing::get, Router};
-use futures_util::{pin_mut, select, FutureExt as _};
+use axum::{Router, routing::get};
+use futures_util::{FutureExt as _, pin_mut, select};
 use snafu::{ResultExt, Snafu};
 use stackable_telemetry::AxumTraceLayer;
-use tokio::signal::unix::{signal, SignalKind};
+use tokio::signal::unix::{SignalKind, signal};
 use tower::ServiceBuilder;
-// use tower_http::trace::TraceLayer;
 
+// use tower_http::trace::TraceLayer;
 use crate::tls::TlsServer;
 
 pub mod constants;
@@ -52,7 +52,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 /// implementation is part of the [`ConversionWebhookServer`][1].
 ///
 /// [1]: crate::servers::ConversionWebhookServer
-pub(crate) trait WebhookHandler<Req, Res> {
+pub trait WebhookHandler<Req, Res> {
     fn call(self, req: Req) -> Res;
 }
 
@@ -64,7 +64,7 @@ pub(crate) trait WebhookHandler<Req, Res> {
 /// implementation is part of the [`ConversionWebhookServer`][1].
 ///
 /// [1]: crate::servers::ConversionWebhookServer
-pub(crate) trait StatefulWebhookHandler<Req, Res, S> {
+pub trait StatefulWebhookHandler<Req, Res, S> {
     fn call(self, req: Req, state: S) -> Res;
 }
 

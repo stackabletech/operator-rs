@@ -4,8 +4,7 @@ Not necessarily these exact functions, but things in here will probably stick ar
 shape or form.
  */
 
-use kube::api::Resource;
-use kube::runtime::reflector::ObjectRef;
+use kube::{api::Resource, runtime::reflector::ObjectRef};
 
 /// Returns a name that is suitable for directly passing to a log macro.
 ///

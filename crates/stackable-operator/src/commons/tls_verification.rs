@@ -6,12 +6,10 @@ use snafu::{ResultExt, Snafu};
 use crate::{
     builder::{
         self,
-        pod::{container::ContainerBuilder, volume::VolumeMountBuilder, PodBuilder},
+        pod::{PodBuilder, container::ContainerBuilder, volume::VolumeMountBuilder},
     },
-    commons::{
-        authentication::SECRET_BASE_PATH,
-        secret_class::{SecretClassVolume, SecretClassVolumeError},
-    },
+    commons::secret_class::{SecretClassVolume, SecretClassVolumeError},
+    constants::secret::SECRET_BASE_PATH,
 };
 
 #[derive(Debug, Snafu)]

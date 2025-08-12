@@ -1,7 +1,6 @@
-use std::{borrow::Cow, ops::Deref};
-
 #[cfg(doc)]
 use std::path::PathBuf;
+use std::{borrow::Cow, ops::Deref};
 
 /// Extension methods for [`Option`].
 pub trait OptionExt<T> {
@@ -52,13 +51,13 @@ mod tests {
 
     #[test]
     fn as_ref_or_else() {
-        let maybe: Option<String> = None;
-        let defaulted: Cow<String> = maybe.as_ref_or_else(|| "foo".to_string());
-        assert_eq!(defaulted, Cow::<String>::Owned("foo".to_string()));
+        let maybe: Option<&str> = None;
+        let defaulted: Cow<&str> = maybe.as_ref_or_else(|| "foo");
+        assert_eq!(defaulted, Cow::<&str>::Owned("foo"));
 
-        let maybe: Option<String> = Some("foo".to_string());
-        let defaulted: Cow<String> = maybe.as_ref_or_else(|| panic!());
-        assert_eq!(defaulted, Cow::<String>::Borrowed(&"foo".to_string()));
+        let maybe: Option<&str> = Some("foo");
+        let defaulted: Cow<&str> = maybe.as_ref_or_else(|| panic!());
+        assert_eq!(defaulted, Cow::<&str>::Borrowed(&"foo"));
     }
 
     #[test]

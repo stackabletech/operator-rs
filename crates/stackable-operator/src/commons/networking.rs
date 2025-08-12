@@ -6,18 +6,18 @@ use snafu::Snafu;
 
 use crate::validation;
 
-/// A validated domain name type conforming to RFC 1123, so e.g. not an IP addresses
+/// A validated domain name type conforming to RFC 1123, so e.g. not an IP address
 #[derive(
     Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, JsonSchema,
 )]
 #[serde(try_from = "String", into = "String")]
-pub struct DomainName(#[validate(regex(path = "validation::RFC_1123_SUBDOMAIN_REGEX"))] String);
+pub struct DomainName(#[validate(regex(path = "validation::DOMAIN_REGEX"))] String);
 
 impl FromStr for DomainName {
     type Err = validation::Errors;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        validation::is_rfc_1123_subdomain(value)?;
+        validation::is_domain(value)?;
         Ok(DomainName(value.to_owned()))
     }
 }
@@ -26,6 +26,14 @@ impl TryFrom<String> for DomainName {
     type Error = validation::Errors;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl TryFrom<&str> for DomainName {
+    type Error = validation::Errors;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
         value.parse()
     }
 }
@@ -71,8 +79,8 @@ impl JsonSchema for HostName {
         "HostName".to_owned()
     }
 
-    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
-        String::json_schema(gen)
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
+        String::json_schema(generator)
     }
 }
 
@@ -169,9 +177,9 @@ impl Deref for KerberosRealmName {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use rstest::rstest;
+
+    use super::*;
 
     #[rstest]
     #[case("foo")]

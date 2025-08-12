@@ -1,15 +1,14 @@
 use std::fmt::Debug;
 
-use axum::{extract::State, routing::post, Json, Router};
-use tracing::instrument;
-
+use axum::{Json, Router, extract::State, routing::post};
 // Re-export this type because users of the conversion webhook server require
 // this type to write the handler function. Instead of importing this type from
 // kube directly, consumers can use this type instead. This also eliminates
 // keeping the kube dependency version in sync between here and the operator.
 pub use kube::core::conversion::ConversionReview;
+use tracing::instrument;
 
-use crate::{options::Options, StatefulWebhookHandler, WebhookHandler, WebhookServer};
+use crate::{StatefulWebhookHandler, WebhookHandler, WebhookServer, options::Options};
 
 impl<F> WebhookHandler<ConversionReview, ConversionReview> for F
 where
@@ -64,7 +63,7 @@ impl ConversionWebhookServer {
     ///    req
     /// }
     /// ```
-    #[instrument(name = "create_conversion_webhhok_server", skip(handler))]
+    #[instrument(name = "create_conversion_webhook_server", skip(handler))]
     pub fn new<H>(handler: H, options: Options) -> Self
     where
         H: WebhookHandler<ConversionReview, ConversionReview> + Clone + Send + Sync + 'static,

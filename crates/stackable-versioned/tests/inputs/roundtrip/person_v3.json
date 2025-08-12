@@ -1,0 +1,32 @@
+{
+  "kind": "ConversionReview",
+  "apiVersion": "apiextensions.k8s.io/v1",
+  "request": {
+    "uid": "c4e55572-ee1f-4e94-9097-28936985d45f",
+    "desiredAPIVersion": "test.stackable.tech/v1alpha1",
+    "objects": [
+      {
+        "apiVersion": "test.stackable.tech/v3",
+        "kind": "Person",
+        "metadata": {},
+        "spec": {
+          "username": "jdoe",
+          "firstName": "John",
+          "lastName": "Doe",
+          "gender": "Male",
+          "socials": {
+            "email": "jdoe@example.com",
+            "mastodon": "@jdoe@example.com"
+          }
+        },
+        "status": {
+          "alive": true,
+          "changedValues": {
+            "downgrades": {},
+            "upgrades": {}
+          }
+        }
+      }
+    ]
+  }
+}

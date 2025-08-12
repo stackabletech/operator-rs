@@ -12,7 +12,9 @@ pub enum StatefulSetRolloutInProgress {
     /// Indicates that the latest version of the [`StatefulSet`] has not yet been observed by Kubernetes' StatefulSet controller.
     ///
     /// Kubernetes' controllers run asynchronously in the background, so this is expected when the `spec` has just been modified.
-    #[snafu(display("generation {current_generation:?} not yet observed by statefulset controller, last seen was {observed_generation:?}"))]
+    #[snafu(display(
+        "generation {current_generation:?} not yet observed by statefulset controller, last seen was {observed_generation:?}"
+    ))]
     NotYetObserved {
         current_generation: Option<i64>,
         observed_generation: Option<i64>,

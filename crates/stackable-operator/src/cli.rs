@@ -114,8 +114,9 @@ use std::{
 use clap::Args;
 use product_config::ProductConfigManager;
 use snafu::{ResultExt, Snafu};
+use stackable_telemetry::tracing::TelemetryOptions;
 
-use crate::{logging::TracingTarget, namespace::WatchNamespace};
+use crate::{namespace::WatchNamespace, utils::cluster_info::KubernetesClusterInfoOpts};
 
 pub const AUTHOR: &str = "Stackable GmbH - info@stackable.tech";
 
@@ -163,6 +164,10 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///
 /// ```rust
 /// # use stackable_operator::cli::{Command, ProductOperatorRun, ProductConfigPath};
+/// use clap::Parser;
+/// use stackable_operator::{namespace::WatchNamespace, utils::cluster_info::KubernetesClusterInfoOpts};
+/// use stackable_telemetry::tracing::TelemetryOptions;
+///
 /// #[derive(clap::Parser, Debug, PartialEq, Eq)]
 /// struct Run {
 ///     #[clap(long)]
@@ -170,16 +175,18 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///     #[clap(flatten)]
 ///     common: ProductOperatorRun,
 /// }
-/// use clap::Parser;
-/// use stackable_operator::logging::TracingTarget;
-/// use stackable_operator::namespace::WatchNamespace;
-/// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar", "--watch-namespace", "foobar"]);
+///
+/// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar", "--watch-namespace", "foobar", "--kubernetes-node-name", "baz"]);
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
 ///     common: ProductOperatorRun {
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
 ///         watch_namespace: WatchNamespace::One("foobar".to_string()),
-///         tracing_target: TracingTarget::None
+///         telemetry_arguments: TelemetryOptions::default(),
+///         cluster_info_opts: KubernetesClusterInfoOpts {
+///             kubernetes_cluster_domain: None,
+///             kubernetes_node_name: "baz".to_string(),
+///         },
 ///     },
 /// }));
 /// ```
@@ -188,12 +195,14 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///
 /// ```rust
 /// # use stackable_operator::cli::{Command, ProductOperatorRun};
+/// use clap::Parser;
+///
 /// #[derive(clap::Parser, Debug, PartialEq, Eq)]
 /// struct Run {
 ///     #[arg(long)]
 ///     name: String,
 /// }
-/// use clap::Parser;
+///
 /// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo"]);
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
@@ -205,12 +214,16 @@ pub struct ProductOperatorRun {
     /// Provides the path to a product-config file
     #[arg(long, short = 'p', value_name = "FILE", default_value = "", env)]
     pub product_config: ProductConfigPath,
+
     /// Provides a specific namespace to watch (instead of watching all namespaces)
     #[arg(long, env, default_value = "")]
     pub watch_namespace: WatchNamespace,
-    /// Tracing log collector system
-    #[arg(long, env, default_value_t, value_enum)]
-    pub tracing_target: TracingTarget,
+
+    #[command(flatten)]
+    pub telemetry_arguments: TelemetryOptions,
+
+    #[command(flatten)]
+    pub cluster_info_opts: KubernetesClusterInfoOpts,
 }
 
 /// A path to a [`ProductConfigManager`] spec file
@@ -233,51 +246,50 @@ impl ProductConfigPath {
     /// Load the [`ProductConfigManager`] from the given path, falling back to the first
     /// path that exists from `default_search_paths` if none is given by the user.
     pub fn load(&self, default_search_paths: &[impl AsRef<Path>]) -> Result<ProductConfigManager> {
-        ProductConfigManager::from_yaml_file(resolve_path(
-            self.path.as_deref(),
-            default_search_paths,
-        )?)
-        .context(ProductConfigLoadSnafu)
+        let resolved_path = Self::resolve_path(self.path.as_deref(), default_search_paths)?;
+        ProductConfigManager::from_yaml_file(resolved_path).context(ProductConfigLoadSnafu)
     }
-}
 
-/// Check if the path can be found anywhere:
-/// 1) User provides path `user_provided_path` to file -> 'Error' if not existing.
-/// 2) User does not provide path to file -> search in `default_paths` and
-///    take the first existing file.
-/// 3) `Error` if nothing was found.
-fn resolve_path<'a>(
-    user_provided_path: Option<&'a Path>,
-    default_paths: &'a [impl AsRef<Path> + 'a],
-) -> Result<&'a Path> {
-    // Use override if specified by the user, otherwise search through defaults given
-    let search_paths = if let Some(path) = user_provided_path {
-        vec![path]
-    } else {
-        default_paths.iter().map(|path| path.as_ref()).collect()
-    };
-    for path in &search_paths {
-        if path.exists() {
-            return Ok(path);
+    /// Check if the path can be found anywhere
+    ///
+    /// 1. User provides path `user_provided_path` to file. Return [`Error`] if not existing.
+    /// 2. User does not provide path to file -> search in `default_paths` and
+    ///    take the first existing file.
+    /// 3. Return [`Error`] if nothing was found.
+    fn resolve_path<'a>(
+        user_provided_path: Option<&'a Path>,
+        default_paths: &'a [impl AsRef<Path> + 'a],
+    ) -> Result<&'a Path> {
+        // Use override if specified by the user, otherwise search through defaults given
+        let search_paths = if let Some(path) = user_provided_path {
+            vec![path]
+        } else {
+            default_paths.iter().map(|path| path.as_ref()).collect()
+        };
+        for path in &search_paths {
+            if path.exists() {
+                return Ok(path);
+            }
         }
+        RequiredFileMissingSnafu {
+            search_path: search_paths
+                .into_iter()
+                .map(PathBuf::from)
+                .collect::<Vec<_>>(),
+        }
+        .fail()
     }
-    RequiredFileMissingSnafu {
-        search_path: search_paths
-            .into_iter()
-            .map(PathBuf::from)
-            .collect::<Vec<_>>(),
-    }
-    .fail()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::{env, fs::File};
+
     use clap::Parser;
     use rstest::*;
-    use std::env;
-    use std::fs::File;
     use tempfile::tempdir;
+
+    use super::*;
 
     const USER_PROVIDED_PATH: &str = "user_provided_path_properties.yaml";
     const DEPLOY_FILE_PATH: &str = "deploy_config_spec_properties.yaml";
@@ -287,6 +299,7 @@ mod tests {
     #[test]
     fn verify_cli() {
         use clap::CommandFactory;
+        ProductOperatorRun::command().print_long_help().unwrap();
         ProductOperatorRun::command().debug_assert()
     }
 
@@ -329,7 +342,7 @@ mod tests {
 
         let file = File::create(full_path_to_create).expect("create temporary file");
 
-        let found_path = resolve_path(
+        let found_path = ProductConfigPath::resolve_path(
             full_user_provided_path.as_deref(),
             &full_default_locations_ref,
         )?;
@@ -345,13 +358,14 @@ mod tests {
     #[test]
     #[should_panic]
     fn resolve_path_user_path_not_existing() {
-        resolve_path(Some(USER_PROVIDED_PATH.as_ref()), &[DEPLOY_FILE_PATH]).unwrap();
+        ProductConfigPath::resolve_path(Some(USER_PROVIDED_PATH.as_ref()), &[DEPLOY_FILE_PATH])
+            .unwrap();
     }
 
     #[test]
     fn resolve_path_nothing_found_errors() {
         if let Err(Error::RequiredFileMissing { search_path }) =
-            resolve_path(None, &[DEPLOY_FILE_PATH, DEFAULT_FILE_PATH])
+            ProductConfigPath::resolve_path(None, &[DEPLOY_FILE_PATH, DEFAULT_FILE_PATH])
         {
             assert_eq!(
                 search_path,
@@ -368,7 +382,7 @@ mod tests {
     #[test]
     fn product_operator_run_watch_namespace() {
         // clean env var to not interfere if already set
-        env::remove_var(WATCH_NAMESPACE);
+        unsafe { env::remove_var(WATCH_NAMESPACE) };
 
         // cli with namespace
         let opts = ProductOperatorRun::parse_from([
@@ -377,36 +391,62 @@ mod tests {
             "bar",
             "--watch-namespace",
             "foo",
+            "--kubernetes-node-name",
+            "baz",
         ]);
         assert_eq!(
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
-                tracing_target: TracingTarget::None,
+                cluster_info_opts: KubernetesClusterInfoOpts {
+                    kubernetes_cluster_domain: None,
+                    kubernetes_node_name: "baz".to_string()
+                },
+                telemetry_arguments: Default::default(),
             }
         );
 
         // no cli / no env
-        let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
+        let opts = ProductOperatorRun::parse_from([
+            "run",
+            "--product-config",
+            "bar",
+            "--kubernetes-node-name",
+            "baz",
+        ]);
         assert_eq!(
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::All,
-                tracing_target: TracingTarget::None,
+                cluster_info_opts: KubernetesClusterInfoOpts {
+                    kubernetes_cluster_domain: None,
+                    kubernetes_node_name: "baz".to_string()
+                },
+                telemetry_arguments: Default::default(),
             }
         );
 
         // env with namespace
-        env::set_var(WATCH_NAMESPACE, "foo");
-        let opts = ProductOperatorRun::parse_from(["run", "--product-config", "bar"]);
+        unsafe { env::set_var(WATCH_NAMESPACE, "foo") };
+        let opts = ProductOperatorRun::parse_from([
+            "run",
+            "--product-config",
+            "bar",
+            "--kubernetes-node-name",
+            "baz",
+        ]);
         assert_eq!(
             opts,
             ProductOperatorRun {
                 product_config: ProductConfigPath::from("bar".as_ref()),
                 watch_namespace: WatchNamespace::One("foo".to_string()),
-                tracing_target: TracingTarget::None,
+                cluster_info_opts: KubernetesClusterInfoOpts {
+                    kubernetes_cluster_domain: None,
+                    kubernetes_node_name: "baz".to_string()
+                },
+                telemetry_arguments: Default::default(),
             }
         );
     }
