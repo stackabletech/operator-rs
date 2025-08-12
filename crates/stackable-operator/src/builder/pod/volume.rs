@@ -13,7 +13,7 @@ use tracing::warn;
 
 use crate::{
     builder::meta::ObjectMetaBuilder,
-    kvp::{Annotation, AnnotationError, Annotations, LabelError, Labels},
+    kvp::{Annotation, AnnotationError, Annotations, LabelError, Labels, annotation},
     time::Duration,
 };
 
@@ -340,24 +340,32 @@ impl SecretOperatorVolumeSourceBuilder {
     pub fn build(&self) -> Result<EphemeralVolumeSource, SecretOperatorVolumeSourceBuilderError> {
         let mut annotations = Annotations::new();
 
-        annotations
-            .insert(Annotation::secret_class(&self.secret_class).context(ParseAnnotationSnafu)?);
+        annotations.extend([annotation::well_known::secret_volume::secret_class(
+            &self.secret_class,
+        )
+        .context(ParseAnnotationSnafu)?]);
 
         if !self.scopes.is_empty() {
-            annotations
-                .insert(Annotation::secret_scope(&self.scopes).context(ParseAnnotationSnafu)?);
+            annotations.extend([
+                annotation::well_known::secret_volume::secret_scope(&self.scopes)
+                    .context(ParseAnnotationSnafu)?,
+            ]);
         }
 
         if let Some(format) = &self.format {
-            annotations
-                .insert(Annotation::secret_format(format.as_ref()).context(ParseAnnotationSnafu)?);
+            annotations.extend([annotation::well_known::secret_volume::secret_format(
+                format.as_ref(),
+            )
+            .context(ParseAnnotationSnafu)?]);
         }
 
         if !self.kerberos_service_names.is_empty() {
-            annotations.insert(
-                Annotation::kerberos_service_names(&self.kerberos_service_names)
-                    .context(ParseAnnotationSnafu)?,
-            );
+            annotations.extend([
+                annotation::well_known::secret_volume::kerberos_service_names(
+                    &self.kerberos_service_names,
+                )
+                .context(ParseAnnotationSnafu)?,
+            ]);
         }
 
         if let Some(password) = &self.tls_pkcs12_password {
@@ -365,17 +373,20 @@ impl SecretOperatorVolumeSourceBuilder {
             if Some(SecretFormat::TlsPkcs12) != self.format {
                 warn!(format.actual = ?self.format, format.expected = ?Some(SecretFormat::TlsPkcs12), "A TLS PKCS12 password was set but ignored because another format was requested")
             } else {
-                annotations.insert(
-                    Annotation::tls_pkcs12_password(password).context(ParseAnnotationSnafu)?,
-                );
+                annotations.extend([annotation::well_known::secret_volume::tls_pkcs12_password(
+                    password,
+                )
+                .context(ParseAnnotationSnafu)?]);
             }
         }
 
         if let Some(lifetime) = &self.auto_tls_cert_lifetime {
-            annotations.insert(
-                Annotation::auto_tls_cert_lifetime(&lifetime.to_string())
-                    .context(ParseAnnotationSnafu)?,
-            );
+            annotations.extend([
+                annotation::well_known::secret_volume::auto_tls_cert_lifetime(
+                    &lifetime.to_string(),
+                )
+                .context(ParseAnnotationSnafu)?,
+            ]);
         }
 
         Ok(EphemeralVolumeSource {
@@ -464,7 +475,7 @@ pub enum ListenerOperatorVolumeSourceBuilderError {
 /// # use std::collections::BTreeMap;
 /// let mut pod_builder = PodBuilder::new();
 ///
-/// let labels: Labels = Labels::try_from(BTreeMap::<String, String>::new()).unwrap();
+/// let labels: Labels = Labels::new();
 ///
 /// let volume_source =
 ///     ListenerOperatorVolumeSourceBuilder::new(
@@ -566,8 +577,6 @@ impl ListenerOperatorVolumeSourceBuilder {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
     use k8s_openapi::apimachinery::pkg::api::resource::Quantity;
 
     use super::*;
@@ -630,7 +639,7 @@ mod tests {
 
     #[test]
     fn listener_operator_volume_source_builder() {
-        let labels: Labels = Labels::try_from(BTreeMap::<String, String>::new()).unwrap();
+        let labels: Labels = Labels::new();
 
         let builder = ListenerOperatorVolumeSourceBuilder::new(
             &ListenerReference::ListenerClass("public".into()),

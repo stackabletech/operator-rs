@@ -39,8 +39,9 @@ use crate::{
     },
     crd::listener,
     kvp::{
-        Label, LabelError, Labels,
+        LabelError, Labels,
         consts::{K8S_APP_INSTANCE_KEY, K8S_APP_MANAGED_BY_KEY, K8S_APP_NAME_KEY},
+        label,
     },
     utils::format_full_controller_name,
 };
@@ -500,16 +501,17 @@ impl ClusterResources {
     /// Return required labels for cluster resources to be uniquely identified for clean up.
     // TODO: This is a (quick-fix) helper method but should be replaced by better label handling
     pub fn get_required_labels(&self) -> Result<Labels, LabelError> {
-        let mut labels = Labels::common(&self.app_name, &self.app_instance)?;
+        let mut labels = label::well_known::sets::common(&self.app_name, &self.app_instance)?;
 
-        labels.insert(Label::managed_by(
+        labels.extend([label::well_known::managed_by(
             &self.operator_name,
             &self.controller_name,
-        )?);
+        )?]);
 
         Ok(labels)
     }
 
+    // TODO (@Techassi): T should guarantee (by it's type) that required labels are set.
     /// Adds a resource to the cluster resources.
     ///
     /// The resource will be patched and the patched resource will be returned.

@@ -23,7 +23,7 @@ stackable-versioned = { path = "../stackable-versioned" }
 chrono.workspace = true
 clap.workspace = true
 const_format.workspace = true
-delegate.workspace = true
+derivative.workspace = true
 dockerfile-parser.workspace = true
 either.workspace = true
 educe.workspace = true
