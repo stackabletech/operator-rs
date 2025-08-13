@@ -2,12 +2,21 @@ use dockerfile_parser::ImageRef;
 use k8s_openapi::api::core::v1::LocalObjectReference;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 use strum::AsRefStr;
 
-#[cfg(doc)]
-use crate::kvp::Labels;
+use crate::kvp::{LABEL_VALUE_MAX_LEN, LabelValue, LabelValueError};
 
 pub const STACKABLE_DOCKER_REPO: &str = "oci.stackable.tech/sdp";
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("could not parse or create label from app version {app_version:?}"))]
+    ParseAppVersionLabel {
+        source: LabelValueError,
+        app_version: String,
+    },
+}
 
 /// Specify which image to use, the easiest way is to only configure the `productVersion`.
 /// You can also configure a custom image registry to pull from, as well as completely custom
@@ -67,8 +76,8 @@ pub struct ResolvedProductImage {
     /// Version of the product, e.g. `1.4.1`.
     pub product_version: String,
 
-    /// App version as formatted for [`Labels::recommended`]
-    pub app_version_label: String,
+    /// App version formatted for Labels
+    pub app_version_label_value: LabelValue,
 
     /// Image to be used for the product image e.g. `oci.stackable.tech/sdp/superset:1.4.1-stackable2.1.0`
     pub image: String,
@@ -101,7 +110,11 @@ impl ProductImage {
     /// `image_base_name` should be base of the image name in the container image registry, e.g. `trino`.
     /// `operator_version` needs to be the full operator version and a valid semver string.
     /// Accepted values are `23.7.0`, `0.0.0-dev` or `0.0.0-pr123`. Other variants are not supported.
-    pub fn resolve(&self, image_base_name: &str, operator_version: &str) -> ResolvedProductImage {
+    pub fn resolve(
+        &self,
+        image_base_name: &str,
+        operator_version: &str,
+    ) -> Result<ResolvedProductImage, Error> {
         let image_pull_policy = self.pull_policy.as_ref().to_string();
         let pull_secrets = self.pull_secrets.clone();
 
@@ -111,17 +124,17 @@ impl ProductImage {
             ProductImageSelection::Custom(image_selection) => {
                 let image = ImageRef::parse(&image_selection.custom);
                 let image_tag_or_hash = image.tag.or(image.hash).unwrap_or("latest".to_string());
-                let mut app_version_label = format!("{}-{}", product_version, image_tag_or_hash);
-                // TODO Use new label mechanism once added
-                app_version_label.truncate(63);
 
-                ResolvedProductImage {
+                let app_version = format!("{}-{}", product_version, image_tag_or_hash);
+                let app_version_label_value = Self::prepare_app_version_label_value(&app_version)?;
+
+                Ok(ResolvedProductImage {
                     product_version,
-                    app_version_label,
+                    app_version_label_value,
                     image: image_selection.custom.clone(),
                     image_pull_policy,
                     pull_secrets,
-                }
+                })
             }
             ProductImageSelection::StackableVersion(image_selection) => {
                 let repo = image_selection
@@ -147,14 +160,15 @@ impl ProductImage {
                 let image = format!(
                     "{repo}/{image_base_name}:{product_version}-stackable{stackable_version}",
                 );
-                let app_version_label = format!("{product_version}-stackable{stackable_version}",);
-                ResolvedProductImage {
+                let app_version = format!("{product_version}-stackable{stackable_version}");
+                let app_version_label_value = Self::prepare_app_version_label_value(&app_version)?;
+                Ok(ResolvedProductImage {
                     product_version,
-                    app_version_label,
+                    app_version_label_value,
                     image,
                     image_pull_policy,
                     pull_secrets,
-                }
+                })
             }
         }
     }
@@ -174,6 +188,21 @@ impl ProductImage {
             }) => pv,
         }
     }
+
+    fn prepare_app_version_label_value(app_version: &str) -> Result<LabelValue, Error> {
+        let mut formatted_app_version = app_version.to_string();
+        // Labels cannot have more than `LABEL_VALUE_MAX_LEN` characters.
+        formatted_app_version.truncate(LABEL_VALUE_MAX_LEN);
+        // The hash has the format `sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb`
+        // As the colon (`:`) is not a valid label value character, we replace it with a valid "-" character.
+        let formatted_app_version = formatted_app_version.replace(":", "-");
+
+        formatted_app_version
+            .parse()
+            .with_context(|_| ParseAppVersionLabelSnafu {
+                app_version: formatted_app_version.to_string(),
+            })
+    }
 }
 
 #[cfg(test)]
@@ -191,7 +220,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable23.7.42".to_string(),
-            app_version_label: "1.4.1-stackable23.7.42".to_string(),
+            app_version_label_value: "1.4.1-stackable23.7.42".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
@@ -205,7 +234,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable0.0.0-dev".to_string(),
-            app_version_label: "1.4.1-stackable0.0.0-dev".to_string(),
+            app_version_label_value: "1.4.1-stackable0.0.0-dev".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
@@ -219,7 +248,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable0.0.0-dev".to_string(),
-            app_version_label: "1.4.1-stackable0.0.0-dev".to_string(),
+            app_version_label_value: "1.4.1-stackable0.0.0-dev".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
@@ -234,7 +263,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset:1.4.1-stackable2.1.0".to_string(),
-            app_version_label: "1.4.1-stackable2.1.0".to_string(),
+            app_version_label_value: "1.4.1-stackable2.1.0".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
@@ -250,7 +279,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/trino:1.4.1-stackable2.1.0".to_string(),
-            app_version_label: "1.4.1-stackable2.1.0".to_string(),
+            app_version_label_value: "1.4.1-stackable2.1.0".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
@@ -265,7 +294,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset".to_string(),
-            app_version_label: "1.4.1-latest".to_string(),
+            app_version_label_value: "1.4.1-latest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
@@ -280,7 +309,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
-            app_version_label: "1.4.1-latest-and-greatest".to_string(),
+            app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
@@ -295,7 +324,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "127.0.0.1:8080/myteam/stackable/superset".to_string(),
-            app_version_label: "1.4.1-latest".to_string(),
+            app_version_label_value: "1.4.1-latest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
@@ -310,7 +339,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "127.0.0.1:8080/myteam/stackable/superset:latest-and-greatest".to_string(),
-            app_version_label: "1.4.1-latest-and-greatest".to_string(),
+            app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
@@ -325,7 +354,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "oci.stackable.tech/sdp/superset@sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb8c42f76efc1098".to_string(),
-            app_version_label: "1.4.1-sha256:85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb".to_string(),
+            app_version_label_value: "1.4.1-sha256-85fa483aa99b9997ce476b86893ad5ed81fb7fd2db602977eb".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
@@ -341,7 +370,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
-            app_version_label: "1.4.1-latest-and-greatest".to_string(),
+            app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
@@ -357,7 +386,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
-            app_version_label: "1.4.1-latest-and-greatest".to_string(),
+            app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "IfNotPresent".to_string(),
             pull_secrets: None,
@@ -373,7 +402,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
-            app_version_label: "1.4.1-latest-and-greatest".to_string(),
+            app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: None,
@@ -389,7 +418,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
-            app_version_label: "1.4.1-latest-and-greatest".to_string(),
+            app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Never".to_string(),
             pull_secrets: None,
@@ -408,7 +437,7 @@ mod tests {
         "#,
         ResolvedProductImage {
             image: "my.corp/myteam/stackable/superset:latest-and-greatest".to_string(),
-            app_version_label: "1.4.1-latest-and-greatest".to_string(),
+            app_version_label_value: "1.4.1-latest-and-greatest".parse().expect("static app version label is always valid"),
             product_version: "1.4.1".to_string(),
             image_pull_policy: "Always".to_string(),
             pull_secrets: Some(vec![LocalObjectReference{name: "myPullSecrets1".to_string()}, LocalObjectReference{name: "myPullSecrets2".to_string()}]),
@@ -421,7 +450,9 @@ mod tests {
         #[case] expected: ResolvedProductImage,
     ) {
         let product_image: ProductImage = serde_yaml::from_str(&input).expect("Illegal test input");
-        let resolved_product_image = product_image.resolve(&image_base_name, &operator_version);
+        let resolved_product_image = product_image
+            .resolve(&image_base_name, &operator_version)
+            .expect("Illegal test input");
 
         assert_eq!(resolved_product_image, expected);
     }
