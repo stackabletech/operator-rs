@@ -7,9 +7,11 @@ use crate::time::Duration;
 
 #[derive(Debug)]
 pub struct ProbeBuilder<Action, Period> {
+    // Mandatory field
     action: Action,
     period: Period,
 
+    // Fields with defaults
     success_threshold: i32,
     failure_threshold: i32,
     timeout: Duration,
@@ -22,7 +24,7 @@ impl Default for ProbeBuilder<(), ()> {
         Self {
             action: (),
             period: (),
-            // The following values match the Kubernetes default
+            // The following values match the Kubernetes defaults
             success_threshold: 1,
             failure_threshold: 1,
             timeout: Duration::from_secs(1),
@@ -64,10 +66,10 @@ impl<Period> ProbeBuilder<(), Period> {
     pub fn with_http_get_action_helper(
         self,
         port: u16,
-        path: Option<impl Into<String>>,
+        path: Option<String>,
     ) -> ProbeBuilder<ProbeAction, Period> {
         self.with_http_get_action(HTTPGetAction {
-            path: path.map(Into::into),
+            path,
             port: IntOrString::Int(port.into()),
             ..Default::default()
         })
@@ -138,12 +140,6 @@ impl ProbeBuilder<ProbeAction, ()> {
     }
 }
 
-// success_threshold: i32,
-// failure_threshold: i32,
-// timeout: Duration,
-// initial_delay: Duration,
-// termination_grace_period: Duration,
-
 impl ProbeBuilder<ProbeAction, Duration> {
     /// How often the probe must succeed before being considered successful.
     pub fn with_success_threshold(mut self, success_threshold: i32) -> Self {
@@ -166,6 +162,21 @@ impl ProbeBuilder<ProbeAction, Duration> {
     /// How often the probe must fail before being considered failed.
     pub fn with_failure_threshold(mut self, failure_threshold: i32) -> Self {
         self.failure_threshold = failure_threshold;
+        self
+    }
+
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
+
+    pub fn with_initial_delay(mut self, initial_delay: Duration) -> Self {
+        self.initial_delay = initial_delay;
+        self
+    }
+
+    pub fn with_termination_grace_period(mut self, termination_grace_period: Duration) -> Self {
+        self.termination_grace_period = termination_grace_period;
         self
     }
 
@@ -231,11 +242,32 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_probe_builder() {
+    fn test_probe_builder_minimal() {
+        let probe = ProbeBuilder::default()
+            .with_http_get_action_helper(8080, None)
+            .with_period(Duration::from_secs(10))
+            .build();
+
+        assert_eq!(
+            probe.http_get,
+            Some(HTTPGetAction {
+                port: IntOrString::Int(8080),
+                ..Default::default()
+            })
+        );
+        assert_eq!(probe.period_seconds, Some(10));
+    }
+
+    #[test]
+    fn test_probe_builder_complex() {
         let probe = ProbeBuilder::default()
             .with_exec_action_helper(["sleep", "1"])
             .with_period(Duration::from_secs(5))
+            .with_success_threshold(2)
             .with_failure_threshold_duration(Duration::from_secs(33))
+            .with_timeout(Duration::from_secs(3))
+            .with_initial_delay(Duration::from_secs(7))
+            .with_termination_grace_period(Duration::from_secs(4))
             .build();
 
         assert_eq!(
@@ -247,12 +279,12 @@ mod tests {
                 failure_threshold: Some(7),
                 grpc: None,
                 http_get: None,
-                initial_delay_seconds: Some(0),
+                initial_delay_seconds: Some(7),
                 period_seconds: Some(5),
-                success_threshold: Some(1),
+                success_threshold: Some(2),
                 tcp_socket: None,
-                termination_grace_period_seconds: Some(0),
-                timeout_seconds: Some(1),
+                termination_grace_period_seconds: Some(4),
+                timeout_seconds: Some(3),
             }
         );
     }
