@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_certs::{CertificatePairError, ca::CertificateAuthority, keys::ecdsa};
 use tokio::sync::mpsc;
 use tokio_rustls::rustls::{
-    crypto::ring::default_provider, server::ResolvesServerCert, sign::CertifiedKey,
+    crypto::CryptoProvider, server::ResolvesServerCert, sign::CertifiedKey,
 };
 use x509_cert::Certificate;
 
@@ -48,6 +48,9 @@ pub enum CertificateResolverError {
 
     #[snafu(display("failed to run task in blocking thread"))]
     TokioSpawnBlocking { source: tokio::task::JoinError },
+
+    #[snafu(display("no default rustls CryptoProvider installed"))]
+    NoDefaultCryptoProviderInstalled {},
 }
 
 /// This struct serves as [`ResolvesServerCert`] to always hand out the current certificate for TLS
@@ -113,7 +116,8 @@ impl CertificateResolver {
     ) -> Result<(Certificate, Arc<CertifiedKey>)> {
         // The certificate generations can take a while, so we use `spawn_blocking`
         tokio::task::spawn_blocking(move || {
-            let tls_provider = default_provider();
+            let tls_provider =
+                CryptoProvider::get_default().context(NoDefaultCryptoProviderInstalledSnafu)?;
 
             let ca_key = ecdsa::SigningKey::new().context(GenerateEcdsaSigningKeySnafu)?;
             let mut ca =
@@ -139,7 +143,10 @@ impl CertificateResolver {
                 CertifiedKey::from_der(vec![certificate_der], private_key_der, &tls_provider)
                     .context(DecodeCertifiedKeyFromDerSnafu)?;
 
-            Ok((certificate_pair.certificate().clone(), Arc::new(certificate_key)))
+            Ok((
+                certificate_pair.certificate().clone(),
+                Arc::new(certificate_key),
+            ))
         })
         .await
         .context(TokioSpawnBlockingSnafu)?
