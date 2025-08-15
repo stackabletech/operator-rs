@@ -120,7 +120,7 @@ impl CertificateResolver {
                 CertificateAuthority::new_with(ca_key, rand::random::<u64>(), WEBHOOK_CA_LIFETIME)
                     .context(CreateCertificateAuthoritySnafu)?;
 
-            let certificate = ca
+            let certificate_pair = ca
                 .generate_ecdsa_leaf_certificate(
                     "Leaf",
                     "webhook",
@@ -129,17 +129,17 @@ impl CertificateResolver {
                 )
                 .context(GenerateLeafCertificateSnafu)?;
 
-            let certificate_der = certificate
+            let certificate_der = certificate_pair
                 .certificate_der()
                 .context(EncodeCertificateDerSnafu)?;
-            let private_key_der = certificate
+            let private_key_der = certificate_pair
                 .private_key_der()
                 .context(EncodePrivateKeyDerSnafu)?;
             let certificate_key =
                 CertifiedKey::from_der(vec![certificate_der], private_key_der, &tls_provider)
                     .context(DecodeCertifiedKeyFromDerSnafu)?;
 
-            Ok((certificate.certificate().clone(), Arc::new(certificate_key)))
+            Ok((certificate_pair.certificate().clone(), Arc::new(certificate_key)))
         })
         .await
         .context(TokioSpawnBlockingSnafu)?
