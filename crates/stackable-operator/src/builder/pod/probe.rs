@@ -41,35 +41,39 @@ pub enum ProbeAction {
     TcpSocket(TCPSocketAction),
 }
 
-impl<Period> ProbeBuilder<(), Period> {
+impl ProbeBuilder<(), ()> {
     /// This probe action executes the specified command
     pub fn with_exec_action_helper(
         self,
         command: impl IntoIterator<Item = impl Into<String>>,
-    ) -> ProbeBuilder<ProbeAction, Period> {
+    ) -> ProbeBuilder<ProbeAction, ()> {
         self.with_exec_action(ExecAction {
             command: Some(command.into_iter().map(Into::into).collect()),
         })
     }
 
     /// There is a convenience helper: [`Self::with_exec_action_helper`].
-    pub fn with_exec_action(self, exec_action: ExecAction) -> ProbeBuilder<ProbeAction, Period> {
+    pub fn with_exec_action(self, exec_action: ExecAction) -> ProbeBuilder<ProbeAction, ()> {
         self.with_action(ProbeAction::Exec(exec_action))
     }
 
-    pub fn with_grpc_action(self, grpc_action: GRPCAction) -> ProbeBuilder<ProbeAction, Period> {
+    pub fn with_grpc_action(self, grpc_action: GRPCAction) -> ProbeBuilder<ProbeAction, ()> {
         self.with_action(ProbeAction::Grpc(grpc_action))
     }
 
+    // Note: Ideally we also have a builder for `HTTPGetAction`, but that is lot's of effort we
+    // don't want to spend now.
     /// This probe action does an HTTP GET request to the specified port. Optionally, you can
     /// configure the path, otherwise the Kubernetes default is used.
     pub fn with_http_get_action_helper(
         self,
         port: u16,
+        scheme: Option<String>,
         path: Option<String>,
-    ) -> ProbeBuilder<ProbeAction, Period> {
+    ) -> ProbeBuilder<ProbeAction, ()> {
         self.with_http_get_action(HTTPGetAction {
             path,
+            scheme,
             port: IntOrString::Int(port.into()),
             ..Default::default()
         })
@@ -79,20 +83,20 @@ impl<Period> ProbeBuilder<(), Period> {
     pub fn with_http_get_action(
         self,
         http_get_action: HTTPGetAction,
-    ) -> ProbeBuilder<ProbeAction, Period> {
+    ) -> ProbeBuilder<ProbeAction, ()> {
         self.with_action(ProbeAction::HttpGet(http_get_action))
     }
 
     pub fn with_tcp_socket_action(
         self,
         tcp_socket_action: TCPSocketAction,
-    ) -> ProbeBuilder<ProbeAction, Period> {
+    ) -> ProbeBuilder<ProbeAction, ()> {
         self.with_action(ProbeAction::TcpSocket(tcp_socket_action))
     }
 
     /// Action-specific functions (e.g. [`Self::with_exec_action`] or [`Self::with_http_get_action`])
     /// are recommended instead.
-    pub fn with_action(self, action: ProbeAction) -> ProbeBuilder<ProbeAction, Period> {
+    pub fn with_action(self, action: ProbeAction) -> ProbeBuilder<ProbeAction, ()> {
         let Self {
             action: (),
             period,
@@ -244,7 +248,7 @@ mod tests {
     #[test]
     fn test_probe_builder_minimal() {
         let probe = ProbeBuilder::default()
-            .with_http_get_action_helper(8080, None)
+            .with_http_get_action_helper(8080, None, None)
             .with_period(Duration::from_secs(10))
             .build();
 
