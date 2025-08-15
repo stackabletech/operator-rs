@@ -1,9 +1,27 @@
+use std::{i32, num::TryFromIntError};
+
 use k8s_openapi::{
     api::core::v1::{ExecAction, GRPCAction, HTTPGetAction, Probe, TCPSocketAction},
     apimachinery::pkg::util::intstr::IntOrString,
 };
+use snafu::{ResultExt, Snafu, ensure};
 
 use crate::time::Duration;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display(
+        "The probe's {field:?} duration of {duration} is too long, as it's seconds doesn't fit into an i32"
+    ))]
+    DurationTooLong {
+        source: TryFromIntError,
+        field: String,
+        duration: Duration,
+    },
+
+    #[snafu(display("The probe period is zero, but it needs to be a positive duration"))]
+    PeriodIsZero {},
+}
 
 #[derive(Debug)]
 pub struct ProbeBuilder<Action, Period> {
@@ -153,14 +171,20 @@ impl ProbeBuilder<ProbeAction, Duration> {
 
     /// The duration the probe needs to succeed before being considered successful.
     ///
-    /// This internally calculates the needed success threshold based on the period and passes that
+    /// This internally calculates the needed failure threshold based on the period and passes that
     /// to [`Self::with_success_threshold`].
-    pub fn with_success_threshold_duration(self, success_threshold_duration: Duration) -> Self {
+    ///
+    /// This function returns an [`Error::PeriodIsZero`] error in case the period is zero, as it
+    /// can not divide by zero.
+    pub fn with_success_threshold_duration(
+        self,
+        success_threshold_duration: Duration,
+    ) -> Result<Self, Error> {
+        ensure!(self.period.as_nanos() != 0, PeriodIsZeroSnafu);
+
+        // SAFETY: Period is checked above to be non-zero
         let success_threshold = success_threshold_duration.div_duration_f32(*self.period);
-        // SAFETY: Returning an Result here would hurt the builder ergonomics and having such big
-        // numbers does not have any real world effect.
-        let success_threshold = success_threshold.ceil() as i32;
-        self.with_success_threshold(success_threshold)
+        Ok(self.with_success_threshold(success_threshold.ceil() as i32))
     }
 
     /// How often the probe must fail before being considered failed.
@@ -188,46 +212,54 @@ impl ProbeBuilder<ProbeAction, Duration> {
     ///
     /// This internally calculates the needed failure threshold based on the period and passes that
     /// to [`Self::with_failure_threshold`].
-    pub fn with_failure_threshold_duration(self, failure_threshold_duration: Duration) -> Self {
+    ///
+    /// This function returns an [`Error::PeriodIsZero`] error in case the period is zero, as it
+    /// can not divide by zero.
+    pub fn with_failure_threshold_duration(
+        self,
+        failure_threshold_duration: Duration,
+    ) -> Result<Self, Error> {
+        ensure!(self.period.as_nanos() != 0, PeriodIsZeroSnafu);
+
+        // SAFETY: Period is checked above to be non-zero
         let failure_threshold = failure_threshold_duration.div_duration_f32(*self.period);
-        // SAFETY: Returning an Result here would hurt the builder ergonomics and having such big
-        // numbers does not have any real world effect.
-        let failure_threshold = failure_threshold.ceil() as i32;
-        self.with_failure_threshold(failure_threshold)
+        Ok(self.with_failure_threshold(failure_threshold.ceil() as i32))
     }
 
-    pub fn build(self) -> Probe {
+    pub fn build(self) -> Result<Probe, Error> {
         let mut probe = Probe {
             exec: None,
             failure_threshold: Some(self.failure_threshold),
             grpc: None,
             http_get: None,
-            initial_delay_seconds: Some(
-                self.initial_delay
-                    .as_secs()
-                    .try_into()
-                    .expect("TODO Error handling"),
-            ),
-            period_seconds: Some(
-                self.period
-                    .as_secs()
-                    .try_into()
-                    .expect("TODO Error handling"),
-            ),
+            initial_delay_seconds: Some(self.initial_delay.as_secs().try_into().context(
+                DurationTooLongSnafu {
+                    field: "initialDelay",
+                    duration: self.initial_delay,
+                },
+            )?),
+            period_seconds: Some(self.period.as_secs().try_into().context(
+                DurationTooLongSnafu {
+                    field: "period",
+                    duration: self.period,
+                },
+            )?),
             success_threshold: Some(self.success_threshold),
             tcp_socket: None,
             termination_grace_period_seconds: Some(
-                self.termination_grace_period
-                    .as_secs()
-                    .try_into()
-                    .expect("TODO Error handling"),
+                self.termination_grace_period.as_secs().try_into().context(
+                    DurationTooLongSnafu {
+                        field: "terminationGracePeriod",
+                        duration: self.termination_grace_period,
+                    },
+                )?,
             ),
-            timeout_seconds: Some(
-                self.timeout
-                    .as_secs()
-                    .try_into()
-                    .expect("TODO Error handling"),
-            ),
+            timeout_seconds: Some(self.timeout.as_secs().try_into().context(
+                DurationTooLongSnafu {
+                    field: "timeout",
+                    duration: self.timeout,
+                },
+            )?),
         };
 
         match self.action {
@@ -237,7 +269,7 @@ impl ProbeBuilder<ProbeAction, Duration> {
             ProbeAction::TcpSocket(tcp_socket_action) => probe.tcp_socket = Some(tcp_socket_action),
         }
 
-        probe
+        Ok(probe)
     }
 }
 
@@ -250,7 +282,8 @@ mod tests {
         let probe = ProbeBuilder::default()
             .with_http_get_action_helper(8080, None, None)
             .with_period(Duration::from_secs(10))
-            .build();
+            .build()
+            .expect("Valid inputs must produce a Probe");
 
         assert_eq!(
             probe.http_get,
@@ -269,10 +302,12 @@ mod tests {
             .with_period(Duration::from_secs(5))
             .with_success_threshold(2)
             .with_failure_threshold_duration(Duration::from_secs(33))
+            .expect("The period is always non-zero")
             .with_timeout(Duration::from_secs(3))
             .with_initial_delay(Duration::from_secs(7))
             .with_termination_grace_period(Duration::from_secs(4))
-            .build();
+            .build()
+            .expect("Valid inputs must produce a Probe");
 
         assert_eq!(
             probe,
