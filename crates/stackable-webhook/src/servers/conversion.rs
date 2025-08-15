@@ -40,7 +40,7 @@ pub enum ConversionWebhookError {
     RunWebhookServer { source: WebhookError },
 
     #[snafu(display("failed to receive certificate from channel"))]
-    ReceiverCertificateFromChannel,
+    ReceiveCertificateFromChannel,
 
     #[snafu(display("failed to convert CA certificate into PEM format"))]
     ConvertCaToPem { source: x509_cert::der::Error },
@@ -228,7 +228,7 @@ impl ConversionWebhookServer {
         let current_cert = cert_rx
             .recv()
             .await
-            .context(ReceiverCertificateFromChannelSnafu)?;
+            .context(ReceiveCertificateFromChannel)?;
         Self::reconcile_crds(
             &client,
             field_manager,
