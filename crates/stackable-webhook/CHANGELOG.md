@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
+### Changed
 
 - BREAKING: Re-write the `ConversionWebhookServer`.
   It can now do CRD conversions, handle multiple CRDs and takes care of reconciling the CRDs ([#1066]).
@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
   To achieve this, a new `CertificateResolver` was added.
   Also, `TlsServer::new` now returns an additional `mpsc::Receiver<Certificate>`, so that the caller
   can get notified about certificate rotations happening ([#1066]).
+- `stackable_webhook::Options` has been renamed to `stackable_webhook::WebhookOptions` ([#1066]).
 
 ### Removed
 
