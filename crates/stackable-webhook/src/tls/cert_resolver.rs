@@ -61,7 +61,7 @@ pub enum CertificateResolverError {
 #[derive(Debug)]
 pub struct CertificateResolver {
     /// Using a [`ArcSwap`] (over e.g. [`tokio::sync::RwLock`]), so that we can easily
-    /// (and performant) bridge between async write and sync write.
+    /// (and performant) bridge between async write and sync read.
     current_certified_key: ArcSwap<CertifiedKey>,
     subject_alterative_dns_names: Arc<Vec<String>>,
 
