@@ -11,9 +11,18 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- BREAKING: The `ResolvedProductImage` field `app_version_label` was renamed to `app_version_label_value` to match changes to its type ([#1076]).
 - BREAKING: Rename two fields of the `ProductOperatorRun` struct for consistency and clarity ([#1066]):
   - `telemetry_arguments` -> `telemetry`
   - `cluster_info_opts` -> `cluster_info`
+
+### Fixed
+
+- BREAKING: Fix bug where `ResolvedProductImage::app_version_label` could not be used as a label value because it can contain invalid characters.
+  This is the case when referencing custom images via a `@sha256:...` hash. As such, the `product_image_selection::resolve` function is now fallible ([#1076]).
+
+[#1066]: https://github.com/stackabletech/operator-rs/pull/1066
+[#1076]: https://github.com/stackabletech/operator-rs/pull/1076
 
 ## [0.94.0] - 2025-07-10
 
