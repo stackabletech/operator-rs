@@ -323,7 +323,6 @@ pub struct OperatorEnvironmentOptions {
 mod tests {
     use std::fs::File;
 
-    use clap::Parser;
     use rstest::*;
     use tempfile::tempdir;
 

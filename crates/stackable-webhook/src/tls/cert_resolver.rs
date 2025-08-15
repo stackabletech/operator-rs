@@ -140,7 +140,7 @@ impl CertificateResolver {
                 .private_key_der()
                 .context(EncodePrivateKeyDerSnafu)?;
             let certificate_key =
-                CertifiedKey::from_der(vec![certificate_der], private_key_der, &tls_provider)
+                CertifiedKey::from_der(vec![certificate_der], private_key_der, tls_provider)
                     .context(DecodeCertifiedKeyFromDerSnafu)?;
 
             Ok((
