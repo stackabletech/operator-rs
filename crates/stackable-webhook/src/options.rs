@@ -53,26 +53,26 @@ impl Default for WebhookOptions {
 }
 
 impl WebhookOptions {
-    /// Returns the default [`OptionsBuilder`] which allows to selectively
+    /// Returns the default [`WebhookOptionsBuilder`] which allows to selectively
     /// customize the options. See the documentation for [`WebhookOptions`] for more
     /// information on available functions.
-    pub fn builder() -> OptionsBuilder {
-        OptionsBuilder::default()
+    pub fn builder() -> WebhookOptionsBuilder {
+        WebhookOptionsBuilder::default()
     }
 }
 
-/// The [`OptionsBuilder`] which allows to selectively customize the webhook
+/// The [`WebhookOptionsBuilder`] which allows to selectively customize the webhook
 /// server [`WebhookOptions`].
 ///
 /// Usually, this struct is not constructed manually, but instead by calling
-/// [`WebhookOptions::builder()`] or [`OptionsBuilder::default()`].
+/// [`WebhookOptions::builder()`] or [`WebhookOptionsBuilder::default()`].
 #[derive(Debug, Default)]
-pub struct OptionsBuilder {
+pub struct WebhookOptionsBuilder {
     socket_addr: Option<SocketAddr>,
     subject_alterative_dns_names: Vec<String>,
 }
 
-impl OptionsBuilder {
+impl WebhookOptionsBuilder {
     /// Sets the socket address the webhook server uses to bind for HTTPS.
     pub fn bind_address(mut self, bind_ip: impl Into<IpAddr>, bind_port: u16) -> Self {
         self.socket_addr = Some(SocketAddr::new(bind_ip.into(), bind_port));
