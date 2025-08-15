@@ -228,7 +228,7 @@ impl ConversionWebhookServer {
         let current_cert = cert_rx
             .recv()
             .await
-            .context(ReceiveCertificateFromChannel)?;
+            .context(ReceiveCertificateFromChannelSnafu)?;
         Self::reconcile_crds(
             &client,
             field_manager,
