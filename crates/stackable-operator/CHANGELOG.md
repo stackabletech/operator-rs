@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- BREAKING: Add two new required CLI arguments: `--operator-namespace` and `-operator-service-name`.
+- BREAKING: Add two new required CLI arguments: `--operator-namespace` and `--operator-service-name`.
   These two values are used to construct the service name in the CRD conversion webhook ([#1066]).
 
 ### Changed
