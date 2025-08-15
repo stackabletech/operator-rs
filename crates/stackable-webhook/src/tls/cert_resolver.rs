@@ -43,7 +43,7 @@ pub enum CertificateResolverError {
         source: CertificatePairError<ecdsa::Error>,
     },
 
-    #[snafu(display("failed to decode CertifiedKey from DER"))]
+    #[snafu(display("failed to create packaged certificate chain from DER"))]
     DecodeCertifiedKeyFromDer { source: tokio_rustls::rustls::Error },
 
     #[snafu(display("failed to run task in blocking thread"))]
