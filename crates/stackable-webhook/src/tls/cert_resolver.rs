@@ -7,7 +7,7 @@ use tokio::sync::mpsc;
 use tokio_rustls::rustls::{
     crypto::CryptoProvider, server::ResolvesServerCert, sign::CertifiedKey,
 };
-use x509_cert::Certificate;
+use x509_cert::{Certificate, certificate::CertificateInner};
 
 use super::{WEBHOOK_CA_LIFETIME, WEBHOOK_CERTIFICATE_LIFETIME};
 
@@ -78,10 +78,7 @@ impl CertificateResolver {
             .await
             .context(GenerateNewCertificateSnafu)?;
 
-        cert_tx
-            .send(cert)
-            .await
-            .map_err(|_err| CertificateResolverError::SendCertificateToChannel)?;
+        Self::send_certificate_to_channel(cert, &cert_tx).await?;
 
         Ok(Self {
             subject_alterative_dns_names,
@@ -98,11 +95,7 @@ impl CertificateResolver {
 
         // TODO: Sign the new cert somehow with the old cert. See https://github.com/stackabletech/decisions/issues/56
 
-        self.cert_tx
-            .send(cert)
-            .await
-            .map_err(|_err| CertificateResolverError::SendCertificateToChannel)?;
-
+        Self::send_certificate_to_channel(cert, &self.cert_tx).await?;
         self.current_certified_key.store(certified_key);
 
         Ok(())
@@ -150,6 +143,16 @@ impl CertificateResolver {
         })
         .await
         .context(TokioSpawnBlockingSnafu)?
+    }
+
+    async fn send_certificate_to_channel(
+        cert: CertificateInner,
+        cert_tx: &mpsc::Sender<Certificate>,
+    ) -> Result<()> {
+        cert_tx
+            .send(cert)
+            .await
+            .map_err(|_err| CertificateResolverError::SendCertificateToChannel)
     }
 }
 
