@@ -18,7 +18,6 @@ use kube::{
     api::{Patch, PatchParams},
 };
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::cli::OperatorEnvironmentOptions;
 use tokio::{sync::mpsc, try_join};
 use tracing::instrument;
 use x509_cert::{
@@ -70,12 +69,14 @@ where
 // TODO: Add a builder, maybe with `bon`.
 #[derive(Debug)]
 pub struct ConversionWebhookOptions {
-    /// The environment the operator is running in, notably the namespace and service name it is
-    /// reachable at.
-    pub operator_environment: OperatorEnvironmentOptions,
-
     /// The bind address to bind the HTTPS server to.
     pub socket_addr: SocketAddr,
+
+    /// The namespace the operator/webhook is running in.
+    pub namespace: String,
+
+    /// The name of the Kubernetes service which points to the operator/webhook.
+    pub service_name: String,
 
     /// The field manager used to apply Kubernetes objects, typically the operator name, e.g.
     /// `airflow-operator`.
@@ -197,13 +198,10 @@ impl ConversionWebhookServer {
         } = self;
 
         let ConversionWebhookOptions {
-            operator_environment:
-                OperatorEnvironmentOptions {
-                    operator_namespace,
-                    operator_service_name,
-                },
             socket_addr,
             field_manager,
+            namespace: operator_namespace,
+            service_name: operator_service_name,
         } = &options;
 
         // This is how Kubernetes calls us, so it decides about the naming.
@@ -233,7 +231,8 @@ impl ConversionWebhookServer {
             &client,
             field_manager,
             &crds,
-            &options.operator_environment,
+            &operator_namespace,
+            &operator_service_name,
             current_cert,
         )
         .await
@@ -246,7 +245,8 @@ impl ConversionWebhookServer {
                 &client,
                 field_manager,
                 &crds,
-                &options.operator_environment,
+                &operator_namespace,
+                &operator_service_name,
             ),
         )?;
 
@@ -262,14 +262,16 @@ impl ConversionWebhookServer {
         client: &Client,
         field_manager: &str,
         crds: &[CustomResourceDefinition],
-        operator_environment: &OperatorEnvironmentOptions,
+        operator_namespace: &str,
+        operator_service_name: &str,
     ) -> Result<(), ConversionWebhookError> {
         while let Some(current_cert) = cert_rx.recv().await {
             Self::reconcile_crds(
                 client,
                 field_manager,
                 crds,
-                operator_environment,
+                operator_namespace,
+                operator_service_name,
                 current_cert,
             )
             .await
@@ -283,7 +285,8 @@ impl ConversionWebhookServer {
         client: &Client,
         field_manager: &str,
         crds: &[CustomResourceDefinition],
-        operator_environment: &OperatorEnvironmentOptions,
+        operator_namespace: &str,
+        operator_service_name: &str,
         current_cert: Certificate,
     ) -> Result<(), ConversionWebhookError> {
         tracing::info!(
@@ -307,8 +310,8 @@ impl ConversionWebhookServer {
                     conversion_review_versions: vec!["v1".to_string()],
                     client_config: Some(WebhookClientConfig {
                         service: Some(ServiceReference {
-                            name: operator_environment.operator_service_name.to_owned(),
-                            namespace: operator_environment.operator_namespace.to_owned(),
+                            name: operator_service_name.to_owned(),
+                            namespace: operator_namespace.to_owned(),
                             path: Some(format!("/convert/{crd_name}")),
                             port: Some(DEFAULT_HTTPS_PORT.into()),
                         }),
