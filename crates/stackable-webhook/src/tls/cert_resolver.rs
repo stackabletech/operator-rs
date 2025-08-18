@@ -7,7 +7,7 @@ use tokio::sync::mpsc;
 use tokio_rustls::rustls::{
     crypto::CryptoProvider, server::ResolvesServerCert, sign::CertifiedKey,
 };
-use x509_cert::{Certificate, certificate::CertificateInner};
+use x509_cert::Certificate;
 
 use super::{WEBHOOK_CA_LIFETIME, WEBHOOK_CERTIFICATE_LIFETIME};
 
@@ -20,12 +20,6 @@ pub enum CertificateResolverError {
 
     #[snafu(display("failed to generate ECDSA signing key"))]
     GenerateEcdsaSigningKey { source: ecdsa::Error },
-
-    #[snafu(display("failed to generate new certificate"))]
-    GenerateNewCertificate {
-        #[snafu(source(from(CertificateResolverError, Box::new)))]
-        source: Box<CertificateResolverError>,
-    },
 
     #[snafu(display("failed to create CA to generate and sign webhook leaf certificate"))]
     CreateCertificateAuthority { source: stackable_certs::ca::Error },
@@ -74,11 +68,8 @@ impl CertificateResolver {
         cert_tx: mpsc::Sender<Certificate>,
     ) -> Result<Self> {
         let subject_alterative_dns_names = Arc::new(subject_alterative_dns_names);
-        let (cert, certified_key) = Self::generate_new_cert(subject_alterative_dns_names.clone())
-            .await
-            .context(GenerateNewCertificateSnafu)?;
-
-        Self::send_certificate_to_channel(cert, &cert_tx).await?;
+        let certified_key =
+            Self::generate_new_cert(&cert_tx, subject_alterative_dns_names.clone()).await?;
 
         Ok(Self {
             subject_alterative_dns_names,
@@ -88,27 +79,29 @@ impl CertificateResolver {
     }
 
     pub async fn rotate_certificate(&self) -> Result<()> {
-        let (cert, certified_key) =
-            Self::generate_new_cert(self.subject_alterative_dns_names.clone())
-                .await
-                .context(GenerateNewCertificateSnafu)?;
+        let certified_key =
+            Self::generate_new_cert(&self.cert_tx, self.subject_alterative_dns_names.clone())
+                .await?;
 
         // TODO: Sign the new cert somehow with the old cert. See https://github.com/stackabletech/decisions/issues/56
-
-        Self::send_certificate_to_channel(cert, &self.cert_tx).await?;
         self.current_certified_key.store(certified_key);
 
         Ok(())
     }
 
+    /// Creates a new certificate and returns the certified key.
+    ///
+    /// The certificate is send to the passed `cert_tx`.
+    ///
     /// FIXME: This should *not* construct a CA cert and cert, but only a cert!
     /// This needs some changes in stackable-certs though.
     /// See [the relevant decision](https://github.com/stackabletech/decisions/issues/56)
     async fn generate_new_cert(
+        cert_tx: &mpsc::Sender<Certificate>,
         subject_alterative_dns_names: Arc<Vec<String>>,
-    ) -> Result<(Certificate, Arc<CertifiedKey>)> {
+    ) -> Result<Arc<CertifiedKey>> {
         // The certificate generations can take a while, so we use `spawn_blocking`
-        tokio::task::spawn_blocking(move || {
+        let (cert, certified_key) = tokio::task::spawn_blocking(move || {
             let tls_provider =
                 CryptoProvider::get_default().context(NoDefaultCryptoProviderInstalledSnafu)?;
 
@@ -142,17 +135,14 @@ impl CertificateResolver {
             ))
         })
         .await
-        .context(TokioSpawnBlockingSnafu)?
-    }
+        .context(TokioSpawnBlockingSnafu)??;
 
-    async fn send_certificate_to_channel(
-        cert: CertificateInner,
-        cert_tx: &mpsc::Sender<Certificate>,
-    ) -> Result<()> {
         cert_tx
             .send(cert)
             .await
-            .map_err(|_err| CertificateResolverError::SendCertificateToChannel)
+            .map_err(|_err| CertificateResolverError::SendCertificateToChannel)?;
+
+        Ok(certified_key)
     }
 }
 
