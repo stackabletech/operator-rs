@@ -4,12 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Fixed
-
-- Replace the hardcoded `::stackable_versioned` path in the `tracking_from` function with the configurable crate override ([#1079]).
-
-[#1079]: https://github.com/stackabletech/operator-rs/pull/1079
-
 ## [0.4.0] - 2025-07-10
 
 ### Fixed
