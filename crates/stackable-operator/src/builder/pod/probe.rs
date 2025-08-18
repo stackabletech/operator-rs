@@ -39,8 +39,7 @@ pub enum Error {
 /// # use k8s_openapi::api::core::v1::HTTPGetAction;
 /// # use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
 ///
-/// let probe = ProbeBuilder::default()
-///     .with_http_get_action_helper(8080, None, None)
+/// let probe = ProbeBuilder::http_get_port_scheme_path(8080, None, None)
 ///     .with_period(Duration::from_secs(10))
 ///     .build()
 ///     .expect("failed to build probe");
@@ -68,24 +67,9 @@ pub struct ProbeBuilder<Action, Period> {
     termination_grace_period: Duration,
 }
 
-impl Default for ProbeBuilder<(), ()> {
-    fn default() -> Self {
-        Self {
-            action: (),
-            period: (),
-            // The following values match the Kubernetes defaults
-            success_threshold: 1,
-            failure_threshold: 1,
-            timeout: Duration::from_secs(1),
-            initial_delay: Duration::from_secs(0),
-            termination_grace_period: Duration::from_secs(0),
-        }
-    }
-}
-
 /// Available probes
 ///
-/// Only one probe can be configured at a time. For more details about each 
+/// Only one probe can be configured at a time. For more details about each
 /// type, see [container-probes] documentation.
 ///
 /// [container-probes]: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
@@ -98,35 +82,24 @@ pub enum ProbeAction {
 
 impl ProbeBuilder<(), ()> {
     /// This probe action executes the specified command
-    pub fn with_exec_action_helper(
-        self,
+    pub fn exec_command(
         command: impl IntoIterator<Item = impl Into<String>>,
     ) -> ProbeBuilder<ProbeAction, ()> {
-        self.with_exec_action(ExecAction {
+        Self::exec(ExecAction {
             command: Some(command.into_iter().map(Into::into).collect()),
         })
-    }
-
-    /// There is a convenience helper: [`Self::with_exec_action_helper`].
-    pub fn with_exec_action(self, exec_action: ExecAction) -> ProbeBuilder<ProbeAction, ()> {
-        self.with_action(ProbeAction::Exec(exec_action))
-    }
-
-    pub fn with_grpc_action(self, grpc_action: GRPCAction) -> ProbeBuilder<ProbeAction, ()> {
-        self.with_action(ProbeAction::Grpc(grpc_action))
     }
 
     // Note: Ideally we also have a builder for `HTTPGetAction`, but that is lot's of effort we
     // don't want to spend now.
     /// This probe action does an HTTP GET request to the specified port. Optionally, you can
-    /// configure the path, otherwise the Kubernetes default is used.
-    pub fn with_http_get_action_helper(
-        self,
+    /// configure a scheme and path, otherwise the Kubernetes default is used.
+    pub fn http_get_port_scheme_path(
         port: u16,
         scheme: Option<String>,
         path: Option<String>,
     ) -> ProbeBuilder<ProbeAction, ()> {
-        self.with_http_get_action(HTTPGetAction {
+        Self::http_get(HTTPGetAction {
             path,
             scheme,
             port: IntOrString::Int(port.into()),
@@ -134,42 +107,44 @@ impl ProbeBuilder<(), ()> {
         })
     }
 
-    /// There is a convenience helper: [`Self::with_http_get_action_helper`].
-    pub fn with_http_get_action(
-        self,
-        http_get_action: HTTPGetAction,
-    ) -> ProbeBuilder<ProbeAction, ()> {
-        self.with_action(ProbeAction::HttpGet(http_get_action))
+    /// Set's an [`ExecAction`] as probe.
+    ///
+    /// You likely want to use [`Self::exec_command`] whenever possible.
+    pub fn exec(exec_action: ExecAction) -> ProbeBuilder<ProbeAction, ()> {
+        Self::action(ProbeAction::Exec(exec_action))
     }
 
-    pub fn with_tcp_socket_action(
-        self,
-        tcp_socket_action: TCPSocketAction,
-    ) -> ProbeBuilder<ProbeAction, ()> {
-        self.with_action(ProbeAction::TcpSocket(tcp_socket_action))
+    /// Set's an [`GRPCAction`] as probe.
+    pub fn grpc(grpc_action: GRPCAction) -> ProbeBuilder<ProbeAction, ()> {
+        Self::action(ProbeAction::Grpc(grpc_action))
     }
 
-    /// Action-specific functions (e.g. [`Self::with_exec_action`] or [`Self::with_http_get_action`])
-    /// are recommended instead.
-    pub fn with_action(self, action: ProbeAction) -> ProbeBuilder<ProbeAction, ()> {
-        let Self {
-            action: (),
-            period,
-            success_threshold,
-            failure_threshold,
-            timeout,
-            initial_delay,
-            termination_grace_period,
-        } = self;
+    /// Set's an [`HTTPGetAction`] as probe.
+    ///
+    /// For simple cases, there is a a convenience helper: [`Self::http_get_port_scheme_path`].
+    pub fn http_get(http_get_action: HTTPGetAction) -> ProbeBuilder<ProbeAction, ()> {
+        Self::action(ProbeAction::HttpGet(http_get_action))
+    }
 
+    /// Set's an [`TCPSocketAction`] as probe.
+    pub fn tcp_socket(tcp_socket_action: TCPSocketAction) -> ProbeBuilder<ProbeAction, ()> {
+        Self::action(ProbeAction::TcpSocket(tcp_socket_action))
+    }
+
+    /// Incase you already have an [`ProbeAction`] enum variant you can pass that here.
+    ///
+    /// If not, it is recommended to use one of the specialized functions such as [`Self::exec`],
+    /// [`Self::grpc`], [`Self::http_get`] or [`Self::tcp_socket`] or their helper functions.
+    pub fn action(action: ProbeAction) -> ProbeBuilder<ProbeAction, ()> {
         ProbeBuilder {
             action,
-            period,
-            success_threshold,
-            failure_threshold,
-            timeout,
-            initial_delay,
-            termination_grace_period,
+            period: (),
+            // The following values match the Kubernetes defaults
+            success_threshold: 1,
+            failure_threshold: 1,
+            timeout: Duration::from_secs(1),
+            initial_delay: Duration::from_secs(0),
+            termination_grace_period: Duration::from_secs(0),
         }
     }
 }
@@ -316,8 +291,7 @@ mod tests {
 
     #[test]
     fn test_probe_builder_minimal() {
-        let probe = ProbeBuilder::default()
-            .with_http_get_action_helper(8080, None, None)
+        let probe = ProbeBuilder::http_get_port_scheme_path(8080, None, None)
             .with_period(Duration::from_secs(10))
             .build()
             .expect("Valid inputs must produce a Probe");
@@ -334,8 +308,7 @@ mod tests {
 
     #[test]
     fn test_probe_builder_complex() {
-        let probe = ProbeBuilder::default()
-            .with_exec_action_helper(["sleep", "1"])
+        let probe = ProbeBuilder::exec_command(["sleep", "1"])
             .with_period(Duration::from_secs(5))
             .with_success_threshold(2)
             .with_failure_threshold_duration(Duration::from_secs(33))
