@@ -83,6 +83,12 @@ impl Default for ProbeBuilder<(), ()> {
     }
 }
 
+/// Available probes
+///
+/// Only one probe can be configured at a time. For more details about each 
+/// type, see [container-probes] documentation.
+///
+/// [container-probes]: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
 pub enum ProbeAction {
     Exec(ExecAction),
     Grpc(GRPCAction),
