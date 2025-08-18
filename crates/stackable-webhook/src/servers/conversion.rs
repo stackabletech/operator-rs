@@ -112,7 +112,7 @@ impl ConversionWebhookServer {
     /// ```no_run
     /// use clap::Parser;
     /// use stackable_webhook::{
-    ///     servers::{ConversionReview, ConversionWebhookServer, ConversionWebhookOptions},
+    ///     servers::{ConversionWebhookServer, ConversionWebhookOptions},
     ///     WebhookOptions
     /// };
     /// use stackable_operator::{
@@ -133,9 +133,10 @@ impl ConversionWebhookServer {
     /// let client = Client::try_default().await.expect("failed to create Kubernetes client");
     ///
     /// let options = ConversionWebhookOptions {
-    ///     operator_environment,
     ///     socket_addr: "127.0.0.1:8080".parse().unwrap(),
-    ///     field_manager: String::from("product-operator"),
+    ///     field_manager: "product-operator".to_owned(),
+    ///     namespace: "default".to_owned(),
+    ///     service_name: "product-operator".to_owned(),
     /// };
     ///
     /// // Construct the conversion webhook server
