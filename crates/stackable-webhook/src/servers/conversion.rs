@@ -231,8 +231,8 @@ impl ConversionWebhookServer {
             &client,
             field_manager,
             &crds,
-            &operator_namespace,
-            &operator_service_name,
+            operator_namespace,
+            operator_service_name,
             current_cert,
         )
         .await
@@ -245,8 +245,8 @@ impl ConversionWebhookServer {
                 &client,
                 field_manager,
                 &crds,
-                &operator_namespace,
-                &operator_service_name,
+                operator_namespace,
+                operator_service_name,
             ),
         )?;
 
