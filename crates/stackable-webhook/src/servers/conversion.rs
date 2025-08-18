@@ -136,7 +136,7 @@ impl ConversionWebhookServer {
     /// ];
     ///
     /// let options = ConversionWebhookOptions {
-    ///     socket_addr: "127.0.0.1:8443".parse().unwrap(),
+    ///     socket_addr: "127.0.0.1:8443".parse().expect("static IP is always valid"),
     ///     field_manager: OPERATOR_NAME.to_owned(),
     ///     namespace: operator_environment.operator_namespace,
     ///     service_name: operator_environment.operator_service_name,
