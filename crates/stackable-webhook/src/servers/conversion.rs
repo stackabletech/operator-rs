@@ -137,7 +137,7 @@ impl ConversionWebhookServer {
     /// ];
     ///
     /// let options = ConversionWebhookOptions {
-    ///     socket_addr: format!("127.0.0.1:{CONVERSION_WEBHOOK_HTTPS_PORT}")
+    ///     socket_addr: format!("0.0.0.0:{CONVERSION_WEBHOOK_HTTPS_PORT}")
     ///         .parse()
     ///         .expect("static address is always valid"),
     ///     field_manager: OPERATOR_NAME.to_owned(),
