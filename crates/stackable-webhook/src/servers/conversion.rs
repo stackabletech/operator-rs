@@ -131,7 +131,6 @@ impl ConversionWebhookServer {
     /// ];
     ///
     /// let client = Client::try_default().await.expect("failed to create Kubernetes client");
-    /// let operator_environment = OperatorEnvironmentOptions::parse();
     ///
     /// let options = ConversionWebhookOptions {
     ///     operator_environment,
