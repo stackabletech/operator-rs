@@ -26,7 +26,7 @@ use x509_cert::{
 };
 
 use crate::{
-    WebhookError, WebhookHandler, WebhookServer, constants::DEFAULT_HTTPS_PORT,
+    WebhookError, WebhookHandler, WebhookServer, constants::CONVERSION_WEBHOOK_HTTPS_PORT,
     options::WebhookOptions,
 };
 
@@ -316,7 +316,7 @@ impl ConversionWebhookServer {
                             name: operator_service_name.to_owned(),
                             namespace: operator_namespace.to_owned(),
                             path: Some(format!("/convert/{crd_name}")),
-                            port: Some(DEFAULT_HTTPS_PORT.into()),
+                            port: Some(CONVERSION_WEBHOOK_HTTPS_PORT.into()),
                         }),
                         ca_bundle: Some(ByteString(ca_bundle.as_bytes().to_vec())),
                         url: None,
