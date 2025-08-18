@@ -171,7 +171,7 @@ impl Struct {
         // names.
         let inserts = self.generate_tracking_inserts(direction, next_version, mod_gen_ctx);
         let removals = self.generate_tracking_removals(direction, next_version, mod_gen_ctx);
-        let json_paths = self.generate_json_paths(next_version);
+        let json_paths = self.generate_json_paths(next_version, mod_gen_ctx);
 
         // TODO (@Techassi): Re-add support for generics
         // TODO (@Techassi): We know the status, so we can hard-code it, but hard to track across structs
@@ -288,11 +288,15 @@ impl Struct {
         }
     }
 
-    fn generate_json_paths(&self, next_version: &VersionDefinition) -> Option<TokenStream> {
+    fn generate_json_paths(
+        &self,
+        next_version: &VersionDefinition,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+    ) -> Option<TokenStream> {
         let json_paths = self
             .fields
             .iter()
-            .filter_map(|f| f.generate_for_json_path(next_version))
+            .filter_map(|f| f.generate_for_json_path(next_version, mod_gen_ctx))
             .collect();
 
         Some(json_paths)
