@@ -122,7 +122,12 @@ impl ConversionWebhookServer {
     /// };
     ///
     /// # async fn test() {
-    /// let crds_and_handlers = [
+    /// // Things that should already be in you operator:
+    /// const OPERATOR_NAME: &str = "product-operator";
+    /// let client = Client::try_default().await.expect("failed to create Kubernetes client");
+    /// let operator_environment = OperatorEnvironmentOptions::parse();
+    ///
+    ///  let crds_and_handlers = [
     ///     (
     ///         S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1)
     ///             .expect("failed to merge S3Connection CRD"),
@@ -130,13 +135,11 @@ impl ConversionWebhookServer {
     ///     ),
     /// ];
     ///
-    /// let client = Client::try_default().await.expect("failed to create Kubernetes client");
-    ///
     /// let options = ConversionWebhookOptions {
-    ///     socket_addr: "127.0.0.1:8080".parse().unwrap(),
-    ///     field_manager: "product-operator".to_owned(),
-    ///     namespace: "default".to_owned(),
-    ///     service_name: "product-operator".to_owned(),
+    ///     socket_addr: "127.0.0.1:8443".parse().unwrap(),
+    ///     field_manager: OPERATOR_NAME.to_owned(),
+    ///     namespace: operator_environment.operator_namespace,
+    ///     service_name: operator_environment.operator_service_name,
     /// };
     ///
     /// // Construct the conversion webhook server
