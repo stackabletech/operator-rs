@@ -358,7 +358,13 @@ impl VersionedField {
         }
     }
 
-    pub fn generate_for_json_path(&self, next_version: &VersionDefinition) -> Option<TokenStream> {
+    pub fn generate_for_json_path(
+        &self,
+        next_version: &VersionDefinition,
+        mod_gen_ctx: ModuleGenerationContext<'_>,
+    ) -> Option<TokenStream> {
+        let versioned_path = &*mod_gen_ctx.crates.versioned;
+
         match (&self.changes, self.nested) {
             // If there are no changes and the field also not marked as nested, there is no need to
             // generate a path variable for that field as no tracked values need to be applied/inserted
@@ -373,7 +379,7 @@ impl VersionedField {
                 let field_ident = format_ident!("__sv_{}_path", &self.ident.as_ident());
                 let child_string = &self.ident.to_string();
                 Some(quote! {
-                    let #field_ident = ::stackable_versioned::jthong_path(parent, #child_string);
+                    let #field_ident = #versioned_path::jthong_path(parent, #child_string);
                 })
             }
             (Some(changes), _) => {
@@ -385,7 +391,7 @@ impl VersionedField {
                         let child_string = ident.to_string();
 
                         Some(quote! {
-                            let #field_ident = ::stackable_versioned::jthong_path(parent, #child_string);
+                            let #field_ident = #versioned_path::jthong_path(parent, #child_string);
                         })
                     }
                     _ => None,
