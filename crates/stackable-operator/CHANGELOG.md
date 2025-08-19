@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `ProbeBuilder` to build Kubernetes container probes ([#1078]).
+
 ### Changed
 
 - BREAKING: The `ResolvedProductImage` field `app_version_label` was renamed to `app_version_label_value` to match changes to its type ([#1076]).
@@ -14,6 +18,7 @@ All notable changes to this project will be documented in this file.
   This is the case when referencing custom images via a `@sha256:...` hash. As such, the `product_image_selection::resolve` function is now fallible ([#1076]).
 
 [#1076]: https://github.com/stackabletech/operator-rs/pull/1076
+[#1078]: https://github.com/stackabletech/operator-rs/pull/1078
 
 ## [0.94.0] - 2025-07-10
 
