@@ -69,7 +69,8 @@ impl CertificateResolver {
     ) -> Result<Self> {
         let subject_alterative_dns_names = Arc::new(subject_alterative_dns_names);
         let certified_key =
-            Self::generate_new_cert(&cert_tx, subject_alterative_dns_names.clone()).await?;
+            Self::generate_new_certificate_inner(subject_alterative_dns_names.clone(), &cert_tx)
+                .await?;
 
         Ok(Self {
             subject_alterative_dns_names,
@@ -79,14 +80,17 @@ impl CertificateResolver {
     }
 
     pub async fn rotate_certificate(&self) -> Result<()> {
-        let certified_key =
-            Self::generate_new_cert(&self.cert_tx, self.subject_alterative_dns_names.clone())
-                .await?;
+        let certified_key = self.generate_new_certificate().await?;
 
         // TODO: Sign the new cert somehow with the old cert. See https://github.com/stackabletech/decisions/issues/56
         self.current_certified_key.store(certified_key);
 
         Ok(())
+    }
+
+    async fn generate_new_certificate(&self) -> Result<Arc<CertifiedKey>> {
+        let subject_alterative_dns_names = self.subject_alterative_dns_names.clone();
+        Self::generate_new_certificate_inner(subject_alterative_dns_names, &self.cert_tx).await
     }
 
     /// Creates a new certificate and returns the certified key.
@@ -96,9 +100,9 @@ impl CertificateResolver {
     /// FIXME: This should *not* construct a CA cert and cert, but only a cert!
     /// This needs some changes in stackable-certs though.
     /// See [the relevant decision](https://github.com/stackabletech/decisions/issues/56)
-    async fn generate_new_cert(
-        cert_tx: &mpsc::Sender<Certificate>,
+    async fn generate_new_certificate_inner(
         subject_alterative_dns_names: Arc<Vec<String>>,
+        cert_tx: &mpsc::Sender<Certificate>,
     ) -> Result<Arc<CertifiedKey>> {
         // The certificate generations can take a while, so we use `spawn_blocking`
         let (cert, certified_key) = tokio::task::spawn_blocking(move || {
