@@ -37,9 +37,9 @@ use crate::{
 
 mod cert_resolver;
 
-pub const WEBHOOK_CA_LIFETIME: Duration = Duration::from_minutes_unchecked(3);
-pub const WEBHOOK_CERTIFICATE_LIFETIME: Duration = Duration::from_minutes_unchecked(2);
-pub const WEBHOOK_CERTIFICATE_ROTATION_INTERVAL: Duration = Duration::from_minutes_unchecked(1);
+pub const WEBHOOK_CA_LIFETIME: Duration = Duration::from_hours_unchecked(24);
+pub const WEBHOOK_CERTIFICATE_LIFETIME: Duration = Duration::from_hours_unchecked(24);
+pub const WEBHOOK_CERTIFICATE_ROTATION_INTERVAL: Duration = Duration::from_hours_unchecked(20);
 
 pub type Result<T, E = TlsServerError> = std::result::Result<T, E>;
 
