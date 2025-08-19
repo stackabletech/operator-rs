@@ -1,3 +1,34 @@
+//! Kubernetes [`Probe`] builder.
+//!
+//! The upstream [`Probe`] struct does not prevent invalid probe configurations
+//! which leads to surprises at runtime which can be deeply hidden.
+//! You need to specify at least an action and interval (in this order).
+//!
+//! ### Usage example
+//!
+//! ```
+//! use stackable_operator::{
+//!     builder::pod::probe::ProbeBuilder,
+//!     time::Duration,
+//! };
+//! # use k8s_openapi::api::core::v1::HTTPGetAction;
+//! # use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
+//!
+//! let probe = ProbeBuilder::http_get_port_scheme_path(8080, None, None)
+//!     .with_period(Duration::from_secs(10))
+//!     .build()
+//!     .expect("failed to build probe");
+//!
+//! assert_eq!(
+//!     probe.http_get,
+//!     Some(HTTPGetAction {
+//!         port: IntOrString::Int(8080),
+//!         ..Default::default()
+//!     })
+//! );
+//! assert_eq!(probe.period_seconds, Some(10));
+//! ```
+
 use std::num::TryFromIntError;
 
 use k8s_openapi::{
@@ -23,36 +54,6 @@ pub enum Error {
     PeriodIsZero {},
 }
 
-/// Kubernetes [`Probe`] builder.
-///
-/// The upstream [`Probe`] struct does not prevent invalid probe configurations
-/// which leads to surprises at runtime which can be deeply hidden.
-/// You need to specify at least an action and interval (in this order).
-///
-/// ### Usage example
-///
-/// ```
-/// use stackable_operator::{
-///     builder::pod::probe::ProbeBuilder,
-///     time::Duration,
-/// };
-/// # use k8s_openapi::api::core::v1::HTTPGetAction;
-/// # use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
-///
-/// let probe = ProbeBuilder::http_get_port_scheme_path(8080, None, None)
-///     .with_period(Duration::from_secs(10))
-///     .build()
-///     .expect("failed to build probe");
-///
-/// assert_eq!(
-///     probe.http_get,
-///     Some(HTTPGetAction {
-///         port: IntOrString::Int(8080),
-///         ..Default::default()
-///     })
-/// );
-/// assert_eq!(probe.period_seconds, Some(10));
-/// ```
 #[derive(Debug)]
 pub struct ProbeBuilder<Action, Period> {
     // Mandatory field
