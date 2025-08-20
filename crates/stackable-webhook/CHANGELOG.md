@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Re-write the `ConversionWebhookServer`.
+  It can now do CRD conversions, handle multiple CRDs and takes care of reconciling the CRDs ([#1066]).
+- BREAKING: The `TlsServer` can now handle certificate rotation.
+  To achieve this, a new `CertificateResolver` was added.
+  Also, `TlsServer::new` now returns an additional `mpsc::Receiver<Certificate>`, so that the caller
+  can get notified about certificate rotations happening ([#1066]).
+- `stackable_webhook::Options` has been renamed to `stackable_webhook::WebhookOptions`, as well as
+  `OptionsBuilder` to `WebhookOptionsBuilder` ([#1066]).
+
+### Removed
+
+- Remove `StatefulWebhookHandler` to reduce maintenance effort.
+  Also, webhooks are ideally stateless, so that they can be scaled horizontally.
+  It can be re-added once needed ([#1066]).
+
+[#1066]: https://github.com/stackabletech/operator-rs/pull/1066
+
 ## [0.4.0] - 2025-07-10
 
 ### Fixed
@@ -23,7 +42,7 @@ All notable changes to this project will be documented in this file.
 
 ## [0.3.1] - 2024-07-10
 
-## Changed
+### Changed
 
 - Remove instrumentation of long running functions, add more granular instrumentation of futures. Adjust span and event levels ([#811]).
 - Bump rust-toolchain to 1.79.0 ([#822]).

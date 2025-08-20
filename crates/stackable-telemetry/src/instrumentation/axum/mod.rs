@@ -73,22 +73,6 @@ const OTEL_TRACE_ID_TO: &str = "opentelemetry.trace_id.to";
 /// # let _: Router = router;
 /// ```
 ///
-/// ### Example with Webhook
-///
-/// The usage is even simpler when combined with the `stackable_webhook` crate.
-/// The webhook server has built-in support to automatically emit HTTP spans on
-/// every incoming request.
-///
-/// ```
-/// use stackable_webhook::{WebhookServer, Options};
-/// use axum::Router;
-///
-/// let router = Router::new();
-/// let server = WebhookServer::new(router, Options::default());
-///
-/// # let _: WebhookServer = server;
-/// ```
-///
 /// This layer is implemented based on [this][1] official Tower guide.
 ///
 /// [1]: https://github.com/tower-rs/tower/blob/master/guides/building-a-middleware-from-scratch.md

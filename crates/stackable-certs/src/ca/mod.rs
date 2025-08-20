@@ -38,7 +38,7 @@ pub enum Error {
     #[snafu(display("failed to generate RSA signing key"))]
     GenerateRsaSigningKey { source: rsa::Error },
 
-    #[snafu(display("failed to generate ECDSA signign key"))]
+    #[snafu(display("failed to generate ECDSA signing key"))]
     GenerateEcdsaSigningKey { source: ecdsa::Error },
 
     #[snafu(display("failed to parse {subject:?} as subject"))]

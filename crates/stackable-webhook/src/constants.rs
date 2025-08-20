@@ -5,6 +5,9 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 /// The default HTTPS port `8443`
 pub const DEFAULT_HTTPS_PORT: u16 = 8443;
 
+// The HTTPS port the conversion webhook runs at
+pub const CONVERSION_WEBHOOK_HTTPS_PORT: u16 = DEFAULT_HTTPS_PORT;
+
 /// The default IP address [`Ipv4Addr::UNSPECIFIED`] (`0.0.0.0`) the webhook server binds to,
 /// which represents binding on all network addresses.
 //
