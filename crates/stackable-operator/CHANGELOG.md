@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add `ProbeBuilder` to build Kubernetes container probes ([#1078]).
 - BREAKING: Add two new required CLI arguments: `--operator-namespace` and `--operator-service-name`.
   These two values are used to construct the service name in the CRD conversion webhook ([#1066]).
 
@@ -23,6 +24,7 @@ All notable changes to this project will be documented in this file.
 
 [#1066]: https://github.com/stackabletech/operator-rs/pull/1066
 [#1076]: https://github.com/stackabletech/operator-rs/pull/1076
+[#1078]: https://github.com/stackabletech/operator-rs/pull/1078
 
 ## [0.94.0] - 2025-07-10
 
