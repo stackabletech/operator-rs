@@ -8,6 +8,7 @@ repository.workspace = true
 
 [dependencies]
 stackable-certs = { path = "../stackable-certs", features = ["rustls"] }
+stackable-shared = { path = "../stackable-shared" }
 stackable-telemetry = { path = "../stackable-telemetry" }
 
 arc-swap.workspace = true

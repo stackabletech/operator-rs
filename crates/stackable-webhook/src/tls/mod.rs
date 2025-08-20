@@ -12,7 +12,7 @@ use hyper_util::rt::{TokioExecutor, TokioIo};
 use opentelemetry::trace::{FutureExt, SpanKind};
 use opentelemetry_semantic_conventions as semconv;
 use snafu::{ResultExt, Snafu};
-use stackable_operator::time::Duration;
+use stackable_shared::time::Duration;
 use tokio::{
     net::{TcpListener, TcpStream},
     sync::mpsc,

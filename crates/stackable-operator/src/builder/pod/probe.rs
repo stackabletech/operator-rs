@@ -9,7 +9,7 @@
 //! ```
 //! use stackable_operator::{
 //!     builder::pod::probe::ProbeBuilder,
-//!     time::Duration,
+//!     shared::time::Duration,
 //! };
 //! # use k8s_openapi::api::core::v1::HTTPGetAction;
 //! # use k8s_openapi::apimachinery::pkg::util::intstr::IntOrString;
@@ -36,8 +36,7 @@ use k8s_openapi::{
     apimachinery::pkg::util::intstr::IntOrString,
 };
 use snafu::{ResultExt, Snafu, ensure};
-
-use crate::time::Duration;
+use stackable_shared::time::Duration;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
