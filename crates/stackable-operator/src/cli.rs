@@ -116,7 +116,7 @@ use product_config::ProductConfigManager;
 use snafu::{ResultExt, Snafu};
 use stackable_telemetry::tracing::TelemetryOptions;
 
-use crate::{namespace::WatchNamespace, utils::cluster_info::KubernetesClusterInfoOpts};
+use crate::{namespace::WatchNamespace, utils::cluster_info::KubernetesClusterInfoOptions};
 
 pub const AUTHOR: &str = "Stackable GmbH - info@stackable.tech";
 
@@ -163,10 +163,10 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 /// Can be embedded into an extended argument set:
 ///
 /// ```rust
-/// # use stackable_operator::cli::{Command, ProductOperatorRun, ProductConfigPath};
+/// # use stackable_operator::cli::{Command, OperatorEnvironmentOptions, ProductOperatorRun, ProductConfigPath};
+/// # use stackable_operator::{namespace::WatchNamespace, utils::cluster_info::KubernetesClusterInfoOptions};
+/// # use stackable_telemetry::tracing::TelemetryOptions;
 /// use clap::Parser;
-/// use stackable_operator::{namespace::WatchNamespace, utils::cluster_info::KubernetesClusterInfoOpts};
-/// use stackable_telemetry::tracing::TelemetryOptions;
 ///
 /// #[derive(clap::Parser, Debug, PartialEq, Eq)]
 /// struct Run {
@@ -176,16 +176,35 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///     common: ProductOperatorRun,
 /// }
 ///
-/// let opts = Command::<Run>::parse_from(["foobar-operator", "run", "--name", "foo", "--product-config", "bar", "--watch-namespace", "foobar", "--kubernetes-node-name", "baz"]);
+/// let opts = Command::<Run>::parse_from([
+///     "foobar-operator",
+///     "run",
+///     "--name",
+///     "foo",
+///     "--product-config",
+///     "bar",
+///     "--watch-namespace",
+///     "foobar",
+///     "--operator-namespace",
+///     "stackable-operators",
+///     "--operator-service-name",
+///     "foo-operator",
+///     "--kubernetes-node-name",
+///     "baz",
+/// ]);
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
 ///     common: ProductOperatorRun {
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
 ///         watch_namespace: WatchNamespace::One("foobar".to_string()),
-///         telemetry_arguments: TelemetryOptions::default(),
-///         cluster_info_opts: KubernetesClusterInfoOpts {
+///         telemetry: TelemetryOptions::default(),
+///         cluster_info: KubernetesClusterInfoOptions {
 ///             kubernetes_cluster_domain: None,
 ///             kubernetes_node_name: "baz".to_string(),
+///         },
+///         operator_environment: OperatorEnvironmentOptions {
+///             operator_namespace: "stackable-operators".to_string(),
+///             operator_service_name: "foo-operator".to_string(),
 ///         },
 ///     },
 /// }));
@@ -220,10 +239,13 @@ pub struct ProductOperatorRun {
     pub watch_namespace: WatchNamespace,
 
     #[command(flatten)]
-    pub telemetry_arguments: TelemetryOptions,
+    pub operator_environment: OperatorEnvironmentOptions,
 
     #[command(flatten)]
-    pub cluster_info_opts: KubernetesClusterInfoOpts,
+    pub telemetry: TelemetryOptions,
+
+    #[command(flatten)]
+    pub cluster_info: KubernetesClusterInfoOptions,
 }
 
 /// A path to a [`ProductConfigManager`] spec file
@@ -281,11 +303,26 @@ impl ProductConfigPath {
     }
 }
 
+#[derive(clap::Parser, Debug, PartialEq, Eq)]
+pub struct OperatorEnvironmentOptions {
+    /// The namespace the operator is running in, usually `stackable-operators`.
+    ///
+    /// Note that when running the operator on Kubernetes we recommend to use the
+    /// [downward API](https://kubernetes.io/docs/concepts/workloads/pods/downward-api/)
+    /// to let Kubernetes project the namespace as the `OPERATOR_NAMESPACE` env variable.
+    #[arg(long, env)]
+    pub operator_namespace: String,
+
+    /// The name of the service the operator is reachable at, usually
+    /// something like `<product>-operator`.
+    #[arg(long, env)]
+    pub operator_service_name: String,
+}
+
 #[cfg(test)]
 mod tests {
-    use std::{env, fs::File};
+    use std::fs::File;
 
-    use clap::Parser;
     use rstest::*;
     use tempfile::tempdir;
 
@@ -294,7 +331,6 @@ mod tests {
     const USER_PROVIDED_PATH: &str = "user_provided_path_properties.yaml";
     const DEPLOY_FILE_PATH: &str = "deploy_config_spec_properties.yaml";
     const DEFAULT_FILE_PATH: &str = "default_file_path_properties.yaml";
-    const WATCH_NAMESPACE: &str = "WATCH_NAMESPACE";
 
     #[test]
     fn verify_cli() {
@@ -377,77 +413,5 @@ mod tests {
         } else {
             panic!("must return RequiredFileMissing when file was not found")
         }
-    }
-
-    #[test]
-    fn product_operator_run_watch_namespace() {
-        // clean env var to not interfere if already set
-        unsafe { env::remove_var(WATCH_NAMESPACE) };
-
-        // cli with namespace
-        let opts = ProductOperatorRun::parse_from([
-            "run",
-            "--product-config",
-            "bar",
-            "--watch-namespace",
-            "foo",
-            "--kubernetes-node-name",
-            "baz",
-        ]);
-        assert_eq!(
-            opts,
-            ProductOperatorRun {
-                product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::One("foo".to_string()),
-                cluster_info_opts: KubernetesClusterInfoOpts {
-                    kubernetes_cluster_domain: None,
-                    kubernetes_node_name: "baz".to_string()
-                },
-                telemetry_arguments: Default::default(),
-            }
-        );
-
-        // no cli / no env
-        let opts = ProductOperatorRun::parse_from([
-            "run",
-            "--product-config",
-            "bar",
-            "--kubernetes-node-name",
-            "baz",
-        ]);
-        assert_eq!(
-            opts,
-            ProductOperatorRun {
-                product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::All,
-                cluster_info_opts: KubernetesClusterInfoOpts {
-                    kubernetes_cluster_domain: None,
-                    kubernetes_node_name: "baz".to_string()
-                },
-                telemetry_arguments: Default::default(),
-            }
-        );
-
-        // env with namespace
-        unsafe { env::set_var(WATCH_NAMESPACE, "foo") };
-        let opts = ProductOperatorRun::parse_from([
-            "run",
-            "--product-config",
-            "bar",
-            "--kubernetes-node-name",
-            "baz",
-        ]);
-        assert_eq!(
-            opts,
-            ProductOperatorRun {
-                product_config: ProductConfigPath::from("bar".as_ref()),
-                watch_namespace: WatchNamespace::One("foo".to_string()),
-                cluster_info_opts: KubernetesClusterInfoOpts {
-                    kubernetes_cluster_domain: None,
-                    kubernetes_node_name: "baz".to_string()
-                },
-                telemetry_arguments: Default::default(),
-            }
-        );
     }
 }

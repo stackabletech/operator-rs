@@ -21,7 +21,7 @@ use tracing::trace;
 
 use crate::{
     kvp::LabelSelectorExt,
-    utils::cluster_info::{KubernetesClusterInfo, KubernetesClusterInfoOpts},
+    utils::cluster_info::{KubernetesClusterInfo, KubernetesClusterInfoOptions},
 };
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -529,13 +529,13 @@ impl Client {
     /// use k8s_openapi::api::core::v1::Pod;
     /// use stackable_operator::{
     ///     client::{Client, initialize_operator},
-    ///     utils::cluster_info::KubernetesClusterInfoOpts,
+    ///     utils::cluster_info::KubernetesClusterInfoOptions,
     /// };
     ///
     /// #[tokio::main]
     /// async fn main() {
-    /// let cluster_info_opts = KubernetesClusterInfoOpts::parse();
-    /// let client = initialize_operator(None, &cluster_info_opts)
+    /// let cluster_info_options = KubernetesClusterInfoOptions::parse();
+    /// let client = initialize_operator(None, &cluster_info_options)
     ///     .await
     ///     .expect("Unable to construct client.");
     /// let watcher_config: watcher::Config =
@@ -652,7 +652,7 @@ where
 
 pub async fn initialize_operator(
     field_manager: Option<String>,
-    cluster_info_opts: &KubernetesClusterInfoOpts,
+    cluster_info_opts: &KubernetesClusterInfoOptions,
 ) -> Result<Client> {
     let kubeconfig: Config = kube::Config::infer()
         .await
@@ -687,10 +687,10 @@ mod tests {
     };
     use tokio::time::error::Elapsed;
 
-    use crate::utils::cluster_info::KubernetesClusterInfoOpts;
+    use crate::utils::cluster_info::KubernetesClusterInfoOptions;
 
-    async fn test_cluster_info_opts() -> KubernetesClusterInfoOpts {
-        KubernetesClusterInfoOpts {
+    async fn test_cluster_info_opts() -> KubernetesClusterInfoOptions {
+        KubernetesClusterInfoOptions {
             // We have to hard-code a made-up cluster domain,
             // since kubernetes_node_name (probably) won't be a valid Node that we can query.
             kubernetes_cluster_domain: Some(

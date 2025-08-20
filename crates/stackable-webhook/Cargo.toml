@@ -10,6 +10,7 @@ repository.workspace = true
 stackable-certs = { path = "../stackable-certs", features = ["rustls"] }
 stackable-telemetry = { path = "../stackable-telemetry" }
 
+arc-swap.workspace = true
 axum.workspace = true
 futures-util.workspace = true
 hyper-util.workspace = true
@@ -17,6 +18,8 @@ hyper.workspace = true
 k8s-openapi.workspace = true
 kube.workspace = true
 opentelemetry.workspace = true
+opentelemetry-semantic-conventions.workspace = true
+rand.workspace = true
 serde_json.workspace = true
 snafu.workspace = true
 tokio-rustls.workspace = true
@@ -25,3 +28,7 @@ tower-http.workspace = true
 tower.workspace = true
 tracing.workspace = true
 tracing-opentelemetry.workspace = true
+x509-cert.workspace = true
+
+[dev-dependencies]
+clap.workspace = true
