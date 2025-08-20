@@ -3,6 +3,6 @@
 
 pub mod crd;
 pub mod secret;
-#[cfg(feature = "time")]
+
 pub mod time;
 pub mod yaml;
