@@ -3129,6 +3129,7 @@ dependencies = [
  "serde_json",
  "snafu 0.8.6",
  "stackable-certs",
+ "stackable-operator",
  "stackable-shared",
  "stackable-telemetry",
  "tokio",

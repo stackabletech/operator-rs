@@ -32,4 +32,7 @@ tracing-opentelemetry.workspace = true
 x509-cert.workspace = true
 
 [dev-dependencies]
+# Only needed for doc tests / examples
+stackable-operator = { path = "../stackable-operator" }
+
 clap.workspace = true
