@@ -44,7 +44,7 @@ pub mod versioned {
         pdb_config: stackable_operator::commons::pdb::PdbConfig,
         product_image: stackable_operator::commons::product_image_selection::ProductImage,
         secret_class_volume: stackable_operator::commons::secret_class::SecretClassVolume,
-        secret_reference: stackable_operator::shared::commons::secret::SecretReference,
+        secret_reference: stackable_operator::shared::secret::SecretReference,
         tls_client_details: stackable_operator::commons::tls_verification::TlsClientDetails,
 
         // Already versioned

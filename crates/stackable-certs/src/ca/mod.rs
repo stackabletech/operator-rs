@@ -6,7 +6,7 @@ use const_oid::db::rfc5280::{ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH};
 use k8s_openapi::api::core::v1::Secret;
 use kube::{Api, Client, runtime::reflector::ObjectRef};
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_shared::{commons::secret::SecretReference, time::Duration};
+use stackable_shared::{secret::SecretReference, time::Duration};
 use tracing::{debug, instrument};
 use x509_cert::{
     Certificate,
