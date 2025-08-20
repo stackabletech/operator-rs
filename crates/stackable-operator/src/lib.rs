@@ -2,7 +2,7 @@
 //!
 //! - `default` enables a default set of features which most operators need.
 //! - `full` enables all available features.
-//! - `time` enables interoperability between [`time::Duration`] and the `time` crate.
+//! - `time` enables interoperability between [`shared::time::Duration`] and the `time` crate.
 //! - `telemetry` enables various helpers for emitting telemetry data.
 //! - `versioned` enables the macro for CRD versioning.
 
