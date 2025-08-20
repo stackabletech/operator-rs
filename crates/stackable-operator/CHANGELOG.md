@@ -6,16 +6,25 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add `ProbeBuilder` to build Kubernetes container probes ([#1078]).
 - Re-export `stackable-certs` and `stackable-webhook` crates ([#1074]).
 
 ### Changed
 
+- BREAKING: The `ResolvedProductImage` field `app_version_label` was renamed to `app_version_label_value` to match changes to its type ([#1076]).
 - BREAKING: Some modules have been moved into the `stackable-shared` crate, so that they can also be
   used in `stackable-certs` and `stackable-webhook` ([#1074]):
   - The module `stackable_operator::time` has moved to `stackable_operator::shared::time`
   - The module `stackable_operator::commons::secret` has moved to `stackable_operator::shared::commons::secret`
 
+### Fixed
+
+- BREAKING: Fix bug where `ResolvedProductImage::app_version_label` could not be used as a label value because it can contain invalid characters.
+  This is the case when referencing custom images via a `@sha256:...` hash. As such, the `product_image_selection::resolve` function is now fallible ([#1076]).
+
 [#1074]: https://github.com/stackabletech/operator-rs/pull/1074
+[#1076]: https://github.com/stackabletech/operator-rs/pull/1076
+[#1078]: https://github.com/stackabletech/operator-rs/pull/1078
 
 ## [0.94.0] - 2025-07-10
 

@@ -29,6 +29,7 @@ use crate::{
 };
 
 pub mod container;
+pub mod probe;
 pub mod resources;
 pub mod security;
 pub mod volume;

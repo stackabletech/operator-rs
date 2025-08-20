@@ -1382,7 +1382,7 @@ sinks:
 ///
 /// # let resolved_product_image = ResolvedProductImage {
 /// #     product_version: "1.0.0".into(),
-/// #     app_version_label: "1.0.0".into(),
+/// #     app_version_label_value: "1.0.0".parse().expect("static app version label is always valid"),
 /// #     image: "oci.stackable.tech/sdp/my-product:1.0.0-stackable1.0.0".into(),
 /// #     image_pull_policy: "Always".into(),
 /// #     pull_secrets: None,
