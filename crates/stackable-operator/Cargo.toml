@@ -8,17 +8,22 @@ edition.workspace = true
 repository.workspace = true
 
 [features]
-full = ["time", "telemetry", "versioned"]
+full = ["certs", "telemetry", "versioned", "time", "webhook"]
 default = ["telemetry", "versioned"]
-time = ["dep:time"]
-telemetry = []
-versioned = []
+
+certs = ["dep:stackable-certs"]
+telemetry = ["dep:stackable-telemetry"]
+time = ["stackable-shared/time"]
+versioned = ["dep:stackable-versioned"]
+webhook = ["dep:stackable-webhook"]
 
 [dependencies]
+stackable-certs = { path = "../stackable-certs", optional = true }
 stackable-operator-derive = { path = "../stackable-operator-derive" }
 stackable-shared = { path = "../stackable-shared" }
-stackable-telemetry = { path = "../stackable-telemetry", features = ["clap"] }
-stackable-versioned = { path = "../stackable-versioned" }
+stackable-telemetry = { path = "../stackable-telemetry", optional = true, features = ["clap"] }
+stackable-versioned = { path = "../stackable-versioned", optional = true }
+stackable-webhook = { path = "../stackable-webhook", optional = true }
 
 chrono.workspace = true
 clap.workspace = true
@@ -42,7 +47,6 @@ serde_yaml.workspace = true
 serde.workspace = true
 snafu.workspace = true
 strum.workspace = true
-time = { workspace = true, optional = true }
 tokio.workspace = true
 tracing.workspace = true
 tracing-appender.workspace = true

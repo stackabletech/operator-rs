@@ -7,8 +7,10 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - Add `ProbeBuilder` to build Kubernetes container probes ([#1078]).
+- Re-export `stackable-certs` and `stackable-webhook` crates ([#1074]).
 - BREAKING: Add two new required CLI arguments: `--operator-namespace` and `--operator-service-name`.
   These two values are used to construct the service name in the CRD conversion webhook ([#1066]).
+- Re-export `stackable-certs` and `stackable-webhook` crates ([#1074]).
 
 ### Changed
 
@@ -16,6 +18,10 @@ All notable changes to this project will be documented in this file.
 - BREAKING: Rename two fields of the `ProductOperatorRun` struct for consistency and clarity ([#1066]):
   - `telemetry_arguments` -> `telemetry`
   - `cluster_info_opts` -> `cluster_info`
+- BREAKING: Some modules have been moved into the `stackable-shared` crate, so that they can also be
+  used in `stackable-certs` and `stackable-webhook` ([#1074]):
+  - The module `stackable_operator::time` has moved to `stackable_operator::shared::time`
+  - The module `stackable_operator::commons::secret` has moved to `stackable_operator::shared::secret`
 
 ### Fixed
 
@@ -23,6 +29,7 @@ All notable changes to this project will be documented in this file.
   This is the case when referencing custom images via a `@sha256:...` hash. As such, the `product_image_selection::resolve` function is now fallible ([#1076]).
 
 [#1066]: https://github.com/stackabletech/operator-rs/pull/1066
+[#1074]: https://github.com/stackabletech/operator-rs/pull/1074
 [#1076]: https://github.com/stackabletech/operator-rs/pull/1076
 [#1078]: https://github.com/stackabletech/operator-rs/pull/1078
 

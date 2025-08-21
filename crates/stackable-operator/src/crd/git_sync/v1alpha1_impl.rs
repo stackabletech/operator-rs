@@ -4,6 +4,7 @@ use k8s_openapi::api::core::v1::{
     Container, EmptyDirVolumeSource, EnvVar, EnvVarSource, SecretKeySelector, Volume, VolumeMount,
 };
 use snafu::{ResultExt, Snafu};
+use stackable_shared::time::Duration;
 use strum::{EnumDiscriminants, IntoStaticStr};
 
 use crate::{
@@ -17,7 +18,6 @@ use crate::{
         framework::capture_shell_output,
         spec::{ContainerLogConfig, ContainerLogConfigChoice},
     },
-    time::Duration,
     utils::COMMON_BASH_TRAP_FUNCTIONS,
 };
 

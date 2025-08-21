@@ -8,8 +8,8 @@ repository.workspace = true
 
 [dependencies]
 stackable-certs = { path = "../stackable-certs", features = ["rustls"] }
+stackable-shared = { path = "../stackable-shared" }
 stackable-telemetry = { path = "../stackable-telemetry" }
-stackable-operator = { path = "../stackable-operator" }
 
 arc-swap.workspace = true
 axum.workspace = true
@@ -32,4 +32,11 @@ tracing-opentelemetry.workspace = true
 x509-cert.workspace = true
 
 [dev-dependencies]
+# Only needed for doc tests
+stackable-operator = { path = "../stackable-operator" }
+
 clap.workspace = true
+
+# Only needed for tests, this is a false positive of "cargo udeps"
+[package.metadata.cargo-udeps.ignore]
+development = ["stackable-operator"]

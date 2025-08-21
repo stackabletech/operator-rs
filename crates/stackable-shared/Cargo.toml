@@ -6,12 +6,23 @@ license.workspace = true
 edition.workspace = true
 repository.workspace = true
 
+[features]
+full = ["time"]
+default = ["time"]
+
+time = ["dep:time"]
+
 [dependencies]
+k8s-openapi.workspace = true
 kube.workspace = true
+schemars.workspace = true
 semver.workspace = true
 serde.workspace = true
 serde_yaml.workspace = true
 snafu.workspace = true
+strum.workspace = true
+time = { workspace = true, optional = true }
 
 [dev-dependencies]
 k8s-openapi.workspace = true
+rstest.workspace = true

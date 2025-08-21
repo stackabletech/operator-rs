@@ -9,12 +9,12 @@ use k8s_openapi::{
     apimachinery::pkg::api::resource::Quantity,
 };
 use snafu::{ResultExt, Snafu};
+use stackable_shared::time::Duration;
 use tracing::warn;
 
 use crate::{
     builder::meta::ObjectMetaBuilder,
     kvp::{Annotation, AnnotationError, Annotations, LabelError, Labels},
-    time::Duration,
 };
 
 /// A builder to build [`Volume`] objects. May only contain one `volume_source`

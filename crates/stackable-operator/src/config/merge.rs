@@ -11,8 +11,7 @@ use k8s_openapi::{
     apimachinery::pkg::{api::resource::Quantity, apis::meta::v1::LabelSelector},
 };
 pub use stackable_operator_derive::Merge;
-
-use crate::time::Duration;
+use stackable_shared::time::Duration;
 
 /// A type that can be merged with itself
 ///

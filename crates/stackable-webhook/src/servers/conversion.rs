@@ -52,7 +52,7 @@ pub enum ConversionWebhookError {
 
     #[snafu(display("failed to update CRD {crd_name:?}"))]
     UpdateCrd {
-        source: stackable_operator::kube::Error,
+        source: kube::Error,
         crd_name: String,
     },
 }

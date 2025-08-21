@@ -4,9 +4,9 @@ use std::{fmt::Debug, str::FromStr};
 
 use const_oid::db::rfc5280::{ID_KP_CLIENT_AUTH, ID_KP_SERVER_AUTH};
 use k8s_openapi::api::core::v1::Secret;
-use kube::runtime::reflector::ObjectRef;
+use kube::{Api, Client, runtime::reflector::ObjectRef};
 use snafu::{OptionExt, ResultExt, Snafu};
-use stackable_operator::{client::Client, commons::secret::SecretReference, time::Duration};
+use stackable_shared::{secret::SecretReference, time::Duration};
 use tracing::{debug, instrument};
 use x509_cert::{
     Certificate,
@@ -454,15 +454,15 @@ where
     /// Create a [`CertificateAuthority`] from a Kubernetes [`SecretReference`].
     #[instrument(
         name = "create_certificate_authority_from_k8s_secret_ref",
-        skip(secret_ref, client)
+        skip(client)
     )]
     pub async fn from_secret_ref(
         secret_ref: &SecretReference,
         key_certificate: &str,
         key_private_key: &str,
-        client: &Client,
+        client: Client,
     ) -> Result<Self, SecretError<S::Error>> {
-        let secret_api = client.get_api::<Secret>(&secret_ref.namespace);
+        let secret_api = Api::namespaced(client, &secret_ref.namespace);
         let secret = secret_api
             .get(&secret_ref.name)
             .await
