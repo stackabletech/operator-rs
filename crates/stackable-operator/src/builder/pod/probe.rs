@@ -73,6 +73,7 @@ pub struct ProbeBuilder<Action, Period> {
 /// type, see [container-probes] documentation.
 ///
 /// [container-probes]: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
+#[derive(Clone, Debug)]
 pub enum ProbeAction {
     Exec(ExecAction),
     Grpc(GRPCAction),

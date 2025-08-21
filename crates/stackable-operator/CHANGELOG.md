@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Derive `Clone` for `ProbeBuilder` ([#XXXX]).
+- Derive `Clone` for `ProbeBuilder` and `ProbeAction` ([#XXXX]).
 
 ## [0.95.0] - 2025-08-21
 
