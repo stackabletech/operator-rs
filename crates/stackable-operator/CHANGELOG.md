@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.95.0] - 2025-08-21
+
 ### Added
 
 - Add `ProbeBuilder` to build Kubernetes container probes ([#1078]).
