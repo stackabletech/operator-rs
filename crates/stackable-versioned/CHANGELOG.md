@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.8.1] - 2025-08-21
+
 ### Fixed
 
 - Replace the hardcoded `::stackable_versioned` path in the `tracking_from` function with the configurable crate override ([#1079]).

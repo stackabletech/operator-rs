@@ -3012,7 +3012,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.94.0"
+version = "0.95.0"
 dependencies = [
  "chrono",
  "clap",
@@ -3064,7 +3064,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-shared"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "k8s-openapi",
  "kube",
@@ -3105,7 +3105,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "insta",
  "k8s-openapi",
@@ -3120,7 +3120,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned-macros"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "convert_case",
  "darling 0.21.2",
@@ -3148,7 +3148,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-webhook"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "arc-swap",
  "axum",
