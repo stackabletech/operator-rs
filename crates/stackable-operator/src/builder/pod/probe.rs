@@ -241,7 +241,7 @@ impl ProbeBuilder<ProbeAction, Duration> {
 
     /// Build the [`Probe`] using the specified contents.
     ///
-    /// Returns an [`Error::DurationTooLongSnafu`] error in case the involved [`Duration`]s are too
+    /// Returns an [`Error::DurationTooLong`] error in case the involved [`Duration`]s are too
     /// long.
     pub fn build(self) -> Result<Probe, Error> {
         let mut probe = Probe {
