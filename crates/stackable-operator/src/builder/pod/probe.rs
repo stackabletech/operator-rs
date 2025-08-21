@@ -53,7 +53,7 @@ pub enum Error {
     PeriodIsZero {},
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ProbeBuilder<Action, Period> {
     // Mandatory field
     action: Action,
@@ -238,6 +238,10 @@ impl ProbeBuilder<ProbeAction, Duration> {
         Ok(self.with_failure_threshold(failure_threshold.ceil() as i32))
     }
 
+    /// Build the [`Probe`] using the specified contents.
+    ///
+    /// Returns an [`Error::DurationTooLongSnafu`] error in case the involved [`Duration`]s are too
+    /// long.
     pub fn build(self) -> Result<Probe, Error> {
         let mut probe = Probe {
             exec: None,

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.95.1] - 2025-08-21
+
+### Fixed
+
+- Derive `Clone` for `ProbeBuilder` ([#XXXX]).
+
 ## [0.95.0] - 2025-08-21
 
 ### Added
