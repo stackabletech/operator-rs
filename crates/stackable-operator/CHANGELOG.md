@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.95.1] - 2025-08-21
+
+### Fixed
+
+- Derive `Clone` for `ProbeBuilder` and `ProbeAction` ([#1082]).
+
+[#1082]: https://github.com/stackabletech/operator-rs/pull/1082
+
 ## [0.95.0] - 2025-08-21
 
 ### Added
