@@ -163,7 +163,7 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 /// Can be embedded into an extended argument set:
 ///
 /// ```rust
-/// # use stackable_operator::cli::{Command, OperatorEnvironmentOptions, ProductOperatorRun, ProductConfigPath};
+/// # use stackable_operator::cli::{Command, CommonStackableCliArgs, OperatorEnvironmentOptions, ProductOperatorRun, ProductConfigPath};
 /// # use stackable_operator::{namespace::WatchNamespace, utils::cluster_info::KubernetesClusterInfoOptions};
 /// # use stackable_telemetry::tracing::TelemetryOptions;
 /// use clap::Parser;
@@ -195,13 +195,15 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
 ///     common: ProductOperatorRun {
+///         common: CommonStackableCliArgs {
+///             telemetry: TelemetryOptions::default(),
+///             cluster_info: KubernetesClusterInfoOptions {
+///                 kubernetes_cluster_domain: None,
+///                 kubernetes_node_name: "baz".to_string(),
+///             },
+///         },
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
 ///         watch_namespace: WatchNamespace::One("foobar".to_string()),
-///         telemetry: TelemetryOptions::default(),
-///         cluster_info: KubernetesClusterInfoOptions {
-///             kubernetes_cluster_domain: None,
-///             kubernetes_node_name: "baz".to_string(),
-///         },
 ///         operator_environment: OperatorEnvironmentOptions {
 ///             operator_namespace: "stackable-operators".to_string(),
 ///             operator_service_name: "foo-operator".to_string(),
