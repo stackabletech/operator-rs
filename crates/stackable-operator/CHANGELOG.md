@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.96.0] - 2025-08-25
+
 ### Added
 
 - Add a `cli::CommonOptions` struct, which can be used for non-operator Stackable tools ([#1083]).
