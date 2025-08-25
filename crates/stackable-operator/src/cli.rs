@@ -251,7 +251,7 @@ pub struct ProductOperatorRun {
 ///
 /// [`ProductOperatorRun`] is intended for operators, but it has fields that are not needed for
 /// utilities such as `user-info-fetcher` or `opa-bundle-builder`. So this struct offers a limited
-/// set, that should be shared across all Stackable tools running in Kubernetes.
+/// set, that should be shared across all Stackable tools running on Kubernetes.
 #[derive(clap::Parser, Debug, PartialEq, Eq)]
 pub struct CommonStackableCliArgs {
     #[command(flatten)]
