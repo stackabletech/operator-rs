@@ -6,13 +6,21 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add a `CommonStackableCliArgs` struct, which can be used for non-operator Stackable tools ([#10XX]).
+- Add a `CommonStackableCliArgs` struct, which can be used for non-operator Stackable tools ([#1083]).
 
 ### Changed
 
-- BREAKING: The `telemetry` and `cluster_info` fields of `ProductOperatorRun` have moved below the `common` field ([#10XX]).
+- BREAKING: The `telemetry` and `cluster_info` fields of `ProductOperatorRun` have moved below the `common` field ([#1083]).
 
-[#10XX]: https://github.com/stackabletech/operator-rs/pull/10XX
+[#1083]: https://github.com/stackabletech/operator-rs/pull/1083
+
+## [0.95.1] - 2025-08-21
+
+### Fixed
+
+- Derive `Clone` for `ProbeBuilder` and `ProbeAction` ([#1082]).
+
+[#1082]: https://github.com/stackabletech/operator-rs/pull/1082
 
 ## [0.95.0] - 2025-08-21
 

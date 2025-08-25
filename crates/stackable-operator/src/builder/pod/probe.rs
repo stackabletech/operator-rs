@@ -53,7 +53,7 @@ pub enum Error {
     PeriodIsZero {},
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ProbeBuilder<Action, Period> {
     // Mandatory field
     action: Action,
@@ -73,6 +73,7 @@ pub struct ProbeBuilder<Action, Period> {
 /// type, see [container-probes] documentation.
 ///
 /// [container-probes]: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
+#[derive(Clone, Debug)]
 pub enum ProbeAction {
     Exec(ExecAction),
     Grpc(GRPCAction),
@@ -238,6 +239,10 @@ impl ProbeBuilder<ProbeAction, Duration> {
         Ok(self.with_failure_threshold(failure_threshold.ceil() as i32))
     }
 
+    /// Build the [`Probe`] using the specified contents.
+    ///
+    /// Returns an [`Error::DurationTooLong`] error in case the involved [`Duration`]s are too
+    /// long.
     pub fn build(self) -> Result<Probe, Error> {
         let mut probe = Probe {
             exec: None,
