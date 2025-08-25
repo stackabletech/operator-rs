@@ -230,6 +230,12 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 #[derive(clap::Parser, Debug, PartialEq, Eq)]
 #[command(long_about = "")]
 pub struct ProductOperatorRun {
+    #[command(flatten)]
+    pub common: CommonStackableCliArgs,
+
+    #[command(flatten)]
+    pub operator_environment: OperatorEnvironmentOptions,
+
     /// Provides the path to a product-config file
     #[arg(long, short = 'p', value_name = "FILE", default_value = "", env)]
     pub product_config: ProductConfigPath,
@@ -237,10 +243,15 @@ pub struct ProductOperatorRun {
     /// Provides a specific namespace to watch (instead of watching all namespaces)
     #[arg(long, env, default_value = "")]
     pub watch_namespace: WatchNamespace,
+}
 
-    #[command(flatten)]
-    pub operator_environment: OperatorEnvironmentOptions,
-
+/// All the CLI arguments that all (or at least most) Stackable applications use.
+///
+/// [`ProductOperatorRun`] is intended for operators, but it has fields that are not needed for
+/// utilities such as `user-info-fetcher` or `opa-bundle-builder`. So this struct offers a limited
+/// set, that should be shared across all Stackable tools running in Kubernetes.
+#[derive(clap::Parser, Debug, PartialEq, Eq)]
+pub struct CommonStackableCliArgs {
     #[command(flatten)]
     pub telemetry: TelemetryOptions,
 
