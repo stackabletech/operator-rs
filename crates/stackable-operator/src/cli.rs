@@ -163,7 +163,7 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 /// Can be embedded into an extended argument set:
 ///
 /// ```rust
-/// # use stackable_operator::cli::{Command, CommonStackableCliArgs, OperatorEnvironmentOptions, ProductOperatorRun, ProductConfigPath};
+/// # use stackable_operator::cli::{Command, CommonOptions, OperatorEnvironmentOptions, ProductOperatorRun, ProductConfigPath};
 /// # use stackable_operator::{namespace::WatchNamespace, utils::cluster_info::KubernetesClusterInfoOptions};
 /// # use stackable_telemetry::tracing::TelemetryOptions;
 /// use clap::Parser;
