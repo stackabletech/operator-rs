@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add a `cli::CommonOptions` struct, which can be used for non-operator Stackable tools ([#1083]).
+
+### Changed
+
+- BREAKING: The `telemetry` and `cluster_info` fields of `ProductOperatorRun` have moved below the `common` field ([#1083]).
+
+[#1083]: https://github.com/stackabletech/operator-rs/pull/1083
+
 ## [0.95.1] - 2025-08-21
 
 ### Fixed

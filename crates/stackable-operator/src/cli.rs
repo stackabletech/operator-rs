@@ -163,7 +163,7 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 /// Can be embedded into an extended argument set:
 ///
 /// ```rust
-/// # use stackable_operator::cli::{Command, OperatorEnvironmentOptions, ProductOperatorRun, ProductConfigPath};
+/// # use stackable_operator::cli::{Command, CommonOptions, OperatorEnvironmentOptions, ProductOperatorRun, ProductConfigPath};
 /// # use stackable_operator::{namespace::WatchNamespace, utils::cluster_info::KubernetesClusterInfoOptions};
 /// # use stackable_telemetry::tracing::TelemetryOptions;
 /// use clap::Parser;
@@ -195,13 +195,15 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
 ///     common: ProductOperatorRun {
+///         common: CommonOptions {
+///             telemetry: TelemetryOptions::default(),
+///             cluster_info: KubernetesClusterInfoOptions {
+///                 kubernetes_cluster_domain: None,
+///                 kubernetes_node_name: "baz".to_string(),
+///             },
+///         },
 ///         product_config: ProductConfigPath::from("bar".as_ref()),
 ///         watch_namespace: WatchNamespace::One("foobar".to_string()),
-///         telemetry: TelemetryOptions::default(),
-///         cluster_info: KubernetesClusterInfoOptions {
-///             kubernetes_cluster_domain: None,
-///             kubernetes_node_name: "baz".to_string(),
-///         },
 ///         operator_environment: OperatorEnvironmentOptions {
 ///             operator_namespace: "stackable-operators".to_string(),
 ///             operator_service_name: "foo-operator".to_string(),
@@ -230,6 +232,12 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 #[derive(clap::Parser, Debug, PartialEq, Eq)]
 #[command(long_about = "")]
 pub struct ProductOperatorRun {
+    #[command(flatten)]
+    pub common: CommonOptions,
+
+    #[command(flatten)]
+    pub operator_environment: OperatorEnvironmentOptions,
+
     /// Provides the path to a product-config file
     #[arg(long, short = 'p', value_name = "FILE", default_value = "", env)]
     pub product_config: ProductConfigPath,
@@ -237,10 +245,15 @@ pub struct ProductOperatorRun {
     /// Provides a specific namespace to watch (instead of watching all namespaces)
     #[arg(long, env, default_value = "")]
     pub watch_namespace: WatchNamespace,
+}
 
-    #[command(flatten)]
-    pub operator_environment: OperatorEnvironmentOptions,
-
+/// All the CLI arguments that all (or at least most) Stackable applications use.
+///
+/// [`ProductOperatorRun`] is intended for operators, but it has fields that are not needed for
+/// utilities such as `user-info-fetcher` or `opa-bundle-builder`. So this struct offers a limited
+/// set, that should be shared across all Stackable tools running on Kubernetes.
+#[derive(clap::Parser, Debug, PartialEq, Eq)]
+pub struct CommonOptions {
     #[command(flatten)]
     pub telemetry: TelemetryOptions,
 
