@@ -195,7 +195,7 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 /// assert_eq!(opts, Command::Run(Run {
 ///     name: "foo".to_string(),
 ///     common: ProductOperatorRun {
-///         common: CommonStackableCliArgs {
+///         common: CommonOptions {
 ///             telemetry: TelemetryOptions::default(),
 ///             cluster_info: KubernetesClusterInfoOptions {
 ///                 kubernetes_cluster_domain: None,
@@ -233,7 +233,7 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 #[command(long_about = "")]
 pub struct ProductOperatorRun {
     #[command(flatten)]
-    pub common: CommonStackableCliArgs,
+    pub common: CommonOptions,
 
     #[command(flatten)]
     pub operator_environment: OperatorEnvironmentOptions,
@@ -253,7 +253,7 @@ pub struct ProductOperatorRun {
 /// utilities such as `user-info-fetcher` or `opa-bundle-builder`. So this struct offers a limited
 /// set, that should be shared across all Stackable tools running on Kubernetes.
 #[derive(clap::Parser, Debug, PartialEq, Eq)]
-pub struct CommonStackableCliArgs {
+pub struct CommonOptions {
     #[command(flatten)]
     pub telemetry: TelemetryOptions,
 

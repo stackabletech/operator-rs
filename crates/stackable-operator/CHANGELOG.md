@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Add a `CommonStackableCliArgs` struct, which can be used for non-operator Stackable tools ([#1083]).
+- Add a `cli::CommonOptions` struct, which can be used for non-operator Stackable tools ([#1083]).
 
 ### Changed
 
