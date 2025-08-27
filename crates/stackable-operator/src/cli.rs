@@ -251,10 +251,10 @@ pub struct ProductOperatorRun {
     ///
     /// Maintenance includes creating the CRD initially, adding new versions and keeping the TLS
     /// certificate of webhooks up to date. Turning this off can be desirable to reduce the RBAC
-    /// permission of the operators.
+    /// permissions of the operator.
     ///
-    /// WARNING: If you disable CRD maintenance you are responsible for maintaining it, including
-    /// the points above.
+    /// WARNING: If you disable CRD maintenance you are responsible for maintaining it, including,
+    /// but not limited to, the points above.
     #[arg(long, env)]
     pub disable_crd_maintenance: bool,
 }
