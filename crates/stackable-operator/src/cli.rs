@@ -208,6 +208,7 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///             operator_namespace: "stackable-operators".to_string(),
 ///             operator_service_name: "foo-operator".to_string(),
 ///         },
+///         disable_crd_maintenance: false,
 ///     },
 /// }));
 /// ```
