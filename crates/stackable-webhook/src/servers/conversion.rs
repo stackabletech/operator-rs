@@ -78,6 +78,12 @@ pub struct ConversionWebhookOptions {
     /// The name of the Kubernetes service which points to the operator/webhook.
     pub service_name: String,
 
+    /// If the CRDs should be maintained automatically. Use the (negated) value from
+    /// `stackable_operator::cli::ProductOperatorRun::disable_crd_maintenance`
+    /// for this.
+    // # Because of https://github.com/rust-lang/cargo/issues/3475 we can not use a real link here
+    pub maintain_crds: bool,
+
     /// The field manager used to apply Kubernetes objects, typically the operator name, e.g.
     /// `airflow-operator`.
     pub field_manager: String,
@@ -91,7 +97,6 @@ pub struct ConversionWebhookServer {
     options: ConversionWebhookOptions,
     router: Router,
     client: Client,
-    maintain_crds: bool,
 }
 
 impl ConversionWebhookServer {
@@ -104,9 +109,6 @@ impl ConversionWebhookServer {
     /// 2. A conversion function to convert between CRD versions. Typically you would use the
     ///    the auto-generated `try_convert` function on CRD spec definition structs for this.
     /// 3. A [`kube::Client`] used to create/update the CRDs.
-    /// 4. If the CRDs should be maintained automatically. Use `stackable_operator::cli::ProductOperatorRun::disable_crd_maintenance`
-    /// for this.
-    // # Because of https://github.com/rust-lang/cargo/issues/3475 we can not use a real link here
     ///
     /// The [`ConversionWebhookServer`] takes care of reconciling the CRDs into the Kubernetes
     /// cluster and takes care of adding itself as conversion webhook. This includes TLS
@@ -149,9 +151,10 @@ impl ConversionWebhookServer {
     ///     socket_addr: format!("0.0.0.0:{CONVERSION_WEBHOOK_HTTPS_PORT}")
     ///         .parse()
     ///         .expect("static address is always valid"),
-    ///     field_manager: OPERATOR_NAME.to_owned(),
     ///     namespace: operator_environment.operator_namespace,
     ///     service_name: operator_environment.operator_service_name,
+    ///     maintain_crds: !disable_crd_maintenance,
+    ///     field_manager: OPERATOR_NAME.to_owned(),
     /// };
     ///
     /// // Construct the conversion webhook server
@@ -159,7 +162,6 @@ impl ConversionWebhookServer {
     ///     crds_and_handlers,
     ///     options,
     ///     client,
-    ///     !disable_crd_maintenance,
     /// )
     /// .await
     /// .expect("failed to create ConversionWebhookServer");
@@ -175,7 +177,6 @@ impl ConversionWebhookServer {
         crds_and_handlers: impl IntoIterator<Item = (CustomResourceDefinition, H)>,
         options: ConversionWebhookOptions,
         client: Client,
-        maintain_crds: bool,
     ) -> Result<Self, ConversionWebhookError>
     where
         H: WebhookHandler<ConversionReview, ConversionReview> + Clone + Send + Sync + 'static,
@@ -201,7 +202,6 @@ impl ConversionWebhookServer {
             router,
             client,
             crds,
-            maintain_crds,
         })
     }
 
@@ -213,14 +213,14 @@ impl ConversionWebhookServer {
             router,
             client,
             crds,
-            maintain_crds,
         } = self;
 
         let ConversionWebhookOptions {
             socket_addr,
-            field_manager,
             namespace: operator_namespace,
             service_name: operator_service_name,
+            maintain_crds,
+            field_manager,
         } = &options;
 
         // This is how Kubernetes calls us, so it decides about the naming.
@@ -247,7 +247,7 @@ impl ConversionWebhookServer {
             .await
             .context(ReceiveCertificateFromChannelSnafu)?;
 
-        if maintain_crds {
+        if *maintain_crds {
             Self::reconcile_crds(
                 &client,
                 field_manager,
