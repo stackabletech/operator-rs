@@ -208,6 +208,7 @@ pub enum Command<Run: Args = ProductOperatorRun> {
 ///             operator_namespace: "stackable-operators".to_string(),
 ///             operator_service_name: "foo-operator".to_string(),
 ///         },
+///         disable_crd_maintenance: false,
 ///     },
 /// }));
 /// ```
@@ -245,6 +246,17 @@ pub struct ProductOperatorRun {
     /// Provides a specific namespace to watch (instead of watching all namespaces)
     #[arg(long, env, default_value = "")]
     pub watch_namespace: WatchNamespace,
+
+    /// Don't maintain the CustomResourceDefinitions (CRDs) the operator is responsible for.
+    ///
+    /// Maintenance includes creating the CRD initially, adding new versions and keeping the TLS
+    /// certificate of webhooks up to date. Turning this off can be desirable to reduce the RBAC
+    /// permissions of the operator.
+    ///
+    /// WARNING: If you disable CRD maintenance you are responsible for maintaining it, including,
+    /// but not limited to, the points above.
+    #[arg(long, env)]
+    pub disable_crd_maintenance: bool,
 }
 
 /// All the CLI arguments that all (or at least most) Stackable applications use.
