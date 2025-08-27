@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- BREAKING: Add a new CLI flag/env to disabling CRD maintenance: `--disable-crd-maintenance` ([#10XX]).
+
+[#10XX]: https://github.com/stackabletech/operator-rs/pull/10XX
+
 ## [0.96.0] - 2025-08-25
 
 ### Added

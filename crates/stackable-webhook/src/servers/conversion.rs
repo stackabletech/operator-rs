@@ -91,17 +91,22 @@ pub struct ConversionWebhookServer {
     options: ConversionWebhookOptions,
     router: Router,
     client: Client,
+    maintain_crds: bool,
 }
 
 impl ConversionWebhookServer {
     /// Creates a new conversion webhook server, which expects POST requests being made to the
     /// `/convert/{crd name}` endpoint.
     ///
-    /// You need to provide two things for every CRD passed in via the `crds_and_handlers` argument:
+    /// You need to provide a few things for every CRD passed in via the `crds_and_handlers` argument:
     ///
     /// 1. The CRD
     /// 2. A conversion function to convert between CRD versions. Typically you would use the
-    ///   the auto-generated `try_convert` function on CRD spec definition structs for this.
+    ///    the auto-generated `try_convert` function on CRD spec definition structs for this.
+    /// 3. A [`kube::Client`] used to create/update the CRDs.
+    /// 4. If we should maintain the CRDs. Use `stackable_operator::cli::ProductOperatorRun::disable_crd_maintenance`
+    /// for this.
+    // # Because of https://github.com/rust-lang/cargo/issues/3475 we can not use a real link here
     ///
     /// The [`ConversionWebhookServer`] takes care of reconciling the CRDs into the Kubernetes
     /// cluster and takes care of adding itself as conversion webhook. This includes TLS
@@ -165,6 +170,7 @@ impl ConversionWebhookServer {
         crds_and_handlers: impl IntoIterator<Item = (CustomResourceDefinition, H)>,
         options: ConversionWebhookOptions,
         client: Client,
+        maintain_crds: bool,
     ) -> Result<Self, ConversionWebhookError>
     where
         H: WebhookHandler<ConversionReview, ConversionReview> + Clone + Send + Sync + 'static,
@@ -190,6 +196,7 @@ impl ConversionWebhookServer {
             router,
             client,
             crds,
+            maintain_crds,
         })
     }
 
@@ -201,6 +208,7 @@ impl ConversionWebhookServer {
             router,
             client,
             crds,
+            maintain_crds,
         } = self;
 
         let ConversionWebhookOptions {
@@ -233,28 +241,34 @@ impl ConversionWebhookServer {
             .recv()
             .await
             .context(ReceiveCertificateFromChannelSnafu)?;
-        Self::reconcile_crds(
-            &client,
-            field_manager,
-            &crds,
-            operator_namespace,
-            operator_service_name,
-            current_cert,
-        )
-        .await
-        .context(ReconcileCrdsSnafu)?;
-
-        try_join!(
-            Self::run_webhook_server(server),
-            Self::run_crd_reconciliation_loop(
-                cert_rx,
+        if maintain_crds {
+            Self::reconcile_crds(
                 &client,
                 field_manager,
                 &crds,
                 operator_namespace,
                 operator_service_name,
-            ),
-        )?;
+                current_cert,
+            )
+            .await
+            .context(ReconcileCrdsSnafu)?;
+        }
+
+        if maintain_crds {
+            try_join!(
+                Self::run_webhook_server(server),
+                Self::run_crd_reconciliation_loop(
+                    cert_rx,
+                    &client,
+                    field_manager,
+                    &crds,
+                    operator_namespace,
+                    operator_service_name,
+                ),
+            )?;
+        } else {
+            Self::run_webhook_server(server).await?;
+        };
 
         Ok(())
     }
