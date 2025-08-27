@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- BREAKING: Support disabling CRD maintenance using a new boolean flag in `ConversionWebhookServer::new` ([#1085]).
+- BREAKING: Support disabling CRD maintenance using a new boolean flag in `ConversionWebhookOptions` ([#1085]).
 
 [#1085]: https://github.com/stackabletech/operator-rs/pull/1085
 
