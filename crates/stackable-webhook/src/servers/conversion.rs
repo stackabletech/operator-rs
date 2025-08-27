@@ -104,7 +104,7 @@ impl ConversionWebhookServer {
     /// 2. A conversion function to convert between CRD versions. Typically you would use the
     ///    the auto-generated `try_convert` function on CRD spec definition structs for this.
     /// 3. A [`kube::Client`] used to create/update the CRDs.
-    /// 4. If we should maintain the CRDs. Use `stackable_operator::cli::ProductOperatorRun::disable_crd_maintenance`
+    /// 4. If the CRDs should be maintained automatically. Use `stackable_operator::cli::ProductOperatorRun::disable_crd_maintenance`
     /// for this.
     // # Because of https://github.com/rust-lang/cargo/issues/3475 we can not use a real link here
     ///
