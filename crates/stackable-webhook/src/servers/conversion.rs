@@ -246,6 +246,7 @@ impl ConversionWebhookServer {
             .recv()
             .await
             .context(ReceiveCertificateFromChannelSnafu)?;
+
         if maintain_crds {
             Self::reconcile_crds(
                 &client,
@@ -257,9 +258,7 @@ impl ConversionWebhookServer {
             )
             .await
             .context(ReconcileCrdsSnafu)?;
-        }
 
-        if maintain_crds {
             try_join!(
                 Self::run_webhook_server(server),
                 Self::run_crd_reconciliation_loop(
