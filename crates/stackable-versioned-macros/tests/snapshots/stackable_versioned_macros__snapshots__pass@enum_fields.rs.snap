@@ -7,7 +7,7 @@ input_file: crates/stackable-versioned-macros/tests/inputs/pass/enum_fields.rs
 pub mod v1alpha1 {
     use super::*;
     pub enum Foo {
-        A { aa: usize },
+        A { aa: usize, aaa: u64 },
         B { bb: bool },
     }
     pub enum Bar {
@@ -20,7 +20,12 @@ pub mod v1alpha1 {
 impl ::core::convert::From<v1alpha1::Foo> for v1alpha2::Foo {
     fn from(__sv_foo: v1alpha1::Foo) -> Self {
         match __sv_foo {
-            v1alpha1::Foo::A { aa } => v1alpha2::Foo::A { aa: aa.into() },
+            v1alpha1::Foo::A { aa, aaa } => {
+                v1alpha2::Foo::A {
+                    aa: aa.into(),
+                    aaa: aaa.into(),
+                }
+            }
             v1alpha1::Foo::B { bb } => v1alpha2::Foo::B { bb: bb.into() },
         }
     }
@@ -29,7 +34,12 @@ impl ::core::convert::From<v1alpha1::Foo> for v1alpha2::Foo {
 impl ::core::convert::From<v1alpha2::Foo> for v1alpha1::Foo {
     fn from(__sv_foo: v1alpha2::Foo) -> Self {
         match __sv_foo {
-            v1alpha2::Foo::A { aa } => v1alpha1::Foo::A { aa: aa.into() },
+            v1alpha2::Foo::A { aa, aaa } => {
+                v1alpha1::Foo::A {
+                    aa: aa.into(),
+                    aaa: aaa.into(),
+                }
+            }
             v1alpha2::Foo::B { bb } => v1alpha1::Foo::B { bb: bb.into() },
         }
     }
@@ -68,7 +78,7 @@ impl ::core::convert::From<v1alpha2::A> for v1alpha1::A {
 pub mod v1alpha2 {
     use super::*;
     pub enum Foo {
-        A { aa: usize },
+        A { aa: usize, aaa: u64 },
         B { bb: bool },
     }
     pub enum Bar {

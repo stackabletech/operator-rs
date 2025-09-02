@@ -193,11 +193,11 @@ impl VersionedVariant {
         match &self.fields {
             Fields::Named(fields_named) => {
                 let fields = Self::named_field_idents(fields_named);
-                Some(quote! { { #(#fields:)* #(#fields.into()),* } })
+                Some(quote! { { #(#fields: #fields.into(),)* } })
             }
             Fields::Unnamed(fields_unnamed) => {
                 let fields = Self::unnamed_field_ident(fields_unnamed);
-                Some(quote! { ( #(#fields.into()),* ) })
+                Some(quote! { ( #(#fields.into())* ) })
             }
             Fields::Unit => None,
         }
@@ -207,11 +207,11 @@ impl VersionedVariant {
         match &self.fields {
             Fields::Named(fields_named) => {
                 let fields = Self::named_field_idents(fields_named);
-                Some(quote! { { #(#fields),* } })
+                Some(quote! { { #(#fields,)* } })
             }
             Fields::Unnamed(fields_unnamed) => {
                 let fields = Self::unnamed_field_ident(fields_unnamed);
-                Some(quote! { ( #(#fields),* ) })
+                Some(quote! { ( #(#fields)* ) })
             }
             Fields::Unit => None,
         }

@@ -4,7 +4,7 @@ use stackable_versioned::versioned;
 // ---
 pub mod versioned {
     enum Foo {
-        A { aa: usize },
+        A { aa: usize, aaa: u64 },
         B { bb: bool },
     }
 
