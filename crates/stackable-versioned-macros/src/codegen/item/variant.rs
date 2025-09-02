@@ -193,7 +193,7 @@ impl VersionedVariant {
         match &self.fields {
             Fields::Named(fields_named) => {
                 let fields = Self::named_field_idents(fields_named);
-                Some(quote! { { #(#fields)*: #(#fields.into()),* } })
+                Some(quote! { { #(#fields:)* #(#fields.into()),* } })
             }
             Fields::Unnamed(fields_unnamed) => {
                 let fields = Self::unnamed_field_ident(fields_unnamed);

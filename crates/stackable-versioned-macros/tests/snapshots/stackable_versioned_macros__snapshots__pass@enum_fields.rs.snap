@@ -6,62 +6,49 @@ input_file: crates/stackable-versioned-macros/tests/inputs/pass/enum_fields.rs
 #[automatically_derived]
 pub mod v1alpha1 {
     use super::*;
-    pub enum MyEnum {
+    pub enum Foo {
         A { aa: usize },
         B { bb: bool },
     }
-    pub enum Bla {
+    pub enum Bar {
         A(A),
+        B {},
     }
     pub struct A {}
 }
 #[automatically_derived]
-impl ::core::convert::From<v1alpha1::MyEnum> for v1alpha2::MyEnum {
-    fn from(__sv_myenum: v1alpha1::MyEnum) -> Self {
-        match __sv_myenum {
-            v1alpha1::MyEnum::A { aa } => {
-                v1alpha2::MyEnum::A {
-                    aa: aa.into(),
-                }
-            }
-            v1alpha1::MyEnum::B { bb } => {
-                v1alpha2::MyEnum::B {
-                    bb: bb.into(),
-                }
-            }
+impl ::core::convert::From<v1alpha1::Foo> for v1alpha2::Foo {
+    fn from(__sv_foo: v1alpha1::Foo) -> Self {
+        match __sv_foo {
+            v1alpha1::Foo::A { aa } => v1alpha2::Foo::A { aa: aa.into() },
+            v1alpha1::Foo::B { bb } => v1alpha2::Foo::B { bb: bb.into() },
         }
     }
 }
 #[automatically_derived]
-impl ::core::convert::From<v1alpha2::MyEnum> for v1alpha1::MyEnum {
-    fn from(__sv_myenum: v1alpha2::MyEnum) -> Self {
-        match __sv_myenum {
-            v1alpha2::MyEnum::A { aa } => {
-                v1alpha1::MyEnum::A {
-                    aa: aa.into(),
-                }
-            }
-            v1alpha2::MyEnum::B { bb } => {
-                v1alpha1::MyEnum::B {
-                    bb: bb.into(),
-                }
-            }
+impl ::core::convert::From<v1alpha2::Foo> for v1alpha1::Foo {
+    fn from(__sv_foo: v1alpha2::Foo) -> Self {
+        match __sv_foo {
+            v1alpha2::Foo::A { aa } => v1alpha1::Foo::A { aa: aa.into() },
+            v1alpha2::Foo::B { bb } => v1alpha1::Foo::B { bb: bb.into() },
         }
     }
 }
 #[automatically_derived]
-impl ::core::convert::From<v1alpha1::Bla> for v1alpha2::Bla {
-    fn from(__sv_bla: v1alpha1::Bla) -> Self {
-        match __sv_bla {
-            v1alpha1::Bla::A(__sv_0) => v1alpha2::Bla::A(__sv_0.into()),
+impl ::core::convert::From<v1alpha1::Bar> for v1alpha2::Bar {
+    fn from(__sv_bar: v1alpha1::Bar) -> Self {
+        match __sv_bar {
+            v1alpha1::Bar::A(__sv_0) => v1alpha2::Bar::A(__sv_0.into()),
+            v1alpha1::Bar::B {} => v1alpha2::Bar::B {},
         }
     }
 }
 #[automatically_derived]
-impl ::core::convert::From<v1alpha2::Bla> for v1alpha1::Bla {
-    fn from(__sv_bla: v1alpha2::Bla) -> Self {
-        match __sv_bla {
-            v1alpha2::Bla::A(__sv_0) => v1alpha1::Bla::A(__sv_0.into()),
+impl ::core::convert::From<v1alpha2::Bar> for v1alpha1::Bar {
+    fn from(__sv_bar: v1alpha2::Bar) -> Self {
+        match __sv_bar {
+            v1alpha2::Bar::A(__sv_0) => v1alpha1::Bar::A(__sv_0.into()),
+            v1alpha2::Bar::B {} => v1alpha1::Bar::B {},
         }
     }
 }
@@ -80,12 +67,13 @@ impl ::core::convert::From<v1alpha2::A> for v1alpha1::A {
 #[automatically_derived]
 pub mod v1alpha2 {
     use super::*;
-    pub enum MyEnum {
+    pub enum Foo {
         A { aa: usize },
         B { bb: bool },
     }
-    pub enum Bla {
+    pub enum Bar {
         A(A),
+        B {},
     }
     pub struct A {}
 }
