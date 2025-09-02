@@ -1,0 +1,91 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+expression: formatted
+input_file: crates/stackable-versioned-macros/tests/inputs/pass/enum_fields.rs
+---
+#[automatically_derived]
+pub mod v1alpha1 {
+    use super::*;
+    pub enum MyEnum {
+        A { aa: usize },
+        B { bb: bool },
+    }
+    pub enum Bla {
+        A(A),
+    }
+    pub struct A {}
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha1::MyEnum> for v1alpha2::MyEnum {
+    fn from(__sv_myenum: v1alpha1::MyEnum) -> Self {
+        match __sv_myenum {
+            v1alpha1::MyEnum::A { aa } => {
+                v1alpha2::MyEnum::A {
+                    aa: aa.into(),
+                }
+            }
+            v1alpha1::MyEnum::B { bb } => {
+                v1alpha2::MyEnum::B {
+                    bb: bb.into(),
+                }
+            }
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha2::MyEnum> for v1alpha1::MyEnum {
+    fn from(__sv_myenum: v1alpha2::MyEnum) -> Self {
+        match __sv_myenum {
+            v1alpha2::MyEnum::A { aa } => {
+                v1alpha1::MyEnum::A {
+                    aa: aa.into(),
+                }
+            }
+            v1alpha2::MyEnum::B { bb } => {
+                v1alpha1::MyEnum::B {
+                    bb: bb.into(),
+                }
+            }
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha1::Bla> for v1alpha2::Bla {
+    fn from(__sv_bla: v1alpha1::Bla) -> Self {
+        match __sv_bla {
+            v1alpha1::Bla::A(__sv_0) => v1alpha2::Bla::A(__sv_0.into()),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha2::Bla> for v1alpha1::Bla {
+    fn from(__sv_bla: v1alpha2::Bla) -> Self {
+        match __sv_bla {
+            v1alpha2::Bla::A(__sv_0) => v1alpha1::Bla::A(__sv_0.into()),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha1::A> for v1alpha2::A {
+    fn from(__sv_a: v1alpha1::A) -> Self {
+        Self {}
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha2::A> for v1alpha1::A {
+    fn from(__sv_a: v1alpha2::A) -> Self {
+        Self {}
+    }
+}
+#[automatically_derived]
+pub mod v1alpha2 {
+    use super::*;
+    pub enum MyEnum {
+        A { aa: usize },
+        B { bb: bool },
+    }
+    pub enum Bla {
+        A(A),
+    }
+    pub struct A {}
+}
