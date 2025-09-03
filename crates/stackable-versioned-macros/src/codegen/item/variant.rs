@@ -4,7 +4,9 @@ use darling::{FromVariant, Result, util::IdentString};
 use k8s_version::Version;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{Attribute, Fields, Type, TypeNever, Variant, token::Not};
+use syn::{
+    Attribute, Fields, FieldsNamed, FieldsUnnamed, Ident, Type, TypeNever, Variant, token::Not,
+};
 
 use crate::{
     attrs::item::VariantAttributes,
@@ -138,7 +140,8 @@ impl VersionedVariant {
         next_version: &VersionDefinition,
         enum_ident: &IdentString,
     ) -> Option<TokenStream> {
-        let variant_fields = self.fields_as_token_stream();
+        let from_fields = self.generate_from_fields();
+        let for_fields = self.generate_for_fields();
 
         match &self.changes {
             Some(changes) => {
@@ -154,16 +157,15 @@ impl VersionedVariant {
                         let next_variant_ident = next.get_ident();
                         let old_variant_ident = old.get_ident();
 
-                        let old = quote! {
-                            #old_version_ident::#enum_ident::#old_variant_ident #variant_fields
-                        };
-                        let next = quote! {
-                            #next_version_ident::#enum_ident::#next_variant_ident #variant_fields
-                        };
-
                         match direction {
-                            Direction::Upgrade => Some(quote! { #old => #next, }),
-                            Direction::Downgrade => Some(quote! { #next => #old, }),
+                            Direction::Upgrade => Some(quote! {
+                                #old_version_ident::#enum_ident::#old_variant_ident #from_fields
+                                    => #next_version_ident::#enum_ident::#next_variant_ident #for_fields,
+                            }),
+                            Direction::Downgrade => Some(quote! {
+                                #next_version_ident::#enum_ident::#next_variant_ident #from_fields
+                                    => #old_version_ident::#enum_ident::#old_variant_ident #from_fields,
+                            }),
                         }
                     }
                 }
@@ -173,48 +175,67 @@ impl VersionedVariant {
                 let old_version_ident = &version.idents.module;
                 let variant_ident = &*self.ident;
 
-                let old = quote! {
-                    #old_version_ident::#enum_ident::#variant_ident #variant_fields
-                };
-                let next = quote! {
-                    #next_version_ident::#enum_ident::#variant_ident #variant_fields
-                };
-
                 match direction {
-                    Direction::Upgrade => Some(quote! { #old => #next, }),
-                    Direction::Downgrade => Some(quote! { #next => #old, }),
+                    Direction::Upgrade => Some(quote! {
+                        #old_version_ident::#enum_ident::#variant_ident #from_fields
+                            => #next_version_ident::#enum_ident::#variant_ident #for_fields,
+                    }),
+                    Direction::Downgrade => Some(quote! {
+                        #next_version_ident::#enum_ident::#variant_ident #from_fields
+                            => #old_version_ident::#enum_ident::#variant_ident #for_fields,
+                    }),
                 }
             }
         }
     }
 
-    fn fields_as_token_stream(&self) -> Option<TokenStream> {
+    fn generate_for_fields(&self) -> Option<TokenStream> {
         match &self.fields {
             Fields::Named(fields_named) => {
-                let fields: Vec<_> = fields_named
-                    .named
-                    .iter()
-                    .map(|field| {
-                        field
-                            .ident
-                            .as_ref()
-                            .expect("named fields always have an ident")
-                    })
-                    .collect();
-
-                Some(quote! { { #(#fields),* } })
+                let fields = Self::named_field_idents(fields_named);
+                Some(quote! { { #(#fields: #fields.into(),)* } })
             }
             Fields::Unnamed(fields_unnamed) => {
-                let fields: Vec<_> = fields_unnamed
-                    .unnamed
-                    .iter()
-                    .enumerate()
-                    .map(|(index, _)| format_ident!("__sv_{index}"))
-                    .collect();
-
-                Some(quote! { ( #(#fields),* ) })
+                let fields = Self::unnamed_field_ident(fields_unnamed);
+                Some(quote! { ( #(#fields.into())* ) })
             }
             Fields::Unit => None,
         }
+    }
+
+    fn generate_from_fields(&self) -> Option<TokenStream> {
+        match &self.fields {
+            Fields::Named(fields_named) => {
+                let fields = Self::named_field_idents(fields_named);
+                Some(quote! { { #(#fields,)* } })
+            }
+            Fields::Unnamed(fields_unnamed) => {
+                let fields = Self::unnamed_field_ident(fields_unnamed);
+                Some(quote! { ( #(#fields)* ) })
+            }
+            Fields::Unit => None,
+        }
+    }
+
+    fn named_field_idents(fields_named: &FieldsNamed) -> Vec<&Ident> {
+        fields_named
+            .named
+            .iter()
+            .map(|field| {
+                field
+                    .ident
+                    .as_ref()
+                    .expect("named fields always have an ident")
+            })
+            .collect()
+    }
+
+    fn unnamed_field_ident(fields_unnamed: &FieldsUnnamed) -> Vec<Ident> {
+        fields_unnamed
+            .unnamed
+            .iter()
+            .enumerate()
+            .map(|(index, _)| format_ident!("__sv_{index}"))
+            .collect()
     }
 }
