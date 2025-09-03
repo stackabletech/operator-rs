@@ -1,0 +1,89 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+expression: formatted
+input_file: crates/stackable-versioned-macros/tests/inputs/pass/enum_fields.rs
+---
+#[automatically_derived]
+pub mod v1alpha1 {
+    use super::*;
+    pub enum Foo {
+        A { aa: usize, aaa: u64 },
+        B { bb: bool },
+    }
+    pub enum Bar {
+        A(A),
+        B {},
+    }
+    pub struct A {}
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha1::Foo> for v1alpha2::Foo {
+    fn from(__sv_foo: v1alpha1::Foo) -> Self {
+        match __sv_foo {
+            v1alpha1::Foo::A { aa, aaa } => {
+                v1alpha2::Foo::A {
+                    aa: aa.into(),
+                    aaa: aaa.into(),
+                }
+            }
+            v1alpha1::Foo::B { bb } => v1alpha2::Foo::B { bb: bb.into() },
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha2::Foo> for v1alpha1::Foo {
+    fn from(__sv_foo: v1alpha2::Foo) -> Self {
+        match __sv_foo {
+            v1alpha2::Foo::A { aa, aaa } => {
+                v1alpha1::Foo::A {
+                    aa: aa.into(),
+                    aaa: aaa.into(),
+                }
+            }
+            v1alpha2::Foo::B { bb } => v1alpha1::Foo::B { bb: bb.into() },
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha1::Bar> for v1alpha2::Bar {
+    fn from(__sv_bar: v1alpha1::Bar) -> Self {
+        match __sv_bar {
+            v1alpha1::Bar::A(__sv_0) => v1alpha2::Bar::A(__sv_0.into()),
+            v1alpha1::Bar::B {} => v1alpha2::Bar::B {},
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha2::Bar> for v1alpha1::Bar {
+    fn from(__sv_bar: v1alpha2::Bar) -> Self {
+        match __sv_bar {
+            v1alpha2::Bar::A(__sv_0) => v1alpha1::Bar::A(__sv_0.into()),
+            v1alpha2::Bar::B {} => v1alpha1::Bar::B {},
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha1::A> for v1alpha2::A {
+    fn from(__sv_a: v1alpha1::A) -> Self {
+        Self {}
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha2::A> for v1alpha1::A {
+    fn from(__sv_a: v1alpha2::A) -> Self {
+        Self {}
+    }
+}
+#[automatically_derived]
+pub mod v1alpha2 {
+    use super::*;
+    pub enum Foo {
+        A { aa: usize, aaa: u64 },
+        B { bb: bool },
+    }
+    pub enum Bar {
+        A(A),
+        B {},
+    }
+    pub struct A {}
+}

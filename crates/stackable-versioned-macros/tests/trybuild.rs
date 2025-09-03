@@ -23,6 +23,7 @@ mod inputs {
         // mod crate_overrides;
         // mod docs;
         // mod downgrade_with;
+        // mod enum_fields;
         // mod module;
         // mod module_preserve;
         // mod renamed_field;

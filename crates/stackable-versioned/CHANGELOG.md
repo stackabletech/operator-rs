@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Correctly emit enum variant fields in `From` impl blocks ([#1086]).
+
+[#1086]: https://github.com/stackabletech/operator-rs/pull/1086
+
 ## [0.8.1] - 2025-08-21
 
 ### Fixed
