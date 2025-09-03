@@ -157,8 +157,6 @@ impl<T: Atomic> Merge for Option<T> {
 mod tests {
     use std::collections::{BTreeMap, HashMap};
 
-    use k8s_openapi::api::core::v1::{PodSpec, PodTemplateSpec};
-
     use super::{Merge, merge};
 
     #[derive(Debug, PartialEq, Eq, Clone)]
