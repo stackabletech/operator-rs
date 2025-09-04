@@ -15,13 +15,13 @@ use crate::{
         changes::{BTreeMapExt, ChangesetExt},
         item::ItemStatus,
     },
-    utils::VariantIdent,
+    utils::ItemIdents,
 };
 
 pub struct VersionedVariant {
     pub original_attributes: Vec<Attribute>,
     pub changes: Option<BTreeMap<Version, ItemStatus>>,
-    pub ident: VariantIdent,
+    pub idents: VariantIdents,
     pub fields: Fields,
 }
 
@@ -30,20 +30,20 @@ impl VersionedVariant {
         let variant_attributes = VariantAttributes::from_variant(&variant)?;
         variant_attributes.validate_versions(versions)?;
 
-        let variant_ident = VariantIdent::from(variant.ident);
+        let idents = VariantIdents::from(variant.ident);
 
         // FIXME (@Techassi): The chain of changes currently doesn't track versioning of variant
-        // date and as such, we just use the never type here. During codegen, we just re-emit the
+        // data and as such, we just use the never type here. During codegen, we just re-emit the
         // variant data as is.
         let ty = Type::Never(TypeNever {
             bang_token: Not([Span::call_site()]),
         });
-        let changes = variant_attributes.common.into_changeset(&variant_ident, ty);
+        let changes = variant_attributes.common.into_changeset(&idents, ty);
 
         Ok(Self {
             original_attributes: variant_attributes.attrs,
             fields: variant.fields,
-            ident: variant_ident,
+            idents,
             changes,
         })
     }
@@ -123,7 +123,7 @@ impl VersionedVariant {
                 // If there is no chain of variant actions, the variant is not
                 // versioned and code generation is straight forward.
                 // Unversioned variants are always included in versioned enums.
-                let ident = &self.ident;
+                let ident = &self.idents.original;
 
                 Some(quote! {
                     #(#original_attributes)*
@@ -173,7 +173,7 @@ impl VersionedVariant {
             None => {
                 let next_version_ident = &next_version.idents.module;
                 let old_version_ident = &version.idents.module;
-                let variant_ident = &*self.ident;
+                let variant_ident = &self.idents.original;
 
                 match direction {
                     Direction::Upgrade => Some(quote! {
@@ -237,5 +237,38 @@ impl VersionedVariant {
             .enumerate()
             .map(|(index, _)| format_ident!("__sv_{index}"))
             .collect()
+    }
+}
+
+/// A collection of variant idents used for different purposes.
+#[derive(Debug)]
+pub struct VariantIdents {
+    /// The original ident.
+    pub original: IdentString,
+
+    /// The cleaned ident, with the deprecation prefix removed.
+    pub cleaned: IdentString,
+}
+
+impl ItemIdents for VariantIdents {
+    const DEPRECATION_PREFIX: &str = "Deprecated";
+
+    fn cleaned(&self) -> &IdentString {
+        &self.cleaned
+    }
+
+    fn original(&self) -> &IdentString {
+        &self.original
+    }
+}
+
+impl From<Ident> for VariantIdents {
+    fn from(ident: Ident) -> Self {
+        let original = IdentString::new(ident);
+        let cleaned = original
+            .clone()
+            .map(|s| s.trim_start_matches(Self::DEPRECATION_PREFIX).to_owned());
+
+        Self { original, cleaned }
     }
 }

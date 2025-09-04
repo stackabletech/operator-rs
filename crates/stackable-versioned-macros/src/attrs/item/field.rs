@@ -1,7 +1,10 @@
 use darling::{Error, FromField, Result, util::Flag};
 use syn::{Attribute, Ident};
 
-use crate::{attrs::item::CommonItemAttributes, codegen::VersionDefinition, utils::FieldIdent};
+use crate::{
+    attrs::item::CommonItemAttributes,
+    codegen::{VersionDefinition, item::FieldIdents},
+};
 
 /// This struct describes all available field attributes, as well as the field
 /// name to display better diagnostics.
@@ -57,7 +60,9 @@ impl FieldAttributes {
             .expect("internal error: field must have an ident")
             .clone();
 
-        self.common.validate(FieldIdent::from(ident), &self.attrs)?;
+        self.common
+            .validate(FieldIdents::from(ident), &self.attrs)?;
+
         Ok(self)
     }
 
