@@ -190,6 +190,8 @@ impl VersionedField {
                             // The user specified a custom conversion function which
                             // will be used here instead of the default .into() call
                             // which utilizes From impls.
+                            // FIXME (@Techassi): A custom conversion function needs
+                            // to integrate with tracking as well.
                             Some(upgrade_fn) => Some(quote! {
                                 #to_ident: #upgrade_fn(#from_struct_ident.#from_ident),
                             }),
@@ -361,8 +363,8 @@ impl VersionedField {
             (None, false) => None,
 
             // If the field is marked as nested, a path variable for that field needs to be generated
-            // which is then passed down to the sub struct. There is however no need to look determine
-            // if the field itself also has changes. This is explicitly handled by the following match
+            // which is then passed down to the sub struct. There is however no need to determine if
+            // the field itself also has changes. This is explicitly handled by the following match
             // arm.
             (_, true) => {
                 let field_ident = &self.idents.json_path;
@@ -391,10 +393,16 @@ impl VersionedField {
     }
 }
 
+/// A collection of field idents used for different purposes.
 #[derive(Debug)]
 pub struct FieldIdents {
+    /// The original ident.
     pub original: IdentString,
+
+    /// The cleaned ident, with the deprecation prefix removed.
     pub cleaned: IdentString,
+
+    /// The cleaned ident used for JSONPath variables.
     pub json_path: IdentString,
 }
 
