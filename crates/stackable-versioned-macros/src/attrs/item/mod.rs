@@ -8,7 +8,7 @@ use syn::{Attribute, Path, Type, spanned::Spanned};
 
 use crate::{
     codegen::{VersionDefinition, item::ItemStatus},
-    utils::ItemIdentExt,
+    utils::ItemIdents,
 };
 
 mod field;
@@ -50,14 +50,14 @@ pub struct CommonItemAttributes {
 // it contains functions which can only be called after the initial parsing and validation because
 // they need additional context, namely the list of versions defined on the container or module.
 impl CommonItemAttributes {
-    pub fn validate(&self, item_ident: impl ItemIdentExt, item_attrs: &[Attribute]) -> Result<()> {
+    pub fn validate(&self, item_idents: impl ItemIdents, item_attrs: &[Attribute]) -> Result<()> {
         let mut errors = Error::accumulator();
 
-        errors.handle(self.validate_action_combinations(&item_ident));
-        errors.handle(self.validate_action_order(&item_ident));
-        errors.handle(self.validate_item_name(&item_ident));
+        errors.handle(self.validate_action_combinations(&item_idents));
+        errors.handle(self.validate_action_order(&item_idents));
+        errors.handle(self.validate_item_name(&item_idents));
         errors.handle(self.validate_added_action());
-        errors.handle(self.validate_changed_action(&item_ident));
+        errors.handle(self.validate_changed_action(&item_idents));
         errors.handle(self.validate_item_attributes(item_attrs));
 
         errors.finish()
@@ -106,15 +106,15 @@ impl CommonItemAttributes {
     ///   at least one version before being changed.
     /// - `changed` and `deprecated` using the same version: Again, the same
     ///   rules from above apply here as well.
-    fn validate_action_combinations(&self, item_ident: &impl ItemIdentExt) -> Result<()> {
+    fn validate_action_combinations(&self, item_idents: &impl ItemIdents) -> Result<()> {
         match (&self.added, &self.changes, &self.deprecated) {
             (Some(added), _, Some(deprecated)) if *added.since == *deprecated.since => Err(
                 Error::custom("cannot be marked as `added` and `deprecated` in the same version")
-                    .with_span(item_ident),
+                    .with_span(item_idents.original()),
             ),
             (Some(added), changed, _) if changed.iter().any(|r| *r.since == *added.since) => Err(
                 Error::custom("cannot be marked as `added` and `changed` in the same version")
-                    .with_span(item_ident),
+                    .with_span(item_idents.original()),
             ),
             (_, changed, Some(deprecated))
                 if changed.iter().any(|r| *r.since == *deprecated.since) =>
@@ -122,7 +122,7 @@ impl CommonItemAttributes {
                 Err(Error::custom(
                     "cannot be marked as `deprecated` and `changed` in the same version",
                 )
-                .with_span(item_ident))
+                .with_span(item_idents.original()))
             }
             _ => Ok(()),
         }
@@ -140,7 +140,7 @@ impl CommonItemAttributes {
     ///   version of the added action.
     /// - All `changed` actions must use a greater version than `added` but a
     ///   lesser version than `deprecated`.
-    fn validate_action_order(&self, item_ident: &impl ItemIdentExt) -> Result<()> {
+    fn validate_action_order(&self, item_idents: &impl ItemIdents) -> Result<()> {
         let added_version = self.added.as_ref().map(|a| *a.since);
         let deprecated_version = self.deprecated.as_ref().map(|d| *d.since);
 
@@ -152,7 +152,7 @@ impl CommonItemAttributes {
             if added_version > deprecated_version {
                 return Err(Error::custom(format!(
                     "cannot marked as `added` in version `{added_version}` while being marked as `deprecated` in an earlier version `{deprecated_version}`"
-                )).with_span(item_ident));
+                )).with_span(item_idents.original()));
             }
         }
 
@@ -165,7 +165,7 @@ impl CommonItemAttributes {
             return Err(Error::custom(
                 "all changes must use versions higher than `added` and lower than `deprecated`",
             )
-            .with_span(item_ident));
+            .with_span(item_idents.original()));
         }
 
         Ok(())
@@ -180,21 +180,22 @@ impl CommonItemAttributes {
     /// - Fields or variants marked as deprecated need to include the
     ///   deprecation prefix in their name. The prefix must not be included for
     ///   fields or variants which are not deprecated.
-    fn validate_item_name(&self, item_ident: &impl ItemIdentExt) -> Result<()> {
-        let starts_with_deprecated = item_ident.starts_with_deprecated_prefix();
+    fn validate_item_name(&self, item_idents: &impl ItemIdents) -> Result<()> {
+        let starts_with_deprecated = item_idents.starts_with_deprecation_prefix();
 
         if self.deprecated.is_some() && !starts_with_deprecated {
             return Err(Error::custom(format!(
-                "marked as `deprecated` and thus must include the `{deprecated_prefix}` prefix",
-                deprecated_prefix = item_ident.deprecated_prefix()
+                "marked as `deprecated` and thus must include the `{deprecation_prefix}` prefix",
+                deprecation_prefix = item_idents.deprecation_prefix()
             ))
-            .with_span(item_ident));
+            .with_span(item_idents.original()));
         }
 
         if self.deprecated.is_none() && starts_with_deprecated {
-            return Err(Error::custom(
-                format!("not marked as `deprecated` and thus must not include the `{deprecated_prefix}` prefix", deprecated_prefix = item_ident.deprecated_prefix())
-            ).with_span(item_ident));
+            return Err(Error::custom(format!(
+                "not marked as `deprecated` and thus must not include the `{deprecation_prefix}` prefix",
+                deprecation_prefix = item_idents.deprecation_prefix()
+            )).with_span(item_idents.original()));
         }
 
         Ok(())
@@ -218,7 +219,7 @@ impl CommonItemAttributes {
     /// This associated function is called by the top-level validation function
     /// and validates that parameters provided to the `changed` actions are
     /// valid.
-    fn validate_changed_action(&self, item_ident: &impl ItemIdentExt) -> Result<()> {
+    fn validate_changed_action(&self, item_ident: &impl ItemIdents) -> Result<()> {
         let mut errors = Error::accumulator();
 
         for change in &self.changes {
@@ -230,7 +231,7 @@ impl CommonItemAttributes {
 
             // This ensures that `from_name` doesn't include the deprecation prefix.
             if let Some(from_name) = change.from_name.as_ref() {
-                if from_name.starts_with(item_ident.deprecated_prefix()) {
+                if from_name.starts_with(item_ident.deprecation_prefix()) {
                     errors.push(
                         Error::custom(
                             "the previous name must not start with the deprecation prefix",
@@ -291,17 +292,17 @@ impl CommonItemAttributes {
 impl CommonItemAttributes {
     pub fn into_changeset(
         self,
-        ident: &impl ItemIdentExt,
+        idents: &impl ItemIdents,
         ty: Type,
     ) -> Option<BTreeMap<Version, ItemStatus>> {
         // TODO (@Techassi): Use Change instead of ItemStatus
         if let Some(deprecated) = self.deprecated {
-            let deprecated_ident = ident.deref();
+            let deprecated_ident = idents.original();
 
             // When the item is deprecated, any change which occurred beforehand
             // requires access to the item ident to infer the item ident for
             // the latest change.
-            let mut ident = ident.as_cleaned_ident();
+            let mut ident = idents.cleaned().clone();
             let mut ty = ty;
 
             let mut actions = BTreeMap::new();
@@ -361,7 +362,7 @@ impl CommonItemAttributes {
 
             Some(actions)
         } else if !self.changes.is_empty() {
-            let mut ident = ident.deref().clone();
+            let mut ident = idents.original().clone();
             let mut ty = ty;
 
             let mut actions = BTreeMap::new();
@@ -419,7 +420,7 @@ impl CommonItemAttributes {
                     *added.since,
                     ItemStatus::Addition {
                         default_fn: added.default_fn.deref().clone(),
-                        ident: ident.deref().clone(),
+                        ident: idents.original().clone(),
                         ty: Box::new(ty),
                     },
                 );

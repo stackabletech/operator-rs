@@ -1,11 +1,9 @@
-use std::ops::Deref;
-
 use convert_case::{Case, Casing};
 use darling::util::IdentString;
 use k8s_version::Version;
 use proc_macro2::Span;
-use quote::{ToTokens, format_ident};
-use syn::{Ident, Path, spanned::Spanned};
+use quote::format_ident;
+use syn::{Ident, Path};
 
 pub mod doc_comments;
 
@@ -58,82 +56,30 @@ impl ContainerIdentExt for IdentString {
     }
 }
 
-pub trait ItemIdentExt: Deref<Target = IdentString> + From<Ident> + Spanned {
-    const DEPRECATED_PREFIX: &'static str;
+pub trait ItemIdents {
+    const DEPRECATION_PREFIX: &str;
 
-    fn deprecated_prefix(&self) -> &'static str {
-        Self::DEPRECATED_PREFIX
+    fn deprecation_prefix(&self) -> &str {
+        Self::DEPRECATION_PREFIX
     }
 
-    fn starts_with_deprecated_prefix(&self) -> bool {
-        self.deref().as_str().starts_with(Self::DEPRECATED_PREFIX)
+    fn starts_with_deprecation_prefix(&self) -> bool {
+        self.original()
+            .as_str()
+            .starts_with(Self::DEPRECATION_PREFIX)
     }
 
-    /// Removes deprecation prefixed from field or variant idents.
-    fn as_cleaned_ident(&self) -> IdentString;
+    fn cleaned(&self) -> &IdentString;
+    fn original(&self) -> &IdentString;
 }
 
-pub struct FieldIdent(IdentString);
-
-impl ItemIdentExt for FieldIdent {
-    const DEPRECATED_PREFIX: &'static str = "deprecated_";
-
-    fn as_cleaned_ident(&self) -> IdentString {
-        self.0
-            .clone()
-            .map(|i| i.trim_start_matches(Self::DEPRECATED_PREFIX).to_string())
-    }
+pub trait ItemIdentExt {
+    fn json_path_ident(&self) -> IdentString;
 }
 
-impl From<Ident> for FieldIdent {
-    fn from(value: Ident) -> Self {
-        Self(IdentString::from(value))
-    }
-}
-
-impl Deref for FieldIdent {
-    type Target = IdentString;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl ToTokens for FieldIdent {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        self.0.to_tokens(tokens);
-    }
-}
-
-pub struct VariantIdent(IdentString);
-
-impl ItemIdentExt for VariantIdent {
-    const DEPRECATED_PREFIX: &'static str = "Deprecated";
-
-    fn as_cleaned_ident(&self) -> IdentString {
-        self.0
-            .clone()
-            .map(|i| i.trim_start_matches(Self::DEPRECATED_PREFIX).to_string())
-    }
-}
-
-impl From<Ident> for VariantIdent {
-    fn from(value: Ident) -> Self {
-        Self(IdentString::from(value))
-    }
-}
-
-impl Deref for VariantIdent {
-    type Target = IdentString;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl ToTokens for VariantIdent {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        self.0.to_tokens(tokens);
+impl ItemIdentExt for IdentString {
+    fn json_path_ident(&self) -> IdentString {
+        format_ident!("__sv_{}_path", self.as_str().to_lowercase()).into()
     }
 }
 
