@@ -1,7 +1,10 @@
-use darling::{Error, FromField, Result, util::Flag};
+use darling::{Error, FromField, FromMeta, Result, util::Flag};
 use syn::{Attribute, Ident};
 
-use crate::{attrs::item::CommonItemAttributes, codegen::VersionDefinition, utils::FieldIdent};
+use crate::{
+    attrs::item::CommonItemAttributes,
+    codegen::{VersionDefinition, item::FieldIdents},
+};
 
 /// This struct describes all available field attributes, as well as the field
 /// name to display better diagnostics.
@@ -41,6 +44,10 @@ pub struct FieldAttributes {
     /// is needed to let the macro know to generate conversion code with support
     /// for tracking across struct boundaries.
     pub nested: Flag,
+
+    /// Provide a hint if a field is wrapped in either `Option` or `Vec` to
+    /// generate correct code in the `From` impl blocks.
+    pub hint: Option<Hint>,
 }
 
 impl FieldAttributes {
@@ -57,7 +64,9 @@ impl FieldAttributes {
             .expect("internal error: field must have an ident")
             .clone();
 
-        self.common.validate(FieldIdent::from(ident), &self.attrs)?;
+        self.common
+            .validate(FieldIdents::from(ident), &self.attrs)?;
+
         Ok(self)
     }
 
@@ -75,4 +84,11 @@ impl FieldAttributes {
 
         Ok(())
     }
+}
+
+/// Supported field hints.
+#[derive(Debug, FromMeta)]
+pub enum Hint {
+    Option,
+    Vec,
 }
