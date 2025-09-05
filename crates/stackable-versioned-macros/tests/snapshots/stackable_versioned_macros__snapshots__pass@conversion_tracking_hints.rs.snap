@@ -1,0 +1,112 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+expression: formatted
+input_file: crates/stackable-versioned-macros/tests/inputs/pass/conversion_tracking_hints.rs
+---
+#[automatically_derived]
+mod v1alpha1 {
+    use super::*;
+    pub struct Foo {
+        pub bar: Option<Bar>,
+        pub baz: Vec<usize>,
+        pub quux: bool,
+    }
+    pub struct Bar {
+        pub bar_bar: String,
+    }
+}
+#[automatically_derived]
+impl<S> ::stackable_versioned::TrackingFrom<v1alpha1::Foo, S> for v1alpha2::Foo
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_foo: v1alpha1::Foo, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
+        let __sv_bar_path = ::stackable_versioned::jthong_path(parent, "bar");
+        let mut spec = Self {
+            bar: __sv_foo.bar.map(|v| v.tracking_into(status, &__sv_bar_path)),
+            baz: __sv_foo.baz.into_iter().map(Into::into).collect(),
+            quux: __sv_foo.quux.into(),
+        };
+        spec
+    }
+}
+#[automatically_derived]
+impl<S> ::stackable_versioned::TrackingFrom<v1alpha2::Foo, S> for v1alpha1::Foo
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_foo: v1alpha2::Foo, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
+        let __sv_bar_path = ::stackable_versioned::jthong_path(parent, "bar");
+        let mut spec = Self {
+            bar: __sv_foo.bar.map(|v| v.tracking_into(status, &__sv_bar_path)),
+            baz: __sv_foo.baz.into_iter().map(Into::into).collect(),
+            quux: __sv_foo.quux.into(),
+        };
+        spec
+    }
+}
+#[automatically_derived]
+impl<S> ::stackable_versioned::TrackingFrom<v1alpha1::Bar, S> for v1alpha2::Bar
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_bar: v1alpha1::Bar, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
+        let __sv_baz_baz_path = ::stackable_versioned::jthong_path(parent, "baz_baz");
+        let mut spec = Self {
+            bar_bar: __sv_bar.bar_bar.into(),
+            baz_baz: ::std::default::Default::default(),
+        };
+        if let Some(upgrades) = status.changes().upgrades.remove(&"v1alpha2".to_owned())
+        {
+            for ::stackable_versioned::ChangedValue { json_path, value } in upgrades {
+                match json_path {
+                    json_path if json_path == __sv_baz_baz_path => {
+                        spec.baz_baz = serde_yaml::from_value(value).unwrap();
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+        spec
+    }
+}
+#[automatically_derived]
+impl<S> ::stackable_versioned::TrackingFrom<v1alpha2::Bar, S> for v1alpha1::Bar
+where
+    S: ::stackable_versioned::TrackingStatus + ::core::default::Default,
+{
+    fn tracking_from(__sv_bar: v1alpha2::Bar, status: &mut S, parent: &str) -> Self {
+        use ::stackable_versioned::TrackingInto as _;
+        let __sv_baz_baz_path = ::stackable_versioned::jthong_path(parent, "baz_baz");
+        let upgrades = status
+            .changes()
+            .upgrades
+            .entry("v1alpha2".to_owned())
+            .or_default();
+        upgrades
+            .push(::stackable_versioned::ChangedValue {
+                json_path: __sv_baz_baz_path,
+                value: ::serde_yaml::to_value(&__sv_bar.baz_baz).unwrap(),
+            });
+        let mut spec = Self {
+            bar_bar: __sv_bar.bar_bar.into(),
+        };
+        spec
+    }
+}
+#[automatically_derived]
+mod v1alpha2 {
+    use super::*;
+    pub struct Foo {
+        pub bar: Option<Bar>,
+        pub baz: Vec<usize>,
+        pub quux: bool,
+    }
+    pub struct Bar {
+        pub bar_bar: String,
+        pub baz_baz: u8,
+    }
+}

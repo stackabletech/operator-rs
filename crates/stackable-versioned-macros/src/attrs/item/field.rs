@@ -1,4 +1,4 @@
-use darling::{Error, FromField, Result, util::Flag};
+use darling::{Error, FromField, FromMeta, Result, util::Flag};
 use syn::{Attribute, Ident};
 
 use crate::{
@@ -44,6 +44,10 @@ pub struct FieldAttributes {
     /// is needed to let the macro know to generate conversion code with support
     /// for tracking across struct boundaries.
     pub nested: Flag,
+
+    /// Provide a hint if a field is wrapped in either `Option` or `Vec` to
+    /// generate correct code in the `From` impl blocks.
+    pub hint: Option<Hint>,
 }
 
 impl FieldAttributes {
@@ -80,4 +84,11 @@ impl FieldAttributes {
 
         Ok(())
     }
+}
+
+/// Supported field hints.
+#[derive(Debug, FromMeta)]
+pub enum Hint {
+    Option,
+    Vec,
 }

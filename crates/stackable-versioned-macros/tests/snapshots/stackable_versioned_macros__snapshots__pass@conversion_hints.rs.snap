@@ -1,0 +1,43 @@
+---
+source: crates/stackable-versioned-macros/src/lib.rs
+expression: formatted
+input_file: crates/stackable-versioned-macros/tests/inputs/pass/conversion_hints.rs
+---
+#[automatically_derived]
+mod v1alpha1 {
+    use super::*;
+    pub struct Foo {
+        pub bar: Option<String>,
+        pub baz: Vec<usize>,
+        pub quux: bool,
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha1::Foo> for v1alpha2::Foo {
+    fn from(__sv_foo: v1alpha1::Foo) -> Self {
+        Self {
+            bar: __sv_foo.bar.map(Into::into),
+            baz: __sv_foo.baz.into_iter().map(Into::into).collect(),
+            quux: __sv_foo.quux.into(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<v1alpha2::Foo> for v1alpha1::Foo {
+    fn from(__sv_foo: v1alpha2::Foo) -> Self {
+        Self {
+            bar: __sv_foo.bar.map(Into::into),
+            baz: __sv_foo.baz.into_iter().map(Into::into).collect(),
+            quux: __sv_foo.quux.into(),
+        }
+    }
+}
+#[automatically_derived]
+mod v1alpha2 {
+    use super::*;
+    pub struct Foo {
+        pub bar: Option<String>,
+        pub baz: Vec<usize>,
+        pub quux: bool,
+    }
+}
