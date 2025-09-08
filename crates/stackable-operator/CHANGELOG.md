@@ -16,10 +16,11 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Don't default the `termination_grace_period` of the `ProbeBuilder` to 0, as this is an invalid value ([#XXXX]).
+- Don't default the `termination_grace_period` of the `ProbeBuilder` to 0, as this is an invalid value ([#1090]).
 
 [#1085]: https://github.com/stackabletech/operator-rs/pull/1085
 [#1087]: https://github.com/stackabletech/operator-rs/pull/1087
+[#1090]: https://github.com/stackabletech/operator-rs/pull/1090
 
 ## [0.96.0] - 2025-08-25
 
