@@ -19,6 +19,8 @@ mod inputs {
     mod pass {
         // mod added;
         // mod basic;
+        // mod conversion_hints;
+        // mod conversion_tracking_hints;
         // mod conversion_tracking;
         // mod crate_overrides;
         // mod docs;
