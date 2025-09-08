@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: Upgrade to `schemars` 1.0, `kube` 2.0 and `k8s-openapi` 0.26 (using Kubernetes 1.34) ([#XXXX]).
+- BREAKING: Upgrade to `schemars` 1.0, `kube` 2.0 and `k8s-openapi` 0.26 (using Kubernetes 1.34) ([#1091]).
 
 ### Removed
 
@@ -25,6 +25,7 @@ All notable changes to this project will be documented in this file.
 [#1085]: https://github.com/stackabletech/operator-rs/pull/1085
 [#1087]: https://github.com/stackabletech/operator-rs/pull/1087
 [#1090]: https://github.com/stackabletech/operator-rs/pull/1090
+[#1091]: https://github.com/stackabletech/operator-rs/pull/1091
 
 ## [0.96.0] - 2025-08-25
 
