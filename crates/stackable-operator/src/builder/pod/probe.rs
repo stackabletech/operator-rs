@@ -204,9 +204,9 @@ impl ProbeBuilder<ProbeAction, Duration> {
     /// overall check has failed: the container is not ready/healthy/live.
     ///
     /// Minimum value is 1 second. For the case of a startup or liveness probe, if at least
-    /// `failureThreshold`` probes have failed, Kubernetes treats the container as unhealthy and
+    /// `failureThreshold` probes have failed, Kubernetes treats the container as unhealthy and
     /// triggers a restart for that specific container. The kubelet honors the setting of
-    /// `terminationGracePeriodSeconds`` for that container. For a failed readiness probe, the
+    /// `terminationGracePeriodSeconds` for that container. For a failed readiness probe, the
     /// kubelet continues running the container that failed checks, and also continues to run more
     /// probes; because the check failed, the kubelet sets the `Ready` condition on the Pod to
     /// `false`.
@@ -238,8 +238,8 @@ impl ProbeBuilder<ProbeAction, Duration> {
     /// failed container, and then forcing the container runtime to stop that container.
     ///
     /// The default (if this function is not called) is to inherit the Pod-level value for
-    /// `terminationGracePeriodSeconds`` (30 seconds if not specified), and the minimum value is
-    /// 1 second. See probe-level `terminationGracePeriodSeconds`` for more detail.
+    /// `terminationGracePeriodSeconds` (30 seconds if not specified), and the minimum value is
+    /// 1 second. See probe-level `terminationGracePeriodSeconds` for more detail.
     pub fn with_termination_grace_period(mut self, termination_grace_period: Duration) -> Self {
         self.termination_grace_period = Some(termination_grace_period);
         self
