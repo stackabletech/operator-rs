@@ -64,7 +64,7 @@ pub struct ProbeBuilder<Action, Period> {
     failure_threshold: i32,
     timeout: Duration,
     initial_delay: Duration,
-    termination_grace_period: Duration,
+    termination_grace_period: Option<Duration>,
 }
 
 /// Available probes
@@ -145,7 +145,7 @@ impl ProbeBuilder<(), ()> {
             failure_threshold: 1,
             timeout: Duration::from_secs(1),
             initial_delay: Duration::from_secs(0),
-            termination_grace_period: Duration::from_secs(0),
+            termination_grace_period: None,
         }
     }
 }
@@ -200,24 +200,48 @@ impl ProbeBuilder<ProbeAction, Duration> {
         Ok(self.with_success_threshold(success_threshold.ceil() as i32))
     }
 
-    /// How often the probe must fail before being considered failed.
+    ///  After a probe fails `failureThreshold` times in a row, Kubernetes considers that the
+    /// overall check has failed: the container is not ready/healthy/live.
+    ///
+    /// Minimum value is 1 second. For the case of a startup or liveness probe, if at least
+    /// `failureThreshold`` probes have failed, Kubernetes treats the container as unhealthy and
+    /// triggers a restart for that specific container. The kubelet honors the setting of
+    /// `terminationGracePeriodSeconds`` for that container. For a failed readiness probe, the
+    /// kubelet continues running the container that failed checks, and also continues to run more
+    /// probes; because the check failed, the kubelet sets the `Ready` condition on the Pod to
+    /// `false`.
     pub fn with_failure_threshold(mut self, failure_threshold: i32) -> Self {
         self.failure_threshold = failure_threshold;
         self
     }
 
+    /// Number of seconds after which the probe times out.
+    ///
+    /// Minimum value is 1 second.
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
 
+    /// Number of seconds after the container has started before startup, liveness or readiness
+    /// probes are initiated.
+    ///
+    /// If a startup probe is defined, liveness and readiness probe delays do not begin until the
+    /// startup probe has succeeded. If the value of periodSeconds is greater than
+    /// `initialDelaySeconds` then the `initialDelaySeconds` will be ignored.
     pub fn with_initial_delay(mut self, initial_delay: Duration) -> Self {
         self.initial_delay = initial_delay;
         self
     }
 
+    /// Configure a grace period for the kubelet to wait between triggering a shut down of the
+    /// failed container, and then forcing the container runtime to stop that container.
+    ///
+    /// The default (if this function is not called) is to inherit the Pod-level value for
+    /// `terminationGracePeriodSeconds`` (30 seconds if not specified), and the minimum value is
+    /// 1 second. See probe-level `terminationGracePeriodSeconds`` for more detail.
     pub fn with_termination_grace_period(mut self, termination_grace_period: Duration) -> Self {
-        self.termination_grace_period = termination_grace_period;
+        self.termination_grace_period = Some(termination_grace_period);
         self
     }
 
@@ -263,14 +287,17 @@ impl ProbeBuilder<ProbeAction, Duration> {
             )?),
             success_threshold: Some(self.success_threshold),
             tcp_socket: None,
-            termination_grace_period_seconds: Some(
-                self.termination_grace_period.as_secs().try_into().context(
-                    DurationTooLongSnafu {
-                        field: "terminationGracePeriod",
-                        duration: self.termination_grace_period,
-                    },
-                )?,
-            ),
+            termination_grace_period_seconds: match self.termination_grace_period {
+                Some(termination_grace_period) => {
+                    Some(termination_grace_period.as_secs().try_into().context(
+                        DurationTooLongSnafu {
+                            field: "terminationGracePeriod",
+                            duration: termination_grace_period,
+                        },
+                    )?)
+                }
+                None => None,
+            },
             timeout_seconds: Some(self.timeout.as_secs().try_into().context(
                 DurationTooLongSnafu {
                     field: "timeout",
@@ -302,13 +329,23 @@ mod tests {
             .expect("Valid inputs must produce a Probe");
 
         assert_eq!(
-            probe.http_get,
-            Some(HTTPGetAction {
-                port: IntOrString::Int(8080),
-                ..Default::default()
-            })
+            probe,
+            Probe {
+                exec: None,
+                failure_threshold: Some(1),
+                grpc: None,
+                http_get: Some(HTTPGetAction {
+                    port: IntOrString::Int(8080),
+                    ..Default::default()
+                }),
+                initial_delay_seconds: Some(0),
+                period_seconds: Some(10),
+                success_threshold: Some(1),
+                tcp_socket: None,
+                termination_grace_period_seconds: None,
+                timeout_seconds: Some(1),
+            }
         );
-        assert_eq!(probe.period_seconds, Some(10));
     }
 
     #[test]
