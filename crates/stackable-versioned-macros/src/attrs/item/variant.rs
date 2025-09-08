@@ -2,7 +2,10 @@ use convert_case::{Case, Casing};
 use darling::{Error, FromVariant, Result};
 use syn::{Attribute, Ident};
 
-use crate::{attrs::item::CommonItemAttributes, codegen::VersionDefinition, utils::VariantIdent};
+use crate::{
+    attrs::item::CommonItemAttributes,
+    codegen::{VersionDefinition, item::VariantIdents},
+};
 
 /// This struct describes all available variant attributes, as well as the
 /// variant name to display better diagnostics.
@@ -51,7 +54,7 @@ impl VariantAttributes {
 
         errors.handle(
             self.common
-                .validate(VariantIdent::from(self.ident.clone()), &self.attrs),
+                .validate(VariantIdents::from(self.ident.clone()), &self.attrs),
         );
 
         // Validate names of renames
