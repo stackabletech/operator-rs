@@ -200,7 +200,7 @@ impl ProbeBuilder<ProbeAction, Duration> {
         Ok(self.with_success_threshold(success_threshold.ceil() as i32))
     }
 
-    ///  After a probe fails `failureThreshold` times in a row, Kubernetes considers that the
+    /// After a probe fails `failureThreshold` times in a row, Kubernetes considers that the
     /// overall check has failed: the container is not ready/healthy/live.
     ///
     /// Minimum value is 1 second. For the case of a startup or liveness probe, if at least
