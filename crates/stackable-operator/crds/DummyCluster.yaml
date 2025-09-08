@@ -99,6 +99,108 @@ spec:
                   config:
                     default: {}
                     properties:
+                      logging:
+                        default:
+                          containers: {}
+                          enableVectorAgent: null
+                        description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
+                        properties:
+                          containers:
+                            additionalProperties:
+                              anyOf:
+                              - required:
+                                - custom
+                              - {}
+                              description: Log configuration of the container
+                              properties:
+                                console:
+                                  description: Configuration for the console appender
+                                  nullable: true
+                                  properties:
+                                    level:
+                                      anyOf:
+                                      - description: Log levels
+                                        enum:
+                                        - TRACE
+                                        - DEBUG
+                                        - INFO
+                                        - WARN
+                                        - ERROR
+                                        - FATAL
+                                        - NONE
+                                        type: string
+                                      - enum:
+                                        - null
+                                        nullable: true
+                                      description: |-
+                                        The log level threshold.
+                                        Log events with a lower log level are discarded.
+                                  type: object
+                                custom:
+                                  description: Custom log configuration provided in a ConfigMap
+                                  properties:
+                                    configMap:
+                                      description: ConfigMap containing the log configuration files
+                                      nullable: true
+                                      type: string
+                                  type: object
+                                file:
+                                  description: Configuration for the file appender
+                                  nullable: true
+                                  properties:
+                                    level:
+                                      anyOf:
+                                      - description: Log levels
+                                        enum:
+                                        - TRACE
+                                        - DEBUG
+                                        - INFO
+                                        - WARN
+                                        - ERROR
+                                        - FATAL
+                                        - NONE
+                                        type: string
+                                      - enum:
+                                        - null
+                                        nullable: true
+                                      description: |-
+                                        The log level threshold.
+                                        Log events with a lower log level are discarded.
+                                  type: object
+                                loggers:
+                                  additionalProperties:
+                                    description: Configuration of a logger
+                                    properties:
+                                      level:
+                                        anyOf:
+                                        - description: Log levels
+                                          enum:
+                                          - TRACE
+                                          - DEBUG
+                                          - INFO
+                                          - WARN
+                                          - ERROR
+                                          - FATAL
+                                          - NONE
+                                          type: string
+                                        - enum:
+                                          - null
+                                          nullable: true
+                                        description: |-
+                                          The log level threshold.
+                                          Log events with a lower log level are discarded.
+                                    type: object
+                                  default: {}
+                                  description: Configuration per logger
+                                  type: object
+                              type: object
+                            description: Log configuration per container.
+                            type: object
+                          enableVectorAgent:
+                            description: Wether or not to deploy a container with the Vector log agent.
+                            nullable: true
+                            type: boolean
+                        type: object
                       resources:
                         default:
                           cpu:
@@ -296,6 +398,108 @@ spec:
                         config:
                           default: {}
                           properties:
+                            logging:
+                              default:
+                                containers: {}
+                                enableVectorAgent: null
+                              description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
+                              properties:
+                                containers:
+                                  additionalProperties:
+                                    anyOf:
+                                    - required:
+                                      - custom
+                                    - {}
+                                    description: Log configuration of the container
+                                    properties:
+                                      console:
+                                        description: Configuration for the console appender
+                                        nullable: true
+                                        properties:
+                                          level:
+                                            anyOf:
+                                            - description: Log levels
+                                              enum:
+                                              - TRACE
+                                              - DEBUG
+                                              - INFO
+                                              - WARN
+                                              - ERROR
+                                              - FATAL
+                                              - NONE
+                                              type: string
+                                            - enum:
+                                              - null
+                                              nullable: true
+                                            description: |-
+                                              The log level threshold.
+                                              Log events with a lower log level are discarded.
+                                        type: object
+                                      custom:
+                                        description: Custom log configuration provided in a ConfigMap
+                                        properties:
+                                          configMap:
+                                            description: ConfigMap containing the log configuration files
+                                            nullable: true
+                                            type: string
+                                        type: object
+                                      file:
+                                        description: Configuration for the file appender
+                                        nullable: true
+                                        properties:
+                                          level:
+                                            anyOf:
+                                            - description: Log levels
+                                              enum:
+                                              - TRACE
+                                              - DEBUG
+                                              - INFO
+                                              - WARN
+                                              - ERROR
+                                              - FATAL
+                                              - NONE
+                                              type: string
+                                            - enum:
+                                              - null
+                                              nullable: true
+                                            description: |-
+                                              The log level threshold.
+                                              Log events with a lower log level are discarded.
+                                        type: object
+                                      loggers:
+                                        additionalProperties:
+                                          description: Configuration of a logger
+                                          properties:
+                                            level:
+                                              anyOf:
+                                              - description: Log levels
+                                                enum:
+                                                - TRACE
+                                                - DEBUG
+                                                - INFO
+                                                - WARN
+                                                - ERROR
+                                                - FATAL
+                                                - NONE
+                                                type: string
+                                              - enum:
+                                                - null
+                                                nullable: true
+                                              description: |-
+                                                The log level threshold.
+                                                Log events with a lower log level are discarded.
+                                          type: object
+                                        default: {}
+                                        description: Configuration per logger
+                                        type: object
+                                    type: object
+                                  description: Log configuration per container.
+                                  type: object
+                                enableVectorAgent:
+                                  description: Wether or not to deploy a container with the Vector log agent.
+                                  nullable: true
+                                  type: boolean
+                              type: object
                             resources:
                               default:
                                 cpu:
