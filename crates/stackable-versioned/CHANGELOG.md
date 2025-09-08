@@ -4,11 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add new `#[versioned(hint)]` argument to provide type hints for struct fields ([#1089]).
+  - `#[versioned(hint(option))]` for fields wrapped in an `Option`. Generates `.map(Into::into)`.
+  - `#[versioned(hint(vec))]` for fields wrapped in an `Vec`. Generates `.into_iter().map(Into::into).collect()`.
+
 ### Fixed
 
 - Correctly emit enum variant fields in `From` impl blocks ([#1086]).
 
 [#1086]: https://github.com/stackabletech/operator-rs/pull/1086
+[#1089]: https://github.com/stackabletech/operator-rs/pull/1089
 
 ## [0.8.1] - 2025-08-21
 
