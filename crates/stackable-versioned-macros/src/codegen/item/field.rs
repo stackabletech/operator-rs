@@ -74,7 +74,7 @@ impl VersionedField {
     ///
     /// ```ignore
     /// struct Foo {
-    ///     bar: usize, // < This functions generates one or more of these definitions
+    ///     bar: usize, // This function generates one or more of these definitions
     /// }
     /// ```
     pub fn generate_for_container(&self, version: &VersionDefinition) -> Option<TokenStream> {
@@ -177,7 +177,7 @@ impl VersionedField {
     /// impl From<v1alpha1::Foo> for v1alpha2::Foo {
     ///     fn from(value: v1alpha1::Foo) -> Self {
     ///         Self {
-    ///             bar: value.bar, // < This functions generates one or more of these definitions
+    ///             bar: value.bar, // This function generates one or more of these definitions
     ///         }
     ///     }
     /// }
