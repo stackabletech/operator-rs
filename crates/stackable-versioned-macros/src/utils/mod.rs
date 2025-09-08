@@ -41,7 +41,10 @@ impl ContainerIdentExt for Ident {
     }
 
     fn as_parameter_ident(&self) -> IdentString {
-        let ident = format_ident!("__sv_{}", self.to_string().to_lowercase());
+        let ident = format_ident!(
+            "__sv_{lowercase_ident}",
+            lowercase_ident = self.to_string().to_lowercase()
+        );
         IdentString::new(ident)
     }
 }
@@ -79,7 +82,11 @@ pub trait ItemIdentExt {
 
 impl ItemIdentExt for IdentString {
     fn json_path_ident(&self) -> IdentString {
-        format_ident!("__sv_{}_path", self.as_str().to_lowercase()).into()
+        format_ident!(
+            "__sv_{lowercase_ident}_path",
+            lowercase_ident = self.as_str().to_lowercase()
+        )
+        .into()
     }
 }
 
@@ -92,7 +99,7 @@ pub fn path_to_string(path: &Path) -> String {
         .join("::");
 
     match path.leading_colon {
-        Some(_) => format!("::{}", pretty_path),
+        Some(_) => format!("::{pretty_path}"),
         None => pretty_path,
     }
 }
