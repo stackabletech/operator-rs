@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: Add a new CLI flag/env to disabling CRD maintenance: `--disable-crd-maintenance` ([#1085]).
 
+### Changed
+
+- BREAKING: Upgrade to `schemars` 1.0, `kube` 2.0 and `k8s-openapi` 0.26 (using Kubernetes 1.34) ([#XXXX]).
+
 ### Removed
 
 - BREAKING: Remove the Merge implementation for PodTemplateSpec ([#1087]).

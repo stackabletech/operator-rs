@@ -1,31 +1,28 @@
-use schemars::schema::Schema;
+use schemars::{Schema, json_schema};
 
-pub fn raw_object_schema(_: &mut schemars::r#gen::SchemaGenerator) -> Schema {
-    serde_json::from_value(serde_json::json!({
+pub fn raw_object_schema(_: &mut schemars::generate::SchemaGenerator) -> Schema {
+    json_schema!({
         "type": "object",
         "x-kubernetes-preserve-unknown-fields": true,
-    }))
-    .expect("Failed to parse JSON of custom raw object schema")
+    })
 }
 
-pub fn raw_optional_object_schema(_: &mut schemars::r#gen::SchemaGenerator) -> Schema {
-    serde_json::from_value(serde_json::json!({
+pub fn raw_optional_object_schema(_: &mut schemars::generate::SchemaGenerator) -> Schema {
+    json_schema!({
         "type": "object",
         "nullable": true,
         "x-kubernetes-preserve-unknown-fields": true,
-    }))
-    .expect("Failed to parse JSON of custom optional raw object schema")
+    })
 }
 
-pub fn raw_object_list_schema(_: &mut schemars::r#gen::SchemaGenerator) -> Schema {
-    serde_json::from_value(serde_json::json!({
+pub fn raw_object_list_schema(_: &mut schemars::generate::SchemaGenerator) -> Schema {
+    json_schema!({
         "type": "array",
         "items": {
             "type": "object",
             "x-kubernetes-preserve-unknown-fields": true,
         }
-    }))
-    .expect("Failed to parse JSON of custom raw object list schema")
+    })
 }
 
 #[cfg(test)]

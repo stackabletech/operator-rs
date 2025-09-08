@@ -1,4 +1,4 @@
-use std::{fmt::Display, net::IpAddr, ops::Deref, str::FromStr};
+use std::{borrow::Cow, fmt::Display, net::IpAddr, ops::Deref, str::FromStr};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,10 @@ use crate::validation;
     Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, JsonSchema,
 )]
 #[serde(try_from = "String", into = "String")]
-pub struct DomainName(#[validate(regex(path = "validation::DOMAIN_REGEX"))] String);
+pub struct DomainName(
+    // Note: Starting with schemars 1.0 and kube 2.0, this pattern is missing in the CRD
+    #[validate(regex(path = "validation::DOMAIN_REGEX"))] String,
+);
 
 impl FromStr for DomainName {
     type Err = validation::Errors;
@@ -75,11 +78,11 @@ pub enum HostName {
 }
 
 impl JsonSchema for HostName {
-    fn schema_name() -> String {
-        "HostName".to_owned()
+    fn schema_name() -> Cow<'static, str> {
+        "HostName".into()
     }
 
-    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn json_schema(generator: &mut schemars::generate::SchemaGenerator) -> schemars::Schema {
         String::json_schema(generator)
     }
 }
@@ -143,6 +146,7 @@ impl HostName {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(try_from = "String", into = "String")]
 pub struct KerberosRealmName(
+    // Note: Starting with schemars 1.0 and kube 2.0, this pattern is missing in the CRD
     #[validate(regex(path = "validation::KERBEROS_REALM_NAME_REGEX"))] String,
 );
 

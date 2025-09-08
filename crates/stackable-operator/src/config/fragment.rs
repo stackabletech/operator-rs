@@ -313,30 +313,26 @@ mod tests {
     fn validate_struct_description() {
         let schema = schema_for!(WithFieldsFragment);
 
-        let struct_description = schema.schema.metadata.unwrap().description;
+        let struct_description = schema
+            .as_object()
+            .and_then(|object| object.get("description"))
+            .and_then(|description| description.as_str());
         assert_eq!(
             struct_description,
-            Some("This is an awesome struct with fields".to_string())
+            Some("This is an awesome struct with fields")
         );
     }
 
     #[test]
     fn validate_field_description() {
         let schema = schema_for!(WithFieldsFragment);
-        let field_schema = schema
-            .schema
-            .object
-            .unwrap()
-            .as_ref()
-            .properties
-            .get("name")
-            .unwrap()
-            .clone()
-            .into_object();
+        let field_description = schema
+            .as_object()
+            .and_then(|object| object.get("properties"))
+            .and_then(|properties| properties.get("name"))
+            .and_then(|field| field.get("description"))
+            .and_then(|description| description.as_str());
 
-        assert_eq!(
-            field_schema.metadata.unwrap().description,
-            Some("This field contains the name".to_string())
-        );
+        assert_eq!(field_description, Some("This field contains the name"));
     }
 }

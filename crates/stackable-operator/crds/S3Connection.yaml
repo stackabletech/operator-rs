@@ -20,40 +20,58 @@ spec:
         description: Auto-generated derived type for ConnectionSpec via `CustomResource`
         properties:
           spec:
-            description: S3 connection definition as a resource. Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/nightly/concepts/s3).
+            description: |-
+              S3 connection definition as a resource.
+              Learn more on the [S3 concept documentation](https://docs.stackable.tech/home/nightly/concepts/s3).
             properties:
               accessStyle:
                 default: VirtualHosted
-                description: Which access style to use. Defaults to virtual hosted-style as most of the data products out there. Have a look at the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html).
+                description: |-
+                  Which access style to use.
+                  Defaults to virtual hosted-style as most of the data products out there.
+                  Have a look at the [AWS documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html).
                 enum:
                 - Path
                 - VirtualHosted
                 type: string
               credentials:
-                description: If the S3 uses authentication you have to specify you S3 credentials. In the most cases a [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) providing `accessKey` and `secretKey` is sufficient.
+                description: |-
+                  If the S3 uses authentication you have to specify you S3 credentials.
+                  In the most cases a [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass)
+                  providing `accessKey` and `secretKey` is sufficient.
                 nullable: true
                 properties:
                   scope:
-                    description: '[Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).'
+                    description: |-
+                      [Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the
+                      [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).
                     nullable: true
                     properties:
                       listenerVolumes:
                         default: []
-                        description: The listener volume scope allows Node and Service scopes to be inferred from the applicable listeners. This must correspond to Volume names in the Pod that mount Listeners.
+                        description: |-
+                          The listener volume scope allows Node and Service scopes to be inferred from the applicable listeners.
+                          This must correspond to Volume names in the Pod that mount Listeners.
                         items:
                           type: string
                         type: array
                       node:
                         default: false
-                        description: The node scope is resolved to the name of the Kubernetes Node object that the Pod is running on. This will typically be the DNS name of the node.
+                        description: |-
+                          The node scope is resolved to the name of the Kubernetes Node object that the Pod is running on.
+                          This will typically be the DNS name of the node.
                         type: boolean
                       pod:
                         default: false
-                        description: The pod scope is resolved to the name of the Kubernetes Pod. This allows the secret to differentiate between StatefulSet replicas.
+                        description: |-
+                          The pod scope is resolved to the name of the Kubernetes Pod.
+                          This allows the secret to differentiate between StatefulSet replicas.
                         type: boolean
                       services:
                         default: []
-                        description: The service scope allows Pod objects to specify custom scopes. This should typically correspond to Service objects that the Pod participates in.
+                        description: |-
+                          The service scope allows Pod objects to specify custom scopes.
+                          This should typically correspond to Service objects that the Pod participates in.
                         items:
                           type: string
                         type: array
@@ -68,8 +86,11 @@ spec:
                 description: 'Host of the S3 server without any protocol or port. For example: `west1.my-cloud.com`.'
                 type: string
               port:
-                description: Port the S3 server listens on. If not specified the product will determine the port to use.
+                description: |-
+                  Port the S3 server listens on.
+                  If not specified the product will determine the port to use.
                 format: uint16
+                maximum: 65535.0
                 minimum: 0.0
                 nullable: true
                 type: integer
@@ -114,10 +135,15 @@ spec:
                               - secretClass
                             properties:
                               secretClass:
-                                description: Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate. Note that a SecretClass does not need to have a key but can also work with just a CA certificate, so if you got provided with a CA cert but don't have access to the key you can still use this method.
+                                description: |-
+                                  Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate.
+                                  Note that a SecretClass does not need to have a key but can also work with just a CA certificate,
+                                  so if you got provided with a CA cert but don't have access to the key you can still use this method.
                                 type: string
                               webPki:
-                                description: Use TLS and the CA certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
+                                description: |-
+                                  Use TLS and the CA certificates trusted by the common web browsers to verify the server.
+                                  This can be useful when you e.g. use public AWS S3 or other public available services.
                                 type: object
                             type: object
                         required:
