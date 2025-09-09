@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.97.0] - 2025-09-09
+
 ### Added
 
 - BREAKING: Add a new CLI flag/env to disabling CRD maintenance: `--disable-crd-maintenance` ([#1085]).

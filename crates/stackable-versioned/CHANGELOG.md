@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.9.0] - 2025-09-09
+
 ### Added
 
 - Add new `#[versioned(hint)]` argument to provide type hints for struct fields ([#1089]).

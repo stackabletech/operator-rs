@@ -2990,7 +2990,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.96.0"
+version = "0.97.0"
 dependencies = [
  "chrono",
  "clap",
@@ -3083,7 +3083,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned"
-version = "0.8.1"
+version = "0.9.0"
 dependencies = [
  "insta",
  "k8s-openapi",
@@ -3098,7 +3098,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned-macros"
-version = "0.8.1"
+version = "0.9.0"
 dependencies = [
  "convert_case",
  "darling 0.21.2",
@@ -3126,7 +3126,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-webhook"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "arc-swap",
  "axum",
