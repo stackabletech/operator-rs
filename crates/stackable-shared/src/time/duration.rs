@@ -12,6 +12,7 @@
 //! timeouts or retries.
 
 use std::{
+    borrow::Cow,
     cmp::Ordering,
     fmt::Display,
     num::ParseIntError,
@@ -166,11 +167,11 @@ impl FromStr for Duration {
 }
 
 impl JsonSchema for Duration {
-    fn schema_name() -> String {
-        "Duration".to_string()
+    fn schema_name() -> Cow<'static, str> {
+        "Duration".into()
     }
 
-    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn json_schema(generator: &mut schemars::generate::SchemaGenerator) -> schemars::Schema {
         String::json_schema(generator)
     }
 }

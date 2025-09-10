@@ -53,19 +53,16 @@ pub struct StackableAffinity {
     pub node_selector: Option<StackableNodeSelector>,
 }
 
+/// Simple key-value pairs forming a nodeSelector, see the [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node)
+//
 // We can not simply use [`BTreeMap<String, String>`] in [`StackableAffinity`], as the fields need to be [`Atomic`].
 // We can not mark it as [`Atomic`], as [`crate::config::fragment::FromFragment`] is already implemented for
 // [`BTreeMap<String, String>`].
 //
 // We `#[serde(flatten)]` the contained [`BTreeMap<String, String>`], so `serde_yaml` can deserialize everything as
 // expected.
-// FIXME: The generated JsonSchema will be wrong, so until https://github.com/GREsau/schemars/issues/259 is fixed, we
-// need to use `#[schemars(deny_unknown_fields)]`.
-// See https://github.com/stackabletech/operator-rs/pull/752#issuecomment-2017630433 for details.
-/// Simple key-value pairs forming a nodeSelector, see the [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node)
 #[derive(Clone, Debug, Eq, Deserialize, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-#[schemars(deny_unknown_fields)]
 pub struct StackableNodeSelector {
     #[serde(flatten)]
     pub node_selector: BTreeMap<String, String>,

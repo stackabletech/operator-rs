@@ -8,6 +8,7 @@ use stackable_operator::{
     status::condition::ClusterCondition,
     versioned::versioned,
 };
+use strum::{Display, EnumIter};
 
 #[versioned(
     version(name = "v1alpha1"),
@@ -62,6 +63,9 @@ pub mod versioned {
     pub struct ProductConfig {
         #[fragment_attrs(serde(default))]
         resources: Resources<ProductStorageConfig, JvmHeapLimits>,
+
+        #[fragment_attrs(serde(default))]
+        pub logging: stackable_operator::product_logging::spec::Logging<Container>,
     }
 
     #[derive(Debug, Default, PartialEq, Fragment, JsonSchema)]
@@ -75,6 +79,29 @@ pub mod versioned {
         data_storage: stackable_operator::commons::resources::PvcConfig,
     }
 
+    #[derive(
+        Clone,
+        Debug,
+        Deserialize,
+        Display,
+        Eq,
+        EnumIter,
+        JsonSchema,
+        Ord,
+        PartialEq,
+        PartialOrd,
+        Serialize,
+    )]
+    #[serde(rename_all = "kebab-case")]
+    #[strum(serialize_all = "kebab-case")]
+    #[schemars(crate = "stackable_operator::schemars")]
+    pub enum Container {
+        Prepare,
+        Vector,
+        BundleBuilder,
+        Opa,
+        UserInfoFetcher,
+    }
     #[derive(Clone, Default, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
     #[schemars(crate = "stackable_operator::schemars")]
     #[serde(rename_all = "camelCase")]

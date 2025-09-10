@@ -11,7 +11,7 @@
 
 use std::collections::BTreeMap;
 
-use schemars::schema::{InstanceType, Schema, SchemaObject, SingleOrVec};
+use schemars::{Schema, json_schema};
 use snafu::{ErrorCompat, Snafu};
 // Re-export
 pub use stackable_versioned_macros::versioned;
@@ -90,15 +90,10 @@ pub struct ChangedValue {
 // TODO (@Techassi): Think about where this should live. Basically this already exists in
 // stackable-operator, but we cannot use it without depending on it which I would like to
 // avoid.
-fn raw_object_schema(_: &mut schemars::r#gen::SchemaGenerator) -> Schema {
-    Schema::Object(SchemaObject {
-        instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::Object))),
-        extensions: [(
-            "x-kubernetes-preserve-unknown-fields".to_owned(),
-            serde_json::Value::Bool(true),
-        )]
-        .into(),
-        ..Default::default()
+fn raw_object_schema(_: &mut schemars::generate::SchemaGenerator) -> Schema {
+    json_schema!({
+        "type": "object",
+        "x-kubernetes-preserve-unknown-fields": true,
     })
 }
 

@@ -21,11 +21,16 @@ spec:
         properties:
           spec:
             description: |-
-              The Stackable Platform uses the AuthenticationClass as a central mechanism to handle user authentication across supported products.
+              The Stackable Platform uses the AuthenticationClass as a central mechanism to handle user
+              authentication across supported products.
 
-              The authentication mechanism needs to be configured only in the AuthenticationClass which is then referenced in the product. Multiple different authentication providers are supported. Learn more in the [authentication concept documentation][1] and the [Authentication with OpenLDAP tutorial][2].
+              The authentication mechanism needs to be configured only in the AuthenticationClass which is
+              then referenced in the product. Multiple different authentication providers are supported.
+              Learn more in the [authentication concept documentation][1] and the
+              [Authentication with OpenLDAP tutorial][2].
 
-              [1]: https://docs.stackable.tech/home/nightly/concepts/authentication [2]: https://docs.stackable.tech/home/nightly/tutorials/authentication_with_openldap
+              [1]: https://docs.stackable.tech/home/nightly/concepts/authentication
+              [2]: https://docs.stackable.tech/home/nightly/tutorials/authentication_with_openldap
             properties:
               provider:
                 description: Provider used for authentication like LDAP or Kerberos.
@@ -42,7 +47,10 @@ spec:
                   - kerberos
                 properties:
                   kerberos:
-                    description: The [Kerberos provider](https://docs.stackable.tech/home/nightly/concepts/authentication#_kerberos). The Kerberos AuthenticationClass is used when users should authenticate themselves via Kerberos.
+                    description: |-
+                      The [Kerberos provider](https://docs.stackable.tech/home/nightly/concepts/authentication#_kerberos).
+                      The Kerberos AuthenticationClass is used when users should authenticate themselves via
+                      Kerberos.
                     properties:
                       kerberosSecretClass:
                         description: Mandatory SecretClass used to obtain keytabs.
@@ -51,33 +59,46 @@ spec:
                     - kerberosSecretClass
                     type: object
                   ldap:
-                    description: The [LDAP provider](https://docs.stackable.tech/home/nightly/concepts/authentication#_ldap). There is also the ["Authentication with LDAP" tutorial](https://docs.stackable.tech/home/nightly/tutorials/authentication_with_openldap) where you can learn to configure Superset and Trino with OpenLDAP.
+                    description: |-
+                      The [LDAP provider](https://docs.stackable.tech/home/nightly/concepts/authentication#_ldap).
+                      There is also the ["Authentication with LDAP" tutorial](https://docs.stackable.tech/home/nightly/tutorials/authentication_with_openldap)
+                      where you can learn to configure Superset and Trino with OpenLDAP.
                     properties:
                       bindCredentials:
                         description: In case you need a special account for searching the LDAP server you can specify it here.
                         nullable: true
                         properties:
                           scope:
-                            description: '[Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).'
+                            description: |-
+                              [Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the
+                              [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).
                             nullable: true
                             properties:
                               listenerVolumes:
                                 default: []
-                                description: The listener volume scope allows Node and Service scopes to be inferred from the applicable listeners. This must correspond to Volume names in the Pod that mount Listeners.
+                                description: |-
+                                  The listener volume scope allows Node and Service scopes to be inferred from the applicable listeners.
+                                  This must correspond to Volume names in the Pod that mount Listeners.
                                 items:
                                   type: string
                                 type: array
                               node:
                                 default: false
-                                description: The node scope is resolved to the name of the Kubernetes Node object that the Pod is running on. This will typically be the DNS name of the node.
+                                description: |-
+                                  The node scope is resolved to the name of the Kubernetes Node object that the Pod is running on.
+                                  This will typically be the DNS name of the node.
                                 type: boolean
                               pod:
                                 default: false
-                                description: The pod scope is resolved to the name of the Kubernetes Pod. This allows the secret to differentiate between StatefulSet replicas.
+                                description: |-
+                                  The pod scope is resolved to the name of the Kubernetes Pod.
+                                  This allows the secret to differentiate between StatefulSet replicas.
                                 type: boolean
                               services:
                                 default: []
-                                description: The service scope allows Pod objects to specify custom scopes. This should typically correspond to Service objects that the Pod participates in.
+                                description: |-
+                                  The service scope allows Pod objects to specify custom scopes.
+                                  This should typically correspond to Service objects that the Pod participates in.
                                 items:
                                   type: string
                                 type: array
@@ -124,6 +145,7 @@ spec:
                       port:
                         description: Port of the LDAP server. If TLS is used defaults to 636 otherwise to 389.
                         format: uint16
+                        maximum: 65535.0
                         minimum: 0.0
                         nullable: true
                         type: integer
@@ -162,10 +184,15 @@ spec:
                                       - secretClass
                                     properties:
                                       secretClass:
-                                        description: Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate. Note that a SecretClass does not need to have a key but can also work with just a CA certificate, so if you got provided with a CA cert but don't have access to the key you can still use this method.
+                                        description: |-
+                                          Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate.
+                                          Note that a SecretClass does not need to have a key but can also work with just a CA certificate,
+                                          so if you got provided with a CA cert but don't have access to the key you can still use this method.
                                         type: string
                                       webPki:
-                                        description: Use TLS and the CA certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
+                                        description: |-
+                                          Use TLS and the CA certificates trusted by the common web browsers to verify the server.
+                                          This can be useful when you e.g. use public AWS S3 or other public available services.
                                         type: object
                                     type: object
                                 required:
@@ -185,23 +212,41 @@ spec:
                         description: Host of the identity provider, e.g. `my.keycloak.corp` or `127.0.0.1`.
                         type: string
                       port:
-                        description: Port of the identity provider. If TLS is used defaults to 443, otherwise to 80.
+                        description: |-
+                          Port of the identity provider. If TLS is used defaults to 443,
+                          otherwise to 80.
                         format: uint16
+                        maximum: 65535.0
                         minimum: 0.0
                         nullable: true
                         type: integer
                       principalClaim:
                         description: |-
-                          If a product extracts some sort of "effective user" that is represented by a string internally, this config determines with claim is used to extract that string. It is desirable to use `sub` in here (or some other stable identifier), but in many cases you might need to use `preferred_username` (e.g. in case of Keycloak) or a different claim instead.
+                          If a product extracts some sort of "effective user" that is represented by a
+                          string internally, this config determines with claim is used to extract that
+                          string. It is desirable to use `sub` in here (or some other stable identifier),
+                          but in many cases you might need to use `preferred_username` (e.g. in case of Keycloak)
+                          or a different claim instead.
 
-                          Please note that some products hard-coded the claim in their implementation, so some product operators might error out if the product hardcodes a different claim than configured here.
+                          Please note that some products hard-coded the claim in their implementation,
+                          so some product operators might error out if the product hardcodes a different
+                          claim than configured here.
 
-                          We don't provide any default value, as there is no correct way of doing it that works in all setups. Most demos will probably use `preferred_username`, although `sub` being more desirable, but technically impossible with the current behavior of the products.
+                          We don't provide any default value, as there is no correct way of doing it
+                          that works in all setups. Most demos will probably use `preferred_username`,
+                          although `sub` being more desirable, but technically impossible with the current
+                          behavior of the products.
                         type: string
                       providerHint:
-                        description: This is a hint about which identity provider is used by the AuthenticationClass. Operators *can* opt to use this value to enable known quirks around OIDC / OAuth authentication. Not providing a hint means there is no hint and OIDC should be used as it is intended to be used (via the `.well-known` discovery).
+                        description: |-
+                          This is a hint about which identity provider is used by the
+                          AuthenticationClass. Operators *can* opt to use this
+                          value to enable known quirks around OIDC / OAuth authentication.
+                          Not providing a hint means there is no hint and OIDC should be used as it is
+                          intended to be used (via the `.well-known` discovery).
                         enum:
                         - Keycloak
+                        - null
                         nullable: true
                         type: string
                       rootPath:
@@ -209,7 +254,9 @@ spec:
                         description: Root HTTP path of the identity provider. Defaults to `/`.
                         type: string
                       scopes:
-                        description: Scopes to request from your identity provider. It is recommended to request the `openid`, `email`, and `profile` scopes.
+                        description: |-
+                          Scopes to request from your identity provider. It is recommended to
+                          request the `openid`, `email`, and `profile` scopes.
                         items:
                           type: string
                         type: array
@@ -240,10 +287,15 @@ spec:
                                       - secretClass
                                     properties:
                                       secretClass:
-                                        description: Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate. Note that a SecretClass does not need to have a key but can also work with just a CA certificate, so if you got provided with a CA cert but don't have access to the key you can still use this method.
+                                        description: |-
+                                          Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate.
+                                          Note that a SecretClass does not need to have a key but can also work with just a CA certificate,
+                                          so if you got provided with a CA cert but don't have access to the key you can still use this method.
                                         type: string
                                       webPki:
-                                        description: Use TLS and the CA certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
+                                        description: |-
+                                          Use TLS and the CA certificates trusted by the common web browsers to verify the server.
+                                          This can be useful when you e.g. use public AWS S3 or other public available services.
                                         type: object
                                     type: object
                                 required:
@@ -259,10 +311,15 @@ spec:
                     - scopes
                     type: object
                   static:
-                    description: The [static provider](https://https://docs.stackable.tech/home/nightly/concepts/authentication#_static) is used to configure a static set of users, identified by username and password.
+                    description: |-
+                      The [static provider](https://https://docs.stackable.tech/home/nightly/concepts/authentication#_static)
+                      is used to configure a static set of users, identified by username and password.
                     properties:
                       userCredentialsSecret:
-                        description: Secret providing the usernames and passwords. The Secret must contain an entry for every user, with the key being the username and the value the password in plain text. It must be located in the same namespace as the product using it.
+                        description: |-
+                          Secret providing the usernames and passwords.
+                          The Secret must contain an entry for every user, with the key being the username and the value the password in plain text.
+                          It must be located in the same namespace as the product using it.
                         properties:
                           name:
                             description: Name of the Secret.
@@ -274,10 +331,17 @@ spec:
                     - userCredentialsSecret
                     type: object
                   tls:
-                    description: The [TLS provider](https://docs.stackable.tech/home/nightly/concepts/authentication#_tls). The TLS AuthenticationClass is used when users should authenticate themselves with a TLS certificate.
+                    description: |-
+                      The [TLS provider](https://docs.stackable.tech/home/nightly/concepts/authentication#_tls).
+                      The TLS AuthenticationClass is used when users should authenticate themselves with a
+                      TLS certificate.
                     properties:
                       clientCertSecretClass:
-                        description: 'See [ADR017: TLS authentication](https://docs.stackable.tech/home/nightly/contributor/adr/adr017-tls_authentication). If `client_cert_secret_class` is not set, the TLS settings may also be used for client authentication. If `client_cert_secret_class` is set, the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) will be used to provision client certificates.'
+                        description: |-
+                          See [ADR017: TLS authentication](https://docs.stackable.tech/home/nightly/contributor/adr/adr017-tls_authentication).
+                          If `client_cert_secret_class` is not set, the TLS settings may also be used for client authentication.
+                          If `client_cert_secret_class` is set, the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass)
+                          will be used to provision client certificates.
                         nullable: true
                         type: string
                     type: object

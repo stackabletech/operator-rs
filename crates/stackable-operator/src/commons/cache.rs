@@ -31,7 +31,7 @@ impl TtlCacheDefaults for UserInformationCacheDefaults {
 #[schemars(
     description = "Least Recently Used (LRU) cache with per-entry time-to-live (TTL) value.",
     // We don't care about the fields, but we also use JsonSchema to derive the name for the composite type
-    bound(serialize = "D: TtlCacheDefaults + JsonSchema")
+    bound(serialize = "D: JsonSchema")
 )]
 #[educe(
     Clone(bound = false),
@@ -39,7 +39,7 @@ impl TtlCacheDefaults for UserInformationCacheDefaults {
     PartialEq(bound = false),
     Eq
 )]
-pub struct TtlCache<D> {
+pub struct TtlCache<D: TtlCacheDefaults> {
     /// Time to live per entry
     #[serde(default = "D::entry_time_to_live")]
     pub entry_time_to_live: Duration,
