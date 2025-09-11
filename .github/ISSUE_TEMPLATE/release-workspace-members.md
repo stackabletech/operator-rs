@@ -31,30 +31,31 @@ Replace the items in the task lists below with the applicable Pull Requests
 > [!NOTE]
 > The PR is usually titled: `chore: Bump Rust version and workflow actions`
 
-1. Adjust the version of the channel in the `rust-toolchain.toml` file. See
-   <https://releases.rs>.
-2. Adjust the version `RUST_TOOLCHAIN_VERSION` in the workflows:
-     - `.github/workflows/build.yml`
-     - `.github/workflows/pre_commit.yaml`
-     - `.github/workflows/publish-docs.yaml`
-3. Add a changelog entry.
-4. Update any actions (using the Git commit hash) in the workflows. Hint: Also
-   make sure that the `cargo-udeps` action is up-to-date, otherwise the CI might
-   report errors.
+- [ ] Adjust the version of the channel in the `rust-toolchain.toml` file. See <https://releases.rs>.
+- [ ] Adjust the version `RUST_TOOLCHAIN_VERSION` in the workflows:
+      - `.github/workflows/build.yml`
+      - `.github/workflows/pre_commit.yaml`
+      - `.github/workflows/publish-docs.yaml`
+- [ ] Also adjust the nightly Rust toolchain version used for formatting (this should be kept in
+      sync across here, operator-templating and docker-images).
+      - `.github/workflows/pre_commit.yaml`
+      - `.vscode/settings.json`
+- [ ] Add a changelog entry.
+- [ ] Update any actions (using the Git commit hash) in the workflows. Hint: Also make sure that the
+      `cargo-udeps` action is up-to-date, otherwise the CI might report errors.
 
 ## Update Rust Dependencies
 
 > [!NOTE]
 > This PR is usually titled: `chore: Bump Rust dependencies`
 
-1. Bump minor versions of dependencies in the `Cargo.toml` manifest.
-2. Then run the `cargo update` command.
-3. Fix any code which needs updating due to the dependency bumps.
-4. Locally update any product operator to identify any breaking changes
-   downstream.
-     - Hint: Use the `[patch."https://github.com/..."]` mechanism to temporarily
-       override the dependency.
-5. Add a changelog entry if required.
+- [ ] Bump minor versions of dependencies in the `Cargo.toml` manifest.
+- [ ] Then run the `cargo update` command.
+- [ ] Fix any code which needs updating due to the dependency bumps.
+- [ ] Locally update any product operator to identify any breaking changes downstream.
+      - Hint: Use the `[patch."https://github.com/..."]` mechanism to temporarily override the
+        dependency.
+- [ ] Add a changelog entry if required.
 
 ## Adjust and Verify Crate Versions
 
@@ -72,5 +73,5 @@ Replace the items in the task lists below with the applicable Pull Requests
 > [!NOTE]
 > The PR is usually titled: `chore: Release workspace members`
 
-1. Bump the crate versions in their appropriate `Cargo.toml` manifests.
-2. Verify the previous step using `.scripts/verify_crate_versions.sh`.
+- [ ] Bump the crate versions in their appropriate `Cargo.toml` manifests.
+- [ ] Verify the previous step using `.scripts/verify_crate_versions.sh`.
