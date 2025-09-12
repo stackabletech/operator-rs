@@ -24,12 +24,13 @@ pub enum Error {
 /// It is strongly recommended to always call [`Self::with_recommended_labels()`]!
 #[derive(Clone, Default)]
 pub struct ObjectMetaBuilder {
-    ownerreference: Option<OwnerReference>,
     annotations: Option<Annotations>,
+    finalizers: Option<Vec<String>>,
     generate_name: Option<String>,
-    namespace: Option<String>,
     labels: Option<Labels>,
+    namespace: Option<String>,
     name: Option<String>,
+    ownerreference: Option<OwnerReference>,
 }
 
 impl ObjectMetaBuilder {
@@ -163,6 +164,26 @@ impl ObjectMetaBuilder {
         Ok(self)
     }
 
+    /// This adds a single finalizer to the existing finalizers.
+    pub fn with_finalizer(&mut self, finalizer: impl Into<String>) -> &mut Self {
+        self.finalizers
+            .get_or_insert(Vec::new())
+            .push(finalizer.into());
+        self
+    }
+
+    /// This adds multiple finalizers to the existing finalizers.
+    pub fn with_finalizers(&mut self, finalizers: Vec<String>) -> &mut Self {
+        self.finalizers.get_or_insert(Vec::new()).extend(finalizers);
+        self
+    }
+
+    /// This will replace all existing finalizers
+    pub fn finalizers(&mut self, finalizers: Vec<String>) -> &mut Self {
+        self.finalizers = Some(finalizers);
+        self
+    }
+
     pub fn build(&self) -> ObjectMeta {
         // NOTE (Techassi): Shouldn't this take self instead of &self to consume
         // the builder and build ObjectMeta without cloning?
@@ -187,6 +208,7 @@ impl ObjectMetaBuilder {
                 .map(|ownerreference| vec![ownerreference.clone()]),
             labels: self.labels.clone().map(|l| l.into()),
             annotations: self.annotations.clone().map(|a| a.into()),
+            finalizers: self.finalizers.clone(),
             ..ObjectMeta::default()
         }
     }
@@ -339,6 +361,7 @@ mod tests {
             })
             .unwrap()
             .with_annotation(("foo", "bar").try_into().unwrap())
+            .with_finalizer("finalizer")
             .build();
 
         assert_eq!(meta.generate_name, Some("generate_foo".to_string()));
@@ -351,6 +374,10 @@ mod tests {
         assert_eq!(
             meta.annotations.as_ref().unwrap().get(&"foo".to_string()),
             Some(&"bar".to_string())
+        );
+        assert_eq!(
+            meta.finalizers.as_ref().unwrap().first(),
+            Some(&"finalizer".to_string())
         );
     }
 }

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Extend `ObjectMetaBuilder` with `finalizers` ([#1094]).
+
+[#1094]: https://github.com/stackabletech/operator-rs/pull/1094
+
 ## [0.97.0] - 2025-09-09
 
 ### Added
