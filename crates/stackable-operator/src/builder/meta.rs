@@ -175,7 +175,6 @@ impl ObjectMetaBuilder {
     /// This adds multiple finalizers to the existing finalizers.
     pub fn with_finalizers(&mut self, finalizers: Vec<String>) -> &mut Self {
         self.finalizers.get_or_insert(Vec::new()).extend(finalizers);
-
         self
     }
 
