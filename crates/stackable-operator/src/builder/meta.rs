@@ -376,7 +376,7 @@ mod tests {
             Some(&"bar".to_string())
         );
         assert_eq!(
-            meta.finalizers.as_ref().unwrap().get(0),
+            meta.finalizers.as_ref().unwrap().first(),
             Some(&"finalizer".to_string())
         );
     }
