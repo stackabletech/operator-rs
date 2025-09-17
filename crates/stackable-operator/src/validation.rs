@@ -17,13 +17,18 @@ use snafu::Snafu;
 
 /// Minimal length required by RFC 1123 is 63. Up to 255 allowed, unsupported by k8s.
 const RFC_1123_LABEL_MAX_LENGTH: usize = 63;
-pub const RFC_1123_LABEL_FMT: &str = "[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?";
-const RFC_1123_LABEL_ERROR_MSG: &str = "a RFC 1123 label must consist of alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
+// This is a modified RFC 1123 format according to the Kubernetes specification, see https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names
+pub const LOWERCASE_RFC_1123_LABEL_FMT: &str = "[a-z0-9]([-a-z0-9]*[a-z0-9])?";
+const LOWERCASE_RFC_1123_LABEL_ERROR_MSG: &str = "a lowercase RFC 1123 label must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
+
+// This is a RFC 1123 format, see https://www.rfc-editor.org/rfc/rfc1123
+const RFC_1123_LABEL_FMT: &str = "[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?";
 
 /// This is a subdomain's max length in DNS (RFC 1123)
 const RFC_1123_SUBDOMAIN_MAX_LENGTH: usize = 253;
 const RFC_1123_SUBDOMAIN_FMT: &str =
     concatcp!(RFC_1123_LABEL_FMT, "(\\.", RFC_1123_LABEL_FMT, ")*");
+const RFC_1123_SUBDOMAIN_ERROR_MSG: &str = "a RFC 1123 subdomain must consist of alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
 
 const DOMAIN_MAX_LENGTH: usize = RFC_1123_SUBDOMAIN_MAX_LENGTH;
 /// Same as [`RFC_1123_SUBDOMAIN_FMT`], but allows a trailing dot
@@ -54,8 +59,14 @@ pub(crate) static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(&format!("^{DOMAIN_FMT}$")).expect("failed to compile domain regex")
 });
 
-static RFC_1123_LABEL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(&format!("^{RFC_1123_LABEL_FMT}$")).expect("failed to compile RFC 1123 label regex")
+static LOWERCASE_RFC_1123_LABEL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(&format!("^{LOWERCASE_RFC_1123_LABEL_FMT}$"))
+        .expect("failed to compile RFC 1123 label regex")
+});
+
+static RFC_1123_SUBDOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(&format!("^{RFC_1123_SUBDOMAIN_FMT}$"))
+        .expect("failed to compile RFC 1123 subdomain regex")
 });
 
 static RFC_1035_LABEL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
@@ -205,9 +216,22 @@ pub fn is_rfc_1123_label(value: &str) -> Result {
         validate_str_length(value, RFC_1123_LABEL_MAX_LENGTH),
         validate_str_regex(
             value,
-            &RFC_1123_LABEL_REGEX,
-            RFC_1123_LABEL_ERROR_MSG,
+            &LOWERCASE_RFC_1123_LABEL_REGEX,
+            LOWERCASE_RFC_1123_LABEL_ERROR_MSG,
             &["example-label", "1-label-1"],
+        ),
+    ])
+}
+
+/// Tests for a string that conforms to the definition of a subdomain in DNS (RFC 1123).
+pub fn is_rfc_1123_subdomain(value: &str) -> Result {
+    validate_all([
+        validate_str_length(value, RFC_1123_SUBDOMAIN_MAX_LENGTH),
+        validate_str_regex(
+            value,
+            &RFC_1123_SUBDOMAIN_REGEX,
+            RFC_1123_SUBDOMAIN_ERROR_MSG,
+            &["example.com"],
         ),
     ])
 }
@@ -276,26 +300,6 @@ mod tests {
     use rstest::rstest;
 
     use super::*;
-
-    const RFC_1123_SUBDOMAIN_ERROR_MSG: &str = "a RFC 1123 subdomain must consist of alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
-
-    static RFC_1123_SUBDOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(&format!("^{RFC_1123_SUBDOMAIN_FMT}$"))
-            .expect("failed to compile RFC 1123 subdomain regex")
-    });
-
-    /// Tests for a string that conforms to the definition of a subdomain in DNS (RFC 1123).
-    fn is_rfc_1123_subdomain(value: &str) -> Result {
-        validate_all([
-            validate_str_length(value, RFC_1123_SUBDOMAIN_MAX_LENGTH),
-            validate_str_regex(
-                value,
-                &RFC_1123_SUBDOMAIN_REGEX,
-                RFC_1123_SUBDOMAIN_ERROR_MSG,
-                &["example.com"],
-            ),
-        ])
-    }
 
     #[rstest]
     #[case("")]
