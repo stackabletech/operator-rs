@@ -220,6 +220,12 @@ impl From<std::time::Duration> for Duration {
     }
 }
 
+impl From<Duration> for std::time::Duration {
+    fn from(value: Duration) -> Self {
+        value.0
+    }
+}
+
 impl Add for Duration {
     type Output = Self;
 
