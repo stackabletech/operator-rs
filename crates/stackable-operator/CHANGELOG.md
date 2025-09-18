@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 
 - Extend `ObjectMetaBuilder` with `finalizers` ([#1094]).
 
+### Changed
+
+- BREAKING: Upgrade to `schemars` 1.0, `kube` 2.0 and `k8s-openapi` 0.26 (using Kubernetes 1.34) ([#1091]).
+
+[#1091]: https://github.com/stackabletech/operator-rs/pull/1091
 [#1094]: https://github.com/stackabletech/operator-rs/pull/1094
 
 ## [0.97.0] - 2025-09-09
@@ -15,10 +20,6 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - BREAKING: Add a new CLI flag/env to disabling CRD maintenance: `--disable-crd-maintenance` ([#1085]).
-
-### Changed
-
-- BREAKING: Upgrade to `schemars` 1.0, `kube` 2.0 and `k8s-openapi` 0.26 (using Kubernetes 1.34) ([#1091]).
 
 ### Removed
 
@@ -33,7 +34,6 @@ All notable changes to this project will be documented in this file.
 [#1085]: https://github.com/stackabletech/operator-rs/pull/1085
 [#1087]: https://github.com/stackabletech/operator-rs/pull/1087
 [#1090]: https://github.com/stackabletech/operator-rs/pull/1090
-[#1091]: https://github.com/stackabletech/operator-rs/pull/1091
 
 ## [0.96.0] - 2025-08-25
 
