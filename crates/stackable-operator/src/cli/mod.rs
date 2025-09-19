@@ -43,7 +43,7 @@ pub const AUTHOR: &str = "Stackable GmbH - info@stackable.tech";
 /// use clap::Parser;
 ///
 /// #[derive(Parser)]
-/// enum Command {
+/// enum CustomCommand {
 ///     /// Print hello world message
 ///     Hello,
 ///
