@@ -36,7 +36,11 @@ pub struct EndOfSupportOptions {
 
 impl EndOfSupportOptions {
     fn default_interval() -> Duration {
-        Duration::from_days_unchecked(1)
+        if cfg!(debug_assertions) {
+            Duration::from_secs(30)
+        } else {
+            Duration::from_days_unchecked(1)
+        }
     }
 
     fn default_support_duration() -> Duration {
