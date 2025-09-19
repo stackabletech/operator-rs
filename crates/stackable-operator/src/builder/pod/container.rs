@@ -12,7 +12,7 @@ use {k8s_openapi::api::core::v1::PodSpec, std::collections::BTreeMap};
 
 use crate::{
     commons::product_image_selection::ResolvedProductImage,
-    validation::{self, is_rfc_1123_label},
+    validation::{self, is_lowercase_rfc_1123_label},
 };
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -351,10 +351,11 @@ impl ContainerBuilder {
         }
     }
 
-    /// Validates a container name is according to the [RFC 1123](https://www.ietf.org/rfc/rfc1123.txt) standard.
+    /// Validates a container name is according to the kubernetes-specific [RFC 1123](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names) standard.
     /// Returns [Ok] if the name is according to the standard, and [Err] if not.
     fn validate_container_name(container_name: &str) -> Result<()> {
-        is_rfc_1123_label(container_name).context(InvalidContainerNameSnafu { container_name })
+        is_lowercase_rfc_1123_label(container_name)
+            .context(InvalidContainerNameSnafu { container_name })
     }
 }
 

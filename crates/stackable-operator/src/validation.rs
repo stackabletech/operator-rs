@@ -219,7 +219,7 @@ pub fn is_domain(value: &str) -> Result {
 /// Tests for a string that conforms to the kubernetes-specific definition of a label in DNS (RFC 1123)
 /// used in Namespace names, see: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names
 /// Maximum label length supported by k8s is 63 characters (minimum required).
-pub fn is_rfc_1123_label(value: &str) -> Result {
+pub fn is_lowercase_rfc_1123_label(value: &str) -> Result {
     validate_all([
         validate_str_length(value, RFC_1123_LABEL_MAX_LENGTH),
         validate_str_regex(
@@ -233,7 +233,7 @@ pub fn is_rfc_1123_label(value: &str) -> Result {
 
 /// Tests for a string that conforms to the kubernetes-specific definition of a subdomain in DNS (RFC 1123)
 /// used in ConfigMap names, see https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names
-pub fn is_rfc_1123_subdomain(value: &str) -> Result {
+pub fn is_lowercase_rfc_1123_subdomain(value: &str) -> Result {
     validate_all([
         validate_str_length(value, RFC_1123_SUBDOMAIN_MAX_LENGTH),
         validate_str_regex(
@@ -247,7 +247,7 @@ pub fn is_rfc_1123_subdomain(value: &str) -> Result {
 
 /// Tests for a string that conforms to the kubernetes-specific definition of a label in DNS (RFC 1035)
 /// used in Service names, see: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
-pub fn is_rfc_1035_label(value: &str) -> Result {
+pub fn is_lowercase_rfc_1035_label(value: &str) -> Result {
     validate_all([
         validate_str_length(value, RFC_1035_LABEL_MAX_LENGTH),
         validate_str_regex(
@@ -295,7 +295,7 @@ pub fn name_is_dns_label(name: &str, prefix: bool) -> Result {
         name = mask_trailing_dash(name);
     }
 
-    is_rfc_1035_label(&name)
+    is_lowercase_rfc_1035_label(&name)
 }
 
 /// Validates a namespace name.
@@ -373,7 +373,7 @@ mod tests {
     #[case("a$b")]
     #[case(&"a".repeat(254))]
     fn is_rfc_1123_subdomain_fail(#[case] value: &str) {
-        assert!(is_rfc_1123_subdomain(value).is_err());
+        assert!(is_lowercase_rfc_1123_subdomain(value).is_err());
     }
 
     #[rstest]
@@ -419,7 +419,7 @@ mod tests {
     #[case("11.22.33.44.55")]
     #[case(&"a".repeat(253))]
     fn is_rfc_1123_subdomain_pass(#[case] value: &str) {
-        assert!(is_rfc_1123_subdomain(value).is_ok());
+        assert!(is_lowercase_rfc_1123_subdomain(value).is_ok());
         // Every valid RFC1123 is also a valid domain
         assert!(is_domain(value).is_ok());
     }
@@ -483,7 +483,7 @@ mod tests {
     #[case("1 2")]
     #[case(&"a".repeat(64))]
     fn is_rfc_1035_label_fail(#[case] value: &str) {
-        assert!(is_rfc_1035_label(value).is_err());
+        assert!(is_lowercase_rfc_1035_label(value).is_err());
     }
 
     #[rstest]
@@ -495,6 +495,6 @@ mod tests {
     #[case("a--1--2--b")]
     #[case(&"a".repeat(63))]
     fn is_rfc_1035_label_pass(#[case] value: &str) {
-        assert!(is_rfc_1035_label(value).is_ok());
+        assert!(is_lowercase_rfc_1035_label(value).is_ok());
     }
 }
