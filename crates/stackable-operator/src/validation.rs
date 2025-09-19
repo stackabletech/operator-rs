@@ -217,7 +217,7 @@ pub fn is_domain(value: &str) -> Result {
 }
 
 /// Tests for a string that conforms to the kubernetes-specific definition of a label in DNS (RFC 1123)
-/// used in Namespace names, see: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names
+/// used in Namespace names, see: [Kubernetes Docs](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names)
 /// Maximum label length supported by k8s is 63 characters (minimum required).
 pub fn is_lowercase_rfc_1123_label(value: &str) -> Result {
     validate_all([
@@ -232,7 +232,7 @@ pub fn is_lowercase_rfc_1123_label(value: &str) -> Result {
 }
 
 /// Tests for a string that conforms to the kubernetes-specific definition of a subdomain in DNS (RFC 1123)
-/// used in ConfigMap names, see https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names
+/// used in ConfigMap names, see [Kubernetes Docs](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names)
 pub fn is_lowercase_rfc_1123_subdomain(value: &str) -> Result {
     validate_all([
         validate_str_length(value, RFC_1123_SUBDOMAIN_MAX_LENGTH),
@@ -246,7 +246,7 @@ pub fn is_lowercase_rfc_1123_subdomain(value: &str) -> Result {
 }
 
 /// Tests for a string that conforms to the kubernetes-specific definition of a label in DNS (RFC 1035)
-/// used in Service names, see: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
+/// used in Service names, see: [Kubernetes Docs](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names)
 pub fn is_lowercase_rfc_1035_label(value: &str) -> Result {
     validate_all([
         validate_str_length(value, RFC_1035_LABEL_MAX_LENGTH),
