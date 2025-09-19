@@ -31,7 +31,9 @@ spec:
                     nullable: true
                     properties:
                       clientCredentialsSecret:
-                        description: A reference to the OIDC client credentials secret. The secret contains the client id and secret.
+                        description: |-
+                          A reference to the OIDC client credentials secret. The secret contains
+                          the client id and secret.
                         type: string
                       extraScopes:
                         default: []
@@ -46,29 +48,47 @@ spec:
                 - authenticationClass
                 type: object
               clusterOperation:
-                description: '[Cluster operations](https://docs.stackable.tech/home/nightly/concepts/operations/cluster_operations) properties, allow stopping the product instance as well as pausing reconciliation.'
+                description: |-
+                  [Cluster operations](https://docs.stackable.tech/home/nightly/concepts/operations/cluster_operations)
+                  properties, allow stopping the product instance as well as pausing reconciliation.
                 properties:
                   reconciliationPaused:
                     default: false
-                    description: Flag to stop cluster reconciliation by the operator. This means that all changes in the custom resource spec are ignored until this flag is set to false or removed. The operator will however still watch the deployed resources at the time and update the custom resource status field. If applied at the same time with `stopped`, `reconciliationPaused` will take precedence over `stopped` and stop the reconciliation immediately.
+                    description: |-
+                      Flag to stop cluster reconciliation by the operator. This means that all changes in the
+                      custom resource spec are ignored until this flag is set to false or removed. The operator
+                      will however still watch the deployed resources at the time and update the custom resource
+                      status field.
+                      If applied at the same time with `stopped`, `reconciliationPaused` will take precedence over
+                      `stopped` and stop the reconciliation immediately.
                     type: boolean
                   stopped:
                     default: false
-                    description: Flag to stop the cluster. This means all deployed resources (e.g. Services, StatefulSets, ConfigMaps) are kept but all deployed Pods (e.g. replicas from a StatefulSet) are scaled to 0 and therefore stopped and removed. If applied at the same time with `reconciliationPaused`, the latter will pause reconciliation and `stopped` will take no effect until `reconciliationPaused` is set to false or removed.
+                    description: |-
+                      Flag to stop the cluster. This means all deployed resources (e.g. Services, StatefulSets,
+                      ConfigMaps) are kept but all deployed Pods (e.g. replicas from a StatefulSet) are scaled to 0
+                      and therefore stopped and removed.
+                      If applied at the same time with `reconciliationPaused`, the latter will pause reconciliation
+                      and `stopped` will take no effect until `reconciliationPaused` is set to false or removed.
                     type: boolean
                 type: object
               domainName:
                 description: A validated domain name type conforming to RFC 1123, so e.g. not an IP address
-                pattern: ^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?)*\.?$
                 type: string
               hostName:
                 type: string
               kerberosRealmName:
                 description: A validated kerberos realm name type, for use in CRDs.
-                pattern: ^[-.a-zA-Z0-9]+$
                 type: string
               nodes:
-                description: This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a key-value-map containing all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured on role level. There is also a second form of config, which can only be configured at role level, the `roleConfig`. You can learn more about this in the [Roles and role group concept documentation](https://docs.stackable.tech/home/nightly/concepts/roles-and-role-groups).
+                description: |-
+                  This struct represents a role - e.g. HDFS datanodes or Trino workers. It has a key-value-map containing
+                  all the roleGroups that are part of this role. Additionally, there is a `config`, which is configurable
+                  at the role *and* roleGroup level. Everything at roleGroup level is merged on top of what is configured
+                  on role level. There is also a second form of config, which can only be configured
+                  at role level, the `roleConfig`.
+                  You can learn more about this in the
+                  [Roles and role group concept documentation](https://docs.stackable.tech/home/nightly/concepts/roles-and-role-groups).
                 nullable: true
                 properties:
                   cliOverrides:
@@ -79,6 +99,99 @@ spec:
                   config:
                     default: {}
                     properties:
+                      logging:
+                        default:
+                          containers: {}
+                          enableVectorAgent: null
+                        description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
+                        properties:
+                          containers:
+                            additionalProperties:
+                              anyOf:
+                              - required:
+                                - custom
+                              - {}
+                              description: Log configuration of the container
+                              properties:
+                                console:
+                                  description: Configuration for the console appender
+                                  nullable: true
+                                  properties:
+                                    level:
+                                      description: |-
+                                        The log level threshold.
+                                        Log events with a lower log level are discarded.
+                                      enum:
+                                      - TRACE
+                                      - DEBUG
+                                      - INFO
+                                      - WARN
+                                      - ERROR
+                                      - FATAL
+                                      - NONE
+                                      - null
+                                      nullable: true
+                                      type: string
+                                  type: object
+                                custom:
+                                  description: Custom log configuration provided in a ConfigMap
+                                  properties:
+                                    configMap:
+                                      description: ConfigMap containing the log configuration files
+                                      nullable: true
+                                      type: string
+                                  type: object
+                                file:
+                                  description: Configuration for the file appender
+                                  nullable: true
+                                  properties:
+                                    level:
+                                      description: |-
+                                        The log level threshold.
+                                        Log events with a lower log level are discarded.
+                                      enum:
+                                      - TRACE
+                                      - DEBUG
+                                      - INFO
+                                      - WARN
+                                      - ERROR
+                                      - FATAL
+                                      - NONE
+                                      - null
+                                      nullable: true
+                                      type: string
+                                  type: object
+                                loggers:
+                                  additionalProperties:
+                                    description: Configuration of a logger
+                                    properties:
+                                      level:
+                                        description: |-
+                                          The log level threshold.
+                                          Log events with a lower log level are discarded.
+                                        enum:
+                                        - TRACE
+                                        - DEBUG
+                                        - INFO
+                                        - WARN
+                                        - ERROR
+                                        - FATAL
+                                        - NONE
+                                        - null
+                                        nullable: true
+                                        type: string
+                                    type: object
+                                  default: {}
+                                  description: Configuration per logger
+                                  type: object
+                              type: object
+                            description: Log configuration per container.
+                            type: object
+                          enableVectorAgent:
+                            description: Wether or not to deploy a container with the Vector log agent.
+                            nullable: true
+                            type: boolean
+                        type: object
                       resources:
                         default:
                           cpu:
@@ -91,7 +204,9 @@ spec:
                           storage:
                             dataStorage:
                               capacity: null
-                        description: Resource usage is configured here, this includes CPU usage, memory usage and disk storage usage, if this role needs any.
+                        description: |-
+                          Resource usage is configured here, this includes CPU usage, memory usage and disk storage
+                          usage, if this role needs any.
                         properties:
                           cpu:
                             default:
@@ -99,18 +214,32 @@ spec:
                               min: null
                             properties:
                               max:
-                                description: The maximum amount of CPU cores that can be requested by Pods. Equivalent to the `limit` for Pod resource configuration. Cores are specified either as a decimal point number or as milli units. For example:`1.5` will be 1.5 cores, also written as `1500m`.
+                                description: |-
+                                  The maximum amount of CPU cores that can be requested by Pods.
+                                  Equivalent to the `limit` for Pod resource configuration.
+                                  Cores are specified either as a decimal point number or as milli units.
+                                  For example:`1.5` will be 1.5 cores, also written as `1500m`.
                                 nullable: true
                                 type: string
                               min:
-                                description: The minimal amount of CPU cores that Pods need to run. Equivalent to the `request` for Pod resource configuration. Cores are specified either as a decimal point number or as milli units. For example:`1.5` will be 1.5 cores, also written as `1500m`.
+                                description: |-
+                                  The minimal amount of CPU cores that Pods need to run.
+                                  Equivalent to the `request` for Pod resource configuration.
+                                  Cores are specified either as a decimal point number or as milli units.
+                                  For example:`1.5` will be 1.5 cores, also written as `1500m`.
                                 nullable: true
                                 type: string
                             type: object
                           memory:
                             properties:
                               limit:
-                                description: 'The maximum amount of memory that should be available to the Pod. Specified as a byte [Quantity](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/), which means these suffixes are supported: E, P, T, G, M, k. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki. For example, the following represent roughly the same value: `128974848, 129e6, 129M,  128974848000m, 123Mi`'
+                                description: |-
+                                  The maximum amount of memory that should be available to the Pod.
+                                  Specified as a byte [Quantity](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/),
+                                  which means these suffixes are supported: E, P, T, G, M, k.
+                                  You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki.
+                                  For example, the following represent roughly the same value:
+                                  `128974848, 129e6, 129M,  128974848000m, 123Mi`
                                 nullable: true
                                 type: string
                               runtimeLimits:
@@ -180,17 +309,34 @@ spec:
                         type: string
                       type: object
                     default: {}
-                    description: The `configOverrides` can be used to configure properties in product config files that are not exposed in the CRD. Read the [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides) and consult the operator specific usage guide documentation for details on the available config files and settings for the specific product.
+                    description: |-
+                      The `configOverrides` can be used to configure properties in product config files
+                      that are not exposed in the CRD. Read the
+                      [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides)
+                      and consult the operator specific usage guide documentation for details on the
+                      available config files and settings for the specific product.
                     type: object
                   envOverrides:
                     additionalProperties:
                       type: string
                     default: {}
-                    description: '`envOverrides` configure environment variables to be set in the Pods. It is a map from strings to strings - environment variables and the value to set. Read the [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides) for more information and consult the operator specific usage guide to find out about the product specific environment variables that are available.'
+                    description: |-
+                      `envOverrides` configure environment variables to be set in the Pods.
+                      It is a map from strings to strings - environment variables and the value to set.
+                      Read the
+                      [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides)
+                      for more information and consult the operator specific usage guide to find out about
+                      the product specific environment variables that are available.
                     type: object
                   podOverrides:
                     default: {}
-                    description: In the `podOverrides` property you can define a [PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core) to override any property that can be set on a Kubernetes Pod. Read the [Pod overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#pod-overrides) for more information.
+                    description: |-
+                      In the `podOverrides` property you can define a
+                      [PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core)
+                      to override any property that can be set on a Kubernetes Pod.
+                      Read the
+                      [Pod overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#pod-overrides)
+                      for more information.
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   roleConfig:
@@ -207,17 +353,26 @@ spec:
                         description: |-
                           This struct is used to configure:
 
-                          1. If PodDisruptionBudgets are created by the operator 2. The allowed number of Pods to be unavailable (`maxUnavailable`)
+                          1. If PodDisruptionBudgets are created by the operator
+                          2. The allowed number of Pods to be unavailable (`maxUnavailable`)
 
-                          Learn more in the [allowed Pod disruptions documentation](https://docs.stackable.tech/home/nightly/concepts/operations/pod_disruptions).
+                          Learn more in the
+                          [allowed Pod disruptions documentation](https://docs.stackable.tech/home/nightly/concepts/operations/pod_disruptions).
                         properties:
                           enabled:
                             default: true
-                            description: Whether a PodDisruptionBudget should be written out for this role. Disabling this enables you to specify your own - custom - one. Defaults to true.
+                            description: |-
+                              Whether a PodDisruptionBudget should be written out for this role.
+                              Disabling this enables you to specify your own - custom - one.
+                              Defaults to true.
                             type: boolean
                           maxUnavailable:
-                            description: The number of Pods that are allowed to be down because of voluntary disruptions. If you don't explicitly set this, the operator will use a sane default based upon knowledge about the individual product.
+                            description: |-
+                              The number of Pods that are allowed to be down because of voluntary disruptions.
+                              If you don't explicitly set this, the operator will use a sane default based
+                              upon knowledge about the individual product.
                             format: uint16
+                            maximum: 65535.0
                             minimum: 0.0
                             nullable: true
                             type: integer
@@ -234,6 +389,99 @@ spec:
                         config:
                           default: {}
                           properties:
+                            logging:
+                              default:
+                                containers: {}
+                                enableVectorAgent: null
+                              description: Logging configuration, learn more in the [logging concept documentation](https://docs.stackable.tech/home/nightly/concepts/logging).
+                              properties:
+                                containers:
+                                  additionalProperties:
+                                    anyOf:
+                                    - required:
+                                      - custom
+                                    - {}
+                                    description: Log configuration of the container
+                                    properties:
+                                      console:
+                                        description: Configuration for the console appender
+                                        nullable: true
+                                        properties:
+                                          level:
+                                            description: |-
+                                              The log level threshold.
+                                              Log events with a lower log level are discarded.
+                                            enum:
+                                            - TRACE
+                                            - DEBUG
+                                            - INFO
+                                            - WARN
+                                            - ERROR
+                                            - FATAL
+                                            - NONE
+                                            - null
+                                            nullable: true
+                                            type: string
+                                        type: object
+                                      custom:
+                                        description: Custom log configuration provided in a ConfigMap
+                                        properties:
+                                          configMap:
+                                            description: ConfigMap containing the log configuration files
+                                            nullable: true
+                                            type: string
+                                        type: object
+                                      file:
+                                        description: Configuration for the file appender
+                                        nullable: true
+                                        properties:
+                                          level:
+                                            description: |-
+                                              The log level threshold.
+                                              Log events with a lower log level are discarded.
+                                            enum:
+                                            - TRACE
+                                            - DEBUG
+                                            - INFO
+                                            - WARN
+                                            - ERROR
+                                            - FATAL
+                                            - NONE
+                                            - null
+                                            nullable: true
+                                            type: string
+                                        type: object
+                                      loggers:
+                                        additionalProperties:
+                                          description: Configuration of a logger
+                                          properties:
+                                            level:
+                                              description: |-
+                                                The log level threshold.
+                                                Log events with a lower log level are discarded.
+                                              enum:
+                                              - TRACE
+                                              - DEBUG
+                                              - INFO
+                                              - WARN
+                                              - ERROR
+                                              - FATAL
+                                              - NONE
+                                              - null
+                                              nullable: true
+                                              type: string
+                                          type: object
+                                        default: {}
+                                        description: Configuration per logger
+                                        type: object
+                                    type: object
+                                  description: Log configuration per container.
+                                  type: object
+                                enableVectorAgent:
+                                  description: Wether or not to deploy a container with the Vector log agent.
+                                  nullable: true
+                                  type: boolean
+                              type: object
                             resources:
                               default:
                                 cpu:
@@ -246,7 +494,9 @@ spec:
                                 storage:
                                   dataStorage:
                                     capacity: null
-                              description: Resource usage is configured here, this includes CPU usage, memory usage and disk storage usage, if this role needs any.
+                              description: |-
+                                Resource usage is configured here, this includes CPU usage, memory usage and disk storage
+                                usage, if this role needs any.
                               properties:
                                 cpu:
                                   default:
@@ -254,18 +504,32 @@ spec:
                                     min: null
                                   properties:
                                     max:
-                                      description: The maximum amount of CPU cores that can be requested by Pods. Equivalent to the `limit` for Pod resource configuration. Cores are specified either as a decimal point number or as milli units. For example:`1.5` will be 1.5 cores, also written as `1500m`.
+                                      description: |-
+                                        The maximum amount of CPU cores that can be requested by Pods.
+                                        Equivalent to the `limit` for Pod resource configuration.
+                                        Cores are specified either as a decimal point number or as milli units.
+                                        For example:`1.5` will be 1.5 cores, also written as `1500m`.
                                       nullable: true
                                       type: string
                                     min:
-                                      description: The minimal amount of CPU cores that Pods need to run. Equivalent to the `request` for Pod resource configuration. Cores are specified either as a decimal point number or as milli units. For example:`1.5` will be 1.5 cores, also written as `1500m`.
+                                      description: |-
+                                        The minimal amount of CPU cores that Pods need to run.
+                                        Equivalent to the `request` for Pod resource configuration.
+                                        Cores are specified either as a decimal point number or as milli units.
+                                        For example:`1.5` will be 1.5 cores, also written as `1500m`.
                                       nullable: true
                                       type: string
                                   type: object
                                 memory:
                                   properties:
                                     limit:
-                                      description: 'The maximum amount of memory that should be available to the Pod. Specified as a byte [Quantity](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/), which means these suffixes are supported: E, P, T, G, M, k. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki. For example, the following represent roughly the same value: `128974848, 129e6, 129M,  128974848000m, 123Mi`'
+                                      description: |-
+                                        The maximum amount of memory that should be available to the Pod.
+                                        Specified as a byte [Quantity](https://kubernetes.io/docs/reference/kubernetes-api/common-definitions/quantity/),
+                                        which means these suffixes are supported: E, P, T, G, M, k.
+                                        You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki.
+                                        For example, the following represent roughly the same value:
+                                        `128974848, 129e6, 129M,  128974848000m, 123Mi`
                                       nullable: true
                                       type: string
                                     runtimeLimits:
@@ -335,21 +599,39 @@ spec:
                               type: string
                             type: object
                           default: {}
-                          description: The `configOverrides` can be used to configure properties in product config files that are not exposed in the CRD. Read the [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides) and consult the operator specific usage guide documentation for details on the available config files and settings for the specific product.
+                          description: |-
+                            The `configOverrides` can be used to configure properties in product config files
+                            that are not exposed in the CRD. Read the
+                            [config overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#config-overrides)
+                            and consult the operator specific usage guide documentation for details on the
+                            available config files and settings for the specific product.
                           type: object
                         envOverrides:
                           additionalProperties:
                             type: string
                           default: {}
-                          description: '`envOverrides` configure environment variables to be set in the Pods. It is a map from strings to strings - environment variables and the value to set. Read the [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides) for more information and consult the operator specific usage guide to find out about the product specific environment variables that are available.'
+                          description: |-
+                            `envOverrides` configure environment variables to be set in the Pods.
+                            It is a map from strings to strings - environment variables and the value to set.
+                            Read the
+                            [environment variable overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#env-overrides)
+                            for more information and consult the operator specific usage guide to find out about
+                            the product specific environment variables that are available.
                           type: object
                         podOverrides:
                           default: {}
-                          description: In the `podOverrides` property you can define a [PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core) to override any property that can be set on a Kubernetes Pod. Read the [Pod overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#pod-overrides) for more information.
+                          description: |-
+                            In the `podOverrides` property you can define a
+                            [PodTemplateSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#podtemplatespec-v1-core)
+                            to override any property that can be set on a Kubernetes Pod.
+                            Read the
+                            [Pod overrides documentation](https://docs.stackable.tech/home/nightly/concepts/overrides#pod-overrides)
+                            for more information.
                           type: object
                           x-kubernetes-preserve-unknown-fields: true
                         replicas:
                           format: uint16
+                          maximum: 65535.0
                           minimum: 0.0
                           nullable: true
                           type: integer
@@ -359,10 +641,16 @@ spec:
                 - roleGroups
                 type: object
               opaConfig:
-                description: Configure the OPA stacklet [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) and the name of the Rego package containing your authorization rules. Consult the [OPA authorization documentation](https://docs.stackable.tech/home/nightly/concepts/opa) to learn how to deploy Rego authorization rules with OPA.
+                description: |-
+                  Configure the OPA stacklet [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery)
+                  and the name of the Rego package containing your authorization rules.
+                  Consult the [OPA authorization documentation](https://docs.stackable.tech/home/nightly/concepts/opa)
+                  to learn how to deploy Rego authorization rules with OPA.
                 properties:
                   configMapName:
-                    description: The [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery) for the OPA stacklet that should be used for authorization requests.
+                    description: |-
+                      The [discovery ConfigMap](https://docs.stackable.tech/home/nightly/concepts/service_discovery)
+                      for the OPA stacklet that should be used for authorization requests.
                     type: string
                   package:
                     description: The name of the Rego package containing the Rego rules for the product.
@@ -375,17 +663,26 @@ spec:
                 description: |-
                   This struct is used to configure:
 
-                  1. If PodDisruptionBudgets are created by the operator 2. The allowed number of Pods to be unavailable (`maxUnavailable`)
+                  1. If PodDisruptionBudgets are created by the operator
+                  2. The allowed number of Pods to be unavailable (`maxUnavailable`)
 
-                  Learn more in the [allowed Pod disruptions documentation](https://docs.stackable.tech/home/nightly/concepts/operations/pod_disruptions).
+                  Learn more in the
+                  [allowed Pod disruptions documentation](https://docs.stackable.tech/home/nightly/concepts/operations/pod_disruptions).
                 properties:
                   enabled:
                     default: true
-                    description: Whether a PodDisruptionBudget should be written out for this role. Disabling this enables you to specify your own - custom - one. Defaults to true.
+                    description: |-
+                      Whether a PodDisruptionBudget should be written out for this role.
+                      Disabling this enables you to specify your own - custom - one.
+                      Defaults to true.
                     type: boolean
                   maxUnavailable:
-                    description: The number of Pods that are allowed to be down because of voluntary disruptions. If you don't explicitly set this, the operator will use a sane default based upon knowledge about the individual product.
+                    description: |-
+                      The number of Pods that are allowed to be down because of voluntary disruptions.
+                      If you don't explicitly set this, the operator will use a sane default based
+                      upon knowledge about the individual product.
                     format: uint16
+                    maximum: 65535.0
                     minimum: 0.0
                     nullable: true
                     type: integer
@@ -398,12 +695,17 @@ spec:
                 - required:
                   - productVersion
                 description: |-
-                  Specify which image to use, the easiest way is to only configure the `productVersion`. You can also configure a custom image registry to pull from, as well as completely custom images.
+                  Specify which image to use, the easiest way is to only configure the `productVersion`.
+                  You can also configure a custom image registry to pull from, as well as completely custom
+                  images.
 
-                  Consult the [Product image selection documentation](https://docs.stackable.tech/home/nightly/concepts/product_image_selection) for details.
+                  Consult the [Product image selection documentation](https://docs.stackable.tech/home/nightly/concepts/product_image_selection)
+                  for details.
                 properties:
                   custom:
-                    description: Overwrite the docker image. Specify the full docker image name, e.g. `oci.stackable.tech/sdp/superset:1.4.1-stackable2.1.0`
+                    description: |-
+                      Overwrite the docker image.
+                      Specify the full docker image name, e.g. `oci.stackable.tech/sdp/superset:1.4.1-stackable2.1.0`
                     type: string
                   productVersion:
                     description: Version of the product, e.g. `1.4.1`.
@@ -434,33 +736,46 @@ spec:
                     nullable: true
                     type: string
                   stackableVersion:
-                    description: Stackable version of the product, e.g. `23.4`, `23.4.1` or `0.0.0-dev`. If not specified, the operator will use its own version, e.g. `23.4.1`. When using a nightly operator or a pr version, it will use the nightly `0.0.0-dev` image.
+                    description: |-
+                      Stackable version of the product, e.g. `23.4`, `23.4.1` or `0.0.0-dev`.
+                      If not specified, the operator will use its own version, e.g. `23.4.1`.
+                      When using a nightly operator or a pr version, it will use the nightly `0.0.0-dev` image.
                     nullable: true
                     type: string
                 type: object
               secretClassVolume:
                 properties:
                   scope:
-                    description: '[Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).'
+                    description: |-
+                      [Scope](https://docs.stackable.tech/home/nightly/secret-operator/scope) of the
+                      [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass).
                     nullable: true
                     properties:
                       listenerVolumes:
                         default: []
-                        description: The listener volume scope allows Node and Service scopes to be inferred from the applicable listeners. This must correspond to Volume names in the Pod that mount Listeners.
+                        description: |-
+                          The listener volume scope allows Node and Service scopes to be inferred from the applicable listeners.
+                          This must correspond to Volume names in the Pod that mount Listeners.
                         items:
                           type: string
                         type: array
                       node:
                         default: false
-                        description: The node scope is resolved to the name of the Kubernetes Node object that the Pod is running on. This will typically be the DNS name of the node.
+                        description: |-
+                          The node scope is resolved to the name of the Kubernetes Node object that the Pod is running on.
+                          This will typically be the DNS name of the node.
                         type: boolean
                       pod:
                         default: false
-                        description: The pod scope is resolved to the name of the Kubernetes Pod. This allows the secret to differentiate between StatefulSet replicas.
+                        description: |-
+                          The pod scope is resolved to the name of the Kubernetes Pod.
+                          This allows the secret to differentiate between StatefulSet replicas.
                         type: boolean
                       services:
                         default: []
-                        description: The service scope allows Pod objects to specify custom scopes. This should typically correspond to Service objects that the Pod participates in.
+                        description: |-
+                          The service scope allows Pod objects to specify custom scopes.
+                          This should typically correspond to Service objects that the Pod participates in.
                         items:
                           type: string
                         type: array
@@ -477,9 +792,12 @@ spec:
 
                   In order to use this struct, the following two requirements must be met:
 
-                  - Must only be used in cluster-scoped objects - Namespaced objects must not be able to define cross-namespace secret references
+                  - Must only be used in cluster-scoped objects
+                  - Namespaced objects must not be able to define cross-namespace secret
+                    references
 
-                  This struct is a redefinition of the one provided by k8s-openapi to make name and namespace mandatory.
+                  This struct is a redefinition of the one provided by k8s-openapi to make
+                  name and namespace mandatory.
                 properties:
                   name:
                     description: Name of the Secret being referred to.
@@ -492,7 +810,9 @@ spec:
                 - namespace
                 type: object
               stackableAffinity:
-                description: These configuration settings control [Pod placement](https://docs.stackable.tech/home/nightly/concepts/operations/pod_placement).
+                description: |-
+                  These configuration settings control
+                  [Pod placement](https://docs.stackable.tech/home/nightly/concepts/operations/pod_placement).
                 properties:
                   node_affinity:
                     description: Same as the `spec.affinity.nodeAffinity` field on the Pod, see the [Kubernetes docs](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node)
@@ -815,7 +1135,7 @@ spec:
                     nullable: true
                     properties:
                       preferredDuringSchedulingIgnoredDuringExecution:
-                        description: The scheduler will prefer to schedule pods to nodes that satisfy the anti-affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling anti-affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding "weight" to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.
+                        description: The scheduler will prefer to schedule pods to nodes that satisfy the anti-affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling anti-affinity expressions, etc.), compute a sum by iterating through the elements of this field and subtracting "weight" from the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.
                         items:
                           description: The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
                           properties:
@@ -1035,10 +1355,15 @@ spec:
                                   - secretClass
                                 properties:
                                   secretClass:
-                                    description: Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate. Note that a SecretClass does not need to have a key but can also work with just a CA certificate, so if you got provided with a CA cert but don't have access to the key you can still use this method.
+                                    description: |-
+                                      Name of the [SecretClass](https://docs.stackable.tech/home/nightly/secret-operator/secretclass) which will provide the CA certificate.
+                                      Note that a SecretClass does not need to have a key but can also work with just a CA certificate,
+                                      so if you got provided with a CA cert but don't have access to the key you can still use this method.
                                     type: string
                                   webPki:
-                                    description: Use TLS and the CA certificates trusted by the common web browsers to verify the server. This can be useful when you e.g. use public AWS S3 or other public available services.
+                                    description: |-
+                                      Use TLS and the CA certificates trusted by the common web browsers to verify the server.
+                                      This can be useful when you e.g. use public AWS S3 or other public available services.
                                     type: object
                                 type: object
                             required:
@@ -1058,7 +1383,9 @@ spec:
                     type: string
                   maxEntries:
                     default: 10000
-                    description: Maximum number of entries in the cache; If this threshold is reached then the least recently used item is removed.
+                    description: |-
+                      Maximum number of entries in the cache; If this threshold is reached then the least
+                      recently used item is removed.
                     format: uint32
                     minimum: 0.0
                     type: integer
