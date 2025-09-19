@@ -16,7 +16,7 @@ use regex::Regex;
 use snafu::Snafu;
 
 /// Minimal length required by RFC 1123 is 63. Up to 255 allowed, unsupported by k8s.
-const RFC_1123_LABEL_MAX_LENGTH: usize = 63;
+pub const RFC_1123_LABEL_MAX_LENGTH: usize = 63;
 // This is a modified RFC 1123 format according to the Kubernetes specification, see https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names
 pub const LOWERCASE_RFC_1123_LABEL_FMT: &str = "[a-z0-9]([-a-z0-9]*[a-z0-9])?";
 const LOWERCASE_RFC_1123_LABEL_ERROR_MSG: &str = "a lowercase RFC 1123 label must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
@@ -25,16 +25,16 @@ const LOWERCASE_RFC_1123_LABEL_ERROR_MSG: &str = "a lowercase RFC 1123 label mus
 const RFC_1123_LABEL_FMT: &str = "[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?";
 
 /// This is a subdomain's max length in DNS (RFC 1123)
-const RFC_1123_SUBDOMAIN_MAX_LENGTH: usize = 253;
-const RFC_1123_SUBDOMAIN_FMT: &str = concatcp!(
+pub const RFC_1123_SUBDOMAIN_MAX_LENGTH: usize = 253;
+const LOWERCASE_RFC_1123_SUBDOMAIN_FMT: &str = concatcp!(
     LOWERCASE_RFC_1123_LABEL_FMT,
     "(\\.",
     LOWERCASE_RFC_1123_LABEL_FMT,
     ")*"
 );
-const RFC_1123_SUBDOMAIN_ERROR_MSG: &str = "a RFC 1123 subdomain must consist of alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
+const LOWERCASE_RFC_1123_SUBDOMAIN_ERROR_MSG: &str = "a lowercase RFC 1123 subdomain must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
 
-const DOMAIN_MAX_LENGTH: usize = RFC_1123_SUBDOMAIN_MAX_LENGTH;
+pub const DOMAIN_MAX_LENGTH: usize = RFC_1123_SUBDOMAIN_MAX_LENGTH;
 
 /// Same as [`RFC_1123_LABEL_FMT`], but allows a trailing dot
 const DOMAIN_FMT: &str = concatcp!(RFC_1123_LABEL_FMT, "(\\.", RFC_1123_LABEL_FMT, ")*\\.?");
@@ -42,11 +42,12 @@ const DOMAIN_ERROR_MSG: &str = "a domain must consist of alphanumeric characters
 
 // FIXME: According to https://www.rfc-editor.org/rfc/rfc1035#section-2.3.1 domain names must start with a letter
 // (and not a number).
-const RFC_1035_LABEL_FMT: &str = "[a-z]([-a-z0-9]*[a-z0-9])?";
-const RFC_1035_LABEL_ERROR_MSG: &str = "a DNS-1035 label must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character";
+// This is a modified RFC 1035 format according to the Kubernetes specification, see https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
+const LOWERCASE_RFC_1035_LABEL_FMT: &str = "[a-z]([-a-z0-9]*[a-z0-9])?";
+const LOWERCASE_RFC_1035_LABEL_ERROR_MSG: &str = "a DNS-1035 label must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character";
 
 // This is a label's max length in DNS (RFC 1035)
-const RFC_1035_LABEL_MAX_LENGTH: usize = 63;
+pub const RFC_1035_LABEL_MAX_LENGTH: usize = 63;
 
 // Technically Kerberos allows more realm names
 // (https://web.mit.edu/kerberos/krb5-1.21/doc/admin/realm_config.html#realm-name),
@@ -69,13 +70,14 @@ static LOWERCASE_RFC_1123_LABEL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
         .expect("failed to compile RFC 1123 label regex")
 });
 
-static RFC_1123_SUBDOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(&format!("^{RFC_1123_SUBDOMAIN_FMT}$"))
+static LOWERCASE_RFC_1123_SUBDOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(&format!("^{LOWERCASE_RFC_1123_SUBDOMAIN_FMT}$"))
         .expect("failed to compile RFC 1123 subdomain regex")
 });
 
-static RFC_1035_LABEL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(&format!("^{RFC_1035_LABEL_FMT}$")).expect("failed to compile RFC 1035 label regex")
+static LOWERCASE_RFC_1035_LABEL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(&format!("^{LOWERCASE_RFC_1035_LABEL_FMT}$"))
+        .expect("failed to compile RFC 1035 label regex")
 });
 
 pub(crate) static KERBEROS_REALM_NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
@@ -214,7 +216,8 @@ pub fn is_domain(value: &str) -> Result {
     ])
 }
 
-/// Tests for a string that conforms to the definition of a label in DNS (RFC 1123).
+/// Tests for a string that conforms to the kubernetes-specific definition of a label in DNS (RFC 1123)
+/// used in Namespace names, see: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names
 /// Maximum label length supported by k8s is 63 characters (minimum required).
 pub fn is_rfc_1123_label(value: &str) -> Result {
     validate_all([
@@ -228,27 +231,29 @@ pub fn is_rfc_1123_label(value: &str) -> Result {
     ])
 }
 
-/// Tests for a string that conforms to the definition of a subdomain in DNS (RFC 1123).
+/// Tests for a string that conforms to the kubernetes-specific definition of a subdomain in DNS (RFC 1123)
+/// used in ConfigMap names, see https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names
 pub fn is_rfc_1123_subdomain(value: &str) -> Result {
     validate_all([
         validate_str_length(value, RFC_1123_SUBDOMAIN_MAX_LENGTH),
         validate_str_regex(
             value,
-            &RFC_1123_SUBDOMAIN_REGEX,
-            RFC_1123_SUBDOMAIN_ERROR_MSG,
+            &LOWERCASE_RFC_1123_SUBDOMAIN_REGEX,
+            LOWERCASE_RFC_1123_SUBDOMAIN_ERROR_MSG,
             &["example.com"],
         ),
     ])
 }
 
-/// Tests for a string that conforms to the definition of a label in DNS (RFC 1035).
+/// Tests for a string that conforms to the kubernetes-specific definition of a label in DNS (RFC 1035)
+/// used in Service names, see: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
 pub fn is_rfc_1035_label(value: &str) -> Result {
     validate_all([
         validate_str_length(value, RFC_1035_LABEL_MAX_LENGTH),
         validate_str_regex(
             value,
-            &RFC_1035_LABEL_REGEX,
-            RFC_1035_LABEL_ERROR_MSG,
+            &LOWERCASE_RFC_1035_LABEL_REGEX,
+            LOWERCASE_RFC_1035_LABEL_ERROR_MSG,
             &["my-name", "abc-123"],
         ),
     ])
