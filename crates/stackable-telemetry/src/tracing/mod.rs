@@ -786,7 +786,11 @@ struct Cli {
 ```
 "#
 )]
-#[cfg_attr(feature = "clap", derive(clap::Args, PartialEq, Eq))]
+#[cfg_attr(
+    feature = "clap",
+    derive(clap::Args, PartialEq, Eq),
+    command(next_help_heading = "Telemetry Options")
+)]
 #[derive(Debug, Default)]
 pub struct TelemetryOptions {
     /// Disable console logs.

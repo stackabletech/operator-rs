@@ -15,11 +15,16 @@ pub struct KubernetesClusterInfo {
     pub cluster_domain: DomainName,
 }
 
-#[derive(clap::Parser, Debug, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "clap",
+    derive(clap::Parser),
+    command(next_help_heading = "Cluster Options")
+)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct KubernetesClusterInfoOptions {
     /// Kubernetes cluster domain, usually this is `cluster.local`.
     // We are not using a default value here, as we query the cluster if it is not specified.
-    #[arg(long, env)]
+    #[cfg_attr(feature = "clap", arg(long, env))]
     pub kubernetes_cluster_domain: Option<DomainName>,
 
     /// Name of the Kubernetes Node that the operator is running on.
@@ -27,7 +32,7 @@ pub struct KubernetesClusterInfoOptions {
     /// Note that when running the operator on Kubernetes we recommend to use the
     /// [downward API](https://kubernetes.io/docs/concepts/workloads/pods/downward-api/)
     /// to let Kubernetes project the namespace as the `KUBERNETES_NODE_NAME` env variable.
-    #[arg(long, env)]
+    #[cfg_attr(feature = "clap", arg(long, env))]
     pub kubernetes_node_name: String,
 }
 

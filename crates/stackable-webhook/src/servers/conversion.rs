@@ -126,18 +126,21 @@ impl ConversionWebhookServer {
     /// use stackable_operator::{
     ///     kube::Client,
     ///     crd::s3::{S3Connection, S3ConnectionVersion},
-    ///     cli::ProductOperatorRun,
+    ///     cli::{RunArguments, MaintenanceOptions},
     /// };
     ///
     /// # async fn test() {
     /// // Things that should already be in you operator:
     /// const OPERATOR_NAME: &str = "product-operator";
     /// let client = Client::try_default().await.expect("failed to create Kubernetes client");
-    /// let ProductOperatorRun {
+    /// let RunArguments {
     ///     operator_environment,
-    ///     disable_crd_maintenance,
+    ///     maintenance: MaintenanceOptions {
+    ///         disable_crd_maintenance,
+    ///         ..
+    ///     },
     ///     ..
-    /// } = ProductOperatorRun::parse();
+    /// } = RunArguments::parse();
     ///
     ///  let crds_and_handlers = [
     ///     (
