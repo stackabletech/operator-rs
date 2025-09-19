@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use snafu::{ResultExt, Snafu};
 use stackable_shared::time::Duration;
+use tracing::{Level, instrument};
 
 /// Available options to configure a [`EndOfSupportChecker`].
 ///
@@ -103,6 +104,10 @@ impl EndOfSupportChecker {
             // TODO: Add way to stop from the outside
             // The first tick ticks immediately.
             interval.tick().await;
+            tracing::info_span!(
+                "checking end-of-support state",
+                eos.interval = self.interval.to_string(),
+            );
 
             // Continue the loop and wait for the next tick to run the check again.
             if !self.is_eos() {
@@ -114,6 +119,7 @@ impl EndOfSupportChecker {
     }
 
     /// Emits the end-of-support warning.
+    #[instrument(level = Level::DEBUG, skip(self))]
     fn emit_warning(&self) {
         tracing::warn!(
             eos.date = self.datetime.to_rfc3339(),
@@ -123,8 +129,12 @@ impl EndOfSupportChecker {
 
     /// Returns if the operator is considered as end-of-support based on the built-time and the
     /// support duration.
+    #[instrument(level = Level::DEBUG, skip(self), fields(eos.now))]
     fn is_eos(&self) -> bool {
         let now = Utc::now();
+
+        tracing::Span::current().record("eos.now", now.to_rfc3339());
+
         now > self.datetime
     }
 }
