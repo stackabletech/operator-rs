@@ -20,7 +20,10 @@ spec:
         description: Auto-generated derived type for ListenerClassSpec via `CustomResource`
         properties:
           spec:
-            description: Defines a policy for how [Listeners](https://docs.stackable.tech/home/nightly/listener-operator/listener) should be exposed. Read the [ListenerClass documentation](https://docs.stackable.tech/home/nightly/listener-operator/listenerclass) for more information.
+            description: |-
+              Defines a policy for how [Listeners](https://docs.stackable.tech/home/nightly/listener-operator/listener) should be exposed.
+              Read the [ListenerClass documentation](https://docs.stackable.tech/home/nightly/listener-operator/listenerclass)
+              for more information.
             properties:
               loadBalancerAllocateNodePorts:
                 default: true
@@ -31,7 +34,9 @@ spec:
                 type: boolean
               loadBalancerClass:
                 description: |-
-                  Configures a custom Service loadBalancerClass, which can be used to access secondary load balancer controllers that are installed in the cluster, or to provision custom addresses manually.
+                  Configures a custom Service loadBalancerClass, which can be used to access secondary
+                  load balancer controllers that are installed in the cluster, or to provision
+                  custom addresses manually.
 
                   Ignored unless serviceType is LoadBalancer.
                 nullable: true
@@ -39,7 +44,8 @@ spec:
               preferredAddressType:
                 default: HostnameConservative
                 description: |-
-                  Whether addresses should prefer using the IP address (`IP`) or the hostname (`Hostname`). Can also be set to `HostnameConservative`, which will use `IP` for `NodePort` service types, but `Hostname` for everything else.
+                  Whether addresses should prefer using the IP address (`IP`) or the hostname (`Hostname`).
+                  Can also be set to `HostnameConservative`, which will use `IP` for `NodePort` service types, but `Hostname` for everything else.
 
                   The other type will be used if the preferred type is not available.
 
@@ -60,7 +66,9 @@ spec:
                 description: |-
                   `externalTrafficPolicy` that should be set on the created [`Service`] objects.
 
-                  The default is `Local` (in contrast to `Cluster`), as we aim to direct traffic to a node running the workload and we should keep testing that as the primary configuration. Cluster is a fallback option for providers that break Local mode (IONOS so far).
+                  The default is `Local` (in contrast to `Cluster`), as we aim to direct traffic to a node running the workload
+                  and we should keep testing that as the primary configuration. Cluster is a fallback option for providers that
+                  break Local mode (IONOS so far).
                 enum:
                 - Cluster
                 - Local

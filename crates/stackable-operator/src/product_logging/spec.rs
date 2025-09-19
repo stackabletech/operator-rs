@@ -304,6 +304,7 @@ pub struct AppenderConfig {
 
 /// Log levels
 // Caution: Changing the output format for strum::Display might break operators relying on this trait.
+// Note: We can not have RustDoc comments on this because of https://github.com/kube-rs/kube/issues/1821
 #[derive(
     Clone,
     Copy,
@@ -326,7 +327,7 @@ pub enum LogLevel {
     WARN,
     ERROR,
     FATAL,
-    /// Turn logging off
+    // Turn logging off
     NONE,
 }
 

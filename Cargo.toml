@@ -34,10 +34,10 @@ hyper = { version = "1.4.1", features = ["full"] }
 hyper-util = "0.1.8"
 itertools = "0.14.0"
 json-patch = "4.0.0"
-k8s-openapi = { version = "0.25.0", default-features = false, features = ["schemars", "v1_33"] }
+k8s-openapi = { version = "0.26.0", default-features = false, features = ["schemars", "v1_34"] }
 # We use rustls instead of openssl for easier portability, e.g. so that we can build stackablectl without the need to vendor (build from source) openssl
 # We use ring instead of aws-lc-rs, as this currently fails to build in "make run-dev"
-kube = { version = "1.1.0", default-features = false, features = ["client", "jsonpatch", "runtime", "derive", "rustls-tls", "ring"] }
+kube = { version = "2.0.0", default-features = false, features = ["client", "jsonpatch", "runtime", "derive", "rustls-tls", "ring"] }
 opentelemetry = "0.30.0"
 opentelemetry_sdk = { version = "0.30.0", features = ["rt-tokio"] }
 opentelemetry-appender-tracing = "0.30.1"
@@ -55,7 +55,7 @@ regex = "1.10.6"
 rsa = { version = "0.9.6", features = ["sha2"] }
 rstest = "0.26.1"
 rstest_reuse = "0.7.0"
-schemars = { version = "0.8.21", features = ["url"] }
+schemars = { version = "1.0.0", features = ["url2"] }
 semver = "1.0.23"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
