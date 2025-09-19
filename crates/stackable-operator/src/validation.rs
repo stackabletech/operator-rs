@@ -26,7 +26,7 @@ const RFC_1123_LABEL_FMT: &str = "[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?";
 
 /// This is a subdomain's max length in DNS (RFC 1123)
 pub const RFC_1123_SUBDOMAIN_MAX_LENGTH: usize = 253;
-const LOWERCASE_RFC_1123_SUBDOMAIN_FMT: &str = concatcp!(
+pub const LOWERCASE_RFC_1123_SUBDOMAIN_FMT: &str = concatcp!(
     LOWERCASE_RFC_1123_LABEL_FMT,
     "(\\.",
     LOWERCASE_RFC_1123_LABEL_FMT,
