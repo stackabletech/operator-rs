@@ -93,7 +93,8 @@ impl EndOfSupportChecker {
 
     /// Run the end-of-support checker.
     ///
-    /// It is recommended to run the end-of-support checker via [`futures::try_join!`].
+    /// It is recommended to run the end-of-support checker via [`futures::try_join!`] or
+    /// [`tokio::join`] alongside other futures (eg. for controllers).
     pub async fn run(self) {
         // Construct an interval which can be polled.
         let mut interval = tokio::time::interval(self.interval.into());
