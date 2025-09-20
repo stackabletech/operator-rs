@@ -12,8 +12,13 @@ All notable changes to this project will be documented in this file.
 
 - BREAKING: Upgrade to `schemars` 1.0, `kube` 2.0 and `k8s-openapi` 0.26 (using Kubernetes 1.34) ([#1091]).
 
+### Fixed
+
+- BREAKING: Don't allow uppercase characters in Kubernetes object names ([#1095]).
+
 [#1091]: https://github.com/stackabletech/operator-rs/pull/1091
 [#1094]: https://github.com/stackabletech/operator-rs/pull/1094
+[#1095]: https://github.com/stackabletech/operator-rs/pull/1095
 
 ## [0.97.0] - 2025-09-09
 
