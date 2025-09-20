@@ -19,7 +19,7 @@ use snafu::Snafu;
 pub const RFC_1123_LABEL_MAX_LENGTH: usize = 63;
 // This is a modified RFC 1123 format according to the Kubernetes specification, see https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names
 pub const LOWERCASE_RFC_1123_LABEL_FMT: &str = "[a-z0-9]([-a-z0-9]*[a-z0-9])?";
-const LOWERCASE_RFC_1123_LABEL_ERROR_MSG: &str = "a lowercase RFC 1123 label must consist of lower case alphanumeric characters, '-' or '.', and must start and end with an alphanumeric character";
+const LOWERCASE_RFC_1123_LABEL_ERROR_MSG: &str = "a lowercase RFC 1123 label must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character";
 
 // This is a RFC 1123 format, see https://www.rfc-editor.org/rfc/rfc1123
 const RFC_1123_LABEL_FMT: &str = "[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?";
