@@ -43,7 +43,7 @@ const DOMAIN_ERROR_MSG: &str = "a domain must consist of alphanumeric characters
 // FIXME: According to https://www.rfc-editor.org/rfc/rfc1035#section-2.3.1 domain names must start with a letter
 // (and not a number).
 // This is a modified RFC 1035 format according to the Kubernetes specification, see https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
-const LOWERCASE_RFC_1035_LABEL_FMT: &str = "[a-z]([-a-z0-9]*[a-z0-9])?";
+pub const LOWERCASE_RFC_1035_LABEL_FMT: &str = "[a-z]([-a-z0-9]*[a-z0-9])?";
 const LOWERCASE_RFC_1035_LABEL_ERROR_MSG: &str = "a DNS-1035 label must consist of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character";
 
 // This is a label's max length in DNS (RFC 1035)
