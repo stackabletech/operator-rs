@@ -8,9 +8,10 @@ edition.workspace = true
 repository.workspace = true
 
 [features]
-full = ["certs", "telemetry", "versioned", "time", "webhook"]
-default = ["telemetry", "versioned"]
+full = ["certs", "telemetry", "versioned", "time", "webhook", "clap"]
+default = ["telemetry", "versioned", "clap"]
 
+clap = []
 certs = ["dep:stackable-certs"]
 telemetry = ["dep:stackable-telemetry"]
 time = ["stackable-shared/time"]

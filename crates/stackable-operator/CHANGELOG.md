@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add end-of-support checker ([#1096]).
+  - The EoS checker can be constructed using `EndOfSupportChecker::new()`.
+  - Add new `MaintenanceOptions` and `EndOfSupportOptions` structs.
+  - Add new CLI arguments and env vars:
+    - `EOS_CHECK_MODE` (`--eos-check-mode`) to set the EoS check mode. Currently, only "offline" is supported.
+    - `EOS_INTERVAL` (`--eos-interval`) to set the interval in which the operator checks if it is EoS.
+
+### Changed
+
+- BREAKING: `ProductOperatorRun` was renamed to `RunArguments` ([#1096]).
+- BREAKING: The `disable_crd_maintenance` field was moved from `RunArguments` into `MaintenanceOptions`.
+  The CLI interface is unchanged ([#1096]).
+- BREAKING: Integration of `KubernetesClusterInfoOptions` with `clap` is now gated behind the `clap` feature flag.
+  This is only breaking if default features for `stackable-operator` are disabled ([#1096]).
+
+[#1096]: https://github.com/stackabletech/operator-rs/pull/1096
+
 ## [0.98.0] - 2025-09-22
 
 ### Added
