@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.98.0] - 2025-09-22
+
 ### Added
 
 - Extend `ObjectMetaBuilder` with `finalizers` ([#1094]).
