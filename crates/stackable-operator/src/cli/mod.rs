@@ -123,7 +123,9 @@ mod tests {
     fn verify_cli() {
         use clap::CommandFactory;
 
-        RunArguments::command().print_long_help().expect("help message should be printed to stdout");
+        RunArguments::command()
+            .print_long_help()
+            .expect("help message should be printed to stdout");
         RunArguments::command().debug_assert()
     }
 }
