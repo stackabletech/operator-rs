@@ -36,7 +36,7 @@ const LOWERCASE_RFC_1123_SUBDOMAIN_ERROR_MSG: &str = "a lowercase RFC 1123 subdo
 
 pub const DOMAIN_MAX_LENGTH: usize = RFC_1123_SUBDOMAIN_MAX_LENGTH;
 
-/// Same as [`RFC_1123_LABEL_FMT`], but allows a trailing dot
+/// String of one or multiple [`RFC_1123_LABEL_FMT`] separated by dots but also allowing a trailing dot
 const DOMAIN_FMT: &str = concatcp!(RFC_1123_LABEL_FMT, "(\\.", RFC_1123_LABEL_FMT, ")*\\.?");
 const DOMAIN_ERROR_MSG: &str = "a domain must consist of alphanumeric characters, '-' or '.', and must start with an alphanumeric character and end with an alphanumeric character or '.'";
 
