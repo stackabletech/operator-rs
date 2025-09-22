@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.98.0] - 2025-09-22
+
 ### Added
 
 - Add end-of-support checker ([#1096]).
@@ -23,8 +25,13 @@ All notable changes to this project will be documented in this file.
   This is only breaking if default features for `stackable-operator` are disabled ([#1096]).
 - BREAKING: Upgrade to `schemars` 1.0, `kube` 2.0 and `k8s-openapi` 0.26 (using Kubernetes 1.34) ([#1091]).
 
+### Fixed
+
+- BREAKING: Don't allow uppercase characters in Kubernetes object names ([#1095]).
+
 [#1091]: https://github.com/stackabletech/operator-rs/pull/1091
 [#1094]: https://github.com/stackabletech/operator-rs/pull/1094
+[#1095]: https://github.com/stackabletech/operator-rs/pull/1095
 [#1096]: https://github.com/stackabletech/operator-rs/pull/1096
 
 ## [0.97.0] - 2025-09-09
