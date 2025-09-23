@@ -11,7 +11,7 @@ use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use opentelemetry::trace::{FutureExt, SpanKind};
 use opentelemetry_semantic_conventions as semconv;
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_shared::time::Duration;
 use tokio::{
     net::{TcpListener, TcpStream},
@@ -21,7 +21,7 @@ use tokio_rustls::{
     TlsAcceptor,
     rustls::{
         ServerConfig,
-        crypto::ring::default_provider,
+        crypto::CryptoProvider,
         version::{TLS12, TLS13},
     },
 };
@@ -59,6 +59,9 @@ pub enum TlsServerError {
 
     #[snafu(display("failed to set safe TLS protocol versions"))]
     SetSafeTlsProtocolVersions { source: tokio_rustls::rustls::Error },
+
+    #[snafu(display("no default rustls CryptoProvider installed"))]
+    NoDefaultCryptoProviderInstalled,
 }
 
 /// A server which terminates TLS connections and allows clients to communicate
@@ -97,8 +100,10 @@ impl TlsServer {
             .context(CreateCertificateResolverSnafu)?;
         let cert_resolver = Arc::new(cert_resolver);
 
-        let tls_provider = default_provider();
-        let mut config = ServerConfig::builder_with_provider(tls_provider.into())
+        let tls_provider =
+            CryptoProvider::get_default().context(NoDefaultCryptoProviderInstalledSnafu)?;
+
+        let mut config = ServerConfig::builder_with_provider(tls_provider.clone())
             .with_protocol_versions(&[&TLS12, &TLS13])
             .context(SetSafeTlsProtocolVersionsSnafu)?
             .with_no_client_auth()

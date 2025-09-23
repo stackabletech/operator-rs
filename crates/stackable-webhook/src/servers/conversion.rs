@@ -101,12 +101,14 @@ impl ConversionWebhookServer {
     ///
     /// ## Example
     ///
-    /// ```
-    /// use stackable_webhook::{ConversionWebhookServer, ConversionWebhookOptions};
+    /// ```no_run
+    /// # use tokio_rustls::rustls::crypto::{CryptoProvider, ring::default_provider};
+    /// use stackable_webhook::servers::{ConversionWebhookServer, ConversionWebhookOptions};
     /// use stackable_operator::crd::s3::{S3Connection, S3ConnectionVersion};
     ///
-    /// # #[tokio::test]
+    /// # #[tokio::main]
     /// # async fn main() {
+    /// # CryptoProvider::install_default(default_provider()).unwrap();
     /// let crds_and_handlers = vec![
     ///     (
     ///         S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1)
@@ -179,7 +181,7 @@ impl ConversionWebhookServer {
 
     /// Runs the [`ConversionWebhookServer`] asynchronously.
     pub async fn run(self) -> Result<(), ConversionWebhookError> {
-        tracing::info!("starting conversion webhook server");
+        tracing::info!("run conversion webhook server");
         self.0.run().await.context(RunWebhookServerSnafu)
     }
 }
