@@ -50,6 +50,33 @@ pub struct CustomResourceDefinitionMaintainer {
 impl CustomResourceDefinitionMaintainer {
     /// Creates and returns a new [`CustomResourceDefinitionMaintainer`] which manages one or more
     /// custom resource definitions.
+    ///
+    /// ## Parameters
+    ///
+    /// This function expects four parameters:
+    ///
+    /// - `client`: A [`Client`] to interact with the Kubernetes API server. It continuously patches
+    ///   the CRDs when the TLS certificate is rotated.
+    /// - `certificate_rx`: A [`mpsc::Receiver`] to receive newly generated TLS certificates. The
+    ///   certificate data sent through the channel is used to set the caBundle in the conversion
+    ///   section of the CRD.
+    /// - `definitions`: An iterator of [`CustomResourceDefinition`]s which should be maintained
+    ///   by this maintainer. If the iterator is empty, the maintainer returns early without doing
+    ///   any work. As such, a polling mechanism which waits for all futures should be used to
+    ///   prevent premature termination of the operator.
+    /// - `options`: Provides [`CustomResourceDefinitionMaintainerOptions`] to customize various
+    ///   parts of the maintainer. In the future, this will be converted to a builder, to enable a
+    ///   cleaner API interface.
+    ///
+    /// ## Return Values
+    ///
+    /// This function returns a 2-tuple (pair) of values:
+    ///
+    /// - The [`CustomResourceDefinitionMaintainer`] itself. This is used to run the maintainer.
+    ///   See [`CustomResourceDefinitionMaintainer::run`] for more details.
+    /// - The [`oneshot::Receiver`] which will be used to send out a message once the initial
+    ///   CRD reconciliation ran. This signal can be used to trigger the deployment of custom
+    ///   resources defined by the maintained CRDs.
     pub fn new(
         client: Client,
         certificate_rx: mpsc::Receiver<Certificate>,
@@ -70,26 +97,36 @@ impl CustomResourceDefinitionMaintainer {
         (maintainer, initial_reconcile_rx)
     }
 
+    /// Runs the [`CustomResourceDefinitionMaintainer`] asynchronously.
+    ///
+    /// This needs to be polled in parallel with other parts of an operator, like controllers or
+    /// webhook servers. If it is disabled, the returned future immediately resolves to
+    /// [`std::task::Poll::Ready`] and thus doesn't consume any resources.
     pub async fn run(mut self) -> Result<(), Error> {
         let CustomResourceDefinitionMaintainerOptions {
             operator_service_name,
             operator_namespace,
             field_manager,
-            https_port,
+            webhook_https_port: https_port,
             disabled,
         } = self.options;
 
-        // If the maintainer is disabled, immediately return without doing any work.
-        if disabled {
+        // If the maintainer is disabled or there are no custom resource definitions, immediately
+        // return without doing any work.
+        if disabled || self.definitions.is_empty() {
             return Ok(());
         }
 
+        // This get's polled by the async runtime on a regular basis (or when woken up). Once we
+        // receive a message containing the newly generated TLS certificate for the conversion
+        // webhook, we need to update the caBundle in the CRD.
         while let Some(certificate) = self.certificate_rx.recv().await {
             tracing::info!(
                 k8s.crd.names = ?self.definitions.iter().map(CustomResourceDefinition::name_any).collect::<Vec<_>>(),
                 "reconciling custom resource definitions"
             );
 
+            // The caBundle needs to be provided as a base64-encoded PEM envelope.
             let ca_bundle = certificate
                 .to_pem(LineEnding::LF)
                 .context(EncodeCertificateAuthorityAsPemSnafu)?;
@@ -109,9 +146,12 @@ impl CustomResourceDefinitionMaintainer {
                 crd.spec.conversion = Some(CustomResourceConversion {
                     strategy: "Webhook".to_owned(),
                     webhook: Some(WebhookConversion {
-                        // conversionReviewVersions indicates what ConversionReview versions are understood/preferred by the webhook.
-                        // The first version in the list understood by the API server is sent to the webhook.
-                        // The webhook must respond with a ConversionReview object in the same version it received.
+                        // conversionReviewVersions indicates what ConversionReview versions are
+                        // supported by the webhook. The first version in the list understood by the
+                        // API server is sent to the webhook. The webhook must respond with a
+                        // ConversionReview object in the same version it received. We only support
+                        // the stable v1 ConversionReview to keep the implementation as simple as
+                        // possible.
                         conversion_review_versions: vec!["v1".to_owned()],
                         client_config: Some(WebhookClientConfig {
                             service: Some(ServiceReference {
@@ -120,12 +160,15 @@ impl CustomResourceDefinitionMaintainer {
                                 path: Some(format!("/convert/{crd_name}")),
                                 port: Some(https_port.into()),
                             }),
+                            // Here, ByteString takes care of encoding the provided content as
+                            // base64.
                             ca_bundle: Some(ByteString(ca_bundle.as_bytes().to_vec())),
                             url: None,
                         }),
                     }),
                 });
 
+                // Deploy the updated CRDs using a server-side apply.
                 let patch = Patch::Apply(&crd);
                 let patch_params = PatchParams::apply(&field_manager);
                 crd_api
@@ -134,12 +177,15 @@ impl CustomResourceDefinitionMaintainer {
                     .with_context(|_| PatchCrdSnafu { crd_name })?;
             }
 
-            // Once all CRDs are reconciled, send a heartbeat for consumers to be notified that
-            // custom resources of these kinds can bow be deployed.
+            // After the reconciliation of the CRDs, the initial reconcile heartbeat is sent out
+            // via the oneshot channel. This channel can only be used exactly once. The sender's
+            // send method consumes self, and as such, the sender is wrapped in an Option to be
+            // able to call take to consume the inner value.
             if let Some(initial_reconcile_tx) = self.initial_reconcile_tx.take() {
-                initial_reconcile_tx
-                    .send(())
-                    .ignore_context(SendInitialReconcileHeartbeatSnafu)?
+                match initial_reconcile_tx.send(()) {
+                    Ok(_) => {}
+                    Err(_) => return SendInitialReconcileHeartbeatSnafu.fail(),
+                }
             }
         }
 
@@ -148,30 +194,20 @@ impl CustomResourceDefinitionMaintainer {
 }
 
 // TODO (@Techassi): Make this a builder instead
+/// This contains required options to customize a [`CustomResourceDefinitionMaintainer`].
 pub struct CustomResourceDefinitionMaintainerOptions {
+    /// The service name used by the operator/conversion webhook.
     operator_service_name: String,
+
+    /// The namespace the operator/conversion webhook runs in.
     operator_namespace: String,
+
+    /// The name of the field manager used for the server-side apply.
     field_manager: String,
-    https_port: u16,
+
+    /// The HTTPS port the conversion webhook listens on.
+    webhook_https_port: u16,
+
+    /// Indicates if the maintainer should be disabled.
     disabled: bool,
-}
-
-trait ResultContextExt<T> {
-    fn ignore_context<C, E2>(self, context: C) -> Result<T, E2>
-    where
-        C: snafu::IntoError<E2, Source = snafu::NoneError>,
-        E2: std::error::Error + snafu::ErrorCompat;
-}
-
-impl<T, E> ResultContextExt<T> for Result<T, E> {
-    fn ignore_context<C, E2>(self, context: C) -> Result<T, E2>
-    where
-        C: snafu::IntoError<E2, Source = snafu::NoneError>,
-        E2: std::error::Error + snafu::ErrorCompat,
-    {
-        match self {
-            Ok(v) => Ok(v),
-            Err(_) => Err(context.into_error(snafu::NoneError)),
-        }
-    }
 }

@@ -1,4 +1,5 @@
-//! Contains available options to configure the [WebhookServer][crate::WebhookServer].
+//! Contains available options to configure the [WebhookServer].
+
 use std::{
     net::{IpAddr, SocketAddr},
     path::PathBuf,

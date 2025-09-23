@@ -74,76 +74,59 @@ impl ConversionWebhookServer {
     /// [`WebhookServer::DEFAULT_SOCKET_ADDRESS`].
     pub const DEFAULT_SOCKET_ADDRESS: SocketAddr = WebhookServer::DEFAULT_SOCKET_ADDRESS;
 
-    /// Creates a new conversion webhook server, which expects POST requests being made to the
-    /// `/convert/{CRD_NAME}` endpoint.
+    /// Creates and returns a new [`ConversionWebhookServer`], which expects POST requests being
+    /// made to the `/convert/{CRD_NAME}` endpoint.
     ///
-    /// You need to provide a few things for every CRD passed in via the `crds_and_handlers` argument:
+    /// ## Parameters
     ///
-    /// 1. The CRD
-    /// 2. A conversion function to convert between CRD versions. Typically you would use the
-    ///    the auto-generated `try_convert` function on CRD spec definition structs for this.
-    /// 3. A [`kube::Client`] used to create/update the CRDs.
+    /// This function expects the following parameters:
     ///
-    /// The [`ConversionWebhookServer`] takes care of reconciling the CRDs into the Kubernetes
-    /// cluster and takes care of adding itself as conversion webhook. This includes TLS
-    /// certificates and CA bundles.
+    /// - `crds_and_handlers`: An iterator over a 2-tuple (pair) mapping a [`CustomResourceDefinition`]
+    ///   to a handler function. In most cases, the generated `CustomResource::try_merge` function
+    ///   should be used. It provides the expected `fn(ConversionReview) -> ConversionReview`
+    ///   signature.
+    /// - `options`: Provides [`ConversionWebhookOptions`] to customize various parts of the
+    ///   webhook server, eg. the socket address used to listen on.
     ///
-    /// # Example
+    /// ## Return Values
     ///
-    /// ```no_run
-    /// use clap::Parser;
-    /// use stackable_webhook::{
-    ///     servers::{ConversionWebhookServer, ConversionWebhookOptions},
-    ///     constants::CONVERSION_WEBHOOK_HTTPS_PORT,
-    ///     WebhookOptions
-    /// };
-    /// use stackable_operator::{
-    ///     kube::Client,
-    ///     crd::s3::{S3Connection, S3ConnectionVersion},
-    ///     cli::{RunArguments, MaintenanceOptions},
-    /// };
+    /// This function returns a [`Result`] which contains a 2-tuple (pair) of values for the [`Ok`]
+    /// variant:
     ///
-    /// # async fn test() {
-    /// // Things that should already be in you operator:
-    /// const OPERATOR_NAME: &str = "product-operator";
-    /// let client = Client::try_default().await.expect("failed to create Kubernetes client");
-    /// let RunArguments {
-    ///     operator_environment,
-    ///     maintenance: MaintenanceOptions {
-    ///         disable_crd_maintenance,
-    ///         ..
-    ///     },
-    ///     ..
-    /// } = RunArguments::parse();
+    /// - The [`ConversionWebhookServer`] itself. This is used to run the server. See
+    ///   [`ConversionWebhookServer::run`] for more details.
+    /// - The [`mpsc::Receiver`] which will be used to send out messages containing the newly
+    ///   generated TLS certificate. This channel is used by the CRD maintainer to trigger a
+    ///   reconcile of the CRDs it maintains.
     ///
-    ///  let crds_and_handlers = [
+    /// ## Example
+    ///
+    /// ```
+    /// use stackable_webhook::{ConversionWebhookServer, ConversionWebhookOptions};
+    /// use stackable_operator::crd::s3::{S3Connection, S3ConnectionVersion};
+    ///
+    /// # #[tokio::test]
+    /// # async fn main() {
+    /// let crds_and_handlers = vec![
     ///     (
     ///         S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1)
-    ///             .expect("failed to merge S3Connection CRD"),
-    ///         S3Connection::try_convert as fn(_) -> _,
-    ///     ),
+    ///             .expect("the S3Connection CRD must be merged"),
+    ///         S3Connection::try_convert,
+    ///     )
     /// ];
     ///
     /// let options = ConversionWebhookOptions {
-    ///     socket_addr: format!("0.0.0.0:{CONVERSION_WEBHOOK_HTTPS_PORT}")
-    ///         .parse()
-    ///         .expect("static address is always valid"),
-    ///     namespace: operator_environment.operator_namespace,
-    ///     service_name: operator_environment.operator_service_name,
-    ///     maintain_crds: !disable_crd_maintenance,
-    ///     field_manager: OPERATOR_NAME.to_owned(),
+    ///     socket_addr: ConversionWebhookServer::DEFAULT_SOCKET_ADDRESS,
+    ///     namespace: "stackable-operators".to_owned(),
+    ///     service_name: "product-operator".to_owned(),
     /// };
     ///
-    /// // Construct the conversion webhook server
-    /// let conversion_webhook = ConversionWebhookServer::new(
-    ///     crds_and_handlers,
-    ///     options,
-    ///     client,
-    /// )
-    /// .await
-    /// .expect("failed to create ConversionWebhookServer");
+    /// let (conversion_webhook_server, _certificate_rx) =
+    ///         ConversionWebhookServer::new(crds_and_handlers, options)
+    ///             .await
+    ///             .unwrap();
     ///
-    /// conversion_webhook.run().await.expect("failed to run ConversionWebhookServer");
+    /// conversion_webhook_server.run().await.unwrap();
     /// # }
     /// ```
     #[instrument(name = "create_conversion_webhook_server", skip(crds_and_handlers))]
