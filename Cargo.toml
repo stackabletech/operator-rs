@@ -9,7 +9,7 @@ edition = "2024"
 repository = "https://github.com/stackabletech/operator-rs"
 
 [workspace.dependencies]
-product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.7.0" }
+product-config = { git = "https://github.com/stackabletech/product-config.git", tag = "0.8.0" }
 
 arc-swap = "1.7"
 axum = { version = "0.8.1", features = ["http2"] }
