@@ -1,34 +1,19 @@
 use std::{fmt::Debug, net::SocketAddr};
 
 use axum::{Json, Router, routing::post};
-use k8s_openapi::{
-    ByteString,
-    apiextensions_apiserver::pkg::apis::apiextensions::v1::{
-        CustomResourceConversion, CustomResourceDefinition, ServiceReference, WebhookClientConfig,
-        WebhookConversion,
-    },
-};
+use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
+use kube::ResourceExt;
 // Re-export this type because users of the conversion webhook server require
 // this type to write the handler function. Instead of importing this type from
 // kube directly, consumers can use this type instead. This also eliminates
 // keeping the kube dependency version in sync between here and the operator.
 pub use kube::core::conversion::ConversionReview;
-use kube::{
-    Api, Client, ResourceExt,
-    api::{Patch, PatchParams},
-};
-use snafu::{OptionExt, ResultExt, Snafu};
-use tokio::{sync::mpsc, try_join};
+use snafu::{ResultExt, Snafu};
+use tokio::sync::mpsc;
 use tracing::instrument;
-use x509_cert::{
-    Certificate,
-    der::{EncodePem, pem::LineEnding},
-};
+use x509_cert::Certificate;
 
-use crate::{
-    WebhookError, WebhookHandler, WebhookServer, constants::CONVERSION_WEBHOOK_HTTPS_PORT,
-    options::WebhookOptions,
-};
+use crate::{WebhookError, WebhookHandler, WebhookServer, options::WebhookOptions};
 
 #[derive(Debug, Snafu)]
 pub enum ConversionWebhookError {
@@ -77,31 +62,20 @@ pub struct ConversionWebhookOptions {
 
     /// The name of the Kubernetes service which points to the operator/webhook.
     pub service_name: String,
-
-    /// If the CRDs should be maintained automatically. Use the (negated) value from
-    /// `stackable_operator::cli::ProductOperatorRun::disable_crd_maintenance`
-    /// for this.
-    // # Because of https://github.com/rust-lang/cargo/issues/3475 we can not use a real link here
-    pub maintain_crds: bool,
-
-    /// The field manager used to apply Kubernetes objects, typically the operator name, e.g.
-    /// `airflow-operator`.
-    pub field_manager: String,
 }
 
 /// A ready-to-use CRD conversion webhook server.
 ///
 /// See [`ConversionWebhookServer::new()`] for usage examples.
-pub struct ConversionWebhookServer {
-    crds: Vec<CustomResourceDefinition>,
-    options: ConversionWebhookOptions,
-    router: Router,
-    client: Client,
-}
+pub struct ConversionWebhookServer(WebhookServer);
 
 impl ConversionWebhookServer {
+    /// The default socket address the conversion webhook server binds to, see
+    /// [`WebhookServer::DEFAULT_SOCKET_ADDRESS`].
+    pub const DEFAULT_SOCKET_ADDRESS: SocketAddr = WebhookServer::DEFAULT_SOCKET_ADDRESS;
+
     /// Creates a new conversion webhook server, which expects POST requests being made to the
-    /// `/convert/{crd name}` endpoint.
+    /// `/convert/{CRD_NAME}` endpoint.
     ///
     /// You need to provide a few things for every CRD passed in via the `crds_and_handlers` argument:
     ///
@@ -172,15 +146,11 @@ impl ConversionWebhookServer {
     /// conversion_webhook.run().await.expect("failed to run ConversionWebhookServer");
     /// # }
     /// ```
-    #[instrument(
-        name = "create_conversion_webhook_server",
-        skip(crds_and_handlers, client)
-    )]
+    #[instrument(name = "create_conversion_webhook_server", skip(crds_and_handlers))]
     pub async fn new<H>(
         crds_and_handlers: impl IntoIterator<Item = (CustomResourceDefinition, H)>,
         options: ConversionWebhookOptions,
-        client: Client,
-    ) -> Result<Self, ConversionWebhookError>
+    ) -> Result<(Self, mpsc::Receiver<Certificate>), ConversionWebhookError>
     where
         H: WebhookHandler<ConversionReview, ConversionReview> + Clone + Send + Sync + 'static,
     {
@@ -200,34 +170,15 @@ impl ConversionWebhookServer {
             crds.push(crd);
         }
 
-        Ok(Self {
-            options,
-            router,
-            client,
-            crds,
-        })
-    }
-
-    pub async fn run(self) -> Result<(), ConversionWebhookError> {
-        tracing::info!("starting conversion webhook server");
-
-        let Self {
-            options,
-            router,
-            client,
-            crds,
-        } = self;
-
         let ConversionWebhookOptions {
             socket_addr,
             namespace: operator_namespace,
             service_name: operator_service_name,
-            maintain_crds,
-            field_manager,
         } = &options;
 
         // This is how Kubernetes calls us, so it decides about the naming.
         // AFAIK we can not influence this, so this is the only SAN entry needed.
+        // FIXME (@Techassi): The cluster domain should be included here to form FQDN of the service
         let subject_alterative_dns_name =
             format!("{operator_service_name}.{operator_namespace}.svc",);
 
@@ -236,127 +187,16 @@ impl ConversionWebhookServer {
             socket_addr: *socket_addr,
         };
 
-        let (server, mut cert_rx) = WebhookServer::new(router, webhook_options)
+        let (server, certificate_rx) = WebhookServer::new(router, webhook_options)
             .await
             .context(CreateWebhookServerSnafu)?;
 
-        // We block the ConversionWebhookServer creation until the certificates have been generated.
-        // This way we
-        // 1. Are able to apply the CRDs before we start the actual controllers relying on them
-        // 2. Avoid updating them shortly after as cert have been generated. Doing so would cause
-        // unnecessary "too old resource version" errors in the controllers as the CRD was updated.
-        let current_cert = cert_rx
-            .recv()
-            .await
-            .context(ReceiveCertificateFromChannelSnafu)?;
-
-        if *maintain_crds {
-            Self::reconcile_crds(
-                &client,
-                field_manager,
-                &crds,
-                operator_namespace,
-                operator_service_name,
-                current_cert,
-            )
-            .await
-            .context(ReconcileCrdsSnafu)?;
-
-            try_join!(
-                Self::run_webhook_server(server),
-                Self::run_crd_reconciliation_loop(
-                    cert_rx,
-                    &client,
-                    field_manager,
-                    &crds,
-                    operator_namespace,
-                    operator_service_name,
-                ),
-            )?;
-        } else {
-            Self::run_webhook_server(server).await?;
-        };
-
-        Ok(())
+        Ok((Self(server), certificate_rx))
     }
 
-    async fn run_webhook_server(server: WebhookServer) -> Result<(), ConversionWebhookError> {
-        server.run().await.context(RunWebhookServerSnafu)
-    }
-
-    async fn run_crd_reconciliation_loop(
-        mut cert_rx: mpsc::Receiver<Certificate>,
-        client: &Client,
-        field_manager: &str,
-        crds: &[CustomResourceDefinition],
-        operator_namespace: &str,
-        operator_service_name: &str,
-    ) -> Result<(), ConversionWebhookError> {
-        while let Some(current_cert) = cert_rx.recv().await {
-            Self::reconcile_crds(
-                client,
-                field_manager,
-                crds,
-                operator_namespace,
-                operator_service_name,
-                current_cert,
-            )
-            .await
-            .context(ReconcileCrdsSnafu)?;
-        }
-        Ok(())
-    }
-
-    #[instrument(skip_all)]
-    async fn reconcile_crds(
-        client: &Client,
-        field_manager: &str,
-        crds: &[CustomResourceDefinition],
-        operator_namespace: &str,
-        operator_service_name: &str,
-        current_cert: Certificate,
-    ) -> Result<(), ConversionWebhookError> {
-        tracing::info!(
-            crds = ?crds.iter().map(CustomResourceDefinition::name_any).collect::<Vec<_>>(),
-            "Reconciling CRDs"
-        );
-        let ca_bundle = current_cert
-            .to_pem(LineEnding::LF)
-            .context(ConvertCaToPemSnafu)?;
-
-        let crd_api: Api<CustomResourceDefinition> = Api::all(client.clone());
-        for mut crd in crds.iter().cloned() {
-            let crd_name = crd.name_any();
-
-            crd.spec.conversion = Some(CustomResourceConversion {
-                strategy: "Webhook".to_string(),
-                webhook: Some(WebhookConversion {
-                    // conversionReviewVersions indicates what ConversionReview versions are understood/preferred by the webhook.
-                    // The first version in the list understood by the API server is sent to the webhook.
-                    // The webhook must respond with a ConversionReview object in the same version it received.
-                    conversion_review_versions: vec!["v1".to_string()],
-                    client_config: Some(WebhookClientConfig {
-                        service: Some(ServiceReference {
-                            name: operator_service_name.to_owned(),
-                            namespace: operator_namespace.to_owned(),
-                            path: Some(format!("/convert/{crd_name}")),
-                            port: Some(CONVERSION_WEBHOOK_HTTPS_PORT.into()),
-                        }),
-                        ca_bundle: Some(ByteString(ca_bundle.as_bytes().to_vec())),
-                        url: None,
-                    }),
-                }),
-            });
-
-            let patch = Patch::Apply(&crd);
-            let patch_params = PatchParams::apply(field_manager);
-            crd_api
-                .patch(&crd_name, &patch_params, &patch)
-                .await
-                .with_context(|_| UpdateCrdSnafu {
-                    crd_name: crd_name.to_string(),
-                })?;
-        }
-        Ok(())
+    /// Runs the [`ConversionWebhookServer`] asynchronously.
+    pub async fn run(self) -> Result<(), ConversionWebhookError> {
+        tracing::info!("starting conversion webhook server");
+        self.0.run().await.context(RunWebhookServerSnafu)
     }
 }

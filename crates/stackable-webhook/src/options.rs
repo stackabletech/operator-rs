@@ -6,7 +6,7 @@ use std::{
 
 use stackable_certs::PrivateKeyType;
 
-use crate::constants::DEFAULT_SOCKET_ADDRESS;
+use crate::WebhookServer;
 
 /// Specifies available webhook server options.
 ///
@@ -82,7 +82,9 @@ impl WebhookOptionsBuilder {
     /// Sets the IP address of the socket address the webhook server uses to
     /// bind for HTTPS.
     pub fn bind_ip(mut self, bind_ip: impl Into<IpAddr>) -> Self {
-        let addr = self.socket_addr.get_or_insert(DEFAULT_SOCKET_ADDRESS);
+        let addr = self
+            .socket_addr
+            .get_or_insert(WebhookServer::DEFAULT_SOCKET_ADDRESS);
         addr.set_ip(bind_ip.into());
         self
     }
@@ -90,7 +92,9 @@ impl WebhookOptionsBuilder {
     /// Sets the port of the socket address the webhook server uses to bind
     /// for HTTPS.
     pub fn bind_port(mut self, bind_port: u16) -> Self {
-        let addr = self.socket_addr.get_or_insert(DEFAULT_SOCKET_ADDRESS);
+        let addr = self
+            .socket_addr
+            .get_or_insert(WebhookServer::DEFAULT_SOCKET_ADDRESS);
         addr.set_port(bind_port);
         self
     }
@@ -119,7 +123,9 @@ impl WebhookOptionsBuilder {
     /// explicitly set option.
     pub fn build(self) -> WebhookOptions {
         WebhookOptions {
-            socket_addr: self.socket_addr.unwrap_or(DEFAULT_SOCKET_ADDRESS),
+            socket_addr: self
+                .socket_addr
+                .unwrap_or(WebhookServer::DEFAULT_SOCKET_ADDRESS),
             subject_alterative_dns_names: self.subject_alterative_dns_names,
         }
     }

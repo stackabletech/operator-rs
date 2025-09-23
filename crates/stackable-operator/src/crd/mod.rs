@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 pub mod authentication;
 pub mod git_sync;
 pub mod listener;
+#[cfg(feature = "certs")]
+pub mod maintainer;
 pub mod s3;
 
 /// A reference to a product cluster (for example, a `ZookeeperCluster`)

@@ -26,6 +26,8 @@
 //! enable complete control over these details if needed.
 //!
 //! [1]: crate::servers::ConversionWebhookServer
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
 use axum::{Router, routing::get};
 use futures_util::{FutureExt as _, pin_mut, select};
 use snafu::{ResultExt, Snafu};
@@ -40,7 +42,6 @@ use x509_cert::Certificate;
 // use tower_http::trace::TraceLayer;
 use crate::tls::TlsServer;
 
-pub mod constants;
 pub mod options;
 pub mod servers;
 pub mod tls;
@@ -86,6 +87,15 @@ pub struct WebhookServer {
 }
 
 impl WebhookServer {
+    /// The default HTTPS port `8443`
+    pub const DEFAULT_HTTPS_PORT: u16 = 8443;
+    /// The default IP address [`Ipv4Addr::UNSPECIFIED`] (`0.0.0.0`) the webhook server binds to,
+    /// which represents binding on all network addresses.
+    pub const DEFAULT_LISTEN_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+    /// The default socket address `0.0.0.0:8443` the webhook server binds to.
+    pub const DEFAULT_SOCKET_ADDRESS: SocketAddr =
+        SocketAddr::new(Self::DEFAULT_LISTEN_ADDRESS, Self::DEFAULT_HTTPS_PORT);
+
     /// Creates a new ready-to-use webhook server.
     ///
     /// The server listens on `socket_addr` which is provided via the [`WebhookOptions`] and handles
