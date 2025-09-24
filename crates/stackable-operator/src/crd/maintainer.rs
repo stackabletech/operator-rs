@@ -197,17 +197,17 @@ impl CustomResourceDefinitionMaintainer {
 /// This contains required options to customize a [`CustomResourceDefinitionMaintainer`].
 pub struct CustomResourceDefinitionMaintainerOptions {
     /// The service name used by the operator/conversion webhook.
-    operator_service_name: String,
+    pub operator_service_name: String,
 
     /// The namespace the operator/conversion webhook runs in.
-    operator_namespace: String,
+    pub operator_namespace: String,
 
     /// The name of the field manager used for the server-side apply.
-    field_manager: String,
+    pub field_manager: String,
 
     /// The HTTPS port the conversion webhook listens on.
-    webhook_https_port: u16,
+    pub webhook_https_port: u16,
 
     /// Indicates if the maintainer should be disabled.
-    disabled: bool,
+    pub disabled: bool,
 }
