@@ -16,7 +16,7 @@ certs = ["dep:stackable-certs", "dep:x509-cert"]
 telemetry = ["dep:stackable-telemetry"]
 time = ["stackable-shared/time"]
 versioned = ["dep:stackable-versioned"]
-webhook = ["dep:stackable-webhook"]
+webhook = ["dep:stackable-webhook", "dep:x509-cert"]
 
 [dependencies]
 stackable-certs = { path = "../stackable-certs", optional = true }

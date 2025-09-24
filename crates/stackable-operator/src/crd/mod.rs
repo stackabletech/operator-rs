@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub mod authentication;
 pub mod git_sync;
 pub mod listener;
-#[cfg(feature = "certs")]
+#[cfg(feature = "webhook")]
 pub mod maintainer;
 pub mod s3;
 

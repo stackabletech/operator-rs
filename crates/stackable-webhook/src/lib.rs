@@ -37,7 +37,7 @@ use tokio::{
     sync::mpsc,
 };
 use tower::ServiceBuilder;
-use x509_cert::Certificate;
+pub use x509_cert::Certificate;
 
 // use tower_http::trace::TraceLayer;
 use crate::tls::TlsServer;
