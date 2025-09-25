@@ -6,6 +6,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Add `CustomResourceDefinitionMaintainer` which applies and patches CRDs triggered by TLS
+  certificate rotations of the `ConversionWebhookServer`. It additionally provides a `oneshot`
+  channel which can be used to trigger creation/patching of any default custom resources deployed by
+  the operator ([#1099]).
+- Add a `Client::create_if_missing` associated function to create a resource if it doesn't
+  exist ([#1099]).
 - Add end-of-support checker ([#1096]).
   - The EoS checker can be constructed using `EndOfSupportChecker::new()`.
   - Add new `MaintenanceOptions` and `EndOfSupportOptions` structs.
@@ -24,6 +30,7 @@ All notable changes to this project will be documented in this file.
 
 [#1096]: https://github.com/stackabletech/operator-rs/pull/1096
 [#1098]: https://github.com/stackabletech/operator-rs/pull/1098
+[#1099]: https://github.com/stackabletech/operator-rs/pull/1099
 
 ## [0.98.0] - 2025-09-22
 
