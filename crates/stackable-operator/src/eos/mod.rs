@@ -82,12 +82,18 @@ impl EndOfSupportChecker {
             ..
         } = options;
 
-        // Parse the built-time from the RFC2822-encoded string and add the support duration to it.
-        // This is datetime marks the end-of-support date.
-        let datetime = DateTime::parse_from_rfc2822(built_time)
-            .context(ParseBuiltTimeSnafu)?
-            .to_utc()
-            + *support_duration;
+        // Parse the built-time from the RFC2822-encoded string when this is compiled as a release
+        // build. If this is a debug/dev build, use the current datetime instead.
+        let mut datetime = if cfg!(debug_assertions) {
+            Utc::now()
+        } else {
+            DateTime::parse_from_rfc2822(built_time)
+                .context(ParseBuiltTimeSnafu)?
+                .to_utc()
+        };
+
+        // Add the support duration to the built date. This marks the end-of-support date.
+        datetime += *support_duration;
 
         Ok(Self { datetime, interval })
     }
