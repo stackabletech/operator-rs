@@ -27,6 +27,10 @@ pub struct EndOfSupportOptions {
     ))]
     pub interval: Duration,
 
+    /// If the end-of-support check should be disabled entirely.
+    #[cfg_attr(feature = "clap", arg(long = "eos-disabled", env = "EOS_DISABLED"))]
+    pub disabled: bool,
+
     /// The support duration (how long the operator should be considered supported after
     /// it's built-date).
     ///
@@ -65,6 +69,7 @@ pub enum Error {
 pub struct EndOfSupportChecker {
     datetime: DateTime<Utc>,
     interval: Duration,
+    disabled: bool,
 }
 
 impl EndOfSupportChecker {
@@ -79,17 +84,28 @@ impl EndOfSupportChecker {
         let EndOfSupportOptions {
             interval,
             support_duration,
+            disabled,
             ..
         } = options;
 
-        // Parse the built-time from the RFC2822-encoded string and add the support duration to it.
-        // This is datetime marks the end-of-support date.
-        let datetime = DateTime::parse_from_rfc2822(built_time)
-            .context(ParseBuiltTimeSnafu)?
-            .to_utc()
-            + *support_duration;
+        // Parse the built-time from the RFC2822-encoded string when this is compiled as a release
+        // build. If this is a debug/dev build, use the current datetime instead.
+        let mut datetime = if cfg!(debug_assertions) {
+            Utc::now()
+        } else {
+            DateTime::parse_from_rfc2822(built_time)
+                .context(ParseBuiltTimeSnafu)?
+                .to_utc()
+        };
 
-        Ok(Self { datetime, interval })
+        // Add the support duration to the built date. This marks the end-of-support date.
+        datetime += *support_duration;
+
+        Ok(Self {
+            datetime,
+            interval,
+            disabled,
+        })
     }
 
     /// Run the end-of-support checker.
@@ -97,6 +113,11 @@ impl EndOfSupportChecker {
     /// It is recommended to run the end-of-support checker via [`futures::try_join!`] or
     /// [`tokio::join`] alongside other futures (eg. for controllers).
     pub async fn run(self) {
+        // Immediately return if the end-of-support checker is disabled.
+        if self.disabled {
+            return;
+        }
+
         // Construct an interval which can be polled.
         let mut interval = tokio::time::interval(self.interval.into());
 

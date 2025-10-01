@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
   the operator ([#1099]).
 - Add a `Client::create_if_missing` associated function to create a resource if it doesn't
   exist ([#1099]).
+- Add CLI argument and env var to disable the end-of-support checker: `EOS_DISABLED` (`--eos-disabled`) ([#1101]).
 - Add end-of-support checker ([#1096]).
   - The EoS checker can be constructed using `EndOfSupportChecker::new()`.
   - Add new `MaintenanceOptions` and `EndOfSupportOptions` structs.
@@ -31,6 +32,7 @@ All notable changes to this project will be documented in this file.
 [#1096]: https://github.com/stackabletech/operator-rs/pull/1096
 [#1098]: https://github.com/stackabletech/operator-rs/pull/1098
 [#1099]: https://github.com/stackabletech/operator-rs/pull/1099
+[#1101]: https://github.com/stackabletech/operator-rs/pull/1101
 
 ## [0.98.0] - 2025-09-22
 

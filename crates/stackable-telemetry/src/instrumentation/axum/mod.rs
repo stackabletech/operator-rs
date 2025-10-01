@@ -457,7 +457,7 @@ impl SpanExt for Span {
         //
         // We will go with option 2 as it at least keeps the higher layer spans
         // in one trace, which is likely going to be more useful to the person
-        // visualising the traces.
+        // visualizing the traces.
         let new_parent = HeaderExtractor::new(req.headers()).extract_context();
         let new_span_context = new_parent.span().span_context().clone();
         let current_span_context = Context::current().span().span_context().clone();
@@ -471,7 +471,7 @@ impl SpanExt for Span {
 
             Span::current().add_link(new_parent.span().span_context().clone());
             span.add_link(Context::current().span().span_context().to_owned());
-            span.set_parent(new_parent);
+            let _ = span.set_parent(new_parent);
         }
 
         if let Some(user_agent) = req.user_agent() {
