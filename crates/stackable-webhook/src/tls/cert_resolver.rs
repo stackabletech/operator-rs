@@ -44,7 +44,7 @@ pub enum CertificateResolverError {
     TokioSpawnBlocking { source: tokio::task::JoinError },
 
     #[snafu(display("no default rustls CryptoProvider installed"))]
-    NoDefaultCryptoProviderInstalled {},
+    NoDefaultCryptoProviderInstalled,
 }
 
 /// This struct serves as [`ResolvesServerCert`] to always hand out the current certificate for TLS

@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: The `ConversionWebhookServer` now returns a pair of values ([#1099]):
+  - The conversion webhook server itself
+  - A `mpsc::Receiver<Certificate>` to provide consumers the newly generated TLS certificate
+- BREAKING: Constants for ports, IP addresses and socket addresses are now associated constants on
+  `(Conversion)WebhookServer` instead of free-standing ones ([#1099]).
+
+### Removed
+
+- BREAKING: The `maintain_crds` and `field_manager` fields in `ConversionWebhookOptions`
+  are removed ([#1099]).
+
+[#1099]: https://github.com/stackabletech/operator-rs/pull/1099
+
 ## [0.6.0] - 2025-09-09
 
 ### Added
