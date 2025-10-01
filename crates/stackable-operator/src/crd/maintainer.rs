@@ -220,10 +220,10 @@ impl CustomResourceDefinitionMaintainer {
             // After the reconciliation of the CRDs, the initial reconcile heartbeat is sent out
             // via the oneshot channel.
             if let Some(initial_reconcile_tx) = initial_reconcile_tx.take() {
-                match initial_reconcile_tx.send(()) {
-                    Ok(_) => {}
-                    Err(_) => return SendInitialReconcileHeartbeatSnafu.fail(),
-                }
+                ensure!(
+                    initial_reconcile_tx.send(()).is_ok(),
+                    SendInitialReconcileHeartbeatSnafu
+                );
             }
         }
 

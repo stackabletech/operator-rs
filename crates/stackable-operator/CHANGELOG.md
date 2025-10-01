@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Add `CustomResourceDefinitionMaintainer` which applies and patches CRDs triggered by TLS
   certificate rotations of the `ConversionWebhookServer`. It additionally provides a `oneshot`
-  channel which can be used to trigger creation/patching of any default custom resources deployed by
+  channel which can for example be used to trigger creation/patching of any custom resources deployed by
   the operator ([#1099]).
 - Add a `Client::create_if_missing` associated function to create a resource if it doesn't
   exist ([#1099]).
