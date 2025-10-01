@@ -9,7 +9,7 @@ use kube::{
     Api, Client, ResourceExt,
     api::{Patch, PatchParams},
 };
-use snafu::{ResultExt, Snafu};
+use snafu::{ResultExt, Snafu, ensure};
 use stackable_webhook::x509_cert::{self, Certificate, EncodePem, LineEnding};
 use tokio::sync::{mpsc, oneshot};
 
