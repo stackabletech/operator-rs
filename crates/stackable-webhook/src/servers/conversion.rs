@@ -163,7 +163,8 @@ impl ConversionWebhookServer {
 
         // This is how Kubernetes calls us, so it decides about the naming.
         // AFAIK we can not influence this, so this is the only SAN entry needed.
-        // FIXME (@Techassi): The cluster domain should be included here to form FQDN of the service
+        // TODO (@Techassi): The cluster domain should be included here, so that (non Kubernetes)
+        // HTTP clients can use the FQDN of the service for testing or user use-cases.
         let subject_alterative_dns_name =
             format!("{operator_service_name}.{operator_namespace}.svc",);
 
