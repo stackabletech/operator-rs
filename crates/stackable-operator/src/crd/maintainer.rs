@@ -74,6 +74,45 @@ impl CustomResourceDefinitionMaintainer {
     /// - The [`oneshot::Receiver`] which will be used to send out a message once the initial
     ///   CRD reconciliation ran. This signal can be used to trigger the deployment of custom
     ///   resources defined by the maintained CRDs.
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// # use stackable_operator::crd::s3::{S3Connection, S3ConnectionVersion, S3Bucket, S3BucketVersion};
+    /// # use stackable_webhook::x509_cert::Certificate;
+    /// # use tokio::sync::mpsc::channel;
+    /// # use kube::Client;
+    /// use stackable_operator::crd::maintainer::{
+    ///     CustomResourceDefinitionMaintainerOptions,
+    ///     CustomResourceDefinitionMaintainer,
+    /// };
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() {
+    /// # let (certificate_tx, certificate_rx) = channel(1);
+    /// let options = CustomResourceDefinitionMaintainerOptions {
+    ///     operator_service_name: "my-service-name".to_owned(),
+    ///     operator_namespace: "my-namespace".to_owned(),
+    ///     field_manager: "my-operator".to_owned(),
+    ///     webhook_https_port: 8443,
+    ///     disabled: true,
+    /// };
+    ///
+    /// let client = Client::try_default().await.unwrap();
+    ///
+    /// let definitions = vec![
+    ///     S3Connection::merged_crd(S3ConnectionVersion::V1Alpha1).unwrap(),
+    ///     S3Bucket::merged_crd(S3BucketVersion::V1Alpha1).unwrap(),
+    /// ];
+    ///
+    /// let (maintainer, initial_reconcile_rx) = CustomResourceDefinitionMaintainer::new(
+    ///     client,
+    ///     certificate_rx,
+    ///     definitions,
+    ///     options,
+    /// );
+    /// # }
+    /// ```
     pub fn new(
         client: Client,
         certificate_rx: mpsc::Receiver<Certificate>,
