@@ -12,11 +12,11 @@ full = ["certs", "telemetry", "versioned", "time", "webhook", "clap"]
 default = ["telemetry", "versioned", "clap"]
 
 clap = []
-certs = ["dep:stackable-certs", "dep:x509-cert"]
+certs = ["dep:stackable-certs"]
 telemetry = ["dep:stackable-telemetry"]
 time = ["stackable-shared/time"]
 versioned = ["dep:stackable-versioned"]
-webhook = ["dep:stackable-webhook", "dep:x509-cert"]
+webhook = ["dep:stackable-webhook"]
 
 [dependencies]
 stackable-certs = { path = "../stackable-certs", optional = true }
@@ -24,7 +24,7 @@ stackable-operator-derive = { path = "../stackable-operator-derive" }
 stackable-shared = { path = "../stackable-shared" }
 stackable-telemetry = { path = "../stackable-telemetry", optional = true, features = ["clap"] }
 stackable-versioned = { path = "../stackable-versioned", optional = true }
-stackable-webhook = { path = "../stackable-webhook", optional = true }
+stackable-webhook = { path = "../stackable-webhook", optional = true, features = ["maintainer"]}
 
 chrono.workspace = true
 clap.workspace = true
@@ -53,7 +53,6 @@ tracing.workspace = true
 tracing-appender.workspace = true
 tracing-subscriber.workspace = true
 url.workspace = true
-x509-cert = { workspace = true, optional = true }
 
 [dev-dependencies]
 rstest.workspace = true

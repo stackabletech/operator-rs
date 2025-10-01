@@ -28,6 +28,7 @@
 //! [1]: crate::servers::ConversionWebhookServer
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
+use ::x509_cert::Certificate;
 use axum::{Router, routing::get};
 use futures_util::{FutureExt as _, pin_mut, select};
 use snafu::{ResultExt, Snafu};
@@ -37,17 +38,22 @@ use tokio::{
     sync::mpsc,
 };
 use tower::ServiceBuilder;
-pub use x509_cert::Certificate;
 
-// use tower_http::trace::TraceLayer;
+// Selected re-exports
+pub use crate::options::WebhookOptions;
 use crate::tls::TlsServer;
 
 pub mod options;
 pub mod servers;
 pub mod tls;
 
-// Selected re-exports
-pub use crate::options::WebhookOptions;
+#[cfg(feature = "maintainer")]
+pub mod x509_cert {
+    pub use ::x509_cert::{
+        Certificate,
+        der::{EncodePem, Error, pem::LineEnding},
+    };
+}
 
 /// A generic webhook handler receiving a request and sending back a response.
 ///

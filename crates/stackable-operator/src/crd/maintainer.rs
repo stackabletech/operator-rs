@@ -10,16 +10,13 @@ use kube::{
     api::{Patch, PatchParams},
 };
 use snafu::{ResultExt, Snafu};
+use stackable_webhook::x509_cert::{self, Certificate, EncodePem, LineEnding};
 use tokio::sync::{mpsc, oneshot};
-use x509_cert::{
-    Certificate,
-    der::{EncodePem, pem::LineEnding},
-};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("failed to encode CA certificate as PEM format"))]
-    EncodeCertificateAuthorityAsPem { source: x509_cert::der::Error },
+    EncodeCertificateAuthorityAsPem { source: x509_cert::Error },
 
     #[snafu(display("failed to send initial CRD reconcile heartbeat"))]
     SendInitialReconcileHeartbeat,

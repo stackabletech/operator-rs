@@ -2948,7 +2948,6 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "url",
- "x509-cert",
 ]
 
 [[package]]
