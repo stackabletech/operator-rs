@@ -41,7 +41,7 @@ pub struct CustomResourceDefinitionMaintainer {
     definitions: Vec<CustomResourceDefinition>,
     options: CustomResourceDefinitionMaintainerOptions,
 
-    initial_reconcile_tx: Option<oneshot::Sender<()>>,
+    initial_reconcile_tx: oneshot::Sender<()>,
 }
 
 impl CustomResourceDefinitionMaintainer {
@@ -120,7 +120,6 @@ impl CustomResourceDefinitionMaintainer {
         options: CustomResourceDefinitionMaintainerOptions,
     ) -> (Self, oneshot::Receiver<()>) {
         let (initial_reconcile_tx, initial_reconcile_rx) = oneshot::channel();
-        let initial_reconcile_tx = Some(initial_reconcile_tx);
 
         let maintainer = Self {
             definitions: definitions.into_iter().collect(),
@@ -152,6 +151,11 @@ impl CustomResourceDefinitionMaintainer {
         if disabled || self.definitions.is_empty() {
             return Ok(());
         }
+
+        // This channel can only be used exactly once. The sender's send method consumes self, and
+        // as such, the sender is wrapped in an Option to be able to call take to consume the inner
+        // value.
+        let mut initial_reconcile_tx = Some(self.initial_reconcile_tx);
 
         // This get's polled by the async runtime on a regular basis (or when woken up). Once we
         // receive a message containing the newly generated TLS certificate for the conversion
@@ -214,10 +218,8 @@ impl CustomResourceDefinitionMaintainer {
             }
 
             // After the reconciliation of the CRDs, the initial reconcile heartbeat is sent out
-            // via the oneshot channel. This channel can only be used exactly once. The sender's
-            // send method consumes self, and as such, the sender is wrapped in an Option to be
-            // able to call take to consume the inner value.
-            if let Some(initial_reconcile_tx) = self.initial_reconcile_tx.take() {
+            // via the oneshot channel.
+            if let Some(initial_reconcile_tx) = initial_reconcile_tx.take() {
                 match initial_reconcile_tx.send(()) {
                     Ok(_) => {}
                     Err(_) => return SendInitialReconcileHeartbeatSnafu.fail(),
