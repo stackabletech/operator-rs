@@ -7,12 +7,14 @@ edition.workspace = true
 repository.workspace = true
 
 [features]
-full = ["time"]
+full = ["chrono", "time"]
 default = ["time"]
 
+chrono = ["dep:chrono"]
 time = ["dep:time"]
 
 [dependencies]
+chrono = { workspace = true, optional = true }
 k8s-openapi.workspace = true
 kube.workspace = true
 schemars.workspace = true
