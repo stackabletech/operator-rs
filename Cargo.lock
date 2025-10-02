@@ -2963,6 +2963,7 @@ dependencies = [
 name = "stackable-shared"
 version = "0.0.2"
 dependencies = [
+ "chrono",
  "k8s-openapi",
  "kube",
  "rstest",

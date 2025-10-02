@@ -67,7 +67,8 @@ pub enum Error {
 }
 
 pub struct EndOfSupportChecker {
-    datetime: DateTime<Utc>,
+    built_datetime: DateTime<Utc>,
+    eos_datetime: DateTime<Utc>,
     interval: Duration,
     disabled: bool,
 }
@@ -90,7 +91,7 @@ impl EndOfSupportChecker {
 
         // Parse the built-time from the RFC2822-encoded string when this is compiled as a release
         // build. If this is a debug/dev build, use the current datetime instead.
-        let mut datetime = if cfg!(debug_assertions) {
+        let built_datetime = if cfg!(debug_assertions) {
             Utc::now()
         } else {
             DateTime::parse_from_rfc2822(built_time)
@@ -99,10 +100,11 @@ impl EndOfSupportChecker {
         };
 
         // Add the support duration to the built date. This marks the end-of-support date.
-        datetime += *support_duration;
+        let eos_datetime = built_datetime + *support_duration;
 
         Ok(Self {
-            datetime,
+            built_datetime,
+            eos_datetime,
             interval,
             disabled,
         })
@@ -125,37 +127,37 @@ impl EndOfSupportChecker {
             // TODO: Add way to stop from the outside
             // The first tick ticks immediately.
             interval.tick().await;
+            let now = Utc::now();
+
             tracing::info_span!(
                 "checking end-of-support state",
                 eos.interval = self.interval.to_string(),
+                eos.now = now.to_rfc3339(),
             );
 
             // Continue the loop and wait for the next tick to run the check again.
-            if !self.is_eos() {
+            if now <= self.eos_datetime {
                 continue;
             }
 
-            self.emit_warning();
+            self.emit_warning(now);
         }
     }
 
     /// Emits the end-of-support warning.
     #[instrument(level = Level::DEBUG, skip(self))]
-    fn emit_warning(&self) {
+    fn emit_warning(&self, now: DateTime<Utc>) {
+        let built_datetime = self.built_datetime.to_rfc3339();
+        let build_age = Duration::try_from(now - self.built_datetime)
+            .expect("time delta of now and built datetime must not be less than 0")
+            .to_string();
+
         tracing::warn!(
-            eos.date = self.datetime.to_rfc3339(),
-            "the operator reached end-of-support"
+            eos.built.datetime = built_datetime,
+            eos.build.age = build_age,
+            "This operator version was built on {built_datetime} ({build_age} days ago) and may has reached end-of-support. \
+Running unsupported versions may contain security vulnerabilities. \
+Please upgrade to a supported version as soon as possible."
         );
-    }
-
-    /// Returns if the operator is considered as end-of-support based on the built-time and the
-    /// support duration.
-    #[instrument(level = Level::DEBUG, skip(self), fields(eos.now))]
-    fn is_eos(&self) -> bool {
-        let now = Utc::now();
-
-        tracing::Span::current().record("eos.now", now.to_rfc3339());
-
-        now > self.datetime
     }
 }
