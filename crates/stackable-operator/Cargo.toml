@@ -21,7 +21,7 @@ webhook = ["dep:stackable-webhook"]
 [dependencies]
 stackable-certs = { path = "../stackable-certs", optional = true }
 stackable-operator-derive = { path = "../stackable-operator-derive" }
-stackable-shared = { path = "../stackable-shared", features = ["chrono", "time"]}
+stackable-shared = { path = "../stackable-shared", features = ["chrono", "time"] }
 stackable-telemetry = { path = "../stackable-telemetry", optional = true, features = ["clap"] }
 stackable-versioned = { path = "../stackable-versioned", optional = true }
 stackable-webhook = { path = "../stackable-webhook", optional = true }
