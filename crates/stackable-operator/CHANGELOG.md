@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.99.0] - 2025-10-06
+
 ### Added
 
 - Add CLI argument and env var to disable the end-of-support checker: `EOS_DISABLED` (`--eos-disabled`) ([#1101]).
