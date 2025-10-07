@@ -66,5 +66,19 @@ pub mod versioned {
         /// Defaults to `HostnameConservative`.
         #[serde(default = "ListenerClassSpec::default_preferred_address_type")]
         pub preferred_address_type: core_v1alpha1::PreferredAddressType,
+
+        /// Wether a Pod exposed using a NodePort should be pinned to a specific Kubernetes node.
+        ///
+        /// By pinning the Pod to a specific (stable) Kubernetes node, stable addresses can be
+        /// provided using NodePorts. The stickiness is achieved by listener-operator by setting the
+        /// `volume.kubernetes.io/selected-node` annotation on the Listener PVC.
+        ///
+        /// However, this only works on setups with long-living nodes. If your nodes are rotated on
+        /// a regular basis, the Pods previously running on a removed node will be stuck in Pending
+        /// until you delete the PVC with the stickiness.
+        ///
+        /// Because of this we don't enable stickiness by default to support all environments.
+        #[serde(default)]
+        pub sticky_node_ports: bool,
     }
 }
