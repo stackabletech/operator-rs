@@ -6,16 +6,16 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- BREAKING: Add new `ListenerClass.stickyNodePorts` field ([#1XXX]).
+- BREAKING: Add new `ListenerClass.stickyNodePorts` field ([#1105]).
 
-[#1XXX]: https://github.com/stackabletech/operator-rs/pull/1XXX
+[#1105]: https://github.com/stackabletech/operator-rs/pull/1105
 
 ## [0.99.0] - 2025-10-06
 
 ### Added
 
 - Add CLI argument and env var to disable the end-of-support checker: `EOS_DISABLED` (`--eos-disabled`) ([#1101]).
-- Add end-of-support checker ([#1096], ([#1103]).
+- Add end-of-support checker ([#1096], [#1103]).
   - The EoS checker can be constructed using `EndOfSupportChecker::new()`.
   - Add new `MaintenanceOptions` and `EndOfSupportOptions` structs.
   - Add new CLI arguments and env vars:
