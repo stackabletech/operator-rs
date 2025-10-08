@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.99.0] - 2025-10-06
+
 ### Added
 
 - Add `CustomResourceDefinitionMaintainer` which applies and patches CRDs triggered by TLS
@@ -22,6 +24,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Update the end-of-support warning message ([#1103])
 - BREAKING: `ProductOperatorRun` was renamed to `RunArguments` ([#1096]).
 - BREAKING: The `disable_crd_maintenance` field was moved from `RunArguments` into `MaintenanceOptions`.
   The CLI interface is unchanged ([#1096]).
@@ -33,6 +36,7 @@ All notable changes to this project will be documented in this file.
 [#1098]: https://github.com/stackabletech/operator-rs/pull/1098
 [#1099]: https://github.com/stackabletech/operator-rs/pull/1099
 [#1101]: https://github.com/stackabletech/operator-rs/pull/1101
+[#1103]: https://github.com/stackabletech/operator-rs/pull/1103
 
 ## [0.98.0] - 2025-09-22
 

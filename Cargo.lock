@@ -2909,7 +2909,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.98.0"
+version = "0.99.0"
 dependencies = [
  "chrono",
  "clap",
@@ -2961,8 +2961,9 @@ dependencies = [
 
 [[package]]
 name = "stackable-shared"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
+ "chrono",
  "k8s-openapi",
  "kube",
  "rstest",

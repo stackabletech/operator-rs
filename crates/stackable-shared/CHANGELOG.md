@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+## [0.0.3] - 2025-10-06
+
+### Added
+
+- Add conversion implementations between `Duration` and `chrono::TimeDelta` ([#1103]).
+
+[#1103]: https://github.com/stackabletech/operator-rs/pull/1103
+
 ## [0.0.2] - 2025-08-21
 
 ### Added
