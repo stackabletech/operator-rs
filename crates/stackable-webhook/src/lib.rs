@@ -43,17 +43,10 @@ use tower::ServiceBuilder;
 pub use crate::options::WebhookOptions;
 use crate::tls::TlsServer;
 
+pub mod maintainer;
 pub mod options;
 pub mod servers;
 pub mod tls;
-
-#[cfg(feature = "maintainer")]
-pub mod x509_cert {
-    pub use ::x509_cert::{
-        Certificate,
-        der::{EncodePem, Error, pem::LineEnding},
-    };
-}
 
 /// A generic webhook handler receiving a request and sending back a response.
 ///

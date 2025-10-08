@@ -2,18 +2,22 @@ use std::{fmt::Debug, net::SocketAddr};
 
 use axum::{Json, Router, routing::post};
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
-use kube::ResourceExt;
 // Re-export this type because users of the conversion webhook server require
 // this type to write the handler function. Instead of importing this type from
 // kube directly, consumers can use this type instead. This also eliminates
 // keeping the kube dependency version in sync between here and the operator.
 pub use kube::core::conversion::ConversionReview;
+use kube::{Client, ResourceExt};
 use snafu::{ResultExt, Snafu};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use tracing::instrument;
 use x509_cert::Certificate;
 
-use crate::{WebhookError, WebhookHandler, WebhookServer, options::WebhookOptions};
+use crate::{
+    WebhookError, WebhookHandler, WebhookServer,
+    maintainer::{CustomResourceDefinitionMaintainer, CustomResourceDefinitionMaintainerOptions},
+    options::WebhookOptions,
+};
 
 #[derive(Debug, Snafu)]
 pub enum ConversionWebhookError {
@@ -53,15 +57,15 @@ where
 
 // TODO: Add a builder, maybe with `bon`.
 #[derive(Debug)]
-pub struct ConversionWebhookOptions {
+pub struct ConversionWebhookOptions<'a> {
     /// The bind address to bind the HTTPS server to.
     pub socket_addr: SocketAddr,
 
     /// The namespace the operator/webhook is running in.
-    pub namespace: String,
+    pub namespace: &'a str,
 
     /// The name of the Kubernetes service which points to the operator/webhook.
-    pub service_name: String,
+    pub service_name: &'a str,
 }
 
 /// A ready-to-use CRD conversion webhook server.
@@ -76,6 +80,8 @@ impl ConversionWebhookServer {
 
     /// Creates and returns a new [`ConversionWebhookServer`], which expects POST requests being
     /// made to the `/convert/{CRD_NAME}` endpoint.
+    ///
+    /// The TLS certificate is automatically generated and rotated.
     ///
     /// ## Parameters
     ///
@@ -119,8 +125,8 @@ impl ConversionWebhookServer {
     ///
     /// let options = ConversionWebhookOptions {
     ///     socket_addr: ConversionWebhookServer::DEFAULT_SOCKET_ADDRESS,
-    ///     namespace: "stackable-operators".to_owned(),
-    ///     service_name: "product-operator".to_owned(),
+    ///     namespace: "stackable-operators",
+    ///     service_name: "product-operator",
     /// };
     ///
     /// let (conversion_webhook_server, _certificate_rx) =
@@ -134,7 +140,7 @@ impl ConversionWebhookServer {
     #[instrument(name = "create_conversion_webhook_server", skip(crds_and_handlers))]
     pub async fn new<H>(
         crds_and_handlers: impl IntoIterator<Item = (CustomResourceDefinition, H)>,
-        options: ConversionWebhookOptions,
+        options: ConversionWebhookOptions<'_>,
     ) -> Result<(Self, mpsc::Receiver<Certificate>), ConversionWebhookError>
     where
         H: WebhookHandler<ConversionReview, ConversionReview> + Clone + Send + Sync + 'static,
@@ -142,7 +148,7 @@ impl ConversionWebhookServer {
         tracing::debug!("create new conversion webhook server");
 
         let mut router = Router::new();
-        let mut crds = Vec::new();
+
         for (crd, handler) in crds_and_handlers {
             let crd_name = crd.name_any();
             let handler_fn = |Json(review): Json<ConversionReview>| async {
@@ -150,9 +156,9 @@ impl ConversionWebhookServer {
                 Json(review)
             };
 
+            // TODO (@Techassi): Make this part of the trait mentioned above
             let route = format!("/convert/{crd_name}");
             router = router.route(&route, post(handler_fn));
-            crds.push(crd);
         }
 
         let ConversionWebhookOptions {
@@ -178,6 +184,61 @@ impl ConversionWebhookServer {
             .context(CreateWebhookServerSnafu)?;
 
         Ok((Self(server), certificate_rx))
+    }
+
+    /// Creates and returns a tuple consisting of a [`ConversionWebhookServer`], a [`CustomResourceDefinitionMaintainer`],
+    /// and a [`oneshot::Receiver`].
+    ///
+    /// See the referenced items for more details on usage.
+    pub async fn with_maintainer<'a, H>(
+        // TODO (@Techassi): Use a trait type here which can be used to build all part of the
+        // conversion webhook server and a CRD maintainer.
+        crds_and_handlers: impl IntoIterator<Item = (CustomResourceDefinition, H)> + Clone,
+        operator_name: &'a str,
+        operator_namespace: &'a str,
+        disable_maintainer: bool,
+        client: Client,
+    ) -> Result<
+        (
+            Self,
+            CustomResourceDefinitionMaintainer<'a>,
+            oneshot::Receiver<()>,
+        ),
+        ConversionWebhookError,
+    >
+    where
+        H: WebhookHandler<ConversionReview, ConversionReview> + Clone + Send + Sync + 'static,
+    {
+        let socket_addr = ConversionWebhookServer::DEFAULT_SOCKET_ADDRESS;
+
+        // TODO (@Techassi): These should be moved into a builder
+        let webhook_options = ConversionWebhookOptions {
+            namespace: operator_namespace,
+            service_name: operator_name,
+            socket_addr,
+        };
+
+        let (conversion_webhook_server, certificate_rx) =
+            Self::new(crds_and_handlers.clone(), webhook_options).await?;
+
+        let definitions = crds_and_handlers.into_iter().map(|(crd, _)| crd);
+
+        // TODO (@Techassi): These should be moved into a builder
+        let maintainer_options = CustomResourceDefinitionMaintainerOptions {
+            webhook_https_port: socket_addr.port(),
+            disabled: disable_maintainer,
+            operator_namespace,
+            operator_name,
+        };
+
+        let (maintainer, initial_reconcile_rx) = CustomResourceDefinitionMaintainer::new(
+            client,
+            certificate_rx,
+            definitions,
+            maintainer_options,
+        );
+
+        Ok((conversion_webhook_server, maintainer, initial_reconcile_rx))
     }
 
     /// Runs the [`ConversionWebhookServer`] asynchronously.

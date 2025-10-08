@@ -88,14 +88,14 @@ impl TlsServer {
         router: Router,
         options: WebhookOptions,
     ) -> Result<(Self, mpsc::Receiver<Certificate>)> {
-        let (cert_tx, cert_rx) = mpsc::channel(1);
+        let (certificate_tx, certificate_rx) = mpsc::channel(1);
 
         let WebhookOptions {
             socket_addr,
             subject_alterative_dns_names,
         } = options;
 
-        let cert_resolver = CertificateResolver::new(subject_alterative_dns_names, cert_tx)
+        let cert_resolver = CertificateResolver::new(subject_alterative_dns_names, certificate_tx)
             .await
             .context(CreateCertificateResolverSnafu)?;
         let cert_resolver = Arc::new(cert_resolver);
@@ -117,7 +117,7 @@ impl TlsServer {
             router,
         };
 
-        Ok((tls_server, cert_rx))
+        Ok((tls_server, certificate_rx))
     }
 
     /// Runs the TLS server by listening for incoming TCP connections on the

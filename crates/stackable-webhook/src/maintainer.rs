@@ -10,13 +10,16 @@ use kube::{
     api::{Patch, PatchParams},
 };
 use snafu::{ResultExt, Snafu, ensure};
-use stackable_webhook::x509_cert::{self, Certificate, EncodePem, LineEnding};
 use tokio::sync::{mpsc, oneshot};
+use x509_cert::{
+    Certificate,
+    der::{EncodePem, pem::LineEnding},
+};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("failed to encode CA certificate as PEM format"))]
-    EncodeCertificateAuthorityAsPem { source: x509_cert::Error },
+    EncodeCertificateAuthorityAsPem { source: x509_cert::der::Error },
 
     #[snafu(display("failed to send initial CRD reconcile heartbeat"))]
     SendInitialReconcileHeartbeat,
@@ -34,17 +37,17 @@ pub enum Error {
 ///
 /// - Apply the CRDs when starting up
 /// - Reconcile the CRDs when the conversion webhook certificate is rotated
-pub struct CustomResourceDefinitionMaintainer {
+pub struct CustomResourceDefinitionMaintainer<'a> {
     client: Client,
     certificate_rx: mpsc::Receiver<Certificate>,
 
     definitions: Vec<CustomResourceDefinition>,
-    options: CustomResourceDefinitionMaintainerOptions,
+    options: CustomResourceDefinitionMaintainerOptions<'a>,
 
     initial_reconcile_tx: oneshot::Sender<()>,
 }
 
-impl CustomResourceDefinitionMaintainer {
+impl<'a> CustomResourceDefinitionMaintainer<'a> {
     /// Creates and returns a new [`CustomResourceDefinitionMaintainer`] which manages one or more
     /// custom resource definitions.
     ///
@@ -79,10 +82,10 @@ impl CustomResourceDefinitionMaintainer {
     ///
     /// ```no_run
     /// # use stackable_operator::crd::s3::{S3Connection, S3ConnectionVersion, S3Bucket, S3BucketVersion};
-    /// # use stackable_webhook::x509_cert::Certificate;
     /// # use tokio::sync::mpsc::channel;
+    /// # use x509_cert::Certificate;
     /// # use kube::Client;
-    /// use stackable_operator::crd::maintainer::{
+    /// use stackable_webhook::maintainer::{
     ///     CustomResourceDefinitionMaintainerOptions,
     ///     CustomResourceDefinitionMaintainer,
     /// };
@@ -91,9 +94,8 @@ impl CustomResourceDefinitionMaintainer {
     /// # async fn main() {
     /// # let (certificate_tx, certificate_rx) = channel(1);
     /// let options = CustomResourceDefinitionMaintainerOptions {
-    ///     operator_service_name: "my-service-name".to_owned(),
-    ///     operator_namespace: "my-namespace".to_owned(),
-    ///     field_manager: "my-operator".to_owned(),
+    ///     operator_name: "my-service-name",
+    ///     operator_namespace: "my-namespace",
     ///     webhook_https_port: 8443,
     ///     disabled: true,
     /// };
@@ -117,7 +119,7 @@ impl CustomResourceDefinitionMaintainer {
         client: Client,
         certificate_rx: mpsc::Receiver<Certificate>,
         definitions: impl IntoIterator<Item = CustomResourceDefinition>,
-        options: CustomResourceDefinitionMaintainerOptions,
+        options: CustomResourceDefinitionMaintainerOptions<'a>,
     ) -> (Self, oneshot::Receiver<()>) {
         let (initial_reconcile_tx, initial_reconcile_rx) = oneshot::channel();
 
@@ -139,10 +141,9 @@ impl CustomResourceDefinitionMaintainer {
     /// [`std::task::Poll::Ready`] and thus doesn't consume any resources.
     pub async fn run(mut self) -> Result<(), Error> {
         let CustomResourceDefinitionMaintainerOptions {
-            operator_service_name,
             operator_namespace,
-            field_manager,
-            webhook_https_port: https_port,
+            webhook_https_port,
+            operator_name,
             disabled,
         } = self.options;
 
@@ -173,7 +174,7 @@ impl CustomResourceDefinitionMaintainer {
 
             let crd_api: Api<CustomResourceDefinition> = Api::all(self.client.clone());
 
-            for mut crd in self.definitions.iter().cloned() {
+            for crd in self.definitions.iter_mut() {
                 let crd_kind = &crd.spec.names.kind;
                 let crd_name = crd.name_any();
 
@@ -195,10 +196,10 @@ impl CustomResourceDefinitionMaintainer {
                         conversion_review_versions: vec!["v1".to_owned()],
                         client_config: Some(WebhookClientConfig {
                             service: Some(ServiceReference {
-                                name: operator_service_name.clone(),
-                                namespace: operator_namespace.clone(),
+                                name: operator_name.to_owned(),
+                                namespace: operator_namespace.to_owned(),
                                 path: Some(format!("/convert/{crd_name}")),
-                                port: Some(https_port.into()),
+                                port: Some(webhook_https_port.into()),
                             }),
                             // Here, ByteString takes care of encoding the provided content as
                             // base64.
@@ -210,7 +211,7 @@ impl CustomResourceDefinitionMaintainer {
 
                 // Deploy the updated CRDs using a server-side apply.
                 let patch = Patch::Apply(&crd);
-                let patch_params = PatchParams::apply(&field_manager);
+                let patch_params = PatchParams::apply(operator_name);
                 crd_api
                     .patch(&crd_name, &patch_params, &patch)
                     .await
@@ -233,15 +234,12 @@ impl CustomResourceDefinitionMaintainer {
 
 // TODO (@Techassi): Make this a builder instead
 /// This contains required options to customize a [`CustomResourceDefinitionMaintainer`].
-pub struct CustomResourceDefinitionMaintainerOptions {
-    /// The service name used by the operator/conversion webhook.
-    pub operator_service_name: String,
+pub struct CustomResourceDefinitionMaintainerOptions<'a> {
+    /// The service name used by the operator/conversion webhook and as a field manager.
+    pub operator_name: &'a str,
 
     /// The namespace the operator/conversion webhook runs in.
-    pub operator_namespace: String,
-
-    /// The name of the field manager used for the server-side apply.
-    pub field_manager: String,
+    pub operator_namespace: &'a str,
 
     /// The HTTPS port the conversion webhook listens on.
     pub webhook_https_port: u16,
