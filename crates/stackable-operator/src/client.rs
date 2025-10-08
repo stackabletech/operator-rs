@@ -253,6 +253,25 @@ impl Client {
             })
     }
 
+    /// Optionally creates a resource if it does not exist yet.
+    ///
+    /// The name used for lookup is extracted from the resource via [`ResourceExt::name_any()`].
+    /// This function either returns the existing resource or the newly created one.
+    pub async fn create_if_missing<T>(&self, resource: &T) -> Result<T>
+    where
+        T: Clone + Debug + DeserializeOwned + Resource + Serialize + GetApi,
+        <T as Resource>::DynamicType: Default,
+    {
+        if let Some(r) = self
+            .get_opt(&resource.name_any(), resource.get_namespace())
+            .await?
+        {
+            return Ok(r);
+        }
+
+        self.create(resource).await
+    }
+
     /// Patches a resource using the `MERGE` patch strategy described
     /// in [JSON Merge Patch](https://tools.ietf.org/html/rfc7386)
     /// This will fail for objects that do not exist yet.
