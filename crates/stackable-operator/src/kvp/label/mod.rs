@@ -1,6 +1,6 @@
 //! This module provides various types and functions to construct valid
 //! Kubernetes labels. Labels are key/value pairs, where the key must meet
-//! certain requirementens regarding length and character set. The value can
+//! certain requirements regarding length and character set. The value can
 //! contain a limited set of ASCII characters.
 //!
 //! Additionally, the [`Label`] struct provides various helper functions to
@@ -156,26 +156,28 @@ impl Label {
         self.0
     }
 
-    /// Creates the `app.kubernetes.io/component` label with `role` as the
-    /// value. This function will return an error if `role` violates the required
-    /// Kubernetes restrictions.
+    /// Creates the `app.kubernetes.io/component` label with `role` as the value.
+    ///
+    /// This function will return an error if `role` violates the required Kubernetes restrictions.
     pub fn component(component: &str) -> Result<Self, LabelError> {
         let kvp = KeyValuePair::try_from((K8S_APP_COMPONENT_KEY, component))?;
         Ok(Self(kvp))
     }
 
-    /// Creates the `app.kubernetes.io/role-group` label with `role_group` as
-    /// the value. This function will return an error if `role_group` violates
-    /// the required Kubernetes restrictions.
+    /// Creates the `app.kubernetes.io/role-group` label with `role_group` as the value.
+    ///
+    /// This function will return an error if `role_group` violates the required Kubernetes
+    /// restrictions.
     pub fn role_group(role_group: &str) -> Result<Self, LabelError> {
         let kvp = KeyValuePair::try_from((K8S_APP_ROLE_GROUP_KEY, role_group))?;
         Ok(Self(kvp))
     }
 
-    /// Creates the `app.kubernetes.io/managed-by` label with the formated
-    /// full controller name based on `operator_name` and `controller_name` as
-    /// the value. This function will return an error if the formatted controller
-    /// name violates the required Kubernetes restrictions.
+    /// Creates the `app.kubernetes.io/managed-by` label with the formatted full controller name
+    /// based on `operator_name` and `controller_name` as the value.
+    ///
+    /// This function will return an error if the formatted controller name violates the required
+    /// Kubernetes restrictions.
     pub fn managed_by(operator_name: &str, controller_name: &str) -> Result<Self, LabelError> {
         let kvp = KeyValuePair::try_from((
             K8S_APP_MANAGED_BY_KEY,
@@ -184,9 +186,10 @@ impl Label {
         Ok(Self(kvp))
     }
 
-    /// Creates the `app.kubernetes.io/version` label with `version` as the
-    /// value. This function will return an error if `role_group` violates the
-    /// required Kubernetes restrictions.
+    /// Creates the `app.kubernetes.io/version` label with `version` as the value.
+    ///
+    /// This function will return an error if `version` violates the required Kubernetes
+    /// restrictions.
     pub fn version(version: &str) -> Result<Self, LabelError> {
         // NOTE (Techassi): Maybe use semver::Version
         let kvp = KeyValuePair::try_from((K8S_APP_VERSION_KEY, version))?;
