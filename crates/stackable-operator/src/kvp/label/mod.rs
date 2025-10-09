@@ -42,6 +42,63 @@ pub type LabelsError = KeyValuePairsError;
 /// of labels fails.
 pub type LabelError = KeyValuePairError<LabelValueError>;
 
+/// Add [`Label`]s to any Kubernetes resource.
+///
+/// It should be noted, that after the addition of labels to the resource, the validity of keys and
+/// values **can no longer be enforced** as they are both stored as plain [`String`]s. To update a
+/// label use [`LabelExt::add_label`] which will update the label in place if it is already present.
+pub trait LabelExt
+where
+    Self: ResourceExt,
+{
+    /// Adds a single label to `self`.
+    fn add_label(&mut self, label: Label) -> &mut Self;
+
+    /// Adds multiple labels to `self`.
+    fn add_labels(&mut self, label: Labels) -> &mut Self;
+}
+
+impl<T> LabelExt for T
+where
+    T: ResourceExt,
+{
+    fn add_label(&mut self, label: Label) -> &mut Self {
+        let meta = self.meta_mut();
+
+        match &mut meta.labels {
+            Some(labels) => {
+                // TODO (@Techassi): Add an API to consume key and value
+                let KeyValuePair { key, value } = label.into_inner();
+                labels.insert(key.to_string(), value.to_string());
+            }
+            None => {
+                let mut labels = BTreeMap::new();
+
+                // TODO (@Techassi): Add an API to consume key and value
+                let KeyValuePair { key, value } = label.into_inner();
+                labels.insert(key.to_string(), value.to_string());
+
+                meta.labels = Some(labels);
+            }
+        }
+
+        self
+    }
+
+    fn add_labels(&mut self, labels: Labels) -> &mut Self {
+        let meta = self.meta_mut();
+
+        match &mut meta.labels {
+            Some(existing_labels) => {
+                existing_labels.extend::<BTreeMap<String, String>>(labels.into())
+            }
+            None => meta.labels = Some(labels.into()),
+        }
+
+        self
+    }
+}
+
 /// A specialized implementation of a key/value pair representing Kubernetes
 /// labels.
 ///
