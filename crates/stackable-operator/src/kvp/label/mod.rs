@@ -192,6 +192,31 @@ impl Label {
         let kvp = KeyValuePair::try_from((K8S_APP_VERSION_KEY, version))?;
         Ok(Self(kvp))
     }
+
+    /// Creates the `app.kubernetes.io/instance` label with `instance` as the value.
+    ///
+    /// This function will return an error if `instance` violates the required Kubernetes
+    /// restrictions.
+    pub fn instance(instance: &str) -> Result<Self, LabelError> {
+        let kvp = KeyValuePair::try_from((K8S_APP_INSTANCE_KEY, instance))?;
+        Ok(Self(kvp))
+    }
+
+    /// Creates the `app.kubernetes.io/name` label with `name` as the value.
+    ///
+    /// This function will return an error if `name` violates the required Kubernetes restrictions.
+    pub fn name(name: &str) -> Result<Self, LabelError> {
+        let kvp = KeyValuePair::try_from((K8S_APP_NAME_KEY, name))?;
+        Ok(Self(kvp))
+    }
+
+    /// Creates the Stackable specific vendor label.
+    ///
+    /// See [`STACKABLE_VENDOR_KEY`] and [`STACKABLE_VENDOR_VALUE`].
+    pub fn stackable_vendor() -> Self {
+        Self::try_from((STACKABLE_VENDOR_KEY, STACKABLE_VENDOR_VALUE))
+            .expect("constant vendor label must be valid")
+    }
 }
 
 /// A validated set/list of Kubernetes labels.
@@ -388,7 +413,7 @@ impl Labels {
         labels.insert(version);
 
         // Stackable-specific labels
-        labels.parse_insert((STACKABLE_VENDOR_KEY, STACKABLE_VENDOR_VALUE))?;
+        labels.insert(Label::stackable_vendor());
 
         Ok(labels)
     }
