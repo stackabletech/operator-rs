@@ -70,7 +70,7 @@ pub mod versioned {
         /// Wether a Pod exposed using a NodePort should be pinned to a specific Kubernetes node.
         ///
         /// By pinning the Pod to a specific (stable) Kubernetes node, stable addresses can be
-        /// provided using NodePorts. The stickiness is achieved by listener-operator by setting the
+        /// provided using NodePorts. The stickiness is achieved by listener-operator setting the
         /// `volume.kubernetes.io/selected-node` annotation on the Listener PVC.
         ///
         /// However, this only works on setups with long-living nodes. If your nodes are rotated on
