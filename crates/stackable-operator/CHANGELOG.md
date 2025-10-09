@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `LabelExt` trait which enables adding validated labels to any Kubernetes resource ([#1106]).
+- Add new associated convenience functions to `Label` ([#1106]).
+  - `Label::stackable_vendor`: stackable.tech/vendor=Stackable
+  - `Label::instance`: app.kubernetes.io/instance
+  - `Label::name`: app.kubernetes.io/name
+
+[#1106]: https://github.com/stackabletech/operator-rs/pull/1106
+
 ## [0.99.0] - 2025-10-06
 
 ### Added
