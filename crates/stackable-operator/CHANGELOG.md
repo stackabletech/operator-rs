@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- BREAKING: Add new ListenerClass `.spec.pinnedNodePorts` field ([#1105]).
+
+[#1105]: https://github.com/stackabletech/operator-rs/pull/1105
+
 ## [0.99.0] - 2025-10-06
 
 ### Added
@@ -15,7 +21,7 @@ All notable changes to this project will be documented in this file.
 - Add a `Client::create_if_missing` associated function to create a resource if it doesn't
   exist ([#1099]).
 - Add CLI argument and env var to disable the end-of-support checker: `EOS_DISABLED` (`--eos-disabled`) ([#1101]).
-- Add end-of-support checker ([#1096]).
+- Add end-of-support checker ([#1096], [#1103]).
   - The EoS checker can be constructed using `EndOfSupportChecker::new()`.
   - Add new `MaintenanceOptions` and `EndOfSupportOptions` structs.
   - Add new CLI arguments and env vars:
