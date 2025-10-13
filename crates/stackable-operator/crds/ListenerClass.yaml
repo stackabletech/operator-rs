@@ -41,7 +41,7 @@ spec:
                   Ignored unless serviceType is LoadBalancer.
                 nullable: true
                 type: string
-              pinningNodePorts:
+              pinnedNodePorts:
                 default: false
                 description: |-
                   Wether or not a Pod exposed using a NodePort should be pinned to a specific Kubernetes node.

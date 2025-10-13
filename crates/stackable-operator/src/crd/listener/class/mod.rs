@@ -79,6 +79,6 @@ pub mod versioned {
         ///
         /// Because of this we don't enable pinning by default to support all environments.
         #[serde(default)]
-        pub pinning_node_ports: bool,
+        pub pinned_node_ports: bool,
     }
 }
