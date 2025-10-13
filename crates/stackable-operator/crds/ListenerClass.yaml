@@ -41,6 +41,21 @@ spec:
                   Ignored unless serviceType is LoadBalancer.
                 nullable: true
                 type: string
+              pinnedNodePorts:
+                default: false
+                description: |-
+                  Whether or not a Pod exposed using a NodePort should be pinned to a specific Kubernetes node.
+
+                  By pinning the Pod to a specific (stable) Kubernetes node, stable addresses can be
+                  provided using NodePorts. The pinning is achieved by listener-operator setting the
+                  `volume.kubernetes.io/selected-node` annotation on the Listener PVC.
+
+                  However, this only works on setups with long-living nodes. If your nodes are rotated on
+                  a regular basis, the Pods previously running on a removed node will be stuck in Pending
+                  until you delete the PVC with the pinning.
+
+                  Because of this we don't enable pinning by default to support all environments.
+                type: boolean
               preferredAddressType:
                 default: HostnameConservative
                 description: |-
