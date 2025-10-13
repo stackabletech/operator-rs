@@ -1,13 +1,9 @@
 use crate::crd::listener::{
     class::v1alpha1::ListenerClassSpec,
-    core::v1alpha1::{AddressType, KubernetesTrafficPolicy, PreferredAddressType},
+    core::v1alpha1::{AddressType, PreferredAddressType},
 };
 
 impl ListenerClassSpec {
-    pub(super) const fn default_service_external_traffic_policy() -> KubernetesTrafficPolicy {
-        KubernetesTrafficPolicy::Local
-    }
-
     pub(super) const fn default_preferred_address_type() -> PreferredAddressType {
         PreferredAddressType::HostnameConservative
     }

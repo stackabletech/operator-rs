@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Default ListenerClass `.spec.externalTrafficPolicy` to `null` so that LoadBalancers work everywhere ([#1107]).
+
+[#1107]: https://github.com/stackabletech/operator-rs/pull/1107
+
 ## [0.99.0] - 2025-10-06
 
 ### Added
