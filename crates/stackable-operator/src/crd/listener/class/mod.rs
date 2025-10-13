@@ -67,7 +67,7 @@ pub mod versioned {
         #[serde(default = "ListenerClassSpec::default_preferred_address_type")]
         pub preferred_address_type: core_v1alpha1::PreferredAddressType,
 
-        /// Wether or not a Pod exposed using a NodePort should be pinned to a specific Kubernetes node.
+        /// Whether or not a Pod exposed using a NodePort should be pinned to a specific Kubernetes node.
         ///
         /// By pinning the Pod to a specific (stable) Kubernetes node, stable addresses can be
         /// provided using NodePorts. The pinning is achieved by listener-operator setting the
