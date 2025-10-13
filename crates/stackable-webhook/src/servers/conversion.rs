@@ -265,6 +265,7 @@ impl ConversionWebhookServer {
         crds_and_handlers: impl IntoIterator<Item = (CustomResourceDefinition, H)> + Clone,
         operator_name: &'a str,
         operator_namespace: &'a str,
+        field_manager: &'a str,
         disable_maintainer: bool,
         client: Client,
     ) -> Result<
@@ -298,6 +299,7 @@ impl ConversionWebhookServer {
             disabled: disable_maintainer,
             operator_namespace,
             operator_name,
+            field_manager,
         };
 
         let (maintainer, initial_reconcile_rx) = CustomResourceDefinitionMaintainer::new(

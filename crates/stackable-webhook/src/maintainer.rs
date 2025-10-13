@@ -144,6 +144,7 @@ impl<'a> CustomResourceDefinitionMaintainer<'a> {
             operator_namespace,
             webhook_https_port,
             operator_name,
+            field_manager,
             disabled,
         } = self.options;
 
@@ -211,7 +212,7 @@ impl<'a> CustomResourceDefinitionMaintainer<'a> {
 
                 // Deploy the updated CRDs using a server-side apply.
                 let patch = Patch::Apply(&crd);
-                let patch_params = PatchParams::apply(operator_name);
+                let patch_params = PatchParams::apply(field_manager);
                 crd_api
                     .patch(&crd_name, &patch_params, &patch)
                     .await
@@ -240,6 +241,9 @@ pub struct CustomResourceDefinitionMaintainerOptions<'a> {
 
     /// The namespace the operator/conversion webhook runs in.
     pub operator_namespace: &'a str,
+
+    /// The field manager used when maintaining the CRDs.
+    pub field_manager: &'a str,
 
     /// The HTTPS port the conversion webhook listens on.
     pub webhook_https_port: u16,
