@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- BREAKING: The `ConversionWebhookServer` now returns a pair of values ([#1099]):
+- BREAKING: `ConversionWebhookServer::new` now returns a pair of values ([#1099]):
   - The conversion webhook server itself
   - A `mpsc::Receiver<Certificate>` to provide consumers the newly generated TLS certificate
 - BREAKING: Constants for ports, IP addresses and socket addresses are now associated constants on
