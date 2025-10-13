@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- BREAKING: Add new `ListenerClass.stickyNodePorts` field ([#1105]).
+- BREAKING: Add new `ListenerClass.pinningNodePorts` field ([#1105]).
 
 [#1105]: https://github.com/stackabletech/operator-rs/pull/1105
 
