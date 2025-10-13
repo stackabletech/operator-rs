@@ -240,6 +240,7 @@ impl ConversionWebhookServer {
     ///         crds_and_handlers,
     ///         "my-operator",
     ///         "my-namespace",
+    ///         "my-field-manager",
     ///         false,
     ///         client,
     ///     )

@@ -96,6 +96,7 @@ impl<'a> CustomResourceDefinitionMaintainer<'a> {
     /// let options = CustomResourceDefinitionMaintainerOptions {
     ///     operator_name: "my-service-name",
     ///     operator_namespace: "my-namespace",
+    ///     field_manager: "my-field-manager",
     ///     webhook_https_port: 8443,
     ///     disabled: true,
     /// };
