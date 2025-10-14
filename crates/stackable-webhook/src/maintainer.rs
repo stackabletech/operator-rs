@@ -94,7 +94,7 @@ impl<'a> CustomResourceDefinitionMaintainer<'a> {
     /// # async fn main() {
     /// # let (certificate_tx, certificate_rx) = channel(1);
     /// let options = CustomResourceDefinitionMaintainerOptions {
-    ///     operator_name: "my-service-name",
+    ///     operator_service_name: "my-service-name",
     ///     operator_namespace: "my-namespace",
     ///     field_manager: "my-field-manager",
     ///     webhook_https_port: 8443,
@@ -142,9 +142,9 @@ impl<'a> CustomResourceDefinitionMaintainer<'a> {
     /// [`std::task::Poll::Ready`] and thus doesn't consume any resources.
     pub async fn run(mut self) -> Result<(), Error> {
         let CustomResourceDefinitionMaintainerOptions {
+            operator_service_name,
             operator_namespace,
             webhook_https_port,
-            operator_name,
             field_manager,
             disabled,
         } = self.options;
@@ -198,7 +198,7 @@ impl<'a> CustomResourceDefinitionMaintainer<'a> {
                         conversion_review_versions: vec!["v1".to_owned()],
                         client_config: Some(WebhookClientConfig {
                             service: Some(ServiceReference {
-                                name: operator_name.to_owned(),
+                                name: operator_service_name.to_owned(),
                                 namespace: operator_namespace.to_owned(),
                                 path: Some(format!("/convert/{crd_name}")),
                                 port: Some(webhook_https_port.into()),
@@ -237,8 +237,8 @@ impl<'a> CustomResourceDefinitionMaintainer<'a> {
 // TODO (@Techassi): Make this a builder instead
 /// This contains required options to customize a [`CustomResourceDefinitionMaintainer`].
 pub struct CustomResourceDefinitionMaintainerOptions<'a> {
-    /// The service name used by the operator/conversion webhook and as a field manager.
-    pub operator_name: &'a str,
+    /// The service name used by the operator/conversion webhook.
+    pub operator_service_name: &'a str,
 
     /// The namespace the operator/conversion webhook runs in.
     pub operator_namespace: &'a str,

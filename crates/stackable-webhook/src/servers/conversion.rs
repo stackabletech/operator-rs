@@ -195,10 +195,11 @@ impl ConversionWebhookServer {
     ///   to a handler function. In most cases, the generated `CustomResource::try_merge` function
     ///   should be used. It provides the expected `fn(ConversionReview) -> ConversionReview`
     ///   signature.
-    /// - `operator_name`: The name of the operator. This is used to construct the webhook service
-    ///   name.
+    /// - `operator_service_name`: The name of the Kubernetes service name which points to the
+    ///   operator/conversion webhook. This is used to construct the service reference in the CRD
+    ///   `spec.conversion` field.
     /// - `operator_namespace`: The namespace the operator runs in. This is used to construct the
-    ///   webhook service name.
+    ///   service reference in the CRD `spec.conversion` field.
     /// - `disable_maintainer`: A boolean value to indicate if the [`CustomResourceDefinitionMaintainer`]
     ///   should be disabled.
     /// - `client`: A [`kube::Client`] used to maintain the custom resource definitions.
@@ -264,7 +265,7 @@ impl ConversionWebhookServer {
         // TODO (@Techassi): Use a trait type here which can be used to build all part of the
         // conversion webhook server and a CRD maintainer.
         crds_and_handlers: impl IntoIterator<Item = (CustomResourceDefinition, H)> + Clone,
-        operator_name: &'a str,
+        operator_service_name: &'a str,
         operator_namespace: &'a str,
         field_manager: &'a str,
         disable_maintainer: bool,
@@ -284,8 +285,8 @@ impl ConversionWebhookServer {
 
         // TODO (@Techassi): These should be moved into a builder
         let webhook_options = ConversionWebhookOptions {
+            service_name: operator_service_name,
             namespace: operator_namespace,
-            service_name: operator_name,
             socket_addr,
         };
 
@@ -298,8 +299,8 @@ impl ConversionWebhookServer {
         let maintainer_options = CustomResourceDefinitionMaintainerOptions {
             webhook_https_port: socket_addr.port(),
             disabled: disable_maintainer,
+            operator_service_name,
             operator_namespace,
-            operator_name,
             field_manager,
         };
 
