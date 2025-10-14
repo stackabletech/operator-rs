@@ -11,7 +11,7 @@ use hyper::{body::Incoming, service::service_fn};
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use opentelemetry::trace::{FutureExt, SpanKind};
 use opentelemetry_semantic_conventions as semconv;
-use snafu::{ResultExt, Snafu};
+use snafu::{OptionExt, ResultExt, Snafu};
 use stackable_shared::time::Duration;
 use tokio::{
     net::{TcpListener, TcpStream},
@@ -21,7 +21,7 @@ use tokio_rustls::{
     TlsAcceptor,
     rustls::{
         ServerConfig,
-        crypto::ring::default_provider,
+        crypto::CryptoProvider,
         version::{TLS12, TLS13},
     },
 };
@@ -59,6 +59,9 @@ pub enum TlsServerError {
 
     #[snafu(display("failed to set safe TLS protocol versions"))]
     SetSafeTlsProtocolVersions { source: tokio_rustls::rustls::Error },
+
+    #[snafu(display("no default rustls CryptoProvider installed"))]
+    NoDefaultCryptoProviderInstalled,
 }
 
 /// A server which terminates TLS connections and allows clients to communicate
@@ -85,20 +88,22 @@ impl TlsServer {
         router: Router,
         options: WebhookOptions,
     ) -> Result<(Self, mpsc::Receiver<Certificate>)> {
-        let (cert_tx, cert_rx) = mpsc::channel(1);
+        let (certificate_tx, certificate_rx) = mpsc::channel(1);
 
         let WebhookOptions {
             socket_addr,
             subject_alterative_dns_names,
         } = options;
 
-        let cert_resolver = CertificateResolver::new(subject_alterative_dns_names, cert_tx)
+        let cert_resolver = CertificateResolver::new(subject_alterative_dns_names, certificate_tx)
             .await
             .context(CreateCertificateResolverSnafu)?;
         let cert_resolver = Arc::new(cert_resolver);
 
-        let tls_provider = default_provider();
-        let mut config = ServerConfig::builder_with_provider(tls_provider.into())
+        let tls_provider =
+            CryptoProvider::get_default().context(NoDefaultCryptoProviderInstalledSnafu)?;
+
+        let mut config = ServerConfig::builder_with_provider(tls_provider.clone())
             .with_protocol_versions(&[&TLS12, &TLS13])
             .context(SetSafeTlsProtocolVersionsSnafu)?
             .with_no_client_auth()
@@ -112,7 +117,7 @@ impl TlsServer {
             router,
         };
 
-        Ok((tls_server, cert_rx))
+        Ok((tls_server, certificate_rx))
     }
 
     /// Runs the TLS server by listening for incoming TCP connections on the
