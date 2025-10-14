@@ -11,15 +11,23 @@ All notable changes to this project will be documented in this file.
   - `Label::stackable_vendor`: stackable.tech/vendor=Stackable
   - `Label::instance`: app.kubernetes.io/instance
   - `Label::name`: app.kubernetes.io/name
+- BREAKING: Add new ListenerClass `.spec.pinnedNodePorts` field ([#1105]).
 
+[#1105]: https://github.com/stackabletech/operator-rs/pull/1105
 [#1106]: https://github.com/stackabletech/operator-rs/pull/1106
 
 ## [0.99.0] - 2025-10-06
 
 ### Added
 
+- Add `CustomResourceDefinitionMaintainer` which applies and patches CRDs triggered by TLS
+  certificate rotations of the `ConversionWebhookServer`. It additionally provides a `oneshot`
+  channel which can for example be used to trigger creation/patching of any custom resources deployed by
+  the operator ([#1099]).
+- Add a `Client::create_if_missing` associated function to create a resource if it doesn't
+  exist ([#1099]).
 - Add CLI argument and env var to disable the end-of-support checker: `EOS_DISABLED` (`--eos-disabled`) ([#1101]).
-- Add end-of-support checker ([#1096]).
+- Add end-of-support checker ([#1096], [#1103]).
   - The EoS checker can be constructed using `EndOfSupportChecker::new()`.
   - Add new `MaintenanceOptions` and `EndOfSupportOptions` structs.
   - Add new CLI arguments and env vars:
@@ -38,6 +46,7 @@ All notable changes to this project will be documented in this file.
 
 [#1096]: https://github.com/stackabletech/operator-rs/pull/1096
 [#1098]: https://github.com/stackabletech/operator-rs/pull/1098
+[#1099]: https://github.com/stackabletech/operator-rs/pull/1099
 [#1101]: https://github.com/stackabletech/operator-rs/pull/1101
 [#1103]: https://github.com/stackabletech/operator-rs/pull/1103
 
