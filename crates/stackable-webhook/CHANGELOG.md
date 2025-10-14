@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add `CustomResourceDefinitionMaintainer` which applies and patches CRDs triggered by TLS
+  certificate rotations of the `ConversionWebhookServer`. It additionally provides a `oneshot`
+  channel which can for example be used to trigger creation/patching of any custom resources
+  deployed by the operator ([#1099]).
+- Add `ConversionWebhookServer::with_maintainer` which creates a conversion webhook server and a CRD
+  maintainer ([#1099]).
+
 ### Changed
 
 - BREAKING: `ConversionWebhookServer::new` now returns a pair of values ([#1099]):
