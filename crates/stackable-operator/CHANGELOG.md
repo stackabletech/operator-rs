@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.100.0] - 2025-10-16
+
 ### Added
 
 - Add `LabelExt` trait which enables adding validated labels to any Kubernetes resource ([#1106]).
