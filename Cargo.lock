@@ -2909,7 +2909,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.99.0"
+version = "0.100.0"
 dependencies = [
  "chrono",
  "clap",
@@ -3046,7 +3046,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-webhook"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "arc-swap",
  "axum",
