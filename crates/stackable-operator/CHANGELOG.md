@@ -10,12 +10,29 @@ All notable changes to this project will be documented in this file.
 
 [#1107]: https://github.com/stackabletech/operator-rs/pull/1107
 
+## [0.100.0] - 2025-10-16
+
+### Added
+
+- Add `LabelExt` trait which enables adding validated labels to any Kubernetes resource ([#1106]).
+- Add new associated convenience functions to `Label` ([#1106]).
+  - `Label::stackable_vendor`: stackable.tech/vendor=Stackable
+  - `Label::instance`: app.kubernetes.io/instance
+  - `Label::name`: app.kubernetes.io/name
+- Add a `Client::create_if_missing` associated function to create a resource if it doesn't
+  exist ([#1099]).
+- BREAKING: Add new ListenerClass `.spec.pinnedNodePorts` field ([#1105]).
+
+[#1099]: https://github.com/stackabletech/operator-rs/pull/1099
+[#1105]: https://github.com/stackabletech/operator-rs/pull/1105
+[#1106]: https://github.com/stackabletech/operator-rs/pull/1106
+
 ## [0.99.0] - 2025-10-06
 
 ### Added
 
 - Add CLI argument and env var to disable the end-of-support checker: `EOS_DISABLED` (`--eos-disabled`) ([#1101]).
-- Add end-of-support checker ([#1096]).
+- Add end-of-support checker ([#1096], [#1103]).
   - The EoS checker can be constructed using `EndOfSupportChecker::new()`.
   - Add new `MaintenanceOptions` and `EndOfSupportOptions` structs.
   - Add new CLI arguments and env vars:

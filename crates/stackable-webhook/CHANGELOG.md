@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.7.0] - 2025-10-16
+
+### Added
+
+- Add `CustomResourceDefinitionMaintainer` which applies and patches CRDs triggered by TLS
+  certificate rotations of the `ConversionWebhookServer`. It additionally provides a `oneshot`
+  channel which can for example be used to trigger creation/patching of any custom resources
+  deployed by the operator ([#1099]).
+- Add `ConversionWebhookServer::with_maintainer` which creates a conversion webhook server and a CRD
+  maintainer ([#1099]).
+
+### Changed
+
+- BREAKING: `ConversionWebhookServer::new` now returns a pair of values ([#1099]):
+  - The conversion webhook server itself
+  - A `mpsc::Receiver<Certificate>` to provide consumers the newly generated TLS certificate
+- BREAKING: Constants for ports, IP addresses and socket addresses are now associated constants on
+  `(Conversion)WebhookServer` instead of free-standing ones ([#1099]).
+
+### Removed
+
+- BREAKING: The `maintain_crds` and `field_manager` fields in `ConversionWebhookOptions`
+  are removed ([#1099]).
+
+[#1099]: https://github.com/stackabletech/operator-rs/pull/1099
+
 ## [0.6.0] - 2025-09-09
 
 ### Added

@@ -1,6 +1,6 @@
 //! This module provides various types and functions to construct valid
 //! Kubernetes labels. Labels are key/value pairs, where the key must meet
-//! certain requirementens regarding length and character set. The value can
+//! certain requirements regarding length and character set. The value can
 //! contain a limited set of ASCII characters.
 //!
 //! Additionally, the [`Label`] struct provides various helper functions to
@@ -41,6 +41,63 @@ pub type LabelsError = KeyValuePairsError;
 /// A type alias for errors returned when construction or manipulation of a set
 /// of labels fails.
 pub type LabelError = KeyValuePairError<LabelValueError>;
+
+/// Add [`Label`]s to any Kubernetes resource.
+///
+/// It should be noted, that after the addition of labels to the resource, the validity of keys and
+/// values **can no longer be enforced** as they are both stored as plain [`String`]s. To update a
+/// label use [`LabelExt::add_label`] which will update the label in place if it is already present.
+pub trait LabelExt
+where
+    Self: ResourceExt,
+{
+    /// Adds a single label to `self`.
+    fn add_label(&mut self, label: Label) -> &mut Self;
+
+    /// Adds multiple labels to `self`.
+    fn add_labels(&mut self, label: Labels) -> &mut Self;
+}
+
+impl<T> LabelExt for T
+where
+    T: ResourceExt,
+{
+    fn add_label(&mut self, label: Label) -> &mut Self {
+        let meta = self.meta_mut();
+
+        match &mut meta.labels {
+            Some(labels) => {
+                // TODO (@Techassi): Add an API to consume key and value
+                let KeyValuePair { key, value } = label.into_inner();
+                labels.insert(key.to_string(), value.to_string());
+            }
+            None => {
+                let mut labels = BTreeMap::new();
+
+                // TODO (@Techassi): Add an API to consume key and value
+                let KeyValuePair { key, value } = label.into_inner();
+                labels.insert(key.to_string(), value.to_string());
+
+                meta.labels = Some(labels);
+            }
+        }
+
+        self
+    }
+
+    fn add_labels(&mut self, labels: Labels) -> &mut Self {
+        let meta = self.meta_mut();
+
+        match &mut meta.labels {
+            Some(existing_labels) => {
+                existing_labels.extend::<BTreeMap<String, String>>(labels.into())
+            }
+            None => meta.labels = Some(labels.into()),
+        }
+
+        self
+    }
+}
 
 /// A specialized implementation of a key/value pair representing Kubernetes
 /// labels.
@@ -99,26 +156,28 @@ impl Label {
         self.0
     }
 
-    /// Creates the `app.kubernetes.io/component` label with `role` as the
-    /// value. This function will return an error if `role` violates the required
-    /// Kubernetes restrictions.
+    /// Creates the `app.kubernetes.io/component` label with `role` as the value.
+    ///
+    /// This function will return an error if `role` violates the required Kubernetes restrictions.
     pub fn component(component: &str) -> Result<Self, LabelError> {
         let kvp = KeyValuePair::try_from((K8S_APP_COMPONENT_KEY, component))?;
         Ok(Self(kvp))
     }
 
-    /// Creates the `app.kubernetes.io/role-group` label with `role_group` as
-    /// the value. This function will return an error if `role_group` violates
-    /// the required Kubernetes restrictions.
+    /// Creates the `app.kubernetes.io/role-group` label with `role_group` as the value.
+    ///
+    /// This function will return an error if `role_group` violates the required Kubernetes
+    /// restrictions.
     pub fn role_group(role_group: &str) -> Result<Self, LabelError> {
         let kvp = KeyValuePair::try_from((K8S_APP_ROLE_GROUP_KEY, role_group))?;
         Ok(Self(kvp))
     }
 
-    /// Creates the `app.kubernetes.io/managed-by` label with the formated
-    /// full controller name based on `operator_name` and `controller_name` as
-    /// the value. This function will return an error if the formatted controller
-    /// name violates the required Kubernetes restrictions.
+    /// Creates the `app.kubernetes.io/managed-by` label with the formatted full controller name
+    /// based on `operator_name` and `controller_name` as the value.
+    ///
+    /// This function will return an error if the formatted controller name violates the required
+    /// Kubernetes restrictions.
     pub fn managed_by(operator_name: &str, controller_name: &str) -> Result<Self, LabelError> {
         let kvp = KeyValuePair::try_from((
             K8S_APP_MANAGED_BY_KEY,
@@ -127,13 +186,39 @@ impl Label {
         Ok(Self(kvp))
     }
 
-    /// Creates the `app.kubernetes.io/version` label with `version` as the
-    /// value. This function will return an error if `role_group` violates the
-    /// required Kubernetes restrictions.
+    /// Creates the `app.kubernetes.io/version` label with `version` as the value.
+    ///
+    /// This function will return an error if `version` violates the required Kubernetes
+    /// restrictions.
     pub fn version(version: &str) -> Result<Self, LabelError> {
         // NOTE (Techassi): Maybe use semver::Version
         let kvp = KeyValuePair::try_from((K8S_APP_VERSION_KEY, version))?;
         Ok(Self(kvp))
+    }
+
+    /// Creates the `app.kubernetes.io/instance` label with `instance` as the value.
+    ///
+    /// This function will return an error if `instance` violates the required Kubernetes
+    /// restrictions.
+    pub fn instance(instance: &str) -> Result<Self, LabelError> {
+        let kvp = KeyValuePair::try_from((K8S_APP_INSTANCE_KEY, instance))?;
+        Ok(Self(kvp))
+    }
+
+    /// Creates the `app.kubernetes.io/name` label with `name` as the value.
+    ///
+    /// This function will return an error if `name` violates the required Kubernetes restrictions.
+    pub fn name(name: &str) -> Result<Self, LabelError> {
+        let kvp = KeyValuePair::try_from((K8S_APP_NAME_KEY, name))?;
+        Ok(Self(kvp))
+    }
+
+    /// Creates the Stackable specific vendor label.
+    ///
+    /// See [`STACKABLE_VENDOR_KEY`] and [`STACKABLE_VENDOR_VALUE`].
+    pub fn stackable_vendor() -> Self {
+        Self::try_from((STACKABLE_VENDOR_KEY, STACKABLE_VENDOR_VALUE))
+            .expect("constant vendor label must be valid")
     }
 }
 
@@ -331,7 +416,7 @@ impl Labels {
         labels.insert(version);
 
         // Stackable-specific labels
-        labels.parse_insert((STACKABLE_VENDOR_KEY, STACKABLE_VENDOR_VALUE))?;
+        labels.insert(Label::stackable_vendor());
 
         Ok(labels)
     }
