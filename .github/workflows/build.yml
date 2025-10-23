@@ -41,7 +41,7 @@ jobs:
       - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
         with:
           key: udeps
-      - run: cargo install --locked cargo-udeps@0.1.57
+      - run: cargo install --locked cargo-udeps@0.1.59
       - run: cargo udeps --all-targets --all-features
 
   run_cargodeny:
