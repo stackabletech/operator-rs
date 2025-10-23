@@ -66,12 +66,12 @@ impl CommonItemAttributes {
     pub fn validate_versions(&self, versions: &[VersionDefinition]) -> Result<()> {
         let mut errors = Error::accumulator();
 
-        if let Some(added) = &self.added {
-            if !versions.iter().any(|v| v.inner == *added.since) {
-                errors.push(Error::custom(
+        if let Some(added) = &self.added
+            && !versions.iter().any(|v| v.inner == *added.since)
+        {
+            errors.push(Error::custom(
                     "the `added` action uses a version which is not declared via `#[versioned(version)]`",
                 ).with_span(&added.since.span()));
-            }
         }
 
         for change in &self.changes {
@@ -82,12 +82,12 @@ impl CommonItemAttributes {
             }
         }
 
-        if let Some(deprecated) = &self.deprecated {
-            if !versions.iter().any(|v| v.inner == *deprecated.since) {
-                errors.push(Error::custom(
+        if let Some(deprecated) = &self.deprecated
+            && !versions.iter().any(|v| v.inner == *deprecated.since)
+        {
+            errors.push(Error::custom(
                     "the `deprecated` action uses a version which is not declared via `#[versioned(version)]`",
                 ).with_span(&deprecated.since.span()));
-            }
         }
 
         errors.finish()
@@ -148,12 +148,11 @@ impl CommonItemAttributes {
         // version.
         // NOTE (@Techassi): Is this already covered by the code below?
         if let (Some(added_version), Some(deprecated_version)) = (added_version, deprecated_version)
+            && added_version > deprecated_version
         {
-            if added_version > deprecated_version {
-                return Err(Error::custom(format!(
+            return Err(Error::custom(format!(
                     "cannot marked as `added` in version `{added_version}` while being marked as `deprecated` in an earlier version `{deprecated_version}`"
                 )).with_span(item_idents.original()));
-            }
         }
 
         // Now, iterate over all changes and ensure that their versions are
@@ -206,11 +205,12 @@ impl CommonItemAttributes {
     /// valid.
     fn validate_added_action(&self) -> Result<()> {
         // NOTE (@Techassi): Can the path actually be empty?
-        if let Some(added) = &self.added {
-            if added.default_fn.segments.is_empty() {
-                return Err(Error::custom("`default_fn` cannot be empty")
-                    .with_span(&added.default_fn.span()));
-            }
+        if let Some(added) = &self.added
+            && added.default_fn.segments.is_empty()
+        {
+            return Err(
+                Error::custom("`default_fn` cannot be empty").with_span(&added.default_fn.span())
+            );
         }
 
         Ok(())
@@ -230,15 +230,13 @@ impl CommonItemAttributes {
             }
 
             // This ensures that `from_name` doesn't include the deprecation prefix.
-            if let Some(from_name) = change.from_name.as_ref() {
-                if from_name.starts_with(item_ident.deprecation_prefix()) {
-                    errors.push(
-                        Error::custom(
-                            "the previous name must not start with the deprecation prefix",
-                        )
+            if let Some(from_name) = change.from_name.as_ref()
+                && from_name.starts_with(item_ident.deprecation_prefix())
+            {
+                errors.push(
+                    Error::custom("the previous name must not start with the deprecation prefix")
                         .with_span(&from_name.span()),
-                    );
-                }
+                );
             }
 
             if change.from_type.is_none() {

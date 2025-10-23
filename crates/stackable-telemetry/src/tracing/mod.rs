@@ -570,16 +570,16 @@ impl Drop for Tracing {
             "shutting down opentelemetry OTLP providers"
         );
 
-        if let Some(tracer_provider) = &self.tracer_provider {
-            if let Err(error) = tracer_provider.shutdown() {
-                tracing::error!(%error, "unable to shutdown TracerProvider")
-            }
+        if let Some(tracer_provider) = &self.tracer_provider
+            && let Err(error) = tracer_provider.shutdown()
+        {
+            tracing::error!(%error, "unable to shutdown TracerProvider")
         }
 
-        if let Some(logger_provider) = &self.logger_provider {
-            if let Err(error) = logger_provider.shutdown() {
-                tracing::error!(%error, "unable to shutdown LoggerProvider");
-            }
+        if let Some(logger_provider) = &self.logger_provider
+            && let Err(error) = logger_provider.shutdown()
+        {
+            tracing::error!(%error, "unable to shutdown LoggerProvider");
         }
     }
 }

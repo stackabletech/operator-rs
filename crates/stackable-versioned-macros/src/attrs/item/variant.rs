@@ -59,13 +59,13 @@ impl VariantAttributes {
 
         // Validate names of renames
         for change in &self.common.changes {
-            if let Some(from_name) = &change.from_name {
-                if !from_name.is_case(Case::Pascal) {
-                    errors.push(
-                        Error::custom("renamed variant must use PascalCase")
-                            .with_span(&from_name.span()),
-                    )
-                }
+            if let Some(from_name) = &change.from_name
+                && !from_name.is_case(Case::Pascal)
+            {
+                errors.push(
+                    Error::custom("renamed variant must use PascalCase")
+                        .with_span(&from_name.span()),
+                )
             }
         }
 
