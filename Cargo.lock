@@ -2909,7 +2909,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-operator"
-version = "0.100.0"
+version = "0.100.1"
 dependencies = [
  "chrono",
  "clap",
@@ -3003,7 +3003,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned"
-version = "0.8.2"
+version = "0.8.3"
 dependencies = [
  "insta",
  "k8s-openapi",
@@ -3018,7 +3018,7 @@ dependencies = [
 
 [[package]]
 name = "stackable-versioned-macros"
-version = "0.8.2"
+version = "0.8.3"
 dependencies = [
  "convert_case",
  "darling",
