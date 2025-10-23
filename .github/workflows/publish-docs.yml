@@ -13,7 +13,7 @@ on:
       - crates/**
 
 env:
-  RUST_TOOLCHAIN_VERSION: "1.87.0"
+  RUST_TOOLCHAIN_VERSION: "1.89.0"
 
 permissions: {}
 
