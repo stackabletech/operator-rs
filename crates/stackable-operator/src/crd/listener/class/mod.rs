@@ -63,6 +63,10 @@ pub mod versioned {
         /// sophisticated LoadBalancer, that respects what Pods run on which nodes and routes traffic only
         /// to these nodes accordingly. Some cloud providers or bare metal installations do not implement
         /// some of the required features.
+        //
+        // Pls note that we shouldn't mandate the default, but just let Kubernetes choose what to do
+        // (currently this means defaulting to Cluster), as this sound the most future-proof to me.
+        // Maybe in the future k8s defaults to Local if the LoadBalancer supports it
         pub service_external_traffic_policy: Option<core_v1alpha1::KubernetesTrafficPolicy>,
 
         /// Whether addresses should prefer using the IP address (`IP`) or the hostname (`Hostname`).
