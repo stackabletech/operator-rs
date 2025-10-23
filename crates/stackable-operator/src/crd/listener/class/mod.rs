@@ -55,15 +55,14 @@ pub mod versioned {
         /// It is a Kubernetes feature that controls how external traffic is routed to a Kubernetes
         /// Service.
         ///
-        /// * `Cluster`: Kubernetes defaults to `Cluster`, which means that traffic is routed to any
-        ///    node in the Kubernetes cluster that has a pod running the service.
-        /// * `Local`: Means that traffic is only routed to pods running on the same node as the
-        ///    Service.
+        /// * `Cluster`: Kubernetes default. Traffic is routed to any node in the Kubernetes cluster that
+        ///   has a pod running the service.
+        /// * `Local`: Traffic is only routed to pods running on the same node as the Service.
         ///
-        /// `Local` has a better performance as it avoids a network hop, but requires a "clever"
-        /// LoadBalancer, that respects what Pods run on which nodes and routes traffic only to that
-        /// nodes accordingly. Some cloud providers (such as IONOS) or bare metal installations
-        /// don't have such features, so the default is `Cluster` to work everywhere.
+        /// The `Local` mode has better performance as it avoids a network hop, but requires a more
+        /// sophisticated LoadBalancer, that respects what Pods run on which nodes and routes traffic only
+        /// to these nodes accordingly. Some cloud providers or bare metal installations do not implement
+        /// some of the required features.
         pub service_external_traffic_policy: Option<core_v1alpha1::KubernetesTrafficPolicy>,
 
         /// Whether addresses should prefer using the IP address (`IP`) or the hostname (`Hostname`).
