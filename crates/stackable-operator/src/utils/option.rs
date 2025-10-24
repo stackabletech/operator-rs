@@ -9,7 +9,7 @@ pub trait OptionExt<T> {
     /// Compared to [`Option::unwrap_or_else`], this saves having to [`Clone::clone`] the value to make the types line up.
     ///
     /// Consider using [`Self::as_deref_or_else`] instead if the type implements [`Deref`] (such as [`String`] or [`PathBuf`]).
-    fn as_ref_or_else(&self, default: impl FnOnce() -> T) -> Cow<T>
+    fn as_ref_or_else(&'_ self, default: impl FnOnce() -> T) -> Cow<'_, T>
     where
         T: Clone;
 
@@ -18,14 +18,14 @@ pub trait OptionExt<T> {
     /// Compared to [`Option::unwrap_or_else`], this saves having to [`Clone::clone`] the value to make the types line up.
     ///
     /// Consider using [`Self::as_ref_or_else`] instead if the type does not implement [`Deref`].
-    fn as_deref_or_else(&self, default: impl FnOnce() -> T) -> Cow<T::Target>
+    fn as_deref_or_else(&'_ self, default: impl FnOnce() -> T) -> Cow<'_, T::Target>
     where
         T: Deref,
         T::Target: ToOwned<Owned = T>;
 }
 
 impl<T> OptionExt<T> for Option<T> {
-    fn as_ref_or_else(&self, default: impl FnOnce() -> T) -> Cow<T>
+    fn as_ref_or_else(&'_ self, default: impl FnOnce() -> T) -> Cow<'_, T>
     where
         T: Clone,
     {
@@ -33,7 +33,7 @@ impl<T> OptionExt<T> for Option<T> {
             .map_or_else(|| Cow::Owned(default()), Cow::Borrowed)
     }
 
-    fn as_deref_or_else(&self, default: impl FnOnce() -> T) -> Cow<<T>::Target>
+    fn as_deref_or_else(&'_ self, default: impl FnOnce() -> T) -> Cow<'_, <T>::Target>
     where
         T: Deref,
         <T>::Target: ToOwned<Owned = T>,

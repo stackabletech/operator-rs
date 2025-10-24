@@ -39,6 +39,7 @@ Replace the items in the task lists below with the applicable Pull Requests
 - [ ] Also adjust the nightly Rust toolchain version used for formatting (this should be kept in
       sync across here, operator-templating and docker-images).
       - `.github/workflows/pre_commit.yaml`
+      - `.pre-commit-config.yaml`
       - `.vscode/settings.json`
 - [ ] Add a changelog entry.
 - [ ] Update any actions (using the Git commit hash) in the workflows. Hint: Also make sure that the

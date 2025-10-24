@@ -246,13 +246,6 @@ mod tests {
         optional: Option<WithFields>,
     }
 
-    #[derive(Fragment, Debug, PartialEq, Eq)]
-    #[fragment(path_overrides(fragment = "super"))]
-    struct GenericNested<T: super::FromFragment> {
-        required: T,
-        optional: Option<T>,
-    }
-
     #[test]
     fn validate_empty() {
         assert_eq!(validate::<Empty>(EmptyFragment {}).unwrap(), Empty {});

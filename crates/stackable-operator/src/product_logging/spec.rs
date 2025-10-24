@@ -85,7 +85,7 @@ where
     T: Clone + Display + Ord,
 {
     /// Get the logging configuration for `container`, falling back to the default.
-    pub fn for_container(&self, container: &T) -> Cow<ContainerLogConfig> {
+    pub fn for_container(&'_ self, container: &T) -> Cow<'_, ContainerLogConfig> {
         self.containers
             .get(container)
             .map(Cow::Borrowed)

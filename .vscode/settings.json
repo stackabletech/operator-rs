@@ -3,7 +3,7 @@
   "rust-analyzer.imports.granularity.group": "crate",
   "rust-analyzer.rustfmt.overrideCommand": [
     "rustfmt",
-    "+nightly-2025-05-26",
+    "+nightly-2025-10-23",
     "--edition",
     "2024",
     "--"
