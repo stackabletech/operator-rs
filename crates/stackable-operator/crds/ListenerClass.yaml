@@ -77,35 +77,18 @@ spec:
                 description: Annotations that should be added to the Service object.
                 type: object
               serviceExternalTrafficPolicy:
-                anyOf:
-                - description: |-
-                    Service Internal Traffic Policy enables internal traffic restrictions to only route internal
-                    traffic to endpoints within the node the traffic originated from. The "internal" traffic
-                    here refers to traffic originated from Pods in the current cluster. This can help to reduce
-                    costs and improve performance. See [Kubernetes docs][k8s-docs].
-
-                    [k8s-docs]: https://kubernetes.io/docs/concepts/services-networking/service-traffic-policy/
-                  enum:
-                  - Cluster
-                  - Local
-                  type: string
-                - enum:
-                  - null
-                  nullable: true
                 description: |-
-                  `externalTrafficPolicy` that should be set on the created Service objects.
+                  Service Internal Traffic Policy enables internal traffic restrictions to only route internal
+                  traffic to endpoints within the node the traffic originated from. The "internal" traffic
+                  here refers to traffic originated from Pods in the current cluster. This can help to reduce
+                  costs and improve performance. See [Kubernetes docs][k8s-docs].
 
-                  It is a Kubernetes feature that controls how external traffic is routed to a Kubernetes
-                  Service.
-
-                  * `Cluster`: Kubernetes default. Traffic is routed to any node in the Kubernetes cluster that
-                    has a pod running the service.
-                  * `Local`: Traffic is only routed to pods running on the same node as the Service.
-
-                  The `Local` mode has better performance as it avoids a network hop, but requires a more
-                  sophisticated LoadBalancer, that respects what Pods run on which nodes and routes traffic only
-                  to these nodes accordingly. Some cloud providers or bare metal installations do not implement
-                  some of the required features.
+                  [k8s-docs]: https://kubernetes.io/docs/concepts/services-networking/service-traffic-policy/
+                enum:
+                - Cluster
+                - Local
+                nullable: true
+                type: string
               serviceType:
                 description: The method used to access the services.
                 enum:
