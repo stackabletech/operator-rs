@@ -4,11 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Changed
+### Fixed
 
 - BREAKING: Default ListenerClass `.spec.externalTrafficPolicy` to `null` so that LoadBalancers work everywhere ([#1107]).
 
 [#1107]: https://github.com/stackabletech/operator-rs/pull/1107
+
+## [0.100.1] - 2025-10-23
+
+### Changed
+
+- Bump stackable-versioned to 0.8.3, refer to its [changelog](../stackable-versioned/CHANGELOG.md) ([#1110]).
+
+[#1110]: https://github.com/stackabletech/operator-rs/pull/1110
 
 ## [0.100.0] - 2025-10-16
 

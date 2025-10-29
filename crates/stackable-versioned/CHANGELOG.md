@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.8.3] - 2025-10-23
+
+### Fixed
+
+- Fix inconsistent use of `.into()` functions in enum `From` impls with variant data ([#1109]).
+
+[#1109]: https://github.com/stackabletech/operator-rs/pull/1109
+
 ## [0.8.2] - 2025-09-09
 
 ### Added

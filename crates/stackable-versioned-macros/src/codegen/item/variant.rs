@@ -164,7 +164,7 @@ impl VersionedVariant {
                             }),
                             Direction::Downgrade => Some(quote! {
                                 #next_version_ident::#enum_ident::#next_variant_ident #from_fields
-                                    => #old_version_ident::#enum_ident::#old_variant_ident #from_fields,
+                                    => #old_version_ident::#enum_ident::#old_variant_ident #for_fields,
                             }),
                         }
                     }
